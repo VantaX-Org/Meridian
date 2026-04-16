@@ -17,11 +17,11 @@ git commit -m "fix: async analysis polling + progress bar"
 git push origin main
 ```
 
-This triggers the GitHub Actions workflow which builds and pushes new Docker images to `ghcr.io/agentum-au/meridian-{api,frontend,worker,nginx}:latest`.
+This triggers the GitHub Actions workflow which builds and pushes new Docker images to `ghcr.io/vantax-org/meridian-{api,frontend,worker,nginx}:latest`.
 
 ## Step 2: Wait for CI to Finish
 
-Go to `https://github.com/agentum-au/meridian-2/actions` and wait for the build to go green. This usually takes 5–10 minutes.
+Go to `https://github.com/VantaX-Org/Meridian/actions` and wait for the build to go green. This usually takes 5–10 minutes.
 
 ## Step 3: Create the Update Script (First Time Only)
 
@@ -125,7 +125,7 @@ For all future updates after the script is in place, the process is just:
 # 1. On your local machine
 git add . && git commit -m "your message" && git push origin main
 
-# 2. Wait for CI to go green at github.com/agentum-au/meridian-2/actions
+# 2. Wait for CI to go green at github.com/VantaX-Org/Meridian/actions
 
 # 3. SSH into the server and run
 sudo bash /opt/meridian/update.sh

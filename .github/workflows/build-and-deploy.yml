@@ -17,7 +17,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_PREFIX: ghcr.io/agentum-au/meridian
+  IMAGE_PREFIX: ghcr.io/vantax-org/meridian
 
 jobs:
   build-and-push:
@@ -142,10 +142,10 @@ jobs:
             
             ### Docker Images (Multi-Platform: amd64 + arm64)
             ```
-            ghcr.io/agentum-au/meridian-api:${{ steps.version.outputs.VERSION }}
-            ghcr.io/agentum-au/meridian-frontend:${{ steps.version.outputs.VERSION }}
-            ghcr.io/agentum-au/meridian-worker:${{ steps.version.outputs.VERSION }}
-            ghcr.io/agentum-au/meridian-ollama:qwen3-5-9b-instruct
+            ghcr.io/vantax-org/meridian-api:${{ steps.version.outputs.VERSION }}
+            ghcr.io/vantax-org/meridian-frontend:${{ steps.version.outputs.VERSION }}
+            ghcr.io/vantax-org/meridian-worker:${{ steps.version.outputs.VERSION }}
+            ghcr.io/vantax-org/meridian-ollama:qwen3-5-9b-instruct
             ```
 
             ### Installation
@@ -197,8 +197,8 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: |
-            ghcr.io/agentum-au/meridian-nginx:${{ steps.version.outputs.VERSION }}
-            ghcr.io/agentum-au/meridian-nginx:latest
+            ghcr.io/vantax-org/meridian-nginx:${{ steps.version.outputs.VERSION }}
+            ghcr.io/vantax-org/meridian-nginx:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -240,5 +240,5 @@ jobs:
           build-args: |
             MODEL_NAME=qwen3.5:9b-instruct
           tags: |
-            ghcr.io/agentum-au/meridian-ollama:qwen3-5-9b-instruct
-            ghcr.io/agentum-au/meridian-ollama:latest
+            ghcr.io/vantax-org/meridian-ollama:qwen3-5-9b-instruct
+            ghcr.io/vantax-org/meridian-ollama:latest

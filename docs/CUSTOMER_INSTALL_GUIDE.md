@@ -251,10 +251,10 @@ docker compose restart
 
 **Test manually**:
 ```bash
-docker pull ghcr.io/agentum-au/meridian-api:latest
-docker pull ghcr.io/agentum-au/meridian-frontend:latest
-docker pull ghcr.io/agentum-au/meridian-worker:latest
-docker pull ghcr.io/agentum-au/meridian-ollama:latest
+docker pull ghcr.io/vantax-org/meridian-api:latest
+docker pull ghcr.io/vantax-org/meridian-frontend:latest
+docker pull ghcr.io/vantax-org/meridian-worker:latest
+docker pull ghcr.io/vantax-org/meridian-ollama:latest
 ```
 
 **Note**: Meridian images are publicly accessible. No GitHub account or authentication is required.

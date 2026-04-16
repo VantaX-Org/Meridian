@@ -6,7 +6,7 @@ This is the canonical guide for packaging Meridian for a customer and deploying 
 
 ## Overview
 
-Meridian ships as a set of pre-built Docker images hosted on GitHub Container Registry (GHCR) under the `agentum-au` organisation. Customers never receive source code — only compiled, multi-stage images.
+Meridian ships as a set of pre-built Docker images hosted on GitHub Container Registry (GHCR) under the `vantax-org` organisation. Customers never receive source code — only compiled, multi-stage images.
 
 There are two scripts in the deployment pipeline:
 
@@ -28,11 +28,11 @@ Before packaging, ensure:
    git tag v1.2.0
    git push origin v1.2.0
    ```
-   GitHub Actions (`.github/workflows/build-and-deploy.yml`) builds and pushes `ghcr.io/agentum-au/meridian-{api,frontend,worker,nginx}:v1.2.0`.
+   GitHub Actions (`.github/workflows/build-and-deploy.yml`) builds and pushes `ghcr.io/vantax-org/meridian-{api,frontend,worker,nginx}:v1.2.0`.
 
 2. **GHCR read token is available**
    Generate a classic Personal Access Token at [github.com/settings/tokens](https://github.com/settings/tokens):
-   - Owner: `agentum-au`
+   - Owner: `vantax-org`
    - Scope: `read:packages` only
    - Store it securely — this token is injected into every customer package
 
@@ -271,7 +271,7 @@ docker compose restart api worker
 | Tier | Provider | What ships | Customer action |
 |------|----------|-----------|-----------------|
 | 1 | Cloud API | No Ollama | Set `ANTHROPIC_API_KEY` or Azure OpenAI creds in `.env` |
-| 2 | Bundled Ollama | `ghcr.io/agentum-au/meridian-ollama` | None — model is pre-baked |
+| 2 | Bundled Ollama | `ghcr.io/vantax-org/meridian-ollama` | None — model is pre-baked |
 | 3 | BYOLLM | No Ollama | Set `CUSTOM_LLM_BASE_URL` and key in `.env` |
 
 ---
@@ -336,7 +336,7 @@ The GHCR token baked into the package may have expired. Generate a new one and r
 
 ### Customer: images fail to pull
 - Verify outbound HTTPS to `ghcr.io` is open
-- Check the version tag exists: `docker manifest inspect ghcr.io/agentum-au/meridian-api:v1.2.0`
+- Check the version tag exists: `docker manifest inspect ghcr.io/vantax-org/meridian-api:v1.2.0`
 - For air-gapped: ensure `docker load` was run before the installer
 
 ### Customer: licence validation fails

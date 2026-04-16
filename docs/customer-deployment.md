@@ -170,7 +170,7 @@ cat .env
 - **Check GitHub access**: Contact support@vantax.co.za to verify your GitHub username has been granted access
 - **Verify token permissions**: Personal Access Token must have `read:packages` scope
 - **Test login**: `echo $TOKEN | docker login ghcr.io -u USERNAME --password-stdin`
-- **Verify image access**: Try `docker pull ghcr.io/agentum-au/meridian-api:latest`
+- **Verify image access**: Try `docker pull ghcr.io/vantax-org/meridian-api:latest`
 
 #### Database connection errors
 ```bash
@@ -197,17 +197,17 @@ For environments without internet access:
    docker login ghcr.io
 
    # Pull images
-   docker pull ghcr.io/agentum-au/meridian-api:latest
-   docker pull ghcr.io/agentum-au/meridian-frontend:latest
-   docker pull ghcr.io/agentum-au/meridian-worker:latest
-   docker pull ghcr.io/agentum-au/meridian-ollama:qwen3-5-9b-instruct  # Tier 2 only
+   docker pull ghcr.io/vantax-org/meridian-api:latest
+   docker pull ghcr.io/vantax-org/meridian-frontend:latest
+   docker pull ghcr.io/vantax-org/meridian-worker:latest
+   docker pull ghcr.io/vantax-org/meridian-ollama:qwen3-5-9b-instruct  # Tier 2 only
    
    # Export images
    docker save \
-     ghcr.io/agentum-au/meridian-api:latest \
-     ghcr.io/agentum-au/meridian-frontend:latest \
-     ghcr.io/agentum-au/meridian-worker:latest \
-     ghcr.io/agentum-au/meridian-ollama:qwen3-5-9b-instruct \
+     ghcr.io/vantax-org/meridian-api:latest \
+     ghcr.io/vantax-org/meridian-frontend:latest \
+     ghcr.io/vantax-org/meridian-worker:latest \
+     ghcr.io/vantax-org/meridian-ollama:qwen3-5-9b-instruct \
      -o meridian-images.tar
    ```
 
@@ -255,7 +255,7 @@ docker run --rm -v meridian_postgres_data:/data \
 
 - **Documentation**: https://docs.meridian.vantax.co.za
 - **Support Email**: support@vantax.co.za
-- **GitHub Container Registry**: Images hosted at `ghcr.io/agentum-au/meridian-*`
+- **GitHub Container Registry**: Images hosted at `ghcr.io/vantax-org/meridian-*`
 - **Emergency**: Call your account manager
 
 ### Licence & Updates

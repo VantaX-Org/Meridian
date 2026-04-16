@@ -20,7 +20,7 @@ set -euo pipefail
 VERSION="${1:-latest}"
 TIER=1
 MODEL_TAG="qwen2-5-14b-q4-K-M"
-REGISTRY="ghcr.io/agentum-au"
+REGISTRY="ghcr.io/vantax-org"
 
 shift || true  # consume version arg
 

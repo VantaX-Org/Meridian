@@ -24,7 +24,7 @@ For **each** of the 4 packages, grant the customer read access:
 
 #### Steps (repeat for each package):
 
-1. Go to: https://github.com/orgs/agentum-au/packages
+1. Go to: https://github.com/orgs/vantax-org/packages
    (Or navigate: GitHub → Your Profile → Packages)
 
 2. Click on the package name (e.g., `meridian-api`)
@@ -85,7 +85,7 @@ for PKG in "${PACKAGES[@]}"; do
     gh api \
         --method PUT \
         -H "Accept: application/vnd.github+json" \
-        "/orgs/agentum-au/packages/container/$PKG/permissions/users/$GITHUB_USERNAME" \
+        "/orgs/vantax-org/packages/container/$PKG/permissions/users/$GITHUB_USERNAME" \
         -f role=read
 done
 
@@ -101,7 +101,7 @@ Customer can test access:
 docker login ghcr.io -u their-username
 # Enter their PAT when prompted
 
-docker pull ghcr.io/agentum-au/meridian-api:latest
+docker pull ghcr.io/vantax-org/meridian-api:latest
 ```
 
 If successful: ✓ Access working

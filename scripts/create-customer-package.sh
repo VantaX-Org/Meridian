@@ -42,7 +42,7 @@ OFFLINE=false
 OFFLINE_TOKEN=""
 GPU=false
 AIR_GAPPED=false
-REGISTRY="ghcr.io/agentum-au"
+REGISTRY="ghcr.io/vantax-org"
 
 # ── Argument parsing ─────────────────────────────────────────────────────────
 while [[ $# -gt 0 ]]; do

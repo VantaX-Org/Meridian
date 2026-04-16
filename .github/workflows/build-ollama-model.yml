@@ -9,7 +9,7 @@ on:
         default: 'qwen3.5:9b-instruct'
 
 env:
-  REGISTRY: ghcr.io/agentum-au
+  REGISTRY: ghcr.io/vantax-org
 
 jobs:
   build-ollama:

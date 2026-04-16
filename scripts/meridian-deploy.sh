@@ -40,13 +40,13 @@ echo -e "${NC}"
 
 INSTALL_DIR="/opt/meridian"
 GHCR_REGISTRY="ghcr.io"
-IMAGE_PREFIX="ghcr.io/agentum-au/meridian"
+IMAGE_PREFIX="ghcr.io/vantax-org/meridian"
 LICENCE_SERVER_BASE="https://licence.meridian.vantax.co.za"
 LICENCE_VALIDATE_URL="${LICENCE_SERVER_BASE}/validate"
 
 # Pre-configured GHCR pull credentials (read:packages only)
 # Token is injected by create-customer-package.sh at build time.
-GHCR_USER="agentum-au"
+GHCR_USER="vantax-org"
 GHCR_TOKEN="__GHCR_TOKEN__"
 
 MAX_RETRIES=3

@@ -85,7 +85,7 @@ SAP data, findings, and reports **never leave the customer boundary**.
 ## Quickstart
 
 ```bash
-git clone https://github.com/agentum-au/meridian-2.git && cd meridian-2
+git clone https://github.com/VantaX-Org/Meridian.git && cd Meridian
 cp .env.example .env
 # edit .env — set LLM_PROVIDER, DB_PASSWORD, LICENCE_KEY
 sudo bash scripts/meridian-deploy.sh

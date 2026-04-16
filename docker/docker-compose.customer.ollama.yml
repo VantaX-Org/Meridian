@@ -6,7 +6,7 @@
 
 services:
   ollama:
-    image: ghcr.io/agentum-au/meridian-ollama:{{MODEL_TAG}}
+    image: ghcr.io/vantax-org/meridian-ollama:{{MODEL_TAG}}
     volumes:
       - ollama_data:/root/.ollama
     networks:

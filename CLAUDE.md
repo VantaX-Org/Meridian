@@ -284,7 +284,7 @@ RLS policy on every data table — always set `app.tenant_id` before queries.
 ## Development setup
 
 ```bash
-git clone https://github.com/agentum-au/meridian-2.git && cd meridian-2
+git clone https://github.com/VantaX-Org/Meridian.git && cd Meridian
 cp .env.example .env
 # edit .env — set LLM_PROVIDER=ollama_cloud for dev
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
