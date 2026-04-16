@@ -64,7 +64,7 @@ async def _get_user_role(request: Request, tenant: Tenant, db: AsyncSession) -> 
     # Use local auth user ID to look up role
     local_user_id = getattr(request.state, "local_user_id", None)
     if local_user_id:
-        await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+        await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
         result = await db.execute(
             text("SELECT role, is_active FROM users WHERE id = :uid AND tenant_id = :tid"),
             {"uid": local_user_id, "tid": str(tenant.id)},
@@ -109,7 +109,7 @@ async def get_mdm_dashboard(
         return MdmDashboardResponse()
 
     tid = str(tenant.id)
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tid)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tid)}\'"))
 
     # Latest aggregate snapshot (domain IS NULL)
     result = await db.execute(
@@ -211,7 +211,7 @@ async def get_mdm_history(
         return MdmHistoryResponse()
 
     tid = str(tenant.id)
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tid)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tid)}\'"))
 
     if domain:
         result = await db.execute(

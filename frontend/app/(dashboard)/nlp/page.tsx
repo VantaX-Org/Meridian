@@ -1,5 +1,6 @@
 "use client";
 
+import axios from "axios";
 import { useState, useRef, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Send, Sparkles, Loader2 } from "lucide-react";
@@ -141,14 +142,33 @@ export default function NlpPage() {
         },
       ]);
     },
-    onError: () => {
+    onError: (error: unknown) => {
+      let message = "Something went wrong. Please try again.";
+
+      if (axios.isAxiosError(error)) {
+        if (error.code === "ECONNABORTED" || error.message.includes("timeout")) {
+          message =
+            "The AI is taking longer than expected. Your deterministic findings are still available on the Findings page. Try again in a moment, or rephrase with a more specific question.";
+        } else if (error.response?.status === 503) {
+          message =
+            "AI features are temporarily unavailable. All other Meridian features continue to work normally.";
+        } else if (error.response?.status === 429) {
+          message = "Too many requests. Please wait a moment and try again.";
+        } else if (error.response?.status === 402) {
+          message =
+            "This feature requires a higher licence tier. Contact your administrator.";
+        } else if (error.response?.status && error.response.status >= 500) {
+          message =
+            "We had a problem processing your question. The team has been notified.";
+        }
+      }
+
       setMessages((prev) => [
         ...prev,
         {
           id: crypto.randomUUID(),
           role: "assistant",
-          content:
-            "Sorry, I couldn't process that question. Please try rephrasing it.",
+          content: message,
         },
       ]);
     },

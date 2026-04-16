@@ -34,7 +34,7 @@ export default function ReportsPage() {
   });
 
   const completedVersions = (versionData?.versions ?? []).filter(
-    (v) => v.status === "agents_complete"
+    (v) => v.status === "agents_complete" || v.status === "agents_failed"
   );
 
   return (
@@ -149,7 +149,18 @@ function ReportRow({
           )}
         </td>
         <td className="px-4 py-3">
-          <Badge className={badge.className}>{badge.label}</Badge>
+          <div className="flex items-center gap-2">
+            <Badge className={badge.className}>{badge.label}</Badge>
+            {version.status === "agents_failed" && (
+              <Badge
+                variant="outline"
+                className="border-amber-500 bg-amber-50 text-amber-700"
+                title="Deterministic report is available; AI insights (root causes, remediations) could not be generated"
+              >
+                AI unavailable
+              </Badge>
+            )}
+          </div>
         </td>
         <td className="px-4 py-3">
           <div className="flex gap-1">

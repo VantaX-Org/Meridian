@@ -54,7 +54,7 @@ def login(body: LoginRequest):
     """Authenticate with email/password and receive a JWT."""
     engine = get_sync_engine_or_create()
     with engine.connect() as conn:
-        conn.execute(text("SET app.tenant_id = :tid"), {"tid": str(DEV_TENANT_ID)})
+        conn.execute(text(f"SET app.tenant_id = \'{str(DEV_TENANT_ID)}\'"))
 
         # Look up user
         row = conn.execute(
@@ -136,7 +136,7 @@ def me(request: Request):
             raise HTTPException(status_code=401, detail="Invalid or expired token")
 
         # Look up user
-        conn.execute(text("SET app.tenant_id = :tid"), {"tid": str(DEV_TENANT_ID)})
+        conn.execute(text(f"SET app.tenant_id = \'{str(DEV_TENANT_ID)}\'"))
         row = conn.execute(
             text("SELECT id, email, name, role, is_active FROM users WHERE id = :uid AND tenant_id = :tid"),
             {"uid": payload["sub"], "tid": DEV_TENANT_ID},

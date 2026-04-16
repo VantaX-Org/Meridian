@@ -169,13 +169,23 @@ def _generate_for_tenant(engine, tenant_id: str) -> None:
         prompt = _build_prompt(metrics_by_week, current_score * 100)
 
         # Call LLM
-        from llm.provider import get_llm
+        from llm.provider import get_llm, safe_invoke
         from api.utils.llm_logger import log_llm_call
 
         llm = get_llm()
         start_ms = time.monotonic()
         try:
-            response = llm.invoke(prompt, max_tokens=1500)
+            response = safe_invoke(llm, prompt, timeout_seconds=50)
+            if response is None:
+                logger.warning(f"Health narrative LLM timeout")
+                narrative = "Health status unavailable due to AI service timeout."
+            else:
+                narrative = response.content if hasattr(response, "content") else str(responseeconds=50)
+            if response is None:
+                logger.warning(f"Health narrative LLM timeout")
+                narrative = "Health status unavailable due to AI service timeout."
+            else:
+                narrative = response.content if hasattr(response, "content") else str(response)
             latency_ms = int((time.monotonic() - start_ms) * 1000)
 
             content = response.content if hasattr(response, "content") else str(response)

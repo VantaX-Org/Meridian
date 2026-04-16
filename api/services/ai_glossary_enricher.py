@@ -82,7 +82,15 @@ def enrich_term(
     success = False
     model_version = "unknown"
     try:
-        response = llm.invoke(prompt_str, max_tokens=TOKEN_LIMIT)
+        from llm.provider import safe_invoke
+        response = safe_invoke(llm, prompt_str, timeout_seconds=35)
+        if response is None:
+            logger.warning(f"Glossary enricher LLM timeout for term {term}")
+            return {"definition": "", "why_it_matters_business": ""}  # Fallback
+        response = safe_invoke(llm, prompt_str, timeout_seconds=35)
+        if response is None:
+            logger.warning(f"Glossary enricher LLM timeout for term {term}")
+            return {"definition": "", "why_it_matters_business": ""}  # Fallback
         latency = int((time.time() - t_start) * 1000)
         model_version = getattr(llm, "model", "unknown")
         success = True

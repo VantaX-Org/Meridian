@@ -24,7 +24,7 @@ async def list_findings(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
 
     filters_applied: dict = {}
     base = select(Finding).where(Finding.tenant_id == tenant.id)
@@ -121,7 +121,7 @@ async def get_finding_report_context(
 ):
     """Return report-level context for a single finding (cross-finding patterns,
     effort estimates, fix sequencing) extracted from the report JSON."""
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
     fid = uuid.UUID(finding_id)
 
     # Get the finding

@@ -47,3 +47,26 @@ async def health() -> dict:
         "licence": get_cached_licence(),
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
+
+
+@router.get("/health/llm")
+async def llm_health():
+    """Check LLM connectivity on demand.
+
+    The frontend uses this to decide whether to show AI features prominently,
+    or to show a 'degraded mode' indicator. Bounded at 10 seconds so the
+    endpoint itself never hangs.
+    """
+    import asyncio
+    from llm.provider import test_llm_connection
+
+    try:
+        ok = await asyncio.wait_for(
+            asyncio.to_thread(test_llm_connection),
+            timeout=10.0,
+        )
+        return {"llm_available": bool(ok)}
+    except asyncio.TimeoutError:
+        return {"llm_available": False, "reason": "timeout"}
+    except Exception as e:
+        return {"llm_available": False, "reason": str(e)}

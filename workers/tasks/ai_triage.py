@@ -68,11 +68,13 @@ def _call_llm(prompt: str, tenant_id: str) -> tuple[str, float]:
 
     start_ms = time.time()
     try:
-        from llm.provider import get_llm
+        from llm.provider import get_llm, safe_invoke
 
         llm = get_llm()
-        response = llm.invoke(prompt, max_tokens=MAX_TOKENS)
-
+        response = safe_invoke(llm, prompt, timeout_seconds=35)
+        if response is None:
+            logger.warning(f"Triage LLM timeout for finding {finding_id}")
+            return {"priority": "medium", "category": "general", "suggested_action": ""}
         latency_ms = int((time.time() - start_ms) * 1000)
         content = response.content if hasattr(response, "content") else str(response)
         token_count = len(content.split())  # rough estimate

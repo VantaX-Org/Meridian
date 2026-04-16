@@ -54,7 +54,7 @@ async def get_settings(
     db: AsyncSession = Depends(get_db),
     tenant: TenantDep = Depends(get_tenant),
 ):
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
     result = await db.execute(
         text("SELECT name, licensed_modules, dqs_weights, alert_thresholds, stripe_customer_id FROM tenants WHERE id = :tid"),
         {"tid": str(tenant.id)},
@@ -98,7 +98,7 @@ async def update_dqs_weights(
             detail=f"Weights must sum to 100, got {total}",
         )
 
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
     await db.execute(
         text("UPDATE tenants SET dqs_weights = CAST(:w AS jsonb) WHERE id = :tid"),
         {"w": json.dumps(weights.model_dump()), "tid": str(tenant.id)},
@@ -115,7 +115,7 @@ async def update_alert_thresholds(
     db: AsyncSession = Depends(get_db),
     tenant: TenantDep = Depends(get_tenant),
 ):
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
     await db.execute(
         text("UPDATE tenants SET alert_thresholds = CAST(:t AS jsonb) WHERE id = :tid"),
         {"t": json.dumps(thresholds.model_dump()), "tid": str(tenant.id)},
@@ -132,7 +132,7 @@ async def save_notifications(
     db: AsyncSession = Depends(get_db),
     tenant: TenantDep = Depends(get_tenant),
 ):
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
     await db.execute(
         text("""
             UPDATE tenants

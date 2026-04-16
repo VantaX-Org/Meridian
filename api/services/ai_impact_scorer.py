@@ -105,10 +105,13 @@ def score_impact(
     start_ms = time.monotonic_ns() // 1_000_000
 
     try:
-        from llm.provider import get_llm
+        from llm.provider import get_llm, safe_invoke
 
         llm = get_llm().bind(max_tokens=600)
-        response = llm.invoke(prompt)
+        response = safe_invoke(llm, prompt, timeout_seconds=45)
+        if response is None:
+            logger.warning(f"Impact scorer LLM timeout")
+            return {"impact_score": 0.0, "affected_domains": [], "rationale": "LLM unavailable"}
         elapsed_ms = int((time.monotonic_ns() // 1_000_000) - start_ms)
 
         content = response.content if hasattr(response, "content") else str(response)
@@ -188,10 +191,13 @@ def infer_relationships(
     start_ms = time.monotonic_ns() // 1_000_000
 
     try:
-        from llm.provider import get_llm
+        from llm.provider import get_llm, safe_invoke
 
         llm = get_llm().bind(max_tokens=600)
-        response = llm.invoke(prompt)
+        response = safe_invoke(llm, prompt, timeout_seconds=45)
+        if response is None:
+            logger.warning(f"Inference LLM timeout")
+            return []
         elapsed_ms = int((time.monotonic_ns() // 1_000_000) - start_ms)
 
         content = response.content if hasattr(response, "content") else str(response)

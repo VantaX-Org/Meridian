@@ -115,14 +115,24 @@ def _safe_parse_json(text_str: str) -> dict:
 
 async def _classify_intent(question: str) -> dict:
     """Step 1: Classify user intent and extract filters."""
-    llm = get_llm()
+    from llm.provider import safe_ainvoke
     from langchain_core.messages import SystemMessage, HumanMessage
 
-    response = llm.invoke([
-        SystemMessage(content=INTENT_SYSTEM_PROMPT),
-        HumanMessage(content=question),
-    ])
-    parsed = _safe_parse_json(response.content)
+    llm = get_llm()
+    # Tight timeout: intent classification is a small, fast prompt
+    content = await safe_ainvoke(
+        llm,
+        [
+            SystemMessage(content=INTENT_SYSTEM_PROMPT),
+            HumanMessage(content=question),
+        ],
+        timeout_seconds=20,
+    )
+    if content is None:
+        logger.warning("NLP intent classification timed out — falling back to 'general'")
+        return {"intent": "general", "filters": {}, "answer_type": "summary"}
+
+    parsed = _safe_parse_json(content)
     return {
         "intent": parsed.get("intent", "general"),
         "filters": parsed.get("filters", {}),
@@ -399,8 +409,10 @@ async def _synthesise_answer(
     question: str, intent: str, data: list[dict], answer_type: str
 ) -> dict:
     """Step 3: LLM synthesises a conversational answer from retrieved data."""
-    llm = get_llm()
+    from llm.provider import safe_ainvoke
     from langchain_core.messages import SystemMessage, HumanMessage
+
+    llm = get_llm()
 
     # Serialise data — convert non-serialisable types
     safe_data = []
@@ -422,14 +434,29 @@ async def _synthesise_answer(
         f"{json.dumps(safe_data[:10], indent=2, default=str)}"
     )
 
-    response = llm.invoke([
-        SystemMessage(content=ANSWER_SYSTEM_PROMPT),
-        HumanMessage(content=f"Data context:\n{context}\n\nUser question: {question}"),
-    ])
+    content = await safe_ainvoke(
+        llm,
+        [
+            SystemMessage(content=ANSWER_SYSTEM_PROMPT),
+            HumanMessage(content=f"Data context:\n{context}\n\nUser question: {question}"),
+        ],
+        timeout_seconds=45,
+    )
 
-    parsed = _safe_parse_json(response.content)
+    if content is None:
+        # Graceful fallback — return the raw data with a static message
+        return {
+            "answer": (
+                "I found data for your question but the AI summary is taking too long. "
+                f"Here are the {len(data)} raw results."
+            ),
+            "data": safe_data if answer_type != "summary" else None,
+            "chart_type": None,
+        }
+
+    parsed = _safe_parse_json(content)
     return {
-        "answer": parsed.get("answer", response.content[:500]),
+        "answer": parsed.get("answer", content[:500]),
         "data": parsed.get("data"),
         "chart_type": parsed.get("chart_type"),
     }

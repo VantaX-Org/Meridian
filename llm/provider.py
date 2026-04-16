@@ -8,6 +8,45 @@ from langchain_ollama import ChatOllama
 
 logger = logging.getLogger("meridian.llm")
 
+# ── Circuit breaker state ────────────────────────────────────────────
+import time as _time
+
+_cb_failure_count: int = 0
+_cb_opened_at: float | None = None
+_CB_FAILURE_THRESHOLD = 5
+_CB_OPEN_DURATION = 60.0  # seconds
+
+
+def _circuit_is_open() -> bool:
+    """Return True if the circuit breaker is open (LLM calls should be skipped)."""
+    global _cb_opened_at, _cb_failure_count
+    if _cb_opened_at is None:
+        return False
+    if _time.time() - _cb_opened_at > _CB_OPEN_DURATION:
+        # Reset — give it another chance
+        _cb_opened_at = None
+        _cb_failure_count = 0
+        logger.info("LLM circuit breaker RESET — accepting calls again")
+        return False
+    return True
+
+
+def _record_llm_failure() -> None:
+    global _cb_failure_count, _cb_opened_at
+    _cb_failure_count += 1
+    if _cb_failure_count >= _CB_FAILURE_THRESHOLD and _cb_opened_at is None:
+        _cb_opened_at = _time.time()
+        logger.warning(
+            f"LLM circuit breaker OPEN — {_cb_failure_count} consecutive failures; "
+            f"skipping calls for {_CB_OPEN_DURATION}s"
+        )
+
+
+def _record_llm_success() -> None:
+    global _cb_failure_count
+    _cb_failure_count = 0
+
+
 # Cached LLM instance — cleared when admin saves new config
 _cached_llm: Optional[Any] = None
 _cached_provider_key: Optional[str] = None
@@ -46,9 +85,14 @@ def _load_db_config() -> Optional[dict]:
                 row = result.fetchone()
                 if row and row[0] and row[0].get("provider"):
                     config = dict(row[0])
-                    if config.get("api_key_encrypted") and row[1]:
-                        from api.services.crypto import decrypt_api_key
-                        config["api_key"] = decrypt_api_key(config["api_key_encrypted"], row[1])
+                    if config.get("api_key_encrypted"):
+                        # Task 11: Use LLM_KEK for decryption instead of jwt_secret
+                        try:
+                            from api.utils.crypto import decrypt_llm_key
+                            config["api_key"] = decrypt_llm_key(config["api_key_encrypted"])
+                        except Exception as e:
+                            logger.warning(f"Failed to decrypt LLM API key: {e}. Falling back to empty key.")
+                            config["api_key"] = ""
                     else:
                         config["api_key"] = ""
                     return config
@@ -237,6 +281,10 @@ def safe_invoke(llm, messages, *, timeout_seconds: int = 90) -> str | None:
     """Invoke the LLM with a hard timeout. Returns content string or None."""
     import concurrent.futures
 
+    if _circuit_is_open():
+        logger.debug("LLM circuit breaker is open; short-circuiting call")
+        return None
+
     def _call():
         response = llm.invoke(messages)
         return response.content
@@ -244,10 +292,50 @@ def safe_invoke(llm, messages, *, timeout_seconds: int = 90) -> str | None:
     try:
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(_call)
-            return future.result(timeout=timeout_seconds)
+            result = future.result(timeout=timeout_seconds)
+            _record_llm_success()
+            return result
     except concurrent.futures.TimeoutError:
         logger.warning(f"LLM call timed out after {timeout_seconds}s")
+        _record_llm_failure()
         return None
     except Exception as e:
         logger.warning(f"LLM call failed: {e}")
+        _record_llm_failure()
+        return None
+
+
+async def safe_ainvoke(llm, messages, *, timeout_seconds: int = 60) -> str | None:
+    """Async-friendly LLM invocation with hard timeout.
+
+    Use in FastAPI async route handlers and async service methods. The
+    underlying llm.invoke() is blocking, so we dispatch to a thread pool
+    to keep the event loop responsive, then race against asyncio.wait_for.
+
+    Returns the response content string or None on timeout/failure.
+    """
+    import asyncio
+
+    if _circuit_is_open():
+        logger.debug("LLM circuit breaker is open; short-circuiting async call")
+        return None
+
+    def _call() -> str:
+        response = llm.invoke(messages)
+        return response.content if hasattr(response, "content") else str(response)
+
+    try:
+        result = await asyncio.wait_for(
+            asyncio.to_thread(_call),
+            timeout=timeout_seconds,
+        )
+        _record_llm_success()
+        return result
+    except asyncio.TimeoutError:
+        logger.warning(f"LLM async call timed out after {timeout_seconds}s")
+        _record_llm_failure()
+        return None
+    except Exception as e:
+        logger.warning(f"LLM async call failed: {type(e).__name__}: {e}")
+        _record_llm_failure()
         return None

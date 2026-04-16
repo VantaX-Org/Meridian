@@ -21,7 +21,7 @@ async def get_business_process(
     tenant: Tenant = Depends(get_tenant),
 ):
     """Generate L1-L5 business process document for a module and version."""
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
 
     # Load findings for this version
     result = await db.execute(

@@ -81,7 +81,7 @@ async def submit_ai_feedback(
     When 10+ corrections accumulate for a domain in 7 days,
     enqueues the rule_proposal_task to generate new proposed rules.
     """
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
 
     # Resolve steward user ID
     steward_id = await _resolve_user_id(db, tenant, request)
@@ -139,7 +139,7 @@ async def get_proposed_rules(
     _role: str = Depends(require_permission("review_ai_rules")),
 ):
     """List AI-proposed rules for review."""
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
 
     query = (
         "SELECT id, tenant_id, domain, proposed_rule, rationale, "
@@ -189,7 +189,7 @@ async def approve_proposed_rule(
     _role: str = Depends(require_permission("review_ai_rules")),
 ):
     """Approve a proposed rule — copies it to match_rules table."""
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
 
     # Load the proposed rule
     result = await db.execute(
@@ -254,7 +254,7 @@ async def reject_proposed_rule(
     _role: str = Depends(require_permission("review_ai_rules")),
 ):
     """Reject a proposed rule."""
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
 
     result = await db.execute(
         text(

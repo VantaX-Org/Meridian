@@ -104,10 +104,16 @@ def compute_semantic_score(
     start_ms = time.monotonic_ns() // 1_000_000
 
     try:
-        from llm.provider import get_llm
+        from llm.provider import get_llm, safe_invoke
 
         llm = get_llm().bind(max_tokens=400)
-        response = llm.invoke(prompt)
+        response = safe_invoke(llm, prompt, timeout_seconds=30)
+        if response is None:
+            logger.warning(f"Semantic matcher LLM timeout for {field}")
+            return 0.0  # Conservative: no match on timeoutrompt, timeout_seconds=30)
+        if response is None:
+            logger.warning(f"Semantic matcher LLM timeout for {field}")
+            return 0.0  # Conservative: no match on timeout
         elapsed_ms = int((time.monotonic_ns() // 1_000_000) - start_ms)
 
         content = response.content if hasattr(response, "content") else str(response)

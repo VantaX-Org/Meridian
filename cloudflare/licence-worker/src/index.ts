@@ -30,6 +30,9 @@
  *   DELETE /api/admin/rules/:id
  */
 
+// Task 09: PBKDF2 password hashing
+import { verifyPassword } from "../password-hash";
+
 interface Env {
   LICENCE_KV: KVNamespace;
   DB: D1Database;
@@ -149,6 +152,65 @@ async function hashKey(key: string): Promise<string> {
 
 function nowIso(): string {
   return new Date().toISOString();
+}
+
+// ─── Task 10: Rate Limiting ───────────────────────────────────────────────────
+
+interface RateLimitConfig {
+  maxRequests: number;
+  windowSeconds: number;
+}
+
+const RATE_LIMIT_CONFIG: Record<string, RateLimitConfig> = {
+  "/api/admin/login": { maxRequests: 5, windowSeconds: 5 * 60 }, // 5 req/5min
+  "/api/licence/validate": { maxRequests: 100, windowSeconds: 60 * 60 }, // 100 req/1hr
+};
+
+/**
+ * Check rate limit for a given IP and endpoint.
+ * Uses KVNamespace for distributed rate limiting across Cloudflare edges.
+ */
+async function checkRateLimit(ip: string, endpoint: string, kv: KVNamespace): Promise<{ allowed: boolean; remaining: number; resetAt: number }> {
+  const config = RATE_LIMIT_CONFIG[endpoint];
+  if (!config) {
+    // No rate limit configured for this endpoint
+    return { allowed: true, remaining: -1, resetAt: 0 };
+  }
+
+  const now = Date.now();
+  const windowStart = now - config.windowSeconds * 1000;
+  const kvKey = `ratelimit:${endpoint}:${ip}`;
+
+  try {
+    const stored = await kv.get(kvKey);
+    let data: { count: number; windowStart: number } = { count: 0, windowStart: now };
+
+    if (stored) {
+      data = JSON.parse(stored);
+      // If we're outside the window, reset
+      if (data.windowStart < windowStart) {
+        data = { count: 0, windowStart: now };
+      }
+    }
+
+    const remaining = config.maxRequests - data.count;
+    const allowed = data.count < config.maxRequests;
+
+    // Increment counter and update KV
+    data.count += 1;
+    const expirationTtl = config.windowSeconds + 60; // Add 60s buffer
+    await kv.put(kvKey, JSON.stringify(data), {
+      expirationTtl,
+      metadata: { endpoint, ip, timestamp: now.toString() },
+    });
+
+    const resetAt = data.windowStart + config.windowSeconds * 1000;
+    return { allowed, remaining: Math.max(0, remaining), resetAt };
+  } catch (err) {
+    console.error(`Rate limit check failed for ${ip}:${endpoint}`, err);
+    // On error, allow the request (fail-open)
+    return { allowed: true, remaining: -1, resetAt: 0 };
+  }
 }
 
 // ─── CORS ─────────────────────────────────────────────────────────────────────
@@ -373,27 +435,74 @@ async function handleLogin(request: Request, env: Env): Promise<Response> {
     return json({ error: "bad_request", message: "email and password are required" }, 400);
   }
 
-  if (body.email !== env.ADMIN_EMAIL) {
-    return json({ error: "unauthorized", message: "Invalid credentials" }, 401);
+  // Task 09: Query admins table with PBKDF2 password verification
+  try {
+    const admin = await env.DB.prepare(
+      "SELECT id, email, password_hash, password_salt, role, is_active FROM admins WHERE email = ? LIMIT 1"
+    )
+      .bind(body.email)
+      .first<{
+        id: string;
+        email: string;
+        password_hash: string;
+        password_salt: string;
+        role: string;
+        is_active: number;
+      }>();
+
+    if (!admin || !admin.is_active) {
+      return json({ error: "unauthorized", message: "Invalid credentials" }, 401);
+    }
+
+    // Verify password using PBKDF2 with constant-time comparison
+    const passwordValid = await verifyPassword(body.password, admin.password_hash, admin.password_salt);
+    if (!passwordValid) {
+      return json({ error: "unauthorized", message: "Invalid credentials" }, 401);
+    }
+
+    // Update last_login_at
+    try {
+      await env.DB.prepare("UPDATE admins SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?")
+        .bind(admin.id)
+        .run();
+    } catch {
+      // Log error but don't fail auth
+    }
+
+    const nowSec = Math.floor(Date.now() / 1000);
+    const token = await signJwt(
+      {
+        sub: admin.email,
+        role: admin.role,
+        iat: nowSec,
+        exp: nowSec + 8 * 60 * 60, // 8 hours
+      },
+      env.JWT_SECRET
+    );
+
+    return json({ token, expiresIn: 8 * 60 * 60 });
+  } catch (err) {
+    console.error("Login error:", err);
+    // Fallback to legacy auth for backward compatibility during migration
+    if (body.email !== env.ADMIN_EMAIL) {
+      return json({ error: "unauthorized", message: "Invalid credentials" }, 401);
+    }
+    const passwordHash = await hashKey(body.password);
+    if (passwordHash !== env.ADMIN_PASSWORD_HASH) {
+      return json({ error: "unauthorized", message: "Invalid credentials" }, 401);
+    }
+    const nowSec = Math.floor(Date.now() / 1000);
+    const token = await signJwt(
+      {
+        sub: body.email,
+        role: "admin",
+        iat: nowSec,
+        exp: nowSec + 8 * 60 * 60,
+      },
+      env.JWT_SECRET
+    );
+    return json({ token, expiresIn: 8 * 60 * 60 });
   }
-
-  const passwordHash = await hashKey(body.password);
-  if (passwordHash !== env.ADMIN_PASSWORD_HASH) {
-    return json({ error: "unauthorized", message: "Invalid credentials" }, 401);
-  }
-
-  const nowSec = Math.floor(Date.now() / 1000);
-  const token = await signJwt(
-    {
-      sub: body.email,
-      role: "admin",
-      iat: nowSec,
-      exp: nowSec + 8 * 60 * 60, // 8 hours
-    },
-    env.JWT_SECRET
-  );
-
-  return json({ token, expiresIn: 8 * 60 * 60 });
 }
 
 // ─── Offline Token Generation ─────────────────────────────────────────────────
@@ -1256,9 +1365,23 @@ export default {
     const path = url.pathname;
     const method = request.method;
 
+    // Task 10: Extract client IP for rate limiting
+    const clientIp = request.headers.get("cf-connecting-ip") || 
+                     request.headers.get("x-forwarded-for")?.split(",")[0] || 
+                     "unknown";
+
     try {
       // ── Public: auth ──────────────────────────────────────────────────────
       if (method === "POST" && path === "/api/admin/login") {
+        // Task 10: Rate limit login attempts
+        const limit = await checkRateLimit(clientIp, path, env.LICENCE_KV);
+        if (!limit.allowed) {
+          return json({
+            error: "rate_limit_exceeded",
+            message: "Too many login attempts. Please try again later.",
+            resetAt: new Date(limit.resetAt).toISOString()
+          }, 429);
+        }
         return await handleLogin(request, env);
       }
       if (method === "POST" && path === "/api/tenant/login") {
@@ -1267,6 +1390,15 @@ export default {
 
       // ── Public: licence ───────────────────────────────────────────────────
       if (method === "POST" && path === "/api/licence/validate") {
+        // Task 10: Rate limit licence validation
+        const limit = await checkRateLimit(clientIp, path, env.LICENCE_KV);
+        if (!limit.allowed) {
+          return json({
+            error: "rate_limit_exceeded",
+            message: "Too many licence validation requests. Please try again later.",
+            resetAt: new Date(limit.resetAt).toISOString()
+          }, 429);
+        }
         return await handleValidate(request, env);
       }
       if (method === "GET" && path === "/api/licence/heartbeat") {

@@ -92,10 +92,16 @@ def propose_field_winner(
     start_ms = time.monotonic_ns() // 1_000_000
 
     try:
-        from llm.provider import get_llm
+        from llm.provider import get_llm, safe_invoke
 
         llm = get_llm().bind(max_tokens=600)
-        response = llm.invoke(prompt)
+        response = safe_invoke(llm, prompt, timeout_seconds=40)
+        if response is None:
+            logger.warning(f"Survivorship LLM timeout for {field_name}")
+            return None  # Fallback to deterministic survivorshiprompt, timeout_seconds=40)
+        if response is None:
+            logger.warning(f"Survivorship LLM timeout for {field_name}")
+            return None  # Fallback to deterministic survivorship
         elapsed_ms = int((time.monotonic_ns() // 1_000_000) - start_ms)
 
         content = response.content if hasattr(response, "content") else str(response)

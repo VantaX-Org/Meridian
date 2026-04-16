@@ -21,7 +21,7 @@ async def run_agents_endpoint(
     tenant: Tenant = Depends(get_tenant),
 ):
     """Manually trigger the LangGraph agent pipeline for a version."""
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
     vid = uuid.UUID(version_id)
 
     result = await db.execute(

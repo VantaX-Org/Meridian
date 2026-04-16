@@ -1,4 +1,4 @@
-import apiClient from "./client";
+import apiClient, { longApiClient } from "./client";
 import type {
   ContractListResponse,
   Contract,
@@ -70,7 +70,7 @@ export async function getContractCompliance(
 export async function sendNlpQuery(
   question: string,
 ): Promise<NlpResponse> {
-  const { data } = await apiClient.post<NlpResponse>("/api/v1/nlp/query", {
+  const { data } = await longApiClient.post<NlpResponse>("/api/v1/nlp/query", {
     question,
   });
   return data;

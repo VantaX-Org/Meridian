@@ -126,7 +126,7 @@ async def list_match_rules(
     _role: str = Depends(require_permission("manage_rules")),
 ):
     """List match rules for the tenant, optionally filtered by domain and active status."""
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
 
     query = (
         "SELECT id, tenant_id, domain, field, match_type, weight, threshold, active "
@@ -168,7 +168,7 @@ async def create_match_rule(
     _role: str = Depends(require_permission("manage_rules")),
 ):
     """Create a new match rule."""
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
 
     rule_id = str(uuid.uuid4())
     await db.execute(
@@ -208,7 +208,7 @@ async def update_match_rule(
     _role: str = Depends(require_permission("manage_rules")),
 ):
     """Update an existing match rule."""
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
 
     # Verify rule exists
     result = await db.execute(
@@ -271,7 +271,7 @@ async def delete_match_rule(
     _role: str = Depends(require_permission("manage_rules")),
 ):
     """Delete a match rule."""
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
 
     result = await db.execute(
         text("DELETE FROM match_rules WHERE id = :id AND tenant_id = :tid RETURNING id"),
@@ -299,7 +299,7 @@ async def simulate_match_rules(
 
     Returns projected auto-merge/dismiss/queue split without writing to DB.
     """
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
 
     # Load recent dedup candidates for this domain (limit 100)
     candidates = await db.execute(

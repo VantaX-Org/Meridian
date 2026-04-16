@@ -312,7 +312,8 @@ def run_checks_polars(
     """
     # Build the LazyFrame
     if isinstance(parquet_path_or_bytes, bytes):
-        lf = pl.scan_parquet(io.BytesIO(parquet_path_or_bytes))
+        # Use read_parquet for in-memory bytes (scan_parquet only works with file paths)
+        lf = pl.read_parquet(io.BytesIO(parquet_path_or_bytes)).lazy()
     else:
         lf = pl.scan_parquet(parquet_path_or_bytes)
 

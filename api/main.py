@@ -55,17 +55,6 @@ async def lifespan(app: FastAPI):
     logger.info(f"LLM_PROVIDER: {settings.llm_provider}")
     logger.info(f"LICENCE_KEY: {'set' if settings.licence_key else 'not set'}")
 
-    # Test LLM connection
-    try:
-        from llm.provider import test_llm_connection
-
-        if test_llm_connection():
-            logger.info("LLM connection: OK")
-        else:
-            logger.warning("LLM connection: FAILED — check LLM_PROVIDER config")
-    except Exception as e:
-        logger.warning(f"LLM connection: FAILED — {e}")
-
     # Ensure MinIO buckets exist
     try:
         from api.services.storage import ensure_buckets
@@ -141,6 +130,23 @@ async def lifespan(app: FastAPI):
                     logger.info("Default admin user created: admin@meridian.local / admin")
         except Exception as e:
             logger.warning(f"Dev tenant init failed: {e}")
+
+    # Schedule non-blocking LLM connection test in background
+    import asyncio
+
+    async def _llm_startup_test():
+        try:
+            await asyncio.sleep(2)  # let the rest of startup complete
+            from llm.provider import test_llm_connection
+            ok = await asyncio.to_thread(test_llm_connection)
+            if ok:
+                logger.info("LLM connection: OK")
+            else:
+                logger.warning("LLM connection: FAILED — check LLM_PROVIDER config")
+        except Exception as e:
+            logger.warning(f"LLM startup check error: {e}")
+
+    asyncio.create_task(_llm_startup_test())
 
     yield
 

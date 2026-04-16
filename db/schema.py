@@ -1,3 +1,15 @@
+"""
+Meridian database schema for single-tenant deployments.
+
+ARCHITECTURE: Single-tenant per deployment
+  - Each customer gets their own PostgreSQL database instance
+  - The tenants table contains ONE row (the customer's tenant record)
+  - No multi-tenant isolation logic needed in application code
+  - RLS policies exist for defense-in-depth (app.tenant_id session variable)
+  
+See: docs/ARCHITECTURE.md for detailed design rationale.
+"""
+
 import uuid
 from datetime import datetime, timezone
 
@@ -25,6 +37,11 @@ class Base(DeclarativeBase):
 
 
 class Tenant(Base):
+    """Meridian customer tenant (single row per deployment).
+    
+    In single-tenant architecture, this table contains exactly one row:
+    the customer who owns this deployed instance.
+    """
     __tablename__ = "tenants"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

@@ -32,7 +32,7 @@ def _run_async(coro):
 
 
 @celery_app.task(bind=True, name="workers.tasks.run_agents.run_agents",
-                 soft_time_limit=900, time_limit=960)
+                 soft_time_limit=1800, time_limit=1860, acks_late=True, reject_on_worker_lost=True)
 def run_agents(self, version_id: str, tenant_id: str):
     """Execute the full LangGraph agent pipeline."""
     logger.info(f"run_agents started: version_id={version_id}, tenant_id={tenant_id}")
@@ -72,6 +72,15 @@ def run_agents(self, version_id: str, tenant_id: str):
         from agents.orchestrator import run_graph
 
         final_state = _run_async(run_graph(version_id, tenant_id))
+
+        # Safeguard: log if agent state is unexpectedly huge
+        import sys
+        state_size_kb = sys.getsizeof(str(final_state)) / 1024
+        if state_size_kb > 5000:  # 5 MB
+            logger.warning(
+                f"Agent state for version {version_id} is {state_size_kb:.1f} KB — "
+                "consider tightening finding caps"
+            )
 
         if final_state.get("error"):
             logger.error(f"Agent pipeline error: {final_state['error']}")

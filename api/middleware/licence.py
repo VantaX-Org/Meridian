@@ -31,6 +31,10 @@ _last_checked_at: Optional[float] = None
 _consecutive_failures: int = 0
 _first_failure_at: Optional[float] = None
 
+# Task 08: Licence degradation cutoff
+_degraded_at: Optional[float] = None  # When Cloudflare became unreachable
+LICENCE_DEGRADED_CUTOFF_SECONDS = 2 * 60 * 60  # 2 hours: 7200 seconds
+
 CACHE_TTL_SECONDS = 6 * 60 * 60  # 6 hours
 FAILURE_CUTOFF_SECONDS = 48 * 60 * 60  # 48 hours
 
@@ -188,6 +192,41 @@ def is_licence_degraded() -> bool:
     return (time.time() - _first_failure_at) > FAILURE_CUTOFF_SECONDS
 
 
+def is_cloudflare_unreachable() -> bool:
+    """Check if Cloudflare licence server has been unreachable for >= 2 hours.
+    
+    Task 08: Hard cutoff to prevent permanent bypass when Cloudflare is down.
+    After 2 hours: refuse all licence-gated requests, return 403.
+    """
+    if _degraded_at is None:
+        return False
+    elapsed = time.time() - _degraded_at
+    if elapsed > LICENCE_DEGRADED_CUTOFF_SECONDS:
+        logger.error(f"Licence server unreachable for {elapsed:.0f}s (cutoff: {LICENCE_DEGRADED_CUTOFF_SECONDS}s). Rejecting request.")
+        return True
+    return False
+
+
+def _mark_cloudflare_degraded() -> None:
+    """Record that Cloudflare has become unreachable.
+    
+    Called on first connection failure. Starts the 2-hour grace period clock.
+    """
+    global _degraded_at
+    if _degraded_at is None:
+        _degraded_at = time.time()
+        logger.warning("Cloudflare licence server marked as unreachable. Grace period starts (2 hours).")
+
+
+def _mark_cloudflare_healthy() -> None:
+    """Clear degraded state when Cloudflare comes back online."""
+    global _degraded_at
+    if _degraded_at is not None:
+        elapsed = time.time() - _degraded_at
+        logger.info(f"Cloudflare licence server back online after {elapsed:.0f}s downtime.")
+        _degraded_at = None
+
+
 def _update_manifest_cache(result: dict) -> None:
     """Populate _manifest_cache from a validation response."""
     global _manifest_cache
@@ -335,6 +374,11 @@ async def _validate_licence() -> dict | None:
     if offline is not None:
         return offline
 
+    # Task 08: Check degraded state cutoff BEFORE attempting network call
+    if is_cloudflare_unreachable():
+        logger.error("Licence server has been unreachable >2hrs. Rejecting request.")
+        return {"valid": False, "reason": "licence_server_unreachable_cutoff"}
+
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.post(
@@ -344,9 +388,14 @@ async def _validate_licence() -> dict | None:
                     "machineFingerprint": _get_machine_fingerprint(),
                 },
             )
-            return resp.json()
+            result = resp.json()
+            # Connection successful — clear degraded state
+            _mark_cloudflare_healthy()
+            return result
     except Exception as e:
         logger.warning(f"Licence server unreachable: {e}")
+        # Task 08: Mark first failure time for cutoff tracking
+        _mark_cloudflare_degraded()
         return None
 
 
@@ -444,6 +493,13 @@ class LicenceMiddleware(BaseHTTPMiddleware):
             request.state.licensed_modules = ["*"]
             request.state.licensed_features = ["*"]
             return await call_next(request)
+
+        # Task 08: Check cutoff rejection reason
+        if result.get("reason") == "licence_server_unreachable_cutoff":
+            return JSONResponse(
+                {"error": "licence_server_cutoff", "reason": "Licence server unreachable for >2hrs. Please restore connection."},
+                status_code=403,
+            )
 
         # Cache the result
         _cache["response"] = result

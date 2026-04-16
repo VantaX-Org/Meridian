@@ -43,7 +43,7 @@ operational = OperationalAnalytics()
 
 
 async def _set_tenant(db: AsyncSession, tenant: Tenant) -> None:
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
 
 
 def _row_to_dict(row) -> dict:

@@ -54,7 +54,7 @@ async def run_graph(version_id: str, tenant_id: str) -> AgentState:
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
 
     async with session_factory() as db:
-        await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        await db.execute(text(f"SET app.tenant_id = '{str(tenant_id)}'"))
 
         # Load version
         result = await db.execute(
@@ -161,7 +161,7 @@ async def run_graph(version_id: str, tenant_id: str) -> AgentState:
         report_session_factory = async_sessionmaker(report_engine, expire_on_commit=False)
 
         async with report_session_factory() as db:
-            await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+            await db.execute(text(f"SET app.tenant_id = '{str(tenant_id)}'"))
             await db.execute(
                 text("""
                     INSERT INTO reports (id, version_id, tenant_id, report_json, generated_at)

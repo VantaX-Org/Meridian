@@ -46,7 +46,7 @@ async def list_versions(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
     stmt = (
         select(AnalysisVersion)
         .where(AnalysisVersion.tenant_id == tenant.id)
@@ -70,7 +70,7 @@ async def compare_versions(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
 
     vid1 = uuid.UUID(v1)
     vid2 = uuid.UUID(v2)
@@ -121,7 +121,7 @@ async def get_version(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
     vid = uuid.UUID(version_id)
     result = await db.execute(
         select(AnalysisVersion).where(
@@ -142,7 +142,7 @@ async def patch_version(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
     vid = uuid.UUID(version_id)
     result = await db.execute(
         select(AnalysisVersion).where(
@@ -165,7 +165,7 @@ async def get_version_status(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
     vid = uuid.UUID(version_id)
     result = await db.execute(
         select(AnalysisVersion).where(

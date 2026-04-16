@@ -43,7 +43,7 @@ class ZObjectPersistence:
         profile_snapshot.  If new: INSERT with status='under_review'.
         Returns the registry entry ID.
         """
-        await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
 
         # Check for existing entry
         row = (
@@ -140,7 +140,7 @@ class ZObjectPersistence:
         status: Optional[str] = None,
     ) -> list[dict]:
         """Get all registry entries, optionally filtered by module and/or status."""
-        await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
         q = (
             "SELECT id, category, module, object_name, standard_equivalent, "
             "description, owner, created_date, last_active_date, status, "
@@ -183,7 +183,7 @@ class ZObjectPersistence:
         self, db: AsyncSession, tenant_id: str, z_id: str
     ) -> dict | None:
         """Get a single registry entry by ID."""
-        await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
         r = (
             await db.execute(
                 text(
@@ -220,7 +220,7 @@ class ZObjectPersistence:
         self, db: AsyncSession, tenant_id: str, z_id: str, updates: dict
     ) -> bool:
         """Update registry fields: description, owner, standard_equivalent, status, notes."""
-        await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
 
         allowed = {"description", "owner", "standard_equivalent", "status", "notes"}
         filtered = {k: v for k, v in updates.items() if k in allowed and v is not None}
@@ -243,7 +243,7 @@ class ZObjectPersistence:
         self, db: AsyncSession, tenant_id: str
     ) -> dict[str, dict]:
         """Get a dict of object_name -> {description, owner, status} for rule evaluation."""
-        await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
         rows = (
             await db.execute(
                 text(
@@ -271,7 +271,7 @@ class ZObjectPersistence:
         z_object_ids: dict[str, str],
     ) -> None:
         """Save per-run profile snapshots to z_object_profiles."""
-        await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
         for p in profiles:
             z_oid = z_object_ids.get(p.object_name)
             if not z_oid:
@@ -313,7 +313,7 @@ class ZObjectPersistence:
         self, db: AsyncSession, tenant_id: str, z_object_id: str
     ) -> dict | None:
         """Get the most recent profile for a Z object."""
-        await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
         r = (
             await db.execute(
                 text(
@@ -354,7 +354,7 @@ class ZObjectPersistence:
         self, db: AsyncSession, tenant_id: str
     ) -> dict[str, ZBaseline]:
         """Load all baselines for a tenant, keyed by object_name."""
-        await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
         rows = (
             await db.execute(
                 text(
@@ -391,7 +391,7 @@ class ZObjectPersistence:
         z_object_ids: dict[str, str],
     ) -> None:
         """Upsert baselines (one per z_object per tenant)."""
-        await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
         for name, bl in baselines.items():
             z_oid = z_object_ids.get(name)
             if not z_oid:
@@ -461,7 +461,7 @@ class ZObjectPersistence:
         z_object_ids: dict[str, str],
     ) -> None:
         """Save detected anomalies to z_object_anomalies."""
-        await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
         for a in anomalies:
             z_oid = z_object_ids.get(a.object_name)
             if not z_oid:
@@ -497,7 +497,7 @@ class ZObjectPersistence:
         status: str = "active",
     ) -> list[dict]:
         """Get anomalies, optionally filtered by run_id and status."""
-        await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
         q = (
             "SELECT a.id, r.object_name, a.anomaly_type, a.severity, "
             "a.description, a.baseline_value, a.current_value, "
@@ -536,7 +536,7 @@ class ZObjectPersistence:
         self, db: AsyncSession, tenant_id: str, anomaly_id: str, status: str, user_id: str
     ) -> bool:
         """Update anomaly status to 'confirmed' or 'dismissed'."""
-        await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
         result = await db.execute(
             text(
                 "UPDATE z_object_anomalies "
@@ -561,7 +561,7 @@ class ZObjectPersistence:
         z_object_ids: dict[str, str],
     ) -> None:
         """Save Z-rule findings to z_object_findings."""
-        await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
         for f in findings:
             z_oid = z_object_ids.get(f.z_object_name)
             if not z_oid:
@@ -633,7 +633,7 @@ class ZObjectPersistence:
 
     async def get_custom_rules(self, db: AsyncSession, tenant_id: str) -> list[dict]:
         """Get all custom rules for a tenant."""
-        await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
         rows = (
             await db.execute(
                 text(
@@ -663,7 +663,7 @@ class ZObjectPersistence:
         self, db: AsyncSession, tenant_id: str, rule_data: dict, user_id: str
     ) -> str:
         """Create a new custom Z rule. Returns rule ID."""
-        await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
         rule_id = str(uuid.uuid4())
         await db.execute(
             text(
@@ -691,7 +691,7 @@ class ZObjectPersistence:
 
     async def get_ghost_z_objects(self, db: AsyncSession, tenant_id: str) -> list[dict]:
         """Z objects in registry with status='active' but very low transaction count."""
-        await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
         rows = (
             await db.execute(
                 text(
@@ -720,7 +720,7 @@ class ZObjectPersistence:
         self, db: AsyncSession, tenant_id: str, months: int = 6
     ) -> list[dict]:
         """Z objects where last_active_date is older than N months."""
-        await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
         rows = (
             await db.execute(
                 text(
@@ -750,7 +750,7 @@ class ZObjectPersistence:
         self, db: AsyncSession, tenant_id: str, run_id: str | None = None
     ) -> list[dict]:
         """New Z objects that first appeared recently (created_date within last run)."""
-        await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
 
         if run_id:
             # Find Z objects whose profiles exist for this run but no earlier run
@@ -801,7 +801,7 @@ class ZObjectPersistence:
 
     async def get_all_mappings(self, db: AsyncSession, tenant_id: str) -> list[dict]:
         """All Z objects that have a standard_equivalent mapping."""
-        await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
         rows = (
             await db.execute(
                 text(

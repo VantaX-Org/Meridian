@@ -104,7 +104,7 @@ async def list_master_records(
     tenant: Tenant = Depends(get_tenant),
 ):
     tenant_id = str(tenant.id)
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
 
     # Build WHERE clauses
     conditions = ["tenant_id = :tid"]
@@ -194,7 +194,7 @@ async def get_master_record(
     tenant: Tenant = Depends(get_tenant),
 ):
     tenant_id = str(tenant.id)
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
 
     result = await db.execute(
         text("""
@@ -246,7 +246,7 @@ async def promote_master_record(
 ):
     """Promote a master record to golden status. Requires approve permission."""
     tenant_id = str(tenant.id)
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
 
     # Load current record
     result = await db.execute(
@@ -395,7 +395,7 @@ async def writeback_master_record(
     Delegates to existing writeback.py 4-eyes flow.
     """
     tenant_id = str(tenant.id)
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
 
     result = await db.execute(
         text("""
@@ -433,7 +433,7 @@ async def get_master_record_history(
 ):
     """Get immutable audit trail for a master record."""
     tenant_id = str(tenant.id)
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
 
     # Verify the record exists
     exists = await db.execute(

@@ -152,7 +152,7 @@ async def list_queue_items(
     _role: str = Depends(require_permission("view")),
 ):
     """List stewardship queue items with optional filters."""
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
 
     role = await _get_user_role(db, tenant, request)
 
@@ -218,7 +218,7 @@ async def get_queue_item(
     tenant: Tenant = Depends(get_tenant),
     _role: str = Depends(require_permission("view")),
 ):
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
 
     role = await _get_user_role(db, tenant, request)
     if has_permission(role, "view_ai_confidence"):
@@ -251,7 +251,7 @@ async def assign_queue_item(
     tenant: Tenant = Depends(get_tenant),
     _role: str = Depends(require_permission("approve")),
 ):
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
 
     result = await db.execute(
         text("UPDATE stewardship_queue SET assigned_to = :uid, status = 'in_progress', updated_at = now() WHERE id = :id AND tenant_id = :tid RETURNING id"),
@@ -280,7 +280,7 @@ async def resolve_queue_item(
 
     ai_reviewer role CANNOT resolve data actions (HTTP 403).
     """
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
 
     role = await _get_user_role(db, tenant, request)
     if role == "ai_reviewer":
@@ -387,7 +387,7 @@ async def escalate_queue_item(
     tenant: Tenant = Depends(get_tenant),
     _role: str = Depends(require_permission("view")),
 ):
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
 
     result = await db.execute(
         text(
@@ -419,7 +419,7 @@ async def bulk_approve(
     Creates individual audit trail entries for each item (not one bulk row).
     ai_reviewer role returns 403.
     """
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
 
     role = await _get_user_role(db, tenant, request)
     if role == "ai_reviewer":
@@ -481,7 +481,7 @@ async def get_stewardship_metrics(
     ai_reviewer sees AI Acceptance Rate and proposed rules count,
     but NOT individual steward breakdown.
     """
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
     tid = str(tenant.id)
 
     role = await _get_user_role(db, tenant, request)

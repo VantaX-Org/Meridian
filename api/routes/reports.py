@@ -43,8 +43,14 @@ async def download_report(
     using the same code path as the background worker. This covers the case
     where the Celery ``generate_pdf`` task failed silently after the agent
     pipeline completed.
+
+    Supported analysis statuses:
+      - "complete": Checks done, deterministic report ready
+      - "agents_complete": AI agents completed enrichment
+      - "agents_failed": Agents failed but deterministic report is valid
+      - "ai_enriched": Background AI enrichment finished
     """
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
     vid = uuid.UUID(version_id)
 
     result = await db.execute(
@@ -127,7 +133,7 @@ async def export_report_json(
     has persisted ``report_json`` for the version — even in environments
     where PDF generation is broken.
     """
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
     vid = uuid.UUID(version_id)
 
     result = await db.execute(

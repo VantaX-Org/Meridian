@@ -335,14 +335,20 @@ def _llm_match_columns(
     )
 
     try:
+        from llm.provider import safe_invoke
         llm = get_llm()
         from langchain_core.messages import HumanMessage, SystemMessage
 
-        response = llm.invoke([
+        response = safe_invoke(llm, [
             SystemMessage(content=MATCH_SYSTEM_PROMPT),
             HumanMessage(content=prompt),
-        ])
-
+        ], timeout_seconds=30)
+        if response is None:
+            logger.warning(f"Column matcher LLM timeout for {module_name}")
+            return _fallback_unmatched(unmatched_headers)  # Conservative fallback        ], timeout_seconds=30)
+        if response is None:
+            logger.warning(f"Column matcher LLM timeout for {module_name}")
+            return _fallback_unmatched(unmatched_headers)  # Conservative fallback
         content = response.content.strip()
 
         # Log the LLM call for audit
