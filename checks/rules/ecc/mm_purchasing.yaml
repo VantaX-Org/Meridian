@@ -1,0 +1,771 @@
+module: mm_purchasing
+target_state: ECC_AND_S4HANA
+rules:
+- id: PUR001
+  field: EKKO.EBELN
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: "Purchase order number is mandatory \u2014 primary key for all PO transactions"
+  why_it_matters: EBELN is the purchase order document number and primary key for all purchasing transactions. Without it,
+    no goods receipt (MIGO), invoice verification (MIRO), or PO history can be maintained. The record is fundamentally unusable
+    in the procure-to-pay cycle.
+  rule_authority: sap_hard_constraint
+  sap_impact: PO cannot be referenced in MIGO, MIRO, or any procurement workflow. Goods receipt and invoice verification are
+    impossible. The record is orphaned.
+  fix_map:
+    __blank__: "Purchase order number is empty. This record cannot exist without EBELN. Investigate the data source \u2014\
+      \ this is likely a data load error. In ECC: create a valid PO via ME21N. In S/4HANA: use Fiori app F2229 (Create Purchase\
+      \ Order) or correct the source data."
+  record_fix_template: 'PO {EKKO.EBELN}: EBELN is {actual_value}. Create a valid PO via ME21N (ECC) or Fiori app F2229 (S/4HANA).'
+- id: PUR002
+  field: EKKO.EBELN
+  check_class: regex_check
+  pattern: ^[0-9]{1,10}$
+  severity: high
+  dimension: validity
+  message: Purchase order number must be numeric, up to 10 digits
+  why_it_matters: PO numbers in SAP must be numeric and up to 10 digits. Non-numeric or oversized values indicate data corruption
+    or incorrect data loading. Such values cannot be used as foreign keys in goods receipt (MKPF.EBELN) or invoice documents
+    (RBKP.BELNR referencing EKKO.EBELN).
+  rule_authority: sap_hard_constraint
+  sap_impact: Foreign key references from goods receipt and invoice documents fail. ME23N cannot display the PO. Document
+    flow is broken.
+  fix_map:
+    __other__: 'PO number ''{invalid_value}'' does not match the required numeric format (up to 10 digits). In ECC: recreate
+      the PO via ME21N. In S/4HANA: use Fiori app F2229. Verify number range configuration in SNRO.'
+  record_fix_template: 'PO {EKKO.EBELN}: EBELN ''{actual_value}'' is not valid. Must be numeric, up to 10 digits. Recreate
+    via ME21N or Fiori app F2229.'
+- id: PUR003
+  field: EKKO.LIFNR
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: "Vendor number is mandatory \u2014 PO cannot be processed without a valid vendor"
+  why_it_matters: LIFNR on the PO header identifies the vendor supplying the goods or services. Without a valid vendor number,
+    the PO cannot be goods receipted, invoiced, or paid. The vendor master must exist and be active for the purchasing organisation.
+  rule_authority: sap_hard_constraint
+  sap_impact: PO cannot be goods receipted (MIGO) or invoice verified (MIRO). Payment via F110 is impossible. The entire procurement
+    cycle for this PO is blocked.
+  fix_map:
+    __blank__: 'Vendor number is empty. In ECC: assign the correct vendor via ME22N > Header > Vendor tab. In S/4HANA: use
+      Fiori app F2229 or ME22N. The vendor must exist in the vendor master (FK03) and be active for the relevant purchasing
+      org.'
+  record_fix_template: 'PO {EKKO.EBELN}: LIFNR is {actual_value}. Assign a valid vendor number via ME22N or Fiori app F2229.'
+- id: PUR004
+  field: EKKO.BSART
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: "PO document type is mandatory \u2014 controls procurement processing flow"
+  why_it_matters: 'BSART (purchasing document type) determines the entire processing behaviour: number range, item categories
+    allowed, release strategy, and follow-on document types. Without it, SAP cannot determine how to process the PO through
+    goods receipt, invoice verification, or payment.'
+  rule_authority: sap_hard_constraint
+  sap_impact: PO processing flow is undefined. Item category determination, release strategy, and follow-on documents all
+    fail. The PO cannot progress.
+  fix_map:
+    __blank__: 'PO document type is empty. In ECC: set via ME22N or recreate via ME21N. In S/4HANA: use Fiori app F2229. Common
+      types: NB (standard), FO (framework order), UB (stock transport order).'
+  record_fix_template: 'PO {EKKO.EBELN}: BSART is {actual_value}. Set the document type via ME22N or Fiori app F2229.'
+- id: PUR005
+  field: EKKO.BSART
+  check_class: domain_value_check
+  allowed_values:
+  - NB
+  - FO
+  - UB
+  - MK
+  - LP
+  - EC
+  severity: high
+  dimension: validity
+  message: PO document type must be a valid purchasing document type code
+  why_it_matters: BSART must be one of the configured purchasing document types. Invalid values prevent release strategy determination,
+    follow-on document control, and item category assignment. The PO cannot be processed through any standard procurement
+    workflow.
+  rule_authority: sap_hard_constraint
+  sap_impact: Release strategy cannot be determined. Follow-on document types (goods receipt, invoice) are not configured
+    for the invalid type. Item category assignment fails.
+  valid_values_with_labels:
+    NB: "Standard PO \u2014 normal procurement"
+    FO: "Framework Order \u2014 blanket/outline agreement"
+    UB: "Stock Transport Order \u2014 inter-plant transfer"
+    MK: "Scheduling Agreement \u2014 periodic deliveries"
+    LP: "Subcontracting PO \u2014 materials provided to vendor"
+    EC: "Service PO \u2014 external service procurement"
+  fix_map:
+    __other__: 'PO document type ''{invalid_value}'' is not a recognised value. Valid types: NB (standard), FO (framework),
+      UB (stock transport), MK (scheduling agreement), LP (subcontracting), EC (service). In ECC: correct via ME22N. In S/4HANA:
+      use Fiori app F2229.'
+  record_fix_template: 'PO {EKKO.EBELN}: BSART is ''{actual_value}''. Set to a valid document type via ME22N or Fiori app
+    F2229.'
+- id: PUR006
+  field: EKKO.EKORG
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: "Purchasing organisation is mandatory \u2014 determines procurement scope and vendor agreements"
+  why_it_matters: EKORG (purchasing organisation) is the organisational unit responsible for procurement. It determines which
+    vendor contracts apply, which info records are used for pricing, and which release strategies are evaluated. Without it,
+    the PO has no organisational context.
+  rule_authority: sap_hard_constraint
+  sap_impact: PO has no organisational context. Vendor contracts and info records cannot be found. Release strategies cannot
+    be evaluated. The PO is stuck.
+  fix_map:
+    __blank__: 'Purchasing organisation is empty. In ECC: set via ME22N > Header > Org Data tab. In S/4HANA: use Fiori app
+      F2229. The purchasing org must be assigned to the company code in the enterprise structure.'
+  record_fix_template: 'PO {EKKO.EBELN}: EKORG is {actual_value}. Assign the purchasing organisation via ME22N or Fiori app
+    F2229.'
+- id: PUR007
+  field: EKKO.EKGRP
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: "Purchasing group missing \u2014 buyer assignment is unknown"
+  why_it_matters: EKGRP (purchasing group) identifies the buyer or purchasing team responsible for the PO. Without it, workload
+    distribution, buyer performance analysis, and PO approval routing cannot function. ME2M (PO list by purchasing group)
+    will not include this PO.
+  rule_authority: best_practice
+  sap_impact: Buyer assignment is unknown. ME2M list by purchasing group excludes this PO. Purchasing workload analysis is
+    incomplete. Approval routing may fail.
+  fix_map:
+    __blank__: 'Purchasing group is empty. In ECC: assign the responsible purchasing group via ME22N > Header > Org Data tab.
+      In S/4HANA: use Fiori app F2229.'
+  record_fix_template: 'PO {EKKO.EBELN}: EKGRP is {actual_value}. Assign the purchasing group via ME22N or Fiori app F2229.'
+- id: PUR008
+  field: EKKO.WAERS
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: "Currency code missing \u2014 all PO values are meaningless without currency"
+  why_it_matters: WAERS (currency key) defines the currency for all monetary values on the PO. Without it, prices and totals
+    have no currency context, exchange rate determination fails in MIRO, and financial postings cannot be generated.
+  rule_authority: sap_hard_constraint
+  sap_impact: PO values have no currency context. Exchange rate determination in MIRO fails. Financial postings generate errors.
+    Spend analysis reports are inaccurate.
+  fix_map:
+    __blank__: 'Currency code is empty. In ECC: set the correct ISO currency code via ME22N > Header > Delivery/Invoice tab.
+      In S/4HANA: use Fiori app F2229. Common values: ZAR, USD, EUR, GBP.'
+  record_fix_template: 'PO {EKKO.EBELN}: WAERS is {actual_value}. Set the currency code via ME22N or Fiori app F2229.'
+- id: PUR009
+  field: EKKO.BUKRS
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: "Company code missing \u2014 financial postings cannot be determined"
+  why_it_matters: BUKRS (company code) determines which legal entity the PO belongs to. It controls which GL accounts receive
+    postings, which fiscal year variant applies, and which currency is used for local reporting. Without it, invoice verification
+    and payment cannot generate correct financial postings.
+  rule_authority: sap_hard_constraint
+  sap_impact: Invoice verification (MIRO) cannot determine GL accounts. Payment (F110) cannot identify the paying company
+    code. Financial statements are incomplete.
+  fix_map:
+    __blank__: 'Company code is empty. In ECC: assign the correct company code via ME22N > Header > Org Data tab. In S/4HANA:
+      use Fiori app F2229.'
+  record_fix_template: 'PO {EKKO.EBELN}: BUKRS is {actual_value}. Assign the company code via ME22N or Fiori app F2229.'
+- id: PUR010
+  field: EKKO.BEDAT
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: "PO date missing \u2014 affects delivery scheduling and reporting"
+  why_it_matters: BEDAT (PO date) is the document date used for delivery scheduling, reporting period assignment, and supplier
+    performance tracking. Missing PO date makes it impossible to determine when the order was placed and affects lead time
+    calculations.
+  rule_authority: best_practice
+  sap_impact: Delivery scheduling has no baseline date. PO reporting by period is inaccurate. Supplier lead time analysis
+    cannot include this PO.
+  fix_map:
+    __blank__: 'PO date is empty. In ECC: set to the date the order was originally placed via ME22N > Header > PO Date field.
+      In S/4HANA: use Fiori app F2229.'
+  record_fix_template: 'PO {EKKO.EBELN}: BEDAT is {actual_value}. Set the PO date via ME22N or Fiori app F2229.'
+- id: PUR011
+  field: EKPO.MATNR
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: "Material number missing \u2014 PO line cannot be matched to inventory"
+  why_it_matters: MATNR on a PO line item links the purchase to the material master. Without it, goods receipt cannot update
+    inventory, and three-way matching (PO, GR, invoice) is not possible for stock items. For service POs, material may be
+    blank.
+  rule_authority: best_practice
+  sap_impact: Goods receipt cannot update material inventory (MM03). Three-way match in MIRO cannot verify material. MRP (MD04)
+    does not see this PO as supply.
+  fix_map:
+    __blank__: 'Material number is empty. In ECC: assign the correct material number via ME22N > Item Detail > Material tab.
+      In S/4HANA: use Fiori app F2229. For service or text items, material may be intentionally blank.'
+  record_fix_template: 'PO {EKKO.EBELN} item {EKPO.EBELP}: MATNR is {actual_value}. Assign the material number via ME22N or
+    Fiori app F2229 if this is a stock item.'
+- id: PUR012
+  field: EKPO.MATNR
+  check_class: regex_check
+  pattern: ^[A-Z0-9\-_/\.]{1,40}$
+  severity: high
+  dimension: validity
+  message: "Material number format is invalid \u2014 must be alphanumeric up to 40 characters"
+  why_it_matters: In S/4HANA, material numbers are extended to 40 characters and must follow the alphanumeric format. Invalid
+    characters or excessively long material numbers cause errors in goods receipt, invoice verification, and MRP processing.
+    Leading zeros are managed by conversion exits.
+  rule_authority: sap_hard_constraint
+  sap_impact: Material cannot be found in the material master (MM03). GR and invoice processing fail. MRP does not recognise
+    the material.
+  fix_map:
+    __other__: 'Material number ''{invalid_value}'' does not match the required format. Must be alphanumeric (A-Z, 0-9, hyphens,
+      underscores, slashes, dots), up to 40 characters. In ECC: correct via ME22N. In S/4HANA: use Fiori app F2229. Verify
+      the material exists in MM03.'
+  record_fix_template: 'PO {EKKO.EBELN} item {EKPO.EBELP}: MATNR ''{actual_value}'' is invalid. Correct the material number
+    format via ME22N or Fiori app F2229.'
+- id: PUR013
+  field: EKPO.MENGE
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: "Order quantity is mandatory \u2014 zero means PO line cannot be receipted or invoiced"
+  why_it_matters: "MENGE is the order quantity on the PO line item. Zero or blank means no goods can be received against this\
+    \ line and no invoice can be verified. The line is effectively dead \u2014 it consumes no budget and delivers no goods."
+  rule_authority: sap_hard_constraint
+  sap_impact: "PO line cannot be goods receipted in MIGO. Invoice verification in MIRO has no quantity to match. Budget consumption\
+    \ is zero \u2014 commitment accounting is incorrect."
+  fix_map:
+    __blank__: 'Order quantity is zero or blank. In ECC: set the correct quantity via ME22N > Item Detail > Quantity tab.
+      In S/4HANA: use Fiori app F2229. Verify the unit of measure is also correct.'
+  record_fix_template: 'PO {EKKO.EBELN} item {EKPO.EBELP}: MENGE is {actual_value}. Set the correct order quantity via ME22N
+    or Fiori app F2229.'
+- id: PUR014
+  field: EKPO.NETPR
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: "Net price is mandatory \u2014 invoice verification cannot confirm price match"
+  why_it_matters: NETPR is the net price per unit on the PO line. Missing price means invoice verification (MIRO) cannot perform
+    price matching, budget consumption is zero, and the line has no financial value. This is a critical procurement data gap.
+  rule_authority: sap_hard_constraint
+  sap_impact: "Invoice verification in MIRO cannot match price \u2014 manual intervention required for every invoice. Budget\
+    \ consumption (commitment) is zero. Accruals and provisions based on PO value are understated."
+  fix_map:
+    __blank__: 'Net price is zero or blank. In ECC: set via ME22N > Item Detail > Conditions tab. In S/4HANA: use Fiori app
+      F2229. Obtain the agreed price from the contract or vendor quotation.'
+  record_fix_template: 'PO {EKKO.EBELN} item {EKPO.EBELP}: NETPR is {actual_value}. Set the correct net price via ME22N >
+    Conditions tab or Fiori app F2229.'
+- id: PUR015
+  field: EKPO.WERKS
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: "Plant missing \u2014 goods receipt location unknown"
+  why_it_matters: WERKS (plant) on the PO line determines where goods are received and stored. Without it, goods receipt (MIGO)
+    does not know which plant's inventory to update and MRP cannot see this PO as incoming supply for any plant.
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods receipt in MIGO cannot determine receiving plant. MRP run (MD01/MD02) does not see this PO as supply for
+    any plant. Inventory valuation is affected.
+  fix_map:
+    __blank__: 'Plant is empty. In ECC: assign the correct receiving plant via ME22N > Item Detail > Delivery tab. In S/4HANA:
+      use Fiori app F2229. The plant must be valid for the purchasing organisation.'
+  record_fix_template: 'PO {EKKO.EBELN} item {EKPO.EBELP}: WERKS is {actual_value}. Assign the receiving plant via ME22N or
+    Fiori app F2229.'
+- id: PUR016
+  field: EKPO.MEINS
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: "Order unit of measure missing \u2014 quantity has no unit context"
+  why_it_matters: MEINS (order unit of measure) defines the unit in which the PO quantity is expressed. Without it, goods
+    receipt quantity conversion fails, invoice quantity matching is ambiguous, and the PO quantity has no unit context.
+  rule_authority: best_practice
+  sap_impact: Goods receipt quantity conversion fails. Invoice quantity matching is ambiguous. Material document postings
+    may have incorrect quantities.
+  fix_map:
+    __blank__: 'Order unit of measure is empty. In ECC: set via ME22N > Item Detail > Unit field. In S/4HANA: use Fiori app
+      F2229. This is normally inherited from the material master.'
+  record_fix_template: 'PO {EKKO.EBELN} item {EKPO.EBELP}: MEINS is {actual_value}. Set the order unit via ME22N or Fiori
+    app F2229.'
+- id: PUR017
+  field: EKPO.NETWR
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: "Item net value missing \u2014 PO line has no financial value"
+  why_it_matters: "NETWR at the item level is the total net value of the PO line (quantity x price). Zero or blank means the\
+    \ line has no financial value \u2014 commitment accounting shows zero, accruals are understated, and spend analysis is\
+    \ incomplete for this line."
+  rule_authority: best_practice
+  sap_impact: Commitment accounting shows zero for this line. Accruals are understated. Spend analysis by material group or
+    vendor is incomplete.
+  fix_map:
+    __blank__: 'Item net value is zero or blank. In ECC: verify price and quantity via ME22N > Conditions tab. In S/4HANA:
+      use Fiori app F2229. Net value is calculated from NETPR x MENGE / PEINH.'
+  record_fix_template: 'PO {EKKO.EBELN} item {EKPO.EBELP}: NETWR is {actual_value}. Review price and quantity via ME22N or
+    Fiori app F2229.'
+- id: PUR018
+  field: EKPO.PSTYP
+  check_class: domain_value_check
+  allowed_values:
+  - '0'
+  - '2'
+  - '3'
+  - '5'
+  - '7'
+  - '9'
+  severity: high
+  dimension: validity
+  message: Item category must be a valid purchasing item category
+  why_it_matters: 'PSTYP (item category) controls the procurement behaviour of the PO line: standard, consignment, subcontracting,
+    third-party, etc. Invalid values prevent goods receipt processing and invoice verification from working correctly.'
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods receipt processing logic is undefined. Invoice verification behaviour is unknown. Account assignment may
+    be incorrect.
+  valid_values_with_labels:
+    '0': "Standard \u2014 normal stock or consumption procurement"
+    '2': "Consignment \u2014 vendor-owned stock at customer site"
+    '3': "Subcontracting \u2014 materials provided to vendor for processing"
+    '5': "Third-Party \u2014 direct shipment from vendor to customer"
+    '7': "Service \u2014 external service procurement"
+    '9': "Limit \u2014 framework order with value limit"
+  fix_map:
+    __other__: 'Item category ''{invalid_value}'' is not a recognised value. Valid categories: 0 (standard), 2 (consignment),
+      3 (subcontracting), 5 (third-party), 7 (service), 9 (limit). In ECC: correct via ME22N. In S/4HANA: use Fiori app F2229.'
+  record_fix_template: 'PO {EKKO.EBELN} item {EKPO.EBELP}: PSTYP is ''{actual_value}''. Set to a valid item category via ME22N
+    or Fiori app F2229.'
+- id: PUR019
+  field: EKPO.KNTTP
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - K
+  - P
+  - A
+  - E
+  - N
+  severity: medium
+  dimension: validity
+  message: Account assignment category must be a valid code or blank
+  why_it_matters: "KNTTP (account assignment category) determines how costs are allocated \u2014 to a cost centre, project,\
+    \ asset, or order. Invalid values cause account assignment errors during goods receipt and invoice verification. The GL\
+    \ account determination may also fail."
+  rule_authority: best_practice
+  sap_impact: Account assignment during goods receipt is incorrect. Invoice verification cannot determine the cost object.
+    GL account determination may fail.
+  valid_values_with_labels:
+    ? ''
+    : "No account assignment \u2014 stock item (inventory)"
+    K: "Cost Centre \u2014 expense to cost centre"
+    P: "Project/WBS Element \u2014 expense to project"
+    A: "Asset \u2014 capitalised to fixed asset"
+    E: "Sales Order \u2014 expense to customer order"
+    N: "Network \u2014 expense to project network activity"
+  fix_map:
+    __other__: 'Account assignment category ''{invalid_value}'' is not a recognised value. Valid codes: blank (stock), K (cost
+      centre), P (project), A (asset), E (sales order), N (network). In ECC: correct via ME22N > Account Assignment tab. In
+      S/4HANA: use Fiori app F2229.'
+  record_fix_template: 'PO {EKKO.EBELN} item {EKPO.EBELP}: KNTTP is ''{actual_value}''. Set to a valid account assignment
+    category via ME22N or Fiori app F2229.'
+- id: PUR020
+  field: EKPO.MATKL
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: "Material group missing \u2014 spend analysis and reporting by category affected"
+  why_it_matters: MATKL (material group) classifies the purchased material or service into a procurement category. Without
+    it, spend analysis by category is incomplete, sourcing strategy reports are inaccurate, and contract utilisation by material
+    group cannot be tracked.
+  rule_authority: best_practice
+  sap_impact: Spend analysis by material group is incomplete. ME2M reports cannot group this PO line by category. Sourcing
+    strategy analysis is inaccurate.
+  fix_map:
+    __blank__: 'Material group is empty. In ECC: assign via ME22N > Item Detail > Material Group field. In S/4HANA: use Fiori
+      app F2229. This is normally inherited from the material master.'
+  record_fix_template: 'PO {EKKO.EBELN} item {EKPO.EBELP}: MATKL is {actual_value}. Assign the material group via ME22N or
+    Fiori app F2229.'
+- id: PUR021
+  field: EKKO.ZTERM
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: "Payment terms missing \u2014 invoice due date cannot be calculated"
+  why_it_matters: ZTERM (payment terms) determines when the invoice is due for payment and whether cash discounts apply. Without
+    it, the payment program (F110) cannot calculate due dates, and the vendor may not receive timely payment. Cash discount
+    opportunities are lost.
+  rule_authority: best_practice
+  sap_impact: Payment program (F110) cannot calculate due dates. Cash discounts are not applied. Vendor relationship may be
+    damaged by late payments. Aged payables reporting is inaccurate.
+  fix_map:
+    __blank__: 'Payment terms are empty. In ECC: set via ME22N > Header > Delivery/Invoice tab. In S/4HANA: use Fiori app
+      F2229. Payment terms are normally inherited from the vendor master.'
+  record_fix_template: 'PO {EKKO.EBELN}: ZTERM is {actual_value}. Set the payment terms via ME22N or Fiori app F2229.'
+- id: PUR022
+  field: EKKO.INCO1
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: "Incoterms missing \u2014 freight cost allocation and customs processing affected"
+  why_it_matters: "INCO1 (Incoterms Part 1) defines the trade terms for the purchase \u2014 who pays freight, insurance, and\
+    \ customs duties. Without it, freight cost allocation is undefined, customs declarations are incomplete, and landed cost\
+    \ calculations cannot be performed."
+  rule_authority: best_practice
+  sap_impact: Freight cost allocation is undefined. Customs declarations are incomplete. Landed cost calculation in ML (material
+    ledger) is inaccurate.
+  fix_map:
+    __blank__: 'Incoterms are empty. In ECC: set via ME22N > Header > Delivery/Invoice tab. In S/4HANA: use Fiori app F2229.
+      Common values: EXW, FOB, CIF, DAP, DDP.'
+  record_fix_template: 'PO {EKKO.EBELN}: INCO1 is {actual_value}. Set the Incoterms via ME22N or Fiori app F2229.'
+- id: PUR023
+  field: EKKO.LOEKZ
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: medium
+  dimension: validity
+  message: PO header deletion indicator must be blank or X
+  why_it_matters: LOEKZ (deletion indicator) at the header level marks the entire PO for deletion. It must be either blank
+    (active) or X (marked for deletion). Any other value is invalid and indicates data corruption.
+  rule_authority: sap_hard_constraint
+  sap_impact: Invalid deletion flag causes unpredictable behaviour in ME2M reports and PO processing. The PO may be neither
+    active nor properly deleted.
+  valid_values_with_labels:
+    ? ''
+    : "Active \u2014 PO is not deleted"
+    X: "Deleted \u2014 PO is marked for deletion"
+  fix_map:
+    __other__: 'Deletion indicator ''{invalid_value}'' is not valid. Must be blank (active) or X (deleted). In ECC: correct
+      via ME22N. In S/4HANA: use Fiori app F2229. If the PO should be deleted, use the delete function in ME22N.'
+  record_fix_template: 'PO {EKKO.EBELN}: LOEKZ is ''{actual_value}''. Set to blank or X via ME22N or Fiori app F2229.'
+- id: PUR024
+  field: EKPO.WEPOS
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: medium
+  dimension: validity
+  message: Goods receipt indicator must be blank or X
+  why_it_matters: WEPOS (goods receipt indicator) controls whether goods receipt is expected for this PO line. It must be
+    blank (no GR expected) or X (GR required). Invalid values cause unpredictable behaviour in goods receipt processing and
+    three-way match.
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods receipt processing behaviour is undefined. Three-way match may fail. PO history and GR/IR clearing are
+    affected.
+  valid_values_with_labels:
+    ? ''
+    : "No GR \u2014 goods receipt not expected"
+    X: "GR Required \u2014 goods receipt must be posted"
+  fix_map:
+    __other__: 'Goods receipt indicator ''{invalid_value}'' is not valid. Must be blank (no GR) or X (GR required). In ECC:
+      correct via ME22N > Item > Invoice tab. In S/4HANA: use Fiori app F2229.'
+  record_fix_template: 'PO {EKKO.EBELN} item {EKPO.EBELP}: WEPOS is ''{actual_value}''. Set to blank or X via ME22N or Fiori
+    app F2229.'
+- id: PUR025
+  field: EKPO.WEPOS
+  fields:
+  - EKPO.WEPOS
+  - EKPO.WERKS
+  check_class: cross_field_check
+  condition: '`EKPO.WEPOS` == ''X'' and (`EKPO.WERKS`.isna() or `EKPO.WERKS` == '''')'
+  severity: high
+  dimension: consistency
+  message: PO line requires goods receipt but has no plant assigned
+  why_it_matters: "When the goods receipt indicator (WEPOS) is set to X, a plant (WERKS) must be specified to determine where\
+    \ goods are received. Without a plant, MIGO cannot post the goods receipt \u2014 the inventory location is unknown. This\
+    \ is a blocking inconsistency in the procure-to-pay process."
+  rule_authority: sap_hard_constraint
+  sap_impact: "MIGO cannot post goods receipt \u2014 no receiving plant specified. Inventory cannot be updated. The PO line\
+    \ is stuck \u2014 goods are expected but cannot be received."
+  fix_map:
+    __blank__: 'Goods receipt is required (WEPOS=X) but plant is missing. In ECC: assign the receiving plant via ME22N > Item
+      Detail > Delivery tab. In S/4HANA: use Fiori app F2229. The plant must be valid for the purchasing organisation.'
+  record_fix_template: 'PO {EKKO.EBELN} item {EKPO.EBELP}: WEPOS is ''X'' but WERKS is ''{actual_value}''. Assign the receiving
+    plant via ME22N or Fiori app F2229.'
+- id: PUR026
+  field: EKKO.ERNAM
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: "Created-by user missing \u2014 audit trail for PO creation is incomplete"
+  why_it_matters: "ERNAM records the user who created the purchase order. Without it, audit trails are incomplete \u2014 segregation\
+    \ of duties checks, fraud investigation, and procurement process compliance reviews cannot identify the PO creator."
+  rule_authority: best_practice
+  sap_impact: Audit trail is incomplete. Segregation of duties analysis cannot identify the PO creator. ME2M search by created-by
+    user returns nothing for this PO.
+  fix_map:
+    __blank__: Created-by user is empty. This is normally set automatically by SAP at PO creation time. If missing, it indicates
+      a data load issue. Document the gap in the data migration log.
+  record_fix_template: "PO {EKKO.EBELN}: ERNAM is {actual_value}. This field is system-set \u2014 investigate the data source\
+    \ for the missing audit trail."
+- id: PUR027
+  field: EKPO.LGORT
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: "Storage location missing \u2014 goods receipt defaults to plant-level storage"
+  why_it_matters: LGORT (storage location) specifies the exact storage location within the plant for goods receipt. Without
+    it, goods are received at the plant level without a specific storage location, which may cause warehouse management issues
+    and less precise inventory tracking.
+  rule_authority: best_practice
+  sap_impact: Goods receipt posts to plant level without storage location specificity. Warehouse management (WM) integration
+    may fail. Inventory tracking is less precise.
+  fix_map:
+    __blank__: 'Storage location is empty. In ECC: assign via ME22N > Item Detail > Delivery tab. In S/4HANA: use Fiori app
+      F2229. The storage location must exist within the specified plant.'
+  record_fix_template: 'PO {EKKO.EBELN} item {EKPO.EBELP}: LGORT is {actual_value}. Assign the storage location via ME22N
+    or Fiori app F2229.'
+- id: PUR028
+  field: EKKO.FRGKE
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Release strategy is missing
+  why_it_matters: Release strategy (EKKO.FRGKE) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Release strategy may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via ME22N. In S/4HANA: Use Fiori app F2229 (Create Purchase Order).'
+  record_fix_template: 'Record is missing EKKO.FRGKE. In ECC: Set via ME22N. In S/4HANA: Use Fiori app F2229 (Create Purchase
+    Order).'
+- id: PUR029
+  field: EKKO.FRGRL
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Release indicator is missing
+  why_it_matters: Release indicator (EKKO.FRGRL) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Release indicator may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via ME22N. In S/4HANA: Use Fiori app F2229 (Create Purchase Order).'
+  record_fix_template: 'Record is missing EKKO.FRGRL. In ECC: Set via ME22N. In S/4HANA: Use Fiori app F2229 (Create Purchase
+    Order).'
+- id: PUR030
+  field: EKKO.INCO2
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Incoterms location is missing
+  why_it_matters: Incoterms location (EKKO.INCO2) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Incoterms location may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via ME22N. In S/4HANA: Use Fiori app F2229 (Create Purchase Order).'
+  record_fix_template: 'Record is missing EKKO.INCO2. In ECC: Set via ME22N. In S/4HANA: Use Fiori app F2229 (Create Purchase
+    Order).'
+- id: PUR031
+  field: EKKO.PROCSTAT
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Processing state is missing
+  why_it_matters: Processing state (EKKO.PROCSTAT) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Processing state may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via ME22N. In S/4HANA: Use Fiori app F2229 (Create Purchase Order).'
+  record_fix_template: 'Record is missing EKKO.PROCSTAT. In ECC: Set via ME22N. In S/4HANA: Use Fiori app F2229 (Create Purchase
+    Order).'
+- id: PUR032
+  field: EKKO.RLWRT
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Release value is missing
+  why_it_matters: Release value (EKKO.RLWRT) is not maintained. This field supports downstream processes and reporting accuracy.
+    Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Release value may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via ME22N. In S/4HANA: Use Fiori app F2229 (Create Purchase Order).'
+  record_fix_template: 'Record is missing EKKO.RLWRT. In ECC: Set via ME22N. In S/4HANA: Use Fiori app F2229 (Create Purchase
+    Order).'
+- id: PUR033
+  field: EKPO.ANFNR
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Quotation number is missing
+  why_it_matters: Quotation number (EKPO.ANFNR) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Quotation number may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via ME22N. In S/4HANA: Use Fiori app F2229 (Create Purchase Order).'
+  record_fix_template: 'Record is missing EKPO.ANFNR. In ECC: Set via ME22N. In S/4HANA: Use Fiori app F2229 (Create Purchase
+    Order).'
+- id: PUR034
+  field: EKPO.BANFN
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Purchase requisition is missing
+  why_it_matters: Purchase requisition (EKPO.BANFN) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Purchase requisition may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via ME22N. In S/4HANA: Use Fiori app F2229 (Create Purchase Order).'
+  record_fix_template: 'Record is missing EKPO.BANFN. In ECC: Set via ME22N. In S/4HANA: Use Fiori app F2229 (Create Purchase
+    Order).'
+- id: PUR035
+  field: EKPO.BPRME
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Order price unit is missing
+  why_it_matters: Order price unit (EKPO.BPRME) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Order price unit may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via ME22N. In S/4HANA: Use Fiori app F2229 (Create Purchase Order).'
+  record_fix_template: 'Record is missing EKPO.BPRME. In ECC: Set via ME22N. In S/4HANA: Use Fiori app F2229 (Create Purchase
+    Order).'
+- id: PUR036
+  field: EKPO.EBELP
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: PO item number is missing
+  why_it_matters: PO item number (EKPO.EBELP) is not maintained. This field supports downstream processes and reporting accuracy.
+    Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing PO item number may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via ME22N. In S/4HANA: Use Fiori app F2229 (Create Purchase Order).'
+  record_fix_template: 'Record is missing EKPO.EBELP. In ECC: Set via ME22N. In S/4HANA: Use Fiori app F2229 (Create Purchase
+    Order).'
+- id: PUR037
+  field: EKPO.ELIKZ
+  check_class: domain_value_check
+  severity: low
+  dimension: validity
+  message: Delivery complete flag has an invalid value
+  why_it_matters: Delivery complete flag (EKPO.ELIKZ) must contain a valid value. Invalid values may cause errors in downstream
+    SAP processes and integrations.
+  rule_authority: best_practice
+  sap_impact: Invalid Delivery complete flag may cause transaction errors or incorrect processing.
+  allowed_values:
+  - ''
+  - X
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: X
+  fix_map:
+    __blank__: 'In ECC: Set via ME22N. In S/4HANA: Use Fiori app F2229 (Create Purchase Order).'
+    __other__: 'Value {invalid_value} is not valid for Delivery complete flag. Allowed values: ['''', ''X''].'
+  record_fix_template: 'Record has invalid EKPO.ELIKZ value ''{actual_value}''. In ECC: Set via ME22N. In S/4HANA: Use Fiori
+    app F2229 (Create Purchase Order).'
+- id: PUR038
+  field: EKPO.LOEKZ
+  check_class: domain_value_check
+  severity: low
+  dimension: validity
+  message: Deletion indicator has an invalid value
+  why_it_matters: Deletion indicator (EKPO.LOEKZ) must contain a valid value. Invalid values may cause errors in downstream
+    SAP processes and integrations.
+  rule_authority: best_practice
+  sap_impact: Invalid Deletion indicator may cause transaction errors or incorrect processing.
+  allowed_values:
+  - ''
+  - X
+  - L
+  - S
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: X
+    L: L
+    S: S
+  fix_map:
+    __blank__: 'In ECC: Set via ME22N. In S/4HANA: Use Fiori app F2229 (Create Purchase Order).'
+    __other__: 'Value {invalid_value} is not valid for Deletion indicator. Allowed values: ['''', ''X'', ''L'', ''S''].'
+  record_fix_template: 'Record has invalid EKPO.LOEKZ value ''{actual_value}''. In ECC: Set via ME22N. In S/4HANA: Use Fiori
+    app F2229 (Create Purchase Order).'
+- id: PUR039
+  field: EKPO.PEINH
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Price unit is missing
+  why_it_matters: Price unit (EKPO.PEINH) is not maintained. This field supports downstream processes and reporting accuracy.
+    Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Price unit may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via ME22N. In S/4HANA: Use Fiori app F2229 (Create Purchase Order).'
+  record_fix_template: 'Record is missing EKPO.PEINH. In ECC: Set via ME22N. In S/4HANA: Use Fiori app F2229 (Create Purchase
+    Order).'
+- id: PUR040
+  field: EKPO.REPOS
+  check_class: domain_value_check
+  severity: low
+  dimension: validity
+  message: Invoice receipt indicator has an invalid value
+  why_it_matters: Invoice receipt indicator (EKPO.REPOS) must contain a valid value. Invalid values may cause errors in downstream
+    SAP processes and integrations.
+  rule_authority: best_practice
+  sap_impact: Invalid Invoice receipt indicator may cause transaction errors or incorrect processing.
+  allowed_values:
+  - ''
+  - X
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: X
+  fix_map:
+    __blank__: 'In ECC: Set via ME22N. In S/4HANA: Use Fiori app F2229 (Create Purchase Order).'
+    __other__: 'Value {invalid_value} is not valid for Invoice receipt indicator. Allowed values: ['''', ''X''].'
+  record_fix_template: 'Record has invalid EKPO.REPOS value ''{actual_value}''. In ECC: Set via ME22N. In S/4HANA: Use Fiori
+    app F2229 (Create Purchase Order).'
+- id: PUR041
+  field: EKPO.TXZ01
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Item description is missing
+  why_it_matters: Item description (EKPO.TXZ01) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Item description may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via ME22N. In S/4HANA: Use Fiori app F2229 (Create Purchase Order).'
+  record_fix_template: 'Record is missing EKPO.TXZ01. In ECC: Set via ME22N. In S/4HANA: Use Fiori app F2229 (Create Purchase
+    Order).'
+- id: PUR042
+  field: EKKO.EBELN
+  check_class: cross_field_check
+  fields: ['EKKO.EBELN']
+  condition: "~`EKKO.EBELN`.duplicated(keep=False)"
+  severity: critical
+  dimension: uniqueness
+  message: Duplicate purchase order numbers detected — each PO must be unique
+  why_it_matters: Duplicate PO numbers indicate a data extract or migration error. Each purchase order must have a unique EBELN. Duplicates cause goods receipt posting ambiguity and invoice verification failures.
+  rule_authority: sap_hard_constraint
+  sap_impact: MIGO cannot determine which PO to post against. Invoice verification (MIRO) matches to the wrong PO. Goods receipt history is ambiguous.
+  fix_map:
+    __blank__: "Investigate the source of duplicate PO numbers. This is typically a data extract issue (duplicate rows from joined tables). If genuine duplicates exist in SAP, escalate to Basis — this indicates a number range collision."
+
+- id: PUR043
+  field: EKKO.BEDAT
+  check_class: freshness_check
+  max_age_hours: 8760
+  severity: medium
+  dimension: timeliness
+  message: Purchase order older than 1 year — open POs older than 12 months should be reviewed and closed if no longer needed
+  rule_authority: best_practice
+
+- id: PUR044
+  field: EKPO.NETPR
+  check_class: cross_field_check
+  fields: ['EKPO.NETPR']
+  condition: "`EKPO.NETPR`.notna() & (`EKPO.NETPR` >= 0)"
+  severity: high
+  dimension: accuracy
+  message: Purchase order line has negative net price — indicates pricing error or incorrect credit memo configuration
+  why_it_matters: Negative PO prices cause goods receipt valuation errors, invoice verification mismatches, and incorrect cost centre charges.
+  rule_authority: best_practice
+  sap_impact: GR posting creates negative stock value. Invoice verification shows price variance. Cost centre is credited instead of debited.
+  fix_map:
+    __blank__: "Review the PO line price via ME22N. If a credit memo is intended, use the correct document type (returns PO). If data error, correct the net price."

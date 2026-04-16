@@ -1,0 +1,339 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
+  --font-mono: var(--font-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/* ─── Meridian Light Glassmorphism Theme ─── */
+:root {
+  /* Surfaces */
+  --background: #F7F8FA;
+  --foreground: #1A1F36;
+  --card: rgba(255,255,255,0.70);
+  --card-foreground: #1A1F36;
+  --popover: rgba(255,255,255,0.88);
+  --popover-foreground: #1A1F36;
+
+  /* Primary — Meridian Forest Green */
+  --primary: #0D5639;
+  --primary-foreground: #FFFFFF;
+  --secondary: rgba(0,0,0,0.05);
+  --secondary-foreground: #4A5568;
+  --muted: rgba(0,0,0,0.03);
+  --muted-foreground: #6B7280;
+  --accent: rgba(13,86,57,0.08);
+  --accent-foreground: #0B4A31;
+
+  /* Status */
+  --destructive: #EF4444;
+
+  /* Borders & focus */
+  --border: rgba(0,0,0,0.08);
+  --input: rgba(0,0,0,0.06);
+  --ring: #0D5639;
+
+  /* Charts — Meridian palette for light bg */
+  --chart-1: #0D5639;
+  --chart-2: #FF8C42;
+  --chart-3: #4BA87A;
+  --chart-4: #6366F1;
+  --chart-5: #EF4444;
+
+  /* Radius */
+  --radius: 1rem;
+
+  /* Sidebar */
+  --sidebar: rgba(255,255,255,0.75);
+  --sidebar-foreground: #4A5568;
+  --sidebar-primary: #0D5639;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: rgba(13,86,57,0.08);
+  --sidebar-accent-foreground: #0B4A31;
+  --sidebar-border: rgba(0,0,0,0.06);
+  --sidebar-ring: #0D5639;
+
+  /* ─── Meridian Direct Tokens ─── */
+  --mn-bg-base: #F7F8FA;
+  --mn-bg-card: rgba(255,255,255,0.70);
+  --mn-bg-card-hover: rgba(255,255,255,0.85);
+  --mn-border: rgba(0,0,0,0.08);
+  --mn-green-dark: #0D5639;
+  --mn-green-mid: #1E7A52;
+  --mn-green-light: #4BA87A;
+  --mn-green-dim: rgba(13,86,57,0.08);
+  --mn-blue-bright: #6366F1;
+  --mn-blue-mid: #4F46E5;
+  --mn-amber: #EA580C;
+  --mn-red: #EF4444;
+  --mn-teal: #4BA87A;
+  --mn-text-primary: #1A1F36;
+  --mn-text-secondary: #4A5568;
+  --mn-text-tertiary: #6B7280;
+  --mn-sidebar-bg: rgba(255,255,255,0.75);
+  --mn-sidebar-text: #4A5568;
+
+  /* ─── Glass Tokens ─── */
+  --glass-bg: rgba(255,255,255,0.70);
+  --glass-bg-hover: rgba(255,255,255,0.85);
+  --glass-border: rgba(0,0,0,0.08);
+  --glass-border-hover: rgba(0,0,0,0.14);
+  --glass-blur: 16px;
+}
+
+/* ─── Animations ─── */
+@keyframes vx-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes vx-count-up {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes vx-pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+@keyframes vx-slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes vx-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes vx-glass-shimmer {
+  0% { left: -100%; }
+  100% { left: 200%; }
+}
+
+/* ─── Gradient Mesh Background ─── */
+.vx-mesh-bg {
+  background:
+    radial-gradient(ellipse 80% 60% at 10% 20%, rgba(13,86,57,0.05), transparent 60%),
+    radial-gradient(ellipse 60% 50% at 85% 15%, rgba(99,102,241,0.04), transparent 55%),
+    radial-gradient(ellipse 50% 40% at 50% 90%, rgba(75,168,122,0.04), transparent 50%),
+    #F7F8FA;
+  background-attachment: fixed;
+}
+
+/* ─── Base styles ─── */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    font-size: 13px;
+    @apply font-sans;
+  }
+}
+
+/* ─── Glass Card ─── */
+.vx-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.50) inset, 0 4px 24px rgba(0,0,0,0.04);
+  animation: vx-fade-in 0.35s ease-out both;
+  transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+}
+
+.vx-card:hover {
+  border-color: var(--glass-border-hover);
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.60) inset, 0 8px 32px rgba(0,0,0,0.06);
+}
+
+.vx-card-interactive:hover {
+  transform: translateY(-1px);
+}
+
+/* ─── Glass Utility Classes ─── */
+.vx-glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+}
+
+.vx-glass-elevated {
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(0,0,0,0.10);
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.70) inset, 0 8px 32px rgba(0,0,0,0.06);
+}
+
+.vx-glow {
+  box-shadow: 0 0 16px rgba(13,86,57,0.20), 0 0 0 1px rgba(13,86,57,0.12);
+}
+
+.vx-glass-pill {
+  background: rgba(13,86,57,0.10);
+  border: 1px solid rgba(13,86,57,0.20);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 12px;
+}
+
+/* Glass shimmer hover effect */
+.vx-glass-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.vx-glass-shimmer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255,255,255,0.30),
+    transparent
+  );
+  pointer-events: none;
+}
+
+.vx-glass-shimmer:hover::after {
+  animation: vx-glass-shimmer 0.6s ease-out;
+}
+
+.font-display {
+  font-family: var(--font-display), sans-serif;
+}
+
+/* ─── Scrollbar (light theme) ─── */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.12);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0,0,0,0.20);
+}
+
+/* Sidebar scrollbar */
+.vx-sidebar-scroll::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.08);
+}
+.vx-sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(0,0,0,0.16);
+}
+.vx-sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ─── Selection ─── */
+::selection {
+  background: rgba(13,86,57,0.18);
+  color: #1A1F36;
+}
+
+/* ─── Focus ring ─── */
+:focus-visible {
+  outline: 2px solid #0D5639;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ─── Mobile performance fallback ─── */
+@media (max-width: 767px) {
+  .vx-card,
+  .vx-glass,
+  .vx-glass-elevated,
+  .vx-glass-pill {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .vx-card {
+    background: rgba(255,255,255,0.95);
+  }
+  .vx-glass {
+    background: rgba(255,255,255,0.92);
+  }
+  .vx-glass-elevated {
+    background: rgba(255,255,255,0.98);
+  }
+}

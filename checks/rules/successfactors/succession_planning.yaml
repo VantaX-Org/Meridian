@@ -1,0 +1,280 @@
+module: succession_planning
+target_state: SUCCESSFACTORS
+rules:
+
+  - id: SUC001
+    field: SUCCESSIONCANDIDATE.NOMINEE_ID
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Nominee ID is mandatory — identifies the successor candidate in the plan"
+    why_it_matters: >-
+      NOMINEE_ID is the primary identifier linking a succession candidate to their
+      employee record. Without it, the succession plan has an empty nominee slot, and
+      talent review reports cannot be generated because the system cannot resolve who
+      the candidate is.
+    rule_authority: best_practice
+    sap_impact: >-
+      Succession plan shows empty nominee slot. Talent review reports fail to generate.
+      Bench strength analytics exclude this candidate.
+    fix_map:
+      __blank__: >-
+        Identify the intended nominee from the succession plan nomination history or HR
+        records. Populate NOMINEE_ID with the correct employee ID from Employee Central.
+    record_fix_template: >-
+      Succession candidate for position {SUCCESSIONCANDIDATE.POSITION_ID}: NOMINEE_ID
+      is missing. Identify the intended nominee and populate NOMINEE_ID.
+
+  - id: SUC002
+    field: SUCCESSIONCANDIDATE.POSITION_ID
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Position ID is mandatory — links nominee to the target role in the succession chart"
+    why_it_matters: >-
+      POSITION_ID links the nominee to the specific position they are being considered
+      for. Without it, the nominee is not associated with any role in the succession
+      chart, meaning bench strength cannot be calculated for that position.
+    rule_authority: best_practice
+    sap_impact: >-
+      Succession chart shows empty nodes for this candidate. Bench strength reporting
+      excludes the position. Talent review cannot display the candidate for the target
+      role.
+    fix_map:
+      __blank__: >-
+        Identify the target position from the succession plan configuration or the
+        nominating manager's records. Populate POSITION_ID with the correct position
+        code from the position management module.
+    record_fix_template: >-
+      Succession candidate {SUCCESSIONCANDIDATE.NOMINEE_ID}: POSITION_ID is missing.
+      Assign the target position via the succession planning module.
+
+  - id: SUC003
+    field: SUCCESSIONCANDIDATE.READINESS
+    check_class: domain_value_check
+    allowed_values: ["ready_now", "ready_1_year", "ready_2_years", "not_ready"]
+    severity: high
+    dimension: accuracy
+    message: "Readiness assessment must be a valid category"
+    why_it_matters: >-
+      READINESS drives development plan assignment and bench strength reporting across
+      the organization. Invalid values cause talent review dashboards to show incorrect
+      readiness distribution, leading to flawed workforce planning decisions and
+      misallocated development budgets.
+    rule_authority: customer_configured
+    sap_impact: >-
+      Talent review dashboards show incorrect readiness distribution. Development plan
+      auto-assignment rules fail to trigger for this candidate.
+    valid_values_with_labels:
+      "ready_now": "Ready Now — candidate can assume the target role immediately"
+      "ready_1_year": "Ready in 1 Year — needs targeted development before assuming the role"
+      "ready_2_years": "Ready in 2 Years — longer-term successor requiring significant development"
+      "not_ready": "Not Ready — candidate has potential but requires structured development plan"
+    fix_map:
+      __blank__: >-
+        Assess the nominee's readiness based on their current competency profile and
+        career development plan. Set to the appropriate readiness level via the
+        succession planning module.
+      __other__: >-
+        Readiness '{invalid_value}' is not valid. Use ready_now, ready_1_year,
+        ready_2_years, or not_ready. Update via the succession planning module.
+    record_fix_template: >-
+      Succession candidate {SUCCESSIONCANDIDATE.NOMINEE_ID} for position
+      {SUCCESSIONCANDIDATE.POSITION_ID}: READINESS '{actual_value}' is invalid. Update
+      to a valid readiness level.
+
+  - id: SUC004
+    field: SUCCESSIONCANDIDATE.RANKING
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: "Ranking is required to prioritise candidates for the same position"
+    why_it_matters: >-
+      RANKING determines the order of preference among multiple nominees for the same
+      position. Without it, the succession chart cannot indicate which candidate is the
+      primary successor versus a backup, which is critical information for emergency
+      succession scenarios.
+    rule_authority: best_practice
+    sap_impact: >-
+      Succession chart shows unranked candidates. Priority order unknown for emergency
+      succession. Talent review discussions lack prioritisation data.
+    fix_map:
+      __blank__: >-
+        Assign a ranking (1 = primary successor, 2 = secondary, etc.) via the
+        succession planning module. Rankings should be unique per position.
+    record_fix_template: >-
+      Succession candidate {SUCCESSIONCANDIDATE.NOMINEE_ID} for position
+      {SUCCESSIONCANDIDATE.POSITION_ID}: RANKING is missing. Assign a priority ranking.
+
+  - id: SUC005
+    field: SUCCESSIONCANDIDATE.NOMINATED_DATE
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: "Nomination date is required to track when the candidate was added to the plan"
+    why_it_matters: >-
+      NOMINATED_DATE provides the audit trail for when a succession candidate was
+      identified. It is used to measure how long candidates have been in the pipeline
+      and whether readiness assessments are being updated regularly. Stale nominations
+      may indicate outdated succession plans.
+    rule_authority: best_practice
+    sap_impact: >-
+      Succession plan freshness cannot be assessed. Audit trail for nomination is
+      incomplete. Stale candidate detection is not possible.
+    fix_map:
+      __blank__: >-
+        Set the nomination date to when the candidate was originally nominated. Update
+        via the succession planning module. Format: YYYY-MM-DD.
+    record_fix_template: >-
+      Succession candidate {SUCCESSIONCANDIDATE.NOMINEE_ID} for position
+      {SUCCESSIONCANDIDATE.POSITION_ID}: NOMINATED_DATE is missing. Set via succession
+      planning module. Format: YYYY-MM-DD.
+
+  - id: SUC006
+    field: SUCCESSIONCANDIDATE.RISK_OF_LOSS
+    check_class: domain_value_check
+    allowed_values: ["high", "medium", "low"]
+    severity: medium
+    dimension: accuracy
+    message: "Risk of loss must be high, medium, or low"
+    why_it_matters: >-
+      RISK_OF_LOSS indicates the likelihood that the nominee will leave the organisation.
+      This is a critical data point for succession planning — a ready-now successor with
+      high risk of loss requires immediate retention action. Invalid values corrupt the
+      risk heatmap used in talent review sessions.
+    rule_authority: customer_configured
+    sap_impact: >-
+      Talent review risk heatmap shows incorrect data. Retention action plans cannot be
+      prioritised. High-risk successors may not receive retention interventions.
+    valid_values_with_labels:
+      "high": "High — significant risk of departure within 12 months"
+      "medium": "Medium — moderate risk, some retention concerns"
+      "low": "Low — stable, unlikely to leave in near term"
+    fix_map:
+      __blank__: >-
+        Assess the nominee's flight risk based on engagement survey data, market
+        conditions, and manager input. Set to high, medium, or low via the succession
+        planning module.
+      __other__: >-
+        Risk of loss '{invalid_value}' is not valid. Use high, medium, or low. Update
+        via the succession planning module.
+    record_fix_template: >-
+      Succession candidate {SUCCESSIONCANDIDATE.NOMINEE_ID}: RISK_OF_LOSS
+      '{actual_value}' is invalid. Set to high/medium/low.
+
+  - id: SUC007
+    field: SUCCESSIONCANDIDATE.IMPACT_OF_LOSS
+    check_class: domain_value_check
+    allowed_values: ["high", "medium", "low"]
+    severity: medium
+    dimension: accuracy
+    message: "Impact of loss must be high, medium, or low"
+    why_it_matters: >-
+      IMPACT_OF_LOSS measures the organisational impact if the nominee were to leave.
+      Combined with risk of loss, it forms the retention risk matrix used in talent
+      review sessions. Invalid values corrupt the matrix and may cause incorrect
+      prioritisation of retention efforts.
+    rule_authority: customer_configured
+    sap_impact: >-
+      Retention risk matrix shows incorrect data. Talent review sessions lack accurate
+      impact assessment. Retention budget allocation is uninformed.
+    valid_values_with_labels:
+      "high": "High — critical role, very difficult to replace"
+      "medium": "Medium — important role, replacement would take significant effort"
+      "low": "Low — role can be filled relatively quickly"
+    fix_map:
+      __blank__: >-
+        Assess the organisational impact if this nominee were to leave. Consider role
+        criticality, knowledge concentration, and replacement difficulty. Set to high,
+        medium, or low via the succession planning module.
+      __other__: >-
+        Impact of loss '{invalid_value}' is not valid. Use high, medium, or low. Update
+        via the succession planning module.
+    record_fix_template: >-
+      Succession candidate {SUCCESSIONCANDIDATE.NOMINEE_ID}: IMPACT_OF_LOSS
+      '{actual_value}' is invalid. Set to high/medium/low.
+
+  - id: SUC008
+    field: SUCCESSIONCANDIDATE.NOMINEE_ID
+    check_class: regex_check
+    pattern: "^[a-zA-Z0-9._@-]{1,100}$"
+    severity: high
+    dimension: validity
+    message: "Nominee ID must contain only valid characters matching Employee Central USERID format"
+    why_it_matters: >-
+      NOMINEE_ID must match the USERID format in Employee Central for the succession
+      plan to correctly link to the employee record. Invalid characters will prevent the
+      join, causing the nominee to appear as an unknown candidate in talent reviews.
+    rule_authority: best_practice
+    sap_impact: >-
+      Nominee cannot be resolved to an Employee Central record. Talent review shows
+      unknown candidate. Development plan assignment fails.
+    fix_map:
+      __other__: >-
+        Nominee ID '{invalid_value}' contains invalid characters. Must match Employee
+        Central USERID format. Correct via the succession planning module.
+    record_fix_template: >-
+      Succession candidate {SUCCESSIONCANDIDATE.NOMINEE_ID}: NOMINEE_ID format invalid
+      (value: {actual_value}). Correct to match Employee Central USERID format.
+
+  - id: SUC009
+    field: SUCCESSIONCANDIDATE.NOMINATED_DATE
+    check_class: regex_check
+    pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    severity: medium
+    dimension: validity
+    message: "Nomination date must be in YYYY-MM-DD format"
+    why_it_matters: >-
+      ISO 8601 date format is required for succession planning dates to enable correct
+      chronological sorting and freshness calculations. Non-standard formats cause
+      import errors and prevent stale nomination detection.
+    rule_authority: best_practice
+    sap_impact: >-
+      Succession plan import fails. Nomination freshness cannot be calculated.
+      Date-based reporting shows errors.
+    fix_map:
+      __other__: >-
+        Date format '{invalid_value}' is not ISO 8601. Convert to YYYY-MM-DD before
+        importing via the succession planning module.
+    record_fix_template: >-
+      Succession candidate {SUCCESSIONCANDIDATE.NOMINEE_ID}: NOMINATED_DATE format
+      invalid (value: {actual_value}). Convert to YYYY-MM-DD.
+
+  - id: SUC010
+    field: SUCCESSIONCANDIDATE.NOMINATED_DATE
+    check_class: freshness_check
+    max_age_hours: 17520
+    severity: low
+    dimension: timeliness
+    message: "Succession nomination is older than 2 years — readiness assessment may be stale"
+    why_it_matters: >-
+      Succession nominations older than 2 years likely have outdated readiness
+      assessments. The nominee's skills, role, and career aspirations may have changed
+      significantly, making the succession plan unreliable for emergency use.
+    rule_authority: best_practice
+    sap_impact: >-
+      Succession plan may be based on outdated information. Emergency succession may
+      activate an unprepared or unwilling candidate. Talent review uses stale data.
+    fix_map:
+      __blank__: >-
+        Review and update the succession nomination. Reassess readiness, risk of loss,
+        and impact of loss. If the nominee is no longer suitable, replace with a current
+        candidate. Update via the succession planning module.
+    record_fix_template: >-
+      Succession candidate {SUCCESSIONCANDIDATE.NOMINEE_ID} for position
+      {SUCCESSIONCANDIDATE.POSITION_ID}: nomination is over 2 years old. Review and
+      update readiness assessment.
+
+  - id: SUC011
+    field: NOMINEE_ID
+    check_class: cross_field_check
+    fields: ['NOMINEE_ID']
+    condition: "~`NOMINEE_ID`.duplicated(keep=False)"
+    severity: medium
+    dimension: uniqueness
+    message: Duplicate succession nominations detected — same nominee appears multiple times for same position
+    why_it_matters: Duplicate nominations inflate the succession bench strength and distort readiness reporting. Each nominee should appear once per position.
+    rule_authority: best_practice
+    sap_impact: Bench strength reports are overstated. Talent review calibration is skewed. Development plan resources are wasted on duplicates.
+    fix_map:
+      __blank__: "Review duplicate nominations in Succession > Talent Pool. Remove the duplicate entry and verify readiness rating on the surviving record."

@@ -1,0 +1,634 @@
+module: sd_sales_orders
+target_state: ECC_AND_S4HANA
+rules:
+- id: SDSO001
+  field: VBAK.VBELN
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: "Sales order number is mandatory \u2014 primary key for all SD order transactions"
+  why_it_matters: VBELN is the sales order document number and primary key for all order processing. Without it, no deliveries
+    (VL01N), billing documents (VF01), or order status tracking can be maintained. The record is orphaned from the entire
+    order-to-cash cycle.
+  rule_authority: sap_hard_constraint
+  sap_impact: Sales order cannot be referenced in VL01N, VF01, or any SD workflow. Delivery creation and billing are impossible.
+    The record is orphaned.
+  fix_map:
+    __blank__: "Sales order number is empty. This record cannot exist without VBELN. Investigate the data source \u2014 this\
+      \ is likely a data load error. In ECC: create a valid order via VA01. In S/4HANA: use Fiori app F6588 (Create Sales\
+      \ Order) or correct the source data."
+  record_fix_template: 'SO {VBAK.VBELN}: VBELN is {actual_value}. Create a valid sales order via VA01 (ECC) or Fiori app F6588
+    (S/4HANA).'
+- id: SDSO002
+  field: VBAK.KUNNR
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: "Sold-to customer is mandatory \u2014 required for billing and AR posting"
+  why_it_matters: KUNNR (sold-to party) is the customer who ordered the goods and to whom the invoice is addressed. Without
+    it, billing cannot be created, AR postings cannot be generated, and the order has no commercial counterparty. This is
+    a mandatory field enforced by SAP at order creation time.
+  rule_authority: sap_hard_constraint
+  sap_impact: "Billing document (VF01) cannot be created \u2014 no sold-to party for the invoice. AR posting has no customer\
+    \ to debit. Revenue recognition is impossible."
+  fix_map:
+    __blank__: 'Sold-to customer is empty. In ECC: assign the correct customer number via VA02 > Header > Partners tab. In
+      S/4HANA: use Fiori app F6588 or VA02. The customer must exist and have a valid sales area.'
+  record_fix_template: 'SO {VBAK.VBELN}: KUNNR is {actual_value}. Assign the sold-to customer via VA02 > Header > Partners
+    tab or Fiori app F6588.'
+- id: SDSO003
+  field: VBAK.AUART
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: "Sales document type is mandatory \u2014 controls entire order processing flow"
+  why_it_matters: 'AUART (sales document type) determines the entire processing behaviour of the order: number range, item
+    category determination, delivery type, billing type, and copy control. Without it, SAP cannot determine how to process
+    the order through delivery, billing, or returns.'
+  rule_authority: sap_hard_constraint
+  sap_impact: Order processing flow is undefined. Item category determination, delivery type, and billing type all fail. The
+    order is stuck and cannot progress through the order-to-cash cycle.
+  fix_map:
+    __blank__: 'Sales document type is empty. In ECC: set via VA02 or recreate via VA01 with the correct document type. In
+      S/4HANA: use Fiori app F6588. Common types: OR (standard order), SO (rush order), RE (return).'
+  record_fix_template: 'SO {VBAK.VBELN}: AUART is {actual_value}. Set the document type via VA02 or Fiori app F6588.'
+- id: SDSO004
+  field: VBAK.AUART
+  check_class: domain_value_check
+  allowed_values:
+  - OR
+  - SO
+  - ZOR
+  - RE
+  - CR
+  - DR
+  - RO
+  severity: high
+  dimension: validity
+  message: Sales document type must be a valid SD document type code
+  why_it_matters: AUART must be one of the configured sales document types. Invalid values prevent item category determination
+    (VOV4/VOV5), delivery type determination, and billing type assignment. The order cannot be processed through any standard
+    SD workflow.
+  rule_authority: sap_hard_constraint
+  sap_impact: Item category determination fails. Delivery and billing types cannot be resolved. Copy control for subsequent
+    documents is not configured for the invalid type.
+  valid_values_with_labels:
+    OR: "Standard Order \u2014 normal sales order"
+    SO: "Rush Order \u2014 expedited processing"
+    ZOR: "Custom Standard Order \u2014 company-specific variant"
+    RE: "Return \u2014 customer return of goods"
+    CR: Credit Memo Request
+    DR: Debit Memo Request
+    RO: "Return Order \u2014 with reference to billing"
+  fix_map:
+    __other__: 'Sales document type ''{invalid_value}'' is not a recognised value. Valid types: OR (standard), SO (rush),
+      ZOR (custom standard), RE (return), CR (credit memo), DR (debit memo), RO (return order). In ECC: correct via VA02 or
+      recreate via VA01. In S/4HANA: use Fiori app F6588.'
+  record_fix_template: 'SO {VBAK.VBELN}: AUART is ''{actual_value}''. Set to a valid document type via VA02 or Fiori app F6588.'
+- id: SDSO005
+  field: VBAK.VKORG
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: "Sales organisation is mandatory \u2014 determines pricing, output, and org context"
+  why_it_matters: VKORG (sales organisation) on the order header determines which pricing conditions, output types, and organisational
+    settings apply. Without it, the order has no organisational context and cannot be processed through any SD workflow. It
+    is part of the sales area (VKORG/VTWEG/SPART).
+  rule_authority: sap_hard_constraint
+  sap_impact: "Order cannot be processed \u2014 no sales area context. Pricing, output determination, and delivery plant determination\
+    \ all fail. The order is stuck in an incomplete state."
+  fix_map:
+    __blank__: 'Sales organisation is empty. In ECC: verify the customer master has a valid sales area and recreate the order
+      via VA01. In S/4HANA: use Fiori app F6588. This is typically set automatically from the customer''s sales area.'
+  record_fix_template: 'SO {VBAK.VBELN}: VKORG is {actual_value}. Verify the customer''s sales area and correct via VA02 or
+    Fiori app F6588.'
+- id: SDSO006
+  field: VBAK.VTWEG
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: "Distribution channel is mandatory \u2014 part of the sales area key"
+  why_it_matters: VTWEG (distribution channel) is part of the three-part sales area key (VKORG/VTWEG/SPART). It determines
+    which pricing conditions, customer agreements, and material listings apply. Without it, the sales area is incomplete and
+    the order cannot be processed.
+  rule_authority: sap_hard_constraint
+  sap_impact: Sales area is incomplete. Pricing condition records cannot be found. Customer-material info records are not
+    accessible. Output determination fails.
+  fix_map:
+    __blank__: 'Distribution channel is empty. In ECC: set via VA02 or recreate via VA01 with a valid sales area. In S/4HANA:
+      use Fiori app F6588. The distribution channel must be assigned to the sales organisation in the enterprise structure.'
+  record_fix_template: 'SO {VBAK.VBELN}: VTWEG is {actual_value}. Set the distribution channel via VA02 or Fiori app F6588.'
+- id: SDSO007
+  field: VBAK.SPART
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: "Division is mandatory \u2014 part of the sales area key"
+  why_it_matters: SPART (division) is the third part of the sales area key (VKORG/VTWEG/SPART). It enables product-line specific
+    configuration for pricing, output, and partner determination. Without it, the sales area is incomplete and the order cannot
+    be processed through standard SD flows.
+  rule_authority: sap_hard_constraint
+  sap_impact: Sales area is incomplete. Pricing and output determination fail. Partner determination rules cannot resolve.
+    The order is stuck.
+  fix_map:
+    __blank__: 'Division is empty. In ECC: set via VA02 or recreate via VA01 with a valid sales area. In S/4HANA: use Fiori
+      app F6588. The division must be assigned to the sales organisation in the enterprise structure.'
+  record_fix_template: 'SO {VBAK.VBELN}: SPART is {actual_value}. Set the division via VA02 or Fiori app F6588.'
+- id: SDSO008
+  field: VBAK.WAERK
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: "Currency code missing \u2014 all order values are meaningless without currency"
+  why_it_matters: WAERK (document currency) defines the currency for all monetary values on the sales order. Without it, prices
+    and totals have no currency context, exchange rate determination fails in billing, and financial postings cannot be generated.
+    This is inherited from the customer master or sales organisation.
+  rule_authority: sap_hard_constraint
+  sap_impact: Order values have no currency context. Billing document (VF01) cannot determine exchange rates. Financial postings
+    generate errors. Revenue reporting by currency is inaccurate.
+  fix_map:
+    __blank__: 'Currency code is empty. In ECC: set the correct ISO currency code via VA02 > Header > Sales tab. In S/4HANA:
+      use Fiori app F6588 or VA02. This is typically inherited from the customer master or sales organisation.'
+  record_fix_template: 'SO {VBAK.VBELN}: WAERK is {actual_value}. Set the currency code via VA02 > Header > Sales tab or Fiori
+    app F6588.'
+- id: SDSO009
+  field: VBAK.ERDAT
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: "Order creation date missing \u2014 affects order aging and reporting"
+  why_it_matters: ERDAT (creation date) records when the sales order was created. Without it, order aging analysis, backlog
+    reporting by period, and SLA tracking cannot include this order. It is also used for credit management date checks and
+    order history queries.
+  rule_authority: best_practice
+  sap_impact: Order aging reports are inaccurate. Backlog analysis by period excludes this order. Credit management date-based
+    checks may fail. VA05 (list of sales orders) cannot filter by creation date.
+  fix_map:
+    __blank__: "Creation date is empty. In ECC: this is normally set automatically by VA01. If missing, it indicates a data\
+      \ load issue \u2014 correct in the source data. In S/4HANA: verify via Fiori app F6588."
+  record_fix_template: "SO {VBAK.VBELN}: ERDAT is {actual_value}. Investigate the data source \u2014 creation date should\
+    \ be set automatically."
+- id: SDSO010
+  field: VBAK.VDATU
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: "Requested delivery date missing \u2014 delivery scheduling cannot be performed"
+  why_it_matters: VDATU (requested delivery date) is the customer's desired delivery date. It drives delivery scheduling,
+    ATP check, and route determination. Without it, the system cannot schedule the delivery and the order may never appear
+    on the delivery due list (VL04).
+  rule_authority: best_practice
+  sap_impact: Delivery scheduling cannot determine a delivery date. ATP check (CO09) has no target date. VL04 delivery due
+    list may not pick up this order. Customer service level tracking is impossible.
+  fix_map:
+    __blank__: 'Requested delivery date is empty. In ECC: set via VA02 > Header > Shipping tab. In S/4HANA: use Fiori app
+      F6588. Obtain the date from the customer purchase order or commercial agreement.'
+  record_fix_template: 'SO {VBAK.VBELN}: VDATU is {actual_value}. Set the requested delivery date via VA02 > Shipping tab
+    or Fiori app F6588.'
+- id: SDSO011
+  field: VBAK.NETWR
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: "Order net value is zero or missing \u2014 order has no financial value"
+  why_it_matters: NETWR at the header level is the total net value of the sales order. Zero or blank indicates either all
+    line items are free of charge or pricing has not been determined. This affects revenue reporting, credit exposure calculation,
+    and order value-based approvals.
+  rule_authority: best_practice
+  sap_impact: Revenue forecast shows zero for this order. Credit exposure (FD32) is understated. Order value-based release
+    strategies do not trigger. Sales reporting by value is incorrect.
+  fix_map:
+    __blank__: 'Order net value is zero or blank. In ECC: check pricing conditions via VA02 > Conditions tab at header and
+      item level. In S/4HANA: use Fiori app F6588. Verify condition records exist for the material/customer combination.'
+  record_fix_template: 'SO {VBAK.VBELN}: NETWR is {actual_value}. Review pricing conditions via VA02 > Conditions tab or Fiori
+    app F6588.'
+- id: SDSO012
+  field: VBAK.BSTNK
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: "Customer PO number missing \u2014 external reference for order tracking"
+  why_it_matters: BSTNK (customer purchase order number) is the customer's external reference for the sales order. Without
+    it, customer enquiries about order status cannot be matched, invoice verification on the customer side is difficult, and
+    audit trails between customer and supplier systems are broken.
+  rule_authority: best_practice
+  sap_impact: Customer order reference is missing. VA05 search by PO number returns nothing. Customer-side invoice verification
+    is delayed. Dispute resolution lacks the cross-reference.
+  fix_map:
+    __blank__: 'Customer PO number is empty. In ECC: enter via VA02 > Header > PO Number field. In S/4HANA: use Fiori app
+      F6588. Obtain from the customer''s purchase order document.'
+  record_fix_template: 'SO {VBAK.VBELN}: BSTNK is {actual_value}. Enter the customer PO number via VA02 or Fiori app F6588.'
+- id: SDSO013
+  field: VBAK.LIFSK
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - '01'
+  - '02'
+  - ZL
+  - ZC
+  severity: medium
+  dimension: validity
+  message: Delivery block must be a valid code or blank (unblocked)
+  why_it_matters: "LIFSK (delivery block) controls whether the order can proceed to delivery. Invalid block codes cause processing\
+    \ errors \u2014 the system cannot determine how to handle the block and the order may be stuck in an undefined state with\
+    \ no valid release path configured."
+  rule_authority: best_practice
+  sap_impact: Invalid delivery block code causes errors in delivery creation (VL01N). Order may be permanently blocked with
+    no valid release path. Delivery due list (VL04) cannot process the order.
+  valid_values_with_labels:
+    ? ''
+    : "No block \u2014 order is free for delivery"
+    '01': "Credit block \u2014 pending credit check release"
+    '02': "General delivery block \u2014 manual release required"
+    ZL: "Custom logistics block \u2014 warehouse approval required"
+    ZC: "Custom compliance block \u2014 export control review"
+  fix_map:
+    __other__: 'Delivery block code ''{invalid_value}'' is not a recognised value. Valid codes: blank (no block), 01 (credit
+      block), 02 (general block), ZL (logistics block), ZC (compliance block). In ECC: correct via VA02 > Header > Shipping
+      tab. In S/4HANA: use VA02 or Fiori app F6588.'
+  record_fix_template: 'SO {VBAK.VBELN}: LIFSK is ''{actual_value}''. Set to a valid delivery block code or blank via VA02
+    > Shipping tab or Fiori app F6588.'
+- id: SDSO014
+  field: VBAK.FAKSK
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - '01'
+  - '02'
+  - ZB
+  - ZF
+  severity: medium
+  dimension: validity
+  message: Billing block must be a valid code or blank (unblocked)
+  why_it_matters: FAKSK (billing block) prevents the order from being billed. Invalid block codes mean the billing due list
+    (VF04) cannot process the order and there is no configured release workflow for the invalid code. Revenue recognition
+    is delayed indefinitely.
+  rule_authority: best_practice
+  sap_impact: Billing document (VF01) cannot be created. VF04 billing due list skips the order. Revenue recognition is delayed.
+    AR posting is not generated.
+  valid_values_with_labels:
+    ? ''
+    : "No block \u2014 order is free for billing"
+    '01': "General billing block \u2014 manual release required"
+    '02': "Price verification block \u2014 pricing must be confirmed"
+    ZB: "Custom billing block \u2014 finance approval required"
+    ZF: "Custom block \u2014 free of charge confirmation needed"
+  fix_map:
+    __other__: 'Billing block code ''{invalid_value}'' is not a recognised value. Valid codes: blank (no block), 01 (general),
+      02 (price verification), ZB (finance approval), ZF (FOC confirmation). In ECC: correct via VA02 > Header > Billing tab.
+      In S/4HANA: use VA02 or Fiori app F6588.'
+  record_fix_template: 'SO {VBAK.VBELN}: FAKSK is ''{actual_value}''. Set to a valid billing block code or blank via VA02
+    > Billing tab or Fiori app F6588.'
+- id: SDSO015
+  field: VBAP.MATNR
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: "Material number missing \u2014 order line cannot be matched to inventory"
+  why_it_matters: MATNR on a sales order line links the order to the material master. Without it, availability check (ATP)
+    cannot be performed, delivery cannot pick stock, and the line cannot be properly priced from condition records. For service
+    items, material may be intentionally blank.
+  rule_authority: sap_hard_constraint
+  sap_impact: ATP check (CO09) cannot be performed. Delivery (VL01N) cannot pick stock. Material-based pricing conditions
+    are not found. The line may be skipped in delivery processing.
+  fix_map:
+    __blank__: "Material number is empty. In ECC: assign the correct material via VA02 > Item > Material field. In S/4HANA:\
+      \ use Fiori app F6588. For service items, material may be intentionally blank \u2014 verify the item category (PSTYV)."
+  record_fix_template: 'SO {VBAK.VBELN} item {VBAP.POSNR}: MATNR is {actual_value}. Assign the material number via VA02 or
+    Fiori app F6588 if this is a stock item.'
+- id: SDSO016
+  field: VBAP.MATNR
+  check_class: regex_check
+  pattern: ^[A-Z0-9\-_/\.]{1,40}$
+  severity: high
+  dimension: validity
+  message: "Material number format is invalid \u2014 must be alphanumeric up to 40 characters"
+  why_it_matters: In S/4HANA, material numbers are extended to 40 characters and must follow the alphanumeric format. Invalid
+    characters or excessively long material numbers cause errors in order processing, delivery creation, and billing. Leading
+    zeros are managed by conversion exits.
+  rule_authority: sap_hard_constraint
+  sap_impact: Material cannot be found in the material master (MM03). Order line processing fails. Delivery and billing reference
+    an invalid material.
+  fix_map:
+    __other__: 'Material number ''{invalid_value}'' does not match the required format. Must be alphanumeric (A-Z, 0-9, hyphens,
+      underscores, slashes, dots), up to 40 characters. In ECC: correct via VA02. In S/4HANA: use Fiori app F6588. Verify
+      the material exists in MM03.'
+  record_fix_template: 'SO {VBAK.VBELN} item {VBAP.POSNR}: MATNR ''{actual_value}'' is invalid. Correct the material number
+    format via VA02 or Fiori app F6588.'
+- id: SDSO017
+  field: VBAP.KWMENG
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: "Order quantity is mandatory \u2014 zero means order line cannot be delivered or invoiced"
+  why_it_matters: "KWMENG is the cumulative order quantity on the sales order line. Zero or blank means no delivery can be\
+    \ created and no billing document can be generated. The line is effectively dead \u2014 it appears on the order but produces\
+    \ no output through the order-to-cash cycle."
+  rule_authority: sap_hard_constraint
+  sap_impact: Delivery (VL01N) creates no delivery quantity. Billing (VF01) has no quantity to invoice. Revenue is zero. Backlog
+    reporting is incorrect.
+  fix_map:
+    __blank__: 'Order quantity is zero or blank. In ECC: set the correct quantity via VA02 > Item > Quantity field. In S/4HANA:
+      use Fiori app F6588. Verify the sales unit of measure (VRKME) is also correct.'
+  record_fix_template: 'SO {VBAK.VBELN} item {VBAP.POSNR}: KWMENG is {actual_value}. Set the correct order quantity via VA02
+    or Fiori app F6588.'
+- id: SDSO018
+  field: VBAP.NETWR
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: "Item net value missing \u2014 order line has no financial value"
+  why_it_matters: "NETWR at the item level is the net value after all pricing conditions are applied. Zero or blank means\
+    \ the line has no revenue value \u2014 billing will produce a zero-value invoice line and revenue recognition records\
+    \ nothing for this item."
+  rule_authority: sap_hard_constraint
+  sap_impact: Billing document (VF01) shows zero value for this line. Revenue recognition is zero. Profitability analysis
+    (CO-PA) records no contribution. Sales reporting understates revenue.
+  fix_map:
+    __blank__: 'Net value is zero or blank. In ECC: check pricing conditions via VA02 > Item > Conditions tab. In S/4HANA:
+      use Fiori app F6588. Verify the pricing procedure is assigned and condition records exist.'
+  record_fix_template: 'SO {VBAK.VBELN} item {VBAP.POSNR}: NETWR is {actual_value}. Review pricing conditions via VA02 > Conditions
+    tab or Fiori app F6588.'
+- id: SDSO019
+  field: VBAP.PSTYV
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: "Item category missing \u2014 controls delivery, billing, and revenue relevance"
+  why_it_matters: "PSTYV (item category) controls whether the order line is relevant for delivery, billing, and revenue recognition.\
+    \ Missing means the line's processing behaviour is undefined \u2014 it may be skipped entirely in delivery and billing\
+    \ processing."
+  rule_authority: sap_hard_constraint
+  sap_impact: "Delivery relevance is undefined \u2014 VL01N may skip this line. Billing relevance is undefined \u2014 VF01\
+    \ may not invoice it. Revenue recognition and CO-PA posting may be incorrect."
+  fix_map:
+    __blank__: 'Item category is empty. This is normally determined automatically from the sales document type, item category
+      group, and usage. In ECC: check VOV4/VOV5 configuration and the material master. In S/4HANA: verify via Fiori app F6588.
+      Set manually via VA02 if needed.'
+  record_fix_template: 'SO {VBAK.VBELN} item {VBAP.POSNR}: PSTYV is {actual_value}. Verify item category determination and
+    correct via VA02 or Fiori app F6588.'
+- id: SDSO020
+  field: VBAP.PSTYV
+  check_class: domain_value_check
+  allowed_values:
+  - TAN
+  - TAX
+  - TAPS
+  - TAB
+  - TAC
+  - TAD
+  - TAS
+  severity: high
+  dimension: validity
+  message: Item category must be a valid SD item category code
+  why_it_matters: "PSTYV must be a configured item category that determines delivery relevance, billing relevance, pricing,\
+    \ and schedule line category determination. Invalid values cause the entire item processing logic to fail \u2014 no delivery,\
+    \ no billing, no revenue posting."
+  rule_authority: sap_hard_constraint
+  sap_impact: Item processing logic is undefined. Delivery and billing relevance cannot be determined. Schedule line category
+    determination fails.
+  valid_values_with_labels:
+    TAN: "Standard Item \u2014 delivery and billing relevant"
+    TAX: "Text Item \u2014 no delivery, no billing"
+    TAPS: "Sub-Item \u2014 subordinate to a main item"
+    TAB: "Individual Purchase Order \u2014 third-party processing"
+    TAC: "Cash Sale Item \u2014 immediate delivery and billing"
+    TAD: "Service Item \u2014 no delivery, billing relevant"
+    TAS: "Third-Party Item \u2014 shipped directly by vendor"
+  fix_map:
+    __other__: 'Item category ''{invalid_value}'' is not a recognised value. Valid categories: TAN (standard), TAX (text),
+      TAPS (sub-item), TAB (individual PO), TAC (cash sale), TAD (service), TAS (third-party). In ECC: correct via VA02. In
+      S/4HANA: use Fiori app F6588.'
+  record_fix_template: 'SO {VBAK.VBELN} item {VBAP.POSNR}: PSTYV is ''{actual_value}''. Set to a valid item category via VA02
+    or Fiori app F6588.'
+- id: SDSO021
+  field: VBAP.WERKS
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: "Delivering plant missing \u2014 delivery cannot determine source of goods"
+  why_it_matters: WERKS (delivering plant) on the order item determines where goods are shipped from. Without it, delivery
+    creation (VL01N) cannot determine the source plant, warehouse, or storage location. ATP check also requires a plant to
+    check available stock.
+  rule_authority: sap_hard_constraint
+  sap_impact: Delivery (VL01N) cannot determine the source plant. ATP check cannot verify stock availability. Picking and
+    shipping cannot be executed. The item is stuck in the order.
+  fix_map:
+    __blank__: 'Delivering plant is empty. In ECC: assign the correct plant via VA02 > Item > Shipping tab. In S/4HANA: use
+      Fiori app F6588. The plant is normally determined from the customer-material info record or customer master.'
+  record_fix_template: 'SO {VBAK.VBELN} item {VBAP.POSNR}: WERKS is {actual_value}. Assign the delivering plant via VA02 >
+    Shipping tab or Fiori app F6588.'
+- id: SDSO022
+  field: VBAP.VRKME
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: "Sales unit of measure missing \u2014 quantity has no unit context"
+  why_it_matters: VRKME (sales unit of measure) defines the unit in which the order quantity is expressed. Without it, quantity
+    conversion between sales and base units cannot be performed, and the delivery quantity may be incorrectly calculated if
+    the sales UoM differs from the base UoM.
+  rule_authority: best_practice
+  sap_impact: Quantity conversion fails if sales UoM differs from base UoM. Delivery quantity may be incorrect. Billing quantity
+    is ambiguous.
+  fix_map:
+    __blank__: 'Sales unit of measure is empty. In ECC: set via VA02 > Item > Sales Unit field. In S/4HANA: use Fiori app
+      F6588. This is normally inherited from the material master.'
+  record_fix_template: 'SO {VBAK.VBELN} item {VBAP.POSNR}: VRKME is {actual_value}. Set the sales unit via VA02 or Fiori app
+    F6588.'
+- id: SDSO023
+  field: VBAK.VBELN
+  check_class: regex_check
+  pattern: ^[0-9]{1,10}$
+  severity: high
+  dimension: validity
+  message: Sales order number must be numeric, up to 10 digits
+  why_it_matters: Sales order numbers in SAP must be numeric and up to 10 digits. Non-numeric or oversized values indicate
+    data corruption or incorrect data loading. Such values cannot be used as foreign keys in delivery (LIKP.VGBEL) or billing
+    (VBRK.AUBEL) documents.
+  rule_authority: sap_hard_constraint
+  sap_impact: Foreign key references from delivery and billing documents fail. Order status tracking across the document flow
+    is broken.
+  fix_map:
+    __other__: "Sales order number '{invalid_value}' does not match the required numeric format (up to 10 digits). In ECC:\
+      \ this indicates data corruption \u2014 recreate the order via VA01. In S/4HANA: use Fiori app F6588. Verify number\
+      \ range configuration in SNRO."
+  record_fix_template: 'SO {VBAK.VBELN}: VBELN ''{actual_value}'' is not valid. Must be numeric, up to 10 digits. Recreate
+    via VA01 or Fiori app F6588.'
+- id: SDSO024
+  field: VBAP.ABGRU
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: "Rejection reason missing on rejected order item \u2014 incomplete rejection documentation"
+  why_it_matters: When a sales order item or the entire order is rejected (ABSTK indicates rejection), ABGRU (rejection reason)
+    should document why. Without it, rejection analysis reports are incomplete, lost-sales reporting is inaccurate, and audit
+    trails for cancelled orders are missing.
+  rule_authority: best_practice
+  sap_impact: Rejection reason reports (VA05) show blank reasons. Lost-sales analysis is incomplete. Audit documentation for
+    cancelled orders is missing.
+  fix_map:
+    __blank__: 'Rejection reason is empty on a rejected item. In ECC: set the reason via VA02 > Item > Reason for Rejection
+      field. In S/4HANA: use Fiori app F6588. Common reasons: 01 (too expensive), 02 (delivery too late), 03 (poor quality).'
+  record_fix_template: 'SO {VBAK.VBELN} item {VBAP.POSNR}: ABGRU is {actual_value} but item appears rejected. Set the rejection
+    reason via VA02 or Fiori app F6588.'
+- id: SDSO025
+  field: VBAK.ABSTK
+  fields:
+  - VBAK.ABSTK
+  - VBAP.ABGRU
+  check_class: cross_field_check
+  condition: '`VBAK.ABSTK` != '''' and `VBAK.ABSTK`.notna() and (`VBAP.ABGRU`.isna() or `VBAP.ABGRU` == '''')'
+  severity: high
+  dimension: consistency
+  message: Order has rejection status but line items have no rejection reason
+  why_it_matters: When the overall rejection status (ABSTK) indicates the order is rejected but individual line items have
+    no rejection reason (ABGRU), there is an inconsistency. Every rejected order should have documented rejection reasons
+    at the item level for proper rejection analysis and audit compliance.
+  rule_authority: best_practice
+  sap_impact: "Rejection analysis is inconsistent \u2014 header says rejected but items show no reason. VA05 rejection reports\
+    \ are incomplete. Lost-sales KPIs are unreliable."
+  fix_map:
+    __blank__: 'Order rejection status (ABSTK) is set but item rejection reason (ABGRU) is blank. In ECC: set the rejection
+      reason on each item via VA02 > Item > Reason for Rejection. In S/4HANA: use Fiori app F6588.'
+  record_fix_template: 'SO {VBAK.VBELN}: ABSTK is ''{actual_value}'' but ABGRU is blank. Set the rejection reason on each
+    item via VA02 or Fiori app F6588.'
+- id: SDSO026
+  field: VBAP.ROUTE
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: "Route missing \u2014 shipping scheduling and freight cost determination affected"
+  why_it_matters: ROUTE determines the transportation route for shipping scheduling, transit time calculation, and freight
+    cost determination. Without it, delivery scheduling uses default lead times and freight costs cannot be automatically
+    calculated from the route-based condition records.
+  rule_authority: best_practice
+  sap_impact: Shipping scheduling uses default transit times instead of route-specific values. Freight cost determination
+    from condition records fails. Transportation planning is less accurate.
+  fix_map:
+    __blank__: 'Route is empty. In ECC: set via VA02 > Item > Shipping tab > Route field. In S/4HANA: use Fiori app F6588.
+      Route is normally determined automatically from the shipping point, destination country, and transportation group.'
+  record_fix_template: 'SO {VBAK.VBELN} item {VBAP.POSNR}: ROUTE is {actual_value}. Set the route via VA02 > Shipping tab
+    or Fiori app F6588.'
+- id: SDSO027
+  field: VBAK.ERNAM
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: "Created-by user missing \u2014 audit trail for order creation is incomplete"
+  why_it_matters: "ERNAM records the user who created the sales order. Without it, audit trails are incomplete \u2014 it is\
+    \ impossible to determine who created the order for segregation of duties checks, fraud investigation, or process compliance."
+  rule_authority: best_practice
+  sap_impact: Audit trail is incomplete. Segregation of duties analysis cannot identify the order creator. VA05 search by
+    created-by user returns nothing for this order.
+  fix_map:
+    __blank__: "Created-by user is empty. This is normally set automatically by SAP at order creation time. If missing, it\
+      \ indicates a data load issue \u2014 this field cannot be manually set. Document the gap in the data migration log."
+  record_fix_template: "SO {VBAK.VBELN}: ERNAM is {actual_value}. This field is system-set \u2014 investigate the data source\
+    \ for the missing audit trail."
+- id: SDSO028
+  field: VBAK.GBSTK
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Overall status is missing
+  why_it_matters: Overall status (VBAK.GBSTK) is not maintained. This field supports downstream processes and reporting accuracy.
+    Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Overall status may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via VA02. In S/4HANA: Use Fiori app F6588 (Create Sales Order).'
+  record_fix_template: 'Record is missing VBAK.GBSTK. In ECC: Set via VA02. In S/4HANA: Use Fiori app F6588 (Create Sales
+    Order).'
+- id: SDSO029
+  field: VBAP.ARKTX
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Item description is missing
+  why_it_matters: Item description (VBAP.ARKTX) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Item description may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via VA02. In S/4HANA: Use Fiori app F6588 (Create Sales Order).'
+  record_fix_template: 'Record is missing VBAP.ARKTX. In ECC: Set via VA02. In S/4HANA: Use Fiori app F6588 (Create Sales
+    Order).'
+- id: SDSO030
+  field: VBAP.FKSAA
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Billing status is missing
+  why_it_matters: Billing status (VBAP.FKSAA) is not maintained. This field supports downstream processes and reporting accuracy.
+    Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Billing status may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via VA02. In S/4HANA: Use Fiori app F6588 (Create Sales Order).'
+  record_fix_template: 'Record is missing VBAP.FKSAA. In ECC: Set via VA02. In S/4HANA: Use Fiori app F6588 (Create Sales
+    Order).'
+- id: SDSO031
+  field: VBAP.LFGSA
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Delivery status is missing
+  why_it_matters: Delivery status (VBAP.LFGSA) is not maintained. This field supports downstream processes and reporting accuracy.
+    Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Delivery status may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via VA02. In S/4HANA: Use Fiori app F6588 (Create Sales Order).'
+  record_fix_template: 'Record is missing VBAP.LFGSA. In ECC: Set via VA02. In S/4HANA: Use Fiori app F6588 (Create Sales
+    Order).'
+- id: SDSO032
+  field: VBAP.POSNR
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Item number is missing
+  why_it_matters: Item number (VBAP.POSNR) is not maintained. This field supports downstream processes and reporting accuracy.
+    Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Item number may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via VA02. In S/4HANA: Use Fiori app F6588 (Create Sales Order).'
+  record_fix_template: 'Record is missing VBAP.POSNR. In ECC: Set via VA02. In S/4HANA: Use Fiori app F6588 (Create Sales
+    Order).'
+- id: SDSO033
+  field: VBAK.VBELN
+  check_class: cross_field_check
+  fields: ['VBAK.VBELN']
+  condition: "~`VBAK.VBELN`.duplicated(keep=False)"
+  severity: critical
+  dimension: uniqueness
+  message: Duplicate sales order numbers detected — each sales order must be unique
+  why_it_matters: Duplicate sales order numbers indicate a data extract issue (e.g. header-item join). Each VBELN must be unique at header level. Duplicates distort order volume reports and revenue analytics.
+  rule_authority: sap_hard_constraint
+  sap_impact: Order volume and revenue reports are overstated. Delivery creation references ambiguous orders. Billing may process the same order twice.
+  fix_map:
+    __blank__: "This is typically a data extract issue — ensure the extract is at header level (VBAK) not header-item (VBAK+VBAP). If genuine duplicates exist, escalate to Basis."
+
+- id: SDSO034
+  field: VBAK.ERDAT_SO
+  check_class: freshness_check
+  max_age_hours: 8760
+  severity: medium
+  dimension: timeliness
+  message: Sales order older than 1 year — open orders older than 12 months should be reviewed for closure or rejection
+  rule_authority: best_practice
+
+- id: SDSO035
+  field: VBAP.KWMENG
+  check_class: cross_field_check
+  fields: ['VBAP.KWMENG']
+  condition: "`VBAP.KWMENG`.notna() & (`VBAP.KWMENG` > 0)"
+  severity: high
+  dimension: accuracy
+  message: Sales order line has zero or negative order quantity — indicates configuration or entry error
+  why_it_matters: Zero or negative quantities on sales order lines cause delivery creation failures, incorrect revenue recognition, and pricing errors.
+  rule_authority: best_practice
+  sap_impact: Delivery cannot be created for zero-quantity line. Revenue is not recognised. Pricing conditions produce zero or negative amounts.
+  fix_map:
+    __blank__: "Review the order line via VA02. If a returns order is intended, use the correct order type (RE). If data error, correct the quantity."

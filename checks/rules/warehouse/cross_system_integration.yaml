@@ -1,0 +1,318 @@
+module: cross_system_integration
+target_state: ECC_AND_S4HANA
+rules:
+
+  - id: XSYS001
+    field: MATNR
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Material number is mandatory for cross-system material data consistency"
+    why_it_matters: >-
+      MATNR is the primary identifier for materials across all integrated SAP systems
+      (ECC, S/4HANA, MDG, Ariba, EWM). Without it, cross-system reconciliation cannot
+      identify the material, procurement matching fails, and inventory is fragmented
+      across systems.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Cross-system material reconciliation impossible. Procurement matching fails.
+      Inventory fragmented across different identifiers.
+    fix_map:
+      __blank__: >-
+        In ECC: assign material number via MM01/MM02. In S/4HANA: use Fiori app F0842
+        (Manage Product Master Data). Ensure the number format matches across all
+        integrated systems.
+    record_fix_template: >-
+      Cross-system record: MATNR is {actual_value}. Assign a consistent material number
+      via MM02 (ECC) or Fiori app F0842 (S/4HANA).
+
+  - id: XSYS002
+    field: MATNR
+    check_class: regex_check
+    pattern: "^[A-Z0-9\\-_/\\.]{1,40}$"
+    severity: high
+    dimension: validity
+    message: "Material number must conform to S/4HANA extended format for cross-system compatibility"
+    why_it_matters: >-
+      In S/4HANA, MATNR has been extended to 40 characters. For cross-system consistency,
+      all integrated systems must use the same format. Non-conforming values will cause
+      lookup failures during integration, goods receipt matching, and inventory reconciliation.
+    rule_authority: best_practice
+    sap_impact: >-
+      Cross-system material lookup fails. Integration middleware rejects non-standard
+      formats. Goods receipt matching cannot find the material.
+    fix_map:
+      __other__: >-
+        Material number '{invalid_value}' does not match the expected format. In ECC:
+        correct via MM02. In S/4HANA: use Fiori app F0842. Ensure format is consistent
+        across all integrated systems.
+    record_fix_template: >-
+      Cross-system record: MATNR '{actual_value}' has non-standard format. Correct via
+      MM02 (ECC) or Fiori app F0842 (S/4HANA).
+
+  - id: XSYS003
+    field: LIFNR
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Vendor number is mandatory for cross-system procurement data consistency"
+    why_it_matters: >-
+      LIFNR identifies the vendor across ECC, S/4HANA, Ariba, and MDG. Without it,
+      purchase orders cannot be matched to vendor masters across systems, invoice
+      verification fails, and vendor analytics are fragmented.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Cross-system vendor matching fails. PO-to-invoice matching breaks. Vendor
+      spend analytics fragmented across systems.
+    fix_map:
+      __blank__: >-
+        In ECC: assign vendor number via XK01/XK02. In S/4HANA: use Fiori app F0843
+        (Display Supplier) or BP transaction for business partner.
+    record_fix_template: >-
+      Cross-system record: LIFNR is {actual_value}. Assign a consistent vendor number
+      via XK02 (ECC) or BP transaction (S/4HANA).
+
+  - id: XSYS004
+    field: KUNNR
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "Customer number must be consistent across ECC, CRM, and MDG systems"
+    why_it_matters: >-
+      KUNNR identifies the customer across integrated systems. Inconsistent or missing
+      customer numbers cause order-to-cash process breaks — sales orders cannot match
+      customer masters, credit checks fail, and billing documents reference a customer
+      that does not exist in the target system.
+    rule_authority: best_practice
+    sap_impact: >-
+      Sales order creation fails customer validation. Credit check references wrong
+      customer. Billing and accounts receivable postings mismatch.
+    fix_map:
+      __blank__: >-
+        In ECC: assign customer number via XD01/XD02. In S/4HANA: use BP transaction
+        (business partner with customer role) or Fiori app F0843.
+    record_fix_template: >-
+      Cross-system record: KUNNR is {actual_value}. Assign a consistent customer number
+      via XD02 (ECC) or BP (S/4HANA).
+
+  - id: XSYS005
+    field: BUKRS
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Company code must exist across all integrated systems for financial posting"
+    why_it_matters: >-
+      Company code (BUKRS) is the fundamental organisational unit for financial accounting.
+      In an integrated landscape, payroll postings, intercompany transactions, and financial
+      reporting all require the company code to exist in both ECC/S/4HANA and SuccessFactors.
+      A mismatch blocks all financial integration for affected records.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Payroll posting fails for this company code. Intercompany billing breaks.
+      Financial consolidation excludes affected transactions.
+    fix_map:
+      __blank__: >-
+        In ECC: create company code via OX02. In S/4HANA: use Fiori app F2709 (Manage
+        Company Codes) or OX02. Ensure the same code exists in SuccessFactors.
+    record_fix_template: >-
+      Cross-system record: BUKRS is {actual_value}. Ensure this company code exists
+      in all integrated systems via OX02 (ECC) or Fiori app F2709 (S/4HANA).
+
+  - id: XSYS006
+    field: WERKS
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "Plant must be consistent across ECC, EWM, and SuccessFactors for logistics integration"
+    why_it_matters: >-
+      WERKS links logistics, HR, and warehouse processes across systems. A plant present
+      in ECC but missing in EWM means warehouse processing cannot trigger. A plant missing
+      in SuccessFactors means payroll cost allocation fails for employees at that plant.
+    rule_authority: best_practice
+    sap_impact: >-
+      Warehouse processing cannot trigger for missing plant. Payroll cost allocation
+      fails. Logistics planning fragmented across systems.
+    fix_map:
+      __blank__: >-
+        In ECC: create plant via OX10. In S/4HANA: use Fiori app F2699 (Manage Plants)
+        or OX10. Ensure the plant exists in all integrated systems.
+    record_fix_template: >-
+      Cross-system record: WERKS is {actual_value}. Ensure this plant exists in all
+      integrated systems via OX10 (ECC) or Fiori app F2699 (S/4HANA).
+
+  - id: XSYS007
+    field: WAERS
+    check_class: regex_check
+    pattern: "^[A-Z]{3}$"
+    severity: high
+    dimension: validity
+    message: "Currency code must be a valid 3-letter ISO 4217 code"
+    why_it_matters: >-
+      Currency codes must follow the ISO 4217 standard (exactly 3 uppercase letters) across
+      all integrated systems. Non-conforming codes cause exchange rate lookup failures,
+      incorrect financial postings, and reconciliation breaks between systems.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Exchange rate lookup fails. Financial postings use wrong currency. Cross-system
+      reconciliation breaks for affected transactions.
+    fix_map:
+      __other__: >-
+        Currency code '{invalid_value}' is not a valid ISO 4217 format. In ECC: verify
+        via OY01. In S/4HANA: use Fiori app F3917 (Manage Currency Codes) or OY01.
+    record_fix_template: >-
+      Cross-system record: WAERS '{actual_value}' is not valid ISO 4217. Correct via
+      OY01 (ECC) or Fiori app F3917 (S/4HANA).
+
+  - id: XSYS008
+    field: KOSTL
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "Cost centre must exist in both ECC and SF for payroll GL integration"
+    why_it_matters: >-
+      When payroll results from SuccessFactors are posted to ECC general ledger, the cost
+      centre (KOSTL) must exist in both systems. A cost centre present in SF but missing in
+      ECC causes payroll posting failures — employee costs cannot be allocated and the GL
+      posting run aborts for affected records.
+    rule_authority: best_practice
+    sap_impact: >-
+      Payroll GL posting fails for employees on this cost centre. Employee costs
+      unallocated. Month-end close delayed.
+    fix_map:
+      __blank__: >-
+        In ECC: create cost centre via KS01. In S/4HANA: use Fiori app F0863 (Manage
+        Cost Centers) or KS01. Ensure alignment with SuccessFactors.
+    record_fix_template: >-
+      Cross-system record: KOSTL is {actual_value}. Ensure this cost centre exists in
+      all systems via KS01 (ECC) or Fiori app F0863 (S/4HANA).
+
+  - id: XSYS009
+    field: PERNR
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Personnel number must exist in both ECC HR and SuccessFactors for payroll integration"
+    why_it_matters: >-
+      In an integrated ECC + SuccessFactors landscape, every employee processed in SF
+      payroll must have a corresponding HR master record in ECC. Without the PERNR link,
+      payroll results cannot be posted to the ECC general ledger, tax reporting is
+      incomplete, and the employee falls out of all ECC HR processes.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Payroll GL posting fails for this employee. Tax certificates incomplete.
+      Employee missing from ECC HR reporting.
+    fix_map:
+      __blank__: >-
+        In ECC: create HR master via PA01/PA40 (hiring action). In S/4HANA: use Fiori
+        app F2380 (Maintain Employee Master Data) or PA40.
+    record_fix_template: >-
+      Cross-system record: PERNR is {actual_value}. Create or verify the HR master
+      record via PA01 (ECC) or Fiori app F2380 (S/4HANA).
+
+  - id: XSYS010
+    field: GJAHR
+    check_class: regex_check
+    pattern: "^[0-9]{4}$"
+    severity: high
+    dimension: validity
+    message: "Fiscal year must be a valid 4-digit year"
+    why_it_matters: >-
+      GJAHR (fiscal year) must be exactly 4 numeric digits. Non-conforming values cause
+      financial posting failures, period determination errors, and cross-system
+      reconciliation breaks during year-end close and consolidation.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Financial posting fails for invalid fiscal year. Period determination errors.
+      Year-end close and consolidation exclude affected documents.
+    fix_map:
+      __other__: >-
+        Fiscal year '{invalid_value}' is not a valid 4-digit format. In ECC: correct
+        the posting document. In S/4HANA: verify via Fiori app F0717 (Display Journal
+        Entries).
+    record_fix_template: >-
+      Cross-system record: GJAHR '{actual_value}' is invalid. Correct the fiscal year
+      on the source document.
+
+  - id: XSYS011
+    field: BELNR
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "Document number is required for cross-system financial reconciliation"
+    why_it_matters: >-
+      BELNR (accounting document number) is the primary key for financial documents.
+      In cross-system integration, the document number links transactions across ECC,
+      S/4HANA, and SuccessFactors for reconciliation. Missing document numbers mean
+      the transaction cannot be traced across systems.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Cross-system reconciliation cannot trace this transaction. Financial audit trail
+      broken. Intercompany netting and clearing cannot match.
+    fix_map:
+      __blank__: >-
+        In ECC: BELNR is system-assigned during posting (FB01, MIGO, etc.). A blank
+        value indicates posting failure. In S/4HANA: check via Fiori app F0717.
+    record_fix_template: >-
+      Cross-system record: BELNR is {actual_value}. This is system-assigned —
+      investigate the posting process.
+
+  - id: XSYS012
+    field: BUDAT
+    fields: ["BUDAT", "BLDAT"]
+    check_class: cross_field_check
+    condition: "`BUDAT` > `BLDAT`"
+    severity: medium
+    dimension: consistency
+    message: "Posting date should not be before document date in cross-system transactions"
+    why_it_matters: >-
+      While SAP technically allows posting date (BUDAT) to differ from document date
+      (BLDAT), in cross-system integration a posting date significantly before the
+      document date can indicate a backdating issue or data synchronisation error.
+      This affects period assignment and financial reporting consistency across systems.
+    rule_authority: best_practice
+    sap_impact: >-
+      Period assignment may be inconsistent across systems. Financial reporting shows
+      the transaction in different periods depending on which date is used.
+    fix_map:
+      __blank__: >-
+        In ECC: verify dates via FB03 or the posting transaction. In S/4HANA: check
+        via Fiori app F0717 (Display Journal Entries).
+    record_fix_template: >-
+      Cross-system record: BUDAT ({actual_value}) is after BLDAT. Verify the dates
+      are correct via FB03 (ECC) or Fiori app F0717 (S/4HANA).
+
+  - id: XSYS013
+    field: MATNR_CROSS
+    check_class: cross_field_check
+    fields: ['MATNR_CROSS']
+    condition: "~`MATNR_CROSS`.duplicated(keep=False)"
+    severity: high
+    dimension: uniqueness
+    message: Duplicate cross-system material records detected — same material appears multiple times
+    why_it_matters: Duplicate cross-system records cause incorrect reconciliation between ECC/S4 and satellite systems. Each material should have one mapping record per target system.
+    rule_authority: best_practice
+    sap_impact: Cross-system reconciliation shows false differences. Material sync creates duplicates in target system. Stock reports disagree between systems.
+    fix_map:
+      __blank__: "De-duplicate the cross-system mapping extract. Verify the material number mapping table between source and target systems."
+
+  - id: XSYS014
+    field: BUDAT
+    check_class: freshness_check
+    max_age_hours: 2190
+    severity: medium
+    dimension: timeliness
+    message: Cross-system posting older than 3 months � verify integration is running and postings are being replicated
+    rule_authority: best_practice
+
+  - id: XSYS015
+    field: MATNR_CROSS
+    check_class: regex_check
+    pattern: '^[A-Z0-9\-]{1,40}$'
+    severity: medium
+    dimension: accuracy
+    message: Cross-system material number contains invalid characters � should be alphanumeric
+    why_it_matters: Material numbers with special characters cause matching failures between systems, IDoc processing errors, and reconciliation breaks.
+    rule_authority: best_practice
+    sap_impact: IDoc mapping fails on special characters. Cross-system reconciliation cannot match. Material sync creates orphan records.
+    fix_map:
+      __blank__: "Standardise the material number to alphanumeric characters. Update the mapping table between source and target systems."

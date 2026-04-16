@@ -1,0 +1,403 @@
+module: compensation
+target_state: SUCCESSFACTORS
+rules:
+
+  - id: COMP001
+    field: COMPINFO.USERID
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "User ID is mandatory — orphaned compensation record cannot be processed by payroll"
+    why_it_matters: >-
+      USERID links the compensation record to the employee master in Employee Central.
+      Without it, the compensation data is orphaned and cannot be matched to any
+      employee during payroll processing. The record is effectively invisible to the
+      Compensation module and will be silently dropped during pay cycle execution.
+    rule_authority: best_practice
+    sap_impact: >-
+      Payroll integration skips this record entirely. Compensation planning worksheets
+      exclude the employee.
+    fix_map:
+      __blank__: >-
+        Identify the employee this compensation record belongs to using surrounding
+        data (pay grade, cost center, manager). Assign the correct USERID via Admin
+        Center > Import/Export Data > Compensation Import.
+    record_fix_template: >-
+      Compensation record {COMPINFO.USERID}: USERID is missing. This record is orphaned
+      and will not be processed by payroll. Assign the correct USERID via Admin Center >
+      Compensation Import.
+
+  - id: COMP002
+    field: COMPINFO.PAY_GRADE
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Pay grade determines compensation plan, merit matrix, and pay range — missing value blocks compensation cycle"
+    why_it_matters: >-
+      PAY_GRADE is the anchor for the entire compensation planning framework. It
+      determines which merit matrix applies, what pay range the employee falls into,
+      and which compensation plan rules govern raises and bonuses. Without it, the
+      system cannot calculate compa-ratio or validate that proposed changes fall within
+      approved ranges.
+    rule_authority: best_practice
+    sap_impact: >-
+      Compensation cycle cannot apply merit rules. Pay range validation fails. Employee
+      excluded from the compensation worksheet.
+    fix_map:
+      __blank__: >-
+        Determine the correct pay grade from the employee's job classification and
+        level. Update via Admin Center > Import/Export Data > Compensation Import or
+        directly in Employee Central job information.
+    record_fix_template: >-
+      Employee {COMPINFO.USERID}: PAY_GRADE is missing. Assign the correct pay grade
+      based on job classification via Admin Center > Compensation Import.
+
+  - id: COMP003
+    field: COMPINFO.CURRENCY
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Currency code is mandatory — null currency prevents payroll integration from converting to local currency"
+    why_it_matters: >-
+      CURRENCY defines the denomination of the employee's salary and all compensation
+      elements. The payroll integration relies on this field to perform FX conversion
+      when the employee's pay currency differs from the payroll company currency. A null
+      value causes the integration to fail silently.
+    rule_authority: best_practice
+    sap_impact: >-
+      Payroll integration cannot convert compensation to local currency. Employee is
+      dropped from the pay file.
+    fix_map:
+      __blank__: >-
+        Set the currency code to the employee's pay currency using ISO 4217 format
+        (e.g., USD, EUR, ZAR). Update via Admin Center > Import/Export Data >
+        Compensation Import.
+    record_fix_template: >-
+      Employee {COMPINFO.USERID}: CURRENCY is missing on compensation record. Assign
+      the correct ISO 4217 currency code via Admin Center > Compensation Import.
+
+  - id: COMP004
+    field: COMPINFO.CURRENCY
+    check_class: regex_check
+    pattern: "^[A-Z]{3}$"
+    severity: high
+    dimension: validity
+    message: "Currency must be ISO 4217 three-letter code — non-standard formats cause FX conversion failures"
+    why_it_matters: >-
+      SuccessFactors and downstream payroll systems validate currency codes against the
+      ISO 4217 standard. Values like 'US$', 'Rand', or lowercase 'usd' will not match
+      any currency in the FX rate table, causing conversion failures.
+    rule_authority: best_practice
+    sap_impact: >-
+      FX conversion lookup fails in payroll integration. Compensation reports
+      misclassify or omit amounts.
+    fix_map:
+      __other__: >-
+        Value '{invalid_value}' is not a valid ISO 4217 currency code. Replace with the
+        correct three-letter uppercase code (e.g., USD, EUR, GBP, ZAR). Update via
+        Admin Center > Import/Export Data > Compensation Import.
+    record_fix_template: >-
+      Employee {COMPINFO.USERID}: CURRENCY value '{actual_value}' is not a valid ISO
+      4217 code. Replace with the correct three-letter code via Admin Center >
+      Compensation Import.
+
+  - id: COMP005
+    field: COMPINFO.SALARY
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Salary amount is mandatory — null salary results in zero payment in next payroll run"
+    why_it_matters: >-
+      SALARY is the base compensation amount that flows directly into payroll
+      calculation. A null value is interpreted as zero by most payroll integrations,
+      meaning the employee will receive no base pay in the next cycle. This is a
+      payroll-critical field requiring immediate remediation.
+    rule_authority: best_practice
+    sap_impact: >-
+      Payroll calculates zero base pay for the employee. Compensation review forms
+      show blank salary, preventing manager from calculating merit increases.
+    fix_map:
+      __blank__: >-
+        Verify correct salary from HR records and update via Admin Center > Employee
+        Compensation IMMEDIATELY. This employee will not be paid.
+    record_fix_template: >-
+      Employee {COMPINFO.USERID}: SALARY is missing. This employee will receive zero
+      payment. Enter the correct salary via Admin Center > Employee Compensation
+      IMMEDIATELY.
+
+  - id: COMP006
+    field: COMPINFO.COMP_FREQUENCY
+    check_class: domain_value_check
+    allowed_values: ["ANNUAL", "MONTHLY", "HOURLY", "WEEKLY", "BIWEEKLY"]
+    severity: high
+    dimension: accuracy
+    message: "Compensation frequency determines how salary is interpreted — wrong value causes over/underpayment"
+    why_it_matters: >-
+      COMP_FREQUENCY tells the system whether the SALARY value is annual, monthly,
+      hourly, weekly, or biweekly. A mismatch causes catastrophic payroll errors —
+      for example, an annual salary of 600,000 treated as monthly results in a 12x
+      overpayment. This field is critical for correct pay calculation.
+    rule_authority: best_practice
+    sap_impact: >-
+      Payroll calculates incorrect gross pay. Compensation statements show wrong
+      salary. Benefits calculations based on annual salary are incorrect.
+    valid_values_with_labels:
+      "ANNUAL": "Annual — salary expressed as yearly total"
+      "MONTHLY": "Monthly — salary expressed as monthly amount"
+      "HOURLY": "Hourly — pay rate per hour worked"
+      "WEEKLY": "Weekly — salary expressed as weekly amount"
+      "BIWEEKLY": "Biweekly — salary expressed per two-week period"
+    fix_map:
+      __blank__: >-
+        Compensation frequency is missing. Determine whether the employee is paid
+        annually, monthly, hourly, weekly, or biweekly and set the appropriate code
+        via Admin Center > Import/Export Data > Compensation Import.
+      __other__: >-
+        Value '{invalid_value}' is not a valid compensation frequency. Allowed values
+        are: ANNUAL, MONTHLY, HOURLY, WEEKLY, BIWEEKLY. Update via Admin Center >
+        Import/Export Data > Compensation Import.
+    record_fix_template: >-
+      Employee {COMPINFO.USERID}: COMP_FREQUENCY value '{actual_value}' is invalid.
+      Set to one of ANNUAL/MONTHLY/HOURLY/WEEKLY/BIWEEKLY via Admin Center >
+      Compensation Import.
+
+  - id: COMP007
+    field: COMPINFO.EFFECTIVE_DATE
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "Effective date is mandatory for compensation change audit trail"
+    why_it_matters: >-
+      EFFECTIVE_DATE establishes when a compensation change takes effect and is
+      essential for the audit trail. Without it, the system cannot determine which
+      compensation record is current, causing incorrect salary display and retroactive
+      pay calculation failures.
+    rule_authority: best_practice
+    sap_impact: >-
+      Compensation history timeline is broken. Retroactive pay calculations cannot
+      determine the correct effective period. Audit reports show gaps.
+    fix_map:
+      __blank__: >-
+        Set the effective date to the date the compensation change was approved or the
+        employee's hire/transfer date. Update via Admin Center > Import/Export Data >
+        Compensation Import.
+    record_fix_template: >-
+      Employee {COMPINFO.USERID}: EFFECTIVE_DATE is missing on compensation record.
+      Assign the correct effective date via Admin Center > Compensation Import.
+
+  - id: COMP008
+    field: COMPINFO.PAY_RANGE_MIN
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: "Pay range minimum is required to calculate compa-ratio and validate salary"
+    why_it_matters: >-
+      PAY_RANGE_MIN and PAY_RANGE_MAX define the pay band boundaries for the employee's
+      grade. Without the minimum, compa-ratio cannot be calculated, which is a key metric
+      for identifying underpaid employees and ensuring pay equity.
+    rule_authority: best_practice
+    sap_impact: >-
+      Compa-ratio calculation returns null. Compensation planning worksheet cannot
+      display range penetration. Pay equity analytics are incomplete.
+    fix_map:
+      __blank__: >-
+        Populate the pay range minimum from the compensation pay grade structure.
+        Verify with your compensation team and update via Admin Center > Import/Export
+        Data > Compensation Import.
+    record_fix_template: >-
+      Employee {COMPINFO.USERID}: PAY_RANGE_MIN is missing. Populate from the pay grade
+      structure via Admin Center > Compensation Import.
+
+  - id: COMP009
+    field: COMPINFO.PAY_RANGE_MAX
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: "Pay range maximum is required to detect out-of-range salaries"
+    why_it_matters: >-
+      PAY_RANGE_MAX defines the upper boundary of the pay band. Without it, the system
+      cannot flag employees who are paid above the maximum for their grade, which is a
+      key compensation governance control and a red flag for pay equity audits.
+    rule_authority: best_practice
+    sap_impact: >-
+      Out-of-range salary alerts do not fire during compensation review. Pay equity
+      analysis cannot identify employees above range maximum.
+    fix_map:
+      __blank__: >-
+        Populate the pay range maximum from the compensation pay grade structure via
+        Admin Center > Import/Export Data > Compensation Import.
+    record_fix_template: >-
+      Employee {COMPINFO.USERID}: PAY_RANGE_MAX is missing. Populate from the pay grade
+      structure via Admin Center > Compensation Import.
+
+  - id: COMP010
+    field: COMPINFO.PAY_TYPE
+    check_class: domain_value_check
+    allowed_values: ["SALARY", "HOURLY", "COMMISSION"]
+    severity: high
+    dimension: accuracy
+    message: "Pay type must be SALARY, HOURLY, or COMMISSION"
+    why_it_matters: >-
+      PAY_TYPE determines how the compensation amount is interpreted by payroll.
+      Salaried employees receive a fixed amount per period, hourly employees are paid
+      based on timesheet hours, and commission employees have variable pay components.
+      An incorrect pay type causes the wrong payroll calculation method to be applied.
+    rule_authority: best_practice
+    sap_impact: >-
+      Payroll applies wrong calculation method. Salaried employee may be paid hourly
+      rate or vice versa. Commission calculations not triggered.
+    valid_values_with_labels:
+      "SALARY": "Salary — fixed compensation per pay period"
+      "HOURLY": "Hourly — compensation calculated from timesheet hours"
+      "COMMISSION": "Commission — variable pay based on sales or targets"
+    fix_map:
+      __blank__: >-
+        Assign the correct pay type via Admin Center > Compensation Import. Determine
+        from the employee's contract whether they are salaried, hourly, or commission.
+      __other__: >-
+        Pay type '{invalid_value}' is not valid. Use SALARY, HOURLY, or COMMISSION.
+        Update via Admin Center > Compensation Import.
+    record_fix_template: >-
+      Employee {COMPINFO.USERID}: PAY_TYPE '{actual_value}' is invalid. Set to
+      SALARY/HOURLY/COMMISSION via Admin Center > Compensation Import.
+
+  - id: COMP011
+    field: COMPINFO.SALARY
+    check_class: cross_field_check
+    fields: ["COMPINFO.SALARY", "COMPINFO.PAY_RANGE_MIN", "COMPINFO.PAY_RANGE_MAX"]
+    condition: "`COMPINFO.PAY_RANGE_MIN`.notna() & `COMPINFO.PAY_RANGE_MAX`.notna() & `COMPINFO.SALARY`.notna() & ((`COMPINFO.SALARY` < `COMPINFO.PAY_RANGE_MIN`) | (`COMPINFO.SALARY` > `COMPINFO.PAY_RANGE_MAX`))"
+    severity: high
+    dimension: consistency
+    message: "Salary falls outside the pay range for the assigned grade"
+    why_it_matters: >-
+      When SALARY is below PAY_RANGE_MIN or above PAY_RANGE_MAX, it indicates either
+      a data entry error or a compensation governance violation. Employees paid outside
+      their grade range create pay equity risk and may violate compensation policy.
+    rule_authority: best_practice
+    sap_impact: >-
+      Pay equity audit flags this employee. Compensation governance controls violated.
+      Compa-ratio calculation produces values outside expected 0.8-1.2 range.
+    fix_map:
+      __blank__: >-
+        Review the employee's salary against their pay grade range. Either adjust the
+        salary to fall within range or update the pay grade to match the current salary
+        level. Update via Admin Center > Compensation Import.
+    record_fix_template: >-
+      Employee {COMPINFO.USERID}: SALARY is outside pay range (min: {COMPINFO.PAY_RANGE_MIN},
+      max: {COMPINFO.PAY_RANGE_MAX}). Review via Admin Center > Compensation.
+
+  - id: COMP012
+    field: COMPINFO.PAY_RANGE_MIN
+    check_class: cross_field_check
+    fields: ["COMPINFO.PAY_RANGE_MIN", "COMPINFO.PAY_RANGE_MID", "COMPINFO.PAY_RANGE_MAX"]
+    condition: "`COMPINFO.PAY_RANGE_MIN`.notna() & `COMPINFO.PAY_RANGE_MID`.notna() & `COMPINFO.PAY_RANGE_MAX`.notna() & ((`COMPINFO.PAY_RANGE_MID` < `COMPINFO.PAY_RANGE_MIN`) | (`COMPINFO.PAY_RANGE_MID` > `COMPINFO.PAY_RANGE_MAX`))"
+    severity: medium
+    dimension: consistency
+    message: "Pay range midpoint must fall between minimum and maximum"
+    why_it_matters: >-
+      PAY_RANGE_MID should logically fall between PAY_RANGE_MIN and PAY_RANGE_MAX.
+      A midpoint outside the range indicates a configuration error in the pay grade
+      structure that will cause incorrect compa-ratio calculations for all employees
+      in that grade.
+    rule_authority: best_practice
+    sap_impact: >-
+      Compa-ratio calculations produce incorrect results. Compensation planning
+      worksheets display misleading range penetration metrics.
+    fix_map:
+      __blank__: >-
+        Correct the pay range midpoint to fall between the minimum and maximum values.
+        Update the pay grade structure via Admin Center > Compensation Configuration.
+    record_fix_template: >-
+      Employee {COMPINFO.USERID}: PAY_RANGE_MID is outside the min-max range. Correct
+      via Admin Center > Compensation Configuration.
+
+  - id: COMP013
+    field: COMPINFO.COMPA_RATIO
+    check_class: null_check
+    severity: low
+    dimension: completeness
+    message: "Compa-ratio is missing — cannot assess pay competitiveness"
+    why_it_matters: >-
+      COMPA_RATIO measures how an employee's salary compares to the midpoint of their
+      pay range. It is a key metric for compensation managers during merit planning
+      and pay equity reviews. Missing values leave gaps in compensation analytics.
+    rule_authority: best_practice
+    sap_impact: >-
+      Compensation dashboards show incomplete compa-ratio distribution. Merit planning
+      worksheets cannot prioritise adjustments for this employee.
+    fix_map:
+      __blank__: >-
+        Calculate compa-ratio as SALARY / PAY_RANGE_MID and populate via Admin Center >
+        Compensation Import. If PAY_RANGE_MID is also missing, populate the pay range
+        structure first.
+    record_fix_template: >-
+      Employee {COMPINFO.USERID}: COMPA_RATIO is missing. Calculate as SALARY /
+      PAY_RANGE_MID and update via Admin Center > Compensation Import.
+
+  - id: COMP014
+    field: COMPINFO.EFFECTIVE_DATE
+    check_class: regex_check
+    pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    severity: high
+    dimension: validity
+    message: "Compensation effective date must be in YYYY-MM-DD format"
+    why_it_matters: >-
+      SuccessFactors requires ISO 8601 date format for all effective dates. Non-standard
+      formats cause import failures and prevent the system from correctly ordering
+      compensation history records.
+    rule_authority: best_practice
+    sap_impact: >-
+      Compensation import fails. History ordering is incorrect. Retroactive pay
+      calculations cannot determine the correct effective period.
+    fix_map:
+      __other__: >-
+        Date format '{invalid_value}' is not ISO 8601. Convert to YYYY-MM-DD before
+        importing. If source uses DD/MM/YYYY, transform during extraction.
+    record_fix_template: >-
+      Employee {COMPINFO.USERID}: EFFECTIVE_DATE format invalid (value: {actual_value}).
+      Convert to YYYY-MM-DD.
+
+  - id: COMP015
+    field: COMPINFO.PAY_RANGE_MID
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: "Pay range midpoint is required for compa-ratio calculation"
+    why_it_matters: >-
+      PAY_RANGE_MID is the denominator in the compa-ratio formula (SALARY / MID). Without
+      it, compa-ratio cannot be calculated and compensation managers lose visibility into
+      pay competitiveness across the organisation.
+    rule_authority: best_practice
+    sap_impact: >-
+      Compa-ratio returns null. Compensation planning and pay equity dashboards show
+      gaps for affected employees.
+    fix_map:
+      __blank__: >-
+        Populate from the pay grade structure. Typically calculated as (PAY_RANGE_MIN +
+        PAY_RANGE_MAX) / 2. Update via Admin Center > Compensation Import.
+    record_fix_template: >-
+      Employee {COMPINFO.USERID}: PAY_RANGE_MID is missing. Populate from pay grade
+      structure via Admin Center > Compensation Import.
+
+  - id: COMP016
+    field: COMPINFO.USERID
+    check_class: cross_field_check
+    fields: ['COMPINFO.USERID']
+    condition: "~`COMPINFO.USERID`.duplicated(keep=False)"
+    severity: critical
+    dimension: uniqueness
+    message: Duplicate compensation records per employee — each employee should have one active comp record
+    why_it_matters: Duplicate compensation records cause incorrect pay calculations, doubled bonus accruals, and compa-ratio calculation errors.
+    rule_authority: best_practice
+    sap_impact: Compensation statements show conflicting data. Budget forecasts are overstated. Payroll integration may pick the wrong record.
+    fix_map:
+      __blank__: "Review duplicate compensation records in Admin Center > Compensation Import. Archive or end-date the incorrect record."
+
+  - id: COMP017
+    field: COMPINFO.EFFECTIVE_DATE_COMP
+    check_class: freshness_check
+    max_age_hours: 17520
+    severity: medium
+    dimension: timeliness
+    message: Compensation record not updated in 2+ years — salary may be outdated, review against current pay ranges
+    rule_authority: best_practice

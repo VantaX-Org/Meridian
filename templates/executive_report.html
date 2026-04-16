@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Vantax SAP Data Quality Report</title>
+    <link rel="stylesheet" href="assets/report.css">
+</head>
+<body>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         Page 1 — Cover & Executive Summary
+         ═══════════════════════════════════════════════════════════════ -->
+    <div class="report-header">
+        <h1>Vantax SAP Data Quality Report</h1>
+        <div class="subtitle">{{ report.tenant_name | default("SAP Data Quality Assessment", true) }}</div>
+        <div class="report-date">Generated: {{ report.generated_at[:10] if report.generated_at else 'N/A' }}</div>
+    </div>
+
+    <!-- Executive Summary -->
+    <div class="executive-summary">
+        <h2>Executive Summary</h2>
+        <p>{{ report.executive_summary | default("No executive summary available.", true) }}</p>
+    </div>
+
+    <!-- Overall DQS Score -->
+    <div class="dqs-score-box">
+        <div class="score">{{ "%.1f" | format(report.overall_dqs.composite) }}</div>
+        <div class="score-label">Overall Data Quality Score</div>
+    </div>
+
+    <!-- Migration Readiness Status -->
+    {% set readiness_status = report.migration_readiness.overall_status | default("unknown") %}
+    {% set readiness_class = "readiness-ready" if readiness_status == "go" else "readiness-needs-work" if readiness_status == "conditional" else "readiness-blocked" %}
+    <div class="readiness-badge {{ readiness_class }}">
+        Migration Readiness: {{ readiness_status | upper | replace("_", " ") }}
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         Page 2 — Data Quality Scorecard
+         ═══════════════════════════════════════════════════════════════ -->
+    <div class="report-section">
+        <h2 class="section-title">Data Quality Scorecard</h2>
+
+        <!-- Module Summary Table -->
+        <h3>Module Summary</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Module</th>
+                    <th>DQS Score</th>
+                    <th>Readiness</th>
+                    <th>Critical Issues</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for mod in report.modules %}
+                <tr>
+                    <td>{{ mod.name | replace("_", " ") | title }}</td>
+                    <td>{{ "%.1f" | format(mod.dqs_score) }}</td>
+                    <td>
+                        <span class="severity {{ mod.readiness_status | replace('_', '-') }}">
+                            {{ mod.readiness_status }}
+                        </span>
+                    </td>
+                    <td>{{ mod.critical_count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Findings by Severity -->
+        <h3>Findings by Severity</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Severity</th>
+                    <th>Count</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="severity critical">Critical</span></td>
+                    <td>{{ report.findings_by_severity.critical }}</td>
+                </tr>
+                <tr>
+                    <td><span class="severity high">High</span></td>
+                    <td>{{ report.findings_by_severity.high }}</td>
+                </tr>
+                <tr>
+                    <td><span class="severity medium">Medium</span></td>
+                    <td>{{ report.findings_by_severity.medium }}</td>
+                </tr>
+                <tr>
+                    <td><span class="severity low">Low</span></td>
+                    <td>{{ report.findings_by_severity.low }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Total</strong></td>
+                    <td><strong>{{ report.findings_by_severity.total }}</strong></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- Health by Dimension -->
+        {% if report.overall_dqs.dimensions is defined %}
+        <h3>Health by Dimension</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Dimension</th>
+                    <th>Score</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for dim_name, dim_score in report.overall_dqs.dimensions.items() %}
+                <tr>
+                    <td>{{ dim_name | title }}</td>
+                    <td>{{ "%.1f" | format(dim_score) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         Page 3 — Cleaning & Deduplication
+         ═══════════════════════════════════════════════════════════════ -->
+    <div class="report-section">
+        <h2 class="section-title">Data Cleaning Summary</h2>
+        <table>
+            <tbody>
+                <tr><td>Total Cleaning Candidates Identified</td><td><strong>{{ cleaning.total or 0 }}</strong></td></tr>
+                <tr><td>Pending Steward Review</td><td>{{ cleaning.pending or 0 }}</td></tr>
+                <tr><td>Approved for Application</td><td>{{ cleaning.approved or 0 }}</td></tr>
+                <tr><td>Successfully Applied to Source</td><td>{{ cleaning.applied or 0 }}</td></tr>
+            </tbody>
+        </table>
+
+        <h2>Duplicate Detection Summary</h2>
+        <table>
+            <tbody>
+                <tr><td>Duplicate Candidate Pairs Found</td><td><strong>{{ dedup.total or 0 }}</strong></td></tr>
+                <tr><td>Pending Steward Review</td><td>{{ dedup.pending or 0 }}</td></tr>
+                <tr><td>Records Successfully Merged</td><td>{{ dedup.merged or 0 }}</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         Page 4 — Exception Management
+         ═══════════════════════════════════════════════════════════════ -->
+    <div class="report-section">
+        <h2 class="section-title">Exception Management</h2>
+        <table>
+            <tbody>
+                <tr><td>Total Exceptions Detected</td><td><strong>{{ exceptions.total or 0 }}</strong></td></tr>
+                <tr class="severity-critical"><td>Critical Severity</td><td>{{ exceptions.critical or 0 }}</td></tr>
+                <tr class="severity-high"><td>High Severity</td><td>{{ exceptions.high or 0 }}</td></tr>
+                <tr><td>Open (Unresolved)</td><td>{{ exceptions.open_count or 0 }}</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         Page 5 — Financial Impact (ZAR)
+         ═══════════════════════════════════════════════════════════════ -->
+    <div class="report-section impact-section">
+        <h2 class="section-title">Financial Impact Assessment</h2>
+        <div class="kpi-grid">
+            <div class="kpi-box kpi-risk">
+                <div class="kpi-value">R {{ "{:,.0f}".format(impact.total_risk or 0) }}</div>
+                <div class="kpi-label">Total Value at Risk (ZAR)</div>
+            </div>
+            <div class="kpi-box kpi-saving">
+                <div class="kpi-value">R {{ "{:,.0f}".format(impact.total_avoidance or 0) }}</div>
+                <div class="kpi-label">Projected Cost Avoidance (ZAR)</div>
+            </div>
+            <div class="kpi-box">
+                <div class="kpi-value">{{ impact.record_count or 0 }}</div>
+                <div class="kpi-label">Records Financially Assessed</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         Page 6 — Data Contracts
+         ═══════════════════════════════════════════════════════════════ -->
+    <div class="report-section">
+        <h2 class="section-title">Data Contracts Status</h2>
+        <table>
+            <tbody>
+                <tr><td>Total Contracts Defined</td><td><strong>{{ contracts.total or 0 }}</strong></td></tr>
+                <tr><td>Active &amp; Compliant</td><td>{{ contracts.active or 0 }}</td></tr>
+                <tr class="{{ 'breach-warning' if (contracts.breached or 0) > 0 else '' }}">
+                    <td>Contracts in Breach</td>
+                    <td>{{ contracts.breached or 0 }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         Page 7 — Per-Module Detail
+         ═══════════════════════════════════════════════════════════════ -->
+    {% for mod in report.modules %}
+    <div class="module-section">
+        <h2 class="section-title">{{ mod.name | replace("_", " ") | title }}</h2>
+
+        <table>
+            <tr>
+                <td><strong>DQS Score</strong></td>
+                <td>{{ "%.1f" | format(mod.dqs_score) }}</td>
+                <td><strong>Readiness</strong></td>
+                <td>
+                    <span class="severity {{ mod.readiness_status | replace('_', '-') }}">
+                        {{ mod.readiness_status }}
+                    </span>
+                </td>
+            </tr>
+        </table>
+
+        {% if mod.root_causes %}
+        <h4>Root Causes</h4>
+        <ul>
+            {% for rc in mod.root_causes %}
+            <li>
+                <strong>{{ rc.root_cause }}</strong><br>
+                Impact: {{ rc.business_impact }}<br>
+                SAP Context: {{ rc.sap_context }}
+            </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+
+        {% if mod.remediations %}
+        <h4>Top Remediations</h4>
+        {% for rem in mod.remediations[:5] %}
+        <p><strong>{{ rem.check_id }}</strong> ({{ rem.severity }}) — {{ rem.sap_transaction }}</p>
+        <ol>
+            {% for step in rem.fix_steps %}
+            <li>{{ step }}</li>
+            {% endfor %}
+        </ol>
+        <p><em>Estimated Effort: {{ rem.estimated_effort }}</em></p>
+        {% endfor %}
+        {% endif %}
+
+        {% if mod.blockers %}
+        <h4>Migration Blockers</h4>
+        <ul>
+            {% for blocker in mod.blockers %}
+            <li>{{ blocker }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+
+        {% if mod.conditions %}
+        <h4>Conditions</h4>
+        <ul>
+            {% for cond in mod.conditions %}
+            <li>{{ cond }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+    {% endfor %}
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         Page 8 — Remediation Roadmap
+         ═══════════════════════════════════════════════════════════════ -->
+    {% if report.remediations %}
+    <div class="report-section">
+        <h2 class="section-title">Remediation Roadmap</h2>
+
+        {% if report.remediations.fix_sequence %}
+        <h3>Recommended Fix Sequence</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Priority</th>
+                    <th>Check ID</th>
+                    <th>Effort</th>
+                    <th>Reason</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in report.remediations.fix_sequence %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ item.check_id }}</td>
+                    <td>{{ item.estimated_effort | default('TBD') }}</td>
+                    <td>{{ item.reason | default('—') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+
+        {% if report.remediations.cross_finding_patterns %}
+        <h3>Systemic Issues (Cross-Finding Patterns)</h3>
+        <ul>
+            {% for pattern in report.remediations.cross_finding_patterns %}
+            <li>
+                <strong>{{ pattern.pattern_name | default(pattern.pattern_description | default('Pattern')) }}</strong> —
+                {{ pattern.description | default(pattern.recommended_approach | default('')) }}
+                (Affects: {{ pattern.affected_check_ids | join(', ') }})
+            </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+
+        {% if report.remediations.effort_estimates %}
+        <h3>Effort Estimates</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Check ID</th>
+                    <th>Complexity</th>
+                    <th>Hours</th>
+                    <th>Basis</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for est in report.remediations.effort_estimates %}
+                <tr>
+                    <td>{{ est.check_id }}</td>
+                    <td>{{ est.fix_complexity | default('—') }}</td>
+                    <td>{{ est.estimated_person_hours | default('TBD') }}</td>
+                    <td>{{ est.estimation_basis | default('—') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+
+        {% if report.remediations.flags %}
+        <h3>Flags Requiring Manual Review</h3>
+        <ul>
+            {% for flag in report.remediations.flags %}
+            <li>{{ flag.check_id }}: {{ flag.flag | default(flag.reason | default('Manual review required')) }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         Migration Readiness Summary
+         ═══════════════════════════════════════════════════════════════ -->
+    <div class="report-section">
+        <h2 class="section-title">Migration Readiness</h2>
+        <p><strong>Overall Status:</strong>
+            <span class="{{ readiness_class }}">{{ readiness_status | upper | replace("_", " ") }}</span>
+        </p>
+        <p><strong>Overall Score:</strong> {{ "%.1f" | format(report.migration_readiness.overall_score) }}</p>
+        <p>{{ report.migration_readiness.summary }}</p>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         MDM Platform Health (Phase N)
+         ═══════════════════════════════════════════════════════════════ -->
+    {% if mdm_snapshot %}
+    <div class="report-section">
+        <h2 class="section-title">MDM Platform Health</h2>
+        <div class="dqs-score-box">
+            <div class="score">{{ "%.1f" | format(mdm_snapshot.mdm_health_score or 0) }}</div>
+            <div class="score-label">MDM Health Score</div>
+        </div>
+        <table>
+            <tbody>
+                <tr><td>Golden Record Coverage</td><td>{{ "%.1f" | format(mdm_snapshot.golden_record_coverage_pct or 0) }}%</td></tr>
+                <tr><td>Match Confidence</td><td>{{ "%.1f" | format(mdm_snapshot.avg_match_confidence or 0) }}%</td></tr>
+                <tr><td>Steward SLA Compliance</td><td>{{ "%.1f" | format(mdm_snapshot.steward_sla_compliance_pct or 0) }}%</td></tr>
+                <tr><td>Source Consistency</td><td>{{ "%.1f" | format(mdm_snapshot.source_consistency_pct or 0) }}%</td></tr>
+            </tbody>
+        </table>
+        {% if mdm_snapshot.ai_narrative %}
+        <div style="margin-top: 16px; padding: 12px; background: #F0F5FA; border-left: 3px solid #6B92AD;">
+            <h3 style="margin: 0 0 8px 0; font-size: 14px;">AI Platform Insights</h3>
+            <p style="margin: 0 0 4px 0; font-size: 10px; color: #6B92AD;">AI-generated summary — review recommended.</p>
+            <p style="margin: 0;">{{ mdm_snapshot.ai_narrative }}</p>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         Golden Record Summary (Phase I)
+         ═══════════════════════════════════════════════════════════════ -->
+    {% if golden_summary %}
+    <div class="report-section">
+        <h2 class="section-title">Golden Record Summary</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Domain</th>
+                    <th>Status</th>
+                    <th>Count</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in golden_summary %}
+                <tr>
+                    <td>{{ row.domain }}</td>
+                    <td>{{ row.status }}</td>
+                    <td>{{ row.record_count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         SAP Field Glossary Appendix (Phase K)
+         ═══════════════════════════════════════════════════════════════ -->
+    {% if glossary_terms and glossary_terms|length >= 5 %}
+    <div class="report-section" style="page-break-before: always;">
+        <h2 class="section-title">SAP Field Glossary</h2>
+        <p style="margin-bottom: 12px; color: #6B92AD; font-size: 12px;">
+            Top {{ glossary_terms|length }} fields by linked quality rules.
+        </p>
+        <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+            <thead>
+                <tr style="background: #F0F5FA; border-bottom: 2px solid #D6E4F0;">
+                    <th style="text-align: left; padding: 6px 8px; font-weight: 600; color: #0F2137;">Business Name</th>
+                    <th style="text-align: left; padding: 6px 8px; font-weight: 600; color: #0F2137;">SAP Field</th>
+                    <th style="text-align: left; padding: 6px 8px; font-weight: 600; color: #0F2137;">Business Definition</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for term in glossary_terms %}
+                <tr style="border-bottom: 1px solid #F0F5FA;">
+                    <td style="padding: 5px 8px; font-weight: 500;">{{ term.business_name }}</td>
+                    <td style="padding: 5px 8px; font-family: monospace; font-size: 10px; color: #6B92AD;">
+                        {{ term.sap_table }}.{{ term.sap_field }}
+                    </td>
+                    <td style="padding: 5px 8px; color: #0F2137;">{{ term.business_definition or '—' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <!-- Footer -->
+    <div class="report-footer">
+        Generated by Vantax SAP Data Quality Agent v2.0 — NXT Business Solutions — Confidential
+    </div>
+</body>
+</html>

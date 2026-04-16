@@ -1,0 +1,372 @@
+module: batch_management
+target_state: ECC_AND_S4HANA
+rules:
+
+  - id: BATCH001
+    field: MCH1.MATNR
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Material number is mandatory — identifies which material the batch belongs to"
+    why_it_matters: >-
+      MATNR links the batch to its material master. Without it, the batch is an orphan —
+      it cannot be used in any goods movement, production order, or delivery because the
+      system does not know what material it represents. In S/4HANA, the batch-material
+      link is required for batch determination in SD and PP. Note: batch table MCHA is
+      deprecated in S/4HANA; use MCH1 exclusively.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Batch cannot be used in goods movements (MIGO), deliveries (VL01N), or production
+      orders. Batch determination fails. Stock for this batch is orphaned.
+    fix_map:
+      __blank__: >-
+        In ECC: assign material via T-code MSC2N. In S/4HANA: use Fiori app F3506
+        (Manage Batches) or MSC2N.
+    record_fix_template: >-
+      Batch {MCH1.CHARG}: MATNR is {actual_value}. Assign the correct material
+      via MSC2N (ECC) or Fiori app F3506 (S/4HANA).
+
+  - id: BATCH002
+    field: MCH1.CHARG
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Batch number is the primary key — mandatory for all batch records"
+    why_it_matters: >-
+      CHARG is the batch number and primary key for the batch master record. It uniquely
+      identifies a production lot or goods receipt lot. Without it, the record has no identity
+      and cannot be referenced in any SAP process.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Batch record has no identity. Cannot be referenced in goods movements, quality
+      inspection, or batch determination. The record is unusable.
+    fix_map:
+      __blank__: >-
+        Batch number is empty. This is the primary key — a record without CHARG cannot
+        exist. In ECC: investigate the data load. In S/4HANA: check batch number
+        assignment configuration (OMCG) for internal vs external numbering.
+    record_fix_template: >-
+      Batch record: CHARG is {actual_value}. This is the primary key — investigate
+      the data source for corruption.
+
+  - id: BATCH003
+    field: MCH1.CHARG
+    check_class: regex_check
+    pattern: "^[A-Z0-9]{1,10}$"
+    severity: high
+    dimension: validity
+    message: "Batch number must be alphanumeric, max 10 characters for S/4HANA compatibility"
+    why_it_matters: >-
+      In S/4HANA, batch numbers are limited to 10 alphanumeric characters. Special characters,
+      spaces, and lowercase letters cause issues with batch determination, barcode scanning,
+      and integration with external systems (WMS, MES). Non-conforming formats must be
+      cleaned before S/4HANA migration.
+    rule_authority: best_practice
+    sap_impact: >-
+      Batch determination may fail to match. Barcode scanning errors. Integration with
+      WMS and MES systems breaks on non-standard characters.
+    fix_map:
+      __other__: >-
+        Batch number '{invalid_value}' does not match the expected alphanumeric format.
+        In ECC: rename via MSC2N or use LSMW batch conversion. In S/4HANA: use Fiori app
+        F3506 or the MDG batch governance workflow to standardise.
+    record_fix_template: >-
+      Batch {MCH1.CHARG}: format '{actual_value}' is non-standard. Rename via MSC2N
+      (ECC) or Fiori app F3506 (S/4HANA).
+
+  - id: BATCH004
+    field: MCH1.WERKS
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Plant is mandatory — links the batch to an organisational unit"
+    why_it_matters: >-
+      WERKS links the batch to a plant for organisational and logistical purposes. In S/4HANA,
+      batch management can be at plant level or cross-plant. Without the plant assignment,
+      batch determination cannot scope correctly and stock cannot be allocated.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Batch determination cannot scope to the correct plant. Stock allocation fails.
+      Goods movements cannot determine the correct storage location.
+    fix_map:
+      __blank__: >-
+        In ECC: assign plant via T-code MSC2N. In S/4HANA: use Fiori app F3506 or
+        MSC2N. Check batch management level configuration (OMCE).
+    record_fix_template: >-
+      Batch {MCH1.CHARG}: WERKS is {actual_value}. Assign the correct plant via MSC2N
+      (ECC) or Fiori app F3506 (S/4HANA).
+
+  - id: BATCH005
+    field: MCH1.ERSDA
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: "Batch creation date required for lifecycle tracking and audit trail"
+    why_it_matters: >-
+      ERSDA records when the batch master record was created. This is essential for batch
+      lifecycle management, audit trail compliance, and identifying stale batches that may
+      need review or archival. Missing creation dates make batch age analysis impossible.
+    rule_authority: best_practice
+    sap_impact: >-
+      Batch age cannot be determined. Lifecycle management and archival processes cannot
+      evaluate this batch. Audit trail incomplete.
+    fix_map:
+      __blank__: >-
+        In ECC: creation date is system-populated during batch creation. If blank, check
+        the data migration source. In S/4HANA: verify via Fiori app F3506.
+    record_fix_template: >-
+      Batch {MCH1.CHARG}: ERSDA is {actual_value}. This is system-generated — investigate
+      the data source.
+
+  - id: BATCH006
+    field: MCH7.VFDAT
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Expiry date is mandatory for FEFO picking — missing creates safety risk"
+    why_it_matters: >-
+      Expiry date is required for FEFO (first expiry first out) picking strategy. Missing
+      expiry dates mean FEFO cannot function and expired goods may be picked — a safety
+      and compliance risk for food, pharmaceutical, and chemical products.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      FEFO picking strategy fails for this batch. Expired goods may be shipped to customers.
+      Regulatory compliance violated for food, pharmaceutical, and chemical products.
+    fix_map:
+      __blank__: >-
+        In ECC: enter expiry date via MSC2N > Dates tab. In S/4HANA: use Fiori app F3506
+        (Manage Batches) > Shelf Life section.
+    record_fix_template: >-
+      Batch {MCH1.CHARG} / Material {MCH1.MATNR}: VFDAT is {actual_value}. Enter the
+      expiry date via MSC2N (ECC) or Fiori app F3506 (S/4HANA).
+
+  - id: BATCH007
+    field: MCH7.HSDAT
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "Manufacturing date required for shelf life calculation and traceability"
+    why_it_matters: >-
+      HSDAT (date of manufacture) is used to calculate remaining shelf life and is essential
+      for traceability in recalls. Without it, shelf life calculation defaults to the goods
+      receipt date (which may be significantly later), and recall investigations cannot
+      determine when the batch was produced.
+    rule_authority: best_practice
+    sap_impact: >-
+      Shelf life calculation inaccurate — uses GR date instead of production date.
+      Recall investigation cannot pinpoint production date. Traceability gap.
+    fix_map:
+      __blank__: >-
+        In ECC: enter manufacturing date via MSC2N > Dates tab. In S/4HANA: use Fiori
+        app F3506 > Shelf Life section.
+    record_fix_template: >-
+      Batch {MCH1.CHARG}: HSDAT is {actual_value}. Enter the manufacturing date
+      via MSC2N (ECC) or Fiori app F3506 (S/4HANA).
+
+  - id: BATCH008
+    field: MCH7.HSDAT
+    fields: ["MCH7.HSDAT", "MCH7.VFDAT"]
+    check_class: cross_field_check
+    condition: "`MCH7.HSDAT` > `MCH7.VFDAT`"
+    severity: critical
+    dimension: consistency
+    message: "Manufacturing date must be before expiry date — inverted dates indicate data error"
+    why_it_matters: >-
+      A manufacturing date (HSDAT) after the expiry date (VFDAT) is logically impossible
+      and indicates a data entry or migration error. This corrupts shelf life calculations,
+      causes FEFO to sort batches incorrectly, and may result in expired stock being picked
+      or valid stock being rejected.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Shelf life calculation produces negative values. FEFO sorting is inverted for this
+      batch. Expired stock may be picked; valid stock may be blocked.
+    fix_map:
+      __blank__: >-
+        In ECC: correct the dates via MSC2N > Dates tab. Verify against the batch
+        certificate or production order. In S/4HANA: use Fiori app F3506.
+    record_fix_template: >-
+      Batch {MCH1.CHARG}: HSDAT ({actual_value}) is after VFDAT. Correct the dates
+      via MSC2N (ECC) or Fiori app F3506 (S/4HANA).
+
+  - id: BATCH009
+    field: MCH7.ZUESSION
+    check_class: domain_value_check
+    severity: high
+    dimension: accuracy
+    message: "Batch restriction indicator must be a valid flag value"
+    allowed_values: ["", "X"]
+    valid_values_with_labels:
+      "": "Unrestricted — batch is available for all processes"
+      X: "Restricted — batch is blocked from consumption"
+    why_it_matters: >-
+      The batch restriction indicator (ZUESSION) controls whether the batch can be consumed
+      in goods movements, production orders, and deliveries. An invalid value means the
+      system cannot determine the batch's availability status, potentially allowing
+      restricted batches to be consumed or blocking unrestricted batches.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Batch availability status undefined. Restricted batches may be consumed.
+      Unrestricted batches may be incorrectly blocked.
+    fix_map:
+      __other__: >-
+        Restriction indicator '{invalid_value}' is not valid. Valid values: blank
+        (unrestricted), X (restricted). In ECC: correct via MSC2N. In S/4HANA: use
+        Fiori app F3506.
+    record_fix_template: >-
+      Batch {MCH1.CHARG}: ZUESSION is '{actual_value}'. Set to blank (unrestricted)
+      or X (restricted) via MSC2N (ECC) or Fiori app F3506 (S/4HANA).
+
+  - id: BATCH010
+    field: MCH7.CLABS
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: "Unrestricted stock quantity helps validate batch inventory accuracy"
+    why_it_matters: >-
+      CLABS (unrestricted-use stock quantity at plant level) is used to validate that the
+      batch has allocatable stock. While the system calculates this from goods movements,
+      a missing or zero value on a batch that should have stock indicates a data inconsistency
+      that affects availability checks and batch determination.
+    rule_authority: best_practice
+    sap_impact: >-
+      Batch appears to have no available stock. Availability check excludes this batch.
+      Batch determination skips it even though physical stock may exist.
+    fix_map:
+      __blank__: >-
+        In ECC: verify stock via MB5B and correct with inventory adjustment (MI01/MI04).
+        In S/4HANA: use Fiori app F0839 (Display Stock) and physical inventory via
+        Fiori app F3844.
+    record_fix_template: >-
+      Batch {MCH1.CHARG}: CLABS is {actual_value}. Verify stock via MB5B (ECC) or
+      Fiori app F0839 (S/4HANA) and correct with inventory adjustment if needed.
+
+  - id: BATCH011
+    field: MCH7.CINSM
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: "Quality inspection stock quantity needed for QM integration accuracy"
+    why_it_matters: >-
+      CINSM records the quantity of stock in quality inspection for this batch. Tracking
+      this ensures that quality management processes (QM01, results recording) correctly
+      reflect the inspection scope. A missing value when inspection stock exists indicates
+      a posting discrepancy.
+    rule_authority: best_practice
+    sap_impact: >-
+      QM integration data inconsistent. Inspection lot quantities may not match actual
+      stock in inspection. Quality decision affects wrong quantity.
+    fix_map:
+      __blank__: >-
+        In ECC: verify inspection stock via MMBE and reconcile via MI01/MI04. In
+        S/4HANA: check via Fiori app F0839 and correct via physical inventory.
+    record_fix_template: >-
+      Batch {MCH1.CHARG}: CINSM is {actual_value}. Verify inspection stock via MMBE
+      (ECC) or Fiori app F0839 (S/4HANA).
+
+  - id: BATCH012
+    field: MCH7.CSPEM
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: "Blocked stock quantity ensures restricted batches are correctly quantified"
+    why_it_matters: >-
+      CSPEM records the quantity of blocked stock for this batch. Tracking blocked stock
+      is important for inventory valuation and for ensuring that physically blocked or
+      recalled batches have the correct quantity recorded for write-off or return processes.
+    rule_authority: best_practice
+    sap_impact: >-
+      Blocked stock quantity unknown. Inventory valuation may be incorrect. Recall
+      and write-off quantities cannot be validated.
+    fix_map:
+      __blank__: >-
+        In ECC: verify blocked stock via MMBE and reconcile via MI01/MI04. In
+        S/4HANA: check via Fiori app F0839.
+    record_fix_template: >-
+      Batch {MCH1.CHARG}: CSPEM is {actual_value}. Verify blocked stock via MMBE
+      (ECC) or Fiori app F0839 (S/4HANA).
+
+  - id: BATCH013
+    field: MCH1.MATNR
+    check_class: regex_check
+    pattern: "^[A-Z0-9\\-_/\\.]{1,40}$"
+    severity: high
+    dimension: validity
+    message: "Material number on batch must conform to SAP naming convention"
+    why_it_matters: >-
+      In S/4HANA, the material number field has been extended to 40 characters. Valid
+      characters are uppercase alphanumeric plus hyphens, underscores, forward slashes,
+      and dots. A non-conforming MATNR on a batch record prevents the batch from linking
+      to its material master, breaking batch determination and goods movements.
+    rule_authority: best_practice
+    sap_impact: >-
+      Batch cannot link to material master. Batch determination fails. Goods movements
+      reject this batch.
+    fix_map:
+      __other__: >-
+        Material number '{invalid_value}' on batch does not match the expected format.
+        In ECC: correct via MM02. In S/4HANA: use Fiori app F0842 (Manage Product
+        Master Data).
+    record_fix_template: >-
+      Batch {MCH1.CHARG}: MATNR '{actual_value}' has non-standard format. Correct via
+      MM02 (ECC) or Fiori app F0842 (S/4HANA).
+
+  - id: BATCH014
+    field: MCH1.VEESSION
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: "Batch version tracking supports regulatory compliance and change history"
+    why_it_matters: >-
+      The batch version field (VEESSION) tracks changes to the batch master record over
+      time. For regulated industries (pharma, food, chemicals), version tracking is
+      required to demonstrate that batch data has not been tampered with and to maintain
+      a complete change history for audit purposes.
+    rule_authority: best_practice
+    sap_impact: >-
+      Batch change history incomplete. Regulatory audit may flag missing version control.
+      Compliance gap for GxP-regulated industries.
+    fix_map:
+      __blank__: >-
+        In ECC: version tracking may be configured via batch management customising
+        (OMCE). In S/4HANA: verify the batch governance configuration in MDG.
+    record_fix_template: >-
+      Batch {MCH1.CHARG}: VEESSION is {actual_value}. Configure version tracking
+      via OMCE (ECC) or MDG batch governance (S/4HANA).
+
+  - id: BATCH015
+    field: MCH7.VFDAT
+    check_class: freshness_check
+    max_age_hours: 0
+    severity: critical
+    dimension: timeliness
+    message: "Expired batches (VFDAT in the past) must be reviewed and blocked or disposed"
+    why_it_matters: >-
+      A batch with an expiry date (VFDAT) in the past is expired and should not be
+      available for consumption. If the batch restriction flag is not set, expired stock
+      may be picked and shipped, creating a serious safety and compliance risk.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Expired stock available for consumption. FEFO picking may still select this batch
+      if restriction is not set. Customer safety risk. Regulatory violation.
+    fix_map:
+      __blank__: >-
+        In ECC: block the batch via MSC2N (set restriction indicator) and initiate
+        disposal or return via MB1A (goods issue for scrapping). In S/4HANA: use Fiori
+        app F3506 to set restriction and Fiori app F1078 for goods issue.
+    record_fix_template: >-
+      Batch {MCH1.CHARG}: VFDAT is {actual_value} (expired). Block via MSC2N (ECC)
+      or Fiori app F3506 (S/4HANA) and initiate disposal.
+
+  - id: BATCH016
+    field: MCH1.CHARG
+    check_class: cross_field_check
+    fields: ['MCH1.CHARG']
+    condition: "~`MCH1.CHARG`.duplicated(keep=False)"
+    severity: critical
+    dimension: uniqueness
+    message: Duplicate batch numbers detected — each batch must be unique per material
+    why_it_matters: Duplicate batch numbers cause incorrect traceability, wrong shelf life determination, and FEFO sorting errors. Each batch must be uniquely identifiable.
+    rule_authority: sap_hard_constraint
+    sap_impact: Batch traceability is broken. FEFO picks wrong batch. Shelf life check fails. Recall cannot isolate affected batches.
+    fix_map:
+      __blank__: "Investigate duplicate batch numbers. If caused by extract join (MCH1+MCH7), de-duplicate at batch level. If genuine, escalate — SAP should prevent this via batch number assignment."

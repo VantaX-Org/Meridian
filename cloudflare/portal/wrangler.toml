@@ -1,0 +1,9 @@
+name = "vantax-portal"
+pages_build_output_dir = ".open-next/assets"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+NEXTJS_ENV = "production"
+NEXT_PUBLIC_LICENCE_WORKER_URL = "https://meridian-licence-worker.reshigan-085.workers.dev"
+NEXT_PUBLIC_CLOUDFLARE_PAGES_ANALYTICS_ENABLED = "false"

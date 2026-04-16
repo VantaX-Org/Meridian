@@ -1,0 +1,308 @@
+module: time_attendance
+target_state: SUCCESSFACTORS
+rules:
+
+  - id: TIME001
+    field: TIMESHEET.USERID
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "User ID is mandatory — orphaned timesheet cannot be linked to an employee"
+    why_it_matters: >-
+      USERID is the foreign key that links each timesheet entry to a specific employee
+      record. Without it, the timesheet row is orphaned and payroll cannot determine who
+      should be paid for the recorded hours.
+    rule_authority: best_practice
+    sap_impact: >-
+      Payroll integration skips this timesheet entry. Employee is not paid for recorded
+      hours. Reconciliation discrepancies in payroll run.
+    fix_map:
+      __blank__: >-
+        Assign the correct employee USERID to this timesheet entry via Admin Center >
+        Time Management > Timesheet Import. Cross-reference with the employee master.
+    record_fix_template: >-
+      Timesheet {TIMESHEET.USERID}: USERID is missing. Assign the correct employee ID
+      via Admin Center > Time Management > Timesheet Import.
+
+  - id: TIME002
+    field: TIMESHEET.DATE
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Timesheet date is mandatory — determines the payroll period for processing"
+    why_it_matters: >-
+      DATE determines which payroll period this timesheet entry belongs to. Without it,
+      payroll cannot allocate the hours to the correct pay cycle and the entry is
+      excluded entirely from processing.
+    rule_authority: best_practice
+    sap_impact: >-
+      Timesheet entry excluded from payroll run. Employee underpaid for the missing
+      period. Leave balances not updated.
+    fix_map:
+      __blank__: >-
+        Add the correct work date in YYYY-MM-DD format via Admin Center > Time
+        Management > Timesheet Import. Verify against the employee's attendance records.
+    record_fix_template: >-
+      Timesheet {TIMESHEET.USERID}: DATE is missing. Add work date via Admin Center >
+      Time Management > Timesheet Import. Format: YYYY-MM-DD.
+
+  - id: TIME003
+    field: TIMESHEET.HOURS
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Hours are mandatory — missing value results in zero payment for this entry"
+    why_it_matters: >-
+      HOURS is the quantity used by payroll to calculate gross pay for hourly and overtime
+      entries. A null value causes payroll to compute zero payment for this timesheet
+      line, creating legal and compliance risk.
+    rule_authority: best_practice
+    sap_impact: >-
+      Employee paid zero for this timesheet entry. Overtime calculations incorrect.
+      Cost centre labour cost reporting understated.
+    fix_map:
+      __blank__: >-
+        Enter the correct number of hours worked via Admin Center > Time Management >
+        Timesheet Import. Confirm with the employee's manager or attendance system.
+    record_fix_template: >-
+      Timesheet {TIMESHEET.USERID}: HOURS is missing for date {TIMESHEET.DATE}. Enter
+      hours via Admin Center > Time Management.
+
+  - id: TIME004
+    field: TIMESHEET.ABSENCE_TYPE
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "Absence type is required for leave entries — determines which balance to deduct"
+    why_it_matters: >-
+      ABSENCE_TYPE maps to a specific leave category (annual, sick, unpaid, etc.) which
+      determines which leave balance is decremented. Without it, the system either
+      deducts from the wrong balance or fails to process the absence.
+    rule_authority: best_practice
+    sap_impact: >-
+      Wrong leave balance deducted. Leave accrual reports inaccurate. Employee may
+      exceed entitlement without detection.
+    fix_map:
+      __blank__: >-
+        Assign the correct absence type code via Admin Center > Time Management >
+        Absence Import. Reference the company's leave type catalogue for valid codes.
+    record_fix_template: >-
+      Timesheet {TIMESHEET.USERID}: ABSENCE_TYPE is missing for date {TIMESHEET.DATE}.
+      Assign via Admin Center > Time Management > Absence Import.
+
+  - id: TIME005
+    field: TIMESHEET.APPROVAL_STATUS
+    check_class: domain_value_check
+    allowed_values: ["pending", "approved", "rejected", "cancelled"]
+    severity: medium
+    dimension: accuracy
+    message: "Approval status must be a valid value — only approved entries are processed by payroll"
+    why_it_matters: >-
+      APPROVAL_STATUS controls the workflow gate between timesheet submission and payroll
+      processing. Only entries with status approved are picked up by the payroll
+      integration. Invalid status values cause entries to be silently excluded from
+      processing.
+    rule_authority: customer_configured
+    sap_impact: >-
+      Timesheet entry stuck in limbo — not processed by payroll, not visible in pending
+      approvals. Employee not paid for recorded hours.
+    valid_values_with_labels:
+      "pending": "Pending — submitted, awaiting manager approval"
+      "approved": "Approved — manager approved, eligible for payroll processing"
+      "rejected": "Rejected — manager rejected, returned for correction"
+      "cancelled": "Cancelled — employee or admin cancelled, excluded from processing"
+    fix_map:
+      __blank__: >-
+        Set to pending to route into the approval workflow, or approved if manager has
+        confirmed. Update via Admin Center > Time Management > Timesheet Import.
+      __other__: >-
+        Approval status '{invalid_value}' is not valid. Use pending, approved, rejected,
+        or cancelled. Update via Admin Center > Time Management.
+    record_fix_template: >-
+      Timesheet {TIMESHEET.USERID}: APPROVAL_STATUS '{actual_value}' is invalid. Set to
+      pending/approved/rejected/cancelled via Admin Center > Time Management.
+
+  - id: TIME006
+    field: TIMESHEET.COST_CENTER
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: "Cost centre on timesheet is required for labour cost allocation"
+    why_it_matters: >-
+      COST_CENTER on the timesheet determines where the labour cost for these hours is
+      allocated in the GL. Missing cost centre causes the expense to post to a default
+      or suspense account, requiring manual reallocation by finance.
+    rule_authority: best_practice
+    sap_impact: >-
+      Labour cost posts to suspense account. Project and department cost reporting is
+      incomplete. Finance must manually reallocate.
+    fix_map:
+      __blank__: >-
+        Assign the correct cost centre. Typically derived from the employee's
+        organisational assignment in Employee Central. Update via Admin Center > Time
+        Management > Timesheet Import.
+    record_fix_template: >-
+      Timesheet {TIMESHEET.USERID}: COST_CENTER is missing for date {TIMESHEET.DATE}.
+      Assign via Admin Center > Time Management.
+
+  - id: TIME007
+    field: TIMESHEET.OVERTIME_HOURS
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: "Overtime hours should be recorded separately for premium pay calculation"
+    why_it_matters: >-
+      OVERTIME_HOURS must be recorded separately from regular hours because overtime
+      attracts a premium rate (typically 1.5x or 2x). If overtime is included in regular
+      hours without being flagged, the employee is underpaid for overtime worked.
+    rule_authority: best_practice
+    sap_impact: >-
+      Overtime premium not calculated. Employee underpaid for overtime worked. Labour law
+      compliance risk for overtime pay requirements.
+    fix_map:
+      __blank__: >-
+        If overtime was worked, record it separately in OVERTIME_HOURS via Admin Center >
+        Time Management. If no overtime, enter 0 explicitly.
+    record_fix_template: >-
+      Timesheet {TIMESHEET.USERID}: OVERTIME_HOURS is missing for date {TIMESHEET.DATE}.
+      Record overtime hours via Admin Center > Time Management.
+
+  - id: TIME008
+    field: TIMESHEET.DATE
+    check_class: regex_check
+    pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    severity: high
+    dimension: validity
+    message: "Timesheet date must be in YYYY-MM-DD format"
+    why_it_matters: >-
+      The payroll integration and leave balance engine require ISO 8601 date format to
+      correctly assign timesheet entries to pay periods. Non-standard formats cause
+      import failures and period assignment errors.
+    rule_authority: best_practice
+    sap_impact: >-
+      Timesheet import fails. Pay period assignment incorrect. Leave balance updates
+      applied to wrong period.
+    fix_map:
+      __other__: >-
+        Date format '{invalid_value}' is not ISO 8601. Convert to YYYY-MM-DD before
+        importing via Admin Center > Time Management > Timesheet Import.
+    record_fix_template: >-
+      Timesheet {TIMESHEET.USERID}: DATE format invalid (value: {actual_value}). Convert
+      to YYYY-MM-DD.
+
+  - id: TIME009
+    field: TIMESHEET.TIME_ACCOUNT_TYPE
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: "Time account type identifies the leave or time-off category for balance tracking"
+    why_it_matters: >-
+      TIME_ACCOUNT_TYPE maps the timesheet entry to a specific time account (annual
+      leave, sick leave, personal day, etc.) for balance tracking. Without it, the
+      system cannot determine which balance to debit, and leave reports show unclassified
+      time entries.
+    rule_authority: best_practice
+    sap_impact: >-
+      Leave balance not updated for this entry. Time-off reports show unclassified
+      entries. Accrual calculations may be incorrect.
+    fix_map:
+      __blank__: >-
+        Assign the correct time account type code via Admin Center > Time Management.
+        Reference the company's time account configuration for valid types.
+    record_fix_template: >-
+      Timesheet {TIMESHEET.USERID}: TIME_ACCOUNT_TYPE is missing for date
+      {TIMESHEET.DATE}. Assign via Admin Center > Time Management.
+
+  - id: TIME010
+    field: TIMESHEET.BALANCE
+    check_class: null_check
+    severity: low
+    dimension: completeness
+    message: "Leave balance should be recorded for point-in-time balance tracking"
+    why_it_matters: >-
+      BALANCE captures the remaining leave balance after this entry is applied. It
+      provides a point-in-time snapshot useful for historical balance inquiries and
+      reconciliation. Missing balances make it difficult to investigate discrepancies.
+    rule_authority: best_practice
+    sap_impact: >-
+      Historical balance inquiries cannot be answered. Leave balance reconciliation
+      requires recalculation from scratch.
+    fix_map:
+      __blank__: >-
+        Calculate and record the leave balance after this entry. May require
+        recalculation from the last known balance. Update via Admin Center > Time
+        Management.
+    record_fix_template: >-
+      Timesheet {TIMESHEET.USERID}: BALANCE is missing for date {TIMESHEET.DATE}.
+      Calculate and record via Admin Center > Time Management.
+
+  - id: TIME011
+    field: TIMESHEET.USERID
+    check_class: regex_check
+    pattern: "^[a-zA-Z0-9._@-]{1,100}$"
+    severity: high
+    dimension: validity
+    message: "Timesheet User ID must contain only valid characters"
+    why_it_matters: >-
+      USERID on timesheet entries must match the format used in Employee Central. Invalid
+      characters will prevent the join between timesheet and employee master, causing the
+      entry to be orphaned during payroll integration.
+    rule_authority: best_practice
+    sap_impact: >-
+      Timesheet entry cannot be matched to employee record. Payroll integration skips
+      this entry. Employee not paid for recorded hours.
+    fix_map:
+      __other__: >-
+        User ID '{invalid_value}' contains invalid characters. Must match the USERID
+        format in Employee Central. Correct via Admin Center > Time Management >
+        Timesheet Import.
+    record_fix_template: >-
+      Timesheet {TIMESHEET.USERID}: USERID format invalid (value: {actual_value}).
+      Correct to match Employee Central format via Admin Center.
+
+  - id: TIME012
+    field: TIMESHEET.HOURS
+    check_class: regex_check
+    pattern: "^[0-9]+(\\.[0-9]{1,2})?$"
+    severity: high
+    dimension: validity
+    message: "Hours must be a positive numeric value"
+    why_it_matters: >-
+      HOURS must be a valid positive number for payroll to calculate payment correctly.
+      Non-numeric values or negative hours cause payroll calculation errors and may
+      result in incorrect payment amounts.
+    rule_authority: best_practice
+    sap_impact: >-
+      Payroll calculation fails for this entry. Non-numeric hours cause import errors
+      and processing exceptions.
+    fix_map:
+      __other__: >-
+        Hours value '{invalid_value}' is not a valid positive number. Enter a numeric
+        value (e.g., 8, 7.5). Update via Admin Center > Time Management > Timesheet
+        Import.
+    record_fix_template: >-
+      Timesheet {TIMESHEET.USERID}: HOURS value '{actual_value}' is not numeric.
+      Correct via Admin Center > Time Management.
+
+  - id: TIME013
+    field: USERID_TIME
+    check_class: cross_field_check
+    fields: ['USERID_TIME']
+    condition: "~`USERID_TIME`.duplicated(keep=False)"
+    severity: high
+    dimension: uniqueness
+    message: Duplicate time records per employee per period — indicates time recording error
+    why_it_matters: Duplicate time records cause doubled hours in payroll, incorrect overtime calculation, and leave balance errors.
+    rule_authority: best_practice
+    sap_impact: Payroll processes doubled hours. Overtime is overstated. Leave balances are incorrect. Cost centre allocations are wrong.
+    fix_map:
+      __blank__: "Review duplicate time records in Time Management > Admin. Delete the duplicate entry. Verify the correct time record feeds to payroll."
+
+  - id: TIME014
+    field: USERID_TIME
+    check_class: freshness_check
+    max_age_hours: 2190
+    severity: medium
+    dimension: timeliness
+    message: Time record older than 3 months — stale time records may indicate inactive time recording for this employee
+    rule_authority: best_practice

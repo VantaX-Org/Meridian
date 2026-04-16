@@ -1,0 +1,87 @@
+# =========================================================
+# Meridian API — Production Image (IP-Protected)
+# Multi-stage build: compiles Python to .pyc, strips source
+# =========================================================
+
+# === BUILD STAGE ===
+FROM python:3.12-slim-bookworm AS builder
+
+# Install system dependencies needed at build time
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpango1.0-dev \
+    libgdk-pixbuf-2.0-dev \
+    libffi-dev \
+    libcairo2-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+
+# Install Python dependencies first (layer cache)
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application source
+COPY api/ api/
+COPY llm/ llm/
+COPY sap/ sap/
+COPY workers/ workers/
+COPY db/ db/
+COPY agents/ agents/
+COPY checks/ checks/
+COPY templates/ templates/
+
+# Compile all Python source to .pyc bytecode (exclude migrations - they must stay as .py)
+RUN python -m compileall -b -f \
+        api/ llm/ sap/ workers/ agents/ checks/ \
+    && echo "Compilation complete"
+
+# Strip .py source files (keep __init__.py and db/migrations/*.py for Alembic)
+RUN find . -path "./db/migrations" -prune -o -name "*.py" ! -name "__init__.py" -type f -delete && \
+    find . -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
+
+# Reduce __init__.py to empty stubs (removes any IP in module docstrings)
+# But preserve db/migrations/__init__.py for Alembic
+RUN find . -path "./db/migrations" -prune -o -name "__init__.py" -type f -exec truncate -s 0 {} \;
+
+# === PRODUCTION STAGE ===
+FROM python:3.12-slim-bookworm
+
+# Install runtime system dependencies (WeasyPrint, curl for healthcheck, postgresql-client for migrations)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    postgresql-client \
+    libpango1.0-0 \
+    libgdk-pixbuf-2.0-0 \
+    libffi8 \
+    libcairo2 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy installed packages from builder
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+# Copy compiled application (no .py source)
+COPY --from=builder /build .
+
+# Copy alembic.ini for migrations (needed by installer)
+COPY alembic.ini /app/
+
+# Remove any stray development artifacts (preserve db/migrations/*.py for Alembic)
+RUN find . -path "./db/migrations" -prune -o -name "*.py" ! -name "__init__.py" -type f -delete 2>/dev/null || true && \
+    find . -name ".git" -type d -exec rm -rf {} + 2>/dev/null || true && \
+    find . -name "Makefile" -delete 2>/dev/null || true
+
+# User management CLI (needs source .py, not compiled)
+COPY scripts/manage_users.py /app/scripts/manage_users.py
+
+# Copy entrypoint script that runs migrations
+COPY docker/entrypoint.api.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+ENV PYTHONPATH=/app
+
+EXPOSE 8000
+CMD ["/app/entrypoint.sh"]

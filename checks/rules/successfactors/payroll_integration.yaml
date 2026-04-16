@@ -1,0 +1,371 @@
+module: payroll_integration
+target_state: SUCCESSFACTORS
+rules:
+
+  - id: PAY001
+    field: PAYRESULT.USERID
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "User ID is mandatory — orphaned payroll result cannot be posted to GL"
+    why_it_matters: >-
+      USERID links the payroll result to the employee who was paid. Without it, the GL
+      posting cannot determine the cost centre, and the payment cannot be reconciled
+      against the employee's compensation record.
+    rule_authority: best_practice
+    sap_impact: >-
+      GL posting impossible — no cost centre derivation. Bank payment file cannot be
+      generated. Payroll reconciliation fails.
+    fix_map:
+      __blank__: >-
+        Assign the correct employee USERID by cross-referencing the payroll run log
+        with the employee master. Update via Payroll Control Center > Payroll Result
+        Import.
+    record_fix_template: >-
+      Payroll result {PAYRESULT.USERID}: USERID is missing. Assign via Payroll Control
+      Center > Payroll Result Import.
+
+  - id: PAY002
+    field: PAYRESULT.NET_PAY
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Net pay is mandatory — null value means employee receives zero payment"
+    why_it_matters: >-
+      NET_PAY is the final amount transferred to the employee's bank account. A null
+      value causes the bank payment file to either omit the employee entirely or generate
+      a zero-value transfer, resulting in non-payment and legal non-compliance.
+    rule_authority: best_practice
+    sap_impact: >-
+      Employee receives zero payment. Bank file generation fails or produces zero-value
+      entry. Labour law non-compliance risk.
+    fix_map:
+      __blank__: >-
+        Rerun payroll calculation for this employee via Payroll Control Center. If the
+        issue persists, check gross pay components and deduction configuration.
+    record_fix_template: >-
+      Payroll result {PAYRESULT.USERID}: NET_PAY is missing. Rerun payroll calculation
+      via Payroll Control Center.
+
+  - id: PAY003
+    field: PAYRESULT.PAY_DATE
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Pay date is mandatory — disbursement cannot be scheduled without it"
+    why_it_matters: >-
+      PAY_DATE determines when the bank payment is executed and when the GL posting is
+      dated. Without it, the payment cannot be included in the bank file and the
+      employee's payment is delayed indefinitely.
+    rule_authority: best_practice
+    sap_impact: >-
+      Bank payment file excludes this employee. GL posting undated — rejected by
+      finance. Employee payment delayed.
+    fix_map:
+      __blank__: >-
+        Set the pay date to match the payroll period's scheduled payment date via
+        Payroll Control Center > Payroll Result Import. Format: YYYY-MM-DD.
+    record_fix_template: >-
+      Payroll result {PAYRESULT.USERID}: PAY_DATE is missing. Set to payroll period
+      payment date via Payroll Control Center. Format: YYYY-MM-DD.
+
+  - id: PAY004
+    field: PAYRESULT.CURRENCY
+    check_class: regex_check
+    pattern: "^[A-Z]{3}$"
+    severity: critical
+    dimension: validity
+    message: "Currency must be a valid 3-letter ISO 4217 code (e.g. ZAR, USD, EUR)"
+    why_it_matters: >-
+      CURRENCY determines the denomination of the bank payment and GL posting. An invalid
+      code causes the bank to reject the payment file and the GL posting to fail currency
+      validation.
+    rule_authority: best_practice
+    sap_impact: >-
+      Bank payment file rejected — invalid currency code. GL posting fails currency
+      validation. Employee payment blocked.
+    fix_map:
+      __other__: >-
+        Currency '{invalid_value}' is not a valid ISO 4217 code. Use the 3-letter
+        uppercase code (e.g. ZAR, USD, EUR, GBP). Update via Payroll Control Center >
+        Payroll Result Import.
+    record_fix_template: >-
+      Payroll result {PAYRESULT.USERID}: CURRENCY '{actual_value}' is invalid. Set to
+      valid ISO 4217 code via Payroll Control Center.
+
+  - id: PAY005
+    field: PAYRESULT.COST_CENTRE
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "Cost centre is required for GL cost allocation — missing value posts to suspense"
+    why_it_matters: >-
+      COST_CENTRE determines where in the GL the payroll expense is allocated. Without
+      it, the entire payroll amount for this employee posts to a suspense account,
+      requiring manual reallocation by finance.
+    rule_authority: best_practice
+    sap_impact: >-
+      Payroll expense posts to suspense account. Management reporting by cost centre is
+      incomplete. Finance must manually reallocate.
+    fix_map:
+      __blank__: >-
+        Assign the correct cost centre from the employee's organisational assignment via
+        Payroll Control Center > Payroll Result Import. Cross-reference with the
+        employee's department and position.
+    record_fix_template: >-
+      Payroll result {PAYRESULT.USERID}: COST_CENTRE is missing. Assign via Payroll
+      Control Center. Derive from employee org assignment.
+
+  - id: PAY006
+    field: PAYRESULT.DELTA_FLAG
+    check_class: domain_value_check
+    allowed_values: ["", "X"]
+    severity: high
+    dimension: accuracy
+    message: "Delta flag must be blank (standard) or X (retroactive correction)"
+    why_it_matters: >-
+      DELTA_FLAG indicates whether a payroll result is a standard run or a retroactive
+      correction. An invalid value causes the GL integration to misclassify the posting
+      type, leading to incorrect GL balances and reconciliation failures.
+    rule_authority: best_practice
+    sap_impact: >-
+      GL posting uses wrong posting type. Retroactive corrections not recognised.
+      Payroll reconciliation discrepancies.
+    valid_values_with_labels:
+      "": "Standard — original payroll result for this period"
+      "X": "Delta — retroactive correction to a previously posted result"
+    fix_map:
+      __blank__: >-
+        Set to blank for standard payroll results or X for retroactive corrections.
+        Update via Payroll Control Center > Payroll Result Import.
+      __other__: >-
+        Delta flag '{invalid_value}' is not valid. Use blank for standard results or X
+        for retroactive corrections. Update via Payroll Control Center.
+    record_fix_template: >-
+      Payroll result {PAYRESULT.USERID}: DELTA_FLAG '{actual_value}' is invalid. Set to
+      blank or X via Payroll Control Center.
+
+  - id: PAY007
+    field: PAYRESULT.GROSS_PAY
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Gross pay is mandatory — required for tax calculation and payslip generation"
+    why_it_matters: >-
+      GROSS_PAY is the total pre-deduction amount used to calculate tax withholding,
+      social contributions, and benefit deductions. A null value causes all downstream
+      calculations to fail, resulting in incorrect or zero deductions.
+    rule_authority: best_practice
+    sap_impact: >-
+      Tax withholding cannot be calculated. Payslip shows no gross amount. Deduction
+      calculations produce incorrect results.
+    fix_map:
+      __blank__: >-
+        Rerun payroll calculation via Payroll Control Center. Verify that compensation
+        records exist for this employee in the Compensation module.
+    record_fix_template: >-
+      Payroll result {PAYRESULT.USERID}: GROSS_PAY is missing. Rerun payroll
+      calculation via Payroll Control Center.
+
+  - id: PAY008
+    field: PAYRESULT.PAY_PERIOD
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "Pay period is required to assign result to the correct payroll cycle"
+    why_it_matters: >-
+      PAY_PERIOD determines which payroll cycle this result belongs to. Without it, the
+      result cannot be reconciled against the payroll run and GL postings cannot be
+      assigned to the correct accounting period.
+    rule_authority: best_practice
+    sap_impact: >-
+      Payroll reconciliation cannot match this result to a run. GL posting assigned to
+      wrong accounting period. Period-end reporting is incomplete.
+    fix_map:
+      __blank__: >-
+        Assign the correct pay period identifier via Payroll Control Center > Payroll
+        Result Import. Cross-reference with the payroll run schedule.
+    record_fix_template: >-
+      Payroll result {PAYRESULT.USERID}: PAY_PERIOD is missing. Assign via Payroll
+      Control Center.
+
+  - id: PAY009
+    field: PAYRESULT.CURRENCY
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Currency is mandatory — payroll result cannot be processed without denomination"
+    why_it_matters: >-
+      CURRENCY is required to generate the bank payment file and perform any FX
+      conversion for GL posting. Without it, the payment file generator cannot determine
+      the denomination and the result is excluded from processing.
+    rule_authority: best_practice
+    sap_impact: >-
+      Bank payment file excludes this result. GL posting cannot determine currency for
+      multi-currency ledger. Employee payment blocked.
+    fix_map:
+      __blank__: >-
+        Set the currency to match the employee's payroll company currency. Use ISO 4217
+        format (e.g., ZAR, USD, EUR). Update via Payroll Control Center.
+    record_fix_template: >-
+      Payroll result {PAYRESULT.USERID}: CURRENCY is missing. Set to the correct ISO
+      4217 code via Payroll Control Center.
+
+  - id: PAY010
+    field: PAYRESULT.GROSS_PAY
+    check_class: cross_field_check
+    fields: ["PAYRESULT.GROSS_PAY", "PAYRESULT.NET_PAY"]
+    condition: "`PAYRESULT.GROSS_PAY`.notna() & `PAYRESULT.NET_PAY`.notna() & (`PAYRESULT.GROSS_PAY` < `PAYRESULT.NET_PAY`)"
+    severity: critical
+    dimension: consistency
+    message: "Gross pay must be greater than or equal to net pay"
+    why_it_matters: >-
+      Net pay is derived from gross pay minus deductions (tax, social contributions,
+      benefits). If NET_PAY exceeds GROSS_PAY, it indicates a calculation error in
+      payroll processing — deductions have been applied as additions, or the gross
+      amount is understated.
+    rule_authority: best_practice
+    sap_impact: >-
+      Payroll calculation error. Employee is overpaid relative to gross earnings.
+      Tax withholding and deduction amounts are incorrect. GL postings out of balance.
+    fix_map:
+      __blank__: >-
+        Review the payroll calculation for this employee. Verify that deductions are
+        correctly applied and that gross pay includes all earnings components. Rerun
+        payroll via Payroll Control Center.
+    record_fix_template: >-
+      Payroll result {PAYRESULT.USERID}: NET_PAY exceeds GROSS_PAY. Review payroll
+      calculation via Payroll Control Center.
+
+  - id: PAY011
+    field: PAYRESULT.TAX_AMOUNT
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "Tax amount is required for regulatory reporting and employee payslip"
+    why_it_matters: >-
+      TAX_AMOUNT is the income tax withheld for this pay period. It must be reported to
+      tax authorities and appears on the employee payslip. A missing value causes
+      regulatory filing gaps and employee payslip errors.
+    rule_authority: best_practice
+    sap_impact: >-
+      Tax authority filing incomplete. Employee payslip shows no tax withholding.
+      Year-end tax certificates (W-2, IRP5) are incorrect.
+    fix_map:
+      __blank__: >-
+        Verify tax calculation configuration and rerun payroll for this employee.
+        If tax is genuinely zero (e.g., below threshold), enter 0 explicitly.
+    record_fix_template: >-
+      Payroll result {PAYRESULT.USERID}: TAX_AMOUNT is missing. Verify tax calculation
+      and rerun payroll via Payroll Control Center.
+
+  - id: PAY012
+    field: PAYRESULT.COMPANY
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "Company code is required to route payroll result to the correct legal entity"
+    why_it_matters: >-
+      COMPANY determines which legal entity the payroll expense is booked against. For
+      multi-entity organisations, a missing company code causes the GL posting to default
+      to the wrong entity or fail entirely.
+    rule_authority: best_practice
+    sap_impact: >-
+      GL posting routed to wrong legal entity. Intercompany reconciliation fails.
+      Statutory reporting for the correct entity is incomplete.
+    fix_map:
+      __blank__: >-
+        Assign the correct company code from the employee's organisational assignment.
+        Update via Payroll Control Center > Payroll Result Import.
+    record_fix_template: >-
+      Payroll result {PAYRESULT.USERID}: COMPANY is missing. Assign via Payroll Control
+      Center.
+
+  - id: PAY013
+    field: PAYRESULT.PAYROLL_AREA
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: "Payroll area groups employees for payroll processing — missing value may cause exclusion"
+    why_it_matters: >-
+      PAYROLL_AREA groups employees by pay cycle (e.g., monthly salaried, bi-weekly
+      hourly). Without it, the payroll run selector cannot include this employee in the
+      correct processing group, potentially causing them to be skipped.
+    rule_authority: best_practice
+    sap_impact: >-
+      Employee may be excluded from payroll run. Payroll processing group reports are
+      incomplete.
+    fix_map:
+      __blank__: >-
+        Assign the correct payroll area code based on the employee's pay frequency and
+        location. Update via Payroll Control Center.
+    record_fix_template: >-
+      Payroll result {PAYRESULT.USERID}: PAYROLL_AREA is missing. Assign via Payroll
+      Control Center.
+
+  - id: PAY014
+    field: PAYRESULT.PAY_DATE
+    check_class: regex_check
+    pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    severity: high
+    dimension: validity
+    message: "Pay date must be in YYYY-MM-DD format"
+    why_it_matters: >-
+      The bank payment file and GL posting engine require ISO 8601 date format. Non-
+      standard formats cause file generation failures and rejected GL postings.
+    rule_authority: best_practice
+    sap_impact: >-
+      Bank payment file generation fails. GL posting rejected due to invalid date
+      format.
+    fix_map:
+      __other__: >-
+        Date format '{invalid_value}' is not ISO 8601. Convert to YYYY-MM-DD before
+        importing via Payroll Control Center.
+    record_fix_template: >-
+      Payroll result {PAYRESULT.USERID}: PAY_DATE format invalid (value: {actual_value}).
+      Convert to YYYY-MM-DD.
+
+  - id: PAY015
+    field: PAYRESULT.DEDUCTIONS
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: "Total deductions should be recorded for payslip accuracy and reconciliation"
+    why_it_matters: >-
+      DEDUCTIONS captures the total amount withheld from gross pay (tax, benefits,
+      pension, garnishments). A missing value makes it impossible to reconcile
+      gross-to-net and produces incomplete payslips.
+    rule_authority: best_practice
+    sap_impact: >-
+      Payslip shows no deduction breakdown. Gross-to-net reconciliation fails.
+      Employee queries about pay discrepancies cannot be resolved.
+    fix_map:
+      __blank__: >-
+        Verify payroll calculation includes all deduction wage types. If deductions are
+        genuinely zero, enter 0 explicitly. Update via Payroll Control Center.
+    record_fix_template: >-
+      Payroll result {PAYRESULT.USERID}: DEDUCTIONS is missing. Verify payroll
+      calculation via Payroll Control Center.
+
+  - id: PAY016
+    field: PAYRESULT.USERID_PAY
+    check_class: cross_field_check
+    fields: ['PAYRESULT.USERID_PAY']
+    condition: "~`PAYRESULT.USERID_PAY`.duplicated(keep=False)"
+    severity: critical
+    dimension: uniqueness
+    message: Duplicate payroll result records per employee per period — indicates replication error
+    why_it_matters: Duplicate payroll results cause doubled payment amounts, incorrect tax withholding, and GL posting variances.
+    rule_authority: sap_hard_constraint
+    sap_impact: Employee is paid twice. Tax withholding is doubled. Payroll-to-FI posting is overstated. Payroll reconciliation fails.
+    fix_map:
+      __blank__: "Investigate the ECP replication log. Delete the duplicate payroll result via the Payroll Control Center. Re-run the replication for the affected period."
+
+  - id: PAY017
+    field: PAYRESULT.PAY_DATE
+    check_class: freshness_check
+    max_age_hours: 2190
+    severity: medium
+    dimension: timeliness
+    message: Payroll result older than 3 months — verify integration is running and results are being replicated
+    rule_authority: best_practice

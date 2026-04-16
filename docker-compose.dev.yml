@@ -1,0 +1,134 @@
+# =========================================================
+# Meridian Platform — Development Overlay
+# =========================================================
+# Builds from source, hot-reload, Ollama Cloud LLM.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+#
+# Or set once per shell session:
+#   export COMPOSE_FILE="docker-compose.yml;docker-compose.dev.yml"  (Linux/Mac)
+#   $env:COMPOSE_FILE = "docker-compose.yml;docker-compose.dev.yml"  (PowerShell)
+# =========================================================
+
+services:
+  api:
+    image: meridian-api-dev
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment: &dev-env
+      # ── LLM (reads from .env) ────────────────────────────────
+      - LLM_PROVIDER=${LLM_PROVIDER:-}
+      - OLLAMA_API_KEY=${OLLAMA_API_KEY:-}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      # ── Database ────────────────────────────────────────────
+      - DATABASE_URL=postgresql+asyncpg://meridian:${DB_PASSWORD:-password}@db:5432/meridian
+      - DATABASE_URL_SYNC=postgresql://meridian:${DB_PASSWORD:-password}@db:5432/meridian
+      # ── Redis ───────────────────────────────────────────────
+      - REDIS_URL=redis://redis:6379/0
+      # ── MinIO ───────────────────────────────────────────────
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-meridian}
+      - MINIO_SECRET_KEY=${MINIO_PASSWORD:-minioadmin}
+      - MINIO_BUCKET_UPLOADS=${MINIO_BUCKET_UPLOADS:-meridian-uploads}
+      - MINIO_BUCKET_REPORTS=${MINIO_BUCKET_REPORTS:-meridian-reports}
+      # ── CORS (permissive — API port is internal-only) ─────
+      - MERIDIAN_CORS_ORIGINS=*
+      # ── Licence ─────────────────────────────────────────────
+      - LICENCE_KEY=${LICENCE_KEY:-}
+      - LICENCE_SERVER_URL=${LICENCE_SERVER_URL:-https://licence.meridian.vantax.co.za}
+      - LICENCE_FILE=${LICENCE_FILE:-}
+      # ── Auth ────────────────────────────────────────────────
+      - AUTH_MODE=${AUTH_MODE:-local}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-dev-secret-change-me}
+      - FRONTEND_URL=http://localhost:3000
+      # ── SAP ─────────────────────────────────────────────────
+      - SAP_CONNECTOR=${SAP_CONNECTOR:-mock}
+      # ── Notifications (optional) ────────────────────────────
+      - RESEND_API_KEY=${RESEND_API_KEY:-}
+      - TEAMS_WEBHOOK_URL=${TEAMS_WEBHOOK_URL:-}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_FROM=${SMTP_FROM:-noreply@meridian.local}
+      # ── Observability ───────────────────────────────────────
+      - SENTRY_DSN=${SENTRY_DSN:-}
+    volumes:
+      - ./api:/app/api
+      - ./agents:/app/agents
+      - ./checks:/app/checks
+      - ./workers:/app/workers
+      - ./db:/app/db
+      - ./llm:/app/llm
+      - ./sap:/app/sap
+      - ./templates:/app/templates
+      - ./scripts:/app/scripts
+      - ./uploads:/app/uploads
+
+  worker:
+    image: meridian-api-dev
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    command: ["celery", "-A", "workers.celery_app", "worker", "--loglevel=info", "--concurrency=2"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment: *dev-env
+    volumes:
+      - ./api:/app/api
+      - ./agents:/app/agents
+      - ./checks:/app/checks
+      - ./workers:/app/workers
+      - ./db:/app/db
+      - ./llm:/app/llm
+      - ./sap:/app/sap
+  beat:
+    image: meridian-api-dev
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment: *dev-env
+    volumes:
+      - ./api:/app/api
+      - ./agents:/app/agents
+      - ./checks:/app/checks
+      - ./workers:/app/workers
+      - ./db:/app/db
+      - ./llm:/app/llm
+      - ./sap:/app/sap
+
+  frontend:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm install --include=dev && npm run dev"
+    environment:
+      - INTERNAL_API_URL=http://api:8000
+      - AUTH_MODE=${AUTH_MODE:-local}
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+      - frontend_next_cache:/app/.next
+    networks:
+      - meridian-net
+
+  ollama:
+    # Disable the local Ollama container in dev mode (uses Ollama Cloud instead)
+    profiles:
+      - gpu
+
+volumes:
+  frontend_node_modules:
+  frontend_next_cache:

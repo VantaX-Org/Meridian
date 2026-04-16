@@ -1,0 +1,20 @@
+name = "meridian-licence-worker"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+
+[[kv_namespaces]]
+binding = "LICENCE_KV"
+id = "b28ffabf33ba462f9ab46283743c9484"
+preview_id = "a203bd4de53a4e9a900852e898242b4c"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "meridian-licence"
+database_id = "a71c8296-6bb7-454b-a2bf-818d69b76bef"
+
+[vars]
+ENVIRONMENT = "production"
+
+# Secrets — set via:
+#   wrangler secret put LICENCE_ADMIN_SECRET
+#   wrangler secret put LICENCE_SECRET

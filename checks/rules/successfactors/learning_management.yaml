@@ -1,0 +1,332 @@
+module: learning_management
+target_state: SUCCESSFACTORS
+rules:
+
+  - id: LMS001
+    field: LEARNINGASSIGNMENT.USERID
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "User ID is mandatory — orphaned assignments cannot be tracked for compliance"
+    why_it_matters: >-
+      USERID links a learning assignment to a specific employee. Without it, the
+      assignment is orphaned and cannot appear on the employee's learning transcript.
+      For compliance-critical training (health and safety, anti-bribery, data
+      protection), an orphaned assignment means the organisation has no auditable
+      evidence that the employee was assigned the required training.
+    rule_authority: best_practice
+    sap_impact: >-
+      Assignment not visible on employee transcript. Compliance reports show training as
+      unassigned. Audit trail for mandatory training is broken.
+    fix_map:
+      __blank__: >-
+        Identify the correct employee and assign their USERID via Learning > Admin >
+        Assignment Management. Cross-reference with EC employee records to find the
+        correct USERID.
+    record_fix_template: >-
+      Assignment {LEARNINGASSIGNMENT.USERID}: USERID is missing. Link to correct
+      employee via Learning > Admin > Assignment Management.
+
+  - id: LMS002
+    field: LEARNINGASSIGNMENT.COURSE_ID
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Course ID is mandatory — links assignment to course catalogue content"
+    why_it_matters: >-
+      COURSE_ID links the assignment to a specific course in the Learning catalogue.
+      Without it, the learner sees an assignment with no content — they cannot launch the
+      course, complete it, or receive credit. For compliance training, this means
+      mandatory courses appear assigned but are impossible to complete.
+    rule_authority: best_practice
+    sap_impact: >-
+      Learner cannot launch or complete the assigned course. Assignment appears in
+      transcript but content is unavailable. Compliance training completion is blocked.
+    fix_map:
+      __blank__: >-
+        Link to the correct course via Learning > Admin > Assignment Management. The
+        course must exist and be active in the Learning catalogue.
+    record_fix_template: >-
+      Assignment for {LEARNINGASSIGNMENT.USERID}: COURSE_ID is missing. Link to a valid
+      course via Learning > Admin > Assignment Management.
+
+  - id: LMS003
+    field: LEARNINGASSIGNMENT.DUE_DATE
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "Due date is required for overdue alerts and compliance escalation"
+    why_it_matters: >-
+      DUE_DATE drives the overdue alert engine and compliance escalation workflows.
+      Without a due date, the system cannot generate overdue notifications to learners
+      or escalate non-completion to managers. For compliance training with regulatory
+      deadlines, missing due dates mean the organisation has no automated mechanism to
+      enforce timely completion.
+    rule_authority: best_practice
+    sap_impact: >-
+      No overdue alerts generated for this assignment. Manager escalation workflow
+      cannot trigger. Compliance dashboard shows no deadline.
+    fix_map:
+      __blank__: >-
+        Set an appropriate due date via Learning > Admin > Assignment Management. For
+        compliance training, align with regulatory deadline. Use ISO format YYYY-MM-DD.
+    record_fix_template: >-
+      Assignment for {LEARNINGASSIGNMENT.USERID}: DUE_DATE is missing. Set deadline via
+      Learning > Admin > Assignment Management. Format: YYYY-MM-DD.
+
+  - id: LMS004
+    field: LEARNINGASSIGNMENT.STATUS
+    check_class: domain_value_check
+    allowed_values: ["assigned", "in_progress", "completed", "overdue", "waived"]
+    severity: high
+    dimension: accuracy
+    message: "Assignment status must be a valid Learning module state"
+    why_it_matters: >-
+      STATUS tracks the learner's progress on the assignment and is used by compliance
+      reporting to determine completion rates. An invalid status corrupts compliance
+      dashboards and prevents the overdue escalation engine from functioning.
+    rule_authority: customer_configured
+    sap_impact: >-
+      Compliance report shows corrupted assignment data. Overdue escalation cannot
+      determine whether to send alerts. Recertification workflows malfunction.
+    valid_values_with_labels:
+      "assigned": "Assigned — learner has not yet started the course"
+      "in_progress": "In Progress — learner is actively working on the course"
+      "completed": "Completed — learner has successfully finished the course"
+      "overdue": "Overdue — assignment has passed its due date without completion"
+      "waived": "Waived — requirement waived by administrator"
+    fix_map:
+      __blank__: >-
+        Assign the correct status based on the learner's progress. Update via Learning >
+        Admin > Assignment Management.
+      __other__: >-
+        Status '{invalid_value}' is not a recognised assignment state. Set to one of:
+        assigned, in_progress, completed, overdue, waived. Update via Learning > Admin >
+        Assignment Management.
+    record_fix_template: >-
+      Assignment for {LEARNINGASSIGNMENT.USERID}: STATUS '{actual_value}' is invalid.
+      Correct via Learning > Admin > Assignment Management.
+
+  - id: LMS005
+    field: LEARNINGASSIGNMENT.COURSE_TITLE
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: "Course title is required for learner-facing display and reporting"
+    why_it_matters: >-
+      COURSE_TITLE is the human-readable name displayed on the learner's transcript and
+      in compliance reports. A blank title makes it impossible for the learner to identify
+      the training and produces unreadable compliance reports.
+    rule_authority: best_practice
+    sap_impact: >-
+      Learner transcript shows blank course entry. Compliance reports list unnamed
+      training assignments. Manager reports are unreadable.
+    fix_map:
+      __blank__: >-
+        Populate the course title from the Learning catalogue. Should match the title
+        configured in Learning > Admin > Course Management. Update via Assignment
+        Management.
+    record_fix_template: >-
+      Assignment for {LEARNINGASSIGNMENT.USERID}: COURSE_TITLE is blank. Populate from
+      the course catalogue via Learning > Admin > Assignment Management.
+
+  - id: LMS006
+    field: LEARNINGASSIGNMENT.REQUIRED
+    check_class: domain_value_check
+    allowed_values: ["Y", "N"]
+    severity: medium
+    dimension: accuracy
+    message: "Required flag must be Y (mandatory) or N (optional)"
+    why_it_matters: >-
+      The REQUIRED flag determines whether the assignment is treated as mandatory
+      compliance training or optional development. Incorrect values cause compliance
+      reports to either miss mandatory training or incorrectly flag optional courses as
+      compliance gaps.
+    rule_authority: best_practice
+    sap_impact: >-
+      Compliance reporting incorrectly classifies this assignment. Mandatory training
+      may be treated as optional or vice versa.
+    valid_values_with_labels:
+      "Y": "Yes — mandatory/compliance-required training"
+      "N": "No — optional/development training"
+    fix_map:
+      __blank__: >-
+        Set the required flag to Y for mandatory training or N for optional. Update via
+        Learning > Admin > Assignment Management.
+      __other__: >-
+        Required flag '{invalid_value}' is not valid. Use Y (mandatory) or N (optional).
+        Update via Learning > Admin > Assignment Management.
+    record_fix_template: >-
+      Assignment for {LEARNINGASSIGNMENT.USERID}: REQUIRED flag '{actual_value}' is
+      invalid. Set to Y or N via Learning > Admin > Assignment Management.
+
+  - id: LMS007
+    field: LEARNINGASSIGNMENT.ASSIGNED_DATE
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: "Assigned date is required for tracking assignment lifecycle and SLA compliance"
+    why_it_matters: >-
+      ASSIGNED_DATE records when the training was assigned to the learner. It is used to
+      calculate the time between assignment and completion, which is a key SLA metric for
+      compliance training programmes.
+    rule_authority: best_practice
+    sap_impact: >-
+      Assignment-to-completion time cannot be calculated. SLA compliance for training
+      programmes cannot be measured.
+    fix_map:
+      __blank__: >-
+        Set the assigned date to when the training was originally assigned. Update via
+        Learning > Admin > Assignment Management. Format: YYYY-MM-DD.
+    record_fix_template: >-
+      Assignment for {LEARNINGASSIGNMENT.USERID}: ASSIGNED_DATE is missing. Set via
+      Learning > Admin > Assignment Management. Format: YYYY-MM-DD.
+
+  - id: LMS008
+    field: LEARNINGCOMPLETION.STATUS
+    check_class: domain_value_check
+    allowed_values: ["completed", "incomplete", "failed", "waived"]
+    severity: high
+    dimension: accuracy
+    message: "Completion status must be a valid outcome state"
+    why_it_matters: >-
+      Completion STATUS is the definitive record of whether an employee has satisfied a
+      training requirement. An invalid status corrupts compliance reports — the system
+      cannot determine whether the training was completed, failed, or waived. During
+      regulatory audits, invalid statuses are treated as non-completion.
+    rule_authority: customer_configured
+    sap_impact: >-
+      Compliance report shows corrupted completion data. Regulatory audit evidence is
+      invalid. Recertification workflows cannot determine whether to re-assign training.
+    valid_values_with_labels:
+      "completed": "Completed — learner has successfully finished the course"
+      "incomplete": "Incomplete — learner started but did not finish"
+      "failed": "Failed — learner did not meet passing criteria"
+      "waived": "Waived — requirement waived by administrator"
+    fix_map:
+      __blank__: >-
+        Assign the correct status from: completed, incomplete, failed, waived. Update
+        via Learning > Admin > Completion Management or bulk import.
+      __other__: >-
+        Status '{invalid_value}' is not a recognised completion state. Set to one of:
+        completed, incomplete, failed, waived. Update via Learning > Admin > Completion
+        Management.
+    record_fix_template: >-
+      Completion for {LEARNINGASSIGNMENT.USERID}: STATUS '{actual_value}' is invalid.
+      Correct via Learning > Admin > Completion Management.
+
+  - id: LMS009
+    field: LEARNINGCOMPLETION.COMPLETION_DATE
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "Completion date is required as evidence for compliance audits"
+    why_it_matters: >-
+      COMPLETION_DATE is the timestamp that proves when an employee satisfied a training
+      requirement. Without it, compliance auditors cannot verify that training was
+      completed within the required timeframe. Recertification workflows also rely on
+      this date to calculate when the next cycle of training is due.
+    rule_authority: best_practice
+    sap_impact: >-
+      Compliance audit evidence incomplete — no proof of when training was completed.
+      Recertification due date cannot be calculated. Training history has gaps.
+    fix_map:
+      __blank__: >-
+        Set the actual completion date via Learning > Admin > Completion Management. Use
+        ISO format YYYY-MM-DD. For historical records, use the date the learner finished
+        the course.
+    record_fix_template: >-
+      Completion for {LEARNINGASSIGNMENT.USERID}: COMPLETION_DATE is missing. Set via
+      Learning > Admin > Completion Management. Format: YYYY-MM-DD.
+
+  - id: LMS010
+    field: LEARNINGCOMPLETION.SCORE
+    check_class: null_check
+    severity: low
+    dimension: completeness
+    message: "Score is recommended for courses with assessments to validate competency"
+    why_it_matters: >-
+      SCORE records the learner's assessment result and is used to determine whether they
+      met the passing threshold. For certification courses, a missing score means
+      competency cannot be verified even if the course is marked as completed.
+    rule_authority: best_practice
+    sap_impact: >-
+      Competency verification cannot be confirmed. Certification records show no
+      assessment evidence. Manager reports lack score data.
+    fix_map:
+      __blank__: >-
+        Record the assessment score via Learning > Admin > Completion Management. If the
+        course has no assessment, this field may be left blank intentionally.
+    record_fix_template: >-
+      Completion for {LEARNINGASSIGNMENT.USERID}: SCORE is missing. Record assessment
+      result via Learning > Admin > Completion Management.
+
+  - id: LMS011
+    field: LEARNINGCOMPLETION.CREDIT_HOURS
+    check_class: null_check
+    severity: low
+    dimension: completeness
+    message: "Credit hours should be recorded for CPE/CPD tracking"
+    why_it_matters: >-
+      CREDIT_HOURS tracks Continuing Professional Education (CPE) or Continuing
+      Professional Development (CPD) credits earned. For employees in regulated
+      professions (accounting, nursing, legal), missing credit hours mean their
+      professional licence renewal records are incomplete.
+    rule_authority: best_practice
+    sap_impact: >-
+      CPE/CPD credit tracking is incomplete. Professional licence renewal records show
+      gaps. Annual CPE hour totals are understated.
+    fix_map:
+      __blank__: >-
+        Record the credit hours earned for this course via Learning > Admin > Completion
+        Management. Verify against the course configuration for the standard credit
+        allocation.
+    record_fix_template: >-
+      Completion for {LEARNINGASSIGNMENT.USERID}: CREDIT_HOURS is missing. Record via
+      Learning > Admin > Completion Management.
+
+  - id: LMS012
+    field: LEARNINGASSIGNMENT.DUE_DATE
+    check_class: regex_check
+    pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    severity: medium
+    dimension: validity
+    message: "Due date must be in YYYY-MM-DD format"
+    why_it_matters: >-
+      SuccessFactors Learning requires ISO 8601 date format for all dates. Non-standard
+      formats cause import failures and prevent the overdue alert engine from correctly
+      comparing dates.
+    rule_authority: best_practice
+    sap_impact: >-
+      Assignment import fails. Overdue alerts cannot calculate whether the due date has
+      passed. Compliance deadline enforcement is broken.
+    fix_map:
+      __other__: >-
+        Date format '{invalid_value}' is not ISO 8601. Convert to YYYY-MM-DD before
+        importing via Learning > Admin > Assignment Management.
+    record_fix_template: >-
+      Assignment for {LEARNINGASSIGNMENT.USERID}: DUE_DATE format invalid
+      (value: {actual_value}). Convert to YYYY-MM-DD.
+
+  - id: LMS013
+    field: USERID_LMS
+    check_class: cross_field_check
+    fields: ['USERID_LMS']
+    condition: "~`USERID_LMS`.duplicated(keep=False)"
+    severity: high
+    dimension: uniqueness
+    message: Duplicate learning assignment records per employee — same course assigned multiple times
+    why_it_matters: Duplicate assignments inflate compliance completion metrics and may cause learners to be re-enrolled in completed courses.
+    rule_authority: best_practice
+    sap_impact: Compliance dashboards show incorrect completion rates. Learners receive duplicate notifications. Training cost reports are overstated.
+    fix_map:
+      __blank__: "Review duplicate assignments in Learning > Admin > Assignment Rules. Remove the duplicate assignment. Verify completion status on the surviving record."
+
+  - id: LMS014
+    field: DUE_DATE
+    check_class: freshness_check
+    max_age_hours: 0
+    severity: high
+    dimension: timeliness
+    message: Learning assignment past due date — overdue mandatory training creates compliance risk
+    rule_authority: best_practice

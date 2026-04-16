@@ -1,0 +1,30 @@
+# =========================================================
+# Meridian nginx — Custom reverse proxy image
+# Bakes Meridian routing config into the image.
+# Config can be overridden at runtime via bind mount:
+#   -v /opt/meridian/nginx/meridian.conf:/etc/nginx/conf.d/meridian.conf
+# =========================================================
+
+FROM nginx:1.27-alpine
+
+# Remove the default nginx config
+RUN rm /etc/nginx/conf.d/default.conf
+
+# Copy custom global config
+COPY docker/nginx/nginx.conf /etc/nginx/nginx.conf
+
+# Copy Meridian site config
+COPY docker/nginx/meridian.conf /etc/nginx/conf.d/meridian.conf
+
+# Create directory for SSL certs (mounted at runtime — not baked in)
+RUN mkdir -p /etc/nginx/certs && \
+    chmod 750 /etc/nginx/certs
+
+# Note: nginx -t cannot run at build time because upstream hosts
+# (api, frontend, minio) only resolve inside the Docker network.
+# Config syntax is validated by CI via a standalone nginx -t with
+# the config mounted as a volume (no upstream resolution needed).
+
+EXPOSE 80 443
+
+CMD ["nginx", "-g", "daemon off;"]

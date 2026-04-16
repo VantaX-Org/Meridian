@@ -1,0 +1,922 @@
+# Config Impact Rules — maps check_id to downstream feature / system impact.
+#
+# Each rule describes what breaks when a specific data quality check fails.
+# Used by the config_impact agent node to produce feature-level readiness
+# assessments and opportunity-cost analysis.
+#
+# Fields:
+#   check_id                  — matches findings_summary[].check_id
+#   module                    — SAP module key
+#   target_feature            — the downstream feature / capability affected
+#   target_system             — the system or component that owns target_feature
+#   impact_type               — full_block | degraded | cosmetic
+#   blocked_transactions      — SAP t-codes or SF processes that cannot execute
+#   opportunity_cost_category — revenue | efficiency | compliance | risk
+#   opportunity_cost_description — business-language impact statement
+#   cost_driver               — what drives the financial impact
+#   cross_system_dependencies — dict of external system -> failure description
+
+rules:
+
+  # ===========================================================================
+  # SuccessFactors — Employee Central
+  # ===========================================================================
+  - check_id: EC001
+    module: employee_central
+    target_feature: All SuccessFactors Modules
+    target_system: SuccessFactors BizX
+    impact_type: full_block
+    blocked_transactions:
+      - Onboarding 2.0
+      - Payroll Control Center
+      - Compensation Planning
+      - Learning Management
+      - Performance & Goals
+      - Time Management
+    opportunity_cost_category: compliance
+    opportunity_cost_description: >-
+      Core employee record failures cascade to every downstream SF module.
+      No module can function without a valid Employee Central foundation.
+    cost_driver: headcount_affected
+    cross_system_dependencies:
+      concur: Employee profile sync fails — expense policy assignment breaks
+      payroll: Payroll integration cannot resolve employee records
+      third_party_benefits: Benefits carrier feeds contain invalid employee data
+
+  - check_id: EC005
+    module: employee_central
+    target_feature: SF Onboarding 2.0
+    target_system: SuccessFactors Onboarding
+    impact_type: full_block
+    blocked_transactions:
+      - Onboarding workflow initiation
+      - Day-1 task generation
+      - Equipment provisioning trigger
+      - Manager notification chain
+    opportunity_cost_category: efficiency
+    opportunity_cost_description: >-
+      New hire onboarding cannot proceed. Day-1 readiness tasks are not
+      generated, IT provisioning is not triggered, and manager notifications
+      are suppressed.
+    cost_driver: new_hire_volume
+    cross_system_dependencies:
+      concur: Employee sync fails — new hire cannot submit expenses
+      payroll: Tenure calculation fails — incorrect leave accrual from day 1
+
+  - check_id: EC010
+    module: employee_central
+    target_feature: Manager Self-Service
+    target_system: SuccessFactors Employee Central
+    impact_type: degraded
+    blocked_transactions:
+      - Manager org-chart view
+      - Direct report listing
+      - Approval delegation
+    opportunity_cost_category: efficiency
+    opportunity_cost_description: >-
+      Managers see incomplete or incorrect team structures, leading to
+      mis-routed approvals and delayed HR actions.
+    cost_driver: manager_headcount
+    cross_system_dependencies: {}
+
+  - check_id: EC015
+    module: employee_central
+    target_feature: Payroll Integration
+    target_system: SuccessFactors Employee Central Payroll
+    impact_type: full_block
+    blocked_transactions:
+      - Payroll Control Center replication
+      - Pay statement generation
+      - Tax withholding calculation
+    opportunity_cost_category: compliance
+    opportunity_cost_description: >-
+      Payroll replication fails — employees may be paid incorrectly or not
+      at all, creating legal and compliance exposure.
+    cost_driver: payroll_cycle_value
+    cross_system_dependencies:
+      erp_payroll: Wage type mapping breaks if EC cost centre is invalid
+
+  # ===========================================================================
+  # SuccessFactors — Compensation
+  # ===========================================================================
+  - check_id: COMP001
+    module: compensation
+    target_feature: Compensation Planning
+    target_system: SuccessFactors Compensation
+    impact_type: full_block
+    blocked_transactions:
+      - Compensation worksheet generation
+      - Budget allocation
+      - Merit increase calculation
+      - Bonus payout determination
+    opportunity_cost_category: revenue
+    opportunity_cost_description: >-
+      Compensation cycle cannot execute. Merit and bonus calculations are
+      blocked, delaying the entire annual compensation review.
+    cost_driver: compensation_budget
+    cross_system_dependencies:
+      payroll: Approved comp changes cannot replicate to payroll
+
+  - check_id: COMP005
+    module: compensation
+    target_feature: Pay Equity Analysis
+    target_system: SuccessFactors Compensation
+    impact_type: degraded
+    blocked_transactions:
+      - Pay equity dashboard
+      - Compa-ratio reporting
+    opportunity_cost_category: compliance
+    opportunity_cost_description: >-
+      Pay equity reports contain unreliable data, increasing regulatory
+      audit risk and undermining DE&I reporting.
+    cost_driver: compliance_penalty_exposure
+    cross_system_dependencies: {}
+
+  # ===========================================================================
+  # SuccessFactors — Benefits
+  # ===========================================================================
+  - check_id: BEN001
+    module: benefits
+    target_feature: Benefits Enrollment
+    target_system: SuccessFactors Benefits
+    impact_type: full_block
+    blocked_transactions:
+      - Open enrollment workflow
+      - Life event enrollment
+      - Dependent verification
+      - Carrier feed generation
+    opportunity_cost_category: compliance
+    opportunity_cost_description: >-
+      Employees cannot enroll in or modify benefits. Carrier feeds are
+      suspended, risking coverage gaps and regulatory non-compliance.
+    cost_driver: benefits_admin_cost
+    cross_system_dependencies:
+      carrier_feeds: Carrier 834 files contain invalid coverage data
+
+  # ===========================================================================
+  # SuccessFactors — Payroll Integration
+  # ===========================================================================
+  - check_id: PAY001
+    module: payroll_integration
+    target_feature: Payroll Processing
+    target_system: SuccessFactors Employee Central Payroll
+    impact_type: full_block
+    blocked_transactions:
+      - Payroll simulation
+      - Payroll run execution
+      - Retro-calculation
+      - Off-cycle payment
+    opportunity_cost_category: compliance
+    opportunity_cost_description: >-
+      Payroll run cannot complete. Employees are not paid on schedule,
+      creating immediate legal liability.
+    cost_driver: payroll_cycle_value
+    cross_system_dependencies:
+      bank_interface: Payment file generation fails
+      tax_authority: Tax remittance data is incomplete
+
+  # ===========================================================================
+  # SuccessFactors — Performance & Goals
+  # ===========================================================================
+  - check_id: PERF001
+    module: performance_goals
+    target_feature: Performance Reviews
+    target_system: SuccessFactors Performance & Goals
+    impact_type: degraded
+    blocked_transactions:
+      - Performance form routing
+      - Goal alignment cascade
+      - Calibration session data
+    opportunity_cost_category: efficiency
+    opportunity_cost_description: >-
+      Performance review forms route to incorrect managers or miss
+      employees entirely. Calibration data is unreliable.
+    cost_driver: review_cycle_coverage
+    cross_system_dependencies:
+      compensation: Performance ratings cannot feed compensation planning
+
+  - check_id: PERF005
+    module: performance_goals
+    target_feature: Goal Cascade
+    target_system: SuccessFactors Performance & Goals
+    impact_type: cosmetic
+    blocked_transactions:
+      - Goal alignment view
+    opportunity_cost_category: efficiency
+    opportunity_cost_description: >-
+      Goal alignment hierarchy displays incorrectly but does not block
+      individual goal entry.
+    cost_driver: none
+    cross_system_dependencies: {}
+
+  # ===========================================================================
+  # SuccessFactors — Succession Planning
+  # ===========================================================================
+  - check_id: SUCC001
+    module: succession_planning
+    target_feature: Succession Nomination
+    target_system: SuccessFactors Succession & Development
+    impact_type: degraded
+    blocked_transactions:
+      - Talent pool nomination
+      - Succession org chart
+      - Readiness assessment
+    opportunity_cost_category: risk
+    opportunity_cost_description: >-
+      Succession plans reference incorrect positions or missing incumbents,
+      reducing talent pipeline visibility.
+    cost_driver: critical_role_vacancy_risk
+    cross_system_dependencies: {}
+
+  # ===========================================================================
+  # SuccessFactors — Recruiting & Onboarding
+  # ===========================================================================
+  - check_id: REC001
+    module: recruiting_onboarding
+    target_feature: Recruiting Pipeline
+    target_system: SuccessFactors Recruiting
+    impact_type: degraded
+    blocked_transactions:
+      - Requisition creation
+      - Candidate pipeline dashboard
+      - Offer approval workflow
+    opportunity_cost_category: efficiency
+    opportunity_cost_description: >-
+      Requisitions reference invalid position or department data, causing
+      routing failures in the approval chain.
+    cost_driver: time_to_fill
+    cross_system_dependencies:
+      onboarding: Hired candidate data transfers with errors
+
+  # ===========================================================================
+  # SuccessFactors — Learning Management
+  # ===========================================================================
+  - check_id: LRN001
+    module: learning_management
+    target_feature: Compliance Training
+    target_system: SuccessFactors Learning
+    impact_type: full_block
+    blocked_transactions:
+      - Compliance curriculum assignment
+      - Certification tracking
+      - Regulatory audit report
+    opportunity_cost_category: compliance
+    opportunity_cost_description: >-
+      Mandatory compliance training assignments fail. Certification
+      tracking is incomplete, creating audit exposure.
+    cost_driver: compliance_penalty_exposure
+    cross_system_dependencies: {}
+
+  - check_id: LRN005
+    module: learning_management
+    target_feature: Learning Assignment
+    target_system: SuccessFactors Learning
+    impact_type: degraded
+    blocked_transactions:
+      - Auto-assignment rules
+      - Learning history sync
+    opportunity_cost_category: efficiency
+    opportunity_cost_description: >-
+      Auto-assignment rules mis-target employees. Learning history may
+      be incomplete.
+    cost_driver: training_budget
+    cross_system_dependencies: {}
+
+  # ===========================================================================
+  # SuccessFactors — Time & Attendance
+  # ===========================================================================
+  - check_id: TIME001
+    module: time_attendance
+    target_feature: Leave Management
+    target_system: SuccessFactors Time Off
+    impact_type: full_block
+    blocked_transactions:
+      - Leave request submission
+      - Accrual calculation
+      - Time-off balance display
+    opportunity_cost_category: compliance
+    opportunity_cost_description: >-
+      Leave accruals calculate incorrectly or not at all. Employees cannot
+      request time off, and balance displays are unreliable.
+    cost_driver: payroll_cycle_value
+    cross_system_dependencies:
+      payroll: Absence deductions not replicated
+
+  - check_id: TIME005
+    module: time_attendance
+    target_feature: Time Sheet Entry
+    target_system: SuccessFactors Time Tracking
+    impact_type: degraded
+    blocked_transactions:
+      - Timesheet submission
+      - Overtime calculation
+    opportunity_cost_category: efficiency
+    opportunity_cost_description: >-
+      Time entry cost centre defaults are incorrect, causing mis-posted
+      labour costs.
+    cost_driver: labour_cost_allocation
+    cross_system_dependencies: {}
+
+  # ===========================================================================
+  # ECC — Accounts Payable
+  # ===========================================================================
+  - check_id: AP001
+    module: accounts_payable
+    target_feature: Vendor Master Management
+    target_system: SAP ECC FI-AP
+    impact_type: full_block
+    blocked_transactions:
+      - FK01
+      - FK02
+      - XK01
+      - XK02
+      - BP
+    opportunity_cost_category: efficiency
+    opportunity_cost_description: >-
+      Vendor master records cannot be created or maintained. All downstream
+      purchasing and payment processes are blocked.
+    cost_driver: vendor_onboarding_volume
+    cross_system_dependencies:
+      ariba: Vendor sync to Ariba SLP fails
+      fieldglass: Contingent worker vendor records invalid
+
+  - check_id: AP003
+    module: accounts_payable
+    target_feature: Purchase Order Processing
+    target_system: SAP ECC MM
+    impact_type: degraded
+    blocked_transactions:
+      - ME21N
+      - ME22N
+    opportunity_cost_category: efficiency
+    opportunity_cost_description: >-
+      POs may reference vendors with incomplete master data, causing
+      goods-receipt and invoice-matching issues.
+    cost_driver: po_throughput
+    cross_system_dependencies: {}
+
+  - check_id: AP014
+    module: accounts_payable
+    target_feature: FI Posting / Invoice Verification
+    target_system: SAP ECC FI-AP
+    impact_type: full_block
+    blocked_transactions:
+      - MIRO
+      - FB60
+      - MR8M
+    opportunity_cost_category: revenue
+    opportunity_cost_description: >-
+      Invoices cannot be posted. Vendor payments are delayed, risking
+      early-payment discount loss and vendor relationship damage.
+    cost_driver: invoice_volume
+    cross_system_dependencies:
+      ariba: Ariba invoice reconciliation fails
+
+  - check_id: AP016
+    module: accounts_payable
+    target_feature: Invoice Due Date Calculation
+    target_system: SAP ECC FI-AP
+    impact_type: full_block
+    blocked_transactions:
+      - MIRO
+      - FB60
+    opportunity_cost_category: revenue
+    opportunity_cost_description: >-
+      Missing or invalid payment terms mean due dates cannot be calculated.
+      Early-payment discounts are forfeited and cash-flow forecasting breaks.
+    cost_driver: discount_loss
+    cross_system_dependencies: {}
+
+  - check_id: AP017
+    module: accounts_payable
+    target_feature: F110 Automatic Payment
+    target_system: SAP ECC FI-AP
+    impact_type: full_block
+    blocked_transactions:
+      - F110
+      - F111
+    opportunity_cost_category: efficiency
+    opportunity_cost_description: >-
+      Automatic payment run excludes vendors with invalid payment method
+      or banking data. Manual workaround required.
+    cost_driver: payment_run_volume
+    cross_system_dependencies:
+      ariba: Ariba Pay cannot process payment for affected vendors
+
+  - check_id: AP018
+    module: accounts_payable
+    target_feature: F110 Automatic Payment
+    target_system: SAP ECC FI-AP
+    impact_type: full_block
+    blocked_transactions:
+      - F110
+    opportunity_cost_category: compliance
+    opportunity_cost_description: >-
+      Bank country key missing on vendor master. Payment run rejects the
+      vendor, requiring manual intervention.
+    cost_driver: payment_exception_volume
+    cross_system_dependencies: {}
+
+  - check_id: AP019
+    module: accounts_payable
+    target_feature: Withholding Tax Processing
+    target_system: SAP ECC FI-AP
+    impact_type: degraded
+    blocked_transactions:
+      - MIRO
+      - FB60
+    opportunity_cost_category: compliance
+    opportunity_cost_description: >-
+      Withholding tax is not calculated or calculated incorrectly,
+      creating tax authority reporting risk.
+    cost_driver: tax_penalty_exposure
+    cross_system_dependencies: {}
+
+  - check_id: AP020
+    module: accounts_payable
+    target_feature: Vendor Evaluation
+    target_system: SAP ECC MM
+    impact_type: cosmetic
+    blocked_transactions:
+      - ME61
+    opportunity_cost_category: efficiency
+    opportunity_cost_description: >-
+      Vendor evaluation scores are unreliable due to missing master data
+      fields. Procurement decisions rely on incomplete data.
+    cost_driver: none
+    cross_system_dependencies: {}
+
+  # ===========================================================================
+  # ECC — Accounts Receivable
+  # ===========================================================================
+  - check_id: AR001
+    module: accounts_receivable
+    target_feature: Customer Master Management
+    target_system: SAP ECC FI-AR
+    impact_type: full_block
+    blocked_transactions:
+      - FD01
+      - FD02
+      - XD01
+      - XD02
+      - BP
+    opportunity_cost_category: revenue
+    opportunity_cost_description: >-
+      Customer master records cannot be created. Sales order processing
+      and billing are blocked for new customers.
+    cost_driver: customer_onboarding_volume
+    cross_system_dependencies:
+      crm: CRM account sync fails for affected customers
+
+  - check_id: AR005
+    module: accounts_receivable
+    target_feature: Credit Management
+    target_system: SAP ECC FI-AR
+    impact_type: degraded
+    blocked_transactions:
+      - FD32
+      - UKM_BP
+    opportunity_cost_category: risk
+    opportunity_cost_description: >-
+      Credit limits are not enforced or set to defaults, increasing
+      bad-debt exposure.
+    cost_driver: credit_exposure
+    cross_system_dependencies: {}
+
+  - check_id: AR010
+    module: accounts_receivable
+    target_feature: Dunning
+    target_system: SAP ECC FI-AR
+    impact_type: full_block
+    blocked_transactions:
+      - F150
+      - FBMP
+    opportunity_cost_category: revenue
+    opportunity_cost_description: >-
+      Dunning run skips customers with invalid dunning procedure or
+      correspondence data. Overdue receivables go uncollected.
+    cost_driver: overdue_receivables
+    cross_system_dependencies: {}
+
+  - check_id: AR015
+    module: accounts_receivable
+    target_feature: Payment Receipt Processing
+    target_system: SAP ECC FI-AR
+    impact_type: degraded
+    blocked_transactions:
+      - F-28
+      - F-32
+    opportunity_cost_category: efficiency
+    opportunity_cost_description: >-
+      Incoming payment clearing is slowed by mismatched customer banking
+      details or reconciliation account errors.
+    cost_driver: cash_application_delay
+    cross_system_dependencies: {}
+
+  # ===========================================================================
+  # ECC — Material Master
+  # ===========================================================================
+  - check_id: MM001
+    module: material_master
+    target_feature: Material Creation
+    target_system: SAP ECC MM
+    impact_type: full_block
+    blocked_transactions:
+      - MM01
+      - MM02
+    opportunity_cost_category: efficiency
+    opportunity_cost_description: >-
+      Material master records cannot be created with the required views.
+      Procurement and production are blocked for new materials.
+    cost_driver: material_onboarding_volume
+    cross_system_dependencies: {}
+
+  - check_id: MM005
+    module: material_master
+    target_feature: MRP Planning
+    target_system: SAP ECC PP-MRP
+    impact_type: full_block
+    blocked_transactions:
+      - MD01
+      - MD02
+      - MD04
+    opportunity_cost_category: efficiency
+    opportunity_cost_description: >-
+      MRP run produces incorrect or missing planned orders due to invalid
+      MRP type, lot size, or planning parameters.
+    cost_driver: stockout_cost
+    cross_system_dependencies:
+      apo: APO/IBP demand plan references invalid material master data
+
+  - check_id: MM010
+    module: material_master
+    target_feature: Inventory Valuation
+    target_system: SAP ECC FI-MM
+    impact_type: full_block
+    blocked_transactions:
+      - MMPV
+      - MR21
+      - CKM3N
+    opportunity_cost_category: compliance
+    opportunity_cost_description: >-
+      Material valuation prices are missing or incorrect, causing
+      inventory misstated on the balance sheet.
+    cost_driver: inventory_value
+    cross_system_dependencies: {}
+
+  - check_id: MM015
+    module: material_master
+    target_feature: Account Determination
+    target_system: SAP ECC FI-MM
+    impact_type: degraded
+    blocked_transactions:
+      - OBYC
+      - OMWN
+    opportunity_cost_category: compliance
+    opportunity_cost_description: >-
+      Automatic account determination may post to incorrect GL accounts,
+      requiring manual journal corrections.
+    cost_driver: misposting_correction_effort
+    cross_system_dependencies: {}
+
+  # ===========================================================================
+  # ECC — Business Partner
+  # ===========================================================================
+  - check_id: BP001
+    module: business_partner
+    target_feature: CVI Integration
+    target_system: SAP ECC CVI
+    impact_type: full_block
+    blocked_transactions:
+      - BP
+      - BUPA_PRE
+      - CVI_ERP_CHECK
+    opportunity_cost_category: efficiency
+    opportunity_cost_description: >-
+      Customer/Vendor Integration cannot synchronise BP records to
+      customer/vendor masters. S/4HANA migration readiness is blocked.
+    cost_driver: migration_delay_cost
+    cross_system_dependencies:
+      s4hana: S/4HANA migration blocked until CVI errors resolved
+
+  - check_id: BP005
+    module: business_partner
+    target_feature: BP Role Assignment
+    target_system: SAP ECC BP
+    impact_type: degraded
+    blocked_transactions:
+      - BP
+    opportunity_cost_category: efficiency
+    opportunity_cost_description: >-
+      Business partners have missing or incorrect role assignments,
+      limiting their usability in downstream processes.
+    cost_driver: bp_maintenance_effort
+    cross_system_dependencies: {}
+
+  - check_id: BP010
+    module: business_partner
+    target_feature: BP Duplicate Check
+    target_system: SAP ECC BP
+    impact_type: cosmetic
+    blocked_transactions:
+      - BP
+    opportunity_cost_category: efficiency
+    opportunity_cost_description: >-
+      Duplicate check parameters are too loose, allowing potential
+      duplicate business partners to be created.
+    cost_driver: duplicate_cleanup_cost
+    cross_system_dependencies: {}
+
+  # ===========================================================================
+  # ECC — FI General Ledger
+  # ===========================================================================
+  - check_id: GL001
+    module: fi_gl
+    target_feature: Financial Posting
+    target_system: SAP ECC FI-GL
+    impact_type: full_block
+    blocked_transactions:
+      - FB01
+      - FB50
+      - F-02
+    opportunity_cost_category: compliance
+    opportunity_cost_description: >-
+      GL postings fail due to invalid chart of accounts, company code,
+      or fiscal year configuration.
+    cost_driver: posting_volume
+    cross_system_dependencies: {}
+
+  - check_id: GL005
+    module: fi_gl
+    target_feature: Period Close
+    target_system: SAP ECC FI-GL
+    impact_type: degraded
+    blocked_transactions:
+      - OB52
+      - FAGLF101
+    opportunity_cost_category: compliance
+    opportunity_cost_description: >-
+      Period-end close activities are delayed due to open-item clearing
+      issues or fiscal year variant mismatches.
+    cost_driver: close_cycle_delay
+    cross_system_dependencies: {}
+
+  - check_id: GL010
+    module: fi_gl
+    target_feature: Intercompany Reconciliation
+    target_system: SAP ECC FI-GL
+    impact_type: degraded
+    blocked_transactions:
+      - F.5D
+      - FBICR
+    opportunity_cost_category: compliance
+    opportunity_cost_description: >-
+      Intercompany reconciliation reports show unmatched items due to
+      inconsistent trading partner or company code assignments.
+    cost_driver: audit_remediation_effort
+    cross_system_dependencies: {}
+
+  # ===========================================================================
+  # ECC — MM Purchasing
+  # ===========================================================================
+  - check_id: PUR003
+    module: mm_purchasing
+    target_feature: PO Creation
+    target_system: SAP ECC MM-PUR
+    impact_type: full_block
+    blocked_transactions:
+      - ME21N
+      - ME22N
+      - ME23N
+    opportunity_cost_category: efficiency
+    opportunity_cost_description: >-
+      Purchase orders cannot be created due to missing purchasing org,
+      plant assignment, or info record data.
+    cost_driver: procurement_throughput
+    cross_system_dependencies:
+      ariba: Ariba-sourced POs fail on ECC side
+
+  - check_id: PUR004
+    module: mm_purchasing
+    target_feature: Release Strategy
+    target_system: SAP ECC MM-PUR
+    impact_type: degraded
+    blocked_transactions:
+      - ME28
+      - ME29N
+    opportunity_cost_category: compliance
+    opportunity_cost_description: >-
+      Release strategy does not trigger correctly, allowing POs to bypass
+      approval thresholds or routing to incorrect approvers.
+    cost_driver: maverick_spend_exposure
+    cross_system_dependencies: {}
+
+  - check_id: PUR007
+    module: mm_purchasing
+    target_feature: Source Determination
+    target_system: SAP ECC MM-PUR
+    impact_type: degraded
+    blocked_transactions:
+      - ME21N
+    opportunity_cost_category: efficiency
+    opportunity_cost_description: >-
+      Automatic source determination fails due to missing or expired
+      contracts/scheduling agreements, requiring manual vendor selection.
+    cost_driver: sourcing_efficiency
+    cross_system_dependencies: {}
+
+  # ===========================================================================
+  # ECC — Asset Accounting
+  # ===========================================================================
+  - check_id: AA001
+    module: asset_accounting
+    target_feature: Asset Capitalisation
+    target_system: SAP ECC FI-AA
+    impact_type: full_block
+    blocked_transactions:
+      - AS01
+      - AS02
+      - ABZON
+    opportunity_cost_category: compliance
+    opportunity_cost_description: >-
+      Assets cannot be capitalised. Investment spend remains in
+      suspense accounts, misstating the balance sheet.
+    cost_driver: capex_volume
+    cross_system_dependencies: {}
+
+  - check_id: AA005
+    module: asset_accounting
+    target_feature: Depreciation Run
+    target_system: SAP ECC FI-AA
+    impact_type: full_block
+    blocked_transactions:
+      - AFAB
+      - AFAR
+    opportunity_cost_category: compliance
+    opportunity_cost_description: >-
+      Depreciation run aborts due to invalid depreciation area, useful
+      life, or asset class configuration.
+    cost_driver: depreciation_accuracy
+    cross_system_dependencies: {}
+
+  - check_id: AA010
+    module: asset_accounting
+    target_feature: Asset Retirement
+    target_system: SAP ECC FI-AA
+    impact_type: degraded
+    blocked_transactions:
+      - ABAON
+      - ABAVN
+    opportunity_cost_category: compliance
+    opportunity_cost_description: >-
+      Asset retirement postings generate incorrect gain/loss values
+      due to invalid scrap or net-book-value data.
+    cost_driver: asset_disposal_volume
+    cross_system_dependencies: {}
+
+  # ===========================================================================
+  # ECC — Plant Maintenance
+  # ===========================================================================
+  - check_id: PM001
+    module: plant_maintenance
+    target_feature: Work Order Creation
+    target_system: SAP ECC PM
+    impact_type: full_block
+    blocked_transactions:
+      - IW31
+      - IW32
+    opportunity_cost_category: efficiency
+    opportunity_cost_description: >-
+      Maintenance work orders cannot be created due to missing functional
+      location, equipment, or work centre assignments.
+    cost_driver: maintenance_backlog
+    cross_system_dependencies: {}
+
+  - check_id: PM005
+    module: plant_maintenance
+    target_feature: Preventive Maintenance
+    target_system: SAP ECC PM
+    impact_type: degraded
+    blocked_transactions:
+      - IP10
+      - IP30
+    opportunity_cost_category: risk
+    opportunity_cost_description: >-
+      Preventive maintenance plans do not trigger correctly due to
+      invalid maintenance strategy or cycle parameters.
+    cost_driver: unplanned_downtime_cost
+    cross_system_dependencies: {}
+
+  - check_id: PM010
+    module: plant_maintenance
+    target_feature: Maintenance Notification
+    target_system: SAP ECC PM
+    impact_type: cosmetic
+    blocked_transactions:
+      - IW21
+    opportunity_cost_category: efficiency
+    opportunity_cost_description: >-
+      Notification catalog codes are incomplete, reducing classification
+      accuracy of maintenance events.
+    cost_driver: none
+    cross_system_dependencies: {}
+
+  # ===========================================================================
+  # ECC — Production Planning
+  # ===========================================================================
+  - check_id: PP001
+    module: production_planning
+    target_feature: BOM Management
+    target_system: SAP ECC PP
+    impact_type: full_block
+    blocked_transactions:
+      - CS01
+      - CS02
+    opportunity_cost_category: efficiency
+    opportunity_cost_description: >-
+      Bills of material cannot be maintained. Production order costing
+      and MRP explosion are blocked.
+    cost_driver: production_throughput
+    cross_system_dependencies: {}
+
+  - check_id: PP005
+    module: production_planning
+    target_feature: Routing / Work Centre
+    target_system: SAP ECC PP
+    impact_type: degraded
+    blocked_transactions:
+      - CA01
+      - CR01
+    opportunity_cost_category: efficiency
+    opportunity_cost_description: >-
+      Routing or work centre data is incomplete, causing inaccurate
+      production scheduling and costing.
+    cost_driver: scheduling_accuracy
+    cross_system_dependencies: {}
+
+  # ===========================================================================
+  # ECC — SD Customer Master
+  # ===========================================================================
+  - check_id: SD001
+    module: sd_customer_master
+    target_feature: Customer Creation
+    target_system: SAP ECC SD
+    impact_type: full_block
+    blocked_transactions:
+      - XD01
+      - FD01
+      - BP
+    opportunity_cost_category: revenue
+    opportunity_cost_description: >-
+      Customer master cannot be created with required sales area data.
+      Sales order entry is blocked for new customers.
+    cost_driver: customer_onboarding_volume
+    cross_system_dependencies: {}
+
+  - check_id: SD005
+    module: sd_customer_master
+    target_feature: Pricing Determination
+    target_system: SAP ECC SD
+    impact_type: degraded
+    blocked_transactions:
+      - VK11
+      - VA01
+    opportunity_cost_category: revenue
+    opportunity_cost_description: >-
+      Pricing procedure determination fails for certain customer/material
+      combinations, defaulting to base price.
+    cost_driver: margin_leakage
+    cross_system_dependencies: {}
+
+  # ===========================================================================
+  # ECC — SD Sales Orders
+  # ===========================================================================
+  - check_id: SO001
+    module: sd_sales_orders
+    target_feature: Sales Order Creation
+    target_system: SAP ECC SD
+    impact_type: full_block
+    blocked_transactions:
+      - VA01
+      - VA02
+    opportunity_cost_category: revenue
+    opportunity_cost_description: >-
+      Sales orders cannot be created due to invalid sales org, distribution
+      channel, or division assignment on the customer master.
+    cost_driver: order_volume
+    cross_system_dependencies: {}
+
+  - check_id: SO005
+    module: sd_sales_orders
+    target_feature: Delivery Processing
+    target_system: SAP ECC LE-SHP
+    impact_type: degraded
+    blocked_transactions:
+      - VL01N
+      - VL02N
+    opportunity_cost_category: efficiency
+    opportunity_cost_description: >-
+      Delivery creation fails for orders with incomplete shipping point
+      or route determination data.
+    cost_driver: delivery_delay_cost
+    cross_system_dependencies: {}

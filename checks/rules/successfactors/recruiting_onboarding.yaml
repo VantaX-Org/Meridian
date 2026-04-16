@@ -1,0 +1,347 @@
+module: recruiting_onboarding
+target_state: SUCCESSFACTORS
+rules:
+- id: REC001
+  field: JOBAPPLICATION.CANDIDATE_ID
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: "Candidate ID is mandatory \u2014 primary key linking application to candidate profile"
+  why_it_matters: CANDIDATE_ID is the primary key that associates a job application with a candidate record across the Recruiting
+    module. Without it, the application is orphaned and cannot be linked to interview schedules, offer letters, or onboarding
+    workflows.
+  rule_authority: best_practice
+  sap_impact: Application orphaned from candidate profile. Interview scheduling, offer generation, and onboarding handoff
+    all fail for this record.
+  fix_map:
+    __blank__: Locate the candidate in Recruiting > Candidate Management and re-link the application. If the candidate record
+      does not exist, create it first via Recruiting > Add New Candidate.
+  record_fix_template: 'Application {JOBAPPLICATION.CANDIDATE_ID}: CANDIDATE_ID is missing. Re-link via Recruiting > Candidate
+    Management.'
+- id: REC002
+  field: JOBAPPLICATION.STATUS
+  check_class: domain_value_check
+  allowed_values:
+  - applied
+  - screening
+  - interview
+  - offer
+  - hired
+  - rejected
+  - withdrawn
+  severity: high
+  dimension: accuracy
+  message: Application status must be a valid workflow state
+  why_it_matters: "STATUS drives automated workflow triggers in Recruiting \u2014 interview scheduling, offer letter generation,\
+    \ background check initiation, and onboarding handoff. An invalid status value causes the workflow engine to skip the\
+    \ application entirely, leaving candidates stuck without progression."
+  rule_authority: customer_configured
+  sap_impact: Automated workflow triggers skipped for this application. Candidate does not progress through the hiring pipeline.
+    Recruiting dashboard metrics are corrupted.
+  valid_values_with_labels:
+    applied: "Applied \u2014 application received and pending initial review"
+    screening: "Screening \u2014 application under initial review"
+    interview: "Interview \u2014 candidate scheduled or in interview stage"
+    offer: "Offer \u2014 offer extended, pending candidate acceptance"
+    hired: "Hired \u2014 offer accepted, pending onboarding"
+    rejected: "Rejected \u2014 application declined"
+    withdrawn: "Withdrawn \u2014 candidate withdrew from process"
+  fix_map:
+    __blank__: 'Assign the correct status from: applied, screening, interview, offer, hired, rejected, withdrawn. Update via
+      Recruiting > Application Management or bulk import.'
+    __other__: 'Status ''{invalid_value}'' is not a recognised workflow state. Set to one of: applied, screening, interview,
+      offer, hired, rejected, withdrawn. Update via Recruiting > Application Management.'
+  record_fix_template: 'Application {JOBAPPLICATION.CANDIDATE_ID}: STATUS ''{actual_value}'' is invalid. Set to a valid state
+    via Recruiting > Application Management.'
+- id: REC003
+  field: JOBAPPLICATION.JOB_REQ_ID
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: "Job Requisition ID is mandatory \u2014 links application to approved headcount"
+  why_it_matters: JOB_REQ_ID links the application to an approved headcount requisition. Without this link, the application
+    cannot proceed to the offer stage because SuccessFactors enforces requisition-based hiring. The offer approval workflow
+    requires a valid requisition to validate budget and headcount availability.
+  rule_authority: best_practice
+  sap_impact: Cannot generate offer for this application. Budget validation and headcount check fail. Application blocked
+    from progressing past interview stage.
+  fix_map:
+    __blank__: Link to the correct job requisition via Recruiting > Application Management > Edit Application. The requisition
+      must be in Open or In Progress status.
+  record_fix_template: 'Application {JOBAPPLICATION.CANDIDATE_ID}: JOB_REQ_ID is missing. Link to an approved requisition
+    via Recruiting > Application Management.'
+- id: REC004
+  field: JOBAPPLICATION.APPLICATION_DATE
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Application date is required for time-to-hire metrics and SLA tracking
+  why_it_matters: APPLICATION_DATE is the starting point for time-to-hire and time-to-fill KPI calculations. Without it, recruiting
+    analytics cannot measure pipeline velocity and SLA compliance for this application.
+  rule_authority: best_practice
+  sap_impact: Time-to-hire KPI cannot be calculated. Recruiting funnel analytics show gaps. SLA compliance monitoring is incomplete.
+  fix_map:
+    __blank__: 'Set the application date to when the candidate originally applied. Update via Recruiting > Application Management.
+      Format: YYYY-MM-DD.'
+  record_fix_template: 'Application {JOBAPPLICATION.CANDIDATE_ID}: APPLICATION_DATE is missing. Set via Recruiting > Application
+    Management. Format: YYYY-MM-DD.'
+- id: REC005
+  field: JOBAPPLICATION.SOURCE
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Application source is recommended for recruiting channel effectiveness analysis
+  why_it_matters: SOURCE tracks which recruiting channel (job board, referral, career site, agency) generated the application.
+    This data is critical for calculating cost-per-hire by channel and optimising recruiting spend allocation.
+  rule_authority: best_practice
+  sap_impact: Recruiting channel effectiveness reporting is incomplete. Cost-per-hire analysis cannot attribute this application
+    to a channel.
+  fix_map:
+    __blank__: 'Assign the recruiting source based on how the candidate found the role. Common values include: career_site,
+      linkedin, referral, agency, job_board. Update via Recruiting > Application Management.'
+  record_fix_template: 'Application {JOBAPPLICATION.CANDIDATE_ID}: SOURCE is missing. Assign the recruiting channel via Recruiting
+    > Application Management.'
+- id: REC006
+  field: JOBREQUISITION.TITLE
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Requisition title is required for job posting and candidate-facing communications
+  why_it_matters: TITLE is displayed on the job posting, candidate portal, and all automated communications sent to applicants.
+    A blank title makes the requisition unpublishable and produces confusing communications with no job name.
+  rule_authority: best_practice
+  sap_impact: Job posting cannot be published without a title. Candidate notifications reference a blank position. Recruiting
+    reports show unnamed requisitions.
+  fix_map:
+    __blank__: Add the job title via Recruiting > Requisition Management > Edit Requisition. Should match the position title
+      from the job catalogue.
+  record_fix_template: 'Requisition {JOBREQUISITION.TITLE}: TITLE is missing. Add via Recruiting > Requisition Management.'
+- id: REC007
+  field: JOBREQUISITION.STATUS
+  check_class: domain_value_check
+  allowed_values:
+  - open
+  - closed
+  - filled
+  - cancelled
+  - on_hold
+  severity: high
+  dimension: accuracy
+  message: Requisition status must be a valid lifecycle state
+  why_it_matters: STATUS controls whether a requisition is active for hiring. Only open requisitions accept new applications.
+    An invalid status causes the requisition to be excluded from the active pipeline and recruiting dashboards show corrupted
+    data.
+  rule_authority: customer_configured
+  sap_impact: Requisition excluded from active pipeline. Applications cannot be associated. Recruiting dashboards show incorrect
+    open requisition counts.
+  valid_values_with_labels:
+    open: "Open \u2014 actively accepting applications"
+    closed: "Closed \u2014 no longer accepting applications"
+    filled: "Filled \u2014 position has been filled"
+    cancelled: "Cancelled \u2014 requisition withdrawn"
+    on_hold: "On Hold \u2014 temporarily paused"
+  fix_map:
+    __blank__: Set the requisition status based on its current state. Update via Recruiting > Requisition Management.
+    __other__: Requisition status '{invalid_value}' is not valid. Use open, closed, filled, cancelled, or on_hold. Update
+      via Recruiting > Requisition Management.
+  record_fix_template: 'Requisition {JOBREQUISITION.TITLE}: STATUS ''{actual_value}'' is invalid. Set to a valid state via
+    Recruiting > Requisition Management.'
+- id: REC008
+  field: JOBREQUISITION.HIRING_MANAGER
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Hiring manager is required for interview scheduling and offer approval workflow
+  why_it_matters: HIRING_MANAGER is the person who owns the hiring decision. Without this assignment, interview requests cannot
+    be routed, offer approval workflows have no approver, and the requisition has no accountable owner.
+  rule_authority: best_practice
+  sap_impact: Interview scheduling cannot route to hiring manager. Offer approval workflow has no approver. Requisition ownership
+    is undefined.
+  fix_map:
+    __blank__: Assign the hiring manager via Recruiting > Requisition Management > Edit Requisition. The manager must be an
+      active employee in Employee Central.
+  record_fix_template: 'Requisition {JOBREQUISITION.TITLE}: HIRING_MANAGER is missing. Assign via Recruiting > Requisition
+    Management.'
+- id: REC009
+  field: JOBREQUISITION.OPEN_DATE
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Requisition open date is required for time-to-fill calculations
+  why_it_matters: OPEN_DATE is the start point for time-to-fill KPI calculations. Without it, recruiting cannot measure how
+    long positions take to fill, which is a key metric for workforce planning and recruiting efficiency assessment.
+  rule_authority: best_practice
+  sap_impact: Time-to-fill KPI cannot be calculated. Recruiting efficiency reports are incomplete for this requisition.
+  fix_map:
+    __blank__: 'Set the open date to when the requisition was approved and published. Update via Recruiting > Requisition
+      Management. Format: YYYY-MM-DD.'
+  record_fix_template: 'Requisition {JOBREQUISITION.TITLE}: OPEN_DATE is missing. Set via Recruiting > Requisition Management.
+    Format: YYYY-MM-DD.'
+- id: REC010
+  field: JOBREQUISITION.OPEN_DATE
+  check_class: cross_field_check
+  fields:
+  - JOBREQUISITION.OPEN_DATE
+  - JOBREQUISITION.CLOSE_DATE
+  condition: '`JOBREQUISITION.CLOSE_DATE`.notna() & (`JOBREQUISITION.CLOSE_DATE` != '''') & (`JOBREQUISITION.OPEN_DATE` >
+    `JOBREQUISITION.CLOSE_DATE`)'
+  severity: high
+  dimension: consistency
+  message: Requisition open date must not be after close date
+  why_it_matters: When a CLOSE_DATE is present, OPEN_DATE must precede it. A requisition that closes before it opens indicates
+    a data entry error that will produce negative time-to-fill values and corrupt recruiting analytics.
+  rule_authority: best_practice
+  sap_impact: Time-to-fill calculation returns negative value. Recruiting analytics dashboards show corrupted data for this
+    requisition.
+  fix_map:
+    __blank__: Review and correct the OPEN_DATE and CLOSE_DATE via Recruiting > Requisition Management. Ensure OPEN_DATE precedes
+      CLOSE_DATE.
+  record_fix_template: 'Requisition {JOBREQUISITION.TITLE}: OPEN_DATE is after CLOSE_DATE. Correct dates via Recruiting >
+    Requisition Management.'
+- id: REC011
+  field: ONBOARDINGCANDIDATEINFO.USERID
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: "User ID is mandatory for onboarding \u2014 used to create Employee Central record on hire"
+  why_it_matters: "USERID in onboarding is the identifier that will be used to create the Employee Central record when the\
+    \ hire is finalised. Without it, the onboarding-to-EC handoff fails completely \u2014 no employee record is created, which\
+    \ means no payroll enrolment, no benefit assignment, and no position allocation for the new hire."
+  rule_authority: best_practice
+  sap_impact: Employee Central record not created on hire. Payroll enrolment blocked. Benefits, time management, and position
+    assignment all fail for the new hire.
+  fix_map:
+    __blank__: Assign a unique USERID following your naming convention (firstname.lastname or employee number) via Onboarding
+      > Candidate Management > Edit Candidate Info.
+  record_fix_template: 'Onboarding candidate {ONBOARDINGCANDIDATEINFO.USERID}: USERID is missing. Assign via Onboarding >
+    Candidate Management before hire date.'
+- id: REC012
+  field: ONBOARDINGCANDIDATEINFO.HIRE_DATE
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: "Hire date is mandatory \u2014 triggers all onboarding workflows and IT provisioning"
+  why_it_matters: "HIRE_DATE is the trigger date for the entire onboarding workflow chain \u2014 IT account provisioning,\
+    \ equipment ordering, day-1 task assignment, and the Employee Central record creation. Without a hire date, none of these\
+    \ time-sensitive processes can be scheduled."
+  rule_authority: best_practice
+  sap_impact: All onboarding workflows fail to trigger. IT provisioning not initiated. Day-1 tasks not assigned. EC record
+    creation date unknown.
+  fix_map:
+    __blank__: Set the confirmed hire date via Onboarding > Candidate Management > Edit Candidate Info. Use ISO format YYYY-MM-DD.
+  record_fix_template: 'Onboarding candidate {ONBOARDINGCANDIDATEINFO.USERID}: HIRE_DATE is missing. Set via Onboarding >
+    Candidate Management. Format: YYYY-MM-DD.'
+- id: REC013
+  field: ONBOARDINGCANDIDATEINFO.DEPARTMENT
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Department is required to pre-populate the Employee Central record
+  why_it_matters: DEPARTMENT is used to pre-populate the Employee Central job information record when the hire is finalised.
+    Missing department means the new hire's EC record will lack organisational assignment, causing them to appear as an orphan
+    in the org chart.
+  rule_authority: best_practice
+  sap_impact: EC record created without department assignment. New hire appears as org chart orphan. Department-based approval
+    workflows exclude this employee.
+  fix_map:
+    __blank__: Assign the correct department code via Onboarding > Candidate Management > Edit Candidate Info. Must match
+      a valid department in your SF org structure.
+  record_fix_template: 'Onboarding candidate {ONBOARDINGCANDIDATEINFO.USERID}: DEPARTMENT is missing. Assign via Onboarding
+    > Candidate Management.'
+- id: REC014
+  field: ONBOARDINGCANDIDATEINFO.MANAGER_ID
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Manager ID is required to route day-1 onboarding tasks to the hiring manager
+  why_it_matters: "MANAGER_ID determines which manager receives the day-1 onboarding task list \u2014 including equipment\
+    \ handover, team introduction scheduling, and probation review setup. Without it, all manager-routed onboarding tasks\
+    \ are unassigned."
+  rule_authority: best_practice
+  sap_impact: Day-1 onboarding tasks not routed to hiring manager. Equipment handover, team introductions, and probation setup
+    not assigned.
+  fix_map:
+    __blank__: Assign the hiring manager's USERID via Onboarding > Candidate Management > Edit Candidate Info. The manager
+      must already exist as an active employee in Employee Central.
+  record_fix_template: 'Onboarding candidate {ONBOARDINGCANDIDATEINFO.USERID}: MANAGER_ID is missing. Assign hiring manager
+    via Onboarding > Candidate Management.'
+- id: REC015
+  field: ONBOARDINGCANDIDATEINFO.STATUS
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Onboarding status is required to track new hire progress through the onboarding process
+  why_it_matters: STATUS tracks the new hire's progress through the onboarding workflow. Without it, HR cannot determine whether
+    onboarding tasks have been completed, IT provisioning has been initiated, or the new hire is ready for their start date.
+  rule_authority: best_practice
+  sap_impact: Onboarding progress dashboard shows incomplete data. HR cannot determine new hire readiness. Escalation workflows
+    for overdue onboarding tasks cannot trigger.
+  fix_map:
+    __blank__: Set the onboarding status to reflect the current state of the new hire's onboarding process via Onboarding
+      > Candidate Management.
+  record_fix_template: 'Onboarding candidate {ONBOARDINGCANDIDATEINFO.USERID}: STATUS is missing. Set via Onboarding > Candidate
+    Management.'
+- id: REC016
+  field: JOBAPPLICATION.RATING
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Application rating is missing
+  why_it_matters: Application rating (JOBAPPLICATION.RATING) is not maintained. This field supports downstream processes and
+    reporting accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Application rating may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: Maintain via SuccessFactors Admin Center > Recruiting or Onboarding module.
+  record_fix_template: Record is missing JOBAPPLICATION.RATING. Maintain via SuccessFactors Admin Center > Recruiting or Onboarding
+    module.
+- id: REC017
+  field: JOBREQUISITION.RECRUITER
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Assigned recruiter is missing
+  why_it_matters: Assigned recruiter (JOBREQUISITION.RECRUITER) is not maintained. This field supports downstream processes
+    and reporting accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Assigned recruiter may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: Maintain via SuccessFactors Admin Center > Recruiting or Onboarding module.
+  record_fix_template: Record is missing JOBREQUISITION.RECRUITER. Maintain via SuccessFactors Admin Center > Recruiting or
+    Onboarding module.
+- id: REC018
+  field: ONBOARDINGCANDIDATEINFO.TASK_COMPLETION
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Task completion percentage is missing
+  why_it_matters: Task completion percentage (ONBOARDINGCANDIDATEINFO.TASK_COMPLETION) is not maintained. This field supports
+    downstream processes and reporting accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Task completion percentage may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: Maintain via SuccessFactors Admin Center > Recruiting or Onboarding module.
+  record_fix_template: Record is missing ONBOARDINGCANDIDATEINFO.TASK_COMPLETION. Maintain via SuccessFactors Admin Center
+    > Recruiting or Onboarding module.
+- id: REC019
+  field: CANDIDATE_ID
+  check_class: cross_field_check
+  fields: ['CANDIDATE_ID']
+  condition: "~`CANDIDATE_ID`.duplicated(keep=False)"
+  severity: high
+  dimension: uniqueness
+  message: Duplicate candidate records detected — same candidate appears multiple times
+  why_it_matters: Duplicate candidates cause fragmented application history, incorrect offer management, and compliance reporting errors for EEO/diversity tracking.
+  rule_authority: best_practice
+  sap_impact: Application history is split. Offer letters may be sent to wrong record. EEO reporting undercounts unique applicants.
+  fix_map:
+    __blank__: "Merge duplicate candidates in Recruiting > Candidate Management > Merge Candidates. Preserve the record with the most complete application history."
+
+- id: REC020
+  field: JOBREQUISITION.OPEN_DATE
+  check_class: freshness_check
+  max_age_hours: 4380
+  severity: medium
+  dimension: timeliness
+  message: Requisition open for 6+ months — long-open requisitions should be reviewed, refreshed, or closed
+  rule_authority: best_practice

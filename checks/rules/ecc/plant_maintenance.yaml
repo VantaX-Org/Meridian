@@ -1,0 +1,565 @@
+module: plant_maintenance
+target_state: ECC_AND_S4HANA
+rules:
+- id: PM001
+  field: EQUI.EQUNR
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: "Equipment number is mandatory \u2014 primary key for all PM transactions"
+  why_it_matters: EQUNR is the equipment number and primary key for all plant maintenance records. Without it, no maintenance
+    work orders (IW31), notifications (IW21), or measurement documents can be created. The equipment is invisible to the maintenance
+    planning system.
+  rule_authority: sap_hard_constraint
+  sap_impact: Equipment cannot be used in any PM transaction. Work orders (IW31), notifications (IW21), and maintenance plans
+    (IP01) cannot reference it. The asset is untracked for maintenance purposes.
+  fix_map:
+    __blank__: 'Equipment number is empty. In ECC: assign a valid equipment number via IE01 (create equipment). In S/4HANA:
+      use Fiori app F4283 (Manage Equipment) or IE01. Investigate the data source for the missing key.'
+  record_fix_template: 'Equipment {EQUI.EQUNR}: EQUNR is {actual_value}. Assign a valid equipment number via IE01 (ECC) or
+    Fiori app F4283 (S/4HANA).'
+- id: PM002
+  field: EQUI.EQUNR
+  check_class: regex_check
+  pattern: ^[A-Z0-9\-]{1,18}$
+  severity: high
+  dimension: validity
+  message: Equipment number must be alphanumeric with hyphens, up to 18 characters
+  why_it_matters: SAP equipment numbers must be alphanumeric (with hyphens allowed) and up to 18 characters. Non-conforming
+    values indicate data corruption or incorrect data loading. Such values cannot be referenced in work orders, notifications,
+    or maintenance plans.
+  rule_authority: sap_hard_constraint
+  sap_impact: Equipment cannot be referenced in PM transactions. Work orders and notifications fail. Document flow is broken.
+  fix_map:
+    __other__: 'Equipment number ''{invalid_value}'' does not match the required format (A-Z, 0-9, hyphens, up to 18 characters).
+      In ECC: recreate the equipment via IE01. In S/4HANA: use Fiori app F4283. Verify number range configuration in IE05.'
+  record_fix_template: 'Equipment {EQUI.EQUNR}: EQUNR ''{actual_value}'' is not valid. Must be alphanumeric up to 18 characters.
+    Recreate via IE01 or Fiori app F4283.'
+- id: PM003
+  field: EQUI.EQTYP
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: "Equipment category is mandatory \u2014 determines available maintenance functions"
+  why_it_matters: "EQTYP (equipment category) determines which functions are available for the equipment \u2014 whether it\
+    \ can have serial numbers, be installed in functional locations, or be used as a production resource. Without it, maintenance\
+    \ work orders cannot be created and the equipment type is undefined."
+  rule_authority: sap_hard_constraint
+  sap_impact: "Maintenance work orders (IW31) cannot be created for this equipment. Equipment categorisation is unknown \u2014\
+    \ serial number management, installation tracking, and production resource assignment are all blocked."
+  fix_map:
+    __blank__: 'Equipment category is empty. In ECC: determine the correct category and set via IE02 > General tab. In S/4HANA:
+      use Fiori app F4283. Common categories: M (machine), V (vehicle), P (production resource/tool).'
+  record_fix_template: 'Equipment {EQUI.EQUNR}: EQTYP is {actual_value}. Assign the equipment category via IE02 (ECC) or Fiori
+    app F4283 (S/4HANA).'
+- id: PM004
+  field: EQUI.EQKTX
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: "Equipment description missing \u2014 reduces usability of equipment lists"
+  why_it_matters: EQKTX (equipment description) is the primary text field used to identify the equipment in all reports, work
+    orders, and notifications. Without it, maintenance planners and technicians cannot identify the equipment, leading to
+    incorrect work assignments and poor maintenance tracking.
+  rule_authority: best_practice
+  sap_impact: Equipment lists (IE05/IH08) show blank descriptions. Work orders reference unnamed equipment. Maintenance planners
+    cannot identify the asset.
+  fix_map:
+    __blank__: "Equipment description is empty. In ECC: enter a meaningful description via IE02 > General tab > Description.\
+      \ In S/4HANA: use Fiori app F4283. Include the equipment type, make, and location (e.g., \"Centrifugal Pump CP-101 \u2014\
+      \ Building A\")."
+  record_fix_template: 'Equipment {EQUI.EQUNR}: EQKTX is {actual_value}. Enter a meaningful description via IE02 (ECC) or
+    Fiori app F4283 (S/4HANA).'
+- id: PM005
+  field: EQUI.SWERK
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: "Maintenance plant is mandatory \u2014 required for work order routing and parts sourcing"
+  why_it_matters: SWERK (maintenance plant) determines where maintenance activities are planned and executed. It controls
+    which maintenance work centres are available, where spare parts are sourced from, and which plant's cost centre absorbs
+    maintenance costs.
+  rule_authority: sap_hard_constraint
+  sap_impact: Work orders (IW31) cannot determine maintenance work centres or spare parts plant. Maintenance costs cannot
+    be assigned. The equipment is outside the maintenance planning scope.
+  fix_map:
+    __blank__: 'Maintenance plant is empty. In ECC: assign the plant where maintenance is performed via IE02 > Organisation
+      tab > Maintenance Plant. In S/4HANA: use Fiori app F4283.'
+  record_fix_template: 'Equipment {EQUI.EQUNR}: SWERK is {actual_value}. Assign the maintenance plant via IE02 (ECC) or Fiori
+    app F4283 (S/4HANA).'
+- id: PM006
+  field: EQUI.IWERK
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: "Planning plant missing \u2014 maintenance plans cannot be assigned"
+  why_it_matters: IWERK (planning plant) determines which plant is responsible for planning maintenance activities. Without
+    it, preventive maintenance plans (IP01) cannot be assigned and the equipment is excluded from scheduled maintenance, forcing
+    reactive-only maintenance.
+  rule_authority: best_practice
+  sap_impact: Maintenance plans (IP01) cannot include this equipment. Preventive maintenance scheduling is not possible. Only
+    reactive (breakdown) maintenance can be performed.
+  fix_map:
+    __blank__: 'Planning plant is empty. In ECC: assign the plant responsible for maintenance planning via IE02 > Organisation
+      tab > Planning Plant. In S/4HANA: use Fiori app F4283. This is often the same as the maintenance plant.'
+  record_fix_template: 'Equipment {EQUI.EQUNR}: IWERK is {actual_value}. Assign the planning plant via IE02 (ECC) or Fiori
+    app F4283 (S/4HANA).'
+- id: PM007
+  field: IFLOT.TPLNR
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: "Functional location number missing \u2014 location cannot be identified in the hierarchy"
+  why_it_matters: TPLNR (functional location number) is the unique identifier for a position in the plant technical hierarchy.
+    Without it, the functional location cannot be referenced in work orders, notifications, or maintenance plans. Equipment
+    cannot be installed at this location.
+  rule_authority: sap_hard_constraint
+  sap_impact: Functional location cannot be used in PM transactions. Equipment installation is not possible. Structure-based
+    reporting (IH06/IH08) cannot include it.
+  fix_map:
+    __blank__: 'Functional location number is empty. In ECC: create via IL01 (Create Functional Location). In S/4HANA: use
+      Fiori app F4284 (Manage Functional Location) or IL01.'
+  record_fix_template: 'Functional location {IFLOT.TPLNR}: TPLNR is {actual_value}. Create via IL01 (ECC) or Fiori app F4284
+    (S/4HANA).'
+- id: PM008
+  field: IFLOT.PLTXT
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: "Functional location description missing \u2014 reduces usability of hierarchy"
+  why_it_matters: PLTXT (functional location description) is the text description displayed in all hierarchy views, work orders,
+    and notifications. Without it, maintenance planners cannot identify what the location represents (building, production
+    line, system, etc.).
+  rule_authority: best_practice
+  sap_impact: Hierarchy views (IH01) show blank descriptions. Work orders reference unnamed locations. Maintenance planners
+    cannot identify the location.
+  fix_map:
+    __blank__: "Functional location description is empty. In ECC: enter a meaningful description via IL02 > General tab. In\
+      \ S/4HANA: use Fiori app F4284. Include the hierarchy level and purpose (e.g., \"Building A \u2014 Production Hall 1\"\
+      )."
+  record_fix_template: 'Functional location {IFLOT.TPLNR}: PLTXT is {actual_value}. Enter a description via IL02 (ECC) or
+    Fiori app F4284 (S/4HANA).'
+- id: PM009
+  field: IFLOT.IWERK
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: "Functional location planning plant missing \u2014 location excluded from maintenance plans"
+  why_it_matters: IWERK (planning plant) on the functional location determines which plant is responsible for maintenance
+    planning. Without it, maintenance plans (IP01) cannot include this location and all equipment installed here inherits
+    no planning context.
+  rule_authority: sap_hard_constraint
+  sap_impact: Maintenance plans cannot reference this location. Equipment installed here has no inherited planning plant.
+    Preventive maintenance at this location cannot be scheduled.
+  fix_map:
+    __blank__: 'Planning plant is empty on the functional location. In ECC: assign via IL02 > Organisation tab. In S/4HANA:
+      use Fiori app F4284.'
+  record_fix_template: 'Functional location {IFLOT.TPLNR}: IWERK is {actual_value}. Assign the planning plant via IL02 (ECC)
+    or Fiori app F4284 (S/4HANA).'
+- id: PM010
+  field: EQUI.INBDT
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: "Start-up date missing \u2014 equipment age and warranty tracking not possible"
+  why_it_matters: INBDT (start-up date) records when the equipment was first put into service. Without it, age-based maintenance
+    strategies cannot be applied, warranty periods cannot be tracked, and equipment lifecycle reporting is incomplete.
+  rule_authority: best_practice
+  sap_impact: Age-based maintenance plans (IP01 with time-based scheduling) cannot calculate intervals correctly. Warranty
+    tracking is not possible. Equipment lifecycle cost reports are incomplete.
+  fix_map:
+    __blank__: 'Start-up date is empty. In ECC: determine from commissioning records and set via IE02 > General tab > Start-Up
+      Date. In S/4HANA: use Fiori app F4283.'
+  record_fix_template: 'Equipment {EQUI.EQUNR}: INBDT is {actual_value}. Set the start-up date via IE02 (ECC) or Fiori app
+    F4283 (S/4HANA).'
+- id: PM011
+  field: EQUI.ANSWT
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: "Acquisition value missing \u2014 equipment cost tracking is incomplete"
+  why_it_matters: ANSWT (acquisition value) records the original cost of the equipment. While asset accounting (AA) tracks
+    the financial value separately, this field in PM provides maintenance planners with cost context for repair-vs-replace
+    decisions and total cost of ownership analysis.
+  rule_authority: best_practice
+  sap_impact: Maintenance cost-to-value ratio cannot be calculated. Repair-vs-replace analysis is missing the acquisition
+    baseline. Equipment cost reports in PM are incomplete.
+  fix_map:
+    __blank__: 'Acquisition value is empty. In ECC: obtain from asset accounting (AS03) or procurement records and set via
+      IE02 > General tab > Acquisition Value. In S/4HANA: use Fiori app F4283.'
+  record_fix_template: 'Equipment {EQUI.EQUNR}: ANSWT is {actual_value}. Set the acquisition value via IE02 (ECC) or Fiori
+    app F4283 (S/4HANA).'
+- id: PM012
+  field: EQUI.BRGEW
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: "Weight missing \u2014 affects transport planning for mobile equipment"
+  why_it_matters: BRGEW (gross weight) is used for transport planning when equipment needs to be moved, and for structural
+    load calculations in plant engineering. While not critical for all equipment types, it is important for heavy machinery
+    and mobile assets.
+  rule_authority: best_practice
+  sap_impact: Transport planning for equipment relocation cannot consider weight constraints. Plant engineering structural
+    load reports are incomplete.
+  fix_map:
+    __blank__: 'Weight is empty. In ECC: obtain from the equipment nameplate or manufacturer documentation and set via IE02
+      > General tab > Weight. In S/4HANA: use Fiori app F4283.'
+  record_fix_template: 'Equipment {EQUI.EQUNR}: BRGEW is {actual_value}. Set the weight via IE02 (ECC) or Fiori app F4283
+    (S/4HANA).'
+- id: PM013
+  field: EQUI.HERST
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: "Manufacturer missing \u2014 spare parts sourcing and warranty claims affected"
+  why_it_matters: HERST (manufacturer) identifies who made the equipment. Without it, spare parts sourcing cannot identify
+    the correct manufacturer, warranty claims cannot be directed to the right party, and equipment standardisation analysis
+    by manufacturer is incomplete.
+  rule_authority: best_practice
+  sap_impact: Spare parts sourcing cannot identify the manufacturer. Warranty claims cannot be directed. Equipment standardisation
+    reports are incomplete.
+  fix_map:
+    __blank__: 'Manufacturer is empty. In ECC: enter the manufacturer name via IE02 > General tab > Manufacturer. In S/4HANA:
+      use Fiori app F4283. Obtain from the equipment nameplate or procurement records.'
+  record_fix_template: 'Equipment {EQUI.EQUNR}: HERST is {actual_value}. Enter the manufacturer via IE02 (ECC) or Fiori app
+    F4283 (S/4HANA).'
+- id: PM014
+  field: EQUI.SERGE
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: "Manufacturer serial number missing \u2014 individual equipment traceability reduced"
+  why_it_matters: SERGE (manufacturer serial number) is the manufacturer's unique identifier for the equipment unit. Without
+    it, warranty claims require manual lookup, manufacturer recalls cannot automatically identify affected units, and regulatory
+    traceability is reduced.
+  rule_authority: best_practice
+  sap_impact: Warranty claims require manual serial number lookup. Manufacturer recalls cannot automatically identify this
+    unit. Regulatory traceability is reduced.
+  fix_map:
+    __blank__: 'Manufacturer serial number is empty. In ECC: enter from the equipment nameplate via IE02 > General tab > Serial
+      Number. In S/4HANA: use Fiori app F4283.'
+  record_fix_template: 'Equipment {EQUI.EQUNR}: SERGE is {actual_value}. Enter the serial number via IE02 (ECC) or Fiori app
+    F4283 (S/4HANA).'
+- id: PM015
+  field: EQUI.KOSTL
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: "Cost centre missing \u2014 maintenance costs cannot be allocated"
+  why_it_matters: KOSTL (cost centre) on the equipment determines where maintenance costs are allocated. Without it, work
+    order settlement has no cost object and maintenance expense allocation is incomplete. This affects total cost of ownership
+    tracking per department.
+  rule_authority: best_practice
+  sap_impact: Work order settlement has no cost centre. Maintenance expense is unallocated in CO reports. Total cost of ownership
+    by department is incomplete.
+  fix_map:
+    __blank__: 'Cost centre is empty. In ECC: assign the responsible department''s cost centre via IE02 > Organisation tab
+      > Cost Centre. In S/4HANA: use Fiori app F4283.'
+  record_fix_template: 'Equipment {EQUI.EQUNR}: KOSTL is {actual_value}. Assign the cost centre via IE02 (ECC) or Fiori app
+    F4283 (S/4HANA).'
+- id: PM016
+  field: EQUI.EQART
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: "Equipment type (object type) missing \u2014 classification and reporting affected"
+  why_it_matters: EQART (object type / equipment type) provides a finer classification than the equipment category. It enables
+    reporting by equipment type (e.g., pumps, motors, conveyors) and can drive maintenance task list assignment. Without it,
+    type-based analysis and automatic task list selection do not work.
+  rule_authority: best_practice
+  sap_impact: Equipment cannot be classified by type in reports. Automatic task list selection (IA05) cannot match by equipment
+    type. MTBF/MTTR analysis by type is incomplete.
+  fix_map:
+    __blank__: 'Equipment type is empty. In ECC: assign the correct type via IE02 > General tab > Object Type. In S/4HANA:
+      use Fiori app F4283.'
+  record_fix_template: 'Equipment {EQUI.EQUNR}: EQART is {actual_value}. Assign the equipment type via IE02 (ECC) or Fiori
+    app F4283 (S/4HANA).'
+- id: PM017
+  field: EQUI.TIDNR
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: "Technical identification number missing \u2014 external reference for equipment"
+  why_it_matters: TIDNR (technical identification number) is an additional identifier used to cross-reference equipment with
+    external systems, P&ID drawings, or regulatory registrations. Without it, cross-referencing between SAP and engineering
+    documentation is not possible.
+  rule_authority: best_practice
+  sap_impact: Cross-referencing with P&ID diagrams is not possible. Regulatory filings cannot link to the SAP equipment number.
+    External system integration is affected.
+  fix_map:
+    __blank__: 'Technical identification number is empty. In ECC: assign via IE02 > General tab > Technical ID. In S/4HANA:
+      use Fiori app F4283. Use the P&ID tag number or regulatory registration number.'
+  record_fix_template: 'Equipment {EQUI.EQUNR}: TIDNR is {actual_value}. Assign the technical ID via IE02 (ECC) or Fiori app
+    F4283 (S/4HANA).'
+- id: PM018
+  field: EQUI.TIDNR
+  fields:
+  - EQUI.TIDNR
+  - EQUI.IWERK
+  check_class: cross_field_check
+  condition: '`EQUI.TIDNR`.notna() and `EQUI.TIDNR` != '''' and (`EQUI.IWERK`.isna() or `EQUI.IWERK` == '''')'
+  severity: high
+  dimension: consistency
+  message: Equipment has functional location reference (TIDNR) but no planning plant
+  why_it_matters: "When equipment has a technical identification number (TIDNR) \u2014 indicating it is referenced in engineering\
+    \ documentation or a functional location context \u2014 it should also have a planning plant (IWERK) to ensure it is included\
+    \ in maintenance planning. Equipment with external references but no planning context falls through the cracks in preventive\
+    \ maintenance."
+  rule_authority: best_practice
+  sap_impact: Equipment is referenced in engineering docs (via TIDNR) but excluded from maintenance planning. Preventive maintenance
+    schedules do not include it. There is a disconnect between engineering and maintenance.
+  fix_map:
+    __blank__: 'Equipment has a technical ID (TIDNR) but no planning plant (IWERK). In ECC: assign the planning plant via
+      IE02 > Organisation tab. In S/4HANA: use Fiori app F4283. The planning plant is usually the same as the maintenance
+      plant.'
+  record_fix_template: 'Equipment {EQUI.EQUNR}: TIDNR is set but IWERK is ''{actual_value}''. Assign the planning plant via
+    IE02 or Fiori app F4283.'
+- id: PM019
+  field: IFLOT.BUKRS
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: "Functional location company code missing \u2014 organisational assignment incomplete"
+  why_it_matters: BUKRS (company code) on the functional location determines the legal entity that owns the location and its
+    installed equipment. Without it, cost settlement from work orders cannot determine the correct company code for financial
+    postings.
+  rule_authority: sap_hard_constraint
+  sap_impact: Work order cost settlement cannot determine the company code. Financial postings for maintenance at this location
+    may fail or post to the wrong entity.
+  fix_map:
+    __blank__: 'Company code is empty on the functional location. In ECC: assign via IL02 > Organisation tab > Company Code.
+      In S/4HANA: use Fiori app F4284.'
+  record_fix_template: 'Functional location {IFLOT.TPLNR}: BUKRS is {actual_value}. Assign the company code via IL02 (ECC)
+    or Fiori app F4284 (S/4HANA).'
+- id: PM020
+  field: EQUI.GEWRK
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: "Main work centre missing \u2014 default work centre for maintenance orders not set"
+  why_it_matters: GEWRK (main work centre) on the equipment is the default work centre used when creating maintenance work
+    orders. Without it, every work order must have the work centre manually entered, increasing the risk of errors and slowing
+    down work order creation.
+  rule_authority: best_practice
+  sap_impact: Work orders (IW31) have no default work centre. Manual entry is required for every order. Capacity planning
+    is not automatically linked to the correct maintenance work centre.
+  fix_map:
+    __blank__: 'Main work centre is empty. In ECC: assign the default maintenance work centre via IE02 > Organisation tab
+      > Main Work Centre. In S/4HANA: use Fiori app F4283.'
+  record_fix_template: 'Equipment {EQUI.EQUNR}: GEWRK is {actual_value}. Assign the main work centre via IE02 (ECC) or Fiori
+    app F4283 (S/4HANA).'
+- id: PM021
+  field: CRHD.ARBPL
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Work center is missing
+  why_it_matters: Work center (CRHD.ARBPL) is not maintained. This field supports downstream processes and reporting accuracy.
+    Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Work center may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via IE02/IL02. In S/4HANA: Use Fiori app F4283 (Manage Equipment) or F4284 (Manage Functional
+      Location).'
+  record_fix_template: 'Record is missing CRHD.ARBPL. In ECC: Set via IE02/IL02. In S/4HANA: Use Fiori app F4283 (Manage Equipment)
+    or F4284 (Manage Functional Location).'
+- id: PM022
+  field: CRHD.WERKS
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Plant (work center) is missing
+  why_it_matters: Plant (work center) (CRHD.WERKS) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Plant (work center) may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via IE02/IL02. In S/4HANA: Use Fiori app F4283 (Manage Equipment) or F4284 (Manage Functional
+      Location).'
+  record_fix_template: 'Record is missing CRHD.WERKS. In ECC: Set via IE02/IL02. In S/4HANA: Use Fiori app F4283 (Manage Equipment)
+    or F4284 (Manage Functional Location).'
+- id: PM023
+  field: EQUI.ABESSION
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: ABC indicator (equipment) is missing
+  why_it_matters: ABC indicator (equipment) (EQUI.ABESSION) is not maintained. This field supports downstream processes and
+    reporting accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing ABC indicator (equipment) may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via IE02/IL02. In S/4HANA: Use Fiori app F4283 (Manage Equipment) or F4284 (Manage Functional
+      Location).'
+  record_fix_template: 'Record is missing EQUI.ABESSION. In ECC: Set via IE02/IL02. In S/4HANA: Use Fiori app F4283 (Manage
+    Equipment) or F4284 (Manage Functional Location).'
+- id: PM024
+  field: EQUI.BAESSION
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Construction year is missing
+  why_it_matters: Construction year (EQUI.BAESSION) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Construction year may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via IE02/IL02. In S/4HANA: Use Fiori app F4283 (Manage Equipment) or F4284 (Manage Functional
+      Location).'
+  record_fix_template: 'Record is missing EQUI.BAESSION. In ECC: Set via IE02/IL02. In S/4HANA: Use Fiori app F4283 (Manage
+    Equipment) or F4284 (Manage Functional Location).'
+- id: PM025
+  field: EQUI.ELESSION
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Equipment status is missing
+  why_it_matters: Equipment status (EQUI.ELESSION) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Equipment status may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via IE02/IL02. In S/4HANA: Use Fiori app F4283 (Manage Equipment) or F4284 (Manage Functional
+      Location).'
+  record_fix_template: 'Record is missing EQUI.ELESSION. In ECC: Set via IE02/IL02. In S/4HANA: Use Fiori app F4283 (Manage
+    Equipment) or F4284 (Manage Functional Location).'
+- id: PM026
+  field: EQUI.HERLD
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Country of manufacturer is missing
+  why_it_matters: Country of manufacturer (EQUI.HERLD) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Country of manufacturer may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via IE02/IL02. In S/4HANA: Use Fiori app F4283 (Manage Equipment) or F4284 (Manage Functional
+      Location).'
+  record_fix_template: 'Record is missing EQUI.HERLD. In ECC: Set via IE02/IL02. In S/4HANA: Use Fiori app F4283 (Manage Equipment)
+    or F4284 (Manage Functional Location).'
+- id: PM027
+  field: EQUI.MATNR
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Material (equipment) is missing
+  why_it_matters: Material (equipment) (EQUI.MATNR) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Material (equipment) may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via IE02/IL02. In S/4HANA: Use Fiori app F4283 (Manage Equipment) or F4284 (Manage Functional
+      Location).'
+  record_fix_template: 'Record is missing EQUI.MATNR. In ECC: Set via IE02/IL02. In S/4HANA: Use Fiori app F4283 (Manage Equipment)
+    or F4284 (Manage Functional Location).'
+- id: PM028
+  field: EQUI.SERNR
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Serial number (equipment) is missing
+  why_it_matters: Serial number (equipment) (EQUI.SERNR) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Serial number (equipment) may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via IE02/IL02. In S/4HANA: Use Fiori app F4283 (Manage Equipment) or F4284 (Manage Functional
+      Location).'
+  record_fix_template: 'Record is missing EQUI.SERNR. In ECC: Set via IE02/IL02. In S/4HANA: Use Fiori app F4283 (Manage Equipment)
+    or F4284 (Manage Functional Location).'
+- id: PM029
+  field: IFLOT.FLTYP
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Functional location category is missing
+  why_it_matters: Functional location category (IFLOT.FLTYP) is not maintained. This field supports downstream processes and
+    reporting accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Functional location category may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via IE02/IL02. In S/4HANA: Use Fiori app F4283 (Manage Equipment) or F4284 (Manage Functional
+      Location).'
+  record_fix_template: 'Record is missing IFLOT.FLTYP. In ECC: Set via IE02/IL02. In S/4HANA: Use Fiori app F4283 (Manage
+    Equipment) or F4284 (Manage Functional Location).'
+- id: PM030
+  field: IFLOT.GEWRK
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Main work center (FL) is missing
+  why_it_matters: Main work center (FL) (IFLOT.GEWRK) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Main work center (FL) may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via IE02/IL02. In S/4HANA: Use Fiori app F4283 (Manage Equipment) or F4284 (Manage Functional
+      Location).'
+  record_fix_template: 'Record is missing IFLOT.GEWRK. In ECC: Set via IE02/IL02. In S/4HANA: Use Fiori app F4283 (Manage
+    Equipment) or F4284 (Manage Functional Location).'
+- id: PM031
+  field: IFLOT.KOSTL
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Cost center (FL) is missing
+  why_it_matters: Cost center (FL) (IFLOT.KOSTL) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Cost center (FL) may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via IE02/IL02. In S/4HANA: Use Fiori app F4283 (Manage Equipment) or F4284 (Manage Functional
+      Location).'
+  record_fix_template: 'Record is missing IFLOT.KOSTL. In ECC: Set via IE02/IL02. In S/4HANA: Use Fiori app F4283 (Manage
+    Equipment) or F4284 (Manage Functional Location).'
+- id: PM032
+  field: IFLOT.SWERK
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Planning plant (FL) is missing
+  why_it_matters: Planning plant (FL) (IFLOT.SWERK) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Planning plant (FL) may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via IE02/IL02. In S/4HANA: Use Fiori app F4283 (Manage Equipment) or F4284 (Manage Functional
+      Location).'
+  record_fix_template: 'Record is missing IFLOT.SWERK. In ECC: Set via IE02/IL02. In S/4HANA: Use Fiori app F4283 (Manage
+    Equipment) or F4284 (Manage Functional Location).'
+- id: PM033
+  field: EQUI.EQUNR
+  check_class: cross_field_check
+  fields: ['EQUI.EQUNR']
+  condition: "~`EQUI.EQUNR`.duplicated(keep=False)"
+  severity: critical
+  dimension: uniqueness
+  message: Duplicate equipment numbers detected — each equipment must be unique
+  why_it_matters: Duplicate equipment records cause doubled maintenance costs, incorrect failure analysis, and ambiguous work order references. Each equipment must have a unique EQUNR.
+  rule_authority: sap_hard_constraint
+  sap_impact: Maintenance orders reference the wrong equipment. Failure history is split. Warranty tracking is unreliable. Cost reporting doubles up.
+  fix_map:
+    __blank__: "Identify and merge duplicate equipment via IE02 or archive duplicates via OIEA. Reassign maintenance orders and notifications to the surviving record."
+
+- id: PM034
+  field: EQUI.ERDAT
+  check_class: freshness_check
+  max_age_hours: 87600
+  severity: low
+  dimension: timeliness
+  message: Equipment master created 10+ years ago � review if technical data, warranty, and maintenance plan are still current
+  rule_authority: best_practice
+
+- id: PM035
+  field: EQUI.BAUJJ
+  check_class: regex_check
+  pattern: '^(19|20)\d{2}$'
+  severity: medium
+  dimension: accuracy
+  message: Equipment construction year is invalid � must be a 4-digit year between 1900 and 2099
+  why_it_matters: Invalid construction years cause incorrect age-based maintenance calculations, wrong warranty determinations, and unreliable asset lifecycle reporting.
+  rule_authority: best_practice
+  sap_impact: Warranty validation fails. Age-based maintenance triggers are wrong. Asset lifecycle reports are unreliable.
+  fix_map:
+    __blank__: "Correct the equipment construction year via IE02 > General tab."

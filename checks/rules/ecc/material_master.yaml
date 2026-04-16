@@ -1,0 +1,2278 @@
+module: material_master
+target_state: ECC_AND_S4HANA
+rules:
+- id: MM001
+  field: MARA.MATNR
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Material number is mandatory - primary key for all material transactions
+  why_it_matters: MATNR is the unique identifier for every material in SAP. Without it, no procurement, production, sales,
+    or inventory transaction can reference the material. In both ECC (MM01/MM02) and S/4HANA (Fiori F1602 Manage Product Master
+    Data), the material number is the non-negotiable primary key.
+  rule_authority: sap_hard_constraint
+  sap_impact: Material cannot exist in SAP. All MM, PP, SD, FI, and WM transactions referencing this record will fail.
+  fix_map:
+    __blank__: 'In ECC: assign via MM01 using internal or external number range (MMNR). In S/4HANA: use Fiori app F1602 (Manage
+      Product Master Data) to create with a valid number range.'
+  record_fix_template: 'Material {MARA.MATNR}: material number is {actual_value}. Assign a valid number via MM01 (ECC) or
+    Fiori F1602 (S/4HANA).'
+- id: MM002
+  field: MARA.MATNR
+  check_class: regex_check
+  pattern: ^[A-Z0-9\-_/\.]{1,40}$
+  severity: critical
+  dimension: validity
+  message: 'Material number must be 1-40 chars: uppercase alphanumeric, hyphens, underscores, slashes, dots'
+  why_it_matters: In ECC, MATNR is limited to 18 characters. In S/4HANA, the field was extended to 40 characters to support
+    longer material numbering schemes. This rule uses the S/4HANA-compatible length. Only uppercase alphanumeric characters,
+    hyphens, underscores, forward slashes, and dots are permitted. Lowercase or special characters are rejected by MM01 (ECC)
+    and Fiori F1602 (S/4HANA).
+  rule_authority: sap_hard_constraint
+  sap_impact: Material cannot be created. All BOMs, purchase orders, production orders, and sales orders referencing an invalid
+    number will fail.
+  fix_map:
+    __other__: 'Material number ''{invalid_value}'' does not conform to the required format. In ECC: convert to uppercase,
+      remove special characters, max 18 chars (MM02). In S/4HANA: max 40 chars, same character restrictions (Fiori F1602).
+      Use LSMW or migration cockpit for bulk reformatting.'
+  record_fix_template: 'Material {MARA.MATNR}: number format is invalid (value: ''{actual_value}''). Reformat to uppercase
+    alphanumeric (max 40 chars for S/4HANA) and update references.'
+- id: MM003
+  field: MARA.MTART
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Material type is mandatory - determines procurement and storage behaviour
+  why_it_matters: Material type is the most fundamental classification in the Material Master. It controls which organisational
+    levels are maintained, which fields are required, which procurement processes apply, and which valuation class is used
+    for accounting. In ECC, set via MM01/MM02. In S/4HANA, set via Fiori F1602. A material without a type cannot be used in
+    any SAP process.
+  rule_authority: sap_hard_constraint
+  sap_impact: Material cannot be created or used in MM, PP, SD, or FI without a valid material type. Affects MRP (MD01), goods
+    movements (MIGO), and all purchasing processes (ME21N).
+  fix_map:
+    __blank__: 'In ECC: determine correct type and set via MM02 > Organisational levels. In S/4HANA: use Fiori F1602 (Manage
+      Product Master Data). Common types: FERT (finished), HALB (semi-finished), ROH (raw), HAWA (trading).'
+  record_fix_template: 'Material {MARA.MATNR}: MTART is {actual_value}. Set material type via MM02 (ECC) or Fiori F1602 (S/4HANA).'
+- id: MM004
+  field: MARA.MTART
+  check_class: domain_value_check
+  allowed_values:
+  - FERT
+  - HALB
+  - ROH
+  - HAWA
+  - DIEN
+  - NLAG
+  - ERSA
+  - IBAU
+  - VERP
+  - LEIH
+  - UNBW
+  - KMAT
+  - PIPE
+  - WETT
+  severity: critical
+  dimension: validity
+  message: Material type must be a valid SAP material type
+  why_it_matters: Only standard SAP material types are supported. Custom or non-standard types must be mapped to valid types
+    or configured via OMS2 (ECC) or SPRO (S/4HANA). Invalid types are rejected during material creation and migration.
+  rule_authority: sap_hard_constraint
+  sap_impact: Material cannot be created. Migration conversion rejects unknown material types.
+  valid_values_with_labels:
+    FERT: Finished product - manufactured and sold
+    HALB: Semi-finished product - used in production
+    ROH: Raw material - purchased for production
+    HAWA: Trading goods - purchased and sold without processing
+    DIEN: Service - non-physical service item
+    NLAG: Non-stock material - consumed directly on purchase
+    ERSA: Spare part - maintenance and repair
+    IBAU: Maintenance assembly - equipment structure
+    VERP: Packaging material
+    LEIH: Returnable packaging
+    UNBW: Non-valuated material
+    KMAT: Configurable material
+    PIPE: Pipeline material (e.g. electricity, water)
+    WETT: Competitive product
+  fix_map:
+    __other__: 'Material type ''{invalid_value}'' is not in the allowed list. In ECC: map to a valid type or configure custom
+      type via OMS2. In S/4HANA: use Fiori F1602 or configure via SPRO > Logistics General > Material Master > Basic Settings.'
+  record_fix_template: 'Material {MARA.MATNR}: MTART is ''{actual_value}''. Map to a valid SAP material type via MM02 (ECC)
+    or Fiori F1602 (S/4HANA).'
+- id: MM005
+  field: MARA.MBRSH
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Industry sector is required for material classification
+  why_it_matters: Industry sector (MBRSH) determines which user department screens and field selection rules apply to the
+    material master. It must be set at material creation and cannot be changed afterward in either ECC (MM01) or S/4HANA (Fiori
+    F1602). Incorrect assignment requires material recreation.
+  rule_authority: sap_hard_constraint
+  sap_impact: Material master screen layout is incorrect. Field selections defined per industry sector will not apply, leading
+    to missing required fields.
+  fix_map:
+    __blank__: 'In ECC: set during material creation via MM01; cannot change after creation. In S/4HANA: set via Fiori F1602
+      during creation. Common values: M (mechanical), C (chemical), P (pharmaceutical), E (electrical), A (plant engineering).'
+  record_fix_template: 'Material {MARA.MATNR}: MBRSH is {actual_value}. Industry sector cannot be changed after creation -
+    may require material recreation.'
+- id: MM006
+  field: MARA.MBRSH
+  check_class: domain_value_check
+  allowed_values:
+  - M
+  - C
+  - P
+  - E
+  - A
+  severity: high
+  dimension: validity
+  message: Industry sector must be a valid SAP industry code
+  why_it_matters: MBRSH must match a configured industry sector. Invalid values prevent correct field selection and screen
+    layout. In both ECC and S/4HANA, the valid values are maintained in table T137.
+  rule_authority: sap_hard_constraint
+  sap_impact: Material creation fails with invalid industry sector. Screen layout and field selections are undefined.
+  valid_values_with_labels:
+    M: Mechanical engineering
+    C: Chemical industry
+    P: Pharmaceutical industry
+    E: Electrical engineering
+    A: Plant engineering and construction
+  fix_map:
+    __other__: 'Industry sector ''{invalid_value}'' is not valid. In ECC: check valid values in table T137 via SE16. In S/4HANA:
+      check via SPRO or Fiori F1602.'
+  record_fix_template: 'Material {MARA.MATNR}: MBRSH is ''{actual_value}''. Correct to a valid industry sector (M, C, P, E,
+    A).'
+- id: MM007
+  field: MARA.MATKL
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Material group is required for reporting and procurement
+  why_it_matters: Material group (MATKL) is used for spend analysis, procurement reporting, and automatic source determination.
+    It is a key classification field for all MM reporting in both ECC and S/4HANA. Required for many purchasing workflows
+    and analytics in ME2M, ME80FN, and Fiori Purchasing Analytics.
+  rule_authority: sap_hard_constraint
+  sap_impact: Spend analysis and procurement reporting are incomplete. Automatic source determination (ME21N) and reporting
+    by material group fail.
+  fix_map:
+    __blank__: 'In ECC: assign via MM02 > Basic Data 1; check existing groups in table T023 or via OMSF. In S/4HANA: use Fiori
+      F1602 (Manage Product Master Data).'
+  record_fix_template: 'Material {MARA.MATNR}: MATKL is {actual_value}. Assign a material group via MM02 (ECC) or Fiori F1602
+    (S/4HANA).'
+- id: MM008
+  field: MARA.MEINS
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Base unit of measure is mandatory for all materials
+  why_it_matters: MEINS is the base unit of measure for all stock quantities, goods movements, and inventory management. Without
+    it, no quantity-based transaction can process this material. It is a hard requirement for material creation in both ECC
+    (MM01) and S/4HANA (Fiori F1602).
+  rule_authority: sap_hard_constraint
+  sap_impact: Material cannot be created. All goods movements (MIGO), purchase orders (ME21N), production orders (CO01), and
+    inventory counts (MI01) fail.
+  fix_map:
+    __blank__: 'In ECC: set via MM02 > Basic Data 1. In S/4HANA: use Fiori F1602. Common units: EA (each), KG (kilogram),
+      L (litre), M (metre), PC (piece).'
+  record_fix_template: 'Material {MARA.MATNR}: MEINS is {actual_value}. Set the base unit of measure via MM02 (ECC) or Fiori
+    F1602 (S/4HANA).'
+- id: MM009
+  field: MARA.BSTME
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Order unit is recommended for purchasing - defaults to base UoM if missing
+  why_it_matters: BSTME is the purchase order unit of measure. If not maintained, SAP defaults to the base unit (MEINS), which
+    may not match supplier packaging. Incorrect order units cause quantity discrepancies in goods receipt (MIGO) and invoice
+    verification (MIRO) in both ECC and S/4HANA.
+  rule_authority: best_practice
+  sap_impact: Purchase orders (ME21N) default to base UoM. Conversion errors may occur during goods receipt if supplier ships
+    in different units.
+  fix_map:
+    __blank__: 'In ECC: set via MM02 > Purchasing view. In S/4HANA: use Fiori F1602. Ensure UoM conversion is maintained in
+      MARM if order unit differs from base.'
+  record_fix_template: 'Material {MARA.MATNR}: BSTME is {actual_value}. Set the order unit via MM02 > Purchasing (ECC) or
+    Fiori F1602 (S/4HANA).'
+- id: MM010
+  field: MARA.BISMT
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Old material number is recommended for traceability during migration
+  why_it_matters: BISMT stores the old material number from the source system. It is essential for post-migration traceability,
+    allowing users to look up materials by their legacy number. Searchable via MM03 (ECC) or Fiori F1602 (S/4HANA).
+  rule_authority: best_practice
+  sap_impact: Users cannot cross-reference materials between old and new systems. Post-migration support and data reconciliation
+    are more difficult.
+  fix_map:
+    __blank__: 'In ECC: populate via MM02 > Basic Data 1. In S/4HANA: use Fiori F1602. Set to the source system material number
+      for migration traceability.'
+  record_fix_template: 'Material {MARA.MATNR}: BISMT is {actual_value}. Populate with the source system material number via
+    MM02 (ECC) or Fiori F1602 (S/4HANA).'
+- id: MM011
+  field: MARA.ERSDA
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Creation date should be populated for material lifecycle tracking
+  why_it_matters: ERSDA records when the material was created. It is auto-populated by SAP during MM01 creation but may be
+    missing in migrated data. Used for lifecycle reporting and audit trails in both ECC and S/4HANA.
+  rule_authority: best_practice
+  sap_impact: Material lifecycle reports and aging analysis are incomplete. Audit trails for material creation cannot be established.
+  fix_map:
+    __blank__: 'In ECC: typically auto-set by MM01; for migrated records, populate via LSMW or direct table update. In S/4HANA:
+      auto-set by Fiori F1602.'
+  record_fix_template: 'Material {MARA.MATNR}: ERSDA is {actual_value}. Populate the creation date for lifecycle tracking.'
+- id: MM012
+  field: MARA.LAEDA
+  check_class: freshness_check
+  max_age_hours: 17520
+  severity: medium
+  dimension: timeliness
+  message: Material not updated in 2+ years - review if data is still current
+  why_it_matters: Materials not updated in over 2 years may contain obsolete pricing, outdated specifications, or discontinued
+    procurement sources. Migrating stale data increases post-go-live cleanup. Check via MM03 (ECC) or Fiori F1602 (S/4HANA)
+    to verify current status.
+  rule_authority: best_practice
+  sap_impact: Procurement with outdated info sources (ME21N), MRP with stale lead times (MD01), and valuation with old prices
+    (CK11N) produce incorrect results.
+  fix_map:
+    __other__: 'Material has not been updated in over 2 years. In ECC: review via MM03 and update via MM02. In S/4HANA: use
+      Fiori F1602. If discontinued, set status to blocked (MSTAE) before migration to avoid migrating dead data.'
+  record_fix_template: 'Material {MARA.MATNR}: last updated {actual_value}. Review if this material is still active. Refresh
+    or block as appropriate.'
+- id: MM013
+  field: MARA.LVORM
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: medium
+  dimension: validity
+  message: Deletion flag must be blank or 'X'
+  why_it_matters: LVORM is the client-level deletion flag. When set to 'X', the material is flagged for deletion by archiving
+    run SARA (ECC) or Fiori F2723 (S/4HANA). Any other value is invalid and causes undefined behaviour in deletion programs.
+  rule_authority: sap_hard_constraint
+  sap_impact: Archiving programs (SARA) and deletion reports fail on invalid flag values. Materials may be unexpectedly included
+    or excluded from deletion runs.
+  valid_values_with_labels:
+    ? ''
+    : Not flagged for deletion
+    X: Flagged for deletion
+  fix_map:
+    __other__: 'Deletion flag ''{invalid_value}'' is not valid. Must be blank or ''X''. In ECC: correct via MM06 (flag for
+      deletion) or MM02. In S/4HANA: use Fiori F1602.'
+  record_fix_template: 'Material {MARA.MATNR}: LVORM is ''{actual_value}''. Set to blank (active) or ''X'' (flagged for deletion).'
+- id: MM014
+  field: MARA.NTGEW
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Net weight is recommended for logistics and shipping calculations
+  why_it_matters: Net weight is used in shipping calculations, transportation planning, and customs declarations. Missing
+    weight data causes inaccurate logistics planning in VL01N (ECC) and Fiori F5765 (S/4HANA) and may block customs.
+  rule_authority: best_practice
+  sap_impact: Shipping weight calculations in delivery processing (VL01N) are inaccurate. Transportation planning (VT01N)
+    and customs declarations may fail.
+  fix_map:
+    __blank__: 'In ECC: set via MM02 > Basic Data 1. In S/4HANA: use Fiori F1602. Obtain weight from product specifications
+      or weighing data.'
+  record_fix_template: 'Material {MARA.MATNR}: NTGEW is {actual_value}. Set the net weight via MM02 (ECC) or Fiori F1602 (S/4HANA).'
+- id: MM015
+  field: MARA.BRGEW
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Gross weight is recommended for shipping and transportation planning
+  why_it_matters: Gross weight (BRGEW) includes packaging and is used for transportation planning, load building, and carrier
+    cost calculation. Required for accurate shipping in VL01N/VT01N (ECC) and Fiori logistics apps (S/4HANA).
+  rule_authority: best_practice
+  sap_impact: Transportation planning and load building produce incorrect results. Carrier invoices may not match planned
+    shipping costs.
+  fix_map:
+    __blank__: 'In ECC: set via MM02 > Basic Data 1. In S/4HANA: use Fiori F1602. Gross weight should include packaging weight.'
+  record_fix_template: 'Material {MARA.MATNR}: BRGEW is {actual_value}. Set the gross weight via MM02 (ECC) or Fiori F1602
+    (S/4HANA).'
+- id: MM016
+  field: MARA.GEWEI
+  check_class: domain_value_check
+  allowed_values:
+  - KG
+  - G
+  - LB
+  - OZ
+  - T
+  - TO
+  severity: medium
+  dimension: validity
+  message: Weight unit must be a valid ISO unit (KG, G, LB, OZ, T, TO)
+  why_it_matters: Weight unit must be a recognised unit for correct weight conversions across logistics, shipping, and customs.
+    Invalid units cause conversion errors in all weight-dependent calculations in both ECC and S/4HANA.
+  rule_authority: sap_hard_constraint
+  sap_impact: Weight conversions in delivery processing and transportation planning produce incorrect results. Customs declarations
+    may be rejected.
+  valid_values_with_labels:
+    KG: Kilogram
+    G: Gram
+    LB: Pound
+    OZ: Ounce
+    T: Metric ton
+    TO: Metric ton (alternate)
+  fix_map:
+    __other__: 'Weight unit ''{invalid_value}'' is not valid. In ECC: correct via MM02 > Basic Data 1. In S/4HANA: use Fiori
+      F1602. Valid units: KG, G, LB, OZ, T, TO.'
+  record_fix_template: 'Material {MARA.MATNR}: GEWEI is ''{actual_value}''. Set to a valid weight unit via MM02 (ECC) or Fiori
+    F1602 (S/4HANA).'
+- id: MM017
+  field: MARA.VOLEH
+  check_class: domain_value_check
+  allowed_values:
+  - L
+  - ML
+  - CCM
+  - CDM
+  - M3
+  - FT3
+  - GAL
+  severity: medium
+  dimension: validity
+  message: Volume unit must be a valid ISO unit
+  why_it_matters: Volume unit controls all volume-based calculations including storage bin capacity, transportation load planning,
+    and customs declarations. Invalid units cause conversion errors in WM/EWM and logistics.
+  rule_authority: sap_hard_constraint
+  sap_impact: Storage bin capacity calculations (LS01N) and transportation load planning produce incorrect results.
+  valid_values_with_labels:
+    L: Litre
+    ML: Millilitre
+    CCM: Cubic centimetre
+    CDM: Cubic decimetre
+    M3: Cubic metre
+    FT3: Cubic foot
+    GAL: Gallon (US)
+  fix_map:
+    __other__: 'Volume unit ''{invalid_value}'' is not valid. In ECC: correct via MM02 > Basic Data 1. In S/4HANA: use Fiori
+      F1602.'
+  record_fix_template: 'Material {MARA.MATNR}: VOLEH is ''{actual_value}''. Set to a valid volume unit via MM02 (ECC) or Fiori
+    F1602 (S/4HANA).'
+- id: MM018
+  field: MARA.EAN11
+  check_class: regex_check
+  pattern: ^[0-9]{8,14}$
+  severity: medium
+  dimension: validity
+  message: GTIN/EAN must be 8-14 digit numeric barcode
+  why_it_matters: EAN/GTIN is the international barcode standard used in warehouse operations, POS systems, and EDI. Invalid
+    barcodes cause scanning failures in WM (LT01, LT10 in ECC) and EWM (S/4HANA), and EDI message rejections.
+  rule_authority: sap_hard_constraint
+  sap_impact: Warehouse goods movements via barcode scanning fail. EDI messages (DESADV, ORDERS) are rejected by trading partners.
+  fix_map:
+    __other__: 'EAN/GTIN ''{invalid_value}'' is invalid. Must be 8-14 numeric digits (EAN-8, EAN-13, GTIN-14). In ECC: update
+      via MM02 > Basic Data 1. In S/4HANA: use Fiori F1602. Verify against GS1 registry.'
+  record_fix_template: 'Material {MARA.MATNR}: EAN11 is ''{actual_value}''. Correct the barcode format (8-14 numeric digits)
+    via MM02 (ECC) or Fiori F1602 (S/4HANA).'
+- id: MM019
+  field: MARA.MSTAE
+  check_class: domain_value_check
+  allowed_values:
+  - '10'
+  - '20'
+  - '30'
+  - '40'
+  - KK
+  - KL
+  - KP
+  - KW
+  - VP
+  severity: high
+  dimension: validity
+  message: Cross-plant material status must be a valid SAP status code
+  why_it_matters: Cross-plant material status (MSTAE) controls which business processes are allowed for the material across
+    all plants. Invalid status codes cause unpredictable behaviour in procurement, production, and sales in both ECC and S/4HANA.
+  rule_authority: sap_hard_constraint
+  sap_impact: Material behaviour is undefined. Procurement (ME21N), production (CO01), and sales (VA01) may allow or block
+    transactions incorrectly.
+  valid_values_with_labels:
+    '10': Created - basic data maintained
+    '20': In preparation - not yet released
+    '30': Released - available for all processes
+    '40': Blocked - no new transactions allowed
+    KK: Blocked for costing
+    KL: Blocked for storage location
+    KP: Blocked for procurement
+    KW: Blocked for quality management
+    VP: Blocked for production
+  fix_map:
+    __blank__: 'In ECC: assign status via MM02 > Basic Data 1. In S/4HANA: use Fiori F1602. Use 30 for active materials ready
+      for all processes.'
+    __other__: 'Status ''{invalid_value}'' is not valid. In ECC: correct via MM02 or configure via OMS4. In S/4HANA: use Fiori
+      F1602 or SPRO configuration.'
+  record_fix_template: 'Material {MARA.MATNR}: MSTAE is ''{actual_value}''. Assign a valid status code via MM02 (ECC) or Fiori
+    F1602 (S/4HANA).'
+- id: MM020
+  field: MARA.SPART
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Division is recommended for sales organisation assignment
+  why_it_matters: Division (SPART) is an organisational unit used to group materials for sales reporting and distribution
+    channel assignment. Required for SD master data extension. In ECC, maintained via MM02. In S/4HANA, via Fiori F1602.
+  rule_authority: best_practice
+  sap_impact: Material cannot be extended to sales organisation views without division. Sales reporting by division is incomplete.
+  fix_map:
+    __blank__: 'In ECC: set via MM02 > Basic Data 1. In S/4HANA: use Fiori F1602. Determine the correct division from the
+      sales organisation structure.'
+  record_fix_template: 'Material {MARA.MATNR}: SPART is {actual_value}. Assign division via MM02 (ECC) or Fiori F1602 (S/4HANA).'
+- id: MM021
+  field: MARA.PRDHA
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Product hierarchy is recommended for sales analytics and pricing
+  why_it_matters: Product hierarchy (PRDHA) enables hierarchical reporting in sales and is used for condition records in pricing.
+    Without it, pricing by product hierarchy (VK11) and sales analytics are limited. Maintained in both ECC (MM02) and S/4HANA
+    (Fiori F1602).
+  rule_authority: best_practice
+  sap_impact: Pricing condition records by product hierarchy cannot be applied. Sales reporting by product hierarchy is unavailable.
+  fix_map:
+    __blank__: 'In ECC: set via MM02 > Basic Data 1. In S/4HANA: use Fiori F1602. Product hierarchy structure is configured
+      in V/76 (ECC) or SPRO.'
+  record_fix_template: 'Material {MARA.MATNR}: PRDHA is {actual_value}. Assign product hierarchy via MM02 (ECC) or Fiori F1602
+    (S/4HANA).'
+- id: MM022
+  field: MARA.XCHPF
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  severity: medium
+  dimension: validity
+  message: Batch management flag must be blank or 'X'
+  why_it_matters: XCHPF controls whether the material is batch-managed. Once activated, all inventory transactions require
+    a batch number. Cannot be deactivated if stock exists. In both ECC (MM02) and S/4HANA (Fiori F1602), this is a critical
+    logistics control.
+  rule_authority: sap_hard_constraint
+  sap_impact: Invalid values cause goods movements (MIGO) to fail. Batch determination in SD (VL01N) and QM (QA01) processes
+    malfunction.
+  valid_values_with_labels:
+    ? ''
+    : Not batch-managed
+    X: Batch-managed
+  fix_map:
+    __other__: 'Batch flag ''{invalid_value}'' is not valid. Must be blank or ''X''. In ECC: correct via MM02 > Purchasing
+      view. In S/4HANA: use Fiori F1602.'
+  record_fix_template: 'Material {MARA.MATNR}: XCHPF is ''{actual_value}''. Set to blank or ''X'' via MM02 (ECC) or Fiori
+    F1602 (S/4HANA).'
+- id: MM023
+  field: MARA.DISMM
+  check_class: domain_value_check
+  allowed_values:
+  - PD
+  - VB
+  - VM
+  - VV
+  - ND
+  - R1
+  - M1
+  severity: high
+  dimension: validity
+  message: MRP type at material level must be a valid SAP MRP type code
+  why_it_matters: 'MARA.DISMM is the MRP type at the material header level. It determines which MRP procedure is used: PD
+    (MRP), VB (manual reorder point), VM (automatic reorder point), VV (forecast-based), ND (no planning). In S/4HANA, MRP
+    Live (MD01N / Fiori F2886) requires valid types.'
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP run (MD01/MD01N) skips materials with invalid types. Procurement proposals are not generated.
+  valid_values_with_labels:
+    PD: MRP - deterministic planning based on requirements
+    VB: Manual reorder point planning
+    VM: Automatic reorder point planning
+    VV: Forecast-based planning
+    ND: No planning - excluded from MRP
+    R1: Time-phased planning
+    M1: Master production scheduling
+  fix_map:
+    __other__: 'MRP type ''{invalid_value}'' is not valid. In ECC: correct via MM02 > MRP 1 view or configure via OPPR. In
+      S/4HANA: use Fiori F1602 or F2886.'
+  record_fix_template: 'Material {MARA.MATNR}: DISMM is ''{actual_value}''. Set a valid MRP type via MM02 > MRP 1 (ECC) or
+    Fiori F1602 (S/4HANA).'
+- id: MM024
+  field: MARA.SERLV
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - '01'
+  - '02'
+  - '03'
+  severity: medium
+  dimension: validity
+  message: Serialisation level must be a valid SAP serial number profile code
+  why_it_matters: 'SERLV controls serial number assignment: blank (none), 01 (optional), 02 (obligatory), 03 (automatic).
+    Invalid values break serialisation in goods movements (MIGO) and service management (IW21) in both ECC and S/4HANA.'
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods movements fail if serialisation is required but invalid. Serial number tracking for warranty and service
+    management breaks.
+  valid_values_with_labels:
+    ? ''
+    : No serialisation
+    '01': Optional serial number
+    '02': Obligatory serial number
+    '03': Automatic serial number
+  fix_map:
+    __other__: 'Serialisation level ''{invalid_value}'' is not valid. In ECC: set via MM02 > General Plant Data/Storage. In
+      S/4HANA: use Fiori F1602.'
+  record_fix_template: 'Material {MARA.MATNR}: SERLV is ''{actual_value}''. Set to a valid serialisation level via MM02 (ECC)
+    or Fiori F1602 (S/4HANA).'
+- id: MM025
+  field: MARC.WERKS
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Plant is mandatory for material plant-level data
+  why_it_matters: Plant (WERKS) is a mandatory organisational level for procurement, production planning, and inventory management.
+    Without a plant assignment, the material cannot be stocked, ordered, or produced. Required in both ECC (MM01/MM02) and
+    S/4HANA (Fiori F1602).
+  rule_authority: sap_hard_constraint
+  sap_impact: 'Material cannot be used in any plant-level transaction: goods receipt (MIGO), purchase orders (ME21N), production
+    orders (CO01), MRP (MD01).'
+  fix_map:
+    __blank__: 'In ECC: extend material to plant via MM01 (extend view) or MM02. In S/4HANA: use Fiori F1602 to extend to
+      the correct plant.'
+  record_fix_template: 'Material {MARA.MATNR}: WERKS is {actual_value}. Extend the material to the correct plant via MM01
+    (ECC) or Fiori F1602 (S/4HANA).'
+- id: MM026
+  field: MARC.DISPO
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: MRP controller is required for materials included in MRP planning
+  why_it_matters: DISPO identifies the MRP controller responsible for planning the material. Without it, MRP run (MD01 in
+    ECC, MD01N in S/4HANA, Fiori F2886) cannot assign planning responsibility and the material may be skipped or incorrectly
+    planned.
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP run skips materials without an MRP controller. No procurement proposals or planned orders are generated.
+  fix_map:
+    __blank__: 'In ECC: assign via MM02 > MRP 1 view. MRP controllers configured in OMD0. In S/4HANA: use Fiori F1602 or configure
+      via SPRO.'
+  record_fix_template: 'Material {MARA.MATNR} in plant {MARC.WERKS}: DISPO is {actual_value}. Assign an MRP controller via
+    MM02 > MRP 1 (ECC) or Fiori F1602 (S/4HANA).'
+- id: MM027
+  field: MARC.DISMM
+  check_class: domain_value_check
+  allowed_values:
+  - PD
+  - VB
+  - VM
+  - VV
+  - ND
+  - R1
+  - M1
+  severity: high
+  dimension: validity
+  message: Plant-level MRP type must be a valid SAP MRP type code
+  why_it_matters: Plant-level MRP type (MARC.DISMM) controls which MRP procedure runs for this material in the specific plant.
+    PD (MRP), VB (manual reorder point), ND (no planning). Must match a valid type for MD01 (ECC) or MD01N / Fiori F2886 (S/4HANA)
+    to process correctly.
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP run (MD01/MD01N) skips or errors on materials with invalid types. Procurement proposals and planned orders
+    are not generated.
+  valid_values_with_labels:
+    PD: MRP - deterministic planning
+    VB: Manual reorder point
+    VM: Automatic reorder point
+    VV: Forecast-based planning
+    ND: No planning
+    R1: Time-phased planning
+    M1: Master production scheduling
+  fix_map:
+    __other__: 'MRP type ''{invalid_value}'' is not valid at plant level. In ECC: correct via MM02 > MRP 1. In S/4HANA: use
+      Fiori F1602.'
+  record_fix_template: 'Material {MARA.MATNR} plant {MARC.WERKS}: DISMM is ''{actual_value}''. Set valid MRP type via MM02
+    > MRP 1 (ECC) or Fiori F1602 (S/4HANA).'
+- id: MM028
+  field: MARC.BESKZ
+  check_class: domain_value_check
+  allowed_values:
+  - E
+  - F
+  - X
+  severity: high
+  dimension: validity
+  message: Procurement type must be E (in-house), F (external), or X (both)
+  why_it_matters: Procurement type (BESKZ) determines whether a material is produced in-house (E), externally procured (F),
+    or both (X). This controls whether MRP generates planned orders or purchase requisitions. Critical for MRP in both ECC
+    (MD01) and S/4HANA (MD01N / Fiori F2886).
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP generates incorrect proposal types. In-house production materials get purchase requisitions or vice versa.
+  valid_values_with_labels:
+    E: In-house production
+    F: External procurement
+    X: Both procurement types
+  fix_map:
+    __other__: 'Procurement type ''{invalid_value}'' is not valid. Must be E, F, or X. In ECC: correct via MM02 > MRP 2 view.
+      In S/4HANA: use Fiori F1602.'
+  record_fix_template: 'Material {MARA.MATNR} plant {MARC.WERKS}: BESKZ is ''{actual_value}''. Set to E (in-house), F (external),
+    or X (both) via MM02 (ECC) or Fiori F1602 (S/4HANA).'
+- id: MM029
+  field: MARC.PRCTR
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Profit center is required for FI-CO integration
+  why_it_matters: Profit center (PRCTR) at the plant level drives CO-PA profitability analysis and balance sheet splitting.
+    In S/4HANA, profit center is a mandatory assignment for the Universal Journal (ACDOCA). In ECC, it is required for profit
+    center accounting (transaction KE51).
+  rule_authority: sap_hard_constraint
+  sap_impact: FI postings lack profit center assignment. CO-PA analysis and balance sheet reporting by profit center are incomplete.
+  fix_map:
+    __blank__: 'In ECC: assign via MM02 > General Plant Data/Storage. In S/4HANA: use Fiori F1602. Profit centers are maintained
+      in KE51 (ECC) or Fiori F3708.'
+  record_fix_template: 'Material {MARA.MATNR} plant {MARC.WERKS}: PRCTR is {actual_value}. Assign profit center via MM02 (ECC)
+    or Fiori F1602 (S/4HANA).'
+- id: MM030
+  field: MARC.MMSTA
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Plant-specific material status is recommended for lifecycle control
+  why_it_matters: Plant-specific status (MMSTA) allows different lifecycle stages per plant, independent of the cross-plant
+    status (MSTAE). Useful when a material is active in one plant but phased out in another. Maintained via MM02 (ECC) or
+    Fiori F1602 (S/4HANA).
+  rule_authority: best_practice
+  sap_impact: Without plant-specific status, all plants share the cross-plant status, preventing plant-level lifecycle management.
+  fix_map:
+    __blank__: 'In ECC: set via MM02 > MRP 1 view. In S/4HANA: use Fiori F1602. Status values are configured in OMS4 (same
+      as cross-plant).'
+  record_fix_template: 'Material {MARA.MATNR} plant {MARC.WERKS}: MMSTA is {actual_value}. Set plant-specific status via MM02
+    (ECC) or Fiori F1602 (S/4HANA).'
+- id: MM031
+  field: MARC.ABCIN
+  check_class: domain_value_check
+  allowed_values:
+  - A
+  - B
+  - C
+  severity: medium
+  dimension: validity
+  message: ABC indicator must be A, B, or C
+  why_it_matters: ABC indicator classifies materials by value/importance for inventory management. A (high value), B (medium),
+    C (low). Used for cycle counting frequency in MI01 (ECC) and inventory analytics in S/4HANA. Invalid values break ABC
+    analysis reporting.
+  rule_authority: best_practice
+  sap_impact: Cycle counting schedules (MI01) and inventory stratification reports are incorrect. ABC analysis in MCBA is
+    unreliable.
+  valid_values_with_labels:
+    A: High value / high importance
+    B: Medium value / medium importance
+    C: Low value / low importance
+  fix_map:
+    __other__: 'ABC indicator ''{invalid_value}'' is not valid. Must be A, B, or C. In ECC: set via MM02 > General Plant Data
+      or run ABC analysis MCBA. In S/4HANA: use Fiori F1602 or inventory analytics.'
+  record_fix_template: 'Material {MARA.MATNR} plant {MARC.WERKS}: ABCIN is ''{actual_value}''. Set to A, B, or C via MM02
+    (ECC) or Fiori F1602 (S/4HANA).'
+- id: MM032
+  field: MARC.FEVOR
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Production supervisor is recommended for production-planned materials
+  why_it_matters: Production supervisor (FEVOR) controls the production scheduler assignment for capacity planning and shop
+    floor control. Required for production planning in CO01 (ECC) and Fiori F3888 (S/4HANA). Without it, production orders
+    lack scheduler assignment.
+  rule_authority: best_practice
+  sap_impact: Production orders (CO01) lack scheduler assignment. Capacity planning (CM01) cannot filter by supervisor.
+  fix_map:
+    __blank__: 'In ECC: set via MM02 > MRP 4 / General Plant Data. In S/4HANA: use Fiori F1602. Supervisors are configured
+      in OPJ1.'
+  record_fix_template: 'Material {MARA.MATNR} plant {MARC.WERKS}: FEVOR is {actual_value}. Assign production supervisor via
+    MM02 (ECC) or Fiori F1602 (S/4HANA).'
+- id: MM033
+  field: MBEW.VPRSV
+  check_class: domain_value_check
+  allowed_values:
+  - S
+  - V
+  severity: critical
+  dimension: validity
+  message: Price control indicator must be S (standard) or V (moving average)
+  why_it_matters: 'VPRSV determines how the material is valued: S (standard price) uses a fixed price for all movements, V
+    (moving average price) recalculates on each goods receipt. This is a fundamental FI-MM integration control in both ECC
+    and S/4HANA. In S/4HANA, material ledger (MBEW.MLAST) is always active, making price control even more critical.'
+  rule_authority: sap_hard_constraint
+  sap_impact: Material valuation is undefined. All goods movements (MIGO), invoice verification (MIRO), and period-end closing
+    (CKML) fail or produce incorrect financial postings.
+  valid_values_with_labels:
+    S: Standard price - fixed price, variances posted separately
+    V: Moving average price - recalculated on each goods receipt
+  fix_map:
+    __blank__: 'In ECC: set via MM02 > Accounting 1 view. S for manufactured (FERT, HALB), V for purchased (ROH, HAWA). In
+      S/4HANA: use Fiori F1602. Note: in S/4HANA, material ledger is always active (MLAST), making this choice more impactful.'
+    __other__: 'Value ''{invalid_value}'' is not valid. Must be S or V. In ECC: correct via MM02 > Accounting 1. In S/4HANA:
+      use Fiori F1602.'
+  record_fix_template: 'Material {MARA.MATNR}: VPRSV is ''{actual_value}''. Set to S (standard price) or V (moving average)
+    via MM02 (ECC) or Fiori F1602 (S/4HANA).'
+- id: MM034
+  field: MBEW.STPRS
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Standard price is required when price control is S - missing value blocks valuation
+  why_it_matters: When price control is S (standard), the standard price (STPRS) is the basis for all inventory valuation.
+    Without it, no goods movement can be posted because SAP cannot calculate the financial posting amount. In S/4HANA with
+    mandatory material ledger, this drives actual costing.
+  rule_authority: sap_hard_constraint
+  sap_impact: All goods movements (MIGO) for this material fail. Invoice verification (MIRO) cannot post price differences.
+    Period-end closing (CKML) errors.
+  fix_map:
+    __blank__: 'In ECC: run cost estimate CK11N/CK40N or set manually via MM02 > Accounting 1. In S/4HANA: use Fiori F1602
+      or cost estimate Fiori F4736.'
+  record_fix_template: 'Material {MARA.MATNR}: STPRS is {actual_value}. Set the standard price via MM02 > Accounting 1 (ECC)
+    or Fiori F1602 (S/4HANA).'
+- id: MM035
+  field: MBEW.BKLAS
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Valuation class is mandatory for FI account determination
+  why_it_matters: Valuation class (BKLAS) determines which G/L accounts are posted to during goods movements. Without it,
+    automatic account determination (OBYC in ECC, SPRO in S/4HANA) cannot resolve the correct accounts. This is a hard prerequisite
+    for any financial posting involving this material.
+  rule_authority: sap_hard_constraint
+  sap_impact: All goods movements (MIGO) fail with account determination errors. No financial postings can be made for inventory
+    changes.
+  fix_map:
+    __blank__: 'In ECC: set via MM02 > Accounting 1 view. Valuation classes configured in OMSK. In S/4HANA: use Fiori F1602.
+      Check account determination via OBYC (ECC) or SPRO (S/4HANA).'
+  record_fix_template: 'Material {MARA.MATNR}: BKLAS is {actual_value}. Set the valuation class via MM02 > Accounting 1 (ECC)
+    or Fiori F1602 (S/4HANA).'
+- id: MM036
+  field: MBEW.PEINH
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Price unit is required for correct valuation calculations
+  why_it_matters: Price unit (PEINH) specifies the quantity to which the price refers (e.g., price per 1, per 100, per 1000).
+    If missing, SAP defaults to 1, which may cause massive valuation errors for low-value bulk materials. Critical for accurate
+    inventory valuation in both ECC and S/4HANA.
+  rule_authority: sap_hard_constraint
+  sap_impact: Inventory valuation is incorrect. Financial postings for goods movements reflect wrong amounts. Cost estimates
+    (CK11N) produce wrong results.
+  fix_map:
+    __blank__: 'In ECC: set via MM02 > Accounting 1 view. Common values: 1, 100, 1000. In S/4HANA: use Fiori F1602. Match
+      to the standard pricing practice.'
+  record_fix_template: 'Material {MARA.MATNR}: PEINH is {actual_value}. Set the price unit via MM02 > Accounting 1 (ECC) or
+    Fiori F1602 (S/4HANA).'
+- id: MM037
+  field: MVKE.VKORG
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Sales organisation is mandatory for materials sold in SD
+  why_it_matters: Sales organisation (VKORG) is a mandatory organisational key for the sales view. Without it, the material
+    cannot be used in sales orders (VA01 in ECC, Fiori F5669 in S/4HANA), deliveries, or billing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Material cannot be sold. Sales orders (VA01), deliveries (VL01N), and billing documents (VF01) cannot reference
+    this material.
+  fix_map:
+    __blank__: 'In ECC: extend material to sales org via MM01 (extend view) or MM02 > Sales Org views. In S/4HANA: use Fiori
+      F1602.'
+  record_fix_template: 'Material {MARA.MATNR}: VKORG is {actual_value}. Extend material to sales organisation via MM01 (ECC)
+    or Fiori F1602 (S/4HANA).'
+- id: MM038
+  field: MVKE.DWERK
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Delivering plant is required for materials with sales views
+  why_it_matters: Delivering plant (DWERK) determines which plant fulfils sales orders. Without it, delivery creation (VL01N
+    in ECC, Fiori F5765 in S/4HANA) fails because SAP cannot determine the source of goods.
+  rule_authority: sap_hard_constraint
+  sap_impact: Delivery creation fails. Sales orders cannot be fulfilled without a delivering plant assignment.
+  fix_map:
+    __blank__: 'In ECC: set via MM02 > Sales Org 1 view. In S/4HANA: use Fiori F1602. Assign the plant that will physically
+      ship the material.'
+  record_fix_template: 'Material {MARA.MATNR}: DWERK is {actual_value}. Assign delivering plant via MM02 > Sales Org 1 (ECC)
+    or Fiori F1602 (S/4HANA).'
+- id: MM039
+  field: MARM.UMREZ
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: UoM conversion numerator is required for alternative units of measure
+  why_it_matters: UMREZ is the numerator in the unit of measure conversion formula. Without it, quantity conversions between
+    base UoM and alternative UoMs fail. This affects all purchasing, sales, and warehouse transactions that use alternative
+    units. Maintained in MM02 > Additional Data (ECC) or Fiori F1602 (S/4HANA).
+  rule_authority: sap_hard_constraint
+  sap_impact: UoM conversion fails. Purchase orders, sales orders, and goods movements using alternative units produce incorrect
+    quantities.
+  fix_map:
+    __blank__: 'In ECC: set via MM02 > Additional Data > Units of Measure. In S/4HANA: use Fiori F1602. Example: if 1 box
+      = 12 pieces, UMREZ = 12, UMREN = 1.'
+  record_fix_template: 'Material {MARA.MATNR}: UMREZ is {actual_value}. Set conversion numerator via MM02 > Additional Data
+    (ECC) or Fiori F1602 (S/4HANA).'
+- id: MM040
+  field: MARM.UMREN
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: UoM conversion denominator is required for alternative units of measure
+  why_it_matters: UMREN is the denominator in the unit of measure conversion formula. Together with UMREZ, it defines the
+    conversion ratio. Missing denominator causes division-by-zero errors in quantity conversion across all logistics processes.
+  rule_authority: sap_hard_constraint
+  sap_impact: UoM conversion fails with arithmetic errors. All transactions using alternative units produce incorrect or zero
+    quantities.
+  fix_map:
+    __blank__: 'In ECC: set via MM02 > Additional Data > Units of Measure. In S/4HANA: use Fiori F1602. Example: if 1 box
+      = 12 pieces, UMREZ = 12, UMREN = 1.'
+  record_fix_template: 'Material {MARA.MATNR}: UMREN is {actual_value}. Set conversion denominator via MM02 > Additional Data
+    (ECC) or Fiori F1602 (S/4HANA).'
+- id: MM041
+  field: MARA.NTGEW
+  check_class: cross_field_check
+  fields:
+  - MARA.NTGEW
+  - MARA.BRGEW
+  condition: '`MARA.NTGEW` <= `MARA.BRGEW`'
+  severity: high
+  dimension: consistency
+  message: Net weight must not exceed gross weight
+  why_it_matters: Gross weight includes packaging, so net weight should always be less than or equal to gross weight. A net
+    weight exceeding gross weight indicates a data entry error that will cause incorrect shipping calculations in VL01N (ECC)
+    and Fiori F5765 (S/4HANA), and may trigger customs exceptions.
+  rule_authority: sap_hard_constraint
+  sap_impact: Shipping weight calculations are incorrect. Customs declarations may be rejected. Transportation cost calculations
+    produce wrong results.
+  fix_map:
+    __other__: 'Net weight exceeds gross weight, which is physically impossible. In ECC: correct via MM02 > Basic Data 1.
+      In S/4HANA: use Fiori F1602. Verify both weights against product specifications.'
+  record_fix_template: 'Material {MARA.MATNR}: net weight ({MARA.NTGEW}) exceeds gross weight ({MARA.BRGEW}). Correct via
+    MM02 (ECC) or Fiori F1602 (S/4HANA).'
+- id: MM042
+  field: MARA.MHDHB
+  check_class: cross_field_check
+  fields:
+  - MARA.MHDRZ
+  - MARA.MHDHB
+  condition: '`MARA.MHDRZ` <= `MARA.MHDHB`'
+  severity: high
+  dimension: consistency
+  message: Minimum remaining shelf life must not exceed total shelf life
+  why_it_matters: MHDRZ (minimum remaining shelf life) is the minimum days before expiry that goods receipt will accept. MHDHB
+    is the total shelf life in days. If MHDRZ exceeds MHDHB, no goods receipt can ever be posted because the material always
+    appears expired. Affects MIGO in ECC and S/4HANA.
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods receipt (MIGO) rejects all incoming stock because minimum remaining shelf life can never be satisfied.
+    Material is effectively blocked.
+  fix_map:
+    __other__: 'Minimum remaining shelf life exceeds total shelf life. In ECC: correct via MM02 > General Plant Data/Storage.
+      In S/4HANA: use Fiori F1602.'
+  record_fix_template: 'Material {MARA.MATNR}: minimum shelf life ({MARA.MHDRZ} days) exceeds total shelf life ({MARA.MHDHB}
+    days). Correct via MM02 (ECC) or Fiori F1602 (S/4HANA).'
+- id: MM043
+  field: MBEW.STPRS
+  check_class: cross_field_check
+  fields:
+  - MBEW.VPRSV
+  - MBEW.STPRS
+  condition: ~((`MBEW.VPRSV` == 'S') & (`MBEW.STPRS`.isna() | (`MBEW.STPRS` == 0)))
+  severity: critical
+  dimension: consistency
+  message: Standard price must be populated and non-zero when price control is S
+  why_it_matters: When VPRSV is S (standard price), STPRS must contain a valid price. A zero or blank standard price means
+    all inventory movements post at zero value, creating massive financial discrepancies. In S/4HANA with mandatory material
+    ledger (MLAST always active), this error propagates into actual costing.
+  rule_authority: sap_hard_constraint
+  sap_impact: All goods movements post at zero value. Financial statements show zero inventory value. Period-end closing (CKML/CKM3N)
+    errors.
+  fix_map:
+    __other__: 'Standard price is zero or missing but price control is S. In ECC: run cost estimate CK11N or set price via
+      MM02 > Accounting 1. In S/4HANA: use Fiori F1602 or cost estimate Fiori F4736.'
+  record_fix_template: 'Material {MARA.MATNR}: price control is S but STPRS is {actual_value}. Set a valid standard price
+    via MM02 (ECC) or Fiori F1602 (S/4HANA).'
+- id: MM044
+  field: MARC.BSTMI
+  check_class: cross_field_check
+  fields:
+  - MARC.BSTMI
+  - MARC.BSTMA
+  condition: '`MARC.BSTMI` <= `MARC.BSTMA`'
+  severity: high
+  dimension: consistency
+  message: Minimum lot size must not exceed maximum lot size
+  why_it_matters: BSTMI (minimum lot size) and BSTMA (maximum lot size) define the quantity range for MRP procurement proposals.
+    If minimum exceeds maximum, MRP (MD01 in ECC, MD01N / Fiori F2886 in S/4HANA) cannot determine a valid order quantity,
+    leading to planning errors or infinite loops.
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP generates invalid procurement quantities. Planned orders and purchase requisitions have incorrect quantities.
+  fix_map:
+    __other__: 'Minimum lot size exceeds maximum lot size. In ECC: correct via MM02 > MRP 1 view. In S/4HANA: use Fiori F1602.'
+  record_fix_template: 'Material {MARA.MATNR} plant {MARC.WERKS}: min lot ({MARC.BSTMI}) exceeds max lot ({MARC.BSTMA}). Correct
+    via MM02 (ECC) or Fiori F1602 (S/4HANA).'
+- id: MM045
+  field: MAKT.MAKTX
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Material description is missing
+  why_it_matters: Material description (MAKT.MAKTX) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Material description may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MAKT.MAKTX. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM046
+  field: MARA.AENAM
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Changed By user is missing
+  why_it_matters: Changed By user (MARA.AENAM) is not maintained. This field supports downstream processes and reporting accuracy.
+    Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Changed By user may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARA.AENAM. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM047
+  field: MARA.BEGRU
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Authorization group is missing
+  why_it_matters: Authorization group (MARA.BEGRU) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Authorization group may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARA.BEGRU. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM048
+  field: MARA.BEHVO
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Container requirements is missing
+  why_it_matters: Container requirements (MARA.BEHVO) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Container requirements may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARA.BEHVO. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM049
+  field: MARA.BREIT
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Width is missing
+  why_it_matters: Width (MARA.BREIT) is not maintained. This field supports downstream processes and reporting accuracy. Missing
+    data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Width may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARA.BREIT. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM050
+  field: MARA.DATAB
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Valid From date is missing
+  why_it_matters: Valid From date (MARA.DATAB) is not maintained. This field supports downstream processes and reporting accuracy.
+    Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Valid From date may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARA.DATAB. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM051
+  field: MARA.EKWSL
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Purchasing value key is missing
+  why_it_matters: Purchasing value key (MARA.EKWSL) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Purchasing value key may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARA.EKWSL. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM052
+  field: MARA.ERNAM
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Created By user is missing
+  why_it_matters: Created By user (MARA.ERNAM) is not maintained. This field supports downstream processes and reporting accuracy.
+    Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Created By user may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARA.ERNAM. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM053
+  field: MARA.EXTWG
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: External material group is missing
+  why_it_matters: External material group (MARA.EXTWG) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing External material group may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARA.EXTWG. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM054
+  field: MARA.FERTH
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Production memo is missing
+  why_it_matters: Production memo (MARA.FERTH) is not maintained. This field supports downstream processes and reporting accuracy.
+    Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Production memo may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARA.FERTH. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM055
+  field: MARA.GROES
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Size/dimensions is missing
+  why_it_matters: Size/dimensions (MARA.GROES) is not maintained. This field supports downstream processes and reporting accuracy.
+    Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Size/dimensions may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARA.GROES. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM056
+  field: MARA.HOEHE
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Height is missing
+  why_it_matters: Height (MARA.HOEHE) is not maintained. This field supports downstream processes and reporting accuracy.
+    Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Height may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARA.HOEHE. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM057
+  field: MARA.KZKFG
+  check_class: domain_value_check
+  severity: low
+  dimension: validity
+  message: Configurable material flag has an invalid value
+  why_it_matters: Configurable material flag (MARA.KZKFG) must contain a valid value. Invalid values may cause errors in downstream
+    SAP processes and integrations.
+  rule_authority: best_practice
+  sap_impact: Invalid Configurable material flag may cause transaction errors or incorrect processing.
+  allowed_values:
+  - ''
+  - X
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: X
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+    __other__: 'Value {invalid_value} is not valid for Configurable material flag. Allowed values: ['''', ''X''].'
+  record_fix_template: 'Record has invalid MARA.KZKFG value ''{actual_value}''. In ECC: Set via MM02. In S/4HANA: Use MM02
+    or Fiori app F1602 (Manage Product Master Data).'
+- id: MM058
+  field: MARA.LABOR
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Lab/office is missing
+  why_it_matters: Lab/office (MARA.LABOR) is not maintained. This field supports downstream processes and reporting accuracy.
+    Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Lab/office may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARA.LABOR. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM059
+  field: MARA.LAENG
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Length is missing
+  why_it_matters: Length (MARA.LAENG) is not maintained. This field supports downstream processes and reporting accuracy.
+    Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Length may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARA.LAENG. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM060
+  field: MARA.LIQDT
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Deletion date is missing
+  why_it_matters: Deletion date (MARA.LIQDT) is not maintained. This field supports downstream processes and reporting accuracy.
+    Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Deletion date may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARA.LIQDT. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM061
+  field: MARA.MEABM
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Dimension unit is missing
+  why_it_matters: Dimension unit (MARA.MEABM) is not maintained. This field supports downstream processes and reporting accuracy.
+    Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Dimension unit may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARA.MEABM. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM062
+  field: MARA.MFRNR
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Manufacturer number is missing
+  why_it_matters: Manufacturer number (MARA.MFRNR) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Manufacturer number may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARA.MFRNR. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM063
+  field: MARA.MFRPN
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Manufacturer part number is missing
+  why_it_matters: Manufacturer part number (MARA.MFRPN) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Manufacturer part number may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARA.MFRPN. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM064
+  field: MARA.MHDLP
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Storage percentage is missing
+  why_it_matters: Storage percentage (MARA.MHDLP) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Storage percentage may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARA.MHDLP. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM065
+  field: MARA.MSTDE
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Status valid-from date is missing
+  why_it_matters: Status valid-from date (MARA.MSTDE) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Status valid-from date may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARA.MSTDE. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM066
+  field: MARA.MTPOS_MARA
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Item category group is missing
+  why_it_matters: Item category group (MARA.MTPOS_MARA) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Item category group may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARA.MTPOS_MARA. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM067
+  field: MARA.NORMT
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Industry standard description is missing
+  why_it_matters: Industry standard description (MARA.NORMT) is not maintained. This field supports downstream processes and
+    reporting accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Industry standard description may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARA.NORMT. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM068
+  field: MARA.NUMTP
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: EAN category is missing
+  why_it_matters: EAN category (MARA.NUMTP) is not maintained. This field supports downstream processes and reporting accuracy.
+    Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing EAN category may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARA.NUMTP. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM069
+  field: MARA.PSTAT
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Maintenance status detail is missing
+  why_it_matters: Maintenance status detail (MARA.PSTAT) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Maintenance status detail may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARA.PSTAT. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM070
+  field: MARA.QMPUR
+  check_class: domain_value_check
+  severity: low
+  dimension: validity
+  message: QM in procurement flag has an invalid value
+  why_it_matters: QM in procurement flag (MARA.QMPUR) must contain a valid value. Invalid values may cause errors in downstream
+    SAP processes and integrations.
+  rule_authority: best_practice
+  sap_impact: Invalid QM in procurement flag may cause transaction errors or incorrect processing.
+  allowed_values:
+  - ''
+  - X
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: X
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+    __other__: 'Value {invalid_value} is not valid for QM in procurement flag. Allowed values: ['''', ''X''].'
+  record_fix_template: 'Record has invalid MARA.QMPUR value ''{actual_value}''. In ECC: Set via MM02. In S/4HANA: Use MM02
+    or Fiori app F1602 (Manage Product Master Data).'
+- id: MM071
+  field: MARA.RAUBE
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Storage conditions is missing
+  why_it_matters: Storage conditions (MARA.RAUBE) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Storage conditions may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARA.RAUBE. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM072
+  field: MARA.SAISJ
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Season year is missing
+  why_it_matters: Season year (MARA.SAISJ) is not maintained. This field supports downstream processes and reporting accuracy.
+    Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Season year may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARA.SAISJ. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM073
+  field: MARA.SAISO
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Season category is missing
+  why_it_matters: Season category (MARA.SAISO) is not maintained. This field supports downstream processes and reporting accuracy.
+    Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Season category may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARA.SAISO. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM074
+  field: MARA.STOFF
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Hazardous material number is missing
+  why_it_matters: Hazardous material number (MARA.STOFF) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Hazardous material number may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARA.STOFF. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM075
+  field: MARA.TAKLV
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Tax classification is missing
+  why_it_matters: Tax classification (MARA.TAKLV) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Tax classification may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARA.TAKLV. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM076
+  field: MARA.TEMPB
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Temperature conditions is missing
+  why_it_matters: Temperature conditions (MARA.TEMPB) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Temperature conditions may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARA.TEMPB. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM077
+  field: MARA.TRAGR
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Transportation group is missing
+  why_it_matters: Transportation group (MARA.TRAGR) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Transportation group may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARA.TRAGR. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM078
+  field: MARA.VOLUM
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Volume is missing
+  why_it_matters: Volume (MARA.VOLUM) is not maintained. This field supports downstream processes and reporting accuracy.
+    Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Volume may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARA.VOLUM. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM079
+  field: MARA.VPSTA
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Maintenance status is missing
+  why_it_matters: Maintenance status (MARA.VPSTA) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Maintenance status may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARA.VPSTA. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM080
+  field: MARA.WRKST
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Basic material is missing
+  why_it_matters: Basic material (MARA.WRKST) is not maintained. This field supports downstream processes and reporting accuracy.
+    Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Basic material may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARA.WRKST. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM081
+  field: MARC.ALTSL
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Selection method is missing
+  why_it_matters: Selection method (MARC.ALTSL) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Selection method may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARC.ALTSL. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM082
+  field: MARC.AUSME
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Unit of issue is missing
+  why_it_matters: Unit of issue (MARC.AUSME) is not maintained. This field supports downstream processes and reporting accuracy.
+    Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Unit of issue may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARC.AUSME. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM083
+  field: MARC.AWSLS
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Variance key is missing
+  why_it_matters: Variance key (MARC.AWSLS) is not maintained. This field supports downstream processes and reporting accuracy.
+    Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Variance key may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARC.AWSLS. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM084
+  field: MARC.BERID
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: MRP area is missing
+  why_it_matters: MRP area (MARC.BERID) is not maintained. This field supports downstream processes and reporting accuracy.
+    Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing MRP area may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARC.BERID. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM085
+  field: MARC.BSTFE
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Fixed lot size is missing
+  why_it_matters: Fixed lot size (MARC.BSTFE) is not maintained. This field supports downstream processes and reporting accuracy.
+    Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Fixed lot size may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARC.BSTFE. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM086
+  field: MARC.BSTRF
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Rounding value is missing
+  why_it_matters: Rounding value (MARC.BSTRF) is not maintained. This field supports downstream processes and reporting accuracy.
+    Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Rounding value may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARC.BSTRF. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM087
+  field: MARC.DISLS
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Lot size key is missing
+  why_it_matters: Lot size key (MARC.DISLS) is not maintained. This field supports downstream processes and reporting accuracy.
+    Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Lot size key may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARC.DISLS. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM088
+  field: MARC.EISBE
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Safety stock is missing
+  why_it_matters: Safety stock (MARC.EISBE) is not maintained. This field supports downstream processes and reporting accuracy.
+    Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Safety stock may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARC.EISBE. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM089
+  field: MARC.EKALR
+  check_class: domain_value_check
+  severity: low
+  dimension: validity
+  message: Costing indicator has an invalid value
+  why_it_matters: Costing indicator (MARC.EKALR) must contain a valid value. Invalid values may cause errors in downstream
+    SAP processes and integrations.
+  rule_authority: best_practice
+  sap_impact: Invalid Costing indicator may cause transaction errors or incorrect processing.
+  allowed_values:
+  - ''
+  - X
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: X
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+    __other__: 'Value {invalid_value} is not valid for Costing indicator. Allowed values: ['''', ''X''].'
+  record_fix_template: 'Record has invalid MARC.EKALR value ''{actual_value}''. In ECC: Set via MM02. In S/4HANA: Use MM02
+    or Fiori app F1602 (Manage Product Master Data).'
+- id: MM090
+  field: MARC.FABKZ
+  check_class: domain_value_check
+  severity: low
+  dimension: validity
+  message: JIT indicator has an invalid value
+  why_it_matters: JIT indicator (MARC.FABKZ) must contain a valid value. Invalid values may cause errors in downstream SAP
+    processes and integrations.
+  rule_authority: best_practice
+  sap_impact: Invalid JIT indicator may cause transaction errors or incorrect processing.
+  allowed_values:
+  - ''
+  - X
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: X
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+    __other__: 'Value {invalid_value} is not valid for JIT indicator. Allowed values: ['''', ''X''].'
+  record_fix_template: 'Record has invalid MARC.FABKZ value ''{actual_value}''. In ECC: Set via MM02. In S/4HANA: Use MM02
+    or Fiori app F1602 (Manage Product Master Data).'
+- id: MM091
+  field: MARC.FHORI
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Scheduling margin key is missing
+  why_it_matters: Scheduling margin key (MARC.FHORI) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Scheduling margin key may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARC.FHORI. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM092
+  field: MARC.HERKL
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Country of origin is missing
+  why_it_matters: Country of origin (MARC.HERKL) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Country of origin may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARC.HERKL. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM093
+  field: MARC.HERKR
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Region of origin is missing
+  why_it_matters: Region of origin (MARC.HERKR) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Region of origin may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARC.HERKR. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM094
+  field: MARC.KORDB
+  check_class: domain_value_check
+  severity: low
+  dimension: validity
+  message: Source list requirement has an invalid value
+  why_it_matters: Source list requirement (MARC.KORDB) must contain a valid value. Invalid values may cause errors in downstream
+    SAP processes and integrations.
+  rule_authority: best_practice
+  sap_impact: Invalid Source list requirement may cause transaction errors or incorrect processing.
+  allowed_values:
+  - ''
+  - X
+  valid_values_with_labels:
+    ? ''
+    : Not set
+    X: X
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+    __other__: 'Value {invalid_value} is not valid for Source list requirement. Allowed values: ['''', ''X''].'
+  record_fix_template: 'Record has invalid MARC.KORDB value ''{actual_value}''. In ECC: Set via MM02. In S/4HANA: Use MM02
+    or Fiori app F1602 (Manage Product Master Data).'
+- id: MM095
+  field: MARC.LADGR
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Loading group is missing
+  why_it_matters: Loading group (MARC.LADGR) is not maintained. This field supports downstream processes and reporting accuracy.
+    Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Loading group may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARC.LADGR. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM096
+  field: MARC.LAGPR
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Storage costs indicator is missing
+  why_it_matters: Storage costs indicator (MARC.LAGPR) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Storage costs indicator may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARC.LAGPR. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM097
+  field: MARC.LGFSB
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Default storage location (ext. procurement) is missing
+  why_it_matters: Default storage location (ext. procurement) (MARC.LGFSB) is not maintained. This field supports downstream
+    processes and reporting accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Default storage location (ext. procurement) may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARC.LGFSB. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM098
+  field: MARC.LGORT
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Storage location is missing
+  why_it_matters: Storage location (MARC.LGORT) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Storage location may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARC.LGORT. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM099
+  field: MARC.LGPRO
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Issue storage location is missing
+  why_it_matters: Issue storage location (MARC.LGPRO) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Issue storage location may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARC.LGPRO. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM100
+  field: MARC.LOSFX
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Lot-size fixed costs is missing
+  why_it_matters: Lot-size fixed costs (MARC.LOSFX) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Lot-size fixed costs may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARC.LOSFX. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM101
+  field: MARC.MABST
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Maximum stock level is missing
+  why_it_matters: Maximum stock level (MARC.MABST) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Maximum stock level may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARC.MABST. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM102
+  field: MARC.MINBE
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Reorder point is missing
+  why_it_matters: Reorder point (MARC.MINBE) is not maintained. This field supports downstream processes and reporting accuracy.
+    Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Reorder point may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARC.MINBE. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM103
+  field: MARC.MMSTD
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Plant status valid-from date is missing
+  why_it_matters: Plant status valid-from date (MARC.MMSTD) is not maintained. This field supports downstream processes and
+    reporting accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Plant status valid-from date may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARC.MMSTD. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM104
+  field: MARC.PERKZ
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Period indicator is missing
+  why_it_matters: Period indicator (MARC.PERKZ) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Period indicator may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARC.PERKZ. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM105
+  field: MARC.PLIFZ
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Planned delivery time is missing
+  why_it_matters: Planned delivery time (MARC.PLIFZ) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Planned delivery time may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARC.PLIFZ. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM106
+  field: MARC.RWPRO
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Coverage profile is missing
+  why_it_matters: Coverage profile (MARC.RWPRO) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Coverage profile may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARC.RWPRO. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM107
+  field: MARC.SBDKZ
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Dependent requirements indicator is missing
+  why_it_matters: Dependent requirements indicator (MARC.SBDKZ) is not maintained. This field supports downstream processes
+    and reporting accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Dependent requirements indicator may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARC.SBDKZ. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM108
+  field: MARC.SERNP
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Serial number profile is missing
+  why_it_matters: Serial number profile (MARC.SERNP) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Serial number profile may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARC.SERNP. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM109
+  field: MARC.SOBSL
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Special procurement type is missing
+  why_it_matters: Special procurement type (MARC.SOBSL) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Special procurement type may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARC.SOBSL. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM110
+  field: MARC.STRGR
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Planning strategy group is missing
+  why_it_matters: Planning strategy group (MARC.STRGR) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Planning strategy group may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARC.STRGR. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM111
+  field: MARC.VINT1
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Consumption period (backward) is missing
+  why_it_matters: Consumption period (backward) (MARC.VINT1) is not maintained. This field supports downstream processes and
+    reporting accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Consumption period (backward) may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARC.VINT1. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM112
+  field: MARC.VINT2
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Consumption period (forward) is missing
+  why_it_matters: Consumption period (forward) (MARC.VINT2) is not maintained. This field supports downstream processes and
+    reporting accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Consumption period (forward) may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARC.VINT2. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM113
+  field: MARC.VRBDT
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Consumption direction is missing
+  why_it_matters: Consumption direction (MARC.VRBDT) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Consumption direction may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARC.VRBDT. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM114
+  field: MARC.VRMOD
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Consumption mode is missing
+  why_it_matters: Consumption mode (MARC.VRMOD) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Consumption mode may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARC.VRMOD. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM115
+  field: MARC.WEBAZ
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: GR processing time is missing
+  why_it_matters: GR processing time (MARC.WEBAZ) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing GR processing time may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARC.WEBAZ. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM116
+  field: MARD.INSME
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Quality inspection stock is missing
+  why_it_matters: Quality inspection stock (MARD.INSME) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Quality inspection stock may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARD.INSME. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM117
+  field: MARD.LABST
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Unrestricted stock is missing
+  why_it_matters: Unrestricted stock (MARD.LABST) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Unrestricted stock may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARD.LABST. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM118
+  field: MARD.RETME
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Returns stock is missing
+  why_it_matters: Returns stock (MARD.RETME) is not maintained. This field supports downstream processes and reporting accuracy.
+    Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Returns stock may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARD.RETME. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM119
+  field: MARD.SPEME
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Blocked stock is missing
+  why_it_matters: Blocked stock (MARD.SPEME) is not maintained. This field supports downstream processes and reporting accuracy.
+    Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Blocked stock may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARD.SPEME. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM120
+  field: MARD.UMLME
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Stock in transfer is missing
+  why_it_matters: Stock in transfer (MARD.UMLME) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Stock in transfer may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARD.UMLME. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM121
+  field: MARM.MEINH
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Alternative unit of measure is missing
+  why_it_matters: Alternative unit of measure (MARM.MEINH) is not maintained. This field supports downstream processes and
+    reporting accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Alternative unit of measure may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MARM.MEINH. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM122
+  field: MBEW.BWTTY
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Valuation type is missing
+  why_it_matters: Valuation type (MBEW.BWTTY) is not maintained. This field supports downstream processes and reporting accuracy.
+    Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Valuation type may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MBEW.BWTTY. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM123
+  field: MBEW.LAEPR
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Last price change date is missing
+  why_it_matters: Last price change date (MBEW.LAEPR) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Last price change date may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MBEW.LAEPR. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM124
+  field: MBEW.LBKUM
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Total valuated stock quantity is missing
+  why_it_matters: Total valuated stock quantity (MBEW.LBKUM) is not maintained. This field supports downstream processes and
+    reporting accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Total valuated stock quantity may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MBEW.LBKUM. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM125
+  field: MBEW.MLAST
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Material ledger activation is missing
+  why_it_matters: Material ledger activation (MBEW.MLAST) is not maintained. This field supports downstream processes and
+    reporting accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Material ledger activation may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MBEW.MLAST. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM126
+  field: MBEW.SALK3
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Total valuated stock value is missing
+  why_it_matters: Total valuated stock value (MBEW.SALK3) is not maintained. This field supports downstream processes and
+    reporting accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Total valuated stock value may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MBEW.SALK3. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM127
+  field: MBEW.VERPR
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Moving average price is missing
+  why_it_matters: Moving average price (MBEW.VERPR) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Moving average price may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MBEW.VERPR. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM128
+  field: MBEW.ZKDAT
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Future price valid-from date is missing
+  why_it_matters: Future price valid-from date (MBEW.ZKDAT) is not maintained. This field supports downstream processes and
+    reporting accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Future price valid-from date may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MBEW.ZKDAT. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM129
+  field: MBEW.ZKPRS
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Future standard price is missing
+  why_it_matters: Future standard price (MBEW.ZKPRS) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Future standard price may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MBEW.ZKPRS. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM130
+  field: MVKE.AUMNG
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Minimum order quantity is missing
+  why_it_matters: Minimum order quantity (MVKE.AUMNG) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Minimum order quantity may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MVKE.AUMNG. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM131
+  field: MVKE.KONDM
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Material pricing group is missing
+  why_it_matters: Material pricing group (MVKE.KONDM) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Material pricing group may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MVKE.KONDM. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM132
+  field: MVKE.KTGRM
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Account assignment group is missing
+  why_it_matters: Account assignment group (MVKE.KTGRM) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Account assignment group may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MVKE.KTGRM. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM133
+  field: MVKE.LFMNG
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Minimum delivery quantity is missing
+  why_it_matters: Minimum delivery quantity (MVKE.LFMNG) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Minimum delivery quantity may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MVKE.LFMNG. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM134
+  field: MVKE.MTPOS
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Item category group (sales) is missing
+  why_it_matters: Item category group (sales) (MVKE.MTPOS) is not maintained. This field supports downstream processes and
+    reporting accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Item category group (sales) may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MVKE.MTPOS. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM135
+  field: MVKE.PRODH
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Product hierarchy (sales) is missing
+  why_it_matters: Product hierarchy (sales) (MVKE.PRODH) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Product hierarchy (sales) may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MVKE.PRODH. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM136
+  field: MVKE.VMSTA
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Distribution chain status is missing
+  why_it_matters: Distribution chain status (MVKE.VMSTA) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Distribution chain status may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MVKE.VMSTA. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM137
+  field: MVKE.VTWEG
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Distribution channel is missing
+  why_it_matters: Distribution channel (MVKE.VTWEG) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Distribution channel may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
+  record_fix_template: 'Record is missing MVKE.VTWEG. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
+    Product Master Data).'
+- id: MM138
+  field: MARA.MATNR
+  check_class: cross_field_check
+  fields: ['MARA.MATNR']
+  condition: "~`MARA.MATNR`.duplicated(keep=False)"
+  severity: critical
+  dimension: uniqueness
+  message: Duplicate material numbers detected — each material must be unique
+  why_it_matters: Duplicate materials cause fragmented stock, incorrect MRP planning, split purchase orders, and inventory valuation errors. MATNR must be unique across the client landscape.
+  rule_authority: sap_hard_constraint
+  sap_impact: Inventory is split across duplicate materials. MRP generates incorrect requirements. Purchasing creates POs against the wrong material. Stock valuation is fragmented.
+  fix_map:
+    __blank__: "Identify and consolidate duplicate materials. Use MMAM to change material type if needed. Merge stock via movement type 309. Update all dependent documents (BOM, source list, info records)."
+
+- id: MM139
+  field: MARA.BRGEW
+  check_class: cross_field_check
+  fields: ['MARA.BRGEW', 'MARA.NTGEW']
+  condition: "`MARA.BRGEW`.notna() & `MARA.NTGEW`.notna() & (`MARA.BRGEW` >= `MARA.NTGEW`)"
+  severity: medium
+  dimension: accuracy
+  message: Gross weight is less than net weight — physically impossible, indicates data entry error
+  why_it_matters: Gross weight must always be greater than or equal to net weight. When reversed, shipping weight calculations, freight cost determination, and customs declarations are incorrect.
+  rule_authority: sap_hard_constraint
+  sap_impact: Freight cost calculation is wrong. Shipping documents show incorrect weight. Customs declarations contain inaccurate data.
+  fix_map:
+    __blank__: "Correct weights via MM02 > General Data > Dimensions tab. Gross weight must >= net weight."

@@ -1,0 +1,18 @@
+# =========================================================
+# Meridian Ollama — Pre-baked model image (Tier 2)
+# Build arg MODEL_NAME selects the bundled model
+# =========================================================
+
+FROM ollama/ollama:latest
+
+ARG MODEL_NAME=qwen3.5:9b-instruct
+ENV MODEL_NAME=${MODEL_NAME}
+
+# Pull the model at build time so customers don't need internet access
+RUN ollama serve & \
+    sleep 15 && \
+    ollama pull ${MODEL_NAME} && \
+    pkill ollama || true
+
+EXPOSE 11434
+CMD ["serve"]

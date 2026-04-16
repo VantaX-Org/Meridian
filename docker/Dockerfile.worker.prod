@@ -1,0 +1,59 @@
+# =========================================================
+# Meridian Worker — Production Image (IP-Protected)
+# Same build as API, Celery entrypoint
+# =========================================================
+
+# === BUILD STAGE ===
+FROM python:3.12-slim-bookworm AS builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpango1.0-dev \
+    libgdk-pixbuf-2.0-dev \
+    libffi-dev \
+    libcairo2-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY api/ api/
+COPY llm/ llm/
+COPY sap/ sap/
+COPY workers/ workers/
+COPY db/ db/
+COPY agents/ agents/
+COPY checks/ checks/
+COPY templates/ templates/
+
+# Compile to .pyc and strip source
+RUN python -m compileall -b -f \
+        api/ llm/ sap/ workers/ db/ agents/ checks/ \
+    && find . -name "*.py" ! -name "__init__.py" -delete && \
+    find . -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true && \
+    find . -name "__init__.py" -exec truncate -s 0 {} \;
+
+# === PRODUCTION STAGE ===
+FROM python:3.12-slim-bookworm
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    libpango1.0-0 \
+    libgdk-pixbuf-2.0-0 \
+    libffi8 \
+    libcairo2 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+COPY --from=builder /build .
+
+RUN find . -name "*.py" ! -name "__init__.py" -delete 2>/dev/null || true
+
+ENV PYTHONPATH=/app
+
+CMD ["celery", "-A", "workers.celery_app", "worker", "--loglevel=info", "--concurrency=4"]

@@ -1,0 +1,669 @@
+module: sd_customer_master
+target_state: ECC_AND_S4HANA
+rules:
+  - id: SDCM001
+    field: KNA1.KUNNR
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Customer number is mandatory — primary key for all SD customer transactions"
+    why_it_matters: >-
+      KUNNR is the primary key for the SD customer master. Without it, no
+      sales area data can be maintained and the customer cannot be used in
+      any SD transaction including sales orders (VA01), deliveries (VL01N),
+      and billing (VF01). In S/4HANA, KNA1 is a compatibility view — the
+      primary master is Business Partner (BUT000) via CVI mapping.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Customer cannot be used in any SD process. VA01, VL01N, VF01 all fail.
+      Migration conversion rejects the record.
+    fix_map:
+      __blank__: >-
+        In ECC: assign a valid customer number via T-code VD01 (create SD
+        customer) or XD01 (create customer with all views). In S/4HANA:
+        create via Fiori app F3893 (Manage Business Partner) with the
+        customer role and sales area data.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: KUNNR is {actual_value}. Assign a valid customer
+      number via VD01 / Fiori app F3893 or correct the source data.
+
+  - id: SDCM002
+    field: KNA1.KUNNR
+    check_class: regex_check
+    pattern: "^[A-Z0-9]{1,10}$"
+    severity: critical
+    dimension: validity
+    message: "Customer number must be 1-10 alphanumeric characters"
+    why_it_matters: >-
+      Customer numbers must conform to the number range configuration (table
+      TNRO, object DEBITOR). Non-conforming formats are rejected by the
+      system and break the customer-vendor integration (CVI) mapping to
+      Business Partner in S/4HANA.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Customer rejected by number range validation. CVI mapping to Business
+      Partner fails. Customer unusable in any SD or FI-AR transaction.
+    fix_map:
+      __other__: >-
+        Customer number '{invalid_value}' does not match the required format.
+        In ECC: use LSMW or a conversion program to reformat. Coordinate with
+        the basis team on number range configuration (T-code SNRO, object
+        DEBITOR). In S/4HANA: use Fiori app F4596 for number ranges.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: number format is invalid (value: '{actual_value}').
+      Reformat or assign a new number via SNRO / Fiori app F4596.
+
+  - id: SDCM003
+    field: KNA1.NAME1
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Customer name is mandatory — displayed on all SD documents"
+    why_it_matters: >-
+      NAME1 is the primary customer name displayed on sales orders, delivery
+      notes, invoices, pro forma invoices, and all printed SD correspondence.
+      It is a mandatory field — the customer master cannot be saved without it
+      in either ECC or S/4HANA.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Customer master cannot be saved. Sales orders, delivery notes, and
+      invoices display blank customer name. Partner function determination
+      in SD fails.
+    fix_map:
+      __blank__: >-
+        In ECC: obtain the legal entity name and set via T-code VD02 >
+        Address tab or XD02 > Address tab. In S/4HANA: use Fiori app F3893
+        (Manage Business Partner).
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: NAME1 is {actual_value}. Set the customer name
+      via VD02 / Fiori app F3893.
+
+  - id: SDCM004
+    field: KNA1.NAME2
+    check_class: null_check
+    severity: low
+    dimension: completeness
+    message: "Customer name 2 is recommended for complete identification on SD documents"
+    why_it_matters: >-
+      NAME2 provides additional name information that appears on sales orders,
+      delivery notes, and invoices alongside NAME1. It helps distinguish
+      customers with similar primary names and is particularly useful for
+      large organisations with multiple divisions or subsidiaries.
+    rule_authority: best_practice
+    sap_impact: >-
+      SD documents may not fully identify the customer. Ship-to address
+      labels may be incomplete for deliveries.
+    fix_map:
+      __blank__: >-
+        In ECC: set the second name line via T-code VD02 > Address tab.
+        In S/4HANA: use Fiori app F3893 (Manage Business Partner).
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: NAME2 is {actual_value}. Set additional name
+      information via VD02 / Fiori app F3893.
+
+  - id: SDCM005
+    field: KNA1.LAND1
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Country is mandatory — drives tax determination and shipping route calculation"
+    why_it_matters: >-
+      LAND1 (country code) is mandatory for all SD customers. It drives tax
+      determination, output determination, incoterms validation, shipping
+      route calculation, and export/import control. Without it, no SD
+      transactions can be processed.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Customer cannot be saved. Tax determination (FTXP) fails. Shipping
+      route determination (VT01N) produces errors. Export control checks
+      cannot be executed.
+    fix_map:
+      __blank__: >-
+        In ECC: determine the ISO country code from the customer's address
+        and set via T-code VD02 > Address tab. In S/4HANA: use Fiori app
+        F3893 (Manage Business Partner).
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: LAND1 is {actual_value}. Set the ISO country
+      code via VD02 / Fiori app F3893.
+
+  - id: SDCM006
+    field: KNA1.STCD1
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "Tax number missing — required for tax-compliant invoicing"
+    why_it_matters: >-
+      STCD1 (tax number) is required for generating tax-compliant invoices.
+      Many jurisdictions require the customer's tax registration number on
+      invoices for VAT deduction. Missing tax number results in non-compliant
+      billing documents from VF01.
+    rule_authority: best_practice
+    sap_impact: >-
+      Billing documents (VF01) do not include customer tax number. Tax
+      invoices are non-compliant in jurisdictions requiring tax ID on
+      invoices. E-invoicing mandates may reject the document.
+    fix_map:
+      __blank__: >-
+        In ECC: obtain the customer's VAT number or tax ID and set via
+        T-code VD02 > General Data > Control tab or XD02. In S/4HANA:
+        use Fiori app F3893 > Tax Numbers section.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: STCD1 is {actual_value}. Set the tax number
+      via VD02 / Fiori app F3893.
+
+  - id: SDCM007
+    field: KNA1.SMTP_ADDR
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: "Email required for electronic order confirmations and invoice delivery"
+    why_it_matters: >-
+      Email address is required for sending order confirmations, delivery
+      notifications, invoices, and credit/debit memos electronically. Without
+      it, all SD output falls back to paper or fax, increasing cost and
+      reducing delivery speed.
+    rule_authority: best_practice
+    sap_impact: >-
+      Order confirmations, shipping notifications, and invoices cannot be
+      sent electronically. Output determination (NACE) falls back to print.
+    fix_map:
+      __blank__: >-
+        In ECC: obtain email from the customer or sales team and set via
+        T-code VD02 > Address tab > Communication. In S/4HANA: use Fiori
+        app F3893 > Address section.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: SMTP_ADDR is {actual_value}. Set the email
+      address via VD02 / Fiori app F3893.
+
+  - id: SDCM008
+    field: KNA1.KTOKD
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Customer account group is mandatory — controls SD field status"
+    why_it_matters: >-
+      KTOKD (account group) controls which fields are required, optional, or
+      suppressed in the customer master including the sales area data. It
+      determines whether the customer is a sold-to, ship-to, bill-to, or
+      payer partner. Without it, the customer master structure is undefined.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Customer master structure is undefined. Partner function determination
+      fails. The record cannot be saved.
+    fix_map:
+      __blank__: >-
+        In ECC: assign the account group via T-code VD02 or XD02. Common
+        SD groups: KUND (sold-to), KUWE (ship-to), KURE (payer), KUWZ
+        (bill-to). In S/4HANA: use Fiori app F3893 via BP grouping.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: KTOKD is {actual_value}. Assign the customer
+      account group via VD02 / Fiori app F3893.
+
+  - id: SDCM009
+    field: KNVV.VKORG
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Sales organisation is mandatory — part of the required sales area triple"
+    why_it_matters: >-
+      VKORG (sales organisation) is the first element of the sales area
+      triple (sales org / distribution channel / division) that defines a
+      customer's commercial relationship. Without it, no sales area data
+      exists and the customer cannot be used in any SD transaction. The
+      sales org must be valid in the enterprise structure (T-code OVXB).
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Customer cannot be used in VA01. No sales area = no sales orders
+      possible. Pricing, shipping, and billing cannot be determined.
+    fix_map:
+      __blank__: >-
+        In ECC: assign the correct sales organisation via T-code VD02 >
+        Sales Area Data tab. In S/4HANA: use Fiori app F3893 (Manage
+        Business Partner) and add the sales area assignment.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: VKORG is {actual_value}. Assign the sales
+      organisation via VD02 / Fiori app F3893.
+
+  - id: SDCM010
+    field: KNVV.VTWEG
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Distribution channel is mandatory — required for sales area definition"
+    why_it_matters: >-
+      VTWEG (distribution channel) is the second element of the sales area
+      triple. It defines how products reach the customer (e.g., direct sales,
+      wholesale, internet). Without it, the sales area is incomplete and no
+      SD transactions can be created.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Sales area is incomplete — VA01 rejects the customer. Pricing procedure
+      determination fails. Material determination and listing/exclusion
+      cannot be evaluated.
+    fix_map:
+      __blank__: >-
+        In ECC: assign the correct distribution channel via T-code VD02 >
+        Sales Area Data tab. Common values: 10 (direct), 20 (wholesale),
+        30 (internet). In S/4HANA: use Fiori app F3893.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: VTWEG is {actual_value}. Assign the distribution
+      channel via VD02 / Fiori app F3893.
+
+  - id: SDCM011
+    field: KNVV.SPART
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Division is mandatory — completes the sales area triple"
+    why_it_matters: >-
+      SPART (division) is the third element of the sales area triple. It
+      segments the product range (e.g., pumps, electronics, services). All
+      three elements must be present for any SD transaction to be created.
+      The division must be valid in the enterprise structure.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Sales area is incomplete — customer cannot be used in VA01.
+      Product-specific pricing and output determination fail.
+    fix_map:
+      __blank__: >-
+        In ECC: assign the correct division via T-code VD02 > Sales Area
+        Data tab. In S/4HANA: use Fiori app F3893.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: SPART is {actual_value}. Assign the division
+      via VD02 / Fiori app F3893.
+
+  - id: SDCM012
+    field: KNVV.KDGRP
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "Customer group missing — affects pricing and reporting segmentation"
+    why_it_matters: >-
+      KDGRP (customer group) is used in pricing condition records, reporting,
+      and customer segmentation. Without it, group-specific pricing cannot
+      be applied and sales reports cannot segment by customer category.
+      Rebate agreements based on customer group are not triggered.
+    rule_authority: best_practice
+    sap_impact: >-
+      Customer group-specific pricing conditions are not applied. Sales
+      analysis reports (MC+E) cannot segment by customer group. Rebate
+      agreements based on customer group are not triggered.
+    fix_map:
+      __blank__: >-
+        In ECC: assign the correct group based on customer classification
+        (e.g., 01=domestic, 02=export, 03=key account) via T-code VD02 >
+        Sales Area Data > Sales tab. In S/4HANA: use Fiori app F3893.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: KDGRP is {actual_value}. Assign the customer
+      group via VD02 / Fiori app F3893.
+
+  - id: SDCM013
+    field: KNVV.KALKS
+    check_class: null_check
+    severity: high
+    dimension: accuracy
+    message: "Pricing procedure missing — no prices determined on sales orders"
+    why_it_matters: >-
+      KALKS (customer pricing procedure) determines which pricing conditions
+      (base price, discounts, surcharges, taxes) are applied when creating
+      a sales order. Without it, no automatic pricing occurs in VA01 and
+      every order must be priced manually, creating significant revenue risk.
+    rule_authority: best_practice
+    sap_impact: >-
+      Sales orders (VA01) have no automatic pricing. All conditions must be
+      entered manually. Pricing analysis (V/LD) shows no procedure
+      assignment. Revenue recognition may be incorrect.
+    fix_map:
+      __blank__: >-
+        In ECC: assign the customer pricing procedure via T-code VD02 >
+        Sales Area Data > Sales tab. This works with the sales org pricing
+        procedure (OVKK) and document pricing procedure to determine the
+        final pricing procedure. In S/4HANA: use Fiori app F3893.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: KALKS is {actual_value}. Assign the pricing
+      procedure via VD02 / Fiori app F3893.
+
+  - id: SDCM014
+    field: KNVV.ZTERM
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "Payment terms missing in sales area — no default for sales orders"
+    why_it_matters: >-
+      ZTERM in the sales area data provides the default payment terms for
+      sales orders and billing documents. Without it, every sales order
+      requires manual entry of payment terms, slowing order processing and
+      increasing error risk. These terms override the FI company code terms.
+    rule_authority: best_practice
+    sap_impact: >-
+      No default payment terms on sales orders (VA01). Manual entry required
+      for every order. Billing documents (VF01) have no payment baseline.
+      Cash flow forecasting is inaccurate.
+    fix_map:
+      __blank__: >-
+        In ECC: obtain the agreed terms from the sales contract and set via
+        T-code VD02 > Sales Area Data > Billing tab. Common values: ZB30
+        (30 days net), ZB60 (60 days net). In S/4HANA: use Fiori app F3893.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: ZTERM is {actual_value}. Set payment terms
+      via VD02 / Fiori app F3893 > Sales Area Data.
+
+  - id: SDCM015
+    field: KNVV.INCO1
+    check_class: domain_value_check
+    allowed_values: ["EXW", "FCA", "CPT", "CIP", "DAP", "DPU", "DDP", "FAS", "FOB", "CFR", "CIF", ""]
+    severity: medium
+    dimension: validity
+    message: "Incoterms must be a valid Incoterms 2020 code or empty"
+    why_it_matters: >-
+      INCO1 (incoterms) defines the shipping terms and determines who bears
+      transport risk and cost. Invalid incoterms cause freight cost
+      miscalculation, incorrect export documentation, and disputes over
+      delivery responsibility. Incoterms 2020 defines 11 standard terms.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Sales orders (VA01) have invalid shipping terms. Freight cost
+      determination is incorrect. Export documentation is non-compliant.
+    valid_values_with_labels:
+      "EXW": "Ex Works — buyer bears all transport risk and cost"
+      "FCA": "Free Carrier — seller delivers to carrier at named place"
+      "CPT": "Carriage Paid To — seller pays freight to destination"
+      "CIP": "Carriage and Insurance Paid To — seller pays freight and insurance"
+      "DAP": "Delivered at Place — seller delivers to named place"
+      "DPU": "Delivered at Place Unloaded — seller delivers and unloads"
+      "DDP": "Delivered Duty Paid — seller bears all cost including import duty"
+      "FAS": "Free Alongside Ship — sea freight, seller delivers alongside vessel"
+      "FOB": "Free on Board — sea freight, seller delivers on board vessel"
+      "CFR": "Cost and Freight — sea freight, seller pays freight to port"
+      "CIF": "Cost Insurance Freight — sea freight, seller pays freight and insurance"
+      "": "No incoterms assigned"
+    fix_map:
+      __other__: >-
+        Value '{invalid_value}' is not a valid Incoterms 2020 code. In ECC:
+        correct via T-code VD02 > Sales Area Data > Shipping tab. Valid codes
+        are configured in table TINC. In S/4HANA: use Fiori app F3893.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: INCO1 is '{actual_value}'. Set to a valid
+      Incoterms 2020 code via VD02 / Fiori app F3893.
+
+  - id: SDCM016
+    field: KNVV.INCO2
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: "Incoterms location is recommended when incoterms code is set"
+    why_it_matters: >-
+      INCO2 (incoterms location) specifies the named place or port associated
+      with the incoterms code. For example, "FOB Rotterdam" or "DDP Customer
+      Warehouse". Without the location, the incoterms are incomplete and the
+      point of risk transfer is ambiguous.
+    rule_authority: best_practice
+    sap_impact: >-
+      Incoterms on sales orders and invoices are incomplete. The point of
+      risk transfer is ambiguous. Export documentation may be rejected.
+    fix_map:
+      __blank__: >-
+        In ECC: set the incoterms location via T-code VD02 > Sales Area Data >
+        Shipping tab. In S/4HANA: use Fiori app F3893. The location should
+        specify the named place (e.g., port, warehouse, city).
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: INCO2 is {actual_value}. Set the incoterms
+      location via VD02 / Fiori app F3893.
+
+  - id: SDCM017
+    field: KNVV.KZAZU
+    check_class: domain_value_check
+    allowed_values: ["X", ""]
+    severity: medium
+    dimension: validity
+    message: "Order combination flag must be X (enabled) or empty (disabled)"
+    why_it_matters: >-
+      KZAZU controls whether multiple sales orders for this customer can be
+      combined into a single delivery. When enabled, the delivery creation
+      process (VL01N) can consolidate items from multiple orders into one
+      shipment, reducing logistics cost. An invalid value disrupts delivery
+      processing.
+    rule_authority: best_practice
+    sap_impact: >-
+      Delivery consolidation in VL01N may behave unpredictably. Logistics
+      cost optimisation through order combination is not possible if the
+      flag is incorrectly set.
+    valid_values_with_labels:
+      "X": "Order combination enabled — multiple orders can be combined"
+      "": "Order combination disabled — separate delivery per order"
+    fix_map:
+      __other__: >-
+        Value '{invalid_value}' is not valid. Must be X (enabled) or empty
+        (disabled). In ECC: correct via T-code VD02 > Sales Area Data >
+        Shipping tab. In S/4HANA: use Fiori app F3893.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: KZAZU is '{actual_value}'. Set to X or empty
+      via VD02 / Fiori app F3893.
+
+  - id: SDCM018
+    field: KNVV.WAERS
+    check_class: regex_check
+    pattern: "^[A-Z]{3}$"
+    severity: critical
+    dimension: validity
+    message: "Sales area currency must be a valid 3-letter ISO currency code"
+    why_it_matters: >-
+      WAERS in the sales area determines the default currency for all sales
+      orders and billing documents for this customer. It must be a valid
+      ISO 4217 code. Invalid currencies cause pricing determination failures
+      and billing document errors.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Pricing determination in VA01 fails. Billing documents (VF01) cannot
+      be created. Currency conversion errors occur throughout the SD process.
+    fix_map:
+      __other__: >-
+        Currency '{invalid_value}' is not a valid ISO 4217 code. In ECC:
+        correct via T-code VD02 > Sales Area Data > Sales tab. The currency
+        must be configured in the system (T-code OY03). In S/4HANA: use
+        Fiori app F3893.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: WAERS is '{actual_value}'. Set to a valid ISO
+      currency code via VD02 / Fiori app F3893.
+
+  - id: SDCM019
+    field: KNVV.VERSG
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: "Statistics group is recommended for sales reporting and analysis"
+    why_it_matters: >-
+      VERSG (statistics group) controls how this customer is represented in
+      the Logistics Information System (LIS) and sales statistics. Without
+      it, the customer may be excluded from standard sales reports and
+      analysis tools (MC+E, MC+I).
+    rule_authority: best_practice
+    sap_impact: >-
+      Customer excluded from LIS sales statistics. Standard analysis reports
+      (MC+E) may not include this customer's sales data.
+    fix_map:
+      __blank__: >-
+        In ECC: assign the statistics group via T-code VD02 > Sales Area
+        Data > Sales tab. In S/4HANA: use Fiori app F3893.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: VERSG is {actual_value}. Assign the statistics
+      group via VD02 / Fiori app F3893.
+
+  - id: SDCM020
+    field: KNVV.LPRIO
+    check_class: domain_value_check
+    allowed_values: ["01", "02", "03", ""]
+    severity: medium
+    dimension: validity
+    message: "Delivery priority must be 01 (high), 02 (normal), 03 (low), or empty"
+    why_it_matters: >-
+      LPRIO (delivery priority) determines the order in which deliveries are
+      processed during delivery creation and shipping. It affects warehouse
+      picking sequence and transport scheduling. Invalid values disrupt
+      delivery sequencing.
+    rule_authority: best_practice
+    sap_impact: >-
+      Delivery sequencing in VL01N/VL06 may be incorrect. Warehouse picking
+      priorities are not properly assigned. High-priority customers may not
+      receive preferential treatment.
+    valid_values_with_labels:
+      "01": "High priority — processed first"
+      "02": "Normal priority"
+      "03": "Low priority — processed last"
+      "": "No priority assigned — defaults to normal"
+    fix_map:
+      __other__: >-
+        Value '{invalid_value}' is not a valid delivery priority. Must be
+        01 (high), 02 (normal), 03 (low), or empty. In ECC: correct via
+        T-code VD02 > Sales Area Data > Shipping tab. In S/4HANA: use
+        Fiori app F3893.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: LPRIO is '{actual_value}'. Set to 01, 02, 03,
+      or empty via VD02 / Fiori app F3893.
+
+  - id: SDCM021
+    field: KNVV.VSBED
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: "Shipping conditions missing — affects route and shipping point determination"
+    why_it_matters: >-
+      VSBED (shipping conditions) is used in shipping point determination
+      and route determination during delivery creation. Without it, the
+      system cannot automatically determine the correct shipping point or
+      route, requiring manual intervention for every delivery.
+    rule_authority: best_practice
+    sap_impact: >-
+      Shipping point determination in VL01N requires manual override. Route
+      determination fails. Freight cost calculation may be incorrect.
+    fix_map:
+      __blank__: >-
+        In ECC: assign shipping conditions via T-code VD02 > Sales Area
+        Data > Shipping tab. Common values: 01 (standard), 02 (express).
+        In S/4HANA: use Fiori app F3893.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: VSBED is {actual_value}. Assign shipping
+      conditions via VD02 / Fiori app F3893.
+
+  - id: SDCM022
+    field: KNA1.KUNNR
+    check_class: cross_field_check
+    fields: ["KNVV.INCO1", "KNVV.INCO2"]
+    condition: "((`KNVV.INCO1`.notna() & `KNVV.INCO1` != '') & (`KNVV.INCO2`.isna() | `KNVV.INCO2` == '')) | ((`KNVV.INCO2`.notna() & `KNVV.INCO2` != '') & (`KNVV.INCO1`.isna() | `KNVV.INCO1` == ''))"
+    severity: high
+    dimension: consistency
+    message: "Incoterms code and location must both be filled or both be blank"
+    why_it_matters: >-
+      INCO1 (incoterms code) and INCO2 (incoterms location) form a pair
+      that must be maintained together. An incoterms code without a location
+      is ambiguous (e.g., "FOB" without a port name), while a location
+      without a code is meaningless. Incomplete incoterms cause disputes
+      over delivery responsibility and may result in non-compliant export
+      documentation.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Sales orders have incomplete shipping terms. Export documentation is
+      non-compliant. Freight cost allocation may be disputed. Incoterms
+      validation in VA01 may produce warnings or errors depending on
+      configuration.
+    fix_map:
+      __other__: >-
+        Incoterms code and location are not both filled. In ECC: set both
+        fields together via T-code VD02 > Sales Area Data > Shipping tab.
+        In S/4HANA: use Fiori app F3893. Both INCO1 and INCO2 must be
+        maintained as a pair.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: INCO1 and INCO2 are inconsistent — one is
+      filled and the other is blank. Set both via VD02 / Fiori app F3893.
+
+  - id: SDCM023
+    field: KNA1.KUNNR
+    check_class: cross_field_check
+    fields: ["KNVV.VKORG", "KNVV.VTWEG", "KNVV.SPART"]
+    condition: "(`KNVV.VKORG`.notna() & `KNVV.VKORG` != '') & ((`KNVV.VTWEG`.isna() | `KNVV.VTWEG` == '') | (`KNVV.SPART`.isna() | `KNVV.SPART` == ''))"
+    severity: critical
+    dimension: consistency
+    message: "Sales area triple must be complete — VKORG, VTWEG, and SPART all required"
+    why_it_matters: >-
+      The sales area is defined by three fields: sales organisation (VKORG),
+      distribution channel (VTWEG), and division (SPART). All three must be
+      populated for the sales area to be valid. A partial sales area renders
+      the customer unusable in all SD transactions and causes errors in
+      partner function determination and pricing.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Customer cannot be used in VA01. Sales area validation fails. Pricing,
+      shipping, and billing determination all produce errors. The customer
+      is commercially inactive.
+    fix_map:
+      __other__: >-
+        Sales area is partially filled. In ECC: complete all three fields
+        (VKORG, VTWEG, SPART) via T-code VD02 > Sales Area Data tab. In
+        S/4HANA: use Fiori app F3893 and ensure the full sales area is
+        assigned.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: sales area triple is incomplete. Complete all
+      three fields (VKORG, VTWEG, SPART) via VD02 / Fiori app F3893.
+
+  - id: SDCM024
+    field: KNA1.KUNNR
+    check_class: cross_field_check
+    fields: ["KNA1.KUNNR"]
+    condition: "~`KNA1.KUNNR`.duplicated(keep=False)"
+    severity: critical
+    dimension: uniqueness
+    message: "Duplicate SD customer numbers detected — each customer must be unique"
+    why_it_matters: >-
+      Duplicate customer numbers violate the primary key constraint. The
+      migration program will reject duplicates, and any that slip through
+      cause incorrect SD document assignment, double billing, and broken
+      customer reporting. This typically indicates a data extraction or
+      consolidation error.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Migration fails on duplicate key insert. Post-migration, duplicate
+      customers cause double billing, incorrect delivery assignment, and
+      broken sales reporting.
+    fix_map:
+      __other__: >-
+        Duplicate SD customer number detected. Identify the canonical record
+        and merge or deactivate the duplicate. In ECC: review both records
+        via T-code VD03 and merge outstanding items. In S/4HANA: use Fiori
+        app F3893 and BP merge tools to consolidate.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: duplicate detected. Review and merge via VD03 /
+      Fiori app F3893.
+
+  - id: SDCM025
+    field: KNVV.WAERS
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "Sales area currency is required — determines pricing and billing currency"
+    why_it_matters: >-
+      WAERS in the sales area determines the default document currency for
+      all sales orders and billing documents. Without it, the system cannot
+      determine the pricing currency, causing pricing determination to fail
+      in VA01 and billing document creation to fail in VF01.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Pricing determination in VA01 fails — no prices are calculated.
+      Billing documents cannot be created in VF01. The customer is
+      commercially inactive without a currency assignment.
+    fix_map:
+      __blank__: >-
+        In ECC: assign the document currency via T-code VD02 > Sales Area
+        Data > Sales tab. In S/4HANA: use Fiori app F3893. The currency
+        should match the customer's trading currency.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: WAERS is {actual_value}. Assign the sales area
+      currency via VD02 / Fiori app F3893.
+
+  - id: SDCM026
+    field: KNA1.ERDAT
+    check_class: freshness_check
+    max_age_hours: 17520
+    severity: low
+    dimension: timeliness
+    message: SD customer master not updated in 2+ years — review if pricing, shipping, and partner functions are still current
+    rule_authority: best_practice

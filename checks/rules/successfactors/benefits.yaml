@@ -1,0 +1,278 @@
+module: benefits
+target_state: SUCCESSFACTORS
+rules:
+
+  - id: BEN001
+    field: BENEFITENROLLMENT.USERID
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "User ID is mandatory — orphaned enrolment cannot generate payroll deductions"
+    why_it_matters: >-
+      USERID links the benefit enrolment to a specific employee. Without it, the
+      enrolment record is orphaned and payroll cannot generate the corresponding premium
+      deduction. The employee may lose coverage without notice.
+    rule_authority: best_practice
+    sap_impact: >-
+      Payroll deduction not generated. Benefit provider receives no premium. Employee
+      coverage may lapse due to non-payment.
+    fix_map:
+      __blank__: >-
+        Assign the correct employee USERID via Admin Center > Benefits > Enrolment
+        Import. Cross-reference with the employee master to identify the correct person.
+    record_fix_template: >-
+      Enrolment {BENEFITENROLLMENT.USERID}: USERID is missing. Assign the correct
+      employee ID via Admin Center > Benefits > Enrolment Import.
+
+  - id: BEN002
+    field: BENEFITENROLLMENT.PLAN_ID
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Plan ID is mandatory — identifies the specific benefit plan for deduction and coverage"
+    why_it_matters: >-
+      PLAN_ID maps the enrolment to a specific benefit plan which defines the premium
+      amount, coverage rules, and provider. Without it, the system cannot determine what
+      the employee is enrolled in or how much to deduct.
+    rule_authority: best_practice
+    sap_impact: >-
+      Deduction amount unknown. Benefit coverage details cannot be determined. Employee
+      benefit statement shows incomplete enrolment.
+    fix_map:
+      __blank__: >-
+        Assign the correct plan ID from the benefits catalogue via Admin Center >
+        Benefits > Enrolment Import. Verify against the employee's original election
+        form.
+    record_fix_template: >-
+      Enrolment {BENEFITENROLLMENT.USERID}: PLAN_ID is missing. Assign correct plan via
+      Admin Center > Benefits > Enrolment Import.
+
+  - id: BEN003
+    field: BENEFITENROLLMENT.PLAN_TYPE
+    check_class: domain_value_check
+    allowed_values: ["medical", "dental", "vision", "life", "disability", "retirement", "hsa", "fsa"]
+    severity: high
+    dimension: accuracy
+    message: "Plan type must be a valid benefit category"
+    why_it_matters: >-
+      PLAN_TYPE categorises the benefit enrolment for reporting, regulatory compliance,
+      and deduction classification. An invalid type corrupts benefit cost analytics and
+      may cause the deduction to be classified incorrectly for tax purposes.
+    rule_authority: customer_configured
+    sap_impact: >-
+      Benefit cost reporting by category is corrupted. Tax treatment of deduction may be
+      incorrect. Regulatory benefit filings show invalid plan categories.
+    valid_values_with_labels:
+      "medical": "Medical — health insurance coverage"
+      "dental": "Dental — dental care coverage"
+      "vision": "Vision — vision care coverage"
+      "life": "Life — life insurance"
+      "disability": "Disability — short-term or long-term disability insurance"
+      "retirement": "Retirement — pension or 401(k) plan"
+      "hsa": "HSA — Health Savings Account"
+      "fsa": "FSA — Flexible Spending Account"
+    fix_map:
+      __blank__: >-
+        Assign the correct plan type from: medical, dental, vision, life, disability,
+        retirement, hsa, fsa. Update via Admin Center > Benefits > Enrolment Import.
+      __other__: >-
+        Plan type '{invalid_value}' is not valid. Use medical, dental, vision, life,
+        disability, retirement, hsa, or fsa. Update via Admin Center > Benefits >
+        Enrolment Import.
+    record_fix_template: >-
+      Enrolment {BENEFITENROLLMENT.USERID}: PLAN_TYPE '{actual_value}' is invalid.
+      Set to a valid benefit category via Admin Center > Benefits > Enrolment Import.
+
+  - id: BEN004
+    field: BENEFITENROLLMENT.ENROL_DATE
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "Enrolment date determines when deductions start and coverage begins"
+    why_it_matters: >-
+      ENROL_DATE establishes the effective start of benefit coverage and triggers the
+      first payroll deduction. Without it, the system cannot determine when to begin
+      premium deductions or when coverage became active.
+    rule_authority: best_practice
+    sap_impact: >-
+      Payroll deduction start date undefined. Benefit coverage effective date unknown.
+      Retroactive deduction calculation impossible.
+    fix_map:
+      __blank__: >-
+        Set the enrolment effective date via Admin Center > Benefits > Enrolment Import.
+        Use the employee's original election date or hire date if enrolment was
+        automatic. Format: YYYY-MM-DD.
+    record_fix_template: >-
+      Enrolment {BENEFITENROLLMENT.USERID}: ENROL_DATE is missing. Set enrolment date
+      via Admin Center > Benefits > Enrolment Import. Format: YYYY-MM-DD.
+
+  - id: BEN005
+    field: BENEFITENROLLMENT.COVERAGE_LEVEL
+    check_class: domain_value_check
+    allowed_values: ["employee_only", "employee_spouse", "employee_children", "family"]
+    severity: high
+    dimension: accuracy
+    message: "Coverage level must be a valid tier — determines premium amount and covered persons"
+    why_it_matters: >-
+      COVERAGE_LEVEL determines the premium tier and which persons are covered under the
+      plan. An incorrect or invalid value causes the wrong premium to be deducted and may
+      result in claims being denied for dependents who should be covered.
+    rule_authority: customer_configured
+    sap_impact: >-
+      Wrong premium deducted from payroll. Dependent claims may be denied. Benefit cost
+      reporting by coverage tier is corrupted.
+    valid_values_with_labels:
+      "employee_only": "Employee Only — covers the employee only"
+      "employee_spouse": "Employee + Spouse — covers employee and spouse"
+      "employee_children": "Employee + Children — covers employee and children"
+      "family": "Family — covers employee, spouse, and children"
+    fix_map:
+      __blank__: >-
+        Assign the correct coverage level based on the employee's election form. Update
+        via Admin Center > Benefits > Enrolment Import.
+      __other__: >-
+        Coverage level '{invalid_value}' is not valid. Use employee_only,
+        employee_spouse, employee_children, or family. Update via Admin Center >
+        Benefits > Enrolment Import.
+    record_fix_template: >-
+      Enrolment {BENEFITENROLLMENT.USERID}: COVERAGE_LEVEL '{actual_value}' is invalid.
+      Set to a valid tier via Admin Center > Benefits > Enrolment Import.
+
+  - id: BEN006
+    field: BENEFITENROLLMENT.DEPENDENT_LINK
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: "Dependent link is required for family plans — determines covered dependents"
+    why_it_matters: >-
+      DEPENDENT_LINK associates the enrolment with specific dependents (spouse, children)
+      who are covered under family benefit plans. Without it, claims for dependents may
+      be rejected by the provider.
+    rule_authority: best_practice
+    sap_impact: >-
+      Dependent claims rejected by benefit provider. Family plan premium charged but
+      dependents not registered for coverage.
+    fix_map:
+      __blank__: >-
+        Link the relevant dependents via Admin Center > Benefits > Dependent Management.
+        Ensure dependent records exist in the employee's personal information before
+        linking.
+    record_fix_template: >-
+      Enrolment {BENEFITENROLLMENT.USERID}: DEPENDENT_LINK is missing for plan
+      {BENEFITENROLLMENT.PLAN_ID}. Link dependents via Admin Center > Benefits >
+      Dependent Management.
+
+  - id: BEN007
+    field: BENEFITENROLLMENT.EMPLOYEE_COST
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "Employee cost is required for payroll deduction calculation"
+    why_it_matters: >-
+      EMPLOYEE_COST is the amount deducted from the employee's pay each period for their
+      benefit premium. A missing value causes payroll to deduct zero, meaning the
+      employee receives free coverage while the employer absorbs the full cost.
+    rule_authority: best_practice
+    sap_impact: >-
+      Payroll deducts zero for this benefit. Employer absorbs full premium cost. Benefit
+      cost reporting understates employee contributions.
+    fix_map:
+      __blank__: >-
+        Set the employee cost based on the plan's premium structure and the employee's
+        coverage level. Update via Admin Center > Benefits > Enrolment Import. If cost
+        is genuinely zero (employer-paid), enter 0 explicitly.
+    record_fix_template: >-
+      Enrolment {BENEFITENROLLMENT.USERID}: EMPLOYEE_COST is missing for plan
+      {BENEFITENROLLMENT.PLAN_ID}. Set via Admin Center > Benefits > Enrolment Import.
+
+  - id: BEN008
+    field: BENEFITENROLLMENT.EMPLOYER_COST
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: "Employer cost is required for total compensation reporting and budget forecasting"
+    why_it_matters: >-
+      EMPLOYER_COST represents the company's contribution to the employee's benefit
+      premium. It is a key component of total compensation calculations and budget
+      forecasting. Missing values understate the total compensation package and produce
+      inaccurate budget projections.
+    rule_authority: best_practice
+    sap_impact: >-
+      Total compensation statements understate employer contribution. Budget forecasting
+      for benefit costs is inaccurate. Cost-per-employee calculations are incomplete.
+    fix_map:
+      __blank__: >-
+        Set the employer cost based on the plan's cost-sharing structure. Update via
+        Admin Center > Benefits > Enrolment Import. If there is no employer contribution,
+        enter 0 explicitly.
+    record_fix_template: >-
+      Enrolment {BENEFITENROLLMENT.USERID}: EMPLOYER_COST is missing for plan
+      {BENEFITENROLLMENT.PLAN_ID}. Set via Admin Center > Benefits > Enrolment Import.
+
+  - id: BEN009
+    field: BENEFITENROLLMENT.EFFECTIVE_DATE
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "Effective date is required for benefit change audit trail"
+    why_it_matters: >-
+      EFFECTIVE_DATE records when a benefit change (enrolment, coverage change,
+      termination) takes effect. Without it, the benefit history timeline is broken and
+      the system cannot determine which enrolment record is current.
+    rule_authority: best_practice
+    sap_impact: >-
+      Benefit history timeline broken. Current enrolment cannot be determined. Audit
+      trail for benefit changes is incomplete.
+    fix_map:
+      __blank__: >-
+        Set the effective date to when the benefit change was approved or the enrolment
+        began. Update via Admin Center > Benefits > Enrolment Import. Format: YYYY-MM-DD.
+    record_fix_template: >-
+      Enrolment {BENEFITENROLLMENT.USERID}: EFFECTIVE_DATE is missing. Set via Admin
+      Center > Benefits > Enrolment Import. Format: YYYY-MM-DD.
+
+  - id: BEN010
+    field: BENEFITENROLLMENT.ENROL_DATE
+    check_class: regex_check
+    pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    severity: high
+    dimension: validity
+    message: "Enrolment date must be in YYYY-MM-DD format"
+    why_it_matters: >-
+      SuccessFactors Benefits requires ISO 8601 date format for all dates. Non-standard
+      formats cause import failures and prevent the system from correctly determining
+      coverage start dates and deduction timing.
+    rule_authority: best_practice
+    sap_impact: >-
+      Benefit enrolment import fails. Coverage start date cannot be determined. Payroll
+      deduction timing is incorrect.
+    fix_map:
+      __other__: >-
+        Date format '{invalid_value}' is not ISO 8601. Convert to YYYY-MM-DD before
+        importing via Admin Center > Benefits > Enrolment Import.
+    record_fix_template: >-
+      Enrolment {BENEFITENROLLMENT.USERID}: ENROL_DATE format invalid
+      (value: {actual_value}). Convert to YYYY-MM-DD.
+
+  - id: BEN011
+    field: USERID_BEN
+    check_class: cross_field_check
+    fields: ['USERID_BEN']
+    condition: "~`USERID_BEN`.duplicated(keep=False)"
+    severity: high
+    dimension: uniqueness
+    message: Duplicate benefit enrollment records per employee — review for over-enrollment
+    why_it_matters: Duplicate enrollment records can cause double premium deductions, incorrect coverage levels, and carrier file errors.
+    rule_authority: best_practice
+    sap_impact: Payroll deducts premiums twice. Carrier feeds contain duplicate enrollments. Benefits cost reports are overstated.
+    fix_map:
+      __blank__: "Review duplicate enrollments in Admin Center > Benefits. End-date or delete the incorrect enrollment. Verify carrier feed after correction."
+
+  - id: BEN012
+    field: ENROL_DATE
+    check_class: freshness_check
+    max_age_hours: 17520
+    severity: low
+    dimension: timeliness
+    message: Benefit enrollment older than 2 years — verify enrollment is still valid and premiums are current
+    rule_authority: best_practice

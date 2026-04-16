@@ -1,0 +1,704 @@
+module: fi_gl
+target_state: ECC_AND_S4HANA
+rules:
+  - id: GL001
+    field: SKA1.SAKNR
+    check_class: regex_check
+    pattern: "^[0-9]{1,10}$"
+    severity: critical
+    dimension: validity
+    message: "GL account number must be 1-10 digit numeric"
+    why_it_matters: >-
+      GL account numbers must be numeric only, up to 10 digits. Alphanumeric
+      account numbers from legacy systems are not supported in standard SAP
+      charts of accounts and will be rejected during S/4HANA migration. In ECC,
+      non-numeric accounts cause issues with account determination and reporting
+      in transactions FS00 and F.01.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Account cannot be used in posting transactions (FB50, F-02) if the number
+      format violates the chart of accounts configuration. Migration to S/4HANA
+      is blocked for non-numeric accounts.
+    fix_map:
+      __other__: >-
+        Account number '{invalid_value}' contains non-numeric characters or exceeds 10 digits.
+        In ECC: create a mapping to a valid numeric account via T-code FS00 and repost
+        historical data via a conversion program. In S/4HANA: use Fiori app F2735
+        (Manage G/L Account Master Data) to create the corrected account.
+    record_fix_template: >-
+      GL Account {SKA1.SAKNR}: number format is invalid (value: '{actual_value}').
+      Map to numeric equivalent or create new account via FS00 / Fiori app F2735.
+
+  - id: GL002
+    field: SKA1.KTOKS
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Account group is mandatory — controls number range and field status"
+    why_it_matters: >-
+      Account group (KTOKS) controls which fields are required, optional, or
+      suppressed in the GL master record and which number ranges apply. Without
+      it the account cannot be classified in the chart of accounts. In S/4HANA,
+      account group also drives the Fiori field layout via BAdI
+      FINAC_GL_ACCOUNT.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      GL master record is incomplete. Account cannot be used in posting
+      transactions (FB50, F-02) or period-end closing (F.16). Account group
+      assignment is mandatory for both ECC and S/4HANA.
+    fix_map:
+      __blank__: >-
+        In ECC: assign account group via T-code FS00 > Control Data tab. Common
+        groups: GKNT (general), MIXT (reconciliation). In S/4HANA: use Fiori
+        app F2735 (Manage G/L Account Master Data).
+    record_fix_template: >-
+      GL Account {SKA1.SAKNR}: KTOKS is {actual_value}. Assign the correct
+      account group via FS00 / Fiori app F2735.
+
+  - id: GL003
+    field: SKA1.XBILK
+    check_class: domain_value_check
+    allowed_values: ["X", ""]
+    severity: critical
+    dimension: validity
+    message: "Balance sheet indicator must be X (balance sheet) or empty (P&L)"
+    why_it_matters: >-
+      XBILK determines whether the account is a balance sheet account or a
+      P&L account. This classification drives carry-forward behaviour at
+      year-end (transaction F.16) and affects all financial reporting via
+      financial statement versions (FSV) in F.01.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Year-end closing (F.16) processes the account incorrectly. Balance
+      carry-forward either omits a balance sheet account or incorrectly
+      carries forward a P&L account.
+    valid_values_with_labels:
+      "X": "Balance sheet account — balance carries forward at year-end"
+      "": "P&L account — balance resets at year-end"
+    fix_map:
+      __other__: >-
+        Value '{invalid_value}' is not valid. Must be X (balance sheet) or
+        empty (P&L). In ECC: correct via T-code FS00 > Type/Description tab.
+        In S/4HANA: use Fiori app F2735 (Manage G/L Account Master Data).
+    record_fix_template: >-
+      GL Account {SKA1.SAKNR}: XBILK is '{actual_value}'. Set to X (balance
+      sheet) or leave empty (P&L) via FS00 / Fiori app F2735.
+
+  - id: GL004
+    field: SKA1.GVTYP
+    check_class: domain_value_check
+    allowed_values: ["X", ""]
+    severity: high
+    dimension: validity
+    message: "P&L statement account type must be X or empty"
+    why_it_matters: >-
+      GVTYP classifies whether the account is a P&L type. It is used in
+      conjunction with XBILK to determine the account's role in financial
+      reporting. In S/4HANA, this field is critical for the cost-of-sales
+      P&L statement and the financial statement version (FSV) in F.01.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Financial statement version (FSV) in transaction F.01 may misclassify
+      the account. P&L reporting is incomplete or incorrect if the type does
+      not match the balance sheet indicator.
+    valid_values_with_labels:
+      "X": "P&L account type"
+      "": "Not a P&L account (balance sheet or not classified)"
+    fix_map:
+      __other__: >-
+        Value '{invalid_value}' is not valid for GVTYP. Must be X or empty.
+        In ECC: correct via T-code FS00 > Type/Description tab. In S/4HANA:
+        use Fiori app F2735.
+    record_fix_template: >-
+      GL Account {SKA1.SAKNR}: GVTYP is '{actual_value}'. Set to X (P&L type)
+      or empty via FS00 / Fiori app F2735.
+
+  - id: GL005
+    field: SKA1.FUNC_AREA
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "Functional area is required for cost-of-sales accounting"
+    why_it_matters: >-
+      Functional area enables cost-of-sales accounting, which is mandatory in
+      S/4HANA for the P&L statement by function. In ECC, it supports management
+      reporting by function (sales, administration, R&D). Without it,
+      cost-of-sales P&L reporting is incomplete and may violate local GAAP
+      requirements in jurisdictions that mandate functional P&L presentation.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Cost-of-sales P&L (transaction F.01 with FSV by function) is incomplete.
+      Management reporting by function is not possible. Automatic derivation
+      rules in OKBD do not fire without a base assignment.
+    fix_map:
+      __blank__: >-
+        In ECC: assign functional area via T-code FS00 or configure automatic
+        derivation rules via T-code OKBD. In S/4HANA: use Fiori app F2735
+        (Manage G/L Account Master Data) or configure derivation in OKBD.
+    record_fix_template: >-
+      GL Account {SKA1.SAKNR}: FUNC_AREA is {actual_value}. Assign the
+      functional area via FS00 / Fiori app F2735 or configure derivation in OKBD.
+
+  - id: GL006
+    field: SKA1.KTOPL
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Chart of accounts is mandatory — defines the account's scope"
+    why_it_matters: >-
+      KTOPL (chart of accounts) is the primary organisational assignment for
+      every GL account. It determines which company codes can use the account.
+      Without it, the account has no organisational context and cannot be
+      extended to any company code for posting.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Account cannot be assigned to any company code. All posting transactions
+      (FB50, F-02, FB60) fail. The account is effectively orphaned in the
+      system.
+    fix_map:
+      __blank__: >-
+        In ECC: assign chart of accounts via T-code FS00 > Type/Description tab.
+        In S/4HANA: use Fiori app F2735 (Manage G/L Account Master Data).
+        The chart of accounts must match the company code's assigned CoA.
+    record_fix_template: >-
+      GL Account {SKA1.SAKNR}: KTOPL is {actual_value}. Assign the chart of
+      accounts via FS00 / Fiori app F2735.
+
+  - id: GL007
+    field: SKAT.TXT20
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "Short text is required — displayed in all GL reports and postings"
+    why_it_matters: >-
+      TXT20 is the 20-character short description displayed in all GL line item
+      reports (FBL3N), trial balance (F.01), and during posting entry (FB50).
+      Without it, users see only the account number, making it difficult to
+      identify accounts during posting and review, increasing error risk.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      GL reports (FBL3N, F.01, S_ALR_87012326) display blank descriptions.
+      Users cannot identify accounts during manual posting, increasing the
+      risk of mispostings.
+    fix_map:
+      __blank__: >-
+        In ECC: set the short text via T-code FS00 > Type/Description tab.
+        In S/4HANA: use Fiori app F2735 (Manage G/L Account Master Data).
+        The text should be a concise, meaningful description of the account
+        purpose (e.g., "Trade Receivables", "Rent Expense").
+    record_fix_template: >-
+      GL Account {SKA1.SAKNR}: TXT20 is {actual_value}. Set the short text
+      via FS00 / Fiori app F2735.
+
+  - id: GL008
+    field: SKAT.TXT50
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: "Long text is recommended for full account documentation"
+    why_it_matters: >-
+      TXT50 is the 50-character long description that provides additional
+      context beyond the short text. It appears in detailed GL master data
+      reports and helps auditors and accountants understand the account's
+      purpose during reviews and reconciliations.
+    rule_authority: best_practice
+    sap_impact: >-
+      Detailed GL master data reports show incomplete descriptions. Account
+      purpose is not fully documented, increasing audit query time.
+    fix_map:
+      __blank__: >-
+        In ECC: set the long text via T-code FS00 > Type/Description tab.
+        In S/4HANA: use Fiori app F2735. Provide a full description of the
+        account's purpose and typical usage.
+    record_fix_template: >-
+      GL Account {SKA1.SAKNR}: TXT50 is {actual_value}. Set the long text
+      via FS00 / Fiori app F2735.
+
+  - id: GL009
+    field: SKB1.BUKRS
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Company code is mandatory for all GL account company code segments"
+    why_it_matters: >-
+      Company code (BUKRS) is the primary organisational unit for financial
+      accounting. Every GL account must be assigned to at least one company
+      code to be used in postings. This is a hard SAP requirement enforced
+      at both the database and application level.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Account cannot be used for postings in any company code. All financial
+      transactions (FB50, F-02, FB60) referencing this account fail.
+    fix_map:
+      __blank__: >-
+        In ECC: extend the GL account to the correct company code via T-code
+        FS00 > Company Code Data. In S/4HANA: use Fiori app F2735 (Manage
+        G/L Account Master Data) and add the company code segment.
+    record_fix_template: >-
+      GL Account {SKA1.SAKNR}: BUKRS is {actual_value}. Extend the account
+      to the correct company code via FS00 / Fiori app F2735.
+
+  - id: GL010
+    field: SKB1.WAERS
+    check_class: regex_check
+    pattern: "^[A-Z]{3}$"
+    severity: critical
+    dimension: validity
+    message: "Account currency must be a valid 3-letter ISO currency code"
+    why_it_matters: >-
+      Account currency determines which currency postings are accepted. It
+      must be a valid ISO 4217 3-letter code (e.g., USD, EUR, ZAR). Invalid
+      currency codes cause all posting transactions to be rejected and break
+      currency translation during period-end closing.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      All postings to this account are rejected. FI transactions (FB50, F-02)
+      and automatic postings (clearing, taxes, foreign currency valuation
+      via F.05) fail.
+    fix_map:
+      __other__: >-
+        Currency '{invalid_value}' is not a valid ISO 4217 code. In ECC: correct
+        via T-code FS00 > Company Code Data. The currency must be configured in
+        the system (T-code OY03). In S/4HANA: use Fiori app F2735.
+    record_fix_template: >-
+      GL Account {SKA1.SAKNR}: WAERS is '{actual_value}'. Set to a valid ISO
+      currency code via FS00 / Fiori app F2735.
+
+  - id: GL011
+    field: SKB1.MWSKZ
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: "Tax category is recommended for automatic tax determination"
+    why_it_matters: >-
+      Tax category (MWSKZ) enables automatic tax determination during posting.
+      Without it, users must manually enter tax codes on every posting line,
+      increasing error rates and processing time. In high-volume environments,
+      this leads to significant tax compliance risk.
+    rule_authority: best_practice
+    sap_impact: >-
+      Automatic tax determination (configured via FTXP/OBQ3) does not apply.
+      Users must manually select tax codes, increasing posting errors and
+      audit risk.
+    fix_map:
+      __blank__: >-
+        In ECC: determine the applicable tax category (input tax, output tax,
+        non-taxable) and set via T-code FS00 > Control Data tab. In S/4HANA:
+        use Fiori app F2735 (Manage G/L Account Master Data).
+    record_fix_template: >-
+      GL Account {SKA1.SAKNR}: MWSKZ is {actual_value}. Assign the tax
+      category via FS00 / Fiori app F2735 > Control Data.
+
+  - id: GL012
+    field: SKB1.XOPVW
+    check_class: domain_value_check
+    allowed_values: ["X", ""]
+    severity: high
+    dimension: validity
+    message: "Open item management flag must be X (enabled) or empty (disabled)"
+    why_it_matters: >-
+      Open item management controls whether individual line items must be
+      explicitly cleared. It is critical for reconciliation accounts (AP/AR),
+      clearing accounts, and GR/IR accounts. Once set and items are posted,
+      this flag cannot be changed without clearing all open items first.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Clearing transactions (F-03, F-04, F.13) behave incorrectly. AP/AR
+      reconciliation becomes impossible if open item management is not set
+      on reconciliation accounts. GR/IR clearing fails.
+    valid_values_with_labels:
+      "X": "Open item management enabled — items must be explicitly cleared"
+      "": "Open item management disabled — balance-only management"
+    fix_map:
+      __other__: >-
+        Value '{invalid_value}' is not valid. Must be X (enabled) or empty
+        (disabled). In ECC: correct via T-code FS00 > Control Data. In S/4HANA:
+        use Fiori app F2735. Note: cannot be changed if open items exist.
+    record_fix_template: >-
+      GL Account {SKA1.SAKNR}: XOPVW is '{actual_value}'. Set to X or empty
+      via FS00 / Fiori app F2735. Warning: cannot change if open items exist.
+
+  - id: GL013
+    field: SKB1.XKRES
+    check_class: domain_value_check
+    allowed_values: ["X", ""]
+    severity: medium
+    dimension: validity
+    message: "Line item display flag must be X (enabled) or empty (disabled)"
+    why_it_matters: >-
+      Line item display (XKRES) determines whether individual line items are
+      stored and displayable for this account. It is essential for detailed
+      account analysis, audit trails, and reconciliation. Enabling it increases
+      storage but is strongly recommended for all accounts that require
+      detailed review.
+    rule_authority: best_practice
+    sap_impact: >-
+      Account line items cannot be displayed in FBL3N or Fiori app F0710.
+      Detailed account analysis and audit trails are unavailable. Account
+      reconciliation must be done at summary level only.
+    valid_values_with_labels:
+      "X": "Line item display enabled — individual items visible in FBL3N"
+      "": "Line item display disabled — only totals available"
+    fix_map:
+      __other__: >-
+        Value '{invalid_value}' is not valid. Must be X (enabled) or empty
+        (disabled). In ECC: correct via T-code FS00 > Control Data. In S/4HANA:
+        use Fiori app F2735.
+    record_fix_template: >-
+      GL Account {SKA1.SAKNR}: XKRES is '{actual_value}'. Set to X or empty
+      via FS00 / Fiori app F2735.
+
+  - id: GL014
+    field: SKB1.ALTKT
+    check_class: null_check
+    severity: low
+    dimension: completeness
+    message: "Alternative account number aids parallel reporting — recommended"
+    why_it_matters: >-
+      Alternative account number (ALTKT) is used for parallel accounting under
+      a different chart of accounts (e.g., IFRS vs. local GAAP). In S/4HANA,
+      parallel accounting often requires this mapping for group reporting
+      and consolidation scenarios.
+    rule_authority: best_practice
+    sap_impact: >-
+      Parallel reporting in an alternative chart of accounts is not possible
+      for this account. IFRS or group reporting via transaction F.01 with
+      an alternative FSV may be incomplete.
+    fix_map:
+      __blank__: >-
+        In ECC: if parallel reporting is required, map to the corresponding
+        account in the alternative chart of accounts via T-code FS00 > Control
+        Data. In S/4HANA: use Fiori app F2735.
+    record_fix_template: >-
+      GL Account {SKA1.SAKNR}: ALTKT is {actual_value}. Assign the alternative
+      account number via FS00 / Fiori app F2735 if parallel reporting is required.
+
+  - id: GL015
+    field: SKB1.FDLEV
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: "Planning level missing — required for cash management and forecasting"
+    why_it_matters: >-
+      FDLEV (planning level) determines how this account is represented in
+      cash management and liquidity planning (FF7A). Without it, postings to
+      this account are excluded from cash position reports, reducing the
+      accuracy of treasury forecasting.
+    rule_authority: best_practice
+    sap_impact: >-
+      Account excluded from cash management reports in FF7A. Liquidity
+      forecasting is incomplete. Treasury planning does not account for
+      flows through this account.
+    fix_map:
+      __blank__: >-
+        In ECC: assign the planning level via T-code FS00 > Company Code Data.
+        The planning level must be configured in cash management (T-code
+        FDFD). In S/4HANA: use Fiori app F2735.
+    record_fix_template: >-
+      GL Account {SKA1.SAKNR}: FDLEV is {actual_value}. Assign the planning
+      level via FS00 / Fiori app F2735.
+
+  - id: GL016
+    field: SKB1.XINTB
+    check_class: domain_value_check
+    allowed_values: ["X", ""]
+    severity: medium
+    dimension: validity
+    message: "Post automatically only flag must be X or empty"
+    why_it_matters: >-
+      XINTB controls whether the account can only receive postings from
+      automatic processes (clearing, tax posting, payment program). When set
+      to X, manual postings via FB50/F-02 are blocked, protecting system
+      accounts from accidental manual entries.
+    rule_authority: best_practice
+    sap_impact: >-
+      If set incorrectly, users can post manually to system-managed accounts
+      (e.g., tax clearing, GR/IR), causing reconciliation issues. If
+      incorrectly blocked, legitimate manual postings are rejected.
+    valid_values_with_labels:
+      "X": "Post automatically only — manual postings blocked"
+      "": "Manual postings allowed"
+    fix_map:
+      __other__: >-
+        Value '{invalid_value}' is not valid. Must be X (automatic only) or
+        empty (manual allowed). In ECC: correct via T-code FS00 > Control Data.
+        In S/4HANA: use Fiori app F2735.
+    record_fix_template: >-
+      GL Account {SKA1.SAKNR}: XINTB is '{actual_value}'. Set to X or empty
+      via FS00 / Fiori app F2735.
+
+  - id: GL017
+    field: SKB1.FSTAG
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: "Field status group is recommended — controls posting screen layout"
+    why_it_matters: >-
+      FSTAG (field status group) determines which fields are required, optional,
+      or suppressed during posting to this account. Without it, the system uses
+      a default field status that may not enforce the required level of detail
+      for cost centre, profit centre, or other account assignment objects.
+    rule_authority: best_practice
+    sap_impact: >-
+      Posting screens in FB50/F-02 may not enforce required fields (e.g.,
+      cost centre, profit centre). Incomplete postings are accepted, requiring
+      manual correction later.
+    fix_map:
+      __blank__: >-
+        In ECC: assign the field status group via T-code FS00 > Company Code
+        Data > Control Data. Configure field status groups in T-code OBC4.
+        In S/4HANA: use Fiori app F2735.
+    record_fix_template: >-
+      GL Account {SKA1.SAKNR}: FSTAG is {actual_value}. Assign the field
+      status group via FS00 / Fiori app F2735.
+
+  - id: GL018
+    field: SKB1.MITKZ
+    check_class: domain_value_check
+    allowed_values: ["D", "K", "A", "S", ""]
+    severity: critical
+    dimension: validity
+    message: "Reconciliation account type must be D (customer), K (vendor), A (asset), S (GL), or empty"
+    why_it_matters: >-
+      MITKZ identifies this account as a reconciliation account for a specific
+      sub-ledger. Incorrect values prevent the sub-ledger from posting to the
+      GL and break the AP/AR/AA reconciliation process. This is one of the most
+      critical fields in the GL master as it links sub-ledger postings to the
+      general ledger.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Sub-ledger postings (AP via MIRO/F-53, AR via VF01/F-28, AA via ABZON)
+      fail if the reconciliation account type does not match. Period-end
+      reconciliation between sub-ledger and GL is broken.
+    valid_values_with_labels:
+      "D": "Customer reconciliation account (AR sub-ledger)"
+      "K": "Vendor reconciliation account (AP sub-ledger)"
+      "A": "Asset reconciliation account (AA sub-ledger)"
+      "S": "GL reconciliation account"
+      "": "Not a reconciliation account"
+    fix_map:
+      __other__: >-
+        Value '{invalid_value}' is not valid. Must be D (customer), K (vendor),
+        A (asset), S (GL), or empty. In ECC: correct via T-code FS00 > Control
+        Data. In S/4HANA: use Fiori app F2735.
+    record_fix_template: >-
+      GL Account {SKA1.SAKNR}: MITKZ is '{actual_value}'. Set to D, K, A, S,
+      or empty via FS00 / Fiori app F2735.
+
+  - id: GL019
+    field: SKA1.XLOEV
+    check_class: domain_value_check
+    allowed_values: ["X", ""]
+    severity: high
+    dimension: validity
+    message: "Deletion flag must be X (marked) or empty (active)"
+    why_it_matters: >-
+      XLOEV flags the account for deletion. Accounts marked for deletion
+      should not receive new postings and should be excluded from migration.
+      However, if they have open balances, deletion is blocked until all
+      items are cleared. Incorrect flagging can cause active accounts to be
+      excluded from production use.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Accounts flagged for deletion are excluded from account determination
+      and may not appear in selection lists for posting transactions. If
+      incorrectly flagged, legitimate postings are blocked.
+    valid_values_with_labels:
+      "X": "Marked for deletion"
+      "": "Active — not marked for deletion"
+    fix_map:
+      __other__: >-
+        Value '{invalid_value}' is not valid. Must be X (marked) or empty
+        (active). In ECC: correct via T-code FS00. In S/4HANA: use Fiori
+        app F2735.
+    record_fix_template: >-
+      GL Account {SKA1.SAKNR}: XLOEV is '{actual_value}'. Set to X or empty
+      via FS00 / Fiori app F2735.
+
+  - id: GL020
+    field: SKA1.XSPEA
+    check_class: domain_value_check
+    allowed_values: ["X", ""]
+    severity: medium
+    dimension: validity
+    message: "Posting block flag must be X (blocked) or empty (open)"
+    why_it_matters: >-
+      XSPEA blocks all postings to this account at the chart of accounts
+      level. This is typically used for accounts under review or during
+      chart of accounts restructuring. An invalid value causes unpredictable
+      blocking behaviour across all company codes using this chart of accounts.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      If incorrectly set, all postings to this account are blocked across
+      every company code in this chart of accounts. FB50, F-02, and all
+      automatic postings fail.
+    valid_values_with_labels:
+      "X": "Blocked for posting at chart of accounts level"
+      "": "Open for posting"
+    fix_map:
+      __other__: >-
+        Value '{invalid_value}' is not valid. Must be X (blocked) or empty
+        (open). In ECC: correct via T-code FS00 > Control Data. In S/4HANA:
+        use Fiori app F2735.
+    record_fix_template: >-
+      GL Account {SKA1.SAKNR}: XSPEA is '{actual_value}'. Set to X or empty
+      via FS00 / Fiori app F2735.
+
+  - id: GL021
+    field: SKA1.XSPEB
+    check_class: domain_value_check
+    allowed_values: ["X", ""]
+    severity: medium
+    dimension: validity
+    message: "Planning block flag must be X (blocked) or empty (open)"
+    why_it_matters: >-
+      XSPEB blocks the account from being used in planning activities. When
+      set, the account cannot be used in cost centre planning (KP06), profit
+      centre planning, or any other CO planning transaction. An invalid value
+      causes unpredictable planning behaviour.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Planning transactions (KP06, 7KE1) cannot use this account if
+      incorrectly blocked. Budget and forecast data for this account
+      cannot be entered.
+    valid_values_with_labels:
+      "X": "Blocked for planning"
+      "": "Open for planning"
+    fix_map:
+      __other__: >-
+        Value '{invalid_value}' is not valid. Must be X (blocked) or empty
+        (open). In ECC: correct via T-code FS00 > Control Data. In S/4HANA:
+        use Fiori app F2735.
+    record_fix_template: >-
+      GL Account {SKA1.SAKNR}: XSPEB is '{actual_value}'. Set to X or empty
+      via FS00 / Fiori app F2735.
+
+  - id: GL022
+    field: SKA1.XSPEP
+    check_class: domain_value_check
+    allowed_values: ["X", ""]
+    severity: medium
+    dimension: validity
+    message: "Posting block (P&L adjustment) flag must be X or empty"
+    why_it_matters: >-
+      XSPEP blocks the account from receiving P&L adjustment postings. This
+      is used to prevent manual adjustments to specific P&L accounts during
+      period-end closing. Incorrect values can block legitimate adjustment
+      postings or allow unauthorised adjustments.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      P&L adjustment postings to this account are blocked if flag is set.
+      Period-end adjustment entries via FB50 fail for this account.
+    valid_values_with_labels:
+      "X": "Blocked for P&L adjustment postings"
+      "": "Open for P&L adjustment postings"
+    fix_map:
+      __other__: >-
+        Value '{invalid_value}' is not valid. Must be X (blocked) or empty
+        (open). In ECC: correct via T-code FS00. In S/4HANA: use Fiori
+        app F2735.
+    record_fix_template: >-
+      GL Account {SKA1.SAKNR}: XSPEP is '{actual_value}'. Set to X or empty
+      via FS00 / Fiori app F2735.
+
+  - id: GL023
+    field: SKB1.ZUESSION
+    check_class: null_check
+    severity: low
+    dimension: completeness
+    message: "Assignment field key is recommended for sort/filter in reports"
+    why_it_matters: >-
+      ZUESSION controls the default assignment field used for sorting and
+      filtering in GL line item reports (FBL3N). Without it, the sort key
+      defaults to a generic value, making it harder for accountants to find
+      specific items during reconciliation and review.
+    rule_authority: best_practice
+    sap_impact: >-
+      GL line item reports (FBL3N) use default sort/assignment, reducing
+      the efficiency of account reconciliation and review.
+    fix_map:
+      __blank__: >-
+        In ECC: assign the sort key via T-code FS00 > Company Code Data >
+        Control Data. In S/4HANA: use Fiori app F2735.
+    record_fix_template: >-
+      GL Account {SKA1.SAKNR}: ZUESSION is {actual_value}. Assign the sort
+      key via FS00 / Fiori app F2735.
+
+  - id: GL024
+    field: SKA1.SAKNR
+    check_class: cross_field_check
+    fields: ["SKA1.XBILK", "SKA1.GVTYP"]
+    condition: "`SKA1.XBILK` != 'X' & (`SKA1.GVTYP`.isna() | `SKA1.GVTYP` == '')"
+    severity: critical
+    dimension: consistency
+    message: "Account must be either balance sheet (XBILK=X) or have P&L type (GVTYP filled)"
+    why_it_matters: >-
+      Every GL account must be classified as either a balance sheet account
+      (XBILK = X) or a P&L account (GVTYP filled). If both are blank, the
+      account has no financial statement classification, which means it will
+      be excluded from the financial statement version (FSV) and year-end
+      closing processes. This is a fundamental data quality issue that affects
+      all financial reporting.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Account is excluded from financial statement versions (F.01). Year-end
+      closing (F.16) does not process the account. Balance carry-forward is
+      indeterminate. All financial reports are incomplete.
+    fix_map:
+      __other__: >-
+        Account is neither a balance sheet account nor a P&L account. In ECC:
+        set XBILK = X for balance sheet accounts or fill GVTYP for P&L accounts
+        via T-code FS00 > Type/Description tab. In S/4HANA: use Fiori app F2735.
+    record_fix_template: >-
+      GL Account {SKA1.SAKNR}: neither XBILK nor GVTYP is set. Classify as
+      balance sheet (XBILK=X) or P&L (set GVTYP) via FS00 / Fiori app F2735.
+
+  - id: GL025
+    field: SKA1.SAKNR
+    check_class: cross_field_check
+    fields: ["SKA1.SAKNR"]
+    condition: "~`SKA1.SAKNR`.duplicated(keep=False)"
+    severity: critical
+    dimension: uniqueness
+    message: "Duplicate GL account numbers detected — each account must be unique"
+    why_it_matters: >-
+      Duplicate GL account numbers violate the primary key constraint in the
+      chart of accounts. The migration program will reject duplicates, and any
+      that slip through cause double-posting and incorrect balances. In ECC,
+      this typically indicates a data extraction or consolidation error.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Migration fails on duplicate key insert. Post-migration, duplicate
+      accounts cause incorrect financial postings and balance discrepancies
+      across all company codes using this chart of accounts.
+    fix_map:
+      __other__: >-
+        Duplicate GL account number detected. Identify the canonical account
+        and merge or delete the duplicate. In ECC: review both records via
+        T-code FS00 and repost transactions if needed. In S/4HANA: use Fiori
+        app F2735 to review and correct.
+    record_fix_template: >-
+      GL Account {SKA1.SAKNR}: duplicate detected. Review and merge via
+      FS00 / Fiori app F2735. Repost any transactions from the duplicate account.
+
+  - id: GL026
+    field: SKA1.ERDAT
+    check_class: freshness_check
+    max_age_hours: 43800
+    severity: low
+    dimension: timeliness
+    message: GL account created 5+ years ago and may contain outdated configuration � review account determination and field status
+    rule_authority: best_practice
+
+  - id: GL027
+    field: SKA1.TXT50
+    check_class: regex_check
+    pattern: '^[A-Za-z0-9 \-\/\(\)&,\.]+$'
+    severity: medium
+    dimension: accuracy
+    message: GL account description contains special characters or non-standard formatting
+    why_it_matters: GL account descriptions with irregular characters cause report rendering issues, export failures, and inconsistent financial statement presentation.
+    rule_authority: best_practice
+    sap_impact: Financial reports render incorrectly. Data exports truncate at special characters. Trial balance descriptions are inconsistent.
+    fix_map:
+      __blank__: "Standardise the GL account description via FS00 to use only letters, numbers, spaces, and basic punctuation."

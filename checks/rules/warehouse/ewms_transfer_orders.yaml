@@ -1,0 +1,309 @@
+module: ewms_transfer_orders
+target_state: ECC_AND_S4HANA
+rules:
+- id: EWTO001
+  field: LTAK.TANUM
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: "Transfer order number is the primary key \u2014 mandatory for all TO records"
+  why_it_matters: TANUM is the transfer order number and primary key for all transfer order headers. Without it, the TO cannot
+    be identified, confirmed, or processed. The entire warehouse movement chain depends on this key. In S/4HANA with embedded
+    EWM, classic WM tables (LTAK) are compatibility views; the underlying /SCWM/ warehouse task/order tables still require
+    a unique identifier.
+  rule_authority: sap_hard_constraint
+  sap_impact: Transfer order is unprocessable. Cannot be confirmed, reversed, or reported on. Warehouse movement is lost.
+  fix_map:
+    __blank__: 'In ECC: TO numbers are assigned automatically via LT01/LT0A. A blank TANUM indicates data corruption. In S/4HANA
+      embedded EWM: warehouse tasks are created via /SCWM/PRDO. Investigate the data source.'
+  record_fix_template: "TO item: TANUM is {actual_value}. This is a system-assigned key \u2014 investigate the data source\
+    \ for corruption."
+- id: EWTO002
+  field: LTAK.LGNUM
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: "Warehouse number is mandatory on transfer order \u2014 identifies the warehouse"
+  why_it_matters: LGNUM identifies which warehouse the transfer order operates in. Without it, the system cannot determine
+    the source and destination bins, cannot validate storage type rules, and cannot confirm the movement. In S/4HANA embedded
+    EWM, the warehouse number links to the /SCWM/ warehouse configuration.
+  rule_authority: sap_hard_constraint
+  sap_impact: Transfer order cannot be processed. Source and destination bins cannot be validated. Confirmation fails.
+  fix_map:
+    __blank__: 'In ECC: determine the warehouse from the linked delivery or material document and correct via LT0A. In S/4HANA
+      embedded EWM: check the warehouse task via /SCWM/MON.'
+  record_fix_template: 'TO {LTAK.TANUM}: LGNUM is {actual_value}. Assign the correct warehouse number via LT0A (ECC) or /SCWM/MON
+    (S/4HANA).'
+- id: EWTO003
+  field: LTAK.BETYP
+  check_class: domain_value_check
+  severity: critical
+  dimension: accuracy
+  message: Reference type determines the business context of the transfer order
+  allowed_values:
+  - L
+  - B
+  - P
+  - K
+  valid_values_with_labels:
+    L: "Delivery \u2014 outbound or inbound delivery triggered the TO"
+    B: "Purchase order \u2014 goods receipt for purchase order"
+    P: "Production \u2014 production order goods movement"
+    K: "Transfer posting \u2014 stock transfer between storage locations"
+  why_it_matters: BETYP (reference type) determines the business context that triggered the transfer order. It controls which
+    follow-on processes execute after confirmation (e.g. goods issue posting for deliveries, goods receipt for POs). An invalid
+    value means the system cannot determine the correct follow-on action.
+  rule_authority: sap_hard_constraint
+  sap_impact: Follow-on process after TO confirmation is undefined. Goods issue/receipt may not post. Delivery status not
+    updated. IM-WM reconciliation breaks.
+  fix_map:
+    __other__: 'Reference type ''{invalid_value}'' is not valid. Valid values: L (delivery), B (PO), P (production), K (transfer
+      posting). In ECC: check the originating document and correct via LT0A. In S/4HANA: verify via /SCWM/MON.'
+  record_fix_template: 'TO {LTAK.TANUM}: BETYP is ''{actual_value}''. Set to a valid reference type via LT0A (ECC) or /SCWM/MON
+    (S/4HANA).'
+- id: EWTO004
+  field: LTAK.KQUIT
+  check_class: domain_value_check
+  severity: high
+  dimension: accuracy
+  message: TO confirmation flag must be a valid indicator
+  allowed_values:
+  - ''
+  - X
+  valid_values_with_labels:
+    ? ''
+    : "Not yet confirmed \u2014 transfer order is still open"
+    X: "Confirmed \u2014 transfer order has been completed"
+  why_it_matters: KQUIT indicates whether the transfer order has been confirmed (goods physically moved). An invalid value
+    means the system cannot determine whether the movement has been executed. Open TOs consume warehouse capacity in planning;
+    confirmed TOs trigger follow-on postings. Incorrect status corrupts both.
+  rule_authority: sap_hard_constraint
+  sap_impact: TO status is undefined. Follow-on postings may not trigger. WM monitor shows incorrect open TO count. Stock
+    position inaccurate.
+  fix_map:
+    __other__: 'Confirmation flag ''{invalid_value}'' is not valid. Valid values: blank (open), X (confirmed). In ECC: confirm
+      via LT12/LT1A. In S/4HANA embedded EWM: confirm warehouse task via /SCWM/PRDI or Fiori app F6757.'
+  record_fix_template: 'TO {LTAK.TANUM}: KQUIT is ''{actual_value}''. Set to blank (open) or X (confirmed) via LT12 (ECC)
+    or /SCWM/PRDI (S/4HANA).'
+- id: EWTO005
+  field: LTAK.ERDAT
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Creation date is required for TO age tracking and performance monitoring
+  why_it_matters: ERDAT records when the transfer order was created. It is essential for measuring warehouse KPIs such as
+    TO cycle time (creation to confirmation), identifying aged open TOs that may indicate process bottlenecks, and audit trail
+    requirements.
+  rule_authority: best_practice
+  sap_impact: TO cycle time cannot be calculated. Aged TO reporting is incomplete. Audit trail has no creation timestamp.
+  fix_map:
+    __blank__: 'In ECC: creation date is system-generated during TO creation (LT01/LT0A). A blank value indicates data corruption.
+      In S/4HANA: check the warehouse task creation log via /SCWM/MON.'
+  record_fix_template: "TO {LTAK.TANUM}: ERDAT is {actual_value}. This is system-generated \u2014 investigate the data source\
+    \ for corruption."
+- id: EWTO006
+  field: LTAK.ERNAM
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Created-by user enables accountability and issue investigation
+  why_it_matters: "ERNAM records who created the transfer order. Without it, accountability for warehouse movements is lost\
+    \ \u2014 errors and discrepancies cannot be traced to the originating user for training or process improvement purposes."
+  rule_authority: best_practice
+  sap_impact: No accountability for TO creation. Error investigation cannot identify the originating user. Audit trail incomplete.
+  fix_map:
+    __blank__: 'In ECC: ERNAM is system-populated from the logged-in user during TO creation. A blank value indicates batch
+      processing or data migration gap. In S/4HANA: check the warehouse task log via /SCWM/MON.'
+  record_fix_template: 'TO {LTAK.TANUM}: ERNAM is {actual_value}. Check the TO creation log for the originating user.'
+- id: EWTO007
+  field: LTAP.MATNR
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Material number is mandatory on transfer order line
+  why_it_matters: MATNR identifies which material is being moved by the transfer order. Without it, the system cannot update
+    bin stock, cannot validate batch or serial number requirements, and the movement is meaningless. In S/4HANA embedded EWM,
+    the material is mandatory on every warehouse task item.
+  rule_authority: sap_hard_constraint
+  sap_impact: Transfer order line has no material identity. Stock updates cannot be posted. Bin quantities will not reflect
+    the movement.
+  fix_map:
+    __blank__: 'In ECC: correct via LT0A. In S/4HANA embedded EWM: material is assigned from the originating document during
+      warehouse task creation via /SCWM/PRDO.'
+  record_fix_template: 'TO {LTAK.TANUM} item {LTAP.TAPOS}: MATNR is {actual_value}. Assign the correct material from the source
+    document.'
+- id: EWTO008
+  field: LTAP.MENGE
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: "Transfer order quantity is mandatory \u2014 zero or blank means no stock movement"
+  why_it_matters: A blank or zero MENGE means the transfer order records no stock movement. Source and destination bin quantities
+    are not updated, causing permanent discrepancy between WM stock and IM stock levels.
+  rule_authority: sap_hard_constraint
+  sap_impact: No stock movement recorded. Source and destination bin quantities unchanged. Permanent WM/IM stock discrepancy.
+  fix_map:
+    __blank__: 'In ECC: correct the quantity via LT0A. In S/4HANA embedded EWM: update the warehouse task via /SCWM/PRDO or
+      Fiori app F6757.'
+  record_fix_template: 'TO {LTAK.TANUM} item {LTAP.TAPOS}: MENGE is {actual_value}. Assign the correct movement quantity via
+    LT0A (ECC) or /SCWM/PRDO (S/4HANA).'
+- id: EWTO009
+  field: LTAP.MEINS
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Unit of measure required for transfer order quantity interpretation
+  why_it_matters: MEINS (unit of measure) is required to interpret the MENGE quantity correctly. Without it, the system cannot
+    validate the quantity against the material master base unit and conversion factors may be applied incorrectly.
+  rule_authority: best_practice
+  sap_impact: Quantity interpretation is ambiguous. Unit conversion may fail. Stock postings may use incorrect quantities.
+  fix_map:
+    __blank__: 'In ECC: check the material master (MM03) for the base unit and correct the TO item. In S/4HANA: verify via
+      Fiori app F0842 (Manage Product Master Data).'
+  record_fix_template: 'TO {LTAK.TANUM} item {LTAP.TAPOS}: MEINS is {actual_value}. Set to the material''s base unit from
+    MM03 (ECC) or Fiori app F0842 (S/4HANA).'
+- id: EWTO010
+  field: LTAP.VLTYP
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: "Source storage type is mandatory \u2014 determines where goods are picked from"
+  why_it_matters: VLTYP (source storage type) tells the WM system where goods are being picked from. Without it, the transfer
+    order cannot identify the source area, making picking impossible and leaving stock in an undefined state.
+  rule_authority: sap_hard_constraint
+  sap_impact: Source location undefined. Picking cannot proceed. Stock remains unallocated.
+  fix_map:
+    __blank__: 'In ECC: assign source storage type via LT0A or LT02. In S/4HANA embedded EWM: the source is assigned during
+      warehouse task creation via /SCWM/PRDO.'
+  record_fix_template: 'TO {LTAK.TANUM} item {LTAP.TAPOS}: VLTYP is {actual_value}. Assign the correct source storage type
+    via LT0A (ECC) or /SCWM/PRDO (S/4HANA).'
+- id: EWTO011
+  field: LTAP.VLPLA
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: "Source bin is mandatory \u2014 identifies the exact pick location"
+  why_it_matters: VLPLA is the source storage bin where goods are physically picked from. Without it, the warehouse operator
+    does not know which bin to go to, and confirmation cannot deduct stock from the correct source bin.
+  rule_authority: sap_hard_constraint
+  sap_impact: Pick location unknown. Stock not deducted from source bin on confirmation. Physical and system stock permanently
+    diverge.
+  fix_map:
+    __blank__: 'In ECC: assign source bin via LT0A or LT02. In S/4HANA embedded EWM: assign via /SCWM/PRDO or the picking
+      strategy configuration.'
+  record_fix_template: 'TO {LTAK.TANUM} item {LTAP.TAPOS}: VLPLA is {actual_value}. Assign the correct source bin via LT0A
+    (ECC) or /SCWM/PRDO (S/4HANA).'
+- id: EWTO012
+  field: LTAP.NLTYP
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: "Destination storage type is mandatory \u2014 determines where goods are moved to"
+  why_it_matters: NLTYP (destination storage type) tells the WM system where goods are being moved to. Without it, the transfer
+    order cannot determine the destination area and will fail to confirm, leaving stock in an undefined state.
+  rule_authority: sap_hard_constraint
+  sap_impact: "Destination area unknown. Confirmation fails. Stock remains in source bin with an open, unconfirmable TO \u2014\
+    \ creating a permanent discrepancy."
+  fix_map:
+    __blank__: 'In ECC: assign destination type via LT0A or LT02. In S/4HANA embedded EWM: assign via /SCWM/PRDO or the putaway
+      strategy.'
+  record_fix_template: 'TO {LTAK.TANUM} item {LTAP.TAPOS}: NLTYP is {actual_value}. Assign the correct destination storage
+    type via LT0A (ECC) or /SCWM/PRDO (S/4HANA).'
+- id: EWTO013
+  field: LTAP.NLPLA
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: "Destination bin is mandatory \u2014 identifies exact target location"
+  why_it_matters: NLPLA is the destination storage bin. Without it, the transfer order knows the destination type but not
+    the specific bin. Confirmation fails because the system cannot update bin-level stock quantities at the destination.
+  rule_authority: sap_hard_constraint
+  sap_impact: Destination bin unknown. Stock not posted to destination on confirmation. Physical stock and system stock diverge
+    permanently.
+  fix_map:
+    __blank__: 'In ECC: assign destination bin via LT0A or LT02. In S/4HANA embedded EWM: assign via /SCWM/PRDO or the putaway
+      strategy.'
+  record_fix_template: 'TO {LTAK.TANUM} item {LTAP.TAPOS}: NLPLA is {actual_value}. Assign the correct destination bin via
+    LT0A (ECC) or /SCWM/PRDO (S/4HANA).'
+- id: EWTO014
+  field: LTAP.CHARG
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Batch number required on TO for batch-managed materials
+  why_it_matters: For batch-managed materials, the batch number (CHARG) must be specified on the transfer order item. Without
+    it, the system cannot determine which specific batch is being moved, breaking batch traceability and FEFO picking compliance.
+  rule_authority: best_practice
+  sap_impact: Batch traceability broken for this movement. FEFO compliance not enforced. Recall investigation cannot trace
+    batch through warehouse movements.
+  fix_map:
+    __blank__: 'In ECC: assign batch on TO item via LT0A or during TO creation in LT01. In S/4HANA embedded EWM: assign via
+      /SCWM/PRDO.'
+  record_fix_template: 'TO {LTAK.TANUM} item {LTAP.TAPOS}: CHARG is {actual_value}. Assign the correct batch number via LT0A
+    (ECC) or /SCWM/PRDO (S/4HANA).'
+- id: EWTO015
+  field: LTAK.STATUS
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Transfer order status is required for WM monitor and process tracking
+  why_it_matters: STATUS on the transfer order header tracks the processing state of the TO. Without it, the WM monitor cannot
+    display the correct state, aged TO reports are inaccurate, and warehouse supervisors cannot identify bottlenecks or stuck
+    movements.
+  rule_authority: best_practice
+  sap_impact: WM monitor displays are incomplete. Aged TO reporting unreliable. Process bottleneck identification not possible
+    for this TO.
+  fix_map:
+    __blank__: 'In ECC: status is system-maintained during TO lifecycle (LT01 creation, LT12 confirmation). A blank value
+      indicates data corruption. In S/4HANA: check via /SCWM/MON.'
+  record_fix_template: "TO {LTAK.TANUM}: STATUS is {actual_value}. This is system-maintained \u2014 investigate the data source\
+    \ for corruption."
+- id: EWTO016
+  field: LTAK.LGTYP
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Storage type (TO header) is missing
+  why_it_matters: Storage type (TO header) (LTAK.LGTYP) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Storage type (TO header) may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via LT01/LT02. In S/4HANA: Use embedded EWM or /SCWM/ transactions.'
+  record_fix_template: 'Record is missing LTAK.LGTYP. In ECC: Set via LT01/LT02. In S/4HANA: Use embedded EWM or /SCWM/ transactions.'
+- id: EWTO017
+  field: LTAP.TAPOS
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: TO item number is missing
+  why_it_matters: TO item number (LTAP.TAPOS) is not maintained. This field supports downstream processes and reporting accuracy.
+    Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing TO item number may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via LT01/LT02. In S/4HANA: Use embedded EWM or /SCWM/ transactions.'
+  record_fix_template: 'Record is missing LTAP.TAPOS. In ECC: Set via LT01/LT02. In S/4HANA: Use embedded EWM or /SCWM/ transactions.'
+
+- id: EWMS_TO018
+  field: TANUM
+  check_class: cross_field_check
+  fields: ['TANUM']
+  condition: "~`TANUM`.duplicated(keep=False)"
+  severity: critical
+  dimension: uniqueness
+  message: Duplicate transfer order numbers detected — each TO must be unique
+  why_it_matters: Duplicate TO numbers indicate a data extract issue. Each warehouse task (TANUM) must be unique. Duplicates cause confirmation posting errors and stock movement ambiguity.
+  rule_authority: sap_hard_constraint
+  sap_impact: TO confirmation posts to wrong quant. Stock movements are doubled. Warehouse productivity metrics are inflated.
+  fix_map:
+    __blank__: "De-duplicate the data extract at TO header level. If genuine duplicates exist in eWMS, escalate to Basis — this indicates a number range collision."
+
+- id: EWMS_TO019
+  field: ERDAT_TO
+  check_class: freshness_check
+  max_age_hours: 720
+  severity: high
+  dimension: timeliness
+  message: Transfer order older than 30 days and not confirmed — stuck TOs block bin capacity and distort available stock
+  rule_authority: best_practice

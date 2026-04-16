@@ -1,0 +1,323 @@
+module: grc_compliance
+target_state: ECC_AND_S4HANA
+rules:
+
+  - id: GRC001
+    field: GRACUSERROLE.USERID
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "User ID is mandatory — identifies the user for role assignment and access control"
+    why_it_matters: >-
+      USERID is the primary identifier linking a user to their role assignments in SAP GRC
+      Access Control. Without it, the role assignment has no owner — the system cannot
+      determine who has this access, making access reviews, SoD analysis, and audit
+      reporting impossible for this record.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Role assignment has no user. SoD (Segregation of Duties) analysis cannot include
+      this assignment. Access review and certification incomplete. Audit finding.
+    fix_map:
+      __blank__: >-
+        In ECC: identify the correct user from the access request or HR records and
+        update in GRC Access Control (NWBC > Access Management). In S/4HANA: use
+        Fiori app F3873 (Manage Access Requests) or NWBC.
+    record_fix_template: >-
+      Role assignment for {GRACUSERROLE.ROLENAME}: USERID is {actual_value}. Assign
+      the correct user via GRC Access Control.
+
+  - id: GRC002
+    field: GRACUSERROLE.ROLENAME
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Role name is mandatory — identifies what access is granted"
+    why_it_matters: >-
+      ROLENAME identifies which SAP role is assigned to the user. Without it, the system
+      knows a user has an assignment but not what access it grants. SoD analysis cannot
+      evaluate the risk, and the access review process cannot determine whether the
+      assignment is appropriate.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Access level unknown. SoD analysis incomplete — potential risks undetected.
+      Access certification cannot evaluate this assignment.
+    fix_map:
+      __blank__: >-
+        In ECC: identify the role from the access request via NWBC > Access Management.
+        In S/4HANA: use Fiori app F3873 or SU01 to verify user role assignments.
+    record_fix_template: >-
+      User {GRACUSERROLE.USERID}: ROLENAME is {actual_value}. Assign the correct
+      role via GRC Access Control.
+
+  - id: GRC003
+    field: GRACUSERROLE.VALID_FROM
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "Valid-from date required for access lifecycle management"
+    why_it_matters: >-
+      VALID_FROM defines when the role assignment becomes effective. Without it, the system
+      cannot determine if the access is currently active or scheduled for the future. Access
+      reviews cannot assess the temporal scope of the assignment, and time-based SoD analysis
+      is incomplete.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Access lifecycle undefined. Cannot determine when access was granted. Time-based
+      access reviews incomplete. Audit trail has temporal gap.
+    fix_map:
+      __blank__: >-
+        In ECC: set valid-from date via SU01 > Roles tab or GRC Access Control. In
+        S/4HANA: use Fiori app F1603 (Maintain Business Users) or SU01.
+    record_fix_template: >-
+      User {GRACUSERROLE.USERID} / Role {GRACUSERROLE.ROLENAME}: VALID_FROM is
+      {actual_value}. Set the correct start date via SU01 or GRC Access Control.
+
+  - id: GRC004
+    field: GRACUSERROLE.VALID_TO
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "Valid-to date required — missing means permanent access with no expiry"
+    why_it_matters: >-
+      Missing VALID_TO means the role assignment has no expiry date — effectively granting
+      permanent access. This is a governance risk and creates audit findings. Best practice
+      requires all role assignments to have an expiry date aligned with the access review
+      cycle (typically 6-12 months).
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Role assignment never expires. User retains access indefinitely even after role
+      change or departure. Audit finding for unlimited access. Regulatory non-compliance
+      for SOX, GDPR access minimisation.
+    fix_map:
+      __blank__: >-
+        In ECC: set expiry date via SU01 > Roles tab or GRC Access Control. In S/4HANA:
+        use Fiori app F1603 or SU01.
+    record_fix_template: >-
+      User {GRACUSERROLE.USERID} / Role {GRACUSERROLE.ROLENAME}: VALID_TO is
+      {actual_value}. Set an expiry date per access policy via SU01 or GRC.
+
+  - id: GRC005
+    field: GRACUSERROLE.VALID_FROM
+    fields: ["GRACUSERROLE.VALID_FROM", "GRACUSERROLE.VALID_TO"]
+    check_class: cross_field_check
+    condition: "`GRACUSERROLE.VALID_FROM` > `GRACUSERROLE.VALID_TO`"
+    severity: critical
+    dimension: consistency
+    message: "Valid-from date must be before valid-to date — inverted dates mean access is never active"
+    why_it_matters: >-
+      If VALID_FROM is after VALID_TO, the role assignment has an impossible validity
+      period — it was never active. This either means the assignment was incorrectly
+      configured (a data entry error) or it represents a deprovisioning that was done
+      incorrectly. Either way, SoD analysis may incorrectly include or exclude this
+      assignment.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Role assignment validity period is logically impossible. SoD analysis may produce
+      incorrect results. Access review cannot determine if access was ever active.
+    fix_map:
+      __blank__: >-
+        In ECC: correct the dates via SU01 > Roles tab or GRC Access Control. In
+        S/4HANA: use Fiori app F1603 or SU01.
+    record_fix_template: >-
+      User {GRACUSERROLE.USERID} / Role {GRACUSERROLE.ROLENAME}: VALID_FROM
+      ({actual_value}) is after VALID_TO. Correct the dates via SU01 or GRC.
+
+  - id: GRC006
+    field: GRACRISK.RISK_ID
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Risk ID is the primary key — mandatory for all GRC risk records"
+    why_it_matters: >-
+      RISK_ID uniquely identifies a risk in the GRC risk management framework. Without it,
+      the risk cannot be tracked, mitigated, or reported on. Risk mitigation controls
+      cannot be linked, and the risk register has an unidentifiable entry.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Risk record has no identity. Cannot be linked to controls or mitigation actions.
+      GRC risk register is incomplete.
+    fix_map:
+      __blank__: >-
+        In ECC: risk IDs are assigned during risk creation in GRC Risk Management
+        (NWBC > Risk Management). In S/4HANA: use Fiori GRC apps. A blank RISK_ID
+        indicates data corruption.
+    record_fix_template: >-
+      Risk record: RISK_ID is {actual_value}. This is the primary key — investigate
+      the data source for corruption.
+
+  - id: GRC007
+    field: GRACRISK.RISK_LEVEL
+    check_class: domain_value_check
+    severity: high
+    dimension: accuracy
+    message: "Risk level must be a valid GRC risk classification"
+    allowed_values: ["critical", "high", "medium", "low"]
+    valid_values_with_labels:
+      critical: "Critical — immediate action required, significant financial/compliance exposure"
+      high: "High — requires urgent remediation within defined SLA"
+      medium: "Medium — should be addressed in next review cycle"
+      low: "Low — acceptable risk, monitor in regular review"
+    why_it_matters: >-
+      The risk level classification drives the urgency and escalation of risk mitigation.
+      An invalid value means the risk cannot be properly prioritised — critical risks may
+      be overlooked while low risks consume remediation resources.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Risk prioritisation fails. Critical risks may not be escalated. Mitigation SLAs
+      not applied correctly. GRC dashboards and reports are unreliable.
+    fix_map:
+      __other__: >-
+        Risk level '{invalid_value}' is not a valid classification. Valid values are:
+        critical, high, medium, low. Review the risk assessment in GRC Risk Management
+        (NWBC or Fiori GRC apps).
+    record_fix_template: >-
+      Risk {GRACRISK.RISK_ID}: RISK_LEVEL is '{actual_value}'. Set to a valid level
+      via GRC Risk Management.
+
+  - id: GRC008
+    field: GRACRISK.RISK_DESC
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: "Risk description is required for meaningful risk assessment and communication"
+    why_it_matters: >-
+      RISK_DESC provides the textual description of the risk. Without it, the risk register
+      contains an entry that can only be identified by its ID — reviewers cannot understand
+      what the risk is about without referring to external documentation, making risk
+      reviews inefficient and error-prone.
+    rule_authority: best_practice
+    sap_impact: >-
+      Risk review requires external documentation. Risk communication is incomplete.
+      GRC reports list risks without descriptions.
+    fix_map:
+      __blank__: >-
+        In ECC/S/4HANA: enter risk description via GRC Risk Management (NWBC > Risk
+        Management or Fiori GRC apps).
+    record_fix_template: >-
+      Risk {GRACRISK.RISK_ID}: RISK_DESC is {actual_value}. Enter a meaningful
+      description via GRC Risk Management.
+
+  - id: GRC009
+    field: GRACRISK.CONTROL_STATUS
+    check_class: domain_value_check
+    severity: high
+    dimension: accuracy
+    message: "Control status must indicate whether mitigating controls are in place"
+    allowed_values: ["active", "inactive", "pending", "expired"]
+    valid_values_with_labels:
+      active: "Active — mitigating control is in place and effective"
+      inactive: "Inactive — control exists but is not currently operating"
+      pending: "Pending — control is designed but not yet implemented"
+      expired: "Expired — control has passed its review date and needs reassessment"
+    why_it_matters: >-
+      Control status indicates whether a mitigating control exists and is effective for a
+      given risk. An invalid value means the GRC system cannot determine the residual risk
+      level — it may show risks as mitigated when controls are not in place, creating a
+      false sense of security.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Residual risk calculation incorrect. Mitigated risks shown as unmitigated or vice
+      versa. GRC dashboards misleading. Audit findings for control status accuracy.
+    fix_map:
+      __other__: >-
+        Control status '{invalid_value}' is not valid. Valid values are: active, inactive,
+        pending, expired. Review the control assessment in GRC Risk Management.
+    record_fix_template: >-
+      Risk {GRACRISK.RISK_ID}: CONTROL_STATUS is '{actual_value}'. Set to a valid status
+      via GRC Risk Management.
+
+  - id: GRC010
+    field: GRACRISK.CONTROL_ID
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "Control ID links the risk to its mitigating control — required when status is active"
+    why_it_matters: >-
+      CONTROL_ID links the risk to a specific mitigating control. When the control status
+      is active, a missing control ID means the risk claims to be mitigated but has no
+      traceable control. This is an audit finding — the control cannot be tested or
+      verified without an identifier.
+    rule_authority: best_practice
+    sap_impact: >-
+      Risk claims mitigation but control is untraceable. Control testing cannot proceed.
+      Audit finding for unlinked mitigating controls.
+    fix_map:
+      __blank__: >-
+        In ECC/S/4HANA: link the mitigating control via GRC Risk Management. If no
+        control exists, set CONTROL_STATUS to 'inactive' or 'pending'.
+    record_fix_template: >-
+      Risk {GRACRISK.RISK_ID}: CONTROL_ID is {actual_value}. Link the mitigating
+      control via GRC Risk Management or update the control status.
+
+  - id: GRC011
+    field: GRACUSERROLE.ROLENAME
+    check_class: regex_check
+    pattern: "^[A-Z][A-Z0-9_:]{2,49}$"
+    severity: medium
+    dimension: validity
+    message: "Role name should follow SAP naming convention (uppercase, starts with letter)"
+    why_it_matters: >-
+      SAP role names follow a convention: uppercase letters, digits, underscores, and
+      colons, starting with a letter and between 3 and 50 characters. Non-conforming
+      names indicate custom or incorrectly created roles that may not follow the
+      organisation's role naming standard, complicating SoD analysis and access reviews.
+    rule_authority: best_practice
+    sap_impact: >-
+      Role may not match naming standard. SoD ruleset may not recognise the role.
+      Access review reports may misclassify the role.
+    fix_map:
+      __other__: >-
+        Role name '{invalid_value}' does not follow SAP naming convention. In ECC:
+        rename via PFCG. In S/4HANA: use Fiori app F1603 or PFCG. Ensure the name
+        follows the organisation's role naming standard.
+    record_fix_template: >-
+      User {GRACUSERROLE.USERID}: ROLENAME '{actual_value}' does not follow naming
+      convention. Rename via PFCG (ECC) or Fiori app F1603 (S/4HANA).
+
+  - id: GRC012
+    field: GRACUSERROLE.USERID
+    check_class: regex_check
+    pattern: "^[A-Z0-9_\\-]{1,12}$"
+    severity: medium
+    dimension: validity
+    message: "User ID must follow SAP user naming convention (max 12 chars, alphanumeric)"
+    why_it_matters: >-
+      SAP user IDs are limited to 12 characters and should be alphanumeric (with
+      underscores and hyphens). Non-conforming user IDs indicate data entry errors
+      or integration issues that will prevent the user from being found in SU01 and
+      may cause SoD analysis to miss this user entirely.
+    rule_authority: best_practice
+    sap_impact: >-
+      User ID lookup may fail in SU01. SoD analysis may miss this user. Access
+      review reporting may exclude non-standard user IDs.
+    fix_map:
+      __other__: >-
+        User ID '{invalid_value}' does not match the expected format. In ECC: verify
+        via SU01. In S/4HANA: check via Fiori app F1603. If the user ID is from an
+        external system, update the GRC mapping.
+    record_fix_template: >-
+      Role assignment: USERID '{actual_value}' has non-standard format. Verify via
+      SU01 (ECC) or Fiori app F1603 (S/4HANA).
+
+  - id: GRC013
+    field: USERID_GRC
+    check_class: cross_field_check
+    fields: ['USERID_GRC']
+    condition: "~`USERID_GRC`.duplicated(keep=False)"
+    severity: high
+    dimension: uniqueness
+    message: Duplicate GRC user-role assignments detected — indicates access control inconsistency
+    why_it_matters: Duplicate role assignments cause SoD analysis to produce false positives or miss genuine conflicts. Each user-role combination must be unique.
+    rule_authority: best_practice
+    sap_impact: SoD matrix produces incorrect results. Audit reports flag phantom conflicts. Access risk quantification is unreliable.
+    fix_map:
+      __blank__: "Review duplicate role assignments in GRC Access Control. Remove the duplicate assignment. Re-run SoD analysis for affected users."
+
+  - id: GRC014
+    field: VALID_FROM_GRC
+    check_class: freshness_check
+    max_age_hours: 17520
+    severity: medium
+    dimension: timeliness
+    message: GRC role assignment older than 2 years — stale access assignments should be recertified
+    rule_authority: best_practice

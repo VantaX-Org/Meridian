@@ -1,0 +1,485 @@
+module: production_planning
+target_state: ECC_AND_S4HANA
+rules:
+- id: PP001
+  field: PLKOD.PLNNR
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: "Routing number missing \u2014 routing cannot be uniquely identified"
+  why_it_matters: PLNNR (routing number) is the unique identifier for a routing (sequence of manufacturing operations). Without
+    it, the routing cannot be assigned to a production order and operations/scheduling cannot be determined. The production
+    process for this material is undefined.
+  rule_authority: sap_hard_constraint
+  sap_impact: Routing cannot be used in production order creation (CO01). Operations and scheduling data are missing. Capacity
+    requirements are not generated.
+  fix_map:
+    __blank__: 'Routing number is empty. In ECC: create or assign a valid routing via CA01/CA02. In S/4HANA: use transaction
+      CA01 or the Manage Routing app. The routing must have at least one operation with a work centre assignment.'
+  record_fix_template: 'Routing {PLKOD.PLNNR}: PLNNR is {actual_value}. Create or assign the routing via CA01/CA02.'
+- id: PP002
+  field: PLKOD.WERKS
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: "Routing plant missing \u2014 routing cannot be assigned to a manufacturing location"
+  why_it_matters: WERKS (plant) on the routing determines which manufacturing location uses this routing. Without it, the
+    routing cannot be selected during production order creation for any plant and operations have no organisational context.
+  rule_authority: sap_hard_constraint
+  sap_impact: Routing cannot be selected for production orders at any plant. Operations and scheduling are not available for
+    production execution.
+  fix_map:
+    __blank__: 'Routing plant is empty. In ECC: assign the correct manufacturing plant via CA02 > Header > Plant. In S/4HANA:
+      use transaction CA02 or the Manage Routing app.'
+  record_fix_template: 'Routing {PLKOD.PLNNR}: WERKS is {actual_value}. Assign the plant via CA02 > Header.'
+- id: PP003
+  field: PLKOD.KTEXT
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: "Routing description missing \u2014 routing cannot be identified in selection lists"
+  why_it_matters: KTEXT (routing description) is the text that identifies the routing in selection lists and reports. Without
+    it, production planners cannot identify which routing to select when multiple alternatives exist, and CA06 routing lists
+    show blank descriptions.
+  rule_authority: best_practice
+  sap_impact: CA06 routing list shows blank description. Production planners cannot identify the correct routing. Selection
+    errors during production order creation increase.
+  fix_map:
+    __blank__: 'Routing description is empty. In ECC: enter a meaningful description via CA02 > Header > Description. In S/4HANA:
+      use transaction CA02. Include the product and process (e.g., "Assembly routing for pump P-100").'
+  record_fix_template: 'Routing {PLKOD.PLNNR}: KTEXT is {actual_value}. Enter a description via CA02 > Header.'
+- id: PP004
+  field: PLKOD.STATU
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: "Routing status missing \u2014 routing may not be available for production"
+  why_it_matters: STATU (routing status) controls whether the routing can be used in production orders. Without a status,
+    the routing's availability is undefined and it may not be selectable during production order creation (CO01).
+  rule_authority: sap_hard_constraint
+  sap_impact: Routing availability is undefined. CO01 may not select this routing. Production scheduling cannot use it.
+  fix_map:
+    __blank__: 'Routing status is empty. In ECC: set via CA02 > Header > Status. In S/4HANA: use transaction CA02. Set to
+      4 (released) for production use.'
+  record_fix_template: 'Routing {PLKOD.PLNNR}: STATU is {actual_value}. Set the routing status via CA02.'
+- id: PP005
+  field: PLKOD.STATU
+  check_class: domain_value_check
+  allowed_values:
+  - '1'
+  - '2'
+  - '3'
+  - '4'
+  severity: high
+  dimension: validity
+  message: Routing status must be a valid status code (1-4)
+  why_it_matters: STATU must be one of the defined routing status codes. Invalid values prevent the routing from being properly
+    managed through its lifecycle and may cause errors during production order creation. Only status 4 (released) allows the
+    routing to be used in production.
+  rule_authority: sap_hard_constraint
+  sap_impact: Routing lifecycle management is broken. Production order creation may fail or select the wrong routing version.
+  valid_values_with_labels:
+    '1': "Created \u2014 routing is in initial creation"
+    '2': "To Be Released \u2014 routing is pending approval"
+    '3': "Locked \u2014 routing is temporarily blocked"
+    '4': "Released \u2014 routing is available for production"
+  fix_map:
+    __other__: 'Routing status ''{invalid_value}'' is not a valid code. Valid statuses: 1 (created), 2 (to be released), 3
+      (locked), 4 (released). In ECC: correct via CA02 > Header > Status. In S/4HANA: use transaction CA02.'
+  record_fix_template: 'Routing {PLKOD.PLNNR}: STATU is ''{actual_value}''. Set to a valid status code via CA02.'
+- id: PP006
+  field: PLKOD.VERWE
+  check_class: domain_value_check
+  allowed_values:
+  - '1'
+  - '2'
+  - '9'
+  severity: medium
+  dimension: validity
+  message: Routing usage must be a valid usage code
+  why_it_matters: "VERWE (routing usage) determines where the routing can be used \u2014 production, planning, or universal.\
+    \ Invalid values prevent the routing from being selected in the correct context and may cause errors in production order\
+    \ creation or costing runs."
+  rule_authority: sap_hard_constraint
+  sap_impact: Routing cannot be selected in the expected context. Production order creation or costing may fail to find the
+    routing.
+  valid_values_with_labels:
+    '1': "Production \u2014 routing used in production orders"
+    '2': "Planning \u2014 routing used for product costing only"
+    '9': "Universal \u2014 routing used for both production and planning"
+  fix_map:
+    __other__: 'Routing usage ''{invalid_value}'' is not a valid code. Valid usages: 1 (production), 2 (planning), 9 (universal).
+      In ECC: correct via CA02 > Header > Usage. In S/4HANA: use transaction CA02.'
+  record_fix_template: 'Routing {PLKOD.PLNNR}: VERWE is ''{actual_value}''. Set to a valid usage code via CA02.'
+- id: PP007
+  field: STKO.STLNR
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: "BOM number missing \u2014 Bill of Materials cannot be uniquely identified"
+  why_it_matters: STLNR is the BOM number and primary key for the Bill of Materials. Without it, the BOM cannot be referenced
+    in production orders, MRP cannot explode dependent requirements, and product costing has no material cost basis.
+  rule_authority: sap_hard_constraint
+  sap_impact: BOM cannot be used in production. MRP cannot generate dependent requirements. Product costing has no material
+    component list.
+  fix_map:
+    __blank__: 'BOM number is empty. In ECC: create a valid BOM via CS01. In S/4HANA: use transaction CS01 or the Manage Bill
+      of Materials app. The BOM must have at least one component item.'
+  record_fix_template: 'BOM {STKO.STLNR}: STLNR is {actual_value}. Create a valid BOM via CS01.'
+- id: PP008
+  field: STKO.STLAL
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: "BOM alternative number missing \u2014 BOM cannot be uniquely identified"
+  why_it_matters: STLAL (BOM alternative) identifies which version of the Bill of Materials is used when multiple alternatives
+    exist. Missing means the BOM selection logic cannot pick the correct alternative for production orders, potentially using
+    the wrong component list.
+  rule_authority: sap_hard_constraint
+  sap_impact: BOM selection in production order creation (CO01) may pick the wrong alternative or fail entirely. Material
+    reservations may be incorrect.
+  fix_map:
+    __blank__: 'BOM alternative is empty. In ECC: if only one BOM exists, set to 1. If multiple alternatives exist, set the
+      correct number via CS02. In S/4HANA: use transaction CS02 or the Manage Bill of Materials app.'
+  record_fix_template: 'BOM {STKO.STLNR}: STLAL is {actual_value}. Set the BOM alternative number via CS02.'
+- id: PP009
+  field: STKO.WERKS
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: "BOM plant missing \u2014 BOM cannot be assigned to a manufacturing location"
+  why_it_matters: WERKS (plant) on the BOM header determines which manufacturing location uses this BOM. Without it, the BOM
+    cannot be selected during production order creation for any plant and MRP cannot explode it for dependent requirements.
+  rule_authority: sap_hard_constraint
+  sap_impact: BOM cannot be selected during production order creation (CO01) for any plant. MRP cannot explode this BOM for
+    dependent requirements.
+  fix_map:
+    __blank__: 'BOM plant is empty. In ECC: assign the correct manufacturing plant via CS02 > Header > Plant. In S/4HANA:
+      use transaction CS02 or the Manage Bill of Materials app.'
+  record_fix_template: 'BOM {STKO.STLNR}: WERKS is {actual_value}. Assign the plant via CS02.'
+- id: PP010
+  field: STKO.STLAN
+  check_class: domain_value_check
+  allowed_values:
+  - '1'
+  - '2'
+  - '3'
+  - '5'
+  severity: high
+  dimension: validity
+  message: BOM usage must be a valid usage code
+  why_it_matters: 'STLAN (BOM usage) determines the context in which the BOM can be used: production, engineering, plant maintenance,
+    or sales. Invalid values prevent the BOM from being found in the correct context and may cause MRP and production order
+    creation to fail.'
+  rule_authority: sap_hard_constraint
+  sap_impact: BOM cannot be found in the expected context. Production order creation and MRP explosion may fail.
+  valid_values_with_labels:
+    '1': "Production \u2014 BOM used in manufacturing"
+    '2': "Engineering \u2014 BOM used for design/engineering"
+    '3': "Universal \u2014 BOM used in all contexts"
+    '5': "Sales \u2014 BOM used for sales order processing"
+  fix_map:
+    __other__: 'BOM usage ''{invalid_value}'' is not a valid code. Valid usages: 1 (production), 2 (engineering), 3 (universal),
+      5 (sales). In ECC: correct via CS02 > Header > Usage. In S/4HANA: use transaction CS02.'
+  record_fix_template: 'BOM {STKO.STLNR}: STLAN is ''{actual_value}''. Set to a valid usage code via CS02.'
+- id: PP011
+  field: STKO.STLST
+  check_class: domain_value_check
+  allowed_values:
+  - '01'
+  - '02'
+  severity: medium
+  dimension: validity
+  message: BOM status must be a valid status code
+  why_it_matters: STLST (BOM status) controls whether the BOM is active and available for use. Invalid values prevent proper
+    BOM lifecycle management and may cause errors during production order creation or MRP processing.
+  rule_authority: sap_hard_constraint
+  sap_impact: BOM lifecycle management is broken. Production order creation may fail if the BOM status is invalid.
+  valid_values_with_labels:
+    '01': "Active \u2014 BOM is released for use"
+    '02': "Inactive \u2014 BOM is not available for production"
+  fix_map:
+    __other__: 'BOM status ''{invalid_value}'' is not a valid code. Valid statuses: 01 (active), 02 (inactive). In ECC: correct
+      via CS02 > Header > Status. In S/4HANA: use transaction CS02.'
+  record_fix_template: 'BOM {STKO.STLNR}: STLST is ''{actual_value}''. Set to a valid status code via CS02.'
+- id: PP012
+  field: STKO.BMENG
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: "BOM base quantity missing \u2014 component quantities cannot be correctly calculated"
+  why_it_matters: BMENG (base quantity) is the reference quantity for the BOM. All component quantities are defined relative
+    to this base quantity. Without it, component quantities cannot be scaled for the production order quantity, leading to
+    incorrect material reservations and consumption.
+  rule_authority: sap_hard_constraint
+  sap_impact: Component quantities cannot be scaled. Material reservations are incorrect. MRP dependent requirements are wrong.
+    Production execution uses incorrect material quantities.
+  fix_map:
+    __blank__: 'BOM base quantity is empty. In ECC: set the base quantity via CS02 > Header > Base Quantity. In S/4HANA: use
+      transaction CS02. This is typically 1 unit of the parent material.'
+  record_fix_template: 'BOM {STKO.STLNR}: BMENG is {actual_value}. Set the base quantity via CS02.'
+- id: PP013
+  field: STPO.IDNRK
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: "BOM component material is mandatory \u2014 missing means no material reservations"
+  why_it_matters: "IDNRK is the component material number on a BOM line. Without it, the production order has no material\
+    \ reservation for this line \u2014 the component will not be staged, not consumed, and not backflushed. The finished product\
+    \ will be produced without this component."
+  rule_authority: sap_hard_constraint
+  sap_impact: Production order creates no reservation for this component. Goods issue (MIGO) has nothing to post. MRP does
+    not generate dependent requirements. The finished product is produced with missing components.
+  fix_map:
+    __blank__: 'Component material is empty. In ECC: assign the correct material number via CS02 > Item > Component field.
+      In S/4HANA: use transaction CS02. The material must exist in the plant''s material master.'
+  record_fix_template: 'BOM {STKO.STLNR} component: IDNRK is {actual_value}. Assign the component material via CS02.'
+- id: PP014
+  field: STPO.MENGE
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: "BOM component quantity is mandatory \u2014 zero means no material reserved for production"
+  why_it_matters: MENGE on a BOM line defines how much of the component is consumed per parent base quantity. Zero or blank
+    means no material is reserved for production, causing stock shortages during execution and incorrect product costing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Material reservation quantity is zero. Goods issue (MIGO) posts zero. MRP generates no dependent requirements
+    for this component. Production execution has no material to consume.
+  fix_map:
+    __blank__: 'Component quantity is zero or blank. In ECC: set the correct quantity per base unit via CS02 > Item > Quantity.
+      In S/4HANA: use transaction CS02. Verify the unit of measure is correct.'
+  record_fix_template: 'BOM {STKO.STLNR} component {STPO.IDNRK}: MENGE is {actual_value}. Set the component quantity via CS02.'
+- id: PP015
+  field: STPO.MEINS
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: "BOM component unit of measure missing \u2014 quantity has no unit context"
+  why_it_matters: MEINS (component unit of measure) defines the unit for the BOM component quantity. Without it, quantity
+    conversion between the BOM unit and the material's base unit cannot be performed, leading to incorrect material reservations
+    and consumption postings.
+  rule_authority: best_practice
+  sap_impact: Quantity conversion fails. Material reservations may have incorrect quantities. Goods issue postings may be
+    wrong.
+  fix_map:
+    __blank__: 'Component unit of measure is empty. In ECC: set via CS02 > Item > Unit. In S/4HANA: use transaction CS02.
+      This should match the material master base unit or have a valid conversion.'
+  record_fix_template: 'BOM {STKO.STLNR} component {STPO.IDNRK}: MEINS is {actual_value}. Set the unit of measure via CS02.'
+- id: PP016
+  field: STPO.POSTP
+  check_class: domain_value_check
+  allowed_values:
+  - L
+  - N
+  - R
+  - T
+  - K
+  - D
+  severity: high
+  dimension: validity
+  message: BOM item category must be a valid category code
+  why_it_matters: "POSTP (BOM item category) determines how the component is handled during production \u2014 as a stock item,\
+    \ non-stock item, variable-size item, text item, co-product, or document. Invalid values cause BOM explosion errors and\
+    \ incorrect material reservation behaviour."
+  rule_authority: sap_hard_constraint
+  sap_impact: BOM explosion may fail. Material reservation behaviour is undefined. Production order component list may be
+    incorrect.
+  valid_values_with_labels:
+    L: "Stock Item \u2014 standard material from inventory"
+    N: "Non-Stock Item \u2014 procured directly, not from inventory"
+    R: "Variable-Size Item \u2014 quantity depends on order"
+    T: "Text Item \u2014 information only, no material"
+    K: "Co-Product \u2014 joint product from production"
+    D: "Document Item \u2014 linked document reference"
+  fix_map:
+    __other__: 'BOM item category ''{invalid_value}'' is not a valid code. Valid categories: L (stock), N (non-stock), R (variable-size),
+      T (text), K (co-product), D (document). In ECC: correct via CS02. In S/4HANA: use transaction CS02.'
+  record_fix_template: 'BOM {STKO.STLNR} component {STPO.IDNRK}: POSTP is ''{actual_value}''. Set to a valid item category
+    via CS02.'
+- id: PP017
+  field: CRHD.ARBPL
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: "Work centre number is mandatory \u2014 required for capacity planning and costing"
+  why_it_matters: ARBPL (work centre) identifies a production resource where operations are performed. Without it, routing
+    operations have no resource assignment, capacity planning (CM01) cannot schedule the operation, and production order costing
+    has no basis for activity costs.
+  rule_authority: sap_hard_constraint
+  sap_impact: Routing operations have no work centre. Capacity planning (CM01/CM25) cannot schedule. Production order costing
+    has no activity rates. Detailed scheduling is impossible.
+  fix_map:
+    __blank__: 'Work centre number is empty. In ECC: assign a valid work centre via CR02. In S/4HANA: use transaction CR02.
+      The work centre must exist in the plant and have capacity and costing data maintained.'
+  record_fix_template: 'Work centre {CRHD.ARBPL}: ARBPL is {actual_value}. Create or assign the work centre via CR01/CR02.'
+- id: PP018
+  field: CRHD.WERKS
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: "Work centre plant is mandatory \u2014 determines organisational assignment"
+  why_it_matters: WERKS (plant) on the work centre determines the organisational context for capacity planning and costing.
+    A work centre without a plant cannot be used in any routing or production order for any manufacturing location.
+  rule_authority: sap_hard_constraint
+  sap_impact: Work centre cannot be used in routings (CA01). Production orders referencing this work centre fail. Capacity
+    evaluation (CM01) cannot find the resource.
+  fix_map:
+    __blank__: 'Plant is empty for this work centre. In ECC: assign the correct manufacturing plant via CR02 > Basic Data
+      tab. In S/4HANA: use transaction CR02.'
+  record_fix_template: 'Work centre {CRHD.ARBPL}: WERKS is {actual_value}. Assign the plant via CR02 > Basic Data tab.'
+- id: PP019
+  field: PLKOD.LOESSION
+  fields:
+  - PLKOD.LOESSION
+  - PLKOD.LOSBS
+  check_class: cross_field_check
+  condition: '`PLKOD.LOESSION`.notna() and `PLKOD.LOSBS`.notna() and `PLKOD.LOESSION` > `PLKOD.LOSBS`'
+  severity: high
+  dimension: consistency
+  message: "Routing lot size from is greater than lot size to \u2014 invalid range"
+  why_it_matters: The lot size range (LOESSION to LOSBS) defines for which production order quantities this routing is valid.
+    When the lower bound exceeds the upper bound, the range is invalid and the routing can never be selected for any production
+    order quantity. This effectively disables the routing.
+  rule_authority: sap_hard_constraint
+  sap_impact: "Routing can never be selected for any production order \u2014 the lot size range is impossible to satisfy.\
+    \ Production order creation (CO01) will not find this routing."
+  fix_map:
+    __blank__: 'Lot size from (LOESSION) exceeds lot size to (LOSBS). In ECC: correct the lot size range via CA02 > Header
+      > Lot Size fields. In S/4HANA: use transaction CA02. Ensure the from value is less than or equal to the to value.'
+  record_fix_template: 'Routing {PLKOD.PLNNR}: LOESSION is ''{actual_value}'' which exceeds LOSBS. Correct the lot size range
+    via CA02.'
+- id: PP020
+  field: PLKOD.PLNAL
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: "Routing group counter missing \u2014 routing version cannot be identified"
+  why_it_matters: PLNAL (group counter) identifies a specific routing within a routing group. When multiple routings exist
+    for the same material, the group counter distinguishes between them. Without it, routing selection logic cannot identify
+    the correct version.
+  rule_authority: best_practice
+  sap_impact: Routing version cannot be uniquely identified within the group. Production order creation may select the wrong
+    routing. Costing runs may use incorrect operations.
+  fix_map:
+    __blank__: 'Routing group counter is empty. In ECC: set via CA02 > Header > Group Counter. In S/4HANA: use transaction
+      CA02. If only one routing exists in the group, set to 1.'
+  record_fix_template: 'Routing {PLKOD.PLNNR}: PLNAL is {actual_value}. Set the group counter via CA02.'
+- id: PP021
+  field: PLKOD.DAESSION
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Valid-from date (routing) is missing
+  why_it_matters: Valid-from date (routing) (PLKOD.DAESSION) is not maintained. This field supports downstream processes and
+    reporting accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Valid-from date (routing) may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via CA02 (routing) or CS02 (BOM). In S/4HANA: Use the corresponding Fiori apps.'
+  record_fix_template: 'Record is missing PLKOD.DAESSION. In ECC: Set via CA02 (routing) or CS02 (BOM). In S/4HANA: Use the
+    corresponding Fiori apps.'
+- id: PP022
+  field: STKO.DAESSION
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Valid-from date (BOM) is missing
+  why_it_matters: Valid-from date (BOM) (STKO.DAESSION) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Valid-from date (BOM) may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via CA02 (routing) or CS02 (BOM). In S/4HANA: Use the corresponding Fiori apps.'
+  record_fix_template: 'Record is missing STKO.DAESSION. In ECC: Set via CA02 (routing) or CS02 (BOM). In S/4HANA: Use the
+    corresponding Fiori apps.'
+- id: PP023
+  field: STPO.ALPGR
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Alternative item group is missing
+  why_it_matters: Alternative item group (STPO.ALPGR) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Alternative item group may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via CA02 (routing) or CS02 (BOM). In S/4HANA: Use the corresponding Fiori apps.'
+  record_fix_template: 'Record is missing STPO.ALPGR. In ECC: Set via CA02 (routing) or CS02 (BOM). In S/4HANA: Use the corresponding
+    Fiori apps.'
+- id: PP024
+  field: STPO.AUESSION
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Assembly scrap percentage is missing
+  why_it_matters: Assembly scrap percentage (STPO.AUESSION) is not maintained. This field supports downstream processes and
+    reporting accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Assembly scrap percentage may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via CA02 (routing) or CS02 (BOM). In S/4HANA: Use the corresponding Fiori apps.'
+  record_fix_template: 'Record is missing STPO.AUESSION. In ECC: Set via CA02 (routing) or CS02 (BOM). In S/4HANA: Use the
+    corresponding Fiori apps.'
+- id: PP025
+  field: STPO.POTX1
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Component description is missing
+  why_it_matters: Component description (STPO.POTX1) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Component description may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via CA02 (routing) or CS02 (BOM). In S/4HANA: Use the corresponding Fiori apps.'
+  record_fix_template: 'Record is missing STPO.POTX1. In ECC: Set via CA02 (routing) or CS02 (BOM). In S/4HANA: Use the corresponding
+    Fiori apps.'
+- id: PP026
+  field: STPO.SORTF
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Sort string is missing
+  why_it_matters: Sort string (STPO.SORTF) is not maintained. This field supports downstream processes and reporting accuracy.
+    Missing data may result in incomplete records or processing gaps.
+  rule_authority: best_practice
+  sap_impact: Missing Sort string may cause incomplete data in related transactions and reports.
+  fix_map:
+    __blank__: 'In ECC: Set via CA02 (routing) or CS02 (BOM). In S/4HANA: Use the corresponding Fiori apps.'
+  record_fix_template: 'Record is missing STPO.SORTF. In ECC: Set via CA02 (routing) or CS02 (BOM). In S/4HANA: Use the corresponding
+    Fiori apps.'
+- id: PP027
+  field: PLNNR
+  check_class: cross_field_check
+  fields: ['PLNNR']
+  condition: "~`PLNNR`.duplicated(keep=False)"
+  severity: critical
+  dimension: uniqueness
+  message: Duplicate routing numbers detected — each routing must be unique
+  why_it_matters: Duplicate routing numbers cause production orders to reference the wrong operations, leading to incorrect scheduling, costing, and confirmation postings.
+  rule_authority: sap_hard_constraint
+  sap_impact: Production orders link to wrong routing. Scheduled times and costs are incorrect. Confirmation postings go against wrong operations.
+  fix_map:
+    __blank__: "Investigate duplicate routing numbers. If caused by extract join, de-duplicate the extract. If genuine, archive the unused routing via CA02."
+
+- id: PP028
+  field: PLNNR
+  check_class: freshness_check
+  max_age_hours: 26280
+  severity: medium
+  dimension: timeliness
+  message: Routing not updated in 3+ years — review if operations, work centres, and standard values are still accurate
+  rule_authority: best_practice
+
+- id: PP029
+  field: MARC.DISPO
+  check_class: regex_check
+  pattern: "^[A-Z0-9]{3}$"
+  severity: medium
+  dimension: accuracy
+  message: MRP controller code format is invalid — must be exactly 3 alphanumeric characters
+  why_it_matters: Invalid MRP controller codes cause MRP run exceptions, unassigned planned orders, and materials falling through planning coverage.
+  rule_authority: best_practice
+  sap_impact: MRP cannot assign planned orders to a controller. Materials are excluded from MRP monitoring. Exception messages are generated every run.
+  fix_map:
+    __blank__: "Correct the MRP controller via MM02 > MRP 1 view. Ensure the controller code exists in OMD0."

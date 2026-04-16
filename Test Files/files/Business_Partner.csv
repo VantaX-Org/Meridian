@@ -1,0 +1,301 @@
+BUT000.PARTNER,BUT000.BU_TYPE,BUT000.NAME_ORG1,BUT000.TITLE,BUT000.PARTNER_GUID,BUT000.BU_SORT1,BUT000.CREATED_AT,ADR6.SMTP_ADDR,ADRC.COUNTRY,ADRC.CITY1,ADRC.POST_CODE1,BUT100.RLTYP
+ABC123,9,,0099,26d8fdfc-768a-4f1d-8866-492bc1375715,,2023-07-16,not-an-email,,Midrand,9696,BUR010
+0000000002,1,Clicks Group,0004,7d8dcf0c-cfc3-47a6-9126-d3eb38c118dd,CLICKS GROUP,2025-11-29,fatima.zulu@company.co.za,GB,Sandton,7358,BUR010
+0000000003,2,Standard Bank,0005,ff75afb5-64b5-48eb-a9b9-50127f5821ab,STANDARD BANK,2026-02-03,naledi.vandermerwe@company.co.za,GB,Midrand,1698,BUR002
+0000000004,2,Anglo American,0003,e83951fa-8db3-405c-ab79-1a6f03710850,ANGLO AMERICAN,2025-12-08,ayanda.leroux@company.co.za,GB,Johannesburg,6857,BUR001
+0000000005,2,Pick n Pay,0005,0acb0b28-147f-4acf-8e8a-e40cdd38a81b,,2025-12-19,ayanda.dlamini@company.co.za,DE,Johannesburg,3804,BUR002
+0000000006,2,MTN Group,0004,a9392ad8-d7ad-48f6-b557-e39e600fe433,MTN GROUP,2026-03-17,riana.vandermerwe@company.co.za,GB,Durban,9575,BUR002
+0000000007,1,Anglo American,0004,ee3a2d9a-ad89-4f03-b5bb-495affc75db7,ANGLO AMERICAN,2026-01-14,pieter.leroux@company.co.za,AU,Stellenbosch,1914,BUR001
+0000000008,3,Discovery Ltd,0005,2671ad0b-8048-4171-bfbe-09426fbf6dc1,DISCOVERY LTD,2025-10-19,ahmed.vandermerwe@company.co.za,ZA,Durban,7715,BUR001
+0000000009,3,Woolworths SA,0004,2fa3a6d2-2d7a-4e1a-b6d7-bc0ae00e11d3,WOOLWORTHS SA,2021-12-30,zanele.botha@company.co.za,ZA,Cape Town,9212,
+0000000010,1,Woolworths SA,0002,8c8ab94a-4a63-4b74-9e5a-43318f9b8f14,WOOLWORTHS SA,2025-08-27,ahmed.zulu@company.co.za,AU,Sandton,9755,BUR001
+0000000011,1,Sanlam Ltd,0004,1f0edc9e-99ad-43be-8c31-35a0efbd92e8,SANLAM LTD,2025-11-24,zanele.patel@company.co.za,AU,Bloemfontein,2732,BUR010
+0000000012,2,Capitec Bank,0004,fe25be69-be06-4061-bbc0-a1ab1596917f,CAPITEC BANK,2025-08-07,pieter.patel@company.co.za,ZA,Bloemfontein,2141,BUR010
+0000000013,2,Sibanye Stillwater,0005,0caca4dd-9e7d-41b8-81d6-5bfe77304f5b,SIBANYE STILLWATER,2025-08-22,johan.molefe@company.co.za,ZA,Nelspruit,3611,BUR002
+0000000014,3,Clicks Group,0004,e12a63e0-c491-4c2a-aad6-b8f59588c303,,2025-09-24,fatima.zulu@company.co.za,ZA,Sandton,5839,BUR001
+0000000015,2,Tiger Brands,0004,1b1ba509-02b3-470f-b3c5-367235eaa63a,TIGER BRANDS,2025-09-24,bongani.steyn@company.co.za,AU,Johannesburg,2840,BUR010
+0000000016,1,Gold Fields,0003,0a6d267e-dddf-43f4-9245-934b0cc1114b,GOLD FIELDS,2025-08-04,riana.steyn@company.co.za,GB,Bloemfontein,7829,BUR002
+0000000017,3,Clicks Group,0003,52a0baf5-daef-490e-a20d-165235d63950,CLICKS GROUP,2022-04-20,fatima.steyn@company.co.za,XX,Johannesburg,1955,BUR002
+0000000018,3,Bidvest Group,0005,e2289249-708a-4db0-9bb9-0dd2a25b371a,BIDVEST GROUP,2025-08-29,pieter.botha@company.co.za,AU,Durban,5338,BUR002
+0000000019,2,Pick n Pay,0004,266dfd2e-0531-48d6-93da-c1311c6e3d42,PICK N PAY,2025-09-16,ahmed.leroux@company.co.za,ZA,Bloemfontein,8588,BUR010
+0000000020,2,Standard Bank,0004,2a0d8831-9efe-414f-87fa-22df79dc0adb,STANDARD BANK,2025-12-23,nomusa.govender@company.co.za,US,Polokwane,4925,BUR002
+0000000021,1,Woolworths SA,0004,d9fdd681-0e3f-49c3-9d51-62a0062cad9f,WOOLWORTHS SA,2025-06-01,thandi.kruger@company.co.za,ZA,Bloemfontein,1196,BUR010
+0000000022,2,Standard Bank,0002,963303a9-2c7e-41f9-a2a7-7afdbc5d5741,STANDARD BANK,2025-09-25,nomusa.nkosi@company.co.za,ZA,Polokwane,5786,BUR001
+0000000023,1,FirstRand Ltd,0002,375e7885-d743-4e5c-aed6-0e8574896051,FIRSTRAND LTD,2025-10-31,zanele.botha@company.co.za,ZA,Sandton,2157,BUR010
+0000000024,3,Standard Bank,0003,71bc7856-9ae4-40b9-9ec7-824fe9a149b2,STANDARD BANK,2026-01-20,riana.leroux@company.co.za,DE,Durban,3460,BUR010
+0000000025,3,Absa Group,0002,d263a655-711f-43ea-9557-119dab5a2084,ABSA GROUP,2023-02-14,naledi.steyn@company.co.za,GB,Johannesburg,6609,BUR010
+0000000026,2,Standard Bank,0001,9e2b770d-de48-4c8e-b894-9b0b66adf2d1,STANDARD BANK,2026-03-13,johan.patel@company.co.za,GB,Cape Town,4856,BUR010
+0000000027,3,MTN Group,0002,0a7953b2-ef62-4967-964e-6725547c9e91,MTN GROUP,2025-11-10,ayanda.dlamini@company.co.za,ZA,Johannesburg,7496,BUR001
+0000000028,2,Discovery Ltd,0001,c979651c-e0f9-447f-80e8-806002485a74,DISCOVERY LTD,2025-10-22,ayanda.molefe@company.co.za,ZA,Midrand,2184,BUR001
+0000000029,3,Woolworths SA,0003,4371b03f-2919-4feb-a501-29f7401b3685,WOOLWORTHS SA,2025-09-08,riana.kruger@company.co.za,ZA,Nelspruit,4713,BUR010
+0000000030,1,Vodacom Group,0004,cd7be758-2030-498c-a164-58fde15ce458,VODACOM GROUP,2025-11-23,ahmed.leroux@company.co.za,AU,Midrand,1894,BUR001
+0000000031,2,Standard Bank,0005,f9171119-d770-4e73-ba29-e823428646bd,STANDARD BANK,2025-12-06,thandi.zulu@company.co.za,XX,Durban,5922,BUR001
+0000000032,2,Standard Bank,0005,9e02e8cb-e091-49ff-ab1d-2fc8ce1b84a7,STANDARD BANK,2026-03-01,zanele.zulu@company.co.za,DE,Stellenbosch,2212,BUR001
+0000000033,2,FirstRand Ltd,0002,701063e2-161b-4523-94a9-15f0484309b0,FIRSTRAND LTD,2023-02-16,lerato.ndlovu@company.co.za,GB,Nelspruit,8940,BUR001
+0000000034,1,FirstRand Ltd,0005,eb61f0fd-4743-489f-94d2-71f8d81aa34f,FIRSTRAND LTD,2025-11-12,fatima.dlamini@company.co.za,DE,Bloemfontein,3749,BUR010
+0000000035,3,Nedbank Group,0001,c3e5045d-851e-4b55-8ee4-18b20d7e814b,NEDBANK GROUP,2025-08-16,fatima.botha@company.co.za,DE,Polokwane,2187,BUR001
+0000000036,3,Woolworths SA,0099,9ab94a92-dac8-4e50-8893-6922f56ee719,WOOLWORTHS SA,2026-02-28,fatima.vandermerwe@company.co.za,ZA,Sandton,4106,BUR001
+0000000037,2,Tiger Brands,0003,9639b8bf-da55-46f1-a70e-bc0ea23f4ba5,TIGER BRANDS,2025-09-14,sipho.ndlovu@company.co.za,ZA,Sandton,7377,BUR001
+0000000038,3,Tiger Brands,0002,e6dfdba7-a537-4285-9287-cb39388fc3f7,TIGER BRANDS,2025-09-19,lerato.nkosi@company.co.za,ZA,Nelspruit,2283,
+0000000039,2,Absa Group,0002,0956a0a2-730a-48cf-b0e4-0598e31a7ab7,ABSA GROUP,2026-03-05,willem.dlamini@company.co.za,ZA,Pretoria,6628,BUR010
+0000000040,1,Sasol Limited,0004,e5bede20-ef5a-400d-98f9-030328e39f75,SASOL LIMITED,2025-09-11,thandi.govender@company.co.za,DE,Polokwane,7157,BUR010
+0000000041,2,Woolworths SA,0003,38bfbe30-5c88-46de-a7b9-9140fab5ce41,WOOLWORTHS SA,2023-08-31,not-an-email,ZA,Pretoria,5375,BUR002
+0000000042,2,Vodacom Group,0005,b145ce9e-c61a-4500-a28c-3434314065b7,VODACOM GROUP,2025-08-04,nomusa.botha@company.co.za,DE,Nelspruit,5291,BUR001
+0000000043,1,Sasol Limited,0003,b55d5669-d9db-47d3-851c-c094de636c98,SASOL LIMITED,2025-10-06,lerato.steyn@company.co.za,AU,Pretoria,9758,BUR001
+0000000044,2,Anglo American,0001,ab33edce-02d9-4871-9e1a-0a46a8425fde,ANGLO AMERICAN,2025-09-27,nomusa.molefe@company.co.za,US,Cape Town,1325,BUR001
+0000000045,2,FirstRand Ltd,0002,ed668cac-2d4b-49a2-b9f7-b98a99a06f33,,2026-03-10,ahmed.govender@company.co.za,GB,Sandton,4572,BUR001
+0000000046,,Sasol Limited,0004,a800bcf7-2d01-43d3-be24-2afe75be95f5,SASOL LIMITED,2025-10-24,henk.molefe@company.co.za,ZA,Midrand,2715,BUR002
+0000000047,2,Absa Group,0001,cff1af57-f973-45b0-a173-636edfd5c353,ABSA GROUP,2025-11-11,thandi.molefe@company.co.za,ZA,Durban,5491,BUR010
+0000000048,3,MTN Group,0003,5803a1ce-fee0-4c13-ba63-3cb392e72d1b,MTN GROUP,2025-07-15,lerato.zulu@company.co.za,ZA,Polokwane,6023,BUR002
+0000000049,2,Standard Bank,0004,a4bc2edf-591a-4b72-8cdb-a210e90145ee,STANDARD BANK,2023-04-21,pieter.dlamini@company.co.za,GB,Pretoria,6817,BUR010
+0000000050,2,Nedbank Group,0004,3e4ac830-9a13-47de-9406-39921d7db8aa,NEDBANK GROUP,2025-08-27,zanele.dlamini@company.co.za,ZA,Cape Town,1172,BUR002
+ABC123,2,Naspers Ltd,0001,fe03e819-2035-444e-8f1a-52ddf002b01f,NASPERS LTD,2025-11-16,sipho.botha@company.co.za,ZA,Cape Town,3401,BUR010
+0000000052,2,Standard Bank,0005,e3e529d5-37ba-4929-8e64-603b78e608c3,STANDARD BANK,2026-01-21,riana.govender@company.co.za,GB,Pretoria,5878,BUR002
+0000000053,1,Pick n Pay,0003,8e309898-5240-408d-84ba-387ee1228ae5,PICK N PAY,2025-09-22,lerato.leroux@company.co.za,ZA,Sandton,4793,BUR001
+0000000054,3,Clicks Group,0004,5dd067fd-cb5c-4776-af48-8d47606dc05a,CLICKS GROUP,2025-09-23,bongani.patel@company.co.za,GB,Polokwane,9747,
+0000000055,3,Bidvest Group,0003,45de8357-9f98-4fd3-9993-06b261894624,BIDVEST GROUP,2025-06-19,johan.dlamini@company.co.za,ZA,Polokwane,5798,BUR002
+0000000056,9,Naspers Ltd,0005,5f741fbc-a954-4338-a2c1-82735586a357,NASPERS LTD,2025-08-15,pieter.nkosi@company.co.za,ZA,Durban,1659,BUR001
+0000000057,2,Absa Group,0004,ddb50218-7bd1-44cb-921d-09b125f075d2,ABSA GROUP,2021-11-28,henk.leroux@company.co.za,ZA,Pretoria,6762,BUR001
+0000000058,1,Sasol Limited,0003,309bd0d9-f5af-401f-8eb6-e123d449a2b3,SASOL LIMITED,2026-01-15,ahmed.kruger@company.co.za,GB,Bloemfontein,5524,BUR002
+0000000059,2,Discovery Ltd,0003,6184c417-3e05-4313-be0c-50f696020824,DISCOVERY LTD,2026-03-06,bongani.govender@company.co.za,AU,Polokwane,5296,BUR001
+0000000060,3,Nedbank Group,0002,59819448-9579-4a8c-a80e-cab104227a92,NEDBANK GROUP,2026-01-31,pieter.molefe@company.co.za,US,Sandton,1481,BUR002
+0000000061,1,,0003,ce281c39-d232-4a39-8fd4-58b9a503a291,,2025-07-30,fatima.leroux@company.co.za,ZA,Cape Town,6817,BUR010
+0000000062,2,Nedbank Group,0001,cc0a631b-d0bd-4e39-8c80-66bbedc46780,NEDBANK GROUP,2026-03-12,thandi.nkosi@company.co.za,DE,Polokwane,8506,BUR002
+0000000063,1,Anglo American,0001,ae338741-cbc1-40a3-8b79-e34ef06360df,ANGLO AMERICAN,2025-08-11,nomusa.botha@company.co.za,DE,Durban,9999,BUR002
+0000000064,3,Sasol Limited,0001,9a5ed467-3334-4311-afc5-783039dcc04d,SASOL LIMITED,2025-11-12,pieter.nkosi@company.co.za,DE,Sandton,9163,BUR001
+0000000065,2,Discovery Ltd,0001,24d5a6ba-642d-4f99-afef-caa46df38291,DISCOVERY LTD,2021-01-06,zanele.kruger@company.co.za,ZA,Midrand,5324,BUR001
+0000000066,2,MTN Group,0004,9c63f360-1396-4ec1-b57f-75a3abe8da51,MTN GROUP,2025-10-15,bongani.zulu@company.co.za,ZA,Polokwane,3816,BUR001
+0000000067,2,Standard Bank,0001,a27bcaf6-a767-49e2-9c1e-443b6f0268d3,STANDARD BANK,2025-11-09,johan.leroux@company.co.za,ZA,Sandton,7571,BUR001
+0000000068,2,Standard Bank,0001,be9a114c-aa69-4cf6-b256-f380793d0696,STANDARD BANK,2025-07-16,johan.leroux@company.co.za,ZA,Durban,6369,BUR010
+0000000069,3,Shoprite Holdings,0005,cb1e1568-c250-4933-ba91-1769bc8517d4,SHOPRITE HOLDINGS,2025-07-23,ahmed.leroux@company.co.za,ZA,Cape Town,7500,BUR002
+0000000070,3,Woolworths SA,0003,46b6c1c3-38de-41e5-a390-e48e24e3ad09,WOOLWORTHS SA,2025-11-13,fatima.steyn@company.co.za,ZA,Midrand,3567,BUR001
+0000000071,2,Woolworths SA,0099,716c4b47-e357-442a-a8ab-147f8b7d2dd9,WOOLWORTHS SA,2025-07-21,johan.nkosi@company.co.za,,Bloemfontein,8171,BUR002
+0000000072,2,Nedbank Group,0004,d2919e7a-082a-4dcd-ae8b-e742ed28797c,NEDBANK GROUP,2025-12-23,nomusa.govender@company.co.za,ZA,Durban,8884,BUR010
+0000000073,2,Sibanye Stillwater,0004,b9bf2726-048e-4c24-80c3-4d6df4ce1bfb,SIBANYE STILLWATER,2021-04-17,lerato.dlamini@company.co.za,GB,Bloemfontein,9777,BUR002
+0000000074,1,Sibanye Stillwater,0001,3605085b-8503-49a1-945d-e7c8ca08501d,SIBANYE STILLWATER,2025-09-24,ayanda.govender@company.co.za,ZA,Midrand,8142,BUR002
+0000000075,2,Discovery Ltd,0001,6401e17a-a346-432d-9ef3-330e56660e63,DISCOVERY LTD,2026-03-19,ayanda.leroux@company.co.za,GB,Nelspruit,4093,BUR001
+0000000076,2,Sasol Limited,0003,933a1dd5-c1f4-49cf-bfa9-818b7efc3bd5,,2025-12-07,bongani.nkosi@company.co.za,AU,Pretoria,4385,BUR001
+0000000077,1,Standard Bank,0004,c7ffe9d7-916f-4ed1-b68e-8e3a900b7703,STANDARD BANK,2025-09-23,pieter.patel@company.co.za,ZA,Sandton,4995,
+0000000078,2,Naspers Ltd,0002,2b055604-9054-4e5e-a63e-fa59d881eb26,NASPERS LTD,2025-08-27,nomusa.nkosi@company.co.za,ZA,Bloemfontein,7042,BUR002
+0000000079,2,Woolworths SA,0003,1d265caf-135e-4885-b41c-7bc92415b2a5,WOOLWORTHS SA,2026-03-12,zanele.govender@company.co.za,US,Bloemfontein,9780,BUR010
+0000000080,1,Sasol Limited,0004,664b2581-a904-403e-86f2-3513b8eb7350,SASOL LIMITED,2026-03-18,bongani.kruger@company.co.za,DE,Sandton,6986,BUR010
+0000000081,2,Woolworths SA,0003,12d68c48-61ef-415e-9d17-f72c7ad41830,WOOLWORTHS SA,2022-04-17,not-an-email,ZA,Polokwane,2290,BUR001
+0000000082,1,MTN Group,0002,a0d84b1f-2357-4c39-a71e-1447eb9cb998,MTN GROUP,2025-11-26,thandi.kruger@company.co.za,ZA,Johannesburg,3174,BUR010
+0000000083,3,Absa Group,0002,d5fce5d3-7c3a-4117-b222-b2ffd722dd0b,ABSA GROUP,2025-10-10,henk.govender@company.co.za,,Bloemfontein,9153,BUR010
+0000000084,2,Bidvest Group,0001,594879b9-86e9-4a6b-b81e-eb5b614f5a1d,BIDVEST GROUP,2025-09-19,riana.nkosi@company.co.za,ZA,Johannesburg,3242,BUR002
+0000000085,3,Tiger Brands,0002,3b071b0b-cb38-456c-938f-20ee172dd203,TIGER BRANDS,2025-08-11,naledi.botha@company.co.za,ZA,Nelspruit,2374,BUR010
+0000000086,3,Anglo American,0003,caa4ad08-7430-48f0-bc6e-b6fb4f9c89ac,ANGLO AMERICAN,2025-11-20,lerato.zulu@company.co.za,GB,Midrand,9349,BUR002
+0000000087,2,Pick n Pay,0002,0f23fec5-72ab-4081-b3af-f139bcd6a30b,PICK N PAY,2025-11-28,ayanda.molefe@company.co.za,DE,Stellenbosch,4362,BUR001
+0000000088,1,Standard Bank,0001,617aeaeb-9740-4883-aa18-373a9c851b3b,STANDARD BANK,2026-03-12,fatima.molefe@company.co.za,US,Durban,1257,BUR001
+0000000089,1,MTN Group,0001,00173cb1-7439-42b9-a65c-1b29f3d23c73,MTN GROUP,2021-12-10,sipho.steyn@company.co.za,ZA,Durban,8292,BUR002
+0000000090,2,Standard Bank,0004,1bfeea0b-62b9-4f5a-9879-d0c4760a3f60,STANDARD BANK,2025-09-19,fatima.leroux@company.co.za,ZA,Bloemfontein,6034,
+0000000091,,Anglo American,0001,afc4ac4f-d622-4238-80af-b468aebc1223,ANGLO AMERICAN,2025-11-19,willem.leroux@company.co.za,DE,Cape Town,5422,BUR010
+0000000092,2,Naspers Ltd,0001,42fc8f9f-7813-4eb3-8247-ec6063e64bbc,NASPERS LTD,2025-12-16,johan.patel@company.co.za,AU,Durban,7981,BUR001
+0000000093,2,MTN Group,0002,de1cc084-ef20-40ff-9101-f1e7954ca6b3,MTN GROUP,2026-03-10,fatima.leroux@company.co.za,GB,Stellenbosch,8434,BUR010
+0000000094,3,Tiger Brands,0005,5a4f20ac-792f-426b-b4f0-d4fe4114ce06,TIGER BRANDS,2025-07-25,lerato.dlamini@company.co.za,DE,Stellenbosch,5015,BUR010
+0000000095,1,Discovery Ltd,0001,ad9952c5-f631-45ca-8ea7-4afc5ca6b5af,DISCOVERY LTD,2025-11-19,henk.govender@company.co.za,GB,Polokwane,3053,BUR010
+0000000096,2,Sasol Limited,0003,b06bf353-4134-4a82-9a36-32f57e216b90,SASOL LIMITED,2026-02-21,ahmed.dlamini@company.co.za,GB,Pretoria,9341,BUR010
+0000000097,2,Discovery Ltd,0004,14378584-e990-4e7a-9940-1b1a1e072cd0,DISCOVERY LTD,2022-02-05,naledi.ndlovu@company.co.za,ZA,Pretoria,4436,BUR010
+0000000098,2,Clicks Group,0005,31e61721-e674-4bc1-af11-4feaa3fde945,CLICKS GROUP,2025-05-30,nomusa.vandermerwe@company.co.za,US,Bloemfontein,5212,BUR002
+0000000099,2,Anglo American,0005,8aa2440c-0e50-4901-9022-10ef4ce56f4c,ANGLO AMERICAN,2026-03-10,pieter.nkosi@company.co.za,ZA,Johannesburg,7207,BUR001
+0000000100,2,Nedbank Group,0001,8c4748fa-b389-4f45-916b-19a3111db8ce,NEDBANK GROUP,2025-05-30,johan.zulu@company.co.za,AU,Polokwane,7095,BUR001
+ABC123,1,Gold Fields,0001,0c0f8afc-eb43-4d56-99f4-dba743821508,GOLD FIELDS,2025-10-14,lerato.vandermerwe@company.co.za,US,Midrand,9514,BUR010
+0000000102,1,Clicks Group,0001,71978b67-e399-42af-b585-38f3030ac832,CLICKS GROUP,2025-09-12,lerato.ndlovu@company.co.za,GB,Sandton,2684,BUR010
+0000000103,1,Standard Bank,0002,285033b8-4156-4693-862c-66e10b020747,STANDARD BANK,2025-11-22,bongani.molefe@company.co.za,ZA,Johannesburg,6062,BUR001
+0000000104,2,Tiger Brands,0001,21ae0a85-13c2-4a44-852d-b9c5718f62b7,TIGER BRANDS,2025-09-05,johan.botha@company.co.za,ZA,Midrand,3401,BUR001
+0000000105,2,Naspers Ltd,0001,3da9361b-760f-4e60-8ad0-1b0ce8bc760b,NASPERS LTD,2021-04-15,ayanda.vandermerwe@company.co.za,AU,Polokwane,2279,BUR001
+0000000106,3,Vodacom Group,0099,bcd47fcb-b2bf-4a3c-83d1-dde9cf4e99f0,VODACOM GROUP,2025-05-23,fatima.leroux@company.co.za,ZA,Nelspruit,6343,BUR010
+0000000107,2,Capitec Bank,0002,c7afa898-ca8b-425e-96a7-c85b5a01368a,CAPITEC BANK,2025-09-06,ahmed.patel@company.co.za,ZA,Nelspruit,9435,BUR001
+0000000108,3,Nedbank Group,0001,36ac8412-2cb5-40ea-be67-d78b3881452a,NEDBANK GROUP,2026-02-18,lerato.govender@company.co.za,GB,Cape Town,8236,BUR010
+0000000109,2,Sibanye Stillwater,0001,9bafaefa-a8fd-48ee-97fb-0852ba20442a,SIBANYE STILLWATER,2025-09-02,fatima.botha@company.co.za,GB,Pretoria,6130,BUR002
+0000000110,2,MTN Group,0005,81be83cf-5bb1-4bca-8824-82a619454ed3,MTN GROUP,2025-12-08,zanele.ndlovu@company.co.za,ZA,Midrand,3197,BUR001
+0000000111,9,Woolworths SA,0002,fe6bbb90-7a7b-4753-bb02-baf2fd8d83d1,WOOLWORTHS SA,2025-10-19,pieter.kruger@company.co.za,US,Nelspruit,7401,BUR010
+0000000112,1,MTN Group,0005,8a532a10-4b46-4cf7-8f35-fca83c962262,MTN GROUP,2025-10-08,willem.nkosi@company.co.za,DE,Bloemfontein,8588,BUR001
+0000000113,1,Sibanye Stillwater,0002,e4396d2b-e3df-4603-8589-38e6e5292372,,2022-03-08,johan.molefe@company.co.za,US,Bloemfontein,8854,BUR010
+0000000114,2,Shoprite Holdings,0002,08139523-cdcf-462a-a84f-50f6b936b58b,SHOPRITE HOLDINGS,2025-11-29,nomusa.vandermerwe@company.co.za,ZA,Stellenbosch,6410,BUR001
+0000000115,1,Pick n Pay,0005,001d8b04-a1c8-4c28-9557-ffbe6a155b99,PICK N PAY,2026-02-18,ayanda.steyn@company.co.za,ZA,Durban,7429,BUR001
+0000000116,2,Discovery Ltd,0002,3b53ec73-1d71-43eb-b6b1-0d3f4dcad90d,DISCOVERY LTD,2025-12-08,sipho.molefe@company.co.za,US,Nelspruit,6087,BUR001
+0000000117,1,Sanlam Ltd,0002,f386be7c-740e-4c2e-9909-8879ec706f22,SANLAM LTD,2026-01-11,riana.dlamini@company.co.za,ZA,Johannesburg,6601,BUR010
+0000000118,2,Sanlam Ltd,0002,3083e277-9bfe-4335-a749-82537fc96e93,SANLAM LTD,2025-12-25,zanele.steyn@company.co.za,GB,Durban,2772,BUR001
+0000000119,2,Shoprite Holdings,0003,b533939e-480e-477e-b425-f74dc8738078,SHOPRITE HOLDINGS,2026-02-08,bongani.molefe@company.co.za,ZA,Johannesburg,5692,BUR001
+0000000120,3,FirstRand Ltd,0005,2d4eb31c-1677-4463-8c18-a8402c5fcee0,FIRSTRAND LTD,2025-07-26,thandi.molefe@company.co.za,AU,Durban,6919,BUR010
+0000000121,3,,0004,86659d18-d420-477d-b4b2-7ac545396232,,2021-04-10,not-an-email,GB,Sandton,9884,BUR010
+0000000122,2,Naspers Ltd,0005,0981ae86-50e8-4b4f-a768-1de46ff14e26,NASPERS LTD,2025-11-22,sipho.dlamini@company.co.za,ZA,Stellenbosch,9609,BUR001
+0000000123,2,Pick n Pay,0002,45fe477a-6c00-4cb0-a759-8b74257079ac,PICK N PAY,2025-08-02,fatima.patel@company.co.za,ZA,Johannesburg,1779,BUR002
+0000000124,2,Vodacom Group,0003,a792ad19-892e-486d-89db-ac33e5b3013e,VODACOM GROUP,2026-02-21,bongani.vandermerwe@company.co.za,GB,Nelspruit,6558,BUR010
+0000000125,2,Capitec Bank,0004,893cac70-42e1-4a20-85ef-175fb09ecbb3,CAPITEC BANK,2026-03-18,johan.botha@company.co.za,ZA,Midrand,8331,BUR002
+0000000126,2,Nedbank Group,0002,5dbf2004-a4ce-4b69-bace-c2acc2628ab7,NEDBANK GROUP,2025-05-26,zanele.zulu@company.co.za,AU,Pretoria,2753,BUR002
+0000000127,1,MTN Group,0001,e64271ba-26f2-4e9f-ac43-347a39d891d6,MTN GROUP,2025-08-28,nomusa.govender@company.co.za,AU,Polokwane,2436,BUR010
+0000000128,2,Sanlam Ltd,0004,defb1913-4f5a-4f1a-99e2-1f3fae96dbb7,SANLAM LTD,2025-08-25,ayanda.ndlovu@company.co.za,ZA,Bloemfontein,7274,BUR002
+0000000129,2,Sanlam Ltd,0004,b14f9f9a-21e5-45db-bb5e-9922aee6caeb,SANLAM LTD,2021-04-17,henk.ndlovu@company.co.za,ZA,Polokwane,3279,BUR002
+0000000130,3,FirstRand Ltd,0003,22fc28a0-11f1-466a-9f5f-2429266d9004,FIRSTRAND LTD,2025-10-14,lerato.leroux@company.co.za,AU,Bloemfontein,3854,BUR002
+0000000131,1,Vodacom Group,0004,f7565c76-834c-4f1e-a294-cf701fc2df6b,VODACOM GROUP,2026-01-16,riana.ndlovu@company.co.za,US,Midrand,2580,BUR002
+0000000132,2,Shoprite Holdings,0001,542a38b8-f3d9-4c7b-b829-00783e934bfc,,2025-11-28,willem.patel@company.co.za,DE,Johannesburg,6177,BUR002
+0000000133,3,Vodacom Group,0002,84e031e0-f026-452a-aec0-f07edcc1e69e,VODACOM GROUP,2025-05-26,riana.molefe@company.co.za,ZA,Cape Town,2598,BUR001
+0000000134,2,Nedbank Group,0002,a748b6b0-f2c9-454e-9062-941012cb12ae,NEDBANK GROUP,2025-09-24,riana.govender@company.co.za,ZZ,Durban,1422,BUR002
+0000000135,1,MTN Group,0002,66707593-12ea-4ad5-98a7-20e77272d87a,MTN GROUP,2025-12-13,willem.kruger@company.co.za,US,Midrand,5418,BUR010
+0000000136,,Naspers Ltd,0003,491c1927-ac70-46e6-b577-963b62d49861,NASPERS LTD,2026-01-25,nomusa.nkosi@company.co.za,GB,Durban,4025,BUR002
+0000000137,1,Absa Group,0002,0fb25328-c086-46df-acec-c55409ce9953,ABSA GROUP,2021-07-29,lerato.patel@company.co.za,US,Stellenbosch,5270,BUR001
+0000000138,3,Discovery Ltd,0004,083e8a82-6167-49eb-8e17-ba0536532b33,DISCOVERY LTD,2025-06-17,henk.molefe@company.co.za,US,Johannesburg,6065,
+0000000139,1,Bidvest Group,0001,dae5ce72-057e-4beb-81a1-1060c0ce2de5,BIDVEST GROUP,2025-10-03,sipho.zulu@company.co.za,ZA,Cape Town,9808,BUR010
+0000000140,1,FirstRand Ltd,0004,d9b3a35d-4b52-47e3-8d8f-cb2937c5d647,,2025-07-15,fatima.dlamini@company.co.za,AU,Bloemfontein,1622,
+0000000141,2,Shoprite Holdings,0099,a2bd5694-d915-41d9-9fb7-66df60d6e096,SHOPRITE HOLDINGS,2025-11-24,nomusa.vandermerwe@company.co.za,,Polokwane,5555,BUR010
+0000000142,2,Sasol Limited,0001,e106c3d1-e1e3-4496-b623-ba8da65305db,SASOL LIMITED,2026-03-16,naledi.govender@company.co.za,DE,Nelspruit,9953,BUR001
+0000000143,1,Shoprite Holdings,0004,a84de9b1-a196-4192-b84c-8a9de2c4c2f8,SHOPRITE HOLDINGS,2025-07-27,pieter.dlamini@company.co.za,AU,Sandton,6342,BUR001
+0000000144,2,Bidvest Group,0004,99b9be55-6bd5-4c66-9b59-09b6de0f5b83,BIDVEST GROUP,2025-06-10,zanele.nkosi@company.co.za,AU,Polokwane,6149,BUR010
+0000000145,1,Shoprite Holdings,0002,a8a02a64-0642-42f5-a991-bb15f546ea4c,SHOPRITE HOLDINGS,2021-12-04,naledi.molefe@company.co.za,AU,Durban,7149,BUR010
+0000000146,2,Nedbank Group,0002,4ca3e5ea-93ad-4ea5-8842-ee44be7b1ef0,NEDBANK GROUP,2025-07-04,ayanda.molefe@company.co.za,DE,Durban,3530,BUR002
+0000000147,2,Sasol Limited,0004,780c6e5b-ac5c-46b0-a027-1e6d2b64f878,SASOL LIMITED,2025-09-08,willem.govender@company.co.za,GB,Pretoria,2879,BUR001
+0000000148,3,FirstRand Ltd,0005,89520ce0-1399-4ba7-8e4f-ff510ec81dc3,FIRSTRAND LTD,2025-08-26,nomusa.govender@company.co.za,ZA,Cape Town,5753,BUR001
+0000000149,2,Clicks Group,0004,e1066df8-c6df-4db3-9f1a-17135624226b,,2025-08-17,nomusa.ndlovu@company.co.za,GB,Polokwane,6033,BUR001
+0000000150,1,Naspers Ltd,0002,5bf5f0be-6355-45f3-b024-15cc13ee9a9d,NASPERS LTD,2025-12-04,sipho.leroux@company.co.za,ZA,Pretoria,8479,
+ABC123,2,FirstRand Ltd,0001,a227e31b-d1db-4180-8d87-cf4c55547fe7,FIRSTRAND LTD,2025-08-10,bongani.botha@company.co.za,ZA,Midrand,4896,BUR010
+0000000152,2,Sasol Limited,0003,bc8a3b72-0b4e-4148-907b-ba2cfb5c340d,SASOL LIMITED,2025-11-09,lerato.govender@company.co.za,AU,Pretoria,5298,BUR010
+0000000153,3,Capitec Bank,0004,1954e1a4-91fc-4a83-961c-615b515b6350,CAPITEC BANK,2022-11-26,fatima.steyn@company.co.za,US,Durban,2807,BUR001
+0000000154,3,Pick n Pay,0001,b60e3d2c-1431-4fe3-a336-5be6eaee36ba,PICK N PAY,2025-09-18,henk.zulu@company.co.za,ZA,Cape Town,3809,BUR002
+0000000155,2,Pick n Pay,0003,e84fc78c-d780-494b-9e9c-c562d2ce92a2,PICK N PAY,2025-11-12,fatima.steyn@company.co.za,AU,Midrand,2818,BUR002
+0000000156,1,Discovery Ltd,0001,6108ef16-c66a-4719-8301-27767f6c2f6f,DISCOVERY LTD,2025-10-05,thandi.steyn@company.co.za,ZA,Nelspruit,6638,BUR001
+0000000157,2,Gold Fields,0002,18465887-641e-4141-9e54-c643386e631e,GOLD FIELDS,2025-08-21,fatima.nkosi@company.co.za,US,Stellenbosch,4126,BUR002
+0000000158,2,MTN Group,0001,15cbfe74-ed97-4424-942d-01513372995a,MTN GROUP,2025-08-03,zanele.vandermerwe@company.co.za,US,Nelspruit,6176,BUR001
+0000000159,2,Absa Group,0001,6d2698c5-1303-419e-b893-2c6dda97b6b1,ABSA GROUP,2025-08-12,pieter.kruger@company.co.za,AU,Bloemfontein,7893,
+0000000160,2,Sanlam Ltd,0005,aed104f3-50f4-4ac0-ab9f-a3d0b6c2bdc8,SANLAM LTD,2025-12-08,ayanda.zulu@company.co.za,AU,Stellenbosch,2044,BUR002
+0000000161,2,Standard Bank,0005,83f2e7d3-3542-4873-ad60-96ae8e8f2232,STANDARD BANK,2023-10-28,not-an-email,DE,Nelspruit,6311,BUR001
+0000000162,2,MTN Group,0003,1c56de23-f33b-4856-863a-a2ffd9229dc8,MTN GROUP,2026-01-04,pieter.vandermerwe@company.co.za,,Bloemfontein,5271,BUR002
+0000000163,3,Clicks Group,0003,938c5668-4ae6-4d0a-bd60-08821b31d7cd,CLICKS GROUP,2026-01-11,fatima.zulu@company.co.za,AU,Johannesburg,6676,BUR002
+0000000164,2,Shoprite Holdings,0004,7ab44375-ba69-47b1-aa3c-21c6f0b3e63d,SHOPRITE HOLDINGS,2025-10-27,sipho.leroux@company.co.za,DE,Polokwane,2529,BUR001
+0000000165,2,Woolworths SA,0005,85871b08-cd33-44cd-a2a1-5085f49cba00,WOOLWORTHS SA,2025-12-21,johan.steyn@company.co.za,ZA,Nelspruit,2574,BUR002
+0000000166,9,Sasol Limited,0002,2d59fa26-e004-4a94-b0d5-1146356c5a7f,SASOL LIMITED,2025-06-23,zanele.leroux@company.co.za,AU,Cape Town,6911,
+0000000167,2,MTN Group,0004,37376e80-4b7c-458f-8e7f-90e5c434fa31,,2025-09-02,sipho.leroux@company.co.za,AU,Cape Town,5906,BUR001
+0000000168,2,Naspers Ltd,0004,20884c26-6a18-4d54-9271-11f141c37f90,NASPERS LTD,2025-12-13,fatima.govender@company.co.za,ZA,Johannesburg,5844,BUR010
+0000000169,2,Sibanye Stillwater,0005,564b3032-72c6-4ab4-8da9-fe3bdec6283d,SIBANYE STILLWATER,2023-05-08,lerato.leroux@company.co.za,ZA,Sandton,4354,BUR001
+0000000170,2,Anglo American,0001,473c26ac-fda7-45c8-8f1c-d3eac20254ce,ANGLO AMERICAN,2025-09-29,sipho.leroux@company.co.za,ZA,Durban,9574,BUR002
+0000000171,2,Vodacom Group,0005,5c39b212-28c6-4731-8568-3995964bf8f9,VODACOM GROUP,2025-11-26,nomusa.govender@company.co.za,ZA,Pretoria,6647,BUR001
+0000000172,3,Nedbank Group,0001,687eccfa-0c5b-4b3d-aaca-d2327193098a,NEDBANK GROUP,2025-07-19,riana.botha@company.co.za,AU,Sandton,5674,BUR002
+0000000173,2,Pick n Pay,0005,2b5c0443-8a14-4704-8883-98485ee0152f,PICK N PAY,2025-11-30,naledi.govender@company.co.za,GB,Pretoria,5159,BUR010
+0000000174,1,Sibanye Stillwater,0003,6586a5ac-a601-476c-a9ee-bd2a50564e7e,SIBANYE STILLWATER,2025-07-22,ahmed.patel@company.co.za,ZZ,Polokwane,4817,BUR010
+0000000175,2,Sanlam Ltd,0004,0fe55722-2748-4221-a35a-ccfefd141cc5,SANLAM LTD,2025-09-18,ayanda.zulu@company.co.za,ZA,Pretoria,3380,BUR010
+0000000176,2,Clicks Group,0099,c23456a2-3a4f-4753-801f-2ce01117fefb,CLICKS GROUP,2025-12-21,bongani.dlamini@company.co.za,ZA,Bloemfontein,2757,BUR010
+0000000177,3,Absa Group,0005,8bcb20d5-dfce-4b0d-afc2-74dfccd5ceb2,ABSA GROUP,2021-04-18,bongani.patel@company.co.za,DE,Nelspruit,3866,BUR002
+0000000178,3,Discovery Ltd,0003,d2653269-fbe4-4cde-8835-5904f1d5066f,DISCOVERY LTD,2026-03-08,ayanda.molefe@company.co.za,ZA,Pretoria,3377,BUR002
+0000000179,3,Sanlam Ltd,0003,f94f9e9b-7bc6-410a-9e39-24949a84b453,SANLAM LTD,2026-01-15,lerato.ndlovu@company.co.za,ZA,Midrand,6191,BUR002
+0000000180,2,Woolworths SA,0002,0d7e5e49-b549-48f1-bace-33cc901400d7,WOOLWORTHS SA,2025-10-20,sipho.molefe@company.co.za,ZA,Stellenbosch,7051,BUR001
+0000000181,,,0005,c8ca3efe-5cd8-4a7f-8119-f520806cf3ee,,2026-02-03,johan.vandermerwe@company.co.za,AU,Cape Town,9102,BUR001
+0000000182,3,Tiger Brands,0005,7269b92a-095f-4d6f-b5b2-0f2ce2a2c3ad,TIGER BRANDS,2025-06-20,henk.molefe@company.co.za,GB,Nelspruit,7844,BUR002
+0000000183,2,Anglo American,0001,1ea7ec89-6042-4bb0-876f-1ac0e5b1c6e9,ANGLO AMERICAN,2026-01-21,johan.patel@company.co.za,GB,Nelspruit,4835,BUR002
+0000000184,2,Standard Bank,0003,58afc488-854e-4ee4-879c-b4091a19bcf2,STANDARD BANK,2026-03-01,fatima.leroux@company.co.za,ZA,Pretoria,2852,BUR002
+0000000185,2,Absa Group,0001,4b9f350f-b311-4ec5-91fe-c8368a7e889c,ABSA GROUP,2020-12-16,fatima.patel@company.co.za,AU,Bloemfontein,1585,BUR010
+0000000186,1,Discovery Ltd,0002,9defeb36-ff88-4e68-85fa-8ff44a0d9818,DISCOVERY LTD,2025-11-04,thandi.leroux@company.co.za,ZA,Bloemfontein,6354,BUR001
+0000000187,2,Woolworths SA,0004,7af82d24-2585-4c16-82e0-6206a298cafb,WOOLWORTHS SA,2025-05-31,johan.govender@company.co.za,ZA,Bloemfontein,8104,BUR001
+0000000188,2,Nedbank Group,0001,e6756ad2-0293-44b6-a5ec-99d8259e7826,NEDBANK GROUP,2025-06-24,riana.dlamini@company.co.za,ZA,Bloemfontein,4960,BUR010
+0000000189,1,Sibanye Stillwater,0002,56a70909-cceb-4a8a-937a-1eea0e9cbf81,SIBANYE STILLWATER,2026-02-23,zanele.steyn@company.co.za,ZZ,Johannesburg,2699,BUR002
+0000000190,2,Clicks Group,0004,726f1936-02f7-4d37-8a2f-1473b2ea2d21,CLICKS GROUP,2026-02-15,riana.vandermerwe@company.co.za,ZA,Nelspruit,9843,BUR002
+0000000191,2,Vodacom Group,0003,ec51aecf-6737-462e-ada3-237c1fb97ada,VODACOM GROUP,2025-08-18,ahmed.leroux@company.co.za,GB,Johannesburg,1992,BUR001
+0000000192,2,FirstRand Ltd,0005,5b50196c-1aec-41f2-9415-575aa301c516,FIRSTRAND LTD,2025-05-26,henk.vandermerwe@company.co.za,DE,Nelspruit,3202,BUR001
+0000000193,3,Clicks Group,0001,dcd8319f-e8b7-4058-9a65-c59ad94fc26a,CLICKS GROUP,2020-11-10,fatima.steyn@company.co.za,ZA,Sandton,6674,BUR002
+0000000194,2,Sasol Limited,0002,3dfbab18-a967-48e6-833e-ab634d75d280,SASOL LIMITED,2025-05-25,henk.vandermerwe@company.co.za,ZA,Sandton,9720,BUR002
+0000000195,3,Clicks Group,0002,efdede34-d13a-42a3-b83e-df212a771d0d,CLICKS GROUP,2025-10-18,lerato.govender@company.co.za,US,Cape Town,3305,BUR010
+0000000196,1,FirstRand Ltd,0001,5bdf871a-6ea2-4cae-86c8-f559517e17d6,FIRSTRAND LTD,2025-07-07,riana.leroux@company.co.za,US,Cape Town,4811,BUR010
+0000000197,1,MTN Group,0005,21f8d55b-ec30-41cc-8687-718fd3ac04a1,MTN GROUP,2025-12-13,ahmed.ndlovu@company.co.za,ZA,Pretoria,2933,BUR010
+0000000198,2,Vodacom Group,0002,f8062177-913b-400a-8afc-32a3a89ffe72,VODACOM GROUP,2026-01-08,zanele.zulu@company.co.za,GB,Polokwane,1824,BUR010
+0000000199,2,FirstRand Ltd,0001,96460f11-1fd7-4ec4-94c6-659164c91466,FIRSTRAND LTD,2025-11-10,sipho.kruger@company.co.za,AU,Pretoria,2873,BUR010
+0000000200,1,FirstRand Ltd,0002,86dd7052-c855-406e-b4aa-affdea80cd63,FIRSTRAND LTD,2025-05-27,sipho.vandermerwe@company.co.za,GB,Stellenbosch,1095,BUR001
+ABC123,2,Bidvest Group,0001,ba1a8f54-94c8-4bf6-94fc-c19a61330928,BIDVEST GROUP,2023-01-18,not-an-email,SOUTH AFRICA,Johannesburg,2538,BUR001
+0000000202,3,Discovery Ltd,0001,09a2f1e8-0e0f-4128-9c05-84efa1783b75,DISCOVERY LTD,2025-11-19,lerato.patel@company.co.za,US,Pretoria,8426,BUR001
+0000000203,1,Shoprite Holdings,0003,e846ceba-a567-4e68-8a58-4281e700604a,SHOPRITE HOLDINGS,2025-05-31,henk.dlamini@company.co.za,ZA,Cape Town,5243,BUR010
+0000000204,2,Sanlam Ltd,0005,96674eb8-b670-4520-a4a7-fffefb803ab1,SANLAM LTD,2026-02-22,henk.botha@company.co.za,DE,Polokwane,8203,
+0000000205,1,MTN Group,0005,af7355d6-1649-407d-851a-2cfcf36ff004,MTN GROUP,2025-05-28,johan.molefe@company.co.za,AU,Cape Town,5656,BUR010
+0000000206,1,Standard Bank,0005,6bc5bf61-a9df-4a8e-843a-7f520d156eef,STANDARD BANK,2025-07-31,nomusa.patel@company.co.za,ZA,Pretoria,5959,BUR001
+0000000207,2,Shoprite Holdings,0003,8f74bbff-4b29-4eb9-8c70-8ad092e42c05,SHOPRITE HOLDINGS,2025-08-18,riana.govender@company.co.za,AU,Sandton,3610,BUR002
+0000000208,2,Discovery Ltd,0004,93db0471-ae2c-4d6d-9a29-4b917f09dd8a,DISCOVERY LTD,2025-08-06,nomusa.botha@company.co.za,ZA,Stellenbosch,4507,BUR001
+0000000209,2,Discovery Ltd,0002,bd396d2d-1725-4bbb-9716-f18700ad74dd,DISCOVERY LTD,2023-01-10,fatima.govender@company.co.za,GB,Midrand,8732,BUR010
+0000000210,1,Clicks Group,0002,7060bc71-9c4b-415d-b04e-2f0625e08c57,CLICKS GROUP,2026-02-15,pieter.leroux@company.co.za,DE,Midrand,9258,BUR002
+0000000211,3,Naspers Ltd,0099,c7ae0f8b-fdd0-437c-9bea-ef8f1798d7ea,NASPERS LTD,2025-06-29,bongani.kruger@company.co.za,,Midrand,2517,BUR010
+0000000212,2,Gold Fields,0001,2fd0b5b4-1e4d-4f07-9c08-04da5518cd23,GOLD FIELDS,2025-08-02,naledi.govender@company.co.za,GB,Bloemfontein,5641,BUR001
+0000000213,1,Gold Fields,0002,2b2832cb-2f0b-4a96-8df5-078e18fd64fa,GOLD FIELDS,2025-06-01,johan.steyn@company.co.za,AU,Johannesburg,1507,BUR010
+0000000214,1,Shoprite Holdings,0005,0467d689-dc26-4eab-b968-83598dcd8293,SHOPRITE HOLDINGS,2025-09-10,nomusa.zulu@company.co.za,ZA,Stellenbosch,7876,
+0000000215,2,Vodacom Group,0002,ee00c59d-8abf-40f8-b814-98f45dc57e93,VODACOM GROUP,2025-10-06,fatima.vandermerwe@company.co.za,ZA,Johannesburg,9196,BUR010
+0000000216,3,Tiger Brands,0002,cf540216-83e5-4a28-92c5-856f6719ed4f,TIGER BRANDS,2025-08-14,ayanda.botha@company.co.za,GB,Polokwane,3966,BUR001
+0000000217,3,Clicks Group,0003,21169dc5-e389-47a1-861e-4b5b9130a9d3,CLICKS GROUP,2022-03-08,nomusa.ndlovu@company.co.za,AU,Johannesburg,8846,BUR001
+0000000218,1,Shoprite Holdings,0005,c0c81eb8-1356-4e5c-95c9-6dd56e64c4f0,SHOPRITE HOLDINGS,2025-11-20,sipho.nkosi@company.co.za,DE,Midrand,5926,BUR001
+0000000219,1,Tiger Brands,0002,1fea8dc3-b08f-4bfe-9ea5-99e550a48294,TIGER BRANDS,2025-11-29,ayanda.dlamini@company.co.za,ZA,Midrand,7185,BUR010
+0000000220,2,Sanlam Ltd,0002,ac5675b7-6b84-45ba-b4ad-35f05d7e08d2,SANLAM LTD,2026-03-09,lerato.leroux@company.co.za,ZA,Stellenbosch,9130,BUR002
+0000000221,9,Standard Bank,0001,8ec3a433-4e56-4342-bd6b-ee6227e57013,,2025-09-21,zanele.steyn@company.co.za,GB,Midrand,7766,BUR002
+0000000222,2,Vodacom Group,0005,7bdcb7db-475e-41e6-8b94-706aeb4fe8ab,,2026-01-16,lerato.molefe@company.co.za,ZA,Pretoria,4643,BUR001
+0000000223,2,Sibanye Stillwater,0004,b94ecef6-230b-4a85-8842-3c205c076198,SIBANYE STILLWATER,2025-07-04,ahmed.patel@company.co.za,ZA,Stellenbosch,4870,BUR001
+0000000224,1,Clicks Group,0004,e89cc9d2-5b8c-4e7c-a86f-6e5f73605f7a,CLICKS GROUP,2025-12-06,johan.dlamini@company.co.za,ZA,Polokwane,9728,BUR010
+0000000225,2,FirstRand Ltd,0005,144b3514-87ba-4662-8eb0-9aa7e22a1060,FIRSTRAND LTD,2022-03-26,sipho.nkosi@company.co.za,DE,Nelspruit,4312,BUR010
+0000000226,,Anglo American,0005,0266d547-1061-4dd4-bfc0-414cf31d8734,ANGLO AMERICAN,2025-06-21,fatima.kruger@company.co.za,ZA,Cape Town,8012,BUR001
+0000000227,2,Tiger Brands,0003,58c812c9-8ddf-452c-adad-a5790b7306e8,TIGER BRANDS,2025-06-13,zanele.vandermerwe@company.co.za,ZA,Bloemfontein,3655,BUR002
+0000000228,2,Clicks Group,0004,553c29fd-8d74-4f49-9690-c365b4d6f6fb,CLICKS GROUP,2026-01-19,nomusa.dlamini@company.co.za,GB,Polokwane,9523,BUR002
+0000000229,2,Bidvest Group,0001,5563a752-e888-44e2-b691-7a00fc7f7545,BIDVEST GROUP,2025-12-03,lerato.patel@company.co.za,ZA,Johannesburg,7270,BUR010
+0000000230,3,Capitec Bank,0005,7eba77c6-2633-45e5-a921-55f697f8f63e,CAPITEC BANK,2025-07-01,naledi.govender@company.co.za,GB,Durban,2955,BUR001
+0000000231,2,Sasol Limited,0003,ad4879ce-09cf-41b7-bf88-da96fb5cbc83,SASOL LIMITED,2026-01-16,nomusa.zulu@company.co.za,ZA,Polokwane,3190,BUR010
+0000000232,2,Discovery Ltd,0002,ee85bfe0-1230-434b-b5c5-34a1c445bd55,DISCOVERY LTD,2025-10-31,willem.molefe@company.co.za,GB,Midrand,5147,BUR001
+0000000233,2,Pick n Pay,0003,2cd81baf-e6c8-42c4-98f4-ec9f7456431c,PICK N PAY,2023-06-05,sipho.molefe@company.co.za,SOUTH AFRICA,Bloemfontein,3396,BUR002
+0000000234,3,Sasol Limited,0004,32ea3fab-268d-46e7-bdc9-710aa58cf3de,,2025-06-02,henk.dlamini@company.co.za,AU,Pretoria,5765,BUR010
+0000000235,1,Vodacom Group,0003,03fc9df5-cd04-48ea-a2ae-71f1cc1f5cf1,VODACOM GROUP,2025-07-03,thandi.molefe@company.co.za,GB,Durban,3764,BUR010
+0000000236,3,Sibanye Stillwater,0004,35131c2f-3640-4d01-9f5d-504ea18fb575,SIBANYE STILLWATER,2025-09-19,pieter.vandermerwe@company.co.za,ZA,Durban,7166,BUR002
+0000000237,2,Absa Group,0005,e6ad0108-5322-44b4-8454-89e3d9609ad2,ABSA GROUP,2026-02-15,henk.govender@company.co.za,AU,Nelspruit,7005,BUR002
+0000000238,1,Shoprite Holdings,0004,ae99b210-d6b3-4c00-af96-735785cdb529,SHOPRITE HOLDINGS,2025-10-10,bongani.leroux@company.co.za,ZA,Bloemfontein,1516,BUR010
+0000000239,3,Pick n Pay,0001,aa190566-f65f-4299-b7bd-3d6e539dd090,PICK N PAY,2025-08-07,naledi.leroux@company.co.za,US,Sandton,6164,BUR002
+0000000240,2,Naspers Ltd,0001,759b5854-ac7d-4451-b657-d4a7d0b50d51,NASPERS LTD,2025-08-01,nomusa.nkosi@company.co.za,SOUTH AFRICA,Nelspruit,7100,
+0000000241,2,,0002,c27c0109-a09f-4495-a06d-629dd2d1d048,,2021-12-24,not-an-email,AU,Stellenbosch,4514,BUR002
+0000000242,2,Tiger Brands,0003,6396bf83-05ee-4bee-9c34-62453efdf57e,TIGER BRANDS,2025-08-25,lerato.botha@company.co.za,DE,Stellenbosch,2577,BUR001
+0000000243,2,Sanlam Ltd,0001,f92ae98d-99f0-485b-ab26-79c24a80452d,SANLAM LTD,2025-07-17,pieter.botha@company.co.za,ZA,Polokwane,7714,
+0000000244,2,Shoprite Holdings,0001,ca0c71e5-8100-49bd-adca-36b43d36953b,SHOPRITE HOLDINGS,2025-09-05,thandi.botha@company.co.za,US,Midrand,8459,BUR002
+0000000245,2,Sibanye Stillwater,0001,f6fc848d-8108-4041-9112-4a10db478288,,2025-07-14,ahmed.nkosi@company.co.za,AU,Durban,9609,BUR002
+0000000246,2,Bidvest Group,0099,821090a1-3dee-46b5-924b-7acea4848b61,BIDVEST GROUP,2025-11-30,sipho.botha@company.co.za,ZA,Nelspruit,5227,
+0000000247,2,Capitec Bank,0001,20ee9348-898e-4914-984c-f0124eed2cba,CAPITEC BANK,2025-11-09,thandi.dlamini@company.co.za,DE,Cape Town,5398,BUR010
+0000000248,3,Naspers Ltd,0001,94e6a7fe-0e86-4b30-b196-19b6c8691065,NASPERS LTD,2025-08-31,thandi.botha@company.co.za,,Pretoria,3043,BUR002
+0000000249,3,Pick n Pay,0001,d00dba4e-5b48-4a43-b019-e3fab09d0590,PICK N PAY,2022-10-27,thandi.ndlovu@company.co.za,AU,Nelspruit,2301,BUR010
+0000000250,3,Clicks Group,0001,bad68146-d344-47d8-a64c-14c643fce6ad,CLICKS GROUP,2026-02-27,naledi.kruger@company.co.za,ZA,Stellenbosch,7640,BUR002
+ABC123,3,Tiger Brands,0001,8007dc02-21d2-4149-9956-4d3aea0acf01,TIGER BRANDS,2025-06-20,johan.ndlovu@company.co.za,ZA,Sandton,9184,BUR001
+0000000252,3,Standard Bank,0002,e6620df2-66d8-4d4d-9f54-1b19bcd9a25c,STANDARD BANK,2025-06-13,lerato.govender@company.co.za,AU,Polokwane,3037,BUR001
+0000000253,1,Tiger Brands,0004,755eecc1-4aa1-46dd-b56b-398a5fd626df,TIGER BRANDS,2025-07-15,bongani.zulu@company.co.za,AU,Johannesburg,9420,BUR010
+0000000254,2,FirstRand Ltd,0002,dd1fbfc4-1c81-4eea-910e-b063807f5e15,FIRSTRAND LTD,2026-01-07,lerato.steyn@company.co.za,ZA,Johannesburg,5294,BUR001
+0000000255,3,MTN Group,0002,f9f42368-bdba-4f0e-bfbf-45464e80ffb9,MTN GROUP,2025-06-05,ahmed.govender@company.co.za,GB,Nelspruit,4829,BUR002
+0000000256,2,Standard Bank,0001,885208e0-9a72-4448-b0f6-cfae83e4fd3c,STANDARD BANK,2025-11-01,bongani.kruger@company.co.za,DE,Durban,8486,BUR010
+0000000257,2,Woolworths SA,0005,c0229448-29b3-4efd-8a55-07e608bbf939,WOOLWORTHS SA,2023-07-03,fatima.zulu@company.co.za,ZA,Johannesburg,4081,BUR001
+0000000258,1,Woolworths SA,0005,94d7b7b4-2a6c-4b73-a3ff-f856d3d83cf2,WOOLWORTHS SA,2025-10-12,naledi.leroux@company.co.za,ZA,Cape Town,6759,BUR001
+0000000259,2,Tiger Brands,0003,b58acf2d-c7c6-49b7-b02c-e93bb5288742,TIGER BRANDS,2025-07-21,nomusa.ndlovu@company.co.za,GB,Bloemfontein,6081,BUR010
+0000000260,2,Sanlam Ltd,0005,f6862cfe-86c9-4946-8584-ae88ebc4bc70,SANLAM LTD,2025-10-10,ayanda.kruger@company.co.za,ZA,Bloemfontein,5766,BUR002
+0000000261,2,Capitec Bank,0004,10a50fc3-4658-4a67-9651-433d9e4bde81,CAPITEC BANK,2025-08-05,sipho.patel@company.co.za,GB,Bloemfontein,5883,BUR001
+0000000262,3,Anglo American,0002,5b21a799-3a75-4568-8830-09e1052f4743,ANGLO AMERICAN,2025-06-29,henk.patel@company.co.za,ZA,Johannesburg,9555,BUR002
+0000000263,2,Sanlam Ltd,0001,275bb946-7de4-4da8-9ee0-cab387604e2f,SANLAM LTD,2025-07-18,pieter.zulu@company.co.za,DE,Johannesburg,9585,BUR001
+0000000264,1,Naspers Ltd,0001,d3281ef2-b61d-46d6-bb25-d93b5013166f,NASPERS LTD,2025-06-28,zanele.kruger@company.co.za,DE,Midrand,5626,BUR002
+0000000265,2,Pick n Pay,0005,b835f1e9-1dde-4f51-8445-c646eb447e63,PICK N PAY,2023-05-24,lerato.vandermerwe@company.co.za,ZA,Bloemfontein,9687,BUR010
+0000000266,2,Standard Bank,0004,59382b9e-3dcb-4c4e-b219-c23a33a83747,STANDARD BANK,2026-03-16,sipho.zulu@company.co.za,ZA,Pretoria,3900,BUR010
+0000000267,2,Capitec Bank,0005,07d18844-8dc5-44e8-8b69-cbb889f3609b,CAPITEC BANK,2025-10-16,nomusa.ndlovu@company.co.za,US,Cape Town,9645,BUR001
+0000000268,3,Vodacom Group,0003,501a7ca9-66a2-4e98-8b73-2245b4c830f6,VODACOM GROUP,2025-09-25,henk.dlamini@company.co.za,ZA,Durban,1237,BUR001
+0000000269,3,Woolworths SA,0004,c1f2137b-9c20-4bd0-a770-89893d245677,WOOLWORTHS SA,2025-11-03,zanele.steyn@company.co.za,ZA,Cape Town,3557,BUR002
+0000000270,1,Shoprite Holdings,0002,c4ce71b4-b2da-44f9-b1b9-a1940a98e431,SHOPRITE HOLDINGS,2025-11-25,bongani.govender@company.co.za,GB,Durban,4677,BUR002
+0000000271,,Gold Fields,0003,e2eab55b-76a7-4c5e-bcfd-03fce4a84187,GOLD FIELDS,2025-08-16,naledi.kruger@company.co.za,AU,Pretoria,6237,BUR001
+0000000272,2,Shoprite Holdings,0003,915c74bf-e12b-45ea-98da-9cc9e6c74ba8,SHOPRITE HOLDINGS,2025-07-03,bongani.kruger@company.co.za,ZA,Stellenbosch,8632,BUR002
+0000000273,2,Capitec Bank,0005,df9753fa-837d-425f-819e-865c9e1d8ae4,CAPITEC BANK,2020-11-02,naledi.vandermerwe@company.co.za,AU,Stellenbosch,8414,BUR002
+0000000274,2,Pick n Pay,0005,1d1823ad-79f0-498d-a4cf-aa571696ba5f,PICK N PAY,2025-08-17,bongani.dlamini@company.co.za,DE,Nelspruit,1369,BUR001
+0000000275,3,Absa Group,0003,80bb5b4b-2ead-4b2f-8d45-2351f92de89d,ABSA GROUP,2025-05-27,pieter.dlamini@company.co.za,US,Stellenbosch,3846,
+0000000276,9,Absa Group,0004,b3ff1e1e-c94c-491c-9212-4656e14af88a,ABSA GROUP,2025-05-26,bongani.dlamini@company.co.za,DE,Bloemfontein,5296,BUR010
+0000000277,1,Clicks Group,0002,8af126c3-d729-437f-a3e0-0099be396ab9,CLICKS GROUP,2025-09-22,riana.leroux@company.co.za,GB,Bloemfontein,9526,BUR001
+0000000278,2,Sasol Limited,0001,ee280e4f-0828-4c04-a89f-3afa75708583,,2025-10-06,ayanda.vandermerwe@company.co.za,US,Sandton,4588,BUR010
+0000000279,2,Bidvest Group,0005,0bf6eff4-cb49-47f8-ab93-43802d5d1390,BIDVEST GROUP,2025-08-23,lerato.dlamini@company.co.za,ZA,Sandton,7408,BUR002
+0000000280,2,MTN Group,0003,974549f7-052e-46cd-aaa4-6a83f7df59f2,MTN GROUP,2025-10-17,lerato.leroux@company.co.za,XX,Pretoria,4641,
+0000000281,1,Sibanye Stillwater,0099,f6d97f8a-12a9-4203-bd0e-0638cbec5b16,SIBANYE STILLWATER,2023-08-11,not-an-email,,Sandton,6758,BUR001
+0000000282,2,Vodacom Group,0005,740e28b6-5177-4008-a1a7-7008cc90c1da,VODACOM GROUP,2025-07-20,ayanda.ndlovu@company.co.za,US,Johannesburg,4309,BUR010
+0000000283,1,Sanlam Ltd,0005,373de77a-baea-434c-8f3d-35e26e2e4e25,SANLAM LTD,2025-11-24,naledi.leroux@company.co.za,GB,Stellenbosch,5584,BUR001
+0000000284,1,Absa Group,0003,549bd240-2acd-4a27-ba22-dda7cc03fc81,ABSA GROUP,2026-02-17,johan.nkosi@company.co.za,US,Durban,6062,BUR002
+0000000285,3,Naspers Ltd,0005,b95382d2-31f0-459d-987b-642909ec557f,NASPERS LTD,2025-11-09,sipho.leroux@company.co.za,GB,Johannesburg,2158,BUR001
+0000000286,2,Pick n Pay,0003,bc3ea774-3cc9-425b-9db7-e0b2f6e267bb,PICK N PAY,2026-02-05,lerato.botha@company.co.za,US,Durban,5915,BUR010
+0000000287,3,Discovery Ltd,0002,f5f7ac27-2a99-4e79-8d0f-a91924eab1e0,DISCOVERY LTD,2025-08-06,ayanda.govender@company.co.za,GB,Pretoria,2114,BUR001
+0000000288,1,Naspers Ltd,0002,5d3a38d8-d40d-4644-b9dc-c777dbb88e41,NASPERS LTD,2025-09-27,henk.dlamini@company.co.za,DE,Bloemfontein,8526,BUR001
+0000000289,1,Absa Group,0003,f23c1aec-90e7-4e8f-b73f-8a2f2a470c18,,2022-03-15,johan.dlamini@company.co.za,US,Midrand,7049,BUR001
+0000000290,2,Pick n Pay,0002,7d36314a-60b6-46af-9e75-caa4271dd028,PICK N PAY,2025-07-29,johan.nkosi@company.co.za,ZA,Nelspruit,4684,BUR002
+0000000291,2,Sasol Limited,0002,1f7dcd9f-eac7-4a92-964e-d9e871c8d79f,SASOL LIMITED,2025-12-04,henk.dlamini@company.co.za,ZA,Stellenbosch,3267,BUR002
+0000000292,2,Pick n Pay,0001,903a1df0-55c7-466a-aff1-d36d010c95b8,PICK N PAY,2025-09-16,nomusa.leroux@company.co.za,ZA,Pretoria,4919,BUR002
+0000000293,1,Capitec Bank,0005,5e4be699-03cf-43e2-bb54-3f18ffeb91f6,CAPITEC BANK,2025-10-18,riana.molefe@company.co.za,AU,Durban,7443,BUR002
+0000000294,2,Pick n Pay,0002,0d425b78-409e-4764-872c-c3c9aa21bfb6,PICK N PAY,2025-11-21,nomusa.steyn@company.co.za,DE,Midrand,3288,BUR001
+0000000295,2,FirstRand Ltd,0001,2b1efbd3-0001-429a-afe8-8b3efea091f6,FIRSTRAND LTD,2025-10-24,riana.botha@company.co.za,ZA,Nelspruit,3070,BUR002
+0000000296,2,Discovery Ltd,0001,1ba91511-5d09-410b-b817-2affb4c20dc5,DISCOVERY LTD,2025-12-16,henk.leroux@company.co.za,ZA,Midrand,4673,BUR010
+0000000297,2,Nedbank Group,0003,90bdea1b-e43b-4fb3-8c48-92aa8fc53103,NEDBANK GROUP,2021-09-16,riana.steyn@company.co.za,ZA,Bloemfontein,9553,BUR002
+0000000298,2,Vodacom Group,0003,de2a4f6d-0545-4244-8287-f2b5ba5b6adf,VODACOM GROUP,2025-07-29,henk.vandermerwe@company.co.za,US,Johannesburg,7719,
+0000000299,2,Sasol Limited,0004,e12c6a75-1046-4d22-9096-bf913b023341,SASOL LIMITED,2025-08-16,henk.ndlovu@company.co.za,ZA,Pretoria,1958,BUR010
+0000000300,2,Sibanye Stillwater,0003,677f0d7a-8780-455c-a569-94415bc319a2,SIBANYE STILLWATER,2025-12-21,bongani.vandermerwe@company.co.za,ZA,Sandton,6533,BUR002

@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "meridian.fullname" . }}-llm
+  labels:
+    {{- include "meridian.labels" . | nindent 4 }}
+    app.kubernetes.io/component: llm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "meridian.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: llm
+  template:
+    metadata:
+      labels:
+        {{- include "meridian.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: llm
+    spec:
+      containers:
+        - name: ollama
+          image: {{ .Values.llm.image }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 11434
+              protocol: TCP
+          volumeMounts:
+            - name: models
+              mountPath: /root/.ollama
+          resources:
+            requests:
+              {{- if .Values.llm.gpu.enabled }}
+              nvidia.com/gpu: {{ .Values.llm.gpu.count | quote }}
+              {{- end }}
+              memory: {{ .Values.llm.resources.requests.memory }}
+            limits:
+              {{- if .Values.llm.gpu.enabled }}
+              nvidia.com/gpu: {{ .Values.llm.gpu.count | quote }}
+              {{- end }}
+              memory: {{ .Values.llm.resources.limits.memory }}
+          readinessProbe:
+            httpGet:
+              path: /api/tags
+              port: 11434
+            initialDelaySeconds: 30
+            periodSeconds: 30
+      {{- if .Values.llm.gpu.enabled }}
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      {{- end }}
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: {{ include "meridian.fullname" . }}-llm-models
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "meridian.fullname" . }}-llm-models
+  labels:
+    {{- include "meridian.labels" . | nindent 4 }}
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 100Gi

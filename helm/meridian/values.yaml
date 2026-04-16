@@ -1,0 +1,95 @@
+replicaCount:
+  api: 2
+  worker: 3
+  frontend: 1
+
+image:
+  api: ghcr.io/agentum-au/meridian-api:latest
+  frontend: ghcr.io/agentum-au/meridian-frontend:latest
+  pullPolicy: IfNotPresent
+
+llm:
+  provider: ollama
+  model: llama3.1:70b
+  image: ollama/ollama:latest
+  gpu:
+    enabled: true
+    count: 1
+  resources:
+    requests:
+      memory: "16Gi"
+    limits:
+      memory: "64Gi"
+
+postgres:
+  enabled: true
+  image: postgres:16-alpine
+  storageSize: 50Gi
+  user: meridian
+  database: meridian
+
+redis:
+  enabled: true
+  image: redis:7-alpine
+  storageSize: 5Gi
+
+minio:
+  enabled: true
+  image: minio/minio:latest
+  storageSize: 100Gi
+
+ingress:
+  enabled: false
+  className: ""
+  host: ""
+  tls: []
+
+licence:
+  key: ""
+  serverUrl: https://licence.meridian.meridian.co.za
+  file: ""
+
+auth:
+  mode: local
+  clerkSecretKey: ""
+
+secrets:
+  dbPassword: ""
+  minioPassword: ""
+  resendApiKey: ""
+  ollamaApiKey: ""
+  anthropicApiKey: ""
+  licenceSecret: ""
+  smtpPassword: ""
+
+api:
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+
+worker:
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "512Mi"
+    limits:
+      cpu: "1000m"
+      memory: "2Gi"
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilization: 60
+
+frontend:
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"

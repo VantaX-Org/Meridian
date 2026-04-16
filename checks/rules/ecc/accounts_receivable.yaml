@@ -1,0 +1,666 @@
+module: accounts_receivable
+target_state: ECC_AND_S4HANA
+rules:
+  - id: AR001
+    field: KNA1.KUNNR
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Customer number is mandatory — primary key for all customer transactions"
+    why_it_matters: >-
+      KUNNR is the primary key for all customer master records and every
+      customer transaction in SAP. Without it, no sales orders (VA01),
+      deliveries (VL01N), billing documents (VF01), or incoming payments
+      (F-28) can be processed. In S/4HANA, customer records are mapped to
+      Business Partners via CVI — records without KUNNR are rejected.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Customer cannot be used in VA01, VL01N, VF01, or any AR sub-ledger
+      transaction. Migration conversion rejects the record. All downstream
+      SD and FI-AR processes are blocked.
+    fix_map:
+      __blank__: >-
+        In ECC: assign a customer number via T-code FD01 (create customer)
+        or investigate the data source for the missing key. In S/4HANA:
+        create via Fiori app F3893 (Manage Business Partner) using the
+        customer role.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: KUNNR is {actual_value}. Assign a valid customer
+      number via FD01 / Fiori app F3893 or correct the source data load.
+
+  - id: AR002
+    field: KNA1.KUNNR
+    check_class: regex_check
+    pattern: "^[A-Z0-9]{1,10}$"
+    severity: critical
+    dimension: validity
+    message: "Customer number must be 1-10 alphanumeric characters"
+    why_it_matters: >-
+      Customer numbers must conform to the number range configuration (table
+      TNRO, object DEBITOR). Non-conforming formats are rejected by the system
+      and by the S/4HANA migration program. In S/4HANA, customer numbers are
+      mapped to Business Partner numbers via CVI.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Customer rejected by number range validation. Unusable in VA01, VL01N,
+      VF01, and automatic dunning program F150.
+    fix_map:
+      __other__: >-
+        Customer number '{invalid_value}' does not match the required format.
+        In ECC: use LSMW or a conversion program to reformat before migration.
+        Coordinate with the basis team on number range configuration (T-code
+        SNRO, object DEBITOR). In S/4HANA: use Fiori app F4596.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: number format is invalid (value: '{actual_value}').
+      Reformat or assign a new number via SNRO / Fiori app F4596.
+
+  - id: AR003
+    field: KNA1.NAME1
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Customer name is mandatory — displayed on all sales and billing documents"
+    why_it_matters: >-
+      NAME1 is the primary customer name displayed on sales orders, delivery
+      notes, invoices, and all printed correspondence. It is a mandatory field
+      in both ECC and S/4HANA — the customer master cannot be saved without it.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Customer master cannot be saved. Sales orders, invoices, and dunning
+      notices display blank customer name. Audit trail is broken for AR
+      transactions.
+    fix_map:
+      __blank__: >-
+        In ECC: obtain the legal entity name from the customer's business
+        registration or existing contracts and set via T-code FD02 > Address
+        tab. In S/4HANA: use Fiori app F3893 (Manage Business Partner).
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: NAME1 is {actual_value}. Set the customer name
+      via FD02 / Fiori app F3893.
+
+  - id: AR004
+    field: KNA1.NAME2
+    check_class: null_check
+    severity: low
+    dimension: completeness
+    message: "Customer name 2 is recommended for complete identification"
+    why_it_matters: >-
+      NAME2 provides additional name information (e.g., department, trading
+      name) that helps distinguish customers with similar primary names. It
+      appears on invoices and correspondence alongside NAME1.
+    rule_authority: best_practice
+    sap_impact: >-
+      Invoices and correspondence may not fully identify the customer.
+      Search results in VA01 may return ambiguous matches.
+    fix_map:
+      __blank__: >-
+        In ECC: set the second name line via T-code FD02 > Address tab.
+        In S/4HANA: use Fiori app F3893 (Manage Business Partner).
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: NAME2 is {actual_value}. Set additional name
+      information via FD02 / Fiori app F3893.
+
+  - id: AR005
+    field: KNA1.LAND1
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Country is mandatory — drives tax determination and output formatting"
+    why_it_matters: >-
+      LAND1 (country code) is a mandatory address field that drives tax
+      determination, output language, postal formatting, and is required for
+      all partner functions in SD and FI-AR. SAP rejects customer records
+      without a country code on save.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Customer cannot be saved. Tax determination (FTXP) fails. Output
+      determination (NACE) and all address-dependent processes produce errors.
+    fix_map:
+      __blank__: >-
+        In ECC: determine the ISO country code from the customer's registered
+        address and set via T-code FD02 > Address tab. In S/4HANA: use Fiori
+        app F3893 (Manage Business Partner).
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: LAND1 is {actual_value}. Set the ISO country
+      code via FD02 / Fiori app F3893.
+
+  - id: AR006
+    field: KNA1.LAND1
+    check_class: regex_check
+    pattern: "^[A-Z]{2}$"
+    severity: critical
+    dimension: validity
+    message: "Country code must be a valid 2-letter ISO code"
+    why_it_matters: >-
+      Country codes must conform to ISO 3166-1 alpha-2 format (e.g., ZA, US,
+      DE). Invalid country codes cause tax determination failures, incorrect
+      output formatting, and are rejected by address validation.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Tax determination fails. Output determination produces errors. Address
+      validation rejects the record.
+    fix_map:
+      __other__: >-
+        Country code '{invalid_value}' is not a valid ISO 3166-1 alpha-2 code.
+        In ECC: correct via T-code FD02 > Address tab. Valid codes are
+        configured in table T005. In S/4HANA: use Fiori app F3893.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: LAND1 is '{actual_value}'. Set a valid 2-letter
+      ISO country code via FD02 / Fiori app F3893.
+
+  - id: AR007
+    field: KNA1.STCD1
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "Tax number missing — required for VAT reporting and tax compliance"
+    why_it_matters: >-
+      STCD1 (tax number 1) is required for VAT reporting, output tax
+      calculation, and tax authority submissions. Without it, tax reports
+      are incomplete and the company may face compliance penalties. Many
+      jurisdictions require the customer's tax ID on invoices.
+    rule_authority: best_practice
+    sap_impact: >-
+      VAT returns show incomplete customer tax data. Tax invoices cannot
+      include the customer's tax registration number. Tax audit trail is
+      incomplete.
+    fix_map:
+      __blank__: >-
+        In ECC: obtain the customer's VAT registration number or tax ID and
+        set via T-code FD02 > General Data > Control tab. In S/4HANA: use
+        Fiori app F3893 > Tax Numbers section.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: STCD1 is {actual_value}. Set the tax number
+      via FD02 / Fiori app F3893.
+
+  - id: AR008
+    field: KNA1.SMTP_ADDR
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: "Email required for e-invoicing and automated statement delivery"
+    why_it_matters: >-
+      Email address is required for electronic invoicing, automated statement
+      delivery, and customer communication. Without it, invoices and statements
+      must be sent manually and e-invoicing workflows cannot be activated.
+    rule_authority: best_practice
+    sap_impact: >-
+      Customer statements and invoices cannot be sent electronically. Dunning
+      notices (F150 output) fall back to paper. E-invoicing integration is
+      not possible.
+    fix_map:
+      __blank__: >-
+        In ECC: obtain email from the customer or sales team and add via
+        T-code FD02 > Address tab > Communication. In S/4HANA: use Fiori
+        app F3893 > Address section.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: SMTP_ADDR is {actual_value}. Set the email
+      address via FD02 / Fiori app F3893.
+
+  - id: AR009
+    field: KNA1.KTOKD
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Customer account group is mandatory — controls field status and number range"
+    why_it_matters: >-
+      KTOKD (account group) controls which fields are required, optional, or
+      suppressed in the customer master and which number ranges apply. It
+      determines the customer category (e.g., sold-to, ship-to, payer).
+      Without it, the customer master record is structurally incomplete.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Customer master structure is undefined. Number range assignment fails.
+      Field status rules cannot be applied. The record cannot be saved.
+    fix_map:
+      __blank__: >-
+        In ECC: assign the account group via T-code FD02 > General Data.
+        Common groups: KUND (sold-to), KUWE (ship-to), KURE (payer). In
+        S/4HANA: use Fiori app F3893 via BP grouping.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: KTOKD is {actual_value}. Assign the customer
+      account group via FD02 / Fiori app F3893.
+
+  - id: AR010
+    field: KNA1.LOEVM
+    check_class: domain_value_check
+    allowed_values: ["X", ""]
+    severity: high
+    dimension: validity
+    message: "Central deletion flag must be X (marked) or empty (active)"
+    why_it_matters: >-
+      LOEVM flags the customer for central deletion. Customers marked for
+      deletion should not receive new sales orders or billing documents.
+      Incorrect flagging can cause active customers to be blocked from
+      sales processing.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Customers flagged for deletion are excluded from sales processes (VA01).
+      If incorrectly flagged, legitimate orders and invoices are blocked.
+    valid_values_with_labels:
+      "X": "Marked for deletion at central level"
+      "": "Active — not marked for deletion"
+    fix_map:
+      __other__: >-
+        Value '{invalid_value}' is not valid. Must be X (marked) or empty
+        (active). In ECC: correct via T-code FD02 > General Data. In S/4HANA:
+        use Fiori app F3893.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: LOEVM is '{actual_value}'. Set to X or empty
+      via FD02 / Fiori app F3893.
+
+  - id: AR011
+    field: KNA1.SPERR
+    check_class: domain_value_check
+    allowed_values: ["X", ""]
+    severity: high
+    dimension: validity
+    message: "Central posting block must be X (blocked) or empty (open)"
+    why_it_matters: >-
+      SPERR blocks all financial postings to this customer at the central
+      level. When set, no invoices can be posted via VF01 and no incoming
+      payments can be applied via F-28. This is used for customers under
+      dispute or compliance review.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      All billing postings (VF01) and incoming payments (F-28) are blocked.
+      If incorrectly set, legitimate AR processing is stopped.
+    valid_values_with_labels:
+      "X": "Central posting block active"
+      "": "No posting block"
+    fix_map:
+      __other__: >-
+        Value '{invalid_value}' is not valid. Must be X (blocked) or empty
+        (open). In ECC: correct via T-code FD02 > General Data. In S/4HANA:
+        use Fiori app F3893.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: SPERR is '{actual_value}'. Set to X or empty
+      via FD02 / Fiori app F3893.
+
+  - id: AR012
+    field: KNA1.AUFSD
+    check_class: domain_value_check
+    allowed_values: ["", "01", "02", "03"]
+    severity: medium
+    dimension: validity
+    message: "Order block must be a valid block code or empty"
+    why_it_matters: >-
+      AUFSD controls order entry blocks at the customer level. When set,
+      no new sales orders can be created for this customer in VA01. Valid
+      values represent different block reasons (e.g., credit, delivery,
+      general). Invalid values cause unpredictable blocking behaviour.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Sales order creation (VA01) is blocked. If the value is invalid,
+      the system may reject the customer record or produce unpredictable
+      results during order processing.
+    valid_values_with_labels:
+      "": "No order block"
+      "01": "General order block"
+      "02": "Credit block"
+      "03": "Delivery block"
+    fix_map:
+      __other__: >-
+        Value '{invalid_value}' is not a valid order block code. Must be
+        empty, 01, 02, or 03. In ECC: correct via T-code FD02 > Sales Data.
+        In S/4HANA: use Fiori app F3893.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: AUFSD is '{actual_value}'. Set to a valid block
+      code or empty via FD02 / Fiori app F3893.
+
+  - id: AR013
+    field: KNA1.LIFSD
+    check_class: domain_value_check
+    allowed_values: ["", "01", "02"]
+    severity: medium
+    dimension: validity
+    message: "Delivery block must be a valid block code or empty"
+    why_it_matters: >-
+      LIFSD controls delivery blocks at the customer level. When set, no
+      deliveries can be created for this customer in VL01N. Valid values
+      represent different block reasons. Invalid values cause unpredictable
+      delivery processing behaviour.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Delivery creation (VL01N) is blocked for this customer. Existing
+      sales orders cannot be fulfilled.
+    valid_values_with_labels:
+      "": "No delivery block"
+      "01": "General delivery block"
+      "02": "Credit delivery block"
+    fix_map:
+      __other__: >-
+        Value '{invalid_value}' is not a valid delivery block code. Must be
+        empty, 01, or 02. In ECC: correct via T-code FD02 > Sales Data.
+        In S/4HANA: use Fiori app F3893.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: LIFSD is '{actual_value}'. Set to a valid block
+      code or empty via FD02 / Fiori app F3893.
+
+  - id: AR014
+    field: KNA1.FAKSD
+    check_class: domain_value_check
+    allowed_values: ["", "01", "02"]
+    severity: medium
+    dimension: validity
+    message: "Billing block must be a valid block code or empty"
+    why_it_matters: >-
+      FAKSD controls billing blocks at the customer level. When set, no
+      billing documents can be created for this customer in VF01. Valid
+      values represent different block reasons. Invalid values cause
+      unpredictable billing behaviour.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Billing document creation (VF01) is blocked. Revenue recognition
+      for this customer is delayed.
+    valid_values_with_labels:
+      "": "No billing block"
+      "01": "General billing block"
+      "02": "Credit billing block"
+    fix_map:
+      __other__: >-
+        Value '{invalid_value}' is not a valid billing block code. Must be
+        empty, 01, or 02. In ECC: correct via T-code FD02 > Sales Data.
+        In S/4HANA: use Fiori app F3893.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: FAKSD is '{actual_value}'. Set to a valid block
+      code or empty via FD02 / Fiori app F3893.
+
+  - id: AR015
+    field: KNA1.SPRAS
+    check_class: null_check
+    severity: low
+    dimension: completeness
+    message: "Language key is recommended for output determination"
+    why_it_matters: >-
+      SPRAS (language key) determines the language for all customer
+      correspondence including invoices, dunning notices, and order
+      confirmations. Without it, output defaults to the system language,
+      which may not be appropriate for international customers.
+    rule_authority: best_practice
+    sap_impact: >-
+      Customer correspondence is generated in the system default language.
+      International customers receive documents in the wrong language.
+    fix_map:
+      __blank__: >-
+        In ECC: set the language key via T-code FD02 > General Data. In
+        S/4HANA: use Fiori app F3893.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: SPRAS is {actual_value}. Set the language key
+      via FD02 / Fiori app F3893.
+
+  - id: AR016
+    field: KNA1.TELF1
+    check_class: null_check
+    severity: low
+    dimension: completeness
+    message: "Telephone number is recommended for customer communication"
+    why_it_matters: >-
+      TELF1 (telephone number) supports customer communication for invoice
+      queries, delivery coordination, and payment follow-up. Without it,
+      sales and collections teams cannot contact the customer efficiently.
+    rule_authority: best_practice
+    sap_impact: >-
+      No telephone contact available for customer queries. Collections
+      follow-up and delivery coordination are slower.
+    fix_map:
+      __blank__: >-
+        In ECC: set the telephone number via T-code FD02 > Address tab >
+        Communication. In S/4HANA: use Fiori app F3893 > Address section.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: TELF1 is {actual_value}. Set the telephone
+      number via FD02 / Fiori app F3893.
+
+  - id: AR017
+    field: KNA1.ERDAT
+    check_class: null_check
+    severity: low
+    dimension: completeness
+    message: "Creation date is missing — audit trail incomplete"
+    why_it_matters: >-
+      ERDAT (creation date) provides the audit trail for when the customer
+      master was created. Missing creation dates make it impossible to
+      determine the age of the record for data governance reviews.
+    rule_authority: best_practice
+    sap_impact: >-
+      Audit trail is incomplete. Customer lifecycle reports cannot determine
+      record age. Data governance reviews lack temporal context.
+    fix_map:
+      __blank__: >-
+        Creation date is typically system-generated and should not be blank.
+        This may indicate a data migration issue. In ECC: review the record
+        via T-code FD03 (display customer). In S/4HANA: check via Fiori app
+        F3893.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: ERDAT is {actual_value}. Review the record
+      creation history via FD03 / Fiori app F3893.
+
+  - id: AR018
+    field: KNB1.AKONT
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Reconciliation account is mandatory — links AR sub-ledger to the general ledger"
+    why_it_matters: >-
+      AKONT (reconciliation account) is the GL account that receives all
+      customer postings. Without it, the AR sub-ledger cannot be reconciled
+      to the GL and all invoice postings for this customer will fail. This
+      is the single most critical field in the customer company code segment.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      All postings to this customer fail in VF01 (billing) and F-28
+      (incoming payment). AR sub-ledger cannot be reconciled. Period-end
+      close for AR is blocked until corrected.
+    fix_map:
+      __blank__: >-
+        In ECC: assign reconciliation account via T-code FD02 > Company Code
+        Data > Account Management. Account must be a customer reconciliation
+        account (MITKZ = D in FS00). In S/4HANA: use Fiori app F3893 >
+        Company Code Data.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: AKONT is {actual_value}. Assign a customer
+      reconciliation account via FD02 / Fiori app F3893.
+
+  - id: AR019
+    field: KNB1.KLIMK
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "Credit limit missing — customer has effectively unlimited credit exposure"
+    why_it_matters: >-
+      KLIMK sets the maximum credit exposure allowed for this customer.
+      Missing credit limit means the customer has effectively unlimited
+      credit — a significant financial risk that will not be caught by
+      the credit management check in VA01. The credit exposure report
+      (S_ALR_87012215) shows no limit for this customer.
+    rule_authority: best_practice
+    sap_impact: >-
+      Credit management check in VA01/VA02 always passes — no credit block
+      is triggered regardless of outstanding receivables. FD32 credit
+      overview is incomplete.
+    fix_map:
+      __blank__: >-
+        In ECC: determine the appropriate credit limit based on the customer's
+        payment history and risk profile, and set via T-code FD32 (credit
+        management) or FD02 > Company Code Data. In S/4HANA: use Fiori app
+        F2712 (Manage Customer Credit Exposure) or F3893.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: KLIMK is {actual_value} — no credit limit set.
+      Assign a credit limit via FD32 / Fiori app F2712.
+
+  - id: AR020
+    field: KNB1.MAHNS
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "Dunning procedure missing — overdue invoices will not be automatically chased"
+    why_it_matters: >-
+      MAHNS (dunning procedure) controls how overdue invoices are escalated
+      through dunning levels. Without a dunning procedure, the customer is
+      excluded from the automatic dunning run (F150) and overdue invoices
+      are never systematically chased, increasing DSO.
+    rule_authority: best_practice
+    sap_impact: >-
+      Customer excluded from dunning run F150. Overdue invoices are not
+      automatically escalated. Days Sales Outstanding (DSO) increases.
+    fix_map:
+      __blank__: >-
+        In ECC: set the appropriate dunning procedure via T-code FD02 >
+        Company Code Data > Correspondence tab. Common values: 0001 (standard
+        4-level), 0002 (simplified 2-level). In S/4HANA: use Fiori app F3893.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: MAHNS is {actual_value}. Assign a dunning
+      procedure via FD02 / Fiori app F3893.
+
+  - id: AR021
+    field: KNB1.ZTERM
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "Payment terms missing — affects invoice due date and dunning trigger"
+    why_it_matters: >-
+      ZTERM (payment terms) determines when a customer invoice is due and
+      when dunning notices are triggered. Without payment terms, invoices
+      have no defined due date, dunning cannot be executed, and cash flow
+      forecasting is inaccurate.
+    rule_authority: best_practice
+    sap_impact: >-
+      Invoice due date is undefined. Dunning program F150 cannot calculate
+      overdue status. Cash flow forecasting in FF7A is inaccurate.
+    fix_map:
+      __blank__: >-
+        In ECC: obtain the agreed payment terms from the sales contract and
+        set via T-code FD02 > Company Code Data > Payment Transactions.
+        Common values: 0001 (immediate), ZB30 (30 days net). In S/4HANA:
+        use Fiori app F3893.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: ZTERM is {actual_value}. Set payment terms
+      via FD02 / Fiori app F3893.
+
+  - id: AR022
+    field: KNB1.ZWELS
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: "Payment methods missing — incoming payment processing may be affected"
+    why_it_matters: >-
+      ZWELS defines which payment methods are allowed for this customer.
+      While primarily used in AP, it also affects how incoming payments
+      are processed and which payment clearing methods are available for
+      this customer in F-28 and F-51.
+    rule_authority: best_practice
+    sap_impact: >-
+      Payment clearing methods may be limited. Automated payment matching
+      and clearing routines may not process this customer correctly.
+    fix_map:
+      __blank__: >-
+        In ECC: assign payment methods via T-code FD02 > Company Code Data >
+        Payment Transactions. In S/4HANA: use Fiori app F3893.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: ZWELS is {actual_value}. Assign payment methods
+      via FD02 / Fiori app F3893.
+
+  - id: AR023
+    field: KNB1.TOGRU
+    check_class: null_check
+    severity: low
+    dimension: completeness
+    message: "Tolerance group is recommended for payment difference handling"
+    why_it_matters: >-
+      TOGRU (tolerance group) defines the acceptable payment difference
+      thresholds for this customer. Without it, the system uses the default
+      tolerance group, which may not be appropriate for all customers. Large
+      customers may require wider tolerances, while smaller ones should have
+      tighter controls.
+    rule_authority: best_practice
+    sap_impact: >-
+      Payment differences are handled with default tolerances, which may
+      cause excessive manual processing of small differences or automatic
+      write-off of amounts that should be investigated.
+    fix_map:
+      __blank__: >-
+        In ECC: assign the appropriate tolerance group via T-code FD02 >
+        Company Code Data > Payment Transactions. In S/4HANA: use Fiori
+        app F3893.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: TOGRU is {actual_value}. Assign a tolerance
+      group via FD02 / Fiori app F3893.
+
+  - id: AR024
+    field: KNA1.KUNNR
+    check_class: cross_field_check
+    fields: ["KNB1.KLIMK", "KNB1.MAHNS"]
+    condition: "(`KNB1.KLIMK`.notna() & `KNB1.KLIMK` != '' & `KNB1.KLIMK` != 0) & (`KNB1.MAHNS`.isna() | `KNB1.MAHNS` == '')"
+    severity: high
+    dimension: consistency
+    message: "Customer with credit limit must have a dunning procedure assigned"
+    why_it_matters: >-
+      When a customer has a credit limit (KLIMK) set, it indicates that
+      credit risk is being managed. However, without a dunning procedure
+      (MAHNS), overdue invoices for this customer are never systematically
+      chased, undermining the purpose of the credit limit. Both fields
+      should be maintained together for effective credit management.
+    rule_authority: best_practice
+    sap_impact: >-
+      Credit limit is set but overdue invoices are not dunned. Credit
+      exposure may exceed the limit without any automated follow-up.
+      DSO increases for this customer.
+    fix_map:
+      __other__: >-
+        Customer has a credit limit but no dunning procedure. In ECC: assign
+        a dunning procedure via T-code FD02 > Company Code Data >
+        Correspondence tab. In S/4HANA: use Fiori app F3893.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: credit limit is set but MAHNS is missing.
+      Assign a dunning procedure via FD02 / Fiori app F3893.
+
+  - id: AR025
+    field: KNA1.KUNNR
+    check_class: cross_field_check
+    fields: ["KNA1.KUNNR"]
+    condition: "~`KNA1.KUNNR`.duplicated(keep=False)"
+    severity: critical
+    dimension: uniqueness
+    message: "Duplicate customer numbers detected — each customer must be unique"
+    why_it_matters: >-
+      Duplicate customer numbers violate the primary key constraint. The
+      migration program will reject duplicates, and any that slip through
+      cause incorrect AR postings, double billing, and broken customer
+      reporting. This typically indicates a data extraction or consolidation
+      error.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Migration fails on duplicate key insert. Post-migration, duplicate
+      customers cause double billing, incorrect AR aging, and broken
+      customer reporting.
+    fix_map:
+      __other__: >-
+        Duplicate customer number detected. Identify the canonical record
+        and merge or deactivate the duplicate. In ECC: review both records
+        via T-code FD03 and merge outstanding items. In S/4HANA: use Fiori
+        app F3893 and BP merge tools to consolidate.
+    record_fix_template: >-
+      Customer {KNA1.KUNNR}: duplicate detected. Review and merge via FD03 /
+      Fiori app F3893.
+
+  - id: AR026
+    field: KNA1.ERDAT_CUSTOMER
+    check_class: freshness_check
+    max_age_hours: 17520
+    severity: low
+    dimension: timeliness
+    message: Customer master not updated in 2+ years — review if credit limits, payment terms, and addresses are still current
+    rule_authority: best_practice
+
+  - id: AR027
+    field: KNA1.STCEG
+    check_class: regex_check
+    pattern: "^[A-Z]{2}[0-9A-Z]{5,15}$"
+    severity: high
+    dimension: accuracy
+    message: Customer VAT/tax registration number format is invalid
+    why_it_matters: Invalid customer VAT numbers cause output tax reporting errors, rejected e-invoices, and audit findings.
+    rule_authority: best_practice
+    sap_impact: Output tax reports include invalid numbers. E-invoicing rejected. Audit flags non-compliant customer tax data.
+    fix_map:
+      __blank__: "Correct the customer tax number via XD02 > Tax Information. Validate against the VIES or SARS database."

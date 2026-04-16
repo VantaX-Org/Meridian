@@ -1,0 +1,462 @@
+{
+  "ecc/business_partner_config_deviation": {
+    "file": "ecc/business_partner_config_deviation.csv",
+    "expected_majority_classification": "config_deviation",
+    "expected_config_deviation_min_pct": 75,
+    "expected_data_error_max_pct": 10,
+    "known_deviation_patterns": [
+      "PARTNER is 8-digit numeric (10000001\u201310500000) \u2014 legacy range, not SAP standard 10-digit",
+      "ADRC.COUNTRY=ZA throughout \u2014 single-country deployment",
+      "LFB1.BUKRS=ZA01 throughout \u2014 custom company code, not standard 1000"
+    ]
+  },
+  "ecc/business_partner_data_errors": {
+    "file": "ecc/business_partner_data_errors.csv",
+    "expected_majority_classification": "data_error",
+    "expected_data_error_min_pct": 70,
+    "expected_config_deviation_max_pct": 10
+  },
+  "ecc/material_master_config_deviation": {
+    "file": "ecc/material_master_config_deviation.csv",
+    "expected_majority_classification": "config_deviation",
+    "expected_config_deviation_min_pct": 75,
+    "expected_data_error_max_pct": 10,
+    "known_deviation_patterns": [
+      "MARA.MTART=ZFIN throughout \u2014 custom Z-type material type",
+      "MARA.MATKL starts with Z (ZRAW/ZFIN/ZPKG) \u2014 custom material groups",
+      "MARA.MEINS=EA throughout \u2014 single unit of measure",
+      "MARA.MATNR follows ZFG{5digits} pattern \u2014 non-standard numbering"
+    ]
+  },
+  "ecc/material_master_data_errors": {
+    "file": "ecc/material_master_data_errors.csv",
+    "expected_majority_classification": "data_error",
+    "expected_data_error_min_pct": 70,
+    "expected_config_deviation_max_pct": 10
+  },
+  "ecc/fi_gl_config_deviation": {
+    "file": "ecc/fi_gl_config_deviation.csv",
+    "expected_majority_classification": "config_deviation",
+    "expected_config_deviation_min_pct": 75,
+    "expected_data_error_max_pct": 10,
+    "known_deviation_patterns": [
+      "SKB1.BUKRS=ZA01 throughout \u2014 custom company code",
+      "SKA1.KTOPL=CAZA throughout \u2014 custom chart of accounts",
+      "SKA1.SAKNR is 6-digit (100000\u2013899999) \u2014 not SAP standard 10-digit"
+    ]
+  },
+  "ecc/fi_gl_data_errors": {
+    "file": "ecc/fi_gl_data_errors.csv",
+    "expected_majority_classification": "data_error",
+    "expected_data_error_min_pct": 70,
+    "expected_config_deviation_max_pct": 10
+  },
+  "ecc/accounts_payable_config_deviation": {
+    "file": "ecc/accounts_payable_config_deviation.csv",
+    "expected_majority_classification": "config_deviation",
+    "expected_config_deviation_min_pct": 75,
+    "expected_data_error_max_pct": 10,
+    "known_deviation_patterns": [
+      "LFB1.WAERS=ZAR throughout \u2014 single currency",
+      "LFB1.ZTERM=ZA30 throughout \u2014 custom payment term",
+      "LFB1.AKONT=210100 throughout \u2014 single reconciliation account"
+    ]
+  },
+  "ecc/accounts_payable_data_errors": {
+    "file": "ecc/accounts_payable_data_errors.csv",
+    "expected_majority_classification": "data_error",
+    "expected_data_error_min_pct": 70,
+    "expected_config_deviation_max_pct": 10
+  },
+  "ecc/accounts_receivable_config_deviation": {
+    "file": "ecc/accounts_receivable_config_deviation.csv",
+    "expected_majority_classification": "config_deviation",
+    "expected_config_deviation_min_pct": 75,
+    "expected_data_error_max_pct": 10,
+    "known_deviation_patterns": [
+      "KNB1.KLIMK=0 throughout \u2014 credit management disabled",
+      "KNB1.ZTERM=ZA14 throughout \u2014 custom payment term",
+      "KNB1.AKONT=140100 throughout \u2014 single reconciliation account"
+    ]
+  },
+  "ecc/accounts_receivable_data_errors": {
+    "file": "ecc/accounts_receivable_data_errors.csv",
+    "expected_majority_classification": "data_error",
+    "expected_data_error_min_pct": 70,
+    "expected_config_deviation_max_pct": 10
+  },
+  "ecc/asset_accounting_config_deviation": {
+    "file": "ecc/asset_accounting_config_deviation.csv",
+    "expected_majority_classification": "config_deviation",
+    "expected_config_deviation_min_pct": 75,
+    "expected_data_error_max_pct": 10,
+    "known_deviation_patterns": [
+      "ANLA.BUKRS=ZA01 throughout \u2014 custom company code",
+      "ANLA.ANLKL follows ZA{3digits} pattern \u2014 custom asset classes"
+    ]
+  },
+  "ecc/asset_accounting_data_errors": {
+    "file": "ecc/asset_accounting_data_errors.csv",
+    "expected_majority_classification": "data_error",
+    "expected_data_error_min_pct": 70,
+    "expected_config_deviation_max_pct": 10
+  },
+  "ecc/mm_purchasing_config_deviation": {
+    "file": "ecc/mm_purchasing_config_deviation.csv",
+    "expected_majority_classification": "config_deviation",
+    "expected_config_deviation_min_pct": 75,
+    "expected_data_error_max_pct": 10,
+    "known_deviation_patterns": [
+      "EKPO.WERKS=P001 or P002 only \u2014 two-plant operation",
+      "EKKO.EKORG=ZA01 throughout \u2014 custom purchasing organisation"
+    ]
+  },
+  "ecc/mm_purchasing_data_errors": {
+    "file": "ecc/mm_purchasing_data_errors.csv",
+    "expected_majority_classification": "data_error",
+    "expected_data_error_min_pct": 70,
+    "expected_config_deviation_max_pct": 10
+  },
+  "ecc/plant_maintenance_config_deviation": {
+    "file": "ecc/plant_maintenance_config_deviation.csv",
+    "expected_majority_classification": "config_deviation",
+    "expected_config_deviation_min_pct": 75,
+    "expected_data_error_max_pct": 10,
+    "known_deviation_patterns": [
+      "EQUI.SWERK=P001 throughout \u2014 single maintenance plant",
+      "EQUI.EQTYP=Z throughout \u2014 custom equipment category"
+    ]
+  },
+  "ecc/plant_maintenance_data_errors": {
+    "file": "ecc/plant_maintenance_data_errors.csv",
+    "expected_majority_classification": "data_error",
+    "expected_data_error_min_pct": 70,
+    "expected_config_deviation_max_pct": 10
+  },
+  "ecc/production_planning_config_deviation": {
+    "file": "ecc/production_planning_config_deviation.csv",
+    "expected_majority_classification": "config_deviation",
+    "expected_config_deviation_min_pct": 75,
+    "expected_data_error_max_pct": 10,
+    "known_deviation_patterns": [
+      "MARA.DISMM=PD throughout \u2014 all make-to-stock",
+      "MARD.WERKS=P001 throughout \u2014 single plant"
+    ]
+  },
+  "ecc/production_planning_data_errors": {
+    "file": "ecc/production_planning_data_errors.csv",
+    "expected_majority_classification": "data_error",
+    "expected_data_error_min_pct": 70,
+    "expected_config_deviation_max_pct": 10
+  },
+  "ecc/sd_customer_master_config_deviation": {
+    "file": "ecc/sd_customer_master_config_deviation.csv",
+    "expected_majority_classification": "config_deviation",
+    "expected_config_deviation_min_pct": 75,
+    "expected_data_error_max_pct": 10,
+    "known_deviation_patterns": [
+      "KNVV.VKORG=ZA01, VTWEG=10, SPART=00 throughout \u2014 single sales area",
+      "KNVV.KDGRP=ZA throughout \u2014 custom customer group"
+    ]
+  },
+  "ecc/sd_customer_master_data_errors": {
+    "file": "ecc/sd_customer_master_data_errors.csv",
+    "expected_majority_classification": "data_error",
+    "expected_data_error_min_pct": 70,
+    "expected_config_deviation_max_pct": 10
+  },
+  "ecc/sd_sales_orders_config_deviation": {
+    "file": "ecc/sd_sales_orders_config_deviation.csv",
+    "expected_majority_classification": "config_deviation",
+    "expected_config_deviation_min_pct": 75,
+    "expected_data_error_max_pct": 10,
+    "known_deviation_patterns": [
+      "VBAK.KUNNR starts with ZA throughout \u2014 customer numbering convention",
+      "VBAK.VKORG=ZA01 throughout \u2014 single sales organisation"
+    ]
+  },
+  "ecc/sd_sales_orders_data_errors": {
+    "file": "ecc/sd_sales_orders_data_errors.csv",
+    "expected_majority_classification": "data_error",
+    "expected_data_error_min_pct": 70,
+    "expected_config_deviation_max_pct": 10
+  },
+  "successfactors/employee_central_config_deviation": {
+    "file": "successfactors/employee_central_config_deviation.csv",
+    "expected_majority_classification": "config_deviation",
+    "expected_config_deviation_min_pct": 75,
+    "expected_data_error_max_pct": 10,
+    "known_deviation_patterns": [
+      "EMPEMPLOYMENT.COMPANY_ID=ZA001 throughout \u2014 single company",
+      "EMPEMPLOYMENT.LOCATION_ID follows ZA-{city} pattern (ZA-JHB, ZA-CPT, ZA-DBN)"
+    ]
+  },
+  "successfactors/employee_central_data_errors": {
+    "file": "successfactors/employee_central_data_errors.csv",
+    "expected_majority_classification": "data_error",
+    "expected_data_error_min_pct": 70,
+    "expected_config_deviation_max_pct": 10
+  },
+  "successfactors/compensation_config_deviation": {
+    "file": "successfactors/compensation_config_deviation.csv",
+    "expected_majority_classification": "config_deviation",
+    "expected_config_deviation_min_pct": 75,
+    "expected_data_error_max_pct": 10,
+    "known_deviation_patterns": [
+      "COMPINFO.CURRENCY=ZAR throughout \u2014 single currency",
+      "COMPINFO.COMP_FREQUENCY=M throughout \u2014 monthly frequency (non-standard)"
+    ]
+  },
+  "successfactors/compensation_data_errors": {
+    "file": "successfactors/compensation_data_errors.csv",
+    "expected_majority_classification": "data_error",
+    "expected_data_error_min_pct": 70,
+    "expected_config_deviation_max_pct": 10
+  },
+  "successfactors/benefits_config_deviation": {
+    "file": "successfactors/benefits_config_deviation.csv",
+    "expected_majority_classification": "config_deviation",
+    "expected_config_deviation_min_pct": 75,
+    "expected_data_error_max_pct": 10,
+    "known_deviation_patterns": [
+      "EMPBENEFITS.BENEFIT_PLAN starts with ZA_ prefix throughout \u2014 localised plan codes"
+    ]
+  },
+  "successfactors/benefits_data_errors": {
+    "file": "successfactors/benefits_data_errors.csv",
+    "expected_majority_classification": "data_error",
+    "expected_data_error_min_pct": 70,
+    "expected_config_deviation_max_pct": 10
+  },
+  "successfactors/payroll_integration_config_deviation": {
+    "file": "successfactors/payroll_integration_config_deviation.csv",
+    "expected_majority_classification": "config_deviation",
+    "expected_config_deviation_min_pct": 75,
+    "expected_data_error_max_pct": 10,
+    "known_deviation_patterns": [
+      "PAYRESULT.ABKRS=ZA throughout \u2014 ZA payroll area",
+      "PAYRESULT.MOLGA=24 throughout \u2014 South Africa country grouping"
+    ]
+  },
+  "successfactors/payroll_integration_data_errors": {
+    "file": "successfactors/payroll_integration_data_errors.csv",
+    "expected_majority_classification": "data_error",
+    "expected_data_error_min_pct": 70,
+    "expected_config_deviation_max_pct": 10
+  },
+  "successfactors/performance_goals_config_deviation": {
+    "file": "successfactors/performance_goals_config_deviation.csv",
+    "expected_majority_classification": "config_deviation",
+    "expected_config_deviation_min_pct": 75,
+    "expected_data_error_max_pct": 10,
+    "known_deviation_patterns": [
+      "PMREVIEW.REVIEW_PERIOD=ZA_FY throughout \u2014 custom fiscal year identifier"
+    ]
+  },
+  "successfactors/performance_goals_data_errors": {
+    "file": "successfactors/performance_goals_data_errors.csv",
+    "expected_majority_classification": "data_error",
+    "expected_data_error_min_pct": 70,
+    "expected_config_deviation_max_pct": 10
+  },
+  "successfactors/succession_planning_config_deviation": {
+    "file": "successfactors/succession_planning_config_deviation.csv",
+    "expected_majority_classification": "config_deviation",
+    "expected_config_deviation_min_pct": 75,
+    "expected_data_error_max_pct": 10,
+    "known_deviation_patterns": [
+      "SUCCESSION.TALENT_POOL=ZA_EXEC or ZA_MGMT throughout \u2014 localised pool codes"
+    ]
+  },
+  "successfactors/succession_planning_data_errors": {
+    "file": "successfactors/succession_planning_data_errors.csv",
+    "expected_majority_classification": "data_error",
+    "expected_data_error_min_pct": 70,
+    "expected_config_deviation_max_pct": 10
+  },
+  "successfactors/recruiting_onboarding_config_deviation": {
+    "file": "successfactors/recruiting_onboarding_config_deviation.csv",
+    "expected_majority_classification": "config_deviation",
+    "expected_config_deviation_min_pct": 75,
+    "expected_data_error_max_pct": 10,
+    "known_deviation_patterns": [
+      "JOBAPP.JOB_REQ_ID follows ZAJR{6digits} pattern throughout"
+    ]
+  },
+  "successfactors/recruiting_onboarding_data_errors": {
+    "file": "successfactors/recruiting_onboarding_data_errors.csv",
+    "expected_majority_classification": "data_error",
+    "expected_data_error_min_pct": 70,
+    "expected_config_deviation_max_pct": 10
+  },
+  "successfactors/learning_management_config_deviation": {
+    "file": "successfactors/learning_management_config_deviation.csv",
+    "expected_majority_classification": "config_deviation",
+    "expected_config_deviation_min_pct": 75,
+    "expected_data_error_max_pct": 10,
+    "known_deviation_patterns": [
+      "LEARNING.COURSE_ID follows ZA_{department} pattern throughout"
+    ]
+  },
+  "successfactors/learning_management_data_errors": {
+    "file": "successfactors/learning_management_data_errors.csv",
+    "expected_majority_classification": "data_error",
+    "expected_data_error_min_pct": 70,
+    "expected_config_deviation_max_pct": 10
+  },
+  "successfactors/time_attendance_config_deviation": {
+    "file": "successfactors/time_attendance_config_deviation.csv",
+    "expected_majority_classification": "config_deviation",
+    "expected_config_deviation_min_pct": 75,
+    "expected_data_error_max_pct": 10,
+    "known_deviation_patterns": [
+      "TIMESHEET.WORK_SCHEDULE=ZA_STD throughout",
+      "TIMESHEET.QUOTA_UNIT=D throughout \u2014 days not hours"
+    ]
+  },
+  "successfactors/time_attendance_data_errors": {
+    "file": "successfactors/time_attendance_data_errors.csv",
+    "expected_majority_classification": "data_error",
+    "expected_data_error_min_pct": 70,
+    "expected_config_deviation_max_pct": 10
+  },
+  "warehouse/ewms_stock_config_deviation": {
+    "file": "warehouse/ewms_stock_config_deviation.csv",
+    "expected_majority_classification": "config_deviation",
+    "expected_config_deviation_min_pct": 75,
+    "expected_data_error_max_pct": 10,
+    "known_deviation_patterns": [
+      "LGPLA.LGNUM=W001 throughout \u2014 single warehouse",
+      "LGPLA.LGTYP=001 or 002 only \u2014 two storage types"
+    ]
+  },
+  "warehouse/ewms_stock_data_errors": {
+    "file": "warehouse/ewms_stock_data_errors.csv",
+    "expected_majority_classification": "data_error",
+    "expected_data_error_min_pct": 70,
+    "expected_config_deviation_max_pct": 10
+  },
+  "warehouse/ewms_transfer_orders_config_deviation": {
+    "file": "warehouse/ewms_transfer_orders_config_deviation.csv",
+    "expected_majority_classification": "config_deviation",
+    "expected_config_deviation_min_pct": 75,
+    "expected_data_error_max_pct": 10,
+    "known_deviation_patterns": [
+      "LTAP.LGNUM=W001 throughout \u2014 single warehouse",
+      "LTAP.TANUM follows TO{7digits} pattern throughout"
+    ]
+  },
+  "warehouse/ewms_transfer_orders_data_errors": {
+    "file": "warehouse/ewms_transfer_orders_data_errors.csv",
+    "expected_majority_classification": "data_error",
+    "expected_data_error_min_pct": 70,
+    "expected_config_deviation_max_pct": 10
+  },
+  "warehouse/batch_management_config_deviation": {
+    "file": "warehouse/batch_management_config_deviation.csv",
+    "expected_majority_classification": "config_deviation",
+    "expected_config_deviation_min_pct": 75,
+    "expected_data_error_max_pct": 10,
+    "known_deviation_patterns": [
+      "MCH1.CHARG follows YYYYMM{4digits} pattern throughout",
+      "MCHA.MHDRZ=90 throughout \u2014 90-day shelf life"
+    ]
+  },
+  "warehouse/batch_management_data_errors": {
+    "file": "warehouse/batch_management_data_errors.csv",
+    "expected_majority_classification": "data_error",
+    "expected_data_error_min_pct": 70,
+    "expected_config_deviation_max_pct": 10
+  },
+  "warehouse/mdg_master_data_config_deviation": {
+    "file": "warehouse/mdg_master_data_config_deviation.csv",
+    "expected_majority_classification": "config_deviation",
+    "expected_config_deviation_min_pct": 75,
+    "expected_data_error_max_pct": 10,
+    "known_deviation_patterns": [
+      "USMD_RECORD.STATUS=PEND throughout \u2014 all records pending approval"
+    ]
+  },
+  "warehouse/mdg_master_data_data_errors": {
+    "file": "warehouse/mdg_master_data_data_errors.csv",
+    "expected_majority_classification": "data_error",
+    "expected_data_error_min_pct": 70,
+    "expected_config_deviation_max_pct": 10
+  },
+  "warehouse/grc_compliance_config_deviation": {
+    "file": "warehouse/grc_compliance_config_deviation.csv",
+    "expected_majority_classification": "config_deviation",
+    "expected_config_deviation_min_pct": 75,
+    "expected_data_error_max_pct": 10,
+    "known_deviation_patterns": [
+      "GRFN_CTRL.RISK_RATING=LOW throughout \u2014 not yet configured",
+      "GRFN_CTRL.RISK_CATEGORY=ZA_REG throughout \u2014 custom category"
+    ]
+  },
+  "warehouse/grc_compliance_data_errors": {
+    "file": "warehouse/grc_compliance_data_errors.csv",
+    "expected_majority_classification": "data_error",
+    "expected_data_error_min_pct": 70,
+    "expected_config_deviation_max_pct": 10
+  },
+  "warehouse/fleet_management_config_deviation": {
+    "file": "warehouse/fleet_management_config_deviation.csv",
+    "expected_majority_classification": "config_deviation",
+    "expected_config_deviation_min_pct": 75,
+    "expected_data_error_max_pct": 10,
+    "known_deviation_patterns": [
+      "FLEET.FLEET_ID starts with ZA- throughout"
+    ]
+  },
+  "warehouse/fleet_management_data_errors": {
+    "file": "warehouse/fleet_management_data_errors.csv",
+    "expected_majority_classification": "data_error",
+    "expected_data_error_min_pct": 70,
+    "expected_config_deviation_max_pct": 10
+  },
+  "warehouse/transport_management_config_deviation": {
+    "file": "warehouse/transport_management_config_deviation.csv",
+    "expected_majority_classification": "config_deviation",
+    "expected_config_deviation_min_pct": 75,
+    "expected_data_error_max_pct": 10,
+    "known_deviation_patterns": [
+      "VTTK.SHIPMENT_TYPE=ZA01 throughout \u2014 custom shipment type"
+    ]
+  },
+  "warehouse/transport_management_data_errors": {
+    "file": "warehouse/transport_management_data_errors.csv",
+    "expected_majority_classification": "data_error",
+    "expected_data_error_min_pct": 70,
+    "expected_config_deviation_max_pct": 10
+  },
+  "warehouse/wm_interface_config_deviation": {
+    "file": "warehouse/wm_interface_config_deviation.csv",
+    "expected_majority_classification": "config_deviation",
+    "expected_config_deviation_min_pct": 75,
+    "expected_data_error_max_pct": 10,
+    "known_deviation_patterns": [
+      "LQUA.LGNUM=W001 throughout \u2014 single warehouse"
+    ]
+  },
+  "warehouse/wm_interface_data_errors": {
+    "file": "warehouse/wm_interface_data_errors.csv",
+    "expected_majority_classification": "data_error",
+    "expected_data_error_min_pct": 70,
+    "expected_config_deviation_max_pct": 10
+  },
+  "warehouse/cross_system_integration_config_deviation": {
+    "file": "warehouse/cross_system_integration_config_deviation.csv",
+    "expected_majority_classification": "config_deviation",
+    "expected_config_deviation_min_pct": 75,
+    "expected_data_error_max_pct": 10,
+    "known_deviation_patterns": [
+      "IDOC.SOURCE_SYSTEM=ECC_ZA01 throughout \u2014 single source system identifier"
+    ]
+  },
+  "warehouse/cross_system_integration_data_errors": {
+    "file": "warehouse/cross_system_integration_data_errors.csv",
+    "expected_majority_classification": "data_error",
+    "expected_data_error_min_pct": 70,
+    "expected_config_deviation_max_pct": 10
+  }
+}

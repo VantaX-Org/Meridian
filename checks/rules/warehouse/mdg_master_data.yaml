@@ -1,0 +1,387 @@
+module: mdg_master_data
+target_state: ECC_AND_S4HANA
+rules:
+
+  - id: MDG001
+    field: USMD_CREQU.CREQU_ID
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Change request ID is the primary key — mandatory for all MDG change requests"
+    why_it_matters: >-
+      CREQU_ID uniquely identifies the master data change request. Without it, the change
+      request cannot be tracked through the governance workflow, linked to approvals,
+      or referenced in audit reports. In S/4HANA, MDG change requests are managed via
+      Fiori apps (e.g. F2596 for material, F2598 for business partner).
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Change request has no identity. Cannot be tracked in governance workflow. Audit
+      trail broken.
+    fix_map:
+      __blank__: >-
+        In ECC: CREQU_ID is system-assigned during change request creation via USMD_CREQU.
+        A blank value indicates data corruption. In S/4HANA: verify via Fiori app F2596
+        or MDG change request monitor.
+    record_fix_template: >-
+      Change request: CREQU_ID is {actual_value}. This is system-assigned — investigate
+      the data source for corruption.
+
+  - id: MDG002
+    field: USMD_CREQU.ENTITY_TYPE
+    check_class: domain_value_check
+    severity: critical
+    dimension: accuracy
+    message: "Entity type must be a valid MDG object type"
+    allowed_values: ["MM", "BP", "FI", "0G"]
+    valid_values_with_labels:
+      MM: "Material — material master data governance"
+      BP: "Business Partner — customer/vendor/partner governance"
+      FI: "Financial — chart of accounts, cost elements governance"
+      "0G": "Organisational — org units, company codes governance"
+    why_it_matters: >-
+      ENTITY_TYPE identifies whether the change request governs a material, business
+      partner, financial object, or organisational unit. Without a valid type, the MDG
+      workflow engine cannot route the request to the correct governance process, approval
+      chain, or data model. The change request is effectively unprocessable.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Change request cannot be routed. Governance workflow cannot start. Master data
+      change is blocked.
+    fix_map:
+      __other__: >-
+        Entity type '{invalid_value}' is not a valid MDG object type. Valid values: MM
+        (material), BP (business partner), FI (financial), 0G (organisational). In ECC:
+        correct via MDG change request maintenance. In S/4HANA: use the relevant Fiori
+        MDG app.
+    record_fix_template: >-
+      Change request {USMD_CREQU.CREQU_ID}: ENTITY_TYPE is '{actual_value}'. Set to a
+      valid type (MM/BP/FI/0G) via MDG change request maintenance.
+
+  - id: MDG003
+    field: USMD_CREQU.ENTITY_ID
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Entity ID is mandatory — identifies which master data record is being changed"
+    why_it_matters: >-
+      ENTITY_ID identifies the specific master data record (e.g. the business partner number,
+      material number) that the change request governs. Without it, the change request
+      cannot be linked to a master data record and the change cannot be applied.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Change request has no target record. Cannot be activated or applied. Governance
+      process has no subject.
+    fix_map:
+      __blank__: >-
+        In ECC: assign entity ID via MDG change request maintenance. In S/4HANA: use
+        Fiori app F2596 (material) or F2598 (business partner).
+    record_fix_template: >-
+      Change request {USMD_CREQU.CREQU_ID}: ENTITY_ID is {actual_value}. Assign the
+      correct master data record identifier.
+
+  - id: MDG004
+    field: USMD_CREQU.STATUS
+    check_class: domain_value_check
+    severity: high
+    dimension: accuracy
+    message: "Change request status must be a valid MDG workflow state"
+    allowed_values: ["01", "02", "03", "04", "05"]
+    valid_values_with_labels:
+      "01": "New — change request created but not yet submitted"
+      "02": "Submitted — sent for review/approval"
+      "03": "Approved — change request approved and ready for activation"
+      "04": "Activated — master data change has been applied"
+      "05": "Rejected — change request rejected by approver"
+    why_it_matters: >-
+      The status field controls which actions are available on the change request and
+      determines whether the master data change can be activated. An invalid status means
+      the governance workflow is in an undefined state — approved changes may not activate,
+      and rejected changes may appear as pending.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Governance workflow in undefined state. Approved changes may not activate. MDG
+      cockpit displays unreliable. Process metrics inaccurate.
+    fix_map:
+      __other__: >-
+        Status '{invalid_value}' is not a valid MDG workflow state. Valid values: 01 (new),
+        02 (submitted), 03 (approved), 04 (activated), 05 (rejected). In ECC: correct via
+        MDG change request maintenance. In S/4HANA: use the Fiori MDG apps.
+    record_fix_template: >-
+      Change request {USMD_CREQU.CREQU_ID}: STATUS is '{actual_value}'. Set to a valid
+      state (01-05) via MDG change request maintenance.
+
+  - id: MDG005
+    field: USMD_CREQU.CREATED_BY
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "Creator is required for audit trail and accountability"
+    why_it_matters: >-
+      CREATED_BY records who initiated the master data change request. Without it, the
+      audit trail is broken — compliance teams cannot trace who requested the change,
+      and the governance process loses accountability. This is especially critical for
+      SOX-relevant master data changes.
+    rule_authority: best_practice
+    sap_impact: >-
+      Audit trail incomplete. Cannot trace change request originator. SOX compliance
+      finding for unattributed master data changes.
+    fix_map:
+      __blank__: >-
+        In ECC: check the change request creation log for the original user. In S/4HANA:
+        verify via the Fiori MDG app or the change request workflow log.
+    record_fix_template: >-
+      Change request {USMD_CREQU.CREQU_ID}: CREATED_BY is {actual_value}. Assign
+      the correct creator from the creation log.
+
+  - id: MDG006
+    field: USMD_CREQU.CREATED_DATE
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: "Creation date is required for governance timeline tracking"
+    why_it_matters: >-
+      CREATED_DATE records when the change request was created. It is essential for
+      measuring governance KPIs such as change request cycle time (creation to activation),
+      identifying stale requests that may need follow-up, and audit timeline compliance.
+    rule_authority: best_practice
+    sap_impact: >-
+      Change request cycle time cannot be calculated. Stale request identification
+      impossible. Governance KPI reporting incomplete.
+    fix_map:
+      __blank__: >-
+        In ECC: creation date is system-populated. If blank, check the data source. In
+        S/4HANA: verify via the Fiori MDG app workflow log.
+    record_fix_template: >-
+      Change request {USMD_CREQU.CREQU_ID}: CREATED_DATE is {actual_value}. This is
+      system-generated — investigate the data source.
+
+  - id: MDG007
+    field: USMD_CREQU.APPROVER
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Approver is mandatory on approved CRs — missing means governance was bypassed"
+    why_it_matters: >-
+      An approved change request without an approver means the governance process was
+      bypassed. The audit trail is incomplete and the change cannot be traced back to an
+      authorised person. This is a critical SOX finding.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Governance bypass. Change cannot be traced to an authorised approver. SOX critical
+      finding. Master data change may need to be reversed and re-approved.
+    fix_map:
+      __blank__: >-
+        In ECC: check the workflow log for the approving user. If none, re-submit for
+        approval. In S/4HANA: verify via the Fiori MDG app workflow history.
+    record_fix_template: >-
+      Change request {USMD_CREQU.CREQU_ID}: APPROVER is {actual_value}. Critical
+      governance gap — identify from workflow logs or re-submit for approval.
+
+  - id: MDG008
+    field: USMD_CREQU.APPROVAL_DATE
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "Approval date required on approved change requests for audit compliance"
+    why_it_matters: >-
+      APPROVAL_DATE records when the change request was approved. For approved CRs, this is
+      essential for the audit trail — it proves the change went through the governance
+      process and when the approval was granted. Missing dates on approved CRs indicate
+      a governance gap.
+    rule_authority: best_practice
+    sap_impact: >-
+      Audit trail incomplete for approved changes. Cannot determine approval timeline.
+      SOX compliance finding for undated approvals.
+    fix_map:
+      __blank__: >-
+        In ECC: check the workflow log for the approval timestamp. In S/4HANA: verify
+        via the Fiori MDG app workflow history.
+    record_fix_template: >-
+      Change request {USMD_CREQU.CREQU_ID}: APPROVAL_DATE is {actual_value}. Set
+      from the workflow approval log.
+
+  - id: MDG009
+    field: USMD_VALUE.FIELD_NAME
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Field name is mandatory — identifies which master data attribute was changed"
+    why_it_matters: >-
+      FIELD_NAME identifies which specific master data attribute is being created or changed
+      in the change request. Without it, the change request records that something changed
+      but not what — making the audit trail meaningless and preventing data stewards from
+      reviewing the actual change.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Change audit trail is meaningless — no record of what was changed. Data steward
+      review impossible. Compliance reporting has gaps.
+    fix_map:
+      __blank__: >-
+        In ECC: identify the field from the change request context and update via MDG
+        maintenance. In S/4HANA: use the Fiori MDG app.
+    record_fix_template: >-
+      Change request value record: FIELD_NAME is {actual_value}. Identify and assign
+      the correct field name via MDG maintenance.
+
+  - id: MDG010
+    field: USMD_VALUE.NEW_VALUE
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "New value should be populated — records what the field is being changed to"
+    why_it_matters: >-
+      NEW_VALUE records the target value for the master data change. Without it, the change
+      request records an intent to change a field but not what the new value should be. This
+      prevents automated activation and forces manual intervention.
+    rule_authority: best_practice
+    sap_impact: >-
+      Automated activation cannot set the correct value. Manual intervention required.
+      Change request review cannot assess the impact of the change.
+    fix_map:
+      __blank__: >-
+        In ECC: enter the intended new value via MDG change request maintenance. In
+        S/4HANA: use the relevant Fiori MDG app.
+    record_fix_template: >-
+      Change request value for {USMD_VALUE.FIELD_NAME}: NEW_VALUE is {actual_value}.
+      Enter the intended new value via MDG change request maintenance.
+
+  - id: MDG011
+    field: USMD_VALUE.OLD_VALUE
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: "Old value provides before-state for change impact assessment and rollback"
+    why_it_matters: >-
+      OLD_VALUE records the current value of the field before the change is applied.
+      Without it, the change request does not capture the before-state, making it
+      impossible to assess the impact of the change, perform a rollback if needed,
+      or generate a meaningful change audit log.
+    rule_authority: best_practice
+    sap_impact: >-
+      Change impact assessment incomplete. Rollback not possible without knowing the
+      previous value. Audit log shows only the new value, not what was changed from.
+    fix_map:
+      __blank__: >-
+        In ECC: the old value should be auto-populated from the current master data
+        record. If blank, check the MDG data model configuration. In S/4HANA: verify
+        via the Fiori MDG app.
+    record_fix_template: >-
+      Change request value for {USMD_VALUE.FIELD_NAME}: OLD_VALUE is {actual_value}.
+      Verify the current value of the field in the master data record.
+
+  - id: MDG012
+    field: USMD_CREQU.ENTITY_TYPE
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Entity type is mandatory — determines the governance workflow and data model"
+    why_it_matters: >-
+      Without ENTITY_TYPE, the MDG system cannot determine which data model, governance
+      workflow, or approval chain applies to the change request. Different entity types
+      (material, business partner, financial) have completely different governance
+      processes and data validation rules.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Change request cannot be routed to governance workflow. Data model unknown.
+      Validation rules cannot be applied. Change request is unprocessable.
+    fix_map:
+      __blank__: >-
+        In ECC: assign entity type via MDG change request maintenance (USMD_MAINTAIN).
+        In S/4HANA: use the relevant Fiori MDG app.
+    record_fix_template: >-
+      Change request {USMD_CREQU.CREQU_ID}: ENTITY_TYPE is {actual_value}. Set the
+      correct type via MDG change request maintenance.
+
+  - id: MDG013
+    field: USMD_CREQU.CREQU_ID
+    check_class: regex_check
+    pattern: "^[A-Z0-9]{1,20}$"
+    severity: medium
+    dimension: validity
+    message: "Change request ID should follow alphanumeric format for system compatibility"
+    why_it_matters: >-
+      MDG change request IDs should be alphanumeric and within 20 characters. Non-standard
+      formats may cause issues with MDG workflow processing, reporting queries, and
+      integration with external governance tools.
+    rule_authority: best_practice
+    sap_impact: >-
+      MDG workflow may not process non-standard IDs. Reporting queries may miss
+      this record. Integration with external tools may fail.
+    fix_map:
+      __other__: >-
+        Change request ID '{invalid_value}' does not match the expected format. In ECC:
+        check the number range configuration for MDG change requests. In S/4HANA: verify
+        the MDG number range settings.
+    record_fix_template: >-
+      Change request: CREQU_ID '{actual_value}' has non-standard format. Check the
+      MDG number range configuration.
+
+  - id: MDG014
+    field: USMD_CREQU.CREATED_BY
+    check_class: regex_check
+    pattern: "^[A-Z0-9_\\-]{1,12}$"
+    severity: medium
+    dimension: validity
+    message: "Creator user ID must follow SAP user naming convention"
+    why_it_matters: >-
+      The CREATED_BY field should contain a valid SAP user ID (max 12 characters,
+      alphanumeric with underscores and hyphens). Non-conforming values indicate
+      that the change request may have been created by a batch process or external
+      system without proper user mapping.
+    rule_authority: best_practice
+    sap_impact: >-
+      Creator cannot be verified in SU01. Audit trail attribution is questionable.
+      Access review cannot validate the creator's authorisation.
+    fix_map:
+      __other__: >-
+        Creator '{invalid_value}' does not match SAP user ID format. In ECC: verify
+        via SU01. In S/4HANA: check via Fiori app F1603.
+    record_fix_template: >-
+      Change request {USMD_CREQU.CREQU_ID}: CREATED_BY '{actual_value}' has non-standard
+      format. Verify via SU01 (ECC) or Fiori app F1603 (S/4HANA).
+
+  - id: MDG015
+    field: USMD_CREQU.APPROVER
+    check_class: regex_check
+    pattern: "^[A-Z0-9_\\-]{1,12}$"
+    severity: medium
+    dimension: validity
+    message: "Approver user ID must follow SAP user naming convention"
+    why_it_matters: >-
+      The APPROVER field should contain a valid SAP user ID. Non-conforming values mean
+      the approver cannot be verified in the user management system, undermining the
+      governance audit trail.
+    rule_authority: best_practice
+    sap_impact: >-
+      Approver cannot be verified in SU01. Governance audit trail questionable. SOX
+      compliance finding if approver identity cannot be confirmed.
+    fix_map:
+      __other__: >-
+        Approver '{invalid_value}' does not match SAP user ID format. In ECC: verify
+        via SU01. In S/4HANA: check via Fiori app F1603.
+    record_fix_template: >-
+      Change request {USMD_CREQU.CREQU_ID}: APPROVER '{actual_value}' has non-standard
+      format. Verify via SU01 (ECC) or Fiori app F1603 (S/4HANA).
+
+  - id: MDG016
+    field: CREQU_ID
+    check_class: cross_field_check
+    fields: ['CREQU_ID']
+    condition: "~`CREQU_ID`.duplicated(keep=False)"
+    severity: high
+    dimension: uniqueness
+    message: Duplicate MDG change request IDs detected — each CR must be unique
+    why_it_matters: Duplicate change request IDs cause workflow routing errors, approval ambiguity, and audit trail breaks. Each MDG CR must have a unique identifier.
+    rule_authority: sap_hard_constraint
+    sap_impact: Workflow routes to wrong approver. Audit trail is ambiguous. Data activation may process the wrong change request.
+    fix_map:
+      __blank__: "Investigate duplicate CR IDs. This is typically a data extract issue. If genuine, escalate to MDG administration — number range collision or replication error."
+
+  - id: MDG017
+    field: CREATED_BY_MDG
+    check_class: freshness_check
+    max_age_hours: 8760
+    severity: low
+    dimension: timeliness
+    message: MDG change request older than 1 year — long-pending CRs should be reviewed, approved, or rejected
+    rule_authority: best_practice
