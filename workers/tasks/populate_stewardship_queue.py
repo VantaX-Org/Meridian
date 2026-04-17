@@ -280,7 +280,7 @@ def populate_queue(self) -> dict:
     for tid in tenant_ids:
         try:
             with Session(engine) as session:
-                session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tid)})
+                session.execute(text(f"SET app.tenant_id TO '{tid}'"))
 
                 # Auto-resolve items whose source was already handled
                 resolved = _mark_resolved_items(session, tid)

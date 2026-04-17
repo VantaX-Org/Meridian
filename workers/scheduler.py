@@ -37,7 +37,7 @@ def _get_tenants(session: Session) -> list[dict]:
 
 
 def _set_rls(session: Session, tenant_id: str) -> None:
-    session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    session.execute(text(f"SET app.tenant_id TO '{str(tenant_id)}'"))
 
 
 # ── Trigger 1: daily_analysis — 02:00 SAST ──────────────────────────────────

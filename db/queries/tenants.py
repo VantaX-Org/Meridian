@@ -9,7 +9,7 @@ from db.schema import Tenant
 
 
 async def get_tenant_by_id(db: AsyncSession, tenant_id: uuid.UUID) -> Optional[Tenant]:
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
     result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
     return result.scalar_one_or_none()
 

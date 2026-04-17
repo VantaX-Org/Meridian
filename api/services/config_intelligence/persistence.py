@@ -42,7 +42,7 @@ class ConfigIntelligencePersistence:
         result,  # ConfigIntelligenceResult
     ) -> None:
         """Persist a full analysis run to the database."""
-        await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        await db.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
 
         # 1. Config inventory
         for e in result.config_inventory:
@@ -176,7 +176,7 @@ class ConfigIntelligencePersistence:
         drift_entries: list[DriftEntry],
     ) -> None:
         """Save drift detection results to config_drift_log."""
-        await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        await db.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
         for d in drift_entries:
             await db.execute(
                 text(
@@ -208,7 +208,7 @@ class ConfigIntelligencePersistence:
         self, db: AsyncSession, tenant_id: str
     ) -> Optional[str]:
         """Get the most recent run_id for a tenant."""
-        await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        await db.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
         row = (
             await db.execute(
                 text(
@@ -224,7 +224,7 @@ class ConfigIntelligencePersistence:
         self, db: AsyncSession, tenant_id: str, current_run_id: str
     ) -> Optional[str]:
         """Get the run_id before the current one."""
-        await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        await db.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
         row = (
             await db.execute(
                 text(
@@ -245,7 +245,7 @@ class ConfigIntelligencePersistence:
         module: Optional[str] = None,
     ) -> list[ConfigElement]:
         """Load config inventory for a run, optionally filtered by module."""
-        await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        await db.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
         q = (
             "SELECT module, element_type, element_value, transaction_count, "
             "first_seen, last_seen, status, sap_reference_table "
@@ -274,7 +274,7 @@ class ConfigIntelligencePersistence:
         self, db: AsyncSession, tenant_id: str, run_id: str
     ) -> list[ProcessHealth]:
         """Load processes with their steps for a run."""
-        await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        await db.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
         proc_rows = (
             await db.execute(
                 text(
@@ -330,7 +330,7 @@ class ConfigIntelligencePersistence:
         self, db: AsyncSession, tenant_id: str, run_id: str, process_id: str
     ) -> Optional[ProcessHealth]:
         """Load a single process with steps."""
-        await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        await db.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
         r = (
             await db.execute(
                 text(
@@ -390,7 +390,7 @@ class ConfigIntelligencePersistence:
         category: Optional[str] = None,
     ) -> list[AlignmentFinding]:
         """Load alignment findings with optional filters."""
-        await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        await db.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
         q = (
             "SELECT check_id, module, category, severity, title, description, "
             "affected_elements, remediation, estimated_impact_zar "
@@ -433,7 +433,7 @@ class ConfigIntelligencePersistence:
         self, db: AsyncSession, tenant_id: str, run_id: str
     ) -> list[ConfigHealthScore]:
         """Load CHS scores for a run."""
-        await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        await db.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
         rows = (
             await db.execute(
                 text(
@@ -461,7 +461,7 @@ class ConfigIntelligencePersistence:
         self, db: AsyncSession, tenant_id: str, run_id: str
     ) -> list[DriftEntry]:
         """Load drift entries for a run."""
-        await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        await db.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
         rows = (
             await db.execute(
                 text(
@@ -489,7 +489,7 @@ class ConfigIntelligencePersistence:
         self, db: AsyncSession, tenant_id: str, run_id: str, check_id: str
     ) -> Optional[AlignmentFinding]:
         """Load a single alignment finding by check_id."""
-        await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        await db.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
         r = (
             await db.execute(
                 text(

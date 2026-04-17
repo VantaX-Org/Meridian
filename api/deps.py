@@ -35,7 +35,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with async_session_factory() as session:
         tenant_id = get_current_tenant_id()
         if tenant_id is not None:
-            await session.execute(text("SET LOCAL app.tenant_id = :tid"), {"tid": str(tenant_id)})
+            await session.execute(text(f"SET LOCAL app.tenant_id TO '{str(tenant_id)}'"))
         yield session
 
 

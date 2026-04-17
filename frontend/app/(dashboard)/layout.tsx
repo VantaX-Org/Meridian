@@ -117,13 +117,15 @@ function HeaderExportMenu() {
         Export
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" sideOffset={8} className="w-64">
-        <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
-          {isLoading
-            ? "Finding latest analysis…"
-            : hasReport
-              ? `Latest analysis: ${latestLabel}`
-              : "No completed analysis yet"}
-        </DropdownMenuLabel>
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
+            {isLoading
+              ? "Finding latest analysis…"
+              : hasReport
+                ? `Latest analysis: ${latestLabel}`
+                : "No completed analysis yet"}
+          </DropdownMenuLabel>
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
 
         <DropdownMenuItem
@@ -229,6 +231,7 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,

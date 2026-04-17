@@ -26,7 +26,7 @@ def run_config_sync(self, tenant_id, system_id, modules):
 
     try:
         with Session(engine) as session:
-            session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+            session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
 
             from api.services.connectivity_manager import ConnectivityManager
             manager = ConnectivityManager(session, tenant_id)

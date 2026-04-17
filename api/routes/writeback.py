@@ -91,7 +91,7 @@ async def create_writeback(
     tenant_id = str(tenant.id)
 
     # Set RLS context
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
 
     # Validate finding exists
     result = await db.execute(
@@ -213,7 +213,7 @@ async def approve_writeback(
 ):
     """Second user approves a pending write-back. Validates approving_user != requesting_user."""
     tenant_id = str(tenant.id)
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
 
     # Load the pending write-back
     result = await db.execute(

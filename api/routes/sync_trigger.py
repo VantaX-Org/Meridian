@@ -77,7 +77,7 @@ async def list_modules(
     db: AsyncSession = Depends(get_session),
 ) -> list[ModuleStatus]:
     """Return all 29 modules with their latest analysis status."""
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
 
     # Fetch the latest version per module from analysis_versions
     result = await db.execute(
@@ -137,7 +137,7 @@ async def trigger_modules(
     queued: list[str] = []
     skipped: list[str] = []
 
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
 
     for module_id in body.module_ids:
         if module_id not in MODULE_REGISTRY:

@@ -121,24 +121,26 @@ async def lifespan(app: FastAPI):
                     await session.commit()
                     logger.info("Dev tenant jwt_secret generated")
 
-                # Ensure at least one admin user exists for local auth
-                user_count = await session.execute(
-                    text("SELECT COUNT(*) FROM users WHERE tenant_id = '00000000-0000-0000-0000-000000000001'")
+                # Ensure the admin user exists and has a valid password hash
+                # (Delete old user if it exists, to reset password in case of version mismatch)
+                import uuid as _uuid
+                from api.services.local_auth import hash_password
+                
+                await session.execute(
+                    text("DELETE FROM users WHERE email = 'admin@meridian.local' AND tenant_id = '00000000-0000-0000-0000-000000000001'")
                 )
-                if user_count.scalar() == 0:
-                    import uuid as _uuid
-                    from api.services.local_auth import hash_password
-                    default_pw = hash_password("admin")
-                    await session.execute(
-                        text(
-                            "INSERT INTO users (id, tenant_id, email, name, role, password_hash, is_active) "
-                            "VALUES (:id, '00000000-0000-0000-0000-000000000001', "
-                            "'admin@meridian.local', 'Admin', 'admin', :pw, true)"
-                        ),
-                        {"id": str(_uuid.uuid4()), "pw": default_pw},
-                    )
-                    await session.commit()
-                    logger.info("Default admin user created: admin@meridian.local / admin")
+                
+                default_pw = hash_password("admin")
+                await session.execute(
+                    text(
+                        "INSERT INTO users (id, tenant_id, email, name, role, password_hash, is_active) "
+                        "VALUES (:id, '00000000-0000-0000-0000-000000000001', "
+                        "'admin@meridian.local', 'Admin', 'admin', :pw, true)"
+                    ),
+                    {"id": str(_uuid.uuid4()), "pw": default_pw},
+                )
+                await session.commit()
+                logger.info("Default admin user created/reset: admin@meridian.local / admin")
         except Exception as e:
             logger.warning(f"Dev tenant init failed: {e}")
 

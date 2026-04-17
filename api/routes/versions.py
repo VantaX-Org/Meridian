@@ -46,7 +46,7 @@ async def list_versions(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant.id}'"))
     stmt = (
         select(AnalysisVersion)
         .where(AnalysisVersion.tenant_id == tenant.id)
@@ -70,7 +70,7 @@ async def compare_versions(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant.id}'"))
 
     vid1 = uuid.UUID(v1)
     vid2 = uuid.UUID(v2)
@@ -121,7 +121,7 @@ async def get_version(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant.id}'"))
     vid = uuid.UUID(version_id)
     result = await db.execute(
         select(AnalysisVersion).where(
@@ -142,7 +142,7 @@ async def patch_version(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant.id}'"))
     vid = uuid.UUID(version_id)
     result = await db.execute(
         select(AnalysisVersion).where(
@@ -165,7 +165,7 @@ async def get_version_status(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant.id}'"))
     vid = uuid.UUID(version_id)
     result = await db.execute(
         select(AnalysisVersion).where(
@@ -182,3 +182,46 @@ async def get_version_status(
         "run_at": version.run_at.isoformat() if version.run_at else "",
         "metadata": version.metadata_,
     }
+
+
+@router.delete("/versions/{version_id}")
+async def delete_version(
+    version_id: str,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Delete an analysis version and all related findings (cascade)."""
+    await db.execute(text(f"SET app.tenant_id TO '{tenant.id}'"))
+    
+    vid = uuid.UUID(version_id)
+    
+    # Check if version exists
+    result = await db.execute(
+        select(AnalysisVersion).where(
+            AnalysisVersion.id == vid, AnalysisVersion.tenant_id == tenant.id
+        )
+    )
+    version = result.scalar_one_or_none()
+    if not version:
+        raise HTTPException(status_code=404, detail="Version not found")
+    
+    # Delete cascade: findings → version
+    await db.execute(
+        text("""
+            DELETE FROM findings 
+            WHERE version_id = :vid AND tenant_id = :tid
+        """),
+        {"vid": version_id, "tid": str(tenant.id)},
+    )
+    
+    await db.execute(
+        text("""
+            DELETE FROM analysis_versions 
+            WHERE id = :vid AND tenant_id = :tid
+        """),
+        {"vid": version_id, "tid": str(tenant.id)},
+    )
+    
+    await db.commit()
+    return {"version_id": version_id, "deleted": True}
+

@@ -148,7 +148,7 @@ def main():
     # Step 2: Insert glossary_term rows (idempotent)
     inserted_count = 0
     with Session(engine) as session:
-        session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
 
         for row in terms_to_insert:
             result = session.execute(
@@ -187,7 +187,7 @@ def main():
     # Step 3: Insert glossary_term_rules links
     linked_count = 0
     with Session(engine) as session:
-        session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
 
         for link in rule_links:
             # Look up term_id by (tenant_id, sap_table, sap_field)
@@ -215,7 +215,7 @@ def main():
         from api.services.ai_glossary_enricher import enrich_term
 
         with Session(engine) as session:
-            session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+            session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
 
             # Get all terms that haven't been AI-enriched yet
             result = session.execute(
@@ -248,7 +248,7 @@ def main():
                     )
 
                     with Session(engine) as session:
-                        session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+                        session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
                         session.execute(
                             text("""
                                 UPDATE glossary_terms

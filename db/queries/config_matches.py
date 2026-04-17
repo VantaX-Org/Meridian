@@ -12,7 +12,7 @@ async def get_config_matches(
     limit: int = 500,
     offset: int = 0,
 ) -> list[Row]:
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
     query = """
         SELECT * FROM config_matches
         WHERE version_id = :version_id
@@ -41,7 +41,7 @@ async def get_config_match_summary(
     version_id: str,
     tenant_id: str,
 ) -> dict | None:
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
     result = await db.execute(
         text("""
             SELECT config_match_summary
@@ -62,7 +62,7 @@ async def get_config_matches_for_export(
     version_id: str,
     tenant_id: str,
 ) -> list[Row]:
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
     result = await db.execute(
         text("""
             SELECT * FROM config_matches

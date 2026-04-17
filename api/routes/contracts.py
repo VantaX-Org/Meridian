@@ -49,7 +49,7 @@ class NlpQueryBody(BaseModel):
 
 
 async def _set_rls(db: AsyncSession, tenant_id: uuid.UUID) -> None:
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
 
 
 def _row_to_dict(row) -> dict:

@@ -41,7 +41,7 @@ def run_agents(self, version_id: str, tenant_id: str):
 
     # Set status to agents_running
     with Session(engine) as session:
-        session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
 
         # Idempotency check
         result = session.execute(
@@ -76,7 +76,7 @@ def run_agents(self, version_id: str, tenant_id: str):
         if final_state.get("error"):
             logger.error(f"Agent pipeline error: {final_state['error']}")
             with Session(engine) as session:
-                session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+                session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
                 session.execute(
                     text("UPDATE analysis_versions SET status = 'agents_failed' WHERE id = :vid AND tenant_id = :tid"),
                     {"vid": version_id, "tid": tenant_id},
@@ -111,7 +111,7 @@ def run_agents(self, version_id: str, tenant_id: str):
 
             # Build per-check_id remediation text from effort estimates and sequencing
             with Session(engine) as session:
-                session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+                session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
 
                 total_updated = 0
                 for estimate in effort_estimates:
@@ -179,7 +179,7 @@ def run_agents(self, version_id: str, tenant_id: str):
                 for match in config_matches
             ]
             with Session(engine) as session:
-                session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+                session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
                 session.execute(
                     text("""
                         INSERT INTO config_matches (
@@ -214,7 +214,7 @@ def run_agents(self, version_id: str, tenant_id: str):
             }
             if urgent_check_ids:
                 with Session(engine) as session:
-                    session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+                    session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
                     for cid in urgent_check_ids:
                         session.execute(
                             text("""
@@ -229,7 +229,7 @@ def run_agents(self, version_id: str, tenant_id: str):
                 logger.info(f"Upgraded fix_priority to 1 for {len(urgent_check_ids)} urgent check IDs")
 
         with Session(engine) as session:
-            session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+            session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
             session.execute(
                 text("""
                     UPDATE analysis_versions
@@ -254,7 +254,7 @@ def run_agents(self, version_id: str, tenant_id: str):
         )
 
         with Session(engine) as session:
-            session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+            session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
             session.execute(
                 text("UPDATE analysis_versions SET status = 'agents_complete' WHERE id = :vid AND tenant_id = :tid"),
                 {"vid": version_id, "tid": tenant_id},
@@ -291,7 +291,7 @@ def run_agents(self, version_id: str, tenant_id: str):
             logger.error(f"run_agents failed: {traceback.format_exc()}")
 
         with Session(engine) as session:
-            session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+            session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
             session.execute(
                 text("UPDATE analysis_versions SET status = 'agents_failed' WHERE id = :vid AND tenant_id = :tid"),
                 {"vid": version_id, "tid": tenant_id},

@@ -210,7 +210,7 @@ def triage_queue_items(self, tenant_id: str | None = None) -> dict:
     for tid in tenant_ids:
         try:
             with Session(engine) as session:
-                session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tid)})
+                session.execute(text(f"SET app.tenant_id TO '{tid}'"))
 
                 # Fetch untriaged items
                 result = session.execute(

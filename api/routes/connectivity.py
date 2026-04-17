@@ -34,7 +34,7 @@ async def list_system_modules(
     """List available modules for a system with sync status."""
     from sap.extraction_registry import get_available_modules
 
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant.id}'"))
 
     # Get system type
     result = await db.execute(
@@ -123,7 +123,7 @@ async def get_config_snapshot(
     tenant: Tenant = Depends(get_tenant),
 ):
     """Return cached config snapshot for a system+module."""
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant.id}'"))
     result = await db.execute(
         text("SELECT config_table, config_data, record_count, source, "
              "synced_at::text FROM config_snapshots "

@@ -142,7 +142,7 @@ async def list_glossary_terms(
     tenant: Tenant = Depends(get_tenant),
 ):
     tenant_id = str(tenant.id)
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
 
     conditions = ["gt.tenant_id = :tid"]
     params: dict = {"tid": tenant_id}
@@ -228,7 +228,7 @@ async def get_glossary_term(
     tenant: Tenant = Depends(get_tenant),
 ):
     tenant_id = str(tenant.id)
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
     tid = uuid.UUID(term_id)
 
     # Fetch term
@@ -333,7 +333,7 @@ async def ai_draft(
     tenant: Tenant = Depends(get_tenant),
 ):
     tenant_id = str(tenant.id)
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
 
     # Fetch term fields needed for enrichment
     result = await db.execute(
@@ -382,7 +382,7 @@ async def update_glossary_term(
     tenant: Tenant = Depends(get_tenant),
 ):
     tenant_id = str(tenant.id)
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
 
     # Fetch current values for change detection
     result = await db.execute(
@@ -519,7 +519,7 @@ async def review_glossary_term(
     tenant: Tenant = Depends(get_tenant),
 ):
     tenant_id = str(tenant.id)
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
 
     # Check term exists
     result = await db.execute(
@@ -574,7 +574,7 @@ async def batch_lookup(
     business names for SAP field codes.
     """
     tenant_id = str(tenant.id)
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
 
     if not body.fields:
         return BatchLookupResponse(lookup={})

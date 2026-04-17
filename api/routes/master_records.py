@@ -104,7 +104,7 @@ async def list_master_records(
     tenant: Tenant = Depends(get_tenant),
 ):
     tenant_id = str(tenant.id)
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
 
     # Build WHERE clauses
     conditions = ["tenant_id = :tid"]
@@ -194,7 +194,7 @@ async def get_master_record(
     tenant: Tenant = Depends(get_tenant),
 ):
     tenant_id = str(tenant.id)
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
 
     result = await db.execute(
         text("""
@@ -246,7 +246,7 @@ async def promote_master_record(
 ):
     """Promote a master record to golden status. Requires approve permission."""
     tenant_id = str(tenant.id)
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
 
     # Load current record
     result = await db.execute(
@@ -395,7 +395,7 @@ async def writeback_master_record(
     Delegates to existing writeback.py 4-eyes flow.
     """
     tenant_id = str(tenant.id)
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
 
     result = await db.execute(
         text("""
@@ -433,7 +433,7 @@ async def get_master_record_history(
 ):
     """Get immutable audit trail for a master record."""
     tenant_id = str(tenant.id)
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
 
     # Verify the record exists
     exists = await db.execute(
@@ -469,6 +469,88 @@ async def get_master_record_history(
         ))
 
     return entries
+
+
+@router.delete("/master-records/{record_id}")
+async def delete_master_record(
+    record_id: str,
+    role: str = Depends(require_permission("delete")),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Delete a master record and all related data (cascade).
+    Requires 'delete' permission (admin only).
+    Cascades to:
+    - Match relationships
+    - Merge history
+    - Source contributions
+    - Audit trail
+    """
+    tenant_id = str(tenant.id)
+    await db.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
+
+    # First check if record exists
+    result = await db.execute(
+        text("SELECT id, domain, status FROM master_records WHERE id = :id AND tenant_id = :tid"),
+        {"id": record_id, "tid": tenant_id},
+    )
+    record = result.fetchone()
+    if not record:
+        raise HTTPException(status_code=404, detail="Master record not found")
+
+    # Prevent deletion of golden records without explicit confirmation
+    if record[2] == "golden":
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot delete golden records. Demote to candidate first."
+        )
+
+    # Delete cascade: match_relationships → master_records → source_contributions
+    await db.execute(
+        text("""
+            DELETE FROM match_relationships 
+            WHERE (master_record_id_1 = :id OR master_record_id_2 = :id)
+            AND tenant_id = :tid
+        """),
+        {"id": record_id, "tid": tenant_id},
+    )
+
+    await db.execute(
+        text("""
+            DELETE FROM source_contributions 
+            WHERE master_record_id = :id AND tenant_id = :tid
+        """),
+        {"id": record_id, "tid": tenant_id},
+    )
+
+    await db.execute(
+        text("""
+            DELETE FROM master_records_merge_history 
+            WHERE master_record_id = :id AND tenant_id = :tid
+        """),
+        {"id": record_id, "tid": tenant_id},
+    )
+
+    result = await db.execute(
+        text("""
+            DELETE FROM master_records 
+            WHERE id = :id AND tenant_id = :tid 
+            RETURNING id
+        """),
+        {"id": record_id, "tid": tenant_id},
+    )
+
+    if not result.fetchone():
+        raise HTTPException(status_code=500, detail="Failed to delete master record")
+
+    await db.commit()
+    logger.info(f"Master record {record_id} ({record[1]}) deleted by {role}")
+
+    return {
+        "id": record_id,
+        "deleted": True,
+        "message": f"Master record {record_id} and all related data deleted"
+    }
 
 
 def _json_dumps(obj: dict) -> str:

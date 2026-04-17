@@ -37,7 +37,7 @@ def rule_proposal_task(self, tenant_id: str, domain: str) -> dict:
     engine = get_sync_engine()
 
     with Session(engine) as session:
-        session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
 
         # ── Rate limit: skip if 10+ pending proposals exist for this domain ──
         pending_count = session.execute(

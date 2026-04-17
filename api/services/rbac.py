@@ -95,7 +95,7 @@ async def _get_user_role(
     if settings.auth_mode == "local":
         local_user_id = getattr(request.state, "local_user_id", None)
         if local_user_id:
-            await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+            await db.execute(text(f"SET app.tenant_id TO '{tenant.id}'"))
             result = await db.execute(
                 text("SELECT role, is_active FROM users WHERE id = :uid AND tenant_id = :tid"),
                 {"uid": local_user_id, "tid": str(tenant.id)},

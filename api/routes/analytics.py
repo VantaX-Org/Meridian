@@ -43,7 +43,7 @@ operational = OperationalAnalytics()
 
 
 async def _set_tenant(db: AsyncSession, tenant: Tenant) -> None:
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant.id}'"))
 
 
 def _row_to_dict(row) -> dict:
@@ -531,21 +531,32 @@ async def get_mdm_health(
     """MDM health score history from mdm_metrics table. Strips AI fields for unprivileged roles."""
     await _set_tenant(db, tenant)
 
-    user_role = getattr(request.state, 'user_role', 'viewer') if request else 'viewer'
+    # Get user role from request state, default to 'viewer' if not set
+    try:
+        user_role = getattr(request.state, 'user_role', 'viewer') if request else 'viewer'
+    except (AttributeError, RuntimeError):
+        user_role = 'viewer'
+    
     can_see_ai = has_permission(user_role, 'view_ai_confidence')
 
-    result = await db.execute(text("""
-        SELECT snapshot_date, mdm_health_score,
-               golden_record_coverage_pct, avg_match_confidence,
-               steward_sla_compliance_pct, source_consistency_pct,
-               backlog_count,
-               ai_projected_score, ai_narrative, ai_risk_flags
-        FROM mdm_metrics
-        WHERE tenant_id = :tid
-          AND snapshot_date > now() - (:days || ' days')::interval
-        ORDER BY snapshot_date ASC
-    """), {'tid': str(tenant.id), 'days': days})
-    rows = result.fetchall()
+    try:
+        result = await db.execute(text("""
+            SELECT snapshot_date, mdm_health_score,
+                   golden_record_coverage_pct, avg_match_confidence,
+                   steward_sla_compliance_pct, source_consistency_pct,
+                   backlog_count,
+                   ai_projected_score, ai_narrative, ai_risk_flags
+            FROM mdm_metrics
+            WHERE tenant_id = :tid
+              AND snapshot_date IS NOT NULL
+              AND snapshot_date > now() - (:days::text || ' days')::interval
+            ORDER BY snapshot_date ASC
+        """), {'tid': str(tenant.id), 'days': str(days)})
+        rows = result.fetchall()
+    except Exception as e:
+        logger.error(f"MDM health query failed: {e}")
+        # Return empty data if table doesn't exist or query fails
+        return {'data': [], 'days': days, 'error': 'Unable to fetch health metrics'}
 
     data = []
     for r in rows:
@@ -555,7 +566,7 @@ async def get_mdm_health(
             row['ai_narrative'] = None
             row['ai_risk_flags'] = None
         # Convert date to string
-        if hasattr(row.get('snapshot_date'), 'isoformat'):
+        if row.get('snapshot_date') and hasattr(row['snapshot_date'], 'isoformat'):
             row['snapshot_date'] = row['snapshot_date'].isoformat()
         data.append(row)
 

@@ -196,7 +196,7 @@ async def get_llm_config(
     _role: str = Depends(require_permission("manage_llm")),
 ):
     """Return current LLM config. API key is masked. Admin only."""
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant.id}'"))
 
     result = await db.execute(
         text("SELECT llm_config, jwt_secret FROM tenants WHERE id = :tid"),
@@ -264,7 +264,7 @@ async def update_llm_config(
     prov_info = SUPPORTED_PROVIDERS[body.provider]
 
     if prov_info["requires_api_key"] and not body.api_key:
-        await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+        await db.execute(text(f"SET app.tenant_id TO '{tenant.id}'"))
         existing = await db.execute(
             text("SELECT llm_config->'api_key_encrypted' FROM tenants WHERE id = :tid"),
             {"tid": str(tenant.id)},
@@ -315,7 +315,7 @@ async def update_llm_config(
         if existing_key:
             config["api_key_encrypted"] = existing_key
 
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant.id}'"))
     await db.execute(
         text("UPDATE tenants SET llm_config = CAST(:config AS jsonb) WHERE id = :tid"),
         {"tid": str(tenant.id), "config": json.dumps(config)},
@@ -348,7 +348,7 @@ async def test_llm_connection_endpoint(
     api_key = body.api_key
     if not api_key:
         jwt_secret = await _get_jwt_secret(db, str(tenant.id))
-        await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+        await db.execute(text(f"SET app.tenant_id TO '{tenant.id}'"))
         result = await db.execute(
             text("SELECT llm_config FROM tenants WHERE id = :tid"),
             {"tid": str(tenant.id)},

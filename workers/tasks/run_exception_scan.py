@@ -24,7 +24,7 @@ def run_exception_scan(self, version_id: str, tenant_id: str):
 
         # Load findings for this version
         with Session(engine) as session:
-            session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+            session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
 
             result = session.execute(
                 text("""
@@ -72,7 +72,7 @@ def run_exception_scan(self, version_id: str, tenant_id: str):
 
         # Insert exceptions into database
         with Session(engine) as session:
-            session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+            session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
 
             for exc in exceptions:
                 session.execute(
@@ -147,7 +147,7 @@ def run_exception_scan(self, version_id: str, tenant_id: str):
 
             critical_exceptions = [e for e in exceptions if e["severity"] == "critical"]
             with Session(engine) as notif_session:
-                notif_session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+                notif_session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
                 for exc in critical_exceptions:
                     create_notification_sync(
                         tenant_id=tenant_id,

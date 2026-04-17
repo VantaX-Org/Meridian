@@ -37,7 +37,7 @@ class ConnectivityManager:
     def __init__(self, session: Session, tenant_id: str):
         self.session = session
         self.tenant_id = tenant_id
-        self.session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        self.session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
 
     # -- Connection Building ---------------------------------------------------
 

@@ -69,7 +69,7 @@ async def get_relationships(
     view_ai_confidence permission.
     """
     tenant_id = str(tenant.id)
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
 
     conditions = ["tenant_id = :tid"]
     params: dict = {"tid": tenant_id}

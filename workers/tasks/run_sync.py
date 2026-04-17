@@ -46,7 +46,7 @@ def run_sync(self, profile_id: str, tenant_id: str):
 
     # Step 1: Load sync profile and system details
     with Session(engine) as session:
-        session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
 
         # Create sync_runs record
         session.execute(
@@ -142,7 +142,7 @@ def run_sync(self, profile_id: str, tenant_id: str):
             try:
                 from api.services.relationship_discovery import discover_relationships_rfc
                 with Session(engine) as rfc_session:
-                    rfc_session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+                    rfc_session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
                     rfc_discovered = discover_relationships_rfc(conn, tenant_id, domain, rfc_session)
                     logger.info(f"RFC relationship discovery: {len(rfc_discovered)} relationships found")
             except Exception as e:
@@ -176,7 +176,7 @@ def run_sync(self, profile_id: str, tenant_id: str):
     if ai_baseline is None:
         new_baseline = build_baseline(merged_df)
         with Session(engine) as session:
-            session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+            session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
             session.execute(
                 text("UPDATE sync_profiles SET ai_anomaly_baseline = CAST(:baseline AS jsonb) WHERE id = :pid"),
                 {"baseline": json.dumps(new_baseline), "pid": profile_id},
@@ -185,7 +185,7 @@ def run_sync(self, profile_id: str, tenant_id: str):
 
     # Update sync_runs with AI quality results
     with Session(engine) as session:
-        session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
         session.execute(
             text("""
                 UPDATE sync_runs
@@ -232,7 +232,7 @@ def run_sync(self, profile_id: str, tenant_id: str):
     }
 
     with Session(engine) as session:
-        session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
         session.execute(
             text("""
                 INSERT INTO analysis_versions (id, tenant_id, metadata, status)
@@ -249,7 +249,7 @@ def run_sync(self, profile_id: str, tenant_id: str):
 
     # Step 9: Complete sync run
     with Session(engine) as session:
-        session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
         session.execute(
             text("""
                 UPDATE sync_runs
@@ -273,7 +273,7 @@ def run_sync(self, profile_id: str, tenant_id: str):
         )
 
         with Session(engine) as session:
-            session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+            session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
 
             # Discover relationships from existing master_records data
             discovered = discover_relationships_from_data(tenant_id, domain, session)
@@ -305,7 +305,7 @@ def run_sync(self, profile_id: str, tenant_id: str):
     if ai_quality_score < 0.6:
         logger.warning(f"Low AI quality score ({ai_quality_score}) — batch warning added")
         with Session(engine) as session:
-            session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+            session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
             session.execute(
                 text("""
                     INSERT INTO findings (
@@ -348,7 +348,7 @@ def _fail_sync_run(engine, tenant_id: str, sync_run_id: str, error_detail: str) 
     logger.error(f"Sync run {sync_run_id} failed: {error_detail}")
     try:
         with Session(engine) as session:
-            session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+            session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
             session.execute(
                 text("""
                     UPDATE sync_runs

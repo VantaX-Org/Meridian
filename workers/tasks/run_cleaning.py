@@ -61,7 +61,7 @@ def run_cleaning(self, version_id: str, tenant_id: str, object_type: str, parque
         # Bulk insert into cleaning_queue
         db_engine = get_sync_engine()
         with Session(db_engine) as session:
-            session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+            session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
 
             # Golden record batch lookup — one query, not per-record
             record_keys = list({c['record_key'] for c in candidates})
@@ -160,7 +160,7 @@ def run_cleaning(self, version_id: str, tenant_id: str, object_type: str, parque
         try:
             from api.services.notifications import create_notification_sync
             with Session(db_engine) as notif_session:
-                notif_session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+                notif_session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
                 create_notification_sync(
                     tenant_id=tenant_id,
                     user_id=None,

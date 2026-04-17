@@ -35,7 +35,7 @@ async def get_spro_config(
     system_type = "ecc"
 
     if system_id:
-        await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+        await db.execute(text(f"SET app.tenant_id TO '{tenant.id}'"))
         result = await db.execute(
             text("SELECT system_type, host, client, sysnr, base_url, "
                  "company_id, auth_type, token_url "

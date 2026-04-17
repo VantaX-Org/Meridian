@@ -44,7 +44,7 @@ async def download_report(
     where the Celery ``generate_pdf`` task failed silently after the agent
     pipeline completed.
     """
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant.id}'"))
     vid = uuid.UUID(version_id)
 
     result = await db.execute(
@@ -127,7 +127,7 @@ async def export_report_json(
     has persisted ``report_json`` for the version — even in environments
     where PDF generation is broken.
     """
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant.id}'"))
     vid = uuid.UUID(version_id)
 
     result = await db.execute(

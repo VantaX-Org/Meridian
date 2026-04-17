@@ -56,7 +56,7 @@ def _get_minio_client():
 
 
 def _load_report_json(session: Session, version_id: str, tenant_id: str) -> dict | None:
-    session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
     result = session.execute(
         text(
             "SELECT report_json FROM reports "
@@ -77,7 +77,7 @@ def _load_supplementary(session: Session, version_id: str, tenant_id: str) -> di
     All sections are optional — a missing or empty table returns an empty
     value so the template still renders.
     """
-    session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
 
     cleaning = session.execute(text("""
         SELECT COUNT(*) AS total,
@@ -234,7 +234,7 @@ def _store_pdf_in_minio(pdf_bytes: bytes, version_id: str, tenant_id: str) -> st
 
 
 def _update_pdf_path(session: Session, version_id: str, tenant_id: str, object_path: str) -> None:
-    session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
     session.execute(
         text(
             "UPDATE reports SET pdf_path = :path "

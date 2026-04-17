@@ -41,7 +41,7 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
 
     with Session(engine) as session:
         # Step 1: Set RLS context
-        session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
 
         # Check idempotency — if already complete, skip
         result = session.execute(
@@ -92,7 +92,7 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
 
         # Query modules first (same SELECT as Step 5 below, hoisted here)
         with Session(engine) as session:
-            session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+            session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
             result = session.execute(
                 text("SELECT metadata FROM analysis_versions WHERE id = :vid"),
                 {"vid": version_id},
@@ -214,7 +214,7 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
         # Previous code looped per row inside batches, which was ~200x slower
         # than a true executemany on 500+ findings.
         with Session(engine) as session:
-            session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+            session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
 
             finding_rows = [
                 {
@@ -290,7 +290,7 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
 
         # Insert dqs_history records for analytics tracking
         with Session(engine) as session:
-            session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+            session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
             for module_name in modules:
                 mod_summary = dqs_summary.get(module_name, {})
                 dims = mod_summary.get("dimension_scores", {})
@@ -357,7 +357,7 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
             )
 
             with Session(engine) as session:
-                session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+                session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
                 session.execute(
                     text("""
                         INSERT INTO reports (id, version_id, tenant_id, report_json, generated_at)
@@ -377,7 +377,7 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
         try:
             from api.services.notifications import create_notification_sync
             with Session(engine) as session:
-                session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+                session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
                 module_list = ", ".join(modules)
                 create_notification_sync(
                     tenant_id=tenant_id,
@@ -435,7 +435,7 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
         # Step 12: On failure, update status
         logger.error(f"run_checks failed: {traceback.format_exc()}")
         with Session(engine) as session:
-            session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+            session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
             session.execute(
                 text("UPDATE analysis_versions SET status = 'failed' WHERE id = :vid AND tenant_id = :tid"),
                 {"vid": version_id, "tid": tenant_id},

@@ -114,7 +114,7 @@ async def get_analysis_status(
     response is always immediately available — this endpoint never blocks
     waiting on the Celery task.
     """
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant.id}'"))
 
     try:
         vid = uuid.UUID(version_id)

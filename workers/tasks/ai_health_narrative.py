@@ -28,7 +28,7 @@ SAST = timezone(timedelta(hours=2))
 
 
 def _set_rls(session: Session, tenant_id: str) -> None:
-    session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    session.execute(text(f"SET app.tenant_id TO '{str(tenant_id)}'"))
 
 
 def _compute_trend(values: list[float]) -> float:

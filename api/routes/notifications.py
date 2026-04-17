@@ -17,7 +17,7 @@ def _row_to_dict(row) -> dict:
 
 
 async def _set_rls(db: AsyncSession, tenant_id: uuid.UUID) -> None:
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
 
 
 # ── GET /api/v1/notifications ────────────────────────────────────────────────
@@ -134,3 +134,30 @@ async def unread_count(
     count = result.scalar() or 0
 
     return {"count": count}
+
+
+# ── DELETE /api/v1/notifications/{id} ───────────────────────────────────────
+
+
+@router.delete("/notifications/{notification_id}")
+async def delete_notification(
+    notification_id: str,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Delete a notification."""
+    await _set_rls(db, tenant.id)
+
+    result = await db.execute(
+        text("""
+            DELETE FROM notifications
+            WHERE id = :nid AND tenant_id = :tid
+            RETURNING id
+        """),
+        {"nid": notification_id, "tid": str(tenant.id)},
+    )
+    if not result.fetchone():
+        raise HTTPException(status_code=404, detail="Notification not found")
+
+    await db.commit()
+    return {"id": notification_id, "deleted": True}

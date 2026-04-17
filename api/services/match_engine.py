@@ -117,7 +117,7 @@ def score_candidate_pair(
         Dict with total_score, field_scores, auto_action, ai_semantic_score
     """
     # Set RLS context
-    session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
 
     # Load active match rules for this domain
     rows = session.execute(

@@ -117,7 +117,7 @@ async def register_system(
     role: str = Depends(require_permission("manage_rules")),
 ):
     """Register a new SAP system. Admin and Steward only."""
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant.id}'"))
 
     # Encrypt the password
     from api.services.credential_store import encrypt_password
@@ -175,7 +175,7 @@ async def list_systems(
     role: str = Depends(require_permission("view")),
 ):
     """List all SAP systems for the tenant with last sync status."""
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant.id}'"))
 
     result = await db.execute(
         text("""
@@ -223,7 +223,7 @@ async def update_system(
     role: str = Depends(require_permission("manage_rules")),
 ):
     """Update an SAP system. Admin and Steward only."""
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant.id}'"))
 
     # Build dynamic SET clause
     updates = {}
@@ -300,7 +300,7 @@ async def delete_system(
     role: str = Depends(require_permission("manage_rules")),
 ):
     """Delete an SAP system and its credentials. Admin and Steward only."""
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant.id}'"))
 
     result = await db.execute(
         text("SELECT id FROM sap_systems WHERE id = :sid AND tenant_id = :tid"),
@@ -326,7 +326,7 @@ async def test_connection(
     role: str = Depends(require_permission("manage_rules")),
 ):
     """Test RFC connection to an SAP system. Admin and Steward only."""
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant.id}'"))
 
     # Load system and credentials
     result = await db.execute(
@@ -388,7 +388,7 @@ async def trigger_sync(
     role: str = Depends(require_permission("manage_rules")),
 ):
     """Trigger a manual sync for all active profiles on this system."""
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant.id}'"))
 
     result = await db.execute(
         text("""
@@ -423,7 +423,7 @@ async def create_sync_profile(
     role: str = Depends(require_permission("manage_rules")),
 ):
     """Create a sync profile for an SAP system."""
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant.id}'"))
 
     # Verify system exists
     result = await db.execute(
@@ -467,7 +467,7 @@ async def list_sync_profiles(
     role: str = Depends(require_permission("view")),
 ):
     """List sync profiles for a system."""
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant.id}'"))
 
     result = await db.execute(
         text("""
@@ -502,7 +502,7 @@ async def list_sync_runs(
     role: str = Depends(require_permission("view")),
 ):
     """List sync run history for a system."""
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
+    await db.execute(text(f"SET app.tenant_id TO '{tenant.id}'"))
 
     result = await db.execute(
         text("""

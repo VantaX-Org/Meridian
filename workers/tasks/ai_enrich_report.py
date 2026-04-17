@@ -50,7 +50,7 @@ def ai_enrich_report(self, version_id: str, tenant_id: str):
 
     # Load existing report
     with Session(engine) as session:
-        session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
         result = session.execute(
             text("""
                 SELECT report_json FROM reports
@@ -69,7 +69,7 @@ def ai_enrich_report(self, version_id: str, tenant_id: str):
 
     # Update version status to ai_enriching
     with Session(engine) as session:
-        session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
         session.execute(
             text("""
                 UPDATE analysis_versions SET status = 'ai_enriching'
@@ -144,7 +144,7 @@ def ai_enrich_report(self, version_id: str, tenant_id: str):
 
     # Persist updated report
     with Session(engine) as session:
-        session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
         session.execute(
             text("""
                 UPDATE reports SET report_json = CAST(:report AS jsonb)

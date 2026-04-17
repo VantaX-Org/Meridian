@@ -314,7 +314,7 @@ def send_notification(self, version_id: str, tenant_id: str, trigger: str):
     try:
         engine = get_sync_engine()
         with Session(engine) as session:
-            session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+            session.execute(text(f"SET app.tenant_id TO '{tenant_id}'"))
 
             config = _load_tenant_config(session, tenant_id)
             if not config:
