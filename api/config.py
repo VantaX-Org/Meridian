@@ -43,6 +43,12 @@ class Settings(BaseSettings):
     smtp_password: Optional[str] = None
     smtp_from: str = "noreply@meridian.local"
 
+    # Microsoft Graph API (alternative email backend)
+    microsoft_tenant_id: Optional[str] = None
+    microsoft_client_id: Optional[str] = None
+    microsoft_client_secret: Optional[str] = None
+    email_from: Optional[str] = None
+
     # CORS — comma-separated string, e.g. http://localhost:3000,http://myhost:3000
     # Stored as str to avoid pydantic-settings v2 JSON-parsing issues with list fields.
     # main.py splits this into a list when configuring CORSMiddleware.

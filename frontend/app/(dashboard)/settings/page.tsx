@@ -799,7 +799,7 @@ function TeamManagement() {
           </p>
         </div>
         <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
-          <DialogTrigger>
+          <DialogTrigger asChild>
             <Button size="sm">
               <UserPlus className="mr-1 h-4 w-4" />
               Invite User

@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from workers.celery_app import celery_app
 from workers.db import get_sync_engine
+from workers.email_backends import create_graph_client
 
 logger = logging.getLogger("meridian.worker.notifications")
 
@@ -238,7 +239,7 @@ def _send_email_resend(recipient: str, subject: str, body: str):
 
 
 def _send_email(config: dict, version_data: dict, trigger: str):
-    """Send notification email via SMTP relay (air-gapped) or Resend API."""
+    """Send notification email via Microsoft Graph, SMTP relay, or Resend API."""
     recipient = config.get("email")
     if not recipient:
         logger.info("Skipping email — no email configured")
@@ -246,6 +247,14 @@ def _send_email(config: dict, version_data: dict, trigger: str):
 
     subject, body = _build_email_content(config, version_data, trigger)
 
+    # Try Microsoft Graph first
+    graph_client = create_graph_client()
+    if graph_client:
+        if graph_client.send_email(recipient, subject, body, sender_name="Meridian Data Quality"):
+            return
+        logger.warning("Microsoft Graph email send failed, falling back to SMTP/Resend")
+
+    # Fall back to SMTP or Resend
     if os.getenv("SMTP_HOST"):
         _send_email_smtp(recipient, subject, body)
     else:

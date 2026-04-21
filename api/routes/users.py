@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.services.rbac import require_permission, VALID_ROLES
+from workers.tasks.send_user_invitation import send_invitation_email
 
 router = APIRouter(prefix="/api/v1", tags=["users"])
 
@@ -135,5 +136,19 @@ async def invite_user(
         },
     )
     await db.commit()
+
+    # Trigger invitation email (async — does not block response)
+    try:
+        send_invitation_email.delay(
+            user_id=new_id,
+            tenant_id=str(tenant.id),
+            recipient_email=body.email,
+            recipient_name=body.name or body.email.split("@")[0],
+            role=body.role,
+        )
+    except Exception as e:
+        # Log but don't fail the response if Celery task fails to queue
+        import logging
+        logging.getLogger("meridian.users").error(f"Failed to queue invitation email: {e}")
 
     return {"id": new_id, "email": body.email, "role": body.role, "status": "invited"}

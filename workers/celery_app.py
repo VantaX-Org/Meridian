@@ -31,6 +31,7 @@ import workers.tasks.run_checks  # noqa: F401, E402
 import workers.tasks.run_agents  # noqa: F401, E402
 import workers.tasks.generate_pdf  # noqa: F401, E402
 import workers.tasks.send_notifications  # noqa: F401, E402
+import workers.tasks.send_user_invitation  # noqa: F401, E402
 import workers.tasks.run_cleaning  # noqa: F401
 import workers.tasks.run_exception_scan  # noqa: F401
 import workers.tasks.run_sync  # noqa: F401

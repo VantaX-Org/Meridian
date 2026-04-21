@@ -20,6 +20,7 @@ services:
     command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    env_file: .env
     environment: &dev-env
       # ── LLM (reads from .env) ────────────────────────────────
       - LLM_PROVIDER=${LLM_PROVIDER:-}
@@ -58,6 +59,11 @@ services:
       - SMTP_USER=${SMTP_USER:-}
       - SMTP_PASSWORD=${SMTP_PASSWORD:-}
       - SMTP_FROM=${SMTP_FROM:-noreply@meridian.local}
+      # ── Microsoft Graph API (optional) ──────────────────────
+      - MICROSOFT_TENANT_ID=998b123c-e559-479d-bbb9-cf3330469a73
+      - MICROSOFT_CLIENT_ID=166236c5-34d7-42fa-b1bc-3ed62ea77211
+      - MICROSOFT_CLIENT_SECRET=POO8Q~tDn1~8c6EwAulNE_14qFJD2ri60OYv3ctU
+      - EMAIL_FROM=no-reply@gonxt.tech
       # ── Observability ───────────────────────────────────────
       - SENTRY_DSN=${SENTRY_DSN:-}
     volumes:
@@ -80,6 +86,7 @@ services:
     command: ["celery", "-A", "workers.celery_app", "worker", "--loglevel=info", "--concurrency=2"]
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    env_file: .env
     environment: *dev-env
     volumes:
       - ./api:/app/api
@@ -96,6 +103,7 @@ services:
       dockerfile: docker/Dockerfile.api.prod
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    env_file: .env
     environment: *dev-env
     volumes:
       - ./api:/app/api
