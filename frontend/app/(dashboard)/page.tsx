@@ -24,6 +24,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { getVersions } from "@/lib/api/versions";
 import { getMdmDashboard } from "@/lib/api/mdm-metrics";
+import { AxiosError } from "axios";
 import { scoreColor, formatModuleName, relativeTime } from "@/lib/format";
 import { useCountUp } from "@/hooks/use-count-up";
 import { DqsSparkline } from "@/components/charts/dqs-sparkline";
@@ -165,9 +166,16 @@ export default function DashboardPage() {
   const {
     data: mdmData,
     isLoading: mdmLoading,
+    error: mdmError,
   } = useQuery({
     queryKey: ["mdm-dashboard"],
     queryFn: getMdmDashboard,
+    retry: false,
+    // Gracefully handle 402 (feature not available in licence)
+    throwOnError: (error) => {
+      const axiosError = error as AxiosError;
+      return axiosError?.response?.status !== 402;
+    },
   });
 
   const versions = versionData?.versions ?? [];

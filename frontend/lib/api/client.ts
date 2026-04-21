@@ -20,10 +20,7 @@ function instrument(client: AxiosInstance): AxiosInstance {
           window.location.href = "/sign-in";
           return Promise.reject(error);
         }
-        if (error.response.status === 402) {
-          window.location.href = "/licence-error";
-          return Promise.reject(error);
-        }
+        // Don't redirect on 402 - let components handle missing features gracefully
       }
       return Promise.reject(error);
     }

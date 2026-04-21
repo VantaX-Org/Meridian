@@ -309,6 +309,8 @@ function NotificationBell() {
     queryKey: ["notifications-unread-count"],
     queryFn: getUnreadCount,
     refetchInterval: 30_000,
+    retry: false,
+    meta: { ignoreError: true },
   });
 
   const { data: recent } = useQuery({
