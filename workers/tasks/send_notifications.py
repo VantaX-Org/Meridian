@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 
 from workers.celery_app import celery_app
 from workers.db import get_sync_engine
-from workers.email_backends import create_graph_client
+from workers.email_backends.microsoft_graph import create_graph_client
 
 logger = logging.getLogger("meridian.worker.notifications")
 
