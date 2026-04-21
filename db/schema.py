@@ -1128,3 +1128,41 @@ class RecordHash(Base):
     __table_args__ = (
         Index("ix_record_hashes_version", "tenant_id", "version_id"),
     )
+
+
+class RecordFix(Base):
+    """Dedicated table for per-record fix tracking.
+    
+    Replaces the JSONB record_fixes array on findings rows.
+    One row per failing SAP record with status tracking,
+    assignment, and fix metadata.
+    """
+    __tablename__ = "record_fixes"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    version_id = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id"), nullable=False)
+    check_id = Column(Text, nullable=False)
+    module = Column(Text, nullable=False)
+    record_id = Column(Text, nullable=False)
+    id_field = Column(Text, nullable=True)
+    field = Column(Text, nullable=True)
+    invalid_value = Column(Text, nullable=True)
+    suggested_value = Column(Text, nullable=True)
+    fix_instruction = Column(Text, nullable=True)
+    sql_statement = Column(Text, nullable=True)
+    severity = Column(Text, server_default="medium")
+    status = Column(Text, server_default="open")  # open, in_progress, fixed, rejected
+    assigned_to = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
+    updated_at = Column(DateTime(timezone=True), nullable=True)
+    fixed_at = Column(DateTime(timezone=True), nullable=True)
+
+    version = relationship("AnalysisVersion")
+    tenant = relationship("Tenant")
+
+    __table_args__ = (
+        Index("ix_record_fixes_version_check", "version_id", "check_id"),
+        Index("ix_record_fixes_version_status", "version_id", "status"),
+        Index("ix_record_fixes_tenant", "tenant_id"),
+    )
