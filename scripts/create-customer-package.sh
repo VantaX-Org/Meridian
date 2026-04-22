@@ -26,7 +26,8 @@
 #   --customer <name>         Customer slug (required)
 #   --licence-key <key>       Meridian licence key (required unless --offline)
 #   --version <tag>           Image version tag (default: latest)
-#   --model <ollama-model>    Ollama model name (default: qwen3.5:9b-instruct)
+#   --model <ollama-model>    Local Ollama model for Tier 2 (default: qwen3.5:9b-instruct)
+#   --cloud-model <name>      Ollama Cloud model for Tier 1.5 (default: deepseek-v3.1:671b-cloud)
 #   --domain <domain>         Customer server domain/IP
 #   --offline                 Use offline JWT licence mode
 #   --offline-token <jwt>     Offline licence JWT (required with --offline)
@@ -40,8 +41,12 @@ TIER=1
 CUSTOMER=""
 LICENCE_KEY=""
 VERSION="latest"
+# --model is the local Ollama model used by Tier 2. Tier 1.5 (Ollama Cloud)
+# uses a different catalogue (cloud-hosted models only), so it has its own
+# --cloud-model knob with a cloud-appropriate default.
 MODEL="qwen3.5:9b-instruct"
 MODEL_TAG="qwen3-5-9b-instruct"
+CLOUD_MODEL="deepseek-v3.1:671b-cloud"
 DOMAIN=""
 OFFLINE=false
 OFFLINE_TOKEN=""
@@ -57,6 +62,7 @@ while [[ $# -gt 0 ]]; do
     --licence-key)   LICENCE_KEY="$2";   shift 2 ;;
     --version)       VERSION="$2";       shift 2 ;;
     --model)         MODEL="$2";         MODEL_TAG=$(echo "$2" | tr ':' '-' | tr '.' '-'); shift 2 ;;
+    --cloud-model)   CLOUD_MODEL="$2";   shift 2 ;;
     --domain)        DOMAIN="$2";        shift 2 ;;
     --offline)       OFFLINE=true;       shift ;;
     --offline-token) OFFLINE_TOKEN="$2"; shift 2 ;;
@@ -165,12 +171,14 @@ ANTHROPIC_API_KEY=
 # AZURE_OPENAI_DEPLOYMENT=gpt-4o"
     ;;
   1.5)
+    # Ollama Cloud uses its own model catalogue; ${MODEL} is the local Tier 2
+    # default and would 404 against the cloud service. Use ${CLOUD_MODEL}.
     LLM_SECTION="# Tier 1.5 — Ollama Cloud. Sanitised prompts only leave the cluster; all SAP
 # data, findings and reports stay on-prem. Get an API key at https://ollama.com/settings.
 LLM_PROVIDER=ollama_cloud
 OLLAMA_BASE_URL=https://ollama.com
 OLLAMA_API_KEY=
-OLLAMA_MODEL=${MODEL}"
+OLLAMA_MODEL=${CLOUD_MODEL}"
     ;;
   2)
     LLM_SECTION="LLM_PROVIDER=ollama
