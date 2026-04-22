@@ -30,6 +30,8 @@ import {
   type CSSProperties,
   type KeyboardEvent,
   useCallback,
+  useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -82,6 +84,14 @@ export function DataTable<TRow>({
   ariaLabel,
 }: DataTableProps<TRow>) {
   const [focusedIndex, setFocusedIndex] = useState<number>(-1);
+  // Mirror of focusedIndex kept in a ref so rapid J/K repeats read the
+  // latest value before React commits the next render — otherwise the
+  // closure in moveFocus sees a stale index and drops intermediate steps.
+  const focusedIndexRef = useRef(focusedIndex);
+  useEffect(() => {
+    focusedIndexRef.current = focusedIndex;
+  }, [focusedIndex]);
+
   const scrollerRef = useRef<HTMLDivElement>(null);
 
   const table = useReactTable<TRow>({
@@ -92,7 +102,7 @@ export function DataTable<TRow>({
   });
 
   const rows = table.getRowModel().rows;
-  const rowHeight = useRowHeight();
+  const rowHeight = useRowHeight(scrollerRef);
 
   const virtualiser = useVirtualizer({
     count: rows.length,
@@ -105,15 +115,20 @@ export function DataTable<TRow>({
   const moveFocus = useCallback(
     (delta: number) => {
       if (rows.length === 0) return;
+      // Read from the ref — under key-repeat the DOM fires multiple
+      // keydowns before React commits the previous setState, so the
+      // closure-captured focusedIndex would be stale.
+      const current = focusedIndexRef.current;
       const next = Math.min(
-        Math.max(focusedIndex + delta, 0),
+        Math.max(current + delta, 0),
         rows.length - 1,
       );
+      focusedIndexRef.current = next;
       setFocusedIndex(next);
       virtualiser.scrollToIndex(next, { align: "auto" });
       onRowFocus?.(rows[next]?.original ?? null);
     },
-    [focusedIndex, rows, virtualiser, onRowFocus],
+    [rows, virtualiser, onRowFocus],
   );
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -273,13 +288,44 @@ function cellStyle(meta: AuroraColumnMeta | undefined): CSSProperties {
   return { flex: "1 1 0", minWidth: 0 };
 }
 
-function useRowHeight(): number {
-  // Mirror the Aurora density tokens. Resolve at render so [data-density]
-  // changes from a parent immediately re-measure on next render.
-  if (typeof window === "undefined") return 36;
-  const style = getComputedStyle(document.documentElement);
-  const raw = style.getPropertyValue("--aurora-density-row").trim();
-  if (!raw) return 36;
-  const parsed = parseFloat(raw);
-  return Number.isFinite(parsed) ? parsed : 36;
+/**
+ * Read the effective `--aurora-density-row` for the table's own element.
+ *
+ * CSS custom properties inherit, so a scoped `[data-density="compact"]`
+ * ancestor overrides the document root. Reading from the scroller's own
+ * computed style picks up that scoped value; reading from
+ * `document.documentElement` would miss it and the virtualiser would
+ * compute offsets at the root height while the CSS painted rows at the
+ * scoped height, producing misalignment as the user scrolls.
+ *
+ * The hook does a synchronous first pass (null ref → 36 px default) so
+ * SSR renders a sensible height, then re-measures after the ref attaches.
+ */
+function useRowHeight(
+  hostRef: React.RefObject<HTMLDivElement | null>,
+): number {
+  const [rowHeight, setRowHeight] = useState<number>(36);
+  useLayoutEffect(() => {
+    const el = hostRef.current;
+    if (!el || typeof window === "undefined") return;
+    const resolve = () => {
+      const style = getComputedStyle(el);
+      const raw = style.getPropertyValue("--aurora-density-row").trim();
+      if (!raw) return;
+      const parsed = parseFloat(raw);
+      if (Number.isFinite(parsed)) setRowHeight(parsed);
+    };
+    resolve();
+    // Re-measure when a parent flips `[data-density]` — cheap vs. a
+    // full MutationObserver because density changes are rare and the
+    // selector walks are shallow.
+    const observer = new MutationObserver(resolve);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-density"],
+      subtree: true,
+    });
+    return () => observer.disconnect();
+  }, [hostRef]);
+  return rowHeight;
 }
