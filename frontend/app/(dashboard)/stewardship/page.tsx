@@ -137,7 +137,7 @@ export default function StewardshipPage() {
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["stewardship-queue", statuses[0] ?? "open"],
-    queryFn: () => getQueueItems({ status: statuses[0] ?? "open", limit: 1000 }),
+    queryFn: () => getQueueItems({ status: statuses[0] ?? "open", limit: 200 }),
   });
   const items = data?.items ?? [];
 
