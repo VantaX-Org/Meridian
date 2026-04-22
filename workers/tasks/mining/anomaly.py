@@ -206,9 +206,10 @@ def run_anomaly(self, version_id: str, tenant_id: str, module: str, parquet_path
         anomalies = _find_anomalies(df, module, method)
         
         # Record anomalies in DB
+        import json as _json
         with Session(engine) as session:
             session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
-            
+
             for anomaly in anomalies:
                 session.execute(
                     text("""
@@ -235,7 +236,7 @@ def run_anomaly(self, version_id: str, tenant_id: str, module: str, parquet_path
                         "method": anomaly["detection_method"],
                         "z_score": anomaly.get("z_score"),
                         "severity": anomaly["severity"],
-                        "bounds": anomaly.get("bounds", {}),
+                        "bounds": _json.dumps(anomaly.get("bounds", {})),
                     },
                 )
             

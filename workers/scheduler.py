@@ -912,4 +912,8 @@ celery_app.conf.beat_schedule = {
         "task": "workers.tasks.run_health_check.check_all_systems",
         "schedule": crontab(minute="*/30"),  # Every 30 minutes — check all system connections
     },
+    "nightly-mining-all-tenants-0230": {
+        "task": "workers.tasks.mining.orchestrator.nightly_mining_all_tenants",
+        "schedule": crontab(hour=0, minute=30),  # 00:30 UTC = 02:30 SAST (30 min after daily_analysis)
+    },
 }

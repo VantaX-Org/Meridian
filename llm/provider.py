@@ -305,6 +305,63 @@ def safe_invoke(llm, messages, *, timeout_seconds: int = 90) -> str | None:
         return None
 
 
+def safe_invoke_batch(
+    llm,
+    prompts: list,
+    *,
+    timeout_seconds: int = 90,
+    max_workers: int = 4,
+) -> list[str | None]:
+    """Run many prompts through a single LLM with bounded concurrency.
+
+    Preserves order, returns ``None`` for any prompt that times out / fails so
+    the caller can fall back deterministically per-item. Honours the circuit
+    breaker: once it opens mid-batch, remaining prompts short-circuit to None.
+    """
+    import concurrent.futures
+
+    if not prompts:
+        return []
+
+    results: list[str | None] = [None] * len(prompts)
+
+    if _circuit_is_open():
+        logger.debug("LLM circuit breaker is open; short-circuiting batch")
+        return results
+
+    def _call_one(idx_prompt):
+        idx, prompt = idx_prompt
+        if _circuit_is_open():
+            return idx, None
+        try:
+            response = llm.invoke(prompt)
+            content = response.content if hasattr(response, "content") else str(response)
+            _record_llm_success()
+            return idx, content
+        except Exception as e:
+            logger.warning(f"LLM batch item {idx} failed: {type(e).__name__}: {e}")
+            _record_llm_failure()
+            return idx, None
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {
+            executor.submit(_call_one, (i, p)): i for i, p in enumerate(prompts)
+        }
+        try:
+            for fut in concurrent.futures.as_completed(futures, timeout=timeout_seconds):
+                idx, content = fut.result()
+                results[idx] = content
+        except concurrent.futures.TimeoutError:
+            logger.warning(
+                f"LLM batch hit wall-clock timeout after {timeout_seconds}s; "
+                "remaining items return None"
+            )
+            for fut in futures:
+                fut.cancel()
+
+    return results
+
+
 async def safe_ainvoke(llm, messages, *, timeout_seconds: int = 60) -> str | None:
     """Async-friendly LLM invocation with hard timeout.
 

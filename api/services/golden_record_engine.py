@@ -12,6 +12,7 @@ Writes to master_records table.
 """
 
 import logging
+import os
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
@@ -21,16 +22,24 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.services.survivorship import (
     FieldContribution,
+    SurvivorshipChain,
     SurvivorshipResult,
-    evaluate_field,
     apply_most_recent,
+    evaluate_field,
 )
 from api.services.ai_survivorship import propose_field_winner
+from sap.deterministic import classify_field
 
 logger = logging.getLogger("meridian.golden_record_engine")
 
 # Default confidence threshold — records below this go to pending_review
 CONFIDENCE_THRESHOLD = 0.85
+
+
+def _llm_survivorship_enabled() -> bool:
+    """Feature flag — default ON; set MERIDIAN_SURVIVORSHIP_LLM=off for bulk runs."""
+    val = os.getenv("MERIDIAN_SURVIVORSHIP_LLM", "on").strip().lower()
+    return val not in ("off", "false", "0", "no")
 
 
 async def _load_survivorship_rules(
@@ -168,9 +177,25 @@ async def process_sync_batch(
                     all_field_contributions=field_contributions,
                 )
 
-            # If no deterministic winner, try AI
+            # Deterministic SAP-aware chain before ever touching the LLM.
+            # This is the main LLM-avoidance path at 400k-record scale.
+            if result is None and contributions:
+                field_type = classify_field(
+                    field_name,
+                    sample_value=next((c.value for c in contributions if c.value is not None), None),
+                )
+                chain = SurvivorshipChain(
+                    field_name=field_name,
+                    field_type=field_type,
+                    trusted_sources=rule.get("trusted_sources") if rule else None,
+                    all_field_contributions=field_contributions,
+                )
+                result = chain.evaluate(contributions)
+
+            # LLM fallback (only for genuinely undecided fields, and only when
+            # the feature flag is on)
             ai_recommendation = None
-            if result is None and len(contributions) >= 2:
+            if result is None and len(contributions) >= 2 and _llm_survivorship_enabled():
                 ai_result = propose_field_winner(
                     tenant_id=tenant_id,
                     field_name=field_name,

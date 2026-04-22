@@ -98,13 +98,12 @@ def propose_field_winner(
         response = safe_invoke(llm, prompt, timeout_seconds=40)
         if response is None:
             logger.warning(f"Survivorship LLM timeout for {field_name}")
-            return None  # Fallback to deterministic survivorshiprompt, timeout_seconds=40)
-        if response is None:
-            logger.warning(f"Survivorship LLM timeout for {field_name}")
             return None  # Fallback to deterministic survivorship
         elapsed_ms = int((time.monotonic_ns() // 1_000_000) - start_ms)
 
-        content = response.content if hasattr(response, "content") else str(response)
+        content = response if isinstance(response, str) else (
+            response.content if hasattr(response, "content") else str(response)
+        )
 
         # Log the call (prompt content is hashed, never stored)
         token_count = getattr(response, "usage_metadata", {})

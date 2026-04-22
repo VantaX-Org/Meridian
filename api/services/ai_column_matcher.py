@@ -345,11 +345,8 @@ def _llm_match_columns(
         ], timeout_seconds=30)
         if response is None:
             logger.warning(f"Column matcher LLM timeout for {module_name}")
-            return _fallback_unmatched(unmatched_headers)  # Conservative fallback        ], timeout_seconds=30)
-        if response is None:
-            logger.warning(f"Column matcher LLM timeout for {module_name}")
             return _fallback_unmatched(unmatched_headers)  # Conservative fallback
-        content = response.content.strip()
+        content = response.strip() if isinstance(response, str) else response.content.strip()
 
         # Log the LLM call for audit
         _log_llm_call(module_name, prompt, content)

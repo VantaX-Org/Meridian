@@ -177,18 +177,24 @@ def _generate_for_tenant(engine, tenant_id: str) -> None:
         try:
             response = safe_invoke(llm, prompt, timeout_seconds=50)
             if response is None:
-                logger.warning(f"Health narrative LLM timeout")
-                narrative = "Health status unavailable due to AI service timeout."
-            else:
-                narrative = response.content if hasattr(response, "content") else str(responseeconds=50)
-            if response is None:
-                logger.warning(f"Health narrative LLM timeout")
-                narrative = "Health status unavailable due to AI service timeout."
-            else:
-                narrative = response.content if hasattr(response, "content") else str(response)
+                logger.warning(f"  tenant={tenant_id}: Health narrative LLM unavailable")
+                # Record a non-fatal log entry and bail for this tenant — the
+                # weekly metric snapshot is still written by the separate job.
+                log_llm_call(
+                    tenant_id=tenant_id,
+                    service_name="ai_health_narrative",
+                    prompt=prompt,
+                    model_version=str(getattr(llm, "model", "unknown")),
+                    token_count=0,
+                    latency_ms=int((time.monotonic() - start_ms) * 1000),
+                    success=False,
+                )
+                return
             latency_ms = int((time.monotonic() - start_ms) * 1000)
 
-            content = response.content if hasattr(response, "content") else str(response)
+            content = response if isinstance(response, str) else (
+                response.content if hasattr(response, "content") else str(response)
+            )
             token_count = getattr(response, "usage_metadata", {}).get("total_tokens", 0) if hasattr(response, "usage_metadata") else 0
 
             log_llm_call(

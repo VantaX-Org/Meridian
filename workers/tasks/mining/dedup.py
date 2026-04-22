@@ -164,23 +164,23 @@ def run_dedup(self, version_id: str, tenant_id: str, module: str, parquet_path: 
         duplicates = _find_potential_duplicates(df, module)
         
         # Record duplicates in DB
+        import json as _json
         with Session(engine) as session:
             session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
-            
+
             for dup in duplicates:
                 session.execute(
                     text("""
-                        INSERT INTO master_record_duplicates (
+                        INSERT INTO data_duplicates (
                             id, tenant_id, version_id, module_id,
-                            record_a_key, record_b_key,
-                            match_score, match_type, id_field,
-                            matched_fields, status, created_at
+                            record_a, record_b, match_score,
+                            blocking_key, id_field, matched_fields, detected_at
                         ) VALUES (
                             gen_random_uuid(), :tid, :vid, :mod,
-                            :rec_a, :rec_b, :score, 'potential', :id_field,
-                            CAST(:matched AS jsonb), 'pending', now()
+                            :rec_a, :rec_b, :score,
+                            :blocking_key, :id_field, CAST(:matched AS jsonb), now()
                         )
-                        ON CONFLICT DO NOTHING
+                        ON CONFLICT ON CONSTRAINT uq_data_duplicates_pair DO NOTHING
                     """),
                     {
                         "tid": tenant_id,
@@ -189,11 +189,12 @@ def run_dedup(self, version_id: str, tenant_id: str, module: str, parquet_path: 
                         "rec_a": dup["record_a"],
                         "rec_b": dup["record_b"],
                         "score": dup["match_score"],
+                        "blocking_key": dup.get("blocking_key"),
                         "id_field": dup["id_field"],
-                        "matched": dup["matched_fields"],
+                        "matched": _json.dumps(dup["matched_fields"]),
                     },
                 )
-            
+
             session.commit()
         
         logger.info(f"run_dedup complete: found {len(duplicates)} potential duplicates for {module}")
