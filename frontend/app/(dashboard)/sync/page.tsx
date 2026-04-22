@@ -25,9 +25,9 @@ function QualityBadge({ score }: { score: number | null }) {
   if (score === null) return null;
   const color =
     score >= 0.8
-      ? "bg-[#16A34A]/10 text-[#16A34A] border-[#16A34A]/20"
+      ? "bg-[#256F3A]/10 text-[#256F3A] border-[#256F3A]/20"
       : score >= 0.6
-        ? "bg-[#EA580C]/10 text-[#EA580C] border-[#EA580C]/20"
+        ? "bg-[#E76500]/10 text-[#E76500] border-[#E76500]/20"
         : "bg-destructive/10 text-destructive border-destructive/20";
 
   return (
@@ -41,7 +41,7 @@ const STATUS_CONFIG: Record<string, { icon: React.ReactNode; label: string; colo
   completed: {
     icon: <CheckCircle className="h-4 w-4" />,
     label: "Completed",
-    color: "text-[#16A34A]",
+    color: "text-[#256F3A]",
   },
   failed: {
     icon: <XCircle className="h-4 w-4" />,
@@ -128,7 +128,7 @@ function SyncRunRow({ run }: { run: SyncRun }) {
                   key={i}
                   className="flex items-start gap-2 rounded-md bg-white/[0.70] px-3 py-1.5 text-xs"
                 >
-                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-[#EA580C]" />
+                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-[#E76500]" />
                   <div>
                     <span className="font-medium text-foreground">{flag.type}</span>
                     <span className="text-muted-foreground"> — {flag.detail}</span>
@@ -199,9 +199,9 @@ export default function SyncMonitorPage() {
       <div className="grid grid-cols-4 gap-4">
         {[
           { label: "Total Runs", value: stats.total, icon: Activity, color: "#00D4AA" },
-          { label: "Completed", value: stats.completed, icon: CheckCircle, color: "#16A34A" },
-          { label: "Failed", value: stats.failed, icon: XCircle, color: "#DC2626" },
-          { label: "Running", value: stats.running, icon: Loader2, color: "#EA580C" },
+          { label: "Completed", value: stats.completed, icon: CheckCircle, color: "#256F3A" },
+          { label: "Failed", value: stats.failed, icon: XCircle, color: "#BB0000" },
+          { label: "Running", value: stats.running, icon: Loader2, color: "#E76500" },
         ].map(({ label, value, icon: Icon, color }) => (
           <Card key={label} className="border-black/[0.08] bg-white/[0.70]">
             <CardContent className="flex items-center gap-3 p-4">

@@ -60,7 +60,7 @@ const MODULE_CATEGORY: Record<string, string> = {
 
 function MappedBadge({ isMapped }: { isMapped: boolean }) {
   return isMapped ? (
-    <span className="inline-flex items-center gap-1 rounded-full bg-[#16A34A]/10 px-2 py-0.5 text-xs font-medium text-[#16A34A]">
+    <span className="inline-flex items-center gap-1 rounded-full bg-[#256F3A]/10 px-2 py-0.5 text-xs font-medium text-[#256F3A]">
       <Check className="h-3 w-3" />
       Confirmed
     </span>
@@ -441,7 +441,7 @@ export default function FieldMappingPage() {
           {
             label: "Unconfirmed",
             value: totalUnmapped,
-            color: totalUnmapped > 0 ? "text-yellow-600" : "text-[#16A34A]",
+            color: totalUnmapped > 0 ? "text-yellow-600" : "text-[#256F3A]",
           },
         ].map(({ label, value, color }) => (
           <Card key={label} className="vx-card">

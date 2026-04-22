@@ -22,7 +22,7 @@ export interface DriftSparklineProps {
 export function DriftSparkline({
   data,
   band,
-  stroke = "#0D5639",
+  stroke = "#0070F2",
   height = 24,
   fullWidth = false,
 }: DriftSparklineProps) {

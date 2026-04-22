@@ -1,14 +1,14 @@
 /** Score color: green >=85, amber 60-84, red <60 */
 export function scoreColor(score: number): string {
-  if (score >= 85) return "#16A34A";
-  if (score >= 60) return "#D97706";
-  return "#DC2626";
+  if (score >= 85) return "#256F3A";
+  if (score >= 60) return "#E76500";
+  return "#BB0000";
 }
 
 export function scoreBg(score: number): string {
-  if (score >= 85) return "bg-[#16A34A]/10 text-[#16A34A]";
-  if (score >= 60) return "bg-[#D97706]/10 text-[#D97706]";
-  return "bg-[#DC2626]/10 text-[#DC2626]";
+  if (score >= 85) return "bg-[#256F3A]/10 text-[#256F3A]";
+  if (score >= 60) return "bg-[#E76500]/10 text-[#E76500]";
+  return "bg-[#BB0000]/10 text-[#BB0000]";
 }
 
 /** "business_partner" -> "Business Partner" */
@@ -35,20 +35,20 @@ export function relativeTime(iso: string): string {
 export function severityColor(severity: string): string {
   switch (severity) {
     case "critical":
-      return "bg-[#DC2626]/10 text-[#DC2626] border border-[#DC2626]/20";
+      return "bg-[#BB0000]/10 text-[#BB0000] border border-[#BB0000]/20";
     case "high":
-      return "bg-[#EA580C]/10 text-[#EA580C] border border-[#EA580C]/20";
+      return "bg-[#E76500]/10 text-[#E76500] border border-[#E76500]/20";
     case "medium":
-      return "bg-[#D97706]/10 text-[#D97706] border border-[#D97706]/20";
+      return "bg-[#A45D00]/10 text-[#A45D00] border border-[#A45D00]/20";
     case "low":
-      return "bg-[#00D4AA]/10 text-[#00D4AA] border border-[#00D4AA]/20";
+      return "bg-[#089DE3]/10 text-[#089DE3] border border-[#089DE3]/20";
     default:
       return "bg-black/[0.03] text-[#6B7280] border border-black/[0.08]";
   }
 }
 
 export function passRateColor(rate: number): string {
-  if (rate >= 95) return "bg-[#16A34A]";
-  if (rate >= 80) return "bg-[#D97706]";
-  return "bg-[#DC2626]";
+  if (rate >= 95) return "bg-[#256F3A]";
+  if (rate >= 80) return "bg-[#E76500]";
+  return "bg-[#BB0000]";
 }

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { TrendingUp, TrendingDown, Minus, ArrowRight } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { DriftSparkline } from "@/components/charts/drift-sparkline";
+import { AnnotatedSparkline } from "@/components/charts/annotated-sparkline";
 
 export type KpiTone = "pos" | "neg" | "neutral" | "warn";
 
@@ -45,11 +45,11 @@ const COL_CLASSES: Record<number, string> = {
 function toneColor(tone: KpiTone): string {
   switch (tone) {
     case "pos":
-      return "text-[#16A34A]";
+      return "text-[#256F3A]";
     case "neg":
-      return "text-[#DC2626]";
+      return "text-[#BB0000]";
     case "warn":
-      return "text-[#D97706]";
+      return "text-[#E76500]";
     default:
       return "text-muted-foreground";
   }
@@ -91,36 +91,34 @@ export function KpiRail({ items, columns, className }: KpiRailProps) {
     <div
       role="group"
       aria-label="Key performance indicators"
-      className={cn("grid grid-cols-2 gap-3 sm:grid-cols-3", colClass, className)}
+      className={cn("vx-stagger grid grid-cols-2 gap-3 sm:grid-cols-3", colClass, className)}
     >
       {items.map((item, i) => {
         const tone = inferTone(item.delta, item.tone);
         const content = (
           <div
             className={cn(
-              "vx-card flex h-full flex-col justify-between gap-1.5 px-3.5 py-3",
-              item.href && "vx-card-interactive cursor-pointer transition-transform hover:-translate-y-0.5",
+              "vx-glass-elevated flex h-full flex-col justify-between gap-1.5 rounded-xl px-3.5 py-3",
+              item.href && "cursor-pointer transition-transform hover:-translate-y-0.5",
             )}
             title={item.hint}
           >
             <div className="flex items-center justify-between gap-2">
-              <p className="truncate text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                {item.label}
-              </p>
+              <p className="vx-eyebrow truncate">{item.label}</p>
               {item.href ? <ArrowRight className="h-3 w-3 shrink-0 text-muted-foreground" /> : null}
             </div>
             <div className="flex items-baseline justify-between gap-2">
-              <span className="font-display text-[22px] font-semibold leading-none text-foreground tabular-nums">
+              <span className="vx-num font-display text-[22px] font-semibold leading-none text-foreground">
                 {item.value}
               </span>
               <DeltaPill delta={item.delta} deltaLabel={item.deltaLabel} tone={tone} />
             </div>
             {item.spark && item.spark.length > 1 ? (
-              <DriftSparkline
+              <AnnotatedSparkline
                 data={item.spark}
-                stroke={tone === "neg" ? "#DC2626" : tone === "warn" ? "#D97706" : "#0D5639"}
+                stroke={tone === "neg" ? "#BB0000" : tone === "warn" ? "#E76500" : "#0070F2"}
                 height={18}
-                fullWidth
+                annotated={false}
               />
             ) : (
               <div style={{ height: 18 }} aria-hidden />

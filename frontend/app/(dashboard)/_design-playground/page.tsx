@@ -62,14 +62,14 @@ const DEMO_COLUMNS: DenseColumnDef<DemoRow>[] = [
     accessorKey: "critical",
     header: "Critical",
     cell: ({ getValue }) => (
-      <span className="text-[#DC2626] tabular-nums">{getValue() as number}</span>
+      <span className="text-[#BB0000] tabular-nums">{getValue() as number}</span>
     ),
   },
   {
     accessorKey: "high",
     header: "High",
     cell: ({ getValue }) => (
-      <span className="text-[#EA580C] tabular-nums">{getValue() as number}</span>
+      <span className="text-[#E76500] tabular-nums">{getValue() as number}</span>
     ),
   },
   {

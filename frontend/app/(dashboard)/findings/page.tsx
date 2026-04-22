@@ -14,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { DetailPanel } from "@/components/ui/detail-panel";
 import {
   Tooltip,
   TooltipContent,
@@ -26,6 +27,7 @@ import { getFindings } from "@/lib/api/findings";
 import { getLineage } from "@/lib/api/contracts";
 import { severityColor, formatModuleName } from "@/lib/format";
 import { KpiRail, type KpiItem } from "@/components/ui/kpi-rail";
+import { HeroKpi } from "@/components/ui/hero-kpi";
 import { NarrativeStrip } from "@/components/ui/narrative-strip";
 import { SectionHeader } from "@/components/ui/section-header";
 import { SavedView } from "@/components/ui/saved-view";
@@ -80,7 +82,7 @@ function CopyButton({ text }: { text: string }) {
           />
         }
       >
-        {copied ? <Check className="h-3 w-3 text-[#16A34A]" /> : <Copy className="h-3 w-3" />}
+        {copied ? <Check className="h-3 w-3 text-[#256F3A]" /> : <Copy className="h-3 w-3" />}
       </TooltipTrigger>
       <TooltipContent>{copied ? "Copied" : "Copy"}</TooltipContent>
     </Tooltip>
@@ -97,11 +99,11 @@ function passRateTone(rate: number | null): "pos" | "warn" | "neg" | "neutral" {
 function toneClass(tone: "pos" | "warn" | "neg" | "neutral"): string {
   switch (tone) {
     case "pos":
-      return "text-[#16A34A]";
+      return "text-[#256F3A]";
     case "warn":
-      return "text-[#D97706]";
+      return "text-[#E76500]";
     case "neg":
-      return "text-[#DC2626]";
+      return "text-[#BB0000]";
     default:
       return "text-muted-foreground";
   }
@@ -230,7 +232,7 @@ function FindingsContent() {
         label: dim,
         data,
         value: count > 0 ? `${avgPass.toFixed(0)}%` : "—",
-        color: i % 2 === 0 ? "#0D5639" : "#0695A8",
+        color: i % 2 === 0 ? "#0070F2" : "#0695A8",
       };
     });
   }, [filtered]);
@@ -431,8 +433,25 @@ function FindingsContent() {
           />
         </div>
 
-        {/* KPI rail */}
-        <KpiRail items={kpis} columns={7} />
+        {/* Hero + KPI rail */}
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-12">
+          <div className="lg:col-span-4">
+            <HeroKpi
+              label="Critical findings"
+              value={kpis[1]?.value ?? 0}
+              caption={
+                (kpis[1]?.value ?? 0) === 0
+                  ? "No criticals outstanding"
+                  : `${kpis[2]?.value ?? 0} high \u00b7 ${filtered.length.toLocaleString()} total after filters`
+              }
+              tone={(kpis[1]?.value ?? 0) === 0 ? "pos" : "neg"}
+              href="/findings?severity=critical"
+            />
+          </div>
+          <div className="lg:col-span-8">
+            <KpiRail items={kpis.filter((_, i) => i !== 1)} columns={6} />
+          </div>
+        </div>
 
         {/* Narrative */}
         <NarrativeStrip
@@ -495,20 +514,50 @@ function FindingsContent() {
           </>
         )}
 
-        {/* Finding detail dialog */}
-        <Dialog
+        {/* Finding detail slide-over */}
+        <DetailPanel
           open={!!selectedFinding}
           onOpenChange={(o) => !o && setSelectedFinding(null)}
+          width={560}
+          title={
+            selectedFinding ? (
+              <span className="flex items-center gap-2">
+                <Badge className={`text-[10px] ${severityColor(selectedFinding.severity)}`}>
+                  {selectedFinding.severity}
+                </Badge>
+                <span className="font-mono text-sm">{selectedFinding.check_id}</span>
+              </span>
+            ) : null
+          }
+          subtitle={
+            selectedFinding
+              ? `${formatModuleName(selectedFinding.module)} · ${selectedFinding.dimension}`
+              : undefined
+          }
+          onPrev={
+            selectedFinding
+              ? () => {
+                  const i = filtered.findIndex((f) => f.check_id === selectedFinding.check_id);
+                  if (i > 0) setSelectedFinding(filtered[i - 1]);
+                }
+              : undefined
+          }
+          onNext={
+            selectedFinding
+              ? () => {
+                  const i = filtered.findIndex((f) => f.check_id === selectedFinding.check_id);
+                  if (i >= 0 && i < filtered.length - 1) setSelectedFinding(filtered[i + 1]);
+                }
+              : undefined
+          }
         >
-          <DialogContent className="max-w-3xl">
-            {selectedFinding ? (
-              <FindingDetail
-                finding={selectedFinding}
-                onLineage={() => openLineage(selectedFinding)}
-              />
-            ) : null}
-          </DialogContent>
-        </Dialog>
+          {selectedFinding ? (
+            <FindingDetail
+              finding={selectedFinding}
+              onLineage={() => openLineage(selectedFinding)}
+            />
+          ) : null}
+        </DetailPanel>
 
         {/* Lineage dialog */}
         <Dialog
@@ -554,17 +603,7 @@ function FindingDetail({
   const checkField = finding.details?.field_checked as string | undefined;
 
   return (
-    <>
-      <DialogHeader>
-        <DialogTitle className="flex items-center gap-2">
-          <Badge className={`text-[10px] ${severityColor(finding.severity)}`}>
-            {finding.severity}
-          </Badge>
-          <span className="font-mono text-sm">{finding.check_id}</span>
-          <span className="text-muted-foreground">· {formatModuleName(finding.module)}</span>
-        </DialogTitle>
-      </DialogHeader>
-      <div className="space-y-4 text-sm">
+    <div className="space-y-4 text-sm">
         <div>
           <p className="text-muted-foreground">
             {finding.details?.message ?? finding.remediation_text ?? "No description."}
@@ -679,14 +718,13 @@ function FindingDetail({
           </div>
         ) : null}
 
-        {recordFixes && recordFixes.length > 0 ? (
-          <p className="text-xs text-muted-foreground">
-            {recordFixes.length} record-level fix{recordFixes.length === 1 ? "" : "es"} available in
-            the full report.
-          </p>
-        ) : null}
-      </div>
-    </>
+      {recordFixes && recordFixes.length > 0 ? (
+        <p className="text-xs text-muted-foreground">
+          {recordFixes.length} record-level fix{recordFixes.length === 1 ? "" : "es"} available in
+          the full report.
+        </p>
+      ) : null}
+    </div>
   );
 }
 

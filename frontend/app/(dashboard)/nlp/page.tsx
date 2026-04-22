@@ -51,8 +51,8 @@ const SUGGESTED_QUESTIONS = [
 ];
 
 const CHART_COLOURS = [
-  "#0D5639", "#4BA87A", "#1E7A52", "#EA580C", "#DC2626",
-  "#6366F1", "#4A5568", "#7C3AED",
+  "#0070F2", "#256F3A", "#089DE3", "#E76500", "#BB0000",
+  "#7858FF", "#4A5568", "#7C3AED",
 ];
 
 function NlpChart({
@@ -101,7 +101,7 @@ function NlpChart({
           <Line
             type="monotone"
             dataKey={valueKey}
-            stroke="#0D5639"
+            stroke="#0070F2"
             strokeWidth={2}
             dot={{ r: 3 }}
           />
@@ -116,7 +116,7 @@ function NlpChart({
         <XAxis dataKey={labelKey} tick={{ fontSize: 11 }} />
         <YAxis tick={{ fontSize: 11 }} />
         <Tooltip />
-        <Bar dataKey={valueKey} fill="#0D5639" radius={[4, 4, 0, 0]} />
+        <Bar dataKey={valueKey} fill="#0070F2" radius={[4, 4, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );

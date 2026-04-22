@@ -22,17 +22,17 @@ import {
 import { toast } from "sonner";
 
 function scoreColor(score: number): string {
-  if (score >= 85) return "bg-[#16A34A]/15 text-[#16A34A] border border-[#16A34A]/30";
-  if (score >= 60) return "bg-[#D97706]/15 text-[#D97706] border border-[#D97706]/30";
-  return "bg-[#DC2626]/15 text-[#DC2626] border border-[#DC2626]/30";
+  if (score >= 85) return "bg-[#256F3A]/15 text-[#256F3A] border border-[#256F3A]/30";
+  if (score >= 60) return "bg-[#E76500]/15 text-[#E76500] border border-[#E76500]/30";
+  return "bg-[#BB0000]/15 text-[#BB0000] border border-[#BB0000]/30";
 }
 
 function methodTag(method: string): string {
   switch (method) {
-    case "exact": return "bg-[#16A34A]/15 text-[#16A34A]";
+    case "exact": return "bg-[#256F3A]/15 text-[#256F3A]";
     case "fuzzy": return "bg-[#2563EB]/15 text-[#2563EB]";
     case "phonetic": return "bg-[#7C3AED]/15 text-[#7C3AED]";
-    case "token_overlap": return "bg-[#D97706]/15 text-[#D97706]";
+    case "token_overlap": return "bg-[#E76500]/15 text-[#E76500]";
     default: return "bg-white/[0.60] text-muted-foreground";
   }
 }

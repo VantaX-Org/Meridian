@@ -51,7 +51,7 @@ function EnabledBadge({ enabled }: { enabled: boolean }) {
   return (
     <span
       className={`inline-flex h-5 w-5 items-center justify-center rounded-full ${
-        enabled ? "bg-[#16A34A]/15 text-[#16A34A]" : "bg-gray-100 text-gray-400"
+        enabled ? "bg-[#256F3A]/15 text-[#256F3A]" : "bg-gray-100 text-gray-400"
       }`}
       title={enabled ? "Enabled" : "Disabled"}
     >
@@ -84,7 +84,7 @@ function ModuleGroup({ moduleName, rules }: { moduleName: string; rules: Rule[] 
           <span className="text-xs text-muted-foreground">({rules.length})</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="text-xs text-[#16A34A] font-medium">
+          <span className="text-xs text-[#256F3A] font-medium">
             {rules.filter((r) => r.enabled).length} enabled
           </span>
           {rules.filter((r) => r.severity === "critical").length > 0 && (
@@ -222,7 +222,7 @@ export default function RulesPage() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
           { label: "Total Rules", value: totalRules, color: "text-foreground" },
-          { label: "Enabled", value: enabledCount, color: "text-[#16A34A]" },
+          { label: "Enabled", value: enabledCount, color: "text-[#256F3A]" },
           { label: "Critical", value: criticalCount, color: "text-red-600" },
           {
             label: "Modules",

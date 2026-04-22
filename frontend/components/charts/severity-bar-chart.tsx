@@ -14,17 +14,17 @@ interface SeverityBarChartProps {
 }
 
 const SEVERITY_COLORS: Record<string, string> = {
-  Critical: "#DC2626",
-  High: "#EA580C",
-  Medium: "#D97706",
-  Low: "#00D4AA",
+  Critical: "#BB0000",
+  High: "#E76500",
+  Medium: "#A45D00",
+  Low: "#089DE3",
 };
 
 const SEVERITY_TEXT_COLORS: Record<string, string> = {
-  Critical: "#DC2626",
-  High: "#EA580C",
-  Medium: "#D97706",
-  Low: "#00D4AA",
+  Critical: "#BB0000",
+  High: "#E76500",
+  Medium: "#A45D00",
+  Low: "#089DE3",
 };
 
 export function SeverityBarChart({ counts }: SeverityBarChartProps) {

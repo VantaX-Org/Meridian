@@ -96,9 +96,9 @@ export type ReadinessStatus = "go" | "conditional" | "no-go";
 
 export function ReadinessBadge({ status }: { status: ReadinessStatus }) {
   const config: Record<ReadinessStatus, { label: string; color: string }> = {
-    go: { label: "GO", color: "bg-[#4BA87A]" },
-    conditional: { label: "Conditional", color: "bg-[#EA580C]" },
-    "no-go": { label: "NO-GO", color: "bg-[#EF4444]" },
+    go: { label: "GO", color: "bg-[#256F3A]" },
+    conditional: { label: "Conditional", color: "bg-[#E76500]" },
+    "no-go": { label: "NO-GO", color: "bg-[#BB0000]" },
   };
   
   const { label, color } = config[status];
@@ -159,10 +159,10 @@ export function ProgressBar({
   const percentage = Math.min(100, Math.max(0, (value / max) * 100));
   
   const colorMap = {
-    primary: "bg-[#0D5639]",
-    success: "bg-[#4BA87A]",
-    warning: "bg-[#EA580C]",
-    error: "bg-[#EF4444]",
+    primary: "bg-[#0070F2]",
+    success: "bg-[#256F3A]",
+    warning: "bg-[#E76500]",
+    error: "bg-[#BB0000]",
   };
   
   return (

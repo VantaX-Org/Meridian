@@ -55,11 +55,11 @@ const TYPE_ICONS: Record<string, string> = {
 
 const TYPE_COLORS: Record<string, string> = {
   finding: "bg-[#2563EB]/15 text-[#2563EB]",
-  cleaning: "bg-[#16A34A]/15 text-[#16A34A]",
-  exception: "bg-[#DC2626]/15 text-[#DC2626]",
-  approval: "bg-[#16A34A]/15 text-[#16A34A]",
-  digest: "bg-[#D97706]/15 text-[#D97706]",
-  warning: "bg-[#D97706]/15 text-[#EA580C]",
+  cleaning: "bg-[#256F3A]/15 text-[#256F3A]",
+  exception: "bg-[#BB0000]/15 text-[#BB0000]",
+  approval: "bg-[#256F3A]/15 text-[#256F3A]",
+  digest: "bg-[#E76500]/15 text-[#E76500]",
+  warning: "bg-[#E76500]/15 text-[#E76500]",
 };
 
 export default function NotificationsPage() {

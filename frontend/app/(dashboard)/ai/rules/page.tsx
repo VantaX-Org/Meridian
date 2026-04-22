@@ -149,7 +149,7 @@ export default function AIRulesPage() {
                           <Button
                             size="xs"
                             onClick={() => setApproveTarget(rule)}
-                            className="bg-[#16A34A] hover:bg-[#16A34A]/80 text-black"
+                            className="bg-[#256F3A] hover:bg-[#256F3A]/80 text-black"
                           >
                             <Check className="mr-1 h-3 w-3" />
                             Approve
@@ -158,7 +158,7 @@ export default function AIRulesPage() {
                             size="xs"
                             variant="outline"
                             onClick={() => setRejectTarget(rule)}
-                            className="text-destructive hover:bg-[#DC2626]/10"
+                            className="text-destructive hover:bg-[#BB0000]/10"
                           >
                             <X className="mr-1 h-3 w-3" />
                             Reject
@@ -212,7 +212,7 @@ export default function AIRulesPage() {
                 <Button
                   onClick={() => approveMutation.mutate(approveTarget.id)}
                   disabled={approveMutation.isPending}
-                  className="bg-[#16A34A] hover:bg-[#16A34A]/80 text-black"
+                  className="bg-[#256F3A] hover:bg-[#256F3A]/80 text-black"
                 >
                   {approveMutation.isPending && (
                     <Loader2 className="mr-1 h-4 w-4 animate-spin" />
