@@ -17,7 +17,12 @@
 #     --tier 2
 #
 # Full options:
-#   --tier <1|2|3>            LLM tier (default: 1)
+#   --tier <0|1|1.5|2|3>      LLM tier (default: 1)
+#                             0   = LLM-less (fully deterministic)
+#                             1   = Cloud API (Anthropic / Azure OpenAI)
+#                             1.5 = Ollama Cloud (sanitised prompts leave)
+#                             2   = Bundled Ollama (full residency)
+#                             3   = BYOLLM (OpenAI-compatible endpoint)
 #   --customer <name>         Customer slug (required)
 #   --licence-key <key>       Meridian licence key (required unless --offline)
 #   --version <tag>           Image version tag (default: latest)
@@ -142,6 +147,13 @@ else
 fi
 
 case "$TIER" in
+  0)
+    LLM_SECTION="# Tier 0 — LLM-less (fully deterministic, no cloud LLM, no Ollama container).
+# safe_invoke short-circuits to None and every AI service falls back to its
+# deterministic path. Ideal for 400k bulk loads, air-gapped sites without GPU,
+# and PoC deployments with no LLM budget.
+LLM_PROVIDER=none"
+    ;;
   1)
     LLM_SECTION="LLM_PROVIDER=anthropic
 # Set your Anthropic API key:
@@ -151,6 +163,14 @@ ANTHROPIC_API_KEY=
 # AZURE_OPENAI_ENDPOINT=
 # AZURE_OPENAI_API_KEY=
 # AZURE_OPENAI_DEPLOYMENT=gpt-4o"
+    ;;
+  1.5)
+    LLM_SECTION="# Tier 1.5 — Ollama Cloud. Sanitised prompts only leave the cluster; all SAP
+# data, findings and reports stay on-prem. Get an API key at https://ollama.com/settings.
+LLM_PROVIDER=ollama_cloud
+OLLAMA_BASE_URL=https://ollama.com
+OLLAMA_API_KEY=
+OLLAMA_MODEL=${MODEL}"
     ;;
   2)
     LLM_SECTION="LLM_PROVIDER=ollama
@@ -163,6 +183,10 @@ OLLAMA_MODEL=${MODEL}"
 CUSTOM_LLM_BASE_URL=
 CUSTOM_LLM_API_KEY=
 CUSTOM_LLM_MODEL="
+    ;;
+  *)
+    echo "Error: --tier must be one of 0, 1, 1.5, 2, 3 (got: ${TIER})" >&2
+    exit 1
     ;;
 esac
 

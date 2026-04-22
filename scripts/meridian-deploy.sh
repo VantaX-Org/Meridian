@@ -160,18 +160,152 @@ else
     fi
 fi
 
-# --- Licence validation ---
+# --- LLM tier selection (fresh install) ---
+# Reads LLM_* selections either from an existing customer-package .env or from
+# an interactive prompt. Populates TIER plus the variables the .env writer
+# below needs. Tier 2 additionally captures OLLAMA_MODEL for the post-start
+# model-pull step.
+declare -a _LLM_ENV_LINES=()
+
 if [[ "$PRECONFIGURED" == "true" ]]; then
     _LLM_PROVIDER=$(grep -oP '^LLM_PROVIDER=\K.*' "${REPO_ROOT}/.env" 2>/dev/null || echo "anthropic")
     case "$_LLM_PROVIDER" in
         none|off|"")        TIER="0" ;;
         ollama)             TIER="2" ;;
         ollama_cloud)       TIER="1.5" ;;
+        anthropic|azure_openai|openai|google) TIER="1" ;;
         custom)             TIER="3" ;;
         *)                  TIER="1" ;;
     esac
+    OLLAMA_MODEL=$(grep -oP '^OLLAMA_MODEL=\K.*' "${REPO_ROOT}/.env" 2>/dev/null || echo "")
     log "Tier ${TIER} (LLM_PROVIDER=${_LLM_PROVIDER:-none})"
+else
+    section "LLM tier selection"
+    echo "Choose how Meridian's AI services will run. The deterministic layer"
+    echo "handles ~95% of calls regardless — the LLM is only for the uncertain"
+    echo "band (name/description matching, nuanced triage)."
+    echo ""
+    echo "  0  LLM-less (fully deterministic, no cloud, no GPU)"
+    echo "  1  Cloud API (Anthropic Claude or Azure OpenAI)"
+    echo "  1.5  Ollama Cloud (sanitised prompts leave; data stays on-prem)"
+    echo "  2  Bundled Ollama (local container, full residency, wants GPU)"
+    echo "  3  BYOLLM (your own OpenAI-compatible endpoint)"
+    echo ""
+    ask TIER "LLM tier (0 / 1 / 1.5 / 2 / 3)" "0"
+    [[ "$TIER" =~ ^(0|1|1\.5|2|3)$ ]] || error "LLM tier must be 0, 1, 1.5, 2, or 3"
 
+    case "$TIER" in
+        0)
+            _LLM_PROVIDER="none"
+            _LLM_ENV_LINES+=("LLM_PROVIDER=none")
+            log "Tier 0: fully deterministic — no LLM container, no cloud keys needed"
+            ;;
+        1)
+            echo ""
+            echo "  1a  Anthropic Claude (recommended)"
+            echo "  1b  Azure OpenAI"
+            ask _TIER1_CHOICE "Cloud provider (1a / 1b)" "1a"
+            if [[ "$_TIER1_CHOICE" == "1b" ]]; then
+                _LLM_PROVIDER="azure_openai"
+                ask AZURE_OPENAI_ENDPOINT "Azure OpenAI endpoint (https://...openai.azure.com)" ""
+                ask AZURE_OPENAI_API_KEY  "Azure OpenAI API key [hidden]" "" secret
+                ask AZURE_OPENAI_DEPLOYMENT "Azure deployment name" "gpt-4o"
+                ask AZURE_OPENAI_API_VERSION "Azure API version" "2024-08-01-preview"
+                [[ -n "$AZURE_OPENAI_ENDPOINT" && -n "$AZURE_OPENAI_API_KEY" ]] \
+                    || error "Azure OpenAI endpoint and API key are required for Tier 1 (Azure)"
+                _LLM_ENV_LINES+=(
+                    "LLM_PROVIDER=azure_openai"
+                    "AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT}"
+                    "AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY}"
+                    "AZURE_OPENAI_DEPLOYMENT=${AZURE_OPENAI_DEPLOYMENT}"
+                    "AZURE_OPENAI_API_VERSION=${AZURE_OPENAI_API_VERSION}"
+                )
+            else
+                _LLM_PROVIDER="anthropic"
+                ask ANTHROPIC_API_KEY "Anthropic API key (sk-ant-...) [hidden]" "" secret
+                ask ANTHROPIC_MODEL   "Anthropic model" "claude-sonnet-4-6"
+                [[ -n "$ANTHROPIC_API_KEY" ]] || error "Anthropic API key is required for Tier 1"
+                _LLM_ENV_LINES+=(
+                    "LLM_PROVIDER=anthropic"
+                    "ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}"
+                    "ANTHROPIC_MODEL=${ANTHROPIC_MODEL}"
+                )
+            fi
+            ;;
+        1.5)
+            _LLM_PROVIDER="ollama_cloud"
+            ask OLLAMA_API_KEY "Ollama Cloud API key [hidden]" "" secret
+            ask OLLAMA_BASE_URL "Ollama Cloud base URL" "https://ollama.com"
+            ask OLLAMA_MODEL    "Ollama Cloud model" "deepseek-v3.1:671b-cloud"
+            [[ -n "$OLLAMA_API_KEY" ]] \
+                || error "OLLAMA_API_KEY is required for Tier 1.5 (get one at https://ollama.com/settings)"
+            _LLM_ENV_LINES+=(
+                "LLM_PROVIDER=ollama_cloud"
+                "OLLAMA_BASE_URL=${OLLAMA_BASE_URL}"
+                "OLLAMA_API_KEY=${OLLAMA_API_KEY}"
+                "OLLAMA_MODEL=${OLLAMA_MODEL}"
+            )
+            ;;
+        2)
+            _LLM_PROVIDER="ollama"
+            ask OLLAMA_MODEL "Ollama model to pull" "llama3.2:3b-instruct-q4_K_M"
+            [[ -n "$OLLAMA_MODEL" ]] || error "OLLAMA_MODEL is required for Tier 2"
+            _LLM_ENV_LINES+=(
+                "LLM_PROVIDER=ollama"
+                "OLLAMA_BASE_URL=http://ollama:11434"
+                "OLLAMA_MODEL=${OLLAMA_MODEL}"
+            )
+            ;;
+        3)
+            _LLM_PROVIDER="custom"
+            ask CUSTOM_LLM_BASE_URL "BYOLLM base URL (OpenAI-compatible)" ""
+            ask CUSTOM_LLM_API_KEY  "BYOLLM API key [hidden]" "" secret
+            ask CUSTOM_LLM_MODEL    "BYOLLM model name" "default"
+            [[ -n "$CUSTOM_LLM_BASE_URL" ]] || error "BYOLLM base URL is required for Tier 3"
+            _LLM_ENV_LINES+=(
+                "LLM_PROVIDER=custom"
+                "CUSTOM_LLM_BASE_URL=${CUSTOM_LLM_BASE_URL}"
+                "CUSTOM_LLM_API_KEY=${CUSTOM_LLM_API_KEY:-not-required}"
+                "CUSTOM_LLM_MODEL=${CUSTOM_LLM_MODEL}"
+            )
+            ;;
+    esac
+    log "LLM_PROVIDER=${_LLM_PROVIDER} (Tier ${TIER})"
+fi
+
+# --- Pre-flight: required secrets per tier (PRECONFIGURED path only — the
+#     interactive path already enforced these above) ---
+if [[ "$PRECONFIGURED" == "true" ]]; then
+    _require_env() {
+        local key="$1" tier="$2"
+        local val
+        val=$(grep -oP "^${key}=\K.*" "${REPO_ROOT}/.env" 2>/dev/null || echo "")
+        if [[ -z "$val" ]]; then
+            error "${key} is required for Tier ${tier} but is empty in .env"
+        fi
+    }
+    case "$TIER" in
+        1)
+            case "$_LLM_PROVIDER" in
+                anthropic) _require_env ANTHROPIC_API_KEY 1 ;;
+                azure_openai)
+                    _require_env AZURE_OPENAI_ENDPOINT 1
+                    _require_env AZURE_OPENAI_API_KEY  1
+                    ;;
+                openai) _require_env OPENAI_API_KEY 1 ;;
+                google) _require_env GOOGLE_API_KEY 1 ;;
+            esac
+            ;;
+        1.5) _require_env OLLAMA_API_KEY "1.5" ;;
+        2)   _require_env OLLAMA_MODEL 2 ;;
+        3)   _require_env CUSTOM_LLM_BASE_URL 3 ;;
+    esac
+    log "Tier ${TIER} secrets present in .env ✓"
+fi
+
+# --- Licence validation ---
+if [[ "$PRECONFIGURED" == "true" ]]; then
+    : # handled above
 elif [[ "$LICENCE_MODE" == "online" ]]; then
     section "Validating licence"
     if [[ ! "$LICENCE_KEY" =~ ^MRDX-[A-F0-9]{8}-[A-F0-9]{8}-[A-F0-9]{8}$ ]]; then
@@ -267,6 +401,67 @@ else
     [[ -n "$ADMIN_PASSWORD" ]] || error "Admin password is required"
 fi
 
+# --- Write .env (fresh install only) ---
+# Customer-package installs already have a pre-filled .env; fresh installs
+# need us to synthesise one with secure random secrets + the LLM tier the
+# operator just chose above. Downstream docker-compose reads this file.
+if [[ "$PRECONFIGURED" != "true" ]]; then
+    section "Writing .env"
+    _DB_PASS=$(openssl rand -hex 16)
+    _MINIO_PASS=$(openssl rand -hex 16)
+    _CRED_KEY=$(openssl rand -hex 32)
+
+    _LICENCE_KEY_LINE=""
+    _LICENCE_TOKEN_LINE=""
+    if [[ "$LICENCE_MODE" == "online" ]]; then
+        _LICENCE_KEY_LINE="MERIDIAN_LICENCE_KEY=${LICENCE_KEY}"
+    else
+        _LICENCE_TOKEN_LINE="MERIDIAN_LICENCE_TOKEN=${LICENCE_TOKEN}"
+    fi
+
+    {
+        printf '# Meridian .env — generated %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        printf '# Licence\n'
+        printf 'MERIDIAN_LICENCE_MODE=%s\n' "$LICENCE_MODE"
+        [[ -n "$_LICENCE_KEY_LINE"   ]] && printf '%s\n' "$_LICENCE_KEY_LINE"
+        [[ -n "$_LICENCE_TOKEN_LINE" ]] && printf '%s\n' "$_LICENCE_TOKEN_LINE"
+        printf 'MERIDIAN_LICENCE_SERVER_URL=%s\n' "$LICENCE_VALIDATE_URL"
+        printf '\n# LLM (Tier %s)\n' "$TIER"
+        for line in "${_LLM_ENV_LINES[@]}"; do
+            printf '%s\n' "$line"
+        done
+        printf '\n# Deployment\n'
+        printf 'SERVER_DOMAIN=%s\n' "$SERVER_DOMAIN"
+        printf 'SSL_MODE=%s\n'      "$SSL_MODE"
+        printf 'WORKER_LANE=%s\n'   "$WORKER_LANE"
+        printf 'ADMIN_EMAIL=%s\n'   "$ADMIN_EMAIL"
+        printf 'ADMIN_NAME=%s\n'    "$ADMIN_NAME"
+        printf 'ADMIN_PASSWORD=%s\n' "$ADMIN_PASSWORD"
+        printf '\n# Internal\n'
+        printf 'INTERNAL_API_URL=http://api:8000\n'
+        printf '\n# Database\n'
+        printf 'DB_PASSWORD=%s\n' "$_DB_PASS"
+        printf 'DATABASE_URL=postgresql+asyncpg://meridian:%s@db:5432/meridian\n' "$_DB_PASS"
+        printf 'DATABASE_URL_SYNC=postgresql://meridian:%s@db:5432/meridian\n'    "$_DB_PASS"
+        printf '\n# Redis\n'
+        printf 'REDIS_URL=redis://redis:6379/0\n'
+        printf '\n# MinIO\n'
+        printf 'MINIO_ACCESS_KEY=meridian\n'
+        printf 'MINIO_PASSWORD=%s\n'   "$_MINIO_PASS"
+        printf 'MINIO_SECRET_KEY=%s\n' "$_MINIO_PASS"
+        printf 'MINIO_BUCKET_UPLOADS=meridian-uploads\n'
+        printf 'MINIO_BUCKET_REPORTS=meridian-reports\n'
+        printf '\n# Auth\n'
+        printf 'AUTH_MODE=local\n'
+        printf 'NEXT_PUBLIC_AUTH_MODE=local\n'
+        printf '\n# SAP\n'
+        printf 'SAP_CONNECTOR=mock\n'
+        printf 'CREDENTIAL_MASTER_KEY=%s\n' "$_CRED_KEY"
+    } > "${REPO_ROOT}/.env"
+    chmod 600 "${REPO_ROOT}/.env"
+    log ".env written (LLM_PROVIDER=${_LLM_PROVIDER}, DB/MinIO secrets generated)"
+fi
+
 # --- SSL ---
 configure_ssl_none() { log "SSL: disabled (HTTP only)"; }
 
@@ -326,9 +521,35 @@ docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" run --rm -T 
     alembic upgrade head || error "Migration failed"
 log "Migrations applied"
 
-# Start full stack
+# Start full stack (respects COMPOSE_PROFILES set above — ollama only on Tier 2)
 docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" up -d
 log "All containers started"
+
+# --- Tier 2: pull the Ollama model so the container is actually useful ---
+if [[ "$TIER" == "2" && -n "${OLLAMA_MODEL:-}" ]]; then
+    section "Pulling Ollama model"
+    # Wait for ollama to come up (the image starts instantly, but the API
+    # takes a few seconds after first launch).
+    echo -n "  Waiting for Ollama"
+    for i in $(seq 1 30); do
+        if docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" \
+            exec -T ollama curl -sf http://localhost:11434/api/version >/dev/null 2>&1; then
+            echo " ✓"; break
+        fi
+        [[ $i -eq 30 ]] && { echo ""; warn "Ollama API didn't respond — skipping model pull"; OLLAMA_MODEL=""; break; }
+        echo -n "."; sleep 2
+    done
+    if [[ -n "${OLLAMA_MODEL:-}" ]]; then
+        log "Pulling ${OLLAMA_MODEL} (this can take several minutes on first run)…"
+        if docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" \
+            exec -T ollama ollama pull "$OLLAMA_MODEL"; then
+            log "Model ${OLLAMA_MODEL} ready"
+        else
+            warn "ollama pull ${OLLAMA_MODEL} failed — run it manually later: \\
+  docker compose exec ollama ollama pull ${OLLAMA_MODEL}"
+        fi
+    fi
+fi
 
 # --- meridianctl CLI ---
 section "Setting up meridianctl CLI"
