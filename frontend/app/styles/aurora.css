@@ -1,0 +1,233 @@
+/**
+ * Aurora design-system CSS variables.
+ *
+ * Source of truth is frontend/lib/aurora/tokens.ts; every value below
+ * mirrors that file. `:root` serves the dark theme (the product default);
+ * `[data-theme="light"]` swaps in the light canvas and adjusts ink mapping.
+ *
+ * WS1 — tokens + surface variables only. Components, density utilities,
+ * signature-moment keyframes land in WS2–WS5.
+ */
+
+:root,
+[data-theme="dark"] {
+  /* §5.1.1 Ink — foreground / text scale */
+  --aurora-ink-0: #ffffff;
+  --aurora-ink-50: #f7f8fa;
+  --aurora-ink-100: #e7ecf2;
+  --aurora-ink-200: #c7d0dc;
+  --aurora-ink-300: #99a5b8;
+  --aurora-ink-400: #6b7a90;
+  --aurora-ink-500: #4a5669;
+  --aurora-ink-600: #2e3847;
+  --aurora-ink-700: #1a2230;
+  --aurora-ink-800: #101622;
+  --aurora-ink-900: #0a0e1a;
+  --aurora-ink-950: #05070f;
+
+  /* §5.1.2 Canvas — dark defaults */
+  --aurora-canvas-base: #0a0e1a;
+  --aurora-canvas-raised: #111726;
+  --aurora-canvas-elevated: #172034;
+  --aurora-canvas-overlay: #1e2a42;
+  --aurora-canvas-line: #2a3654;
+
+  /* Foreground mapping for the dark theme */
+  --aurora-fg-primary: var(--aurora-ink-50);
+  --aurora-fg-secondary: var(--aurora-ink-200);
+  --aurora-fg-tertiary: var(--aurora-ink-300);
+  --aurora-fg-muted: var(--aurora-ink-400);
+  --aurora-fg-disabled: var(--aurora-ink-500);
+  --aurora-fg-inverse: var(--aurora-ink-900);
+
+  /* §5.1.3 Accent — SAP Fiori Horizon blue, one shade deeper */
+  --aurora-accent-50: #eaf3fe;
+  --aurora-accent-100: #cae0fc;
+  --aurora-accent-200: #8fc1f8;
+  --aurora-accent-300: #549ff2;
+  --aurora-accent-400: #2980e8;
+  --aurora-accent-500: #0057d2;
+  --aurora-accent-600: #0048ad;
+  --aurora-accent-700: #003a8c;
+  --aurora-accent-800: #002d6f;
+  --aurora-accent-900: #001f50;
+
+  /* §5.1.4 Semantic status — used exclusively for status */
+  --aurora-status-success-500: #0b7341;
+  --aurora-status-success-bg: rgba(11, 115, 65, 0.12);
+  --aurora-status-success-border: rgba(11, 115, 65, 0.32);
+
+  --aurora-status-warning-500: #c78420;
+  --aurora-status-warning-bg: rgba(199, 132, 32, 0.12);
+  --aurora-status-warning-border: rgba(199, 132, 32, 0.32);
+
+  --aurora-status-danger-500: #bb0000;
+  --aurora-status-danger-bg: rgba(187, 0, 0, 0.14);
+  --aurora-status-danger-border: rgba(187, 0, 0, 0.36);
+
+  --aurora-status-info-500: #0057d2;
+  --aurora-status-info-bg: rgba(0, 87, 210, 0.1);
+  --aurora-status-info-border: rgba(0, 87, 210, 0.3);
+
+  /* §5.1.5 Data visualisation — categorical (iterate in order) */
+  --aurora-viz-1: #54a0ff;
+  --aurora-viz-2: #e76500;
+  --aurora-viz-3: #30d5a8;
+  --aurora-viz-4: #ffba6b;
+  --aurora-viz-5: #a77dff;
+  --aurora-viz-6: #f87ac4;
+  --aurora-viz-7: #6ae6f5;
+  --aurora-viz-8: #f5d76e;
+  --aurora-viz-9: #7bd389;
+  --aurora-viz-10: #ff8a65;
+  --aurora-viz-11: #96b6ff;
+  --aurora-viz-12: #d8a2dc;
+
+  /* Sequential — blue (low → high) */
+  --aurora-viz-seq-blue-1: #0f1d3d;
+  --aurora-viz-seq-blue-2: #1a3e85;
+  --aurora-viz-seq-blue-3: #2d5fc8;
+  --aurora-viz-seq-blue-4: #5488f1;
+  --aurora-viz-seq-blue-5: #8fb4ff;
+  --aurora-viz-seq-blue-6: #d0e2ff;
+
+  /* Sequential — amber (low → high) */
+  --aurora-viz-seq-amber-1: #2a1a00;
+  --aurora-viz-seq-amber-2: #4f3100;
+  --aurora-viz-seq-amber-3: #7f5200;
+  --aurora-viz-seq-amber-4: #b57a1d;
+  --aurora-viz-seq-amber-5: #e8a656;
+  --aurora-viz-seq-amber-6: #ffce99;
+
+  /* Diverging — red/green for trend deltas */
+  --aurora-viz-div-1: #bb0000;
+  --aurora-viz-div-2: #e87272;
+  --aurora-viz-div-3: #f5baba;
+  --aurora-viz-div-4: #d5dadd;
+  --aurora-viz-div-5: #b8e4c6;
+  --aurora-viz-div-6: #5dc488;
+  --aurora-viz-div-7: #0b7341;
+
+  /* §5.2 The only gradient in the product */
+  --aurora-verdict-halo: radial-gradient(
+    ellipse at center,
+    rgba(0, 87, 210, 0.24) 0%,
+    rgba(106, 230, 245, 0.14) 35%,
+    rgba(248, 122, 196, 0.08) 60%,
+    transparent 80%
+  );
+
+  /* §5.3.1 Type faces. Next.js next/font loads Inter + JetBrains Mono into
+     --font-sans / --font-display / --font-mono (see app/layout.tsx). Aurora
+     display prefers Söhne when the licensed webfont is installed; falls
+     through to Inter. */
+  --aurora-font-display: "Söhne", var(--font-display), "Inter", system-ui,
+    -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --aurora-font-ui: var(--font-sans), "Inter", system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --aurora-font-mono: var(--font-mono), "JetBrains Mono", ui-monospace,
+    SFMono-Regular, Menlo, monospace;
+
+  /* §5.4 Spacing — four-pixel grid */
+  --aurora-space-1: 4px;
+  --aurora-space-2: 8px;
+  --aurora-space-3: 12px;
+  --aurora-space-4: 16px;
+  --aurora-space-5: 20px;
+  --aurora-space-6: 24px;
+  --aurora-space-8: 32px;
+  --aurora-space-12: 48px;
+  --aurora-space-16: 64px;
+  --aurora-space-24: 96px;
+
+  /* §5.4.1 Density — default tier */
+  --aurora-density-row: 36px;
+  --aurora-density-card-padding: 16px;
+  --aurora-density-table-size: 14px;
+
+  /* §5.5 Motion */
+  --aurora-duration-instant: 80ms;
+  --aurora-duration-fast: 160ms;
+  --aurora-duration-medium: 240ms;
+  --aurora-duration-slow: 360ms;
+  --aurora-easing-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --aurora-easing-enter: cubic-bezier(0, 0, 0.2, 1);
+  --aurora-easing-exit: cubic-bezier(0.4, 0, 1, 1);
+
+  /* §5.6 Elevation — dark = brightness shift, shadow = 0 */
+  --aurora-elev-0-bg: var(--aurora-canvas-base);
+  --aurora-elev-1-bg: var(--aurora-canvas-raised);
+  --aurora-elev-2-bg: var(--aurora-canvas-elevated);
+  --aurora-elev-3-bg: var(--aurora-canvas-elevated);
+  --aurora-elev-4-bg: var(--aurora-canvas-elevated);
+  --aurora-elev-0-shadow: none;
+  --aurora-elev-1-shadow: none;
+  --aurora-elev-2-shadow: none;
+  --aurora-elev-3-shadow: none;
+  --aurora-elev-4-shadow: 0 0 0 1px rgba(0, 87, 210, 0.4),
+    0 0 48px rgba(0, 87, 210, 0.24);
+
+  /* §7.3 Focus ring */
+  --aurora-focus-ring-width: 2px;
+  --aurora-focus-ring-offset: 2px;
+  --aurora-focus-ring-colour: var(--aurora-accent-500);
+
+  /* §5.4.1 Compact / comfortable are applied by `[data-density=...]` */
+  color-scheme: dark;
+}
+
+[data-theme="light"] {
+  /* §5.1.2 Canvas — light alternative */
+  --aurora-canvas-base: #f7f8fa;
+  --aurora-canvas-raised: #ffffff;
+  --aurora-canvas-elevated: #ffffff;
+  --aurora-canvas-overlay: #eef2f7;
+  --aurora-canvas-line: #d5dadd;
+
+  /* Foreground mapping inverts for light canvas */
+  --aurora-fg-primary: var(--aurora-ink-900);
+  --aurora-fg-secondary: var(--aurora-ink-700);
+  --aurora-fg-tertiary: var(--aurora-ink-500);
+  --aurora-fg-muted: var(--aurora-ink-400);
+  --aurora-fg-disabled: var(--aurora-ink-300);
+  --aurora-fg-inverse: var(--aurora-ink-50);
+
+  /* §5.6 Elevation on light canvas = shadow, not brightness */
+  --aurora-elev-0-shadow: none;
+  --aurora-elev-1-shadow: 0 1px 2px rgba(10, 14, 26, 0.06);
+  --aurora-elev-2-shadow: 0 2px 8px rgba(10, 14, 26, 0.08);
+  --aurora-elev-3-shadow: 0 8px 24px rgba(10, 14, 26, 0.12);
+  --aurora-elev-4-shadow: 0 16px 40px rgba(10, 14, 26, 0.16);
+
+  color-scheme: light;
+}
+
+[data-density="compact"] {
+  --aurora-density-row: 28px;
+  --aurora-density-card-padding: 12px;
+  --aurora-density-table-size: 13px;
+}
+
+[data-density="comfortable"] {
+  --aurora-density-row: 44px;
+  --aurora-density-card-padding: 24px;
+  --aurora-density-table-size: 14px;
+}
+
+/* §5.3.3 Numerical formatting — opt in on any numeric element */
+.aurora-number {
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1, "ss02" 1;
+}
+
+/* §5.5.1 Reduced motion — every signature moment lists its fallback */
+@media (prefers-reduced-motion: reduce) {
+  :root,
+  [data-theme="dark"],
+  [data-theme="light"] {
+    --aurora-duration-instant: 0ms;
+    --aurora-duration-fast: 0ms;
+    --aurora-duration-medium: 0ms;
+    --aurora-duration-slow: 0ms;
+  }
+}

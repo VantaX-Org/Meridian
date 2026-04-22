@@ -2,6 +2,13 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* Aurora design system — dark-first tokens. See lib/aurora/tokens.ts
+   and PLAN_AURORA.md §4. Loaded before the legacy Fiori block so the
+   Aurora layer is available on every surface; application code reads
+   through CSS variables prefixed `--aurora-*`. */
+@import "./styles/aurora.css";
+@import "./styles/aurora-fonts.css";
+
 @custom-variant dark (&:is(.dark *));
 
 
