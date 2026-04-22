@@ -8,6 +8,7 @@
    through CSS variables prefixed `--aurora-*`. */
 @import "./styles/aurora.css";
 @import "./styles/aurora-fonts.css";
+@import "./styles/aurora-components.css";
 
 @custom-variant dark (&:is(.dark *));
 
