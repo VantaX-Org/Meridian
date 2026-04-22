@@ -362,7 +362,11 @@ function WhatsWrongSection({
             ) : null}
             <div
               className="aurora-record-report__passrate"
-              aria-label={`Pass rate ${(f.passRate * 100).toFixed(0)} percent`}
+              role="meter"
+              aria-label={`Pass rate for ${f.checkId}`}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(f.passRate * 100)}
             >
               <div
                 className="aurora-record-report__passrate-bar"
@@ -448,17 +452,9 @@ function RelatedSection({
   }
   return (
     <ul className="aurora-record-report__related">
-      {items.map((item) => (
-        <li key={item.id} className="aurora-record-report__related-row">
-          <button
-            type="button"
-            className={clsx(
-              "aurora-record-report__related-btn",
-              "aurora-focus-ring",
-            )}
-            onClick={item.onOpen}
-            disabled={!item.onOpen}
-          >
+      {items.map((item) => {
+        const inner = (
+          <>
             <Stack direction="column" gap={1}>
               <Text variant="text-micro" tone="tertiary" as="span">
                 {RELATED_KIND_LABEL[item.kind]}
@@ -472,9 +468,29 @@ function RelatedSection({
                 {item.detail}
               </Text>
             ) : null}
-          </button>
-        </li>
-      ))}
+          </>
+        );
+        return (
+          <li key={item.id} className="aurora-record-report__related-row">
+            {item.onOpen ? (
+              <button
+                type="button"
+                className={clsx(
+                  "aurora-record-report__related-btn",
+                  "aurora-focus-ring",
+                )}
+                onClick={item.onOpen}
+              >
+                {inner}
+              </button>
+            ) : (
+              <div className="aurora-record-report__related-static">
+                {inner}
+              </div>
+            )}
+          </li>
+        );
+      })}
     </ul>
   );
 }
@@ -577,9 +593,14 @@ function ActivitySection({
     <ol className="aurora-record-report__activity">
       {items.map((item) => (
         <li key={item.id} className="aurora-record-report__activity-row">
-          <Text variant="text-micro" tone="tertiary" as="span">
+          <time
+            className="aurora-text aurora-record-report__activity-time"
+            data-variant="text-micro"
+            data-tone="tertiary"
+            dateTime={item.timestamp}
+          >
             {item.timestamp}
-          </Text>
+          </time>
           <Text variant="text-body">
             <Text variant="text-body" as="span">
               {item.actor}

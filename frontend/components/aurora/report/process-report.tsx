@@ -309,12 +309,15 @@ function HierarchySection({
 }
 
 function HierarchyNode({ node }: { node: ProcessReportHierarchyNode }) {
+  const hasChildren = Boolean(node.children && node.children.length > 0);
   return (
     <li
       className="aurora-process-report__hier-node"
       data-level={node.level}
       role="treeitem"
       aria-selected={false}
+      aria-level={node.level}
+      aria-expanded={hasChildren ? true : undefined}
     >
       <div className="aurora-process-report__hier-row">
         <span
@@ -563,7 +566,7 @@ function ReadinessHistorySection({
       <Text variant="text-micro" tone="tertiary">
         <span data-numeric="true">{points.length}</span> analysis versions,
         latest{" "}
-        <span data-numeric="true">{points[points.length - 1]!.version}</span>
+        <span data-numeric="true">{points.at(-1)?.version ?? ""}</span>
       </Text>
     </div>
   );

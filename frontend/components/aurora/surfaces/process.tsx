@@ -393,7 +393,7 @@ export function Process({
             {processes.map((pick) => {
               const selected = pick.id === selectedProcess;
               return (
-                <li key={pick.id}>
+                <li key={pick.id} role="none">
                   <button
                     type="button"
                     role="option"
