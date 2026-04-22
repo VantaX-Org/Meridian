@@ -37,12 +37,12 @@ import type { SAPSystem, SyncProfile } from "@/types/api";
 
 const ENV_COLORS: Record<string, string> = {
   PRD: "bg-destructive/10 text-destructive border-destructive/20",
-  QAS: "bg-[#EA580C]/10 text-[#EA580C] border-[#EA580C]/20",
-  DEV: "bg-[#16A34A]/10 text-[#16A34A] border-[#16A34A]/20",
+  QAS: "bg-[#E76500]/10 text-[#E76500] border-[#E76500]/20",
+  DEV: "bg-[#256F3A]/10 text-[#256F3A] border-[#256F3A]/20",
 };
 
 const STATUS_ICONS: Record<string, React.ReactNode> = {
-  completed: <CheckCircle className="h-4 w-4 text-[#16A34A]" />,
+  completed: <CheckCircle className="h-4 w-4 text-[#256F3A]" />,
   failed: <XCircle className="h-4 w-4 text-destructive" />,
   running: <Loader2 className="h-4 w-4 text-primary animate-spin" />,
 };
@@ -232,7 +232,7 @@ function SystemCard({ system }: { system: SAPSystem }) {
         {testResult && (
           <div className={`mt-2 rounded-md px-3 py-1.5 text-xs ${
             testResult.connected
-              ? "bg-[#16A34A]/10 text-[#16A34A]"
+              ? "bg-[#256F3A]/10 text-[#256F3A]"
               : "bg-destructive/10 text-destructive"
           }`}>
             {testResult.connected ? "Connected" : testResult.message}

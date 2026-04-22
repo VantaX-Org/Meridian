@@ -11,9 +11,9 @@ import {
 import type { ConfigImpactSummary } from "@/types/api";
 
 const COLORS: Record<string, string> = {
-  Blocked: "#DC2626",
-  Degraded: "#D97706",
-  OK: "#16A34A",
+  Blocked: "#BB0000",
+  Degraded: "#E76500",
+  OK: "#256F3A",
 };
 
 interface ConfigImpactChartProps {

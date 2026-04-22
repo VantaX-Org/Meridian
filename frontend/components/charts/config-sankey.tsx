@@ -43,9 +43,9 @@ export function ConfigSankey({ results, height = 360 }: ConfigSankeyProps) {
   }
 
   const colorFor: Record<"finding" | "feature" | "system", string> = {
-    finding: "#DC2626",
-    feature: "#D97706",
-    system: "#0D5639",
+    finding: "#BB0000",
+    feature: "#E76500",
+    system: "#0070F2",
   };
 
   const sankeySeries: SankeySeriesOption = {

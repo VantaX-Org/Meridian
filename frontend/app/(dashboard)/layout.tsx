@@ -109,7 +109,7 @@ function HeaderExportMenu() {
         render={
           <button
             type="button"
-            className="hidden sm:flex items-center gap-1.5 rounded-xl bg-[#EA580C] px-4 py-2 text-sm font-medium text-white hover:bg-[#C24B08] transition-colors shadow-[0_0_12px_rgba(255,140,66,0.20)]"
+            className="hidden sm:flex items-center gap-1.5 rounded-xl bg-[#E76500] px-4 py-2 text-sm font-medium text-white hover:bg-[#C24B08] transition-colors shadow-[0_0_12px_rgba(231,101,0,0.20)]"
           />
         }
       >
@@ -575,7 +575,7 @@ function SidebarNav({
                         : "mx-1 px-3 py-2"
                     } ${
                       active
-                        ? "bg-primary/[0.15] text-primary border border-primary/25 shadow-[0_0_12px_rgba(13,86,57,0.15)]"
+                        ? "bg-primary/[0.15] text-primary border border-primary/25 shadow-[0_0_12px_rgba(0,112,242,0.15)]"
                         : "text-[#6B7280] hover:bg-black/[0.04] hover:text-foreground border border-transparent"
                     }`}
                   >
@@ -606,7 +606,7 @@ function SidebarNav({
               : "mx-1 px-3 py-2"
           } ${
             pathname === "/settings"
-              ? "bg-primary/[0.15] text-primary border border-primary/25 shadow-[0_0_12px_rgba(13,86,57,0.15)]"
+              ? "bg-primary/[0.15] text-primary border border-primary/25 shadow-[0_0_12px_rgba(0,112,242,0.15)]"
               : "text-[#6B7280] hover:bg-black/[0.04] hover:text-foreground border border-transparent"
           }`}
         >
@@ -717,7 +717,7 @@ export default function DashboardLayout({
   const licence = health?.licence;
   const licenceDotColor =
     licence?.valid === true
-      ? "bg-[#16A34A]"
+      ? "bg-[#256F3A]"
       : licence?.valid === false
         ? "bg-destructive"
         : "bg-muted-foreground";
@@ -749,7 +749,7 @@ export default function DashboardLayout({
         {/* Logo */}
         <div data-sidebar-header className={`flex h-16 shrink-0 items-center border-b border-black/[0.06] ${collapsed ? "justify-center px-2" : "justify-between px-5"}`}>
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary shadow-[0_0_16px_rgba(13,86,57,0.30)]">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary shadow-[0_0_16px_rgba(0,112,242,0.30)]">
               <ShieldCheck className="h-4.5 w-4.5 text-primary-foreground" />
             </div>
             {!collapsed && (

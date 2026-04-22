@@ -137,9 +137,9 @@ function formatZAR(value: number): string {
 }
 
 const TREND_CONFIG = {
-  improving: { color: "#16A34A", icon: TrendingUp, label: "Improving" },
-  declining: { color: "#D97706", icon: TrendingDown, label: "Declining" },
-  critical: { color: "#DC2626", icon: TrendingDown, label: "Critical" },
+  improving: { color: "#256F3A", icon: TrendingUp, label: "Improving" },
+  declining: { color: "#E76500", icon: TrendingDown, label: "Declining" },
+  critical: { color: "#BB0000", icon: TrendingDown, label: "Critical" },
   stable: { color: "rgba(255,255,255,0.20)", icon: Minus, label: "Stable" },
 } as const;
 
@@ -150,12 +150,12 @@ const SIGNAL_CONFIG = {
 } as const;
 
 const CATEGORY_COLORS: Record<string, string> = {
-  duplicate_payment: "#DC2626",
-  warranty_miss: "#EA580C",
-  compliance_penalty: "#D97706",
-  blocked_invoice: "#D97706",
-  failed_posting: "#16A34A",
-  inventory_write_off: "#16A34A",
+  duplicate_payment: "#BB0000",
+  warranty_miss: "#E76500",
+  compliance_penalty: "#E76500",
+  blocked_invoice: "#E76500",
+  failed_posting: "#256F3A",
+  inventory_write_off: "#256F3A",
   labour_displacement: "#3B82F6",
   contract_violation: "#7C3AED",
 };

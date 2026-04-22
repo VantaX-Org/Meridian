@@ -52,7 +52,7 @@ function ConfidenceBar({
 }) {
   const pct = Math.round(confidence * 100);
   const color =
-    pct >= 85 ? "bg-[#16A34A]" : pct >= 60 ? "bg-[#EA580C]" : "bg-destructive";
+    pct >= 85 ? "bg-[#256F3A]" : pct >= 60 ? "bg-[#E76500]" : "bg-destructive";
   const height = size === "sm" ? "h-1" : "h-2";
   const width = size === "sm" ? "w-16" : "w-24";
   return (
@@ -93,9 +93,9 @@ function FieldRow({
         <div className="flex items-center gap-3">
           {hasAi && (
             expanded ? (
-              <ChevronUp className="h-3.5 w-3.5 text-[#EA580C]" />
+              <ChevronUp className="h-3.5 w-3.5 text-[#E76500]" />
             ) : (
-              <ChevronDown className="h-3.5 w-3.5 text-[#EA580C]" />
+              <ChevronDown className="h-3.5 w-3.5 text-[#E76500]" />
             )
           )}
           <div>
@@ -122,7 +122,7 @@ function FieldRow({
           {hasAi && (
             <Badge
               variant="outline"
-              className="gap-1 bg-[#EA580C]/10 text-[#EA580C] border-[#EA580C]/20 text-xs"
+              className="gap-1 bg-[#E76500]/10 text-[#E76500] border-[#E76500]/20 text-xs"
             >
               <Brain className="h-3 w-3" />
               AI
@@ -133,8 +133,8 @@ function FieldRow({
 
       {/* AI recommendation panel */}
       {expanded && hasAi && contribution && (
-        <div className="mx-4 mb-3 rounded-lg border border-[#EA580C]/20 bg-[#EA580C]/5 p-3">
-          <div className="flex items-center gap-2 text-xs font-medium text-[#EA580C]">
+        <div className="mx-4 mb-3 rounded-lg border border-[#E76500]/20 bg-[#E76500]/5 p-3">
+          <div className="flex items-center gap-2 text-xs font-medium text-[#E76500]">
             <Brain className="h-3.5 w-3.5" />
             AI Recommendation
           </div>
@@ -197,7 +197,7 @@ function HistoryPanel({ recordId }: { recordId: string }) {
         >
           <div className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-white/[0.60]">
             {entry.change_type === "promoted" ? (
-              <Crown className="h-3 w-3 text-[#16A34A]" />
+              <Crown className="h-3 w-3 text-[#256F3A]" />
             ) : (
               <Clock className="h-3 w-3 text-muted-foreground" />
             )}
@@ -210,7 +210,7 @@ function HistoryPanel({ recordId }: { recordId: string }) {
               {entry.ai_was_involved && (
                 <Badge
                   variant="outline"
-                  className="gap-1 text-xs bg-[#EA580C]/10 text-[#EA580C] border-[#EA580C]/20"
+                  className="gap-1 text-xs bg-[#E76500]/10 text-[#E76500] border-[#E76500]/20"
                 >
                   <Brain className="h-2.5 w-2.5" />
                   AI involved
@@ -221,7 +221,7 @@ function HistoryPanel({ recordId }: { recordId: string }) {
                   variant="outline"
                   className={`text-xs ${
                     entry.ai_recommendation_accepted
-                      ? "bg-[#16A34A]/10 text-[#16A34A] border-[#16A34A]/20"
+                      ? "bg-[#256F3A]/10 text-[#256F3A] border-[#256F3A]/20"
                       : "bg-destructive/10 text-destructive border-destructive/20"
                   }`}
                 >
@@ -316,8 +316,8 @@ function RelationshipsPanel({
                           impactPct >= 70
                             ? "bg-destructive"
                             : impactPct >= 40
-                              ? "bg-[#EA580C]"
-                              : "bg-[#16A34A]"
+                              ? "bg-[#E76500]"
+                              : "bg-[#256F3A]"
                         }`}
                         style={{ width: `${impactPct}%` }}
                       />
@@ -427,8 +427,8 @@ export default function GoldenRecordDetailPage() {
 
   const statusClasses: Record<string, string> = {
     candidate: "bg-primary/10 text-primary border-primary/20",
-    pending_review: "bg-[#EA580C]/10 text-[#EA580C] border-[#EA580C]/20",
-    golden: "bg-[#16A34A]/10 text-[#16A34A] border-[#16A34A]/20",
+    pending_review: "bg-[#E76500]/10 text-[#E76500] border-[#E76500]/20",
+    golden: "bg-[#256F3A]/10 text-[#256F3A] border-[#256F3A]/20",
     superseded: "bg-muted-foreground/10 text-muted-foreground border-muted-foreground/20",
   };
 
@@ -469,7 +469,7 @@ export default function GoldenRecordDetailPage() {
             <Button
               onClick={() => promoteMutation.mutate()}
               disabled={promoteMutation.isPending}
-              className="gap-2 bg-[#16A34A] hover:bg-[#16A34A]/80 text-white"
+              className="gap-2 bg-[#256F3A] hover:bg-[#256F3A]/80 text-white"
             >
               {promoteMutation.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -521,8 +521,8 @@ export default function GoldenRecordDetailPage() {
 
       {/* Writeback success message */}
       {writebackMutation.isSuccess && writebackMutation.data && (
-        <Card className="border-[#16A34A]/20 bg-[#16A34A]/5">
-          <CardContent className="p-4 text-sm text-[#16A34A]">
+        <Card className="border-[#256F3A]/20 bg-[#256F3A]/5">
+          <CardContent className="p-4 text-sm text-[#256F3A]">
             <CheckCircle2 className="mb-1 inline h-4 w-4" />{" "}
             {writebackMutation.data.message}
           </CardContent>
@@ -537,7 +537,7 @@ export default function GoldenRecordDetailPage() {
               Field Values ({fieldNames.length})
             </h2>
             {hasAiFields && (
-              <div className="flex items-center gap-1 text-xs text-[#EA580C]">
+              <div className="flex items-center gap-1 text-xs text-[#E76500]">
                 <Brain className="h-3.5 w-3.5" />
                 AI recommendations available — click to expand
               </div>

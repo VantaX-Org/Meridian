@@ -30,9 +30,9 @@ export function PredictiveDqsCard({
   const trend = latestPrediction.score - currentScore;
   
   const trendColor = trend > 0 
-    ? "text-[#4BA87A]" 
+    ? "text-[#256F3A]" 
     : trend < 0 
-      ? "text-[#EF4444]" 
+      ? "text-[#BB0000]" 
       : "text-[#6B7280]";
   
   const trendIcon = trend > 0 ? "↑" : trend < 0 ? "↓" : "→";
@@ -48,7 +48,7 @@ export function PredictiveDqsCard({
               onClick={() => onHorizonChange?.(h)}
               className={`px-2 py-1 text-xs rounded transition-colors ${
                 horizon === h 
-                  ? "bg-[#0D5639] text-white" 
+                  ? "bg-[#0070F2] text-white" 
                   : "bg-[rgba(0,0,0,0.04)] text-[#6B7280] hover:bg-[rgba(0,0,0,0.08)]"
               }`}
             >
@@ -76,10 +76,10 @@ export function PredictiveDqsCard({
         <div>
           <div className="text-xs text-[#6B7280] mb-1">Predicted ({horizon})</div>
           <div className={`text-3xl font-bold ${
-            latestPrediction.score >= 90 ? "text-[#4BA87A]" :
-            latestPrediction.score >= 75 ? "text-[#0D5639]" :
-            latestPrediction.score >= 60 ? "text-[#EA580C]" :
-            "text-[#EF4444]"
+            latestPrediction.score >= 90 ? "text-[#256F3A]" :
+            latestPrediction.score >= 75 ? "text-[#0070F2]" :
+            latestPrediction.score >= 60 ? "text-[#E76500]" :
+            "text-[#BB0000]"
           }`}>
             {latestPrediction.score.toFixed(1)}
           </div>
@@ -91,7 +91,7 @@ export function PredictiveDqsCard({
         <div className="text-xs text-[#6B7280]">Confidence:</div>
         <div className="flex-1 h-1.5 bg-[#F7F8FA] rounded-full overflow-hidden">
           <div 
-            className="h-full bg-[#0D5639] rounded-full"
+            className="h-full bg-[#0070F2] rounded-full"
             style={{ width: `${latestPrediction.confidence * 100}%` }}
           />
         </div>
@@ -135,8 +135,8 @@ export function TrendSparkline({
     <svg width={width} height={height} className="overflow-visible">
       <defs>
         <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#0D5639" stopOpacity="0.3" />
-          <stop offset="100%" stopColor="#0D5639" stopOpacity="0" />
+          <stop offset="0%" stopColor="#0070F2" stopOpacity="0.3" />
+          <stop offset="100%" stopColor="#0070F2" stopOpacity="0" />
         </linearGradient>
       </defs>
       
@@ -149,7 +149,7 @@ export function TrendSparkline({
       {/* Line */}
       <polyline
         fill="none"
-        stroke="#0D5639"
+        stroke="#0070F2"
         strokeWidth={2}
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -162,7 +162,7 @@ export function TrendSparkline({
           cx={width}
           cy={height - ((data[data.length - 1].value - Math.min(...data.map(d => d.value))) / (Math.max(...data.map(d => d.value)) - Math.min(...data.map(d => d.value)) || 1)) * height}
           r={3}
-          fill="#0D5639"
+          fill="#0070F2"
         />
       )}
     </svg>
@@ -196,8 +196,8 @@ export function BottleneckAnalysisCard({
   };
   
   const getSeverityColor = (severity: number) => {
-    if (severity >= 0.7) return "border-[#EF4444] bg-[rgba(239,68,68,0.05)]";
-    if (severity >= 0.4) return "border-[#EA580C] bg-[rgba(234,88,12,0.05)]";
+    if (severity >= 0.7) return "border-[#BB0000] bg-[rgba(239,68,68,0.05)]";
+    if (severity >= 0.4) return "border-[#E76500] bg-[rgba(234,88,12,0.05)]";
     return "border-[#6B7280] bg-[rgba(0,0,0,0.02)]";
   };
   
@@ -267,9 +267,9 @@ export function AnomalyAlertCard({
   onInvestigate?: (id: string) => void;
 }) {
   const severityConfig = {
-    critical: { color: "border-[#EF4444]", bg: "bg-[#EF4444]", label: "Critical" },
-    high: { color: "border-[#EA580C]", bg: "bg-[#EA580C]", label: "High" },
-    medium: { color: "border-[#6366F1]", bg: "bg-[#6366F1]", label: "Medium" },
+    critical: { color: "border-[#BB0000]", bg: "bg-[#BB0000]", label: "Critical" },
+    high: { color: "border-[#E76500]", bg: "bg-[#E76500]", label: "High" },
+    medium: { color: "border-[#7858FF]", bg: "bg-[#7858FF]", label: "Medium" },
     low: { color: "border-[#6B7280]", bg: "bg-[#6B7280]", label: "Low" },
   };
   
@@ -278,7 +278,7 @@ export function AnomalyAlertCard({
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-[#1A1F36] flex items-center gap-2">
           <span className="relative flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#EA580C] opacity-75"></span>
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#E76500] opacity-75"></span>
             <span className={`relative inline-flex rounded-full h-3 w-3 ${severityConfig.critical.bg}`}></span>
           </span>
           Anomaly Alerts
@@ -315,7 +315,7 @@ export function AnomalyAlertCard({
                 {onInvestigate && (
                   <button
                     onClick={() => onInvestigate(a.id)}
-                    className="text-xs text-[#0D5639] hover:text-[#0B4A31] transition-colors"
+                    className="text-xs text-[#0070F2] hover:text-[#0057D2] transition-colors"
                   >
                     Investigate
                   </button>
@@ -391,12 +391,12 @@ export function ForecastChart({
     <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`}>
       <defs>
         <linearGradient id="forecast-gradient" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#0D5639" stopOpacity="0.2" />
-          <stop offset="100%" stopColor="#0D5639" stopOpacity="0" />
+          <stop offset="0%" stopColor="#0070F2" stopOpacity="0.2" />
+          <stop offset="100%" stopColor="#0070F2" stopOpacity="0" />
         </linearGradient>
         <linearGradient id="confidence-gradient" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#6366F1" stopOpacity="0.1" />
-          <stop offset="100%" stopColor="#6366F1" stopOpacity="0.2" />
+          <stop offset="0%" stopColor="#7858FF" stopOpacity="0.1" />
+          <stop offset="100%" stopColor="#7858FF" stopOpacity="0.2" />
         </linearGradient>
       </defs>
       
@@ -424,7 +424,7 @@ export function ForecastChart({
       {/* Historical line */}
       <polyline
         fill="none"
-        stroke="#0D5639"
+        stroke="#0070F2"
         strokeWidth={2}
         points={historicalPoints}
       />
@@ -433,7 +433,7 @@ export function ForecastChart({
       {predictions.length > 0 && (
         <polyline
           fill="none"
-          stroke="#6366F1"
+          stroke="#7858FF"
           strokeWidth={2}
           strokeDasharray="6,4"
           points={predictionLine}
@@ -446,7 +446,7 @@ export function ForecastChart({
           cx={toX(historical.length - 1)}
           cy={toY(historical[historical.length - 1].value)}
           r={4}
-          fill="#0D5639"
+          fill="#0070F2"
         />
       )}
       
@@ -456,9 +456,9 @@ export function ForecastChart({
       
       {/* Legend */}
       <g transform={`translate(${width - 120}, 10)`}>
-        <line x1={0} y1={6} x2={20} y2={6} stroke="#0D5639" strokeWidth={2} />
+        <line x1={0} y1={6} x2={20} y2={6} stroke="#0070F2" strokeWidth={2} />
         <text x={25} y={10} fontSize={10} fill="#6B7280">Historical</text>
-        <line x1={0} y1={22} x2={20} y2={22} stroke="#6366F1" strokeWidth={2} strokeDasharray="6,4" />
+        <line x1={0} y1={22} x2={20} y2={22} stroke="#7858FF" strokeWidth={2} strokeDasharray="6,4" />
         <text x={25} y={26} fontSize={10} fill="#6B7280">Forecast</text>
       </g>
     </svg>

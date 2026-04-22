@@ -329,7 +329,7 @@ export default function DashboardPage() {
       cell: ({ getValue }) => {
         const v = getValue() as number;
         return (
-          <span className={v > 0 ? "text-[#DC2626] tabular-nums font-medium" : "text-muted-foreground tabular-nums"}>
+          <span className={v > 0 ? "text-[#BB0000] tabular-nums font-medium" : "text-muted-foreground tabular-nums"}>
             {v}
           </span>
         );
@@ -341,7 +341,7 @@ export default function DashboardPage() {
       cell: ({ getValue }) => {
         const v = getValue() as number;
         return (
-          <span className={v > 0 ? "text-[#EA580C] tabular-nums font-medium" : "text-muted-foreground tabular-nums"}>
+          <span className={v > 0 ? "text-[#E76500] tabular-nums font-medium" : "text-muted-foreground tabular-nums"}>
             {v}
           </span>
         );

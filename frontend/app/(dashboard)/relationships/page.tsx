@@ -12,16 +12,16 @@ import type { RecordRelationship, RelationshipTypeRef } from "@/types/api";
 
 function confidenceColor(score: number | null): string {
   if (score == null) return "bg-white/[0.60] text-muted-foreground";
-  if (score >= 0.8) return "bg-[#16A34A]/10 text-[#16A34A]";
-  if (score >= 0.5) return "bg-[#D97706]/10 text-[#EA580C]";
-  return "bg-[#DC2626]/10 text-destructive";
+  if (score >= 0.8) return "bg-[#256F3A]/10 text-[#256F3A]";
+  if (score >= 0.5) return "bg-[#E76500]/10 text-[#E76500]";
+  return "bg-[#BB0000]/10 text-destructive";
 }
 
 function impactBadge(score: number | null): string {
   if (score == null) return "bg-white/[0.60] text-muted-foreground";
-  if (score >= 0.8) return "bg-[#DC2626]/10 text-destructive";
-  if (score >= 0.5) return "bg-[#D97706]/10 text-[#EA580C]";
-  return "bg-[#16A34A]/10 text-[#16A34A]";
+  if (score >= 0.8) return "bg-[#BB0000]/10 text-destructive";
+  if (score >= 0.5) return "bg-[#E76500]/10 text-[#E76500]";
+  return "bg-[#256F3A]/10 text-[#256F3A]";
 }
 
 export default function RelationshipsPage() {
@@ -184,7 +184,7 @@ export default function RelationshipsPage() {
                         <Badge
                           className={
                             r.active
-                              ? "bg-[#16A34A]/10 text-[#16A34A] border border-[#16A34A]/20"
+                              ? "bg-[#256F3A]/10 text-[#256F3A] border border-[#256F3A]/20"
                               : "bg-white/[0.60] text-muted-foreground border border-black/[0.08]"
                           }
                         >

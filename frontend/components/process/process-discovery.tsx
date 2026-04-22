@@ -66,9 +66,9 @@ export function ProcessDiscoveryCard({
         <h3 className="font-semibold text-[#1A1F36]">{process.name}</h3>
         {process.conformanceScore !== undefined && (
           <div className={`vx-glass-pill px-3 py-1 ${
-            process.conformanceScore >= 90 ? "bg-[#4BA87A]/10 text-[#4BA87A]" :
-            process.conformanceScore >= 70 ? "bg-[#EA580C]/10 text-[#EA580C]" :
-            "bg-[#EF4444]/10 text-[#EF4444]"
+            process.conformanceScore >= 90 ? "bg-[#256F3A]/10 text-[#256F3A]" :
+            process.conformanceScore >= 70 ? "bg-[#E76500]/10 text-[#E76500]" :
+            "bg-[#BB0000]/10 text-[#BB0000]"
           }`}>
             {process.conformanceScore}% Conforming
           </div>
@@ -157,7 +157,7 @@ function ProcessFlowVisualization({
               y1={y1}
               x2={x2}
               y2={y2}
-              stroke={edge.isConforming === false ? "#EF4444" : "#6B7280"}
+              stroke={edge.isConforming === false ? "#BB0000" : "#6B7280"}
               strokeWidth={2}
               strokeDasharray={edge.isConforming === false ? "5,5" : ""}
             />
@@ -193,15 +193,15 @@ function ProcessFlowVisualization({
               height={30}
               rx={4}
               fill={
-                node.isAnomalous ? "#EF4444" :
-                node.type === "start" ? "#4BA87A" :
-                node.type === "end" ? "#6366F1" :
-                selectedNode === node.id ? "#0D5639" :
+                node.isAnomalous ? "#BB0000" :
+                node.type === "start" ? "#256F3A" :
+                node.type === "end" ? "#7858FF" :
+                selectedNode === node.id ? "#0070F2" :
                 "#FFFFFF"
               }
               stroke={
-                node.isAnomalous ? "#DC2626" :
-                selectedNode === node.id ? "#0B4A31" :
+                node.isAnomalous ? "#BB0000" :
+                selectedNode === node.id ? "#0057D2" :
                 "#E5E7EB"
               }
               strokeWidth={2}
@@ -270,22 +270,22 @@ export function ConformanceResultCard({
           <div className="text-xs text-[#6B7280]">Total Cases</div>
         </div>
         <div className="text-center">
-          <div className="text-2xl font-bold text-[#4BA87A]">
+          <div className="text-2xl font-bold text-[#256F3A]">
             {results.conformingCases.toLocaleString()}
           </div>
           <div className="text-xs text-[#6B7280]">Conforming</div>
         </div>
         <div className="text-center">
-          <div className="text-2xl font-bold text-[#EF4444]">
+          <div className="text-2xl font-bold text-[#BB0000]">
             {results.nonConformingCases.toLocaleString()}
           </div>
           <div className="text-xs text-[#6B7280]">Non-Conforming</div>
         </div>
         <div className="text-center">
           <div className={`text-2xl font-bold ${
-            results.conformanceRate >= 90 ? "text-[#4BA87A]" :
-            results.conformanceRate >= 70 ? "text-[#EA580C]" :
-            "text-[#EF4444]"
+            results.conformanceRate >= 90 ? "text-[#256F3A]" :
+            results.conformanceRate >= 70 ? "text-[#E76500]" :
+            "text-[#BB0000]"
           }`}>
             {results.conformanceRate.toFixed(1)}%
           </div>
@@ -297,9 +297,9 @@ export function ConformanceResultCard({
       <div className="h-3 w-full bg-[#F7F8FA] rounded-full overflow-hidden mb-4">
         <div 
           className={`h-full rounded-full transition-all ${
-            results.conformanceRate >= 90 ? "bg-[#4BA87A]" :
-            results.conformanceRate >= 70 ? "bg-[#EA580C]" :
-            "bg-[#EF4444]"
+            results.conformanceRate >= 90 ? "bg-[#256F3A]" :
+            results.conformanceRate >= 70 ? "bg-[#E76500]" :
+            "bg-[#BB0000]"
           }`}
           style={{ width: `${results.conformanceRate}%` }}
         />
@@ -362,20 +362,20 @@ export function ProcessTimeline({
           
           const statusColors = {
             pending: "bg-[#E5E7EB]",
-            active: "bg-[#0D5639]",
-            complete: "bg-[#4BA87A]",
-            failed: "bg-[#EF4444]",
+            active: "bg-[#0070F2]",
+            complete: "bg-[#256F3A]",
+            failed: "bg-[#BB0000]",
           };
           
           return (
             <div key={idx} className="flex items-start gap-4">
               <div className="flex flex-col items-center">
                 <div className={`w-4 h-4 rounded-full ${statusColors[step.status]} ${
-                  isCurrent ? "ring-4 ring-[#0D5639]/20" : ""
+                  isCurrent ? "ring-4 ring-[#0070F2]/20" : ""
                 }`} />
                 {idx < steps.length - 1 && (
                   <div className={`w-px h-8 ${
-                    isPast ? "bg-[#4BA87A]" : "bg-[#E5E7EB]"
+                    isPast ? "bg-[#256F3A]" : "bg-[#E5E7EB]"
                   }`} />
                 )}
               </div>

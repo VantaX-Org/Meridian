@@ -49,80 +49,81 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* ─── Meridian Light Glassmorphism Theme ─── */
+/* ─── Meridian Fiori Horizon Theme — flat surfaces, glass only on hero rails ─── */
 :root {
   /* Surfaces */
-  --background: #F7F8FA;
-  --foreground: #1A1F36;
-  --card: rgba(255,255,255,0.70);
-  --card-foreground: #1A1F36;
-  --popover: rgba(255,255,255,0.88);
-  --popover-foreground: #1A1F36;
+  --background: #F5F6F7;
+  --foreground: #1A1F2B;
+  --card: #FFFFFF;
+  --card-foreground: #1A1F2B;
+  --popover: #FFFFFF;
+  --popover-foreground: #1A1F2B;
 
-  /* Primary — Meridian Forest Green */
-  --primary: #0D5639;
+  /* Primary — SAP Fiori Horizon blue */
+  --primary: #0070F2;
   --primary-foreground: #FFFFFF;
-  --secondary: rgba(0,0,0,0.05);
-  --secondary-foreground: #4A5568;
-  --muted: rgba(0,0,0,0.03);
-  --muted-foreground: #6B7280;
-  --accent: rgba(13,86,57,0.08);
-  --accent-foreground: #0B4A31;
+  --secondary: #EAECEE;
+  --secondary-foreground: #3A4554;
+  --muted: #F5F6F7;
+  --muted-foreground: #556070;
+  --accent: rgba(0,112,242,0.08);
+  --accent-foreground: #0057D2;
 
-  /* Status */
-  --destructive: #EF4444;
+  /* Status (Fiori semantic) */
+  --destructive: #BB0000;
 
   /* Borders & focus */
-  --border: rgba(0,0,0,0.08);
-  --input: rgba(0,0,0,0.06);
-  --ring: #0D5639;
+  --border: #D5DADD;
+  --input: #D5DADD;
+  --ring: #0070F2;
 
-  /* Charts — Meridian palette for light bg */
-  --chart-1: #0D5639;
-  --chart-2: #FF8C42;
-  --chart-3: #4BA87A;
-  --chart-4: #6366F1;
-  --chart-5: #EF4444;
+  /* Charts — Fiori Horizon categorical palette for light bg */
+  --chart-1: #0070F2;
+  --chart-2: #E76500;
+  --chart-3: #256F3A;
+  --chart-4: #7858FF;
+  --chart-5: #BB0000;
 
   /* Radius */
-  --radius: 1rem;
+  --radius: 0.75rem;
 
-  /* Sidebar */
-  --sidebar: rgba(255,255,255,0.75);
-  --sidebar-foreground: #4A5568;
-  --sidebar-primary: #0D5639;
+  /* Sidebar — flat shell per Fiori */
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #3A4554;
+  --sidebar-primary: #0070F2;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: rgba(13,86,57,0.08);
-  --sidebar-accent-foreground: #0B4A31;
-  --sidebar-border: rgba(0,0,0,0.06);
-  --sidebar-ring: #0D5639;
+  --sidebar-accent: rgba(0,112,242,0.08);
+  --sidebar-accent-foreground: #0057D2;
+  --sidebar-border: #D5DADD;
+  --sidebar-ring: #0070F2;
 
-  /* ─── Meridian Direct Tokens ─── */
-  --mn-bg-base: #F7F8FA;
-  --mn-bg-card: rgba(255,255,255,0.70);
-  --mn-bg-card-hover: rgba(255,255,255,0.85);
-  --mn-border: rgba(0,0,0,0.08);
-  --mn-green-dark: #0D5639;
-  --mn-green-mid: #1E7A52;
-  --mn-green-light: #4BA87A;
-  --mn-green-dim: rgba(13,86,57,0.08);
-  --mn-blue-bright: #6366F1;
-  --mn-blue-mid: #4F46E5;
-  --mn-amber: #EA580C;
-  --mn-red: #EF4444;
-  --mn-teal: #4BA87A;
-  --mn-text-primary: #1A1F36;
-  --mn-text-secondary: #4A5568;
-  --mn-text-tertiary: #6B7280;
-  --mn-sidebar-bg: rgba(255,255,255,0.75);
-  --mn-sidebar-text: #4A5568;
+  /* ─── Meridian Direct Tokens (Fiori Horizon) ─── */
+  --mn-bg-base: #F5F6F7;
+  --mn-bg-card: #FFFFFF;
+  --mn-bg-card-hover: #FAFBFC;
+  --mn-border: #D5DADD;
+  /* Legacy green-family names kept for source compatibility; values now Fiori */
+  --mn-green-dark: #0057D2;
+  --mn-green-mid: #0070F2;
+  --mn-green-light: #089DE3;
+  --mn-green-dim: rgba(0,112,242,0.08);
+  --mn-blue-bright: #7858FF;
+  --mn-blue-mid: #5D36FF;
+  --mn-amber: #E76500;
+  --mn-red: #BB0000;
+  --mn-teal: #256F3A;
+  --mn-text-primary: #1A1F2B;
+  --mn-text-secondary: #3A4554;
+  --mn-text-tertiary: #556070;
+  --mn-sidebar-bg: #FFFFFF;
+  --mn-sidebar-text: #3A4554;
 
-  /* ─── Glass Tokens ─── */
-  --glass-bg: rgba(255,255,255,0.70);
-  --glass-bg-hover: rgba(255,255,255,0.85);
-  --glass-border: rgba(0,0,0,0.08);
-  --glass-border-hover: rgba(0,0,0,0.14);
-  --glass-blur: 16px;
+  /* ─── Glass Tokens (used only on KpiRail + NarrativeStrip) ─── */
+  --glass-bg: rgba(255,255,255,0.72);
+  --glass-bg-hover: rgba(255,255,255,0.88);
+  --glass-border: rgba(0,87,210,0.14);
+  --glass-border-hover: rgba(0,87,210,0.24);
+  --glass-blur: 14px;
 }
 
 /* ─── Animations ─── */
@@ -174,13 +175,13 @@
   100% { left: 200%; }
 }
 
-/* ─── Gradient Mesh Background ─── */
+/* ─── Gradient Mesh Background (subtle Fiori tint) ─── */
 .vx-mesh-bg {
   background:
-    radial-gradient(ellipse 80% 60% at 10% 20%, rgba(13,86,57,0.05), transparent 60%),
-    radial-gradient(ellipse 60% 50% at 85% 15%, rgba(99,102,241,0.04), transparent 55%),
-    radial-gradient(ellipse 50% 40% at 50% 90%, rgba(75,168,122,0.04), transparent 50%),
-    #F7F8FA;
+    radial-gradient(ellipse 80% 60% at 10% 20%, rgba(0,112,242,0.045), transparent 60%),
+    radial-gradient(ellipse 60% 50% at 85% 15%, rgba(120,88,255,0.035), transparent 55%),
+    radial-gradient(ellipse 50% 40% at 50% 90%, rgba(8,157,227,0.035), transparent 50%),
+    #F5F6F7;
   background-attachment: fixed;
 }
 
@@ -198,29 +199,27 @@
   }
 }
 
-/* ─── Glass Card ─── */
+/* ─── Flat card (default — Fiori tile) ─── */
 .vx-card {
-  background: var(--glass-bg);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--glass-border);
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 0 0 0 1px rgba(255,255,255,0.50) inset, 0 4px 24px rgba(0,0,0,0.04);
+  background: #FFFFFF;
+  border: 1px solid var(--mn-border);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 0 rgba(16,24,40,0.02), 0 1px 2px rgba(16,24,40,0.04);
   animation: vx-fade-in 0.35s ease-out both;
   transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
 }
 
 .vx-card:hover {
-  border-color: var(--glass-border-hover);
-  box-shadow: 0 0 0 1px rgba(255,255,255,0.60) inset, 0 8px 32px rgba(0,0,0,0.06);
+  border-color: #BCC3CA;
+  box-shadow: 0 1px 0 rgba(16,24,40,0.03), 0 4px 12px rgba(16,24,40,0.06);
 }
 
 .vx-card-interactive:hover {
   transform: translateY(-1px);
 }
 
-/* ─── Glass Utility Classes ─── */
+/* ─── Glass Utility Classes — reserved for KpiRail tiles + NarrativeStrip ─── */
 .vx-glass {
   background: var(--glass-bg);
   backdrop-filter: blur(var(--glass-blur));
@@ -229,23 +228,23 @@
 }
 
 .vx-glass-elevated {
-  background: rgba(255,255,255,0.92);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(0,0,0,0.10);
-  box-shadow: 0 0 0 1px rgba(255,255,255,0.70) inset, 0 8px 32px rgba(0,0,0,0.06);
+  background: rgba(255,255,255,0.90);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.60) inset, 0 4px 18px rgba(0,87,210,0.05);
 }
 
 .vx-glow {
-  box-shadow: 0 0 16px rgba(13,86,57,0.20), 0 0 0 1px rgba(13,86,57,0.12);
+  box-shadow: 0 0 16px rgba(0,112,242,0.20), 0 0 0 1px rgba(0,112,242,0.18);
 }
 
 .vx-glass-pill {
-  background: rgba(13,86,57,0.10);
-  border: 1px solid rgba(13,86,57,0.20);
+  background: rgba(0,112,242,0.10);
+  border: 1px solid rgba(0,112,242,0.22);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  border-radius: 12px;
+  border-radius: 10px;
 }
 
 /* Glass shimmer hover effect */
@@ -280,26 +279,26 @@
 
 /* ─── Scrollbar (light theme) ─── */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(0,0,0,0.12);
+  background: rgba(16,24,40,0.18);
   border-radius: 999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0,0,0,0.20);
+  background: rgba(16,24,40,0.28);
 }
 
 /* Sidebar scrollbar */
 .vx-sidebar-scroll::-webkit-scrollbar-thumb {
-  background: rgba(0,0,0,0.08);
+  background: rgba(16,24,40,0.10);
 }
 .vx-sidebar-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(0,0,0,0.16);
+  background: rgba(16,24,40,0.20);
 }
 .vx-sidebar-scroll::-webkit-scrollbar-track {
   background: transparent;
@@ -307,13 +306,13 @@
 
 /* ─── Selection ─── */
 ::selection {
-  background: rgba(13,86,57,0.18);
-  color: #1A1F36;
+  background: rgba(0,112,242,0.22);
+  color: #1A1F2B;
 }
 
 /* ─── Focus ring ─── */
 :focus-visible {
-  outline: 2px solid #0D5639;
+  outline: 2px solid #0070F2;
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -328,12 +327,12 @@
     -webkit-backdrop-filter: none;
   }
   .vx-card {
-    background: rgba(255,255,255,0.95);
+    background: #FFFFFF;
   }
   .vx-glass {
-    background: rgba(255,255,255,0.92);
+    background: rgba(255,255,255,0.94);
   }
   .vx-glass-elevated {
-    background: rgba(255,255,255,0.98);
+    background: #FFFFFF;
   }
 }

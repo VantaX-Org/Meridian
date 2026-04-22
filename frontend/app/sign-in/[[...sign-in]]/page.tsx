@@ -37,7 +37,7 @@ export default function SignInPage() {
     <div className="flex min-h-screen items-center justify-center bg-[#F7F8FA]">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#0D5639] shadow-[0_0_20px_rgba(13,86,57,0.30)]">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#0070F2] shadow-[0_0_20px_rgba(0,112,242,0.30)]">
             <ShieldCheck className="h-6 w-6 text-white" />
           </div>
           <h1 className="text-xl font-bold text-gray-900">Sign in to Meridian</h1>
@@ -60,7 +60,7 @@ export default function SignInPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none transition-all focus:border-[#0D5639]/40 focus:ring-1 focus:ring-[#0D5639]"
+              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none transition-all focus:border-[#0070F2]/40 focus:ring-1 focus:ring-[#0070F2]"
               placeholder="admin@company.com"
             />
           </div>
@@ -75,7 +75,7 @@ export default function SignInPage() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none transition-all focus:border-[#0D5639]/40 focus:ring-1 focus:ring-[#0D5639]"
+              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none transition-all focus:border-[#0070F2]/40 focus:ring-1 focus:ring-[#0070F2]"
               placeholder="Enter your password"
             />
           </div>
@@ -83,7 +83,7 @@ export default function SignInPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-xl bg-[#0D5639] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#0A4530] disabled:opacity-60"
+            className="w-full rounded-xl bg-[#0070F2] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#0A4530] disabled:opacity-60"
           >
             {loading ? "Signing in..." : "Sign in"}
           </button>

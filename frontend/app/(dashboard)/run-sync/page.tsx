@@ -38,7 +38,7 @@ function statusBadge(status: ModuleStatus["status"]) {
       );
     case "completed":
       return (
-        <Badge className="gap-1 bg-[#E8F5EE] text-[#0D5639] border-[#8ECDB0]">
+        <Badge className="gap-1 bg-[#E8F5EE] text-[#0070F2] border-[#8ECDB0]">
           <CheckCircle2 className="h-3 w-3" />
           Completed
         </Badge>
@@ -192,7 +192,7 @@ export default function RunSyncPage() {
                       disabled={!runSyncEnabled}
                       className={`vx-card vx-glass-shimmer text-left transition-all ${
                         isSelected
-                          ? "border-primary/40 bg-primary/[0.06] shadow-[0_0_12px_rgba(13,86,57,0.12)]"
+                          ? "border-primary/40 bg-primary/[0.06] shadow-[0_0_12px_rgba(0,112,242,0.12)]"
                           : "hover:border-black/[0.12]"
                       }`}
                     >

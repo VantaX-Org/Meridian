@@ -29,21 +29,21 @@ export function DqsScoreCard({
   status: "go" | "conditional" | "no-go";
 }) {
   const statusConfig = {
-    go: { label: "GO", bg: "bg-[#4BA87A]", text: "text-white" },
-    conditional: { label: "Conditional", bg: "bg-[#EA580C]", text: "text-white" },
-    "no-go": { label: "NO-GO", bg: "bg-[#EF4444]", text: "text-white" },
+    go: { label: "GO", bg: "bg-[#256F3A]", text: "text-white" },
+    conditional: { label: "Conditional", bg: "bg-[#E76500]", text: "text-white" },
+    "no-go": { label: "NO-GO", bg: "bg-[#BB0000]", text: "text-white" },
   };
   
   const scoreColor = score >= 90 
-    ? "text-[#4BA87A]" 
+    ? "text-[#256F3A]" 
     : score >= 75 
-      ? "text-[#0D5639]" 
+      ? "text-[#0070F2]" 
       : score >= 60 
-        ? "text-[#EA580C]" 
-        : "text-[#EF4444]";
+        ? "text-[#E76500]" 
+        : "text-[#BB0000]";
   
   const trendIcon = trend === "up" ? "↑" : trend === "down" ? "↓" : "→";
-  const trendColor = trend === "up" ? "text-[#4BA87A]" : trend === "down" ? "text-[#EF4444]" : "text-[#6B7280]";
+  const trendColor = trend === "up" ? "text-[#256F3A]" : trend === "down" ? "text-[#BB0000]" : "text-[#6B7280]";
   
   return (
     <div className="vx-card p-5">
@@ -101,20 +101,20 @@ export function FindingsTableRow({
   onClick?: () => void;
 }) {
   const severityColors: Record<string, string> = {
-    critical: "bg-[#EF4444]",
-    high: "bg-[#EA580C]",
-    medium: "bg-[#6366F1]",
+    critical: "bg-[#BB0000]",
+    high: "bg-[#E76500]",
+    medium: "bg-[#7858FF]",
     low: "bg-[#6B7280]",
   };
   
   const passRateColor = (rate: number) =>
     rate >= 95 
-      ? "text-[#4BA87A]" 
+      ? "text-[#256F3A]" 
       : rate >= 80 
-        ? "text-[#0D5639]" 
+        ? "text-[#0070F2]" 
         : rate >= 60 
-          ? "text-[#EA580C]" 
-          : "text-[#EF4444]";
+          ? "text-[#E76500]" 
+          : "text-[#BB0000]";
   
   return (
     <tr 
@@ -177,7 +177,7 @@ export function ModuleSelectionCard({
     <button
       onClick={onToggle}
       className={`vx-card vx-card-interactive p-5 text-left w-full ${
-        selected ? "ring-2 ring-[#0D5639]" : ""
+        selected ? "ring-2 ring-[#0070F2]" : ""
       }`}
     >
       <div className="flex items-start justify-between mb-2">
@@ -185,9 +185,9 @@ export function ModuleSelectionCard({
           <h3 className="font-semibold text-[#1A1F36]">{module.name}</h3>
           <p className="text-sm text-[#6B7280] mt-1">{module.description}</p>
         </div>
-        <div className={`vx-glass-pill px-3 py-1 ${selected ? "bg-[#0D5639]/10 border-[#0D5639]/30" : ""}`}>
+        <div className={`vx-glass-pill px-3 py-1 ${selected ? "bg-[#0070F2]/10 border-[#0070F2]/30" : ""}`}>
           {selected ? (
-            <svg className="w-4 h-4 text-[#0D5639]" fill="currentColor" viewBox="0 0 20 20">
+            <svg className="w-4 h-4 text-[#0070F2]" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
             </svg>
           ) : (
@@ -200,7 +200,7 @@ export function ModuleSelectionCard({
         <div className="mt-3 flex items-center gap-2">
           <div className="h-1.5 flex-1 bg-[#F7F8FA] rounded-full overflow-hidden">
             <div 
-              className={`h-full rounded-full ${score && score >= 90 ? "bg-[#4BA87A]" : score && score >= 75 ? "bg-[#0D5639]" : score && score >= 60 ? "bg-[#EA580C]" : "bg-[#EF4444]"}`}
+              className={`h-full rounded-full ${score && score >= 90 ? "bg-[#256F3A]" : score && score >= 75 ? "bg-[#0070F2]" : score && score >= 60 ? "bg-[#E76500]" : "bg-[#BB0000]"}`}
               style={{ width: `${score || 0}%` }}
             />
           </div>
@@ -224,11 +224,11 @@ export function AnalysisProgressBar({
   details?: string;
 }) {
   const stageConfig = {
-    extracting: { label: "Extracting data", color: "bg-[#6366F1]" },
-    checking: { label: "Running checks", color: "bg-[#0D5639]" },
-    analyzing: { label: "AI Analysis", color: "bg-[#EA580C]" },
-    complete: { label: "Complete", color: "bg-[#4BA87A]" },
-    failed: { label: "Failed", color: "bg-[#EF4444]" },
+    extracting: { label: "Extracting data", color: "bg-[#7858FF]" },
+    checking: { label: "Running checks", color: "bg-[#0070F2]" },
+    analyzing: { label: "AI Analysis", color: "bg-[#E76500]" },
+    complete: { label: "Complete", color: "bg-[#256F3A]" },
+    failed: { label: "Failed", color: "bg-[#BB0000]" },
   };
   
   return (
@@ -280,15 +280,15 @@ export function ExecutiveSummaryCard({
         </div>
         
         <div className="text-center">
-          <div className="text-3xl font-bold text-[#EF4444]">{metrics.criticalFindings}</div>
+          <div className="text-3xl font-bold text-[#BB0000]">{metrics.criticalFindings}</div>
           <div className="text-xs text-[#6B7280] mt-1">Critical</div>
         </div>
         
         <div className="text-center">
           <div className={`text-3xl font-bold ${
-            metrics.avgDqsScore >= 90 ? "text-[#4BA87A]" : 
-            metrics.avgDqsScore >= 75 ? "text-[#0D5639]" : 
-            metrics.avgDqsScore >= 60 ? "text-[#EA580C]" : "text-[#EF4444]"
+            metrics.avgDqsScore >= 90 ? "text-[#256F3A]" : 
+            metrics.avgDqsScore >= 75 ? "text-[#0070F2]" : 
+            metrics.avgDqsScore >= 60 ? "text-[#E76500]" : "text-[#BB0000]"
           }`}>
             {metrics.avgDqsScore.toFixed(1)}%
           </div>
@@ -305,8 +305,8 @@ export function ExecutiveSummaryCard({
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm text-[#4A5568]">Readiness Score</span>
           <span className={`font-semibold ${
-            metrics.readinessScore >= 90 ? "text-[#4BA87A]" :
-            metrics.readinessScore >= 70 ? "text-[#EA580C]" : "text-[#EF4444]"
+            metrics.readinessScore >= 90 ? "text-[#256F3A]" :
+            metrics.readinessScore >= 70 ? "text-[#E76500]" : "text-[#BB0000]"
           }`}>
             {metrics.readinessScore}%
           </span>
@@ -314,8 +314,8 @@ export function ExecutiveSummaryCard({
         <div className="h-2 w-full bg-[#F7F8FA] rounded-full overflow-hidden">
           <div 
             className={`h-full rounded-full transition-all ${
-              metrics.readinessScore >= 90 ? "bg-[#4BA87A]" :
-              metrics.readinessScore >= 70 ? "bg-[#EA580C]" : "bg-[#EF4444]"
+              metrics.readinessScore >= 90 ? "bg-[#256F3A]" :
+              metrics.readinessScore >= 70 ? "bg-[#E76500]" : "bg-[#BB0000]"
             }`}
             style={{ width: `${metrics.readinessScore}%` }}
           />

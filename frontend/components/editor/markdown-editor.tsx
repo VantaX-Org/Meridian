@@ -152,7 +152,7 @@ export function MarkdownEditor({
           <span>{wordCount(localValue)} words</span>
           <span>{readingTime(localValue)} min read</span>
           {lastSaved && (
-            <span className="text-[#4BA87A]">Saved</span>
+            <span className="text-[#256F3A]">Saved</span>
           )}
         </div>
       </div>
@@ -235,7 +235,7 @@ function renderMarkdown(text: string): string {
     // Code
     .replace(/`(.+?)`/g, "<code class='px-1 py-0.5 bg-[rgba(0,0,0,0.04)] rounded text-sm font-mono'>$1</code>")
     // Links
-    .replace(/\[(.+?)\]\((.+?)\)/g, "<a href='$2' class='text-[#0D5639] hover:underline'>$1</a>")
+    .replace(/\[(.+?)\]\((.+?)\)/g, "<a href='$2' class='text-[#0070F2] hover:underline'>$1</a>")
     // Lists
     .replace(/^- (.+)$/gm, "<li class='ml-4'>$1</li>")
     .replace(/^(\d+)\. (.+)$/gm, "<li class='ml-4 list-decimal'>$2</li>")
@@ -243,7 +243,7 @@ function renderMarkdown(text: string): string {
     .replace(/- \[ \] (.+)$/gm, "<li class='ml-4'>☐ $1</li>")
     .replace(/- \[x\] (.+)$/gm, "<li class='ml-4'>☑ $1</li>")
     // Blockquotes
-    .replace(/^> (.+)$/gm, "<blockquote class='border-l-2 border-[#0D5639]/30 pl-3 italic text-[#4A5568]'>$1</blockquote>")
+    .replace(/^> (.+)$/gm, "<blockquote class='border-l-2 border-[#0070F2]/30 pl-3 italic text-[#4A5568]'>$1</blockquote>")
     // Paragraphs
     .replace(/\n\n/g, "</p><p class='mb-3'>")
     // Horizontal rules

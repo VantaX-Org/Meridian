@@ -9,8 +9,8 @@ import type { SAPSystemExtended, HealthStatus } from "@/types/api";
 
 const ENV_COLORS: Record<string, string> = {
   PRD: "bg-destructive/10 text-destructive border-destructive/20",
-  QAS: "bg-[#EA580C]/10 text-[#EA580C] border-[#EA580C]/20",
-  DEV: "bg-[#16A34A]/10 text-[#16A34A] border-[#16A34A]/20",
+  QAS: "bg-[#E76500]/10 text-[#E76500] border-[#E76500]/20",
+  DEV: "bg-[#256F3A]/10 text-[#256F3A] border-[#256F3A]/20",
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -26,8 +26,8 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const HEALTH_DOT: Record<HealthStatus, string> = {
-  healthy: "bg-[#16A34A]",
-  degraded: "bg-[#D97706]",
+  healthy: "bg-[#256F3A]",
+  degraded: "bg-[#E76500]",
   unreachable: "bg-destructive",
   auth_failed: "bg-destructive",
   unknown: "bg-muted-foreground",

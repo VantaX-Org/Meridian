@@ -157,8 +157,8 @@ export default function StewardshipMetricsPage() {
           label="Backlog"
           value={metrics.backlog_total}
           icon={<AlertTriangle className="h-5 w-5" />}
-          color="text-[#EA580C]"
-          bg="bg-[#EA580C]/10"
+          color="text-[#E76500]"
+          bg="bg-[#E76500]/10"
         />
         <StatCard
           label="SLA Compliance"
@@ -166,21 +166,21 @@ export default function StewardshipMetricsPage() {
           icon={<Clock className="h-5 w-5" />}
           color={
             metrics.sla_compliance_rate >= 0.9
-              ? "text-[#16A34A]"
-              : "text-[#DC2626]"
+              ? "text-[#256F3A]"
+              : "text-[#BB0000]"
           }
           bg={
             metrics.sla_compliance_rate >= 0.9
-              ? "bg-[#16A34A]/10"
-              : "bg-[#DC2626]/10"
+              ? "bg-[#256F3A]/10"
+              : "bg-[#BB0000]/10"
           }
         />
         <StatCard
           label="Resolved"
           value={metrics.items_by_status["resolved"] ?? 0}
           icon={<CheckCircle2 className="h-5 w-5" />}
-          color="text-[#16A34A]"
-          bg="bg-[#16A34A]/10"
+          color="text-[#256F3A]"
+          bg="bg-[#256F3A]/10"
         />
         {metrics.ai_acceptance_rate !== null &&
           metrics.ai_acceptance_rate !== undefined && (
@@ -231,9 +231,9 @@ export default function StewardshipMetricsPage() {
                     max={statusMax}
                     color={
                       status === "resolved"
-                        ? "bg-[#16A34A]"
+                        ? "bg-[#256F3A]"
                         : status === "escalated"
-                          ? "bg-[#DC2626]"
+                          ? "bg-[#BB0000]"
                           : "bg-primary"
                     }
                   />
@@ -257,7 +257,7 @@ export default function StewardshipMetricsPage() {
                     label={formatType(type)}
                     value={hours}
                     max={resMax}
-                    color="bg-[#EA580C]"
+                    color="bg-[#E76500]"
                   />
                 )
               )}

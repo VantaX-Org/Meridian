@@ -55,8 +55,8 @@ function ConfigTableAccordion({
               variant="outline"
               className={`text-[10px] ${
                 data.source === "live"
-                  ? "border-[#16A34A]/20 text-[#16A34A]"
-                  : "border-[#D97706]/20 text-[#D97706]"
+                  ? "border-[#256F3A]/20 text-[#256F3A]"
+                  : "border-[#E76500]/20 text-[#E76500]"
               }`}
             >
               {data.source}

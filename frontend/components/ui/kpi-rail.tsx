@@ -45,11 +45,11 @@ const COL_CLASSES: Record<number, string> = {
 function toneColor(tone: KpiTone): string {
   switch (tone) {
     case "pos":
-      return "text-[#16A34A]";
+      return "text-[#256F3A]";
     case "neg":
-      return "text-[#DC2626]";
+      return "text-[#BB0000]";
     case "warn":
-      return "text-[#D97706]";
+      return "text-[#E76500]";
     default:
       return "text-muted-foreground";
   }
@@ -98,8 +98,8 @@ export function KpiRail({ items, columns, className }: KpiRailProps) {
         const content = (
           <div
             className={cn(
-              "vx-card flex h-full flex-col justify-between gap-1.5 px-3.5 py-3",
-              item.href && "vx-card-interactive cursor-pointer transition-transform hover:-translate-y-0.5",
+              "vx-glass-elevated flex h-full flex-col justify-between gap-1.5 rounded-xl px-3.5 py-3",
+              item.href && "cursor-pointer transition-transform hover:-translate-y-0.5",
             )}
             title={item.hint}
           >
@@ -118,7 +118,7 @@ export function KpiRail({ items, columns, className }: KpiRailProps) {
             {item.spark && item.spark.length > 1 ? (
               <DriftSparkline
                 data={item.spark}
-                stroke={tone === "neg" ? "#DC2626" : tone === "warn" ? "#D97706" : "#0D5639"}
+                stroke={tone === "neg" ? "#BB0000" : tone === "warn" ? "#E76500" : "#0070F2"}
                 height={18}
                 fullWidth
               />

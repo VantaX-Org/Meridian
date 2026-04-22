@@ -136,24 +136,24 @@ export default function BusinessProcessPage() {
       {/* Readiness summary */}
       {totalProcesses > 0 && (
         <div className="grid gap-4 sm:grid-cols-3">
-          <Card className="border-[#16A34A]/10 bg-[#16A34A]/[0.04]">
+          <Card className="border-[#256F3A]/10 bg-[#256F3A]/[0.04]">
             <CardContent className="flex items-center gap-3 p-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#16A34A]/10">
-                <div className="h-3 w-3 rounded-full bg-[#16A34A]" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#256F3A]/10">
+                <div className="h-3 w-3 rounded-full bg-[#256F3A]" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-[#16A34A]">{readinessCounts.green}</p>
+                <p className="text-2xl font-bold text-[#256F3A]">{readinessCounts.green}</p>
                 <p className="text-xs text-muted-foreground">Ready (Green)</p>
               </div>
             </CardContent>
           </Card>
-          <Card className="border-[#D97706]/10 bg-[#D97706]/[0.04]">
+          <Card className="border-[#E76500]/10 bg-[#E76500]/[0.04]">
             <CardContent className="flex items-center gap-3 p-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#D97706]/10">
-                <div className="h-3 w-3 rounded-full bg-[#D97706]" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#E76500]/10">
+                <div className="h-3 w-3 rounded-full bg-[#E76500]" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-[#D97706]">{readinessCounts.amber}</p>
+                <p className="text-2xl font-bold text-[#E76500]">{readinessCounts.amber}</p>
                 <p className="text-xs text-muted-foreground">Conditional (Amber)</p>
               </div>
             </CardContent>

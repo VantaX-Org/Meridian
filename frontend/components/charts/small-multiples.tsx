@@ -77,15 +77,15 @@ export function SmallMultiplesChart({
       className={cn("grid grid-cols-2 gap-2 sm:grid-cols-3", COLS[columns], className)}
     >
       {series.map((s) => {
-        const color = s.color ?? "#0D5639";
+        const color = s.color ?? "#0070F2";
         const hasData = s.data.length > 1;
         const tone =
           s.delta === undefined
             ? "text-muted-foreground"
             : s.delta > 0
-              ? "text-[#16A34A]"
+              ? "text-[#256F3A]"
               : s.delta < 0
-                ? "text-[#DC2626]"
+                ? "text-[#BB0000]"
                 : "text-muted-foreground";
         return (
           <div

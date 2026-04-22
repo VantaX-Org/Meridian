@@ -80,7 +80,7 @@ function CopyButton({ text }: { text: string }) {
           />
         }
       >
-        {copied ? <Check className="h-3 w-3 text-[#16A34A]" /> : <Copy className="h-3 w-3" />}
+        {copied ? <Check className="h-3 w-3 text-[#256F3A]" /> : <Copy className="h-3 w-3" />}
       </TooltipTrigger>
       <TooltipContent>{copied ? "Copied" : "Copy"}</TooltipContent>
     </Tooltip>
@@ -97,11 +97,11 @@ function passRateTone(rate: number | null): "pos" | "warn" | "neg" | "neutral" {
 function toneClass(tone: "pos" | "warn" | "neg" | "neutral"): string {
   switch (tone) {
     case "pos":
-      return "text-[#16A34A]";
+      return "text-[#256F3A]";
     case "warn":
-      return "text-[#D97706]";
+      return "text-[#E76500]";
     case "neg":
-      return "text-[#DC2626]";
+      return "text-[#BB0000]";
     default:
       return "text-muted-foreground";
   }
@@ -230,7 +230,7 @@ function FindingsContent() {
         label: dim,
         data,
         value: count > 0 ? `${avgPass.toFixed(0)}%` : "—",
-        color: i % 2 === 0 ? "#0D5639" : "#0695A8",
+        color: i % 2 === 0 ? "#0070F2" : "#0695A8",
       };
     });
   }, [filtered]);

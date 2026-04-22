@@ -91,8 +91,8 @@ export default function ConnectivityPage() {
         <div className="grid gap-4 sm:grid-cols-3">
           <Card className="border-black/[0.08] bg-white/[0.70]">
             <CardContent className="flex items-center gap-3 p-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#16A34A]/10">
-                <div className="h-3 w-3 rounded-full bg-[#16A34A]" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#256F3A]/10">
+                <div className="h-3 w-3 rounded-full bg-[#256F3A]" />
               </div>
               <div>
                 <p className="text-2xl font-bold text-foreground">{healthyCount}</p>
@@ -102,8 +102,8 @@ export default function ConnectivityPage() {
           </Card>
           <Card className="border-black/[0.08] bg-white/[0.70]">
             <CardContent className="flex items-center gap-3 p-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#D97706]/10">
-                <div className="h-3 w-3 rounded-full bg-[#D97706]" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#E76500]/10">
+                <div className="h-3 w-3 rounded-full bg-[#E76500]" />
               </div>
               <div>
                 <p className="text-2xl font-bold text-foreground">{degradedCount}</p>

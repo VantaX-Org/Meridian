@@ -33,12 +33,12 @@ const STATUS_CONFIG: Record<
   pending_review: {
     label: "Pending Review",
     icon: <AlertTriangle className="h-3.5 w-3.5" />,
-    classes: "bg-[#EA580C]/10 text-[#EA580C] border-[#EA580C]/20",
+    classes: "bg-[#E76500]/10 text-[#E76500] border-[#E76500]/20",
   },
   golden: {
     label: "Golden",
     icon: <Crown className="h-3.5 w-3.5" />,
-    classes: "bg-[#16A34A]/10 text-[#16A34A] border-[#16A34A]/20",
+    classes: "bg-[#256F3A]/10 text-[#256F3A] border-[#256F3A]/20",
   },
   superseded: {
     label: "Superseded",
@@ -50,7 +50,7 @@ const STATUS_CONFIG: Record<
 function ConfidenceBar({ confidence }: { confidence: number }) {
   const pct = Math.round(confidence * 100);
   const color =
-    pct >= 85 ? "bg-[#16A34A]" : pct >= 60 ? "bg-[#EA580C]" : "bg-destructive";
+    pct >= 85 ? "bg-[#256F3A]" : pct >= 60 ? "bg-[#E76500]" : "bg-destructive";
   return (
     <div className="flex items-center gap-2">
       <div className="h-1.5 w-20 rounded-full bg-white/[0.60]">
@@ -103,7 +103,7 @@ function RecordRow({ record }: { record: MasterRecordSummary }) {
 
         <div className="flex items-center gap-6">
           {record.pending_issues > 0 && (
-            <div className="flex items-center gap-1 text-xs text-[#EA580C]">
+            <div className="flex items-center gap-1 text-xs text-[#E76500]">
               <AlertTriangle className="h-3.5 w-3.5" />
               {record.pending_issues} AI conflict{record.pending_issues !== 1 ? "s" : ""}
             </div>
@@ -160,8 +160,8 @@ export default function GoldenRecordsPage() {
       <div className="grid grid-cols-3 gap-4">
         <Card className="border-black/[0.08] bg-white/[0.70]">
           <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#16A34A]/10">
-              <Crown className="h-5 w-5 text-[#16A34A]" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#256F3A]/10">
+              <Crown className="h-5 w-5 text-[#256F3A]" />
             </div>
             <div>
               <p className="text-2xl font-bold text-foreground">{goldenCount}</p>
@@ -171,8 +171,8 @@ export default function GoldenRecordsPage() {
         </Card>
         <Card className="border-black/[0.08] bg-white/[0.70]">
           <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#EA580C]/10">
-              <AlertTriangle className="h-5 w-5 text-[#EA580C]" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#E76500]/10">
+              <AlertTriangle className="h-5 w-5 text-[#E76500]" />
             </div>
             <div>
               <p className="text-2xl font-bold text-foreground">{pendingCount}</p>

@@ -5,10 +5,10 @@ import type { DimensionScores } from "@/types/api";
 
 const DIMENSION_COLORS: Record<keyof DimensionScores, string> = {
   completeness: "#00D4AA",
-  accuracy: "#6366F1",
+  accuracy: "#7858FF",
   consistency: "#0891B2",
-  timeliness: "#16A34A",
-  uniqueness: "#D97706",
+  timeliness: "#256F3A",
+  uniqueness: "#E76500",
   validity: "#7C3AED",
 };
 
