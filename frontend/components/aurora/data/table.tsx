@@ -144,12 +144,16 @@ export function DataTable<TRow>({
       if (row) onRowActivate?.(row.original);
     } else if (event.key === "Home") {
       event.preventDefault();
+      // Sync ref before state so a follow-up J/K reads the correct
+      // index even before React commits the Home re-render.
+      focusedIndexRef.current = 0;
       setFocusedIndex(0);
       virtualiser.scrollToIndex(0);
       onRowFocus?.(rows[0]?.original ?? null);
     } else if (event.key === "End") {
       event.preventDefault();
       const last = rows.length - 1;
+      focusedIndexRef.current = last;
       setFocusedIndex(last);
       virtualiser.scrollToIndex(last);
       onRowFocus?.(rows[last]?.original ?? null);
