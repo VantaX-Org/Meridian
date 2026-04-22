@@ -416,6 +416,17 @@ export function Workbench({
             className="aurora-workbench__drawer-body"
             onKeyDown={(event) => {
               if (!onSelectedStep) return;
+              // Don't hijack J/K while a steward is typing in a comment,
+              // search box, or any other editable surface inside the drawer.
+              const target = event.target as HTMLElement | null;
+              if (
+                target &&
+                target.closest(
+                  "input, textarea, select, [contenteditable='true']",
+                )
+              ) {
+                return;
+              }
               if (event.key === "j" || event.key === "ArrowDown") {
                 event.preventDefault();
                 onSelectedStep(1);
