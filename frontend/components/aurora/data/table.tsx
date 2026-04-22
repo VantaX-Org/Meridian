@@ -208,6 +208,7 @@ export function DataTable<TRow>({
                 }}
                 onClick={() => {
                   setFocusedIndex(virtualRow.index);
+                  onRowFocus?.(row.original);
                   onRowActivate?.(row.original);
                 }}
               />

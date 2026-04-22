@@ -38,12 +38,32 @@ export interface ChartTokens {
 }
 
 /**
- * Build the chart token set for the current theme. Call once per surface;
- * callers should memoise the result if the surface renders many charts.
+ * Walk up from `element` looking for the closest ancestor that declares a
+ * `data-theme` attribute, falling back to the document root. Mirrors how
+ * the Aurora CSS cascade resolves `[data-theme="dark"]` / `[data-theme="light"]`
+ * so charts pick up scoped themes instead of only the root.
  */
-export function resolveChartTokens(): ChartTokens {
-  const light = typeof document !== "undefined" &&
-    document.documentElement.getAttribute("data-theme") === "light";
+function resolveThemeForElement(element?: Element | null): "dark" | "light" {
+  if (typeof document === "undefined") return "dark";
+  let node: Element | null = element ?? null;
+  while (node) {
+  const value = node.getAttribute?.("data-theme");
+    if (value === "light" || value === "dark") return value;
+    node = node.parentElement;
+  }
+  const root = document.documentElement.getAttribute("data-theme");
+  return root === "light" ? "light" : "dark";
+}
+
+/**
+ * Build the chart token set for the current theme. Pass the chart's host
+ * element (e.g. via `ref.current`) so the resolver finds the nearest
+ * `[data-theme]` ancestor — matching how the CSS cascade works. Call once
+ * per surface; callers should memoise the result if the surface renders
+ * many charts.
+ */
+export function resolveChartTokens(element?: Element | null): ChartTokens {
+  const light = resolveThemeForElement(element) === "light";
 
   return {
     axisLine: light ? ink[200] : "#2A3654",

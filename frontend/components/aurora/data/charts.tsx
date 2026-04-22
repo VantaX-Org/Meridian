@@ -36,8 +36,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { useMemo } from "react";
-import { resolveChartTokens } from "./chart-theme";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { resolveChartTokens, type ChartTokens } from "./chart-theme";
 import { clsx } from "../primitives/internal";
 
 export interface SeriesDef {
@@ -62,8 +62,22 @@ export interface LineChartProps<
   ariaLabel?: string;
 }
 
-function useTokens() {
-  return useMemo(() => resolveChartTokens(), []);
+/**
+ * Resolve Aurora chart tokens for the chart's host element so the nearest
+ * [data-theme] ancestor wins — matching the CSS cascade. We resolve once
+ * with `null` (root) on first render so SSR has a value, then re-resolve
+ * post-mount when the ref is attached so scoped themes take effect.
+ */
+function useTokens(hostRef: React.RefObject<HTMLDivElement | null>): ChartTokens {
+  const initial = useMemo(() => resolveChartTokens(null), []);
+  const [tokens, setTokens] = useState<ChartTokens>(initial);
+  useEffect(() => {
+    const el = hostRef.current;
+    if (!el) return;
+    const next = resolveChartTokens(el);
+    setTokens(next);
+  }, [hostRef]);
+  return tokens;
 }
 
 const TOOLTIP_STYLE_BASE = {
@@ -85,9 +99,11 @@ export function LineChart<
   yFormatter,
   ariaLabel,
 }: LineChartProps<TDatum>) {
-  const t = useTokens();
+  const hostRef = useRef<HTMLDivElement>(null);
+  const t = useTokens(hostRef);
   return (
     <div
+      ref={hostRef}
       className={clsx("aurora-chart", className)}
       style={{ width: "100%", height }}
       role="img"
@@ -176,10 +192,12 @@ export function BarChart<
   yFormatter,
   ariaLabel,
 }: BarChartProps<TDatum>) {
-  const t = useTokens();
+  const hostRef = useRef<HTMLDivElement>(null);
+  const t = useTokens(hostRef);
   const stackId = stacked ? "stack" : undefined;
   return (
     <div
+      ref={hostRef}
       className={clsx("aurora-chart", className)}
       style={{ width: "100%", height }}
       role="img"
@@ -258,10 +276,12 @@ export function AreaChart<
   yFormatter,
   ariaLabel,
 }: AreaChartProps<TDatum>) {
-  const t = useTokens();
+  const hostRef = useRef<HTMLDivElement>(null);
+  const t = useTokens(hostRef);
   const stackId = stacked ? "stack" : undefined;
   return (
     <div
+      ref={hostRef}
       className={clsx("aurora-chart", className)}
       style={{ width: "100%", height }}
       role="img"
@@ -342,9 +362,11 @@ export function DonutChart({
   className,
   ariaLabel,
 }: DonutChartProps) {
-  const t = useTokens();
+  const hostRef = useRef<HTMLDivElement>(null);
+  const t = useTokens(hostRef);
   return (
     <div
+      ref={hostRef}
       className={clsx("aurora-chart", className)}
       style={{ width: "100%", height }}
       role="img"
@@ -415,10 +437,12 @@ export function Sparkline<
   className,
   ariaLabel,
 }: SparklineProps<TDatum>) {
-  const t = useTokens();
+  const hostRef = useRef<HTMLDivElement>(null);
+  const t = useTokens(hostRef);
   const stroke = color ?? t.accent;
   return (
     <div
+      ref={hostRef}
       className={clsx("aurora-sparkline", className)}
       style={{ width, height }}
       role="img"
