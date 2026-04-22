@@ -1,26 +1,22 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ClipboardList,
-  Filter,
-  Loader2,
-  CheckCircle2,
-  XCircle,
-  ArrowUpRight,
-  ChevronRight,
-  Zap,
-  AlertTriangle,
   Crown,
+  AlertTriangle,
   FileCheck2,
+  XCircle,
   BookOpen,
   GitMerge,
   Brain,
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Dialog,
   DialogContent,
@@ -29,694 +25,609 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
+  bulkApprove,
+  escalateItem,
   getQueueItems,
   resolveItem,
-  escalateItem,
-  bulkApprove,
-  submitAiFeedback,
 } from "@/lib/api/stewardship";
 import { relativeTime } from "@/lib/format";
 import type {
-  StewardshipQueueItem,
   StewardshipItemType,
-  StewardshipStatus,
+  StewardshipQueueItem,
 } from "@/types/api";
+import { KpiRail, type KpiItem } from "@/components/ui/kpi-rail";
+import { NarrativeStrip } from "@/components/ui/narrative-strip";
+import { SectionHeader } from "@/components/ui/section-header";
+import { SavedView } from "@/components/ui/saved-view";
+import { FilterChipBar } from "@/components/ui/filter-chip-bar";
+import { useUrlMultiState } from "@/hooks/use-url-state";
+import {
+  DenseDataTable,
+  type DenseColumnDef,
+} from "@/components/ui/dense-data-table";
+import {
+  SmallMultiplesChart,
+  type SmallMultipleSeries,
+} from "@/components/charts/small-multiples";
 
-// ── Config ──────────────────────────────────────────────────────────────────
+/* ── Config ─────────────────────────────────────────────── */
 
 const ITEM_TYPE_CONFIG: Record<
   StewardshipItemType,
   { label: string; icon: React.ReactNode; color: string }
 > = {
   merge_decision: {
-    label: "Merge Decision",
-    icon: <GitMerge className="h-3.5 w-3.5" />,
+    label: "Merge",
+    icon: <GitMerge className="h-3 w-3" />,
     color: "bg-[#7C3AED]/10 text-[#7C3AED] border-[#7C3AED]/20",
   },
   golden_record_review: {
-    label: "Golden Record",
-    icon: <Crown className="h-3.5 w-3.5" />,
+    label: "Golden",
+    icon: <Crown className="h-3 w-3" />,
     color: "bg-[#EA580C]/10 text-[#EA580C] border-[#EA580C]/20",
   },
   exception: {
     label: "Exception",
-    icon: <AlertTriangle className="h-3.5 w-3.5" />,
+    icon: <AlertTriangle className="h-3 w-3" />,
     color: "bg-[#DC2626]/10 text-[#DC2626] border-[#DC2626]/20",
   },
   writeback_approval: {
     label: "Writeback",
-    icon: <FileCheck2 className="h-3.5 w-3.5" />,
+    icon: <FileCheck2 className="h-3 w-3" />,
     color: "bg-primary/10 text-primary border-primary/20",
   },
   contract_breach: {
-    label: "Contract Breach",
-    icon: <XCircle className="h-3.5 w-3.5" />,
+    label: "Contract",
+    icon: <XCircle className="h-3 w-3" />,
     color: "bg-[#DC2626]/10 text-[#DC2626] border-[#DC2626]/20",
   },
   glossary_review: {
-    label: "Glossary Review",
-    icon: <BookOpen className="h-3.5 w-3.5" />,
+    label: "Glossary",
+    icon: <BookOpen className="h-3 w-3" />,
     color: "bg-[#16A34A]/10 text-[#16A34A] border-[#16A34A]/20",
   },
 };
 
 const PRIORITY_LABELS: Record<number, { label: string; color: string }> = {
-  1: { label: "Critical", color: "bg-[#DC2626]/10 text-[#DC2626]" },
+  1: { label: "Crit", color: "bg-[#DC2626]/10 text-[#DC2626]" },
   2: { label: "High", color: "bg-[#EA580C]/10 text-[#EA580C]" },
-  3: { label: "Medium", color: "bg-primary/10 text-primary" },
+  3: { label: "Med", color: "bg-primary/10 text-primary" },
   4: { label: "Low", color: "bg-[#16A34A]/10 text-[#16A34A]" },
   5: { label: "Info", color: "bg-white/[0.65] text-muted-foreground" },
 };
 
-const STATUS_FILTERS: StewardshipStatus[] = [
-  "open",
-  "in_progress",
-  "resolved",
-  "escalated",
-];
-
-// ── Confidence Bar ──────────────────────────────────────────────────────────
-
 function ConfidenceBar({ confidence }: { confidence: number }) {
   const pct = Math.round(confidence * 100);
   const color =
-    pct >= 85 ? "bg-[#16A34A]" : pct >= 60 ? "bg-[#EA580C]" : "bg-[#DC2626]";
+    confidence >= 0.85 ? "bg-[#16A34A]" : confidence >= 0.6 ? "bg-[#D97706]" : "bg-[#DC2626]";
   return (
-    <div className="flex items-center gap-2">
-      <div className="h-1.5 w-24 rounded-full bg-white/[0.60]">
-        <div
-          className={`h-1.5 rounded-full ${color}`}
-          style={{ width: `${pct}%` }}
-        />
+    <div className="flex items-center gap-1.5">
+      <div className="h-1.5 w-16 overflow-hidden rounded-full bg-black/[0.06]">
+        <div className={`h-full ${color}`} style={{ width: `${pct}%` }} />
       </div>
-      <span className="text-xs font-medium text-foreground">{pct}%</span>
+      <span className="w-8 text-right text-[11px] tabular-nums text-muted-foreground">{pct}%</span>
     </div>
   );
 }
 
-// ── Override Modal ──────────────────────────────────────────────────────────
-
-function OverrideModal({
-  open,
-  onClose,
-  item,
-  onSubmit,
-}: {
-  open: boolean;
-  onClose: () => void;
-  item: StewardshipQueueItem | null;
-  onSubmit: (reason: string) => void;
-}) {
-  const [reason, setReason] = useState("");
-
-  return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Override AI Recommendation</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3">
-          {item?.ai_recommendation && (
-            <div className="rounded-lg bg-white/[0.60] p-3">
-              <p className="text-xs font-medium text-muted-foreground">
-                AI Recommendation
-              </p>
-              <p className="mt-1 text-sm text-foreground">
-                {item.ai_recommendation}
-              </p>
-            </div>
-          )}
-          <Textarea
-            placeholder="Correction reason (required)"
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            rows={3}
-          />
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            disabled={!reason.trim()}
-            onClick={() => {
-              onSubmit(reason);
-              setReason("");
-            }}
-          >
-            Submit Override
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
+function ageHours(created_at: string): number {
+  return (Date.now() - new Date(created_at).getTime()) / 3_600_000;
 }
 
-// ── Queue Item Row ──────────────────────────────────────────────────────────
-
-function QueueRow({
-  item,
-  selected,
-  onSelect,
-}: {
-  item: StewardshipQueueItem;
-  selected: boolean;
-  onSelect: () => void;
-}) {
-  const typeConfig = ITEM_TYPE_CONFIG[item.item_type] ?? { label: item.item_type, icon: <ClipboardList className="h-3.5 w-3.5" />, color: "bg-white/[0.65] text-muted-foreground border-black/[0.08]" };
-  const priorityConfig = PRIORITY_LABELS[item.priority] ?? PRIORITY_LABELS[3];
-
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={`flex w-full items-center gap-3 border-b border-black/[0.04] px-4 py-3 text-left transition-colors hover:bg-black/[0.03] ${
-        selected ? "bg-primary/5 border-l-2 border-l-primary" : ""
-      }`}
-    >
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <Badge
-            variant="outline"
-            className={`text-xs ${typeConfig.color}`}
-          >
-            {typeConfig.icon}
-            <span className="ml-1">{typeConfig.label}</span>
-          </Badge>
-          <Badge
-            variant="outline"
-            className={`text-xs ${priorityConfig.color}`}
-          >
-            P{item.priority}
-          </Badge>
-        </div>
-        <p className="mt-1 truncate text-sm font-medium text-foreground">
-          {item.domain}
-        </p>
-        <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
-          <span>{relativeTime(item.created_at)}</span>
-          {item.due_at && (
-            <span>
-              Due {relativeTime(item.due_at)}
-            </span>
-          )}
-        </div>
-      </div>
-      {item.ai_confidence !== null && item.ai_confidence !== undefined && (
-        <div className="shrink-0">
-          <ConfidenceBar confidence={item.ai_confidence} />
-        </div>
-      )}
-      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-    </button>
-  );
+function ageTone(hours: number, sla: number | null): "pos" | "neutral" | "warn" | "neg" {
+  if (sla === null) return hours > 48 ? "warn" : "neutral";
+  const pct = hours / sla;
+  if (pct >= 1) return "neg";
+  if (pct >= 0.7) return "warn";
+  return "pos";
 }
 
-// ── Action Panel ────────────────────────────────────────────────────────────
+/* ── Page ──────────────────────────────────────────────── */
 
-function ActionPanel({
-  item,
-  onApprove,
-  onReject,
-  onEscalate,
-  onOverride,
-  isResolving,
-  userRole,
-}: {
-  item: StewardshipQueueItem;
-  onApprove: () => void;
-  onReject: () => void;
-  onEscalate: () => void;
-  onOverride: () => void;
-  isResolving: boolean;
-  userRole: string;
-}) {
-  const typeConfig = ITEM_TYPE_CONFIG[item.item_type] ?? { label: item.item_type, icon: <ClipboardList className="h-3.5 w-3.5" />, color: "bg-white/[0.65] text-muted-foreground border-black/[0.08]" };
-  const isAiReviewer = userRole === "ai_reviewer";
-  const canApprove = !isAiReviewer && item.status !== "resolved";
-
-  return (
-    <div className="space-y-4">
-      {/* Item header */}
-      <div className="flex items-center gap-2">
-        <Badge variant="outline" className={typeConfig.color}>
-          {typeConfig.icon}
-          <span className="ml-1">{typeConfig.label}</span>
-        </Badge>
-        <span className="text-sm font-medium text-foreground">
-          {item.domain}
-        </span>
-      </div>
-
-      {/* Details */}
-      <div className="grid grid-cols-2 gap-3 text-sm">
-        <div>
-          <p className="text-xs text-muted-foreground">Priority</p>
-          <p className="font-medium text-foreground">
-            P{item.priority} —{" "}
-            {PRIORITY_LABELS[item.priority]?.label ?? "Normal"}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground">Status</p>
-          <p className="font-medium text-foreground capitalize">{item.status}</p>
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground">Created</p>
-          <p className="font-medium text-foreground">
-            {relativeTime(item.created_at)}
-          </p>
-        </div>
-        {item.sla_hours && (
-          <div>
-            <p className="text-xs text-muted-foreground">SLA</p>
-            <p className="font-medium text-foreground">{item.sla_hours}h</p>
-          </div>
-        )}
-      </div>
-
-      {/* AI Recommendation panel */}
-      {item.ai_recommendation && (
-        <div className="rounded-lg border border-black/[0.08] bg-white/[0.60] p-3">
-          <div className="flex items-center gap-2">
-            <Brain className="h-4 w-4 text-[#7C3AED]" />
-            <span className="text-xs font-semibold text-foreground">
-              AI Recommendation
-            </span>
-          </div>
-          {item.ai_confidence !== null && item.ai_confidence !== undefined && (
-            <div className="mt-2">
-              <ConfidenceBar confidence={item.ai_confidence} />
-            </div>
-          )}
-          <p className="mt-2 text-sm text-foreground">
-            {item.ai_recommendation}
-          </p>
-          <Button
-            variant="outline"
-            size="sm"
-            className="mt-2 text-xs"
-            onClick={onOverride}
-          >
-            Override
-          </Button>
-        </div>
-      )}
-
-      {/* Action buttons */}
-      <div className="flex gap-2 pt-2 border-t border-black/[0.08]">
-        {canApprove ? (
-          <>
-            <Button
-              size="sm"
-              className="flex-1 bg-[#16A34A] hover:bg-[#16A34A]/90"
-              onClick={onApprove}
-              disabled={isResolving}
-            >
-              {isResolving ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
-              )}
-              Approve (A)
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="flex-1 text-[#DC2626] border-[#DC2626]/30 hover:bg-[#DC2626]/5"
-              onClick={onReject}
-              disabled={isResolving}
-            >
-              <XCircle className="mr-1 h-3.5 w-3.5" />
-              Reject (R)
-            </Button>
-          </>
-        ) : isAiReviewer ? (
-          <div className="w-full rounded-lg bg-white/[0.65] px-3 py-2 text-center text-xs text-muted-foreground">
-            AI Reviewer role cannot approve data actions. Contact a Steward or
-            Admin.
-          </div>
-        ) : null}
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={onEscalate}
-          disabled={isResolving || item.status === "resolved"}
-        >
-          <ArrowUpRight className="mr-1 h-3.5 w-3.5" />
-          Escalate (E)
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-// ── Main Page ───────────────────────────────────────────────────────────────
-
-export default function StewardshipWorkbench() {
-  const qc = useQueryClient();
-  const [typeFilter, setTypeFilter] = useState<string>("");
-  const [statusFilter, setStatusFilter] =
-    useState<StewardshipStatus>("open");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+export default function StewardshipPage() {
+  const [types, setTypes] = useUrlMultiState("type");
+  const [statuses, setStatuses] = useUrlMultiState("status", ["open"]);
+  const [priorities, setPriorities] = useUrlMultiState("priority");
+  const [selected, setSelected] = useState<StewardshipQueueItem | null>(null);
   const [overrideOpen, setOverrideOpen] = useState(false);
-  const [bulkMode, setBulkMode] = useState(false);
-  const [bulkIds, setBulkIds] = useState<Set<string>>(new Set());
+  const [overrideReason, setOverrideReason] = useState("");
+  const queryClient = useQueryClient();
 
-  // Simulated user role — in production read from auth context
-  const userRole =
-    typeof window !== "undefined"
-      ? new URLSearchParams(window.location.search).get("role") ?? "steward"
-      : "steward";
-
-  const { data, isLoading } = useQuery({
-    queryKey: ["stewardship-queue", typeFilter, statusFilter],
-    queryFn: () =>
-      getQueueItems({
-        item_type: typeFilter || undefined,
-        status: statusFilter,
-        limit: 100,
-      }),
-    refetchInterval: 15_000,
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["stewardship-queue", statuses[0] ?? "open"],
+    queryFn: () => getQueueItems({ status: statuses[0] ?? "open", limit: 1000 }),
   });
-
   const items = data?.items ?? [];
-  const selectedItem = items.find((i) => i.id === selectedId) ?? null;
 
   const resolveMutation = useMutation({
-    mutationFn: ({
-      id,
-      action,
-    }: {
-      id: string;
-      action: "approve" | "reject";
-    }) => resolveItem(id, action),
+    mutationFn: ({ id, action, notes }: { id: string; action: "approve" | "reject"; notes?: string }) =>
+      resolveItem(id, action, notes),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["stewardship-queue"] });
-      // Move to next item
-      const idx = items.findIndex((i) => i.id === selectedId);
-      if (idx >= 0 && idx < items.length - 1) {
-        setSelectedId(items[idx + 1].id);
-      } else {
-        setSelectedId(null);
-      }
+      queryClient.invalidateQueries({ queryKey: ["stewardship-queue"] });
+      setSelected(null);
     },
   });
 
   const escalateMutation = useMutation({
     mutationFn: (id: string) => escalateItem(id),
-    onSuccess: () =>
-      qc.invalidateQueries({ queryKey: ["stewardship-queue"] }),
-  });
-
-  const bulkApproveMutation = useMutation({
-    mutationFn: (ids: string[]) => bulkApprove(ids, 0.85),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["stewardship-queue"] });
-      setBulkIds(new Set());
-      setBulkMode(false);
+      queryClient.invalidateQueries({ queryKey: ["stewardship-queue"] });
+      setSelected(null);
     },
   });
 
-  const feedbackMutation = useMutation({
-    mutationFn: (body: {
-      queue_item_id: string;
-      steward_decision: string;
-      correction_reason: string;
-      domain: string;
-    }) => submitAiFeedback(body),
-    onSuccess: () => setOverrideOpen(false),
+  const bulkMutation = useMutation({
+    mutationFn: (ids: string[]) => bulkApprove(ids, 0.85),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["stewardship-queue"] }),
   });
 
-  // Keyboard shortcuts
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) return;
-      if (!selectedItem || selectedItem.status === "resolved") return;
+  // Apply type + priority filters client-side
+  const filtered = useMemo(() => {
+    const typeSet = new Set(types);
+    const priSet = new Set(priorities.map(Number));
+    return items.filter((i) => {
+      if (typeSet.size > 0 && !typeSet.has(i.item_type)) return false;
+      if (priSet.size > 0 && !priSet.has(i.priority)) return false;
+      return true;
+    });
+  }, [items, types, priorities]);
 
-      if (e.key === "a" || e.key === "A") {
-        e.preventDefault();
-        if (userRole !== "ai_reviewer") {
-          resolveMutation.mutate({ id: selectedItem.id, action: "approve" });
-        }
-      } else if (e.key === "r" || e.key === "R") {
-        e.preventDefault();
-        if (userRole !== "ai_reviewer") {
-          resolveMutation.mutate({ id: selectedItem.id, action: "reject" });
-        }
-      } else if (e.key === "n" || e.key === "N") {
-        e.preventDefault();
-        const idx = items.findIndex((i) => i.id === selectedId);
-        if (idx >= 0 && idx < items.length - 1) {
-          setSelectedId(items[idx + 1].id);
-        }
-      } else if (e.key === "e" || e.key === "E") {
-        e.preventDefault();
-        escalateMutation.mutate(selectedItem.id);
+  // KPIs
+  const kpis = useMemo((): KpiItem[] => {
+    let critical = 0,
+      overSla = 0,
+      autoApprovable = 0,
+      withAi = 0,
+      confSum = 0;
+    for (const item of filtered) {
+      if (item.priority === 1) critical++;
+      const age = ageHours(item.created_at);
+      if (item.sla_hours !== null && age > item.sla_hours) overSla++;
+      if (item.ai_confidence !== null && item.ai_confidence !== undefined) {
+        withAi++;
+        confSum += item.ai_confidence;
+        if (item.ai_confidence >= 0.85) autoApprovable++;
       }
-    },
-    [selectedItem, selectedId, items, resolveMutation, escalateMutation, userRole]
+    }
+    const avgConf = withAi > 0 ? (confSum / withAi) * 100 : 0;
+    return [
+      { label: "Open", value: filtered.length.toLocaleString() },
+      { label: "Critical", value: critical, tone: critical > 0 ? "neg" : "pos" },
+      { label: "Over SLA", value: overSla, tone: overSla > 0 ? "warn" : "pos" },
+      {
+        label: "Auto-approvable",
+        value: autoApprovable,
+        hint: "AI confidence ≥ 85%",
+        tone: autoApprovable > 0 ? "pos" : "neutral",
+      },
+      {
+        label: "Avg confidence",
+        value: withAi > 0 ? `${avgConf.toFixed(0)}%` : "—",
+        tone: avgConf >= 85 ? "pos" : avgConf >= 60 ? "warn" : "neg",
+      },
+      {
+        label: "With AI",
+        value: withAi,
+        hint: `${filtered.length - withAi} items lack AI recommendation`,
+      },
+    ];
+  }, [filtered]);
+
+  // Small multiples — counts per type (use totals as single-value "bars")
+  const typeSeries: SmallMultipleSeries[] = useMemo(() => {
+    const keys: StewardshipItemType[] = [
+      "merge_decision",
+      "golden_record_review",
+      "exception",
+      "writeback_approval",
+      "contract_breach",
+      "glossary_review",
+    ];
+    return keys.map((k, i) => {
+      const slice = filtered.filter((f) => f.item_type === k);
+      const count = slice.length;
+      // Fake a 7-point series from priority buckets (P1..P5 → counts)
+      const data = [1, 2, 3, 4, 5].map((p) => ({
+        x: p,
+        y: slice.filter((s) => s.priority === p).length,
+      }));
+      return {
+        key: k,
+        label: ITEM_TYPE_CONFIG[k]?.label ?? k,
+        data,
+        value: count,
+        color: i % 2 === 0 ? "#0D5639" : "#7C3AED",
+      };
+    });
+  }, [filtered]);
+
+  const autoApprovableIds = useMemo(
+    () =>
+      filtered
+        .filter((f) => f.ai_confidence !== null && (f.ai_confidence ?? 0) >= 0.85 && f.status === "open")
+        .map((f) => f.id),
+    [filtered],
   );
 
-  useEffect(() => {
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleKeyDown]);
+  // Narrative
+  const narrative = useMemo(() => {
+    const critical = filtered.filter((f) => f.priority === 1).length;
+    const autoCount = autoApprovableIds.length;
+    const overSla = filtered.filter(
+      (f) => f.sla_hours !== null && ageHours(f.created_at) > f.sla_hours,
+    ).length;
+
+    if (critical > 0) {
+      return {
+        headline: `${critical} critical item${critical === 1 ? "" : "s"} in the queue${overSla > 0 ? ` · ${overSla} past SLA` : ""}.`,
+        detail:
+          autoCount > 0
+            ? `${autoCount} more items are AI-confident above 85% and eligible for bulk approval.`
+            : "Triage the criticals manually.",
+        tone: "neg" as const,
+      };
+    }
+    if (autoCount > 0) {
+      return {
+        headline: `${autoCount} item${autoCount === 1 ? "" : "s"} are AI-confident ≥ 85% — ready for bulk approval.`,
+        detail: `${filtered.length - autoCount} still need human judgement.`,
+        tone: "info" as const,
+      };
+    }
+    return {
+      headline: `${filtered.length.toLocaleString()} item${filtered.length === 1 ? "" : "s"} in queue — no criticals, no auto-approvable.`,
+      detail: overSla > 0 ? `${overSla} are past SLA.` : "All items within SLA.",
+      tone: overSla > 0 ? ("warn" as const) : ("pos" as const),
+    };
+  }, [filtered, autoApprovableIds]);
+
+  const columns: DenseColumnDef<StewardshipQueueItem>[] = useMemo(
+    () => [
+      {
+        accessorKey: "priority",
+        header: "P",
+        size: 56,
+        cell: ({ getValue }) => {
+          const p = getValue() as number;
+          const cfg = PRIORITY_LABELS[p] ?? PRIORITY_LABELS[3];
+          return <Badge className={`text-[10px] ${cfg.color}`}>{cfg.label}</Badge>;
+        },
+      },
+      {
+        accessorKey: "item_type",
+        header: "Type",
+        cell: ({ getValue }) => {
+          const t = getValue() as StewardshipItemType;
+          const cfg = ITEM_TYPE_CONFIG[t] ?? {
+            label: t,
+            icon: <ClipboardList className="h-3 w-3" />,
+            color: "bg-white/[0.65] text-muted-foreground",
+          };
+          return (
+            <Badge variant="outline" className={`text-[10px] ${cfg.color}`}>
+              {cfg.icon}
+              <span className="ml-1">{cfg.label}</span>
+            </Badge>
+          );
+        },
+      },
+      {
+        accessorKey: "domain",
+        header: "Subject",
+        cell: ({ getValue }) => (
+          <span className="max-w-[280px] truncate text-foreground">{getValue() as string}</span>
+        ),
+      },
+      {
+        accessorKey: "ai_confidence",
+        header: "AI",
+        size: 128,
+        cell: ({ getValue }) => {
+          const v = getValue() as number | null;
+          if (v === null || v === undefined) return <span className="text-muted-foreground">—</span>;
+          return <ConfidenceBar confidence={v} />;
+        },
+      },
+      {
+        accessorKey: "assigned_to",
+        header: "Assignee",
+        cell: ({ getValue }) =>
+          getValue() ? (
+            <span className="text-foreground">{getValue() as string}</span>
+          ) : (
+            <span className="text-muted-foreground">unassigned</span>
+          ),
+      },
+      {
+        accessorKey: "created_at",
+        header: "Age",
+        size: 96,
+        cell: ({ row }) => {
+          const age = ageHours(row.original.created_at);
+          const tone = ageTone(age, row.original.sla_hours);
+          return (
+            <span
+              className={
+                tone === "neg"
+                  ? "font-medium text-[#DC2626] tabular-nums"
+                  : tone === "warn"
+                    ? "font-medium text-[#D97706] tabular-nums"
+                    : "text-muted-foreground tabular-nums"
+              }
+            >
+              {relativeTime(row.original.created_at)}
+            </span>
+          );
+        },
+      },
+      {
+        accessorKey: "status",
+        header: "Status",
+        size: 96,
+        cell: ({ getValue }) => (
+          <span className="capitalize text-muted-foreground">
+            {(getValue() as string).replace("_", " ")}
+          </span>
+        ),
+      },
+    ],
+    [],
+  );
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-            <ClipboardList className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-foreground">
-              Stewardship Workbench
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {data?.total ?? 0} items in queue
-            </p>
-          </div>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="font-display text-xl font-semibold text-foreground">Stewardship queue</h1>
+          <p className="text-sm text-muted-foreground">
+            Manual decisions pending review · {items.length.toLocaleString()} total
+          </p>
         </div>
         <div className="flex items-center gap-2">
+          <SavedView routeKey="stewardship" />
+          {autoApprovableIds.length > 0 ? (
+            <Button
+              size="sm"
+              onClick={() => bulkMutation.mutate(autoApprovableIds)}
+              disabled={bulkMutation.isPending}
+              className="gap-1 bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              <Brain className="h-3.5 w-3.5" />
+              Bulk approve {autoApprovableIds.length}
+            </Button>
+          ) : null}
           <Link href="/stewardship/metrics">
             <Button variant="outline" size="sm">
               Metrics
             </Button>
           </Link>
-          {userRole !== "ai_reviewer" && (
-            <Button
-              variant={bulkMode ? "default" : "outline"}
-              size="sm"
-              onClick={() => {
-                setBulkMode(!bulkMode);
-                setBulkIds(new Set());
-              }}
-            >
-              <Zap className="mr-1 h-3.5 w-3.5" />
-              {bulkMode ? "Cancel Bulk" : "Bulk Approve"}
-            </Button>
-          )}
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex items-center gap-2">
-        <Filter className="h-4 w-4 text-muted-foreground" />
-        {/* Status */}
-        {STATUS_FILTERS.map((s) => (
-          <Button
-            key={s}
-            variant={statusFilter === s ? "default" : "outline"}
-            size="sm"
-            className="text-xs capitalize"
-            onClick={() => setStatusFilter(s)}
-          >
-            {s.replace("_", " ")}
-          </Button>
-        ))}
-        <span className="mx-1 h-4 w-px bg-black/[0.05]" />
-        {/* Type */}
-        <Button
-          variant={!typeFilter ? "default" : "outline"}
-          size="sm"
-          className="text-xs"
-          onClick={() => setTypeFilter("")}
-        >
-          All Types
-        </Button>
-        {Object.entries(ITEM_TYPE_CONFIG).map(([key, cfg]) => (
-          <Button
-            key={key}
-            variant={typeFilter === key ? "default" : "outline"}
-            size="sm"
-            className="text-xs"
-            onClick={() => setTypeFilter(key)}
-          >
-            {cfg.label}
-          </Button>
-        ))}
-      </div>
-
-      {/* Bulk approve bar */}
-      {bulkMode && (
-        <div className="flex items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 px-4 py-2">
-          <span className="text-sm text-foreground">
-            {bulkIds.size} selected (confidence &ge; 85%)
-          </span>
-          <Button
-            size="sm"
-            disabled={bulkIds.size === 0 || bulkApproveMutation.isPending}
-            onClick={() => bulkApproveMutation.mutate(Array.from(bulkIds))}
-          >
-            {bulkApproveMutation.isPending ? (
-              <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
-            ) : null}
-            Approve {bulkIds.size}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              // Select all with high confidence
-              const highConf = items.filter(
-                (i) =>
-                  i.ai_confidence !== null &&
-                  i.ai_confidence >= 0.85 &&
-                  i.status !== "resolved"
-              );
-              setBulkIds(new Set(highConf.map((i) => i.id)));
-            }}
-          >
-            Select all high confidence
-          </Button>
-        </div>
-      )}
-
-      {/* Split panel */}
-      <div className="flex gap-4" style={{ minHeight: "calc(100vh - 280px)" }}>
-        {/* Left: queue list */}
-        <Card className="w-[420px] shrink-0 overflow-hidden">
-          <CardContent className="p-0">
-            {isLoading ? (
-              <div className="flex h-40 items-center justify-center">
-                <Loader2 className="h-5 w-5 animate-spin text-primary" />
-              </div>
-            ) : items.length === 0 ? (
-              <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
-                No items in queue
-              </div>
-            ) : (
-              <div className="max-h-[calc(100vh-300px)] overflow-y-auto">
-                {items.map((item) => (
-                  <div key={item.id} className="flex items-center">
-                    {bulkMode && (
-                      <input
-                        type="checkbox"
-                        className="ml-3 h-4 w-4 rounded border-black/[0.08]"
-                        checked={bulkIds.has(item.id)}
-                        onChange={(e) => {
-                          const next = new Set(bulkIds);
-                          if (e.target.checked) next.add(item.id);
-                          else next.delete(item.id);
-                          setBulkIds(next);
-                        }}
-                      />
-                    )}
-                    <div className="flex-1">
-                      <QueueRow
-                        item={item}
-                        selected={item.id === selectedId}
-                        onSelect={() => setSelectedId(item.id)}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Right: action panel */}
-        <Card className="flex-1">
-          <CardContent className="p-5">
-            {selectedItem ? (
-              <ActionPanel
-                item={selectedItem}
-                onApprove={() =>
-                  resolveMutation.mutate({
-                    id: selectedItem.id,
-                    action: "approve",
-                  })
-                }
-                onReject={() =>
-                  resolveMutation.mutate({
-                    id: selectedItem.id,
-                    action: "reject",
-                  })
-                }
-                onEscalate={() => escalateMutation.mutate(selectedItem.id)}
-                onOverride={() => setOverrideOpen(true)}
-                isResolving={resolveMutation.isPending}
-                userRole={userRole}
-              />
-            ) : (
-              <div className="flex h-60 items-center justify-center text-sm text-muted-foreground">
-                Select an item from the queue
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Override modal */}
-      <OverrideModal
-        open={overrideOpen}
-        onClose={() => setOverrideOpen(false)}
-        item={selectedItem}
-        onSubmit={(reason) => {
-          if (selectedItem) {
-            feedbackMutation.mutate({
-              queue_item_id: selectedItem.id,
-              steward_decision: "override",
-              correction_reason: reason,
-              domain: selectedItem.domain,
-            });
-          }
-        }}
+      <FilterChipBar
+        groups={[
+          {
+            key: "status",
+            label: "Status",
+            selected: statuses,
+            onChange: setStatuses,
+            single: true,
+            options: [
+              { value: "open", label: "Open" },
+              { value: "in_progress", label: "In progress" },
+              { value: "resolved", label: "Resolved" },
+              { value: "escalated", label: "Escalated" },
+            ],
+          },
+          {
+            key: "type",
+            label: "Type",
+            selected: types,
+            onChange: setTypes,
+            options: (Object.keys(ITEM_TYPE_CONFIG) as StewardshipItemType[]).map((k) => ({
+              value: k,
+              label: ITEM_TYPE_CONFIG[k].label,
+            })),
+          },
+          {
+            key: "priority",
+            label: "Priority",
+            selected: priorities,
+            onChange: setPriorities,
+            options: Object.entries(PRIORITY_LABELS).map(([k, v]) => ({
+              value: k,
+              label: `P${k} · ${v.label}`,
+            })),
+          },
+        ]}
       />
 
-      {/* Keyboard shortcut hint */}
-      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-        <span>
-          <kbd className="rounded border border-black/[0.08] px-1.5 py-0.5 font-mono">
-            A
-          </kbd>{" "}
-          Approve
-        </span>
-        <span>
-          <kbd className="rounded border border-black/[0.08] px-1.5 py-0.5 font-mono">
-            R
-          </kbd>{" "}
-          Reject
-        </span>
-        <span>
-          <kbd className="rounded border border-black/[0.08] px-1.5 py-0.5 font-mono">
-            N
-          </kbd>{" "}
-          Next
-        </span>
-        <span>
-          <kbd className="rounded border border-black/[0.08] px-1.5 py-0.5 font-mono">
-            E
-          </kbd>{" "}
-          Escalate
-        </span>
-      </div>
+      <KpiRail items={kpis} columns={6} />
+
+      <NarrativeStrip
+        headline={narrative.headline}
+        detail={narrative.detail}
+        tone={narrative.tone}
+        cta={
+          autoApprovableIds.length > 0
+            ? {
+                label: `Bulk approve ${autoApprovableIds.length}`,
+                href: "#",
+              }
+            : null
+        }
+      />
+
+      {isLoading ? (
+        <div className="space-y-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-9 w-full rounded-lg" />
+          ))}
+        </div>
+      ) : error ? (
+        <Alert variant="destructive">
+          <AlertDescription>
+            Failed to load queue.{" "}
+            <Button variant="link" className="px-0" onClick={() => refetch()}>
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
+      ) : (
+        <>
+          <div>
+            <SectionHeader
+              title="Queue"
+              caption={`${filtered.length.toLocaleString()} match filters${filtered.length > 500 ? " · virtualized" : ""}`}
+            />
+            <div className="mt-2">
+              <DenseDataTable<StewardshipQueueItem>
+                data={filtered}
+                columns={columns}
+                onRowClick={(f) => setSelected(f)}
+                maxHeight={560}
+                emptyLabel="No items match these filters"
+              />
+            </div>
+          </div>
+
+          <div>
+            <SectionHeader title="By type" caption="Counts split across priority" />
+            <div className="mt-2">
+              <SmallMultiplesChart series={typeSeries} columns={6} />
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Detail dialog */}
+      <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
+        <DialogContent className="max-w-xl">
+          {selected ? (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Badge className={PRIORITY_LABELS[selected.priority]?.color}>
+                    P{selected.priority}
+                  </Badge>
+                  <span>{ITEM_TYPE_CONFIG[selected.item_type]?.label ?? selected.item_type}</span>
+                  <span className="text-muted-foreground">·</span>
+                  <span className="font-mono text-sm">{selected.domain}</span>
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3 text-sm">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Source ID</p>
+                    <p className="font-mono text-xs text-foreground">{selected.source_id}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Status</p>
+                    <p className="capitalize text-foreground">{selected.status}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Created</p>
+                    <p className="text-foreground">{relativeTime(selected.created_at)}</p>
+                  </div>
+                  {selected.sla_hours ? (
+                    <div>
+                      <p className="text-xs text-muted-foreground">SLA</p>
+                      <p className="text-foreground">{selected.sla_hours}h</p>
+                    </div>
+                  ) : null}
+                </div>
+
+                {selected.ai_recommendation ? (
+                  <div className="rounded-lg border border-black/[0.06] bg-[#7C3AED]/[0.04] p-3">
+                    <div className="flex items-center gap-2">
+                      <Brain className="h-4 w-4 text-[#7C3AED]" />
+                      <span className="text-xs font-semibold uppercase tracking-wide text-[#7C3AED]">
+                        AI recommendation
+                      </span>
+                      {selected.ai_confidence !== null && selected.ai_confidence !== undefined ? (
+                        <ConfidenceBar confidence={selected.ai_confidence} />
+                      ) : null}
+                    </div>
+                    <p className="mt-1 text-sm text-foreground">{selected.ai_recommendation}</p>
+                  </div>
+                ) : null}
+              </div>
+
+              <DialogFooter className="gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => escalateMutation.mutate(selected.id)}
+                  disabled={escalateMutation.isPending}
+                >
+                  Escalate
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setOverrideOpen(true);
+                  }}
+                >
+                  Reject
+                </Button>
+                <Button
+                  size="sm"
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
+                  disabled={resolveMutation.isPending}
+                  onClick={() =>
+                    resolveMutation.mutate({ id: selected.id, action: "approve" })
+                  }
+                >
+                  Approve
+                </Button>
+              </DialogFooter>
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
+      {/* Override / reject reason dialog */}
+      <Dialog open={overrideOpen} onOpenChange={setOverrideOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reject with reason</DialogTitle>
+          </DialogHeader>
+          <Textarea
+            value={overrideReason}
+            onChange={(e) => setOverrideReason(e.target.value)}
+            placeholder="Correction reason (required)"
+            rows={4}
+          />
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setOverrideOpen(false);
+                setOverrideReason("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              disabled={!overrideReason.trim() || !selected}
+              onClick={() => {
+                if (!selected) return;
+                resolveMutation.mutate({
+                  id: selected.id,
+                  action: "reject",
+                  notes: overrideReason.trim(),
+                });
+                setOverrideOpen(false);
+                setOverrideReason("");
+              }}
+            >
+              Submit
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

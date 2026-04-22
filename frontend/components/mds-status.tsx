@@ -7,7 +7,7 @@
  * For WS7/WS8 from Meridian v3.0 spec §4.
  */
 
-import { mdsClasses } from "./mds";
+import { mdsClasses } from "@/lib/mds";
 
 /**
  * Status dot indicator — small colored circle
