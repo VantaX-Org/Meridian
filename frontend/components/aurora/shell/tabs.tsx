@@ -13,7 +13,13 @@
 
 "use client";
 
-import { useMemo, type KeyboardEvent, type ReactNode } from "react";
+import {
+  useCallback,
+  useMemo,
+  useRef,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import { clsx } from "../primitives/internal";
 
 export interface TabsItem<TValue extends string = string> {
@@ -45,6 +51,20 @@ export function Tabs<TValue extends string = string>({
     [items, value],
   );
 
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
+
+  const selectAt = useCallback(
+    (targetIndex: number) => {
+      const item = items[targetIndex];
+      if (!item || item.disabled) return;
+      onValueChange(item.id);
+      // Move DOM focus to the newly selected tab so subsequent arrow presses
+      // fire from the new index. Required by WAI-ARIA roving-tabindex.
+      tabRefs.current[targetIndex]?.focus();
+    },
+    [items, onValueChange],
+  );
+
   const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
     if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
       event.preventDefault();
@@ -52,18 +72,22 @@ export function Tabs<TValue extends string = string>({
       for (let i = 1; i <= items.length; i += 1) {
         const next = (index + dir * i + items.length) % items.length;
         if (!items[next].disabled) {
-          onValueChange(items[next].id);
+          selectAt(next);
           break;
         }
       }
     } else if (event.key === "Home") {
       event.preventDefault();
-      const first = items.find((item) => !item.disabled);
-      if (first) onValueChange(first.id);
+      const first = items.findIndex((item) => !item.disabled);
+      if (first >= 0) selectAt(first);
     } else if (event.key === "End") {
       event.preventDefault();
-      const last = [...items].reverse().find((item) => !item.disabled);
-      if (last) onValueChange(last.id);
+      for (let i = items.length - 1; i >= 0; i -= 1) {
+        if (!items[i].disabled) {
+          selectAt(i);
+          break;
+        }
+      }
     }
   };
 
@@ -78,6 +102,9 @@ export function Tabs<TValue extends string = string>({
         return (
           <button
             key={item.id}
+            ref={(el) => {
+              tabRefs.current[index] = el;
+            }}
             type="button"
             role="tab"
             aria-selected={selected}
