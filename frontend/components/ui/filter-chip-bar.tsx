@@ -93,9 +93,9 @@ export function FilterChipBar({ groups, className, right }: FilterChipBarProps) 
               {label}
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-56">
-              <DropdownMenuLabel className="text-xs">{group.label}</DropdownMenuLabel>
-              <DropdownMenuSeparator />
               <DropdownMenuGroup>
+                <DropdownMenuLabel className="text-xs">{group.label}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
                 {group.options.map((opt) => (
                   <DropdownMenuCheckboxItem
                     key={opt.value}

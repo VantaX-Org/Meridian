@@ -117,72 +117,74 @@ function HeaderExportMenu() {
         Export
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" sideOffset={8} className="w-64">
-        <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
-          {isLoading
-            ? "Finding latest analysis…"
-            : hasReport
-              ? `Latest analysis: ${latestLabel}`
-              : "No completed analysis yet"}
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
+            {isLoading
+              ? "Finding latest analysis…"
+              : hasReport
+                ? `Latest analysis: ${latestLabel}`
+                : "No completed analysis yet"}
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
 
-        <DropdownMenuItem
-          disabled={!hasReport}
-          render={
-            hasReport ? (
-              <a
-                href={getReportDownloadUrl(latestComplete!.id)}
-                download
-                className="flex items-center gap-2 cursor-pointer"
-              />
-            ) : undefined
-          }
-        >
-          <FileText className="h-4 w-4" />
-          <span>Download PDF report</span>
-        </DropdownMenuItem>
+          <DropdownMenuItem
+            disabled={!hasReport}
+            render={
+              hasReport ? (
+                <a
+                  href={getReportDownloadUrl(latestComplete!.id)}
+                  download
+                  className="flex items-center gap-2 cursor-pointer"
+                />
+              ) : undefined
+            }
+          >
+            <FileText className="h-4 w-4" />
+            <span>Download PDF report</span>
+          </DropdownMenuItem>
 
-        <DropdownMenuItem
-          disabled={!hasReport}
-          render={
-            hasReport ? (
-              <a
-                href={getReportJsonExportUrl(latestComplete!.id)}
-                download
-                className="flex items-center gap-2 cursor-pointer"
-              />
-            ) : undefined
-          }
-        >
-          <FileJson className="h-4 w-4" />
-          <span>Download JSON report</span>
-        </DropdownMenuItem>
+          <DropdownMenuItem
+            disabled={!hasReport}
+            render={
+              hasReport ? (
+                <a
+                  href={getReportJsonExportUrl(latestComplete!.id)}
+                  download
+                  className="flex items-center gap-2 cursor-pointer"
+                />
+              ) : undefined
+            }
+          >
+            <FileJson className="h-4 w-4" />
+            <span>Download JSON report</span>
+          </DropdownMenuItem>
 
-        <DropdownMenuItem
-          disabled={!hasReport}
-          render={
-            hasReport ? (
-              <a
-                href={getConfigMatchesExportUrl(latestComplete!.id)}
-                download
-                className="flex items-center gap-2 cursor-pointer"
-              />
-            ) : undefined
-          }
-        >
-          <FileSpreadsheet className="h-4 w-4" />
-          <span>Download config matches (xlsx)</span>
-        </DropdownMenuItem>
+          <DropdownMenuItem
+            disabled={!hasReport}
+            render={
+              hasReport ? (
+                <a
+                  href={getConfigMatchesExportUrl(latestComplete!.id)}
+                  download
+                  className="flex items-center gap-2 cursor-pointer"
+                />
+              ) : undefined
+            }
+          >
+            <FileSpreadsheet className="h-4 w-4" />
+            <span>Download config matches (xlsx)</span>
+          </DropdownMenuItem>
 
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          render={
-            <Link href="/reports" className="flex items-center gap-2 cursor-pointer" />
-          }
-        >
-          <List className="h-4 w-4" />
-          <span>View all reports</span>
-        </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            render={
+              <Link href="/reports" className="flex items-center gap-2 cursor-pointer" />
+            }
+          >
+            <List className="h-4 w-4" />
+            <span>View all reports</span>
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -232,6 +234,7 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
