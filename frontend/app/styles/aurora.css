@@ -173,6 +173,16 @@
   --aurora-focus-ring-colour: var(--aurora-accent-500);
 
   /* §5.4.1 Compact / comfortable are applied by `[data-density=...]` */
+}
+
+/* Browser-native UA rendering (scrollbars, <select>, <input type=date>, …)
+   follows `color-scheme`. During the WS1–WS7 transition the legacy Fiori
+   dashboard still renders on a light canvas at `<html>`, so we scope the
+   dark UA hint to explicit `[data-theme="dark"]` opt-ins (the Aurora token
+   playground today, Aurora workspaces from WS4 onwards). `:root` stays on
+   the browser default to prevent dark scrollbars / dark `<select>` drop-
+   downs bleeding into legacy light pages. */
+[data-theme="dark"] {
   color-scheme: dark;
 }
 
