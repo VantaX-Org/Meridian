@@ -103,7 +103,7 @@ export function FindingsTableRow({
   const severityColors: Record<string, string> = {
     critical: "bg-[#BB0000]",
     high: "bg-[#E76500]",
-    medium: "bg-[#7858FF]",
+    medium: "bg-[#A45D00]",
     low: "bg-[#6B7280]",
   };
   

@@ -244,13 +244,17 @@ RLS policy on every data table — always set `app.tenant_id` before queries.
 
 ---
 
-## Frontend design system — light glassmorphism
+## Frontend design system — Fiori Horizon (hybrid glass)
 
-- **Primary**: `#0D5639` (Meridian forest green)
-- **Background**: `#F7F8FA` + gradient mesh orbs
-- **Glass cards**: `rgba(255,255,255,0.70)`, `backdrop-filter: blur(16px)`
-- **Classes**: `.vx-card`, `.vx-glass`, `.vx-glass-elevated`
-- Fonts: Geist (sans) + Geist Mono. Never dark backgrounds.
+- **Primary**: `#0070F2` (SAP Fiori Horizon blue)
+- **Background**: `#F5F6F7` (Fiori shell) + gradient mesh orbs
+- **Borders**: `#D5DADD` (Fiori border)
+- **Status**: success `#256F3A`, warning `#E76500`, warning-dark `#A45D00` (medium severity), error `#BB0000`, info `#089DE3`, accent `#7858FF`
+- **Flat tiles (default)**: `.vx-card` → `background:#FFFFFF`, `border:1px solid #D5DADD`, `border-radius:12px`, soft elevation shadow.
+- **Glass (hero rails only)**: `.vx-glass` and `.vx-glass-elevated` keep `backdrop-filter: blur(…)` and semi-transparent fills. Used exclusively on `KpiRail`, `HeroKpi`, and `NarrativeStrip`. All other surfaces use the flat tile.
+- **Typography**: Inter (`--font-sans`, `--font-display`) for body + headings, JetBrains Mono (`--font-mono`) for all numbers. Utilities: `.vx-num`, `.vx-hero-value`, `.vx-eyebrow`.
+- **Motion**: `.vx-animate-in`, `.vx-stagger` for subtle page / KPI-rail entrance animations (disabled under `prefers-reduced-motion`).
+- **Shell**: global ⌘K command palette (`<CommandPalette />`), breadcrumb top-bar, sectioned sidebar with inset active-rail indicator. Never dark backgrounds.
 
 ---
 

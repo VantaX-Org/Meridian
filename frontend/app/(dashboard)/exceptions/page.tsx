@@ -89,7 +89,7 @@ const KANBAN_COLUMNS: { status: ExceptionStatus; label: string }[] = [
 const SEVERITY_COLORS: Record<string, string> = {
   critical: "bg-[#BB0000]/10 text-[#BB0000] border-[#BB0000]/20",
   high: "bg-[#E76500]/10 text-[#E76500] border-[#E76500]/20",
-  medium: "bg-[#E76500]/10 text-[#E76500] border-[#E76500]/20",
+  medium: "bg-[#A45D00]/10 text-[#A45D00] border-[#A45D00]/20",
   low: "bg-primary/10 text-primary border-primary/20",
 };
 

@@ -14,7 +14,7 @@ export interface PatternTreemapProps {
 const SEVERITY_COLOR: Record<MiningPattern["severity"], string> = {
   critical: "#BB0000",
   high: "#E76500",
-  medium: "#E76500",
+  medium: "#A45D00",
   low: "#256F3A",
 };
 

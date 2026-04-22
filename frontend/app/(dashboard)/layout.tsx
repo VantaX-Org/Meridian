@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   User,
   Bell,
@@ -17,7 +17,10 @@ import {
   FileSpreadsheet,
   List,
   LogOut,
+  Command as CommandIcon,
 } from "lucide-react";
+import { CommandPalette, useCommandPalette } from "@/components/command-palette";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 
 function LocalUserButton() {
   const { user, logout } = useAuth();
@@ -569,14 +572,14 @@ function SidebarNav({
                     data-sidebar-link
                     title={label}
                     onClick={onNavClick}
-                    className={`group relative flex items-center gap-3 rounded-xl transition-all duration-150 ${
+                    className={`group relative flex items-center gap-3 rounded-lg transition-all duration-150 ${
                       collapsed
                         ? "mx-auto h-10 w-10 justify-center"
                         : "mx-1 px-3 py-2"
                     } ${
                       active
-                        ? "bg-primary/[0.15] text-primary border border-primary/25 shadow-[0_0_12px_rgba(0,112,242,0.15)]"
-                        : "text-[#6B7280] hover:bg-black/[0.04] hover:text-foreground border border-transparent"
+                        ? "bg-primary/[0.08] text-primary font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-r-full before:bg-primary"
+                        : "text-[#6B7280] hover:bg-black/[0.04] hover:text-foreground"
                     }`}
                   >
                     <Icon data-sidebar-icon className={`shrink-0 ${collapsed ? "h-5 w-5" : "h-[18px] w-[18px]"}`} />
@@ -600,14 +603,14 @@ function SidebarNav({
           data-sidebar-link
           title="Settings"
           onClick={onNavClick}
-          className={`group relative flex items-center gap-3 rounded-xl transition-all duration-150 ${
+          className={`group relative flex items-center gap-3 rounded-lg transition-all duration-150 ${
             collapsed
               ? "mx-auto h-10 w-10 justify-center"
               : "mx-1 px-3 py-2"
           } ${
             pathname === "/settings"
-              ? "bg-primary/[0.15] text-primary border border-primary/25 shadow-[0_0_12px_rgba(0,112,242,0.15)]"
-              : "text-[#6B7280] hover:bg-black/[0.04] hover:text-foreground border border-transparent"
+              ? "bg-primary/[0.08] text-primary font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-r-full before:bg-primary"
+              : "text-[#6B7280] hover:bg-black/[0.04] hover:text-foreground"
           }`}
         >
           <Settings data-sidebar-icon className={`shrink-0 ${collapsed ? "h-5 w-5" : "h-[18px] w-[18px]"}`} />
@@ -629,10 +632,10 @@ function SidebarNav({
                     data-sidebar-link
                     title={label}
                     onClick={onNavClick}
-                    className={`group flex items-center gap-2.5 rounded-xl px-3 py-1.5 text-sm transition-all duration-150 ${
+                    className={`group relative flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-sm transition-all duration-150 ${
                       active
-                        ? "bg-primary/[0.12] text-primary border border-primary/20"
-                        : "text-[#6B7280] hover:bg-black/[0.04] hover:text-foreground border border-transparent"
+                        ? "bg-primary/[0.08] text-primary font-semibold before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[2px] before:rounded-r-full before:bg-primary"
+                        : "text-[#6B7280] hover:bg-black/[0.04] hover:text-foreground"
                     }`}
                   >
                     <Icon className="h-[15px] w-[15px] shrink-0" />
@@ -725,6 +728,18 @@ export default function DashboardLayout({
 
   const { role: userRole } = useRole();
   const pageTitle = getPageTitle(pathname);
+  const { open: cmdkOpen, setOpen: setCmdkOpen } = useCommandPalette();
+  const breadcrumbItems = useMemo(() => {
+    const items: { label: string; href?: string }[] = [{ label: "Home", href: "/" }];
+    const segments = pathname.split("/").filter(Boolean);
+    let acc = "";
+    segments.forEach((seg) => {
+      acc += `/${seg}`;
+      const label = PAGE_TITLES[acc] ?? seg.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+      items.push({ label, href: acc });
+    });
+    return items;
+  }, [pathname]);
 
   const content = (
     <div className="flex h-screen overflow-hidden vx-mesh-bg">
@@ -817,14 +832,25 @@ export default function DashboardLayout({
               <Menu className="h-5 w-5" />
             </button>
 
-            {/* Search input */}
-            <div className="hidden sm:flex items-center gap-2 rounded-xl bg-white/[0.60] border border-black/[0.08] px-3 py-2 flex-1 max-w-md focus-within:ring-1 focus-within:ring-primary focus-within:border-primary/40 transition-all">
+            {/* Command palette trigger */}
+            <button
+              type="button"
+              onClick={() => setCmdkOpen(true)}
+              title="Open command palette (⌘K)"
+              className="group hidden sm:flex items-center gap-2 rounded-xl bg-white border border-border px-3 py-2 flex-1 max-w-md text-left transition-all hover:border-primary/40 hover:shadow-[0_0_0_3px_rgba(0,112,242,0.08)]"
+            >
               <Search className="h-4 w-4 text-muted-foreground shrink-0" />
-              <input
-                type="text"
-                placeholder="Search modules, findings, records..."
-                className="w-full bg-transparent text-sm text-foreground placeholder-muted-foreground outline-none"
-              />
+              <span className="flex-1 truncate text-sm text-muted-foreground">
+                Jump to anything…
+              </span>
+              <kbd className="inline-flex items-center gap-0.5 rounded-md border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+                <CommandIcon className="h-2.5 w-2.5" aria-hidden />
+                K
+              </kbd>
+            </button>
+
+            <div className="hidden lg:block min-w-0 flex-1">
+              <Breadcrumb items={breadcrumbItems} className="ml-1" />
             </div>
           </div>
 
@@ -854,6 +880,9 @@ export default function DashboardLayout({
 
       {/* Ask Meridian — floating chat bubble + drawer */}
       <AskMeridian />
+
+      {/* Command palette (⌘K) */}
+      <CommandPalette open={cmdkOpen} onOpenChange={setCmdkOpen} />
     </div>
   );
 

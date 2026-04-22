@@ -38,7 +38,7 @@ function statusBadge(status: ModuleStatus["status"]) {
       );
     case "completed":
       return (
-        <Badge className="gap-1 bg-[#E8F5EE] text-[#0070F2] border-[#8ECDB0]">
+        <Badge className="gap-1 bg-[#E8F5EE] text-[#256F3A] border-[#8ECDB0]">
           <CheckCircle2 className="h-3 w-3" />
           Completed
         </Badge>

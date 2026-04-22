@@ -39,9 +39,9 @@ export function severityColor(severity: string): string {
     case "high":
       return "bg-[#E76500]/10 text-[#E76500] border border-[#E76500]/20";
     case "medium":
-      return "bg-[#E76500]/10 text-[#E76500] border border-[#E76500]/20";
+      return "bg-[#A45D00]/10 text-[#A45D00] border border-[#A45D00]/20";
     case "low":
-      return "bg-[#00D4AA]/10 text-[#00D4AA] border border-[#00D4AA]/20";
+      return "bg-[#089DE3]/10 text-[#089DE3] border border-[#089DE3]/20";
     default:
       return "bg-black/[0.03] text-[#6B7280] border border-black/[0.08]";
   }
