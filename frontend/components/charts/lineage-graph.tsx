@@ -6,9 +6,9 @@ import type { LineageGraph, LineageNode } from "@/types/api";
 
 const NODE_COLOURS: Record<string, string> = {
   record: "#00D4AA",
-  finding: "#6366F1",
-  exception: "#DC2626",
-  cleaning: "#EA580C",
+  finding: "#7858FF",
+  exception: "#BB0000",
+  cleaning: "#E76500",
   dedup: "#7C3AED",
   relationship: "#2563EB",
 };

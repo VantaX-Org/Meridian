@@ -146,7 +146,7 @@ export function ConnectExtractPanel() {
 
         {extractMutation.isSuccess && (
           <Alert>
-            <CheckCircle className="h-4 w-4 text-[#16A34A]" />
+            <CheckCircle className="h-4 w-4 text-[#256F3A]" />
             <AlertDescription className="text-xs">
               Extraction job started. Check Sync Monitor for progress.
             </AlertDescription>

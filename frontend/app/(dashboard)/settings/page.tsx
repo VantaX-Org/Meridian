@@ -98,10 +98,10 @@ const ROLE_OPTIONS: { value: UserRole; label: string; tooltip?: string }[] = [
 ];
 
 const ROLE_COLORS: Record<string, string> = {
-  admin: "bg-[#DC2626]/10 text-destructive",
+  admin: "bg-[#BB0000]/10 text-destructive",
   steward: "bg-[#2563EB]/10 text-[#2563EB]",
-  analyst: "bg-[#16A34A]/10 text-[#16A34A]",
-  approver: "bg-[#D97706]/10 text-[#EA580C]",
+  analyst: "bg-[#256F3A]/10 text-[#256F3A]",
+  approver: "bg-[#E76500]/10 text-[#E76500]",
   auditor: "bg-white/[0.60] text-muted-foreground",
   viewer: "bg-white/[0.60] text-muted-foreground",
   ai_reviewer: "bg-[#7C3AED]/10 text-[#7C3AED]",
@@ -455,13 +455,13 @@ export default function SettingsPage() {
                       key: "weekly_cleaning",
                       label: "Weekly Cleaning Batch",
                       desc: "Auto-approve and apply standardisations (Mon 03:00 SAST)",
-                      icon: <Calendar className="h-4 w-4 text-[#16A34A]" />,
+                      icon: <Calendar className="h-4 w-4 text-[#256F3A]" />,
                     },
                     {
                       key: "monthly_report",
                       label: "Monthly Report",
                       desc: "Generate PDF, cost avoidance, exception billing (1st 04:00 SAST)",
-                      icon: <FileText className="h-4 w-4 text-[#EA580C]" />,
+                      icon: <FileText className="h-4 w-4 text-[#E76500]" />,
                     },
                     {
                       key: "daily_digest",
@@ -915,7 +915,7 @@ function TeamManagement() {
                           })
                         }
                         className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
-                          user.is_active ? "bg-[#16A34A]" : "bg-gray-300"
+                          user.is_active ? "bg-[#256F3A]" : "bg-gray-300"
                         }`}
                       >
                         <span
@@ -974,7 +974,7 @@ function TeamManagement() {
                     {row.perms.map((p, i) => (
                       <td key={i} className="px-2 py-2 text-center">
                         {p ? (
-                          <span className="text-[#16A34A]">&#10003;</span>
+                          <span className="text-[#256F3A]">&#10003;</span>
                         ) : (
                           <span className="text-white/[0.08]">&#8212;</span>
                         )}
@@ -1079,7 +1079,7 @@ function BillingTab({
                 return (
                   <div key={key} className="flex items-center gap-2 text-sm">
                     {enabled ? (
-                      <Check className="h-4 w-4 text-[#16A34A]" />
+                      <Check className="h-4 w-4 text-[#256F3A]" />
                     ) : (
                       <X className="h-4 w-4 text-white/[0.08]" />
                     )}
@@ -1224,9 +1224,9 @@ const MATCH_TYPE_OPTIONS: { value: MatchType; label: string }[] = [
 ];
 
 const MATCH_TYPE_COLORS: Record<string, string> = {
-  exact: "bg-[#16A34A]/10 text-[#16A34A]",
+  exact: "bg-[#256F3A]/10 text-[#256F3A]",
   fuzzy: "bg-[#2563EB]/10 text-[#2563EB]",
-  phonetic: "bg-[#D97706]/10 text-[#EA580C]",
+  phonetic: "bg-[#E76500]/10 text-[#E76500]",
   numeric_range: "bg-white/[0.60] text-muted-foreground",
   semantic: "bg-[#7C3AED]/10 text-[#7C3AED]",
 };
@@ -1450,13 +1450,13 @@ function MatchRulesTab() {
               <span>
                 <strong>{simResult.total_pairs}</strong> pairs tested
               </span>
-              <span className="text-[#16A34A]">
+              <span className="text-[#256F3A]">
                 <strong>{simResult.auto_merge_count}</strong> auto-merge
               </span>
               <span className="text-destructive">
                 <strong>{simResult.auto_dismiss_count}</strong> auto-dismiss
               </span>
-              <span className="text-[#EA580C]">
+              <span className="text-[#E76500]">
                 <strong>{simResult.queue_count}</strong> queued for review
               </span>
             </div>
@@ -1519,7 +1519,7 @@ function MatchRulesTab() {
                           })
                         }
                         className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
-                          rule.active ? "bg-[#16A34A]" : "bg-gray-300"
+                          rule.active ? "bg-[#256F3A]" : "bg-gray-300"
                         }`}
                       >
                         <span
@@ -1547,7 +1547,7 @@ function MatchRulesTab() {
                       </button>
                       <button
                         onClick={() => deleteMutation.mutate(rule.id)}
-                        className="rounded p-1 text-muted-foreground hover:bg-[#DC2626]/10 hover:text-destructive"
+                        className="rounded p-1 text-muted-foreground hover:bg-[#BB0000]/10 hover:text-destructive"
                         title="Delete rule"
                       >
                         <Trash2 className="h-4 w-4" />

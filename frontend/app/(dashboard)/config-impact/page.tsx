@@ -38,17 +38,17 @@ type Status = "blocked" | "degraded" | "ok";
 const STATUS_CONFIG: Record<Status, { icon: React.ReactNode; badge: string; label: string }> = {
   blocked: {
     icon: <AlertOctagon className="h-3 w-3" />,
-    badge: "bg-[#DC2626]/10 text-[#DC2626] border-[#DC2626]/20",
+    badge: "bg-[#BB0000]/10 text-[#BB0000] border-[#BB0000]/20",
     label: "Blocked",
   },
   degraded: {
     icon: <AlertTriangle className="h-3 w-3" />,
-    badge: "bg-[#D97706]/10 text-[#D97706] border-[#D97706]/20",
+    badge: "bg-[#E76500]/10 text-[#E76500] border-[#E76500]/20",
     label: "Degraded",
   },
   ok: {
     icon: <CheckCircle className="h-3 w-3" />,
-    badge: "bg-[#16A34A]/10 text-[#16A34A] border-[#16A34A]/20",
+    badge: "bg-[#256F3A]/10 text-[#256F3A] border-[#256F3A]/20",
     label: "OK",
   },
 };
@@ -143,7 +143,7 @@ export default function ConfigImpactPage() {
         label: system,
         data,
         value: slice.length,
-        color: i % 2 === 0 ? "#DC2626" : "#D97706",
+        color: i % 2 === 0 ? "#BB0000" : "#E76500",
       };
     });
   }, [availableSystems, filtered]);

@@ -13,11 +13,11 @@ export const MDS = {
   colors: {
     // Primary — Meridian Forest Green
     primary: {
-      DEFAULT: "#0D5639",
+      DEFAULT: "#0070F2",
       foreground: "#FFFFFF",
-      hover: "#0B4A31",
-      light: "#4BA87A",
-      dim: "rgba(13,86,57,0.08)",
+      hover: "#0057D2",
+      light: "#256F3A",
+      dim: "rgba(0,112,242,0.08)",
     },
     
     // Backgrounds
@@ -37,10 +37,10 @@ export const MDS = {
     
     // Status
     status: {
-      success: "#4BA87A",
-      warning: "#EA580C",
-      error: "#EF4444",
-      info: "#6366F1",
+      success: "#256F3A",
+      warning: "#E76500",
+      error: "#BB0000",
+      info: "#7858FF",
     },
     
     // Borders
@@ -61,11 +61,11 @@ export const MDS = {
     
     // Charts
     chart: {
-      1: "#0D5639", // primary green
-      2: "#FF8C42", // orange
-      3: "#4BA87A", // teal green
-      4: "#6366F1", // indigo
-      5: "#EF4444", // red
+      1: "#0070F2", // primary green
+      2: "#E76500", // orange
+      3: "#256F3A", // teal green
+      4: "#7858FF", // indigo
+      5: "#BB0000", // red
     },
   },
   
@@ -108,7 +108,7 @@ export const MDS = {
     card: "0 0 0 1px rgba(255,255,255,0.50) inset, 0 4px 24px rgba(0,0,0,0.04)",
     cardHover: "0 0 0 1px rgba(255,255,255,0.60) inset, 0 8px 32px rgba(0,0,0,0.06)",
     elevated: "0 0 0 1px rgba(255,255,255,0.70) inset, 0 8px 32px rgba(0,0,0,0.06)",
-    glow: "0 0 16px rgba(13,86,57,0.20), 0 0 0 1px rgba(13,86,57,0.12)",
+    glow: "0 0 16px rgba(0,112,242,0.20), 0 0 0 1px rgba(0,112,242,0.12)",
   },
   
   // ── Transitions ───────────────────────────────────────────────────────────
@@ -153,34 +153,34 @@ export const mdsClasses = {
   
   // Status badges
   badge: {
-    success: "bg-[#4BA87A]/10 text-[#4BA87A] border border-[#4BA87A]/20",
-    warning: "bg-[#EA580C]/10 text-[#EA580C] border border-[#EA580C]/20",
-    error: "bg-[#EF4444]/10 text-[#EF4444] border border-[#EF4444]/20",
-    info: "bg-[#6366F1]/10 text-[#6366F1] border border-[#6366F1]/20",
+    success: "bg-[#256F3A]/10 text-[#256F3A] border border-[#256F3A]/20",
+    warning: "bg-[#E76500]/10 text-[#E76500] border border-[#E76500]/20",
+    error: "bg-[#BB0000]/10 text-[#BB0000] border border-[#BB0000]/20",
+    info: "bg-[#7858FF]/10 text-[#7858FF] border border-[#7858FF]/20",
   },
   
   // Status dots
   statusDot: {
-    online: "bg-[#4BA87A]",
-    offline: "bg-[#EF4444]",
-    pending: "bg-[#EA580C]",
+    online: "bg-[#256F3A]",
+    offline: "bg-[#BB0000]",
+    pending: "bg-[#E76500]",
     unknown: "bg-[#6B7280]",
   },
   
   // Severity
   severity: {
-    critical: "text-[#EF4444] bg-[#EF4444]/10",
-    high: "text-[#EA580C] bg-[#EA580C]/10",
-    medium: "text-[#6366F1] bg-[#6366F1]/10",
+    critical: "text-[#BB0000] bg-[#BB0000]/10",
+    high: "text-[#E76500] bg-[#E76500]/10",
+    medium: "text-[#7858FF] bg-[#7858FF]/10",
     low: "text-[#6B7280] bg-[#6B7280]/10",
   },
   
   // DQS Score colors
   dqsScore: {
-    excellent: "text-[#4BA87A]",
-    good: "text-[#0D5639]",
-    fair: "text-[#EA580C]",
-    poor: "text-[#EF4444]",
+    excellent: "text-[#256F3A]",
+    good: "text-[#0070F2]",
+    fair: "text-[#E76500]",
+    poor: "text-[#BB0000]",
   },
 } as const;
 

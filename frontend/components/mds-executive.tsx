@@ -26,9 +26,9 @@ export function KpiCard({
   trend?: "up" | "down" | "stable";
 }) {
   const changeColor = change && change > 0 
-    ? "text-[#4BA87A]" 
+    ? "text-[#256F3A]" 
     : change && change < 0 
-      ? "text-[#EF4444]" 
+      ? "text-[#BB0000]" 
       : "text-[#6B7280]";
   
   const trendIcon = trend === "up" ? "↑" : trend === "down" ? "↓" : "→";
@@ -69,9 +69,9 @@ export function TenantHealthCard({
   status: "healthy" | "degraded" | "critical";
 }) {
   const statusConfig = {
-    healthy: { color: "bg-[#4BA87A]", label: "Healthy" },
-    degraded: { color: "bg-[#EA580C]", label: "Degraded" },
-    critical: { color: "bg-[#EF4444]", label: "Critical" },
+    healthy: { color: "bg-[#256F3A]", label: "Healthy" },
+    degraded: { color: "bg-[#E76500]", label: "Degraded" },
+    critical: { color: "bg-[#BB0000]", label: "Critical" },
   };
   
   const healthPercent = systemsCount > 0 ? (healthySystems / systemsCount) * 100 : 0;
@@ -95,8 +95,8 @@ export function TenantHealthCard({
         <div className="h-2 w-full bg-[#F7F8FA] rounded-full overflow-hidden">
           <div 
             className={`h-full rounded-full transition-all ${
-              healthPercent >= 80 ? "bg-[#4BA87A]" : 
-              healthPercent >= 50 ? "bg-[#EA580C]" : "bg-[#EF4444]"
+              healthPercent >= 80 ? "bg-[#256F3A]" : 
+              healthPercent >= 50 ? "bg-[#E76500]" : "bg-[#BB0000]"
             }`}
             style={{ width: `${healthPercent}%` }}
           />
@@ -140,8 +140,8 @@ export function AdminMetricCard({
           )}
           {trend && (
             <div className={`text-xs mt-2 ${
-              trend.value > 0 ? "text-[#4BA87A]" : 
-              trend.value < 0 ? "text-[#EF4444]" : "text-[#6B7280]"
+              trend.value > 0 ? "text-[#256F3A]" : 
+              trend.value < 0 ? "text-[#BB0000]" : "text-[#6B7280]"
             }`}>
               {trend.value > 0 ? "↑" : trend.value < 0 ? "↓" : "→"} {Math.abs(trend.value)}% {trend.label}
             </div>
@@ -170,9 +170,9 @@ export function SystemHealthIndicator({
   lastCheck?: string;
 }) {
   const statusConfig = {
-    online: { color: "bg-[#4BA87A]", label: "Online" },
-    offline: { color: "bg-[#EF4444]", label: "Offline" },
-    degraded: { color: "bg-[#EA580C]", label: "Degraded" },
+    online: { color: "bg-[#256F3A]", label: "Online" },
+    offline: { color: "bg-[#BB0000]", label: "Offline" },
+    degraded: { color: "bg-[#E76500]", label: "Degraded" },
   };
   
   return (
@@ -209,8 +209,8 @@ export function AdminUserRow({
     <tr className="border-b border-[rgba(0,0,0,0.04)] hover:bg-[rgba(0,0,0,0.02)]">
       <td className="px-4 py-3">
         <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-full bg-[#0D5639]/10 flex items-center justify-center">
-            <span className="text-sm font-medium text-[#0D5639]">
+          <div className="h-8 w-8 rounded-full bg-[#0070F2]/10 flex items-center justify-center">
+            <span className="text-sm font-medium text-[#0070F2]">
               {user.name.charAt(0).toUpperCase()}
             </span>
           </div>
@@ -221,17 +221,17 @@ export function AdminUserRow({
         </div>
       </td>
       <td className="px-4 py-3">
-        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-[#0D5639]/10 text-[#0D5639] capitalize">
+        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-[#0070F2]/10 text-[#0070F2] capitalize">
           {user.role.replace("_", " ")}
         </span>
       </td>
       <td className="px-4 py-3">
         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs ${
           user.status === "active" 
-            ? "bg-[#4BA87A]/10 text-[#4BA87A]" 
+            ? "bg-[#256F3A]/10 text-[#256F3A]" 
             : "bg-[#6B7280]/10 text-[#6B7280]"
         }`}>
-          <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${user.status === "active" ? "bg-[#4BA87A]" : "bg-[#6B7280]"}`} />
+          <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${user.status === "active" ? "bg-[#256F3A]" : "bg-[#6B7280]"}`} />
           {user.status}
         </span>
       </td>
@@ -243,7 +243,7 @@ export function AdminUserRow({
           {onEdit && (
             <button 
               onClick={onEdit}
-              className="text-xs text-[#0D5639] hover:text-[#0B4A31] transition-colors"
+              className="text-xs text-[#0070F2] hover:text-[#0057D2] transition-colors"
             >
               Edit
             </button>
@@ -251,7 +251,7 @@ export function AdminUserRow({
           {onDelete && (
             <button 
               onClick={onDelete}
-              className="text-xs text-[#EF4444] hover:text-[#DC2626] transition-colors"
+              className="text-xs text-[#BB0000] hover:text-[#BB0000] transition-colors"
             >
               Delete
             </button>
@@ -281,7 +281,7 @@ export function QuickStatsGrid({
         <div key={idx} className="vx-card p-4 text-center">
           {stat.icon && (
             <div className={`mx-auto mb-2 p-2 rounded-lg w-fit ${
-              stat.color ? stat.color : "bg-[#0D5639]/10"
+              stat.color ? stat.color : "bg-[#0070F2]/10"
             }`}>
               {stat.icon}
             </div>

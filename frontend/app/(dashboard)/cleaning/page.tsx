@@ -45,18 +45,18 @@ const PAGE_SIZE = 20;
 
 const STATUS_COLORS: Record<string, string> = {
   detected: "bg-[#2563EB]/10 text-[#2563EB] border border-[#3B82F6]/20",
-  recommended: "bg-[#D97706]/10 text-[#EA580C] border border-[#D97706]/20",
-  in_review: "bg-[#D97706]/10 text-[#EA580C] border border-[#EA580C]/20",
+  recommended: "bg-[#E76500]/10 text-[#E76500] border border-[#E76500]/20",
+  in_review: "bg-[#E76500]/10 text-[#E76500] border border-[#E76500]/20",
   approved: "bg-primary/10 text-primary border border-primary/20",
-  applied: "bg-[#16A34A]/10 text-[#16A34A] border border-[#16A34A]/20",
-  verified: "bg-[#16A34A]/10 text-[#16A34A] border border-[#16A34A]/30",
-  rejected: "bg-[#DC2626]/10 text-destructive border border-[#DC2626]/20",
+  applied: "bg-[#256F3A]/10 text-[#256F3A] border border-[#256F3A]/20",
+  verified: "bg-[#256F3A]/10 text-[#256F3A] border border-[#256F3A]/30",
+  rejected: "bg-[#BB0000]/10 text-destructive border border-[#BB0000]/20",
   rolled_back: "bg-white/[0.60] text-muted-foreground border border-black/[0.08]",
 };
 
 function confidenceColor(c: number): string {
-  if (c >= 85) return "text-[#16A34A]";
-  if (c >= 60) return "text-[#EA580C]";
+  if (c >= 85) return "text-[#256F3A]";
+  if (c >= 60) return "text-[#E76500]";
   return "text-destructive";
 }
 
@@ -199,7 +199,7 @@ export default function CleaningPage() {
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-[#EA580C]" />
+              <Clock className="h-4 w-4 text-[#E76500]" />
               <span className="text-sm text-muted-foreground">Pending Review</span>
             </div>
             <p className="mt-1 text-2xl font-bold">{totals?.recommended ?? 0}</p>
@@ -208,7 +208,7 @@ export default function CleaningPage() {
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-[#16A34A]" />
+              <CheckCircle2 className="h-4 w-4 text-[#256F3A]" />
               <span className="text-sm text-muted-foreground">Applied This Week</span>
             </div>
             <p className="mt-1 text-2xl font-bold">{totals?.applied ?? 0}</p>
@@ -594,10 +594,10 @@ export default function CleaningPage() {
                               <tr key={field} className="border-b border-border/30">
                                 <td className="py-2 pr-2 font-mono text-xs">{field}</td>
                                 <td className={`py-2 pr-2 ${changed ? "text-destructive" : ""}`}>{oldVal || "—"}</td>
-                                <td className={`py-2 ${changed ? "text-[#16A34A]" : ""}`}>
+                                <td className={`py-2 ${changed ? "text-[#256F3A]" : ""}`}>
                                   {newVal || "—"}
                                   {changed && (
-                                    <Badge className="ml-2 bg-[#D97706]/10 text-[#EA580C] border border-[#D97706]/20">
+                                    <Badge className="ml-2 bg-[#E76500]/10 text-[#E76500] border border-[#E76500]/20">
                                       Modified
                                     </Badge>
                                   )}
@@ -727,7 +727,7 @@ export default function CleaningPage() {
                         </div>
                       )}
                       <Button
-                        className="bg-[#16A34A] hover:bg-[#16A34A]/90 text-white"
+                        className="bg-[#256F3A] hover:bg-[#256F3A]/90 text-white"
                         onClick={() => applyMut.mutate(detail.id)}
                         disabled={applyMut.isPending}
                       >

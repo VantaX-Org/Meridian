@@ -40,8 +40,8 @@ interface Message {
 }
 
 const CHART_COLOURS = [
-  "#0D5639", "#4BA87A", "#1E7A52", "#EA580C", "#DC2626",
-  "#6366F1", "#4A5568", "#7C3AED",
+  "#0070F2", "#256F3A", "#089DE3", "#E76500", "#BB0000",
+  "#7858FF", "#4A5568", "#7C3AED",
 ];
 
 const SUGGESTED_QUESTIONS = [
@@ -77,7 +77,7 @@ function NlpChart({ chartType, data }: { chartType: "bar" | "line" | "pie"; data
           <XAxis dataKey={labelKey} tick={{ fontSize: 10 }} />
           <YAxis tick={{ fontSize: 10 }} />
           <Tooltip />
-          <Line type="monotone" dataKey={valueKey} stroke="#0D5639" strokeWidth={2} dot={{ r: 2 }} />
+          <Line type="monotone" dataKey={valueKey} stroke="#0070F2" strokeWidth={2} dot={{ r: 2 }} />
         </LineChart>
       </ResponsiveContainer>
     );
@@ -88,7 +88,7 @@ function NlpChart({ chartType, data }: { chartType: "bar" | "line" | "pie"; data
         <XAxis dataKey={labelKey} tick={{ fontSize: 10 }} />
         <YAxis tick={{ fontSize: 10 }} />
         <Tooltip />
-        <Bar dataKey={valueKey} fill="#0D5639" radius={[3, 3, 0, 0]} />
+        <Bar dataKey={valueKey} fill="#0070F2" radius={[3, 3, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -176,7 +176,7 @@ export function AskMeridian() {
           type="button"
           onClick={handleOpen}
           aria-label="Ask Meridian AI Assistant"
-          className={`fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_4px_20px_rgba(13,86,57,0.35)] transition-all duration-200 hover:scale-105 hover:shadow-[0_6px_28px_rgba(13,86,57,0.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
+          className={`fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_4px_20px_rgba(0,112,242,0.35)] transition-all duration-200 hover:scale-105 hover:shadow-[0_6px_28px_rgba(0,112,242,0.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
             !hasOpened ? "animate-[vx-pulse-dot_2s_ease-in-out_3]" : ""
           }`}
         >
@@ -206,7 +206,7 @@ export function AskMeridian() {
         {/* Header */}
         <div className="flex h-14 shrink-0 items-center justify-between border-b border-black/[0.07] px-4">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary shadow-[0_0_12px_rgba(13,86,57,0.25)]">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary shadow-[0_0_12px_rgba(0,112,242,0.25)]">
               <Sparkles className="h-4 w-4 text-white" />
             </div>
             <span className="font-display text-[15px] font-semibold text-foreground">Ask Meridian</span>

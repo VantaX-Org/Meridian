@@ -21,21 +21,21 @@ export interface NarrativeStripProps {
 const TONE_CONFIG: Record<NarrativeTone, { icon: typeof Info; border: string; accent: string; iconColor: string }> = {
   pos: {
     icon: CheckCircle2,
-    border: "border-[#16A34A]/20",
-    accent: "bg-[#16A34A]/5",
-    iconColor: "text-[#16A34A]",
+    border: "border-[#256F3A]/20",
+    accent: "bg-[#256F3A]/5",
+    iconColor: "text-[#256F3A]",
   },
   neg: {
     icon: AlertTriangle,
-    border: "border-[#DC2626]/20",
-    accent: "bg-[#DC2626]/5",
-    iconColor: "text-[#DC2626]",
+    border: "border-[#BB0000]/20",
+    accent: "bg-[#BB0000]/5",
+    iconColor: "text-[#BB0000]",
   },
   warn: {
     icon: AlertTriangle,
-    border: "border-[#D97706]/20",
-    accent: "bg-[#D97706]/5",
-    iconColor: "text-[#D97706]",
+    border: "border-[#E76500]/20",
+    accent: "bg-[#E76500]/5",
+    iconColor: "text-[#E76500]",
   },
   info: {
     icon: Sparkles,

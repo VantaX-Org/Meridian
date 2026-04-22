@@ -150,7 +150,7 @@ export default function LlmSavingsPage() {
       data: r.trend.map((y, x) => ({ x, y: y ?? null })),
       value: `${r.reduction_pct.toFixed(0)}%`,
       delta: i % 2 === 0 ? 1.0 : -0.5,
-      color: i % 2 === 0 ? "#0D5639" : "#7C3AED",
+      color: i % 2 === 0 ? "#0070F2" : "#7C3AED",
     }));
   }, [rows]);
 
@@ -178,7 +178,7 @@ export default function LlmSavingsPage() {
         header: "Saved",
         size: 96,
         cell: ({ getValue }) => (
-          <span className="tabular-nums text-[#16A34A]">
+          <span className="tabular-nums text-[#256F3A]">
             {(getValue() as number).toLocaleString()}
           </span>
         ),
@@ -189,7 +189,7 @@ export default function LlmSavingsPage() {
         size: 80,
         cell: ({ getValue }) => {
           const v = getValue() as number;
-          const tone = v >= 50 ? "text-[#16A34A]" : v >= 20 ? "text-[#D97706]" : "text-[#DC2626]";
+          const tone = v >= 50 ? "text-[#256F3A]" : v >= 20 ? "text-[#E76500]" : "text-[#BB0000]";
           return (
             <span className={`tabular-nums font-semibold ${tone}`}>{v.toFixed(1)}%</span>
           );
@@ -295,8 +295,8 @@ export default function LlmSavingsPage() {
                   <AreaChart data={[...chartData]} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
                     <defs>
                       <linearGradient id="savedGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#0D5639" stopOpacity={0.45} />
-                        <stop offset="100%" stopColor="#0D5639" stopOpacity={0.05} />
+                        <stop offset="0%" stopColor="#0070F2" stopOpacity={0.45} />
+                        <stop offset="100%" stopColor="#0070F2" stopOpacity={0.05} />
                       </linearGradient>
                       <linearGradient id="executedGrad" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor="#6B7280" stopOpacity={0.3} />
@@ -321,7 +321,7 @@ export default function LlmSavingsPage() {
                       type="monotone"
                       dataKey="calls_saved"
                       stackId="1"
-                      stroke="#0D5639"
+                      stroke="#0070F2"
                       fill="url(#savedGrad)"
                     />
                     <Area

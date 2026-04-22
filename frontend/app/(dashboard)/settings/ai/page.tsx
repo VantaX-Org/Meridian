@@ -140,7 +140,7 @@ export default function SettingsAIPage() {
                       variant="outline"
                       className={
                         isCloud
-                          ? "border-[#D97706]/30 bg-[#D97706]/10 text-[10px] text-[#D97706]"
+                          ? "border-[#E76500]/30 bg-[#E76500]/10 text-[10px] text-[#E76500]"
                           : "border-primary/20 bg-primary/10 text-[10px] text-primary"
                       }
                     >
@@ -184,13 +184,13 @@ export default function SettingsAIPage() {
         <div
           className={`vx-card mt-2 space-y-3 border-l-4 p-4 ${
             isCloud
-              ? "border-l-[#D97706] bg-[#D97706]/[0.04]"
+              ? "border-l-[#E76500] bg-[#E76500]/[0.04]"
               : "border-l-primary bg-primary/[0.03]"
           }`}
         >
           <div className="flex items-start gap-2">
             {isCloud ? (
-              <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#D97706]" />
+              <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#E76500]" />
             ) : (
               <ShieldCheck className="mt-0.5 h-5 w-5 flex-shrink-0 text-primary" />
             )}
@@ -233,7 +233,7 @@ export default function SettingsAIPage() {
               body="Responses are consumed and discarded. Nothing stored outside your cluster."
             />
             <Advisory
-              icon={<AlertTriangle className="h-3.5 w-3.5 text-[#D97706]" />}
+              icon={<AlertTriangle className="h-3.5 w-3.5 text-[#E76500]" />}
               title="Egress"
               body="Cloud providers imply network egress. Review your data-governance policy."
             />

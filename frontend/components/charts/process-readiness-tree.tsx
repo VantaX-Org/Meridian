@@ -13,14 +13,14 @@ import type {
 } from "@/types/api";
 
 const STATUS_COLORS: Record<string, string> = {
-  green: "bg-[#16A34A]",
-  amber: "bg-[#D97706]",
+  green: "bg-[#256F3A]",
+  amber: "bg-[#E76500]",
   red: "bg-destructive",
 };
 
 const STATUS_BADGE: Record<string, string> = {
-  green: "bg-[#16A34A]/10 text-[#16A34A] border-[#16A34A]/20",
-  amber: "bg-[#D97706]/10 text-[#D97706] border-[#D97706]/20",
+  green: "bg-[#256F3A]/10 text-[#256F3A] border-[#256F3A]/20",
+  amber: "bg-[#E76500]/10 text-[#E76500] border-[#E76500]/20",
   red: "bg-destructive/10 text-destructive border-destructive/20",
 };
 

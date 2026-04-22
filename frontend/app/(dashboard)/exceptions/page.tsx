@@ -87,25 +87,25 @@ const KANBAN_COLUMNS: { status: ExceptionStatus; label: string }[] = [
 ];
 
 const SEVERITY_COLORS: Record<string, string> = {
-  critical: "bg-[#DC2626]/10 text-[#DC2626] border-[#DC2626]/20",
-  high: "bg-[#EA580C]/10 text-[#EA580C] border-[#EA580C]/20",
-  medium: "bg-[#D97706]/10 text-[#D97706] border-[#D97706]/20",
+  critical: "bg-[#BB0000]/10 text-[#BB0000] border-[#BB0000]/20",
+  high: "bg-[#E76500]/10 text-[#E76500] border-[#E76500]/20",
+  medium: "bg-[#A45D00]/10 text-[#A45D00] border-[#A45D00]/20",
   low: "bg-primary/10 text-primary border-primary/20",
 };
 
 const TYPE_COLORS: Record<string, string> = {
   sap_transaction: "bg-[#7C3AED]/10 text-[#7C3AED] border-[#7C3AED]/20",
   dq_rule: "bg-[#2563EB]/10 text-[#2563EB] border-[#2563EB]/20",
-  custom_business: "bg-[#16A34A]/10 text-[#16A34A] border-[#16A34A]/20",
-  anomaly: "bg-[#EA580C]/10 text-[#EA580C] border-[#EA580C]/20",
-  contract_violation: "bg-[#DC2626]/10 text-[#DC2626] border-[#DC2626]/20",
+  custom_business: "bg-[#256F3A]/10 text-[#256F3A] border-[#256F3A]/20",
+  anomaly: "bg-[#E76500]/10 text-[#E76500] border-[#E76500]/20",
+  contract_violation: "bg-[#BB0000]/10 text-[#BB0000] border-[#BB0000]/20",
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  open: "bg-[#DC2626]/10 text-[#DC2626]",
-  investigating: "bg-[#EA580C]/10 text-[#EA580C]",
-  pending_approval: "bg-[#D97706]/10 text-[#D97706]",
-  resolved: "bg-[#16A34A]/10 text-[#16A34A]",
+  open: "bg-[#BB0000]/10 text-[#BB0000]",
+  investigating: "bg-[#E76500]/10 text-[#E76500]",
+  pending_approval: "bg-[#E76500]/10 text-[#E76500]",
+  resolved: "bg-[#256F3A]/10 text-[#256F3A]",
   verified: "bg-primary/10 text-primary",
   closed: "bg-white/[0.65] text-muted-foreground",
 };
@@ -217,7 +217,7 @@ function ExceptionCard({
       </div>
       {sla.text !== "No SLA" && (
         <div
-          className={`mt-2 flex items-center gap-1 text-[13px] ${sla.urgent ? "font-semibold text-[#DC2626]" : "text-muted-foreground"}`}
+          className={`mt-2 flex items-center gap-1 text-[13px] ${sla.urgent ? "font-semibold text-[#BB0000]" : "text-muted-foreground"}`}
         >
           <Clock className="h-3 w-3" />
           {sla.text}
@@ -398,7 +398,7 @@ function ExceptionDetail({
                 </span>
                 {exc.sla_deadline && (
                   <span
-                    className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${slaCountdown(exc.sla_deadline).urgent ? "bg-[#DC2626]/10 font-semibold text-[#DC2626]" : "bg-white/[0.60] text-secondary-foreground"}`}
+                    className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${slaCountdown(exc.sla_deadline).urgent ? "bg-[#BB0000]/10 font-semibold text-[#BB0000]" : "bg-white/[0.60] text-secondary-foreground"}`}
                   >
                     <Clock className="h-3 w-3" />
                     SLA: {slaCountdown(exc.sla_deadline).text}
@@ -482,7 +482,7 @@ function ExceptionDetail({
                   Assign
                 </button>
                 <button
-                  className="rounded-lg bg-[#EA580C] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#EA580C]/80"
+                  className="rounded-lg bg-[#E76500] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#E76500]/80"
                   onClick={() =>
                     escalateMut.mutate({ reason: "Requires immediate attention" })
                   }
@@ -490,7 +490,7 @@ function ExceptionDetail({
                   Escalate
                 </button>
                 <button
-                  className="rounded-lg bg-[#16A34A] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#16A34A]/80"
+                  className="rounded-lg bg-[#256F3A] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#256F3A]/80"
                   onClick={() => setResolveForm(!resolveForm)}
                 >
                   Resolve
@@ -535,7 +535,7 @@ function ExceptionDetail({
                   rows={3}
                 />
                 <button
-                  className="rounded-lg bg-[#16A34A] px-4 py-2 text-xs font-medium text-white hover:bg-[#16A34A]/80 disabled:opacity-50"
+                  className="rounded-lg bg-[#256F3A] px-4 py-2 text-xs font-medium text-white hover:bg-[#256F3A]/80 disabled:opacity-50"
                   disabled={!rootCause || !resolutionNotes || resolveMut.isPending}
                   onClick={() => resolveMut.mutate()}
                 >
@@ -868,29 +868,29 @@ export default function ExceptionsPage() {
       label: "Open",
       value: metrics?.open_count ?? 0,
       icon: ShieldAlert,
-      color: "text-[#DC2626]",
-      bg: "bg-[#DC2626]/5",
+      color: "text-[#BB0000]",
+      bg: "bg-[#BB0000]/5",
     },
     {
       label: "Investigating",
       value: byStatus.investigating.length,
       icon: Search,
-      color: "text-[#EA580C]",
-      bg: "bg-[#EA580C]/5",
+      color: "text-[#E76500]",
+      bg: "bg-[#E76500]/5",
     },
     {
       label: "Overdue SLA",
       value: metrics?.overdue_count ?? 0,
       icon: Clock,
-      color: "text-[#DC2626]",
-      bg: "bg-[#DC2626]/5",
+      color: "text-[#BB0000]",
+      bg: "bg-[#BB0000]/5",
     },
     {
       label: "Resolved This Week",
       value: metrics?.resolved_count ?? 0,
       icon: CheckCircle2,
-      color: "text-[#16A34A]",
-      bg: "bg-[#16A34A]/5",
+      color: "text-[#256F3A]",
+      bg: "bg-[#256F3A]/5",
     },
   ];
 
@@ -1062,7 +1062,7 @@ export default function ExceptionsPage() {
                       </TableCell>
                       <TableCell>
                         <span
-                          className={`text-xs ${sla.urgent ? "font-semibold text-[#DC2626]" : "text-muted-foreground"}`}
+                          className={`text-xs ${sla.urgent ? "font-semibold text-[#BB0000]" : "text-muted-foreground"}`}
                         >
                           {sla.text}
                         </span>
@@ -1154,7 +1154,7 @@ export default function ExceptionsPage() {
                               </TableCell>
                               <TableCell>
                                 <span
-                                  className={`text-xs ${sla.urgent ? "font-semibold text-[#DC2626]" : "text-muted-foreground"}`}
+                                  className={`text-xs ${sla.urgent ? "font-semibold text-[#BB0000]" : "text-muted-foreground"}`}
                                 >
                                   {sla.text}
                                 </span>
@@ -1240,7 +1240,7 @@ export default function ExceptionsPage() {
                             is_active: !rule.is_active,
                           })
                         }
-                        className={`transition-colors ${rule.is_active ? "text-[#16A34A]" : "text-muted-foreground"}`}
+                        className={`transition-colors ${rule.is_active ? "text-[#256F3A]" : "text-muted-foreground"}`}
                       >
                         {rule.is_active ? (
                           <ToggleRight className="h-6 w-6" />

@@ -70,18 +70,18 @@ function formatDate(d: string) {
 }
 
 function StatusBadge({ status, daysRemaining }: { status: string; daysRemaining?: number }) {
-  let bg = "bg-[#16A34A]/15";
-  let text = "text-[#16A34A]";
+  let bg = "bg-[#256F3A]/15";
+  let text = "text-[#256F3A]";
   let label = "Active";
 
   if (status === "trial") {
     bg = "bg-[#0891B2]/15"; text = "text-[#0891B2]"; label = "Trial";
   } else if (status === "suspended" || status === "invalid") {
-    bg = "bg-[#DC2626]/15"; text = "text-[#DC2626]"; label = "Suspended";
+    bg = "bg-[#BB0000]/15"; text = "text-[#BB0000]"; label = "Suspended";
   } else if (status === "expired") {
     bg = "bg-[#6B7280]/15"; text = "text-[#6B7280]"; label = "Expired";
   } else if (daysRemaining !== undefined && daysRemaining <= 30 && daysRemaining > 0) {
-    bg = "bg-[#D97706]/15"; text = "text-[#D97706]"; label = "Expiring Soon";
+    bg = "bg-[#E76500]/15"; text = "text-[#E76500]"; label = "Expiring Soon";
   }
 
   return (
@@ -171,9 +171,9 @@ export default function LicencePage() {
                 className="font-medium"
                 style={{
                   color:
-                    days_remaining <= 7 ? "#DC2626"
-                    : days_remaining <= 30 ? "#D97706"
-                    : "#16A34A",
+                    days_remaining <= 7 ? "#BB0000"
+                    : days_remaining <= 30 ? "#E76500"
+                    : "#256F3A",
                 }}
               >
                 {days_remaining > 0 ? `${days_remaining} days` : "Expired"}

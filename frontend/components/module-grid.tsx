@@ -12,7 +12,7 @@ import { formatModuleName, relativeTime } from "@/lib/format";
 import type { SystemModule } from "@/types/api";
 
 const SYNC_STATUS_ICON: Record<string, React.ReactNode> = {
-  completed: <CheckCircle className="h-3.5 w-3.5 text-[#16A34A]" />,
+  completed: <CheckCircle className="h-3.5 w-3.5 text-[#256F3A]" />,
   failed: <XCircle className="h-3.5 w-3.5 text-destructive" />,
   running: <Loader2 className="h-3.5 w-3.5 text-primary animate-spin" />,
 };

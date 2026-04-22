@@ -65,12 +65,12 @@ const ITEM_TYPE_CONFIG: Record<
   golden_record_review: {
     label: "Golden",
     icon: <Crown className="h-3 w-3" />,
-    color: "bg-[#EA580C]/10 text-[#EA580C] border-[#EA580C]/20",
+    color: "bg-[#E76500]/10 text-[#E76500] border-[#E76500]/20",
   },
   exception: {
     label: "Exception",
     icon: <AlertTriangle className="h-3 w-3" />,
-    color: "bg-[#DC2626]/10 text-[#DC2626] border-[#DC2626]/20",
+    color: "bg-[#BB0000]/10 text-[#BB0000] border-[#BB0000]/20",
   },
   writeback_approval: {
     label: "Writeback",
@@ -80,27 +80,27 @@ const ITEM_TYPE_CONFIG: Record<
   contract_breach: {
     label: "Contract",
     icon: <XCircle className="h-3 w-3" />,
-    color: "bg-[#DC2626]/10 text-[#DC2626] border-[#DC2626]/20",
+    color: "bg-[#BB0000]/10 text-[#BB0000] border-[#BB0000]/20",
   },
   glossary_review: {
     label: "Glossary",
     icon: <BookOpen className="h-3 w-3" />,
-    color: "bg-[#16A34A]/10 text-[#16A34A] border-[#16A34A]/20",
+    color: "bg-[#256F3A]/10 text-[#256F3A] border-[#256F3A]/20",
   },
 };
 
 const PRIORITY_LABELS: Record<number, { label: string; color: string }> = {
-  1: { label: "Crit", color: "bg-[#DC2626]/10 text-[#DC2626]" },
-  2: { label: "High", color: "bg-[#EA580C]/10 text-[#EA580C]" },
+  1: { label: "Crit", color: "bg-[#BB0000]/10 text-[#BB0000]" },
+  2: { label: "High", color: "bg-[#E76500]/10 text-[#E76500]" },
   3: { label: "Med", color: "bg-primary/10 text-primary" },
-  4: { label: "Low", color: "bg-[#16A34A]/10 text-[#16A34A]" },
+  4: { label: "Low", color: "bg-[#256F3A]/10 text-[#256F3A]" },
   5: { label: "Info", color: "bg-white/[0.65] text-muted-foreground" },
 };
 
 function ConfidenceBar({ confidence }: { confidence: number }) {
   const pct = Math.round(confidence * 100);
   const color =
-    confidence >= 0.85 ? "bg-[#16A34A]" : confidence >= 0.6 ? "bg-[#D97706]" : "bg-[#DC2626]";
+    confidence >= 0.85 ? "bg-[#256F3A]" : confidence >= 0.6 ? "bg-[#E76500]" : "bg-[#BB0000]";
   return (
     <div className="flex items-center gap-1.5">
       <div className="h-1.5 w-16 overflow-hidden rounded-full bg-black/[0.06]">
@@ -237,7 +237,7 @@ export default function StewardshipPage() {
         label: ITEM_TYPE_CONFIG[k]?.label ?? k,
         data,
         value: count,
-        color: i % 2 === 0 ? "#0D5639" : "#7C3AED",
+        color: i % 2 === 0 ? "#0070F2" : "#7C3AED",
       };
     });
   }, [filtered]);
@@ -350,9 +350,9 @@ export default function StewardshipPage() {
             <span
               className={
                 tone === "neg"
-                  ? "font-medium text-[#DC2626] tabular-nums"
+                  ? "font-medium text-[#BB0000] tabular-nums"
                   : tone === "warn"
-                    ? "font-medium text-[#D97706] tabular-nums"
+                    ? "font-medium text-[#E76500] tabular-nums"
                     : "text-muted-foreground tabular-nums"
               }
             >

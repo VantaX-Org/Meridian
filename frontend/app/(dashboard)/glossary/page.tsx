@@ -41,7 +41,7 @@ function domainColor(domain: string): string {
   const colors: Record<string, string> = {
     business_partner: "bg-primary/10 text-primary",
     material_master: "bg-[#2563EB]/10 text-[#2563EB]",
-    fi_gl: "bg-[#D97706]/10 text-[#EA580C]",
+    fi_gl: "bg-[#E76500]/10 text-[#E76500]",
     employee_central: "bg-[#7C3AED]/10 text-[#7C3AED]",
   };
   return colors[domain] || "bg-white/[0.60] text-muted-foreground";
@@ -50,11 +50,11 @@ function domainColor(domain: string): string {
 function statusBadge(status: string) {
   switch (status) {
     case "active":
-      return <Badge className="bg-[#16A34A]/10 text-[#16A34A] border border-[#16A34A]/20">{status}</Badge>;
+      return <Badge className="bg-[#256F3A]/10 text-[#256F3A] border border-[#256F3A]/20">{status}</Badge>;
     case "under_review":
-      return <Badge className="bg-[#D97706]/10 text-[#EA580C] border border-[#D97706]/20">under review</Badge>;
+      return <Badge className="bg-[#E76500]/10 text-[#E76500] border border-[#E76500]/20">under review</Badge>;
     case "deprecated":
-      return <Badge className="bg-[#DC2626]/10 text-destructive border border-[#DC2626]/20">{status}</Badge>;
+      return <Badge className="bg-[#BB0000]/10 text-destructive border border-[#BB0000]/20">{status}</Badge>;
     default:
       return <Badge variant="outline">{status}</Badge>;
   }
@@ -252,7 +252,7 @@ function TermCard({ term, onClick }: { term: GlossaryTermSummary; onClick: () =>
         </Badge>
 
         {reviewDays !== null ? (
-          <span className={`text-xs whitespace-nowrap ${overdue ? "text-[#EA580C] font-medium" : "text-muted-foreground"}`}>
+          <span className={`text-xs whitespace-nowrap ${overdue ? "text-[#E76500] font-medium" : "text-muted-foreground"}`}>
             {reviewDays}d since review
           </span>
         ) : (

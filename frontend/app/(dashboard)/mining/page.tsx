@@ -119,7 +119,7 @@ export default function MiningPage() {
       label: p.name,
       data: (p.trend ?? []).map((y, x) => ({ x, y: y ?? null })),
       value: p.occurrences.toLocaleString(),
-      color: i % 2 === 0 ? "#0D5639" : "#7C3AED",
+      color: i % 2 === 0 ? "#0070F2" : "#7C3AED",
     }));
   }, [filtered]);
 

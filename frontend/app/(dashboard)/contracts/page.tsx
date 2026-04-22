@@ -47,9 +47,9 @@ import {
 
 const STATUS_COLOURS: Record<string, string> = {
   draft: "bg-white/[0.60] text-muted-foreground border border-black/[0.08]",
-  pending_approval: "bg-[#D97706]/10 text-[#EA580C] border border-[#D97706]/20",
-  active: "bg-[#16A34A]/10 text-[#16A34A] border border-[#16A34A]/20",
-  expired: "bg-[#DC2626]/10 text-destructive border border-[#DC2626]/20",
+  pending_approval: "bg-[#E76500]/10 text-[#E76500] border border-[#E76500]/20",
+  active: "bg-[#256F3A]/10 text-[#256F3A] border border-[#256F3A]/20",
+  expired: "bg-[#BB0000]/10 text-destructive border border-[#BB0000]/20",
 };
 
 const DIMENSIONS = [
@@ -105,7 +105,7 @@ function ContractTable({
                   </td>
                   <td className="px-4 py-3">
                     {c.latest_compliant === true && (
-                      <CheckCircle2 className="h-5 w-5 text-[#16A34A]" />
+                      <CheckCircle2 className="h-5 w-5 text-[#256F3A]" />
                     )}
                     {c.latest_compliant === false && (
                       <XCircle className="h-5 w-5 text-destructive" />
@@ -215,9 +215,9 @@ function ContractDetail({
                     key={dim}
                     className={`rounded-lg border p-3 ${
                       passing === true
-                        ? "border-[#16A34A]/20 bg-[#16A34A]/10/30"
+                        ? "border-[#256F3A]/20 bg-[#256F3A]/10/30"
                         : passing === false
-                          ? "border-[#DC2626]/20 bg-[#DC2626]/10/30"
+                          ? "border-[#BB0000]/20 bg-[#BB0000]/10/30"
                           : "border-black/[0.08] bg-white/[0.60]"
                     }`}
                   >
@@ -280,7 +280,7 @@ function ContractDetail({
                 {qualityThresholds.completeness && (
                   <ReferenceLine
                     y={qualityThresholds.completeness}
-                    stroke="#DC2626"
+                    stroke="#BB0000"
                     strokeDasharray="3 3"
                     label={{ value: "SLA", fontSize: 9 }}
                   />
@@ -438,7 +438,7 @@ function NewContractWizard({ onClose }: { onClose: () => void }) {
               s === step
                 ? "bg-primary text-white"
                 : s < step
-                  ? "bg-[#16A34A]/10 text-[#16A34A]"
+                  ? "bg-[#256F3A]/10 text-[#256F3A]"
                   : "bg-white/[0.60] text-muted-foreground"
             }`}
           >
