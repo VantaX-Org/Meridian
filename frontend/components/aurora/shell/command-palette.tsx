@@ -119,6 +119,16 @@ export function CommandPalette({
       onClick={(event) => {
         if (event.target === event.currentTarget) setOpen(false);
       }}
+      // Close on Escape — cmdk's base <Command> handles list navigation
+      // but not dismissal, and the visible <kbd>Esc</kbd> hint in the
+      // input row documents this contract. Handled at the scrim (rather
+      // than the dialog) so it fires even when focus has left the input.
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          setOpen(false);
+        }
+      }}
     >
       <div
         ref={rootRef}
