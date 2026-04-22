@@ -141,7 +141,7 @@ function FindingsContent() {
     queryFn: () =>
       getFindings({
         version_id: activeVersion || undefined,
-        limit: 2000,
+        limit: 200,
         offset: 0,
       }),
     enabled: Boolean(activeVersion) || completedVersions.length === 0,
