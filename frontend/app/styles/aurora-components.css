@@ -1,0 +1,582 @@
+/**
+ * Aurora component styles — WS2 foundational primitives.
+ *
+ * Every selector reads CSS variables defined in aurora.css. No hex values,
+ * no spacing numbers, no timings appear in this file — only `var(--aurora-*)`
+ * references. Consumers compose primitives via `<Aurora.Button …/>` etc.;
+ * they never touch these classnames directly.
+ *
+ * Accessibility:
+ * - Focus rings: 2 px accent ring with 2 px offset, via `:focus-visible`.
+ * - Motion: state changes reference `--aurora-duration-instant|fast`; long
+ *   animations reference `medium`/`slow` (disabled under reduced-motion).
+ * - Interactive size floor: 28 px compact / 36 px default / 44 px comfortable
+ *   — driven by `[data-density]` on a parent.
+ */
+
+/* ------------------------------------------------------------------ *\
+ * Focus — shared by every interactive primitive
+\* ------------------------------------------------------------------ */
+.aurora-focus-ring:focus-visible {
+  outline: var(--aurora-focus-ring-width) solid var(--aurora-focus-ring-colour);
+  outline-offset: var(--aurora-focus-ring-offset);
+  border-radius: inherit;
+}
+
+/* ------------------------------------------------------------------ *\
+ * Text — typography wrapper
+ *
+ * Variants map to the six scale tokens. Weight is controlled separately so
+ * a `display-lg` title and a `text-body` number can share `numeric` tabular
+ * figures. Display variants render through the display stack.
+\* ------------------------------------------------------------------ */
+.aurora-text {
+  font-family: var(--aurora-font-ui);
+  color: var(--aurora-fg-primary);
+  margin: 0;
+}
+.aurora-text[data-variant="text-micro"] {
+  font-size: 11px;
+  line-height: 14px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--aurora-fg-tertiary);
+}
+.aurora-text[data-variant="text-small"] {
+  font-size: 13px;
+  line-height: 18px;
+  letter-spacing: 0.02em;
+}
+.aurora-text[data-variant="text-body"] {
+  font-size: 14px;
+  line-height: 20px;
+}
+.aurora-text[data-variant="text-lead"] {
+  font-size: 17px;
+  line-height: 24px;
+}
+.aurora-text[data-variant="display-sm"] {
+  font-family: var(--aurora-font-display);
+  font-size: 24px;
+  line-height: 30px;
+  letter-spacing: -0.01em;
+  font-weight: 600;
+}
+.aurora-text[data-variant="display-lg"] {
+  font-family: var(--aurora-font-display);
+  font-size: 40px;
+  line-height: 44px;
+  letter-spacing: -0.02em;
+  font-weight: 600;
+}
+.aurora-text[data-tone="secondary"] {
+  color: var(--aurora-fg-secondary);
+}
+.aurora-text[data-tone="tertiary"] {
+  color: var(--aurora-fg-tertiary);
+}
+.aurora-text[data-tone="muted"] {
+  color: var(--aurora-fg-muted);
+}
+.aurora-text[data-tone="accent"] {
+  color: var(--aurora-accent-400);
+}
+.aurora-text[data-tone="danger"] {
+  color: var(--aurora-status-danger-500);
+}
+.aurora-text[data-numeric="true"] {
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1, "ss02" 1;
+}
+
+/* ------------------------------------------------------------------ *\
+ * Icon — 24×24 slot wrapper. Size bumps via data-size.
+\* ------------------------------------------------------------------ */
+.aurora-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: inherit;
+  line-height: 0;
+}
+.aurora-icon[data-size="sm"] {
+  width: 16px;
+  height: 16px;
+}
+.aurora-icon[data-size="md"] {
+  width: 20px;
+  height: 20px;
+}
+.aurora-icon[data-size="lg"] {
+  width: 24px;
+  height: 24px;
+}
+.aurora-icon > svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* ------------------------------------------------------------------ *\
+ * Stack — flex container driven by Aurora spacing tokens.
+\* ------------------------------------------------------------------ */
+.aurora-stack {
+  display: flex;
+}
+.aurora-stack[data-direction="column"] {
+  flex-direction: column;
+}
+.aurora-stack[data-direction="row"] {
+  flex-direction: row;
+}
+.aurora-stack[data-align="center"] {
+  align-items: center;
+}
+.aurora-stack[data-align="start"] {
+  align-items: flex-start;
+}
+.aurora-stack[data-align="end"] {
+  align-items: flex-end;
+}
+.aurora-stack[data-align="stretch"] {
+  align-items: stretch;
+}
+.aurora-stack[data-justify="start"] {
+  justify-content: flex-start;
+}
+.aurora-stack[data-justify="center"] {
+  justify-content: center;
+}
+.aurora-stack[data-justify="end"] {
+  justify-content: flex-end;
+}
+.aurora-stack[data-justify="between"] {
+  justify-content: space-between;
+}
+.aurora-stack[data-wrap="true"] {
+  flex-wrap: wrap;
+}
+
+/* ------------------------------------------------------------------ *\
+ * Divider — horizontal rule.
+\* ------------------------------------------------------------------ */
+.aurora-divider {
+  border: 0;
+  background: var(--aurora-canvas-line);
+}
+.aurora-divider[data-orientation="horizontal"] {
+  height: 1px;
+  width: 100%;
+  margin: 0;
+}
+.aurora-divider[data-orientation="vertical"] {
+  width: 1px;
+  align-self: stretch;
+  margin: 0;
+}
+
+/* ------------------------------------------------------------------ *\
+ * Button — primary / secondary / ghost / danger × sm / md / lg.
+ *
+ * Heights track Aurora density: sm 28, md 36, lg 44 — matching the
+ * `[data-density]` row heights so a button never breaks a grid. Type
+ * uses `text-small` (sm) or `text-body`; padding uses Aurora spacing.
+\* ------------------------------------------------------------------ */
+.aurora-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--aurora-space-2);
+  font-family: var(--aurora-font-ui);
+  font-weight: 500;
+  letter-spacing: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--aurora-fg-primary);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  transition: background-color var(--aurora-duration-fast)
+      var(--aurora-easing-standard),
+    border-color var(--aurora-duration-fast) var(--aurora-easing-standard),
+    color var(--aurora-duration-fast) var(--aurora-easing-standard),
+    box-shadow var(--aurora-duration-fast) var(--aurora-easing-standard);
+}
+.aurora-button:disabled,
+.aurora-button[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.aurora-button[data-size="sm"] {
+  height: 28px;
+  padding: 0 var(--aurora-space-3);
+  font-size: 13px;
+  line-height: 18px;
+}
+.aurora-button[data-size="md"] {
+  height: 36px;
+  padding: 0 var(--aurora-space-4);
+  font-size: 14px;
+  line-height: 20px;
+}
+.aurora-button[data-size="lg"] {
+  height: 44px;
+  padding: 0 var(--aurora-space-5);
+  font-size: 14px;
+  line-height: 20px;
+}
+/* Primary — solid accent, ink-0 text */
+.aurora-button[data-variant="primary"] {
+  background: var(--aurora-accent-500);
+  color: var(--aurora-ink-0);
+  border-color: var(--aurora-accent-500);
+}
+.aurora-button[data-variant="primary"]:hover:not(:disabled):not([aria-disabled="true"]) {
+  background: var(--aurora-accent-400);
+  border-color: var(--aurora-accent-400);
+}
+.aurora-button[data-variant="primary"]:active:not(:disabled):not([aria-disabled="true"]) {
+  background: var(--aurora-accent-600);
+  border-color: var(--aurora-accent-600);
+}
+/* Secondary — raised canvas surface with line border */
+.aurora-button[data-variant="secondary"] {
+  background: var(--aurora-canvas-raised);
+  border-color: var(--aurora-canvas-line);
+  color: var(--aurora-fg-primary);
+}
+.aurora-button[data-variant="secondary"]:hover:not(:disabled):not([aria-disabled="true"]) {
+  background: var(--aurora-canvas-elevated);
+  border-color: var(--aurora-canvas-line);
+}
+/* Ghost — transparent until hover */
+.aurora-button[data-variant="ghost"] {
+  background: transparent;
+  border-color: transparent;
+  color: var(--aurora-fg-secondary);
+}
+.aurora-button[data-variant="ghost"]:hover:not(:disabled):not([aria-disabled="true"]) {
+  background: var(--aurora-canvas-overlay);
+  color: var(--aurora-fg-primary);
+}
+/* Danger — solid danger */
+.aurora-button[data-variant="danger"] {
+  background: var(--aurora-status-danger-500);
+  color: var(--aurora-ink-0);
+  border-color: var(--aurora-status-danger-500);
+}
+.aurora-button[data-variant="danger"]:hover:not(:disabled):not([aria-disabled="true"]) {
+  filter: brightness(1.08);
+}
+
+/* ------------------------------------------------------------------ *\
+ * Input — single-line text field.
+ *
+ * Height mirrors button tokens. Error state uses danger border + bg.
+\* ------------------------------------------------------------------ */
+.aurora-input,
+.aurora-textarea,
+.aurora-select {
+  display: inline-flex;
+  align-items: center;
+  width: 100%;
+  font-family: var(--aurora-font-ui);
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--aurora-fg-primary);
+  background: var(--aurora-canvas-raised);
+  border: 1px solid var(--aurora-canvas-line);
+  border-radius: 8px;
+  padding: 0 var(--aurora-space-3);
+  transition: border-color var(--aurora-duration-fast)
+      var(--aurora-easing-standard),
+    background-color var(--aurora-duration-fast) var(--aurora-easing-standard);
+}
+.aurora-input,
+.aurora-select {
+  height: 36px;
+}
+.aurora-textarea {
+  min-height: 80px;
+  padding: var(--aurora-space-2) var(--aurora-space-3);
+  line-height: 20px;
+  resize: vertical;
+}
+.aurora-input::placeholder,
+.aurora-textarea::placeholder {
+  color: var(--aurora-fg-muted);
+}
+.aurora-input:hover,
+.aurora-textarea:hover,
+.aurora-select:hover {
+  border-color: var(--aurora-fg-muted);
+}
+.aurora-input:focus-visible,
+.aurora-textarea:focus-visible,
+.aurora-select:focus-visible {
+  outline: var(--aurora-focus-ring-width) solid var(--aurora-focus-ring-colour);
+  outline-offset: var(--aurora-focus-ring-offset);
+}
+.aurora-input[data-invalid="true"],
+.aurora-textarea[data-invalid="true"],
+.aurora-select[data-invalid="true"] {
+  border-color: var(--aurora-status-danger-500);
+  background: var(--aurora-status-danger-bg);
+}
+.aurora-input:disabled,
+.aurora-textarea:disabled,
+.aurora-select:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* Native <select> arrow — keeps chrome minimal on dark canvas */
+.aurora-select {
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 14px) 50%, calc(100% - 10px) 50%;
+  background-size: 4px 4px, 4px 4px;
+  background-repeat: no-repeat;
+  padding-right: 28px;
+  color: var(--aurora-fg-primary);
+}
+
+/* ------------------------------------------------------------------ *\
+ * Field wrapper — label + control + helper/error
+\* ------------------------------------------------------------------ */
+.aurora-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--aurora-space-1);
+  min-width: 0;
+}
+.aurora-field__label {
+  font-family: var(--aurora-font-ui);
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--aurora-fg-secondary);
+  font-weight: 500;
+}
+.aurora-field__helper {
+  font-family: var(--aurora-font-ui);
+  font-size: 11px;
+  line-height: 14px;
+  letter-spacing: 0.02em;
+  color: var(--aurora-fg-muted);
+}
+.aurora-field__helper[data-tone="danger"] {
+  color: var(--aurora-status-danger-500);
+}
+
+/* ------------------------------------------------------------------ *\
+ * Chip — small, inline pill for filters / status / multi-select tags.
+\* ------------------------------------------------------------------ */
+.aurora-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--aurora-space-1);
+  height: 24px;
+  padding: 0 var(--aurora-space-2);
+  font-family: var(--aurora-font-ui);
+  font-size: 11px;
+  line-height: 14px;
+  letter-spacing: 0.02em;
+  font-weight: 500;
+  background: var(--aurora-canvas-overlay);
+  color: var(--aurora-fg-secondary);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  cursor: default;
+  white-space: nowrap;
+}
+.aurora-chip[data-interactive="true"] {
+  cursor: pointer;
+  transition: background-color var(--aurora-duration-fast)
+    var(--aurora-easing-standard);
+}
+.aurora-chip[data-interactive="true"]:hover {
+  background: var(--aurora-canvas-elevated);
+  color: var(--aurora-fg-primary);
+}
+.aurora-chip[data-selected="true"] {
+  background: var(--aurora-accent-selected-bg);
+  color: var(--aurora-accent-300);
+  border-color: var(--aurora-accent-selected-border);
+}
+.aurora-chip[data-tone="success"] {
+  background: var(--aurora-status-success-bg);
+  border-color: var(--aurora-status-success-border);
+  color: var(--aurora-status-success-500);
+}
+.aurora-chip[data-tone="warning"] {
+  background: var(--aurora-status-warning-bg);
+  border-color: var(--aurora-status-warning-border);
+  color: var(--aurora-status-warning-500);
+}
+.aurora-chip[data-tone="danger"] {
+  background: var(--aurora-status-danger-bg);
+  border-color: var(--aurora-status-danger-border);
+  color: var(--aurora-status-danger-500);
+}
+.aurora-chip[data-tone="info"] {
+  background: var(--aurora-status-info-bg);
+  border-color: var(--aurora-status-info-border);
+  color: var(--aurora-accent-300);
+}
+.aurora-chip__dismiss {
+  background: transparent;
+  border: 0;
+  color: currentColor;
+  padding: 0;
+  margin-left: 2px;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  opacity: 0.75;
+}
+.aurora-chip__dismiss:hover {
+  opacity: 1;
+}
+
+/* ------------------------------------------------------------------ *\
+ * Avatar — circular, 3 sizes. Single-letter monogram fallback.
+\* ------------------------------------------------------------------ */
+.aurora-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--aurora-canvas-overlay);
+  color: var(--aurora-fg-secondary);
+  border-radius: 999px;
+  font-family: var(--aurora-font-ui);
+  font-weight: 600;
+  letter-spacing: 0;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.aurora-avatar[data-size="sm"] {
+  width: 24px;
+  height: 24px;
+  font-size: 11px;
+}
+.aurora-avatar[data-size="md"] {
+  width: 32px;
+  height: 32px;
+  font-size: 13px;
+}
+.aurora-avatar[data-size="lg"] {
+  width: 40px;
+  height: 40px;
+  font-size: 14px;
+}
+.aurora-avatar > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ------------------------------------------------------------------ *\
+ * Banner — status strip. One per viewport, lives above the content.
+\* ------------------------------------------------------------------ */
+.aurora-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--aurora-space-3);
+  padding: var(--aurora-space-3) var(--aurora-space-4);
+  border: 1px solid var(--aurora-canvas-line);
+  background: var(--aurora-canvas-raised);
+  border-radius: 12px;
+  font-family: var(--aurora-font-ui);
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--aurora-fg-primary);
+}
+.aurora-banner[data-tone="success"] {
+  background: var(--aurora-status-success-bg);
+  border-color: var(--aurora-status-success-border);
+}
+.aurora-banner[data-tone="warning"] {
+  background: var(--aurora-status-warning-bg);
+  border-color: var(--aurora-status-warning-border);
+}
+.aurora-banner[data-tone="danger"] {
+  background: var(--aurora-status-danger-bg);
+  border-color: var(--aurora-status-danger-border);
+}
+.aurora-banner[data-tone="info"] {
+  background: var(--aurora-status-info-bg);
+  border-color: var(--aurora-status-info-border);
+}
+.aurora-banner__icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.aurora-banner__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--aurora-space-1);
+}
+.aurora-banner__title {
+  font-weight: 600;
+  color: var(--aurora-fg-primary);
+}
+.aurora-banner__description {
+  color: var(--aurora-fg-secondary);
+}
+
+/* ------------------------------------------------------------------ *\
+ * Combobox — controlled popover listbox
+\* ------------------------------------------------------------------ */
+.aurora-combobox {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+.aurora-combobox__trigger {
+  width: 100%;
+}
+.aurora-combobox__listbox {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--aurora-canvas-elevated);
+  border: 1px solid var(--aurora-canvas-line);
+  border-radius: 8px;
+  box-shadow: var(--aurora-elev-3-shadow, 0 8px 24px rgba(0, 0, 0, 0.4));
+  padding: var(--aurora-space-1);
+  margin: 0;
+  list-style: none;
+  z-index: 30;
+}
+.aurora-combobox__option {
+  display: flex;
+  align-items: center;
+  gap: var(--aurora-space-2);
+  padding: var(--aurora-space-2) var(--aurora-space-3);
+  font-family: var(--aurora-font-ui);
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--aurora-fg-primary);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.aurora-combobox__option[data-active="true"],
+.aurora-combobox__option:hover {
+  background: var(--aurora-canvas-overlay);
+}
+.aurora-combobox__option[data-selected="true"] {
+  color: var(--aurora-accent-300);
+}
+.aurora-combobox__empty {
+  padding: var(--aurora-space-3);
+  font-size: 13px;
+  color: var(--aurora-fg-muted);
+  text-align: center;
+}
