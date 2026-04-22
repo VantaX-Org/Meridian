@@ -164,11 +164,13 @@ fi
 if [[ "$PRECONFIGURED" == "true" ]]; then
     _LLM_PROVIDER=$(grep -oP '^LLM_PROVIDER=\K.*' "${REPO_ROOT}/.env" 2>/dev/null || echo "anthropic")
     case "$_LLM_PROVIDER" in
-        ollama) TIER="2" ;;
-        custom) TIER="3" ;;
-        *)      TIER="1" ;;
+        none|off|"")        TIER="0" ;;
+        ollama)             TIER="2" ;;
+        ollama_cloud)       TIER="1.5" ;;
+        custom)             TIER="3" ;;
+        *)                  TIER="1" ;;
     esac
-    log "Tier ${TIER}"
+    log "Tier ${TIER} (LLM_PROVIDER=${_LLM_PROVIDER:-none})"
 
 elif [[ "$LICENCE_MODE" == "online" ]]; then
     section "Validating licence"
@@ -209,7 +211,23 @@ elif [[ "$LICENCE_MODE" == "online" ]]; then
 elif [[ "$LICENCE_MODE" == "airgap" ]]; then
     section "Airgap Mode"
     log "Airgap deployment: no external API calls"
-    TIER="2"  # Airgap uses bundled Ollama
+    # Airgap defaults to bundled Ollama (Tier 2); operators can override to
+    # Tier 0 (LLM-less) by setting LLM_PROVIDER=none in .env before install.
+    TIER="${TIER:-2}"
+fi
+
+# --- Compose profile selection ---
+# Tier 2 (bundled Ollama) → activate the "llm-bundled" compose profile so the
+# ollama container starts. All other tiers leave the profile unset so it stays
+# stopped (LLM-less deployments save ~4 GB RAM + the model volume).
+case "${TIER:-}" in
+    2)  export COMPOSE_PROFILES="llm-bundled" ;;
+    *)  export COMPOSE_PROFILES="${COMPOSE_PROFILES:-}" ;;
+esac
+if [[ -n "${COMPOSE_PROFILES:-}" ]]; then
+    log "Compose profiles: ${COMPOSE_PROFILES}"
+else
+    log "Compose profiles: (none) — no bundled LLM container"
 fi
 
 # --- Deployment config ---
@@ -367,7 +385,9 @@ chk frontend $C exec -T frontend wget -qO- http://localhost:3000/ >/dev/null
 chk postgres $C exec -T db       pg_isready -U meridian
 chk redis    $C exec -T redis    redis-cli ping
 chk minio    $C exec -T minio    curl -sf http://localhost:9000/minio/health/live
-$C ps ollama >/dev/null 2>&1 && chk ollama $C exec -T ollama curl -sf http://localhost:11434/api/tags
+if $C ps --services --status=running 2>/dev/null | grep -qx ollama; then
+    chk ollama $C exec -T ollama curl -sf http://localhost:11434/api/tags
+fi
 chk "worker-fast" $C exec -T worker-fast python -c "import celery; print('ok')" 2>/dev/null || true
 chk "worker-full"  $C exec -T worker-full python -c "import celery; print('ok')" 2>/dev/null || true
 echo "  ──────────────────────"

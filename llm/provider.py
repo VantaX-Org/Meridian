@@ -119,6 +119,9 @@ def build_llm_from_config(
 
     Used by both get_llm() (runtime) and the test endpoint (pre-save validation).
     """
+    if provider in ("none", "off", ""):
+        return _NoopLLM()
+
     if provider == "ollama":
         return ChatOllama(
             base_url=base_url or "http://ollama:11434",
@@ -277,9 +280,31 @@ AI_UNAVAILABLE_MSG = (
 )
 
 
+class _NoopLLM:
+    """Sentinel LLM used when ``LLM_PROVIDER=none`` — every ``invoke`` returns
+    ``None`` so callers immediately fall back to their deterministic path.
+
+    Deployments that never need an LLM (pure deterministic 400k bulk runs, air-
+    gapped sites without GPU, proof-of-concept with no cloud LLM budget) can
+    set ``LLM_PROVIDER=none`` and skip the bundled Ollama container entirely.
+    """
+
+    def invoke(self, messages):  # noqa: D401 — match LangChain interface
+        raise RuntimeError("LLM disabled (LLM_PROVIDER=none)")
+
+
+def is_llm_disabled() -> bool:
+    """Return True if the configured provider is 'none' (LLM-less deploy mode)."""
+    return os.getenv("LLM_PROVIDER", "ollama").strip().lower() in ("none", "off", "")
+
+
 def safe_invoke(llm, messages, *, timeout_seconds: int = 90) -> str | None:
     """Invoke the LLM with a hard timeout. Returns content string or None."""
     import concurrent.futures
+
+    if is_llm_disabled() or isinstance(llm, _NoopLLM):
+        # No LLM configured — caller must fall back to deterministic logic.
+        return None
 
     if _circuit_is_open():
         logger.debug("LLM circuit breaker is open; short-circuiting call")
@@ -324,6 +349,11 @@ def safe_invoke_batch(
         return []
 
     results: list[str | None] = [None] * len(prompts)
+
+    if is_llm_disabled() or isinstance(llm, _NoopLLM):
+        # No LLM configured — every item falls back to None so callers use
+        # deterministic logic per-item.
+        return results
 
     if _circuit_is_open():
         logger.debug("LLM circuit breaker is open; short-circuiting batch")

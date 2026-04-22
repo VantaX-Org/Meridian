@@ -55,3 +55,39 @@ def test_safe_invoke_batch_preserves_order():
 
 def test_safe_invoke_batch_empty_returns_empty():
     assert safe_invoke_batch(_FakeLLM(), []) == []
+
+
+# ── Tier 0 (LLM-less) deploy mode ───────────────────────────────────────────
+
+
+def test_noop_llm_short_circuits_safe_invoke(monkeypatch):
+    """LLM_PROVIDER=none → safe_invoke returns None without calling .invoke()."""
+    from llm.provider import _NoopLLM
+
+    monkeypatch.setenv("LLM_PROVIDER", "none")
+    noop = _NoopLLM()
+    assert safe_invoke(noop, "hello") is None
+
+
+def test_noop_llm_short_circuits_batch(monkeypatch):
+    from llm.provider import _NoopLLM
+
+    monkeypatch.setenv("LLM_PROVIDER", "none")
+    out = safe_invoke_batch(_NoopLLM(), ["a", "b", "c"])
+    assert out == [None, None, None]
+
+
+def test_is_llm_disabled_respects_env(monkeypatch):
+    from llm.provider import is_llm_disabled
+
+    monkeypatch.setenv("LLM_PROVIDER", "none")
+    assert is_llm_disabled() is True
+    monkeypatch.setenv("LLM_PROVIDER", "ollama")
+    assert is_llm_disabled() is False
+
+
+def test_build_llm_from_config_none_returns_noop():
+    from llm.provider import _NoopLLM, build_llm_from_config
+
+    llm = build_llm_from_config(provider="none")
+    assert isinstance(llm, _NoopLLM)

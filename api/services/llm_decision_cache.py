@@ -25,15 +25,30 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from sqlalchemy import create_engine, text
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger("meridian.llm_decision_cache")
 
+# Module-level engine cache — CLAUDE.md forbids per-call engine creation. At
+# 400k-record scale cache_get/cache_set are called tens of thousands of times
+# per run; a fresh engine per call would exhaust Postgres connections.
+_engine: Engine | None = None
 
-def _sync_engine():
-    url = os.getenv("DATABASE_URL_SYNC", os.getenv("DATABASE_URL", ""))
-    url = url.replace("postgresql+asyncpg://", "postgresql://")
-    return create_engine(url)
+
+def _sync_engine() -> Engine:
+    global _engine
+    if _engine is None:
+        url = os.getenv("DATABASE_URL_SYNC", os.getenv("DATABASE_URL", ""))
+        url = url.replace("postgresql+asyncpg://", "postgresql://")
+        _engine = create_engine(
+            url,
+            pool_size=3,
+            max_overflow=5,
+            pool_recycle=1800,
+            pool_pre_ping=True,
+        )
+    return _engine
 
 
 def hash_input(payload: Any) -> str:

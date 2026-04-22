@@ -242,11 +242,13 @@ def apply_format_valid(
     if canonicaliser is None:
         return None
 
-    valid = [c for c in contributions if c.value is not None and canonicaliser(c.value) is not None]
+    non_null = [c for c in contributions if c.value is not None]
+    valid = [c for c in non_null if canonicaliser(c.value) is not None]
     if not valid:
         return None
-    if len(valid) == len(contributions):
-        # Nothing was pruned — let a later rule decide
+    if len(valid) == len(non_null):
+        # Nothing was pruned by format validation (nulls don't count as invalid);
+        # let a later rule — typically longest_non_null — decide.
         return None
 
     winner = max(valid, key=lambda c: c.extracted_at)

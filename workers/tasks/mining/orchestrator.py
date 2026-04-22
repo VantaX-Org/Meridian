@@ -28,13 +28,13 @@ logger = logging.getLogger("meridian.worker.mining.orchestrator")
 def _get_version_modules(session: Session, tenant_id: str, version_id: str) -> list[tuple[str, str]]:
     """Return [(module_id, parquet_path), ...] for a version.
 
-    Each module's parquet_path is taken from the `findings` table's module_upload
-    metadata (or from `analysis_versions.metadata_json.module_paths` if present).
+    Each module's parquet_path is taken from `analysis_versions.metadata.module_paths`
+    (the ORM column is ``metadata_`` mapped to the DB column ``metadata``).
     """
     result = session.execute(
         text(
             """
-            SELECT metadata_json
+            SELECT metadata
             FROM analysis_versions
             WHERE tenant_id = :tid AND id = :vid
             """
