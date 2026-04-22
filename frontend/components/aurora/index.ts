@@ -11,3 +11,4 @@
 
 export * from "./primitives";
 export * from "./data";
+export * from "./shell";
