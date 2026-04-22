@@ -146,20 +146,23 @@ const RECORD_HISTORY: RecordReportFixHistory = {
 const RECORD_ACTIVITY: ReadonlyArray<RecordReportActivityItem> = [
   {
     id: "a-1",
-    timestamp: "14m ago",
+    timestamp: "2026-04-22T12:16:00Z",
+    displayTime: "14m ago",
     actor: "R. Sato",
     action: "took the record",
     body: null,
   },
   {
     id: "a-2",
-    timestamp: "13m ago",
+    timestamp: "2026-04-22T12:17:00Z",
+    displayTime: "13m ago",
     actor: "R. Sato",
     action: "requested SPRO tax-number reference",
   },
   {
     id: "a-3",
-    timestamp: "2h ago",
+    timestamp: "2026-04-22T10:30:00Z",
+    displayTime: "2h ago",
     actor: "System",
     action: "flagged record — BP.COMPLETENESS.TAX_NUMBER",
   },

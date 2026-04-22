@@ -97,8 +97,16 @@ export interface RecordReportFixHistory {
 
 export interface RecordReportActivityItem {
   id: string;
-  /** ISO-8601 timestamp. Host formats. */
+  /**
+   * Machine-readable ISO-8601 timestamp for the `<time dateTime>` attribute.
+   * e.g. "2026-04-22T12:30:00Z".
+   */
   timestamp: string;
+  /**
+   * Optional display label for the timestamp — e.g. "14m ago" or
+   * "Mar 12, 14:00". When omitted, the `timestamp` is rendered verbatim.
+   */
+  displayTime?: ReactNode;
   actor: ReactNode;
   action: ReactNode;
   /** Optional body, e.g. comment text or state transition. */
@@ -599,7 +607,7 @@ function ActivitySection({
             data-tone="tertiary"
             dateTime={item.timestamp}
           >
-            {item.timestamp}
+            {item.displayTime ?? item.timestamp}
           </time>
           <Text variant="text-body">
             <Text variant="text-body" as="span">
