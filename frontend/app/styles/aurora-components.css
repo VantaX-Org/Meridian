@@ -1602,21 +1602,26 @@
 .aurora-process-emergence {
   position: relative;
 }
+/*
+ * Emergence sweep — solid canvas-base overlay animating opacity + X.
+ * NOT a gradient: the one-gradient rule reserves gradient usage for
+ * .aurora-verdict__halo only (CLAUDE.md §Gradient budget). The reveal
+ * is achieved by translating an opaque canvas-colour plate off the
+ * right edge while it fades, which produces a comparable sweep without
+ * introducing a second gradient surface.
+ */
 .aurora-process-emergence[data-emerging="true"]::after {
   content: "";
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(
-    120deg,
-    color-mix(in srgb, var(--aurora-canvas-base) 88%, transparent) 0%,
-    color-mix(in srgb, var(--aurora-canvas-base) 0%, transparent) 55%
-  );
+  background: var(--aurora-canvas-base);
+  transform-origin: left center;
   animation: aurora-emerge-sweep var(--aurora-duration-slow) var(--aurora-easing-enter) forwards;
 }
 @keyframes aurora-emerge-sweep {
   from { opacity: 1; transform: translateX(0); }
-  to   { opacity: 0; transform: translateX(30%); }
+  to   { opacity: 0; transform: translateX(60%); }
 }
 @media (prefers-reduced-motion: reduce) {
   .aurora-process-emergence[data-emerging="true"]::after { animation: none; opacity: 0; }

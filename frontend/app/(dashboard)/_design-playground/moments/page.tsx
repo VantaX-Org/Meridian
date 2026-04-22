@@ -34,7 +34,7 @@ import {
   Text,
   VerdictCard,
 } from "@/components/aurora";
-import { auroraSapIcons } from "@/lib/aurora/icons";
+import { auroraSapIcons } from "@/lib/aurora";
 
 const SAMPLE_ANSWER =
   "DQS dipped to 78.4 because Business Partner completeness fell 3.1 points in the last 24 hours. Two open findings are blocking Order-to-Cash readiness; both are single-record fixes.";

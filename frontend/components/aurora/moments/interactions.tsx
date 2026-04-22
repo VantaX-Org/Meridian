@@ -104,7 +104,7 @@ export function KanbanDrop({
   return (
     <section
       className={clsx("aurora-kanban-drop", className)}
-      data-over={over && canAccept ? "true" : undefined}
+      data-over={over && canAccept !== false ? "true" : undefined}
       data-reject={over && canAccept === false ? "true" : undefined}
       data-pulse={pulse ? "true" : undefined}
       onDragEnter={(event) => {
