@@ -147,6 +147,11 @@ export function DataTable<TRow>({
       if (row) onRowActivate?.(row.original);
     } else if (event.key === "Home") {
       event.preventDefault();
+      // Guard empty tables — the early-return at the top of the
+      // component only fires when an `empty` slot is provided; a
+      // bare `data=[]` still renders the grid and would feed
+      // scrollToIndex(0) with count=0 here.
+      if (rows.length === 0) return;
       // Sync ref before state so a follow-up J/K reads the correct
       // index even before React commits the Home re-render.
       focusedIndexRef.current = 0;
@@ -155,6 +160,7 @@ export function DataTable<TRow>({
       onRowFocus?.(rows[0]?.original ?? null);
     } else if (event.key === "End") {
       event.preventDefault();
+      if (rows.length === 0) return;
       const last = rows.length - 1;
       focusedIndexRef.current = last;
       setFocusedIndex(last);
