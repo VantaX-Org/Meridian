@@ -192,12 +192,14 @@
   --aurora-fg-disabled: var(--aurora-ink-300);
   --aurora-fg-inverse: var(--aurora-ink-50);
 
-  /* §5.6 Elevation on light canvas = shadow, not brightness */
+  /* §5.6 Elevation on light canvas = shadow, not brightness. Level 4 (the
+     verdict card) still carries the accent glow on both themes. */
   --aurora-elev-0-shadow: none;
   --aurora-elev-1-shadow: 0 1px 2px rgba(10, 14, 26, 0.06);
   --aurora-elev-2-shadow: 0 2px 8px rgba(10, 14, 26, 0.08);
   --aurora-elev-3-shadow: 0 8px 24px rgba(10, 14, 26, 0.12);
-  --aurora-elev-4-shadow: 0 16px 40px rgba(10, 14, 26, 0.16);
+  --aurora-elev-4-shadow: 0 16px 40px rgba(10, 14, 26, 0.16),
+    0 0 0 1px rgba(0, 87, 210, 0.4), 0 0 48px rgba(0, 87, 210, 0.24);
 
   color-scheme: light;
 }

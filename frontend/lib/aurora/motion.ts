@@ -1,7 +1,7 @@
 /**
  * Aurora motion tokens — §5.5.
  *
- * Three durations, three easings, two springs. That is the entire motion
+ * Four durations, three easings, two springs. That is the entire motion
  * vocabulary for the product. Every animation references one of these
  * tokens — no inline timing, ever. Motion communicates state change; it
  * is never ornamental. §16.1.

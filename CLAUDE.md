@@ -276,7 +276,7 @@ at repo root and the Aurora Experience Spec (Parts I–V). Tokens live in
   card padding, 13 px table type), `default` (36/16/14), `comfortable`
   (44/24/14). Applied via `[data-density="…"]`. Affects padding only — IA
   is invariant.
-- **Motion**: three durations (`instant` 80 ms, `fast` 160 ms, `medium`
+- **Motion**: four durations (`instant` 80 ms, `fast` 160 ms, `medium`
   240 ms, `slow` 360 ms), three easings (`standard`/`enter`/`exit`), two
   springs (`drawer`, `kanban`). `prefers-reduced-motion` disables verdict
   entrance, process-graph materialisation, drawer spring, kanban drops —

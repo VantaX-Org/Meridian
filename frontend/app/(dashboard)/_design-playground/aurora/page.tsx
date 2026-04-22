@@ -15,6 +15,8 @@ import {
   accent,
   auroraSapIcons,
   canvas,
+  density,
+  type DensityTier,
   duration,
   easing,
   elevation,
@@ -25,7 +27,6 @@ import {
   verdictHalo,
   viz,
 } from "@/lib/aurora";
-import { density, type DensityTier } from "@/lib/aurora/density";
 
 function Section({
   title,
@@ -188,7 +189,7 @@ export default function AuroraTokenReferencePage() {
         >
           Colour, typography, spacing, motion, elevation, and the twelve SAP
           icons. Built from <code>@/lib/aurora</code>. Dark-first. One gradient.
-          Six type sizes. Three motion durations.
+          Six type sizes. Four motion durations.
         </p>
       </header>
 
