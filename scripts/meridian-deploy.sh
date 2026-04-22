@@ -425,7 +425,7 @@ if [[ "$PRECONFIGURED" != "true" ]]; then
         printf 'MERIDIAN_LICENCE_MODE=%s\n' "$LICENCE_MODE"
         [[ -n "$_LICENCE_KEY_LINE"   ]] && printf '%s\n' "$_LICENCE_KEY_LINE"
         [[ -n "$_LICENCE_TOKEN_LINE" ]] && printf '%s\n' "$_LICENCE_TOKEN_LINE"
-        printf 'MERIDIAN_LICENCE_SERVER_URL=%s\n' "$LICENCE_VALIDATE_URL"
+        printf 'MERIDIAN_LICENCE_SERVER_URL=%s\n' "${LICENCE_SERVER_BASE}/api/licence/validate"
         printf '\n# LLM (Tier %s)\n' "$TIER"
         for line in "${_LLM_ENV_LINES[@]}"; do
             printf '%s\n' "$line"
