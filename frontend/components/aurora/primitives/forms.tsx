@@ -8,13 +8,16 @@
  * For a typeahead / listbox, use `<Combobox>` (separate file).
  */
 
+"use client";
+
+import { useId } from "react";
 import type {
   InputHTMLAttributes,
   ReactNode,
   SelectHTMLAttributes,
   TextareaHTMLAttributes,
 } from "react";
-import { clsx, uniqueId } from "./internal";
+import { clsx } from "./internal";
 
 /* ---------------------------------------------------------------- Field --- */
 
@@ -38,7 +41,7 @@ export function Field({
   children,
   className,
 }: FieldProps) {
-  const controlId = uniqueId("aurora-field");
+  const controlId = useId();
   const helperId =
     helper !== undefined || error !== undefined
       ? `${controlId}-helper`
