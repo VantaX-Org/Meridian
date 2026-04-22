@@ -222,13 +222,15 @@
   font-feature-settings: "tnum" 1, "lnum" 1, "ss02" 1;
 }
 
-/* §5.5.1 Reduced motion — every signature moment lists its fallback */
+/* §5.5.1 Reduced motion — disables verdict entrance, process-graph
+   materialisation, drawer spring, kanban drops (medium + slow). Focus
+   rings, state toggles, hover, menu opens, popovers, toasts continue to
+   animate at their normal timings — per CLAUDE.md "never focus rings or
+   state toggles". */
 @media (prefers-reduced-motion: reduce) {
   :root,
   [data-theme="dark"],
   [data-theme="light"] {
-    --aurora-duration-instant: 0ms;
-    --aurora-duration-fast: 0ms;
     --aurora-duration-medium: 0ms;
     --aurora-duration-slow: 0ms;
   }
