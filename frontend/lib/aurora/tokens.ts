@@ -56,6 +56,11 @@ export const accent = {
   700: "#003A8C",
   800: "#002D6F",
   900: "#001F50",
+  /** Selected-state fills derived from accent.500 — used by chips,
+      filter pills, and any data-selected="true" surface. Separate
+      variables keep call sites free of raw rgba() drift. */
+  selectedBg: "rgba(0, 87, 210, 0.18)",
+  selectedBorder: "rgba(0, 87, 210, 0.32)",
 } as const;
 
 /**

@@ -67,6 +67,7 @@ export function Combobox<TValue extends string = string>({
       if (!rootRef.current) return;
       if (!rootRef.current.contains(event.target as Node)) {
         setOpen(false);
+        setQuery("");
       }
     }
     document.addEventListener("mousedown", onDocumentPointerDown);

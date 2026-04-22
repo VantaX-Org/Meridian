@@ -51,6 +51,10 @@
   --aurora-accent-700: #003a8c;
   --aurora-accent-800: #002d6f;
   --aurora-accent-900: #001f50;
+  /* Selected-state fills derived from accent-500 — chips, filter pills,
+     any `data-selected="true"` surface. Keeps raw rgba() out of call sites. */
+  --aurora-accent-selected-bg: rgba(0, 87, 210, 0.18);
+  --aurora-accent-selected-border: rgba(0, 87, 210, 0.32);
 
   /* §5.1.4 Semantic status — used exclusively for status */
   --aurora-status-success-500: #0b7341;

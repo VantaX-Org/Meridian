@@ -154,7 +154,7 @@ export function Select<TValue extends string = string>({
       {...rest}
     >
       {placeholder !== undefined ? (
-        <option value="" disabled hidden={value !== ""}>
+        <option value="" disabled hidden={value != null && value !== ""}>
           {placeholder}
         </option>
       ) : null}
