@@ -213,6 +213,9 @@ import {
   Plug2,
   AlertOctagon,
   Workflow,
+  Sparkles,
+  Coins,
+  Brain,
   type LucideIcon,
 } from "lucide-react";
 import "@/app/sidebar-responsive.css";
@@ -273,8 +276,11 @@ const PAGE_TITLES: Record<string, string> = {
   "/reports": "Reports",
   "/versions": "Versions",
   "/settings": "Settings",
+  "/settings/ai": "AI Settings",
   "/settings/rules": "Rules Engine",
   "/settings/field-mapping": "SAP Field Mapping",
+  "/mining": "Mining",
+  "/llm-savings": "LLM Savings",
   "/connectivity": "Connectivity",
   "/config-impact": "Config Impact",
   "/business-process": "Business Processes",
@@ -441,6 +447,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/findings", label: "Findings", icon: AlertTriangle, licenceKey: "findings" },
       { href: "/analytics", label: "Analytics", icon: BarChart3, licenceKey: "analytics" },
       { href: "/nlp", label: "Ask AI", icon: BrainCircuit, licenceKey: "nlp" },
+      { href: "/mining", label: "Mining", icon: Sparkles },
       { href: "/run-sync", label: "Run Sync", icon: Play, licenceKey: "sync" },
     ],
   },
@@ -449,6 +456,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/reports", label: "Reports", icon: FileText, licenceKey: "reports" },
       { href: "/versions", label: "Versions", icon: GitCompareArrows, licenceKey: "versions" },
+      { href: "/llm-savings", label: "LLM Savings", icon: Coins },
     ],
   },
   {
@@ -496,6 +504,7 @@ interface SettingsNavItem {
 }
 
 const SETTINGS_SUB_NAV: SettingsNavItem[] = [
+  { href: "/settings/ai", label: "AI", icon: Brain, permission: "admin" },
   { href: "/settings/rules", label: "Rules Engine", icon: Sliders, permission: "manage_rules", licenceKey: "rules_engine" },
   { href: "/settings/field-mapping", label: "Field Mapping", icon: Map, permission: "manage_field_mappings", licenceKey: "field_mapping" },
   { href: "/settings/licence", label: "Licence", icon: Key, permission: "view", licenceKey: "licence" },

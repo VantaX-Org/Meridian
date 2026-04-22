@@ -18,7 +18,8 @@ import { useState, useMemo } from "react";
 export function PredictiveDqsCard({
   currentScore,
   predictions,
-  horizon = "30d"
+  horizon = "30d",
+  onHorizonChange,
 }: {
   currentScore: number;
   predictions: Array<{ date: string; score: number; confidence: number }>;
@@ -358,8 +359,10 @@ export function ForecastChart({
     );
   }
   
-  const minVal = Math.min(...allData.map(d => Math.min(d.value, predictions.length > 0 ? d.lower : d.value)));
-  const maxVal = Math.max(...allData.map(d => Math.max(d.value, predictions.length > 0 ? d.upper : d.value)));
+  const historicalValues = historical.map((d) => d.value);
+  const predictionBoundValues = predictions.flatMap((d) => [d.value, d.lower, d.upper]);
+  const minVal = Math.min(...historicalValues, ...predictionBoundValues);
+  const maxVal = Math.max(...historicalValues, ...predictionBoundValues);
   const range = maxVal - minVal || 1;
   
   const width = 600;
