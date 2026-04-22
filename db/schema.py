@@ -11,7 +11,6 @@ See: docs/ARCHITECTURE.md for detailed design rationale.
 """
 
 import uuid
-from datetime import datetime, timezone
 
 from sqlalchemy import (
     Boolean,
@@ -834,10 +833,108 @@ class LLMAuditLog(Base):
     token_count = Column(Integer, nullable=False, server_default="0")
     latency_ms = Column(Integer, nullable=False, server_default="0")
     success = Column(Boolean, nullable=False, server_default="true")
+    deterministic_hit = Column(Boolean, nullable=False, server_default="false")
+    skip_reason = Column(Text, nullable=True)
 
     __table_args__ = (
         Index("ix_llm_audit_log_tenant", "tenant_id"),
         Index("ix_llm_audit_log_tenant_service", "tenant_id", "service_name"),
+    )
+
+
+class LLMDecisionCache(Base):
+    """Persistent cross-service LLM decision cache (survives Redis flushes)."""
+
+    __tablename__ = "llm_decision_cache"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    service_name = Column(Text, nullable=False)
+    input_hash = Column(Text, nullable=False)
+    decision = Column(JSONB, nullable=False)
+    deterministic_hit = Column(Boolean, nullable=False, server_default="false")
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "service_name", "input_hash", name="uq_llm_decision_cache_key"),
+    )
+
+
+class DataDuplicate(Base):
+    """Mining output: potential duplicate record pair per module/version."""
+
+    __tablename__ = "data_duplicates"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    version_id = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id"), nullable=False)
+    module_id = Column(Text, nullable=False)
+    record_a = Column(Text, nullable=False)
+    record_b = Column(Text, nullable=False)
+    match_score = Column(Float, nullable=False)
+    blocking_key = Column(Text, nullable=True)
+    id_field = Column(Text, nullable=True)
+    matched_fields = Column(JSONB, nullable=True)
+    detected_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        Index("ix_data_duplicates_tenant_version", "tenant_id", "version_id"),
+        Index("ix_data_duplicates_module_score", "module_id", "match_score"),
+        UniqueConstraint(
+            "tenant_id", "version_id", "module_id", "record_a", "record_b",
+            name="uq_data_duplicates_pair",
+        ),
+    )
+
+
+class DataAnomaly(Base):
+    """Mining output: statistical outlier on a numeric field."""
+
+    __tablename__ = "data_anomalies"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    version_id = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id"), nullable=False)
+    module_id = Column(Text, nullable=False)
+    field_name = Column(Text, nullable=False)
+    field_value = Column(Float, nullable=True)
+    record_index = Column(Integer, nullable=True)
+    detection_method = Column(Text, nullable=False)
+    z_score = Column(Float, nullable=True)
+    severity = Column(Text, nullable=False)
+    bounds_json = Column(JSONB, nullable=True)
+    detected_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        Index("ix_data_anomalies_tenant_version", "tenant_id", "version_id"),
+        Index("ix_data_anomalies_severity", "module_id", "severity"),
+    )
+
+
+class DataRelationship(Base):
+    """Mining output: detected foreign-key-like relationship between two fields."""
+
+    __tablename__ = "data_relationships"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    version_id = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id"), nullable=False)
+    module_id = Column(Text, nullable=False)
+    field_a = Column(Text, nullable=False)
+    field_b = Column(Text, nullable=False)
+    relationship_type = Column(Text, nullable=False)
+    cardinality_json = Column(JSONB, nullable=True)
+    strength_score = Column(Float, nullable=False)
+    detected_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        Index("ix_data_relationships_tenant_version", "tenant_id", "version_id"),
+        Index("ix_data_relationships_strength", "module_id", "strength_score"),
+        UniqueConstraint(
+            "tenant_id", "version_id", "module_id", "field_a", "field_b",
+            name="uq_data_relationships_fields",
+        ),
     )
 
 

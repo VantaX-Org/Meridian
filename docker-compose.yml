@@ -59,10 +59,15 @@ services:
       timeout: 20s
       retries: 3
 
-  # Standard Ollama image — model is pulled at first startup (see installer step below)
+  # Standard Ollama image — bundled Tier-2 LLM. Only starts under the
+  # "llm-bundled" compose profile so Tier-0 (LLM-less) and Tier-1 (cloud LLM)
+  # deployments don't pay the RAM/disk cost of a local Ollama instance.
+  #   docker compose --profile llm-bundled up -d    # Tier 2
+  #   docker compose up -d                          # Tier 0 / 1 / 1.5 / 3
   ollama:
     image: ollama/ollama:latest
     container_name: meridian-ollama
+    profiles: ["llm-bundled"]
     volumes:
       - ollama_data:/root/.ollama
     networks:

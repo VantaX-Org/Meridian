@@ -85,18 +85,17 @@ def enrich_term(
         from llm.provider import safe_invoke
         response = safe_invoke(llm, prompt_str, timeout_seconds=35)
         if response is None:
-            logger.warning(f"Glossary enricher LLM timeout for term {term}")
-            return {"definition": "", "why_it_matters_business": ""}  # Fallback
-        response = safe_invoke(llm, prompt_str, timeout_seconds=35)
-        if response is None:
-            logger.warning(f"Glossary enricher LLM timeout for term {term}")
-            return {"definition": "", "why_it_matters_business": ""}  # Fallback
+            logger.warning(f"Glossary enricher LLM timeout for {sap_table}.{sap_field}")
+            # Fallback: return empty enrichment so the glossary remains usable without AI
+            return {"business_definition": "", "why_it_matters_business": ""}
         latency = int((time.time() - t_start) * 1000)
         model_version = getattr(llm, "model", "unknown")
         success = True
 
         # Parse response — strip any accidental markdown fences
-        text_content = response.content if hasattr(response, "content") else str(response)
+        text_content = response if isinstance(response, str) else (
+            response.content if hasattr(response, "content") else str(response)
+        )
         clean = re.sub(r"```json|```", "", text_content).strip()
         result = json.loads(clean)
 

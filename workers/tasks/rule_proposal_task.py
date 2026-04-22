@@ -194,14 +194,13 @@ Respond in JSON format only:
         llm = get_llm().bind(max_tokens=600)
         response = safe_invoke(llm, prompt, timeout_seconds=45)
         if response is None:
-            logger.warning(f"Rule proposal LLM timeout")
-            return []  # No rules suggested on timeoutrompt, timeout_seconds=45)
-        if response is None:
-            logger.warning(f"Rule proposal LLM timeout")
+            logger.warning(f"Rule proposal LLM timeout for {domain}")
             return []  # No rules suggested on timeout
         elapsed_ms = int((time.monotonic_ns() // 1_000_000) - start_ms)
 
-        content = response.content if hasattr(response, "content") else str(response)
+        content = response if isinstance(response, str) else (
+            response.content if hasattr(response, "content") else str(response)
+        )
 
         token_count = getattr(response, "usage_metadata", {})
         total_tokens = 0

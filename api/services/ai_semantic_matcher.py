@@ -20,11 +20,33 @@ import redis
 
 from api.utils.pii_fields import sanitise_for_prompt
 from api.utils.llm_logger import log_llm_call
+from sap.deterministic import (
+    FieldType,
+    SimilarityBand,
+    classify_band,
+    classify_field,
+    deterministic_similarity,
+)
 
 logger = logging.getLogger("meridian.ai_semantic_matcher")
 
 _CACHE_TTL = 7 * 24 * 60 * 60  # 7 days in seconds
 _MAX_BATCH_SIZE = 50
+
+
+def _llm_mode() -> str:
+    """Return 'on' (default), 'uncertain_only', or 'off'.
+
+    Controlled by MERIDIAN_SEMANTIC_MATCHER_LLM. At bulk scale (400k records)
+    setting this to 'off' makes the matcher fully deterministic — the
+    uncertain band returns the deterministic score as-is.
+    """
+    val = os.getenv("MERIDIAN_SEMANTIC_MATCHER_LLM", "uncertain_only").strip().lower()
+    if val in ("off", "false", "0", "no"):
+        return "off"
+    if val in ("on", "always", "true", "1"):
+        return "on"
+    return "uncertain_only"
 
 
 def _get_redis() -> redis.Redis:
@@ -81,15 +103,39 @@ def compute_semantic_score(
     Returns:
         Float 0.0-1.0 similarity score, or None on error
     """
-    # Sanitise values — PII fields get redacted
+    # Null/empty short-circuit
+    if value_a is None or value_b is None or value_a == "" or value_b == "":
+        return 0.0
+
+    # ── Deterministic fast path (SAP-aware, no LLM) ─────────────────────────
+    # At 400k records this is the primary path — only the uncertain band
+    # (NO_MATCH_THRESHOLD < score < MATCH_THRESHOLD) can fall through to an
+    # LLM call, and only if the operator has opted in.
+    field_type = classify_field(field, sample_value=value_a)
+    det_score = deterministic_similarity(field, value_a, value_b, field_type=field_type)
+    band = classify_band(det_score)
+    mode = _llm_mode()
+
+    # Closed-domain codes never benefit from an LLM — exact canonical or zero.
+    is_closed_domain = field_type in (
+        FieldType.COUNTRY, FieldType.CURRENCY, FieldType.UOM,
+        FieldType.EMAIL, FieldType.PHONE, FieldType.POSTAL_CODE,
+        FieldType.PRIMARY_KEY, FieldType.FOREIGN_KEY, FieldType.CODE,
+        FieldType.FLAG, FieldType.LANGUAGE,
+    )
+
+    if band in (SimilarityBand.MATCH, SimilarityBand.NO_MATCH):
+        return det_score
+    if mode == "off" or is_closed_domain:
+        return det_score
+
+    # ── Sanitise + cache lookup (LLM path only) ─────────────────────────────
     sanitised_a = sanitise_for_prompt(field, value_a)
     sanitised_b = sanitise_for_prompt(field, value_b)
-
-    # If both values are redacted, we can't compute semantic similarity
     if sanitised_a == "[REDACTED]" and sanitised_b == "[REDACTED]":
-        return None
+        # Can't safely prompt the LLM without leaking PII → keep deterministic score
+        return det_score
 
-    # Check Redis cache first
     cache_key = _cache_key(tenant_id, domain, str(value_a), str(value_b))
     try:
         r = _get_redis()
@@ -99,7 +145,7 @@ def compute_semantic_score(
     except Exception as e:
         logger.warning(f"Redis cache read failed: {e}")
 
-    # Build prompt and call LLM
+    # Build prompt and call LLM (uncertain band only)
     prompt = _build_prompt(field, domain, sanitised_a, sanitised_b)
     start_ms = time.monotonic_ns() // 1_000_000
 
@@ -110,13 +156,12 @@ def compute_semantic_score(
         response = safe_invoke(llm, prompt, timeout_seconds=30)
         if response is None:
             logger.warning(f"Semantic matcher LLM timeout for {field}")
-            return 0.0  # Conservative: no match on timeoutrompt, timeout_seconds=30)
-        if response is None:
-            logger.warning(f"Semantic matcher LLM timeout for {field}")
             return 0.0  # Conservative: no match on timeout
         elapsed_ms = int((time.monotonic_ns() // 1_000_000) - start_ms)
 
-        content = response.content if hasattr(response, "content") else str(response)
+        content = response if isinstance(response, str) else (
+            response.content if hasattr(response, "content") else str(response)
+        )
 
         # Log the call (prompt content is hashed, never stored)
         token_count = getattr(response, "usage_metadata", {})

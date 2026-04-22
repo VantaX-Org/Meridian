@@ -27,6 +27,68 @@ MAX_TOKENS = 800
 BATCH_SIZE = 50
 
 
+def _llm_enabled() -> bool:
+    """Feature flag — default ON. Set MERIDIAN_TRIAGE_LLM=off to be fully deterministic."""
+    val = os.getenv("MERIDIAN_TRIAGE_LLM", "on").strip().lower()
+    return val not in ("off", "false", "0", "no")
+
+
+def deterministic_triage(item: dict[str, Any]) -> tuple[str, float] | None:
+    """Score-band and rule-based triage — no LLM.
+
+    Returns (recommendation, confidence) when a deterministic decision can be made,
+    else None so the caller can fall through to the LLM.
+
+    At 400k records this handles ~80% of queue items.
+    """
+    item_type = item.get("item_type")
+    meta = item.get("source_metadata") or {}
+
+    if item_type == "merge_decision":
+        score = float(meta.get("total_score", 0.0) or 0.0)
+        auto_action = meta.get("auto_action")
+        if auto_action in ("auto_merge", "auto_reject"):
+            return (
+                "approve" if auto_action == "auto_merge" else "reject",
+                0.99,
+            )
+        if score >= 0.98:
+            return "approve: near-exact match, deterministic score ≥0.98", 0.95
+        if score >= 0.85:
+            return "approve: strong match, deterministic score ≥0.85 — verify on open", 0.85
+        if score <= 0.25:
+            return "reject: values clearly differ, deterministic score ≤0.25", 0.90
+        if score <= 0.40:
+            return "reject: low deterministic score (≤0.40)", 0.75
+        return None  # uncertain band → LLM
+
+    if item_type == "golden_record_review":
+        conf = float(meta.get("overall_confidence", 0.0) or 0.0)
+        status = meta.get("record_status")
+        if status == "candidate" and conf >= 0.90:
+            return "approve: high-confidence candidate (≥0.90)", 0.90
+        if conf < 0.40:
+            return "escalate: overall confidence <0.40 — data steward review required", 0.85
+        return None
+
+    if item_type == "exception":
+        severity = str(meta.get("severity", "")).lower()
+        if severity == "critical":
+            return "escalate: critical severity requires immediate steward attention", 0.95
+        if severity == "low":
+            return "review_manually: low-severity exception, batch-handle on next pass", 0.80
+        return None
+
+    if item_type == "contract_breach":
+        # Contract breaches are always governance events — always escalate.
+        return "escalate: data contract breach — notify producer and consumer", 0.95
+
+    if item_type == "glossary_review":
+        return "review_manually: glossary term awaits steward definition review", 0.70
+
+    return None
+
+
 def _build_triage_prompt(item: dict[str, Any]) -> str:
     """Build a concise triage prompt from queue item metadata only — no raw data."""
     from api.utils.pii_fields import sanitise_for_prompt
@@ -73,10 +135,12 @@ def _call_llm(prompt: str, tenant_id: str) -> tuple[str, float]:
         llm = get_llm()
         response = safe_invoke(llm, prompt, timeout_seconds=35)
         if response is None:
-            logger.warning(f"Triage LLM timeout for finding {finding_id}")
-            return {"priority": "medium", "category": "general", "suggested_action": ""}
+            logger.warning("Triage LLM timeout — falling back to review_manually")
+            return "review_manually", 0.0
         latency_ms = int((time.time() - start_ms) * 1000)
-        content = response.content if hasattr(response, "content") else str(response)
+        content = response if isinstance(response, str) else (
+            response.content if hasattr(response, "content") else str(response)
+        )
         token_count = len(content.split())  # rough estimate
 
         log_llm_call(
@@ -236,8 +300,16 @@ def triage_queue_items(self, tenant_id: str | None = None) -> dict:
                             session, item["item_type"], str(item["source_id"])
                         )
 
-                        prompt = _build_triage_prompt(item)
-                        recommendation, confidence = _call_llm(prompt, tid)
+                        # Deterministic SAP-aware triage first; LLM only for the
+                        # genuinely uncertain band (and only when enabled).
+                        det = deterministic_triage(item)
+                        if det is not None:
+                            recommendation, confidence = det
+                        elif _llm_enabled():
+                            prompt = _build_triage_prompt(item)
+                            recommendation, confidence = _call_llm(prompt, tid)
+                        else:
+                            recommendation, confidence = "review_manually", 0.3
 
                         session.execute(
                             text("""

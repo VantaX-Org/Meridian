@@ -119,6 +119,9 @@ def build_llm_from_config(
 
     Used by both get_llm() (runtime) and the test endpoint (pre-save validation).
     """
+    if provider in ("none", "off", ""):
+        return _NoopLLM()
+
     if provider == "ollama":
         return ChatOllama(
             base_url=base_url or "http://ollama:11434",
@@ -277,9 +280,31 @@ AI_UNAVAILABLE_MSG = (
 )
 
 
+class _NoopLLM:
+    """Sentinel LLM used when ``LLM_PROVIDER=none`` — every ``invoke`` returns
+    ``None`` so callers immediately fall back to their deterministic path.
+
+    Deployments that never need an LLM (pure deterministic 400k bulk runs, air-
+    gapped sites without GPU, proof-of-concept with no cloud LLM budget) can
+    set ``LLM_PROVIDER=none`` and skip the bundled Ollama container entirely.
+    """
+
+    def invoke(self, messages):  # noqa: D401 — match LangChain interface
+        raise RuntimeError("LLM disabled (LLM_PROVIDER=none)")
+
+
+def is_llm_disabled() -> bool:
+    """Return True if the configured provider is 'none' (LLM-less deploy mode)."""
+    return os.getenv("LLM_PROVIDER", "ollama").strip().lower() in ("none", "off", "")
+
+
 def safe_invoke(llm, messages, *, timeout_seconds: int = 90) -> str | None:
     """Invoke the LLM with a hard timeout. Returns content string or None."""
     import concurrent.futures
+
+    if is_llm_disabled() or isinstance(llm, _NoopLLM):
+        # No LLM configured — caller must fall back to deterministic logic.
+        return None
 
     if _circuit_is_open():
         logger.debug("LLM circuit breaker is open; short-circuiting call")
@@ -303,6 +328,68 @@ def safe_invoke(llm, messages, *, timeout_seconds: int = 90) -> str | None:
         logger.warning(f"LLM call failed: {e}")
         _record_llm_failure()
         return None
+
+
+def safe_invoke_batch(
+    llm,
+    prompts: list,
+    *,
+    timeout_seconds: int = 90,
+    max_workers: int = 4,
+) -> list[str | None]:
+    """Run many prompts through a single LLM with bounded concurrency.
+
+    Preserves order, returns ``None`` for any prompt that times out / fails so
+    the caller can fall back deterministically per-item. Honours the circuit
+    breaker: once it opens mid-batch, remaining prompts short-circuit to None.
+    """
+    import concurrent.futures
+
+    if not prompts:
+        return []
+
+    results: list[str | None] = [None] * len(prompts)
+
+    if is_llm_disabled() or isinstance(llm, _NoopLLM):
+        # No LLM configured — every item falls back to None so callers use
+        # deterministic logic per-item.
+        return results
+
+    if _circuit_is_open():
+        logger.debug("LLM circuit breaker is open; short-circuiting batch")
+        return results
+
+    def _call_one(idx_prompt):
+        idx, prompt = idx_prompt
+        if _circuit_is_open():
+            return idx, None
+        try:
+            response = llm.invoke(prompt)
+            content = response.content if hasattr(response, "content") else str(response)
+            _record_llm_success()
+            return idx, content
+        except Exception as e:
+            logger.warning(f"LLM batch item {idx} failed: {type(e).__name__}: {e}")
+            _record_llm_failure()
+            return idx, None
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {
+            executor.submit(_call_one, (i, p)): i for i, p in enumerate(prompts)
+        }
+        try:
+            for fut in concurrent.futures.as_completed(futures, timeout=timeout_seconds):
+                idx, content = fut.result()
+                results[idx] = content
+        except concurrent.futures.TimeoutError:
+            logger.warning(
+                f"LLM batch hit wall-clock timeout after {timeout_seconds}s; "
+                "remaining items return None"
+            )
+            for fut in futures:
+                fut.cancel()
+
+    return results
 
 
 async def safe_ainvoke(llm, messages, *, timeout_seconds: int = 60) -> str | None:

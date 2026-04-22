@@ -11,7 +11,6 @@ import logging
 from typing import Optional
 
 import pandas as pd
-import numpy as np
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -234,9 +233,10 @@ def run_relationship(self, version_id: str, tenant_id: str, module: str, parquet
         relationships = _detect_relationships(df, module, max_pairs)
         
         # Record relationships in DB
+        import json as _json
         with Session(engine) as session:
             session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
-            
+
             for rel in relationships:
                 session.execute(
                     text("""
@@ -249,7 +249,7 @@ def run_relationship(self, version_id: str, tenant_id: str, module: str, parquet
                             :field_a, :field_b, :rel_type,
                             CAST(:cardinality AS jsonb), :strength, now()
                         )
-                        ON CONFLICT DO NOTHING
+                        ON CONFLICT ON CONSTRAINT uq_data_relationships_fields DO NOTHING
                     """),
                     {
                         "tid": tenant_id,
@@ -258,15 +258,15 @@ def run_relationship(self, version_id: str, tenant_id: str, module: str, parquet
                         "field_a": rel["field_a"],
                         "field_b": rel["field_b"],
                         "rel_type": rel["cardinality"]["relationship_type"],
-                        "cardinality": {
+                        "cardinality": _json.dumps({
                             "unique_a": rel["cardinality"]["unique_values_a"],
                             "unique_b": rel["cardinality"]["unique_values_b"],
                             "match_ratio": rel["cardinality"]["match_ratio"],
-                        },
+                        }),
                         "strength": rel["strength"],
                     },
                 )
-            
+
             session.commit()
         
         logger.info(f"run_relationship complete: found {len(relationships)} relationships for {module}")
