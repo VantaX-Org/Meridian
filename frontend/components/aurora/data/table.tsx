@@ -222,10 +222,12 @@ export function DataTable<TRow>({
                 virtualStart={virtualRow.start}
                 focused={virtualRow.index === focusedIndex}
                 onMouseEnter={() => {
+                  focusedIndexRef.current = virtualRow.index;
                   setFocusedIndex(virtualRow.index);
                   onRowFocus?.(row.original);
                 }}
                 onClick={() => {
+                  focusedIndexRef.current = virtualRow.index;
                   setFocusedIndex(virtualRow.index);
                   onRowFocus?.(row.original);
                   onRowActivate?.(row.original);
