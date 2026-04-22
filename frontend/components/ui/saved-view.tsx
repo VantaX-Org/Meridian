@@ -7,6 +7,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
+  DropdownMenuGroup,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuItem,
@@ -130,42 +131,44 @@ export function SavedView({ routeKey, className }: SavedViewProps) {
         <ChevronDown className="h-3 w-3 text-muted-foreground" aria-hidden />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">
-        <DropdownMenuLabel className="text-xs">Saved views</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {views.length === 0 ? (
-          <div className="px-2 py-2 text-[11px] text-muted-foreground">
-            No views yet. Configure filters, then save.
-          </div>
-        ) : (
-          views.map((v) => (
-            <DropdownMenuItem
-              key={v.id}
-              onClick={() => applyView(v)}
-              className="group text-xs"
-            >
-              <span className="flex-1 truncate">{v.name}</span>
-              {activeView?.id === v.id ? (
-                <Check className="h-3 w-3 text-primary" aria-hidden />
-              ) : null}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  deleteView(v);
-                }}
-                className="ml-1 hidden rounded p-0.5 text-muted-foreground hover:bg-black/[0.05] hover:text-foreground group-hover:inline-flex"
-                aria-label={`Delete view ${v.name}`}
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="text-xs">Saved views</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          {views.length === 0 ? (
+            <div className="px-2 py-2 text-[11px] text-muted-foreground">
+              No views yet. Configure filters, then save.
+            </div>
+          ) : (
+            views.map((v) => (
+              <DropdownMenuItem
+                key={v.id}
+                onClick={() => applyView(v)}
+                className="group text-xs"
               >
-                <Trash2 className="h-3 w-3" aria-hidden />
-              </button>
-            </DropdownMenuItem>
-          ))
-        )}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={saveCurrent} className="text-xs">
-          <Plus className="h-3 w-3" aria-hidden />
-          Save current filters
-        </DropdownMenuItem>
+                <span className="flex-1 truncate">{v.name}</span>
+                {activeView?.id === v.id ? (
+                  <Check className="h-3 w-3 text-primary" aria-hidden />
+                ) : null}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteView(v);
+                  }}
+                  className="ml-1 hidden rounded p-0.5 text-muted-foreground hover:bg-black/[0.05] hover:text-foreground group-hover:inline-flex"
+                  aria-label={`Delete view ${v.name}`}
+                >
+                  <Trash2 className="h-3 w-3" aria-hidden />
+                </button>
+              </DropdownMenuItem>
+            ))
+          )}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={saveCurrent} className="text-xs">
+            <Plus className="h-3 w-3" aria-hidden />
+            Save current filters
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );
