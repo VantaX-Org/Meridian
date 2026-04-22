@@ -138,9 +138,12 @@ export function DataTable<TRow>({
     } else if (event.key === "k" || event.key === "ArrowUp") {
       event.preventDefault();
       moveFocus(-1);
-    } else if (event.key === "Enter" && focusedIndex >= 0) {
+    } else if (event.key === "Enter" && focusedIndexRef.current >= 0) {
       event.preventDefault();
-      const row = rows[focusedIndex];
+      // Read from the ref — if the user presses J/K + Enter faster
+      // than React can commit, closure-captured focusedIndex would
+      // activate the prior row, not the one under the caret.
+      const row = rows[focusedIndexRef.current];
       if (row) onRowActivate?.(row.original);
     } else if (event.key === "Home") {
       event.preventDefault();
