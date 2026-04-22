@@ -389,7 +389,13 @@ export function Workbench({
             )
           ) : (
             <EmptyState
-              title={`${resolvedTabs.find((t) => t.id === activeTab)?.label ?? "This tab"} is coming online`}
+              title={
+                <>
+                  {resolvedTabs.find((t) => t.id === activeTab)?.label ??
+                    "This tab"}
+                  {" is coming online"}
+                </>
+              }
               body="Content lands in the next WS7 pass. Triage is ready now."
             />
           )
