@@ -556,7 +556,7 @@ export default function AuroraTokenReferencePage() {
         </div>
       </Section>
 
-      <Section title="Motion" spec="§5.5 — three durations, three easings">
+      <Section title="Motion" spec="§5.5 — four durations, three easings">
         <div
           style={{
             display: "grid",
