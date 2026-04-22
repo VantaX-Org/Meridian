@@ -23,6 +23,8 @@ import {
   Background,
   BackgroundVariant,
   Controls,
+  Handle,
+  Position,
   ReactFlow,
   type Edge,
   type Node,
@@ -116,6 +118,23 @@ export function ProcessGraph({
   onNodeClick,
   className,
 }: ProcessGraphProps) {
+  // Dagre direction drives where source/target handles anchor so edges have
+  // real connection points (LR → left/right, TB → top/bottom).
+  const handlePositions = useMemo<HandlePositions>(
+    () =>
+      direction === "TB"
+        ? { target: Position.Top, source: Position.Bottom }
+        : { target: Position.Left, source: Position.Right },
+    [direction],
+  );
+
+  const nodeTypes = useMemo(
+    () => ({
+      auroraProcess: makeAuroraProcessNode(handlePositions),
+    }),
+    [handlePositions],
+  );
+
   const initialNodes = useMemo(
     () => layoutWithDagre(rawNodes, rawEdges, direction),
     [rawNodes, rawEdges, direction],
@@ -176,36 +195,50 @@ export function ProcessGraph({
 
 /* ---------------------------------------------------------- Custom node --- */
 
-const nodeTypes = {
-  auroraProcess: AuroraProcessNode,
-};
+interface HandlePositions {
+  target: Position;
+  source: Position;
+}
 
-function AuroraProcessNode({ data, selected }: NodeProps<AuroraNode>) {
-  return (
-    <div
-      className="aurora-process-node"
-      data-kind={data.kind}
-      data-alignment={data.alignment}
-      data-selected={selected ? "true" : undefined}
-      style={{ width: NODE_WIDTH, height: NODE_HEIGHT }}
-    >
-      {data.stepId ? (
-        <Text variant="text-micro" tone="tertiary">
-          {data.stepId}
+function makeAuroraProcessNode(positions: HandlePositions) {
+  function AuroraProcessNode({ data, selected }: NodeProps<AuroraNode>) {
+    return (
+      <div
+        className="aurora-process-node"
+        data-kind={data.kind}
+        data-alignment={data.alignment}
+        data-selected={selected ? "true" : undefined}
+        style={{ width: NODE_WIDTH, height: NODE_HEIGHT }}
+      >
+        <Handle
+          type="target"
+          position={positions.target}
+          isConnectable={false}
+        />
+        {data.stepId ? (
+          <Text variant="text-micro" tone="tertiary">
+            {data.stepId}
+          </Text>
+        ) : null}
+        <Text variant="text-small" className="aurora-process-node__label">
+          {data.label}
         </Text>
-      ) : null}
-      <Text variant="text-small" className="aurora-process-node__label">
-        {data.label}
-      </Text>
-      {data.secondary ? (
-        <Text variant="text-micro" tone="muted">
-          {data.secondary}
-        </Text>
-      ) : null}
-      <span
-        className="aurora-process-node__alignment"
-        aria-label={data.alignment}
-      />
-    </div>
-  );
+        {data.secondary ? (
+          <Text variant="text-micro" tone="muted">
+            {data.secondary}
+          </Text>
+        ) : null}
+        <span
+          className="aurora-process-node__alignment"
+          aria-label={data.alignment}
+        />
+        <Handle
+          type="source"
+          position={positions.source}
+          isConnectable={false}
+        />
+      </div>
+    );
+  }
+  return AuroraProcessNode;
 }

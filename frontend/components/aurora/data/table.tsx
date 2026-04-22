@@ -131,11 +131,13 @@ export function DataTable<TRow>({
       event.preventDefault();
       setFocusedIndex(0);
       virtualiser.scrollToIndex(0);
+      onRowFocus?.(rows[0]?.original ?? null);
     } else if (event.key === "End") {
       event.preventDefault();
       const last = rows.length - 1;
       setFocusedIndex(last);
       virtualiser.scrollToIndex(last);
+      onRowFocus?.(rows[last]?.original ?? null);
     }
   };
 
