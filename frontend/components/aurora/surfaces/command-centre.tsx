@@ -112,11 +112,19 @@ export interface CommandCentreAskState {
   question: ReactNode;
   answer: ReactNode;
   status: AskStatus;
+  /**
+   * Citation shape must match `AskCitation` (moments/ask.tsx:25) —
+   * structural typing would let a mismatched shape compile here but
+   * silently drop handlers at render time (AskStreamingCard reads
+   * `c.onOpen` and `c.kind`, not `c.onClick` / `c.href`).
+   */
   citations?: ReadonlyArray<{
     id: string;
     label: ReactNode;
-    href?: string;
-    onClick?: () => void;
+    /** Optional secondary label, e.g. "BP · tax_number · 312 records". */
+    kind?: ReactNode;
+    /** Click handler — wires the chip to a drawer / record open. */
+    onOpen?: () => void;
   }>;
 }
 
@@ -295,7 +303,11 @@ export function CommandCentre({
             ) : (
               <DataTable
                 columns={inboxColumns}
-                data={inbox as CommandCentreInboxItem[]}
+                // `.slice()` peels the ReadonlyArray wrapper without
+                // copying semantics — `DataTable` types its data as
+                // mutable to match TanStack Table's signature, not
+                // because it mutates.
+                data={inbox.slice()}
                 getRowId={(row) => row.id}
                 onRowActivate={onInboxActivate}
                 ariaLabel="Inbox — priority findings"
@@ -330,7 +342,7 @@ export function CommandCentre({
               />
             ) : (
               <Sparkline
-                data={trend.slice() as CommandCentreTrendPoint[]}
+                data={trend.slice()}
                 xKey="date"
                 yKey="dqs"
                 height={96}
@@ -456,13 +468,11 @@ export function LlmSavingsStrip({ savings, className }: LlmSavingsStripProps) {
           value={savings.callsSaved.toLocaleString()}
           sparkline={
             savings.series.length > 0 ? (
-              <Sparkline
-                data={
-                  savings.series.map((p) => ({
-                    date: p.date,
-                    reduction: Math.round(p.reduction * 100),
-                  })) as Array<{ date: string; reduction: number }>
-                }
+              <Sparkline<{ date: string; reduction: number }>
+                data={savings.series.map((p) => ({
+                  date: p.date,
+                  reduction: Math.round(p.reduction * 100),
+                }))}
                 xKey="date"
                 yKey="reduction"
                 height={28}

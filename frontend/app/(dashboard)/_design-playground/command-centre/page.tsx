@@ -237,8 +237,24 @@ export default function CommandCentrePlaygroundPage() {
             "Business Partner completeness fell 3.1 points — 312 records are missing tax_number. Two open critical findings are blocking Order-to-Cash readiness; both are single-record fixes.",
           status: "done",
           citations: [
-            { id: "bp-001", label: "BP · tax_number · 312 records" },
-            { id: "mm-004", label: "MM · UoM conversion · 87 records" },
+            {
+              id: "bp-001",
+              label: "BP · tax_number",
+              kind: "312 records",
+              onOpen: () => {
+                // eslint-disable-next-line no-console -- playground affordance
+                console.info("Command Centre · citation open", "bp-001");
+              },
+            },
+            {
+              id: "mm-004",
+              label: "MM · UoM conversion",
+              kind: "87 records",
+              onOpen: () => {
+                // eslint-disable-next-line no-console -- playground affordance
+                console.info("Command Centre · citation open", "mm-004");
+              },
+            },
           ],
         }}
         llmSavings={isSavingsNonTrivial(llmSavings) ? llmSavings : undefined}
