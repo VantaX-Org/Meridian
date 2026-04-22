@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Upload as UploadIcon,
   AlertTriangle,
   ArrowRight,
 } from "lucide-react";
@@ -20,6 +19,8 @@ import { DqsBarChart } from "@/components/charts/dqs-bar-chart";
 import { DimensionDonut } from "@/components/charts/dimension-donut";
 import { SeverityBarChart } from "@/components/charts/severity-bar-chart";
 import { KpiRail, type KpiItem } from "@/components/ui/kpi-rail";
+import { HeroKpi } from "@/components/ui/hero-kpi";
+import { EmptyState } from "@/components/ui/empty-state";
 import { NarrativeStrip } from "@/components/ui/narrative-strip";
 import { SectionHeader } from "@/components/ui/section-header";
 import { SavedView } from "@/components/ui/saved-view";
@@ -192,19 +193,13 @@ export default function DashboardPage() {
 
   if (!latestComplete || Object.keys(mergedDqs).length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center gap-6 py-24">
-        <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/10">
-          <UploadIcon className="h-10 w-10 text-primary" />
-        </div>
-        <div className="text-center">
-          <h2 className="font-display text-xl font-semibold text-foreground">No analysis data yet</h2>
-          <p className="mt-2 text-muted-foreground">Upload SAP data to get your first Data Quality Score.</p>
-        </div>
-        <Link href="/upload">
-          <Button className="bg-primary text-white hover:bg-primary/80 rounded-xl px-6">
-            Upload Data
-          </Button>
-        </Link>
+      <div className="py-20">
+        <EmptyState
+          illustration="data"
+          title="No analysis data yet"
+          description="Upload SAP data to get your first Data Quality Score across your modules."
+          action={{ label: "Upload data", href: "/upload" }}
+        />
       </div>
     );
   }
@@ -451,8 +446,31 @@ export default function DashboardPage() {
         <SavedView routeKey="overview" />
       </div>
 
-      {/* KPI rail */}
-      <KpiRail items={kpis} columns={kpis.length as 4 | 5 | 6 | 7 | 8} />
+      {/* Hero + KPI rail */}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-12">
+        <div className="lg:col-span-4">
+          <HeroKpi
+            label="Data Quality Score"
+            value={overallScore.toFixed(1)}
+            suffix="/ 100"
+            delta={dqsDelta}
+            deltaLabel=" pts"
+            caption={
+              dqsDelta === undefined
+                ? `${completed.length} run${completed.length === 1 ? "" : "s"} analysed`
+                : `${dqsDelta >= 0 ? "Up" : "Down"} ${Math.abs(dqsDelta).toFixed(1)} pts vs previous run`
+            }
+            spark={dqsTrend}
+            href={dqsTrend.length >= 2 ? "/versions" : undefined}
+          />
+        </div>
+        <div className="lg:col-span-8">
+          <KpiRail
+            items={kpis.slice(1)}
+            columns={Math.max(4, Math.min(kpis.length - 1, 6)) as 4 | 5 | 6}
+          />
+        </div>
+      </div>
 
       {/* Narrative */}
       <NarrativeStrip
