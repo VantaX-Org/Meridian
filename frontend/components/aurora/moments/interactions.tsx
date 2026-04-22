@@ -100,6 +100,12 @@ export function KanbanDrop({
 }: KanbanDropProps) {
   const [over, setOver] = useState(false);
   const [pulse, setPulse] = useState(false);
+  // HTML5 dragleave fires on the parent whenever the cursor crosses
+  // into a child element, so a naive onDragLeave would flicker the
+  // accept highlight each time the drag moved between cards. The
+  // standard fix is a counter: increment on enter, decrement on
+  // leave, only clear when it returns to zero.
+  const dragDepthRef = useRef(0);
 
   return (
     <section
@@ -109,15 +115,20 @@ export function KanbanDrop({
       data-pulse={pulse ? "true" : undefined}
       onDragEnter={(event) => {
         event.preventDefault();
+        dragDepthRef.current += 1;
         setOver(true);
       }}
-      onDragLeave={() => setOver(false)}
+      onDragLeave={() => {
+        dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+        if (dragDepthRef.current === 0) setOver(false);
+      }}
       onDragOver={(event) => {
         event.preventDefault();
         event.dataTransfer.dropEffect = canAccept === false ? "none" : "move";
       }}
       onDrop={(event) => {
         event.preventDefault();
+        dragDepthRef.current = 0;
         setOver(false);
         if (canAccept === false) return;
         setPulse(true);
