@@ -327,7 +327,7 @@ const configImpactColumns: ColumnDef<ProcessConfigImpactRow, unknown>[] = [
     cell: ({ row }) =>
       typeof row.original.opportunity === "number" ? (
         <Text variant="text-small" numeric as="span" tone="secondary">
-          ${row.original.opportunity.toLocaleString()}
+          USD {row.original.opportunity.toLocaleString()}
         </Text>
       ) : (
         <Text variant="text-small" tone="tertiary" as="span">

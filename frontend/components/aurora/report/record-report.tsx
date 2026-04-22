@@ -420,7 +420,7 @@ function ConfigImpactSection({
           </div>
           {typeof item.opportunity === "number" ? (
             <Text variant="text-small" numeric as="span" tone="secondary">
-              ${item.opportunity.toLocaleString()}
+              USD {item.opportunity.toLocaleString()}
             </Text>
           ) : (
             <Text variant="text-small" tone="tertiary" as="span">
