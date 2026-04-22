@@ -521,7 +521,7 @@ export function buildVerdict({
       sentence:
         topModule !== null
           ? `${critical} critical finding${critical === 1 ? " is" : "s are"} blocking ${topModule} readiness.`
-          : `${critical} critical finding${critical === 1 ? "" : "s"} are blocking readiness.`,
+          : `${critical} critical finding${critical === 1 ? " is" : "s are"} blocking readiness.`,
       support: `DQS is ${dqsStr}${deltaCopy ? `, ${deltaCopy}` : ""}.`,
       semantic: "danger",
     };
@@ -529,7 +529,7 @@ export function buildVerdict({
   if (dqs < 75 || high > 10) {
     return {
       eyebrow: high > 0 ? `High · ${high}` : "Watch",
-      sentence: `DQS is ${dqsStr} — ${high} high-severity finding${high === 1 ? "" : "s"} need review.`,
+      sentence: `DQS is ${dqsStr} — ${high} high-severity finding${high === 1 ? " needs" : "s need"} review.`,
       support:
         topModule !== null ? `${topModule} is driving the shortfall.` : undefined,
       semantic: "warning",

@@ -79,11 +79,18 @@ export function composeCommandCentre({
       value: dqs.toFixed(1),
       delta:
         previousDqs !== null
-          ? {
-              value: Number((dqs - previousDqs).toFixed(1)),
-              direction: dqs >= previousDqs ? "up" : "down",
-              semantic: dqs >= previousDqs ? "success" : "danger",
-            }
+          ? (() => {
+              const raw = Number((dqs - previousDqs).toFixed(1));
+              const direction: "up" | "down" | "flat" =
+                raw > 0 ? "up" : raw < 0 ? "down" : "flat";
+              const semantic: "success" | "danger" | "neutral" =
+                direction === "up"
+                  ? "success"
+                  : direction === "down"
+                    ? "danger"
+                    : "neutral";
+              return { value: raw, direction, semantic };
+            })()
           : undefined,
     },
     {
