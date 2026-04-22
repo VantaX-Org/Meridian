@@ -1021,7 +1021,7 @@
   background: var(--aurora-canvas-elevated);
   border: 1px solid var(--aurora-canvas-line);
   border-radius: 16px;
-  box-shadow: var(--aurora-elev-4);
+  box-shadow: var(--aurora-elev-3-shadow);
   overflow: hidden;
   animation: aurora-palette-in var(--aurora-duration-fast)
     var(--aurora-easing-enter);
@@ -1264,7 +1264,7 @@
   flex-direction: column;
   background: var(--aurora-canvas-raised);
   border-left: 1px solid var(--aurora-canvas-line);
-  box-shadow: var(--aurora-elev-4);
+  box-shadow: var(--aurora-elev-3-shadow);
   animation: aurora-drawer-in var(--aurora-duration-medium)
     var(--aurora-easing-enter);
 }

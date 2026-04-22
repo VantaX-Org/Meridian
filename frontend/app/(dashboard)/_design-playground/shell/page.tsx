@@ -30,7 +30,7 @@ import {
   type WorkspaceId,
   type WorkspaceSwitcherItem,
 } from "@/components/aurora";
-import { auroraSapIcons } from "@/lib/aurora/icons";
+import { auroraSapIcons } from "@/lib/aurora";
 import type { ColumnDef } from "@tanstack/react-table";
 
 const WORKSPACES: WorkspaceSwitcherItem[] = [
