@@ -24,6 +24,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { DetailPanel } from "@/components/ui/detail-panel";
 import { Textarea } from "@/components/ui/textarea";
 import {
   bulkApprove,
@@ -501,92 +502,110 @@ export default function StewardshipPage() {
         </>
       )}
 
-      {/* Detail dialog */}
-      <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
-        <DialogContent className="max-w-xl">
-          {selected ? (
-            <>
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <Badge className={PRIORITY_LABELS[selected.priority]?.color}>
-                    P{selected.priority}
-                  </Badge>
-                  <span>{ITEM_TYPE_CONFIG[selected.item_type]?.label ?? selected.item_type}</span>
-                  <span className="text-muted-foreground">·</span>
-                  <span className="font-mono text-sm">{selected.domain}</span>
-                </DialogTitle>
-              </DialogHeader>
-              <div className="space-y-3 text-sm">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Source ID</p>
-                    <p className="font-mono text-xs text-foreground">{selected.source_id}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Status</p>
-                    <p className="capitalize text-foreground">{selected.status}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Created</p>
-                    <p className="text-foreground">{relativeTime(selected.created_at)}</p>
-                  </div>
-                  {selected.sla_hours ? (
-                    <div>
-                      <p className="text-xs text-muted-foreground">SLA</p>
-                      <p className="text-foreground">{selected.sla_hours}h</p>
-                    </div>
+      {/* Detail slide-over */}
+      <DetailPanel
+        open={!!selected}
+        onOpenChange={(o) => !o && setSelected(null)}
+        width={520}
+        title={
+          selected ? (
+            <span className="flex items-center gap-2">
+              <Badge className={PRIORITY_LABELS[selected.priority]?.color}>
+                P{selected.priority}
+              </Badge>
+              <span>{ITEM_TYPE_CONFIG[selected.item_type]?.label ?? selected.item_type}</span>
+            </span>
+          ) : null
+        }
+        subtitle={selected ? <span className="font-mono">{selected.domain}</span> : undefined}
+        onPrev={
+          selected
+            ? () => {
+                const i = filtered.findIndex((x) => x.id === selected.id);
+                if (i > 0) setSelected(filtered[i - 1]);
+              }
+            : undefined
+        }
+        onNext={
+          selected
+            ? () => {
+                const i = filtered.findIndex((x) => x.id === selected.id);
+                if (i >= 0 && i < filtered.length - 1) setSelected(filtered[i + 1]);
+              }
+            : undefined
+        }
+        footer={
+          selected ? (
+            <div className="flex items-center justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => escalateMutation.mutate(selected.id)}
+                disabled={escalateMutation.isPending}
+              >
+                Escalate
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setOverrideOpen(true)}
+              >
+                Reject
+              </Button>
+              <Button
+                size="sm"
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
+                disabled={resolveMutation.isPending}
+                onClick={() =>
+                  resolveMutation.mutate({ id: selected.id, action: "approve" })
+                }
+              >
+                Approve
+              </Button>
+            </div>
+          ) : null
+        }
+      >
+        {selected ? (
+          <div className="space-y-3 text-sm">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="text-xs text-muted-foreground">Source ID</p>
+                <p className="font-mono text-xs text-foreground">{selected.source_id}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Status</p>
+                <p className="capitalize text-foreground">{selected.status}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Created</p>
+                <p className="text-foreground">{relativeTime(selected.created_at)}</p>
+              </div>
+              {selected.sla_hours ? (
+                <div>
+                  <p className="text-xs text-muted-foreground">SLA</p>
+                  <p className="text-foreground">{selected.sla_hours}h</p>
+                </div>
+              ) : null}
+            </div>
+
+            {selected.ai_recommendation ? (
+              <div className="rounded-lg border border-black/[0.06] bg-[#7858FF]/[0.05] p-3">
+                <div className="flex items-center gap-2">
+                  <Brain className="h-4 w-4 text-[#7858FF]" />
+                  <span className="text-xs font-semibold uppercase tracking-wide text-[#7858FF]">
+                    AI recommendation
+                  </span>
+                  {selected.ai_confidence !== null && selected.ai_confidence !== undefined ? (
+                    <ConfidenceBar confidence={selected.ai_confidence} />
                   ) : null}
                 </div>
-
-                {selected.ai_recommendation ? (
-                  <div className="rounded-lg border border-black/[0.06] bg-[#7C3AED]/[0.04] p-3">
-                    <div className="flex items-center gap-2">
-                      <Brain className="h-4 w-4 text-[#7C3AED]" />
-                      <span className="text-xs font-semibold uppercase tracking-wide text-[#7C3AED]">
-                        AI recommendation
-                      </span>
-                      {selected.ai_confidence !== null && selected.ai_confidence !== undefined ? (
-                        <ConfidenceBar confidence={selected.ai_confidence} />
-                      ) : null}
-                    </div>
-                    <p className="mt-1 text-sm text-foreground">{selected.ai_recommendation}</p>
-                  </div>
-                ) : null}
+                <p className="mt-1 text-sm text-foreground">{selected.ai_recommendation}</p>
               </div>
-
-              <DialogFooter className="gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => escalateMutation.mutate(selected.id)}
-                  disabled={escalateMutation.isPending}
-                >
-                  Escalate
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setOverrideOpen(true);
-                  }}
-                >
-                  Reject
-                </Button>
-                <Button
-                  size="sm"
-                  className="bg-primary text-primary-foreground hover:bg-primary/90"
-                  disabled={resolveMutation.isPending}
-                  onClick={() =>
-                    resolveMutation.mutate({ id: selected.id, action: "approve" })
-                  }
-                >
-                  Approve
-                </Button>
-              </DialogFooter>
-            </>
-          ) : null}
-        </DialogContent>
-      </Dialog>
+            ) : null}
+          </div>
+        ) : null}
+      </DetailPanel>
 
       {/* Override / reject reason dialog */}
       <Dialog open={overrideOpen} onOpenChange={setOverrideOpen}>
