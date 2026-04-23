@@ -18,10 +18,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
+import { toast } from "sonner";
 import {
   Admin,
+  AdminDestructiveConfirm,
   AdminDoctorCard,
   Banner,
   Button,
@@ -31,21 +33,84 @@ import {
   type AdminDoctorItem,
   type AdminTabId,
 } from "@/components/aurora";
-import { getUsers } from "@/lib/api/users";
-import { getSystems } from "@/lib/api/systems";
+import { getUsers, inviteUser, updateUser } from "@/lib/api/users";
+import { deleteSystem, getSystems } from "@/lib/api/systems";
 import { getRulesSummary, type RulesSummaryItem } from "@/lib/api/rules";
 import { getLicenceManifest } from "@/lib/api/licence";
-import type { SAPSystem, User } from "@/types/api";
+import type { SAPSystem, User, UserRole } from "@/types/api";
+
+const ROLE_OPTIONS: ReadonlyArray<UserRole> = [
+  "admin",
+  "steward",
+  "analyst",
+  "approver",
+  "auditor",
+];
 
 /* ----------------------------------------------------------- Page --- */
 
 export default function AdminPage() {
   const [tab, setTab] = useState<AdminTabId>("users");
+  const qc = useQueryClient();
 
   const usersQuery = useQuery({
     queryKey: ["aurora.admin.users"],
     queryFn: getUsers,
     retry: noRetryOnAuthError,
+  });
+
+  /* ----- mutations ----- */
+
+  const inviteMutation = useMutation({
+    mutationFn: inviteUser,
+    onSuccess: (res) => {
+      toast.success(`Invited ${res.email} as ${res.role}`);
+      qc.invalidateQueries({ queryKey: ["aurora.admin.users"] });
+    },
+    onError: (err: unknown) => {
+      const msg =
+        err instanceof AxiosError
+          ? err.response?.data?.detail ?? err.message
+          : "Invite failed.";
+      toast.error(`Invite failed: ${msg}`);
+    },
+  });
+
+  const toggleActiveMutation = useMutation({
+    mutationFn: ({ userId, is_active }: { userId: string; is_active: boolean }) =>
+      updateUser(userId, { is_active }),
+    onSuccess: (u) => {
+      toast.success(
+        `${u.email} is now ${u.is_active ? "active" : "disabled"}`,
+      );
+      qc.invalidateQueries({ queryKey: ["aurora.admin.users"] });
+    },
+    onError: () => {
+      toast.error("Couldn't update user state — retry or check audit log.");
+    },
+  });
+
+  const updateRoleMutation = useMutation({
+    mutationFn: ({ userId, role }: { userId: string; role: UserRole }) =>
+      updateUser(userId, { role }),
+    onSuccess: (u) => {
+      toast.success(`${u.email} role updated to ${u.role}`);
+      qc.invalidateQueries({ queryKey: ["aurora.admin.users"] });
+    },
+    onError: () => {
+      toast.error("Couldn't update role — retry or check audit log.");
+    },
+  });
+
+  const deleteSystemMutation = useMutation({
+    mutationFn: deleteSystem,
+    onSuccess: () => {
+      toast.success("System removed.");
+      qc.invalidateQueries({ queryKey: ["aurora.admin.systems"] });
+    },
+    onError: () => {
+      toast.error("Remove failed — check dependencies and retry.");
+    },
   });
   const systemsQuery = useQuery({
     queryKey: ["aurora.admin.systems"],
@@ -88,6 +153,17 @@ export default function AdminPage() {
               users={usersQuery.data?.users}
               isLoading={usersQuery.isLoading}
               isError={usersQuery.isError}
+              onInvite={(body) => inviteMutation.mutate(body)}
+              inviteInFlight={inviteMutation.isPending}
+              onToggleActive={(userId, is_active) =>
+                toggleActiveMutation.mutate({ userId, is_active })
+              }
+              onChangeRole={(userId, role) =>
+                updateRoleMutation.mutate({ userId, role })
+              }
+              mutationInFlight={
+                toggleActiveMutation.isPending || updateRoleMutation.isPending
+              }
             />
           ),
         },
@@ -100,6 +176,7 @@ export default function AdminPage() {
               systems={systemsQuery.data}
               isLoading={systemsQuery.isLoading}
               isError={systemsQuery.isError}
+              onDeleteSystem={(id) => deleteSystemMutation.mutate(id)}
             />
           ),
         },
@@ -158,49 +235,220 @@ function UsersBody({
   users,
   isLoading,
   isError,
+  onInvite,
+  inviteInFlight,
+  onToggleActive,
+  onChangeRole,
+  mutationInFlight,
 }: {
   users?: ReadonlyArray<User>;
   isLoading: boolean;
   isError: boolean;
+  onInvite: (body: { email: string; name?: string; role?: UserRole }) => void;
+  inviteInFlight: boolean;
+  onToggleActive: (userId: string, is_active: boolean) => void;
+  onChangeRole: (userId: string, role: UserRole) => void;
+  mutationInFlight: boolean;
 }) {
+  const [inviteOpen, setInviteOpen] = useState(false);
   if (isLoading) return <LoadingLine label="Loading users" />;
   if (isError)
     return <ErrorLine detail="Couldn't reach the users API." />;
   if (!users || users.length === 0) {
     return (
-      <EmptyLine
-        title="No users in this tenant yet"
-        body="Invite the first user to get started."
-        action={<Button variant="primary">Invite user</Button>}
-      />
+      <Stack direction="column" gap={4}>
+        <EmptyLine
+          title="No users in this tenant yet"
+          body="Invite the first user to get started."
+          action={
+            <Button
+              variant="primary"
+              onClick={() => setInviteOpen(true)}
+            >
+              Invite user
+            </Button>
+          }
+        />
+        {inviteOpen ? (
+          <InviteUserForm
+            onSubmit={(body) => {
+              onInvite(body);
+              setInviteOpen(false);
+            }}
+            onCancel={() => setInviteOpen(false)}
+            pending={inviteInFlight}
+          />
+        ) : null}
+      </Stack>
     );
   }
   const distinctRoles = new Set(users.map((u) => u.role)).size;
   return (
     <Stack direction="column" gap={3}>
-      <Text variant="text-body" tone="secondary">
-        {users.length} user{users.length === 1 ? "" : "s"} across {distinctRoles} role
-        {distinctRoles === 1 ? "" : "s"}.
-      </Text>
+      <Stack direction="row" gap={3} align="center">
+        <Text variant="text-body" tone="secondary">
+          {users.length} user{users.length === 1 ? "" : "s"} across{" "}
+          {distinctRoles} role{distinctRoles === 1 ? "" : "s"}.
+        </Text>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => setInviteOpen((v) => !v)}
+          style={{ marginLeft: "auto" }}
+        >
+          {inviteOpen ? "Close invite" : "Invite user"}
+        </Button>
+      </Stack>
+      {inviteOpen ? (
+        <InviteUserForm
+          onSubmit={(body) => {
+            onInvite(body);
+            setInviteOpen(false);
+          }}
+          onCancel={() => setInviteOpen(false)}
+          pending={inviteInFlight}
+        />
+      ) : null}
       <ul className="aurora-admin-list">
         {users.map((u) => (
-          <li key={u.id} className="aurora-admin-list__row">
-            <Stack direction="column" gap={1}>
-              <Text variant="text-body">{u.name || u.email}</Text>
-              <Text variant="text-small" tone="tertiary">
-                {u.email}
-              </Text>
-            </Stack>
-            <Chip tone="info">{u.role}</Chip>
-            {u.is_active ? (
-              <Chip tone="success">Active</Chip>
-            ) : (
-              <Chip tone="neutral">Disabled</Chip>
-            )}
-          </li>
+          <UserRow
+            key={u.id}
+            user={u}
+            onToggleActive={() => onToggleActive(u.id, !u.is_active)}
+            onChangeRole={(role) => onChangeRole(u.id, role)}
+            disabled={mutationInFlight}
+          />
         ))}
       </ul>
     </Stack>
+  );
+}
+
+function UserRow({
+  user,
+  onToggleActive,
+  onChangeRole,
+  disabled,
+}: {
+  user: User;
+  onToggleActive: () => void;
+  onChangeRole: (role: UserRole) => void;
+  disabled: boolean;
+}) {
+  return (
+    <li className="aurora-admin-list__row">
+      <Stack direction="column" gap={1}>
+        <Text variant="text-body">{user.name || user.email}</Text>
+        <Text variant="text-small" tone="tertiary">
+          {user.email}
+        </Text>
+      </Stack>
+      <select
+        className="aurora-admin-inline-select"
+        value={user.role}
+        disabled={disabled}
+        onChange={(e) => onChangeRole(e.target.value as UserRole)}
+        aria-label={`Role for ${user.email}`}
+      >
+        {ROLE_OPTIONS.map((r) => (
+          <option key={r} value={r}>
+            {r}
+          </option>
+        ))}
+      </select>
+      {user.is_active ? (
+        <Chip tone="success">Active</Chip>
+      ) : (
+        <Chip tone="neutral">Disabled</Chip>
+      )}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={onToggleActive}
+        disabled={disabled}
+      >
+        {user.is_active ? "Disable" : "Re-enable"}
+      </Button>
+    </li>
+  );
+}
+
+function InviteUserForm({
+  onSubmit,
+  onCancel,
+  pending,
+}: {
+  onSubmit: (body: { email: string; name?: string; role?: UserRole }) => void;
+  onCancel: () => void;
+  pending: boolean;
+}) {
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [role, setRole] = useState<UserRole>("steward");
+  const canSubmit = /\S+@\S+\.\S+/.test(email);
+  return (
+    <form
+      className="aurora-admin-invite"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (canSubmit && !pending) {
+          onSubmit({ email, name: name || undefined, role });
+        }
+      }}
+    >
+      <label className="aurora-admin-invite__field">
+        <Text variant="text-small" tone="tertiary" as="span">
+          Email
+        </Text>
+        <input
+          type="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="aurora-admin-inline-input"
+          placeholder="sarah.chen@example.com"
+          autoComplete="off"
+        />
+      </label>
+      <label className="aurora-admin-invite__field">
+        <Text variant="text-small" tone="tertiary" as="span">
+          Name
+        </Text>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="aurora-admin-inline-input"
+          autoComplete="off"
+        />
+      </label>
+      <label className="aurora-admin-invite__field">
+        <Text variant="text-small" tone="tertiary" as="span">
+          Role
+        </Text>
+        <select
+          className="aurora-admin-inline-select"
+          value={role}
+          onChange={(e) => setRole(e.target.value as UserRole)}
+        >
+          {ROLE_OPTIONS.map((r) => (
+            <option key={r} value={r}>
+              {r}
+            </option>
+          ))}
+        </select>
+      </label>
+      <Stack direction="row" gap={2} className="aurora-admin-invite__actions">
+        <Button variant="secondary" onClick={onCancel} type="button">
+          Discard invite
+        </Button>
+        {/* HTML form submission type — not user-facing copy */}
+        {/* eslint-disable-next-line aurora-writing/no-forbidden-copy */}
+        <Button variant="primary" type="submit" disabled={!canSubmit || pending}>
+          {pending ? "Inviting" : "Send invite"}
+        </Button>
+      </Stack>
+    </form>
   );
 }
 
@@ -208,11 +456,14 @@ function ConnectionsBody({
   systems,
   isLoading,
   isError,
+  onDeleteSystem,
 }: {
   systems?: ReadonlyArray<SAPSystem>;
   isLoading: boolean;
   isError: boolean;
+  onDeleteSystem: (id: string) => void;
 }) {
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
   if (isLoading) return <LoadingLine label="Loading SAP systems" />;
   if (isError)
     return <ErrorLine detail="Couldn't reach the systems API." />;
@@ -225,6 +476,9 @@ function ConnectionsBody({
       />
     );
   }
+
+  const confirmingSystem = systems.find((s) => s.id === confirmingId);
+
   return (
     <Stack direction="column" gap={3}>
       <ul className="aurora-admin-list">
@@ -242,9 +496,28 @@ function ConnectionsBody({
             ) : (
               <Chip tone="neutral">Paused</Chip>
             )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setConfirmingId(s.id)}
+              aria-label={`Remove system ${s.name}`}
+            >
+              Remove
+            </Button>
           </li>
         ))}
       </ul>
+      {confirmingSystem ? (
+        <AdminDestructiveConfirm
+          title={`Remove ${confirmingSystem.name}`}
+          body={`This detaches the ${confirmingSystem.environment} connector from Meridian. Any sync profiles or saved extracts referencing this system will be orphaned. The audit log keeps a record; the system cannot be restored without re-registering.`}
+          onCancel={() => setConfirmingId(null)}
+          onConfirm={() => {
+            onDeleteSystem(confirmingSystem.id);
+            setConfirmingId(null);
+          }}
+        />
+      ) : null}
     </Stack>
   );
 }
