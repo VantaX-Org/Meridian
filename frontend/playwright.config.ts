@@ -20,6 +20,12 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
+  // Drop the platform suffix from snapshot filenames so baselines
+  // generated on darwin match on CI's Linux runners. Chromium's
+  // deterministic rendering + our forgiving maxDiffPixelRatio / threshold
+  // (see aurora-visual.spec.ts) make this safe for Aurora's surface
+  // shapes; tighten later if cross-platform drift becomes a problem.
+  snapshotPathTemplate: "{testDir}/{testFilePath}-snapshots/{arg}{ext}",
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000",
     trace: "on-first-retry",
