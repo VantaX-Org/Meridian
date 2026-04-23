@@ -46,6 +46,7 @@ from api.routes.business_process import router as business_process_router
 from api.routes.events import router as events_router
 from api.routes.mining import router as mining_router
 from api.routes.llm_metrics import router as llm_metrics_router
+from api.routes.admin_doctor import router as admin_doctor_router
 
 logger = logging.getLogger("meridian")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -239,6 +240,7 @@ app.include_router(business_process_router)
 app.include_router(events_router)
 app.include_router(mining_router)
 app.include_router(llm_metrics_router)
+app.include_router(admin_doctor_router)
 
 from api.routes.auth import router as auth_router
 app.include_router(auth_router)
