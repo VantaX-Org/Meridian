@@ -37,7 +37,15 @@ import { getUsers, inviteUser, updateUser } from "@/lib/api/users";
 import { deleteSystem, getSystems, registerSystem } from "@/lib/api/systems";
 import { getRulesSummary, type RulesSummaryItem } from "@/lib/api/rules";
 import { getLicenceManifest } from "@/lib/api/licence";
-import { getLLMConfig, type LLMConfig } from "@/lib/api/llm-settings";
+import {
+  getLLMConfig,
+  getLLMProviders,
+  testLLMConnection,
+  updateLLMConfig,
+  type LLMConfig,
+  type LLMConfigUpdate,
+  type LLMProvider,
+} from "@/lib/api/llm-settings";
 import { getLlmSavingsSummary, type LlmSavingsSummary } from "@/lib/api/llm-savings";
 import { getDoctor, type DoctorItem as ApiDoctorItem } from "@/lib/api/admin-doctor";
 import type { SAPSystem, User, UserRole } from "@/types/api";
@@ -166,6 +174,45 @@ export default function AdminPage() {
     refetchInterval: 30_000,
     refetchIntervalInBackground: false,
   });
+  const llmProvidersQuery = useQuery({
+    queryKey: ["aurora.admin.llm-providers"],
+    queryFn: getLLMProviders,
+    retry: noRetryOnAuthError,
+    enabled: tab === "ai",
+  });
+
+  const updateLlmMutation = useMutation({
+    mutationFn: updateLLMConfig,
+    onSuccess: () => {
+      toast.success("LLM configuration updated");
+      qc.invalidateQueries({ queryKey: ["aurora.admin.llm-config"] });
+    },
+    onError: (err: unknown) => {
+      const msg =
+        err instanceof AxiosError
+          ? err.response?.data?.detail ?? err.message
+          : "Update failed.";
+      toast.error(`LLM update failed: ${msg}`);
+    },
+  });
+
+  const testLlmMutation = useMutation({
+    mutationFn: testLLMConnection,
+    onSuccess: (res) => {
+      if (res.success) {
+        toast.success(`LLM reachable — ${res.message}`);
+      } else {
+        toast.error(`LLM test failed: ${res.message}`);
+      }
+    },
+    onError: (err: unknown) => {
+      const msg =
+        err instanceof AxiosError
+          ? err.response?.data?.detail ?? err.message
+          : "Connection test failed.";
+      toast.error(msg);
+    },
+  });
 
   const usersCount = usersQuery.data?.users?.length;
   const systemsCount = systemsQuery.data?.length;
@@ -239,8 +286,13 @@ export default function AdminPage() {
             <AiBody
               config={llmConfigQuery.data}
               savings={llmSavingsQuery.data}
+              providers={llmProvidersQuery.data}
               isLoading={llmConfigQuery.isLoading || llmSavingsQuery.isLoading}
               isError={llmConfigQuery.isError}
+              onUpdate={(update) => updateLlmMutation.mutate(update)}
+              onTest={(update) => testLlmMutation.mutate(update)}
+              updateInFlight={updateLlmMutation.isPending}
+              testInFlight={testLlmMutation.isPending}
             />
           ),
         },
@@ -867,14 +919,25 @@ function SyncBody({
 function AiBody({
   config,
   savings,
+  providers,
   isLoading,
   isError,
+  onUpdate,
+  onTest,
+  updateInFlight,
+  testInFlight,
 }: {
   config?: LLMConfig;
   savings?: LlmSavingsSummary;
+  providers?: Record<string, LLMProvider>;
   isLoading: boolean;
   isError: boolean;
+  onUpdate: (update: LLMConfigUpdate) => void;
+  onTest: (update: LLMConfigUpdate) => void;
+  updateInFlight: boolean;
+  testInFlight: boolean;
 }) {
+  const [editOpen, setEditOpen] = useState(false);
   if (isLoading) return <LoadingLine label="Loading LLM configuration" />;
   if (isError)
     return (
@@ -901,6 +964,14 @@ function AiBody({
             <Chip tone={config.source === "database" ? "success" : "neutral"}>
               {config.source === "database" ? "Tenant-managed" : "Env-managed"}
             </Chip>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setEditOpen((v) => !v)}
+              style={{ marginLeft: "auto" }}
+            >
+              {editOpen ? "Close editor" : "Edit configuration"}
+            </Button>
           </Stack>
           <dl className="aurora-admin-ai__kv">
             <dt>Model</dt>
@@ -928,6 +999,21 @@ function AiBody({
           ) : null}
         </Stack>
       </section>
+
+      {editOpen ? (
+        <LlmEditForm
+          config={config}
+          providers={providers}
+          onUpdate={(body) => {
+            onUpdate(body);
+            setEditOpen(false);
+          }}
+          onTest={onTest}
+          onCancel={() => setEditOpen(false)}
+          updateInFlight={updateInFlight}
+          testInFlight={testInFlight}
+        />
+      ) : null}
 
       {savings ? (
         <section className="aurora-admin-ai__card">
@@ -972,11 +1058,197 @@ function AiBody({
       ) : null}
 
       <Text variant="text-small" tone="tertiary">
-        Interactive provider switching and budget caps live on the legacy
-        Settings → AI page; this tab consolidates read-only status for
-        the Aurora shell. Write-access UI wires next.
+        Per-call budget caps and prompt templates remain on the legacy
+        Settings → AI page for now. Every provider-level change on
+        this tab is captured in the audit log.
       </Text>
     </Stack>
+  );
+}
+
+function LlmEditForm({
+  config,
+  providers,
+  onUpdate,
+  onTest,
+  onCancel,
+  updateInFlight,
+  testInFlight,
+}: {
+  config: LLMConfig;
+  providers?: Record<string, LLMProvider>;
+  onUpdate: (body: LLMConfigUpdate) => void;
+  onTest: (body: LLMConfigUpdate) => void;
+  onCancel: () => void;
+  updateInFlight: boolean;
+  testInFlight: boolean;
+}) {
+  const [provider, setProvider] = useState(config.provider);
+  const [model, setModel] = useState(config.model);
+  const [baseUrl, setBaseUrl] = useState(config.base_url);
+  const [apiKey, setApiKey] = useState("");
+  const [temperature, setTemperature] = useState(String(config.temperature));
+  const [maxTokens, setMaxTokens] = useState(String(config.max_tokens));
+
+  const providerSpec = providers?.[provider];
+  const apiKeyRequired = providerSpec?.requires_api_key ?? false;
+  const apiKeyAlreadySet = config.has_api_key && provider === config.provider;
+
+  const body: LLMConfigUpdate = {
+    provider,
+    model: model || undefined,
+    base_url: baseUrl || undefined,
+    api_key: apiKey || undefined,
+    temperature: Number.parseFloat(temperature),
+    max_tokens: Number.parseInt(maxTokens, 10),
+  };
+
+  const validTemperature =
+    !Number.isNaN(body.temperature as number) &&
+    (body.temperature as number) >= 0 &&
+    (body.temperature as number) <= 2;
+  const validMaxTokens =
+    !Number.isNaN(body.max_tokens as number) && (body.max_tokens as number) > 0;
+  const keyOkForSave = !apiKeyRequired || apiKey !== "" || apiKeyAlreadySet;
+  const canSubmit = validTemperature && validMaxTokens && keyOkForSave;
+
+  return (
+    <form
+      className="aurora-admin-register"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (canSubmit && !updateInFlight) onUpdate(body);
+      }}
+    >
+      <label className="aurora-admin-invite__field">
+        <Text variant="text-small" tone="tertiary" as="span">
+          Provider
+        </Text>
+        <select
+          className="aurora-admin-inline-select"
+          value={provider}
+          onChange={(e) => {
+            const next = e.target.value;
+            setProvider(next);
+            const spec = providers?.[next];
+            if (spec) {
+              setModel(spec.default_model);
+              setBaseUrl(spec.default_base_url);
+            }
+          }}
+        >
+          {providers
+            ? Object.entries(providers).map(([key, p]) => (
+                <option key={key} value={key}>
+                  {p.label}
+                </option>
+              ))
+            : (
+                <option value={config.provider}>{config.provider}</option>
+              )}
+        </select>
+      </label>
+      <label className="aurora-admin-invite__field">
+        <Text variant="text-small" tone="tertiary" as="span">
+          Model
+        </Text>
+        <input
+          type="text"
+          value={model}
+          onChange={(e) => setModel(e.target.value)}
+          className="aurora-admin-inline-input"
+          placeholder={providerSpec?.default_model ?? ""}
+          autoComplete="off"
+        />
+      </label>
+      <label className="aurora-admin-invite__field">
+        <Text variant="text-small" tone="tertiary" as="span">
+          Base URL
+        </Text>
+        <input
+          type="url"
+          value={baseUrl}
+          onChange={(e) => setBaseUrl(e.target.value)}
+          className="aurora-admin-inline-input"
+          placeholder={providerSpec?.default_base_url ?? ""}
+          autoComplete="off"
+        />
+      </label>
+      <label
+        className="aurora-admin-invite__field"
+        style={{ gridColumn: "1 / -1" }}
+      >
+        <Text variant="text-small" tone="tertiary" as="span">
+          API key{" "}
+          {apiKeyRequired
+            ? apiKeyAlreadySet
+              ? `(leave blank to keep ${config.api_key_preview || "current"})`
+              : "(required)"
+            : "(optional)"}
+        </Text>
+        <input
+          type="password"
+          value={apiKey}
+          onChange={(e) => setApiKey(e.target.value)}
+          className="aurora-admin-inline-input"
+          autoComplete="new-password"
+          placeholder={apiKeyAlreadySet ? "•••••• (unchanged)" : ""}
+        />
+      </label>
+      <label className="aurora-admin-invite__field">
+        <Text variant="text-small" tone="tertiary" as="span">
+          Temperature (0–2)
+        </Text>
+        <input
+          type="number"
+          step="0.1"
+          min="0"
+          max="2"
+          value={temperature}
+          onChange={(e) => setTemperature(e.target.value)}
+          className="aurora-admin-inline-input"
+        />
+      </label>
+      <label className="aurora-admin-invite__field">
+        <Text variant="text-small" tone="tertiary" as="span">
+          Max tokens
+        </Text>
+        <input
+          type="number"
+          step="100"
+          min="100"
+          value={maxTokens}
+          onChange={(e) => setMaxTokens(e.target.value)}
+          className="aurora-admin-inline-input"
+        />
+      </label>
+      <Stack
+        direction="row"
+        gap={2}
+        className="aurora-admin-invite__actions"
+      >
+        <Button variant="secondary" type="button" onClick={onCancel}>
+          Discard
+        </Button>
+        <Button
+          variant="secondary"
+          type="button"
+          onClick={() => onTest(body)}
+          disabled={!canSubmit || testInFlight}
+        >
+          {testInFlight ? "Testing" : "Test connection"}
+        </Button>
+        <Button
+          variant="primary"
+          /* HTML form submission type — not user-facing copy */
+          /* eslint-disable-next-line aurora-writing/no-forbidden-copy */
+          type="submit"
+          disabled={!canSubmit || updateInFlight}
+        >
+          {updateInFlight ? "Saving" : "Save configuration"}
+        </Button>
+      </Stack>
+    </form>
   );
 }
 
