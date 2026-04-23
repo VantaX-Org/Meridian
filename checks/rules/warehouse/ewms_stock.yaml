@@ -381,3 +381,18 @@ rules:
   dimension: timeliness
   message: Stock record unchanged for 1+ year — slow-moving or dead stock should be reviewed for disposal or write-down
   rule_authority: best_practice
+
+- id: EWMS024
+  field: LGPLA.LGTYP
+  check_class: referential_check
+  reference_values: ["0010", "0020", "0030", "0040", "0050", "0100", "0200", "0300", "0910"]
+  severity: high
+  dimension: consistency
+  message: "Storage type LGTYP must reference a valid entry in /SCWM/T301"
+  why_it_matters: "LGTYP (storage type) defines the physical organisation of a storage bin — is it goods-receipt, quality-inspection, high-rack, or a shipping stage? EWMS task creation, putaway rules, and picking waves all branch on this type. An invalid LGTYP means /SCWM/LM01 (warehouse monitor) cannot render the bin, putaway exception handling fails, and goods are orphaned in the warehouse ('where is it?')."
+  rule_authority: sap_hard_constraint
+  sap_impact: "Bin cannot be displayed in /SCWM/LM01; putaway/pick tasks cannot be generated for its stock; goods are effectively lost until manually reclassified."
+  fix_map:
+    __blank__: "Assign storage type at bin creation (/SCWM/LS02N). Required for every storage bin."
+    __other__: "Storage type '{invalid_value}' is not in /SCWM/T301. Reclassify the bin via /SCWM/LS02N or configure the missing type in EWMS customising (/SCWM/SPRO > EWM > Master Data > Define Storage Type)."
+  record_fix_template: "Storage bin {LGPLA.LGPBE}: storage type '{actual_value}' is not in /SCWM/T301."
