@@ -445,6 +445,17 @@ interface NavGroup {
 }
 
 const NAV_GROUPS: NavGroup[] = [
+  // Aurora workspaces (spec §6). Soft cutover: legacy routes stay
+  // accessible below, but the four Aurora surfaces are the canonical
+  // entry points going forward. /process pending mining-graph API.
+  {
+    group: "Aurora",
+    items: [
+      { href: "/command-centre", label: "Command Centre", icon: LayoutDashboard, licenceKey: "dashboard" },
+      { href: "/workbench", label: "Workbench", icon: ClipboardList, licenceKey: "stewardship" },
+      { href: "/admin", label: "Admin", icon: Settings },
+    ],
+  },
   {
     group: "Analyse",
     items: [
