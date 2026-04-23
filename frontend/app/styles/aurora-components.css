@@ -3258,3 +3258,32 @@
   justify-content: flex-end;
   margin-top: var(--aurora-space-1);
 }
+
+/* -- Admin AI tab (live LLM config + savings) -- */
+
+.aurora-admin-ai__card {
+  padding: var(--aurora-space-4);
+  border: 1px solid var(--aurora-canvas-line);
+  border-radius: 10px;
+  background: var(--aurora-canvas-raised);
+}
+
+.aurora-admin-ai__kv {
+  display: grid;
+  grid-template-columns: minmax(120px, auto) 1fr;
+  gap: var(--aurora-space-2) var(--aurora-space-4);
+  margin: 0;
+  font-size: 13px;
+}
+
+.aurora-admin-ai__kv dt {
+  color: var(--aurora-fg-tertiary);
+  font-weight: 500;
+}
+
+.aurora-admin-ai__kv dd {
+  margin: 0;
+  color: var(--aurora-fg-primary);
+  font-family: var(--aurora-font-mono);
+  word-break: break-all;
+}

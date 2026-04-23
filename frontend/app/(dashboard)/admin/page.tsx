@@ -37,6 +37,8 @@ import { getUsers, inviteUser, updateUser } from "@/lib/api/users";
 import { deleteSystem, getSystems } from "@/lib/api/systems";
 import { getRulesSummary, type RulesSummaryItem } from "@/lib/api/rules";
 import { getLicenceManifest } from "@/lib/api/licence";
+import { getLLMConfig, type LLMConfig } from "@/lib/api/llm-settings";
+import { getLlmSavingsSummary, type LlmSavingsSummary } from "@/lib/api/llm-savings";
 import type { SAPSystem, User, UserRole } from "@/types/api";
 
 const ROLE_OPTIONS: ReadonlyArray<UserRole> = [
@@ -127,6 +129,18 @@ export default function AdminPage() {
     queryFn: getLicenceManifest,
     retry: noRetryOnAuthError,
   });
+  const llmConfigQuery = useQuery({
+    queryKey: ["aurora.admin.llm-config"],
+    queryFn: getLLMConfig,
+    retry: noRetryOnAuthError,
+    enabled: tab === "ai",
+  });
+  const llmSavingsQuery = useQuery({
+    queryKey: ["aurora.admin.llm-savings", 30],
+    queryFn: () => getLlmSavingsSummary(30),
+    retry: noRetryOnAuthError,
+    enabled: tab === "ai",
+  });
 
   const usersCount = usersQuery.data?.users?.length;
   const systemsCount = systemsQuery.data?.length;
@@ -194,7 +208,14 @@ export default function AdminPage() {
         {
           id: "ai",
           label: "AI",
-          body: <AiBody />,
+          body: (
+            <AiBody
+              config={llmConfigQuery.data}
+              savings={llmSavingsQuery.data}
+              isLoading={llmConfigQuery.isLoading || llmSavingsQuery.isLoading}
+              isError={llmConfigQuery.isError}
+            />
+          ),
         },
         {
           id: "rules",
@@ -585,13 +606,117 @@ function SyncBody({
   );
 }
 
-function AiBody() {
+function AiBody({
+  config,
+  savings,
+  isLoading,
+  isError,
+}: {
+  config?: LLMConfig;
+  savings?: LlmSavingsSummary;
+  isLoading: boolean;
+  isError: boolean;
+}) {
+  if (isLoading) return <LoadingLine label="Loading LLM configuration" />;
+  if (isError)
+    return (
+      <ErrorLine detail="Couldn't reach the LLM configuration endpoint." />
+    );
+  if (!config) {
+    return (
+      <EmptyLine
+        title="No LLM configured"
+        body="Meridian runs deterministic-first; an LLM is optional and only used for narrative enrichment. Configure one from the legacy Settings → AI page to enable narration."
+      />
+    );
+  }
+
   return (
-    <Stack direction="column" gap={3}>
-      <Text variant="text-body" tone="secondary">
-        LLM provider configuration, token budgets, and cost controls.
-        Full interactive controls wire in pass 2; this tab currently
-        surfaces the usage summary from the LLM-savings endpoint.
+    <Stack direction="column" gap={6}>
+      <section className="aurora-admin-ai__card">
+        <Stack direction="column" gap={3}>
+          <Stack direction="row" gap={2} align="center">
+            <Text variant="text-lead" as="h3">
+              Provider
+            </Text>
+            <Chip tone="info">{config.provider}</Chip>
+            <Chip tone={config.source === "database" ? "success" : "neutral"}>
+              {config.source === "database" ? "Tenant-managed" : "Env-managed"}
+            </Chip>
+          </Stack>
+          <dl className="aurora-admin-ai__kv">
+            <dt>Model</dt>
+            <dd>{config.model || "—"}</dd>
+            <dt>Base URL</dt>
+            <dd>{config.base_url || "—"}</dd>
+            <dt>API key</dt>
+            <dd>
+              {config.has_api_key
+                ? config.api_key_preview || "••••••"
+                : "not set"}
+            </dd>
+            <dt>Temperature</dt>
+            <dd>{config.temperature.toFixed(2)}</dd>
+            <dt>Max tokens</dt>
+            <dd>{config.max_tokens.toLocaleString()}</dd>
+            <dt>Request timeout</dt>
+            <dd>{config.request_timeout}s</dd>
+          </dl>
+          {config.updated_at ? (
+            <Text variant="text-small" tone="tertiary">
+              Last updated {new Date(config.updated_at).toLocaleString()}
+              {config.updated_by ? ` by ${config.updated_by}` : ""}
+            </Text>
+          ) : null}
+        </Stack>
+      </section>
+
+      {savings ? (
+        <section className="aurora-admin-ai__card">
+          <Stack direction="column" gap={3}>
+            <Text variant="text-lead" as="h3">
+              Usage — last {savings.window_days} days
+            </Text>
+            <Stack direction="row" gap={6} align="center">
+              <Stack direction="column" gap={1}>
+                <Text variant="text-small" tone="tertiary">
+                  Calls
+                </Text>
+                <Text variant="display-sm" numeric>
+                  {savings.calls_total.toLocaleString()}
+                </Text>
+              </Stack>
+              <Stack direction="column" gap={1}>
+                <Text variant="text-small" tone="tertiary">
+                  Deterministic ratio
+                </Text>
+                <Text variant="display-sm" numeric>
+                  {(savings.deterministic_ratio * 100).toFixed(1)}%
+                </Text>
+              </Stack>
+              <Stack direction="column" gap={1}>
+                <Text variant="text-small" tone="tertiary">
+                  Cost saved
+                </Text>
+                <Text variant="display-sm" numeric>
+                  ${savings.cost_saved_usd.toFixed(2)}
+                </Text>
+              </Stack>
+            </Stack>
+            <Text variant="text-small" tone="tertiary">
+              Deterministic-first: {savings.calls_saved.toLocaleString()}
+              {" "}LLM calls avoided,{" "}
+              {savings.tokens_saved.toLocaleString()} tokens saved. A ratio
+              above 80% is the target — higher is healthier.
+            </Text>
+          </Stack>
+        </section>
+      ) : null}
+
+      <Text variant="text-small" tone="tertiary">
+        Interactive provider switching and budget caps live on the legacy
+        Settings → AI page; this tab consolidates read-only status for
+        the Aurora shell. Write-access UI wires next.
       </Text>
     </Stack>
   );
