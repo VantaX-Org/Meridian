@@ -55,3 +55,19 @@ export async function getRule(ruleId: string): Promise<Rule> {
   const { data } = await apiClient.get<Rule>(`/api/v1/rules/${ruleId}`);
   return data;
 }
+
+/**
+ * Toggle the `enabled` flag on a rule for this tenant. The backend
+ * only allows `enabled` to be mutated customer-side; any other field
+ * change must happen via HQ sync.
+ */
+export async function updateRule(
+  ruleId: string,
+  body: { enabled: boolean },
+): Promise<Rule> {
+  const { data } = await apiClient.patch<Rule>(
+    `/api/v1/rules/${ruleId}`,
+    body,
+  );
+  return data;
+}
