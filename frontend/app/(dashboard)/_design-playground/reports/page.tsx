@@ -57,26 +57,54 @@ const RECORD_CONTEXT: ReadonlyArray<RecordReportContextItem> = [
 const RECORD_FINDINGS: ReadonlyArray<RecordReportFinding> = [
   {
     id: "f-1",
-    checkId: "BP.COMPLETENESS.TAX_NUMBER",
-    title: "Tax number missing on a DE-registered partner",
+    checkId: "AP035",
+    title: "Vendor account group references a value that's not in your SPRO config",
     severity: "critical",
     passRate: 0.12,
-    evidence: "STCD1 empty; KNA1 row references country DE.",
+    evidence: "LFA1.KTOKK='0099' · T077Y baseline = 0001, 0002, 0003, 0004, CPD, KRED.",
+    rootCause: {
+      type: "bad_config",
+      reasoning:
+        "Flagged values are not present in your SPRO config — the rule's reference list may be stricter than your configuration, or the config itself has drifted from what the rule expects. Review SPRO before cleaning records.",
+      elementType: "KTOKK",
+      flaggedValuesNotInConfig: ["0099"],
+    },
   },
   {
     id: "f-2",
-    checkId: "BP.CONSISTENCY.ADDRESS_COUNTRY",
-    title: "Address country does not match tax jurisdiction",
+    checkId: "XP2P001",
+    title: "PO payment terms do not match vendor master payment terms",
     severity: "high",
     passRate: 0.48,
-    evidence: "ADRC.COUNTRY=AT · KNA1.LAND1=DE.",
+    evidence: "EKKO.ZTERM='0009' vs LFA1.ZTERM='0001'.",
+    sourceModules: ["mm_purchasing", "accounts_payable"],
+    rootCause: {
+      type: "bad_data",
+      reasoning:
+        "All flagged values are valid in your SPRO config — the records are the problem, not the configuration. Apply a cleaning rule.",
+      elementType: "ZTERM",
+      flaggedValuesInConfig: ["0009"],
+    },
   },
   {
     id: "f-3",
-    checkId: "BP.VALIDITY.BANK_IBAN_CHECKSUM",
-    title: "Bank IBAN check-digit fails modulo 97 validation",
+    checkId: "ZT002",
+    title: "Supplier risk score is out of the 0–100 range",
+    severity: "medium",
+    passRate: 0.83,
+    evidence: "LFA1.ZZ_SUPPLIER_RISK_SCORE='185' — expected 0–100.",
+    namespace: "customer",
+  },
+  {
+    id: "f-4",
+    checkId: "MM143",
+    title: "Serial number missing on serialised material",
     severity: "high",
-    passRate: 0.31,
+    passRate: 0.64,
+    evidence: "MARA.SERNR empty on 127 of 354 serialised materials.",
+    appliesWhen: {
+      "MARA.MTART": ["FERT", "HALB"],
+    },
   },
 ];
 
