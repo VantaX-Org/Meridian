@@ -2071,6 +2071,30 @@
 
 .aurora-workbench__headline {
   color: var(--aurora-fg-primary);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--aurora-space-2);
+}
+.aurora-workbench__origin-marks {
+  display: inline-flex;
+  gap: 2px;
+}
+.aurora-workbench__origin-mark {
+  display: inline-block;
+  padding: 0 6px;
+  height: 16px;
+  line-height: 16px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  background: color-mix(in srgb, var(--aurora-accent-500) 12%, var(--aurora-canvas-base));
+  color: var(--aurora-accent-500);
+  cursor: help;
+}
+.aurora-workbench__origin-mark[data-tone="warning"] {
+  background: color-mix(in srgb, var(--aurora-status-warning-500) 12%, var(--aurora-canvas-base));
+  color: var(--aurora-status-warning-500);
 }
 
 .aurora-workbench__drawer-body {
