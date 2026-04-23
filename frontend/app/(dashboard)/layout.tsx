@@ -458,7 +458,7 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    group: "Analyse",
+    group: "Legacy — Analyse",
     items: [
       { href: "/", label: "Dashboard", icon: LayoutDashboard, licenceKey: "dashboard" },
       { href: "/upload", label: "Import", icon: Upload, licenceKey: "import" },
@@ -470,7 +470,7 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    group: "Report",
+    group: "Legacy — Report",
     items: [
       { href: "/reports", label: "Reports", icon: FileText, licenceKey: "reports" },
       { href: "/versions", label: "Versions", icon: GitCompareArrows, licenceKey: "versions" },
@@ -478,7 +478,7 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    group: "Govern",
+    group: "Legacy — Govern",
     items: [
       { href: "/golden-records", label: "Golden Records", icon: Database },
       { href: "/glossary", label: "Glossary", icon: BookOpen },
@@ -487,7 +487,7 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    group: "Steward",
+    group: "Legacy — Steward",
     items: [
       { href: "/stewardship", label: "Workbench", icon: ClipboardList, licenceKey: "stewardship" },
       { href: "/ai/rules", label: "AI Rules", icon: BrainCircuit, permission: "review_ai_rules" },
@@ -497,7 +497,7 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    group: "Connect",
+    group: "Legacy — Connect",
     items: [
       { href: "/systems", label: "Systems", icon: Server },
       { href: "/connectivity", label: "Connectivity", icon: Plug2 },

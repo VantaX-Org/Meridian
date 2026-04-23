@@ -25,6 +25,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { DetailPanel } from "@/components/ui/detail-panel";
+import { LegacyPageBanner } from "@/components/ui/legacy-page-banner";
 import { Textarea } from "@/components/ui/textarea";
 import {
   bulkApprove,
@@ -378,6 +379,11 @@ export default function StewardshipPage() {
 
   return (
     <div className="space-y-4">
+      <LegacyPageBanner
+        auroraHref="/workbench"
+        auroraLabel="Workbench"
+        note="Aurora's Workbench combines the stewardship queue with findings triage and the record drawer in one keyboard-first surface."
+      />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="font-display text-xl font-semibold text-foreground">Stewardship queue</h1>
