@@ -31,12 +31,42 @@ const MODULES_BY_CATEGORY: Record<string, string[]> = {
     "grc_compliance", "fleet_management", "transport_management", "wm_interface",
     "cross_system_integration",
   ],
+  // Cross-module rules span 2+ modules — the chosen "module" is the
+  // owning pack name (e.g. "p2p", "otc"). The rule body carries
+  // `sources` and `join_on` describing the actual modules involved.
+  cross_module: ["p2p", "otc", "record_to_report"],
+  // Customer-namespace rules target Y*/Z* extension tables. Module
+  // here is the logical customer-pack name; rules set namespace="customer"
+  // so findings surface distinctly.
+  ztables: ["common", "tenant_specific"],
 };
+
+const CHECK_CLASS_OPTIONS = [
+  { value: "", label: "— auto (legacy condition-based)" },
+  { value: "null_check", label: "null_check — completeness" },
+  { value: "regex_check", label: "regex_check — format" },
+  { value: "domain_value_check", label: "domain_value_check — enum" },
+  { value: "referential_check", label: "referential_check — FK" },
+  { value: "cross_field_check", label: "cross_field_check — multi-field" },
+  { value: "freshness_check", label: "freshness_check — timeliness" },
+] as const;
 
 const inputStyle = {
   background: "var(--background)",
   border: "1px solid var(--border)",
 };
+
+/**
+ * Applies-when entry: a single {field: [values]} predicate. The rule
+ * only runs against rows where every entry's field is in its allowed
+ * list (AND-combined across entries). Empty fields / empty values are
+ * skipped on submit so authors can iteratively build up without
+ * breaking validation.
+ */
+interface AppliesWhenEntry {
+  field: string;
+  values: string; // comma-separated; split on submit
+}
 
 export default function NewRulePage() {
   const router = useRouter();
@@ -49,6 +79,10 @@ export default function NewRulePage() {
     enabled: true,
     tags: [] as string[],
     conditions: [] as RuleCondition[],
+    check_class: "" as string,
+    applies_when: [] as AppliesWhenEntry[],
+    reference_values: "" as string, // comma-separated on submit
+    namespace: "" as "" | "standard" | "customer",
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -86,11 +120,47 @@ export default function NewRulePage() {
     if (!form.module) { setError("Please select a module"); return; }
     setSaving(true);
     setError("");
+
+    // Collapse applies_when entries to {field: [values]} and drop
+    // entries with empty field or empty values.
+    const appliesWhenBody: Record<string, string[]> = {};
+    for (const entry of form.applies_when) {
+      const field = entry.field.trim();
+      const vals = entry.values
+        .split(",")
+        .map((v) => v.trim())
+        .filter((v) => v !== "");
+      if (field !== "" && vals.length > 0) {
+        appliesWhenBody[field] = vals;
+      }
+    }
+
+    // Split comma-separated reference_values (for referential_check).
+    const referenceValuesBody = form.reference_values
+      .split(",")
+      .map((v) => v.trim())
+      .filter((v) => v !== "");
+
+    const body: Record<string, unknown> = {
+      name: form.name,
+      description: form.description,
+      category: form.category,
+      module: form.module,
+      severity: form.severity,
+      enabled: form.enabled,
+      tags: form.tags,
+      conditions: form.conditions,
+    };
+    if (form.check_class) body.check_class = form.check_class;
+    if (Object.keys(appliesWhenBody).length > 0) body.applies_when = appliesWhenBody;
+    if (referenceValuesBody.length > 0) body.reference_values = referenceValuesBody;
+    if (form.namespace) body.namespace = form.namespace;
+
     try {
       const resp = await fetch("/api/admin/rules", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(body),
       });
       if (!resp.ok) {
         const data = await resp.json() as { message?: string };
@@ -103,6 +173,29 @@ export default function NewRulePage() {
     } finally {
       setSaving(false);
     }
+  }
+
+  function addAppliesWhen() {
+    setForm({
+      ...form,
+      applies_when: [...form.applies_when, { field: "", values: "" }],
+    });
+  }
+
+  function updateAppliesWhen(i: number, patch: Partial<AppliesWhenEntry>) {
+    setForm({
+      ...form,
+      applies_when: form.applies_when.map((e, idx) =>
+        idx === i ? { ...e, ...patch } : e,
+      ),
+    });
+  }
+
+  function removeAppliesWhen(i: number) {
+    setForm({
+      ...form,
+      applies_when: form.applies_when.filter((_, idx) => idx !== i),
+    });
   }
 
   return (
@@ -252,6 +345,133 @@ export default function NewRulePage() {
           <button type="button" onClick={addCondition} className="text-sm" style={{ color: "var(--primary)" }}>
             + Add Condition
           </button>
+        </div>
+
+        {/* Rule schema extensions — mirror the backend YAML shape (v0.0.20+). */}
+        <div
+          className="space-y-3 rounded-lg p-4"
+          style={{ border: "1px solid var(--border)", background: "rgba(255,255,255,0.02)" }}
+        >
+          <h2 className="text-sm font-semibold text-white">
+            Advanced — rule schema
+          </h2>
+          <p className="text-xs" style={{ color: "var(--muted)" }}>
+            Leave blank for legacy condition-based rules. Set these for
+            the richer rule shapes introduced in v0.0.20+.
+          </p>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium" style={{ color: "var(--muted)" }}>
+                Check class
+              </label>
+              <select
+                value={form.check_class}
+                onChange={(e) => setForm({ ...form, check_class: e.target.value })}
+                className="mt-1 w-full rounded-md px-3 py-2 text-sm text-white"
+                style={inputStyle}
+              >
+                {CHECK_CLASS_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium" style={{ color: "var(--muted)" }}>
+                Namespace
+              </label>
+              <select
+                value={form.namespace}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    namespace: e.target.value as "" | "standard" | "customer",
+                  })
+                }
+                className="mt-1 w-full rounded-md px-3 py-2 text-sm text-white"
+                style={inputStyle}
+              >
+                <option value="">— standard (SAP-delivered)</option>
+                <option value="customer">customer (Y*/Z*)</option>
+              </select>
+            </div>
+          </div>
+
+          {form.check_class === "referential_check" ? (
+            <div>
+              <label className="block text-xs font-medium" style={{ color: "var(--muted)" }}>
+                Reference values (comma-separated)
+              </label>
+              <input
+                type="text"
+                value={form.reference_values}
+                onChange={(e) => setForm({ ...form, reference_values: e.target.value })}
+                className="mt-1 w-full rounded-md px-3 py-2 text-sm text-white"
+                style={inputStyle}
+                placeholder="e.g. 0001, 0002, 0003, CPD, KRED"
+              />
+              <p className="mt-1 text-xs" style={{ color: "var(--muted)" }}>
+                The allow-list this rule validates against (SAP baseline
+                config values for KTOKK, ZTERM, MTART, etc.).
+              </p>
+            </div>
+          ) : null}
+
+          <div>
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-medium" style={{ color: "var(--muted)" }}>
+                Applies when (context predicate)
+              </label>
+              <button
+                type="button"
+                onClick={addAppliesWhen}
+                className="text-xs"
+                style={{ color: "var(--primary)" }}
+              >
+                + Add field predicate
+              </button>
+            </div>
+            {form.applies_when.length === 0 ? (
+              <p className="mt-1 text-xs" style={{ color: "var(--muted)" }}>
+                None — the rule applies to every row. Add a predicate to
+                scope to rows where e.g. MARA.MTART is in FERT or HALB.
+              </p>
+            ) : (
+              <div className="mt-2 space-y-2">
+                {form.applies_when.map((entry, i) => (
+                  <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2">
+                    <input
+                      type="text"
+                      value={entry.field}
+                      onChange={(e) => updateAppliesWhen(i, { field: e.target.value })}
+                      placeholder="Field (e.g. MARA.MTART)"
+                      className="rounded-md px-3 py-2 text-sm text-white"
+                      style={inputStyle}
+                    />
+                    <input
+                      type="text"
+                      value={entry.values}
+                      onChange={(e) => updateAppliesWhen(i, { values: e.target.value })}
+                      placeholder="Values (comma-separated): FERT, HALB"
+                      className="rounded-md px-3 py-2 text-sm text-white"
+                      style={inputStyle}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeAppliesWhen(i)}
+                      className="rounded-md px-2 text-sm"
+                      style={{ color: "#f87171", border: "1px solid var(--border)" }}
+                      aria-label="Remove predicate"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {error && <p className="text-sm" style={{ color: "#f87171" }}>{error}</p>}
