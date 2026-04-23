@@ -3287,3 +3287,14 @@
   font-family: var(--aurora-font-mono);
   word-break: break-all;
 }
+
+/* Register-system form: wider grid — 3 columns for name/env/host + client/sysnr/password + full-width description */
+.aurora-admin-register {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--aurora-space-3);
+  padding: var(--aurora-space-4);
+  border: 1px solid var(--aurora-canvas-line);
+  border-radius: 10px;
+  background: var(--aurora-canvas-raised);
+}
