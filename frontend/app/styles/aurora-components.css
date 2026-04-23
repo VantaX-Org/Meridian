@@ -3211,3 +3211,50 @@
   flex: 1;
   min-width: 0;
 }
+
+/* -- Admin inline form elements (invite, role select) -- */
+
+.aurora-admin-inline-input,
+.aurora-admin-inline-select {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--aurora-canvas-line);
+  border-radius: 6px;
+  background: var(--aurora-canvas-base);
+  color: var(--aurora-fg-primary);
+  font: inherit;
+  font-size: 13px;
+}
+
+.aurora-admin-inline-select {
+  cursor: pointer;
+}
+
+.aurora-admin-inline-input:focus-visible,
+.aurora-admin-inline-select:focus-visible {
+  outline: 2px solid var(--aurora-accent-500);
+  outline-offset: 1px;
+}
+
+.aurora-admin-invite {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: var(--aurora-space-3);
+  padding: var(--aurora-space-4);
+  border: 1px solid var(--aurora-canvas-line);
+  border-radius: 10px;
+  background: var(--aurora-canvas-raised);
+}
+
+.aurora-admin-invite__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--aurora-space-1);
+  min-width: 0;
+}
+
+.aurora-admin-invite__actions {
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+  margin-top: var(--aurora-space-1);
+}
