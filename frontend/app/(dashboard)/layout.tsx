@@ -453,6 +453,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/command-centre", label: "Command Centre", icon: LayoutDashboard, licenceKey: "dashboard" },
       { href: "/workbench", label: "Workbench", icon: ClipboardList, licenceKey: "stewardship" },
+      { href: "/process", label: "Process", icon: Workflow },
       { href: "/admin", label: "Admin", icon: Settings },
     ],
   },
