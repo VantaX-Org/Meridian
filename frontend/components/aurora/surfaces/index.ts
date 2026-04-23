@@ -51,3 +51,20 @@ export type {
   ProcessCase,
   ProcessConfigImpactRow,
 } from "./process";
+
+export {
+  Admin,
+  AdminDoctorCard,
+  AdminAuditLogTable,
+  AdminDestructiveConfirm,
+} from "./admin";
+export type {
+  AdminProps,
+  AdminTabId,
+  AdminTabState,
+  AdminDoctorCardProps,
+  AdminDoctorItem,
+  AdminAuditLogTableProps,
+  AdminAuditLogEntry,
+  AdminDestructiveConfirmProps,
+} from "./admin";
