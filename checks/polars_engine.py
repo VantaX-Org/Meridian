@@ -381,6 +381,26 @@ _DISPATCH = {
 }
 
 
+def _apply_context_lf(
+    lf: "pl.LazyFrame",
+    applies_when: dict | None,
+    available_cols: set,
+) -> "pl.LazyFrame | None":
+    """Polars equivalent of runner.apply_context.
+
+    Returns a filtered LazyFrame, or None if any `applies_when` field is
+    missing from the extract (signal to skip the rule).
+    """
+    if not applies_when:
+        return lf
+    for field, allowed in applies_when.items():
+        if field not in available_cols:
+            return None
+        allowed_strs = [str(v) for v in allowed]
+        lf = lf.filter(pl.col(field).cast(pl.Utf8).is_in(allowed_strs))
+    return lf
+
+
 def _run_on_lazyframe(
     lf: "pl.LazyFrame", module_name: str, rules: list[dict]
 ) -> list[dict]:
@@ -413,8 +433,14 @@ def _run_on_lazyframe(
             skipped += 1
             continue
 
+        # Apply context predicate — matches the pandas runner's behavior.
+        scoped_lf = _apply_context_lf(lf, rule.get("applies_when"), available_cols)
+        if scoped_lf is None:
+            skipped += 1
+            continue
+
         try:
-            result = handler(lf, rule)
+            result = handler(scoped_lf, rule)
             if result is None:
                 skipped += 1
                 continue

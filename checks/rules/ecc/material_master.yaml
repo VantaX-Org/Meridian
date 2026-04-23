@@ -2321,3 +2321,18 @@ rules:
     __blank__: "Assign base UoM at MM01. Cannot be changed after creation if stock exists or open documents reference the material."
     __other__: "Base UoM '{invalid_value}' not in T006. Use MM02 to change (prerequisites apply) or configure the missing UoM in SPRO > SAP NetWeaver > General Settings > Check Units of Measurement (CUNI)."
   record_fix_template: "Material {MARA.MATNR}: base UoM '{actual_value}' is not in T006."
+
+- id: MM143
+  field: MARA.SERNR
+  check_class: null_check
+  applies_when:
+    MARA.MTART: ["FERT", "HALB"]
+  severity: high
+  dimension: completeness
+  message: "Serial number SERNR is mandatory for finished and semi-finished materials"
+  why_it_matters: "Serialisation is a function of material type — FERT (finished) and HALB (semi-finished) are typically tracked individually for warranty, traceability and service history, while raw materials and services are not. An SAP extract with missing SERNR on a FERT material breaks WM batch/serial management and blocks service notifications (IW21). This rule applies ONLY to records whose MTART is in the serialised set; raw materials and services correctly have no SERNR."
+  rule_authority: best_practice
+  sap_impact: "Serialised materials without SERNR cannot be tracked in WM, cannot produce serial-number histories, and block service notifications and warranty claims."
+  fix_map:
+    __blank__: "Populate serial number via MM02 > Serial number views, or via SAP Service for goods movement (IQ01)."
+  record_fix_template: "Material {MARA.MATNR} (type {MARA.MTART}): serial number is missing. Assign via MM02 or serial-number master (IQ01)."
