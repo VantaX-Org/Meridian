@@ -108,7 +108,12 @@ export function Tabs<TValue extends string = string>({
             type="button"
             role="tab"
             aria-selected={selected}
-            aria-controls={`aurora-tabpanel-${item.id}`}
+            // No aria-controls: this primitive is purely presentational
+            // (consumers own panels), so pointing at a nonexistent
+            // aurora-tabpanel-* id would silently violate the WAI-ARIA
+            // Tabs pattern. Consumers that want tab / tabpanel wiring
+            // pass their own id + aria-controls via the surrounding
+            // surface.
             id={`aurora-tab-${item.id}`}
             tabIndex={selected ? 0 : -1}
             disabled={item.disabled}

@@ -142,7 +142,11 @@ export function FixPlaybook({ title, steps, className }: FixPlaybookProps) {
                   size="sm"
                   variant={step.status === "done" ? "ghost" : "primary"}
                   onClick={step.onRun}
-                  disabled={step.status === "running" || step.status === "done"}
+                  disabled={
+                    step.status === "running" ||
+                    step.status === "done" ||
+                    step.status === "blocked"
+                  }
                 >
                   {step.status === "done" ? "Done" : step.status === "running" ? "Running…" : "Run"}
                 </Button>

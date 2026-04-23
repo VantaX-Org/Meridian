@@ -124,13 +124,19 @@ export function SavedViewChip({
 }: SavedViewChipProps) {
   return (
     <span
-      className={clsx("aurora-saved-view-chip", "aurora-focus-ring", className)}
+      className={clsx("aurora-saved-view-chip", className)}
       data-active={active ? "true" : undefined}
     >
+      {/*
+        aurora-focus-ring lives on each focusable <button>, not the
+        outer <span>. The span has no tabIndex, so :focus-visible on it
+        never fires — a focus ring here would be invisible to keyboard
+        users. Matches Button / Input / Tabs / Combobox.
+      */}
       <button
         type="button"
         onClick={onClick}
-        className="aurora-saved-view-chip__body"
+        className={clsx("aurora-saved-view-chip__body", "aurora-focus-ring")}
       >
         <span className="aurora-saved-view-chip__glyph" aria-hidden>
           <BookmarkGlyph filled={active} />
@@ -147,7 +153,7 @@ export function SavedViewChip({
           type="button"
           aria-label="Delete saved view"
           onClick={onDelete}
-          className="aurora-saved-view-chip__delete"
+          className={clsx("aurora-saved-view-chip__delete", "aurora-focus-ring")}
         >
           <svg viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
             <path d="M4 4l8 8M12 4l-8 8" />
