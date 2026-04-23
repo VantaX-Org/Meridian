@@ -78,6 +78,19 @@ export interface WorkbenchVerdict {
 export type WorkbenchSeverity = "critical" | "high" | "medium" | "low";
 export type WorkbenchStatus = "open" | "in_progress" | "resolved" | "escalated";
 
+/**
+ * Compact origin markers attached to a triage row. Host-layer populates
+ * these from Finding.details so the steward can see, at a glance, whether
+ * a row is a cross-module rule, a customer-namespace (Z-table) rule, or
+ * has been classified as bad_config vs bad_data. Rendered as small dots /
+ * letters in the Finding cell, with full detail reserved for the drawer.
+ */
+export interface WorkbenchRowOrigin {
+  crossModule?: boolean;
+  customerNamespace?: boolean;
+  rootCauseType?: "bad_data" | "bad_config" | "bad_data_and_config" | "unknown";
+}
+
 export interface WorkbenchRow {
   id: string;
   /** Short record label — e.g. "BP-1203187". */
@@ -95,6 +108,8 @@ export interface WorkbenchRow {
   blocking: number;
   /** Optional score (0-100) for quality / readiness. */
   score?: number;
+  /** Optional origin markers — shown as compact badges in the row. */
+  origin?: WorkbenchRowOrigin;
 }
 
 export type WorkbenchTabId =
@@ -203,7 +218,8 @@ const triageColumns: ColumnDef<WorkbenchRow, unknown>[] = [
     accessorKey: "headline",
     cell: ({ row }) => (
       <span className="aurora-workbench__headline">
-        {row.original.headline}
+        <span>{row.original.headline}</span>
+        <OriginMarkers origin={row.original.origin} />
       </span>
     ),
   },
@@ -270,6 +286,57 @@ const triageColumns: ColumnDef<WorkbenchRow, unknown>[] = [
     meta: { width: 72, align: "end" } satisfies AuroraColumnMeta,
   },
 ];
+
+/* -------------------------------------------------- Origin markers --- */
+/**
+ * Compact visual markers in the Finding cell: three small tags for
+ * cross-module rules, customer-namespace (Z-table) rules, and
+ * bad_config classification. Full context shown in the record drawer;
+ * here we only want at-a-glance signal without bloating the row.
+ */
+function OriginMarkers({ origin }: { origin?: WorkbenchRowOrigin }) {
+  if (!origin) return null;
+  const marks: Array<{ key: string; label: string; tone: string; title: string }> = [];
+  if (origin.crossModule) {
+    marks.push({
+      key: "xm",
+      label: "XM",
+      tone: "info",
+      title: "Cross-module rule (P2P, OTC, etc.)",
+    });
+  }
+  if (origin.customerNamespace) {
+    marks.push({
+      key: "zt",
+      label: "Z",
+      tone: "info",
+      title: "Customer namespace (Z-table / Y-table)",
+    });
+  }
+  if (origin.rootCauseType === "bad_config" || origin.rootCauseType === "bad_data_and_config") {
+    marks.push({
+      key: "cfg",
+      label: "CFG",
+      tone: "warning",
+      title: "Root cause involves SPRO config — review before cleaning records",
+    });
+  }
+  if (marks.length === 0) return null;
+  return (
+    <span className="aurora-workbench__origin-marks" aria-label="Finding origin">
+      {marks.map((m) => (
+        <span
+          key={m.key}
+          className="aurora-workbench__origin-mark"
+          data-tone={m.tone}
+          title={m.title}
+        >
+          {m.label}
+        </span>
+      ))}
+    </span>
+  );
+}
 
 /* ----------------------------------------------------------- Surface --- */
 

@@ -25,6 +25,7 @@
 
 import type { ReactNode } from "react";
 import {
+  Chip,
   EmptyState,
   FixPlaybook,
   type FixPlaybookProps,
@@ -44,6 +45,32 @@ export type RecordReportStatus =
   | "resolved"
   | "escalated";
 
+/**
+ * Root-cause classification attached to a failing finding by the backend
+ * (checks/root_cause.py). Bridges the DQ-rule channel and Config
+ * Intelligence: tells the steward whether a flagged value is a data
+ * problem (value is valid SPRO config, records are wrong) or a config
+ * problem (value isn't in SPRO at all — rule may be stricter than
+ * reality, or config has drifted).
+ */
+export type RecordReportRootCauseType =
+  | "bad_data"
+  | "bad_config"
+  | "bad_data_and_config"
+  | "unknown";
+
+export interface RecordReportRootCause {
+  type: RecordReportRootCauseType;
+  /** Human-readable reasoning, one sentence. */
+  reasoning: string;
+  /** The SAP element_type matched against (e.g. "KTOKK"). */
+  elementType?: string;
+  /** Flagged values that ARE in the tenant's SPRO config. */
+  flaggedValuesInConfig?: ReadonlyArray<string>;
+  /** Flagged values NOT in the tenant's SPRO config. */
+  flaggedValuesNotInConfig?: ReadonlyArray<string>;
+}
+
 export interface RecordReportFinding {
   id: string;
   /** Check id, e.g. "BP.COMPLETENESS.TAX_NUMBER". */
@@ -55,6 +82,24 @@ export interface RecordReportFinding {
   passRate: number;
   /** Field-level evidence — short phrase. */
   evidence?: ReactNode;
+
+  /** Root-cause classification from checks/root_cause.py. */
+  rootCause?: RecordReportRootCause;
+  /**
+   * When populated the finding is a cross-module rule (P2P, OTC, etc.).
+   * The list is the set of source modules joined to produce the finding.
+   */
+  sourceModules?: ReadonlyArray<string>;
+  /**
+   * "customer" for Z-table / Y-table findings (customer namespace),
+   * "standard" or omitted for SAP-standard findings.
+   */
+  namespace?: "standard" | "customer";
+  /**
+   * Context predicate that scoped the rule (from applies_when in YAML).
+   * Rendered as "When MTART in FERT, HALB" in the finding head.
+   */
+  appliesWhen?: Record<string, ReadonlyArray<string>>;
 }
 
 export interface RecordReportContextItem {
@@ -361,12 +406,19 @@ function WhatsWrongSection({
               <Text variant="text-small" tone="tertiary" as="span" numeric>
                 {f.checkId}
               </Text>
+              <FindingOriginChips finding={f} />
             </header>
             <Text variant="text-lead">{f.title}</Text>
             {f.evidence ? (
               <Text variant="text-small" tone="secondary">
                 {f.evidence}
               </Text>
+            ) : null}
+            {f.appliesWhen ? (
+              <AppliesWhenBlock appliesWhen={f.appliesWhen} />
+            ) : null}
+            {f.rootCause && f.rootCause.type !== "unknown" ? (
+              <RootCauseBlock rootCause={f.rootCause} />
             ) : null}
             <div
               className="aurora-record-report__passrate"
@@ -392,6 +444,146 @@ function WhatsWrongSection({
       </ol>
       {fixPlaybook ? <FixPlaybook {...fixPlaybook} /> : null}
     </Stack>
+  );
+}
+
+/* ------------------------------------------------------ Origin chips --- */
+/**
+ * Row of chips describing the provenance/context of a finding:
+ *   - cross-module: rule joined data from multiple modules
+ *   - customer namespace: Z-table / Y-table (customer customisation)
+ *   - root-cause category: bad data vs bad config vs mixed
+ *
+ * Rendered in the finding head alongside severity + checkId.
+ */
+function FindingOriginChips({ finding }: { finding: RecordReportFinding }) {
+  const chips: ReactNode[] = [];
+
+  if (finding.sourceModules && finding.sourceModules.length > 0) {
+    chips.push(
+      <Chip key="cross-module" tone="info">
+        Cross-module · {finding.sourceModules.join(" + ")}
+      </Chip>,
+    );
+  }
+
+  if (finding.namespace === "customer") {
+    chips.push(
+      <Chip key="customer-ns" tone="info">
+        Customer namespace
+      </Chip>,
+    );
+  }
+
+  if (finding.rootCause && finding.rootCause.type !== "unknown") {
+    const tone: "warning" | "info" =
+      finding.rootCause.type === "bad_data" ? "info" : "warning";
+    chips.push(
+      <Chip key="root-cause" tone={tone}>
+        {ROOT_CAUSE_LABEL[finding.rootCause.type]}
+      </Chip>,
+    );
+  }
+
+  if (chips.length === 0) {
+    return null;
+  }
+  return (
+    <span
+      className="aurora-record-report__origin-chips"
+      aria-label="Finding origin"
+    >
+      {chips}
+    </span>
+  );
+}
+
+const ROOT_CAUSE_LABEL: Record<RecordReportRootCauseType, string> = {
+  bad_data: "Data issue",
+  bad_config: "Config issue",
+  bad_data_and_config: "Data + config",
+  unknown: "",
+};
+
+/* ---------------------------------------------------- Applies-when --- */
+/**
+ * Renders the rule's context predicate: "When MARA.MTART in FERT, HALB".
+ * Signals to the reader that this rule does NOT apply to every record —
+ * the pass_rate is scoped to the matching population.
+ */
+function AppliesWhenBlock({
+  appliesWhen,
+}: {
+  appliesWhen: Record<string, ReadonlyArray<string>>;
+}) {
+  const entries = Object.entries(appliesWhen);
+  if (entries.length === 0) return null;
+  return (
+    <div className="aurora-record-report__applies-when">
+      <Text variant="text-small" tone="tertiary" as="span">
+        Applies when
+      </Text>{" "}
+      <Text variant="text-small" tone="secondary" as="span">
+        {entries.map(([field, values], idx) => (
+          <span key={field}>
+            {idx > 0 ? " and " : ""}
+            <span data-numeric="true">{field}</span> in{" "}
+            {values.join(", ")}
+          </span>
+        ))}
+      </Text>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------ Root cause --- */
+/**
+ * Expanded block below the finding evidence that explains WHY the finding
+ * exists — bridging to Config Intelligence. Only rendered when rootCause
+ * is bad_data, bad_config, or bad_data_and_config; "unknown" is the
+ * signal to show nothing.
+ */
+function RootCauseBlock({
+  rootCause,
+}: {
+  rootCause: RecordReportRootCause;
+}) {
+  return (
+    <div
+      className="aurora-record-report__root-cause"
+      data-cause={rootCause.type}
+      role="group"
+      aria-label="Root cause"
+    >
+      <Text variant="text-small" tone="tertiary" as="p">
+        Root cause — {ROOT_CAUSE_LABEL[rootCause.type]}
+      </Text>
+      <Text variant="text-body" as="p">
+        {rootCause.reasoning}
+      </Text>
+      {rootCause.flaggedValuesInConfig &&
+      rootCause.flaggedValuesInConfig.length > 0 ? (
+        <div className="aurora-record-report__root-cause-list">
+          <Text variant="text-small" tone="tertiary" as="span">
+            Valid in your SPRO config:
+          </Text>{" "}
+          <Text variant="text-small" as="span" numeric>
+            {rootCause.flaggedValuesInConfig.join(", ")}
+          </Text>
+        </div>
+      ) : null}
+      {rootCause.flaggedValuesNotInConfig &&
+      rootCause.flaggedValuesNotInConfig.length > 0 ? (
+        <div className="aurora-record-report__root-cause-list">
+          <Text variant="text-small" tone="tertiary" as="span">
+            Not in your SPRO config:
+          </Text>{" "}
+          <Text variant="text-small" as="span" numeric>
+            {rootCause.flaggedValuesNotInConfig.join(", ")}
+          </Text>
+        </div>
+      ) : null}
+    </div>
   );
 }
 

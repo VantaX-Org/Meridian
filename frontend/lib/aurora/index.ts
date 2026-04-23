@@ -11,3 +11,8 @@ export * from "./motion";
 export * from "./density";
 export * from "./icons";
 export * as icons from "./icons";
+export {
+  findingToRecordReport,
+  findingsToRecordReport,
+  findingOriginForWorkbench,
+} from "./finding-to-record";

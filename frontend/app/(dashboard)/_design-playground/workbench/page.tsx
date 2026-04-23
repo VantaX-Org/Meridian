@@ -37,24 +37,28 @@ const FIXTURE_ROWS: ReadonlyArray<WorkbenchRow> = [
   {
     id: "f-1",
     recordId: "BP-1203187",
-    headline: "Tax number missing on DE-registered business partner",
+    headline: "Vendor account group references unconfigured value 0099",
     module: "Business Partner",
     severity: "critical",
     status: "open",
     age: "14m",
     assignee: null,
     blocking: 4,
+    // Demonstrates PR F root_cause surfaced as a config-origin mark
+    origin: { rootCauseType: "bad_config" },
   },
   {
     id: "f-2",
-    recordId: "BP-1187642",
-    headline: "Duplicate BP matches cluster 42 at 0.94 confidence",
-    module: "Business Partner",
+    recordId: "EKKO-4500028",
+    headline: "PO payment terms drift from vendor master (XP2P001)",
+    module: "Procure-to-Pay",
     severity: "high",
     status: "in_progress",
     age: "1h",
     assignee: "R. Sato",
     blocking: 2,
+    // Demonstrates PR D cross-module surfaced in the triage row
+    origin: { crossModule: true, rootCauseType: "bad_data" },
   },
   {
     id: "f-3",
@@ -69,14 +73,16 @@ const FIXTURE_ROWS: ReadonlyArray<WorkbenchRow> = [
   },
   {
     id: "f-4",
-    recordId: "MM-55102",
-    headline: "Material group not aligned with corporate taxonomy",
-    module: "Material Master",
+    recordId: "LFA1-V104512",
+    headline: "Supplier risk score out of range on Z-field",
+    module: "Vendor Master",
     severity: "medium",
     status: "open",
     age: "4h",
     assignee: "K. Chen",
     blocking: 1,
+    // Demonstrates PR E customer namespace (Z-table) marker
+    origin: { customerNamespace: true },
   },
   {
     id: "f-5",
