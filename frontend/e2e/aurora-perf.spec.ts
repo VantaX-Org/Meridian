@@ -36,10 +36,12 @@ const BUDGETS: ReadonlyArray<RouteBudget> = [
 for (const r of BUDGETS) {
   test(`perf — ${r.name} settles under ${r.budgetMs}ms`, async ({ page }) => {
     const started = Date.now();
-    await page.goto(r.path, { waitUntil: "domcontentloaded" });
-    // Wait for the main document to be rendered and initial data
-    // requests to settle.
-    await page.waitForLoadState("networkidle", { timeout: r.budgetMs + 1000 });
+    // `load` is the right signal for interactive: DOM is parsed and
+    // all sync resources are in. networkidle is NOT suitable because
+    // pages with long-polling queries (Command Centre /ask streaming,
+    // Workbench react-query subscriptions) never reach idle within
+    // a reasonable budget.
+    await page.goto(r.path, { waitUntil: "load" });
     const elapsed = Date.now() - started;
 
     console.log(`[perf] ${r.name}: ${elapsed}ms (budget ${r.budgetMs}ms)`);
