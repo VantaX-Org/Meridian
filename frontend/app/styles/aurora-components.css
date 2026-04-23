@@ -3179,3 +3179,35 @@
   margin-top: var(--aurora-space-2);
   justify-content: flex-end;
 }
+
+/* -- Admin list rows (live /admin page) -- */
+
+.aurora-admin-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--aurora-space-1);
+  border: 1px solid var(--aurora-canvas-line);
+  border-radius: 10px;
+  background: var(--aurora-canvas-raised);
+  overflow: hidden;
+}
+
+.aurora-admin-list__row {
+  display: flex;
+  align-items: center;
+  gap: var(--aurora-space-4);
+  padding: var(--aurora-space-3) var(--aurora-space-4);
+  border-bottom: 1px solid var(--aurora-canvas-line);
+}
+
+.aurora-admin-list__row:last-child {
+  border-bottom: none;
+}
+
+.aurora-admin-list__row > :first-child {
+  flex: 1;
+  min-width: 0;
+}
