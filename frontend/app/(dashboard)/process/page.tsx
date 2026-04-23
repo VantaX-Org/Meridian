@@ -1,23 +1,14 @@
 /**
- * Aurora · Process — live-data route (WS8 complete).
+ * Aurora · Process — live-data route.
  *
- * Fourth Aurora workspace. Wires the Process surface to the existing
- * business-process hierarchy API (/api/v1/business-process/<version>/<module>).
- * Mapping:
- *   BusinessProcessL1  → ProcessPick (left-rail entry)
- *   BusinessProcessL3  → ProcessVariant (each L3 process is a variant
- *                         of the parent L1, with readiness as quality)
- *   L2 → L3 sequence   → ProcessGraph nodes + edges (simple hierarchical
- *                         rendering; a full mining-graph API would
- *                         provide activity-level transitions, not
- *                         available yet)
- *   Cases / Config Impact tabs → honest empty states — the data for
- *                         those is a different API shape that hasn't
- *                         landed yet
+ * Primary source: /api/v1/process/mining/graph/{version}/{module} — returns
+ * activity-level nodes + transitions + variants derived from the L4 steps
+ * of the business-process document. Case-level traces stay empty until a
+ * real event log pipeline lands (cases_supported=false).
  *
- * Completes the four-workspace Aurora set (§6.1). Process pass 2 — once
- * the mining-graph API exposes activity-level data — will replace this
- * hierarchical mapping with real cases and variants.
+ * Fallback: if the mining-graph endpoint is unreachable or returns an
+ * empty body, we fall back to synthesising nodes from the business-process
+ * hierarchy so the page still renders a useful shape.
  */
 
 "use client";
@@ -38,6 +29,12 @@ import {
 } from "@/components/aurora";
 import { getVersions } from "@/lib/api/versions";
 import { getBusinessProcess } from "@/lib/api/connectivity";
+import {
+  getMiningGraph,
+  type MiningActivity,
+  type MiningGraphResponse,
+  type MiningTransition,
+} from "@/lib/api/process-mining";
 import type {
   BusinessProcessL1,
   BusinessProcessL3,
@@ -147,6 +144,44 @@ function nodesAndEdgesFromL1(
   return { nodes, edges };
 }
 
+/* --- Mining-graph → Aurora graph helpers (preferred data path) --- */
+
+function nodesAndEdgesFromMining(
+  activities: ReadonlyArray<MiningActivity>,
+  transitions: ReadonlyArray<MiningTransition>,
+  selectedL3Id?: string,
+): { nodes: GraphNode[]; edges: GraphEdge[] } {
+  const scoped = selectedL3Id
+    ? activities.filter((a) => a.l3_id === selectedL3Id)
+    : activities;
+  const scopedIds = new Set(scoped.map((a) => a.id));
+  const nodes: GraphNode[] = scoped.map((a) => ({
+    id: a.id,
+    data: {
+      label: a.label,
+      kind: "transform",
+      alignment: alignmentFromReadiness(a.step_status as "green" | "amber" | "red"),
+      secondary: a.affected_records > 0 ? `${a.affected_records} affected` : undefined,
+    },
+  }));
+  const edges: GraphEdge[] = transitions
+    .filter((t) => scopedIds.has(t.from) && scopedIds.has(t.to))
+    .map((t) => ({ id: `${t.from}->${t.to}`, source: t.from, target: t.to }));
+  return { nodes, edges };
+}
+
+function variantsFromMining(
+  variants: MiningGraphResponse["variants"],
+): ReadonlyArray<ProcessVariant> {
+  return variants.map((v) => ({
+    id: v.id,
+    label: v.label + (v.tcode ? ` (${v.tcode})` : ""),
+    cases: v.activity_count,
+    quality: v.quality,
+    coverage: v.coverage,
+  }));
+}
+
 /* ---------------------------------------------------------- Page --- */
 
 export default function ProcessPage() {
@@ -170,6 +205,15 @@ export default function ProcessPage() {
     retry: (n, e) => !(e instanceof AxiosError) || n < 1,
   });
 
+  // Preferred source: activity-level mining graph. Falls back silently to
+  // the L1 hierarchy if the endpoint returns an error.
+  const miningQuery = useQuery({
+    queryKey: ["aurora.process.mining-graph", versionId, DEFAULT_MODULE],
+    queryFn: () => getMiningGraph(versionId, DEFAULT_MODULE),
+    enabled: Boolean(versionId),
+    retry: (n, e) => !(e instanceof AxiosError) || n < 1,
+  });
+
   const l1List: ReadonlyArray<BusinessProcessL1> = processQuery.data ?? [];
   const picks: ReadonlyArray<ProcessPick> = useMemo(
     () =>
@@ -189,8 +233,39 @@ export default function ProcessPage() {
     selectedProcess || picks[0]?.id || "";
 
   const selectedL1 = l1List.find((l1) => l1.l1_id === effectiveSelected);
-  const variants = selectedL1 ? variantsFromL1(selectedL1) : [];
-  const graph = selectedL1
+
+  // Prefer mining graph data when the endpoint returned a non-empty payload.
+  // L1s in this module all share the activity set; we scope by variants tied
+  // to L3s within the selected L1 (the hierarchy knows which L3 belongs where).
+  const miningGraph = miningQuery.data;
+  const miningAvailable =
+    !!miningGraph && miningGraph.activities.length > 0;
+
+  const l3IdsInSelectedL1 = selectedL1
+    ? new Set(
+        selectedL1.l2_groups.flatMap((l2) =>
+          l2.l3_processes.map((l3) => l3.l3_id),
+        ),
+      )
+    : new Set<string>();
+
+  const variants: ReadonlyArray<ProcessVariant> = miningAvailable
+    ? variantsFromMining(
+        miningGraph!.variants.filter((v) => l3IdsInSelectedL1.has(v.id)),
+      )
+    : selectedL1
+    ? variantsFromL1(selectedL1)
+    : [];
+
+  const graph = miningAvailable
+    ? {
+        ...nodesAndEdgesFromMining(
+          miningGraph!.activities.filter((a) => l3IdsInSelectedL1.has(a.l3_id)),
+          miningGraph!.transitions,
+        ),
+        direction: "LR" as const,
+      }
+    : selectedL1
     ? {
         ...nodesAndEdgesFromL1(selectedL1),
         direction: "LR" as const,
@@ -234,7 +309,11 @@ export default function ProcessPage() {
   const casesEmpty = (
     <EmptyState
       title="Case-level view pending"
-      body="Per-case activity timelines require the mining-graph API (activity-level events). Hierarchical data alone doesn't expose case traces. Pass 2 wires this tab once that API ships."
+      body={
+        miningGraph && !miningGraph.cases_supported
+          ? "Per-case activity timelines require an event-log pipeline that captures real transaction traces. The mining-graph surfaces activities and variants today; individual cases land once change-log ingestion ships."
+          : "Per-case activity timelines need the event-log ingestion path. Activity and variant data are already live; cases will follow."
+      }
     />
   );
   const configImpactEmpty = (
