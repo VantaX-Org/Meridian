@@ -580,3 +580,316 @@
   color: var(--aurora-fg-muted);
   text-align: center;
 }
+
+/* =================================================================== *\
+ * WS3 data primitives — Table, Stat, KpiRail, Charts, ProcessGraph.
+\* =================================================================== */
+
+/* ------------------------------------------------------------------ *\
+ * Table — virtualised grid.
+ *
+ * Flex rows with absolutely-positioned virtual children. Row height
+ * tracks the parent `[data-density]` via `--aurora-density-row` so the
+ * table honours compact / default / comfortable without prop drilling.
+\* ------------------------------------------------------------------ */
+.aurora-table {
+  position: relative;
+  overflow: auto;
+  width: 100%;
+  background: var(--aurora-canvas-raised);
+  border: 1px solid var(--aurora-canvas-line);
+  border-radius: 12px;
+  font-family: var(--aurora-font-ui);
+  color: var(--aurora-fg-primary);
+  scrollbar-color: var(--aurora-canvas-line) transparent;
+  scrollbar-width: thin;
+}
+.aurora-table:focus-visible {
+  outline: var(--aurora-focus-ring-width) solid var(--aurora-focus-ring-colour);
+  outline-offset: var(--aurora-focus-ring-offset);
+}
+.aurora-table__inner {
+  display: flex;
+  flex-direction: column;
+  min-width: 100%;
+}
+.aurora-table__head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--aurora-canvas-elevated);
+  border-bottom: 1px solid var(--aurora-canvas-line);
+}
+.aurora-table__body {
+  position: relative;
+  width: 100%;
+}
+.aurora-table__row {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  height: var(--aurora-density-row);
+  border-bottom: 1px solid var(--aurora-canvas-line);
+  transition: background-color var(--aurora-duration-fast)
+    var(--aurora-easing-standard);
+}
+.aurora-table__body .aurora-table__row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+.aurora-table__body .aurora-table__row:hover,
+.aurora-table__body .aurora-table__row[data-focused="true"] {
+  background: var(--aurora-canvas-overlay);
+}
+.aurora-table__cell {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--aurora-space-3);
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--aurora-fg-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.aurora-table__cell--header {
+  font-size: 11px;
+  line-height: 14px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--aurora-fg-tertiary);
+  font-weight: 500;
+}
+.aurora-table__cell[data-align="end"] {
+  justify-content: flex-end;
+  text-align: right;
+}
+.aurora-table__cell[data-align="center"] {
+  justify-content: center;
+  text-align: center;
+}
+.aurora-table__cell[data-numeric="true"] {
+  font-variant-numeric: tabular-nums lining-nums;
+  color: var(--aurora-fg-primary);
+}
+.aurora-table__cell[data-sticky="start"] {
+  position: sticky;
+  left: 0;
+  background: inherit;
+  z-index: 1;
+  box-shadow: 1px 0 0 var(--aurora-canvas-line);
+}
+.aurora-table__empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--aurora-space-8);
+  border: 1px dashed var(--aurora-canvas-line);
+  border-radius: 12px;
+  color: var(--aurora-fg-secondary);
+}
+
+/* ------------------------------------------------------------------ *\
+ * Stat + KpiRail
+ *
+ * Stat is the single-metric atom. KpiRail groups stats horizontally at
+ * the top of a list or record drawer. Values use display-lg tabular;
+ * delta pills sit below.
+\* ------------------------------------------------------------------ */
+.aurora-stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--aurora-space-2);
+  padding: var(--aurora-space-3) var(--aurora-space-4);
+  background: var(--aurora-canvas-raised);
+  border: 1px solid var(--aurora-canvas-line);
+  border-radius: 12px;
+  min-width: 0;
+}
+.aurora-stat[data-tone="success"] .aurora-stat__label {
+  color: var(--aurora-status-success-500);
+}
+.aurora-stat[data-tone="warning"] .aurora-stat__label {
+  color: var(--aurora-status-warning-500);
+}
+.aurora-stat[data-tone="danger"] .aurora-stat__label {
+  color: var(--aurora-status-danger-500);
+}
+.aurora-stat[data-tone="info"] .aurora-stat__label {
+  color: var(--aurora-status-info-500);
+}
+.aurora-stat__label {
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.aurora-stat__value-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--aurora-space-2);
+}
+.aurora-stat__value {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--aurora-space-1);
+}
+.aurora-stat__unit {
+  margin-left: 2px;
+}
+.aurora-stat__foot {
+  min-height: 20px;
+}
+.aurora-stat__sparkline {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 120px;
+  height: 28px;
+  color: var(--aurora-accent-400);
+}
+.aurora-kpi-rail {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--aurora-space-3);
+  width: 100%;
+}
+
+/* Delta pill — surfaces a signed delta with an up/down/flat glyph. */
+.aurora-delta-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 var(--aurora-space-2);
+  border-radius: 999px;
+  font-family: var(--aurora-font-ui);
+  font-size: 11px;
+  line-height: 14px;
+  letter-spacing: 0.02em;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums lining-nums;
+  background: var(--aurora-canvas-overlay);
+  color: var(--aurora-fg-secondary);
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.aurora-delta-pill[data-semantic="success"] {
+  color: var(--aurora-status-success-500);
+  background: var(--aurora-status-success-bg);
+  border-color: var(--aurora-status-success-border);
+}
+.aurora-delta-pill[data-semantic="danger"] {
+  color: var(--aurora-status-danger-500);
+  background: var(--aurora-status-danger-bg);
+  border-color: var(--aurora-status-danger-border);
+}
+
+/* ------------------------------------------------------------------ *\
+ * Chart wrappers — tokens handled by chart-theme.ts.
+\* ------------------------------------------------------------------ */
+.aurora-chart {
+  position: relative;
+  color: var(--aurora-fg-primary);
+}
+.aurora-chart .recharts-cartesian-axis-tick text,
+.aurora-chart .recharts-legend-item-text {
+  fill: var(--aurora-fg-tertiary);
+}
+.aurora-sparkline {
+  position: relative;
+  display: block;
+}
+
+/* ------------------------------------------------------------------ *\
+ * Process graph — React Flow override layer.
+ *
+ * Aurora overrides React Flow's defaults so the canvas reads as part of
+ * the surface (not a floating widget). Dagre computes positions; these
+ * rules control colour + node chrome.
+\* ------------------------------------------------------------------ */
+.aurora-process-graph {
+  position: relative;
+  border: 1px solid var(--aurora-canvas-line);
+  border-radius: 12px;
+  background: var(--aurora-canvas-base);
+  overflow: hidden;
+}
+.aurora-process-graph .react-flow__controls {
+  box-shadow: none;
+  background: var(--aurora-canvas-elevated);
+  border: 1px solid var(--aurora-canvas-line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.aurora-process-graph .react-flow__controls-button {
+  background: var(--aurora-canvas-elevated);
+  border-bottom: 1px solid var(--aurora-canvas-line);
+  color: var(--aurora-fg-secondary);
+  width: 28px;
+  height: 28px;
+}
+.aurora-process-graph .react-flow__controls-button:hover {
+  background: var(--aurora-canvas-overlay);
+  color: var(--aurora-fg-primary);
+}
+.aurora-process-graph .react-flow__controls-button svg {
+  fill: currentColor;
+}
+.aurora-process-graph .react-flow__edge-path {
+  stroke: var(--aurora-canvas-line);
+}
+.aurora-process-graph .react-flow__handle {
+  width: 6px;
+  height: 6px;
+  background: var(--aurora-fg-tertiary);
+  border: none;
+}
+
+.aurora-process-node {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: var(--aurora-space-2) var(--aurora-space-3);
+  background: var(--aurora-canvas-raised);
+  border: 1px solid var(--aurora-canvas-line);
+  border-radius: 10px;
+  position: relative;
+  box-shadow: var(--aurora-elev-2);
+  transition: border-color var(--aurora-duration-fast)
+      var(--aurora-easing-standard),
+    box-shadow var(--aurora-duration-fast) var(--aurora-easing-standard);
+}
+.aurora-process-node[data-selected="true"] {
+  border-color: var(--aurora-accent-400);
+  box-shadow: 0 0 0 1px var(--aurora-accent-400),
+    var(--aurora-elev-3);
+}
+.aurora-process-node[data-kind="approval"] {
+  border-style: dashed;
+}
+.aurora-process-node[data-kind="decision"] {
+  background: var(--aurora-canvas-elevated);
+}
+.aurora-process-node__label {
+  font-weight: 500;
+  color: var(--aurora-fg-primary);
+}
+.aurora-process-node__alignment {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--aurora-fg-muted);
+}
+.aurora-process-node[data-alignment="aligned"] .aurora-process-node__alignment {
+  background: var(--aurora-status-success-500);
+}
+.aurora-process-node[data-alignment="drifting"] .aurora-process-node__alignment {
+  background: var(--aurora-status-warning-500);
+}
+.aurora-process-node[data-alignment="blocked"] .aurora-process-node__alignment {
+  background: var(--aurora-status-danger-500);
+}
