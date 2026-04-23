@@ -252,6 +252,17 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
 
         logger.info(f"Total check results: {len(all_results)}")
 
+        # Step 6d: Root-cause classification against Config Intelligence.
+        # Enriches failing findings with bad_data / bad_config / both so
+        # the Workbench and Fix Playbook can show the steward WHY the
+        # finding exists, not just WHAT failed. No-ops for tenants without
+        # a Config Intelligence run.
+        try:
+            from checks.root_cause import enrich_results_with_root_cause
+            enrich_results_with_root_cause(engine, str(tenant_id), all_results)
+        except Exception as e:
+            logger.warning(f"root_cause enrichment failed, continuing: {e}")
+
         # Step 7-8: Score all modules
         from api.services.scoring import score_all_modules
 
