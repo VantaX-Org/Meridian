@@ -23,6 +23,7 @@ import { AxiosError } from "axios";
 import { toast } from "sonner";
 import {
   Admin,
+  AdminAuditLogTable,
   AdminDestructiveConfirm,
   AdminDoctorCard,
   Banner,
@@ -30,6 +31,7 @@ import {
   Chip,
   Stack,
   Text,
+  type AdminAuditLogEntry,
   type AdminDoctorItem,
   type AdminTabId,
 } from "@/components/aurora";
@@ -48,6 +50,7 @@ import {
 } from "@/lib/api/llm-settings";
 import { getLlmSavingsSummary, type LlmSavingsSummary } from "@/lib/api/llm-savings";
 import { getDoctor, type DoctorItem as ApiDoctorItem } from "@/lib/api/admin-doctor";
+import { getAuditEntries, type AuditEntry } from "@/lib/api/audit";
 import type { SAPSystem, User, UserRole } from "@/types/api";
 
 const ROLE_OPTIONS: ReadonlyArray<UserRole> = [
@@ -68,6 +71,16 @@ export default function AdminPage() {
     queryKey: ["aurora.admin.users"],
     queryFn: getUsers,
     retry: noRetryOnAuthError,
+  });
+
+  const auditQuery = useQuery({
+    queryKey: ["aurora.admin.audit", 50],
+    queryFn: () => getAuditEntries({ limit: 50 }),
+    retry: noRetryOnAuthError,
+    enabled: tab === "users",
+    // Audit writes are fire-and-forget so poll to catch async inserts.
+    refetchInterval: 20_000,
+    refetchIntervalInBackground: false,
   });
 
   /* ----- mutations ----- */
@@ -250,6 +263,9 @@ export default function AdminPage() {
               mutationInFlight={
                 toggleActiveMutation.isPending || updateRoleMutation.isPending
               }
+              auditEntries={auditQuery.data?.entries}
+              auditLoading={auditQuery.isLoading}
+              auditError={auditQuery.isError}
             />
           ),
         },
@@ -350,6 +366,9 @@ function UsersBody({
   onToggleActive,
   onChangeRole,
   mutationInFlight,
+  auditEntries,
+  auditLoading,
+  auditError,
 }: {
   users?: ReadonlyArray<User>;
   isLoading: boolean;
@@ -359,6 +378,9 @@ function UsersBody({
   onToggleActive: (userId: string, is_active: boolean) => void;
   onChangeRole: (userId: string, role: UserRole) => void;
   mutationInFlight: boolean;
+  auditEntries?: ReadonlyArray<AuditEntry>;
+  auditLoading: boolean;
+  auditError: boolean;
 }) {
   const [inviteOpen, setInviteOpen] = useState(false);
   if (isLoading) return <LoadingLine label="Loading users" />;
@@ -430,8 +452,84 @@ function UsersBody({
           />
         ))}
       </ul>
+      <AuditSection
+        entries={auditEntries}
+        isLoading={auditLoading}
+        isError={auditError}
+      />
     </Stack>
   );
+}
+
+/* ----- Audit section (Users & Roles tab) ----- */
+
+function AuditSection({
+  entries,
+  isLoading,
+  isError,
+}: {
+  entries?: ReadonlyArray<AuditEntry>;
+  isLoading: boolean;
+  isError: boolean;
+}) {
+  return (
+    <Stack direction="column" gap={2} style={{ marginTop: 24 }}>
+      <Stack direction="row" gap={2} align="center">
+        <Text variant="text-lead">Audit log</Text>
+        <Text variant="text-small" tone="tertiary">
+          Every state change in Meridian, newest first.
+        </Text>
+      </Stack>
+      {isLoading ? (
+        <LoadingLine label="Loading audit log" />
+      ) : isError ? (
+        <ErrorLine detail="Couldn't reach the audit log API." />
+      ) : (
+        <AdminAuditLogTable entries={toAdminAuditEntries(entries ?? [])} />
+      )}
+    </Stack>
+  );
+}
+
+function toAdminAuditEntries(
+  entries: ReadonlyArray<AuditEntry>,
+): AdminAuditLogEntry[] {
+  return entries.map((e) => ({
+    id: e.id,
+    timestamp: e.created_at,
+    displayTime: formatRelative(e.created_at),
+    actor: e.actor_email ?? "system",
+    action: describeAction(e),
+    context: describeContext(e),
+  }));
+}
+
+function describeAction(e: AuditEntry): string {
+  // Prefer verb + entity when both present (e.g. "update rules abc123").
+  const bits: string[] = [e.action];
+  if (e.entity_type) bits.push(e.entity_type);
+  if (e.entity_id) bits.push(e.entity_id.slice(0, 8));
+  return bits.join(" ");
+}
+
+function describeContext(e: AuditEntry): string {
+  const parts: string[] = [`${e.method} ${e.path} (${e.status_code})`];
+  if (e.ip) parts.push(e.ip);
+  return parts.join(" · ");
+}
+
+function formatRelative(iso: string): string {
+  const then = new Date(iso).getTime();
+  const diff = Date.now() - then;
+  if (Number.isNaN(then)) return iso;
+  const min = Math.round(diff / 60_000);
+  if (min < 1) return "just now";
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.round(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const d = Math.round(hr / 24);
+  if (d < 7) return `${d}d ago`;
+  return new Date(iso).toLocaleDateString();
 }
 
 function UserRow({

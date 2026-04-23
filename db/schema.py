@@ -821,6 +821,36 @@ class SurvivorshipRule(Base):
     )
 
 
+class AuditLog(Base):
+    """General-purpose mutation audit log. Every state-changing API call is
+    appended here by api.middleware.audit so admins can trace who did what.
+    Separate from llm_audit_log (which is LLM-specific)."""
+
+    __tablename__ = "audit_log"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    actor_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    actor_email = Column(Text, nullable=True)
+    action = Column(Text, nullable=False)
+    entity_type = Column(Text, nullable=True)
+    entity_id = Column(Text, nullable=True)
+    method = Column(Text, nullable=False)
+    path = Column(Text, nullable=False)
+    status_code = Column(Integer, nullable=False)
+    ip = Column(Text, nullable=True)
+    user_agent = Column(Text, nullable=True)
+    before_json = Column(JSONB, nullable=True)
+    after_json = Column(JSONB, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        Index("ix_audit_log_tenant_created", "tenant_id", text("created_at DESC")),
+        Index("ix_audit_log_entity", "tenant_id", "entity_type", "entity_id"),
+        Index("ix_audit_log_actor", "tenant_id", "actor_user_id"),
+    )
+
+
 class LLMAuditLog(Base):
     __tablename__ = "llm_audit_log"
 
