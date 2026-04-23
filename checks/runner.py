@@ -38,6 +38,32 @@ def _select_engine(row_count: int) -> str:
         return CHECK_ENGINE
     return "polars" if row_count >= CHECK_ENGINE_POLARS_THRESHOLD else "pandas"
 
+
+def apply_context(df: pd.DataFrame, applies_when: dict | None) -> pd.DataFrame:
+    """Filter `df` to rows that satisfy every condition in `applies_when`.
+
+    `applies_when` is a dict of {field: allowed_values}; AND-combined.
+    Returns:
+      - df unchanged if applies_when is None/empty
+      - df.iloc[:0] (zero rows) if any field in applies_when is missing
+        from the extract — lets the caller treat the rule as "not applicable
+        to this extract" via the existing None-result pathway
+      - filtered df otherwise
+
+    Example: a rule with `applies_when: {MARA.MTART: ["FERT", "HALB"]}`
+    runs only against finished/semi-finished materials; total_count and
+    pass_rate reflect that scoped population, not the whole extract.
+    """
+    if not applies_when:
+        return df
+    mask = pd.Series(True, index=df.index)
+    for field, allowed in applies_when.items():
+        if field not in df.columns:
+            return df.iloc[:0]
+        allowed_strs = [str(v) for v in allowed]
+        mask &= df[field].astype(str).isin(allowed_strs)
+    return df[mask]
+
 REGISTRY: dict[str, type[BaseCheck]] = {
     "null_check": NullCheck,
     "regex_check": RegexCheck,
@@ -164,8 +190,16 @@ def run_checks(module_name: str, df: pd.DataFrame, tenant_id: str) -> list[Check
             continue
 
         try:
+            # Apply context predicate — rules with `applies_when` see only
+            # rows that match their preconditions. total_count on the result
+            # will reflect the scoped population, not the full extract.
+            scoped_df = apply_context(df, rule.get("applies_when"))
+            if len(scoped_df) == 0 and rule.get("applies_when"):
+                # No rows match this rule's context — skip without failing
+                skipped += 1
+                continue
             check = check_cls(rule)
-            result = check.run(df)
+            result = check.run(scoped_df)
             if result is None:
                 # Field not in partial extract — skip silently
                 skipped += 1

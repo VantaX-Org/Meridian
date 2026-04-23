@@ -719,3 +719,18 @@ rules:
     __blank__: "Assign BU_GROUP at BP creation. Mandatory for all Business Partner records."
     __other__: "Business partner group '{invalid_value}' not in TB003. Reassign via BP (transaction) or configure in SPRO > Cross-Application Components > SAP Business Partner > Business Partner > Basic Settings > Business Partner Groupings."
   record_fix_template: "Business Partner {BUT000.PARTNER}: BP group '{actual_value}' is not in TB003."
+
+- id: BP043
+  field: BUT000.NAME_ORG1
+  check_class: null_check
+  applies_when:
+    BUT000.BU_TYPE: ["2"]
+  severity: critical
+  dimension: completeness
+  message: "Organisation name NAME_ORG1 is mandatory for organisation Business Partners"
+  why_it_matters: "BU_TYPE determines which name fields are populated: persons (BU_TYPE=1) use NAME_FIRST/NAME_LAST, organisations (BU_TYPE=2) use NAME_ORG1-4, and groups (BU_TYPE=3) use GROUP_TYPE. SAP's CVI (Customer/Vendor Integration) validates this mapping at BP creation — an organisation-role BP with blank NAME_ORG1 fails CVI sync to the vendor/customer ledger. This rule correctly applies ONLY to BU_TYPE=2 records; persons and groups have their own name fields validated separately."
+  rule_authority: sap_hard_constraint
+  sap_impact: "BP cannot be saved (CVI rejects); vendor/customer sync broken; downstream AP/AR sub-ledger records cannot be created for the BP."
+  fix_map:
+    __blank__: "Populate the primary organisation name via BP (transaction) > Organisation role > General Data > Names. If the BP should be a person instead, change BU_TYPE to 1 via BP."
+  record_fix_template: "Business Partner {BUT000.PARTNER} (organisation): NAME_ORG1 is missing. Populate via BP transaction > Names."

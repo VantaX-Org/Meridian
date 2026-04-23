@@ -631,3 +631,18 @@ rules:
     __blank__: "Assign dunning procedure via XK02 > Correspondence. Only required where the vendor is also dunned for debit items."
     __other__: "Dunning procedure '{invalid_value}' not in T040. Reassign via XK02 or configure in SPRO via FBMP."
   record_fix_template: "Vendor {LFA1.LIFNR}: dunning procedure '{actual_value}' not in T040."
+
+- id: AP039
+  field: LFBK.BANKN
+  check_class: null_check
+  applies_when:
+    LFA1.ZLSCH: ["T", "U", "E"]
+  severity: critical
+  dimension: completeness
+  message: "Bank account BANKN is mandatory for vendors paid by electronic transfer"
+  why_it_matters: "Payment method T (bank transfer), U (ACH/direct debit), and E (wire) all require a populated vendor bank account on LFBK. An invalid or missing BANKN causes F110 to error out ('no bank details for payment method X') and blocks the entire payment run for all vendors sharing that run. Check-paid vendors (ZLSCH=C) and other non-electronic methods don't need bank details — this rule correctly only applies to electronically-paid records."
+  rule_authority: sap_hard_constraint
+  sap_impact: "F110 automatic-payment run errors; the vendor is excluded from the run, potentially delaying hundreds of payments in the same batch."
+  fix_map:
+    __blank__: "Populate bank details via XK02 > Payment Transactions > Bank Details, or change payment method to non-electronic (e.g. ZLSCH=C for check) via the same screen."
+  record_fix_template: "Vendor {LFA1.LIFNR} (payment method {LFA1.ZLSCH}): bank account BANKN is missing. Add via XK02 > Bank Details."
