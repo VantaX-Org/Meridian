@@ -34,7 +34,7 @@ import {
   type AdminTabId,
 } from "@/components/aurora";
 import { getUsers, inviteUser, updateUser } from "@/lib/api/users";
-import { deleteSystem, getSystems } from "@/lib/api/systems";
+import { deleteSystem, getSystems, registerSystem } from "@/lib/api/systems";
 import { getRulesSummary, type RulesSummaryItem } from "@/lib/api/rules";
 import { getLicenceManifest } from "@/lib/api/licence";
 import { getLLMConfig, type LLMConfig } from "@/lib/api/llm-settings";
@@ -114,6 +114,21 @@ export default function AdminPage() {
       toast.error("Remove failed — check dependencies and retry.");
     },
   });
+
+  const registerSystemMutation = useMutation({
+    mutationFn: registerSystem,
+    onSuccess: (s) => {
+      toast.success(`System ${s.name} registered.`);
+      qc.invalidateQueries({ queryKey: ["aurora.admin.systems"] });
+    },
+    onError: (err: unknown) => {
+      const msg =
+        err instanceof AxiosError
+          ? err.response?.data?.detail ?? err.message
+          : "Register failed.";
+      toast.error(`Register failed: ${msg}`);
+    },
+  });
   const systemsQuery = useQuery({
     queryKey: ["aurora.admin.systems"],
     queryFn: getSystems,
@@ -191,6 +206,8 @@ export default function AdminPage() {
               isLoading={systemsQuery.isLoading}
               isError={systemsQuery.isError}
               onDeleteSystem={(id) => deleteSystemMutation.mutate(id)}
+              onRegisterSystem={(body) => registerSystemMutation.mutate(body)}
+              registerInFlight={registerSystemMutation.isPending}
             />
           ),
         },
@@ -478,23 +495,54 @@ function ConnectionsBody({
   isLoading,
   isError,
   onDeleteSystem,
+  onRegisterSystem,
+  registerInFlight,
 }: {
   systems?: ReadonlyArray<SAPSystem>;
   isLoading: boolean;
   isError: boolean;
   onDeleteSystem: (id: string) => void;
+  onRegisterSystem: (body: {
+    name: string;
+    host: string;
+    client: string;
+    sysnr: string;
+    environment: string;
+    password: string;
+    description?: string;
+  }) => void;
+  registerInFlight: boolean;
 }) {
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [registerOpen, setRegisterOpen] = useState(false);
+
   if (isLoading) return <LoadingLine label="Loading SAP systems" />;
   if (isError)
     return <ErrorLine detail="Couldn't reach the systems API." />;
+
   if (!systems || systems.length === 0) {
     return (
-      <EmptyLine
-        title="No SAP systems configured"
-        body="Register your first ECC or S/4HANA system to start extracting data."
-        action={<Button variant="primary">Register system</Button>}
-      />
+      <Stack direction="column" gap={4}>
+        <EmptyLine
+          title="No SAP systems configured"
+          body="Register your first ECC or S/4HANA system to start extracting data."
+          action={
+            <Button variant="primary" onClick={() => setRegisterOpen(true)}>
+              Register system
+            </Button>
+          }
+        />
+        {registerOpen ? (
+          <RegisterSystemForm
+            onSubmit={(body) => {
+              onRegisterSystem(body);
+              setRegisterOpen(false);
+            }}
+            onCancel={() => setRegisterOpen(false)}
+            pending={registerInFlight}
+          />
+        ) : null}
+      </Stack>
     );
   }
 
@@ -502,6 +550,29 @@ function ConnectionsBody({
 
   return (
     <Stack direction="column" gap={3}>
+      <Stack direction="row" gap={3} align="center">
+        <Text variant="text-body" tone="secondary">
+          {systems.length} system{systems.length === 1 ? "" : "s"} configured.
+        </Text>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => setRegisterOpen((v) => !v)}
+          style={{ marginLeft: "auto" }}
+        >
+          {registerOpen ? "Close form" : "Register system"}
+        </Button>
+      </Stack>
+      {registerOpen ? (
+        <RegisterSystemForm
+          onSubmit={(body) => {
+            onRegisterSystem(body);
+            setRegisterOpen(false);
+          }}
+          onCancel={() => setRegisterOpen(false)}
+          pending={registerInFlight}
+        />
+      ) : null}
       <ul className="aurora-admin-list">
         {systems.map((s) => (
           <li key={s.id} className="aurora-admin-list__row">
@@ -540,6 +611,173 @@ function ConnectionsBody({
         />
       ) : null}
     </Stack>
+  );
+}
+
+function RegisterSystemForm({
+  onSubmit,
+  onCancel,
+  pending,
+}: {
+  onSubmit: (body: {
+    name: string;
+    host: string;
+    client: string;
+    sysnr: string;
+    environment: string;
+    password: string;
+    description?: string;
+  }) => void;
+  onCancel: () => void;
+  pending: boolean;
+}) {
+  const [name, setName] = useState("");
+  const [host, setHost] = useState("");
+  const [client, setClient] = useState("");
+  const [sysnr, setSysnr] = useState("00");
+  const [env, setEnv] = useState<"PRD" | "QAS" | "DEV">("DEV");
+  const [password, setPassword] = useState("");
+  const [description, setDescription] = useState("");
+
+  const canSubmit =
+    name.trim() !== "" &&
+    host.trim() !== "" &&
+    client.trim() !== "" &&
+    /^\d{3}$/.test(client) &&
+    /^\d{2}$/.test(sysnr) &&
+    password !== "";
+
+  return (
+    <form
+      className="aurora-admin-register"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (canSubmit && !pending) {
+          onSubmit({
+            name: name.trim(),
+            host: host.trim(),
+            client: client.trim(),
+            sysnr: sysnr.trim(),
+            environment: env,
+            password,
+            description: description.trim() || undefined,
+          });
+        }
+      }}
+    >
+      <label className="aurora-admin-invite__field">
+        <Text variant="text-small" tone="tertiary" as="span">
+          Name
+        </Text>
+        <input
+          type="text"
+          required
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="aurora-admin-inline-input"
+          placeholder="ECC-PRD"
+          autoComplete="off"
+        />
+      </label>
+      <label className="aurora-admin-invite__field">
+        <Text variant="text-small" tone="tertiary" as="span">
+          Environment
+        </Text>
+        <select
+          className="aurora-admin-inline-select"
+          value={env}
+          onChange={(e) => setEnv(e.target.value as "PRD" | "QAS" | "DEV")}
+        >
+          <option value="PRD">PRD</option>
+          <option value="QAS">QAS</option>
+          <option value="DEV">DEV</option>
+        </select>
+      </label>
+      <label className="aurora-admin-invite__field">
+        <Text variant="text-small" tone="tertiary" as="span">
+          Host
+        </Text>
+        <input
+          type="text"
+          required
+          value={host}
+          onChange={(e) => setHost(e.target.value)}
+          className="aurora-admin-inline-input"
+          placeholder="sap-prd.internal.customer.com"
+          autoComplete="off"
+        />
+      </label>
+      <label className="aurora-admin-invite__field">
+        <Text variant="text-small" tone="tertiary" as="span">
+          Client (3 digits)
+        </Text>
+        <input
+          type="text"
+          required
+          value={client}
+          onChange={(e) => setClient(e.target.value)}
+          pattern="\d{3}"
+          maxLength={3}
+          className="aurora-admin-inline-input"
+          placeholder="100"
+          autoComplete="off"
+        />
+      </label>
+      <label className="aurora-admin-invite__field">
+        <Text variant="text-small" tone="tertiary" as="span">
+          System number (2 digits)
+        </Text>
+        <input
+          type="text"
+          required
+          value={sysnr}
+          onChange={(e) => setSysnr(e.target.value)}
+          pattern="\d{2}"
+          maxLength={2}
+          className="aurora-admin-inline-input"
+          autoComplete="off"
+        />
+      </label>
+      <label className="aurora-admin-invite__field">
+        <Text variant="text-small" tone="tertiary" as="span">
+          RFC user password
+        </Text>
+        <input
+          type="password"
+          required
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="aurora-admin-inline-input"
+          autoComplete="new-password"
+        />
+      </label>
+      <label
+        className="aurora-admin-invite__field"
+        style={{ gridColumn: "1 / -1" }}
+      >
+        <Text variant="text-small" tone="tertiary" as="span">
+          Description (optional)
+        </Text>
+        <input
+          type="text"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          className="aurora-admin-inline-input"
+          placeholder="Production ECC 6.0 SPS 14, 16M records"
+          autoComplete="off"
+        />
+      </label>
+      <Stack direction="row" gap={2} className="aurora-admin-invite__actions">
+        <Button variant="secondary" onClick={onCancel} type="button">
+          Discard
+        </Button>
+        {/* HTML form submission type — not user-facing copy */}
+        {/* eslint-disable-next-line aurora-writing/no-forbidden-copy */}
+        <Button variant="primary" type="submit" disabled={!canSubmit || pending}>
+          {pending ? "Registering" : "Register system"}
+        </Button>
+      </Stack>
+    </form>
   );
 }
 
