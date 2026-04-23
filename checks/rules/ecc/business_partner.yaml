@@ -704,3 +704,18 @@ rules:
   sap_impact: Tax reporting fails. E-invoicing rejected. Both AP and AR tax reconciliation affected.
   fix_map:
     __blank__: "Correct the BP tax number via BP > Tax Numbers tab. Validate against VIES/SARS."
+
+- id: BP042
+  field: BUT000.BU_GROUP
+  check_class: referential_check
+  reference_values: ["0001", "0002", "0003", "BP01", "BP02", "BPEM"]
+  severity: high
+  dimension: consistency
+  message: "Business partner group BU_GROUP must reference a valid entry in TB003"
+  why_it_matters: "BU_GROUP (BP grouping) drives number range, field selection, partner role assignments, and CVI-mapping behaviour for every Business Partner. An invalid BU_GROUP means BP (T-code) cannot open the record, CVI rejects the mapping to vendor/customer, and downstream sub-ledger synchronisation fails. Central in S/4HANA where BPs are the master source for vendors and customers."
+  rule_authority: sap_hard_constraint
+  sap_impact: "BP cannot be maintained; CVI sync to vendor/customer fails; all downstream AP/AR process blocked for the BP."
+  fix_map:
+    __blank__: "Assign BU_GROUP at BP creation. Mandatory for all Business Partner records."
+    __other__: "Business partner group '{invalid_value}' not in TB003. Reassign via BP (transaction) or configure in SPRO > Cross-Application Components > SAP Business Partner > Business Partner > Basic Settings > Business Partner Groupings."
+  record_fix_template: "Business Partner {BUT000.PARTNER}: BP group '{actual_value}' is not in TB003."

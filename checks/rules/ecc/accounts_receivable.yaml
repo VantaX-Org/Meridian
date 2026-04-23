@@ -664,3 +664,18 @@ rules:
     sap_impact: Output tax reports include invalid numbers. E-invoicing rejected. Audit flags non-compliant customer tax data.
     fix_map:
       __blank__: "Correct the customer tax number via XD02 > Tax Information. Validate against the VIES or SARS database."
+
+  - id: AR028
+    field: KNA1.KTOKD
+    check_class: referential_check
+    reference_values: ["0001", "0002", "0003", "0004", "0005", "DEBI"]
+    severity: critical
+    dimension: consistency
+    message: "Customer account group KTOKD must reference a valid entry in T077D"
+    why_it_matters: "KTOKD (customer account group) controls field selection, number range, and reconciliation account for a customer record. A KTOKD that isn't in T077D means the customer was created bypassing config or the group was deleted — XD02 cannot open the record and credit-management runs skip it. In S/4HANA, CVI migration rejects BPs whose customer role has an unknown KTOKD."
+    rule_authority: best_practice
+    sap_impact: "Customer cannot be maintained (XD02), invoiced (VF01), or collected against. Migration conversion rejects the record. Account-group reporting shows gaps."
+    fix_map:
+      __blank__: "Assign a valid customer account group via XD02 > General Data. For new customers the account group is mandatory at FD01 creation."
+      __other__: "Customer account group '{invalid_value}' is not defined in T077D. Reassign via XD02 or configure in SPRO > Financial Accounting > AR/AP > Customer Accounts > Master Data > Account Groups."
+    record_fix_template: "Customer {KNA1.KUNNR}: account group '{actual_value}' is not in T077D."
