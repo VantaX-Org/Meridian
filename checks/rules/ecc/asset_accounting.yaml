@@ -493,3 +493,18 @@ rules:
   dimension: timeliness
   message: Asset capitalised more than 10 years ago — review if useful life and depreciation parameters are still appropriate
   rule_authority: best_practice
+
+- id: AA032
+  field: ANLA.AFASL
+  check_class: referential_check
+  reference_values: ["LINA", "LINM", "DEGR", "DG20", "DG30", "0000", "MANL"]
+  severity: high
+  dimension: consistency
+  message: "Depreciation key AFASL must reference a valid entry in T093"
+  why_it_matters: "AFASL (depreciation key) determines how and over what period an asset depreciates. An invalid AFASL means AFAB (depreciation run) cannot post for the record — monthly close fails for that asset, and the depreciation expense is understated. S/4HANA Asset Accounting (new) reconciles depreciation posting to the universal journal; an orphaned key breaks the reconciliation."
+  rule_authority: sap_hard_constraint
+  sap_impact: "AFAB fails for the asset; depreciation expense missing from month-end; universal-journal reconciliation broken."
+  fix_map:
+    __blank__: "Assign depreciation key at AS01/AS02 > Depreciation Areas tab. Required for every depreciation area."
+    __other__: "Depreciation key '{invalid_value}' not in T093. Reassign via AS02 or configure in SPRO > Financial Accounting > Asset Accounting > Depreciation > Valuation Methods > Depreciation Key > Maintain Depreciation Key (AFAMA)."
+  record_fix_template: "Asset {ANLA.ANLN1}: depreciation key '{actual_value}' is not in T093."

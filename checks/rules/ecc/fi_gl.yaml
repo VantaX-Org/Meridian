@@ -702,3 +702,33 @@ rules:
     sap_impact: Financial reports render incorrectly. Data exports truncate at special characters. Trial balance descriptions are inconsistent.
     fix_map:
       __blank__: "Standardise the GL account description via FS00 to use only letters, numbers, spaces, and basic punctuation."
+
+  - id: GL028
+    field: SKA1.KTOPL
+    check_class: referential_check
+    reference_values: ["CAUS", "CADE", "CAFR", "CAZN", "INT", "YCOA"]
+    severity: critical
+    dimension: consistency
+    message: "Chart of accounts KTOPL must reference a valid entry in T004"
+    why_it_matters: "KTOPL (chart of accounts) is the authoritative reference for every G/L account in SAP. A KTOPL that isn't in T004 means the G/L master cannot be opened (FS00) and no postings can be made against it. For group reporting and consolidation (S/4HANA Group Reporting / SAP SEM-BCS), an unknown COA breaks the mapping to the operational/group chart."
+    rule_authority: sap_hard_constraint
+    sap_impact: "G/L account unusable; all FI postings fail; group reporting mapping broken."
+    fix_map:
+      __blank__: "Assign chart of accounts at FS00 creation. Cannot be blank for any G/L master record."
+      __other__: "Chart of accounts '{invalid_value}' not in T004. Correct via FS00 or configure in SPRO > Financial Accounting > G/L Accounting > Master Data > Preparations > Edit Chart of Accounts List (OB13)."
+    record_fix_template: "G/L account {SKA1.SAKNR}: chart of accounts '{actual_value}' is not in T004."
+
+  - id: GL029
+    field: BKPF.BLART
+    check_class: referential_check
+    reference_values: ["SA", "KR", "KG", "KZ", "DR", "DG", "DZ", "AB", "WE", "RE", "AA", "AF"]
+    severity: high
+    dimension: consistency
+    message: "Document type BLART must reference a valid entry in T003"
+    why_it_matters: "BLART (FI document type) drives number ranges, account-type control, reversal behaviour, and whether the document hits sub-ledger. An invalid BLART on a posted document usually indicates an integration-broken or data-migration artefact — the document cannot be displayed (FB03), cannot be reversed (FB08), and breaks line-item reports."
+    rule_authority: best_practice
+    sap_impact: "Document cannot be displayed or reversed. Line-item reports (FBL1N/FBL3N/FBL5N) show broken document-type labels."
+    fix_map:
+      __blank__: "BLART is mandatory at posting. A blank value indicates a corrupt header — engage SAP support to repair."
+      __other__: "Document type '{invalid_value}' not in T003. Correct via data fix (FI-only — must be done by functional support) or configure in SPRO > Financial Accounting > Financial Accounting Global Settings > Document > Document Types (OBA7)."
+    record_fix_template: "Document {BKPF.BELNR}: document type '{actual_value}' is not in T003."

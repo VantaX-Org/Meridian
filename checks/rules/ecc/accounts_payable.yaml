@@ -571,3 +571,63 @@ rules:
   sap_impact: Tax reporting includes invalid VAT numbers. E-invoicing is rejected by tax authority. VAT reclaim is disallowed.
   fix_map:
     __blank__: "Correct the vendor tax number via XK02 > Tax Information tab. Validate against the VIES or SARS database."
+
+- id: AP035
+  field: LFA1.KTOKK
+  check_class: referential_check
+  reference_values: ["0001", "0002", "0003", "0004", "CPD", "KRED"]
+  severity: critical
+  dimension: consistency
+  message: "Vendor account group KTOKK must reference a valid entry in T077Y"
+  why_it_matters: "KTOKK (vendor account group) drives field selection, number range, partner functions and reconciliation account for a vendor record. A KTOKK that isn't in T077Y means the vendor was created bypassing config or the group was deleted — the record becomes orphaned: XK02 cannot open it and F110 payment runs skip it. In S/4HANA, CVI migration rejects BPs whose vendor role has an unknown KTOKK."
+  rule_authority: best_practice
+  sap_impact: "Vendor cannot be maintained (XK02), invoiced (MIRO), or paid (F110). Migration conversion rejects the record. Account-group reporting shows gaps."
+  fix_map:
+    __blank__: "Assign a valid vendor account group via XK02 > General Data. For new vendors the account group is mandatory at FK01 creation."
+    __other__: "Vendor account group '{invalid_value}' is not defined in T077Y. Reassign via XK02 or configure the missing group in SPRO > Financial Accounting > AP/AR > Vendor Accounts > Master Data > Account Groups."
+  record_fix_template: "Vendor {LFA1.LIFNR}: account group '{actual_value}' is not in T077Y."
+
+- id: AP036
+  field: LFA1.ZTERM
+  check_class: referential_check
+  reference_values: ["0001", "0002", "0003", "0004", "0005", "0006", "0007", "0008", "0009", "0010"]
+  severity: high
+  dimension: consistency
+  message: "Payment terms ZTERM must reference a valid entry in T052"
+  why_it_matters: "ZTERM determines baseline date, cash-discount windows, and net due date for every AP document. An invalid ZTERM breaks automatic payment (F110) — the program cannot calculate due date and falls back to immediate, potentially triggering overpayments or missed discounts."
+  rule_authority: best_practice
+  sap_impact: "F110 cannot schedule correctly; cash-discount windows missed; payment-timing KPIs degraded."
+  fix_map:
+    __blank__: "Assign the correct payment terms via XK02 > Payment Transactions. Default to negotiated vendor terms; if none, use '0003' (Net 30)."
+    __other__: "Payment terms '{invalid_value}' not defined in T052. Reassign via XK02 or create the missing terms in SPRO via OBB8."
+  record_fix_template: "Vendor {LFA1.LIFNR}: payment terms '{actual_value}' not in T052."
+
+- id: AP037
+  field: LFA1.ZLSCH
+  check_class: referential_check
+  reference_values: ["C", "T", "U", "E", "W", "P", "S", "B"]
+  severity: medium
+  dimension: consistency
+  message: "Payment method ZLSCH must reference a valid entry in T042Z"
+  why_it_matters: "ZLSCH drives which payment-medium program runs for the vendor at F110. An unknown method causes F110 to error ('payment method X not defined for country Y') or silently skip the vendor — the payment file (DMEE/PEXR) is not generated for that record."
+  rule_authority: best_practice
+  sap_impact: "F110 cannot generate payment medium; vendor excluded from automatic payments; manual F-53 required."
+  fix_map:
+    __blank__: "Assign payment method via XK02 > Payment Transactions. Domestic bank transfer = 'T'; check payment = 'C'."
+    __other__: "Payment method '{invalid_value}' not defined in T042Z. Reassign via XK02 or configure in FBZP."
+  record_fix_template: "Vendor {LFA1.LIFNR}: payment method '{actual_value}' not in T042Z."
+
+- id: AP038
+  field: LFB1.MESSION
+  check_class: referential_check
+  reference_values: ["0001", "0002", "0003"]
+  severity: low
+  dimension: consistency
+  message: "Dunning procedure MESSION must reference a valid entry in T040"
+  why_it_matters: "MESSION determines the dunning cadence (levels, intervals, texts) for overdue vendor items (typically where the vendor is also a customer for netting). An invalid procedure means F150 cannot run dunning for the record."
+  rule_authority: best_practice
+  sap_impact: "F150 excludes the vendor from dunning runs; netted items go undunned."
+  fix_map:
+    __blank__: "Assign dunning procedure via XK02 > Correspondence. Only required where the vendor is also dunned for debit items."
+    __other__: "Dunning procedure '{invalid_value}' not in T040. Reassign via XK02 or configure in SPRO via FBMP."
+  record_fix_template: "Vendor {LFA1.LIFNR}: dunning procedure '{actual_value}' not in T040."
