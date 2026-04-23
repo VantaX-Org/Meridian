@@ -3,17 +3,35 @@
 # Meridian Platform — Deployment Script v3.0
 # scripts/meridian-deploy.sh
 #
-# Installs Meridian v3.0 on a fresh Linux server. Pulls pre-built images from GHCR.
+# Installs Meridian v3.0 on a fresh Linux server.
 # Supports HTTP, self-signed HTTPS, and Let's Encrypt HTTPS.
+#
+# Image provisioning (--image-source):
+#   ghcr      (default) — pulls from ghcr.io using baked credentials
+#   registry            — pulls from a private registry (customer-hosted)
+#   local               — images already present on host (optionally
+#                         --image-tarball <path> to docker-load first)
+#
+# Unattended mode (--non-interactive):
+#   Fails on any missing input instead of prompting. Intended for CI,
+#   Ansible, or any pre-seeded .env workflow.
 #
 # New in v3.0:
 #   - Two-lane workers (fast/full)
-#   - Airgap deployment mode
+#   - Airgap deployment mode (set MERIDIAN_IMAGE_SOURCE=local)
 #   - meridianctl CLI included
 #   - Embedded LLM (Ollama bundled)
 #
 # Requirements: Docker 24+, curl, python3, openssl
-# Run as root:  sudo bash meridian-deploy.sh
+# Run as root:  sudo bash meridian-deploy.sh [flags]
+#
+# Usage:
+#   sudo bash meridian-deploy.sh
+#   sudo bash meridian-deploy.sh --image-source local --image-tarball /tmp/meridian-v1.2.0.tar.gz
+#   sudo bash meridian-deploy.sh --image-source registry \
+#       --registry registry.corp.local --registry-user deploy --registry-pass xxx
+#   sudo bash meridian-deploy.sh --non-interactive   # requires pre-filled .env
+#   sudo bash meridian-deploy.sh --help
 # =============================================================================
 set -euo pipefail
 
@@ -30,6 +48,88 @@ warn()    { echo -e "${YELLOW}[!]${NC} $*"; }
 error()   { echo -e "${RED}[✗]${NC} $*"; exit 1; }
 section() { echo -e "\n${BLUE}${BOLD}━━━ $* ━━━${NC}"; }
 
+# Banner intentionally moved below the CLI parser so `--help` exits cleanly
+# without flashing the ASCII art.
+
+INSTALL_DIR="/opt/meridian"
+
+# Default image source — GHCR with baked read:packages token. Overridable
+# via --image-source (ghcr|registry|local) or MERIDIAN_IMAGE_SOURCE.
+IMAGE_SOURCE="${MERIDIAN_IMAGE_SOURCE:-ghcr}"
+IMAGE_TARBALL="${MERIDIAN_IMAGE_TARBALL:-}"
+
+# GHCR defaults (used when IMAGE_SOURCE=ghcr)
+GHCR_REGISTRY="${MERIDIAN_GHCR_REGISTRY:-ghcr.io}"
+IMAGE_PREFIX="${MERIDIAN_IMAGE_PREFIX:-ghcr.io/vantax-org/meridian}"
+GHCR_USER="${MERIDIAN_GHCR_USER:-vantax-org}"
+GHCR_TOKEN="${MERIDIAN_GHCR_TOKEN:-__GHCR_TOKEN__}"
+
+# Private registry (used when IMAGE_SOURCE=registry). Customer-hosted Harbor,
+# Artifactory, Nexus, ECR, GAR, etc. Login is only attempted if a user + pass
+# are supplied; anonymous pulls from trusted internal networks are fine.
+REGISTRY_URL="${MERIDIAN_REGISTRY_URL:-}"
+REGISTRY_USER="${MERIDIAN_REGISTRY_USER:-}"
+REGISTRY_PASS="${MERIDIAN_REGISTRY_PASS:-}"
+
+# Licence server base — overridable so a customer-hosted proxy can front it.
+LICENCE_SERVER_BASE="${MERIDIAN_LICENCE_SERVER_BASE:-https://licence.meridian.vantax.co.za}"
+LICENCE_VALIDATE_URL="${LICENCE_SERVER_BASE}/validate"
+
+# Unattended mode — fails on missing input instead of prompting.
+NON_INTERACTIVE="${MERIDIAN_NON_INTERACTIVE:-false}"
+
+MAX_RETRIES=3
+RETRY_DELAY=5
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+print_usage() {
+    cat <<USAGE
+Usage: sudo bash meridian-deploy.sh [flags]
+
+Image source:
+  --image-source <ghcr|registry|local>   Where to get images (default: ghcr)
+  --image-tarball <path>                 Pre-pull: docker load < this tarball (use with --image-source local)
+  --registry <host[:port]>               Private registry hostname (use with --image-source registry)
+  --registry-user <user>                 Private registry username
+  --registry-pass <pass>                 Private registry password / token
+
+Licence:
+  --licence-server <url>                 Override licence validation URL
+                                          (e.g. https://licence.corp.local)
+
+Behaviour:
+  --non-interactive                      Fail on missing input instead of prompting
+  -h, --help                             Show this help and exit
+
+All flags can also be set via MERIDIAN_* environment variables.
+USAGE
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --image-source)    IMAGE_SOURCE="$2";    shift 2 ;;
+        --image-tarball)   IMAGE_TARBALL="$2";   shift 2 ;;
+        --registry)        REGISTRY_URL="$2";    shift 2 ;;
+        --registry-user)   REGISTRY_USER="$2";   shift 2 ;;
+        --registry-pass)   REGISTRY_PASS="$2";   shift 2 ;;
+        --licence-server)
+            LICENCE_SERVER_BASE="$2"
+            LICENCE_VALIDATE_URL="${LICENCE_SERVER_BASE}/validate"
+            shift 2
+            ;;
+        --non-interactive) NON_INTERACTIVE="true"; shift ;;
+        -h|--help)         print_usage; exit 0 ;;
+        *)                 echo "Unknown flag: $1 (try --help)" >&2; exit 2 ;;
+    esac
+done
+
+# Validate image-source early so downstream code can assume it's one of three values.
+case "$IMAGE_SOURCE" in
+    ghcr|registry|local) ;;
+    *) echo "Invalid --image-source: $IMAGE_SOURCE (expected ghcr|registry|local)" >&2; exit 2 ;;
+esac
+
 clear
 echo -e "${CYAN}"
 cat << 'BANNER'
@@ -44,20 +144,16 @@ cat << 'BANNER'
 BANNER
 echo -e "${NC}"
 
-INSTALL_DIR="/opt/meridian"
-GHCR_REGISTRY="ghcr.io"
-IMAGE_PREFIX="ghcr.io/vantax-org/meridian"
-LICENCE_SERVER_BASE="https://licence.meridian.vantax.co.za"
-LICENCE_VALIDATE_URL="${LICENCE_SERVER_BASE}/validate"
-
-# Pre-configured GHCR pull credentials (read:packages only)
-GHCR_USER="vantax-org"
-GHCR_TOKEN="__GHCR_TOKEN__"
-
-MAX_RETRIES=3
-RETRY_DELAY=5
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+# When IMAGE_SOURCE=registry, IMAGE_PREFIX should point at the private registry
+# unless the caller has already overridden it explicitly. The compose files
+# key off IMAGE_PREFIX, so this determines what `docker compose pull` resolves.
+if [[ "$IMAGE_SOURCE" == "registry" && -n "$REGISTRY_URL" ]]; then
+    # Respect an explicit MERIDIAN_IMAGE_PREFIX override; otherwise build it.
+    if [[ -z "${MERIDIAN_IMAGE_PREFIX:-}" ]]; then
+        IMAGE_PREFIX="${REGISTRY_URL}/meridian"
+    fi
+fi
+export IMAGE_PREFIX  # docker-compose.customer.yml interpolates this
 
 PRECONFIGURED=false
 if [[ -f "${REPO_ROOT}/.env" ]]; then
@@ -67,6 +163,17 @@ fi
 ask() {
     local __var=$1 __prompt=$2 __default=${3:-} __secret=${4:-}
     local __val
+
+    # Unattended: use the default; error if none is available. Keeps CI runs
+    # deterministic — any missing value fails loudly instead of blocking on tty.
+    if [[ "$NON_INTERACTIVE" == "true" ]]; then
+        if [[ -z "$__default" ]]; then
+            error "Missing required value for '$__prompt' in --non-interactive mode"
+        fi
+        printf -v "$__var" '%s' "$__default"
+        return
+    fi
+
     if [[ "$__secret" == "secret" ]]; then
         read -rsp "  ${__prompt}${__default:+ [default: ${__default}]}: " __val
         echo
@@ -370,6 +477,16 @@ if [[ "$PRECONFIGURED" == "true" ]]; then
     SERVER_DOMAIN=$(grep -oP '^SERVER_DOMAIN=\K.*' "${REPO_ROOT}/.env" 2>/dev/null || echo "")
     SSL_MODE=$(grep -oP '^SSL_MODE=\K.*' "${REPO_ROOT}/.env" 2>/dev/null || echo "1")
     WORKER_LANE=$(grep -oP '^WORKER_LANE=\K.*' "${REPO_ROOT}/.env" 2>/dev/null || echo "all")
+    # Honour image-source from .env, but only when the CLI/env didn't already
+    # override it. This lets `create-customer-package.sh` bake IMAGE_SOURCE=local
+    # into an airgap bundle and have the installer pick it up automatically.
+    if [[ -z "${MERIDIAN_IMAGE_SOURCE:-}" ]] && [[ "$IMAGE_SOURCE" == "ghcr" ]]; then
+        _env_src=$(grep -oP '^MERIDIAN_IMAGE_SOURCE=\K.*' "${REPO_ROOT}/.env" 2>/dev/null || echo "")
+        if [[ -n "$_env_src" ]]; then
+            IMAGE_SOURCE="$_env_src"
+            log "Image source from .env: $IMAGE_SOURCE"
+        fi
+    fi
     log "Server: ${SERVER_DOMAIN}, SSL: ${SSL_MODE}, Lane: ${WORKER_LANE}"
 else
     section "Deployment configuration"
@@ -434,6 +551,8 @@ if [[ "$PRECONFIGURED" != "true" ]]; then
         printf 'SERVER_DOMAIN=%s\n' "$SERVER_DOMAIN"
         printf 'SSL_MODE=%s\n'      "$SSL_MODE"
         printf 'WORKER_LANE=%s\n'   "$WORKER_LANE"
+        printf 'MERIDIAN_IMAGE_SOURCE=%s\n' "$IMAGE_SOURCE"
+        [[ -n "$REGISTRY_URL" ]] && printf 'MERIDIAN_REGISTRY_URL=%s\n' "$REGISTRY_URL"
         printf 'ADMIN_EMAIL=%s\n'   "$ADMIN_EMAIL"
         printf 'ADMIN_NAME=%s\n'    "$ADMIN_NAME"
         printf 'ADMIN_PASSWORD=%s\n' "$ADMIN_PASSWORD"
@@ -494,15 +613,82 @@ case "$SSL_MODE" in
     3) configure_ssl_letsencrypt ;;
 esac
 
-# --- Pull images ---
-section "Pulling images from GHCR"
-echo "$GHCR_TOKEN" | docker login "$GHCR_REGISTRY" -u "$GHCR_USER" --password-stdin \
-    || error "GHCR login failed"
-log "Authenticated to ghcr.io"
-warn "Pulling images — this may take several minutes"
-docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" pull \
-    || error "Image pull failed"
-log "All images pulled"
+# --- Provision images ---
+# Three strategies, picked at deploy time:
+#   ghcr      — default, pulls from ghcr.io with a baked read:packages token
+#   registry  — pulls from a customer-hosted private registry
+#   local     — images already loaded on the host (optionally load from a
+#               tarball first — useful for fully airgapped sites)
+
+provision_images_ghcr() {
+    section "Pulling images from GHCR"
+    if [[ "$GHCR_TOKEN" == "__GHCR_TOKEN__" ]]; then
+        error "GHCR token placeholder unchanged. Set MERIDIAN_GHCR_TOKEN, or use --image-source local/registry"
+    fi
+    echo "$GHCR_TOKEN" | docker login "$GHCR_REGISTRY" -u "$GHCR_USER" --password-stdin \
+        || error "GHCR login failed"
+    log "Authenticated to ${GHCR_REGISTRY}"
+    warn "Pulling images — this may take several minutes"
+    docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" pull \
+        || error "Image pull failed"
+    log "All images pulled"
+}
+
+provision_images_registry() {
+    section "Pulling images from private registry"
+    [[ -n "$REGISTRY_URL" ]] || error "--registry is required when --image-source=registry"
+    log "Registry: ${REGISTRY_URL}"
+    log "Image prefix: ${IMAGE_PREFIX}"
+
+    if [[ -n "$REGISTRY_USER" && -n "$REGISTRY_PASS" ]]; then
+        echo "$REGISTRY_PASS" | docker login "$REGISTRY_URL" -u "$REGISTRY_USER" --password-stdin \
+            || error "Registry login failed for ${REGISTRY_URL}"
+        log "Authenticated to ${REGISTRY_URL}"
+    else
+        log "No --registry-user/--registry-pass supplied — assuming anonymous pull"
+    fi
+
+    warn "Pulling images — this may take several minutes"
+    docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" pull \
+        || error "Image pull from ${REGISTRY_URL} failed"
+    log "All images pulled from ${REGISTRY_URL}"
+}
+
+provision_images_local() {
+    section "Using local images (no registry pull)"
+
+    if [[ -n "$IMAGE_TARBALL" ]]; then
+        [[ -f "$IMAGE_TARBALL" ]] || error "Image tarball not found: $IMAGE_TARBALL"
+        log "Loading images from ${IMAGE_TARBALL} (this can take several minutes)"
+        # docker load handles both plain and gzipped tars; no need to peek at the header.
+        docker load -i "$IMAGE_TARBALL" \
+            || error "docker load failed for $IMAGE_TARBALL"
+        log "Images loaded from tarball"
+    else
+        warn "No --image-tarball supplied — assuming images are already present on the host"
+    fi
+
+    # Sanity-check: verify at least the api + frontend + worker images exist locally,
+    # matching whatever IMAGE_PREFIX resolves to. We don't try to validate every image
+    # (compose will surface that on `up`), just catch the obvious "nothing was loaded" case.
+    local missing=0
+    for repo in "${IMAGE_PREFIX}-api" "${IMAGE_PREFIX}-frontend" "${IMAGE_PREFIX}-worker"; do
+        if ! docker image ls --format '{{.Repository}}' | grep -qx "$repo"; then
+            warn "Image not found locally: ${repo}"
+            missing=$(( missing + 1 ))
+        fi
+    done
+    if [[ $missing -gt 0 ]]; then
+        error "One or more expected images are missing. Run \`docker load < <tarball>\` or re-run with --image-tarball <path>"
+    fi
+    log "Required images present locally"
+}
+
+case "$IMAGE_SOURCE" in
+    ghcr)     provision_images_ghcr ;;
+    registry) provision_images_registry ;;
+    local)    provision_images_local ;;
+esac
 
 # --- Start services ---
 section "Starting services"
