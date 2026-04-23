@@ -225,6 +225,31 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
         except Exception as e:
             logger.warning(f"cross-module check pass failed, continuing: {e}")
 
+        # Step 6c: Z-table (customer-namespace) rules. The standard rule
+        # packs target SAP-delivered tables only; customers with heavy
+        # Y*/Z* customisation get validation coverage via this pass. Rules
+        # whose fields aren't in the extract skip silently via the runner.
+        try:
+            from checks.ztables import discover_ztable_rules
+            from checks.runner import REGISTRY as CHECK_REGISTRY
+            zt_rules = discover_ztable_rules(tenant_id=str(tenant_id))
+            if zt_rules:
+                logger.info(f"Running {len(zt_rules)} Z-table rule(s)")
+                for rule in zt_rules:
+                    check_cls = CHECK_REGISTRY.get(rule.get("check_class", ""))
+                    if check_cls is None:
+                        continue
+                    try:
+                        res = check_cls(rule).run(df)
+                        if res is not None:
+                            all_results.append(res)
+                    except Exception as e:
+                        logger.warning(
+                            f"Z-table rule {rule.get('id')} failed: {e}"
+                        )
+        except Exception as e:
+            logger.warning(f"Z-table check pass failed, continuing: {e}")
+
         logger.info(f"Total check results: {len(all_results)}")
 
         # Step 7-8: Score all modules
