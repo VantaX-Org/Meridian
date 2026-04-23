@@ -202,6 +202,29 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
                 total_rows=row_count,
             )
 
+        # Step 6b: Cross-module consistency rules (P2P, OTC, etc.) — run
+        # against the full dataframe. Uses the pre-joined-single-df path
+        # because current uploads contain all referenced tables as
+        # prefix-suffixed columns on the same rows. Rules whose required
+        # columns aren't present are skipped silently.
+        try:
+            from checks.cross_module import discover_cross_module_rules, run_cross_module_on_prejoined
+            xm_rules = discover_cross_module_rules()
+            if xm_rules:
+                logger.info(f"Running {len(xm_rules)} cross-module rule(s)")
+                for rule in xm_rules:
+                    if set(rule.get("sources", [])) and not any(
+                        s.get("module") in modules for s in rule.get("sources", [])
+                    ):
+                        # None of the rule's sources are in this analysis —
+                        # skip (nothing would match anyway).
+                        continue
+                    res = run_cross_module_on_prejoined(rule, df)
+                    if res is not None:
+                        all_results.append(res)
+        except Exception as e:
+            logger.warning(f"cross-module check pass failed, continuing: {e}")
+
         logger.info(f"Total check results: {len(all_results)}")
 
         # Step 7-8: Score all modules
