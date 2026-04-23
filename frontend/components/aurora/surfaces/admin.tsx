@@ -202,7 +202,7 @@ export function AdminDoctorCard({
       </header>
       <div className="aurora-admin-doctor__summary" role="status">
         <Text variant="text-small" numeric as="span">
-          {summary.ok} OK
+          {summary.ok} passing
         </Text>
         {summary.warn > 0 ? (
           <Text variant="text-small" numeric as="span">
