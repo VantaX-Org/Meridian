@@ -54,6 +54,25 @@ export interface CreateTenantInput {
   llm_config?: Partial<LlmConfig>;
 }
 
+/**
+ * A Meridian DQ rule. category / module / severity are required; the
+ * remaining fields depend on the rule's check_class and were expanded
+ * in v0.0.20+ to mirror the new backend shapes:
+ *
+ *   - check_class:       null_check | regex_check | domain_value_check |
+ *                        referential_check | cross_field_check |
+ *                        freshness_check
+ *   - applies_when:      field-determination predicate — the rule only
+ *                        runs against rows where every listed field is
+ *                        in its allowed-values set (AND-combined)
+ *   - reference_values:  for referential_check — the allow-list of
+ *                        values the rule validates against
+ *   - namespace:         "customer" for Y-star/Z-star customer-namespace rules
+ *                        (Z-table extension pack); undefined / "standard"
+ *                        for SAP-standard rules
+ *   - sources / join_on: for cross_module rules — the list of source
+ *                        modules to join and the inner-join keys
+ */
 export interface Rule {
   id: string;
   name: string;
@@ -67,12 +86,36 @@ export interface Rule {
   tags: string[];
   created_at: string;
   updated_at: string;
+
+  /** Optional rule-schema extensions — match the backend YAML shape. */
+  check_class?:
+    | "null_check"
+    | "regex_check"
+    | "domain_value_check"
+    | "referential_check"
+    | "cross_field_check"
+    | "freshness_check";
+  applies_when?: Record<string, string[]>;
+  reference_values?: string[];
+  namespace?: "standard" | "customer";
+  sources?: RuleSource[];
+  join_on?: RuleJoinOn[];
 }
 
 export interface RuleCondition {
   field: string;
   operator: string;
   value: string;
+}
+
+export interface RuleSource {
+  module: string;
+  alias?: string;
+}
+
+export interface RuleJoinOn {
+  left: string;
+  right: string;
 }
 
 export interface FieldMapping {
