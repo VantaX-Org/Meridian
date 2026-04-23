@@ -39,6 +39,7 @@ import { getRulesSummary, type RulesSummaryItem } from "@/lib/api/rules";
 import { getLicenceManifest } from "@/lib/api/licence";
 import { getLLMConfig, type LLMConfig } from "@/lib/api/llm-settings";
 import { getLlmSavingsSummary, type LlmSavingsSummary } from "@/lib/api/llm-savings";
+import { getDoctor, type DoctorItem as ApiDoctorItem } from "@/lib/api/admin-doctor";
 import type { SAPSystem, User, UserRole } from "@/types/api";
 
 const ROLE_OPTIONS: ReadonlyArray<UserRole> = [
@@ -156,6 +157,15 @@ export default function AdminPage() {
     retry: noRetryOnAuthError,
     enabled: tab === "ai",
   });
+  const doctorQuery = useQuery({
+    queryKey: ["aurora.admin.doctor"],
+    queryFn: getDoctor,
+    retry: noRetryOnAuthError,
+    enabled: tab === "settings",
+    // 30s poll cadence per spec §10.4
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
+  });
 
   const usersCount = usersQuery.data?.users?.length;
   const systemsCount = systemsQuery.data?.length;
@@ -259,8 +269,18 @@ export default function AdminPage() {
         },
         {
           id: "settings",
+          // Doctor query is passed explicitly so SettingsBody stays
+          // pure-view and easy to snapshot.
           label: "Settings",
-          body: <SettingsBody />,
+          body: (
+            <SettingsBody
+              items={doctorQuery.data?.items}
+              lastChecked={doctorQuery.data?.last_checked}
+              isLoading={doctorQuery.isLoading}
+              isError={doctorQuery.isError}
+              onRefresh={() => doctorQuery.refetch()}
+            />
+          ),
         },
       ]}
     />
@@ -1047,26 +1067,65 @@ function LicenceBody({
   );
 }
 
-function SettingsBody() {
-  // Static Doctor scaffold — live meridianctl integration lands in
-  // pass 2 once the SSE endpoint is exposed. This surface still
-  // demonstrates the component wiring.
-  const items: ReadonlyArray<AdminDoctorItem> = [
-    { id: "frontend", label: "Frontend build", status: "ok", detail: "deployed v0.0.22" },
-    { id: "api", label: "API reachable", status: "ok", detail: "handshake ok via Next.js proxy" },
-    { id: "meridianctl", label: "meridianctl SSE", status: "warn", detail: "not yet wired — pass 2" },
-  ];
+function SettingsBody({
+  items,
+  lastChecked,
+  isLoading,
+  isError,
+  onRefresh,
+}: {
+  items?: ReadonlyArray<ApiDoctorItem>;
+  lastChecked?: string;
+  isLoading: boolean;
+  isError: boolean;
+  onRefresh: () => void;
+}) {
+  // Map the API doctor items onto the component shape. The component
+  // accepts our exact shape already — but we widen it to readonly and
+  // provide a friendly timestamp.
+  const friendlyWhen = lastChecked
+    ? relativeWhen(lastChecked)
+    : isLoading
+    ? "checking…"
+    : "never";
+
+  const doctorItems: ReadonlyArray<AdminDoctorItem> = items ?? [];
+
   return (
     <Stack direction="column" gap={6}>
-      <AdminDoctorCard items={items} lastChecked="just now" />
+      {isError ? (
+        <Banner tone="danger">
+          <Text variant="text-body">
+            Couldn&apos;t reach the doctor endpoint. The API might be
+            starting up or unreachable from this browser.
+          </Text>
+        </Banner>
+      ) : null}
+      <AdminDoctorCard
+        items={doctorItems}
+        lastChecked={friendlyWhen}
+        onRefresh={onRefresh}
+      />
       <Text variant="text-body" tone="secondary">
-        Retention, backup, alerts, field mapping, contracts, and general
-        settings consolidate on this surface per spec §10. Pass 2 wires
-        each control to its existing legacy API endpoint so the UI is
-        feature-complete, not just styled.
+        Polling every 30 seconds. Retention, backup, alerts, field mapping,
+        and contracts consolidate on this surface per spec §10. Interactive
+        config writes move over from the legacy Settings page in pass 3.
       </Text>
     </Stack>
   );
+}
+
+function relativeWhen(iso: string): string {
+  const then = new Date(iso).getTime();
+  if (!Number.isFinite(then)) return "just now";
+  const seconds = Math.max(0, (Date.now() - then) / 1000);
+  if (seconds < 10) return "just now";
+  if (seconds < 60) return `${Math.round(seconds)}s ago`;
+  const minutes = seconds / 60;
+  if (minutes < 60) return `${Math.round(minutes)}m ago`;
+  const hours = minutes / 60;
+  if (hours < 24) return `${Math.round(hours)}h ago`;
+  return new Date(iso).toLocaleString();
 }
 
 /* ----------------------------------------- Small helpers --- */
