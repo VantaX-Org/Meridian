@@ -25,3 +25,29 @@ export type {
   LlmSavingsStripProps,
   BuildVerdictInput,
 } from "./command-centre";
+
+export { Workbench, WorkbenchDrawerHeader } from "./workbench";
+export type {
+  WorkbenchProps,
+  WorkbenchDrawerHeaderProps,
+  WorkbenchVerdict,
+  WorkbenchRow,
+  WorkbenchSeverity,
+  WorkbenchStatus,
+  WorkbenchTabId,
+  WorkbenchTabState,
+  WorkbenchSavedView,
+  WorkbenchFilter,
+} from "./workbench";
+
+export { Process } from "./process";
+export type {
+  ProcessProps,
+  ProcessVerdict,
+  ProcessTabId,
+  ProcessReadiness,
+  ProcessPick,
+  ProcessVariant,
+  ProcessCase,
+  ProcessConfigImpactRow,
+} from "./process";
