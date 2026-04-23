@@ -401,3 +401,18 @@ rules:
     dimension: timeliness
     message: Compensation record not updated in 2+ years — salary may be outdated, review against current pay ranges
     rule_authority: best_practice
+
+  - id: COMP018
+    field: COMPINFO.PAY_GRADE
+    check_class: referential_check
+    reference_values: ["GR01", "GR02", "GR03", "GR04", "GR05", "GR06", "GR07", "GR08", "GR09", "GR10"]
+    severity: high
+    dimension: consistency
+    message: "Pay grade PAY_GRADE must reference a valid FO Pay Grade"
+    why_it_matters: "PAY_GRADE is the compensation-planning anchor — range min/mid/max, merit-matrix eligibility, stock-grant bands all derive from it. An invalid PAY_GRADE breaks the compensation worksheet for that employee: the planner sees a blank range, cannot apply matrix-driven recommendations, and the employee is flagged as 'ungraded' in comp review. In S/4HANA + SuccessFactors tenants, PAY_GRADE also drives position-to-grade alignment reports."
+    rule_authority: sap_hard_constraint
+    sap_impact: "Compensation worksheet blank; merit-matrix cannot recommend; stock-grant eligibility cannot be calculated."
+    fix_map:
+      __blank__: "Assign a valid pay grade via Admin Center > Employee Data > Compensation Information."
+      __other__: "Pay grade '{invalid_value}' is not in FOPayGrade. Reassign via Admin Center > Compensation Information, or configure the missing grade in Admin Center > Foundation Objects > Pay Grade."
+    record_fix_template: "Employee {COMPINFO.USERID}: pay grade '{actual_value}' is not in FOPayGrade."
