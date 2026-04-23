@@ -33,7 +33,19 @@ const MODULES_BY_CATEGORY: Record<string, string[]> = {
     "grc_compliance", "fleet_management", "transport_management", "wm_interface",
     "cross_system_integration",
   ],
+  cross_module: ["p2p", "otc", "record_to_report"],
+  ztables: ["common", "tenant_specific"],
 };
+
+const CHECK_CLASS_OPTIONS = [
+  { value: "", label: "— auto (legacy condition-based)" },
+  { value: "null_check", label: "null_check — completeness" },
+  { value: "regex_check", label: "regex_check — format" },
+  { value: "domain_value_check", label: "domain_value_check — enum" },
+  { value: "referential_check", label: "referential_check — FK" },
+  { value: "cross_field_check", label: "cross_field_check — multi-field" },
+  { value: "freshness_check", label: "freshness_check — timeliness" },
+] as const;
 
 const needsValue = (op: string) => !["is_null", "is_not_null"].includes(op);
 
@@ -65,6 +77,57 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
+function AppliesWhenRow({
+  field,
+  values,
+  onFieldChange,
+  onValuesChange,
+  onRemove,
+}: {
+  field: string;
+  values: string[];
+  onFieldChange: (field: string) => void;
+  onValuesChange: (values: string[]) => void;
+  onRemove: () => void;
+}) {
+  return (
+    <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
+      <input
+        type="text"
+        value={field}
+        onChange={(e) => onFieldChange(e.target.value)}
+        placeholder="Field (e.g. MARA.MTART)"
+        className="rounded-md px-3 py-2 text-sm text-white"
+        style={inputStyle}
+      />
+      <input
+        type="text"
+        value={values.join(", ")}
+        onChange={(e) =>
+          onValuesChange(
+            e.target.value
+              .split(",")
+              .map((v) => v.trim())
+              .filter((v) => v !== ""),
+          )
+        }
+        placeholder="Values (comma-separated): FERT, HALB"
+        className="rounded-md px-3 py-2 text-sm text-white"
+        style={inputStyle}
+      />
+      <button
+        type="button"
+        onClick={onRemove}
+        className="rounded-md px-2 text-sm"
+        style={{ color: "#f87171", border: "1px solid var(--border)" }}
+        aria-label="Remove predicate"
+      >
+        ×
+      </button>
+    </div>
+  );
+}
+
 export default function RuleEditClient({ rule: initialRule }: { rule: Rule }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -83,20 +146,36 @@ export default function RuleEditClient({ rule: initialRule }: { rule: Rule }) {
   async function save() {
     setSaving(true);
     try {
+      // Include the v0.0.20+ rule-schema extensions so editing a rule
+      // doesn't silently drop check_class, applies_when, reference_values,
+      // namespace, sources, or join_on. Only include a field when it
+      // has a meaningful value so legacy rules keep their lean shape.
+      const body: Record<string, unknown> = {
+        name: rule.name,
+        description: rule.description,
+        module: rule.module,
+        category: rule.category,
+        severity: rule.severity,
+        enabled: rule.enabled,
+        conditions: rule.conditions,
+        thresholds: rule.thresholds,
+        tags: rule.tags,
+      };
+      if (rule.check_class) body.check_class = rule.check_class;
+      if (rule.applies_when && Object.keys(rule.applies_when).length > 0) {
+        body.applies_when = rule.applies_when;
+      }
+      if (rule.reference_values && rule.reference_values.length > 0) {
+        body.reference_values = rule.reference_values;
+      }
+      if (rule.namespace) body.namespace = rule.namespace;
+      if (rule.sources && rule.sources.length > 0) body.sources = rule.sources;
+      if (rule.join_on && rule.join_on.length > 0) body.join_on = rule.join_on;
+
       const resp = await fetch(`/api/admin/rules/${rule.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: rule.name,
-          description: rule.description,
-          module: rule.module,
-          category: rule.category,
-          severity: rule.severity,
-          enabled: rule.enabled,
-          conditions: rule.conditions,
-          thresholds: rule.thresholds,
-          tags: rule.tags,
-        }),
+        body: JSON.stringify(body),
       });
       if (!resp.ok) throw new Error(await resp.text());
       const updated = await resp.json() as Rule;
@@ -358,6 +437,146 @@ export default function RuleEditClient({ rule: initialRule }: { rule: Rule }) {
         >
           + Add Condition
         </button>
+      </Section>
+
+      <Section title="Advanced — rule schema (v0.0.20+)">
+        <p className="text-xs" style={{ color: "var(--muted)" }}>
+          These fields mirror the backend YAML shape. Leave blank for
+          legacy condition-based rules.
+        </p>
+
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Check class">
+            <select
+              value={rule.check_class ?? ""}
+              onChange={(e) =>
+                setRule({
+                  ...rule,
+                  check_class:
+                    (e.target.value || undefined) as Rule["check_class"],
+                })
+              }
+              className="w-full rounded-md px-3 py-2 text-sm text-white"
+              style={inputStyle}
+            >
+              {CHECK_CLASS_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Namespace">
+            <select
+              value={rule.namespace ?? ""}
+              onChange={(e) =>
+                setRule({
+                  ...rule,
+                  namespace:
+                    (e.target.value || undefined) as Rule["namespace"],
+                })
+              }
+              className="w-full rounded-md px-3 py-2 text-sm text-white"
+              style={inputStyle}
+            >
+              <option value="">— standard (SAP-delivered)</option>
+              <option value="customer">customer (Y-star / Z-star)</option>
+            </select>
+          </Field>
+        </div>
+
+        {rule.check_class === "referential_check" ? (
+          <Field label="Reference values (comma-separated)">
+            <input
+              type="text"
+              value={(rule.reference_values ?? []).join(", ")}
+              onChange={(e) => {
+                const next = e.target.value
+                  .split(",")
+                  .map((v) => v.trim())
+                  .filter((v) => v !== "");
+                setRule({
+                  ...rule,
+                  reference_values: next.length > 0 ? next : undefined,
+                });
+              }}
+              className="w-full rounded-md px-3 py-2 text-sm text-white"
+              style={inputStyle}
+              placeholder="e.g. 0001, 0002, 0003, CPD, KRED"
+            />
+          </Field>
+        ) : null}
+
+        <div>
+          <div className="mb-2 flex items-center justify-between">
+            <label
+              className="block text-xs font-medium"
+              style={{ color: "var(--muted)" }}
+            >
+              Applies when (context predicate)
+            </label>
+            <button
+              type="button"
+              className="text-xs"
+              style={{ color: "var(--primary)" }}
+              onClick={() => {
+                const next = { ...(rule.applies_when ?? {}) };
+                // Use a placeholder key the author replaces; if "" already
+                // exists, numbers 1, 2, ... keep it unique.
+                let key = "";
+                let i = 1;
+                while (key in next) {
+                  key = `field_${i++}`;
+                }
+                next[key] = [];
+                setRule({ ...rule, applies_when: next });
+              }}
+            >
+              + Add field predicate
+            </button>
+          </div>
+          {Object.keys(rule.applies_when ?? {}).length === 0 ? (
+            <p className="text-xs" style={{ color: "var(--muted)" }}>
+              None — the rule applies to every row. Add a predicate to
+              scope (e.g. MARA.MTART in FERT, HALB).
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {Object.entries(rule.applies_when ?? {}).map(
+                ([field, values]) => (
+                  <AppliesWhenRow
+                    key={field}
+                    field={field}
+                    values={values}
+                    onFieldChange={(nextField) => {
+                      // Rename the key while preserving its values.
+                      const entries = Object.entries(rule.applies_when ?? {});
+                      const nextMap: Record<string, string[]> = {};
+                      for (const [k, v] of entries) {
+                        nextMap[k === field ? nextField : k] = v;
+                      }
+                      setRule({ ...rule, applies_when: nextMap });
+                    }}
+                    onValuesChange={(nextValues) => {
+                      const next = { ...(rule.applies_when ?? {}) };
+                      next[field] = nextValues;
+                      setRule({ ...rule, applies_when: next });
+                    }}
+                    onRemove={() => {
+                      const next = { ...(rule.applies_when ?? {}) };
+                      delete next[field];
+                      setRule({
+                        ...rule,
+                        applies_when:
+                          Object.keys(next).length > 0 ? next : undefined,
+                      });
+                    }}
+                  />
+                ),
+              )}
+            </div>
+          )}
+        </div>
       </Section>
 
       {/* Danger zone */}
