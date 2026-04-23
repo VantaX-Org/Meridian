@@ -17,8 +17,52 @@ from checks.types.freshness_check import FreshnessCheck
 
 logger = logging.getLogger("meridian.checks")
 
-# CHECK_ENGINE toggle: "pandas" (default) or "polars"
-CHECK_ENGINE = os.getenv("CHECK_ENGINE", "pandas")
+# CHECK_ENGINE toggle: "pandas", "polars", or "auto" (default).
+# When "auto", the engine is chosen per-DataFrame by row count — pandas wins
+# at small scale (no setup overhead) and polars wins above the threshold.
+CHECK_ENGINE = os.getenv("CHECK_ENGINE", "auto").lower()
+
+# Row count at or above which "auto" mode switches to polars.
+# Tuned for 400k-row extracts: polars is ~4-8x faster on null/regex/domain
+# at that size, and the setup cost crosses over around 30-60k rows.
+CHECK_ENGINE_POLARS_THRESHOLD = int(os.getenv("CHECK_ENGINE_POLARS_THRESHOLD", "50000"))
+
+
+def _select_engine(row_count: int) -> str:
+    """Resolve the engine for a given DataFrame size.
+
+    `CHECK_ENGINE=pandas` or `=polars` forces that engine regardless of size.
+    `CHECK_ENGINE=auto` (default) picks polars when row_count >= threshold.
+    """
+    if CHECK_ENGINE in ("pandas", "polars"):
+        return CHECK_ENGINE
+    return "polars" if row_count >= CHECK_ENGINE_POLARS_THRESHOLD else "pandas"
+
+
+def apply_context(df: pd.DataFrame, applies_when: dict | None) -> pd.DataFrame:
+    """Filter `df` to rows that satisfy every condition in `applies_when`.
+
+    `applies_when` is a dict of {field: allowed_values}; AND-combined.
+    Returns:
+      - df unchanged if applies_when is None/empty
+      - df.iloc[:0] (zero rows) if any field in applies_when is missing
+        from the extract — lets the caller treat the rule as "not applicable
+        to this extract" via the existing None-result pathway
+      - filtered df otherwise
+
+    Example: a rule with `applies_when: {MARA.MTART: ["FERT", "HALB"]}`
+    runs only against finished/semi-finished materials; total_count and
+    pass_rate reflect that scoped population, not the whole extract.
+    """
+    if not applies_when:
+        return df
+    mask = pd.Series(True, index=df.index)
+    for field, allowed in applies_when.items():
+        if field not in df.columns:
+            return df.iloc[:0]
+        allowed_strs = [str(v) for v in allowed]
+        mask &= df[field].astype(str).isin(allowed_strs)
+    return df[mask]
 
 REGISTRY: dict[str, type[BaseCheck]] = {
     "null_check": NullCheck,
@@ -68,8 +112,10 @@ def get_required_columns(module_name: str) -> set[str]:
 def run_checks(module_name: str, df: pd.DataFrame, tenant_id: str) -> list[CheckResult]:
     """Load YAML rules for a module and run all checks against the DataFrame.
 
-    When CHECK_ENGINE=polars, converts the DataFrame to Parquet in memory
-    and delegates to the Polars engine for vectorised evaluation.
+    Engine is selected by _select_engine — pandas for small frames,
+    polars above CHECK_ENGINE_POLARS_THRESHOLD (default 50k rows). On large
+    extracts (400k+) polars is ~4-8x faster. Explicit CHECK_ENGINE env var
+    overrides the heuristic.
     """
     yaml_path = _find_module_yaml(module_name)
 
@@ -79,16 +125,15 @@ def run_checks(module_name: str, df: pd.DataFrame, tenant_id: str) -> list[Check
     rules = config.get("rules", [])
     module = config.get("module", module_name)
 
-    # ---------- Polars fast path ----------
-    if CHECK_ENGINE == "polars":
-        try:
-            import io
-            from checks.polars_engine import run_checks_polars
+    engine = _select_engine(len(df))
+    logger.info(f"Module '{module}': {len(df):,} rows, engine={engine}")
 
-            buf = io.BytesIO()
-            df.to_parquet(buf, index=False)
-            raw_results = run_checks_polars(buf.getvalue(), module, rules)
-            # Convert plain dicts into CheckResult instances
+    # ---------- Polars fast path ----------
+    if engine == "polars":
+        try:
+            from checks.polars_engine import run_checks_polars_df
+
+            raw_results = run_checks_polars_df(df, module, rules)
             return [
                 CheckResult(
                     check_id=r.get("check_id", "UNKNOWN"),
@@ -145,8 +190,16 @@ def run_checks(module_name: str, df: pd.DataFrame, tenant_id: str) -> list[Check
             continue
 
         try:
+            # Apply context predicate — rules with `applies_when` see only
+            # rows that match their preconditions. total_count on the result
+            # will reflect the scoped population, not the full extract.
+            scoped_df = apply_context(df, rule.get("applies_when"))
+            if len(scoped_df) == 0 and rule.get("applies_when"):
+                # No rows match this rule's context — skip without failing
+                skipped += 1
+                continue
             check = check_cls(rule)
-            result = check.run(df)
+            result = check.run(scoped_df)
             if result is None:
                 # Field not in partial extract — skip silently
                 skipped += 1

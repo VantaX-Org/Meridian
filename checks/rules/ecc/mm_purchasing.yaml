@@ -769,3 +769,18 @@ rules:
   sap_impact: GR posting creates negative stock value. Invoice verification shows price variance. Cost centre is credited instead of debited.
   fix_map:
     __blank__: "Review the PO line price via ME22N. If a credit memo is intended, use the correct document type (returns PO). If data error, correct the net price."
+
+- id: PUR045
+  field: EKKO.BSART
+  check_class: referential_check
+  reference_values: ["NB", "FO", "UB", "MK", "LP", "EC", "ZNB"]
+  severity: high
+  dimension: consistency
+  message: "Purchasing document type BSART must reference a valid entry in T161"
+  why_it_matters: "BSART (purchasing document type) drives number range, field selection, item-category defaults, and release-strategy determination for every PO, contract, and scheduling agreement. An invalid BSART means the document cannot be displayed (ME23N) or released, and the release strategy cannot resolve — procurement workflow halts."
+  rule_authority: best_practice
+  sap_impact: "ME23N cannot display the document; release strategy cannot resolve; procurement workflow blocked."
+  fix_map:
+    __blank__: "BSART is mandatory at ME21N. Blank indicates document-header corruption."
+    __other__: "Document type '{invalid_value}' not in T161. Reassign via ME22N (if document editable) or configure in SPRO > Materials Management > Purchasing > Purchase Order > Define Document Types."
+  record_fix_template: "PO {EKKO.EBELN}: document type '{actual_value}' is not in T161."

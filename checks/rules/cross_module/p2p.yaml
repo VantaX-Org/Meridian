@@ -1,0 +1,111 @@
+module: cross_module_p2p
+target_state: ECC_AND_S4HANA
+description: |
+  Procure-to-Pay cross-module consistency rules. Each rule declares its
+  source extracts and the join keys; the cross-module orchestrator
+  (checks/cross_module.py) resolves the join and evaluates the condition.
+  Column names after merge follow pandas defaults: when both sides carry
+  the same column name it is suffixed _x (left) / _y (right).
+rules:
+  - id: XP2P001
+    check_class: cross_field_check
+    field: EKKO.ZTERM
+    sources:
+      - module: mm_purchasing
+        alias: EKKO
+      - module: accounts_payable
+        alias: LFA1
+    join_on:
+      - left: LIFNR
+        right: LIFNR
+    condition: "ZTERM_x == ZTERM_y"
+    severity: medium
+    dimension: consistency
+    message: "PO payment terms should match vendor master payment terms"
+    why_it_matters: >-
+      ZTERM on the PO header (EKKO) and on the vendor master (LFA1) usually
+      agree — when they diverge the AP clerk sees different terms at invoice
+      posting (MIRO) than on the PO, and F110 may pay under the wrong window.
+      The most common cause is a PO copied from a prior document whose vendor
+      terms have since changed. Catching this at analysis time prevents late
+      payment, missed discounts, and reconciliation effort.
+    rule_authority: best_practice
+    sap_impact: >-
+      Payment timing mis-scheduled; cash discount may be missed; aging reports
+      inconsistent with vendor statements.
+    fix_map:
+      __other__: >-
+        Update the PO payment terms via ME22N to match the vendor master,
+        or — if the vendor-master terms are outdated — update via XK02 and
+        re-run the rule to confirm alignment.
+    record_fix_template: >-
+      PO {EBELN} vendor {LIFNR}: PO terms '{ZTERM_x}' differ from vendor-master
+      terms '{ZTERM_y}'. Align via ME22N or XK02.
+
+  - id: XP2P002
+    check_class: cross_field_check
+    field: EKKO.WAERS
+    sources:
+      - module: mm_purchasing
+        alias: EKKO
+      - module: accounts_payable
+        alias: LFA1
+    join_on:
+      - left: LIFNR
+        right: LIFNR
+    condition: "(WAERS == WAERS_y) | (WAERS == 'USD') | (WAERS == 'EUR')"
+    severity: low
+    dimension: consistency
+    message: "PO currency typically matches vendor default currency"
+    why_it_matters: >-
+      EKKO.WAERS and LFA1.WAERS usually agree — a mismatch means the PO was
+      raised in a currency the vendor doesn't normally transact in, which is
+      legitimate for multi-currency suppliers but often a data-entry error.
+      The condition allows USD and EUR as universally-accepted exceptions so
+      the rule doesn't false-positive on legitimate cross-currency POs.
+    rule_authority: best_practice
+    sap_impact: >-
+      Exchange-rate gain/loss on settlement; reconciliation effort at month end.
+    fix_map:
+      __other__: >-
+        Either update the PO currency via ME22N to align with the vendor, or
+        — if the vendor genuinely supplies in a different currency — update
+        LFA1.WAERS via XK02.
+    record_fix_template: >-
+      PO {EBELN} vendor {LIFNR}: currency '{WAERS}' differs from vendor default
+      '{WAERS_y}'. Confirm if intentional or align via ME22N / XK02.
+
+  - id: XP2P003
+    check_class: cross_field_check
+    field: BSEG.MWSKZ
+    sources:
+      - module: fi_gl
+        alias: BSEG
+      - module: accounts_payable
+        alias: LFA1
+    join_on:
+      - left: LIFNR
+        right: LIFNR
+    condition: "MWSKZ.notna() & (MWSKZ != '')"
+    severity: high
+    dimension: consistency
+    message: "Tax code MWSKZ on vendor-side FI lines must be populated"
+    why_it_matters: >-
+      Every vendor-side FI-AP line (BSEG joined to LFA1) must carry a tax code
+      (MWSKZ) — it controls VAT / GST calculation, tax reporting, and the
+      correct tax G/L posting. Missing MWSKZ on a vendor line means the tax
+      portion hits the P&L as untaxed expense, breaking VAT declaration and
+      the tax reconciliation account. This is one of the most common
+      audit-finding root causes in SAP AP.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      VAT calculation missing; tax reporting incorrect; SARS/HMRC/tax
+      authority filings understated. Audit finding for non-compliance.
+    fix_map:
+      __blank__: >-
+        Assign a valid tax code via FB02 > line item > Tax Code, or — if the
+        line was posted without one — reverse via FB08 and re-post with the
+        correct code.
+    record_fix_template: >-
+      FI document {BELNR} line {BUZEI}, vendor {LIFNR}: tax code is missing.
+      Correct via FB02 or reverse and re-post via FB08.

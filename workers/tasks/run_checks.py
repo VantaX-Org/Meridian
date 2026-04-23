@@ -202,7 +202,66 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
                 total_rows=row_count,
             )
 
+        # Step 6b: Cross-module consistency rules (P2P, OTC, etc.) — run
+        # against the full dataframe. Uses the pre-joined-single-df path
+        # because current uploads contain all referenced tables as
+        # prefix-suffixed columns on the same rows. Rules whose required
+        # columns aren't present are skipped silently.
+        try:
+            from checks.cross_module import discover_cross_module_rules, run_cross_module_on_prejoined
+            xm_rules = discover_cross_module_rules()
+            if xm_rules:
+                logger.info(f"Running {len(xm_rules)} cross-module rule(s)")
+                for rule in xm_rules:
+                    if set(rule.get("sources", [])) and not any(
+                        s.get("module") in modules for s in rule.get("sources", [])
+                    ):
+                        # None of the rule's sources are in this analysis —
+                        # skip (nothing would match anyway).
+                        continue
+                    res = run_cross_module_on_prejoined(rule, df)
+                    if res is not None:
+                        all_results.append(res)
+        except Exception as e:
+            logger.warning(f"cross-module check pass failed, continuing: {e}")
+
+        # Step 6c: Z-table (customer-namespace) rules. The standard rule
+        # packs target SAP-delivered tables only; customers with heavy
+        # Y*/Z* customisation get validation coverage via this pass. Rules
+        # whose fields aren't in the extract skip silently via the runner.
+        try:
+            from checks.ztables import discover_ztable_rules
+            from checks.runner import REGISTRY as CHECK_REGISTRY
+            zt_rules = discover_ztable_rules(tenant_id=str(tenant_id))
+            if zt_rules:
+                logger.info(f"Running {len(zt_rules)} Z-table rule(s)")
+                for rule in zt_rules:
+                    check_cls = CHECK_REGISTRY.get(rule.get("check_class", ""))
+                    if check_cls is None:
+                        continue
+                    try:
+                        res = check_cls(rule).run(df)
+                        if res is not None:
+                            all_results.append(res)
+                    except Exception as e:
+                        logger.warning(
+                            f"Z-table rule {rule.get('id')} failed: {e}"
+                        )
+        except Exception as e:
+            logger.warning(f"Z-table check pass failed, continuing: {e}")
+
         logger.info(f"Total check results: {len(all_results)}")
+
+        # Step 6d: Root-cause classification against Config Intelligence.
+        # Enriches failing findings with bad_data / bad_config / both so
+        # the Workbench and Fix Playbook can show the steward WHY the
+        # finding exists, not just WHAT failed. No-ops for tenants without
+        # a Config Intelligence run.
+        try:
+            from checks.root_cause import enrich_results_with_root_cause
+            enrich_results_with_root_cause(engine, str(tenant_id), all_results)
+        except Exception as e:
+            logger.warning(f"root_cause enrichment failed, continuing: {e}")
 
         # Step 7-8: Score all modules
         from api.services.scoring import score_all_modules

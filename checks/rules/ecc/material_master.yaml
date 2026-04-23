@@ -2276,3 +2276,63 @@ rules:
   sap_impact: Freight cost calculation is wrong. Shipping documents show incorrect weight. Customs declarations contain inaccurate data.
   fix_map:
     __blank__: "Correct weights via MM02 > General Data > Dimensions tab. Gross weight must >= net weight."
+
+- id: MM140
+  field: MARA.MTART
+  check_class: referential_check
+  reference_values: ["FERT", "HALB", "ROH", "HIBE", "VERP", "NLAG", "DIEN", "ERSA", "HAWA", "KMAT", "PIPE", "UNBW"]
+  severity: critical
+  dimension: consistency
+  message: "Material type MTART must reference a valid entry in T134"
+  why_it_matters: "MTART (material type) drives which views/fields are available, which number range applies, which valuation class defaults, and whether the material is stock-relevant. A MTART that isn't in T134 means MM02 cannot open the record, MRP does not run, and goods-movements are blocked. In S/4HANA, an unknown MTART blocks the record from appearing in Fiori 'Manage Material Master Data' (F1602)."
+  rule_authority: best_practice
+  sap_impact: "Material cannot be maintained (MM02); MRP skips the record; goods movements (MIGO) blocked. All MM processes that key off type — procurement, production, sales — fail."
+  fix_map:
+    __blank__: "Assign material type at MM01. Cannot be changed after creation without MMAM (change material type) which requires zero stock and zero reservations."
+    __other__: "Material type '{invalid_value}' is not in T134. Use MMAM to change type (prerequisites: zero stock, no open POs/reservations) or configure the missing type in SPRO > Logistics — General > Material Master > Basic Settings > Material Types."
+  record_fix_template: "Material {MARA.MATNR}: material type '{actual_value}' is not in T134."
+
+- id: MM141
+  field: MARA.MATKL
+  check_class: referential_check
+  reference_values: ["001", "002", "003", "004", "005", "006", "007", "008", "009", "010", "011", "012"]
+  severity: medium
+  dimension: consistency
+  message: "Material group MATKL must reference a valid entry in T023"
+  why_it_matters: "MATKL (material group) is the primary reporting hierarchy for spend, inventory, and category management. An invalid MATKL means spend reports (ME2N, ME5A) aggregate incorrectly and category manager assignments fail. For contract and source-list determination, MATKL is a key matching attribute — invalid groups break outline-agreement matching."
+  rule_authority: best_practice
+  sap_impact: "Spend reporting by group is incorrect. Contract/source-list determination fails for affected materials. Category management assignment invalid."
+  fix_map:
+    __blank__: "Assign material group via MM02 > Basic Data 1. Required for all materials per SAP best practice."
+    __other__: "Material group '{invalid_value}' not in T023. Reassign via MM02 or configure in SPRO > Logistics — General > Material Master > Settings for Key Fields > Define Material Groups."
+  record_fix_template: "Material {MARA.MATNR}: material group '{actual_value}' is not in T023."
+
+- id: MM142
+  field: MARA.MEINS
+  check_class: referential_check
+  reference_values: ["EA", "KG", "G", "TO", "L", "ML", "M", "CM", "MM", "M2", "M3", "PC", "PAL", "BOX", "PKG", "SET", "ROL", "SHT", "HR", "DAY"]
+  severity: high
+  dimension: consistency
+  message: "Base unit of measure MEINS must reference a valid entry in T006"
+  why_it_matters: "MEINS (base unit of measure) is the authoritative UoM for stock, costing, and every quantity conversion for a material. An invalid MEINS breaks every UoM conversion — POs, sales orders, and goods movements using different UoMs cannot resolve to a stock quantity. CO-PA and valuation calculations fail."
+  rule_authority: best_practice
+  sap_impact: "UoM conversions fail; stock quantities cannot be resolved; costing and CO-PA calculations error."
+  fix_map:
+    __blank__: "Assign base UoM at MM01. Cannot be changed after creation if stock exists or open documents reference the material."
+    __other__: "Base UoM '{invalid_value}' not in T006. Use MM02 to change (prerequisites apply) or configure the missing UoM in SPRO > SAP NetWeaver > General Settings > Check Units of Measurement (CUNI)."
+  record_fix_template: "Material {MARA.MATNR}: base UoM '{actual_value}' is not in T006."
+
+- id: MM143
+  field: MARA.SERNR
+  check_class: null_check
+  applies_when:
+    MARA.MTART: ["FERT", "HALB"]
+  severity: high
+  dimension: completeness
+  message: "Serial number SERNR is mandatory for finished and semi-finished materials"
+  why_it_matters: "Serialisation is a function of material type — FERT (finished) and HALB (semi-finished) are typically tracked individually for warranty, traceability and service history, while raw materials and services are not. An SAP extract with missing SERNR on a FERT material breaks WM batch/serial management and blocks service notifications (IW21). This rule applies ONLY to records whose MTART is in the serialised set; raw materials and services correctly have no SERNR."
+  rule_authority: best_practice
+  sap_impact: "Serialised materials without SERNR cannot be tracked in WM, cannot produce serial-number histories, and block service notifications and warranty claims."
+  fix_map:
+    __blank__: "Populate serial number via MM02 > Serial number views, or via SAP Service for goods movement (IQ01)."
+  record_fix_template: "Material {MARA.MATNR} (type {MARA.MTART}): serial number is missing. Assign via MM02 or serial-number master (IQ01)."

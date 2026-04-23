@@ -660,3 +660,33 @@ rules:
   sap_impact: Payroll processes the wrong employee. Approval workflows route to the wrong person. Headcount reports are overstated.
   fix_map:
     __blank__: "Identify duplicate USERIDs in Admin Center. Merge records using the Employee Data Import template with the correct surviving USERID. Archive duplicates."
+
+- id: EC042
+  field: EMPEMPLOYMENT.COMPANY
+  check_class: referential_check
+  reference_values: ["C001", "C002", "C003", "C004"]
+  severity: high
+  dimension: consistency
+  message: "Company code COMPANY must reference a valid FO Company"
+  why_it_matters: "COMPANY on EmpEmployment points to an FOCompany record. A company value that isn't in the Foundation Object list means the employee is attached to a deleted or mistyped company — payroll integration breaks (no cost centre hierarchy resolves) and org reporting drops the employee. This is one of the most common root causes for 'employee missing from org chart' tickets."
+  rule_authority: sap_hard_constraint
+  sap_impact: "Payroll integration cannot resolve pay group; employee missing from org chart; compensation cycle excludes the record."
+  fix_map:
+    __blank__: "Assign a valid FOCompany via Admin Center > Employee Data > Job Information > Company."
+    __other__: "Company '{invalid_value}' is not in FOCompany. Either reassign the employee to a valid company (Admin Center > Job Information) or configure the missing company in Admin Center > Company Settings > FO Company."
+  record_fix_template: "Employee {EMPEMPLOYMENT.USERID}: company '{actual_value}' is not in FOCompany."
+
+- id: EC043
+  field: EMPEMPLOYMENT.EVENT_REASON
+  check_class: referential_check
+  reference_values: ["NEWHIRE", "REHIRE", "VOLTERM", "INVOLTERM", "RETIRE", "PROMO", "TRANSFER", "LATERAL", "DEMOTION", "REORG", "PAYINC", "PAYDEC", "LOA"]
+  severity: medium
+  dimension: consistency
+  message: "Event reason EVENT_REASON must reference a valid FO Event Reason"
+  why_it_matters: "EVENT_REASON drives the employment-event workflow — pay impact, stock-vesting behaviour, and benefits enrolment all branch off it. An invalid event reason means the triggered workflow is skipped (the event is saved but the downstream integration doesn't run), producing silent payroll and benefits drift that often only surfaces at year-end reconciliation."
+  rule_authority: best_practice
+  sap_impact: "Event-triggered workflows (pay calc, benefits enrolment, stock vesting) skip the record; downstream integration breaks silently."
+  fix_map:
+    __blank__: "Assign a valid event reason at event creation via Admin Center > Manage Job History."
+    __other__: "Event reason '{invalid_value}' is not in FOEventReason. Reassign via Admin Center > Manage Job History, or configure the missing reason in Admin Center > Foundation Objects > Event Reason."
+  record_fix_template: "Employee {EMPEMPLOYMENT.USERID}: event reason '{actual_value}' is not in FOEventReason."

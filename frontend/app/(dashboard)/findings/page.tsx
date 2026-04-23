@@ -647,6 +647,8 @@ function FindingDetail({
           </div>
         ) : null}
 
+        <FindingSignalsSection finding={finding} />
+
         {fixMap && Object.keys(fixMap).length > 0 ? (
           <div>
             <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -723,6 +725,112 @@ function FindingDetail({
           {recordFixes.length} record-level fix{recordFixes.length === 1 ? "" : "es"} available in
           the full report.
         </p>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Extension panel for the backend signals shipped in PRs B–F:
+ *   - Root-cause classification (PR F) — bad_data / bad_config / mixed
+ *   - Cross-module marker (PR D) — rule joined multiple modules
+ *   - Customer namespace flag (PR E) — Z-table / Y-table finding
+ *   - Applies-when predicate (PR B) — rule scope
+ *
+ * Shown below "Why it matters". No-op when the finding has none of
+ * these signals — legacy findings render unchanged.
+ */
+function FindingSignalsSection({ finding }: { finding: Finding }) {
+  const d = (finding.details ?? {}) as Record<string, unknown>;
+  const rootCause = d.root_cause as
+    | {
+        root_cause_type?: string;
+        reasoning?: string;
+        element_type?: string;
+        flagged_values_in_config?: string[];
+        flagged_values_not_in_config?: string[];
+      }
+    | undefined;
+  const crossModule = d.cross_module === true;
+  const sources = Array.isArray(d.sources) ? (d.sources as string[]) : [];
+  const isCustomer = d.namespace === "customer";
+  const appliesWhen = d.applies_when as Record<string, string[]> | undefined;
+
+  const hasAny =
+    (rootCause && rootCause.root_cause_type && rootCause.root_cause_type !== "unknown") ||
+    crossModule ||
+    isCustomer ||
+    (appliesWhen && Object.keys(appliesWhen).length > 0);
+  if (!hasAny) return null;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        {crossModule ? (
+          <Badge className="border-blue-300 bg-blue-50 text-[10px] text-blue-700">
+            Cross-module · {sources.join(" + ") || "multi-module"}
+          </Badge>
+        ) : null}
+        {isCustomer ? (
+          <Badge className="border-blue-300 bg-blue-50 text-[10px] text-blue-700">
+            Customer namespace
+          </Badge>
+        ) : null}
+        {rootCause?.root_cause_type === "bad_data" ? (
+          <Badge className="border-blue-300 bg-blue-50 text-[10px] text-blue-700">
+            Data issue
+          </Badge>
+        ) : null}
+        {rootCause?.root_cause_type === "bad_config" ? (
+          <Badge className="border-amber-300 bg-amber-50 text-[10px] text-amber-800">
+            Config issue — review SPRO
+          </Badge>
+        ) : null}
+        {rootCause?.root_cause_type === "bad_data_and_config" ? (
+          <Badge className="border-amber-300 bg-amber-50 text-[10px] text-amber-800">
+            Data + config — split remediation
+          </Badge>
+        ) : null}
+      </div>
+
+      {appliesWhen && Object.keys(appliesWhen).length > 0 ? (
+        <p className="text-xs text-muted-foreground">
+          Applies when{" "}
+          {Object.entries(appliesWhen).map(([field, values], idx) => (
+            <span key={field}>
+              {idx > 0 ? " and " : ""}
+              <span className="font-mono">{field}</span> in{" "}
+              {(values ?? []).join(", ")}
+            </span>
+          ))}
+        </p>
+      ) : null}
+
+      {rootCause &&
+      rootCause.reasoning &&
+      rootCause.root_cause_type !== "unknown" ? (
+        <div className="rounded-lg border border-black/[0.06] bg-white/[0.60] p-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Root cause
+          </p>
+          <p className="mt-1 text-sm text-foreground">{rootCause.reasoning}</p>
+          {rootCause.flagged_values_in_config?.length ? (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Valid in your SPRO config:{" "}
+              <span className="font-mono text-foreground">
+                {rootCause.flagged_values_in_config.join(", ")}
+              </span>
+            </p>
+          ) : null}
+          {rootCause.flagged_values_not_in_config?.length ? (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Not in your SPRO config:{" "}
+              <span className="font-mono text-foreground">
+                {rootCause.flagged_values_not_in_config.join(", ")}
+              </span>
+            </p>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );

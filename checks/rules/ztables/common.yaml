@@ -1,0 +1,84 @@
+module: ztables_common
+target_state: ECC_AND_S4HANA
+description: |
+  Common Z-table (customer-namespace) rules — applied to every tenant
+  whose extract contains the referenced fields. Rules skip silently when
+  the field isn't present, so no tenant sees a false positive.
+
+  Tenant-specific Z-rules live in checks/rules/ztables/tenant/<tenant_id>.yaml
+  and override/extend this file. Add new Z-field conventions here as they
+  emerge across multiple customers.
+
+rules:
+  # ---- ZZ_* fields on standard tables ----
+  # Customers commonly append-extend standard tables (CI_BSEG, CI_MARA, ...)
+  # with fields prefixed ZZ_. Validating those fields as populated depends
+  # on the specific customisation, but a null-check is usually safe when
+  # the extension is mandatory by business rule.
+
+  - id: ZT001
+    field: MARA.ZZ_REACH_COMPLIANT
+    check_class: domain_value_check
+    allowed_values: ["X", " ", ""]
+    severity: medium
+    dimension: validity
+    message: "REACH compliance flag on MARA.ZZ_REACH_COMPLIANT must be X or blank"
+    why_it_matters: >-
+      A common customer append on MARA holds REACH (EU chemicals regulation)
+      compliance flags. Standard SAP doesn't ship this. An invalid value
+      (anything other than X or blank) indicates legacy data migration
+      artefacts and breaks the reach-compliance report.
+    rule_authority: best_practice
+    sap_impact: >-
+      REACH compliance report unreliable; procurement cannot block
+      non-compliant materials.
+    namespace: customer
+    fix_map:
+      __other__: "Correct via MM02 > customer fields; blank out invalid entries."
+    record_fix_template: "Material {MARA.MATNR}: REACH flag '{actual_value}' invalid."
+
+  - id: ZT002
+    field: LFA1.ZZ_SUPPLIER_RISK_SCORE
+    check_class: regex_check
+    pattern: "^(0|[1-9][0-9]?|100)$"
+    severity: medium
+    dimension: validity
+    message: "Supplier risk score must be a 0-100 integer"
+    why_it_matters: >-
+      Many tenants add a numeric risk score (0-100) to LFA1 for
+      procurement-risk reporting. A malformed value breaks the risk
+      dashboard and the supplier-selection workflow.
+    rule_authority: best_practice
+    sap_impact: >-
+      Risk dashboard misaggregates; supplier-selection workflow falls back
+      to unscored behaviour.
+    namespace: customer
+    fix_map:
+      __other__: "Risk score '{invalid_value}' must be 0-100. Correct via XK02 > customer fields."
+    record_fix_template: "Vendor {LFA1.LIFNR}: risk score '{actual_value}' is not 0-100."
+
+  # ---- Full Z-tables (customer-created tables) ----
+  # A tenant that has a ZVENDOR_EXT or ZCOST_ALLOCATION table should add
+  # rules for it. The common pack can only validate patterns we see
+  # across customers — extend per tenant for specific tables.
+
+  - id: ZT003
+    field: ZPARTNER_EXT.ZPARTNER_ID
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "Primary key ZPARTNER_ID required on every row of ZPARTNER_EXT"
+    why_it_matters: >-
+      If the tenant has a ZPARTNER_EXT customer table (common for
+      partner-network extensions beyond BUT000), its primary key must be
+      populated on every row. Missing keys mean the extension row is
+      unlinkable back to the business partner — invisible to every query
+      joining via partner ID.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Partner-extension data orphaned; joins from BUT000 return nulls;
+      downstream reports show 'unknown partner' for the extension records.
+    namespace: customer
+    fix_map:
+      __blank__: "Populate ZPARTNER_ID to match the corresponding BUT000.PARTNER."
+    record_fix_template: "ZPARTNER_EXT row: ZPARTNER_ID is missing."
