@@ -1,0 +1,17 @@
+/**
+ * Aurora font sources — §5.3.1.
+ *
+ * Söhne is the preferred display face; licence is procured out-of-band
+ * (~$2,400 one-time + $400/yr, see PLAN_AURORA.md §9.1). Until the
+ * licence is in place, the display stack falls through to Inter 600,
+ * which Next.js provides via next/font in app/layout.tsx.
+ *
+ * Inter and JetBrains Mono are loaded via next/font (see app/layout.tsx)
+ * so we do not declare @font-face for them here. This file exists so
+ * future local font assets (e.g. licensed Söhne woff2 files) drop into
+ * one predictable place.
+ */
+
+/* Placeholder for Söhne — the actual @font-face block will be committed
+   alongside the licensed assets in a follow-up. Until then the font
+   stack defined in lib/aurora/tokens.ts resolves to Inter. */

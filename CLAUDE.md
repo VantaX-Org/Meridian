@@ -244,17 +244,66 @@ RLS policy on every data table — always set `app.tenant_id` before queries.
 
 ---
 
-## Frontend design system — Fiori Horizon (hybrid glass)
+## Frontend design system — Aurora (dark-first)
 
-- **Primary**: `#0070F2` (SAP Fiori Horizon blue)
-- **Background**: `#F5F6F7` (Fiori shell) + gradient mesh orbs
-- **Borders**: `#D5DADD` (Fiori border)
-- **Status**: success `#256F3A`, warning `#E76500`, warning-dark `#A45D00` (medium severity), error `#BB0000`, info `#089DE3`, accent `#7858FF`
-- **Flat tiles (default)**: `.vx-card` → `background:#FFFFFF`, `border:1px solid #D5DADD`, `border-radius:12px`, soft elevation shadow.
-- **Glass (hero rails only)**: `.vx-glass` and `.vx-glass-elevated` keep `backdrop-filter: blur(…)` and semi-transparent fills. Used exclusively on `KpiRail`, `HeroKpi`, and `NarrativeStrip`. All other surfaces use the flat tile.
-- **Typography**: Inter (`--font-sans`, `--font-display`) for body + headings, JetBrains Mono (`--font-mono`) for all numbers. Utilities: `.vx-num`, `.vx-hero-value`, `.vx-eyebrow`.
-- **Motion**: `.vx-animate-in`, `.vx-stagger` for subtle page / KPI-rail entrance animations (disabled under `prefers-reduced-motion`).
-- **Shell**: global ⌘K command palette (`<CommandPalette />`), breadcrumb top-bar, sectioned sidebar with inset active-rail indicator. Never dark backgrounds.
+Aurora is the authoritative design system. Source of truth: `PLAN_AURORA.md`
+at repo root and the Aurora Experience Spec (Parts I–V). Tokens live in
+`frontend/lib/aurora/` and CSS variables in `frontend/app/styles/aurora.css`.
+
+- **Theme**: dark-first. `:root` / `[data-theme="dark"]` render canvas
+  `#0A0E1A` with raised `#111726` cards. `[data-theme="light"]` is a working
+  alternative — never the default. On dark canvas, elevation is expressed by
+  brightening the surface; on light canvas it uses shadow. Never mix.
+- **Accent**: `#0057D2` (SAP Fiori Horizon blue, one shade deeper than the
+  legacy `#0070F2`). `--aurora-accent-500`. Used for primary actions,
+  selected state, focus ring, and the verdict halo.
+- **Status**: success `#0B7341`, warning `#C78420`, danger `#BB0000`, info
+  `#0057D2`. Used exclusively for status — never for decoration or branding.
+- **Viz palette**: twelve-colour ordinal categorical tuned for dark canvas;
+  sequential blue + amber ramps; diverging red/green for trend deltas.
+  `--aurora-viz-1..12`.
+- **Gradient budget**: one gradient in the entire product — the verdict halo
+  (`--aurora-verdict-halo`) rendered at 15% opacity behind the Command Centre
+  verdict sentence. Any other gradient anywhere is a bug.
+- **Typography**: six sizes, not seven. Display face is Söhne when licensed,
+  Inter 600 otherwise; UI face is Inter; mono is JetBrains Mono. Tokens:
+  `text-micro` (11/14 +0.08em), `text-small` (13/18 +0.02em), `text-body`
+  (14/20), `text-lead` (17/24), `display-sm` (24/30 -0.01em), `display-lg`
+  (40/44 -0.02em). Numeric values carry `.aurora-number` for tabular,
+  lining, stylistic-set-02 font-features.
+- **Spacing**: 4px base grid. `--aurora-space-1..24` = 4/8/12/16/20/24/32/48/64/96 px.
+- **Density**: three user-selectable tiers — `compact` (28 px rows, 12 px
+  card padding, 13 px table type), `default` (36/16/14), `comfortable`
+  (44/24/14). Applied via `[data-density="…"]`. Affects padding only — IA
+  is invariant.
+- **Motion**: four durations (`instant` 80 ms, `fast` 160 ms, `medium`
+  240 ms, `slow` 360 ms), three easings (`standard`/`enter`/`exit`), two
+  springs (`drawer`, `kanban`). `prefers-reduced-motion` disables verdict
+  entrance, process-graph materialisation, drawer spring, kanban drops —
+  never focus rings or state toggles.
+- **Elevation**: five levels (0 base / 1 cards / 2 popovers / 3 command
+  palette + modal / 4 verdict card with accent glow). Read via
+  `var(--aurora-elev-{N}-bg)` and `var(--aurora-elev-{N}-shadow)`.
+- **Iconography**: Lucide base plus twelve hand-drawn SAP icons (Business
+  Partner, Material Master, Finance Ledger, Sales Distribution, HR,
+  GL Account, Company Code, Plant, Storage Location, Sales Area, Purchasing
+  Org, Workflow Node) in `frontend/lib/aurora/icons/` at 24×24, 1.5 px
+  stroke, `currentColor`.
+- **Imports**: components pull tokens via `import { … } from "@/lib/aurora"`
+  — never reach into individual token modules. Application pages read CSS
+  via the `--aurora-*` variables.
+- **Token reference**: `/_design-playground/aurora` renders every token for
+  visual regression. Removed at the WS8 cutover in favour of Storybook (WS2).
+
+### Frontend design system — Legacy (pre-Aurora)
+
+The previous **Fiori Horizon (hybrid glass)** system lives alongside Aurora
+through the WS1–WS7 transition and is retired at the WS8 cutover. Tokens
+(`.vx-card`, `.vx-glass`, `--mn-*`, `--glass-*`) remain in
+`frontend/app/globals.css` so legacy `/app/(dashboard)/*` surfaces keep
+rendering; **new Aurora code does not consume them**. The Fiori primary
+`#0070F2` is kept as `--primary` for the legacy shell only; Aurora uses
+`--aurora-accent-500` (`#0057D2`).
 
 ---
 
