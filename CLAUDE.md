@@ -90,8 +90,8 @@ meridian/
 │   └── state.py                     ← AgentState TypedDict
 │
 ├── checks/                          ← deterministic check engine + YAML rules
-│   ├── runner.py                    ← pandas (default) or Polars engine toggle
-│   ├── polars_engine.py             ← high-performance Polars check engine (optional)
+│   ├── runner.py                    ← auto-selects pandas or Polars by row count (CHECK_ENGINE=auto, threshold 50k)
+│   ├── polars_engine.py             ← high-performance Polars check engine (zero-serialization pandas entry point)
 │   └── types/                       ← null, regex, domain, cross_field, freshness checks
 │
 ├── sap/                             ← multi-system SAP connector layer
