@@ -31,7 +31,7 @@
  */
 
 // Task 09: PBKDF2 password hashing
-import { verifyPassword } from "../password-hash";
+import { hashPassword, verifyPassword } from "../password-hash";
 
 interface Env {
   LICENCE_KV: KVNamespace;
@@ -317,6 +317,13 @@ async function requireAdmin(
   if (!payload) {
     return json({ error: "unauthorized", message: "Invalid or expired token" }, 401);
   }
+  // Defence-in-depth: tenant-user JWTs (issued by /api/tenant/login) and
+  // admin-user JWTs share JWT_SECRET, so a tenant user presenting their
+  // token to an admin endpoint would otherwise be accepted. Only tokens
+  // carrying role=admin may reach the admin surface.
+  if (payload.role !== "admin") {
+    return json({ error: "forbidden", message: "Admin role required" }, 403);
+  }
   return null;
 }
 
@@ -482,26 +489,13 @@ async function handleLogin(request: Request, env: Env): Promise<Response> {
 
     return json({ token, expiresIn: 8 * 60 * 60 });
   } catch (err) {
-    console.error("Login error:", err);
-    // Fallback to legacy auth for backward compatibility during migration
-    if (body.email !== env.ADMIN_EMAIL) {
-      return json({ error: "unauthorized", message: "Invalid credentials" }, 401);
-    }
-    const passwordHash = await hashKey(body.password);
-    if (passwordHash !== env.ADMIN_PASSWORD_HASH) {
-      return json({ error: "unauthorized", message: "Invalid credentials" }, 401);
-    }
-    const nowSec = Math.floor(Date.now() / 1000);
-    const token = await signJwt(
-      {
-        sub: body.email,
-        role: "admin",
-        iat: nowSec,
-        exp: nowSec + 8 * 60 * 60,
-      },
-      env.JWT_SECRET
-    );
-    return json({ token, expiresIn: 8 * 60 * 60 });
+    // Fail closed on DB errors. The previous implementation fell back to
+    // an env-variable SHA-256 hash — which is a weaker authn path AND
+    // reachable whenever D1 hiccups, effectively downgrading admin auth
+    // any time the database is slow. That's unacceptable for an
+    // internet-exposed admin endpoint. Log loudly, reject the request.
+    console.error("Admin login D1 error:", err);
+    return json({ error: "service_unavailable", message: "Authentication temporarily unavailable" }, 503);
   }
 }
 
@@ -884,16 +878,20 @@ async function handleCreateTenant(request: Request, env: Env): Promise<Response>
     )
     .run();
 
-  // Create admin user if provided
+  // Create admin user if provided — stored with PBKDF2 + per-row salt so
+  // the password hash can't be compared against a rainbow table. Matches
+  // the admins table's scheme (migration 002_tenant_users_pbkdf2.sql).
   if (body.admin_user?.email && body.admin_user?.password) {
     const userId = generateId();
-    const passwordHash = await hashKey(body.admin_user.password);
+    const { hash: passwordHash, salt: passwordSalt } = await hashPassword(body.admin_user.password);
     await env.DB.prepare(`
-      INSERT INTO tenant_users (id, tenant_id, email, password_hash, role, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO tenant_users
+        (id, tenant_id, email, password_hash, password_salt, password_scheme,
+         role, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, 'pbkdf2', ?, ?, ?)
     `)
       .bind(
-        userId, id, body.admin_user.email, passwordHash,
+        userId, id, body.admin_user.email, passwordHash, passwordSalt,
         body.admin_user.role || "admin", ts, ts
       )
       .run();
@@ -1265,15 +1263,79 @@ async function handleTenantUserLogin(request: Request, env: Env): Promise<Respon
     return json({ error: "bad_request", message: "email and password are required" }, 400);
   }
 
-  const passwordHash = await hashKey(body.password);
+  // Lookup by email only — never by (email, password_hash). Filtering on
+  // the hash in the WHERE clause creates a timing oracle for email
+  // enumeration and forces the weaker sha256 scheme.
   const user = await env.DB.prepare(
-    "SELECT id, tenant_id, email, role FROM tenant_users WHERE email = ? AND password_hash = ?"
+    "SELECT id, tenant_id, email, role, password_hash, password_salt, password_scheme, is_active " +
+    "FROM tenant_users WHERE email = ? LIMIT 1"
   )
-    .bind(body.email, passwordHash)
-    .first<{ id: string; tenant_id: string; email: string; role: string }>();
+    .bind(body.email)
+    .first<{
+      id: string;
+      tenant_id: string;
+      email: string;
+      role: string;
+      password_hash: string;
+      password_salt: string | null;
+      password_scheme: string | null;
+      is_active: number | null;
+    }>();
 
-  if (!user) {
+  if (!user || (user.is_active !== null && user.is_active === 0)) {
     return json({ error: "unauthorized", message: "Invalid credentials" }, 401);
+  }
+
+  // Dispatch on the stored scheme. New rows are always pbkdf2; legacy
+  // rows (pre-migration-002) are sha256 and get transparently upgraded
+  // to pbkdf2 on their next successful login.
+  let passwordValid = false;
+  const scheme = user.password_scheme || "sha256";
+  if (scheme === "pbkdf2") {
+    if (!user.password_salt) {
+      // Shouldn't happen post-migration, but fail closed if it does.
+      return json({ error: "unauthorized", message: "Invalid credentials" }, 401);
+    }
+    passwordValid = await verifyPassword(body.password, user.password_hash, user.password_salt);
+  } else if (scheme === "sha256") {
+    const computed = await hashKey(body.password);
+    // Constant-time compare — plain === leaks early-mismatch timing.
+    passwordValid = computed.length === user.password_hash.length;
+    let diff = 0;
+    for (let i = 0; i < computed.length; i++) {
+      diff |= computed.charCodeAt(i) ^ user.password_hash.charCodeAt(i);
+    }
+    passwordValid = passwordValid && diff === 0;
+  }
+
+  if (!passwordValid) {
+    return json({ error: "unauthorized", message: "Invalid credentials" }, 401);
+  }
+
+  // Opportunistic upgrade: if the user just logged in with a legacy
+  // sha256 hash, rehash with PBKDF2 so the next login is stronger. No
+  // impact on the current response.
+  if (scheme === "sha256") {
+    try {
+      const { hash: newHash, salt: newSalt } = await hashPassword(body.password);
+      await env.DB.prepare(
+        "UPDATE tenant_users SET password_hash = ?, password_salt = ?, " +
+        "password_scheme = 'pbkdf2', updated_at = ? WHERE id = ?"
+      )
+        .bind(newHash, newSalt, nowIso(), user.id)
+        .run();
+    } catch (err) {
+      console.warn("tenant_users PBKDF2 upgrade failed for", user.id, err);
+    }
+  }
+
+  // Best-effort last_login_at
+  try {
+    await env.DB.prepare("UPDATE tenant_users SET last_login_at = ? WHERE id = ?")
+      .bind(nowIso(), user.id)
+      .run();
+  } catch {
+    // ignore
   }
 
   // Get tenant info
@@ -1460,8 +1522,12 @@ export default {
 
       return json({ error: "not_found" }, 404);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Internal error";
-      return json({ error: "internal_error", message }, 500);
+      // Log the real error for operators (console.* goes to `wrangler tail`
+      // and the Cloudflare logs pipeline) but don't surface internals to
+      // the caller — `err.message` frequently contains SQL fragments, stack
+      // traces, or other internals that help an attacker map the system.
+      console.error("Unhandled worker error", err);
+      return json({ error: "internal_error" }, 500);
     }
   },
 };
