@@ -1,0 +1,161 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "liveNow": false,
+  "panels": [
+    {
+      "type": "stat",
+      "title": "API requests / sec",
+      "id": 1,
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        { "expr": "sum(rate(meridian_http_requests_total[1m]))", "refId": "A" }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "value" },
+      "fieldConfig": { "defaults": { "unit": "reqps" } },
+      "datasource": { "uid": "meridian-prom", "type": "prometheus" }
+    },
+    {
+      "type": "stat",
+      "title": "5xx error rate (5m)",
+      "id": 2,
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "expr": "sum(rate(meridian_http_requests_total{status=~\"5..\"}[5m])) / clamp_min(sum(rate(meridian_http_requests_total[5m])), 0.001)",
+          "refId": "A"
+        }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "value" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.005 },
+              { "color": "red", "value": 0.01 }
+            ]
+          }
+        }
+      },
+      "datasource": { "uid": "meridian-prom", "type": "prometheus" }
+    },
+    {
+      "type": "stat",
+      "title": "Requests in flight",
+      "id": 3,
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        { "expr": "meridian_http_requests_in_flight", "refId": "A" }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "datasource": { "uid": "meridian-prom", "type": "prometheus" }
+    },
+    {
+      "type": "stat",
+      "title": "Audit pending",
+      "id": 4,
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        { "expr": "meridian_audit_pending", "refId": "A" }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 10 },
+              { "color": "red", "value": 100 }
+            ]
+          }
+        }
+      },
+      "datasource": { "uid": "meridian-prom", "type": "prometheus" }
+    },
+    {
+      "type": "timeseries",
+      "title": "HTTP requests by status",
+      "id": 5,
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "sum by (status) (rate(meridian_http_requests_total[1m]))",
+          "legendFormat": "{{status}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "reqps" } },
+      "datasource": { "uid": "meridian-prom", "type": "prometheus" }
+    },
+    {
+      "type": "timeseries",
+      "title": "Request latency — p50 / p95 / p99",
+      "id": 6,
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.5, sum by (le) (rate(meridian_http_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "p50",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(meridian_http_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "p95",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(meridian_http_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "p99",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "datasource": { "uid": "meridian-prom", "type": "prometheus" }
+    },
+    {
+      "type": "timeseries",
+      "title": "Celery tasks — rate by status",
+      "id": 7,
+      "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "sum by (task, status) (rate(meridian_celery_tasks_total[5m]))",
+          "legendFormat": "{{task}} · {{status}}",
+          "refId": "A"
+        }
+      ],
+      "datasource": { "uid": "meridian-prom", "type": "prometheus" }
+    },
+    {
+      "type": "timeseries",
+      "title": "LLM calls — rate by result",
+      "id": 8,
+      "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "sum by (service, result) (rate(meridian_llm_calls_total[5m]))",
+          "legendFormat": "{{service}} · {{result}}",
+          "refId": "A"
+        }
+      ],
+      "datasource": { "uid": "meridian-prom", "type": "prometheus" }
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "tags": ["meridian"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Meridian · Overview",
+  "uid": "meridian-overview",
+  "version": 1,
+  "weekStart": ""
+}
