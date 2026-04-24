@@ -1,15 +1,15 @@
 import { listRules, type Rule } from "@/lib/admin-api";
 
 const SEVERITY_STYLE: Record<string, { bg: string; text: string }> = {
-  critical: { bg: "rgba(220,38,38,0.15)",  text: "#f87171" },
+  critical: { bg: "rgba(220,38,38,0.15)",  text: "var(--aurora-status-danger-500)" },
   high:     { bg: "rgba(234,88,12,0.15)",  text: "#fb923c" },
   medium:   { bg: "rgba(217,119,6,0.15)",  text: "#fbbf24" },
-  low:      { bg: "rgba(22,163,74,0.15)",  text: "#4ade80" },
+  low:      { bg: "rgba(22,163,74,0.15)",  text: "var(--aurora-status-success-500)" },
   info:     { bg: "rgba(99,102,241,0.15)", text: "#a5b4fc" },
 };
 
 function Badge({ value, map }: { value: string; map: Record<string, { bg: string; text: string }> }) {
-  const style = map[value] || { bg: "rgba(75,85,99,0.3)", text: "#d1d5db" };
+  const style = map[value] || { bg: "rgba(75,85,99,0.3)", text: "var(--aurora-fg-tertiary)" };
   return (
     <span
       className="rounded-full px-2 py-0.5 text-xs font-medium capitalize"
@@ -141,7 +141,7 @@ export default async function RulesPage({
       {error && (
         <div
           className="rounded-md p-4 text-sm"
-          style={{ background: "rgba(220,38,38,0.1)", color: "#f87171" }}
+          style={{ background: "var(--aurora-status-danger-bg)", color: "var(--aurora-status-danger-500)" }}
         >
           {error}
         </div>
@@ -211,7 +211,7 @@ export default async function RulesPage({
                       <td className="px-4 py-3">
                         <span
                           className="inline-flex h-2 w-2 rounded-full"
-                          style={{ background: rule.enabled ? "#4ade80" : "#6b7280" }}
+                          style={{ background: rule.enabled ? "var(--aurora-status-success-500)" : "#6b7280" }}
                           title={rule.enabled ? "Enabled" : "Disabled"}
                         />
                       </td>

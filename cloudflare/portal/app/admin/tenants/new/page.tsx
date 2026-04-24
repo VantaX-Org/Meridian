@@ -86,7 +86,7 @@ export default function NewTenantPage() {
           className="rounded-lg p-5 space-y-4"
           style={{ background: "var(--card)", border: "1px solid var(--border)" }}
         >
-          <p className="text-sm font-semibold" style={{ color: "#4ade80" }}>
+          <p className="text-sm font-semibold" style={{ color: "var(--aurora-status-success-500)" }}>
             Licence key generated. Copy it now — it won&apos;t be shown again:
           </p>
           <div className="flex items-center gap-3">
@@ -210,7 +210,7 @@ export default function NewTenantPage() {
         </div>
 
         {error && (
-          <p className="text-sm" style={{ color: "#f87171" }}>
+          <p className="text-sm" style={{ color: "var(--aurora-status-danger-500)" }}>
             {error}
           </p>
         )}

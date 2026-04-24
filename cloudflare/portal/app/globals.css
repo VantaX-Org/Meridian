@@ -1,16 +1,124 @@
 @import "tailwindcss";
+@import "./aurora.css";
+
+/**
+ * Portal theme — bridges legacy portal CSS variables to the Aurora token
+ * system so existing components keep working without rewrites.
+ *
+ * Source of truth for colours, typography, elevation is aurora.css
+ * (mirrored from frontend/app/styles/aurora.css). This file just maps
+ * the portal's shortnames to Aurora tokens.
+ */
 
 :root {
-  --background: #0a0a1a;
-  --foreground: #ededed;
-  --primary: #0f6e56;
-  --card: #16162b;
-  --border: #2a2a45;
-  --muted: #a1a1b5;
+  /* Canvas + ink (dark-first, same as the customer frontend) */
+  --background: var(--aurora-canvas-base);
+  --foreground: var(--aurora-fg-primary);
+  --card: var(--aurora-canvas-raised);
+  --border: var(--aurora-canvas-line);
+  --muted: var(--aurora-fg-tertiary);
+
+  /* Accent — SAP Fiori Horizon blue (#0057d2), not the previous green */
+  --primary: var(--aurora-accent-500);
+  --primary-hover: var(--aurora-accent-400);
+  --primary-active: var(--aurora-accent-600);
+  --primary-foreground: #ffffff;
+
+  /* Status */
+  --success: var(--aurora-status-success-500);
+  --warning: var(--aurora-status-warning-500);
+  --danger: var(--aurora-status-danger-500);
+  --info: var(--aurora-status-info-500);
+
+  /* Elevation bridges — raised / elevated / overlay / modal */
+  --elev-1-bg: var(--aurora-elev-1-bg, var(--aurora-canvas-raised));
+  --elev-1-shadow: var(--aurora-elev-1-shadow, 0 1px 2px rgba(0, 0, 0, 0.4));
+  --elev-2-bg: var(--aurora-elev-2-bg, var(--aurora-canvas-elevated));
+  --elev-2-shadow: var(--aurora-elev-2-shadow, 0 4px 12px rgba(0, 0, 0, 0.5));
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: system-ui, -apple-system, sans-serif;
+  background: var(--aurora-canvas-base);
+  color: var(--aurora-fg-primary);
+  font-family: var(--aurora-font-ui, "Inter", system-ui, -apple-system, sans-serif);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+/* ── Aurora typography utility classes (mirror the customer frontend) ── */
+
+.aurora-display-lg { font-size: 40px; line-height: 44px; letter-spacing: -0.02em; font-weight: 600; font-family: var(--aurora-font-display, "Inter"); }
+.aurora-display-sm { font-size: 24px; line-height: 30px; letter-spacing: -0.01em; font-weight: 600; font-family: var(--aurora-font-display, "Inter"); }
+.aurora-text-lead  { font-size: 17px; line-height: 24px; }
+.aurora-text-body  { font-size: 14px; line-height: 20px; }
+.aurora-text-small { font-size: 13px; line-height: 18px; letter-spacing: 0.02em; }
+.aurora-text-micro { font-size: 11px; line-height: 14px; letter-spacing: 0.08em; text-transform: uppercase; }
+
+.aurora-number {
+  font-variant-numeric: tabular-nums lining-nums stylistic-set-02;
+}
+
+/* ── Aurora common surface classes ── */
+
+.aurora-card {
+  background: var(--aurora-canvas-raised);
+  border: 1px solid var(--aurora-canvas-line);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.aurora-card-elevated {
+  background: var(--aurora-canvas-elevated);
+  border: 1px solid var(--aurora-canvas-line);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.32);
+}
+
+.aurora-button-primary {
+  background: var(--aurora-accent-500);
+  color: #ffffff;
+  border: 1px solid var(--aurora-accent-500);
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-weight: 500;
+  transition: background 160ms ease;
+}
+.aurora-button-primary:hover { background: var(--aurora-accent-400); }
+.aurora-button-primary:active { background: var(--aurora-accent-600); }
+.aurora-button-primary:focus-visible {
+  outline: 2px solid var(--aurora-accent-500);
+  outline-offset: 2px;
+}
+
+.aurora-button-secondary {
+  background: transparent;
+  color: var(--aurora-fg-primary);
+  border: 1px solid var(--aurora-canvas-line);
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-weight: 500;
+  transition: background 160ms ease;
+}
+.aurora-button-secondary:hover { background: var(--aurora-canvas-raised); }
+
+/* Status dot — small coloured circle used in tenant lists + healthchecks */
+.aurora-status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+.aurora-status-dot-success { background: var(--aurora-status-success-500); }
+.aurora-status-dot-warning { background: var(--aurora-status-warning-500); }
+.aurora-status-dot-danger { background: var(--aurora-status-danger-500); }
+.aurora-status-dot-info { background: var(--aurora-status-info-500); }
+.aurora-status-dot-muted { background: var(--aurora-fg-muted); }
+
+/* Focus ring — Aurora accent at 3px outside the focused element */
+:focus-visible {
+  outline: 2px solid var(--aurora-accent-500);
+  outline-offset: 2px;
 }

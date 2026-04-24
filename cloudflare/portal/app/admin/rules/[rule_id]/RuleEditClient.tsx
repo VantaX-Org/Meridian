@@ -119,7 +119,7 @@ function AppliesWhenRow({
         type="button"
         onClick={onRemove}
         className="rounded-md px-2 text-sm"
-        style={{ color: "#f87171", border: "1px solid var(--border)" }}
+        style={{ color: "var(--aurora-status-danger-500)", border: "1px solid var(--border)" }}
         aria-label="Remove predicate"
       >
         ×
@@ -251,7 +251,7 @@ export default function RuleEditClient({ rule: initialRule }: { rule: Rule }) {
           {message && (
             <span
               className="text-sm"
-              style={{ color: message.startsWith("Error") ? "#ef4444" : "#4ade80" }}
+              style={{ color: message.startsWith("Error") ? "var(--aurora-status-danger-500)" : "var(--aurora-status-success-500)" }}
             >
               {message}
             </span>
@@ -356,7 +356,7 @@ export default function RuleEditClient({ rule: initialRule }: { rule: Rule }) {
               <span
                 key={tag}
                 className="flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs"
-                style={{ background: "rgba(15,110,86,0.2)", color: "#4ade80" }}
+                style={{ background: "rgba(15,110,86,0.2)", color: "var(--aurora-status-success-500)" }}
               >
                 {tag}
                 <button
@@ -422,7 +422,7 @@ export default function RuleEditClient({ rule: initialRule }: { rule: Rule }) {
                 type="button"
                 onClick={() => removeCondition(i)}
                 className="text-sm transition-colors"
-                style={{ color: "#ef4444" }}
+                style={{ color: "var(--aurora-status-danger-500)" }}
               >
                 ×
               </button>
@@ -585,20 +585,20 @@ export default function RuleEditClient({ rule: initialRule }: { rule: Rule }) {
           <button
             onClick={() => setConfirmDelete(true)}
             className="text-sm transition-colors"
-            style={{ color: "#ef4444" }}
+            style={{ color: "var(--aurora-status-danger-500)" }}
           >
             Delete Rule
           </button>
         ) : (
           <div className="flex items-center gap-3">
-            <span className="text-xs" style={{ color: "#f87171" }}>
+            <span className="text-xs" style={{ color: "var(--aurora-status-danger-500)" }}>
               Delete &ldquo;{rule.name}&rdquo;?
             </span>
             <button
               onClick={deleteRule}
               disabled={saving}
               className="rounded-md px-3 py-1.5 text-xs text-white disabled:opacity-50"
-              style={{ background: "#dc2626" }}
+              style={{ background: "var(--aurora-status-danger-500)" }}
             >
               Delete
             </button>

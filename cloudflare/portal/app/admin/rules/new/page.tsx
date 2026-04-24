@@ -293,7 +293,7 @@ export default function NewRulePage() {
                 <span
                   key={tag}
                   className="flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs"
-                  style={{ background: "rgba(15,110,86,0.2)", color: "#4ade80" }}
+                  style={{ background: "rgba(15,110,86,0.2)", color: "var(--aurora-status-success-500)" }}
                 >
                   {tag}
                   <button type="button" onClick={() => setForm({ ...form, tags: form.tags.filter((t) => t !== tag) })}>×</button>
@@ -339,7 +339,7 @@ export default function NewRulePage() {
                   style={inputStyle}
                 />
               )}
-              <button type="button" onClick={() => removeCondition(i)} style={{ color: "#ef4444" }}>×</button>
+              <button type="button" onClick={() => removeCondition(i)} style={{ color: "var(--aurora-status-danger-500)" }}>×</button>
             </div>
           ))}
           <button type="button" onClick={addCondition} className="text-sm" style={{ color: "var(--primary)" }}>
@@ -462,7 +462,7 @@ export default function NewRulePage() {
                       type="button"
                       onClick={() => removeAppliesWhen(i)}
                       className="rounded-md px-2 text-sm"
-                      style={{ color: "#f87171", border: "1px solid var(--border)" }}
+                      style={{ color: "var(--aurora-status-danger-500)", border: "1px solid var(--border)" }}
                       aria-label="Remove predicate"
                     >
                       ×
@@ -474,7 +474,7 @@ export default function NewRulePage() {
           </div>
         </div>
 
-        {error && <p className="text-sm" style={{ color: "#f87171" }}>{error}</p>}
+        {error && <p className="text-sm" style={{ color: "var(--aurora-status-danger-500)" }}>{error}</p>}
 
         <div className="flex gap-3">
           <button

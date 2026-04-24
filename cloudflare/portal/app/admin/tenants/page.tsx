@@ -1,16 +1,21 @@
 import { listTenants, type Tenant } from "@/lib/admin-api";
 
+// Aurora semantic status tokens — matches the customer frontend's palette.
+// bg uses the token's background variant (pre-mixed at ~12% opacity); text
+// uses the 500 step directly. For tier, we piggyback on viz palette entries
+// so starter/professional/enterprise are visually distinct without reusing
+// a status colour.
 const STATUS_STYLE: Record<string, { bg: string; text: string }> = {
-  active:    { bg: "rgba(22,163,74,0.15)",  text: "#4ade80" },
-  trial:     { bg: "rgba(8,145,178,0.15)",  text: "#67e8f9" },
-  suspended: { bg: "rgba(220,38,38,0.15)",  text: "#f87171" },
-  expired:   { bg: "rgba(107,114,128,0.15)", text: "#9ca3af" },
+  active:    { bg: "var(--aurora-status-success-bg)", text: "var(--aurora-status-success-500)" },
+  trial:     { bg: "var(--aurora-status-info-bg)",    text: "var(--aurora-status-info-500)" },
+  suspended: { bg: "var(--aurora-status-danger-bg)",  text: "var(--aurora-status-danger-500)" },
+  expired:   { bg: "rgba(107,114,128,0.15)",          text: "var(--aurora-fg-muted)" },
 };
 
 const TIER_STYLE: Record<string, { bg: string; text: string }> = {
-  starter:      { bg: "rgba(75,85,99,0.3)",   text: "#d1d5db" },
-  professional: { bg: "rgba(15,110,86,0.3)",  text: "#4ade80" },
-  enterprise:   { bg: "rgba(124,58,237,0.3)", text: "#c4b5fd" },
+  starter:      { bg: "rgba(107,122,144,0.18)", text: "var(--aurora-fg-tertiary)" },
+  professional: { bg: "var(--aurora-accent-selected-bg)", text: "var(--aurora-accent-300)" },
+  enterprise:   { bg: "rgba(124,58,237,0.25)",  text: "#c4b5fd" },
 };
 
 function Badge({
@@ -20,7 +25,7 @@ function Badge({
   value: string;
   map: Record<string, { bg: string; text: string }>;
 }) {
-  const style = map[value] || { bg: "rgba(75,85,99,0.3)", text: "#d1d5db" };
+  const style = map[value] || { bg: "rgba(75,85,99,0.3)", text: "var(--aurora-fg-tertiary)" };
   return (
     <span
       className="rounded-full px-2 py-0.5 text-xs font-medium capitalize"
@@ -134,7 +139,7 @@ export default async function TenantsPage({
       </form>
 
       {error && (
-        <div className="rounded-md p-4 text-sm" style={{ background: "rgba(220,38,38,0.1)", color: "#f87171" }}>
+        <div className="rounded-md p-4 text-sm" style={{ background: "var(--aurora-status-danger-bg)", color: "var(--aurora-status-danger-500)" }}>
           {error}
         </div>
       )}
@@ -193,12 +198,12 @@ export default async function TenantsPage({
                   <td className="px-4 py-3">
                     <span className="text-white">{formatDate(t.expiry_date)}</span>
                     {days > 0 && days <= 30 && (
-                      <p className="text-xs mt-0.5" style={{ color: "#f59e0b" }}>
+                      <p className="text-xs mt-0.5" style={{ color: "var(--aurora-status-warning-500)" }}>
                         {days}d remaining
                       </p>
                     )}
                     {days <= 0 && (
-                      <p className="text-xs mt-0.5" style={{ color: "#ef4444" }}>
+                      <p className="text-xs mt-0.5" style={{ color: "var(--aurora-status-danger-500)" }}>
                         Expired
                       </p>
                     )}
