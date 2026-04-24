@@ -40,10 +40,23 @@ def engine():
     # We use a subprocess so the test doesn't import alembic internals.
     import subprocess
 
-    env = {**os.environ, "DATABASE_URL_SYNC": url, "DATABASE_URL": url}
+    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    # alembic env.py does `from db.schema import Base` — only works when
+    # the repo root is on PYTHONPATH. Inherit-and-prepend.
+    pythonpath = repo_root + (
+        os.pathsep + os.environ["PYTHONPATH"]
+        if os.environ.get("PYTHONPATH")
+        else ""
+    )
+    env = {
+        **os.environ,
+        "DATABASE_URL_SYNC": url,
+        "DATABASE_URL": url,
+        "PYTHONPATH": pythonpath,
+    }
     result = subprocess.run(
         ["alembic", "upgrade", "head"],
-        cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        cwd=repo_root,
         env=env,
         capture_output=True,
         text=True,
