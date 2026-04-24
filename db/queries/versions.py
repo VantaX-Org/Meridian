@@ -10,7 +10,7 @@ from db.schema import AnalysisVersion
 async def create_version(
     db: AsyncSession, tenant_id: uuid.UUID, metadata: dict
 ) -> AnalysisVersion:
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
     version = AnalysisVersion(tenant_id=tenant_id, metadata_=metadata)
     db.add(version)
     await db.commit()
@@ -21,7 +21,7 @@ async def create_version(
 async def get_version(
     db: AsyncSession, tenant_id: uuid.UUID, version_id: uuid.UUID
 ) -> Optional[AnalysisVersion]:
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
     result = await db.execute(
         select(AnalysisVersion).where(
             AnalysisVersion.id == version_id,
@@ -37,7 +37,7 @@ async def update_version_status(
     version_id: uuid.UUID,
     status: str,
 ) -> Optional[AnalysisVersion]:
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
     result = await db.execute(
         select(AnalysisVersion).where(
             AnalysisVersion.id == version_id,
