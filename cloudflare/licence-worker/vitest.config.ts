@@ -5,9 +5,15 @@ export default defineWorkersConfig({
     setupFiles: ["./src/test-setup.ts"],
     poolOptions: {
       workers: {
+        // Single shared D1 across tests in a file. Otherwise each test
+        // gets its own isolated DB and the admin_sessions row written by
+        // the first /api/admin/login vanishes before the next test can
+        // reuse the cached JWT — verifyJwt's jti revocation check then
+        // rejects an otherwise-valid token.
+        isolatedStorage: false,
+        singleWorker: true,
         wrangler: { configPath: "./wrangler.toml" },
         miniflare: {
-          // In-memory bindings for tests — no real Cloudflare account needed
           d1Databases: { DB: "test-meridian-licence" },
           kvNamespaces: { LICENCE_KV: "test-licence-kv" },
           bindings: {

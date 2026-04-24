@@ -79,11 +79,41 @@ CREATE TABLE IF NOT EXISTS admins (
     created_at TEXT,
     updated_at TEXT,
     last_login_at TEXT,
-    is_active INTEGER DEFAULT 1
+    is_active INTEGER DEFAULT 1,
+    failed_attempts INTEGER NOT NULL DEFAULT 0,
+    locked_until TEXT
+);
+
+CREATE TABLE IF NOT EXISTS admin_sessions (
+    jti TEXT PRIMARY KEY,
+    admin_id TEXT NOT NULL,
+    issued_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    revoked_at TEXT,
+    last_seen_at TEXT,
+    ip TEXT,
+    user_agent TEXT
+);
+
+CREATE TABLE IF NOT EXISTS admin_audit (
+    id TEXT PRIMARY KEY,
+    admin_id TEXT,
+    admin_email TEXT,
+    action TEXT NOT NULL,
+    entity_type TEXT,
+    entity_id TEXT,
+    method TEXT NOT NULL,
+    path TEXT NOT NULL,
+    status_code INTEGER NOT NULL,
+    ip TEXT,
+    user_agent TEXT,
+    created_at TEXT NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_tenants_key_hash ON tenants(licence_key_hash);
 CREATE INDEX IF NOT EXISTS idx_admins_email ON admins(email);
+CREATE INDEX IF NOT EXISTS idx_admin_sessions_admin ON admin_sessions(admin_id);
+CREATE INDEX IF NOT EXISTS idx_admin_audit_created ON admin_audit(created_at);
 CREATE INDEX IF NOT EXISTS idx_rules_module ON rules(module);
 CREATE INDEX IF NOT EXISTS idx_rules_category ON rules(category);
 CREATE INDEX IF NOT EXISTS idx_field_mappings_tenant ON field_mappings(tenant_id, module);
