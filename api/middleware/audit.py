@@ -2,7 +2,8 @@
 
 Fires after the handler returns so it can capture the final status code.
 Runs the DB insert in a background thread (fire-and-forget) so it never
-blocks the response.
+blocks the response, and tracks in-flight writes so `flush_pending_audits`
+can drain them on shutdown (called from FastAPI's lifespan teardown).
 
 Scope: POST, PUT, PATCH, DELETE on /api/v1/* (excluding auth + licence).
 Entity type / id are derived from the URL path when possible
@@ -23,6 +24,33 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 logger = logging.getLogger("meridian.audit")
+
+# Tracks in-flight fire-and-forget audit tasks so graceful shutdown can
+# await them rather than dropping the tail of the log. Tasks remove
+# themselves via a done-callback when they finish.
+_pending_audit_tasks: set[asyncio.Task[None]] = set()
+
+
+async def flush_pending_audits(timeout: float = 10.0) -> int:
+    """Wait for outstanding audit writes to finish. Returns count drained.
+
+    Called from the FastAPI lifespan's shutdown branch so workers can
+    finish before the process exits. Bounded by `timeout` (seconds) so a
+    stuck DB can't hang the pod indefinitely."""
+    if not _pending_audit_tasks:
+        return 0
+    pending = list(_pending_audit_tasks)
+    try:
+        await asyncio.wait_for(
+            asyncio.gather(*pending, return_exceptions=True),
+            timeout=timeout,
+        )
+    except asyncio.TimeoutError:
+        logger.warning(
+            f"audit flush timed out after {timeout}s with "
+            f"{len(_pending_audit_tasks)} tasks still pending"
+        )
+    return len(pending) - len(_pending_audit_tasks)
 
 _AUDITED_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 
@@ -209,7 +237,10 @@ class AuditMiddleware(BaseHTTPMiddleware):
             else None,
         }
 
-        # Fire-and-forget so we don't block the response.
-        asyncio.create_task(asyncio.to_thread(_insert_audit_row, row))
+        # Fire-and-forget so we don't block the response, but track it so
+        # flush_pending_audits() can drain on shutdown.
+        task = asyncio.create_task(asyncio.to_thread(_insert_audit_row, row))
+        _pending_audit_tasks.add(task)
+        task.add_done_callback(_pending_audit_tasks.discard)
 
         return response
