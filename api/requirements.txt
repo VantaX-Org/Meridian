@@ -53,7 +53,7 @@ numpy==2.4.3
 ollama==0.6.1
 openai==2.28.0
 openpyxl==3.1.5
-orjson==3.11.7
+orjson==3.11.8
 ormsgpack==1.12.2
 packaging==26.0
 pandas==3.0.1
