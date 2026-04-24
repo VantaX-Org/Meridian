@@ -5,7 +5,7 @@ Active only when AUTH_MODE=local.
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import text
 
@@ -16,6 +16,12 @@ from api.services.local_auth import (
     generate_jwt_secret,
     verify_password,
 )
+from api.services.rate_limiter import rate_limit
+
+# Login endpoint is unauthenticated, so rate-limit by IP: 10 attempts per
+# minute. Tight enough to slow credential stuffing, loose enough that a
+# legitimate user fat-fingering the password a few times isn't locked out.
+_login_rate_limit = rate_limit("auth_login", limit=10, window_s=60, key_by="ip")
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
@@ -49,7 +55,7 @@ def _get_sync_connection():
     return engine.connect()
 
 
-@router.post("/login", response_model=LoginResponse)
+@router.post("/login", response_model=LoginResponse, dependencies=[Depends(_login_rate_limit)])
 def login(body: LoginRequest):
     """Authenticate with email/password and receive a JWT."""
     engine = get_sync_engine_or_create()

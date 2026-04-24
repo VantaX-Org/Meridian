@@ -11,12 +11,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.config import settings
 from api.deps import Tenant, get_db, get_tenant
 from api.services.column_mapper import apply_column_mapping, get_required_fields, get_standard_fields
+from api.services.rate_limiter import rate_limit
 from api.services.storage import upload_file as minio_upload
 from api.services.task_progress import (
     STEP_PARSE,
     TOTAL_STEPS,
     update_task_progress,
 )
+
+# Uploads are cheap to initiate but kick off a full analysis pipeline behind
+# them — cap at 30/tenant/minute so a misbehaving script can't flood MinIO
+# + spawn hundreds of Celery tasks.
+_upload_rate_limit = rate_limit("upload", limit=30, window_s=60)
 
 router = APIRouter(prefix="/api/v1", tags=["upload"])
 logger = logging.getLogger("meridian.upload")
@@ -31,7 +37,7 @@ class UploadResponse(BaseModel):
     status: str
 
 
-@router.post("/upload", response_model=UploadResponse)
+@router.post("/upload", response_model=UploadResponse, dependencies=[Depends(_upload_rate_limit)])
 async def upload_file(
     file: UploadFile = File(...),
     module: str = Form(...),

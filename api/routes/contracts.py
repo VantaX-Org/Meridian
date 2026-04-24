@@ -11,8 +11,14 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
+from api.services.rate_limiter import rate_limit
 
 router = APIRouter(prefix="/api/v1", tags=["contracts"])
+
+# NLP queries hit the LLM for every call — cap at 60/tenant/minute so an
+# experimenting analyst can't accidentally burn through cloud credits
+# in the time it takes to step away from their laptop.
+_nlp_rate_limit = rate_limit("nlp_query", limit=60, window_s=60)
 
 
 # ── Pydantic models ──────────────────────────────────────────────────────────
@@ -272,7 +278,7 @@ async def get_contract_compliance(
 # ── 6. POST /api/v1/nlp/query — NLP natural language query ──────────────────
 
 
-@router.post("/nlp/query")
+@router.post("/nlp/query", dependencies=[Depends(_nlp_rate_limit)])
 async def nlp_query(
     body: NlpQueryBody,
     request: Request,
