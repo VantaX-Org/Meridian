@@ -29,7 +29,7 @@ async def bulk_insert_findings(
     version_id: uuid.UUID,
     findings: list[FindingCreate],
 ) -> int:
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
     db_findings = [
         Finding(
             tenant_id=tenant_id,
@@ -62,7 +62,7 @@ async def update_finding_remediation(
     remediation_text: str,
 ) -> int:
     """Update a finding's remediation_text field. Returns rows updated."""
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
     result = await db.execute(
         text("""
             UPDATE findings
@@ -89,7 +89,7 @@ async def get_findings(
     severity: Optional[str] = None,
     module: Optional[str] = None,
 ) -> list[Finding]:
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
     stmt = select(Finding).where(
         Finding.tenant_id == tenant_id,
         Finding.version_id == version_id,

@@ -15,7 +15,7 @@ async def create_report(
     version_id: uuid.UUID,
     report_json: dict,
 ) -> Report:
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
     report = Report(
         tenant_id=tenant_id,
         version_id=version_id,
@@ -32,7 +32,7 @@ async def get_report_by_version(
     tenant_id: uuid.UUID,
     version_id: uuid.UUID,
 ) -> Optional[Report]:
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
     result = await db.execute(
         select(Report).where(
             Report.tenant_id == tenant_id,
@@ -48,7 +48,7 @@ async def update_report_pdf_path(
     version_id: uuid.UUID,
     pdf_path: str,
 ) -> Optional[Report]:
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
     result = await db.execute(
         select(Report).where(
             Report.tenant_id == tenant_id,
