@@ -39,6 +39,13 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     env_file: .env
+    environment:
+      # Structured JSON logs + Prometheus scrape endpoint default-on for
+      # production deployments. Override via .env: LOG_FORMAT=text for a
+      # readable shell session.
+      - LOG_FORMAT=${LOG_FORMAT:-json}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - SERVICE_NAME=${SERVICE_NAME:-meridian-api}
     # No ports exposed — API is only reachable via internal Docker network (http://api:8000)
     depends_on:
       db:
@@ -65,6 +72,10 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     env_file: .env
+    environment:
+      - LOG_FORMAT=${LOG_FORMAT:-json}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - SERVICE_NAME=${SERVICE_NAME_WORKER:-meridian-worker}
     depends_on:
       db:
         condition: service_healthy
