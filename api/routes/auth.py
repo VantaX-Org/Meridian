@@ -43,10 +43,21 @@ class UserResponse(BaseModel):
 class LoginResponse(BaseModel):
     token: str
     user: UserResponse
+    # True when the authenticating user still has the default seeded
+    # password. The frontend routes to a mandatory password-change
+    # screen; the API returns 409 on any other endpoint until the
+    # rotation completes.
+    must_change_password: bool = False
 
 
 class MeResponse(BaseModel):
     user: UserResponse
+    must_change_password: bool = False
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
 
 
 def _get_sync_connection():
@@ -65,7 +76,7 @@ def login(body: LoginRequest):
         # Look up user
         row = conn.execute(
             text(
-                "SELECT id, email, name, role, password_hash, is_active "
+                "SELECT id, email, name, role, password_hash, is_active, must_change_password "
                 "FROM users WHERE email = :email AND tenant_id = :tid"
             ),
             {"email": body.email, "tid": DEV_TENANT_ID},
@@ -79,6 +90,8 @@ def login(body: LoginRequest):
 
         if not verify_password(body.password, row[4]):
             raise HTTPException(status_code=401, detail="Invalid credentials")
+
+        must_change = bool(row[6]) if len(row) > 6 else False
 
         # Ensure tenant has a jwt_secret
         secret_row = conn.execute(
@@ -114,6 +127,7 @@ def login(body: LoginRequest):
         return LoginResponse(
             token=token,
             user=UserResponse(id=user_id, email=row[1], name=row[2], role=row[3]),
+            must_change_password=must_change,
         )
 
 
@@ -144,7 +158,7 @@ def me(request: Request):
         # Look up user
         conn.execute(text(f"SET app.tenant_id = \'{str(DEV_TENANT_ID)}\'"))
         row = conn.execute(
-            text("SELECT id, email, name, role, is_active FROM users WHERE id = :uid AND tenant_id = :tid"),
+            text("SELECT id, email, name, role, is_active, must_change_password FROM users WHERE id = :uid AND tenant_id = :tid"),
             {"uid": payload["sub"], "tid": DEV_TENANT_ID},
         ).fetchone()
 
@@ -153,4 +167,76 @@ def me(request: Request):
 
         return MeResponse(
             user=UserResponse(id=str(row[0]), email=row[1], name=row[2], role=row[3]),
+            must_change_password=bool(row[5]) if len(row) > 5 else False,
         )
+
+
+# ── Password rotation ────────────────────────────────────────────────────────
+
+# Password policy — loose on purpose (we're not a password manager; the
+# point here is "not `admin`"). Operators can plug in something stricter
+# by configuring their identity provider and bypassing local auth.
+_MIN_PASSWORD_LENGTH = 12
+
+
+@router.post("/change-password")
+def change_password(body: ChangePasswordRequest, request: Request):
+    """Rotate the password for the currently-authenticated user.
+
+    Accepted even when `must_change_password` is true on the account —
+    in fact that's the intended path. Clears the flag on success so
+    the user can proceed with normal API use.
+    """
+    auth_header = request.headers.get("authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    token = auth_header[7:]
+
+    new_password = (body.new_password or "").strip()
+    if len(new_password) < _MIN_PASSWORD_LENGTH:
+        raise HTTPException(
+            status_code=422,
+            detail=f"New password must be at least {_MIN_PASSWORD_LENGTH} characters",
+        )
+    if new_password == body.current_password:
+        raise HTTPException(
+            status_code=422,
+            detail="New password must differ from the current one",
+        )
+
+    from api.services.local_auth import hash_password
+
+    engine = get_sync_engine_or_create()
+    with engine.connect() as conn:
+        secret_row = conn.execute(
+            text("SELECT jwt_secret FROM tenants WHERE id = :tid"),
+            {"tid": DEV_TENANT_ID},
+        ).fetchone()
+        if not secret_row or not secret_row[0]:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+
+        payload = decode_access_token(token, secret_row[0])
+        if not payload:
+            raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+        conn.execute(text(f"SET app.tenant_id = \'{str(DEV_TENANT_ID)}\'"))
+        row = conn.execute(
+            text("SELECT id, password_hash, is_active FROM users WHERE id = :uid AND tenant_id = :tid"),
+            {"uid": payload["sub"], "tid": DEV_TENANT_ID},
+        ).fetchone()
+        if not row or not row[2]:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+
+        if not row[1] or not verify_password(body.current_password, row[1]):
+            raise HTTPException(status_code=401, detail="Current password is incorrect")
+
+        conn.execute(
+            text(
+                "UPDATE users "
+                "SET password_hash = :ph, must_change_password = false "
+                "WHERE id = :uid"
+            ),
+            {"ph": hash_password(new_password), "uid": str(row[0])},
+        )
+        conn.commit()
+    return {"ok": True}

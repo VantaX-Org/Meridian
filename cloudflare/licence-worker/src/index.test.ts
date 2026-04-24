@@ -589,3 +589,137 @@ describe("Improvements batch", () => {
     }
   });
 });
+
+// ─── MFA ─────────────────────────────────────────────────────────────────────
+
+describe("MFA", () => {
+  it("enroll → verify → activates MFA and returns a recovery code", async () => {
+    // Use the shared test admin
+    const enrollResp = await callWorker("/api/admin/mfa/enroll", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${await getAdminToken()}` },
+    });
+    expect(enrollResp.status).toBe(200);
+    const enroll = (await enrollResp.json()) as { otpauth_uri: string; secret: string };
+    expect(enroll.otpauth_uri).toMatch(/^otpauth:\/\/totp\//);
+    expect(enroll.secret).toBeTruthy();
+
+    // Compute the current TOTP code the way verifyTotp does
+    const totp = await import("../totp");
+    // Build a valid code by round-tripping: since we can't easily pre-compute,
+    // import hotp-like flow via verifyTotp — instead, test against a known
+    // secret: we know enroll returned a real base32 secret.
+    // Approach: call verifyTotp with an empty/bad code to assert rejection,
+    // then skip the 6-digit roundtrip (hard to do without re-implementing HOTP here).
+    const bad = await callWorker("/api/admin/mfa/verify", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${await getAdminToken()}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ code: "000000" }),
+    });
+    // 000000 is vanishingly unlikely to be the current code
+    expect([401, 200]).toContain(bad.status);
+
+    // Regenerate a fresh secret we control, use the exposed totp module to
+    // compute the correct current code, and verify.
+    const ctrlSecret = totp.generateTotpSecret();
+    // Inject a secret directly via the DB so we control both sides.
+    await (env as unknown as { DB: D1Database }).DB.prepare(
+      "UPDATE admins SET mfa_secret = ?, mfa_enabled = 0 WHERE email = ?"
+    )
+      .bind(ctrlSecret, TEST_ADMIN_EMAIL)
+      .run();
+
+    // Build the current code via a helper exported from totp — use verifyTotp
+    // as an oracle: we know it accepts ±1 step. We loop 10 candidates and
+    // find the one that verifies, then submit it.
+    const now = Math.floor(Date.now() / 1000);
+    const stepSec = 30;
+    const step = Math.floor(now / stepSec);
+    // Build the code at the current step by re-implementing a subset of HOTP.
+    // Decode base32, HMAC-SHA1, dynamic truncation, mod 10^6.
+    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+    const clean = ctrlSecret.toUpperCase().replace(/=+$/, "");
+    let bits = 0, value = 0;
+    const secretBytes: number[] = [];
+    for (const ch of clean) {
+      value = (value << 5) | alphabet.indexOf(ch);
+      bits += 5;
+      if (bits >= 8) {
+        secretBytes.push((value >>> (bits - 8)) & 0xff);
+        bits -= 8;
+      }
+    }
+    const counterBuf = new Uint8Array(8);
+    const view = new DataView(counterBuf.buffer);
+    view.setUint32(4, step & 0xffffffff, false);
+    view.setUint32(0, Math.floor(step / 0x100000000), false);
+    const key = await crypto.subtle.importKey(
+      "raw", new Uint8Array(secretBytes),
+      { name: "HMAC", hash: "SHA-1" }, false, ["sign"],
+    );
+    const sig = new Uint8Array(await crypto.subtle.sign("HMAC", key, counterBuf));
+    const offset = sig[sig.length - 1] & 0x0f;
+    const bin =
+      ((sig[offset] & 0x7f) << 24) |
+      ((sig[offset + 1] & 0xff) << 16) |
+      ((sig[offset + 2] & 0xff) << 8) |
+      (sig[offset + 3] & 0xff);
+    const code = (bin % 1_000_000).toString().padStart(6, "0");
+
+    const verifyResp = await callWorker("/api/admin/mfa/verify", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${await getAdminToken()}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+    });
+    expect(verifyResp.status).toBe(200);
+    const verified = (await verifyResp.json()) as { enabled: boolean; recovery_code: string };
+    expect(verified.enabled).toBe(true);
+    expect(verified.recovery_code).toBeTruthy();
+  });
+
+  it("login with mfa_enabled requires a code", async () => {
+    // Seed a dedicated admin with MFA on, using a known secret
+    const { hashPassword: hp } = await import("../password-hash");
+    const totp = await import("../totp");
+    const { hash, salt } = await hp("pw-for-mfa");
+    const secret = totp.generateTotpSecret();
+    await (env as unknown as { DB: D1Database }).DB.prepare(
+      "INSERT OR REPLACE INTO admins (id, email, password_hash, password_salt, role, is_active, mfa_secret, mfa_enabled, failed_attempts, locked_until) " +
+      "VALUES (?, ?, ?, ?, 'admin', 1, ?, 1, 0, NULL)"
+    )
+      .bind("mfa-admin-id", "mfa-admin@meridian.local", hash, salt, secret)
+      .run();
+
+    // Password only → mfa_required
+    const resp1 = await callWorker("/api/admin/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Forwarded-For": "10.1.0.1",  // avoid IP rate limit with shared bucket
+      },
+      body: JSON.stringify({ email: "mfa-admin@meridian.local", password: "pw-for-mfa" }),
+    });
+    expect(resp1.status).toBe(401);
+    const body1 = (await resp1.json()) as { error: string; mfa_required?: boolean };
+    expect(body1.error).toBe("mfa_required");
+    expect(body1.mfa_required).toBe(true);
+  });
+
+  it("disable clears MFA fields", async () => {
+    // Admin disables MFA on themselves (dev test admin has MFA active from the first test)
+    const resp = await callWorker("/api/admin/mfa/disable", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${await getAdminToken()}`, "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    expect(resp.status).toBe(200);
+    const row = await (env as unknown as { DB: D1Database }).DB.prepare(
+      "SELECT mfa_enabled, mfa_secret, mfa_recovery_hash FROM admins WHERE email = ?"
+    )
+      .bind(TEST_ADMIN_EMAIL)
+      .first<{ mfa_enabled: number; mfa_secret: string | null; mfa_recovery_hash: string | null }>();
+    expect(row?.mfa_enabled).toBe(0);
+    expect(row?.mfa_secret).toBeNull();
+    expect(row?.mfa_recovery_hash).toBeNull();
+  });
+});

@@ -32,6 +32,14 @@
 
 // Task 09: PBKDF2 password hashing
 import { hashPassword, verifyPassword } from "../password-hash";
+// MFA (TOTP + single-use recovery code)
+import {
+  buildOtpauthUri,
+  generateRecoveryCode,
+  generateTotpSecret,
+  hashRecoveryCode,
+  verifyTotp,
+} from "../totp";
 
 interface Env {
   LICENCE_KV: KVNamespace;
@@ -567,6 +575,8 @@ async function handleLogin(request: Request, env: Env): Promise<Response> {
   const body = (await request.json().catch(() => ({}))) as {
     email?: string;
     password?: string;
+    mfa_code?: string;
+    mfa_recovery_code?: string;
   };
 
   if (!body.email || !body.password) {
@@ -575,7 +585,8 @@ async function handleLogin(request: Request, env: Env): Promise<Response> {
 
   try {
     const admin = await env.DB.prepare(
-      "SELECT id, email, password_hash, password_salt, role, is_active, failed_attempts, locked_until " +
+      "SELECT id, email, password_hash, password_salt, role, is_active, failed_attempts, locked_until, " +
+      "mfa_secret, mfa_enabled, mfa_recovery_hash " +
       "FROM admins WHERE email = ? LIMIT 1"
     )
       .bind(body.email)
@@ -588,6 +599,9 @@ async function handleLogin(request: Request, env: Env): Promise<Response> {
         is_active: number;
         failed_attempts: number | null;
         locked_until: string | null;
+        mfa_secret: string | null;
+        mfa_enabled: number | null;
+        mfa_recovery_hash: string | null;
       }>();
 
     // Uniform 401 on missing user so we don't leak email existence. No
@@ -643,6 +657,70 @@ async function handleLogin(request: Request, env: Env): Promise<Response> {
         logJson("warn", "admin_account_locked", { admin_id: admin.id, email: admin.email, attempts });
       }
       return genericReject();
+    }
+
+    // MFA gate — password was correct, now require the second factor.
+    // Two inputs accepted: a 6-digit TOTP code OR a single-use recovery
+    // code. If MFA is enabled and neither is provided (or both are
+    // wrong), we increment failed_attempts exactly as we would for a
+    // wrong password, so a TOTP brute force hits the lockout wall.
+    if (admin.mfa_enabled === 1 && admin.mfa_secret) {
+      const mfaCode = (body.mfa_code || "").trim();
+      const recovery = (body.mfa_recovery_code || "").trim();
+      let mfaOk = false;
+      let usedRecovery = false;
+      if (recovery && admin.mfa_recovery_hash) {
+        const h = await hashRecoveryCode(recovery);
+        if (h === admin.mfa_recovery_hash) {
+          mfaOk = true;
+          usedRecovery = true;
+        }
+      }
+      if (!mfaOk && mfaCode) {
+        mfaOk = await verifyTotp(admin.mfa_secret, mfaCode);
+      }
+
+      if (!mfaOk) {
+        if (!mfaCode && !recovery) {
+          // Tell the client the next step — no counter bump for the
+          // first request without a code.
+          return json({ error: "mfa_required", mfa_required: true }, 401);
+        }
+        // Wrong / expired code — treat as a failed attempt.
+        const attempts = (admin.failed_attempts ?? 0) + 1;
+        const lockUntil =
+          attempts >= LOCKOUT_THRESHOLD
+            ? new Date(Date.now() + LOCKOUT_DURATION_MS).toISOString()
+            : null;
+        try {
+          await env.DB.prepare(
+            "UPDATE admins SET failed_attempts = ?, locked_until = ? WHERE id = ?"
+          )
+            .bind(attempts, lockUntil, admin.id)
+            .run();
+        } catch (err) {
+          logJson("warn", "admin_mfa_fail_counter_update_error", { err: String(err) });
+        }
+        if (lockUntil) {
+          logJson("warn", "admin_account_locked_mfa", { admin_id: admin.id, attempts });
+        }
+        return json({ error: "mfa_invalid", message: "Invalid MFA code" }, 401);
+      }
+
+      // Recovery code is single-use — invalidate after successful use
+      // and disable MFA so the admin can re-enrol a fresh authenticator.
+      if (usedRecovery) {
+        try {
+          await env.DB.prepare(
+            "UPDATE admins SET mfa_recovery_hash = NULL, mfa_enabled = 0, mfa_secret = NULL WHERE id = ?"
+          )
+            .bind(admin.id)
+            .run();
+        } catch (err) {
+          logJson("warn", "admin_mfa_recovery_cleanup_error", { err: String(err) });
+        }
+        logJson("warn", "admin_mfa_recovery_used", { admin_id: admin.id, email: admin.email });
+      }
     }
 
     // Success — reset the counter + clear any lock, stamp last_login_at.
@@ -1745,6 +1823,104 @@ async function handleAdminLogout(request: Request, env: Env): Promise<Response> 
   return json({ ok: true });
 }
 
+// ─── MFA enrol / verify / disable ────────────────────────────────────────────
+
+async function handleMfaEnroll(request: Request, env: Env): Promise<Response> {
+  const auth = await requireAuth(request, env, ["admin", "readonly"]);
+  if (!auth.ok) return auth.response;
+  const email = String(auth.payload.sub ?? "");
+
+  // Issue a pending secret. mfa_enabled stays 0 until verify succeeds —
+  // that way a dropped enrol flow doesn't lock the admin out.
+  const secret = generateTotpSecret();
+  try {
+    await env.DB.prepare(
+      "UPDATE admins SET mfa_secret = ?, mfa_enabled = 0 WHERE email = ?"
+    )
+      .bind(secret, email)
+      .run();
+  } catch (err) {
+    logJson("error", "mfa_enroll_write_error", { err: String(err) });
+    return json({ error: "service_unavailable" }, 503);
+  }
+  const otpauthUri = buildOtpauthUri({
+    secret,
+    accountName: email,
+    issuer: "Meridian HQ",
+  });
+  return json({
+    otpauth_uri: otpauthUri,
+    secret, // so admins who can't scan can type it in manually
+  });
+}
+
+async function handleMfaVerify(request: Request, env: Env): Promise<Response> {
+  const auth = await requireAuth(request, env, ["admin", "readonly"]);
+  if (!auth.ok) return auth.response;
+  const email = String(auth.payload.sub ?? "");
+
+  const body = (await request.json().catch(() => ({}))) as { code?: string };
+  if (!body.code) {
+    return json({ error: "bad_request", message: "code is required" }, 400);
+  }
+
+  const admin = await env.DB.prepare(
+    "SELECT id, mfa_secret FROM admins WHERE email = ?"
+  )
+    .bind(email)
+    .first<{ id: string; mfa_secret: string | null }>();
+  if (!admin || !admin.mfa_secret) {
+    return json({ error: "not_enrolled", message: "Call /api/admin/mfa/enroll first" }, 400);
+  }
+
+  const ok = await verifyTotp(admin.mfa_secret, body.code);
+  if (!ok) return json({ error: "mfa_invalid", message: "Invalid code" }, 401);
+
+  // MFA is good — activate it + mint a recovery code (returned exactly
+  // once; we only store the hash so losing it later is unrecoverable
+  // unless an ops admin resets via handleMfaDisable).
+  const { plaintext: recovery, hash } = await generateRecoveryCode();
+  try {
+    await env.DB.prepare(
+      "UPDATE admins SET mfa_enabled = 1, mfa_enrolled_at = ?, mfa_recovery_hash = ? WHERE id = ?"
+    )
+      .bind(nowIso(), hash, admin.id)
+      .run();
+  } catch (err) {
+    logJson("error", "mfa_verify_write_error", { err: String(err) });
+    return json({ error: "service_unavailable" }, 503);
+  }
+  logJson("info", "mfa_enrolled", { admin_id: admin.id, email });
+  return json({ enabled: true, recovery_code: recovery });
+}
+
+async function handleMfaDisable(request: Request, env: Env): Promise<Response> {
+  // Only admin role can disable MFA — readonly can enrol themselves but
+  // cannot remove the protection.
+  const auth = await requireAuth(request, env, ["admin"]);
+  if (!auth.ok) return auth.response;
+
+  const body = (await request.json().catch(() => ({}))) as { email?: string };
+  const targetEmail = body.email || String(auth.payload.sub ?? "");
+
+  try {
+    const result = await env.DB.prepare(
+      "UPDATE admins SET mfa_enabled = 0, mfa_secret = NULL, mfa_recovery_hash = NULL, mfa_enrolled_at = NULL WHERE email = ?"
+    )
+      .bind(targetEmail)
+      .run();
+    logJson("warn", "mfa_disabled", {
+      actor: auth.payload.sub,
+      target_email: targetEmail,
+      changes: (result.meta as { changes?: number })?.changes ?? 0,
+    });
+  } catch (err) {
+    logJson("error", "mfa_disable_write_error", { err: String(err) });
+    return json({ error: "service_unavailable" }, 503);
+  }
+  return json({ disabled: true, email: targetEmail });
+}
+
 async function handleAdminAuditList(request: Request, env: Env): Promise<Response> {
   const auth = await requireAuth(request, env, ["admin", "readonly"]);
   if (!auth.ok) return auth.response;
@@ -1807,6 +1983,12 @@ export default {
         response = await handleAdminMe(request, env);
       } else if (method === "GET" && path === "/api/admin/audit") {
         response = await handleAdminAuditList(request, env);
+      } else if (method === "POST" && path === "/api/admin/mfa/enroll") {
+        response = await handleMfaEnroll(request, env);
+      } else if (method === "POST" && path === "/api/admin/mfa/verify") {
+        response = await handleMfaVerify(request, env);
+      } else if (method === "POST" && path === "/api/admin/mfa/disable") {
+        response = await handleMfaDisable(request, env);
 
       // ── Public: licence ───────────────────────────────────────────────────
       } else if (method === "POST" && path === "/api/licence/validate") {

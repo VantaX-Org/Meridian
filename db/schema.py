@@ -561,6 +561,12 @@ class User(Base):
     permissions = Column(JSONB, nullable=True)
     password_hash = Column(Text, nullable=True)
     is_active = Column(Boolean, nullable=False, server_default="true")
+    # On first login with a default / seeded password, the user must
+    # rotate it before anything else works. Forced via
+    # `must_change_password` on the login response — the frontend
+    # routes to a password-change screen and every other API call
+    # returns 409 until rotation completes.
+    must_change_password = Column(Boolean, nullable=False, server_default="false")
     last_login = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(
         DateTime(timezone=True),

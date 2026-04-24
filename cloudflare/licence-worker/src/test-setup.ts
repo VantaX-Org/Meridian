@@ -81,7 +81,11 @@ CREATE TABLE IF NOT EXISTS admins (
     last_login_at TEXT,
     is_active INTEGER DEFAULT 1,
     failed_attempts INTEGER NOT NULL DEFAULT 0,
-    locked_until TEXT
+    locked_until TEXT,
+    mfa_secret TEXT,
+    mfa_enabled INTEGER NOT NULL DEFAULT 0,
+    mfa_enrolled_at TEXT,
+    mfa_recovery_hash TEXT
 );
 
 CREATE TABLE IF NOT EXISTS admin_sessions (
