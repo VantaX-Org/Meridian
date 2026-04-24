@@ -48,6 +48,7 @@ from api.routes.mining import router as mining_router
 from api.routes.process_mining import router as process_mining_router
 from api.routes.llm_metrics import router as llm_metrics_router
 from api.routes.admin_doctor import router as admin_doctor_router
+from api.routes.audit import router as audit_router
 
 logger = logging.getLogger("meridian")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -190,7 +191,11 @@ app.add_middleware(
 # Licence middleware — checks /api/v1/* routes
 from api.middleware.licence import LicenceMiddleware
 from api.middleware.tenant import TenantMiddleware
+from api.middleware.audit import AuditMiddleware
 
+# Audit middleware — logs mutations to audit_log. Added first so it sits
+# innermost in the stack, after Tenant + LocalAuth have populated request.state.
+app.add_middleware(AuditMiddleware)
 app.add_middleware(LicenceMiddleware)
 # Tenant middleware — resolves tenant_id and sets Postgres RLS context
 app.add_middleware(TenantMiddleware)
@@ -243,6 +248,7 @@ app.include_router(mining_router)
 app.include_router(process_mining_router)
 app.include_router(llm_metrics_router)
 app.include_router(admin_doctor_router)
+app.include_router(audit_router)
 
 from api.routes.auth import router as auth_router
 app.include_router(auth_router)
