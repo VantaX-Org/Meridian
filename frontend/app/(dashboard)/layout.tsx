@@ -226,6 +226,7 @@ import {
 import "@/app/sidebar-responsive.css";
 import { useAuth } from "@/context/auth-context";
 import { AskMeridian } from "@/components/ask-meridian";
+import { ForcePasswordChange } from "@/components/force-password-change";
 import { useRole } from "@/hooks/use-role";
 import { useLicence } from "@/hooks/use-licence";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -665,7 +666,7 @@ function SidebarNav({
 
 /* ─── Auth guard (local mode) ─── */
 function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, mustChangePassword } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -673,6 +674,12 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
       router.push("/sign-in");
     }
   }, [isLoading, user, router]);
+
+  // Force password change before any dashboard UI renders. Blocking
+  // overlay; user can explicitly sign out from inside it.
+  if (user && mustChangePassword) {
+    return <ForcePasswordChange />;
+  }
 
   if (isLoading) {
     return (
