@@ -5,7 +5,7 @@
 #   -v /opt/meridian/nginx/meridian.conf:/etc/nginx/conf.d/meridian.conf
 # =========================================================
 
-FROM nginx:1.27-alpine
+FROM nginx:1.29-alpine
 
 # Remove the default nginx config
 RUN rm /etc/nginx/conf.d/default.conf
