@@ -53,3 +53,4 @@ db/migrations/versions/__pycache__/
 
 # Wrangler build cache
 .wrangler/
+seed/

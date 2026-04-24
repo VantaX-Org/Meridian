@@ -70,7 +70,7 @@ async def llm_savings_summary(
               AND called_at >= :since
             """
         ),
-        {"tid": str(tenant.tenant_id), "since": since},
+        {"tid": str(tenant.id), "since": since},
     )
     row = result.fetchone()
     if row is None:
@@ -121,7 +121,7 @@ async def llm_savings_by_service(
             ORDER BY (llm_calls + det_hits) DESC
             """
         ),
-        {"tid": str(tenant.tenant_id), "since": since},
+        {"tid": str(tenant.id), "since": since},
     )
     rows = result.fetchall()
 

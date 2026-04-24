@@ -225,12 +225,16 @@ class ConfigIntelligencePersistence:
     ) -> Optional[str]:
         """Get the run_id before the current one."""
         await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
+        # SELECT DISTINCT + ORDER BY on a non-projected column is a Postgres
+        # error. GROUP BY + MAX() is the idiomatic fix: pick the run_id with
+        # the newest recorded_at, excluding the current one.
         row = (
             await db.execute(
                 text(
-                    "SELECT DISTINCT run_id FROM config_health_scores "
+                    "SELECT run_id FROM config_health_scores "
                     "WHERE tenant_id = :tid AND run_id != :rid "
-                    "ORDER BY recorded_at DESC LIMIT 1"
+                    "GROUP BY run_id "
+                    "ORDER BY MAX(recorded_at) DESC LIMIT 1"
                 ),
                 {"tid": tenant_id, "rid": current_run_id},
             )
