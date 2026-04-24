@@ -1,5 +1,9 @@
 import { beforeAll } from "vitest";
 import { env } from "cloudflare:test";
+import { hashPassword } from "../password-hash";
+
+export const TEST_ADMIN_EMAIL = "test-admin@meridian.local";
+export const TEST_ADMIN_PASSWORD = "test-admin-password-pbkdf2";
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS tenants (
@@ -56,13 +60,30 @@ CREATE TABLE IF NOT EXISTS tenant_users (
     tenant_id TEXT NOT NULL,
     email TEXT NOT NULL,
     password_hash TEXT NOT NULL,
+    password_salt TEXT NOT NULL DEFAULT '',
+    password_scheme TEXT NOT NULL DEFAULT 'sha256',
+    is_active INTEGER NOT NULL DEFAULT 1,
+    last_login_at TEXT,
     role TEXT NOT NULL DEFAULT 'admin',
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     UNIQUE(tenant_id, email)
 );
 
+CREATE TABLE IF NOT EXISTS admins (
+    id TEXT PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    password_salt TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'readonly' CHECK (role IN ('admin', 'readonly')),
+    created_at TEXT,
+    updated_at TEXT,
+    last_login_at TEXT,
+    is_active INTEGER DEFAULT 1
+);
+
 CREATE INDEX IF NOT EXISTS idx_tenants_key_hash ON tenants(licence_key_hash);
+CREATE INDEX IF NOT EXISTS idx_admins_email ON admins(email);
 CREATE INDEX IF NOT EXISTS idx_rules_module ON rules(module);
 CREATE INDEX IF NOT EXISTS idx_rules_category ON rules(category);
 CREATE INDEX IF NOT EXISTS idx_field_mappings_tenant ON field_mappings(tenant_id, module);
@@ -79,4 +100,16 @@ beforeAll(async () => {
   for (const stmt of statements) {
     await db.prepare(stmt).run();
   }
+
+  // Seed a PBKDF2-hashed admin for tests that need to go through the
+  // real /api/admin/login + JWT flow (which every admin endpoint now
+  // requires — the old X-Admin-Secret path has been gone for a while).
+  const { hash, salt } = await hashPassword(TEST_ADMIN_PASSWORD);
+  await db
+    .prepare(
+      "INSERT OR REPLACE INTO admins (id, email, password_hash, password_salt, role, is_active) " +
+      "VALUES (?, ?, ?, ?, 'admin', 1)"
+    )
+    .bind("test-admin-id", TEST_ADMIN_EMAIL, hash, salt)
+    .run();
 });
