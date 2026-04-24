@@ -1,0 +1,139 @@
+groups:
+  - name: meridian-api
+    rules:
+      # ── Availability ─────────────────────────────────────────────────
+      - alert: ApiDown
+        expr: up{job="meridian-api"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          runbook: api-down
+        annotations:
+          summary: "Meridian API is unreachable"
+          description: |
+            Prometheus has been unable to scrape api:8000 for 2 minutes.
+            Check the container: `docker compose logs api --tail=100`.
+
+      # ── Error rate ───────────────────────────────────────────────────
+      # >1% 5xx sustained for 5 minutes.
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(meridian_http_requests_total{status=~"5.."}[5m]))
+            /
+            sum(rate(meridian_http_requests_total[5m]))
+          ) > 0.01
+        for: 5m
+        labels:
+          severity: warning
+          runbook: high-error-rate
+        annotations:
+          summary: "HTTP 5xx rate over 1%"
+          description: |
+            More than 1% of requests are returning 5xx for the last 5 min.
+            Current: {{ $value | humanizePercentage }}
+
+      # ── Request latency — p95 over 2s for 10 min ─────────────────────
+      - alert: HighP95Latency
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le, route) (
+              rate(meridian_http_request_duration_seconds_bucket[5m])
+            )
+          ) > 2
+        for: 10m
+        labels:
+          severity: warning
+          runbook: high-latency
+        annotations:
+          summary: "p95 latency over 2s on {{ $labels.route }}"
+          description: |
+            p95 latency on route {{ $labels.route }} has been above 2s for
+            10 minutes. Current p95: {{ $value | humanizeDuration }}
+
+  - name: meridian-infra
+    rules:
+      # ── Database ─────────────────────────────────────────────────────
+      # The admin /doctor endpoint exposes pg health. We probe it via
+      # meridian_http_requests_total with a 5xx — but a cleaner signal
+      # is a dedicated `meridian_db_up` gauge if added. For now: any
+      # sustained DB error trips this.
+      - alert: DatabaseErrors
+        expr: |
+          sum(rate(meridian_http_requests_total{status="503"}[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+          runbook: db-down
+        annotations:
+          summary: "Sustained 503s — likely DB issue"
+          description: |
+            The API is returning 503s at >0.1/s for 5 minutes. Most
+            likely the Postgres backend. Check:
+              docker compose logs db --tail=100
+              docker compose exec db pg_isready -U meridian
+
+      # ── Audit flush lag ──────────────────────────────────────────────
+      # meridian_audit_pending is set by AuditMiddleware's in-flight
+      # counter. Over 100 means writes aren't draining.
+      - alert: AuditBacklog
+        expr: meridian_audit_pending > 100
+        for: 5m
+        labels:
+          severity: warning
+          runbook: audit-backlog
+        annotations:
+          summary: "audit_log write backlog over 100 pending"
+          description: |
+            {{ $value }} audit writes are in flight. The DB or the
+            worker engine may be overloaded — check worker CPU + DB
+            connection count.
+
+  - name: meridian-llm
+    rules:
+      # ── LLM unreachable for 10+ minutes ──────────────────────────────
+      # meridian_llm_calls_total with result=error building up while
+      # result=success doesn't — classic "provider is down" signal.
+      - alert: LlmUnreachable
+        expr: |
+          (
+            sum(rate(meridian_llm_calls_total{result="error"}[10m]))
+            /
+            clamp_min(sum(rate(meridian_llm_calls_total[10m])), 0.001)
+          ) > 0.5
+          and
+          sum(rate(meridian_llm_calls_total{result="error"}[10m])) > 0.01
+        for: 10m
+        labels:
+          severity: warning
+          runbook: llm-unreachable
+        annotations:
+          summary: "LLM provider error rate over 50%"
+          description: |
+            More than half of LLM calls have been erroring for 10 min.
+            Check: /api/v1/admin/doctor → llm subsystem, then the
+            configured provider endpoint.
+
+  - name: meridian-licence
+    rules:
+      # ── Licence validation failures ──────────────────────────────────
+      # The licence middleware increments a counter/log when Cloudflare
+      # responds non-200 or the JWT fails. We use the generic HTTP
+      # counter with /api/v1/licence path since that's the public
+      # endpoint customers probe.
+      - alert: LicenceValidationFailing
+        expr: |
+          sum(rate(meridian_http_requests_total{route="/api/v1/licence", status!~"2.."}[10m])) > 0.1
+        for: 15m
+        labels:
+          severity: critical
+          runbook: licence-validation-failing
+        annotations:
+          summary: "Licence validation failing"
+          description: |
+            /api/v1/licence has returned non-2xx at >0.1/s for 15 min.
+            The licence manifest fetch is broken — either the licence
+            server is unreachable (network issue at the customer site)
+            or the stored key has expired. Affects customer access to
+            feature gates.
