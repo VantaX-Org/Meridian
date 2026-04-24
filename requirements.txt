@@ -33,7 +33,7 @@ jellyfish>=1.0.0
 thefuzz>=0.22.0
 
 # Observability — Prometheus metrics + JSON structured logs
-prometheus-client>=0.21.0
+prometheus-client>=0.25.0
 python-json-logger>=3.2.0
 
 # LLM
