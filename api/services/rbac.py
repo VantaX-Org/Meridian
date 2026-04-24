@@ -32,23 +32,34 @@ PERMISSIONS: dict[str, set[str]] = {
         "manage_users", "manage_rules", "manage_field_mappings", "manage_llm",
         "ai_feedback", "review_ai_rules", "trigger_ai", "view_ai_confidence",
         "trigger_sync",
+        # mdm.* — mining pipeline + llm-savings endpoints. Admin gets both
+        # read and write. These were added to route guards in an earlier
+        # phase but the PERMISSIONS dict was never updated, so every role
+        # 403'd. Sweep-added here.
+        "mdm.read", "mdm.write",
     },
     "manager": {
         "view", "upload", "analyse", "approve", "apply", "export",
         "ai_feedback", "trigger_ai", "view_ai_confidence", "trigger_sync",
+        "mdm.read", "mdm.write",
     },
-    "viewer": {"view"},
+    "viewer": {"view", "mdm.read"},
 
     # ── Legacy roles (backward compat) ────────────────────────────────────
     "steward": {
         "view", "upload", "analyse", "approve", "apply", "export", "manage_rules",
         "ai_feedback", "review_ai_rules", "trigger_ai", "view_ai_confidence",
         "trigger_sync",
+        "mdm.read", "mdm.write",
     },
-    "analyst": {"view", "upload", "analyse", "export", "trigger_ai", "view_ai_confidence", "trigger_sync"},
-    "approver": {"view", "approve", "export"},
-    "auditor": {"view", "export"},
-    "ai_reviewer": {"view", "view_ai_confidence", "review_ai_rules", "ai_feedback"},
+    "analyst": {
+        "view", "upload", "analyse", "export", "trigger_ai", "view_ai_confidence",
+        "trigger_sync",
+        "mdm.read",
+    },
+    "approver": {"view", "approve", "export", "mdm.read"},
+    "auditor": {"view", "export", "mdm.read"},
+    "ai_reviewer": {"view", "view_ai_confidence", "review_ai_rules", "ai_feedback", "mdm.read"},
 }
 
 # All valid role values accepted by the users table

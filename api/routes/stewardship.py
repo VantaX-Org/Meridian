@@ -11,9 +11,9 @@ GET  /api/v1/stewardship/metrics        — steward productivity metrics
 
 import uuid as uuid_mod
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,6 +22,11 @@ from api.deps import Tenant, get_db, get_tenant
 from api.services.rbac import has_permission, require_permission
 
 router = APIRouter(prefix="/api/v1", tags=["stewardship"])
+
+# Enforce UUID format on {item_id} params so FastAPI doesn't match literal
+# routes like /stewardship/metrics or /stewardship/bulk-approve through
+# the UUID-typed handler (which would 500 inside asyncpg's bind step).
+_UUID_RE = r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
 
 
 # ── Request/Response models ──────────────────────────────────────────────────
@@ -207,265 +212,6 @@ async def list_queue_items(
     )
 
 
-# ── GET /stewardship/{id} — single item with context ────────────────────────
-
-
-@router.get("/stewardship/{item_id}", response_model=QueueItemOut)
-async def get_queue_item(
-    item_id: str,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-    tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("view")),
-):
-    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
-
-    role = await _get_user_role(db, tenant, request)
-    if has_permission(role, "view_ai_confidence"):
-        select_cols = QUEUE_COLUMNS
-    else:
-        select_cols = QUEUE_COLUMNS.replace("ai_recommendation", "NULL as ai_recommendation").replace(
-            "ai_confidence", "NULL as ai_confidence"
-        )
-
-    result = await db.execute(
-        text(f"SELECT {select_cols} FROM stewardship_queue sq WHERE sq.id = :id AND sq.tenant_id = :tid"),
-        {"id": item_id, "tid": str(tenant.id)},
-    )
-    row = result.fetchone()
-    if not row:
-        raise HTTPException(status_code=404, detail="Queue item not found")
-
-    return _row_to_item(row)
-
-
-# ── PUT /stewardship/{id}/assign ─────────────────────────────────────────────
-
-
-@router.put("/stewardship/{item_id}/assign")
-async def assign_queue_item(
-    item_id: str,
-    body: AssignBody,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-    tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("approve")),
-):
-    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
-
-    result = await db.execute(
-        text("UPDATE stewardship_queue SET assigned_to = :uid, status = 'in_progress', updated_at = now() WHERE id = :id AND tenant_id = :tid RETURNING id"),
-        {"uid": body.user_id, "id": item_id, "tid": str(tenant.id)},
-    )
-    if not result.fetchone():
-        raise HTTPException(status_code=404, detail="Queue item not found")
-
-    await db.commit()
-    return {"id": item_id, "status": "in_progress", "assigned_to": body.user_id}
-
-
-# ── PUT /stewardship/{id}/resolve ────────────────────────────────────────────
-
-
-@router.put("/stewardship/{item_id}/resolve")
-async def resolve_queue_item(
-    item_id: str,
-    body: ResolveBody,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-    tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("approve")),
-):
-    """Resolve a queue item — approve or reject.
-
-    ai_reviewer role CANNOT resolve data actions (HTTP 403).
-    """
-    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
-
-    role = await _get_user_role(db, tenant, request)
-    if role == "ai_reviewer":
-        raise HTTPException(
-            status_code=403,
-            detail="AI Reviewer role cannot approve data actions. Contact a Steward or Admin.",
-        )
-
-    if body.action not in ("approve", "reject"):
-        raise HTTPException(status_code=400, detail="action must be 'approve' or 'reject'")
-
-    # Fetch the queue item
-    result = await db.execute(
-        text(f"SELECT {QUEUE_COLUMNS} FROM stewardship_queue WHERE id = :id AND tenant_id = :tid"),
-        {"id": item_id, "tid": str(tenant.id)},
-    )
-    row = result.fetchone()
-    if not row:
-        raise HTTPException(status_code=404, detail="Queue item not found")
-
-    item = _row_to_item(row)
-    user_id = await _resolve_user_id(db, tenant, request)
-
-    # Apply the resolution to the source record
-    await _apply_source_action(db, item, body.action, user_id, body.notes)
-
-    # Mark queue item resolved
-    await db.execute(
-        text("UPDATE stewardship_queue SET status = 'resolved', updated_at = now() WHERE id = :id AND tenant_id = :tid"),
-        {"id": item_id, "tid": str(tenant.id)},
-    )
-
-    await db.commit()
-    return {"id": item_id, "status": "resolved", "action": body.action}
-
-
-async def _apply_source_action(
-    db: AsyncSession, item: QueueItemOut, action: str, user_id: str, notes: str | None
-) -> None:
-    """Apply the steward's decision to the source record."""
-    if item.item_type == "merge_decision":
-        if action == "approve":
-            await db.execute(
-                text("UPDATE match_scores SET reviewed_by = :uid, reviewed_at = now() WHERE id = :sid"),
-                {"uid": user_id, "sid": item.source_id},
-            )
-        # reject leaves match_score unreviewed
-
-    elif item.item_type == "golden_record_review":
-        if action == "approve":
-            await db.execute(
-                text("UPDATE master_records SET status = 'golden', promoted_by = :uid, promoted_at = now() WHERE id = :sid"),
-                {"uid": user_id, "sid": item.source_id},
-            )
-            # Create individual audit trail entry
-            await db.execute(
-                text("""
-                    INSERT INTO master_record_history (id, tenant_id, master_record_id, action, changed_by, changed_at, details)
-                    VALUES (gen_random_uuid(), :tid, :mid, 'promoted_via_workbench', :uid, now(), :details)
-                """),
-                {"tid": item.tenant_id, "mid": item.source_id, "uid": user_id, "details": f'{{"notes": "{notes or ""}"}}'},
-            )
-        elif action == "reject":
-            await db.execute(
-                text("UPDATE master_records SET status = 'candidate' WHERE id = :sid"),
-                {"sid": item.source_id},
-            )
-
-    elif item.item_type == "exception":
-        if action == "approve":
-            await db.execute(
-                text("UPDATE exceptions SET status = 'resolved', resolved_at = now(), resolution_notes = :notes WHERE id = :sid"),
-                {"sid": item.source_id, "notes": notes or "Resolved via stewardship workbench"},
-            )
-
-    elif item.item_type == "writeback_approval":
-        if action == "approve":
-            await db.execute(
-                text("UPDATE cleaning_queue SET status = 'applied', applied_at = now() WHERE id = :sid"),
-                {"sid": item.source_id},
-            )
-        elif action == "reject":
-            await db.execute(
-                text("UPDATE cleaning_queue SET status = 'rejected' WHERE id = :sid"),
-                {"sid": item.source_id},
-            )
-
-    elif item.item_type == "glossary_review":
-        if action == "approve":
-            await db.execute(
-                text("UPDATE glossary_terms SET last_reviewed_at = now(), updated_at = now() WHERE id = :sid"),
-                {"sid": item.source_id},
-            )
-
-
-# ── PUT /stewardship/{id}/escalate ───────────────────────────────────────────
-
-
-@router.put("/stewardship/{item_id}/escalate")
-async def escalate_queue_item(
-    item_id: str,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-    tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("view")),
-):
-    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
-
-    result = await db.execute(
-        text(
-            "UPDATE stewardship_queue SET status = 'escalated', priority = GREATEST(priority - 1, 1), updated_at = now() "
-            "WHERE id = :id AND tenant_id = :tid RETURNING id"
-        ),
-        {"id": item_id, "tid": str(tenant.id)},
-    )
-    if not result.fetchone():
-        raise HTTPException(status_code=404, detail="Queue item not found")
-
-    await db.commit()
-    return {"id": item_id, "status": "escalated"}
-
-
-# ── POST /stewardship/bulk-approve ───────────────────────────────────────────
-
-
-@router.post("/stewardship/bulk-approve", response_model=BulkApproveResponse)
-async def bulk_approve(
-    body: BulkApproveBody,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-    tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("approve")),
-):
-    """Bulk approve items above a confidence threshold.
-
-    Creates individual audit trail entries for each item (not one bulk row).
-    ai_reviewer role returns 403.
-    """
-    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
-
-    role = await _get_user_role(db, tenant, request)
-    if role == "ai_reviewer":
-        raise HTTPException(
-            status_code=403,
-            detail="AI Reviewer role cannot approve data actions. Contact a Steward or Admin.",
-        )
-
-    user_id = await _resolve_user_id(db, tenant, request)
-    approved = 0
-    history_rows = 0
-
-    for iid in body.item_ids:
-        result = await db.execute(
-            text(f"SELECT {QUEUE_COLUMNS} FROM stewardship_queue WHERE id = :id AND tenant_id = :tid AND status IN ('open', 'in_progress')"),
-            {"id": iid, "tid": str(tenant.id)},
-        )
-        row = result.fetchone()
-        if not row:
-            continue
-
-        item = _row_to_item(row)
-
-        # Only approve if above confidence threshold
-        if item.ai_confidence is not None and item.ai_confidence < body.min_confidence:
-            continue
-
-        # Apply source action individually
-        await _apply_source_action(db, item, "approve", user_id, "Bulk approved via stewardship workbench")
-        approved += 1
-
-        # Individual history row for golden_record_review items
-        if item.item_type == "golden_record_review":
-            history_rows += 1
-
-        # Mark resolved
-        await db.execute(
-            text("UPDATE stewardship_queue SET status = 'resolved', updated_at = now() WHERE id = :id"),
-            {"id": iid},
-        )
-
-    await db.commit()
-
-    return BulkApproveResponse(approved=approved, history_rows_created=history_rows)
-
-
 # ── GET /stewardship/metrics ─────────────────────────────────────────────────
 
 
@@ -593,3 +339,264 @@ async def get_stewardship_metrics(
         ai_acceptance_rate=ai_acceptance_rate,
         steward_breakdown=steward_breakdown,
     )
+
+
+# ── GET /stewardship/{id} — single item with context ────────────────────────
+
+
+@router.get("/stewardship/{item_id}", response_model=QueueItemOut)
+async def get_queue_item(
+    item_id: Annotated[str, Path(pattern=_UUID_RE)],
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("view")),
+):
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
+
+    role = await _get_user_role(db, tenant, request)
+    if has_permission(role, "view_ai_confidence"):
+        select_cols = QUEUE_COLUMNS
+    else:
+        select_cols = QUEUE_COLUMNS.replace("ai_recommendation", "NULL as ai_recommendation").replace(
+            "ai_confidence", "NULL as ai_confidence"
+        )
+
+    result = await db.execute(
+        text(f"SELECT {select_cols} FROM stewardship_queue sq WHERE sq.id = :id AND sq.tenant_id = :tid"),
+        {"id": item_id, "tid": str(tenant.id)},
+    )
+    row = result.fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Queue item not found")
+
+    return _row_to_item(row)
+
+
+# ── PUT /stewardship/{id}/assign ─────────────────────────────────────────────
+
+
+@router.put("/stewardship/{item_id}/assign")
+async def assign_queue_item(
+    item_id: Annotated[str, Path(pattern=_UUID_RE)],
+    body: AssignBody,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("approve")),
+):
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
+
+    result = await db.execute(
+        text("UPDATE stewardship_queue SET assigned_to = :uid, status = 'in_progress', updated_at = now() WHERE id = :id AND tenant_id = :tid RETURNING id"),
+        {"uid": body.user_id, "id": item_id, "tid": str(tenant.id)},
+    )
+    if not result.fetchone():
+        raise HTTPException(status_code=404, detail="Queue item not found")
+
+    await db.commit()
+    return {"id": item_id, "status": "in_progress", "assigned_to": body.user_id}
+
+
+# ── PUT /stewardship/{id}/resolve ────────────────────────────────────────────
+
+
+@router.put("/stewardship/{item_id}/resolve")
+async def resolve_queue_item(
+    item_id: Annotated[str, Path(pattern=_UUID_RE)],
+    body: ResolveBody,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("approve")),
+):
+    """Resolve a queue item — approve or reject.
+
+    ai_reviewer role CANNOT resolve data actions (HTTP 403).
+    """
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
+
+    role = await _get_user_role(db, tenant, request)
+    if role == "ai_reviewer":
+        raise HTTPException(
+            status_code=403,
+            detail="AI Reviewer role cannot approve data actions. Contact a Steward or Admin.",
+        )
+
+    if body.action not in ("approve", "reject"):
+        raise HTTPException(status_code=400, detail="action must be 'approve' or 'reject'")
+
+    # Fetch the queue item
+    result = await db.execute(
+        text(f"SELECT {QUEUE_COLUMNS} FROM stewardship_queue WHERE id = :id AND tenant_id = :tid"),
+        {"id": item_id, "tid": str(tenant.id)},
+    )
+    row = result.fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Queue item not found")
+
+    item = _row_to_item(row)
+    user_id = await _resolve_user_id(db, tenant, request)
+
+    # Apply the resolution to the source record
+    await _apply_source_action(db, item, body.action, user_id, body.notes)
+
+    # Mark queue item resolved
+    await db.execute(
+        text("UPDATE stewardship_queue SET status = 'resolved', updated_at = now() WHERE id = :id AND tenant_id = :tid"),
+        {"id": item_id, "tid": str(tenant.id)},
+    )
+
+    await db.commit()
+    return {"id": item_id, "status": "resolved", "action": body.action}
+
+
+async def _apply_source_action(
+    db: AsyncSession, item: QueueItemOut, action: str, user_id: str, notes: str | None
+) -> None:
+    """Apply the steward's decision to the source record."""
+    if item.item_type == "merge_decision":
+        if action == "approve":
+            await db.execute(
+                text("UPDATE match_scores SET reviewed_by = :uid, reviewed_at = now() WHERE id = :sid"),
+                {"uid": user_id, "sid": item.source_id},
+            )
+        # reject leaves match_score unreviewed
+
+    elif item.item_type == "golden_record_review":
+        if action == "approve":
+            await db.execute(
+                text("UPDATE master_records SET status = 'golden', promoted_by = :uid, promoted_at = now() WHERE id = :sid"),
+                {"uid": user_id, "sid": item.source_id},
+            )
+            # Create individual audit trail entry
+            await db.execute(
+                text("""
+                    INSERT INTO master_record_history (id, tenant_id, master_record_id, action, changed_by, changed_at, details)
+                    VALUES (gen_random_uuid(), :tid, :mid, 'promoted_via_workbench', :uid, now(), :details)
+                """),
+                {"tid": item.tenant_id, "mid": item.source_id, "uid": user_id, "details": f'{{"notes": "{notes or ""}"}}'},
+            )
+        elif action == "reject":
+            await db.execute(
+                text("UPDATE master_records SET status = 'candidate' WHERE id = :sid"),
+                {"sid": item.source_id},
+            )
+
+    elif item.item_type == "exception":
+        if action == "approve":
+            await db.execute(
+                text("UPDATE exceptions SET status = 'resolved', resolved_at = now(), resolution_notes = :notes WHERE id = :sid"),
+                {"sid": item.source_id, "notes": notes or "Resolved via stewardship workbench"},
+            )
+
+    elif item.item_type == "writeback_approval":
+        if action == "approve":
+            await db.execute(
+                text("UPDATE cleaning_queue SET status = 'applied', applied_at = now() WHERE id = :sid"),
+                {"sid": item.source_id},
+            )
+        elif action == "reject":
+            await db.execute(
+                text("UPDATE cleaning_queue SET status = 'rejected' WHERE id = :sid"),
+                {"sid": item.source_id},
+            )
+
+    elif item.item_type == "glossary_review":
+        if action == "approve":
+            await db.execute(
+                text("UPDATE glossary_terms SET last_reviewed_at = now(), updated_at = now() WHERE id = :sid"),
+                {"sid": item.source_id},
+            )
+
+
+# ── PUT /stewardship/{id}/escalate ───────────────────────────────────────────
+
+
+@router.put("/stewardship/{item_id}/escalate")
+async def escalate_queue_item(
+    item_id: Annotated[str, Path(pattern=_UUID_RE)],
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("view")),
+):
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
+
+    result = await db.execute(
+        text(
+            "UPDATE stewardship_queue SET status = 'escalated', priority = GREATEST(priority - 1, 1), updated_at = now() "
+            "WHERE id = :id AND tenant_id = :tid RETURNING id"
+        ),
+        {"id": item_id, "tid": str(tenant.id)},
+    )
+    if not result.fetchone():
+        raise HTTPException(status_code=404, detail="Queue item not found")
+
+    await db.commit()
+    return {"id": item_id, "status": "escalated"}
+
+
+# ── POST /stewardship/bulk-approve ───────────────────────────────────────────
+
+
+@router.post("/stewardship/bulk-approve", response_model=BulkApproveResponse)
+async def bulk_approve(
+    body: BulkApproveBody,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("approve")),
+):
+    """Bulk approve items above a confidence threshold.
+
+    Creates individual audit trail entries for each item (not one bulk row).
+    ai_reviewer role returns 403.
+    """
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
+
+    role = await _get_user_role(db, tenant, request)
+    if role == "ai_reviewer":
+        raise HTTPException(
+            status_code=403,
+            detail="AI Reviewer role cannot approve data actions. Contact a Steward or Admin.",
+        )
+
+    user_id = await _resolve_user_id(db, tenant, request)
+    approved = 0
+    history_rows = 0
+
+    for iid in body.item_ids:
+        result = await db.execute(
+            text(f"SELECT {QUEUE_COLUMNS} FROM stewardship_queue WHERE id = :id AND tenant_id = :tid AND status IN ('open', 'in_progress')"),
+            {"id": iid, "tid": str(tenant.id)},
+        )
+        row = result.fetchone()
+        if not row:
+            continue
+
+        item = _row_to_item(row)
+
+        # Only approve if above confidence threshold
+        if item.ai_confidence is not None and item.ai_confidence < body.min_confidence:
+            continue
+
+        # Apply source action individually
+        await _apply_source_action(db, item, "approve", user_id, "Bulk approved via stewardship workbench")
+        approved += 1
+
+        # Individual history row for golden_record_review items
+        if item.item_type == "golden_record_review":
+            history_rows += 1
+
+        # Mark resolved
+        await db.execute(
+            text("UPDATE stewardship_queue SET status = 'resolved', updated_at = now() WHERE id = :id"),
+            {"id": iid},
+        )
+
+    await db.commit()
+
+    return BulkApproveResponse(approved=approved, history_rows_created=history_rows)
+
+

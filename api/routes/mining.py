@@ -105,7 +105,7 @@ async def trigger_mining(
     # Sanity-check the version exists and belongs to this tenant (RLS will also enforce).
     result = await db.execute(
         text("SELECT id FROM analysis_versions WHERE id = :vid AND tenant_id = :tid"),
-        {"vid": body.version_id, "tid": str(tenant.tenant_id)},
+        {"vid": body.version_id, "tid": str(tenant.id)},
     )
     if result.fetchone() is None:
         raise HTTPException(status_code=404, detail="version not found")
@@ -114,7 +114,7 @@ async def trigger_mining(
 
     include = body.include or ["dedup", "anomaly", "relationship"]
     async_result = run_mining_for_version.delay(
-        str(tenant.tenant_id), body.version_id,
+        str(tenant.id), body.version_id,
         modules=body.modules, include=include,
     )
     return RunMiningResponse(
@@ -138,7 +138,7 @@ async def list_duplicates(
     _: None = Depends(require_permission("mdm.read")),
 ) -> list[DuplicatePair]:
     clauses = ["tenant_id = :tid", "match_score >= :min_score"]
-    params: dict = {"tid": str(tenant.tenant_id), "min_score": min_score, "limit": limit}
+    params: dict = {"tid": str(tenant.id), "min_score": min_score, "limit": limit}
     if version_id:
         clauses.append("version_id = :vid")
         params["vid"] = version_id
@@ -179,7 +179,7 @@ async def list_anomalies(
     _: None = Depends(require_permission("mdm.read")),
 ) -> list[AnomalyItem]:
     clauses = ["tenant_id = :tid"]
-    params: dict = {"tid": str(tenant.tenant_id), "limit": limit}
+    params: dict = {"tid": str(tenant.id), "limit": limit}
     if version_id:
         clauses.append("version_id = :vid")
         params["vid"] = version_id
@@ -227,7 +227,7 @@ async def list_relationships(
     _: None = Depends(require_permission("mdm.read")),
 ) -> list[RelationshipItem]:
     clauses = ["tenant_id = :tid", "strength_score >= :min_strength"]
-    params: dict = {"tid": str(tenant.tenant_id), "min_strength": min_strength, "limit": limit}
+    params: dict = {"tid": str(tenant.id), "min_strength": min_strength, "limit": limit}
     if version_id:
         clauses.append("version_id = :vid")
         params["vid"] = version_id
@@ -280,7 +280,7 @@ async def mining_summary(
                 GROUP BY module_id
                 """
             ),
-            {"tid": str(tenant.tenant_id), "vid": version_id},
+            {"tid": str(tenant.id), "vid": version_id},
         )
         for module_id, count in result.fetchall():
             per_module.setdefault(module_id, {"duplicates": 0, "anomalies": 0, "relationships": 0})
