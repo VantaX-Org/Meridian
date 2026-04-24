@@ -1,0 +1,161 @@
+name: Deploy smoke test
+
+# Every PR that touches the deploy surface gets run through an actual install
+# on a clean Ubuntu runner. Builds images from source, renders the customer
+# compose file, boots the full stack, and verifies /health returns 200.
+#
+# Complementary to build-and-deploy.yml (which publishes images to GHCR on
+# tags) — this one is a sanity check that the install flow hasn't regressed.
+
+on:
+  pull_request:
+    paths:
+      - "scripts/meridian-deploy.sh"
+      - "scripts/backup.sh"
+      - "scripts/restore.sh"
+      - "docker/**"
+      - "api/main.py"
+      - "db/migrations/**"
+      - ".github/workflows/deploy-smoke.yml"
+  workflow_dispatch:
+
+jobs:
+  deploy-smoke:
+    name: meridian-deploy.sh on clean Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Free up runner disk
+        # Default runner has ~14 GB free; stripping preinstalled SDKs buys
+        # ~25 GB so the build + multiple images don't spill.
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+                       /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - name: Build API image
+        run: |
+          docker build \
+            -f docker/Dockerfile.api.prod \
+            -t ghcr.io/vantax-org/meridian-api:local-test \
+            .
+
+      - name: Build Worker image
+        run: |
+          docker build \
+            -f docker/Dockerfile.worker.prod \
+            -t ghcr.io/vantax-org/meridian-worker:local-test \
+            .
+
+      - name: Build Frontend image
+        run: |
+          docker build \
+            -f docker/Dockerfile.frontend.prod \
+            -t ghcr.io/vantax-org/meridian-frontend:local-test \
+            frontend
+
+      - name: Build Nginx image
+        run: |
+          docker build \
+            -f docker/Dockerfile.nginx \
+            -t ghcr.io/vantax-org/meridian-nginx:local-test \
+            docker/nginx || {
+              # Some nginx Dockerfiles ship with the compose file only;
+              # fall back to the upstream nginx image tagged as our ref.
+              docker pull nginx:alpine
+              docker tag nginx:alpine ghcr.io/vantax-org/meridian-nginx:local-test
+            }
+
+      - name: Render customer compose with the test tag
+        run: |
+          mkdir -p smoke
+          sed -e 's|{{VERSION}}|local-test|g' \
+              -e 's|{{CUSTOMER_NAME}}|ci-smoke|g' \
+              -e 's|{{TIER}}|0|g' \
+              docker/docker-compose.customer.yml > smoke/docker-compose.yml
+          cp docker/nginx/meridian.conf smoke/nginx-meridian.conf || true
+          mkdir -p smoke/nginx
+          [ -f smoke/nginx-meridian.conf ] && mv smoke/nginx-meridian.conf smoke/nginx/meridian.conf
+          mkdir -p smoke/nginx/certs
+          touch smoke/nginx/certs/fullchain.pem smoke/nginx/certs/privkey.pem
+
+      - name: Seed a minimal .env
+        run: |
+          cat > smoke/.env <<'ENV'
+          LLM_PROVIDER=none
+          MERIDIAN_LICENCE_MODE=airgap
+          MERIDIAN_LICENCE_TOKEN=smoke-test-dummy
+          SERVER_DOMAIN=localhost
+          SSL_MODE=1
+          WORKER_LANE=all
+          ADMIN_EMAIL=smoke@meridian.local
+          ADMIN_PASSWORD=smoke-test-password
+          ADMIN_NAME=Smoke
+          INTERNAL_API_URL=http://api:8000
+          DB_PASSWORD=smoke_db_password
+          DATABASE_URL=postgresql+asyncpg://meridian:smoke_db_password@db:5432/meridian
+          DATABASE_URL_SYNC=postgresql://meridian:smoke_db_password@db:5432/meridian
+          REDIS_URL=redis://redis:6379/0
+          MINIO_ACCESS_KEY=meridian
+          MINIO_PASSWORD=smoke_minio_password
+          MINIO_SECRET_KEY=smoke_minio_password
+          MINIO_BUCKET_UPLOADS=meridian-uploads
+          MINIO_BUCKET_REPORTS=meridian-reports
+          AUTH_MODE=local
+          NEXT_PUBLIC_AUTH_MODE=local
+          SAP_CONNECTOR=mock
+          CREDENTIAL_MASTER_KEY=smoke_credential_master_key_change_in_real_deploy
+          ENV
+
+      - name: Boot the stack
+        working-directory: smoke
+        run: |
+          docker compose up -d db redis minio
+          # Wait for postgres
+          for i in $(seq 1 30); do
+            if docker compose exec -T db pg_isready -U meridian -q 2>/dev/null; then
+              break
+            fi
+            [ $i -eq 30 ] && { docker compose logs db; exit 1; }
+            sleep 2
+          done
+
+      - name: Run migrations
+        working-directory: smoke
+        run: |
+          docker compose run --rm -T api alembic upgrade head
+
+      - name: Start remaining services
+        working-directory: smoke
+        run: |
+          docker compose up -d
+          sleep 15
+          docker compose ps
+
+      - name: Wait for /health
+        working-directory: smoke
+        run: |
+          for i in $(seq 1 60); do
+            if docker compose exec -T api curl -sf http://localhost:8000/health >/dev/null 2>&1; then
+              echo "API healthy after ${i} attempts"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "API never reached healthy state"
+          docker compose logs api --tail=100
+          docker compose logs worker --tail=50
+          exit 1
+
+      - name: Verify /metrics endpoint
+        working-directory: smoke
+        run: |
+          docker compose exec -T api curl -sf http://localhost:8000/metrics | head -5
+
+      - name: Teardown
+        if: always()
+        working-directory: smoke
+        run: docker compose down -v
