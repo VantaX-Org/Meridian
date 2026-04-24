@@ -119,7 +119,14 @@ async def lifespan(app: FastAPI):
                     await session.commit()
                     logger.info("Dev tenant jwt_secret generated")
 
-                # Ensure at least one admin user exists for local auth
+                # Ensure at least one admin user exists for local auth.
+                # Migration 039 FORCEs RLS on `users` — so we MUST set the
+                # tenant context before the COUNT / INSERT, otherwise
+                # current_setting('app.tenant_id') is empty and the ::uuid
+                # cast fails.
+                await session.execute(
+                    text("SET app.tenant_id = '00000000-0000-0000-0000-000000000001'")
+                )
                 user_count = await session.execute(
                     text("SELECT COUNT(*) FROM users WHERE tenant_id = '00000000-0000-0000-0000-000000000001'")
                 )

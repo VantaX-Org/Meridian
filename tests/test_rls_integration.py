@@ -30,7 +30,15 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.fixture(scope="module")
 def engine():
-    """Sync engine against the test DB, with migrations applied once."""
+    """Sync engine against the test DB, with migrations applied once.
+
+    Yields two engines:
+      - `eng` (owner) for schema setup + tenant-table seeds. This is the
+        superuser-ish role the migrations run under; it bypasses RLS.
+      - `app_eng` (non-superuser role) for the RLS assertions themselves.
+        FORCE ROW LEVEL SECURITY (migration 039) only applies to
+        non-superusers, so this is what actually exercises the policy.
+    """
     from sqlalchemy import create_engine, text
 
     url = os.environ["MERIDIAN_TEST_DB_URL"]
@@ -64,18 +72,51 @@ def engine():
     if result.returncode != 0:
         pytest.fail(f"alembic upgrade failed:\n{result.stderr}")
 
-    yield eng
+    # Create a NON-superuser role that can read/write every RLS-enabled
+    # table but doesn't have BYPASSRLS. This is what the test uses for
+    # the actual policy assertions — mirroring how prod *should* run
+    # (dedicated app role, not the schema owner).
+    with eng.begin() as conn:
+        conn.execute(text("DROP ROLE IF EXISTS meridian_rls_app"))
+        conn.execute(text("CREATE ROLE meridian_rls_app LOGIN PASSWORD 'rls_app_pw' NOSUPERUSER NOBYPASSRLS"))
+        # Grant access to public schema + every table.
+        conn.execute(text("GRANT USAGE ON SCHEMA public TO meridian_rls_app"))
+        conn.execute(text("GRANT ALL ON ALL TABLES IN SCHEMA public TO meridian_rls_app"))
+        conn.execute(text("GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO meridian_rls_app"))
+        conn.execute(text(
+            "ALTER DEFAULT PRIVILEGES IN SCHEMA public "
+            "GRANT ALL ON TABLES TO meridian_rls_app"
+        ))
+
+    # Build a second engine that connects as the non-superuser role.
+    from urllib.parse import urlparse, urlunparse
+
+    u = urlparse(url)
+    # Replace credentials: meridian_rls_app:rls_app_pw
+    netloc = f"meridian_rls_app:rls_app_pw@{u.hostname}"
+    if u.port:
+        netloc += f":{u.port}"
+    app_url = urlunparse((u.scheme, netloc, u.path, u.params, u.query, u.fragment))
+    app_eng = create_engine(app_url, echo=False)
+
+    yield eng, app_eng
+
+    app_eng.dispose()
+    with eng.begin() as conn:
+        conn.execute(text("DROP OWNED BY meridian_rls_app CASCADE"))
+        conn.execute(text("DROP ROLE IF EXISTS meridian_rls_app"))
     eng.dispose()
 
 
 @pytest.fixture()
 def two_tenants(engine):
+    eng, _app_eng = engine
     """Create two tenants and yield their UUIDs. Cleans up on exit."""
     from sqlalchemy import text
 
     tid_a = uuid.uuid4()
     tid_b = uuid.uuid4()
-    with engine.begin() as conn:
+    with eng.begin() as conn:
         conn.execute(
             text(
                 "INSERT INTO tenants (id, name, licensed_modules) "
@@ -86,10 +127,12 @@ def two_tenants(engine):
 
     yield tid_a, tid_b
 
-    with engine.begin() as conn:
-        # Clean up — cascade through all owned rows. Run with RLS bypassed
-        # (superuser or owner) so we can reach both tenants' data.
-        for tid in (tid_a, tid_b):
+    # Clean up — cascade through all owned rows. Under FORCE RLS we can't
+    # just wipe both tenants in one connection; set the tenant context
+    # before each DELETE batch.
+    for tid in (tid_a, tid_b):
+        with eng.begin() as conn:
+            _set_tenant(conn, tid)
             # Some tables have FKs to others; order matters. Wipe in reverse.
             for table in (
                 "audit_log",
@@ -106,6 +149,9 @@ def two_tenants(engine):
                     )
                 except Exception:
                     pass
+
+    # tenants has no RLS — safe to delete without setting context.
+    with eng.begin() as conn:
         conn.execute(
             text("DELETE FROM tenants WHERE id IN (:a, :b)"),
             {"a": str(tid_a), "b": str(tid_b)},
@@ -122,13 +168,18 @@ def test_findings_rls_isolates_tenants(engine, two_tenants):
     """Tenant A's SELECT on findings must not return tenant B's rows."""
     from sqlalchemy import text
 
+    eng, app_eng = engine
+
     tid_a, tid_b = two_tenants
 
-    # Insert a version + finding for each tenant (RLS disabled — we're owner here).
+    # Insert a version + finding for each tenant. Under FORCE RLS (migration
+    # 039) even the owner's INSERTs go through the policy, so we must set
+    # app.tenant_id before each per-tenant block.
     version_a = uuid.uuid4()
     version_b = uuid.uuid4()
-    with engine.begin() as conn:
-        for tid, vid in ((tid_a, version_a), (tid_b, version_b)):
+    for tid, vid in ((tid_a, version_a), (tid_b, version_b)):
+        with eng.begin() as conn:
+            _set_tenant(conn, tid)
             conn.execute(
                 text(
                     "INSERT INTO analysis_versions (id, tenant_id, status) "
@@ -153,7 +204,7 @@ def test_findings_rls_isolates_tenants(engine, two_tenants):
 
     # Connect as RLS-scoped user (current session inherits privileges of the
     # connect user; RLS applies because the policy uses current_setting).
-    with engine.connect() as conn:
+    with app_eng.connect() as conn:
         _set_tenant(conn, tid_a)
         rows_a = conn.execute(text("SELECT tenant_id FROM findings")).fetchall()
         assert len(rows_a) == 1, f"tenant A saw {len(rows_a)} rows (expected 1)"
@@ -169,11 +220,14 @@ def test_findings_rls_blocks_cross_tenant_update(engine, two_tenants):
     """Even with tenant_id in the WHERE, a SET app.tenant_id=A session must not UPDATE B's rows."""
     from sqlalchemy import text
 
+    eng, app_eng = engine
+
     tid_a, tid_b = two_tenants
     version_b = uuid.uuid4()
     finding_b = uuid.uuid4()
 
-    with engine.begin() as conn:
+    with eng.begin() as conn:
+        _set_tenant(conn, tid_b)
         conn.execute(
             text(
                 "INSERT INTO analysis_versions (id, tenant_id, status) "
@@ -196,7 +250,7 @@ def test_findings_rls_blocks_cross_tenant_update(engine, two_tenants):
             },
         )
 
-    with engine.connect() as conn:
+    with app_eng.connect() as conn:
         _set_tenant(conn, tid_a)
         # Try to update B's finding from A's session — should affect 0 rows
         result = conn.execute(
@@ -209,7 +263,7 @@ def test_findings_rls_blocks_cross_tenant_update(engine, two_tenants):
         )
 
     # Verify B's row is unchanged
-    with engine.connect() as conn:
+    with app_eng.connect() as conn:
         _set_tenant(conn, tid_b)
         row = conn.execute(
             text("SELECT severity FROM findings WHERE id = :fid"),
@@ -223,10 +277,13 @@ def test_audit_log_rls(engine, two_tenants):
     """audit_log must obey the same RLS discipline as every other tenant table."""
     from sqlalchemy import text
 
+    eng, app_eng = engine
+
     tid_a, tid_b = two_tenants
 
-    with engine.begin() as conn:
-        for tid in (tid_a, tid_b):
+    for tid in (tid_a, tid_b):
+        with eng.begin() as conn:
+            _set_tenant(conn, tid)
             conn.execute(
                 text(
                     "INSERT INTO audit_log (tenant_id, action, method, path, status_code) "
@@ -235,7 +292,7 @@ def test_audit_log_rls(engine, two_tenants):
                 {"tid": str(tid)},
             )
 
-    with engine.connect() as conn:
+    with app_eng.connect() as conn:
         _set_tenant(conn, tid_a)
         rows = conn.execute(text("SELECT tenant_id FROM audit_log")).fetchall()
         assert all(r[0] == tid_a for r in rows)
@@ -251,9 +308,13 @@ def test_unset_tenant_returns_nothing(engine, two_tenants):
     """
     from sqlalchemy import text
 
+    eng, app_eng = engine
+
     tid_a, _tid_b = two_tenants
-    # Insert something so the table isn't empty to begin with
-    with engine.begin() as conn:
+    # Insert something so the table isn't empty to begin with. FORCE RLS
+    # requires the context to be set at write time too.
+    with eng.begin() as conn:
+        _set_tenant(conn, tid_a)
         conn.execute(
             text(
                 "INSERT INTO audit_log (tenant_id, action, method, path, status_code) "
@@ -262,10 +323,15 @@ def test_unset_tenant_returns_nothing(engine, two_tenants):
             {"tid": str(tid_a)},
         )
 
-    with engine.connect() as conn:
-        # Intentionally DO NOT call _set_tenant.
-        # Postgres will raise when current_setting('app.tenant_id') is unset
-        # (because ::uuid cast on empty string fails). That's the intended
-        # behaviour — be explicit: the error is the safety net.
-        with pytest.raises(Exception):
-            conn.execute(text("SELECT * FROM audit_log")).fetchall()
+    with app_eng.connect() as conn:
+        # Intentionally DO NOT call _set_tenant. The RLS policy is
+        # `tenant_id = current_setting('app.tenant_id')::uuid`. When the
+        # GUC is unset the USING expression either errors or yields NULL
+        # — either way the row is *filtered out*, so an unscoped SELECT
+        # returns zero rows. That's the safety property: forgetting to
+        # SET means "see nothing" rather than "see everything".
+        rows = conn.execute(text("SELECT * FROM audit_log")).fetchall()
+        assert len(rows) == 0, (
+            f"RLS leak: unscoped session saw {len(rows)} row(s) — "
+            "every table should return zero rows until app.tenant_id is set"
+        )
