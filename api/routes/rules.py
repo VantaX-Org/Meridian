@@ -2,12 +2,17 @@
 
 Rules are managed centrally in Meridian HQ and pushed via the licence manifest.
 Customer admins can view rules but cannot create, edit, or delete them.
+
+One exception: the `enabled` flag is mutable per-tenant so a steward can
+silence a noisy rule without waiting for the next HQ push. The toggle
+writes to the tenant's own rules row; the next HQ sync may overwrite it.
 """
 
 import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -164,4 +169,66 @@ async def get_rule(
         if rule.get(dt_field):
             rule[dt_field] = rule[dt_field].isoformat()
 
+    return rule
+
+
+# ── PATCH /api/v1/rules/{rule_id} ─────────────────────────────────────────────
+
+
+class RulePatch(BaseModel):
+    enabled: Optional[bool] = None
+
+
+@router.patch("/rules/{rule_id}")
+async def patch_rule(
+    rule_id: str,
+    body: RulePatch,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Tenant-level rule override: toggle `enabled` only.
+
+    Everything else on the rule (conditions, reference_values, applies_when,
+    severity, etc.) is HQ-managed and immutable from the customer side.
+    A future HQ push may overwrite the `enabled` flag; that's a product
+    choice — the toggle is meant for immediate relief on a noisy rule
+    between syncs, not permanent configuration.
+    """
+    await _set_rls(db, tenant.id)
+
+    try:
+        uid = uuid.UUID(rule_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid rule ID")
+
+    if body.enabled is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Provide `enabled` — it is the only mutable field",
+        )
+
+    result = await db.execute(
+        text(
+            """
+            UPDATE rules
+            SET enabled = :enabled, updated_at = now()
+            WHERE id = :rid AND tenant_id = :tid
+            RETURNING id, name, description, module, category, severity,
+                      enabled, conditions, thresholds, tags, source_yaml, source,
+                      created_at, updated_at
+            """
+        ),
+        {"rid": str(uid), "tid": str(tenant.id), "enabled": body.enabled},
+    )
+    row = result.fetchone()
+    if not row:
+        await db.rollback()
+        raise HTTPException(status_code=404, detail="Rule not found")
+    await db.commit()
+
+    rule = _row_to_dict(row)
+    rule["id"] = str(rule["id"])
+    for dt_field in ("created_at", "updated_at"):
+        if rule.get(dt_field):
+            rule[dt_field] = rule[dt_field].isoformat()
     return rule

@@ -35,7 +35,13 @@ import {
 } from "@/components/aurora";
 import { getUsers, inviteUser, updateUser } from "@/lib/api/users";
 import { deleteSystem, getSystems, registerSystem } from "@/lib/api/systems";
-import { getRulesSummary, type RulesSummaryItem } from "@/lib/api/rules";
+import {
+  getRules,
+  getRulesSummary,
+  updateRule,
+  type Rule,
+  type RulesSummaryItem,
+} from "@/lib/api/rules";
 import { getLicenceManifest } from "@/lib/api/licence";
 import {
   getLLMConfig,
@@ -147,6 +153,31 @@ export default function AdminPage() {
     queryKey: ["aurora.admin.rules-summary"],
     queryFn: getRulesSummary,
     retry: noRetryOnAuthError,
+  });
+  const rulesListQuery = useQuery({
+    queryKey: ["aurora.admin.rules-list"],
+    queryFn: () => getRules({ limit: 200 }),
+    retry: noRetryOnAuthError,
+    enabled: tab === "rules",
+  });
+
+  const toggleRuleMutation = useMutation({
+    mutationFn: ({ ruleId, enabled }: { ruleId: string; enabled: boolean }) =>
+      updateRule(ruleId, { enabled }),
+    onSuccess: (r) => {
+      toast.success(
+        `${r.name} ${r.enabled ? "enabled" : "disabled"}`,
+      );
+      qc.invalidateQueries({ queryKey: ["aurora.admin.rules-list"] });
+      qc.invalidateQueries({ queryKey: ["aurora.admin.rules-summary"] });
+    },
+    onError: (err: unknown) => {
+      const msg =
+        err instanceof AxiosError
+          ? err.response?.data?.detail ?? err.message
+          : "Toggle failed.";
+      toast.error(`Rule toggle failed: ${msg}`);
+    },
   });
   const licenceQuery = useQuery({
     queryKey: ["aurora.admin.licence"],
@@ -303,8 +334,13 @@ export default function AdminPage() {
           body: (
             <RulesBody
               summary={rulesQuery.data?.summary}
-              isLoading={rulesQuery.isLoading}
-              isError={rulesQuery.isError}
+              rules={rulesListQuery.data?.rules}
+              isLoading={rulesQuery.isLoading || rulesListQuery.isLoading}
+              isError={rulesQuery.isError || rulesListQuery.isError}
+              onToggle={(id, enabled) =>
+                toggleRuleMutation.mutate({ ruleId: id, enabled })
+              }
+              toggleInFlight={toggleRuleMutation.isPending}
             />
           ),
         },
@@ -1254,14 +1290,22 @@ function LlmEditForm({
 
 function RulesBody({
   summary,
+  rules,
   isLoading,
   isError,
+  onToggle,
+  toggleInFlight,
 }: {
   summary?: ReadonlyArray<RulesSummaryItem>;
+  rules?: ReadonlyArray<Rule>;
   isLoading: boolean;
   isError: boolean;
+  onToggle: (ruleId: string, enabled: boolean) => void;
+  toggleInFlight: boolean;
 }) {
-  if (isLoading) return <LoadingLine label="Loading rule summary" />;
+  const [filter, setFilter] = useState<"all" | "disabled" | "critical">("all");
+
+  if (isLoading) return <LoadingLine label="Loading rules" />;
   if (isError)
     return <ErrorLine detail="Couldn't reach the rules API." />;
   if (!summary || summary.length === 0) {
@@ -1272,35 +1316,95 @@ function RulesBody({
       />
     );
   }
+
   const total = summary.reduce((acc, s) => acc + (s.count ?? 0), 0);
-  const categories = new Set(summary.map((s) => s.category)).size;
+  const disabled = summary
+    .filter((s) => !s.enabled)
+    .reduce((acc, s) => acc + (s.count ?? 0), 0);
+  const critical = summary
+    .filter((s) => s.severity === "critical")
+    .reduce((acc, s) => acc + (s.count ?? 0), 0);
+
+  const filteredRules = (rules ?? []).filter((r) => {
+    if (filter === "disabled") return !r.enabled;
+    if (filter === "critical") return r.severity === "critical";
+    return true;
+  });
+
   return (
-    <Stack direction="column" gap={3}>
-      <Text variant="text-body" tone="secondary">
-        {total.toLocaleString()} rules across {categories} categor
-        {categories === 1 ? "y" : "ies"}.
-      </Text>
-      <ul className="aurora-admin-list">
-        {summary.map((s, idx) => (
-          <li
-            key={`${s.category}-${s.severity}-${idx}`}
-            className="aurora-admin-list__row"
+    <Stack direction="column" gap={4}>
+      <Stack direction="row" gap={3} align="center">
+        <Text variant="text-body" tone="secondary">
+          {total.toLocaleString()} rules · {disabled.toLocaleString()} disabled
+          · {critical.toLocaleString()} critical.
+        </Text>
+        <Stack direction="row" gap={2} style={{ marginLeft: "auto" }}>
+          <Chip
+            tone={filter === "all" ? "info" : "neutral"}
+            onClick={() => setFilter("all")}
           >
-            <Stack direction="column" gap={1}>
-              <Text variant="text-body">{s.category}</Text>
-              <Text variant="text-small" tone="tertiary">
-                {s.severity}
-              </Text>
-            </Stack>
-            <Chip tone={s.enabled ? "success" : "neutral"}>
-              {s.enabled ? "Enabled" : "Disabled"}
-            </Chip>
-            <Text variant="text-small" tone="tertiary" numeric>
-              {(s.count ?? 0).toLocaleString()}
-            </Text>
-          </li>
-        ))}
-      </ul>
+            All
+          </Chip>
+          <Chip
+            tone={filter === "disabled" ? "info" : "neutral"}
+            onClick={() => setFilter("disabled")}
+          >
+            Disabled
+          </Chip>
+          <Chip
+            tone={filter === "critical" ? "info" : "neutral"}
+            onClick={() => setFilter("critical")}
+          >
+            Critical
+          </Chip>
+        </Stack>
+      </Stack>
+      {filteredRules.length === 0 ? (
+        <Text variant="text-body" tone="secondary">
+          No rules match this filter.
+        </Text>
+      ) : (
+        <ul className="aurora-admin-list">
+          {filteredRules.slice(0, 100).map((r) => (
+            <li key={r.id} className="aurora-admin-list__row">
+              <Stack direction="column" gap={1}>
+                <Text variant="text-body">{r.name}</Text>
+                <Text variant="text-small" tone="tertiary">
+                  {r.module} · {r.category}
+                </Text>
+              </Stack>
+              <Chip
+                tone={
+                  r.severity === "critical"
+                    ? "danger"
+                    : r.severity === "high"
+                    ? "warning"
+                    : "neutral"
+                }
+              >
+                {r.severity}
+              </Chip>
+              <Chip tone={r.enabled ? "success" : "neutral"}>
+                {r.enabled ? "Enabled" : "Disabled"}
+              </Chip>
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={toggleInFlight}
+                onClick={() => onToggle(r.id, !r.enabled)}
+              >
+                {r.enabled ? "Disable" : "Re-enable"}
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {filteredRules.length > 100 ? (
+        <Text variant="text-small" tone="tertiary">
+          Showing 100 of {filteredRules.length.toLocaleString()} — narrow the
+          filter to see more.
+        </Text>
+      ) : null}
     </Stack>
   );
 }
