@@ -155,6 +155,18 @@ async def lifespan(app: FastAPI):
 
     yield
 
+    # ── Shutdown ──────────────────────────────────────────────────────────────
+    # Drain any in-flight audit_log writes so the tail of the log isn't lost
+    # when the pod is recycled. Bounded so a stuck DB can't hang shutdown.
+    try:
+        from api.middleware.audit import flush_pending_audits
+
+        drained = await flush_pending_audits(timeout=10.0)
+        if drained:
+            logger.info(f"Audit flush drained {drained} pending write(s)")
+    except Exception as e:
+        logger.warning(f"Audit flush error: {e}")
+
 
 app = FastAPI(title="Meridian API", version="1.0.0", lifespan=lifespan)
 
