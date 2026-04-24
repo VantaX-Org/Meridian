@@ -4,7 +4,7 @@
 # =========================================================
 
 # === BUILD STAGE ===
-FROM python:3.12-slim-bookworm AS builder
+FROM python:3.14-slim-bookworm AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
@@ -36,7 +36,7 @@ RUN python -m compileall -b -f \
     find . -name "__init__.py" -exec truncate -s 0 {} \;
 
 # === PRODUCTION STAGE ===
-FROM python:3.12-slim-bookworm
+FROM python:3.14-slim-bookworm
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
