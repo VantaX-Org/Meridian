@@ -1,65 +1,173 @@
 #!/usr/bin/env bash
+# =========================================================
+# Meridian Platform — Update script with canary + rollback
+# scripts/update.sh
+#
+# Pulls the latest prod images, runs migrations, restarts services,
+# and verifies the stack is healthy. If /health doesn't come up inside
+# 120s, the previous image tags are restored automatically.
+#
+# Before pulling we snapshot the currently-running `:latest` tags to
+# `:rollback`, so a failed roll-forward restores to exactly the bits
+# that were running — not "the :latest of yesterday", which may have
+# moved under us.
+#
+# Usage:
+#   sudo bash scripts/update.sh              # update to latest
+#   sudo bash scripts/update.sh --rollback   # roll back to previous
+#   sudo bash scripts/update.sh --no-verify  # skip the /health probe
+# =========================================================
 set -euo pipefail
 
-GREEN='\033[0;32m'
-RED='\033[0;31m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
-
+GREEN='\033[0;32m'; RED='\033[0;31m'; YELLOW='\033[1;33m'; NC='\033[0m'
 info()  { echo -e "${GREEN}[INFO]${NC}  $*"; }
 warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 error() { echo -e "${RED}[ERROR]${NC} $*"; exit 1; }
 
-info "Updating Vantax to latest version..."
+ACTION=update
+VERIFY=true
 
-# ─── 1. Pull latest images ──────────────────────────────────────────────────
-
-info "Pulling latest images..."
-docker compose pull || error "Failed to pull images"
-
-# ─── 2. Run database migrations ─────────────────────────────────────────────
-
-info "Running database migrations..."
-docker compose run --rm api alembic upgrade head || error "Migration failed"
-
-# ─── 3. Recreate services ───────────────────────────────────────────────────
-
-info "Restarting services..."
-docker compose up -d --force-recreate api worker frontend
-
-# ─── 4. Wait for healthchecks ───────────────────────────────────────────────
-
-info "Waiting for services to become healthy..."
-TIMEOUT=120
-INTERVAL=5
-ELAPSED=0
-
-while [ $ELAPSED -lt $TIMEOUT ]; do
-    HEALTHY=$(curl -sf http://localhost:8000/health 2>/dev/null | grep -c '"status":"ok"' || echo "0")
-    if [ "$HEALTHY" = "1" ]; then
-        info "API healthy ✓"
-        break
-    fi
-    sleep $INTERVAL
-    ELAPSED=$((ELAPSED + INTERVAL))
-    printf "."
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --rollback)   ACTION=rollback; shift ;;
+        --no-verify)  VERIFY=false; shift ;;
+        -h|--help)    grep '^# ' "$0" | sed 's/^# //'; exit 0 ;;
+        *)            echo "Unknown flag: $1" >&2; exit 2 ;;
+    esac
 done
-echo ""
 
-if [ $ELAPSED -ge $TIMEOUT ]; then
-    warn "Timeout waiting for API — check logs: docker compose logs api"
+# Compose file discovery — match meridian-deploy.sh's logic.
+COMPOSE_ARGS=()
+if [[ -f "docker/docker-compose.customer.yml" ]]; then
+    COMPOSE_ARGS+=(-f "docker/docker-compose.customer.yml")
+elif [[ -f "docker-compose.yml" ]]; then
+    COMPOSE_ARGS+=(-f "docker-compose.yml")
+else
+    error "No docker-compose file found"
+fi
+DC="docker compose ${COMPOSE_ARGS[*]}"
+
+IMAGES=(
+    "ghcr.io/vantax-org/meridian-api"
+    "ghcr.io/vantax-org/meridian-worker"
+    "ghcr.io/vantax-org/meridian-frontend"
+    "ghcr.io/vantax-org/meridian-nginx"
+)
+
+# ─── Snapshot current images → :rollback tag ───────────────────────────────
+snapshot_rollback_tags() {
+    info "Snapshotting current images as :rollback..."
+    for img in "${IMAGES[@]}"; do
+        if docker image inspect "${img}:latest" >/dev/null 2>&1; then
+            docker tag "${img}:latest" "${img}:rollback"
+            info "  ${img}: :latest → :rollback"
+        else
+            warn "  ${img}:latest not present — no snapshot for this image"
+        fi
+    done
+}
+
+# ─── Health verification ────────────────────────────────────────────────────
+verify_health() {
+    info "Verifying /health for up to 120s..."
+    local timeout=120 interval=5 elapsed=0
+    while [[ $elapsed -lt $timeout ]]; do
+        if $DC exec -T api curl -sf http://localhost:8000/health 2>/dev/null | grep -q '"status":"ok"'; then
+            info "API healthy ✓"
+            return 0
+        fi
+        sleep "$interval"
+        elapsed=$((elapsed + interval))
+        printf "."
+    done
+    echo ""
+    return 1
+}
+
+# ─── Rollback path ──────────────────────────────────────────────────────────
+rollback() {
+    info "Rolling back to previously-running images..."
+    local missing=0
+    for img in "${IMAGES[@]}"; do
+        if ! docker image inspect "${img}:rollback" >/dev/null 2>&1; then
+            warn "  ${img}:rollback not found — skipping"
+            missing=$((missing + 1))
+            continue
+        fi
+        docker tag "${img}:rollback" "${img}:latest"
+        info "  ${img}: :latest ← :rollback"
+    done
+    if [[ "$missing" -eq "${#IMAGES[@]}" ]]; then
+        error "No :rollback tags found — nothing to roll back to."
+    fi
+
+    info "Restarting services on rolled-back images..."
+    $DC up -d --force-recreate api worker frontend nginx 2>/dev/null || true
+
+    if [[ "$VERIFY" == "true" ]]; then
+        if ! verify_health; then
+            error "Rollback completed but health check still failing — investigate $DC logs api"
+        fi
+    fi
+    info "Rollback complete."
+    exit 0
+}
+
+if [[ "$ACTION" == "rollback" ]]; then
+    rollback
 fi
 
-# ─── 5. Report version ──────────────────────────────────────────────────────
+# ─── Main update flow ───────────────────────────────────────────────────────
+info "Updating Meridian to the latest released version..."
 
-VERSION=$(curl -s http://localhost:8000/health 2>/dev/null | python3 -c "
+# 1. Snapshot current images before pulling new ones
+snapshot_rollback_tags
+
+# 2. Pull — failure aborts without touching the running stack
+info "Pulling latest images..."
+if ! $DC pull; then
+    error "Pull failed. Running stack is untouched. Retry, or investigate network/credentials."
+fi
+
+# 3. Run migrations in a one-off container. Failure stops here, so we
+#    stay on the old version with the unchanged schema.
+info "Running database migrations..."
+if ! $DC run --rm -T api alembic upgrade head; then
+    warn "Migration failed. Services still running on previous version; no rollback triggered."
+    error "Investigate the migration error before retrying."
+fi
+
+# 4. Roll forward
+info "Restarting services..."
+$DC up -d --force-recreate api worker frontend nginx 2>/dev/null || true
+
+# 5. Verify — if /health doesn't come up, auto-rollback
+if [[ "$VERIFY" == "true" ]]; then
+    if ! verify_health; then
+        warn "/health never turned green after 120s. Auto-rolling back..."
+        for img in "${IMAGES[@]}"; do
+            if docker image inspect "${img}:rollback" >/dev/null 2>&1; then
+                docker tag "${img}:rollback" "${img}:latest"
+            fi
+        done
+        $DC up -d --force-recreate api worker frontend nginx 2>/dev/null || true
+        if ! verify_health; then
+            error "Rollback also failed /health. Manual intervention required. Logs: $DC logs api"
+        fi
+        error "Update rolled back. Running on the previous images. Check $DC logs api for why the new images failed."
+    fi
+fi
+
+# 6. Report version
+VERSION=$($DC exec -T api curl -sf http://localhost:8000/health 2>/dev/null | python3 -c "
 import sys, json
 try:
     d = json.load(sys.stdin)
     print(d.get('version', 'unknown'))
-except:
+except Exception:
     print('unknown')
 " 2>/dev/null || echo "unknown")
 
 echo ""
-info "Update complete. Version: $VERSION"
+info "Update complete. Running version: $VERSION"
+info "To revert: sudo bash scripts/update.sh --rollback"

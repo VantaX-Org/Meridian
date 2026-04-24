@@ -191,6 +191,13 @@ class Report(Base):
 
     __table_args__ = (
         Index("ix_reports_tenant_version", "tenant_id", "version_id"),
+        # Two callsites (workers/tasks/run_checks.py + agents/orchestrator.py)
+        # use INSERT ... ON CONFLICT (version_id, tenant_id) to upsert
+        # reports idempotently. Without this unique constraint Postgres
+        # rejects with "no unique or exclusion constraint matching the
+        # ON CONFLICT specification" — caught when the deterministic
+        # report pathway silently lost every write.
+        UniqueConstraint("version_id", "tenant_id", name="uq_reports_version_tenant"),
     )
 
 
