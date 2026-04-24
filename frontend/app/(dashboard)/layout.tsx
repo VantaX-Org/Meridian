@@ -767,6 +767,16 @@ export default function DashboardLayout({
       {/* ── Sidebar ── */}
       <aside
         data-sidebar
+        onClick={(e) => {
+          // Belt-and-braces: close the mobile sidebar on any anchor click
+          // anywhere inside the nav. Individual Link onClicks already call
+          // setSidebarOpen(false), but if any entry ever forgets the
+          // callback this catches it. No-op on desktop (lg: breakpoint).
+          const target = e.target as HTMLElement;
+          if (target.closest("a[href]")) {
+            setSidebarOpen(false);
+          }
+        }}
         className={`fixed inset-y-0 left-0 z-50 flex flex-col bg-[rgba(255,255,255,0.75)] backdrop-blur-xl border-r border-black/[0.06] transition-all duration-300 ease-in-out lg:relative lg:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         } ${
@@ -775,7 +785,7 @@ export default function DashboardLayout({
       >
         {/* Logo */}
         <div data-sidebar-header className={`flex h-16 shrink-0 items-center border-b border-black/[0.06] ${collapsed ? "justify-center px-2" : "justify-between px-5"}`}>
-          <Link href="/" className="flex items-center gap-2.5">
+          <Link href="/" onClick={() => setSidebarOpen(false)} className="flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary shadow-[0_0_16px_rgba(0,112,242,0.30)]">
               <ShieldCheck className="h-4.5 w-4.5 text-primary-foreground" />
             </div>
