@@ -83,7 +83,15 @@ def run_agents(self, version_id: str, tenant_id: str):
             )
 
         if final_state.get("error"):
-            logger.error(f"Agent pipeline error: {final_state['error']}")
+            logger.warning(
+                f"Agent pipeline error: {final_state['error']}. "
+                "Keeping deterministic report — agent enrichment skipped."
+            )
+            # The deterministic report was already persisted by run_checks
+            # before this task started, so exports and the dashboard keep
+            # working. We mark this as `agents_failed` (the existing UX
+            # signal) but advance progress to completed — the user has a
+            # working report.
             with Session(engine) as session:
                 session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
                 session.execute(
@@ -91,14 +99,25 @@ def run_agents(self, version_id: str, tenant_id: str):
                     {"vid": version_id, "tid": tenant_id},
                 )
                 session.commit()
+
+            final_step_num, final_step_name = STEP_FINALISE
             update_task_progress(
                 version_id,
-                status="failed",
-                current_step="AI insight generation failed",
-                step_number=ai_step_num,
+                status="completed",
+                current_step="Analysis complete (deterministic report; LLM enrichment unavailable)",
+                step_number=final_step_num,
                 total_steps=TOTAL_STEPS,
-                error=str(final_state["error"]),
+                percent_complete=100,
             )
+
+            # Still generate the PDF — it reads report_json and works fine
+            # without agent output.
+            try:
+                from workers.tasks.generate_pdf import generate_pdf
+                generate_pdf.delay(version_id, tenant_id)
+            except Exception as pe:
+                logger.warning(f"generate_pdf enqueue failed (non-fatal): {pe}")
+
             return {"version_id": version_id, "status": "agents_failed", "error": final_state["error"]}
 
         # AI work done — advance to "Building report"
