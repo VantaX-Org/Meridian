@@ -49,9 +49,13 @@ from api.routes.process_mining import router as process_mining_router
 from api.routes.llm_metrics import router as llm_metrics_router
 from api.routes.admin_doctor import router as admin_doctor_router
 from api.routes.audit import router as audit_router
+from api.routes.prom_metrics import router as prom_metrics_router
 
+from api.utils.structured_logging import configure_logging
+
+# Install JSON or text logging before anything else logs.
+configure_logging()
 logger = logging.getLogger("meridian")
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 
 
 @asynccontextmanager
@@ -183,6 +187,12 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             del response.headers["server"]
         return response
 
+# Metrics + request-id — innermost so we time the actual handler path. Added
+# first (innermost in Starlette's stack) so duration is measured inside every
+# other middleware.
+from api.middleware.metrics import MetricsMiddleware
+app.add_middleware(MetricsMiddleware)
+
 app.add_middleware(SecurityHeadersMiddleware)
 
 # Gzip compression for large JSON responses
@@ -261,6 +271,7 @@ app.include_router(process_mining_router)
 app.include_router(llm_metrics_router)
 app.include_router(admin_doctor_router)
 app.include_router(audit_router)
+app.include_router(prom_metrics_router)
 
 from api.routes.auth import router as auth_router
 app.include_router(auth_router)

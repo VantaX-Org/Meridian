@@ -55,6 +55,14 @@ class TenantMiddleware(BaseHTTPMiddleware):
 
         if tenant_id is not None:
             request.state.tenant_id = tenant_id
+            # Make tenant_id visible in every structured log line emitted
+            # during the request — no matter which service originates it.
+            try:
+                from api.utils.structured_logging import bind_request_context
+
+                bind_request_context(tenant_id=str(tenant_id))
+            except Exception:
+                pass
 
         token = _tenant_id_var.set(tenant_id)
         try:
