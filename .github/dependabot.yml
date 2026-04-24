@@ -1,0 +1,88 @@
+version: 2
+updates:
+  # Python backend
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "04:00"
+      timezone: Africa/Johannesburg
+    open-pull-requests-limit: 10
+    labels:
+      - dependencies
+      - python
+    # Security updates are processed regardless of the limit above.
+    allow:
+      - dependency-type: all
+
+  # Frontend
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+      day: monday
+      time: "04:00"
+      timezone: Africa/Johannesburg
+    open-pull-requests-limit: 10
+    labels:
+      - dependencies
+      - npm
+    ignore:
+      # Next.js majors require manual migration — handle those by hand.
+      - dependency-name: next
+        update-types: [version-update:semver-major]
+
+  # Cloudflare HQ portal
+  - package-ecosystem: npm
+    directory: /cloudflare/portal
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - npm
+      - portal
+
+  # Cloudflare licence-worker
+  - package-ecosystem: npm
+    directory: /cloudflare/licence-worker
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - npm
+      - licence-worker
+
+  # Cloudflare LLM proxy
+  - package-ecosystem: npm
+    directory: /cloudflare/llm-proxy
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - npm
+      - llm-proxy
+
+  # GitHub Actions itself
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    labels:
+      - dependencies
+      - github-actions
+
+  # Docker base images
+  - package-ecosystem: docker
+    directory: /docker
+    schedule:
+      interval: weekly
+    labels:
+      - dependencies
+      - docker
