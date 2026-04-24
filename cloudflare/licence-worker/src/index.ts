@@ -44,6 +44,10 @@ interface Env {
   JWT_SECRET: string;
   /** RSA-PKCS8 private key PEM for offline JWT signing (set as Worker secret) */
   OFFLINE_JWT_PRIVATE_KEY?: string;
+  /** Comma-separated list of allowed CORS origins. Falls back to `*`
+   * only when explicitly set to `ALLOW_ALL` — otherwise echoes the
+   * request Origin only when it appears in the list. */
+  CORS_ALLOWED_ORIGINS?: string;
 }
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -164,6 +168,7 @@ interface RateLimitConfig {
 const RATE_LIMIT_CONFIG: Record<string, RateLimitConfig> = {
   "/api/admin/login": { maxRequests: 5, windowSeconds: 5 * 60 }, // 5 req/5min
   "/api/licence/validate": { maxRequests: 100, windowSeconds: 60 * 60 }, // 100 req/1hr
+  "/api/licence/field-mappings/sync": { maxRequests: 60, windowSeconds: 60 }, // 60 req/min
 };
 
 /**
@@ -213,24 +218,83 @@ async function checkRateLimit(ip: string, endpoint: string, kv: KVNamespace): Pr
   }
 }
 
-// ─── CORS ─────────────────────────────────────────────────────────────────────
+// ─── Structured logging ───────────────────────────────────────────────────────
+// Cloudflare Logpush / `wrangler tail` both parse JSON natively. Every log
+// line emits one JSON object so operators can filter by `level`, `event`,
+// `admin_id` etc. without regex gymnastics.
 
-function cors(response: Response, origin?: string): Response {
+function logJson(level: "info" | "warn" | "error", event: string, fields: Record<string, unknown> = {}): void {
+  const line = JSON.stringify({ ts: nowIso(), level, event, ...fields });
+  if (level === "error") console.error(line);
+  else if (level === "warn") console.warn(line);
+  else console.log(line);
+}
+
+// ─── LIKE escaping ────────────────────────────────────────────────────────────
+// `%` and `_` are SQL wildcards in LIKE. Escape them so user-supplied search
+// input doesn't match more than the user meant.
+function escapeLike(s: string): string {
+  return s.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+}
+
+// ─── CORS ─────────────────────────────────────────────────────────────────────
+// Two modes:
+//   - `ALLOW_ALL`  →  pre-2026 behaviour, echo `*`. Only for dev.
+//   - comma-list   →  echo the request Origin ONLY if it appears in the list.
+// If CORS_ALLOWED_ORIGINS is unset we fall back to `*` WITHOUT
+// allow-credentials — a browser won't send cookies to such a response,
+// so at worst unauthenticated callers can poke the public endpoints.
+
+function parseAllowedOrigins(env: Env): { allowAll: boolean; list: string[] } {
+  const raw = (env.CORS_ALLOWED_ORIGINS || "").trim();
+  if (raw === "ALLOW_ALL") return { allowAll: true, list: [] };
+  if (!raw) return { allowAll: false, list: [] };
+  return { allowAll: false, list: raw.split(",").map((s) => s.trim()).filter(Boolean) };
+}
+
+function corsHeaders(request: Request, env: Env): Record<string, string> {
+  const { allowAll, list } = parseAllowedOrigins(env);
+  const reqOrigin = request.headers.get("Origin") || "";
+
+  const common: Record<string, string> = {
+    "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Vary": "Origin",
+  };
+
+  if (allowAll) {
+    // Public wildcard — cannot combine with credentials per the spec.
+    return { ...common, "Access-Control-Allow-Origin": "*" };
+  }
+  if (reqOrigin && list.includes(reqOrigin)) {
+    return {
+      ...common,
+      "Access-Control-Allow-Origin": reqOrigin,
+      "Access-Control-Allow-Credentials": "true",
+    };
+  }
+  // No match — don't set Access-Control-Allow-Origin at all (browser blocks).
+  return common;
+}
+
+function cors(response: Response, request: Request, env: Env): Response {
   const headers = new Headers(response.headers);
-  headers.set("Access-Control-Allow-Origin", origin || "*");
-  headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
-  headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  headers.set("Access-Control-Allow-Credentials", "true");
+  for (const [k, v] of Object.entries(corsHeaders(request, env))) {
+    headers.set(k, v);
+  }
   return new Response(response.body, { status: response.status, headers });
 }
 
-function json<T>(data: T, status = 200): Response {
-  return cors(
-    new Response(JSON.stringify(data), {
-      status,
-      headers: { "Content-Type": "application/json" },
-    })
-  );
+function json<T>(data: T, status = 200, request?: Request, env?: Env): Response {
+  const body = new Response(JSON.stringify(data), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+  if (request && env) return cors(body, request, env);
+  // Legacy path used from places that don't yet thread request/env through —
+  // still return a well-formed response; CORS headers layered on by the
+  // top-level fetch handler's final cors() pass.
+  return body;
 }
 
 // ─── JWT (HMAC-SHA256) ────────────────────────────────────────────────────────
@@ -264,7 +328,8 @@ async function signJwt(payload: Record<string, unknown>, secret: string): Promis
 
 async function verifyJwt(
   token: string,
-  secret: string
+  secret: string,
+  opts: { db?: D1Database } = {}
 ): Promise<Record<string, unknown> | null> {
   const parts = token.split(".");
   if (parts.length !== 3) return null;
@@ -296,35 +361,98 @@ async function verifyJwt(
   } catch {
     return null;
   }
-  if (typeof payload.exp === "number" && payload.exp < Math.floor(Date.now() / 1000)) {
+
+  const nowSec = Math.floor(Date.now() / 1000);
+
+  // iat sanity — reject tokens claiming issuance >60s in the future, which
+  // is either a clock skew bomb or a forged header. Generous bound so real
+  // client/server drift doesn't lock people out.
+  if (typeof payload.iat === "number" && payload.iat > nowSec + 60) {
     return null;
   }
+  // nbf — not-before. Only honour if present.
+  if (typeof payload.nbf === "number" && payload.nbf > nowSec + 60) {
+    return null;
+  }
+  if (typeof payload.exp === "number" && payload.exp < nowSec) {
+    return null;
+  }
+
+  // jti revocation — if the token carries a jti and a DB handle is
+  // available, reject when the session has been revoked or expired.
+  // Tokens without a jti (offline licence JWTs, legacy admin JWTs pre-
+  // migration-003) are accepted as before — the db lookup is opt-in.
+  if (opts.db && typeof payload.jti === "string" && payload.jti) {
+    try {
+      const row = await opts.db
+        .prepare(
+          "SELECT revoked_at, expires_at FROM admin_sessions WHERE jti = ?"
+        )
+        .bind(payload.jti)
+        .first<{ revoked_at: string | null; expires_at: string }>();
+      if (row) {
+        if (row.revoked_at) return null;
+        if (new Date(row.expires_at).getTime() < Date.now()) return null;
+      } else {
+        // A session-bearing token must have a matching row. If the row
+        // was deleted (e.g. by a full logout-all), reject.
+        return null;
+      }
+    } catch (err) {
+      // Fail closed on DB errors during revocation check — see the
+      // rationale in handleLogin for why this direction matters.
+      logJson("error", "jwt_revocation_check_failed", { err: String(err) });
+      return null;
+    }
+  }
+
   return payload;
 }
 
 // ─── Admin Auth ───────────────────────────────────────────────────────────────
 
-async function requireAdmin(
+/**
+ * Authenticate and role-check an admin-endpoint request.
+ *
+ * Returns either:
+ *   - { ok: true, payload } on success — handlers can inspect the JWT
+ *   - { ok: false, response } on failure — handler must return the response
+ *
+ * `allowedRoles` defaults to ["admin"]. Readonly admins can be admitted by
+ * passing ["admin", "readonly"] on the corresponding GET handlers.
+ */
+type AuthOk = { ok: true; payload: Record<string, unknown> };
+type AuthFail = { ok: false; response: Response };
+
+async function requireAuth(
   request: Request,
-  env: Env
-): Promise<Response | null> {
+  env: Env,
+  allowedRoles: string[] = ["admin"]
+): Promise<AuthOk | AuthFail> {
   const authHeader = request.headers.get("Authorization");
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return json({ error: "unauthorized", message: "Missing or invalid Authorization header" }, 401);
+    return { ok: false, response: json({ error: "unauthorized", message: "Missing or invalid Authorization header" }, 401) };
   }
   const token = authHeader.slice(7);
-  const payload = await verifyJwt(token, env.JWT_SECRET);
+  const payload = await verifyJwt(token, env.JWT_SECRET, { db: env.DB });
   if (!payload) {
-    return json({ error: "unauthorized", message: "Invalid or expired token" }, 401);
+    return { ok: false, response: json({ error: "unauthorized", message: "Invalid or expired token" }, 401) };
   }
   // Defence-in-depth: tenant-user JWTs (issued by /api/tenant/login) and
   // admin-user JWTs share JWT_SECRET, so a tenant user presenting their
-  // token to an admin endpoint would otherwise be accepted. Only tokens
-  // carrying role=admin may reach the admin surface.
-  if (payload.role !== "admin") {
-    return json({ error: "forbidden", message: "Admin role required" }, 403);
+  // token to an admin endpoint would otherwise be accepted. Enforce role.
+  const role = String(payload.role ?? "");
+  if (!allowedRoles.includes(role)) {
+    return { ok: false, response: json({ error: "forbidden", message: "Insufficient role" }, 403) };
   }
-  return null;
+  return { ok: true, payload };
+}
+
+// Legacy adapter — keeps older call sites compiling while the switch to
+// requireAuth happens below. New code should use requireAuth directly.
+async function requireAdmin(request: Request, env: Env): Promise<Response | null> {
+  const r = await requireAuth(request, env, ["admin"]);
+  return r.ok ? null : r.response;
 }
 
 // ─── Parsers ──────────────────────────────────────────────────────────────────
@@ -432,6 +560,9 @@ const TIER_MODULES: Record<string, string[]> = {
 
 // ─── Auth Handler ─────────────────────────────────────────────────────────────
 
+const LOCKOUT_THRESHOLD = 5;        // wrong attempts that trigger a lock
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+
 async function handleLogin(request: Request, env: Env): Promise<Response> {
   const body = (await request.json().catch(() => ({}))) as {
     email?: string;
@@ -442,10 +573,10 @@ async function handleLogin(request: Request, env: Env): Promise<Response> {
     return json({ error: "bad_request", message: "email and password are required" }, 400);
   }
 
-  // Task 09: Query admins table with PBKDF2 password verification
   try {
     const admin = await env.DB.prepare(
-      "SELECT id, email, password_hash, password_salt, role, is_active FROM admins WHERE email = ? LIMIT 1"
+      "SELECT id, email, password_hash, password_salt, role, is_active, failed_attempts, locked_until " +
+      "FROM admins WHERE email = ? LIMIT 1"
     )
       .bind(body.email)
       .first<{
@@ -455,46 +586,122 @@ async function handleLogin(request: Request, env: Env): Promise<Response> {
         password_salt: string;
         role: string;
         is_active: number;
+        failed_attempts: number | null;
+        locked_until: string | null;
       }>();
 
+    // Uniform 401 on missing user so we don't leak email existence. No
+    // branch on `admin` here — we fall through to verifyPassword against
+    // a known-bad hash below if the account doesn't exist. That keeps the
+    // timing profile roughly the same whether the email exists or not.
+    const genericReject = () =>
+      json({ error: "unauthorized", message: "Invalid credentials" }, 401);
+
     if (!admin || !admin.is_active) {
-      return json({ error: "unauthorized", message: "Invalid credentials" }, 401);
+      // Still spend the time verifying a dummy hash so we don't leak
+      // account existence via response time.
+      await verifyPassword(
+        body.password,
+        "0000000000000000000000000000000000000000000000000000000000000000",
+        "0000000000000000000000000000000000000000000000000000000000000000"
+      ).catch(() => false);
+      return genericReject();
+    }
+
+    // Lockout check — reject with a hint (so a legitimate locked user
+    // knows to wait), but don't reveal whether the email was otherwise
+    // valid for non-locked accounts.
+    if (admin.locked_until) {
+      const until = new Date(admin.locked_until).getTime();
+      if (until > Date.now()) {
+        return json({
+          error: "locked",
+          message: "Account temporarily locked due to repeated failed logins. Try again later.",
+          retry_after_seconds: Math.ceil((until - Date.now()) / 1000),
+        }, 423);
+      }
     }
 
     // Verify password using PBKDF2 with constant-time comparison
     const passwordValid = await verifyPassword(body.password, admin.password_hash, admin.password_salt);
     if (!passwordValid) {
-      return json({ error: "unauthorized", message: "Invalid credentials" }, 401);
+      const attempts = (admin.failed_attempts ?? 0) + 1;
+      const lockUntil =
+        attempts >= LOCKOUT_THRESHOLD
+          ? new Date(Date.now() + LOCKOUT_DURATION_MS).toISOString()
+          : null;
+      try {
+        await env.DB.prepare(
+          "UPDATE admins SET failed_attempts = ?, locked_until = ? WHERE id = ?"
+        )
+          .bind(attempts, lockUntil, admin.id)
+          .run();
+      } catch (err) {
+        logJson("warn", "admin_login_fail_counter_update_error", { err: String(err) });
+      }
+      if (lockUntil) {
+        logJson("warn", "admin_account_locked", { admin_id: admin.id, email: admin.email, attempts });
+      }
+      return genericReject();
     }
 
-    // Update last_login_at
+    // Success — reset the counter + clear any lock, stamp last_login_at.
     try {
-      await env.DB.prepare("UPDATE admins SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?")
+      await env.DB.prepare(
+        "UPDATE admins SET failed_attempts = 0, locked_until = NULL, last_login_at = CURRENT_TIMESTAMP WHERE id = ?"
+      )
         .bind(admin.id)
         .run();
     } catch {
-      // Log error but don't fail auth
+      // Best effort — don't fail the login.
     }
 
     const nowSec = Math.floor(Date.now() / 1000);
+    const jti = generateId();
+    const expSec = nowSec + 8 * 60 * 60; // 8 hours
     const token = await signJwt(
       {
         sub: admin.email,
         role: admin.role,
+        jti,
         iat: nowSec,
-        exp: nowSec + 8 * 60 * 60, // 8 hours
+        exp: expSec,
       },
       env.JWT_SECRET
     );
 
+    // Record the session so POST /api/admin/logout (and future "logout
+    // everywhere" flows) can revoke it server-side.
+    try {
+      await env.DB.prepare(
+        "INSERT INTO admin_sessions (jti, admin_id, issued_at, expires_at, last_seen_at, ip, user_agent) " +
+        "VALUES (?, ?, ?, ?, ?, ?, ?)"
+      )
+        .bind(
+          jti,
+          admin.id,
+          nowIso(),
+          new Date(expSec * 1000).toISOString(),
+          nowIso(),
+          request.headers.get("cf-connecting-ip") || request.headers.get("x-forwarded-for")?.split(",")[0] || null,
+          request.headers.get("user-agent") || null,
+        )
+        .run();
+    } catch (err) {
+      logJson("warn", "admin_session_insert_error", { err: String(err) });
+      // If we fail to record the session, downstream revocation check
+      // will reject the token (no matching row). Fail closed rather
+      // than returning a token that can't be revoked.
+      return json({ error: "service_unavailable", message: "Authentication temporarily unavailable" }, 503);
+    }
+
+    logJson("info", "admin_login_success", { admin_id: admin.id, email: admin.email, jti });
     return json({ token, expiresIn: 8 * 60 * 60 });
   } catch (err) {
     // Fail closed on DB errors. The previous implementation fell back to
-    // an env-variable SHA-256 hash — which is a weaker authn path AND
-    // reachable whenever D1 hiccups, effectively downgrading admin auth
-    // any time the database is slow. That's unacceptable for an
-    // internet-exposed admin endpoint. Log loudly, reject the request.
-    console.error("Admin login D1 error:", err);
+    // an env-variable SHA-256 hash — which downgraded admin auth any
+    // time the database was slow. Log loudly, reject the request.
+    logJson("error", "admin_login_db_error", { err: String(err) });
     return json({ error: "service_unavailable", message: "Authentication temporarily unavailable" }, 503);
   }
 }
@@ -592,8 +799,17 @@ async function handleGenerateOfflineToken(
 // ─── Licence Validation ───────────────────────────────────────────────────────
 
 async function handleValidate(request: Request, env: Env): Promise<Response> {
-  const body = (await request.json()) as { licenceKey?: string; machineFingerprint?: string };
-  const { licenceKey, machineFingerprint } = body;
+  // Accept either `licenceKey` (camelCase, historical) or `licence_key`
+  // (snake_case, matches the field-mappings/sync endpoint). One unified
+  // shape going forward.
+  const body = (await request.json()) as {
+    licenceKey?: string;
+    licence_key?: string;
+    machineFingerprint?: string;
+    machine_fingerprint?: string;
+  };
+  const licenceKey = body.licenceKey || body.licence_key;
+  const machineFingerprint = body.machineFingerprint || body.machine_fingerprint;
 
   if (!licenceKey) {
     return json({ valid: false, reason: "missing_key" }, 400);
@@ -605,35 +821,12 @@ async function handleValidate(request: Request, env: Env): Promise<Response> {
     .first<TenantRow>();
 
   if (!row) {
-    // Fallback to legacy KV
-    const kv = (await env.LICENCE_KV.get(`licence:${licenceKey}`, "json")) as {
-      modules: string[];
-      features: string[];
-      expiresAt: string;
-      tenantId: string;
-      active: boolean;
-    } | null;
-    if (!kv || !kv.active) return json({ valid: false, reason: "invalid_key" }, 403);
-    if (new Date(kv.expiresAt) < new Date()) return json({ valid: false, reason: "expired" }, 403);
-    await env.LICENCE_KV.put(
-      `ping:${licenceKey}`,
-      JSON.stringify({ lastSeen: nowIso(), machineFingerprint }),
-      { expirationTtl: 90 * 24 * 60 * 60 }
-    );
-    return json({
-      valid: true,
-      tenant_id: kv.tenantId,
-      company_name: "Unknown",
-      tier: "starter",
-      status: "active",
-      expiry_date: kv.expiresAt,
-      enabled_modules: kv.modules,
-      enabled_menu_items: DEFAULT_MENU_ITEMS,
-      features: DEFAULT_FEATURES,
-      rules: [],
-      field_mappings: [],
-      llm_config: { tier: 1, model: "", notes: "Legacy licence" },
-    });
+    // D1 is the source of truth. The KV fallback granted `valid: true`
+    // to any entry with `active: true` in KV, which made D1-side
+    // revocation (suspend, delete) ineffective for any key that lived
+    // in the pre-migration KV store. Removed deliberately — cleaner
+    // state model.
+    return json({ valid: false, reason: "invalid_key" }, 403);
   }
 
   if (row.status === "suspended") {
@@ -696,13 +889,29 @@ async function handleValidate(request: Request, env: Env): Promise<Response> {
   });
 }
 
-function handleHeartbeat(): Response {
-  return json({ status: "ok", ts: nowIso() });
+async function handleHeartbeat(env: Env): Promise<Response> {
+  // Verify the DB is actually reachable. A worker can be "up" while D1 is
+  // unhappy; a monitoring probe that only checks the worker misses that.
+  // A single cheap SELECT 1 is ~1-2ms overhead and catches every real
+  // connectivity issue.
+  let dbOk = true;
+  let dbError: string | undefined;
+  try {
+    await env.DB.prepare("SELECT 1").first();
+  } catch (err) {
+    dbOk = false;
+    dbError = err instanceof Error ? err.message : "unknown";
+  }
+  return json(
+    { status: dbOk ? "ok" : "degraded", ts: nowIso(), db: dbOk ? "ok" : "error", ...(dbError ? { db_error: dbError } : {}) },
+    dbOk ? 200 : 503,
+  );
 }
 
 async function handleFieldMappingSync(request: Request, env: Env): Promise<Response> {
   const body = (await request.json()) as {
-    licence_key: string;
+    licenceKey?: string;
+    licence_key?: string;
     mappings: Array<{
       module: string;
       standard_field: string;
@@ -713,12 +922,13 @@ async function handleFieldMappingSync(request: Request, env: Env): Promise<Respo
     }>;
   };
 
-  const { licence_key, mappings } = body;
-  if (!licence_key || !Array.isArray(mappings)) {
-    return json({ error: "bad_request", message: "licence_key and mappings are required" }, 400);
+  const licenceKey = body.licenceKey || body.licence_key;
+  const { mappings } = body;
+  if (!licenceKey || !Array.isArray(mappings)) {
+    return json({ error: "bad_request", message: "licenceKey and mappings are required" }, 400);
   }
 
-  const keyHash = await hashKey(licence_key);
+  const keyHash = await hashKey(licenceKey);
   const tenant = await env.DB.prepare("SELECT id FROM tenants WHERE licence_key_hash = ?")
     .bind(keyHash)
     .first<{ id: string }>();
@@ -819,8 +1029,10 @@ async function handleListTenants(request: Request, env: Env): Promise<Response> 
   if (status) { conditions.push("status = ?"); params.push(status); }
   if (tier) { conditions.push("tier = ?"); params.push(tier); }
   if (search) {
-    conditions.push("(LOWER(company_name) LIKE ? OR LOWER(contact_email) LIKE ?)");
-    params.push(`%${search.toLowerCase()}%`, `%${search.toLowerCase()}%`);
+    // `%` and `_` are SQL wildcards — escape so user input matches literally.
+    const pattern = `%${escapeLike(search.toLowerCase())}%`;
+    conditions.push("(LOWER(company_name) LIKE ? ESCAPE '\\' OR LOWER(contact_email) LIKE ? ESCAPE '\\')");
+    params.push(pattern, pattern);
   }
   if (conditions.length > 0) query += " WHERE " + conditions.join(" AND ");
   query += " ORDER BY created_at DESC";
@@ -979,8 +1191,12 @@ async function handleDeleteTenant(tenantId: string, request: Request, env: Env):
     .first<{ id: string }>();
   if (!row) return json({ error: "not_found" }, 404);
 
+  // Cascade delete — tenant_users was previously orphaned, leaving stale
+  // auth rows that could re-auth if a tenant_id collision ever happened.
+  await env.DB.prepare("DELETE FROM tenant_users WHERE tenant_id = ?").bind(tenantId).run();
   await env.DB.prepare("DELETE FROM field_mappings WHERE tenant_id = ?").bind(tenantId).run();
   await env.DB.prepare("DELETE FROM tenants WHERE id = ?").bind(tenantId).run();
+  logJson("info", "tenant_deleted", { tenant_id: tenantId });
   return json({ deleted: true, id: tenantId });
 }
 
@@ -1085,7 +1301,10 @@ async function handleListRules(request: Request, env: Env): Promise<Response> {
   if (module) { conditions.push("module = ?"); params.push(module); }
   if (severity) { conditions.push("severity = ?"); params.push(severity); }
   if (enabled !== null && enabled !== "") { conditions.push("enabled = ?"); params.push(enabled === "true" ? 1 : 0); }
-  if (search) { conditions.push("LOWER(name) LIKE ?"); params.push(`%${search.toLowerCase()}%`); }
+  if (search) {
+    conditions.push("LOWER(name) LIKE ? ESCAPE '\\'");
+    params.push(`%${escapeLike(search.toLowerCase())}%`);
+  }
 
   if (conditions.length > 0) query += " WHERE " + conditions.join(" AND ");
   query += " ORDER BY category, module, id";
@@ -1417,117 +1636,268 @@ async function handleDeleteLicenceKey(tenantId: string, request: Request, env: E
 
 // ─── Router ───────────────────────────────────────────────────────────────────
 
+// ─── Admin audit log ──────────────────────────────────────────────────────────
+// Mirror of the customer-side audit_log (migration 038 Postgres-side).
+// Called after every successful admin mutation.
+
+const _AUDIT_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
+function deriveEntityAndAction(method: string, path: string): { entity_type: string | null; entity_id: string | null; action: string } {
+  // /api/admin/tenants/<id>/<sub?>  or  /api/admin/rules/<id>
+  const parts = path.split("/").filter(Boolean);
+  // ["api", "admin", "tenants", "<id>", ...]
+  if (parts.length < 3 || parts[0] !== "api" || parts[1] !== "admin") {
+    return { entity_type: null, entity_id: null, action: method.toLowerCase() };
+  }
+  const entity_type = parts[2] ?? null;
+  const entity_id = parts.length >= 4 ? (parts[3] ?? null) : null;
+  let action: string;
+  if (method === "DELETE") action = "delete";
+  else if (method === "POST" && parts.length >= 5) action = parts[4]; // e.g. regenerate-key
+  else action = method.toLowerCase();
+  return { entity_type, entity_id, action };
+}
+
+async function writeAdminAudit(
+  request: Request,
+  env: Env,
+  response: Response,
+  payload: Record<string, unknown> | null,
+): Promise<void> {
+  if (!_AUDIT_METHODS.has(request.method)) return;
+  if (response.status >= 400) return; // log only successful mutations
+  const url = new URL(request.url);
+  const path = url.pathname;
+  if (!path.startsWith("/api/admin/")) return;
+  if (path === "/api/admin/login" || path === "/api/admin/logout") return; // auth flows log themselves
+
+  const { entity_type, entity_id, action } = deriveEntityAndAction(request.method, path);
+  const ip =
+    request.headers.get("cf-connecting-ip") ||
+    request.headers.get("x-forwarded-for")?.split(",")[0] ||
+    null;
+  try {
+    await env.DB.prepare(
+      "INSERT INTO admin_audit " +
+      "(id, admin_id, admin_email, action, entity_type, entity_id, method, path, status_code, ip, user_agent, created_at) " +
+      "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    )
+      .bind(
+        generateId(),
+        (payload?.admin_id as string) || null,
+        (payload?.sub as string) || null,
+        action,
+        entity_type,
+        entity_id,
+        request.method,
+        path,
+        response.status,
+        ip,
+        request.headers.get("user-agent") || null,
+        nowIso(),
+      )
+      .run();
+  } catch (err) {
+    // Auditing must never break the request. Log and swallow.
+    logJson("warn", "admin_audit_write_failed", { err: String(err), path });
+  }
+}
+
+// ─── New admin endpoints (added in this PR) ───────────────────────────────────
+
+async function handleAdminMe(request: Request, env: Env): Promise<Response> {
+  const auth = await requireAuth(request, env, ["admin", "readonly"]);
+  if (!auth.ok) return auth.response;
+  // Look up the admin row so we can return is_active + last_login_at
+  const adminEmail = String(auth.payload.sub ?? "");
+  const row = await env.DB.prepare(
+    "SELECT id, email, role, is_active, last_login_at FROM admins WHERE email = ? LIMIT 1"
+  )
+    .bind(adminEmail)
+    .first<{ id: string; email: string; role: string; is_active: number; last_login_at: string | null }>();
+  if (!row) return json({ error: "not_found" }, 404);
+  return json({
+    id: row.id,
+    email: row.email,
+    role: row.role,
+    is_active: row.is_active === 1,
+    last_login_at: row.last_login_at,
+    session_jti: auth.payload.jti ?? null,
+  });
+}
+
+async function handleAdminLogout(request: Request, env: Env): Promise<Response> {
+  const auth = await requireAuth(request, env, ["admin", "readonly"]);
+  if (!auth.ok) return auth.response;
+  const jti = auth.payload.jti;
+  if (typeof jti === "string" && jti) {
+    try {
+      await env.DB.prepare(
+        "UPDATE admin_sessions SET revoked_at = ? WHERE jti = ? AND revoked_at IS NULL"
+      )
+        .bind(nowIso(), jti)
+        .run();
+      logJson("info", "admin_logout", { email: auth.payload.sub, jti });
+    } catch (err) {
+      logJson("warn", "admin_logout_db_error", { err: String(err) });
+    }
+  }
+  return json({ ok: true });
+}
+
+async function handleAdminAuditList(request: Request, env: Env): Promise<Response> {
+  const auth = await requireAuth(request, env, ["admin", "readonly"]);
+  if (!auth.ok) return auth.response;
+  const url = new URL(request.url);
+  const limit = Math.min(Number(url.searchParams.get("limit") ?? 50), 500);
+  const offset = Math.max(Number(url.searchParams.get("offset") ?? 0), 0);
+  const entityType = url.searchParams.get("entity_type");
+  const entityId = url.searchParams.get("entity_id");
+
+  const conds: string[] = [];
+  const params: (string | number)[] = [];
+  if (entityType) { conds.push("entity_type = ?"); params.push(entityType); }
+  if (entityId) { conds.push("entity_id = ?"); params.push(entityId); }
+  const where = conds.length ? " WHERE " + conds.join(" AND ") : "";
+
+  const result = await env.DB.prepare(
+    `SELECT id, admin_id, admin_email, action, entity_type, entity_id, method, path, status_code, ip, created_at ` +
+    `FROM admin_audit${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+  )
+    .bind(...params, limit, offset)
+    .all();
+  return json({ entries: result.results || [], limit, offset });
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     if (request.method === "OPTIONS") {
-      return cors(new Response(null, { status: 204 }));
+      return cors(new Response(null, { status: 204 }), request, env);
     }
 
     const url = new URL(request.url);
     const path = url.pathname;
     const method = request.method;
 
-    // Task 10: Extract client IP for rate limiting
-    const clientIp = request.headers.get("cf-connecting-ip") || 
-                     request.headers.get("x-forwarded-for")?.split(",")[0] || 
+    const clientIp = request.headers.get("cf-connecting-ip") ||
+                     request.headers.get("x-forwarded-for")?.split(",")[0] ||
                      "unknown";
+
+    let response: Response;
+    let authPayloadForAudit: Record<string, unknown> | null = null;
 
     try {
       // ── Public: auth ──────────────────────────────────────────────────────
       if (method === "POST" && path === "/api/admin/login") {
-        // Task 10: Rate limit login attempts
         const limit = await checkRateLimit(clientIp, path, env.LICENCE_KV);
         if (!limit.allowed) {
-          return json({
+          response = json({
             error: "rate_limit_exceeded",
             message: "Too many login attempts. Please try again later.",
             resetAt: new Date(limit.resetAt).toISOString()
           }, 429);
+        } else {
+          response = await handleLogin(request, env);
         }
-        return await handleLogin(request, env);
-      }
-      if (method === "POST" && path === "/api/tenant/login") {
-        return await handleTenantUserLogin(request, env);
-      }
+      } else if (method === "POST" && path === "/api/tenant/login") {
+        response = await handleTenantUserLogin(request, env);
+      } else if (method === "POST" && path === "/api/admin/logout") {
+        response = await handleAdminLogout(request, env);
+      } else if (method === "GET" && path === "/api/admin/me") {
+        response = await handleAdminMe(request, env);
+      } else if (method === "GET" && path === "/api/admin/audit") {
+        response = await handleAdminAuditList(request, env);
 
       // ── Public: licence ───────────────────────────────────────────────────
-      if (method === "POST" && path === "/api/licence/validate") {
-        // Task 10: Rate limit licence validation
+      } else if (method === "POST" && path === "/api/licence/validate") {
         const limit = await checkRateLimit(clientIp, path, env.LICENCE_KV);
         if (!limit.allowed) {
-          return json({
+          response = json({
             error: "rate_limit_exceeded",
             message: "Too many licence validation requests. Please try again later.",
             resetAt: new Date(limit.resetAt).toISOString()
           }, 429);
+        } else {
+          response = await handleValidate(request, env);
         }
-        return await handleValidate(request, env);
-      }
-      if (method === "GET" && path === "/api/licence/heartbeat") {
-        return handleHeartbeat();
-      }
-      if (method === "POST" && path === "/api/licence/field-mappings/sync") {
-        return await handleFieldMappingSync(request, env);
-      }
+      } else if (method === "GET" && path === "/api/licence/heartbeat") {
+        response = await handleHeartbeat(env);
+      } else if (method === "POST" && path === "/api/licence/field-mappings/sync") {
+        const limit = await checkRateLimit(clientIp, path, env.LICENCE_KV);
+        if (!limit.allowed) {
+          response = json({
+            error: "rate_limit_exceeded",
+            message: "Too many field-mapping sync requests. Please try again later.",
+            resetAt: new Date(limit.resetAt).toISOString()
+          }, 429);
+        } else {
+          response = await handleFieldMappingSync(request, env);
+        }
 
       // ── Admin: analytics ──────────────────────────────────────────────────
-      if (method === "GET" && path === "/api/admin/analytics") {
-        return await handleAdminAnalytics(request, env);
-      }
+      } else if (method === "GET" && path === "/api/admin/analytics") {
+        response = await handleAdminAnalytics(request, env);
 
       // ── Admin: tenants ────────────────────────────────────────────────────
-      if (method === "GET" && path === "/api/admin/tenants") {
-        return await handleListTenants(request, env);
-      }
-      if (method === "POST" && path === "/api/admin/tenants") {
-        return await handleCreateTenant(request, env);
-      }
+      } else if (method === "GET" && path === "/api/admin/tenants") {
+        response = await handleListTenants(request, env);
+      } else if (method === "POST" && path === "/api/admin/tenants") {
+        response = await handleCreateTenant(request, env);
+      } else {
+        const tenantMatch = path.match(/^\/api\/admin\/tenants\/([^/]+)(\/.*)?$/);
+        const ruleMatch = path.match(/^\/api\/admin\/rules\/([^/]+)$/);
+        if (tenantMatch) {
+          const tenantId = tenantMatch[1];
+          const sub = tenantMatch[2] || "";
 
-      const tenantMatch = path.match(/^\/api\/admin\/tenants\/([^/]+)(\/.*)?$/);
-      if (tenantMatch) {
-        const tenantId = tenantMatch[1];
-        const sub = tenantMatch[2] || "";
-
-        if (sub === "/regenerate-key" && method === "POST") return await handleRegenerateKey(tenantId, request, env);
-        if (sub === "/offline-token" && method === "POST") return await handleGenerateOfflineToken(tenantId, request, env);
-        if (sub === "/licence-key") {
-          if (method === "GET") return await handleGetLicenceKey(tenantId, request, env);
-          if (method === "DELETE") return await handleDeleteLicenceKey(tenantId, request, env);
+          if (sub === "/regenerate-key" && method === "POST") response = await handleRegenerateKey(tenantId, request, env);
+          else if (sub === "/offline-token" && method === "POST") response = await handleGenerateOfflineToken(tenantId, request, env);
+          else if (sub === "/licence-key" && method === "GET") response = await handleGetLicenceKey(tenantId, request, env);
+          else if (sub === "/licence-key" && method === "DELETE") response = await handleDeleteLicenceKey(tenantId, request, env);
+          else if (sub === "/field-mappings" && method === "GET") response = await handleGetTenantFieldMappings(tenantId, request, env);
+          else if (sub === "/field-mappings" && (method === "PUT" || method === "POST")) response = await handleUpsertTenantFieldMappings(tenantId, request, env);
+          else if (sub === "" && method === "GET") response = await handleGetTenant(tenantId, request, env);
+          else if (sub === "" && method === "PUT") response = await handleUpdateTenant(tenantId, request, env, false);
+          else if (sub === "" && method === "PATCH") response = await handleUpdateTenant(tenantId, request, env, true);
+          else if (sub === "" && method === "DELETE") response = await handleDeleteTenant(tenantId, request, env);
+          else response = json({ error: "not_found" }, 404);
+        } else if (path === "/api/admin/rules" && method === "GET") {
+          response = await handleListRules(request, env);
+        } else if (path === "/api/admin/rules" && method === "POST") {
+          response = await handleCreateRule(request, env);
+        } else if (path === "/api/admin/rules/import" && method === "POST") {
+          response = await handleBulkImportRules(request, env);
+        } else if (ruleMatch) {
+          const ruleId = ruleMatch[1];
+          if (method === "GET") response = await handleGetRule(ruleId, request, env);
+          else if (method === "PUT") response = await handleUpdateRule(ruleId, request, env, false);
+          else if (method === "PATCH") response = await handleUpdateRule(ruleId, request, env, true);
+          else if (method === "DELETE") response = await handleDeleteRule(ruleId, request, env);
+          else response = json({ error: "not_found" }, 404);
+        } else {
+          response = json({ error: "not_found" }, 404);
         }
-        if (sub === "/field-mappings") {
-          if (method === "GET") return await handleGetTenantFieldMappings(tenantId, request, env);
-          if (method === "PUT" || method === "POST") return await handleUpsertTenantFieldMappings(tenantId, request, env);
-        }
-        if (sub === "") {
-          if (method === "GET") return await handleGetTenant(tenantId, request, env);
-          if (method === "PUT") return await handleUpdateTenant(tenantId, request, env, false);
-          if (method === "PATCH") return await handleUpdateTenant(tenantId, request, env, true);
-          if (method === "DELETE") return await handleDeleteTenant(tenantId, request, env);
-        }
       }
 
-      // ── Admin: rules ──────────────────────────────────────────────────────
-      if (method === "GET" && path === "/api/admin/rules") return await handleListRules(request, env);
-      if (method === "POST" && path === "/api/admin/rules") return await handleCreateRule(request, env);
-      if (method === "POST" && path === "/api/admin/rules/import") return await handleBulkImportRules(request, env);
-
-      const ruleMatch = path.match(/^\/api\/admin\/rules\/([^/]+)$/);
-      if (ruleMatch) {
-        const ruleId = ruleMatch[1];
-        if (method === "GET") return await handleGetRule(ruleId, request, env);
-        if (method === "PUT") return await handleUpdateRule(ruleId, request, env, false);
-        if (method === "PATCH") return await handleUpdateRule(ruleId, request, env, true);
-        if (method === "DELETE") return await handleDeleteRule(ruleId, request, env);
+      // Audit log (best-effort — never breaks the response)
+      if (path.startsWith("/api/admin/")) {
+        // Try to recover the auth payload so the audit row carries admin_id.
+        try {
+          const authHeader = request.headers.get("Authorization");
+          if (authHeader?.startsWith("Bearer ")) {
+            const token = authHeader.slice(7);
+            authPayloadForAudit = await verifyJwt(token, env.JWT_SECRET, { db: env.DB });
+          }
+        } catch {
+          authPayloadForAudit = null;
+        }
+        await writeAdminAudit(request, env, response, authPayloadForAudit);
       }
-
-      return json({ error: "not_found" }, 404);
     } catch (err) {
-      // Log the real error for operators (console.* goes to `wrangler tail`
-      // and the Cloudflare logs pipeline) but don't surface internals to
-      // the caller — `err.message` frequently contains SQL fragments, stack
-      // traces, or other internals that help an attacker map the system.
-      console.error("Unhandled worker error", err);
-      return json({ error: "internal_error" }, 500);
+      logJson("error", "unhandled_worker_error", { err: String(err), path });
+      response = json({ error: "internal_error" }, 500);
     }
+
+    return cors(response, request, env);
   },
 };

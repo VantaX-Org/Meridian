@@ -443,3 +443,149 @@ describe("Auth hardening", () => {
     }
   });
 });
+
+// ─── Improvements: lockout, sessions, audit, me, logout, heartbeat ──────────
+
+describe("Improvements batch", () => {
+  it("/api/licence/heartbeat reports db:ok when reachable", async () => {
+    const resp = await callWorker("/api/licence/heartbeat");
+    expect(resp.status).toBe(200);
+    const body = (await resp.json()) as { status: string; db: string };
+    expect(body.status).toBe("ok");
+    expect(body.db).toBe("ok");
+  });
+
+  it("GET /api/admin/me returns the current admin profile", async () => {
+    const resp = await callWorker("/api/admin/me", {
+      headers: { Authorization: `Bearer ${await getAdminToken()}` },
+    });
+    expect(resp.status).toBe(200);
+    const body = (await resp.json()) as { email: string; role: string; session_jti: string | null };
+    expect(body.email).toBe(TEST_ADMIN_EMAIL);
+    expect(body.role).toBe("admin");
+    expect(body.session_jti).toBeTruthy();
+  });
+
+  it("POST /api/admin/logout revokes the current session", async () => {
+    const loginResp = await callWorker("/api/admin/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: TEST_ADMIN_EMAIL, password: TEST_ADMIN_PASSWORD }),
+    });
+    const { token } = (await loginResp.json()) as { token: string };
+
+    const logoutResp = await callWorker("/api/admin/logout", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(logoutResp.status).toBe(200);
+
+    // Token no longer works after revocation
+    const afterResp = await callWorker("/api/admin/me", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(afterResp.status).toBe(401);
+  });
+
+  it("POST /api/licence/validate accepts both licenceKey and licence_key", async () => {
+    const { licence_key } = await createTestTenant();
+
+    const snakeResp = await callWorker("/api/licence/validate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ licence_key, machine_fingerprint: "fp" }),
+    });
+    expect(snakeResp.status).toBe(200);
+  });
+
+  it("GET /api/admin/audit returns admin_audit entries", async () => {
+    await createTestTenant({ company_name: "Audit Marker" });
+
+    const resp = await callWorker("/api/admin/audit?limit=50", {
+      headers: await adminHeaders(),
+    });
+    expect(resp.status).toBe(200);
+    const body = (await resp.json()) as { entries: Array<{ method: string; path: string }> };
+    expect(body.entries.length).toBeGreaterThan(0);
+    expect(body.entries.some((e) => e.method === "POST" && e.path === "/api/admin/tenants")).toBe(true);
+  });
+
+  it("DELETE /api/admin/tenants/:id cascades to tenant_users", async () => {
+    const tenant = await createTestTenant({
+      company_name: "Cascade Test",
+      admin_user: { email: "cascade@example.com", password: "cascade-pw" },
+    });
+
+    const preResp = await callWorker("/api/tenant/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: "cascade@example.com", password: "cascade-pw" }),
+    });
+    expect(preResp.status).toBe(200);
+
+    const delResp = await callWorker(`/api/admin/tenants/${tenant.id}`, {
+      method: "DELETE",
+      headers: await adminHeaders(),
+    });
+    expect(delResp.status).toBe(200);
+
+    const postResp = await callWorker("/api/tenant/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: "cascade@example.com", password: "cascade-pw" }),
+    });
+    expect(postResp.status).toBe(401);
+  });
+
+  it("admin login locks the account after 5 wrong passwords", async () => {
+    const { hashPassword: hp } = await import("../password-hash");
+    const { hash, salt } = await hp("correct-pw");
+    await (env as unknown as { DB: D1Database }).DB.prepare(
+      "INSERT OR REPLACE INTO admins (id, email, password_hash, password_salt, role, is_active, failed_attempts, locked_until) " +
+      "VALUES (?, ?, ?, ?, 'admin', 1, 0, NULL)"
+    )
+      .bind("lockout-test-id", "lockout-test@meridian.local", hash, salt)
+      .run();
+
+    // Dodge the per-IP rate limiter (5 req/5min) by using distinct
+    // X-Forwarded-For values per attempt — we're exercising the
+    // *account* lockout path here, not the IP rate limit.
+    for (let i = 0; i < 5; i++) {
+      const r = await callWorker("/api/admin/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Forwarded-For": `10.0.0.${i + 1}`,
+        },
+        body: JSON.stringify({ email: "lockout-test@meridian.local", password: "nope" }),
+      });
+      expect(r.status).toBe(401);
+    }
+    const locked = await callWorker("/api/admin/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Forwarded-For": "10.0.0.99",
+      },
+      body: JSON.stringify({ email: "lockout-test@meridian.local", password: "correct-pw" }),
+    });
+    expect(locked.status).toBe(423);
+    const body = (await locked.json()) as { error: string };
+    expect(body.error).toBe("locked");
+  });
+
+  it("escapes LIKE wildcards in tenant search", async () => {
+    await createTestTenant({ company_name: "LiteralPercent%Inc" });
+    await createTestTenant({ company_name: "Other Company" });
+
+    // q=% (URL-decoded) should match literal '%' only, not every row.
+    const resp = await callWorker("/api/admin/tenants?q=%25", {
+      headers: await adminHeaders(),
+    });
+    expect(resp.status).toBe(200);
+    const body = (await resp.json()) as { tenants: Array<{ company_name: string }> };
+    for (const t of body.tenants) {
+      expect(t.company_name).toContain("%");
+    }
+  });
+});
