@@ -176,7 +176,11 @@ export default function FieldMappingsClient({
             {message && (
               <span
                 className="text-sm"
-                style={{ color: message.startsWith("Error") ? "#ef4444" : "#4ade80" }}
+                style={{
+                  color: message.startsWith("Error")
+                    ? "var(--aurora-status-danger-500)"
+                    : "var(--aurora-status-success-500)",
+                }}
               >
                 {message}
               </span>
@@ -199,7 +203,10 @@ export default function FieldMappingsClient({
         {!tenant.features.field_mapping_self_service && (
           <p
             className="mt-2 text-xs px-3 py-2 rounded-md"
-            style={{ background: "rgba(15,110,86,0.1)", color: "#4ade80" }}
+            style={{
+              background: "var(--aurora-status-info-bg)",
+              color: "var(--aurora-status-info-500)",
+            }}
           >
             Self-service is disabled for this tenant — only HQ admins can edit mappings.
           </p>

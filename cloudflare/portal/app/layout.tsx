@@ -11,9 +11,14 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // `data-theme="dark"` activates the Aurora dark token set from
+  // aurora.css (mirrored from the customer frontend). The portal is
+  // dark-first to match.
   return (
-    <html lang="en" className="dark">
-      <body className="min-h-screen antialiased">{children}</body>
+    <html lang="en" className="dark" data-theme="dark">
+      <body className="min-h-screen antialiased aurora-text-body">
+        {children}
+      </body>
     </html>
   );
 }

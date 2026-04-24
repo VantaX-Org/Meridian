@@ -23,17 +23,19 @@ function StatCard({
   );
 }
 
+// Aurora semantic tokens — keep status colours consistent with the
+// customer-facing frontend. See cloudflare/portal/app/aurora.css §5.1.4.
 const STATUS_COLOR: Record<string, string> = {
-  active: "#16a34a",
-  trial: "#0891b2",
-  suspended: "#dc2626",
-  expired: "#6b7280",
+  active: "var(--aurora-status-success-500)",
+  trial: "var(--aurora-status-info-500)",
+  suspended: "var(--aurora-status-danger-500)",
+  expired: "var(--aurora-fg-muted)",
 };
 
 const TIER_BADGE: Record<string, string> = {
-  starter: "#4b5563",
-  professional: "#0f6e56",
-  enterprise: "#7c3aed",
+  starter: "var(--aurora-fg-muted)",
+  professional: "var(--aurora-accent-500)",
+  enterprise: "var(--aurora-viz-6, #7c3aed)",
 };
 
 function formatDate(d: string) {
@@ -162,7 +164,7 @@ export default async function AdminDashboardPage() {
                     <span className="text-sm text-white">{t.company_name}</span>
                     <span
                       className="text-xs font-medium"
-                      style={{ color: days <= 7 ? "#ef4444" : "#f59e0b" }}
+                      style={{ color: days <= 7 ? "var(--aurora-status-danger-500)" : "var(--aurora-status-warning-500)" }}
                     >
                       {days <= 0 ? "Expired" : `${days}d`}
                     </span>

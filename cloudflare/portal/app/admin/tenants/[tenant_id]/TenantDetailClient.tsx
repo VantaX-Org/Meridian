@@ -282,7 +282,7 @@ export default function TenantDetailClient({ tenant: initialTenant }: { tenant: 
           {message && (
             <span
               className="text-sm"
-              style={{ color: message.startsWith("Error") ? "#ef4444" : "#4ade80" }}
+              style={{ color: message.startsWith("Error") ? "var(--aurora-status-danger-500)" : "var(--aurora-status-success-500)" }}
             >
               {message}
             </span>
@@ -304,7 +304,7 @@ export default function TenantDetailClient({ tenant: initialTenant }: { tenant: 
           className="rounded-md p-4 space-y-2"
           style={{ background: "rgba(22,163,74,0.1)", border: "1px solid rgba(22,163,74,0.3)" }}
         >
-          <p className="text-sm font-semibold" style={{ color: "#4ade80" }}>
+          <p className="text-sm font-semibold" style={{ color: "var(--aurora-status-success-500)" }}>
             New licence key generated — copy it now, it won&apos;t be shown again:
           </p>
           <div className="flex items-center gap-3">
@@ -399,7 +399,7 @@ export default function TenantDetailClient({ tenant: initialTenant }: { tenant: 
                     onClick={regenerateKey}
                     disabled={saving}
                     className="rounded-md px-3 py-1.5 text-xs text-white"
-                    style={{ background: "#dc2626" }}
+                    style={{ background: "var(--aurora-status-danger-500)" }}
                   >
                     Confirm
                   </button>
@@ -414,7 +414,7 @@ export default function TenantDetailClient({ tenant: initialTenant }: { tenant: 
               )}
             </div>
             {confirmRegen && (
-              <p className="text-xs mt-1" style={{ color: "#f87171" }}>
+              <p className="text-xs mt-1" style={{ color: "var(--aurora-status-danger-500)" }}>
                 This will invalidate the current key. The customer must update their deployment.
               </p>
             )}
@@ -711,20 +711,20 @@ export default function TenantDetailClient({ tenant: initialTenant }: { tenant: 
             <button
               onClick={() => setConfirmDelete(true)}
               className="text-sm transition-colors"
-              style={{ color: "#ef4444" }}
+              style={{ color: "var(--aurora-status-danger-500)" }}
             >
               Delete Tenant
             </button>
           ) : (
             <div className="flex items-center gap-3">
-              <span className="text-xs" style={{ color: "#f87171" }}>
+              <span className="text-xs" style={{ color: "var(--aurora-status-danger-500)" }}>
                 This is irreversible. Delete &ldquo;{tenant.company_name}&rdquo;?
               </span>
               <button
                 onClick={deleteTenant}
                 disabled={saving}
                 className="rounded-md px-3 py-1.5 text-xs text-white disabled:opacity-50"
-                style={{ background: "#dc2626" }}
+                style={{ background: "var(--aurora-status-danger-500)" }}
               >
                 Delete
               </button>
