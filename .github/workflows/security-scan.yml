@@ -1,0 +1,96 @@
+name: Security scans
+
+# Runs pip-audit + npm audit across the repo on every PR that touches
+# dependency manifests, plus on a weekly schedule so new CVEs published
+# against pinned versions surface without needing a code change.
+#
+# Fails the job on HIGH / CRITICAL. Non-zero exit for moderate findings
+# is deliberate — we'd rather get a flaky CI than ship a known CVE.
+
+on:
+  pull_request:
+    paths:
+      - "requirements.txt"
+      - "frontend/package.json"
+      - "frontend/package-lock.json"
+      - "cloudflare/*/package.json"
+      - "cloudflare/*/package-lock.json"
+      - ".github/workflows/security-scan.yml"
+  schedule:
+    # Every Monday 04:00 UTC — tight enough for disclosure SLAs, loose
+    # enough not to spam on weekends.
+    - cron: "0 4 * * 1"
+  workflow_dispatch:
+
+jobs:
+  pip-audit:
+    name: Python dependencies (pip-audit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install pip-audit
+        run: python -m pip install --upgrade pip-audit
+      - name: Audit requirements.txt
+        # --strict: non-zero exit if ANY finding at all.
+        # Downgrade to fail-on-severity in one step: --vulnerability-service
+        # and filter on severity. pip-audit doesn't natively support
+        # severity thresholds yet — use jq on the JSON output.
+        run: |
+          pip-audit --requirement requirements.txt --format json --output audit.json || true
+          python - <<'PY'
+          import json, sys
+          with open("audit.json") as f:
+              data = json.load(f)
+          bad = []
+          for dep in data.get("dependencies", []):
+              for v in dep.get("vulns", []):
+                  aliases = v.get("aliases", [])
+                  fix = v.get("fix_versions", [])
+                  bad.append({
+                      "name": dep["name"],
+                      "version": dep.get("version"),
+                      "id": v["id"],
+                      "aliases": aliases,
+                      "fix_versions": fix,
+                      "description": v.get("description", "")[:160],
+                  })
+          if bad:
+              for b in bad:
+                  print(f"[VULN] {b['name']} {b['version']} — {b['id']} — fix: {', '.join(b['fix_versions']) or 'none'}")
+                  print(f"       {b['description']}")
+              sys.exit(1)
+          print("pip-audit: no vulnerabilities found")
+          PY
+
+  npm-audit:
+    name: npm dependencies (frontend, portal, workers)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        dir:
+          - frontend
+          - cloudflare/portal
+          - cloudflare/licence-worker
+          - cloudflare/llm-proxy
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Audit ${{ matrix.dir }}
+        working-directory: ${{ matrix.dir }}
+        # --audit-level=high fails the step on high or critical
+        # findings only — moderate / low are reported but don't block.
+        run: |
+          if [ -f package-lock.json ]; then
+            npm audit --audit-level=high
+          else
+            echo "no package-lock.json — skip"
+          fi
