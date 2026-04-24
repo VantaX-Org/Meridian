@@ -51,23 +51,27 @@ jobs:
             .
 
       - name: Build Frontend image
+        # Dockerfile expects repo root as context (it does `COPY frontend/ .`).
         run: |
           docker build \
             -f docker/Dockerfile.frontend.prod \
             -t ghcr.io/vantax-org/meridian-frontend:local-test \
-            frontend
+            .
 
       - name: Build Nginx image
         run: |
-          docker build \
-            -f docker/Dockerfile.nginx \
-            -t ghcr.io/vantax-org/meridian-nginx:local-test \
-            docker/nginx || {
-              # Some nginx Dockerfiles ship with the compose file only;
-              # fall back to the upstream nginx image tagged as our ref.
-              docker pull nginx:alpine
-              docker tag nginx:alpine ghcr.io/vantax-org/meridian-nginx:local-test
-            }
+          if [ -f docker/Dockerfile.nginx ]; then
+            docker build \
+              -f docker/Dockerfile.nginx \
+              -t ghcr.io/vantax-org/meridian-nginx:local-test \
+              . || {
+                docker pull nginx:alpine
+                docker tag nginx:alpine ghcr.io/vantax-org/meridian-nginx:local-test
+              }
+          else
+            docker pull nginx:alpine
+            docker tag nginx:alpine ghcr.io/vantax-org/meridian-nginx:local-test
+          fi
 
       - name: Render customer compose with the test tag
         run: |
