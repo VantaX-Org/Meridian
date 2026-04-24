@@ -527,6 +527,11 @@ if [[ "$PRECONFIGURED" != "true" ]]; then
     _DB_PASS=$(openssl rand -hex 16)
     _MINIO_PASS=$(openssl rand -hex 16)
     _CRED_KEY=$(openssl rand -hex 32)
+    # Separate password for the non-superuser meridian_app role (migration
+    # 040). The app + workers connect as meridian_app (NOSUPERUSER,
+    # NOBYPASSRLS) so RLS policies are actually enforced. The meridian
+    # owner role is only used for Alembic migrations.
+    _APP_PASS=$(openssl rand -hex 16)
 
     _LICENCE_KEY_LINE=""
     _LICENCE_TOKEN_LINE=""
@@ -560,8 +565,13 @@ if [[ "$PRECONFIGURED" != "true" ]]; then
         printf 'INTERNAL_API_URL=http://api:8000\n'
         printf '\n# Database\n'
         printf 'DB_PASSWORD=%s\n' "$_DB_PASS"
-        printf 'DATABASE_URL=postgresql+asyncpg://meridian:%s@db:5432/meridian\n' "$_DB_PASS"
-        printf 'DATABASE_URL_SYNC=postgresql://meridian:%s@db:5432/meridian\n'    "$_DB_PASS"
+        # Runtime connections (API + workers) use meridian_app — non-superuser,
+        # subject to FORCE ROW LEVEL SECURITY. Migrations use the meridian
+        # owner via DATABASE_URL_MIGRATE.
+        printf 'MERIDIAN_APP_PASSWORD=%s\n' "$_APP_PASS"
+        printf 'DATABASE_URL=postgresql+asyncpg://meridian_app:%s@db:5432/meridian\n' "$_APP_PASS"
+        printf 'DATABASE_URL_SYNC=postgresql://meridian_app:%s@db:5432/meridian\n'    "$_APP_PASS"
+        printf 'DATABASE_URL_MIGRATE=postgresql://meridian:%s@db:5432/meridian\n'     "$_DB_PASS"
         printf '\n# Redis\n'
         printf 'REDIS_URL=redis://redis:6379/0\n'
         printf '\n# MinIO\n'
