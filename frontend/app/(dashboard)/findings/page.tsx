@@ -26,6 +26,7 @@ import { getVersions } from "@/lib/api/versions";
 import { getFindings } from "@/lib/api/findings";
 import { getLineage } from "@/lib/api/contracts";
 import { severityColor, formatModuleName } from "@/lib/format";
+import { LegacyPageBanner } from "@/components/ui/legacy-page-banner";
 import { KpiRail, type KpiItem } from "@/components/ui/kpi-rail";
 import { HeroKpi } from "@/components/ui/hero-kpi";
 import { NarrativeStrip } from "@/components/ui/narrative-strip";
@@ -368,6 +369,11 @@ function FindingsContent() {
   return (
     <TooltipProvider delay={0}>
       <div className="space-y-4">
+        <LegacyPageBanner
+          auroraHref="/workbench"
+          auroraLabel="Workbench"
+          note="Aurora's Workbench surfaces the same findings with root-cause classification, cross-module origin markers, and keyboard-first J/K navigation."
+        />
         {/* Header */}
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
