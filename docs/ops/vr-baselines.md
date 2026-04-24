@@ -40,6 +40,19 @@ The workflow deliberately uploads an artifact instead of pushing the snapshot fi
 - **Deterministic diff** — manual review ensures the PR diff only touches baselines, not unrelated artifacts the runner happened to generate.
 - **Security** — auto-commit requires write permission from CI into the repo. We keep CI tokens scoped to read + artifact-upload.
 
+## Current limitation — all four baselines are the sign-in screen
+
+The first Linux refresh produced four identical baselines — same md5 across `command-centre.png`, `workbench.png`, `process.png`, `admin.png`. That's because in CI the dashboard routes redirect unauthenticated requests to `/sign-in`, so every VR test screenshots the login screen.
+
+The VR lane is still useful in this state: it catches rendering regressions on the login screen (a surface every customer sees) and catches changes to the redirect behaviour. But it doesn't yet exercise per-workspace rendering.
+
+To get per-route coverage, the VR spec needs to:
+1. Seed a test user in the dev-mode auth flow (or use `AUTH_MODE=local` with a known email/password)
+2. Log in at the start of each test via `page.goto('/sign-in')` + form submit
+3. Then navigate to the workspace route
+
+That's tracked as a follow-up. For now, the committed baselines are correct for what the spec actually exercises.
+
 ## When to refresh
 
 - After any Aurora token change that visually shifts colours, spacing, or typography.
