@@ -382,7 +382,7 @@ async def _validate_licence() -> dict | None:
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.post(
-                f"{settings.licence_server_url}/validate",
+                f"{settings.licence_server_url}/api/licence/validate",
                 json={
                     "licenceKey": settings.licence_key,
                     "machineFingerprint": _get_machine_fingerprint(),
