@@ -48,11 +48,15 @@ warn()    { echo -e "${YELLOW}[!]${NC} $*"; }
 error()   { echo -e "${RED}[✗]${NC} $*"; exit 1; }
 section() { echo -e "\n${BLUE}${BOLD}━━━ $* ━━━${NC}"; }
 
+
 # Banner intentionally moved below the CLI parser so `--help` exits cleanly
 # without flashing the ASCII art.
 
-
 INSTALL_DIR="/opt/meridian"
+
+# Set SCRIPT_DIR and REPO_ROOT before any use
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 # --- Ensure .env exists ---
 if [[ ! -f "${REPO_ROOT}/.env" ]]; then
