@@ -425,7 +425,6 @@ elif [[ "$LICENCE_MODE" == "online" ]]; then
     log "Key format valid: ${LICENCE_KEY:0:9}****-****-****"
 
     ATTEMPT=0
-    HTTP_CODE="000"
     while [[ $ATTEMPT -lt $MAX_RETRIES ]]; do
         ATTEMPT=$(( ATTEMPT + 1 ))
         echo -n "  Contacting licence server (attempt ${ATTEMPT}/${MAX_RETRIES})..."
@@ -451,7 +450,7 @@ elif [[ "$LICENCE_MODE" == "online" ]]; then
         fi
     done
 
-    [[ "${HTTP_CODE:-}" != "200" ]] && error "Licence validation failed. Contact support@vantax.co.za"
+    [[ "$HTTP_CODE" != "200" ]] && error "Licence validation failed. Contact support@vantax.co.za"
     log "Licence validated"
 
 elif [[ "$LICENCE_MODE" == "airgap" ]]; then
