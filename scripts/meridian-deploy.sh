@@ -72,7 +72,8 @@ REGISTRY_USER="${MERIDIAN_REGISTRY_USER:-}"
 REGISTRY_PASS="${MERIDIAN_REGISTRY_PASS:-}"
 
 # Licence server base — overridable so a customer-hosted proxy can front it.
-LICENCE_SERVER_BASE="${MERIDIAN_LICENCE_SERVER_BASE:-https://licence.meridian.vantax.co.za}"
+# Default points at the public Meridian licence worker.
+LICENCE_SERVER_BASE="${MERIDIAN_LICENCE_SERVER_BASE:-https://meridian-licence-worker.reshigan-085.workers.dev}"
 LICENCE_VALIDATE_URL="${LICENCE_SERVER_BASE}/validate"
 
 # Unattended mode — fails on missing input instead of prompting.
@@ -115,7 +116,12 @@ while [[ $# -gt 0 ]]; do
         --registry-pass)   REGISTRY_PASS="$2";   shift 2 ;;
         --licence-server)
             LICENCE_SERVER_BASE="$2"
-            LICENCE_VALIDATE_URL="${LICENCE_SERVER_BASE}/validate"
+            # Accept either a base URL or a fully qualified /validate endpoint.
+            if [[ "$LICENCE_SERVER_BASE" == */validate ]]; then
+                LICENCE_VALIDATE_URL="$LICENCE_SERVER_BASE"
+            else
+                LICENCE_VALIDATE_URL="${LICENCE_SERVER_BASE%/}/validate"
+            fi
             shift 2
             ;;
         --non-interactive) NON_INTERACTIVE="true"; shift ;;
