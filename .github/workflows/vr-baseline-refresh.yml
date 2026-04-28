@@ -1,0 +1,73 @@
+name: Refresh VR baselines
+
+# Manually-triggered job that re-generates Playwright visual-regression
+# baselines on the exact Linux/Chromium image CI runs them against.
+# Baselines generated on a dev macOS machine will never match Linux
+# font hinting / anti-aliasing; this job produces the canonical set.
+#
+# Usage:
+#   gh workflow run vr-baseline-refresh.yml --ref <branch>
+#
+# The job:
+#   1. Runs aurora-visual.spec.ts with --update-snapshots on the target
+#      branch, producing fresh .png files on the runner
+#   2. Uploads the whole snapshot directory as a zip artifact
+#
+# A human reviewer downloads the artifact, unzips into
+# `frontend/e2e/aurora-visual.spec.ts-snapshots/`, and commits. We
+# deliberately don't auto-commit — baselines are security-sensitive
+# (screenshots can leak user data) and should have a human check
+# before landing.
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_routes:
+        description: "Comma-separated list of routes to refresh (empty = all)"
+        required: false
+        default: ""
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Regenerate baselines
+        run: |
+          rm -f e2e/aurora-visual.spec.ts-snapshots/*.png || true
+          npx playwright test e2e/aurora-visual.spec.ts --update-snapshots
+        env:
+          CI: "true"
+
+      - name: List fresh baselines
+        run: ls -lh e2e/aurora-visual.spec.ts-snapshots/
+
+      - name: Upload baselines as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vr-baselines-linux
+          path: frontend/e2e/aurora-visual.spec.ts-snapshots/*.png
+          retention-days: 30
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### VR baselines regenerated" >> "$GITHUB_STEP_SUMMARY"
+          echo "Download the \`vr-baselines-linux\` artifact, unzip into" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`frontend/e2e/aurora-visual.spec.ts-snapshots/\`, and commit." >> "$GITHUB_STEP_SUMMARY"
