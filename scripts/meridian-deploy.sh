@@ -51,7 +51,18 @@ section() { echo -e "\n${BLUE}${BOLD}━━━ $* ━━━${NC}"; }
 # Banner intentionally moved below the CLI parser so `--help` exits cleanly
 # without flashing the ASCII art.
 
+
 INSTALL_DIR="/opt/meridian"
+
+# --- Ensure .env exists ---
+if [[ ! -f "${REPO_ROOT}/.env" ]]; then
+    if [[ -f "${REPO_ROOT}/.env.example" ]]; then
+        cp "${REPO_ROOT}/.env.example" "${REPO_ROOT}/.env"
+        warn ".env not found; created from .env.example. Please review and update required values."
+    else
+        error ".env.example not found; cannot create .env."
+    fi
+fi
 
 # Default image source — GHCR with baked read:packages token. Overridable
 # via --image-source (ghcr|registry|local) or MERIDIAN_IMAGE_SOURCE.
@@ -71,9 +82,8 @@ REGISTRY_URL="${MERIDIAN_REGISTRY_URL:-}"
 REGISTRY_USER="${MERIDIAN_REGISTRY_USER:-}"
 REGISTRY_PASS="${MERIDIAN_REGISTRY_PASS:-}"
 
-# Licence server base — overridable so a customer-hosted proxy can front it.
-# Default points at the public Meridian licence worker.
-LICENCE_SERVER_BASE="${MERIDIAN_LICENCE_SERVER_BASE:-https://meridian-licence-worker.reshigan-085.workers.dev}"
+# Licence server base — now points to the working Cloudflare Worker API endpoint.
+LICENCE_SERVER_BASE="${MERIDIAN_LICENCE_SERVER_BASE:-https://meridian-licence-worker.reshigan-085.workers.dev/api/licence}"
 LICENCE_VALIDATE_URL="${LICENCE_SERVER_BASE}/validate"
 
 # Unattended mode — fails on missing input instead of prompting.
