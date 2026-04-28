@@ -143,11 +143,13 @@ export function composeCommandCentre({
         callsTotal: savings.calls_total,
         callsSaved: savings.calls_saved,
         windowDays: savings.window_days,
-        series: savings.series.map((point) => ({
-          date: point.date,
-          reduction:
-            point.calls_total === 0 ? 0 : point.calls_saved / point.calls_total,
-        })),
+        series: Array.isArray(savings.series)
+          ? savings.series.map((point) => ({
+              date: point.date,
+              reduction:
+                point.calls_total === 0 ? 0 : point.calls_saved / point.calls_total,
+            }))
+          : [],
       }
     : undefined;
 

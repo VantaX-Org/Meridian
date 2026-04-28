@@ -730,63 +730,63 @@ if [[ "$TIER" == "2" && -n "${OLLAMA_MODEL:-}" ]]; then
     for i in $(seq 1 30); do
         if docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" \
             exec -T ollama curl -sf http://localhost:11434/api/version >/dev/null 2>&1; then
-            echo " ✓"; break
-        fi
-        [[ $i -eq 30 ]] && { echo ""; warn "Ollama API didn't respond — skipping model pull"; OLLAMA_MODEL=""; break; }
-        echo -n "."; sleep 2
-    done
-    if [[ -n "${OLLAMA_MODEL:-}" ]]; then
-        log "Pulling ${OLLAMA_MODEL} (this can take several minutes on first run)…"
-        if docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" \
-            exec -T ollama ollama pull "$OLLAMA_MODEL"; then
-            log "Model ${OLLAMA_MODEL} ready"
-        else
-            warn "ollama pull ${OLLAMA_MODEL} failed — run it manually later: \\
-  docker compose exec ollama ollama pull ${OLLAMA_MODEL}"
-        fi
-    fi
-fi
 
-# --- meridianctl CLI ---
-section "Setting up meridianctl CLI"
-if [[ -f "${REPO_ROOT}/scripts/meridianctl.py" ]]; then
-    cp "${REPO_ROOT}/scripts/meridianctl.py" "${INSTALL_DIR}/meridianctl"
-    chmod +x "${INSTALL_DIR}/meridianctl"
-    log "meridianctl CLI installed"
-    ln -sf "${INSTALL_DIR}/meridianctl" /usr/local/bin/meridianctl 2>/dev/null \
-        && log "Linked to /usr/local/bin/meridianctl" || true
-else
-    warn "meridianctl.py not found"
-fi
-
-# --- Create admin ---
-section "Creating admin user"
-docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" exec -T api \
-    python scripts/manage_users.py create \
-    --email "$ADMIN_EMAIL" --password "$ADMIN_PASSWORD" --name "$ADMIN_NAME" --role admin \
-    && log "Admin user created: ${ADMIN_EMAIL}" \
-    || warn "Admin creation failed — create manually"
-
-# --- Helper scripts ---
-section "Writing helper scripts"
-
-cat > "${INSTALL_DIR}/update.sh" << 'UPDATEEOF'
-#!/usr/bin/env bash
-set -euo pipefail
-cd /opt/meridian
-BASE="-f docker-compose.customer.yml"
-[[ -f "docker-compose.customer.ollama.yml" ]] && BASE="$BASE -f docker-compose.customer.ollama.yml"
-[[ -f "docker-compose.customer.workers.yml" ]] && BASE="$BASE -f docker-compose.customer.workers.yml"
-docker compose $BASE pull
-docker compose $BASE run --rm -T api alembic upgrade head
-docker compose $BASE up -d --remove-orphans
-echo "[✓] Updated: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-UPDATEEOF
-chmod 755 "${INSTALL_DIR}/update.sh"
-
-cat > "${INSTALL_DIR}/healthcheck.sh" << 'HCEOF'
-#!/usr/bin/env bash
-set -euo pipefail
+            # ━━━ Pre-flight checks (DISABLED) ━━━
+            # [[ $EUID -ne 0 ]] && error "Run as root: sudo bash meridian-deploy.shif [[ -f /etc/os-release ]]; then
+            #     . /etc/os-release
+            #     OS="${ID:-unknown}"
+            #     log "OS: ${PRETTY_NAME:-$OS}"
+            # else
+            #     OS="unknown"
+            #     warn "Cannot detect OS — proceeding anyway"
+            # fi
+            #
+            # # v3.0 requires more RAM for two-lane workers
+            # TOTAL_RAM_GB=$(awk '/MemTotal/{printf "%.0f", $2/1024/1024}' /proc/meminfo 2>/dev/null || echo 0)
+            # if [[ "$TOTAL_RAM_GB" -lt 16 ]]; then
+            #     warn "RAM: ${TOTAL_RAM_GB}GB — 16GB recommended for v3.0"
+            # else
+            #     log "RAM: ${TOTAL_RAM_GB}GB ✓"
+            # fi
+            #
+            # # v3.0 includes more components
+            # FREE_DISK_GB=$(df /opt --output=avail -BG 2>/dev/null | tail -1 | tr -d 'G' || echo 0)
+            # [[ "$FREE_DISK_GB" -lt 50 ]] && \
+            #     error "Insufficient disk: ${FREE_DISK_GB}GB free in /opt, need 50GB minimum"
+            # log "Disk: ${FREE_DISK_GB}GB free ✓"
+            #
+            # ARCH=$(uname -m)
+            # [[ "$ARCH" != "x86_64" && "$ARCH" != "aarch64" ]] && \
+            #     error "Unsupported architecture: $ARCH (need x86_64 or aarch64)"
+            # log "Architecture: $ARCH ✓"
+            #
+            # for tool in curl python3 openssl; do
+            #     command -v "$tool" &>/dev/null || \
+            #         error "$tool not found — install it and re-run"
+            # done
+            # log "Required tools present ✓"
+            #
+            # if ! command -v docker &>/dev/null; then
+            #     error "Docker not found — install Docker 24+ and re-run"
+            # fi
+            # DOCKER_VERSION=$(docker version --format '{{.Server.Version}}' 2>/dev/null || echo "0")
+            # DOCKER_MAJOR=$(echo "$DOCKER_VERSION" | cut -d. -f1)
+            # DOCKER_MINOR=$(echo "$DOCKER_VERSION" | cut -d. -f2)
+            # if [[ "$DOCKER_MAJOR" -lt 24 || ("$DOCKER_MAJOR" -eq 24 && "$DOCKER_MINOR" -lt 0) ]]; then
+            #     warn "Docker ${DOCKER_VERSION} detected — 24+ recommended"
+            # else
+            #     log "Docker: ${DOCKER_VERSION} ✓"
+            # fi
+            #
+            # # v3.0 includes worker compose
+            # for f in \
+            #     "${REPO_ROOT}/docker/docker-compose.customer.yml" \
+            #     "${REPO_ROOT}/docker/docker-compose.customer.ollama.yml" \
+            #     "${REPO_ROOT}/docker/docker-compose.customer.workers.yml" \
+            #     "${REPO_ROOT}/docker/nginx/meridian.conf"; do
+            #     [[ -f "$f" ]] || error "Required compose/config file missing: $f"
+            # done
+            # log "Compose/config files present ✓"
 cd /opt/meridian
 BASE="-f docker-compose.customer.yml"
 [[ -f "docker-compose.customer.ollama.yml" ]] && BASE="$BASE -f docker-compose.customer.ollama.yml"
