@@ -551,7 +551,7 @@ if [[ "$PRECONFIGURED" != "true" ]]; then
         printf 'MERIDIAN_LICENCE_MODE=%s\n' "$LICENCE_MODE"
         [[ -n "$_LICENCE_KEY_LINE"   ]] && printf '%s\n' "$_LICENCE_KEY_LINE"
         [[ -n "$_LICENCE_TOKEN_LINE" ]] && printf '%s\n' "$_LICENCE_TOKEN_LINE"
-        printf 'MERIDIAN_LICENCE_SERVER_URL=%s\n' "${LICENCE_SERVER_BASE}/api/licence/validate"
+        printf 'MERIDIAN_LICENCE_SERVER_URL=%s\n' "${LICENCE_SERVER_BASE}"
         printf '\n# LLM (Tier %s)\n' "$TIER"
         for line in "${_LLM_ENV_LINES[@]}"; do
             printf '%s\n' "$line"
@@ -734,63 +734,23 @@ if [[ "$TIER" == "2" && -n "${OLLAMA_MODEL:-}" ]]; then
     for i in $(seq 1 30); do
         if docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" \
             exec -T ollama curl -sf http://localhost:11434/api/version >/dev/null 2>&1; then
+            echo " ✓"
+            break
+        fi
+        [[ $i -eq 30 ]] && { echo ""; warn "Ollama slow to start — model pull may fail"; }
+        echo -n "."; sleep 2
+    done
+    docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" \
+        exec -T ollama ollama pull "$OLLAMA_MODEL" \
+        || warn "Model pull failed — retry: docker compose exec ollama ollama pull $OLLAMA_MODEL"
+    log "Model ${OLLAMA_MODEL} ready"
+fi
 
-            # ━━━ Pre-flight checks (DISABLED) ━━━
-            # [[ $EUID -ne 0 ]] && error "Run as root: sudo bash meridian-deploy.shif [[ -f /etc/os-release ]]; then
-            #     . /etc/os-release
-            #     OS="${ID:-unknown}"
-            #     log "OS: ${PRETTY_NAME:-$OS}"
-            # else
-            #     OS="unknown"
-            #     warn "Cannot detect OS — proceeding anyway"
-            # fi
-            #
-            # # v3.0 requires more RAM for two-lane workers
-            # TOTAL_RAM_GB=$(awk '/MemTotal/{printf "%.0f", $2/1024/1024}' /proc/meminfo 2>/dev/null || echo 0)
-            # if [[ "$TOTAL_RAM_GB" -lt 16 ]]; then
-            #     warn "RAM: ${TOTAL_RAM_GB}GB — 16GB recommended for v3.0"
-            # else
-            #     log "RAM: ${TOTAL_RAM_GB}GB ✓"
-            # fi
-            #
-            # # v3.0 includes more components
-            # FREE_DISK_GB=$(df /opt --output=avail -BG 2>/dev/null | tail -1 | tr -d 'G' || echo 0)
-            # [[ "$FREE_DISK_GB" -lt 50 ]] && \
-            #     error "Insufficient disk: ${FREE_DISK_GB}GB free in /opt, need 50GB minimum"
-            # log "Disk: ${FREE_DISK_GB}GB free ✓"
-            #
-            # ARCH=$(uname -m)
-            # [[ "$ARCH" != "x86_64" && "$ARCH" != "aarch64" ]] && \
-            #     error "Unsupported architecture: $ARCH (need x86_64 or aarch64)"
-            # log "Architecture: $ARCH ✓"
-            #
-            # for tool in curl python3 openssl; do
-            #     command -v "$tool" &>/dev/null || \
-            #         error "$tool not found — install it and re-run"
-            # done
-            # log "Required tools present ✓"
-            #
-            # if ! command -v docker &>/dev/null; then
-            #     error "Docker not found — install Docker 24+ and re-run"
-            # fi
-            # DOCKER_VERSION=$(docker version --format '{{.Server.Version}}' 2>/dev/null || echo "0")
-            # DOCKER_MAJOR=$(echo "$DOCKER_VERSION" | cut -d. -f1)
-            # DOCKER_MINOR=$(echo "$DOCKER_VERSION" | cut -d. -f2)
-            # if [[ "$DOCKER_MAJOR" -lt 24 || ("$DOCKER_MAJOR" -eq 24 && "$DOCKER_MINOR" -lt 0) ]]; then
-            #     warn "Docker ${DOCKER_VERSION} detected — 24+ recommended"
-            # else
-            #     log "Docker: ${DOCKER_VERSION} ✓"
-            # fi
-            #
-            # # v3.0 includes worker compose
-            # for f in \
-            #     "${REPO_ROOT}/docker/docker-compose.customer.yml" \
-            #     "${REPO_ROOT}/docker/docker-compose.customer.ollama.yml" \
-            #     "${REPO_ROOT}/docker/docker-compose.customer.workers.yml" \
-            #     "${REPO_ROOT}/docker/nginx/meridian.conf"; do
-            #     [[ -f "$f" ]] || error "Required compose/config file missing: $f"
-            # done
-            # log "Compose/config files present ✓"
+# --- Write helper scripts ---
+section "Writing helper scripts"
+mkdir -p "${INSTALL_DIR}"
+cat <<'HCEOF' > "${INSTALL_DIR}/healthcheck.sh"
+#!/usr/bin/env bash
 cd /opt/meridian
 BASE="-f docker-compose.customer.yml"
 [[ -f "docker-compose.customer.ollama.yml" ]] && BASE="$BASE -f docker-compose.customer.ollama.yml"
