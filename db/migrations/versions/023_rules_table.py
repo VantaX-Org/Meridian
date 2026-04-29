@@ -111,7 +111,7 @@ def _seed_yaml_rules(op) -> None:
     result = conn.execute(
         sa.text("SELECT 1 FROM tenants WHERE id = :tid"), {"tid": dev_tenant}
     )
-    if not result.fetchone():
+    if result is None or not result.fetchone():
         print("[migration 023] Dev tenant not found — skipping YAML rule seed")
         return
 
