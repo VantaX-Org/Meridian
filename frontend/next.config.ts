@@ -6,8 +6,10 @@ const nextConfig: NextConfig = {
   async rewrites() {
     // INTERNAL_API_URL is a server-side-only env var.
     // In Docker: resolves to http://api:8000 via Docker DNS.
-    // In local dev: defaults to http://localhost:8000.
-    const apiUrl = process.env.INTERNAL_API_URL || "http://localhost:8000";
+    // On host dev (npm run dev): set INTERNAL_API_URL=http://localhost:8000.
+    // Default to Docker service DNS so production image builds don't accidentally
+    // bake localhost (which would point to the frontend container itself).
+    const apiUrl = process.env.INTERNAL_API_URL || "http://api:8000";
 
     return [
       {

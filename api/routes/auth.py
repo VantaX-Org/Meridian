@@ -26,6 +26,7 @@ _login_rate_limit = rate_limit("auth_login", limit=10, window_s=60, key_by="ip")
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 DEV_TENANT_ID = "00000000-0000-0000-0000-000000000001"
+_column_exists_cache: dict[tuple[str, str], bool] = {}
 
 
 class LoginRequest(BaseModel):
@@ -66,17 +67,54 @@ def _get_sync_connection():
     return engine.connect()
 
 
+def _column_exists(conn, table_name: str, column_name: str) -> bool:
+    key = (table_name, column_name)
+    if key in _column_exists_cache:
+        return _column_exists_cache[key]
+
+    exists = bool(
+        conn.execute(
+            text(
+                "SELECT 1 "
+                "FROM information_schema.columns "
+                "WHERE table_name = :table_name AND column_name = :column_name"
+            ),
+            {"table_name": table_name, "column_name": column_name},
+        ).fetchone()
+    )
+    _column_exists_cache[key] = exists
+    return exists
+
+
+def _ensure_local_auth_schema(conn) -> None:
+    has_password_hash = _column_exists(conn, "users", "password_hash")
+    has_jwt_secret = _column_exists(conn, "tenants", "jwt_secret")
+    if has_password_hash and has_jwt_secret:
+        return
+
+    raise HTTPException(
+        status_code=503,
+        detail=(
+            "Local auth schema is not fully migrated. "
+            "Run database migrations (`alembic upgrade head`) and restart the API."
+        ),
+    )
+
+
 @router.post("/login", response_model=LoginResponse, dependencies=[Depends(_login_rate_limit)])
 def login(body: LoginRequest):
     """Authenticate with email/password and receive a JWT."""
     engine = get_sync_engine_or_create()
     with engine.connect() as conn:
+        _ensure_local_auth_schema(conn)
         conn.execute(text(f"SET app.tenant_id = \'{str(DEV_TENANT_ID)}\'"))
+        supports_must_change = _column_exists(conn, "users", "must_change_password")
 
         # Look up user
+        must_change_select = "must_change_password" if supports_must_change else "false as must_change_password"
         row = conn.execute(
             text(
-                "SELECT id, email, name, role, password_hash, is_active, must_change_password "
+                f"SELECT id, email, name, role, password_hash, is_active, {must_change_select} "
                 "FROM users WHERE email = :email AND tenant_id = :tid"
             ),
             {"email": body.email, "tid": DEV_TENANT_ID},
@@ -142,6 +180,8 @@ def me(request: Request):
 
     engine = get_sync_engine_or_create()
     with engine.connect() as conn:
+        _ensure_local_auth_schema(conn)
+        supports_must_change = _column_exists(conn, "users", "must_change_password")
         # Get jwt_secret
         secret_row = conn.execute(
             text("SELECT jwt_secret FROM tenants WHERE id = :tid"),
@@ -157,8 +197,12 @@ def me(request: Request):
 
         # Look up user
         conn.execute(text(f"SET app.tenant_id = \'{str(DEV_TENANT_ID)}\'"))
+        must_change_select = "must_change_password" if supports_must_change else "false as must_change_password"
         row = conn.execute(
-            text("SELECT id, email, name, role, is_active, must_change_password FROM users WHERE id = :uid AND tenant_id = :tid"),
+            text(
+                f"SELECT id, email, name, role, is_active, {must_change_select} "
+                "FROM users WHERE id = :uid AND tenant_id = :tid"
+            ),
             {"uid": payload["sub"], "tid": DEV_TENANT_ID},
         ).fetchone()
 
@@ -208,6 +252,7 @@ def change_password(body: ChangePasswordRequest, request: Request):
 
     engine = get_sync_engine_or_create()
     with engine.connect() as conn:
+        _ensure_local_auth_schema(conn)
         secret_row = conn.execute(
             text("SELECT jwt_secret FROM tenants WHERE id = :tid"),
             {"tid": DEV_TENANT_ID},

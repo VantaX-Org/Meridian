@@ -76,7 +76,14 @@ async def upload_file(
     # Step 3: Store raw file in MinIO
     file_id = str(uuid.uuid4())
     object_name = f"uploads/{tenant.id}/{file_id}.{ext}"
-    minio_upload(settings.minio_bucket_uploads, object_name, content, file.content_type or "application/octet-stream")
+    try:
+        minio_upload(settings.minio_bucket_uploads, object_name, content, file.content_type or "application/octet-stream")
+    except Exception as e:
+        logger.exception(f"Failed to store raw upload in MinIO for tenant {tenant.id}: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail={"error": "storage_unavailable", "detail": "Upload storage is unavailable. Please try again shortly."},
+        )
     logger.debug(f"Stored raw file: {object_name}")
 
     # Step 4: Read into DataFrame
@@ -163,11 +170,28 @@ async def upload_file(
         )
 
     # Step 7: Store cleaned parquet to MinIO
-    parquet_buffer = io.BytesIO()
-    df.to_parquet(parquet_buffer, index=False)
-    parquet_bytes = parquet_buffer.getvalue()
+    try:
+        parquet_buffer = io.BytesIO()
+        df.to_parquet(parquet_buffer, index=False)
+        parquet_bytes = parquet_buffer.getvalue()
+    except Exception as e:
+        logger.exception(f"Failed to serialise parquet for tenant {tenant.id}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "parquet_serialization_failed",
+                "detail": "Server could not prepare the upload for analysis.",
+            },
+        )
     parquet_path = f"staging/{tenant.id}/{file_id}.parquet"
-    minio_upload(settings.minio_bucket_uploads, parquet_path, parquet_bytes, "application/octet-stream")
+    try:
+        minio_upload(settings.minio_bucket_uploads, parquet_path, parquet_bytes, "application/octet-stream")
+    except Exception as e:
+        logger.exception(f"Failed to store parquet in MinIO for tenant {tenant.id}: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail={"error": "storage_unavailable", "detail": "Upload storage is unavailable. Please try again shortly."},
+        )
     logger.debug(f"Stored parquet: {parquet_path}")
 
     # Step 8: Create analysis_versions record

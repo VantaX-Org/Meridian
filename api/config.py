@@ -1,3 +1,4 @@
+import os
 from pydantic_settings import BaseSettings
 from typing import Optional
 
@@ -20,7 +21,9 @@ class Settings(BaseSettings):
     # MinIO
     minio_endpoint: str = "minio:9000"
     minio_access_key: str = "meridian"
-    minio_secret_key: str = ""
+    # Fallback to MINIO_PASSWORD for compatibility with compose envs that use
+    # MinIO's native variable names.
+    minio_secret_key: str = os.environ.get("MINIO_SECRET_KEY") or os.environ.get("MINIO_PASSWORD") or ""
     minio_bucket_uploads: str = "meridian-uploads"
     minio_bucket_reports: str = "meridian-reports"
 
