@@ -3,15 +3,6 @@
 # Meridian Platform — Update script with canary + rollback
 # scripts/update.sh
 #
-# Pulls the latest prod images, runs migrations, restarts services,
-# and verifies the stack is healthy. If /health doesn't come up inside
-# 120s, the previous image tags are restored automatically.
-#
-# Before pulling we snapshot the currently-running `:latest` tags to
-# `:rollback`, so a failed roll-forward restores to exactly the bits
-# that were running — not "the :latest of yesterday", which may have
-# moved under us.
-#
 # Usage:
 #   sudo bash scripts/update.sh              # update to latest
 #   sudo bash scripts/update.sh --rollback   # roll back to previous
@@ -36,16 +27,16 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Compose file discovery — match meridian-deploy.sh's logic.
-COMPOSE_ARGS=()
+# Compose file discovery — use a function so -f is always passed correctly.
 if [[ -f "docker/docker-compose.customer.yml" ]]; then
-    COMPOSE_ARGS+=(-f "docker/docker-compose.customer.yml")
+    COMPOSE_FILE="docker/docker-compose.customer.yml"
 elif [[ -f "docker-compose.yml" ]]; then
-    COMPOSE_ARGS+=(-f "docker-compose.yml")
+    COMPOSE_FILE="docker-compose.yml"
 else
     error "No docker-compose file found"
 fi
-DC="docker compose ${COMPOSE_ARGS[*]}"
+
+dc() { docker compose -f "$COMPOSE_FILE" "$@"; }
 
 IMAGES=(
     "ghcr.io/vantax-org/meridian-api"
@@ -54,7 +45,6 @@ IMAGES=(
     "ghcr.io/vantax-org/meridian-nginx"
 )
 
-# ─── Snapshot current images → :rollback tag ───────────────────────────────
 snapshot_rollback_tags() {
     info "Snapshotting current images as :rollback..."
     for img in "${IMAGES[@]}"; do
@@ -67,22 +57,17 @@ snapshot_rollback_tags() {
     done
 }
 
-# ─── Pull images (match deploy script behavior) ──────────────────────────────
 pull_images() {
     info "Pulling latest images..."
-    if $DC pull; then
-        info "Images pulled successfully"
-    else
-        error "Image pull failed. If images are private, log in to GHCR manually before running update."
-    fi
+    dc pull || error "Pull failed. Running stack is untouched. Check your network connection."
+    info "Images pulled successfully"
 }
 
-# ─── Health verification ────────────────────────────────────────────────────
 verify_health() {
     info "Verifying /health for up to 120s..."
     local timeout=120 interval=5 elapsed=0
     while [[ $elapsed -lt $timeout ]]; do
-        if $DC exec -T api curl -sf http://localhost:8000/health 2>/dev/null | grep -q '"status":"ok"'; then
+        if dc exec -T api curl -sf http://localhost:8000/health 2>/dev/null | grep -q '"status":"ok"'; then
             info "API healthy ✓"
             return 0
         fi
@@ -94,7 +79,6 @@ verify_health() {
     return 1
 }
 
-# ─── Rollback path ──────────────────────────────────────────────────────────
 rollback() {
     info "Rolling back to previously-running images..."
     local missing=0
@@ -110,13 +94,11 @@ rollback() {
     if [[ "$missing" -eq "${#IMAGES[@]}" ]]; then
         error "No :rollback tags found — nothing to roll back to."
     fi
-
     info "Restarting services on rolled-back images..."
-    $DC up -d --force-recreate api worker frontend nginx 2>/dev/null || true
-
+    dc up -d --force-recreate api worker frontend nginx 2>/dev/null || true
     if [[ "$VERIFY" == "true" ]]; then
         if ! verify_health; then
-            error "Rollback completed but health check still failing — investigate: $DC logs api"
+            error "Rollback completed but health check still failing — check: docker compose logs api"
         fi
     fi
     info "Rollback complete."
@@ -127,30 +109,21 @@ if [[ "$ACTION" == "rollback" ]]; then
     rollback
 fi
 
-# ─── Main update flow ───────────────────────────────────────────────────────
 info "Updating Meridian to the latest released version..."
 
-# 1. Snapshot current images before pulling new ones
 snapshot_rollback_tags
 
-# 2. Pull — failure aborts without touching the running stack
 pull_images
 
-# 3. Run migrations against the already-running api container.
-#    FIX: use `exec` not `run --rm` — a throwaway container may not share
-#    the same network aliases or pick up the correct DATABASE_URL_MIGRATE.
-#    Failure stops here so we stay on the old version with unchanged schema.
 info "Running database migrations..."
-if ! $DC exec -T api bash -c "cd /app && alembic upgrade head"; then
+if ! dc exec -T api bash -c "cd /app && alembic upgrade head"; then
     warn "Migration failed. Services still running on previous version."
     error "Investigate the migration error before retrying."
 fi
 
-# 4. Roll forward
 info "Restarting services..."
-$DC up -d --force-recreate api worker frontend nginx 2>/dev/null || true
+dc up -d --force-recreate api worker frontend nginx 2>/dev/null || true
 
-# 5. Verify — if /health doesn't come up, auto-rollback
 if [[ "$VERIFY" == "true" ]]; then
     if ! verify_health; then
         warn "/health never turned green after 120s. Auto-rolling back..."
@@ -159,16 +132,15 @@ if [[ "$VERIFY" == "true" ]]; then
                 docker tag "${img}:rollback" "${img}:latest"
             fi
         done
-        $DC up -d --force-recreate api worker frontend nginx 2>/dev/null || true
+        dc up -d --force-recreate api worker frontend nginx 2>/dev/null || true
         if ! verify_health; then
-            error "Rollback also failed /health. Manual intervention required. Logs: $DC logs api"
+            error "Rollback also failed /health. Manual intervention required. Check: docker compose logs api"
         fi
-        error "Update rolled back. Running on previous images. Check '$DC logs api' for why the new images failed."
+        error "Update rolled back. Running on previous images. Check 'docker compose logs api' for details."
     fi
 fi
 
-# 6. Report version
-VERSION=$($DC exec -T api curl -sf http://localhost:8000/health 2>/dev/null | python3 -c "
+VERSION=$(dc exec -T api curl -sf http://localhost:8000/health 2>/dev/null | python3 -c "
 import sys, json
 try:
     d = json.load(sys.stdin)
