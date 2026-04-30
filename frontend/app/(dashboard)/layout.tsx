@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { CommandPalette, useCommandPalette } from "@/components/command-palette";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import axios from "axios";
 
 function LocalUserButton() {
   const { user, logout } = useAuth();
@@ -130,17 +131,31 @@ function HeaderExportMenu() {
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
 
+
           <DropdownMenuItem
             disabled={!hasReport}
-            render={
-              hasReport ? (
-                <a
-                  href={getReportDownloadUrl(latestComplete!.id)}
-                  download
-                  className="flex items-center gap-2 cursor-pointer"
-                />
-              ) : undefined
-            }
+            onClick={async () => {
+              if (!hasReport) return;
+              const versionId = latestComplete!.id;
+              try {
+                const token = localStorage.getItem("mn_auth_token");
+                const response = await axios.get(`/api/v1/reports/${versionId}/download`, {
+                  responseType: "blob",
+                  headers: token ? { Authorization: `Bearer ${token}` } : {},
+                });
+                const url = window.URL.createObjectURL(new Blob([response.data], { type: "application/pdf" }));
+                const link = document.createElement("a");
+                link.href = url;
+                link.setAttribute("download", `meridian_dq_report_${versionId}.pdf`);
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                window.URL.revokeObjectURL(url);
+              } catch (err) {
+                alert("Failed to download PDF report. Please check your login and try again.");
+              }
+            }}
+            className="flex items-center gap-2 cursor-pointer"
           >
             <FileText className="h-4 w-4" />
             <span>Download PDF report</span>

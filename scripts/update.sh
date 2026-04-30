@@ -67,6 +67,43 @@ snapshot_rollback_tags() {
     done
 }
 
+# ─── Pull images (public first, auth fallback) ──────────────────────────────
+pull_images() {
+    info "Pulling latest images..."
+
+    # Try unauthenticated first (works when packages are public)
+    if $DC pull 2>/dev/null; then
+        info "Images pulled successfully"
+        return 0
+    fi
+
+    # Fall back to authenticated pull
+    warn "Unauthenticated pull failed — attempting with GHCR token"
+
+    # Look for token in .env files
+    local token=""
+    for env_file in ".env" "docker/.env"; do
+        if [[ -f "$env_file" ]]; then
+            token=$(grep -oP '^MERIDIAN_GHCR_TOKEN=\K.*' "$env_file" 2>/dev/null || echo "")
+            [[ -n "$token" && "$token" != "__GHCR_TOKEN__" ]] && break
+        fi
+    done
+
+    # Fall back to env var
+    [[ -z "$token" ]] && token="${MERIDIAN_GHCR_TOKEN:-}"
+
+    if [[ -z "$token" ]]; then
+        error "Pull failed and no GHCR token found. Set MERIDIAN_GHCR_TOKEN in .env or run with public packages."
+    fi
+
+    local ghcr_user="${MERIDIAN_GHCR_USER:-vantax-org}"
+    echo "$token" | docker login ghcr.io -u "$ghcr_user" --password-stdin \
+        || error "GHCR login failed — check token has read:packages scope"
+
+    $DC pull || error "Pull failed even after authentication. Running stack is untouched."
+    info "Images pulled successfully (authenticated)"
+}
+
 # ─── Health verification ────────────────────────────────────────────────────
 verify_health() {
     info "Verifying /health for up to 120s..."
@@ -106,7 +143,7 @@ rollback() {
 
     if [[ "$VERIFY" == "true" ]]; then
         if ! verify_health; then
-            error "Rollback completed but health check still failing — investigate $DC logs api"
+            error "Rollback completed but health check still failing — investigate: $DC logs api"
         fi
     fi
     info "Rollback complete."
@@ -124,16 +161,15 @@ info "Updating Meridian to the latest released version..."
 snapshot_rollback_tags
 
 # 2. Pull — failure aborts without touching the running stack
-info "Pulling latest images..."
-if ! $DC pull; then
-    error "Pull failed. Running stack is untouched. Retry, or investigate network/credentials."
-fi
+pull_images
 
-# 3. Run migrations in a one-off container. Failure stops here, so we
-#    stay on the old version with the unchanged schema.
+# 3. Run migrations against the already-running api container.
+#    FIX: use `exec` not `run --rm` — a throwaway container may not share
+#    the same network aliases or pick up the correct DATABASE_URL_MIGRATE.
+#    Failure stops here so we stay on the old version with unchanged schema.
 info "Running database migrations..."
-if ! $DC run --rm -T api alembic upgrade head; then
-    warn "Migration failed. Services still running on previous version; no rollback triggered."
+if ! $DC exec -T api bash -c "cd /app && alembic upgrade head"; then
+    warn "Migration failed. Services still running on previous version."
     error "Investigate the migration error before retrying."
 fi
 
@@ -154,7 +190,7 @@ if [[ "$VERIFY" == "true" ]]; then
         if ! verify_health; then
             error "Rollback also failed /health. Manual intervention required. Logs: $DC logs api"
         fi
-        error "Update rolled back. Running on the previous images. Check $DC logs api for why the new images failed."
+        error "Update rolled back. Running on previous images. Check '$DC logs api' for why the new images failed."
     fi
 fi
 
