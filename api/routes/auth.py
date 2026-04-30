@@ -5,7 +5,7 @@ Active only when AUTH_MODE=local.
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
 from sqlalchemy import text
 
@@ -102,7 +102,7 @@ def _ensure_local_auth_schema(conn) -> None:
 
 
 @router.post("/login", response_model=LoginResponse, dependencies=[Depends(_login_rate_limit)])
-def login(body: LoginRequest):
+def login(body: LoginRequest, response: Response):
     """Authenticate with email/password and receive a JWT."""
     engine = get_sync_engine_or_create()
     with engine.connect() as conn:
@@ -153,6 +153,17 @@ def login(body: LoginRequest):
             email=row[1],
             role=row[3],
             secret=jwt_secret,
+        )
+        # Cookie fallback for browser-initiated downloads (anchor/open-in-new-tab)
+        # where custom Authorization headers are not reliably attached.
+        response.set_cookie(
+            key="mn_auth_token",
+            value=token,
+            max_age=24 * 60 * 60,
+            path="/",
+            samesite="lax",
+            httponly=False,
+            secure=False,
         )
 
         # Update last_login

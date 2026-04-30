@@ -35,6 +35,8 @@ import { getReportDownloadUrl, getReportJsonExportUrl } from "@/lib/api/reports"
 import { getConfigMatchesExportUrl } from "@/lib/api/config-matches";
 import { formatModuleName, scoreColor } from "@/lib/format";
 import type { Version, VersionComparison } from "@/types/api";
+import { toast } from "sonner";
+import { downloadAuthenticated } from "@/lib/api/download";
 
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
   pending: { label: "Queued", className: "bg-gray-500" },
@@ -268,31 +270,64 @@ export default function VersionsPage() {
                             <>
                               <Tooltip>
                                 <TooltipTrigger>
-                                  <a href={getReportDownloadUrl(v.id)} download>
-                                    <Button variant="ghost" size="sm">
-                                      <Download className="h-4 w-4" />
-                                    </Button>
-                                  </a>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={async () => {
+                                      try {
+                                        await downloadAuthenticated(
+                                          getReportDownloadUrl(v.id),
+                                          `meridian_dq_report_${v.id}.pdf`,
+                                        );
+                                      } catch {
+                                        toast.error("Failed to download PDF report");
+                                      }
+                                    }}
+                                  >
+                                    <Download className="h-4 w-4" />
+                                  </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>Download PDF report</TooltipContent>
                               </Tooltip>
                               <Tooltip>
                                 <TooltipTrigger>
-                                  <a href={getReportJsonExportUrl(v.id)} download>
-                                    <Button variant="ghost" size="sm">
-                                      <FileJson className="h-4 w-4" />
-                                    </Button>
-                                  </a>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={async () => {
+                                      try {
+                                        await downloadAuthenticated(
+                                          getReportJsonExportUrl(v.id),
+                                          `meridian_dq_report_${v.id}.json`,
+                                        );
+                                      } catch {
+                                        toast.error("Failed to download JSON report");
+                                      }
+                                    }}
+                                  >
+                                    <FileJson className="h-4 w-4" />
+                                  </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>Export report as JSON</TooltipContent>
                               </Tooltip>
                               <Tooltip>
                                 <TooltipTrigger>
-                                  <a href={getConfigMatchesExportUrl(v.id)} download>
-                                    <Button variant="ghost" size="sm">
-                                      <FileSpreadsheet className="h-4 w-4" />
-                                    </Button>
-                                  </a>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={async () => {
+                                      try {
+                                        await downloadAuthenticated(
+                                          getConfigMatchesExportUrl(v.id),
+                                          `meridian-config-${v.id.slice(0, 8)}.xlsx`,
+                                        );
+                                      } catch {
+                                        toast.error("Failed to download config matches export");
+                                      }
+                                    }}
+                                  >
+                                    <FileSpreadsheet className="h-4 w-4" />
+                                  </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>Export config matches (xlsx)</TooltipContent>
                               </Tooltip>

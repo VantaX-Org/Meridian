@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { getVersions } from "@/lib/api/versions";
 import { getReportDownloadUrl, getReportJsonExportUrl } from "@/lib/api/reports";
 import { getConfigMatchesExportUrl } from "@/lib/api/config-matches";
+import { downloadAuthenticated } from "@/lib/api/download";
 import { getSettings, saveNotificationSettings } from "@/lib/api/settings";
 import { formatModuleName, scoreColor } from "@/lib/format";
 import { useLicence } from "@/hooks/use-licence";
@@ -166,29 +167,56 @@ function ReportRow({
           <div className="flex gap-1">
             {exportEnabled ? (
               <>
-                <a href={getReportDownloadUrl(version.id)} download>
-                  <Button variant="ghost" size="sm">
-                    <Download className="mr-1 h-4 w-4" /> PDF
-                  </Button>
-                </a>
-                <a
-                  href={getReportJsonExportUrl(version.id)}
-                  download
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={async () => {
+                    try {
+                      await downloadAuthenticated(
+                        getReportDownloadUrl(version.id),
+                        `meridian_dq_report_${version.id}.pdf`,
+                      );
+                    } catch {
+                      toast.error("Failed to download PDF report");
+                    }
+                  }}
+                >
+                  <Download className="mr-1 h-4 w-4" /> PDF
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
                   title="Export assembled report as JSON (always available when analysis is complete)"
+                  onClick={async () => {
+                    try {
+                      await downloadAuthenticated(
+                        getReportJsonExportUrl(version.id),
+                        `meridian_dq_report_${version.id}.json`,
+                      );
+                    } catch {
+                      toast.error("Failed to download JSON report");
+                    }
+                  }}
                 >
-                  <Button variant="ghost" size="sm">
-                    <FileJson className="mr-1 h-4 w-4" /> JSON
-                  </Button>
-                </a>
-                <a
-                  href={getConfigMatchesExportUrl(version.id)}
-                  download
+                  <FileJson className="mr-1 h-4 w-4" /> JSON
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
                   title="Export live SAP config vs. standard-rule mismatches as an Excel workbook"
+                  onClick={async () => {
+                    try {
+                      await downloadAuthenticated(
+                        getConfigMatchesExportUrl(version.id),
+                        `meridian-config-${version.id.slice(0, 8)}.xlsx`,
+                      );
+                    } catch {
+                      toast.error("Failed to download config matches export");
+                    }
+                  }}
                 >
-                  <Button variant="ghost" size="sm">
-                    <FileSpreadsheet className="mr-1 h-4 w-4" /> Config
-                  </Button>
-                </a>
+                  <FileSpreadsheet className="mr-1 h-4 w-4" /> Config
+                </Button>
               </>
             ) : (
               <Button variant="ghost" size="sm" disabled title="Not included in your current licence">

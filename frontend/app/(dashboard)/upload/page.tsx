@@ -37,6 +37,7 @@ import {
 import { getVersion } from "@/lib/api/versions";
 import { getReportDownloadUrl, getReportJsonExportUrl } from "@/lib/api/reports";
 import { getConfigMatchesExportUrl } from "@/lib/api/config-matches";
+import { downloadAuthenticated } from "@/lib/api/download";
 import { getSystems } from "@/lib/api/systems";
 import { scoreColor, formatModuleName } from "@/lib/format";
 import type { Version } from "@/types/api";
@@ -801,15 +802,54 @@ export default function UploadPage() {
               <Link href={`/findings?version_id=${version.id}`}>
                 <Button>View Findings</Button>
               </Link>
-              <a href={getReportDownloadUrl(version.id)} download>
-                <Button variant="outline">Download PDF</Button>
-              </a>
-              <a href={getReportJsonExportUrl(version.id)} download>
-                <Button variant="outline">Download JSON</Button>
-              </a>
-              <a href={getConfigMatchesExportUrl(version.id)} download>
-                <Button variant="outline">Export Config Matches</Button>
-              </a>
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    await downloadAuthenticated(
+                      getReportDownloadUrl(version.id),
+                      `meridian_dq_report_${version.id}.pdf`,
+                    );
+                  } catch {
+                    setErrorMsg("Failed to download PDF report");
+                    setStep("error");
+                  }
+                }}
+              >
+                Download PDF
+              </Button>
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    await downloadAuthenticated(
+                      getReportJsonExportUrl(version.id),
+                      `meridian_dq_report_${version.id}.json`,
+                    );
+                  } catch {
+                    setErrorMsg("Failed to download JSON report");
+                    setStep("error");
+                  }
+                }}
+              >
+                Download JSON
+              </Button>
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    await downloadAuthenticated(
+                      getConfigMatchesExportUrl(version.id),
+                      `meridian-config-${version.id.slice(0, 8)}.xlsx`,
+                    );
+                  } catch {
+                    setErrorMsg("Failed to download config matches export");
+                    setStep("error");
+                  }
+                }}
+              >
+                Export Config Matches
+              </Button>
             </div>
           </CardContent>
         </Card>

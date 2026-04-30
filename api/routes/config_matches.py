@@ -1,7 +1,7 @@
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
@@ -77,9 +77,20 @@ async def export_config_matches(
                 "Run an analysis that includes the config intelligence engine first."
             ),
         )
-    stream = generate_config_match_excel(rows)
-    return StreamingResponse(
-        stream,
+    export_rows = [dict(row._mapping) for row in rows]
+    summary = await get_config_match_summary(
+        db=db,
+        version_id=version_id,
+        tenant_id=str(tenant.id),
+    ) or {
+        "data_errors": 0,
+        "config_deviations": 0,
+        "ambiguous": 0,
+        "modules_with_deviations": [],
+    }
+    stream = generate_config_match_excel(export_rows, summary, version_id)
+    return Response(
+        content=stream,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={
             "Content-Disposition": f'attachment; filename="meridian-config-{version_id[:8]}.xlsx"'

@@ -67,41 +67,14 @@ snapshot_rollback_tags() {
     done
 }
 
-# ─── Pull images (public first, auth fallback) ──────────────────────────────
+# ─── Pull images (match deploy script behavior) ──────────────────────────────
 pull_images() {
     info "Pulling latest images..."
-
-    # Try unauthenticated first (works when packages are public)
-    if $DC pull 2>/dev/null; then
+    if $DC pull; then
         info "Images pulled successfully"
-        return 0
+    else
+        error "Image pull failed. If images are private, log in to GHCR manually before running update."
     fi
-
-    # Fall back to authenticated pull
-    warn "Unauthenticated pull failed — attempting with GHCR token"
-
-    # Look for token in .env files
-    local token=""
-    for env_file in ".env" "docker/.env"; do
-        if [[ -f "$env_file" ]]; then
-            token=$(grep -oP '^MERIDIAN_GHCR_TOKEN=\K.*' "$env_file" 2>/dev/null || echo "")
-            [[ -n "$token" && "$token" != "__GHCR_TOKEN__" ]] && break
-        fi
-    done
-
-    # Fall back to env var
-    [[ -z "$token" ]] && token="${MERIDIAN_GHCR_TOKEN:-}"
-
-    if [[ -z "$token" ]]; then
-        error "Pull failed and no GHCR token found. Set MERIDIAN_GHCR_TOKEN in .env or run with public packages."
-    fi
-
-    local ghcr_user="${MERIDIAN_GHCR_USER:-vantax-org}"
-    echo "$token" | docker login ghcr.io -u "$ghcr_user" --password-stdin \
-        || error "GHCR login failed — check token has read:packages scope"
-
-    $DC pull || error "Pull failed even after authentication. Running stack is untouched."
-    info "Images pulled successfully (authenticated)"
 }
 
 # ─── Health verification ────────────────────────────────────────────────────

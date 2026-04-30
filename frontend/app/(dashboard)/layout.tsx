@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { CommandPalette, useCommandPalette } from "@/components/command-palette";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
-import axios from "axios";
+import { downloadAuthenticated } from "@/lib/api/download";
 
 function LocalUserButton() {
   const { user, logout } = useAuth();
@@ -138,20 +138,11 @@ function HeaderExportMenu() {
               if (!hasReport) return;
               const versionId = latestComplete!.id;
               try {
-                const token = localStorage.getItem("mn_auth_token");
-                const response = await axios.get(`/api/v1/reports/${versionId}/download`, {
-                  responseType: "blob",
-                  headers: token ? { Authorization: `Bearer ${token}` } : {},
-                });
-                const url = window.URL.createObjectURL(new Blob([response.data], { type: "application/pdf" }));
-                const link = document.createElement("a");
-                link.href = url;
-                link.setAttribute("download", `meridian_dq_report_${versionId}.pdf`);
-                document.body.appendChild(link);
-                link.click();
-                link.remove();
-                window.URL.revokeObjectURL(url);
-              } catch (err) {
+                await downloadAuthenticated(
+                  getReportDownloadUrl(versionId),
+                  `meridian_dq_report_${versionId}.pdf`,
+                );
+              } catch {
                 alert("Failed to download PDF report. Please check your login and try again.");
               }
             }}
@@ -163,15 +154,18 @@ function HeaderExportMenu() {
 
           <DropdownMenuItem
             disabled={!hasReport}
-            render={
-              hasReport ? (
-                <a
-                  href={getReportJsonExportUrl(latestComplete!.id)}
-                  download
-                  className="flex items-center gap-2 cursor-pointer"
-                />
-              ) : undefined
-            }
+            onClick={async () => {
+              if (!hasReport) return;
+              const versionId = latestComplete!.id;
+              try {
+                await downloadAuthenticated(
+                  getReportJsonExportUrl(versionId),
+                  `meridian_dq_report_${versionId}.json`,
+                );
+              } catch {
+                alert("Failed to download JSON report. Please check your login and try again.");
+              }
+            }}
           >
             <FileJson className="h-4 w-4" />
             <span>Download JSON report</span>
@@ -179,15 +173,18 @@ function HeaderExportMenu() {
 
           <DropdownMenuItem
             disabled={!hasReport}
-            render={
-              hasReport ? (
-                <a
-                  href={getConfigMatchesExportUrl(latestComplete!.id)}
-                  download
-                  className="flex items-center gap-2 cursor-pointer"
-                />
-              ) : undefined
-            }
+            onClick={async () => {
+              if (!hasReport) return;
+              const versionId = latestComplete!.id;
+              try {
+                await downloadAuthenticated(
+                  getConfigMatchesExportUrl(versionId),
+                  `meridian-config-${versionId.slice(0, 8)}.xlsx`,
+                );
+              } catch {
+                alert("Failed to download config matches export. Please check your login and try again.");
+              }
+            }}
           >
             <FileSpreadsheet className="h-4 w-4" />
             <span>Download config matches (xlsx)</span>
