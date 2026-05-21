@@ -3,9 +3,9 @@
 # Meridian Platform — Update script with canary + rollback
 # scripts/update.sh
 #
-# Pulls the latest prod images, runs migrations, restarts services,
-# and verifies the stack is healthy. If /health doesn't come up inside
-# 120s, the previous image tags are restored automatically.
+# Pulls the latest prod images, restarts services onto them, runs
+# migrations, and verifies the stack is healthy. If /health doesn't come up
+# inside 120s, the previous image tags are restored automatically.
 #
 # Before pulling we snapshot the currently-running `:latest` tags to
 # `:rollback`, so a failed roll-forward restores to exactly the bits
@@ -120,6 +120,35 @@ rollback() {
     exit 0
 }
 
+# ─── Emergency rollback during a failed roll-forward ────────────────────────
+# Reached only when an update has already gone wrong. Restores the :rollback
+# snapshot, recreates services, and always exits non-zero.
+auto_rollback() {
+    warn "$1 Auto-rolling back to previous images..."
+    for img in "${IMAGES[@]}"; do
+        if docker image inspect "${img}:rollback" >/dev/null 2>&1; then
+            docker tag "${img}:rollback" "${img}:latest"
+        fi
+    done
+    dc up -d --force-recreate api worker frontend nginx 2>/dev/null || true
+    if ! verify_health; then
+        error "Rollback also failed /health. Manual intervention required. Logs: docker compose logs api"
+    fi
+    error "Update rolled back. Running on previous images. Check 'docker compose logs api' for why the new version failed."
+}
+
+# Wait for the freshly-recreated api container to accept `exec` (up to ~30s),
+# so the migration step below doesn't trip a false rollback on a slow start.
+wait_for_api_container() {
+    local tries=0
+    while [[ $tries -lt 15 ]]; do
+        if dc exec -T api true >/dev/null 2>&1; then return 0; fi
+        sleep 2
+        tries=$((tries + 1))
+    done
+    return 1
+}
+
 if [[ "$ACTION" == "rollback" ]]; then
     rollback
 fi
@@ -133,34 +162,30 @@ snapshot_rollback_tags
 # 2. Pull — failure aborts without touching the running stack
 pull_images
 
-# 3. Run migrations against the already-running api container.
-#    FIX: use `exec` not `run --rm` — a throwaway container may not share
-#    the same network aliases or pick up the correct DATABASE_URL_MIGRATE.
-#    Failure stops here so we stay on the old version with unchanged schema.
-info "Running database migrations..."
-if ! dc exec -T api bash -c "cd /app && alembic upgrade head"; then
-    warn "Migration failed. Services still running on previous version."
-    error "Investigate the migration error before retrying."
-fi
-
-# 4. Roll forward
-info "Restarting services..."
+# 3. Roll forward onto the new images FIRST. Migrations (step 4) run via
+#    `dc exec`, which targets the *live* container — so the api container
+#    must already be the new image, otherwise `alembic upgrade head` would
+#    exec into the OLD image and only ever reach the OLD migration head,
+#    silently skipping any migrations shipped with this release. `exec` is
+#    kept over `run --rm` so migrations keep the api service's network
+#    aliases and DATABASE_URL_MIGRATE.
+info "Restarting services on the new images..."
 dc up -d --force-recreate api worker frontend nginx 2>/dev/null || true
+
+# 4. Run migrations inside the now-running NEW api container. A failure here
+#    means the new image is live but the schema is wrong — roll back.
+info "Running database migrations..."
+if ! wait_for_api_container; then
+    auto_rollback "New api container never became reachable."
+fi
+if ! dc exec -T api bash -c "cd /app && alembic upgrade head"; then
+    auto_rollback "Migration failed on the new image."
+fi
 
 # 5. Verify — if /health doesn't come up, auto-rollback
 if [[ "$VERIFY" == "true" ]]; then
     if ! verify_health; then
-        warn "/health never turned green after 120s. Auto-rolling back..."
-        for img in "${IMAGES[@]}"; do
-            if docker image inspect "${img}:rollback" >/dev/null 2>&1; then
-                docker tag "${img}:rollback" "${img}:latest"
-            fi
-        done
-        dc up -d --force-recreate api worker frontend nginx 2>/dev/null || true
-        if ! verify_health; then
-            error "Rollback also failed /health. Manual intervention required. Logs: dc logs api"
-        fi
-        error "Update rolled back. Running on previous images. Check 'dc logs api' for why the new images failed."
+        auto_rollback "/health never turned green after 120s."
     fi
 fi
 

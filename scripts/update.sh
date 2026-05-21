@@ -105,6 +105,35 @@ rollback() {
     exit 0
 }
 
+# ─── Emergency rollback during a failed roll-forward ────────────────────────
+# Reached only when an update has already gone wrong. Restores the :rollback
+# snapshot, recreates services, and always exits non-zero.
+auto_rollback() {
+    warn "$1 Auto-rolling back to previous images..."
+    for img in "${IMAGES[@]}"; do
+        if docker image inspect "${img}:rollback" >/dev/null 2>&1; then
+            docker tag "${img}:rollback" "${img}:latest"
+        fi
+    done
+    dc up -d --force-recreate api worker frontend nginx 2>/dev/null || true
+    if ! verify_health; then
+        error "Rollback also failed /health. Manual intervention required. Logs: docker compose logs api"
+    fi
+    error "Update rolled back. Running on previous images. Check 'docker compose logs api' for why the new version failed."
+}
+
+# Wait for the freshly-recreated api container to accept `exec` (up to ~30s),
+# so the migration step below doesn't trip a false rollback on a slow start.
+wait_for_api_container() {
+    local tries=0
+    while [[ $tries -lt 15 ]]; do
+        if dc exec -T api true >/dev/null 2>&1; then return 0; fi
+        sleep 2
+        tries=$((tries + 1))
+    done
+    return 1
+}
+
 if [[ "$ACTION" == "rollback" ]]; then
     rollback
 fi
@@ -115,28 +144,24 @@ snapshot_rollback_tags
 
 pull_images
 
-info "Running database migrations..."
-if ! dc exec -T api bash -c "cd /app && alembic upgrade head"; then
-    warn "Migration failed. Services still running on previous version."
-    error "Investigate the migration error before retrying."
-fi
-
-info "Restarting services..."
+# Roll forward onto the new images BEFORE migrating: `dc exec` targets the
+# live container, so the api container must already be the new image — or
+# `alembic upgrade head` execs into the OLD image and silently skips any
+# migrations shipped with this release.
+info "Restarting services on the new images..."
 dc up -d --force-recreate api worker frontend nginx 2>/dev/null || true
+
+info "Running database migrations..."
+if ! wait_for_api_container; then
+    auto_rollback "New api container never became reachable."
+fi
+if ! dc exec -T api bash -c "cd /app && alembic upgrade head"; then
+    auto_rollback "Migration failed on the new image."
+fi
 
 if [[ "$VERIFY" == "true" ]]; then
     if ! verify_health; then
-        warn "/health never turned green after 120s. Auto-rolling back..."
-        for img in "${IMAGES[@]}"; do
-            if docker image inspect "${img}:rollback" >/dev/null 2>&1; then
-                docker tag "${img}:rollback" "${img}:latest"
-            fi
-        done
-        dc up -d --force-recreate api worker frontend nginx 2>/dev/null || true
-        if ! verify_health; then
-            error "Rollback also failed /health. Manual intervention required. Check: docker compose logs api"
-        fi
-        error "Update rolled back. Running on previous images. Check 'docker compose logs api' for details."
+        auto_rollback "/health never turned green after 120s."
     fi
 fi
 
