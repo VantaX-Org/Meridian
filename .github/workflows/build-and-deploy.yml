@@ -92,7 +92,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
       
       - name: Build and push API
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: docker/Dockerfile.api.prod
@@ -105,7 +105,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build and push Frontend
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: docker/Dockerfile.frontend.prod
@@ -118,7 +118,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build and push Worker
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: docker/Dockerfile.worker.prod
@@ -189,7 +189,7 @@ jobs:
           echo "VERSION=$LATEST_TAG" >> $GITHUB_OUTPUT
 
       - name: Build and push nginx image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: docker/Dockerfile.nginx
