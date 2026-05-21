@@ -1,24 +1,18 @@
-"""Data contracts, NLP query, and lineage API routes."""
+"""Data contracts and lineage API routes."""
 
 import json
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
-from api.services.rate_limiter import rate_limit
 
 router = APIRouter(prefix="/api/v1", tags=["contracts"])
-
-# NLP queries hit the LLM for every call — cap at 60/tenant/minute so an
-# experimenting analyst can't accidentally burn through cloud credits
-# in the time it takes to step away from their laptop.
-_nlp_rate_limit = rate_limit("nlp_query", limit=60, window_s=60)
 
 
 # ── Pydantic models ──────────────────────────────────────────────────────────
@@ -45,10 +39,6 @@ class UpdateContractBody(BaseModel):
     freshness_contract: Optional[dict] = None
     volume_contract: Optional[dict] = None
     status: Optional[str] = None
-
-
-class NlpQueryBody(BaseModel):
-    question: str
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -275,34 +265,7 @@ async def get_contract_compliance(
     return {"contract_id": contract_id, "compliance_history": history}
 
 
-# ── 6. POST /api/v1/nlp/query — NLP natural language query ──────────────────
-
-
-@router.post("/nlp/query", dependencies=[Depends(_nlp_rate_limit)])
-async def nlp_query(
-    body: NlpQueryBody,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-    tenant: Tenant = Depends(get_tenant),
-):
-    await _set_rls(db, tenant.id)
-
-    # Extract user role from request state (set by LicenceMiddleware)
-    # Falls back to 'viewer' if not present — the safest default
-    user_role = getattr(request.state, 'user_role', 'viewer')
-
-    from api.services.nlp_service import process_query
-
-    result = await process_query(
-        question=body.question,
-        tenant_context={"tenant_id": tenant.id},
-        db=db,
-        user_role=user_role,
-    )
-    return result
-
-
-# ── 7. GET /api/v1/lineage/{object_type}/{record_key} — data lineage ────────
+# ── 6. GET /api/v1/lineage/{object_type}/{record_key} — data lineage ────────
 
 
 @router.get("/lineage/{object_type}/{record_key}")

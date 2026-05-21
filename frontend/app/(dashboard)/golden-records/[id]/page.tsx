@@ -125,18 +125,18 @@ function FieldRow({
               className="gap-1 bg-[#E76500]/10 text-[#E76500] border-[#E76500]/20 text-xs"
             >
               <Brain className="h-3 w-3" />
-              AI
+              Suggested
             </Badge>
           )}
         </div>
       </div>
 
-      {/* AI recommendation panel */}
+      {/* Suggestion panel */}
       {expanded && hasAi && contribution && (
         <div className="mx-4 mb-3 rounded-lg border border-[#E76500]/20 bg-[#E76500]/5 p-3">
           <div className="flex items-center gap-2 text-xs font-medium text-[#E76500]">
             <Brain className="h-3.5 w-3.5" />
-            AI Recommendation
+            Suggested merge
           </div>
           <div className="mt-2 space-y-1 text-xs text-foreground">
             <p>
@@ -144,7 +144,7 @@ function FieldRow({
               {contribution.ai_recommendation}
             </p>
             <p>
-              <span className="text-muted-foreground">AI confidence:</span>{" "}
+              <span className="text-muted-foreground">Confidence:</span>{" "}
               {Math.round((contribution.ai_confidence ?? 0) * 100)}%
             </p>
             {contribution.ai_reasoning && (
@@ -213,7 +213,7 @@ function HistoryPanel({ recordId }: { recordId: string }) {
                   className="gap-1 text-xs bg-[#E76500]/10 text-[#E76500] border-[#E76500]/20"
                 >
                   <Brain className="h-2.5 w-2.5" />
-                  AI involved
+                  Suggested
                 </Badge>
               )}
               {entry.ai_recommendation_accepted !== null && (
@@ -225,7 +225,7 @@ function HistoryPanel({ recordId }: { recordId: string }) {
                       : "bg-destructive/10 text-destructive border-destructive/20"
                   }`}
                 >
-                  AI {entry.ai_recommendation_accepted ? "accepted" : "rejected"}
+                  Suggestion {entry.ai_recommendation_accepted ? "accepted" : "rejected"}
                 </Badge>
               )}
             </div>
@@ -412,7 +412,7 @@ export default function GoldenRecordDetailPage() {
     SourceContribution
   >;
 
-  // Check if any field has AI recommendation
+  // Check if any field has a suggestion
   const hasAiFields = Object.values(contributions).some(
     (c) => c && typeof c === "object" && "ai_recommendation" in c
   );
@@ -539,7 +539,7 @@ export default function GoldenRecordDetailPage() {
             {hasAiFields && (
               <div className="flex items-center gap-1 text-xs text-[#E76500]">
                 <Brain className="h-3.5 w-3.5" />
-                AI recommendations available — click to expand
+                Suggestions available — click to expand
               </div>
             )}
           </div>

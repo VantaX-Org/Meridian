@@ -409,7 +409,6 @@ FEATURE_ROUTE_MAP: dict[str, str] = {
     "/api/v1/cleaning": "cleaning",
     "/api/v1/exceptions": "exceptions",
     "/api/v1/analytics": "analytics",
-    "/api/v1/nlp": "nlp",
     "/api/v1/contracts": "contracts",
     "/api/v1/notifications": "notifications",
     "/api/v1/reports": "export_reports",

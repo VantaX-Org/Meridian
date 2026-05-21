@@ -1,275 +1,273 @@
 "use client";
 
-import { useState } from "react";
-import {
-  RefreshCw,
-  CheckCircle,
-  XCircle,
-  Loader2,
-  Clock,
-  AlertTriangle,
-  ChevronDown,
-  ChevronRight,
-  Activity,
-  Filter,
-} from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { useQueries, useQuery } from "@tanstack/react-query";
+import { PageHead, KPI, SectionHeader } from "@/components/meridian/atoms";
+import { ArrowRight, MoreH, SparklesIcon } from "@/components/meridian/icons";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getSystems, getSyncRuns } from "@/lib/api/systems";
-import { relativeTime } from "@/lib/format";
+import { copyToClipboard } from "@/components/meridian/actions";
+import { SearchField, matchesSearch } from "@/components/meridian/controls";
 import type { SAPSystem, SyncRun } from "@/types/api";
 
-function QualityBadge({ score }: { score: number | null }) {
-  if (score === null) return null;
-  const color =
-    score >= 0.8
-      ? "bg-[#256F3A]/10 text-[#256F3A] border-[#256F3A]/20"
-      : score >= 0.6
-        ? "bg-[#E76500]/10 text-[#E76500] border-[#E76500]/20"
-        : "bg-destructive/10 text-destructive border-destructive/20";
+type DisplayStatus = "ok" | "warn" | "fail";
 
-  return (
-    <Badge variant="outline" className={color}>
-      AI Quality: {(score * 100).toFixed(0)}%
-    </Badge>
-  );
-}
-
-const STATUS_CONFIG: Record<string, { icon: React.ReactNode; label: string; color: string }> = {
-  completed: {
-    icon: <CheckCircle className="h-4 w-4" />,
-    label: "Completed",
-    color: "text-[#256F3A]",
-  },
-  failed: {
-    icon: <XCircle className="h-4 w-4" />,
-    label: "Failed",
-    color: "text-destructive",
-  },
-  running: {
-    icon: <Loader2 className="h-4 w-4 animate-spin" />,
-    label: "Running",
-    color: "text-primary",
-  },
+const SM_STATUS: Record<DisplayStatus, { bg: string; fg: string; l: string }> = {
+  ok:   { bg: "var(--mn-pos-bg)",  fg: "var(--mn-pos)",  l: "OK" },
+  warn: { bg: "var(--mn-warn-bg)", fg: "var(--mn-warn)", l: "WARN" },
+  fail: { bg: "var(--mn-neg-bg)",  fg: "var(--mn-neg)",  l: "FAIL" },
 };
 
-function SyncRunRow({ run }: { run: SyncRun }) {
-  const [expanded, setExpanded] = useState(false);
-  const config = STATUS_CONFIG[run.status] ?? STATUS_CONFIG.running;
-
-  return (
-    <div className="border-b border-black/[0.06] last:border-0">
-      <button
-        type="button"
-        onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-black/[0.03] transition-colors"
-      >
-        {expanded ? (
-          <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
-        ) : (
-          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-        )}
-
-        <span className={`flex items-center gap-1.5 ${config.color}`}>
-          {config.icon}
-          <span className="text-sm font-medium">{config.label}</span>
-        </span>
-
-        <span className="text-xs text-muted-foreground">
-          {relativeTime(run.started_at)}
-        </span>
-
-        <span className="ml-auto flex items-center gap-3 text-xs text-muted-foreground">
-          <span>{run.rows_extracted.toLocaleString()} rows</span>
-          <QualityBadge score={run.ai_quality_score} />
-        </span>
-      </button>
-
-      {expanded && (
-        <div className="bg-white/[0.60] px-4 py-3 pl-11 space-y-2">
-          <div className="grid grid-cols-3 gap-4 text-xs">
-            <div>
-              <span className="text-muted-foreground">Rows extracted</span>
-              <p className="font-mono font-medium text-foreground">
-                {run.rows_extracted.toLocaleString()}
-              </p>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Findings delta</span>
-              <p className="font-mono font-medium text-foreground">{run.findings_delta}</p>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Duration</span>
-              <p className="font-mono font-medium text-foreground">
-                {run.completed_at
-                  ? `${Math.round(
-                      (new Date(run.completed_at).getTime() -
-                        new Date(run.started_at).getTime()) /
-                        1000
-                    )}s`
-                  : "—"}
-              </p>
-            </div>
-          </div>
-
-          {run.error_detail && (
-            <div className="rounded-md bg-destructive/5 px-3 py-2 text-xs text-destructive">
-              {run.error_detail}
-            </div>
-          )}
-
-          {run.anomaly_flags && run.anomaly_flags.length > 0 && (
-            <div className="space-y-1">
-              <span className="text-xs font-medium text-muted-foreground">Anomaly Flags</span>
-              {run.anomaly_flags.map((flag, i) => (
-                <div
-                  key={i}
-                  className="flex items-start gap-2 rounded-md bg-white/[0.70] px-3 py-1.5 text-xs"
-                >
-                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-[#E76500]" />
-                  <div>
-                    <span className="font-medium text-foreground">{flag.type}</span>
-                    <span className="text-muted-foreground"> — {flag.detail}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
+function mapStatus(r: SyncRun): DisplayStatus {
+  if (r.status === "failed") return "fail";
+  if (r.error_detail || (r.anomaly_flags?.length ?? 0) > 0) return "warn";
+  return "ok";
 }
 
-export default function SyncMonitorPage() {
-  const [filterSystem, setFilterSystem] = useState<string>("all");
-  const [filterStatus, setFilterStatus] = useState<string>("all");
+function durationSec(r: SyncRun): number {
+  if (!r.completed_at) return 0;
+  return Math.max(0, Math.round((new Date(r.completed_at).getTime() - new Date(r.started_at).getTime()) / 1000));
+}
 
-  const { data: systems } = useQuery({
-    queryKey: ["systems"],
+function timeOnly(iso: string): string {
+  return new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+}
+
+interface MergedRow {
+  run: SyncRun;
+  systemName: string;
+}
+
+export default function SyncMonPage() {
+  const [search, setSearch] = useState("");
+  const systemsQ = useQuery({
+    queryKey: ["systems.list"],
     queryFn: getSystems,
   });
 
-  // Fetch runs for all systems
-  const systemIds = systems?.map((s: SAPSystem) => s.id) ?? [];
-  const runsQueries = useQuery({
-    queryKey: ["all-sync-runs", systemIds],
-    queryFn: async () => {
-      if (systemIds.length === 0) return [];
-      const allRuns = await Promise.all(
-        systemIds.map(async (id: string) => {
-          const runs = await getSyncRuns(id, 50);
-          const sys = systems?.find((s: SAPSystem) => s.id === id);
-          return runs.map((r: SyncRun) => ({ ...r, system_name: sys?.name ?? "Unknown", system_id: id }));
-        })
-      );
-      return allRuns
-        .flat()
-        .sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime());
-    },
-    enabled: systemIds.length > 0,
+  const systems: SAPSystem[] = systemsQ.data ?? [];
+
+  const runsResults = useQueries({
+    queries: systems.map((s) => ({
+      queryKey: ["systems.runs", s.id],
+      queryFn: () => getSyncRuns(s.id, 25),
+      enabled: systems.length > 0,
+    })),
   });
 
-  const allRuns = runsQueries.data ?? [];
-  const filteredRuns = allRuns.filter((r: SyncRun & { system_id: string }) => {
-    if (filterSystem !== "all" && r.system_id !== filterSystem) return false;
-    if (filterStatus !== "all" && r.status !== filterStatus) return false;
-    return true;
-  });
+  const loading = systemsQ.isLoading || runsResults.some((r) => r.isLoading);
+  const error = systemsQ.error || runsResults.find((r) => r.error)?.error;
 
-  const stats = {
-    total: allRuns.length,
-    completed: allRuns.filter((r: SyncRun) => r.status === "completed").length,
-    failed: allRuns.filter((r: SyncRun) => r.status === "failed").length,
-    running: allRuns.filter((r: SyncRun) => r.status === "running").length,
-  };
+  const merged: MergedRow[] = useMemo(() => {
+    const rows: MergedRow[] = [];
+    systems.forEach((s, i) => {
+      const runs = runsResults[i]?.data ?? [];
+      for (const r of runs) rows.push({ run: r, systemName: s.name });
+    });
+    rows.sort((a, b) => new Date(b.run.started_at).getTime() - new Date(a.run.started_at).getTime());
+    return rows.slice(0, 80);
+  }, [systems, runsResults]);
+
+  const last24hRows = useMemo(() => {
+    const cutoff = Date.now() - 24 * 3600 * 1000;
+    return merged.filter((m) => new Date(m.run.started_at).getTime() >= cutoff);
+  }, [merged]);
+
+  const summary = useMemo(() => {
+    const success = last24hRows.filter((r) => mapStatus(r.run) === "ok").length;
+    const warn = last24hRows.filter((r) => mapStatus(r.run) === "warn").length;
+    const fail = last24hRows.filter((r) => mapStatus(r.run) === "fail").length;
+    const completed = last24hRows.filter((r) => r.run.completed_at);
+    const avgDur = completed.length === 0
+      ? 0
+      : Math.round(completed.reduce((a, r) => a + durationSec(r.run), 0) / completed.length);
+    return {
+      runs24h: last24hRows.length,
+      success,
+      warn,
+      fail,
+      avgDurSec: avgDur,
+    };
+  }, [last24hRows]);
+
+  if (loading && merged.length === 0) {
+    return (
+      <>
+        <PageHead title="Sync Monitor" route="Connect · /sync" sub="Loading sync runs…" />
+        <div className="mn-row" style={{ gridTemplateColumns: "repeat(5, 1fr)", marginBottom: 18 }}>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-20 rounded-[10px]" />
+          ))}
+        </div>
+        <Skeleton className="h-[420px] rounded-[10px]" />
+      </>
+    );
+  }
+
+  if (error) {
+    return (
+      <>
+        <PageHead title="Sync Monitor" route="Connect · /sync" sub="Failed to load sync history." />
+        <div className="mn-card mn-card-pad" style={{ color: "var(--mn-neg)" }}>
+          Could not reach <code>/api/v1/systems/&lt;id&gt;/runs</code>.
+        </div>
+      </>
+    );
+  }
+
+  const failedRun = last24hRows.find((r) => mapStatus(r.run) === "fail");
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-xl font-bold text-foreground">Sync Monitor</h1>
-        <p className="text-sm text-muted-foreground">
-          Timeline of all sync runs across all SAP systems
-        </p>
+    <>
+      <PageHead
+        title="Sync Monitor"
+        route="Connect · /sync"
+        sub={
+          <>
+            <strong style={{ color: "var(--mn-ink-700)" }}>{summary.runs24h} runs</strong> in the last 24h ·{" "}
+            <strong style={{ color: "var(--mn-pos)" }}>{summary.success} successful</strong>,{" "}
+            <strong style={{ color: "var(--mn-neg)" }}>{summary.fail} failed</strong>,{" "}
+            <strong style={{ color: "var(--mn-warn)" }}>{summary.warn} with warnings</strong>. Average duration{" "}
+            <strong>{summary.avgDurSec}s</strong>.
+          </>
+        }
+        actions={
+          <SearchField value={search} onChange={setSearch} placeholder="Filter runs…" />
+        }
+      />
+
+      <div className="mn-row mn-stagger" style={{ gridTemplateColumns: "repeat(5, minmax(0, 1fr))", marginBottom: 18 }}>
+        <KPI label="Runs · 24h" value={summary.runs24h} hint={`${summary.success} successful`} tone="pos" />
+        <KPI
+          label="Success rate"
+          value={summary.runs24h ? `${Math.round((summary.success / summary.runs24h) * 100)}%` : "—"}
+          tone={summary.fail === 0 ? "pos" : "warn"}
+        />
+        <KPI label="Failed" value={summary.fail} tone={summary.fail > 0 ? "neg" : undefined} />
+        <KPI label="With warnings" value={summary.warn} tone={summary.warn > 0 ? "warn" : undefined} />
+        <KPI label="Avg duration" value={`${summary.avgDurSec}s`} tone="pos" />
       </div>
 
-      {/* Stats row */}
-      <div className="grid grid-cols-4 gap-4">
-        {[
-          { label: "Total Runs", value: stats.total, icon: Activity, color: "#00D4AA" },
-          { label: "Completed", value: stats.completed, icon: CheckCircle, color: "#256F3A" },
-          { label: "Failed", value: stats.failed, icon: XCircle, color: "#BB0000" },
-          { label: "Running", value: stats.running, icon: Loader2, color: "#E76500" },
-        ].map(({ label, value, icon: Icon, color }) => (
-          <Card key={label} className="border-black/[0.08] bg-white/[0.70]">
-            <CardContent className="flex items-center gap-3 p-4">
-              <Icon className="h-5 w-5" style={{ color }} />
-              <div>
-                <p className="text-xs text-muted-foreground">{label}</p>
-                <p className="text-lg font-bold text-foreground">{value}</p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Filters */}
-      <div className="flex gap-3">
-        <select
-          value={filterSystem}
-          onChange={(e) => setFilterSystem(e.target.value)}
-          className="rounded-md border border-black/[0.08] bg-white/[0.70] px-3 py-1.5 text-sm text-foreground focus:border-primary focus:outline-none"
-        >
-          <option value="all">All Systems</option>
-          {systems?.map((s: SAPSystem) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          className="rounded-md border border-black/[0.08] bg-white/[0.70] px-3 py-1.5 text-sm text-foreground focus:border-primary focus:outline-none"
-        >
-          <option value="all">All Status</option>
-          <option value="completed">Completed</option>
-          <option value="failed">Failed</option>
-          <option value="running">Running</option>
-        </select>
-      </div>
-
-      {/* Timeline */}
-      <Card className="border-black/[0.08] bg-white/[0.70]">
-        <CardContent className="p-0">
-          {runsQueries.isLoading ? (
-            <div className="flex items-center justify-center py-16">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      {failedRun && (
+        <div className="mn-narrative" style={{ marginBottom: 18 }}>
+          <div className="ico"><SparklesIcon size={15} /></div>
+          <div style={{ flex: 1 }}>
+            <div className="mn-narrative-headline">
+              {failedRun.systemName} run failed at {timeOnly(failedRun.run.started_at)}.
             </div>
-          ) : filteredRuns.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16">
-              <Clock className="h-12 w-12 text-white/[0.08]" />
-              <h3 className="mt-4 font-semibold text-foreground">No sync runs yet</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Sync runs will appear here once your first sync completes
-              </p>
+            <div className="mn-narrative-detail">
+              {failedRun.run.error_detail ?? "Check the run detail for more context."}
             </div>
-          ) : (
-            filteredRuns.map((run: SyncRun & { system_name: string }) => (
-              <div key={run.id}>
-                <div className="flex items-center gap-2 border-b border-black/[0.06] bg-white/[0.60] px-4 py-1.5">
-                  <span className="text-xs font-medium text-foreground">
-                    {run.system_name}
-                  </span>
-                </div>
-                <SyncRunRow run={run} />
-              </div>
-            ))
-          )}
-        </CardContent>
-      </Card>
-    </div>
+          </div>
+          <button
+            type="button"
+            className="mn-btn mn-btn-ghost"
+            style={{ background: "white" }}
+            onClick={() => copyToClipboard(failedRun.run.id, "Failed run ID copied")}
+          >
+            Copy run ID <ArrowRight size={13} />
+          </button>
+        </div>
+      )}
+
+      <SectionHeader
+        title="Recent runs"
+        caption={
+          search.trim()
+            ? `${merged.filter((m) => matchesSearch(m, search)).length} of ${merged.length} runs match`
+            : `Last ${merged.length} sync events · most recent first`
+        }
+      />
+      <div className="mn-card" style={{ padding: 0, overflow: "hidden" }}>
+        <div className="mn-table-wrap">
+          <table className="mn-table">
+            <thead>
+              <tr>
+                <th style={{ paddingLeft: 20 }}>Time</th>
+                <th>System</th>
+                <th>Status</th>
+                <th className="right">Rows extracted</th>
+                <th className="right">Findings Δ</th>
+                <th className="right">Duration</th>
+                <th>Note</th>
+                <th style={{ width: 36 }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {merged.filter((m) => matchesSearch(m, search)).map(({ run, systemName }) => {
+                const s = mapStatus(run);
+                const t = SM_STATUS[s];
+                const dur = durationSec(run);
+                return (
+                  <tr key={run.id}>
+                    <td style={{ paddingLeft: 20 }} className="mn-tabular">
+                      <span style={{ font: "600 12px/1 'JetBrains Mono', monospace", color: "var(--mn-ink-700)" }}>
+                        {timeOnly(run.started_at)}
+                      </span>
+                    </td>
+                    <td>
+                      <div style={{ fontWeight: 500, color: "var(--mn-ink-900)" }}>{systemName}</div>
+                    </td>
+                    <td>
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          padding: "3px 8px",
+                          borderRadius: 4,
+                          background: t.bg,
+                          color: t.fg,
+                          font: "700 10px/1 'JetBrains Mono', monospace",
+                          letterSpacing: "0.1em",
+                        }}
+                      >
+                        {t.l}
+                      </span>
+                    </td>
+                    <td className="right mn-tabular" style={{ color: run.rows_extracted > 0 ? "var(--mn-ink-700)" : "var(--mn-ink-300)" }}>
+                      {run.rows_extracted > 0 ? run.rows_extracted.toLocaleString() : "—"}
+                    </td>
+                    <td className="right mn-tabular" style={{ color: run.findings_delta > 0 ? "var(--mn-warn)" : "var(--mn-ink-500)" }}>
+                      {run.findings_delta}
+                    </td>
+                    <td className="right">
+                      <span
+                        className="mn-tabular"
+                        style={{
+                          font: "500 12px/1 'JetBrains Mono', monospace",
+                          color: dur > 60 ? "var(--mn-warn)" : "var(--mn-ink-500)",
+                        }}
+                      >
+                        {dur}s
+                      </span>
+                    </td>
+                    <td style={{ color: s === "fail" ? "var(--mn-neg)" : "var(--mn-ink-500)", fontSize: 12.5 }}>
+                      {run.error_detail ?? "—"}
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        className="mn-icon-btn"
+                        style={{ width: 26, height: 26 }}
+                        aria-label="Copy run ID"
+                        onClick={() => copyToClipboard(run.id, "Run ID copied")}
+                      >
+                        <MoreH size={14} />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+              {merged.filter((m) => matchesSearch(m, search)).length === 0 && (
+                <tr>
+                  <td colSpan={8} style={{ padding: 32, textAlign: "center", color: "var(--mn-ink-400)" }}>
+                    {merged.length === 0 ? "No sync runs recorded yet." : "No runs match this filter."}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
   );
 }

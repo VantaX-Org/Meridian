@@ -5,9 +5,8 @@ the endpoint is only reachable on the cluster's internal network. In
 customer deployments the endpoint is exposed only on the private docker
 network (nginx doesn't proxy it), so external scrapers never see it.
 
-Separate from /api/v1/metrics/llm-savings (a product metric), and
-deliberately mounted at the root `/metrics` so standard Prometheus
-service-discovery finds it without extra config.
+Mounted at the root `/metrics` so standard Prometheus service-discovery
+finds it without extra config.
 """
 
 from fastapi import APIRouter

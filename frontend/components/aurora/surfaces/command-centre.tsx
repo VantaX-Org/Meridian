@@ -14,10 +14,6 @@
  *     small-multiples module breakdown for density without clutter.
  *   • Issues — severity distribution for the current version, rendered
  *     as a compact bar chart keyed to status tokens.
- *   • Ask — AskStreamingCard (§12 moment 06) with grounded citations.
- *   • LlmSavingsStrip — surfaces the Tier-0 deterministic-first win
- *     when savings are material (≥20 % reduction OR ≥$50 saved in the
- *     window). Quiet when negligible so we don't brag about noise.
  *
  * This module is pure view — props in, render out. The Command Centre
  * page wires <CommandCentreClient> around it with react-query.
@@ -28,8 +24,6 @@
 import type { ReactNode } from "react";
 import {
   ArrivalBanner,
-  AskStreamingCard,
-  type AskStatus,
   DataTable,
   type AuroraColumnMeta,
   EmptyState,
@@ -98,36 +92,6 @@ export interface CommandCentreIssueBucket {
   count: number;
 }
 
-export interface CommandCentreLlmSavings {
-  reductionPct: number;
-  costSavedUsd: number;
-  callsTotal: number;
-  callsSaved: number;
-  windowDays: number;
-  /** One point per day, 0-1 reduction ratio. */
-  series: ReadonlyArray<{ date: string; reduction: number }>;
-}
-
-export interface CommandCentreAskState {
-  question: ReactNode;
-  answer: ReactNode;
-  status: AskStatus;
-  /**
-   * Citation shape must match `AskCitation` (moments/ask.tsx:25) —
-   * structural typing would let a mismatched shape compile here but
-   * silently drop handlers at render time (AskStreamingCard reads
-   * `c.onOpen` and `c.kind`, not `c.onClick` / `c.href`).
-   */
-  citations?: ReadonlyArray<{
-    id: string;
-    label: ReactNode;
-    /** Optional secondary label, e.g. "BP · tax_number · 312 records". */
-    kind?: ReactNode;
-    /** Click handler — wires the chip to a drawer / record open. */
-    onOpen?: () => void;
-  }>;
-}
-
 export interface CommandCentreProps {
   /** Shown at the top when truthy. Host owns dismiss state. */
   arrival?: {
@@ -149,9 +113,6 @@ export interface CommandCentreProps {
   trend: ReadonlyArray<CommandCentreTrendPoint>;
   /** Issue buckets for the severity strip. Order is fixed. */
   issues: ReadonlyArray<CommandCentreIssueBucket>;
-  ask: CommandCentreAskState;
-  /** Surface when non-trivial — caller passes undefined to hide entirely. */
-  llmSavings?: CommandCentreLlmSavings;
   className?: string;
 }
 
@@ -233,8 +194,6 @@ export function CommandCentre({
   onInboxActivate,
   trend,
   issues,
-  ask,
-  llmSavings,
   className,
 }: CommandCentreProps) {
   return (
@@ -273,10 +232,6 @@ export function CommandCentre({
           ) : null
         }
       />
-
-      {llmSavings ? (
-        <LlmSavingsStrip savings={llmSavings} />
-      ) : null}
 
       <div className="aurora-command-centre__grid">
         <section
@@ -355,26 +310,6 @@ export function CommandCentre({
           <IssuesStrip issues={issues} />
         </section>
       </div>
-
-      <section
-        className="aurora-command-centre__ask"
-        aria-label="Ask — grounded answers"
-      >
-        <header className="aurora-command-centre__panel-head">
-          <Stack direction="column" gap={1}>
-            <Text variant="text-micro" tone="tertiary">
-              Ask
-            </Text>
-            <Text variant="text-lead">Meridian, grounded in your data</Text>
-          </Stack>
-        </header>
-        <AskStreamingCard
-          question={ask.question}
-          answer={ask.answer}
-          status={ask.status}
-          citations={ask.citations}
-        />
-      </section>
     </div>
   );
 }
@@ -415,76 +350,6 @@ function IssuesStrip({
         );
       })}
     </div>
-  );
-}
-
-/* ------------------------------------------- LlmSavingsStrip (exported) */
-
-export interface LlmSavingsStripProps {
-  savings: CommandCentreLlmSavings;
-  className?: string;
-}
-
-export function LlmSavingsStrip({ savings, className }: LlmSavingsStripProps) {
-  return (
-    <section
-      className={clsx("aurora-command-centre__savings", className)}
-      aria-label="LLM savings"
-    >
-      <div className="aurora-command-centre__savings-head">
-        <Text variant="text-micro" tone="tertiary">
-          LLM reduction · {savings.windowDays}d
-        </Text>
-        <Text variant="text-lead">
-          Saving{" "}
-          <Text as="span" numeric variant="text-lead">
-            ${savings.costSavedUsd.toLocaleString(undefined, {
-              maximumFractionDigits: 0,
-            })}
-          </Text>{" "}
-          · {savings.callsSaved.toLocaleString()} deterministic hits
-        </Text>
-      </div>
-      <KpiRail>
-        <Stat
-          label="Reduction"
-          value={savings.reductionPct.toFixed(1)}
-          unit="%"
-          tone="success"
-        />
-        <Stat
-          label="Cost saved"
-          value={`$${savings.costSavedUsd.toLocaleString(undefined, {
-            maximumFractionDigits: 0,
-          })}`}
-          tone="success"
-        />
-        <Stat
-          label="Calls"
-          value={savings.callsTotal.toLocaleString()}
-        />
-        <Stat
-          label="Deterministic"
-          value={savings.callsSaved.toLocaleString()}
-          sparkline={
-            savings.series.length > 0 ? (
-              <Sparkline<{ date: string; reduction: number }>
-                data={savings.series.map((p) => ({
-                  date: p.date,
-                  reduction: Math.round(p.reduction * 100),
-                }))}
-                xKey="date"
-                yKey="reduction"
-                height={28}
-                width={96}
-                fill
-                ariaLabel="LLM reduction trend"
-              />
-            ) : null
-          }
-        />
-      </KpiRail>
-    </section>
   );
 }
 
@@ -551,17 +416,4 @@ export function buildVerdict({
     support: "Inbox is clear of critical and high-severity findings.",
     semantic: "success",
   };
-}
-
-/**
- * Threshold the spec calls "non-trivial" — surface savings when
- * reduction is ≥20 % OR cost saved is ≥$50 in the window. Below that
- * the strip stays hidden so the Command Centre doesn't brag about
- * rounding error.
- */
-export function isSavingsNonTrivial(
-  savings: CommandCentreLlmSavings | undefined,
-): savings is CommandCentreLlmSavings {
-  if (!savings) return false;
-  return savings.reductionPct >= 20 || savings.costSavedUsd >= 50;
 }

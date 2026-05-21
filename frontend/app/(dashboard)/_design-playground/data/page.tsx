@@ -306,8 +306,8 @@ export default function DataPlayground() {
             tone="danger"
           />
           <Stat
-            label="LLM savings · 30d"
-            value="$8.4"
+            label="Records cleaned · 30d"
+            value="8.4"
             unit="k"
             delta={{ value: 12.0, direction: "up", semantic: "success" }}
             tone="success"

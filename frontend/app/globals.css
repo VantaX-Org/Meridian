@@ -10,6 +10,11 @@
 @import "./styles/aurora-fonts.css";
 @import "./styles/aurora-components.css";
 
+/* Meridian · Claude Design surface — tokens + .mn-* component CSS. Loaded
+   after Aurora so its primary accent can drive the legacy shell chrome
+   without disturbing the dark-first Aurora layer. */
+@import "./styles/meridian.css";
+
 @custom-variant dark (&:is(.dark *));
 
 
@@ -67,15 +72,15 @@
   --popover: #FFFFFF;
   --popover-foreground: #1A1F2B;
 
-  /* Primary — SAP Fiori Horizon blue */
-  --primary: #0070F2;
+  /* Primary — Meridian sunset orange (Claude Design redirect from Fiori blue) */
+  --primary: #F97316;
   --primary-foreground: #FFFFFF;
   --secondary: #EAECEE;
   --secondary-foreground: #3A4554;
   --muted: #F5F6F7;
   --muted-foreground: #556070;
-  --accent: rgba(0,112,242,0.08);
-  --accent-foreground: #0057D2;
+  --accent: rgba(249,115,22,0.08);
+  --accent-foreground: #C2410C;
 
   /* Status (Fiori semantic) */
   --destructive: #BB0000;
@@ -83,7 +88,7 @@
   /* Borders & focus */
   --border: #D5DADD;
   --input: #D5DADD;
-  --ring: #0070F2;
+  --ring: #F97316;
 
   /* Charts — Fiori Horizon categorical palette for light bg */
   --chart-1: #0070F2;

@@ -1,874 +1,733 @@
 "use client";
 
-import { useCallback, useRef, useState, useEffect } from "react";
 import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { PageHead, SectionHeader, ModChip, StatusDot } from "@/components/meridian/atoms";
 import {
-  Upload,
-  FileUp,
-  CheckCircle,
-  AlertTriangle,
-  X,
-  Info,
-  Sparkles,
-  ArrowLeft,
-  Loader2,
-} from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+  ArrowRight,
+  FileTextIcon,
+  MoreH,
+  UploadCloudIcon,
+} from "@/components/meridian/icons";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Badge } from "@/components/ui/badge";
-import { useQuery } from "@tanstack/react-query";
-import {
-  uploadFile,
   matchColumns,
   pollAnalysisStatus,
-  getAnalysisStatus,
-  type AnalysisStatusResponse,
-  type ColumnMapping,
+  uploadFile,
   type MatchResponse,
 } from "@/lib/api/upload";
-import { getVersion } from "@/lib/api/versions";
-import { getReportDownloadUrl, getReportJsonExportUrl } from "@/lib/api/reports";
-import { getConfigMatchesExportUrl } from "@/lib/api/config-matches";
-import { downloadAuthenticated } from "@/lib/api/download";
-import { getSystems } from "@/lib/api/systems";
-import { scoreColor, formatModuleName } from "@/lib/format";
+import { getVersions } from "@/lib/api/versions";
+import { copyToClipboard } from "@/components/meridian/actions";
+import { relativeTime } from "@/lib/format";
 import type { Version } from "@/types/api";
-import {
-  AnalysisProgressBar,
-  type AnalysisStatusData,
-} from "@/components/upload/analysis-progress-bar";
 
-const ACTIVE_TASK_STORAGE_KEY = "meridian:active-analysis-task";
+const TYPE_PALETTE: Record<string, { bg: string; fg: string; l: string }> = {
+  csv:  { bg: "var(--mn-pos-bg)",      fg: "var(--mn-pos)",         l: "CSV" },
+  xlsx: { bg: "var(--mn-primary-50)",  fg: "var(--mn-primary-700)", l: "XLSX" },
+  xls:  { bg: "var(--mn-primary-50)",  fg: "var(--mn-primary-700)", l: "XLS" },
+  json: { bg: "rgba(124,58,237,0.12)", fg: "#7C3AED",               l: "JSON" },
+  parquet: { bg: "var(--mn-warn-bg)",  fg: "var(--mn-warn)",        l: "PARQ" },
+};
 
-const ACCEPTED = ".csv,.xlsx,.xls";
-const MAX_SIZE = 100 * 1024 * 1024; // 100 MB
+const STAGES = [
+  { k: "source",  l: "1. Source",  d: "File or stream" },
+  { k: "preview", l: "2. Preview", d: "Schema + sample" },
+  { k: "mapping", l: "3. Mapping", d: "Map to canonical" },
+  { k: "run",     l: "4. Run",     d: "Ingest + validate" },
+] as const;
 
-type Step = "select" | "matching" | "review" | "uploading" | "analysing" | "complete" | "error";
+// Version statuses that are settled — anything else is still being analysed
+// and the recent-imports list should keep polling until it lands here.
+const TERMINAL_VERSION_STATUSES: string[] = [
+  "complete",
+  "agents_complete",
+  "ai_enriched",
+  "failed",
+  "agents_failed",
+];
 
-/* ─── Helpers ─── */
-
-function confidenceBadge(confidence: number, matchType: string) {
-  if (matchType === "exact" || matchType === "alias" || matchType === "short_name") {
-    return (
-      <Badge variant="outline" className="border-green-500/30 bg-green-500/10 text-green-700 text-[11px]">
-        {matchType === "exact" ? "Exact match" : matchType === "alias" ? "Known alias" : "Short name"}
-      </Badge>
-    );
-  }
-  if (matchType === "ai" && confidence >= 0.8) {
-    return (
-      <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary text-[11px]">
-        <Sparkles className="mr-1 h-3 w-3" /> AI match
-      </Badge>
-    );
-  }
-  if (matchType === "ai" && confidence >= 0.5) {
-    return (
-      <Badge variant="outline" className="border-yellow-500/30 bg-yellow-500/10 text-yellow-700 text-[11px]">
-        <Sparkles className="mr-1 h-3 w-3" /> AI (low conf.)
-      </Badge>
-    );
-  }
-  return (
-    <Badge variant="outline" className="border-red-500/30 bg-red-500/10 text-red-700 text-[11px]">
-      Unmapped
-    </Badge>
-  );
+function paletteFor(name: string) {
+  const ext = name.split(".").pop()?.toLowerCase() ?? "csv";
+  return TYPE_PALETTE[ext] ?? TYPE_PALETTE.csv;
 }
 
-function confidenceDot(confidence: number) {
-  if (confidence >= 0.8) return <span className="inline-block h-2 w-2 rounded-full bg-green-500" />;
-  if (confidence >= 0.5) return <span className="inline-block h-2 w-2 rounded-full bg-yellow-500" />;
-  return <span className="inline-block h-2 w-2 rounded-full bg-red-500" />;
+/** Mean composite DQS across a version's modules — null until it is scored. */
+function versionDqs(v: Version): number | null {
+  const summary = v.dqs_summary;
+  if (!summary) return null;
+  const scores = Object.values(summary).map((m) => m.composite_score);
+  if (scores.length === 0) return null;
+  return Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10;
 }
 
-async function readFileHeaders(
-  file: File
-): Promise<{ headers: string[]; rows: string[][] }> {
-  return new Promise((resolve, reject) => {
-    const ext = file.name.split(".").pop()?.toLowerCase();
+/** Colour band for a DQS value — mirrors the platform's 85 / 70 cap thresholds. */
+function dqsColor(dqs: number): string {
+  if (dqs >= 85) return "var(--mn-pos)";
+  if (dqs >= 70) return "var(--mn-warn)";
+  return "var(--mn-neg)";
+}
 
-    if (ext === "xlsx" || ext === "xls") {
-      // Use dynamic import for SheetJS
-      import("xlsx").then((XLSX) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const data = new Uint8Array(e.target?.result as ArrayBuffer);
-          const workbook = XLSX.read(data, { type: "array" });
-          const sheet = workbook.Sheets[workbook.SheetNames[0]];
-          const json = XLSX.utils.sheet_to_json<string[]>(sheet, { header: 1 });
-          const headers = (json[0] || []).map((h) => String(h).trim());
-          const rows = json.slice(1, 6).map((row) =>
-            (row as string[]).map((c) => String(c ?? "").trim())
-          );
-          resolve({ headers, rows });
-        };
-        reader.onerror = reject;
-        reader.readAsArrayBuffer(file.slice(0, 512 * 1024));
-      }).catch(() => {
-        // Fallback: treat as CSV
-        readCsvHeaders(file).then(resolve).catch(reject);
-      });
-      return;
+function formatSize(bytes: number): string {
+  if (bytes >= 1_000_000_000) return `${(bytes / 1_000_000_000).toFixed(1)} GB`;
+  if (bytes >= 1_000_000) return `${(bytes / 1_000_000).toFixed(1)} MB`;
+  if (bytes >= 1_000) return `${(bytes / 1_000).toFixed(1)} KB`;
+  return `${bytes} B`;
+}
+
+/* Light-weight CSV/TSV preview parser. Handles double-quote escapes but
+   does not support multi-line quoted cells — fine for header detection. */
+function parseCsvPreview(text: string, maxRows = 6): string[][] {
+  const sep = text.includes("\t") && !text.includes(",") ? "\t" : ",";
+  const lines = text.split(/\r?\n/).filter((l) => l.length > 0).slice(0, maxRows + 1);
+  return lines.map((line) => {
+    const out: string[] = [];
+    let cur = "";
+    let quoted = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        quoted = !quoted;
+      } else if (ch === sep && !quoted) {
+        out.push(cur);
+        cur = "";
+      } else {
+        cur += ch;
+      }
     }
-
-    // CSV
-    readCsvHeaders(file).then(resolve).catch(reject);
+    out.push(cur);
+    return out;
   });
 }
 
-function readCsvHeaders(
-  file: File
-): Promise<{ headers: string[]; rows: string[][] }> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target?.result as string;
-      const lines = text.split("\n").filter((l) => l.trim());
-      const headers = lines[0].split(",").map((h) => h.trim().replace(/^"|"$/g, ""));
-      const rows = lines.slice(1, 6).map((l) =>
-        l.split(",").map((c) => c.trim().replace(/^"|"$/g, ""))
-      );
-      resolve({ headers, rows });
-    };
-    reader.onerror = reject;
-    reader.readAsText(file.slice(0, 50 * 1024));
-  });
+async function readHeaderSample(file: File): Promise<{ headers: string[]; sample: string[][] }> {
+  const name = file.name.toLowerCase();
+
+  // CSV / TSV / TXT — parse the first 32 KB as delimited text.
+  if (name.endsWith(".csv") || name.endsWith(".tsv") || name.endsWith(".txt")) {
+    const text = await file.slice(0, 32 * 1024).text();
+    const rows = parseCsvPreview(text, 6);
+    if (rows.length === 0) return { headers: [], sample: [] };
+    const [headers, ...sample] = rows;
+    return { headers, sample };
+  }
+
+  // XLSX / XLS — read the first worksheet with SheetJS. Loaded on demand so
+  // the library only enters the bundle when a workbook is actually picked.
+  if (name.endsWith(".xlsx") || name.endsWith(".xls")) {
+    try {
+      const XLSX = await import("xlsx");
+      const wb = XLSX.read(await file.arrayBuffer(), { type: "array" });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      if (!sheet) return { headers: [], sample: [] };
+      const rows = XLSX.utils.sheet_to_json(sheet, {
+        header: 1,
+        blankrows: false,
+        defval: "",
+      }) as unknown[][];
+      if (rows.length === 0) return { headers: [], sample: [] };
+      const headers = (rows[0] ?? []).map((c) => String(c ?? "").trim());
+      const sample = rows.slice(1, 7).map((r) => (r ?? []).map((c) => String(c ?? "")));
+      return { headers, sample };
+    } catch {
+      return { headers: [], sample: [] };
+    }
+  }
+
+  // JSON / Parquet — cannot be previewed in the browser. The backend reads
+  // the schema from the file itself once uploaded.
+  return { headers: [], sample: [] };
 }
 
-/* ─── Component ─── */
+interface UploadJob {
+  versionId: string;
+  taskId: string;
+  status: "queued" | "processing" | "completed" | "failed";
+  progress: number;
+  error: string | null;
+}
 
 export default function UploadPage() {
-  const [step, setStep] = useState<Step>("select");
+  const qc = useQueryClient();
+
+  // ── Selection state
   const [file, setFile] = useState<File | null>(null);
-  const [progress, setProgress] = useState(0);
-  const [analysisStatus, setAnalysisStatus] =
-    useState<AnalysisStatusResponse | null>(null);
-  const [resumedFileName, setResumedFileName] = useState<string | null>(null);
-  const [elapsed, setElapsed] = useState(0);
-  const [version, setVersion] = useState<Version | null>(null);
-  const [errorMsg, setErrorMsg] = useState("");
-  const abortRef = useRef<AbortController | null>(null);
-  const pollAbortRef = useRef<AbortController | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const timerRef = useRef<ReturnType<typeof setInterval>>(undefined);
-  const elapsedStartRef = useRef<number>(0);
+  const [match, setMatch] = useState<MatchResponse | null>(null);
+  const [moduleOverride, setModuleOverride] = useState<string | null>(null);
 
-  // Mapping state
-  const [matchResult, setMatchResult] = useState<MatchResponse | null>(null);
-  const [selectedModule, setSelectedModule] = useState("");
-  const [editedMappings, setEditedMappings] = useState<ColumnMapping[]>([]);
+  // ── Pipeline state
+  const [uploadPct, setUploadPct] = useState(0);
+  const [job, setJob] = useState<UploadJob | null>(null);
 
-  const { data: systems } = useQuery({
-    queryKey: ["systems"],
-    queryFn: getSystems,
-    staleTime: 60_000,
+  const matchMut = useMutation({
+    mutationFn: async (f: File) => {
+      // CSV/XLSX headers are parsed in-browser; JSON/Parquet come back empty.
+      // Either way we hit the match endpoint — with no headers it still returns
+      // the full module catalogue so the user can pick the module by hand.
+      const { headers, sample } = await readHeaderSample(f);
+      const result = await matchColumns(headers, sample, f.name);
+      return { ...result, parsedHeaders: headers.length };
+    },
+    onSuccess: ({ parsedHeaders, ...resp }) => {
+      setMatch(resp);
+      // Only trust auto-detection when we actually had headers to match on.
+      setModuleOverride(parsedHeaders > 0 ? resp.detected_module : null);
+    },
   });
-  const hasConnectedSystems = (systems?.length ?? 0) > 0;
 
-  const reset = () => {
-    pollAbortRef.current?.abort();
-    pollAbortRef.current = null;
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = undefined;
-    }
-    if (typeof window !== "undefined") {
+  const uploadMut = useMutation({
+    mutationFn: async () => {
+      if (!file) throw new Error("No file selected");
+      const module = moduleOverride ?? match?.detected_module ?? "";
+      if (!module) throw new Error("No module selected");
+      setUploadPct(0);
+      const response = await uploadFile(
+        file,
+        module,
+        null,
+        (pct) => setUploadPct(pct),
+      );
+      return response;
+    },
+    onSuccess: async (resp) => {
+      setJob({
+        versionId: resp.version_id,
+        taskId: resp.job_id,
+        status: "queued",
+        progress: 0,
+        error: null,
+      });
       try {
-        window.localStorage.removeItem(ACTIVE_TASK_STORAGE_KEY);
-      } catch {
-        /* ignore storage errors */
-      }
-    }
-    setStep("select");
-    setFile(null);
-    setProgress(0);
-    setAnalysisStatus(null);
-    setResumedFileName(null);
-    setElapsed(0);
-    setVersion(null);
-    setErrorMsg("");
-    setMatchResult(null);
-    setSelectedModule("");
-    setEditedMappings([]);
-  };
-
-  const onDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    const f = e.dataTransfer.files[0];
-    if (f && f.size <= MAX_SIZE) setFile(f);
-  }, []);
-
-  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (f && f.size <= MAX_SIZE) setFile(f);
-  };
-
-  // ── Step 1 → Step 2: Detect & Map ──
-  const detectAndMap = async () => {
-    if (!file) return;
-    setStep("matching");
-    try {
-      const { headers, rows } = await readFileHeaders(file);
-      const result = await matchColumns(headers, rows, file.name);
-      setMatchResult(result);
-      setSelectedModule(result.detected_module);
-      setEditedMappings(result.mappings);
-      setStep("review");
-    } catch (err: unknown) {
-      setErrorMsg(
-        err instanceof Error ? err.message : "Column detection failed"
-      );
-      setStep("error");
-    }
-  };
-
-  // Re-match when module changes
-  const onModuleChange = async (newModule: string) => {
-    if (!file || !matchResult || newModule === selectedModule) return;
-    setSelectedModule(newModule);
-    setStep("matching");
-    try {
-      const { headers, rows } = await readFileHeaders(file);
-      const result = await matchColumns(headers, rows, file.name, newModule);
-      setMatchResult(result);
-      setSelectedModule(result.detected_module);
-      setEditedMappings(result.mappings);
-      setStep("review");
-    } catch (err: unknown) {
-      setErrorMsg(
-        err instanceof Error ? err.message : "Re-matching failed"
-      );
-      setStep("error");
-    }
-  };
-
-  // Update a single mapping's target field
-  const updateMapping = (index: number, newTarget: string | null) => {
-    setEditedMappings((prev) => {
-      const next = [...prev];
-      const targetFields = matchResult
-        ? new Set(
-            matchResult.available_modules
-              .find((m) => m.value === selectedModule)
-              ? Array.from(
-                  matchResult.mappings
-                    .filter((m) => m.is_required)
-                    .map((m) => m.target_field)
-                    .filter(Boolean)
-                )
-              : []
-          )
-        : new Set<string>();
-
-      next[index] = {
-        ...next[index],
-        target_field: newTarget,
-        confidence: newTarget ? 1.0 : 0.0,
-        match_type: newTarget ? "manual" : "unmatched",
-        is_required: newTarget ? targetFields.has(newTarget) : false,
-      };
-      return next;
-    });
-  };
-
-  const runAnalysisPolling = useCallback(
-    async (versionId: string, fileName: string | null, startedAtMs: number) => {
-      pollAbortRef.current?.abort();
-      const pollAc = new AbortController();
-      pollAbortRef.current = pollAc;
-
-      // Persist the active task so a refresh or accidental navigation resumes.
-      if (typeof window !== "undefined") {
-        try {
-          window.localStorage.setItem(
-            ACTIVE_TASK_STORAGE_KEY,
-            JSON.stringify({
-              version_id: versionId,
-              file_name: fileName,
-              started_at: startedAtMs,
-            }),
+        await pollAnalysisStatus(resp.version_id, (data) => {
+          setJob((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  status: data.status,
+                  progress: data.progress.percent_complete ?? 0,
+                  error: data.error,
+                }
+              : prev,
           );
-        } catch {
-          /* ignore storage errors */
-        }
-      }
-
-      elapsedStartRef.current = startedAtMs;
-      setElapsed(Math.max(0, Math.round((Date.now() - startedAtMs) / 1000)));
-      if (timerRef.current) clearInterval(timerRef.current);
-      timerRef.current = setInterval(() => {
-        setElapsed(
-          Math.max(0, Math.round((Date.now() - elapsedStartRef.current) / 1000)),
+        });
+        qc.invalidateQueries({ queryKey: ["reports.versions"] });
+        qc.invalidateQueries({ queryKey: ["versions.list"] });
+      } catch (err) {
+        setJob((prev) =>
+          prev ? { ...prev, status: "failed", error: (err as Error).message } : prev,
         );
-      }, 1000);
-
-      try {
-        // Seed the bar immediately so it does not flash empty.
-        try {
-          const initial = await getAnalysisStatus(versionId);
-          setAnalysisStatus(initial);
-        } catch {
-          /* first call can fail — polling will recover */
-        }
-
-        const final = await pollAnalysisStatus(
-          versionId,
-          (data) => setAnalysisStatus(data),
-          { pollIntervalMs: 2_000, signal: pollAc.signal },
-        );
-
-        if (timerRef.current) clearInterval(timerRef.current);
-
-        if (final.status === "completed") {
-          try {
-            const v = await getVersion(versionId);
-            setVersion(v);
-          } catch (err) {
-            console.warn("Failed to fetch version after completion", err);
-          }
-          setStep("complete");
-          if (typeof window !== "undefined") {
-            try {
-              window.localStorage.removeItem(ACTIVE_TASK_STORAGE_KEY);
-            } catch {
-              /* ignore */
-            }
-          }
-        } else {
-          setErrorMsg(final.error || "Analysis failed");
-          setStep("error");
-        }
-      } catch (err: unknown) {
-        if (timerRef.current) clearInterval(timerRef.current);
-        if (err instanceof DOMException && err.name === "AbortError") return;
-        setErrorMsg(
-          err instanceof Error ? err.message : "Analysis polling failed",
-        );
-        setStep("error");
       }
     },
-    [],
-  );
+  });
 
-  // ── Step 2 → Upload: Approve & Start ──
-  const approveAndStart = async () => {
-    if (!file || !selectedModule) return;
-    const ac = new AbortController();
-    abortRef.current = ac;
+  const recentQ = useQuery({
+    queryKey: ["versions.list", { limit: 6 }],
+    queryFn: () => getVersions({ limit: 6 }),
+    // While any recent import is still being analysed, poll so its row
+    // settles from "under review" to its final status on its own.
+    refetchInterval: (query) => {
+      const vs = query.state.data?.versions ?? [];
+      const stillProcessing = vs.some((v) => !TERMINAL_VERSION_STATUSES.includes(v.status));
+      return stillProcessing ? 5000 : false;
+    },
+  });
 
-    // Build column_mapping: { source_header: TARGET.FIELD }
-    const columnMapping: Record<string, string> = {};
-    for (const m of editedMappings) {
-      if (m.target_field) {
-        columnMapping[m.source_column] = m.target_field;
-      }
-    }
+  // When a new file is picked, kick off column detection.
+  useEffect(() => {
+    if (!file) return;
+    setMatch(null);
+    setModuleOverride(null);
+    setJob(null);
+    setUploadPct(0);
+    matchMut.mutate(file);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [file]);
 
-    try {
-      setStep("uploading");
-      const { version_id } = await uploadFile(
-        file,
-        selectedModule,
-        Object.keys(columnMapping).length > 0 ? columnMapping : null,
-        setProgress,
-        ac.signal,
-      );
+  const onPickFile = useCallback((f: File) => setFile(f), []);
 
-      setStep("analysing");
-      setAnalysisStatus(null);
-      await runAnalysisPolling(version_id, file.name, Date.now());
-    } catch (err: unknown) {
-      if (timerRef.current) clearInterval(timerRef.current);
-      if (err instanceof Error && err.name === "CanceledError") {
-        reset();
-        return;
-      }
-      setErrorMsg(err instanceof Error ? err.message : "Upload failed");
-      setStep("error");
-    }
+  const stage: (typeof STAGES)[number]["k"] = !file
+    ? "source"
+    : match
+      ? job
+        ? "run"
+        : "mapping"
+      : "preview";
+  const stageIdx = STAGES.findIndex((s) => s.k === stage);
+
+  // Per-step state for the pipeline tracker. Once the run job reaches a
+  // terminal status the "Run" step must settle to done/failed — otherwise
+  // it stays stuck on the orange "active" state forever.
+  const stepClass = (k: string, i: number): "active" | "done" | "failed" | "" => {
+    if (job?.status === "completed") return "done";
+    if (k === "run" && job?.status === "failed") return "failed";
+    if (stage === k) return "active";
+    if (i < stageIdx) return "done";
+    return "";
   };
 
-  // Resume an active task after a page refresh or navigation.
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    let stored: string | null = null;
-    try {
-      stored = window.localStorage.getItem(ACTIVE_TASK_STORAGE_KEY);
-    } catch {
-      return;
-    }
-    if (!stored) return;
+  const versions = recentQ.data?.versions ?? [];
 
-    try {
-      const parsed = JSON.parse(stored) as {
-        version_id?: string;
-        file_name?: string | null;
-        started_at?: number;
-      };
-      if (!parsed.version_id) {
-        window.localStorage.removeItem(ACTIVE_TASK_STORAGE_KEY);
-        return;
-      }
-      setResumedFileName(parsed.file_name ?? null);
-      setStep("analysing");
-      void runAnalysisPolling(
-        parsed.version_id,
-        parsed.file_name ?? null,
-        parsed.started_at ?? Date.now(),
-      );
-    } catch {
-      try {
-        window.localStorage.removeItem(ACTIVE_TASK_STORAGE_KEY);
-      } catch {
-        /* ignore */
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-      pollAbortRef.current?.abort();
-    };
-  }, []);
-
-  const progressBarData: AnalysisStatusData | null = analysisStatus
-    ? {
-        task_id: analysisStatus.task_id,
-        status: analysisStatus.status,
-        progress: analysisStatus.progress,
-        result: analysisStatus.result,
-        error: analysisStatus.error,
-        db_status: analysisStatus.db_status,
-      }
-    : null;
-
-  // Computed: all expected fields for selected module
-  const allTargetFields: string[] = matchResult
-    ? Array.from(
-        new Set([
-          ...matchResult.mappings
-            .map((m) => m.target_field)
-            .filter((f): f is string => f !== null),
-          ...matchResult.unmapped_required,
-        ])
-      ).sort()
-    : [];
-
-  // Computed: unmapped required fields based on current edits
-  const currentMappedTargets = new Set(
-    editedMappings.map((m) => m.target_field).filter(Boolean)
-  );
-  const currentUnmappedRequired = matchResult
-    ? matchResult.unmapped_required.filter((f) => !currentMappedTargets.has(f))
-    : [];
+  // A matched file with zero column mappings means the browser could not read
+  // a header row (JSON / Parquet). The module is picked by hand instead.
+  const noHeaders = match !== null && match.mappings.length === 0;
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <h1 className="text-2xl font-bold">Import SAP Data</h1>
-
-      {hasConnectedSystems && (
-        <Alert className="border-primary/30 bg-primary/10">
-          <Info className="h-4 w-4 text-primary" />
-          <AlertDescription className="text-sm text-foreground">
-            Connected SAP systems detected — uploads are for one-off assessments
-            only. For continuous data quality monitoring, use{" "}
-            <Link href="/sync" className="font-medium text-primary underline">
-              Sync Monitor
-            </Link>
-            .
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* ── Step 1: File Selection ── */}
-      {step === "select" && (
-        <Card>
-          <CardContent className="space-y-6 py-8">
-            <div
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={onDrop}
-              onClick={() => inputRef.current?.click()}
-              className="flex cursor-pointer flex-col items-center gap-3 rounded-lg border-2 border-dashed border-border p-12 transition-colors hover:border-primary"
+    <>
+      <PageHead
+        title="Import"
+        route="Analyse · /import"
+        sub={
+          file
+            ? `Staged · ${file.name} · ${formatSize(file.size)}`
+            : "Drop a file to start. CSV, XLSX, JSON or Parquet — up to 2 GB."
+        }
+        actions={
+          <>
+            <button
+              type="button"
+              className="mn-btn mn-btn-ghost"
+              onClick={() => {
+                setFile(null);
+                setMatch(null);
+                setJob(null);
+              }}
+              disabled={!file}
             >
-              <Upload className="h-10 w-10 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">
-                Drag and drop your file here, or click to browse
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Accepts .csv, .xlsx, .xls — Maximum 100 MB
-              </p>
-              <input
-                ref={inputRef}
-                type="file"
-                accept={ACCEPTED}
-                onChange={onFileChange}
-                className="hidden"
-              />
-            </div>
+              Clear
+            </button>
+            <button
+              type="button"
+              className="mn-btn mn-btn-primary"
+              onClick={() => uploadMut.mutate()}
+              disabled={!file || !match || !moduleOverride || uploadMut.isPending || !!job}
+            >
+              {uploadMut.isPending ? `Uploading… ${uploadPct}%` : "Run import"} <ArrowRight size={13} />
+            </button>
+          </>
+        }
+      />
 
-            {file && (
-              <div className="flex items-center justify-between rounded-md bg-accent p-3">
-                <div className="flex items-center gap-2">
-                  <FileUp className="h-4 w-4" />
-                  <span className="text-sm">{file.name}</span>
-                  <span className="text-xs text-muted-foreground">
-                    ({(file.size / 1024 / 1024).toFixed(1)} MB)
-                  </span>
-                </div>
-                <TooltipProvider delay={0}>
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setFile(null)}
-                        />
-                      }
-                    >
-                      <X className="h-4 w-4" />
-                    </TooltipTrigger>
-                    <TooltipContent>Remove file</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-            )}
-
-            <Button onClick={detectAndMap} disabled={!file} className="w-full">
-              <Sparkles className="mr-2 h-4 w-4" />
-              Detect & Map Columns
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ── Step 1.5: Matching in progress ── */}
-      {step === "matching" && (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-4 py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-sm font-medium">
-              Detecting module and mapping columns...
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Deterministic matching first, then AI for remaining columns
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ── Step 2: Review Mapping ── */}
-      {step === "review" && matchResult && (
-        <div className="space-y-4">
-          {/* Module detection header */}
-          <Card>
-            <CardContent className="py-5">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <label className="text-sm font-medium whitespace-nowrap">
-                    Detected Module
-                  </label>
-                  <select
-                    value={selectedModule}
-                    onChange={(e) => onModuleChange(e.target.value)}
-                    className="rounded-md border border-border bg-accent px-3 py-1.5 text-sm"
-                  >
-                    {matchResult.available_modules.map((m) => (
-                      <option key={m.value} value={m.value}>
-                        {m.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex items-center gap-2">
-                  {confidenceDot(matchResult.module_confidence)}
-                  <span className="text-xs text-muted-foreground">
-                    {Math.round(matchResult.module_confidence * 100)}% confidence
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Mapping table */}
-          <Card>
-            <CardContent className="py-4">
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-sm font-semibold">Column Mapping</h3>
-                <span className="text-xs text-muted-foreground">
-                  {editedMappings.filter((m) => m.target_field).length} of{" "}
-                  {editedMappings.length} mapped
-                </span>
-              </div>
-              <div className="max-h-[400px] overflow-y-auto rounded-md border border-border">
-                <table className="w-full text-sm">
-                  <thead className="sticky top-0 bg-accent">
-                    <tr className="border-b border-border">
-                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">
-                        Your Column
-                      </th>
-                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">
-                        SAP Field
-                      </th>
-                      <th className="px-3 py-2 text-right font-medium text-muted-foreground">
-                        Match
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {editedMappings.map((mapping, idx) => (
-                      <tr
-                        key={mapping.source_column}
-                        className="border-b border-border last:border-0 hover:bg-black/[0.02]"
-                      >
-                        <td className="px-3 py-2 font-mono text-xs">
-                          {mapping.source_column}
-                        </td>
-                        <td className="px-3 py-2">
-                          <select
-                            value={mapping.target_field ?? "__skip__"}
-                            onChange={(e) =>
-                              updateMapping(
-                                idx,
-                                e.target.value === "__skip__"
-                                  ? null
-                                  : e.target.value
-                              )
-                            }
-                            className="w-full rounded border border-border bg-white px-2 py-1 font-mono text-xs"
-                          >
-                            <option value="__skip__">— Skip —</option>
-                            {allTargetFields.map((f) => (
-                              <option key={f} value={f}>
-                                {f}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="px-3 py-2 text-right">
-                          {confidenceBadge(
-                            mapping.confidence,
-                            mapping.match_type
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Unmapped required fields warning */}
-          {currentUnmappedRequired.length > 0 && (
-            <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
-                <span className="font-medium">
-                  Missing required fields ({currentUnmappedRequired.length}):
-                </span>{" "}
-                <span className="text-xs">
-                  {currentUnmappedRequired.join(", ")}
-                </span>
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {/* Action buttons */}
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={reset} className="flex-1">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back
-            </Button>
-            <Button onClick={approveAndStart} className="flex-1">
-              Approve & Start Analysis
-            </Button>
+      {/* Drop area + stepper */}
+      <div className="mn-row mn-row-12" style={{ marginBottom: 18 }}>
+        <div className="mn-col-7" style={{ gridColumn: "span 7" }}>
+          <FileDropZone selectedFile={file} onPickFile={onPickFile} />
+        </div>
+        <div className="mn-col-5" style={{ gridColumn: "span 5" }}>
+          <div className="mn-card mn-card-pad" style={{ height: "100%" }}>
+            <SectionHeader title="Pipeline" caption="Steps the file passes through" />
+            <ol className="mn-stepper">
+              {STAGES.map((s, i) => {
+                const cls = stepClass(s.k, i);
+                return (
+                  <li key={s.k} className={cls}>
+                    <span className="dot">
+                      {cls === "done" ? "✓" : cls === "failed" ? "✕" : i + 1}
+                    </span>
+                    <div>
+                      <div className="lbl">{s.l}</div>
+                      <div className="d">{s.d}</div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
           </div>
         </div>
-      )}
+      </div>
 
-      {/* ── Step 3: Uploading ── */}
-      {step === "uploading" && (
-        <Card>
-          <CardContent className="space-y-4 py-8">
-            <div className="text-center">
-              <p className="text-sm font-medium">Uploading {file?.name}...</p>
-              <p className="text-xs text-muted-foreground">
-                {(file?.size ?? 0) / 1024 / 1024 > 0
-                  ? `${((file?.size ?? 0) / 1024 / 1024).toFixed(1)} MB`
-                  : ""}
-              </p>
-            </div>
-            <Progress value={progress} className="h-3" />
-            <p className="text-center text-sm text-muted-foreground">
-              {progress}%
-            </p>
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => {
-                abortRef.current?.abort();
-                reset();
-              }}
-            >
-              Cancel
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ── Step 4: Analysing ── */}
-      {step === "analysing" && (
-        <Card>
-          <CardContent className="py-6">
-            <AnalysisProgressBar
-              data={progressBarData}
-              elapsedSeconds={elapsed}
-              fileName={file?.name ?? resumedFileName ?? undefined}
-            />
-            <div className="mt-5 flex justify-end">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  pollAbortRef.current?.abort();
-                  if (timerRef.current) clearInterval(timerRef.current);
-                  if (typeof window !== "undefined") {
-                    try {
-                      window.localStorage.removeItem(ACTIVE_TASK_STORAGE_KEY);
-                    } catch {
-                      /* ignore */
-                    }
-                  }
-                  reset();
-                }}
-              >
-                Stop watching
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ── Step 5: Complete ── */}
-      {step === "complete" && version && (
-        <Card>
-          <CardContent className="space-y-6 py-8 text-center">
-            <CheckCircle className="mx-auto h-12 w-12 text-green-500" />
-            <h2 className="text-xl font-bold">Analysis Complete</h2>
-
-            {version.dqs_summary && (
-              <>
-                {Object.entries(version.dqs_summary).map(([mod, s]) => (
-                  <div key={mod} className="space-y-2">
-                    <p className="text-sm text-muted-foreground">
-                      {formatModuleName(mod)} DQS
-                    </p>
-                    <p
-                      className="text-3xl font-bold"
-                      style={{ color: scoreColor(s.composite_score) }}
-                    >
-                      {s.composite_score}
-                    </p>
-                    <div className="flex justify-center gap-2">
-                      <Badge variant="destructive">
-                        Critical {s.critical_count}
-                      </Badge>
-                      <Badge className="bg-orange-500">
-                        High {s.high_count}
-                      </Badge>
-                      <Badge className="bg-yellow-500 text-black">
-                        Medium {s.medium_count}
-                      </Badge>
-                      <Badge className="bg-green-600">Low {s.low_count}</Badge>
+      {/* Schema preview */}
+      {file && (
+        <>
+          <SectionHeader
+            title={`Staging · ${file.name}`}
+            caption={
+              matchMut.isPending
+                ? "Detecting module…"
+                : matchMut.error
+                  ? "Could not reach the column-matching service."
+                  : noHeaders
+                    ? "No header row to preview — choose the module on the right, then run the import."
+                    : match
+                      ? `${match.module_label} · ${Math.round(match.module_confidence * 100)}% confidence · ${match.mappings.length} columns mapped`
+                      : "Awaiting detection."
+            }
+          />
+          <div className="mn-row mn-row-12" style={{ marginBottom: 18 }}>
+            <div className="mn-col-8">
+              <div className="mn-card mn-card-pad">
+                <SectionHeader title="Detected schema" caption="Source → canonical mapping" />
+                {matchMut.isPending && <Skeleton className="h-40 rounded-[10px] mt-2" />}
+                {matchMut.error && (
+                  <div
+                    className="mn-narrative"
+                    style={{ marginTop: 10, padding: 10, borderLeftColor: "var(--mn-warn)" }}
+                  >
+                    <div className="ico" style={{ background: "var(--mn-warn-bg)", color: "var(--mn-warn)" }}>!</div>
+                    <div style={{ flex: 1, fontSize: 12.5, color: "var(--mn-ink-700)" }}>
+                      {(matchMut.error as Error).message}
                     </div>
                   </div>
-                ))}
-              </>
-            )}
-
-            <div className="flex flex-wrap justify-center gap-3">
-              <Link href={`/findings?version_id=${version.id}`}>
-                <Button>View Findings</Button>
-              </Link>
-              <Button
-                variant="outline"
-                onClick={async () => {
-                  try {
-                    await downloadAuthenticated(
-                      getReportDownloadUrl(version.id),
-                      `meridian_dq_report_${version.id}.pdf`,
-                    );
-                  } catch {
-                    setErrorMsg("Failed to download PDF report");
-                    setStep("error");
-                  }
-                }}
-              >
-                Download PDF
-              </Button>
-              <Button
-                variant="outline"
-                onClick={async () => {
-                  try {
-                    await downloadAuthenticated(
-                      getReportJsonExportUrl(version.id),
-                      `meridian_dq_report_${version.id}.json`,
-                    );
-                  } catch {
-                    setErrorMsg("Failed to download JSON report");
-                    setStep("error");
-                  }
-                }}
-              >
-                Download JSON
-              </Button>
-              <Button
-                variant="outline"
-                onClick={async () => {
-                  try {
-                    await downloadAuthenticated(
-                      getConfigMatchesExportUrl(version.id),
-                      `meridian-config-${version.id.slice(0, 8)}.xlsx`,
-                    );
-                  } catch {
-                    setErrorMsg("Failed to download config matches export");
-                    setStep("error");
-                  }
-                }}
-              >
-                Export Config Matches
-              </Button>
+                )}
+                {!matchMut.isPending && !matchMut.error && noHeaders && (
+                  <div
+                    className="mn-narrative"
+                    style={{ marginTop: 10, padding: 10 }}
+                  >
+                    <div className="ico"><FileTextIcon size={13} /></div>
+                    <div style={{ flex: 1, fontSize: 12.5, color: "var(--mn-ink-700)" }}>
+                      This file type has no header row the browser can preview. Pick the
+                      module on the right — the backend reads the column schema from the
+                      file itself when you run the import.
+                    </div>
+                  </div>
+                )}
+                {match && match.mappings.length > 0 && (
+                  <div className="mn-table-wrap" style={{ marginTop: 8 }}>
+                    <table className="mn-table">
+                      <thead>
+                        <tr>
+                          <th style={{ paddingLeft: 0 }}>Source</th>
+                          <th></th>
+                          <th>Canonical</th>
+                          <th>Confidence</th>
+                          <th>Match</th>
+                          <th>Required</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {match.mappings.slice(0, 12).map((m) => (
+                          <tr key={m.source_column}>
+                            <td>
+                              <span
+                                className="mn-tabular"
+                                style={{
+                                  font: "600 12px/1 'JetBrains Mono', monospace",
+                                  color: "var(--mn-ink-700)",
+                                }}
+                              >
+                                {m.source_column}
+                              </span>
+                            </td>
+                            <td>
+                              <ArrowRight size={12} style={{ color: "var(--mn-ink-300)" }} />
+                            </td>
+                            <td>
+                              {m.target_field ? (
+                                <span
+                                  className="mn-tabular"
+                                  style={{
+                                    font: "500 12px/1 'JetBrains Mono', monospace",
+                                    color: "var(--mn-primary-700)",
+                                  }}
+                                >
+                                  {m.target_field}
+                                </span>
+                              ) : (
+                                <span style={{ color: "var(--mn-ink-300)" }}>unmapped</span>
+                              )}
+                            </td>
+                            <td
+                              className="mn-tabular"
+                              style={{
+                                color:
+                                  m.confidence >= 0.85
+                                    ? "var(--mn-pos)"
+                                    : m.confidence >= 0.6
+                                      ? "var(--mn-primary)"
+                                      : "var(--mn-warn)",
+                              }}
+                            >
+                              {Math.round(m.confidence * 100)}%
+                            </td>
+                            <td>
+                              <ModChip>{m.match_type}</ModChip>
+                            </td>
+                            <td>
+                              {m.is_required ? (
+                                <span style={{ color: "var(--mn-warn)", fontSize: 12 }}>Yes</span>
+                              ) : (
+                                <span style={{ color: "var(--mn-ink-300)" }}>—</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </div>
-          </CardContent>
-        </Card>
+            <div className="mn-col-4">
+              <div className="mn-card mn-card-pad" style={{ height: "100%" }}>
+                <SectionHeader
+                  title="Module"
+                  caption={noHeaders ? "Select the module for this file" : "Detected or overridden"}
+                />
+                {match ? (
+                  <div className="mn-segment" style={{ marginTop: 12, flexWrap: "wrap" }}>
+                    {match.available_modules.map((m) => (
+                      <button
+                        key={m.value}
+                        type="button"
+                        className={moduleOverride === m.value ? "on" : ""}
+                        onClick={() => setModuleOverride(m.value)}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p style={{ color: "var(--mn-ink-400)", marginTop: 12, fontSize: 13 }}>
+                    Awaiting detection.
+                  </p>
+                )}
+
+                {match && match.unmapped_required.length > 0 && (
+                  <div className="mn-detail-section">
+                    <div className="mn-eyebrow">Unmapped required</div>
+                    <div className="mn-chip-row" style={{ marginTop: 8 }}>
+                      {match.unmapped_required.map((c) => (
+                        <span
+                          key={c}
+                          style={{
+                            display: "inline-flex",
+                            padding: "3px 7px",
+                            borderRadius: 3,
+                            background: "var(--mn-warn-bg)",
+                            color: "var(--mn-warn)",
+                            font: "600 11px/1 'JetBrains Mono', monospace",
+                            letterSpacing: "0.04em",
+                          }}
+                        >
+                          {c}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {job && (
+                  <div style={{ marginTop: 18 }}>
+                    <div className="mn-eyebrow">Job · {job.versionId.slice(0, 8)}</div>
+                    <div
+                      style={{
+                        marginTop: 10,
+                        padding: 12,
+                        borderRadius: 8,
+                        background:
+                          job.status === "completed"
+                            ? "var(--mn-pos-bg)"
+                            : job.status === "failed"
+                              ? "var(--mn-neg-bg)"
+                              : "var(--mn-primary-50)",
+                        color:
+                          job.status === "completed"
+                            ? "var(--mn-pos)"
+                            : job.status === "failed"
+                              ? "var(--mn-neg)"
+                              : "var(--mn-primary-700)",
+                        fontSize: 13,
+                      }}
+                    >
+                      <div style={{ fontWeight: 600 }}>{job.status.toUpperCase()}</div>
+                      <div style={{ marginTop: 4 }}>
+                        {job.error ?? `${Math.round(job.progress)}% complete`}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </>
       )}
 
-      {/* ── Error state ── */}
-      {step === "error" && (
-        <Card>
-          <CardContent className="space-y-4 py-8">
-            <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>{errorMsg}</AlertDescription>
-            </Alert>
-            <Button onClick={reset} className="w-full">
-              Try Again
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+      <SectionHeader title="Recent imports" caption="Last 6 versions" />
+      <div className="mn-card" style={{ padding: 0, overflow: "hidden" }}>
+        {recentQ.isLoading ? (
+          <div style={{ padding: 16 }}>
+            <Skeleton className="h-12 rounded-[10px] mb-2" />
+            <Skeleton className="h-12 rounded-[10px] mb-2" />
+            <Skeleton className="h-12 rounded-[10px]" />
+          </div>
+        ) : recentQ.error ? (
+          <div className="mn-card-pad" style={{ color: "var(--mn-neg)" }}>
+            Could not reach <code>/api/v1/versions</code>.
+          </div>
+        ) : (
+          <div className="mn-table-wrap">
+            <table className="mn-table">
+              <thead>
+                <tr>
+                  <th style={{ paddingLeft: 20 }}>File</th>
+                  <th>Modules</th>
+                  <th className="right">Rows</th>
+                  <th className="right">DQS</th>
+                  <th>Status</th>
+                  <th>At</th>
+                  <th style={{ width: 36 }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {versions.map((v: Version) => {
+                  const fileName = v.metadata?.file_name ?? v.label ?? "—";
+                  const pal = paletteFor(fileName);
+                  const modules = v.metadata?.modules ?? [];
+                  return (
+                    <tr key={v.id}>
+                      <td style={{ paddingLeft: 20 }}>
+                        <Link
+                          href={`/findings?version_id=${v.id}`}
+                          className="ico-cell"
+                          style={{ color: "inherit" }}
+                          title="View findings for this import"
+                        >
+                          <span
+                            style={{
+                              width: 30,
+                              height: 30,
+                              borderRadius: 6,
+                              background: pal.bg,
+                              color: pal.fg,
+                              display: "grid",
+                              placeItems: "center",
+                            }}
+                          >
+                            <FileTextIcon size={14} />
+                          </span>
+                          <span className="module" style={{ color: "var(--mn-primary-700)" }}>
+                            {fileName}
+                          </span>
+                        </Link>
+                      </td>
+                      <td>
+                        <span
+                          className="mn-tabular"
+                          style={{
+                            font: "500 11.5px/1 'JetBrains Mono', monospace",
+                            color: "var(--mn-ink-500)",
+                          }}
+                        >
+                          {modules.length > 0 ? modules.join(" · ") : "—"}
+                        </span>
+                      </td>
+                      <td className="right mn-tabular">
+                        {v.metadata?.row_count?.toLocaleString() ?? "—"}
+                      </td>
+                      <td className="right">
+                        {(() => {
+                          const dqs = versionDqs(v);
+                          return dqs === null ? (
+                            <span style={{ color: "var(--mn-ink-300)" }}>—</span>
+                          ) : (
+                            <span
+                              className="mn-tabular"
+                              style={{ font: "600 13px/1 'Inter Tight'", color: dqsColor(dqs) }}
+                            >
+                              {dqs}
+                            </span>
+                          );
+                        })()}
+                      </td>
+                      <td>
+                        <StatusDot
+                          status={
+                            v.status === "complete" || v.status === "agents_complete" || v.status === "ai_enriched"
+                              ? "healthy"
+                              : v.status === "failed" || v.status === "agents_failed"
+                                ? "down"
+                                : "in-review"
+                          }
+                        />
+                      </td>
+                      <td
+                        className="mn-tabular"
+                        style={{ font: "500 11.5px/1 'JetBrains Mono', monospace", color: "var(--mn-ink-500)" }}
+                      >
+                        {relativeTime(v.run_at)}
+                      </td>
+                      <td>
+                        <button
+                          type="button"
+                          className="mn-icon-btn"
+                          style={{ width: 26, height: 26 }}
+                          aria-label="Copy version ID"
+                          onClick={() => copyToClipboard(v.id, "Version ID copied")}
+                        >
+                          <MoreH size={14} />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {versions.length === 0 && (
+                  <tr>
+                    <td colSpan={7} style={{ padding: 32, textAlign: "center", color: "var(--mn-ink-400)" }}>
+                      No imports yet.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+/* ── Drop zone ────────────────────────────────────────────────────── */
+function FileDropZone({
+  selectedFile,
+  onPickFile,
+}: {
+  selectedFile: File | null;
+  onPickFile: (f: File) => void;
+}) {
+  const [hover, setHover] = useState(false);
+  const accept = ".csv,.tsv,.txt,.xlsx,.xls,.json,.parquet";
+
+  return (
+    <label
+      className="mn-import-drop"
+      style={{ cursor: "pointer", borderColor: hover ? "var(--mn-primary)" : undefined }}
+      onDragOver={(e) => {
+        e.preventDefault();
+        setHover(true);
+      }}
+      onDragLeave={() => setHover(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setHover(false);
+        const f = e.dataTransfer.files?.[0];
+        if (f) onPickFile(f);
+      }}
+    >
+      <div className="mn-import-drop-icon"><UploadCloudIcon size={28} /></div>
+      <div className="mn-import-drop-h">
+        {selectedFile ? selectedFile.name : "Drop a file to begin"}
+      </div>
+      <p className="mn-import-drop-sub">
+        {selectedFile
+          ? `${formatSize(selectedFile.size)} · last modified ${new Date(selectedFile.lastModified).toLocaleString()}`
+          : "CSV · XLSX · JSON · Parquet — up to 2 GB."}
+      </p>
+      <div className="mn-import-formats">
+        {Object.entries(TYPE_PALETTE).map(([k, t]) => (
+          <span key={k} className="mn-import-fmt" style={{ background: t.bg, color: t.fg }}>
+            {t.l}
+          </span>
+        ))}
+      </div>
+      <input
+        type="file"
+        accept={accept}
+        style={{ display: "none" }}
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) onPickFile(f);
+        }}
+      />
+    </label>
   );
 }

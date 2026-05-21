@@ -19,6 +19,7 @@ import {
   LogOut,
   Command as CommandIcon,
 } from "lucide-react";
+import { toast } from "sonner";
 import { CommandPalette, useCommandPalette } from "@/components/command-palette";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { downloadAuthenticated } from "@/lib/api/download";
@@ -113,7 +114,7 @@ function HeaderExportMenu() {
         render={
           <button
             type="button"
-            className="hidden sm:flex items-center gap-1.5 rounded-xl bg-[#E76500] px-4 py-2 text-sm font-medium text-white hover:bg-[#C24B08] transition-colors shadow-[0_0_12px_rgba(231,101,0,0.20)]"
+            className="hidden sm:flex items-center gap-1.5 rounded-[8px] bg-[var(--mn-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--mn-primary-600)] transition-colors shadow-[0_0_12px_rgba(249,115,22,0.20)]"
           />
         }
       >
@@ -142,8 +143,9 @@ function HeaderExportMenu() {
                   getReportDownloadUrl(versionId),
                   `meridian_dq_report_${versionId}.pdf`,
                 );
+                toast.success("PDF report downloaded");
               } catch {
-                alert("Failed to download PDF report. Please check your login and try again.");
+                toast.error("Failed to download PDF report — check your login and try again");
               }
             }}
             className="flex items-center gap-2 cursor-pointer"
@@ -162,8 +164,9 @@ function HeaderExportMenu() {
                   getReportJsonExportUrl(versionId),
                   `meridian_dq_report_${versionId}.json`,
                 );
+                toast.success("JSON report downloaded");
               } catch {
-                alert("Failed to download JSON report. Please check your login and try again.");
+                toast.error("Failed to download JSON report — check your login and try again");
               }
             }}
           >
@@ -181,8 +184,9 @@ function HeaderExportMenu() {
                   getConfigMatchesExportUrl(versionId),
                   `meridian-config-${versionId.slice(0, 8)}.xlsx`,
                 );
+                toast.success("Config matches downloaded");
               } catch {
-                alert("Failed to download config matches export. Please check your login and try again.");
+                toast.error("Failed to download config matches — check your login and try again");
               }
             }}
           >
@@ -206,38 +210,34 @@ function HeaderExportMenu() {
 }
 
 import {
-  LayoutDashboard,
-  Upload,
-  AlertTriangle,
-  GitCompareArrows,
-  Settings,
-  ShieldCheck,
-  GitMerge,
-  ShieldAlert,
-  BarChart3,
-  FileCheck2,
-  Server,
-  RefreshCw,
-  BookOpen,
-  ClipboardList,
-  Database,
-  Network,
-  Eraser,
-  BrainCircuit,
-  Play,
-  Sliders,
-  Map,
-  Plug2,
-  AlertOctagon,
-  Workflow,
-  Sparkles,
-  Coins,
-  Brain,
   type LucideIcon,
+  Eraser,        // Cleaning — keep lucide for now
+  Sliders,       // Settings sub-nav
+  Map as MapIcon,// Settings sub-nav
 } from "lucide-react";
 import "@/app/sidebar-responsive.css";
+import { MeridianMark } from "@/components/meridian/icons";
+import {
+  LayoutDashIcon,
+  ClipboardIcon,
+  WorkflowIcon,
+  SettingsIcon,
+  BarChartIcon,
+  UploadIcon,
+  AlertIcon,
+  AnalyticsIcon,
+  SparklesNavIcon,
+  PlayIcon,
+  FileTextIcon,
+  GitCompareIcon,
+  DatabaseIcon,
+  BookIcon,
+  ContractIcon,
+  ServerIcon,
+  PlugIcon,
+  RefreshIcon,
+} from "@/components/meridian/nav-icons";
 import { useAuth } from "@/context/auth-context";
-import { AskMeridian } from "@/components/ask-meridian";
 import { ForcePasswordChange } from "@/components/force-password-change";
 import { useRole } from "@/hooks/use-role";
 import { useLicence } from "@/hooks/use-licence";
@@ -275,7 +275,7 @@ import type { HealthResponse, Notification as NotifType } from "@/types/api";
 
 /* ─── Page title mapping ─── */
 const PAGE_TITLES: Record<string, string> = {
-  "/": "Dashboard",
+  "/": "Overview",
   "/systems": "SAP Systems",
   "/sync": "Sync Monitor",
   "/upload": "Import Data",
@@ -284,7 +284,6 @@ const PAGE_TITLES: Record<string, string> = {
   "/contracts": "Data Contracts",
   "/relationships": "Relationships",
   "/stewardship": "Stewardship",
-  "/ai/rules": "AI Rules",
   "/exceptions": "Exceptions",
   "/cleaning": "Cleaning Queue",
   "/dedup": "Deduplication",
@@ -295,11 +294,9 @@ const PAGE_TITLES: Record<string, string> = {
   "/reports": "Reports",
   "/versions": "Versions",
   "/settings": "Settings",
-  "/settings/ai": "AI Settings",
   "/settings/rules": "Rules Engine",
   "/settings/field-mapping": "SAP Field Mapping",
   "/mining": "Mining",
-  "/llm-savings": "LLM Savings",
   "/connectivity": "Connectivity",
   "/config-impact": "Config Impact",
   "/business-process": "Business Processes",
@@ -444,12 +441,15 @@ function NotificationBell() {
 }
 
 /* ─── Nav config ─── */
+type NavIcon = LucideIcon | ((props: { size?: number; className?: string; style?: React.CSSProperties }) => React.JSX.Element);
+
 interface NavItem {
   href: string;
   label: string;
-  icon: LucideIcon;
+  icon: NavIcon;
   permission?: string;
-  licenceKey?: string; // menu item key in licence manifest
+  licenceKey?: string;
+  badge?: number;
 }
 
 interface NavGroup {
@@ -457,71 +457,66 @@ interface NavGroup {
   items: NavItem[];
 }
 
+// Nav groups follow the Claude Design handoff (Aurora · Analyse · Report ·
+// Steward · Govern · Connect · Settings) and use the bespoke per-item icon
+// set from components/meridian/nav-icons.tsx.
 const NAV_GROUPS: NavGroup[] = [
-  // Aurora workspaces (spec §6). Soft cutover: legacy routes stay
-  // accessible below, but the four Aurora surfaces are the canonical
-  // entry points going forward. /process pending mining-graph API.
   {
     group: "Aurora",
     items: [
-      { href: "/command-centre", label: "Command Centre", icon: LayoutDashboard, licenceKey: "dashboard" },
-      { href: "/workbench", label: "Workbench", icon: ClipboardList, licenceKey: "stewardship" },
-      { href: "/process", label: "Process", icon: Workflow },
-      { href: "/admin", label: "Admin", icon: Settings },
+      { href: "/command-centre", label: "Command Centre", icon: LayoutDashIcon, licenceKey: "dashboard" },
+      { href: "/workbench", label: "Workbench", icon: ClipboardIcon, licenceKey: "stewardship" },
+      { href: "/process", label: "Process", icon: WorkflowIcon },
+      { href: "/admin", label: "Admin", icon: SettingsIcon },
     ],
   },
   {
-    group: "Legacy — Analyse",
+    group: "Analyse",
     items: [
-      { href: "/", label: "Dashboard", icon: LayoutDashboard, licenceKey: "dashboard" },
-      { href: "/upload", label: "Import", icon: Upload, licenceKey: "import" },
-      { href: "/findings", label: "Findings", icon: AlertTriangle, licenceKey: "findings" },
-      { href: "/analytics", label: "Analytics", icon: BarChart3, licenceKey: "analytics" },
-      { href: "/nlp", label: "Ask AI", icon: BrainCircuit, licenceKey: "nlp" },
-      { href: "/mining", label: "Mining", icon: Sparkles },
-      { href: "/run-sync", label: "Run Sync", icon: Play, licenceKey: "sync" },
+      { href: "/", label: "Overview", icon: BarChartIcon, licenceKey: "dashboard" },
+      { href: "/upload", label: "Import", icon: UploadIcon, licenceKey: "import" },
+      { href: "/findings", label: "Findings", icon: AlertIcon, licenceKey: "findings" },
+      { href: "/analytics", label: "Analytics", icon: AnalyticsIcon, licenceKey: "analytics" },
+      { href: "/mining", label: "Mining", icon: SparklesNavIcon },
+      { href: "/run-sync", label: "Run Sync", icon: PlayIcon, licenceKey: "sync" },
     ],
   },
   {
-    group: "Legacy — Report",
+    group: "Report",
     items: [
-      { href: "/reports", label: "Reports", icon: FileText, licenceKey: "reports" },
-      { href: "/versions", label: "Versions", icon: GitCompareArrows, licenceKey: "versions" },
-      { href: "/llm-savings", label: "LLM Savings", icon: Coins },
+      { href: "/reports", label: "Reports", icon: FileTextIcon, licenceKey: "reports" },
+      { href: "/versions", label: "Versions", icon: GitCompareIcon, licenceKey: "versions" },
     ],
   },
   {
-    group: "Legacy — Govern",
+    group: "Steward",
     items: [
-      { href: "/golden-records", label: "Golden Records", icon: Database },
-      { href: "/glossary", label: "Glossary", icon: BookOpen },
-      { href: "/contracts", label: "Contracts", icon: FileCheck2, licenceKey: "contracts" },
-      { href: "/relationships", label: "Relationships", icon: Network },
-    ],
-  },
-  {
-    group: "Legacy — Steward",
-    items: [
-      { href: "/stewardship", label: "Workbench", icon: ClipboardList, licenceKey: "stewardship" },
-      { href: "/ai/rules", label: "AI Rules", icon: BrainCircuit, permission: "review_ai_rules" },
-      { href: "/exceptions", label: "Exceptions", icon: ShieldAlert },
+      { href: "/stewardship", label: "Workbench", icon: ClipboardIcon, licenceKey: "stewardship" },
+      { href: "/exceptions", label: "Exceptions", icon: AlertIcon },
       { href: "/cleaning", label: "Cleaning", icon: Eraser },
-      { href: "/dedup", label: "Dedup", icon: GitMerge },
+      { href: "/dedup", label: "Dedup", icon: GitCompareIcon },
     ],
   },
   {
-    group: "Legacy — Connect",
+    group: "Govern",
     items: [
-      { href: "/systems", label: "Systems", icon: Server },
-      { href: "/connectivity", label: "Connectivity", icon: Plug2 },
-      { href: "/sync", label: "Sync Monitor", icon: RefreshCw },
-      { href: "/config-impact", label: "Config Impact", icon: AlertOctagon },
-      { href: "/business-process", label: "Processes", icon: Workflow },
+      { href: "/golden-records", label: "Golden Records", icon: DatabaseIcon },
+      { href: "/glossary", label: "Glossary", icon: BookIcon },
+      { href: "/contracts", label: "Contracts", icon: ContractIcon, licenceKey: "contracts" },
+      { href: "/relationships", label: "Relationships", icon: WorkflowIcon },
+    ],
+  },
+  {
+    group: "Connect",
+    items: [
+      { href: "/systems", label: "Systems", icon: ServerIcon },
+      { href: "/connectivity", label: "Connectivity", icon: PlugIcon },
+      { href: "/sync", label: "Sync Monitor", icon: RefreshIcon },
+      { href: "/config-impact", label: "Config Impact", icon: AlertIcon },
+      { href: "/business-process", label: "Processes", icon: WorkflowIcon },
     ],
   },
 ];
-
-const ROLES_WITH_AI_RULES = ["admin", "steward", "ai_reviewer"];
 
 // Settings sub-nav items (admin-only)
 import { Key } from "lucide-react";
@@ -529,15 +524,14 @@ import { Key } from "lucide-react";
 interface SettingsNavItem {
   href: string;
   label: string;
-  icon: LucideIcon;
+  icon: NavIcon;
   permission: string;
   licenceKey?: string;
 }
 
 const SETTINGS_SUB_NAV: SettingsNavItem[] = [
-  { href: "/settings/ai", label: "AI", icon: Brain, permission: "admin" },
   { href: "/settings/rules", label: "Rules Engine", icon: Sliders, permission: "manage_rules", licenceKey: "rules_engine" },
-  { href: "/settings/field-mapping", label: "Field Mapping", icon: Map, permission: "manage_field_mappings", licenceKey: "field_mapping" },
+  { href: "/settings/field-mapping", label: "Field Mapping", icon: MapIcon, permission: "manage_field_mappings", licenceKey: "field_mapping" },
   { href: "/settings/licence", label: "Licence", icon: Key, permission: "view", licenceKey: "licence" },
 ];
 
@@ -565,9 +559,6 @@ function SidebarNav({
     <nav className="flex flex-col gap-5">
       {NAV_GROUPS.map(({ group, items }) => {
         const visibleItems = items.filter((item) => {
-          if (item.permission === "review_ai_rules") {
-            if (!ROLES_WITH_AI_RULES.includes(userRole)) return false;
-          }
           // Check licence: item must be enabled in manifest
           if (item.licenceKey && !isMenuItemEnabled(item.licenceKey)) return false;
           return true;
@@ -577,7 +568,10 @@ function SidebarNav({
         return (
           <div key={group}>
             {!collapsed && (
-              <span data-sidebar-label className="mb-1.5 block px-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              <span
+                data-sidebar-label
+                className="mb-1.5 block px-3 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--mn-ink-300)]"
+              >
                 {group}
               </span>
             )}
@@ -588,7 +582,8 @@ function SidebarNav({
               <div data-sidebar-divider className="hidden mb-1 mx-auto w-6 border-t border-black/[0.06]" />
             )}
             <div className="flex flex-col gap-0.5">
-              {visibleItems.map(({ href, label, icon: Icon }) => {
+              {visibleItems.map((item) => {
+                const { href, label, icon: Icon } = item;
                 const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
                 return (
                   <Link
@@ -597,19 +592,25 @@ function SidebarNav({
                     data-sidebar-link
                     title={label}
                     onClick={onNavClick}
-                    className={`group relative flex items-center gap-3 rounded-lg transition-all duration-150 ${
-                      collapsed
-                        ? "mx-auto h-10 w-10 justify-center"
-                        : "mx-1 px-3 py-2"
+                    className={`group relative flex items-center gap-2.5 rounded-md transition-all duration-150 ${
+                      collapsed ? "mx-auto h-10 w-10 justify-center" : "mx-1 px-3 py-[7px]"
                     } ${
                       active
-                        ? "bg-primary/[0.08] text-primary font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-r-full before:bg-primary"
-                        : "text-[#6B7280] hover:bg-black/[0.04] hover:text-foreground"
+                        ? "bg-[var(--mn-primary-50)] text-[var(--mn-primary-700)] font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[2.5px] before:rounded-r-full before:bg-[var(--mn-primary)]"
+                        : "text-[var(--mn-ink-500)] hover:bg-black/[0.04] hover:text-[var(--mn-ink-900)]"
                     }`}
                   >
-                    <Icon data-sidebar-icon className={`shrink-0 ${collapsed ? "h-5 w-5" : "h-[18px] w-[18px]"}`} />
+                    <Icon data-sidebar-icon size={collapsed ? 20 : 16} className="shrink-0" />
                     {!collapsed && (
-                      <span data-sidebar-label className="text-base font-medium truncate">{label}</span>
+                      <span data-sidebar-label className="flex-1 text-[13px] font-medium truncate">{label}</span>
+                    )}
+                    {!collapsed && item.badge != null && (
+                      <span
+                        data-sidebar-label
+                        className="px-[6px] py-[1px] rounded-full bg-[var(--mn-neg-bg)] text-[var(--mn-neg)] text-[10.5px] font-bold tabular-nums"
+                      >
+                        {item.badge}
+                      </span>
                     )}
                   </Link>
                 );
@@ -638,8 +639,8 @@ function SidebarNav({
               : "text-[#6B7280] hover:bg-black/[0.04] hover:text-foreground"
           }`}
         >
-          <Settings data-sidebar-icon className={`shrink-0 ${collapsed ? "h-5 w-5" : "h-[18px] w-[18px]"}`} />
-          {!collapsed && <span data-sidebar-label className="text-base font-medium">Settings</span>}
+          <SettingsIcon size={collapsed ? 20 : 18} className="shrink-0" />
+          {!collapsed && <span data-sidebar-label className="text-[13px] font-medium">Settings</span>}
         </Link>
 
         {/* Admin-only settings sub-items (only shown expanded + admin role) */}
@@ -657,13 +658,13 @@ function SidebarNav({
                     data-sidebar-link
                     title={label}
                     onClick={onNavClick}
-                    className={`group relative flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-sm transition-all duration-150 ${
+                    className={`group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 text-[12.5px] transition-all duration-150 ${
                       active
-                        ? "bg-primary/[0.08] text-primary font-semibold before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[2px] before:rounded-r-full before:bg-primary"
-                        : "text-[#6B7280] hover:bg-black/[0.04] hover:text-foreground"
+                        ? "bg-[var(--mn-primary-50)] text-[var(--mn-primary-700)] font-semibold before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[2px] before:rounded-r-full before:bg-[var(--mn-primary)]"
+                        : "text-[var(--mn-ink-500)] hover:bg-black/[0.04] hover:text-[var(--mn-ink-900)]"
                     }`}
                   >
-                    <Icon className="h-[15px] w-[15px] shrink-0" />
+                    <Icon className="h-[14px] w-[14px] shrink-0" />
                     <span data-sidebar-label className="font-medium truncate">{label}</span>
                   </Link>
                 );
@@ -773,7 +774,7 @@ export default function DashboardLayout({
   }, [pathname]);
 
   const content = (
-    <div className="flex h-screen overflow-hidden vx-mesh-bg">
+    <div className="flex h-screen overflow-hidden mn-surface">
       {/* ── Mobile backdrop ── */}
       {sidebarOpen && (
         <div
@@ -796,7 +797,7 @@ export default function DashboardLayout({
             setSidebarOpen(false);
           }
         }}
-        className={`fixed inset-y-0 left-0 z-50 flex flex-col bg-[rgba(255,255,255,0.75)] backdrop-blur-xl border-r border-black/[0.06] transition-all duration-300 ease-in-out lg:relative lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col bg-white border-r border-[var(--mn-line)] transition-all duration-300 ease-in-out lg:relative lg:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         } ${
           collapsed ? "lg:w-[72px]" : "lg:w-[260px]"
@@ -804,14 +805,25 @@ export default function DashboardLayout({
       >
         {/* Logo */}
         <div data-sidebar-header className={`flex h-16 shrink-0 items-center border-b border-black/[0.06] ${collapsed ? "justify-center px-2" : "justify-between px-5"}`}>
-          <Link href="/" onClick={() => setSidebarOpen(false)} className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary shadow-[0_0_16px_rgba(0,112,242,0.30)]">
-              <ShieldCheck className="h-4.5 w-4.5 text-primary-foreground" />
-            </div>
+          <Link href="/" onClick={() => setSidebarOpen(false)} className="flex flex-1 items-center gap-2.5">
+            <MeridianMark size={28} style={{ color: "var(--mn-primary)" }} />
             {!collapsed && (
-              <div data-sidebar-label className="flex items-baseline gap-1">
-                <span className="font-display text-[17px] font-bold text-foreground">Meridian</span>
-              </div>
+              <>
+                <div data-sidebar-label className="flex flex-col gap-0.5">
+                  <span className="font-display text-[15.5px] font-bold tracking-[-0.025em] text-foreground leading-none">
+                    Meridian
+                  </span>
+                  <span className="font-mono text-[10px] uppercase tracking-[0.04em] text-muted-foreground leading-none">
+                    Data Quality
+                  </span>
+                </div>
+                <span
+                  data-sidebar-label
+                  className="ml-auto font-mono text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--mn-ink-300)] px-1.5 py-0.5 border border-[var(--mn-line)] rounded"
+                >
+                  v4.2
+                </span>
+              </>
             )}
           </Link>
 
@@ -861,7 +873,7 @@ export default function DashboardLayout({
       {/* ── Main area ── */}
       <div className="relative z-0 flex flex-1 flex-col min-w-0">
         {/* Header */}
-        <header className="flex h-16 shrink-0 items-center justify-between border-b border-black/[0.06] bg-[rgba(255,255,255,0.70)] backdrop-blur-xl px-4 sm:px-6">
+        <header className="flex h-16 shrink-0 items-center justify-between border-b border-[var(--mn-line)] bg-white px-4 sm:px-6">
           <div className="flex items-center gap-3 flex-1 min-w-0">
             {/* Mobile hamburger */}
             <button
@@ -878,7 +890,7 @@ export default function DashboardLayout({
               type="button"
               onClick={() => setCmdkOpen(true)}
               title="Open command palette (⌘K)"
-              className="group hidden sm:flex items-center gap-2 rounded-xl bg-white border border-border px-3 py-2 flex-1 max-w-md text-left transition-all hover:border-primary/40 hover:shadow-[0_0_0_3px_rgba(0,112,242,0.08)]"
+              className="group hidden sm:flex items-center gap-2 rounded-[8px] bg-white border border-border px-3 py-2 flex-1 max-w-md text-left transition-all hover:border-primary/40 hover:shadow-[0_0_0_3px_rgba(249,115,22,0.08)]"
             >
               <Search className="h-4 w-4 text-muted-foreground shrink-0" />
               <span className="flex-1 truncate text-sm text-muted-foreground">
@@ -913,14 +925,11 @@ export default function DashboardLayout({
 
         {/* Content */}
         <main className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-[1600px] p-4 sm:p-5 lg:p-6">
+          <div className="mx-auto max-w-[1640px] px-5 pt-5 pb-14 sm:px-7">
             {children}
           </div>
         </main>
       </div>
-
-      {/* Ask Meridian — floating chat bubble + drawer */}
-      <AskMeridian />
 
       {/* Command palette (⌘K) */}
       <CommandPalette open={cmdkOpen} onOpenChange={setCmdkOpen} />

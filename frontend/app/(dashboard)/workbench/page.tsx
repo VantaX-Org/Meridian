@@ -1,142 +1,346 @@
-/**
- * Aurora · Workbench — live-data route (WS8 part 4).
- *
- * The steward's home: triage table wired to `/api/v1/findings` with the
- * new backend signals surfaced inline — root_cause / cross_module /
- * customer-namespace origin markers on each row (via
- * findingOriginForWorkbench), full context in the record drawer (via
- * findingsToRecordReport).
- *
- * Per Aurora spec §8 the Workbench is where the work gets done. Keeps
- * the existing `/stewardship` route untouched so users bookmarked there
- * are not disrupted; `/workbench` is the Aurora URL going forward.
- */
-
 "use client";
 
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { AxiosError } from "axios";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Banner,
-  Button,
-  EmptyState,
-  RecordReport,
-  Text,
-  Workbench,
-  type WorkbenchTabId,
-  type WorkbenchTabState,
-} from "@/components/aurora";
-import { findingsToRecordReport } from "@/lib/aurora";
-import { composeWorkbenchRows } from "@/lib/api/workbench";
-import { getFindings } from "@/lib/api/findings";
+  PageHead,
+  KPI,
+  SectionHeader,
+  SevTag,
+  PriorityChip,
+  ModChip,
+} from "@/components/meridian/atoms";
+import { ArrowRight, MoreH, SparklesIcon } from "@/components/meridian/icons";
+import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
+import {
+  bulkApprove,
+  escalateItem,
+  getQueueItems,
+  getMetrics,
+  resolveItem,
+} from "@/lib/api/stewardship";
+import { copyToClipboard } from "@/components/meridian/actions";
+import { ConfirmDialog } from "@/components/meridian/controls";
+import { relativeTime } from "@/lib/format";
+import type { StewardshipQueueItem } from "@/types/api";
+
+function priorityChip(p: number): "P1" | "P2" | "P3" {
+  if (p === 1) return "P1";
+  if (p === 2) return "P2";
+  return "P3";
+}
+
+function severityFromPriority(p: number): "critical" | "high" | "medium" | "low" {
+  if (p === 1) return "critical";
+  if (p === 2) return "high";
+  if (p === 3) return "medium";
+  return "low";
+}
+
+function slaLabel(item: StewardshipQueueItem): string {
+  if (!item.sla_hours) return "—";
+  const h = item.sla_hours;
+  if (h < 24) return `${h}h`;
+  return `${Math.round(h / 24)}d`;
+}
+
+const ITEM_TYPE_LABEL: Record<string, string> = {
+  merge_decision: "Merge",
+  golden_record_review: "Golden review",
+  exception: "Exception",
+  writeback_approval: "Writeback",
+  contract_breach: "Contract",
+  glossary_review: "Glossary",
+};
 
 export default function WorkbenchPage() {
-  const findingsQuery = useQuery({
-    queryKey: ["aurora.workbench.findings"],
-    queryFn: () => getFindings({ limit: 200 }),
-    retry: (count, err) => !(err instanceof AxiosError) || count < 1,
+  const qc = useQueryClient();
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [sortMode, setSortMode] = useState<"sla" | "priority" | "age">("sla");
+  const [bulkOpen, setBulkOpen] = useState(false);
+
+  const queueQ = useQuery({
+    queryKey: ["stewardship.queue", { status: "open", limit: 200 }],
+    queryFn: () => getQueueItems({ status: "open", limit: 200 }),
+  });
+  const metricsQ = useQuery({
+    queryKey: ["stewardship.metrics"],
+    queryFn: getMetrics,
   });
 
-  const [activeTab, setActiveTab] = useState<WorkbenchTabId>("triage");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const resolve = useMutation({
+    mutationFn: ({ id, action }: { id: string; action: "approve" | "reject" }) =>
+      resolveItem(id, action),
+    onSuccess: (_d, vars) => {
+      toast.success(vars.action === "approve" ? "Task approved" : "Task rejected");
+      qc.invalidateQueries({ queryKey: ["stewardship.queue"] });
+    },
+    onError: () => toast.error("Could not resolve task"),
+  });
 
-  const rows = useMemo(
-    () => composeWorkbenchRows(findingsQuery.data),
-    [findingsQuery.data],
-  );
+  const escalate = useMutation({
+    mutationFn: (id: string) => escalateItem(id),
+    onSuccess: () => {
+      toast.success("Task escalated");
+      qc.invalidateQueries({ queryKey: ["stewardship.queue"] });
+    },
+    onError: () => toast.error("Could not escalate task"),
+  });
 
-  const selectedFinding = useMemo(() => {
-    if (!selectedId) return null;
-    return findingsQuery.data?.findings?.find((f) => f.id === selectedId) ?? null;
-  }, [selectedId, findingsQuery.data]);
+  const bulk = useMutation({
+    mutationFn: (ids: string[]) => bulkApprove(ids, 0.85),
+    onSuccess: (d) => {
+      toast.success(`Approved ${d.approved} task${d.approved === 1 ? "" : "s"}`);
+      qc.invalidateQueries({ queryKey: ["stewardship.queue"] });
+    },
+    onError: () => toast.error("Could not bulk approve"),
+  });
 
-  const drawerFindings = useMemo(
-    () =>
-      selectedFinding ? findingsToRecordReport([selectedFinding]) : [],
-    [selectedFinding],
-  );
+  const rawItems: StewardshipQueueItem[] = queueQ.data?.items ?? [];
+  const items = useMemo(() => {
+    const arr = [...rawItems];
+    if (sortMode === "sla") {
+      arr.sort((a, b) => (a.sla_hours ?? Infinity) - (b.sla_hours ?? Infinity));
+    } else if (sortMode === "priority") {
+      arr.sort((a, b) => a.priority - b.priority);
+    } else {
+      arr.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    }
+    return arr;
+  }, [rawItems, sortMode]);
 
-  // Empty-state per spec §11: never "No data" alone; teach + direct.
-  if (!findingsQuery.isLoading && rows.length === 0) {
+  if (queueQ.isLoading || metricsQ.isLoading) {
     return (
-      <div style={{ padding: "var(--aurora-space-6)" }}>
-        <EmptyState
-          title="No open findings on any module"
-          body="Run a new analysis on an SAP extract to surface findings here."
-          actions={<Button variant="primary">Run analysis</Button>}
-        />
-      </div>
+      <>
+        <PageHead title="Workbench" route="Aurora · /workbench" sub="Loading queue…" />
+        <Skeleton className="h-[420px] rounded-[10px]" />
+      </>
+    );
+  }
+  if (queueQ.error || metricsQ.error) {
+    return (
+      <>
+        <PageHead title="Workbench" route="Aurora · /workbench" sub="Failed to load." />
+        <div className="mn-card mn-card-pad" style={{ color: "var(--mn-neg)" }}>
+          Could not reach <code>/api/v1/stewardship</code>.
+        </div>
+      </>
     );
   }
 
-  if (findingsQuery.isError) {
-    return (
-      <div style={{ padding: "var(--aurora-space-6)" }}>
-        <Banner tone="danger">
-          <Text variant="text-body">
-            Couldn&apos;t reach the findings API. Confirm the analysis
-            worker is running and retry.
-          </Text>
-        </Banner>
-      </div>
-    );
-  }
+  const metrics = metricsQ.data!;
+  const selected = items.find((t) => t.id === activeId) ?? items[0];
 
-  const tabs: ReadonlyArray<WorkbenchTabState> = [
-    { id: "triage", label: "Triage", count: rows.length },
-    { id: "golden-records", label: "Golden records" },
-    { id: "glossary", label: "Glossary" },
-    { id: "analyses", label: "Analyses" },
-    { id: "reports", label: "Reports" },
-  ];
+  const assignedToMe = items.filter((t) => t.assigned_to).length;
+  const slaAtRisk = items.filter(
+    (t) => t.sla_hours !== null && t.due_at && new Date(t.due_at).getTime() - Date.now() < (t.sla_hours * 0.5) * 3600 * 1000,
+  ).length;
 
   return (
-    <Workbench
-      verdict={{
-        sentence:
-          rows.length > 0
-            ? `${rows.length} open findings across your modules`
-            : "Queue is clear",
-        support: "Triage by severity; drawer shows root-cause classification.",
-        semantic: rows.length > 0 ? "warning" : "success",
-      }}
-      tabs={tabs}
-      activeTab={activeTab}
-      onActiveTabChange={setActiveTab}
-      rows={rows}
-      onRowActivate={(row) => setSelectedId(row.id)}
-      selected={selectedId}
-      onSelectedChange={setSelectedId}
-      onSelectedStep={(delta) => {
-        if (!selectedId) return;
-        const idx = rows.findIndex((r) => r.id === selectedId);
-        if (idx < 0) return;
-        const next = rows[idx + delta];
-        if (next) setSelectedId(next.id);
-      }}
-      drawer={
-        selectedFinding ? (
-          <RecordReport
-            recordId={selectedFinding.check_id}
-            module={selectedFinding.module}
-            verdict={
-              (selectedFinding.details as { message?: string } | undefined)
-                ?.message ?? selectedFinding.check_id
-            }
-            severity={
-              (selectedFinding.severity as
-                | "critical"
-                | "high"
-                | "medium"
-                | "low") ?? "medium"
-            }
-            status="open"
-            lastUpdated={new Date(selectedFinding.created_at).toLocaleString()}
-            findings={drawerFindings}
-          />
-        ) : null
-      }
-    />
+    <>
+      <PageHead
+        title="Workbench"
+        route="Aurora · /workbench"
+        sub={
+          <>
+            You have <strong style={{ color: "var(--mn-ink-700)" }}>{items.length} open tasks</strong>.{" "}
+            <strong style={{ color: "var(--mn-warn)" }}>{slaAtRisk} at risk</strong>. Median resolution accuracy:{" "}
+            <strong style={{ color: "var(--mn-pos)" }}>
+              {metrics.ai_acceptance_rate !== null ? `${Math.round(metrics.ai_acceptance_rate * 100)}%` : "—"}
+            </strong>
+            .
+          </>
+        }
+        actions={
+          <>
+            <span className="mn-pill"><span className="pdot" />Live queue</span>
+            <button
+              type="button"
+              className="mn-btn mn-btn-primary"
+              onClick={() => {
+                if (items.length === 0) {
+                  toast.info("Nothing to approve");
+                  return;
+                }
+                setBulkOpen(true);
+              }}
+              disabled={bulk.isPending || items.length === 0}
+            >
+              {bulk.isPending ? "Approving…" : "Bulk approve"}
+            </button>
+          </>
+        }
+      />
+
+      <ConfirmDialog
+        open={bulkOpen}
+        onOpenChange={setBulkOpen}
+        title="Bulk approve queue tasks"
+        confirmLabel={`Approve ${Math.min(items.length, 25)} task${Math.min(items.length, 25) === 1 ? "" : "s"}`}
+        body={
+          <>
+            This approves the top {Math.min(items.length, 25)} task
+            {Math.min(items.length, 25) === 1 ? "" : "s"} in the current sort order whose
+            model confidence is 85% or higher. Lower-confidence tasks are skipped and stay
+            in the queue for manual review.
+          </>
+        }
+        onConfirm={() => bulk.mutate(items.slice(0, 25).map((t) => t.id))}
+      />
+
+      <div className="mn-row mn-stagger" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))", marginBottom: 18 }}>
+        <KPI label="Assigned" value={assignedToMe} hint={`${items.length - assignedToMe} unassigned`} tone="warn" />
+        <KPI label="Backlog" value={metrics.backlog_total} tone={metrics.backlog_total > 0 ? "warn" : "pos"} />
+        <KPI
+          label="SLA compliance"
+          value={`${Math.round(metrics.sla_compliance_rate * 100)}%`}
+          tone={metrics.sla_compliance_rate >= 0.95 ? "pos" : "warn"}
+        />
+        <KPI
+          label="Suggestion acceptance"
+          value={metrics.ai_acceptance_rate !== null ? `${Math.round(metrics.ai_acceptance_rate * 100)}%` : "—"}
+          tone="pos"
+        />
+      </div>
+
+      <div className="mn-row mn-row-12">
+        <div className="mn-col-4">
+          <div className="mn-card" style={{ padding: 0, overflow: "hidden", height: "100%", display: "flex", flexDirection: "column" }}>
+            <div className="mn-queue-head">
+              <span className="mn-eyebrow">Queue · {items.length} tasks</span>
+              <button
+                type="button"
+                className="mn-link"
+                onClick={() =>
+                  setSortMode((m) => (m === "sla" ? "priority" : m === "priority" ? "age" : "sla"))
+                }
+              >
+                Sort: {sortMode === "sla" ? "SLA" : sortMode === "priority" ? "Priority" : "Age"}
+              </button>
+            </div>
+            <div className="mn-queue-list">
+              {items.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  className={`mn-queue-item ${t.id === selected?.id ? "active" : ""}`}
+                  onClick={() => setActiveId(t.id)}
+                >
+                  <div className="mn-queue-row">
+                    <PriorityChip p={priorityChip(t.priority)} />
+                    <span className="mn-queue-id mn-tabular">{t.id.slice(0, 8)}</span>
+                    <span className="mn-queue-mod">{t.domain}</span>
+                    <span className="mn-queue-sla mn-tabular">SLA · {slaLabel(t)}</span>
+                  </div>
+                  <div className="mn-queue-title">{ITEM_TYPE_LABEL[t.item_type] ?? t.item_type}</div>
+                  <div className="mn-queue-record">{t.source_id}</div>
+                </button>
+              ))}
+              {items.length === 0 && (
+                <div style={{ padding: 32, textAlign: "center", color: "var(--mn-ink-400)" }}>
+                  No open queue items.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="mn-col-8">
+          {selected ? (
+            <div className="mn-card mn-card-pad" style={{ height: "100%" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <SevTag sev={severityFromPriority(selected.priority)} />
+                    <PriorityChip p={priorityChip(selected.priority)} />
+                    <span style={{ font: "500 11.5px/1 'JetBrains Mono', monospace", color: "var(--mn-ink-400)" }}>
+                      {selected.id.slice(0, 8)} · {ITEM_TYPE_LABEL[selected.item_type] ?? selected.item_type}
+                    </span>
+                  </div>
+                  <h2 className="mn-detail-title" style={{ marginTop: 8 }}>{selected.source_id}</h2>
+                </div>
+                <button
+                  type="button"
+                  className="mn-icon-btn"
+                  aria-label="Copy task ID"
+                  onClick={() => copyToClipboard(selected.id, "Task ID copied")}
+                >
+                  <MoreH size={14} />
+                </button>
+              </div>
+
+              {selected.ai_recommendation && (
+                <div className="mn-narrative" style={{ marginTop: 14 }}>
+                  <div className="ico"><SparklesIcon size={15} /></div>
+                  <div style={{ flex: 1 }}>
+                    <div className="mn-narrative-headline">
+                      Model suggests action — confidence{" "}
+                      {selected.ai_confidence !== null ? `${Math.round(selected.ai_confidence * 100)}%` : "—"}.
+                    </div>
+                    <div className="mn-narrative-detail">{selected.ai_recommendation}</div>
+                  </div>
+                  <button
+                    type="button"
+                    className="mn-btn"
+                    style={{
+                      background: "white",
+                      color: "var(--mn-primary)",
+                      border: "1px solid var(--mn-primary-200)",
+                    }}
+                    onClick={() => resolve.mutate({ id: selected.id, action: "approve" })}
+                    disabled={resolve.isPending}
+                  >
+                    Apply
+                  </button>
+                </div>
+              )}
+
+              <SectionHeader title="Task detail" caption="Source + assignment" />
+              <div className="mn-detail-meta">
+                <div><span className="k">Source</span><span className="v mn-tabular">{selected.source_id}</span></div>
+                <div><span className="k">Domain</span><ModChip>{selected.domain}</ModChip></div>
+                <div><span className="k">Type</span><span className="v">{ITEM_TYPE_LABEL[selected.item_type] ?? selected.item_type}</span></div>
+                <div><span className="k">Assignee</span><span className="v">{selected.assigned_to ?? "Unassigned"}</span></div>
+                <div><span className="k">SLA</span><span className="v mn-tabular">{slaLabel(selected)}</span></div>
+                <div><span className="k">Age</span><span className="v mn-tabular">{relativeTime(selected.created_at)}</span></div>
+              </div>
+
+              <div className="mn-wb-actions">
+                <button
+                  type="button"
+                  className="mn-btn mn-btn-ghost"
+                  onClick={() => resolve.mutate({ id: selected.id, action: "reject" })}
+                  disabled={resolve.isPending}
+                >
+                  Reject
+                </button>
+                <button
+                  type="button"
+                  className="mn-btn mn-btn-ghost"
+                  onClick={() => escalate.mutate(selected.id)}
+                  disabled={escalate.isPending}
+                >
+                  {escalate.isPending ? "Escalating…" : "Escalate"}
+                </button>
+                <div style={{ flex: 1 }} />
+                <button
+                  type="button"
+                  className="mn-btn mn-btn-primary"
+                  onClick={() => resolve.mutate({ id: selected.id, action: "approve" })}
+                  disabled={resolve.isPending}
+                >
+                  {resolve.isPending ? "Approving…" : "Approve"} <ArrowRight size={13} />
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="mn-card mn-card-pad" style={{ color: "var(--mn-ink-400)" }}>
+              No task selected.
+            </div>
+          )}
+        </div>
+      </div>
+    </>
   );
 }

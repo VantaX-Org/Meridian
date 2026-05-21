@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { Inter, Inter_Tight, JetBrains_Mono } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { Providers } from "@/lib/providers";
@@ -11,7 +11,7 @@ const inter = Inter({
   display: "swap",
 });
 
-const interDisplay = Inter({
+const interTight = Inter_Tight({
   variable: "--font-display",
   subsets: ["latin"],
   display: "swap",
@@ -38,7 +38,7 @@ export default function RootLayout({
     <AuthProvider>
       <html lang="en">
         <body
-          className={`${inter.variable} ${interDisplay.variable} ${jetbrainsMono.variable} font-sans antialiased`}
+          className={`${inter.variable} ${interTight.variable} ${jetbrainsMono.variable} font-sans antialiased`}
         >
           <Providers>
             {children}

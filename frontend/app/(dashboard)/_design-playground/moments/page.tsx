@@ -3,18 +3,16 @@
  *
  * Exercises every moment §12 of the spec calls out — VerdictCard (01),
  * ProcessGraphEmergence (02), FixPlaybook (03), BulkActionPanel (04),
- * ArrivalBanner (05), AskStreamingCard (06), RowHoverPreview (07),
- * KanbanDrop (08), ConnectionTestButton (09), SavedViewChip (10),
- * EmptyState (11), Palette-open (12 — shipped in WS4 shell gallery).
+ * ArrivalBanner (05), RowHoverPreview (07), KanbanDrop (08),
+ * ConnectionTestButton (09), SavedViewChip (10), EmptyState (11),
+ * Palette-open (12 — shipped in WS4 shell gallery).
  */
 
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   ArrivalBanner,
-  AskStreamingCard,
-  type AskStatus,
   BulkActionPanel,
   Button,
   Chip,
@@ -35,42 +33,6 @@ import {
   VerdictCard,
 } from "@/components/aurora";
 import { auroraSapIcons } from "@/lib/aurora";
-
-const SAMPLE_ANSWER =
-  "DQS dipped to 78.4 because Business Partner completeness fell 3.1 points in the last 24 hours. Two open findings are blocking Order-to-Cash readiness; both are single-record fixes.";
-
-type StreamState = { text: string; status: AskStatus };
-
-/**
- * Stream `target` into state over ~1s. `active` remounts the stream when
- * flipped true; flipping false pauses mid-stream. Deferring the reset
- * to the first tick of the interval keeps the effect body free of
- * synchronous `setState` calls (React compiler happier).
- */
-function useStreamingAnswer(target: string, active: boolean): StreamState {
-  const [state, setState] = useState<StreamState>({ text: "", status: "idle" });
-  useEffect(() => {
-    if (!active) return;
-    let i = 0;
-    let started = false;
-    const id = window.setInterval(() => {
-      if (!started) {
-        started = true;
-        setState({ text: "", status: "streaming" });
-        return;
-      }
-      i += 3;
-      if (i >= target.length) {
-        setState({ text: target, status: "done" });
-        window.clearInterval(id);
-      } else {
-        setState({ text: target.slice(0, i), status: "streaming" });
-      }
-    }, 32);
-    return () => window.clearInterval(id);
-  }, [active, target]);
-  return state;
-}
 
 const PROCESS_NODES = [
   {
@@ -133,11 +95,6 @@ export default function MomentsPlaygroundPage() {
     () => new Set(["r-02", "r-05", "r-09"]),
   );
   const [savedView, setSavedView] = useState<string>("open-critical");
-  const [askOn, setAskOn] = useState(true);
-  const { text: streamText, status: streamStatus } = useStreamingAnswer(
-    SAMPLE_ANSWER,
-    askOn,
-  );
   const [conn, setConn] = useState<ConnectionTestState>("idle");
   const [fixSteps, setFixSteps] = useState<FixStep[]>(() => initialSteps());
   const [graphKey, setGraphKey] = useState(0);
@@ -209,9 +166,9 @@ export default function MomentsPlaygroundPage() {
           <Text variant="display-sm">Every moment, on one page</Text>
           <Text variant="text-body" tone="secondary">
             Hand-driven examples for VerdictCard, Fix Playbook, Bulk actions,
-            Arrival banner, Ask streaming, Row hover preview, Kanban drop,
-            Connection test, Saved views, Empty states, and Process-graph
-            emergence. ⌘K palette is covered on the{" "}
+            Arrival banner, Row hover preview, Kanban drop, Connection test,
+            Saved views, Empty states, and Process-graph emergence. ⌘K palette
+            is covered on the{" "}
             <a href="/_design-playground/shell">shell gallery</a>.
           </Text>
         </header>
@@ -327,33 +284,6 @@ export default function MomentsPlaygroundPage() {
               }
             />
           </Stack>
-        </section>
-
-        {/* --- 06 Ask streaming ----------------------------------------- */}
-        <section>
-          <SectionLabel
-            index={6}
-            label="AskStreamingCard (tokens are the progress indicator)"
-            trailing={
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setAskOn((v) => !v)}
-              >
-                Restream
-              </Button>
-            }
-          />
-          <AskStreamingCard
-            question="Why did DQS drop overnight?"
-            answer={streamText || " "}
-            status={streamStatus}
-            citations={[
-              { id: "f-12", label: "Finding BP-03 · completeness", kind: "finding" },
-              { id: "f-17", label: "Finding MARA-11 · validity", kind: "finding" },
-              { id: "r-58213", label: "BP 58213", kind: "record" },
-            ]}
-          />
         </section>
 
         {/* --- 07 RowHoverPreview --------------------------------------- */}
@@ -490,14 +420,9 @@ export default function MomentsPlaygroundPage() {
             title="No findings for this filter"
             body="Widen the severity filter or clear saved view to see more."
             actions={
-              <>
-                <Button size="sm" variant="ghost">
-                  Clear filter
-                </Button>
-                <Button size="sm" variant="primary">
-                  Open Ask
-                </Button>
-              </>
+              <Button size="sm" variant="ghost">
+                Clear filter
+              </Button>
             }
           />
         </section>

@@ -1303,7 +1303,7 @@
 /* =========================================================================
  * WS5 — Signature moments
  * §12 VerdictCard, FixPlaybook, BulkActionPanel, ArrivalBanner, SavedViewChip,
- * EmptyState, ProcessGraphEmergence, AskStreamingCard, RowHoverPreview,
+ * EmptyState, ProcessGraphEmergence, RowHoverPreview,
  * KanbanDrop, ConnectionTestButton.
  *
  * One gradient rule: only .aurora-verdict__halo uses a gradient — all other
@@ -1627,45 +1627,6 @@
   .aurora-process-emergence[data-emerging="true"]::after { animation: none; opacity: 0; }
 }
 
-/* ------------------------------------------------- AskStreamingCard ---- */
-.aurora-ask-card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--aurora-space-4);
-  padding: var(--aurora-space-5);
-  border: 1px solid var(--aurora-canvas-line);
-  border-radius: var(--aurora-radius-md, 12px);
-  background: var(--aurora-canvas-raised);
-}
-.aurora-ask-card__answer {
-  min-height: 1.5lh;
-  display: flex;
-  align-items: flex-end;
-  gap: 2px;
-}
-.aurora-ask-card__caret {
-  display: inline-block;
-  width: 1px;
-  height: 1em;
-  background: var(--aurora-accent-500);
-  margin-left: 2px;
-  animation: aurora-caret 0.9s steps(2, end) infinite;
-}
-@keyframes aurora-caret {
-  50% { opacity: 0; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .aurora-ask-card__caret { animation: none; opacity: 0.8; }
-}
-.aurora-ask-card__citations {
-  display: flex;
-  flex-direction: column;
-  gap: var(--aurora-space-2);
-}
-.aurora-ask-card__chips {
-  flex-wrap: wrap;
-}
-
 /* ---------------------------------------------- RowHoverPreview ---- */
 .aurora-row-hover {
   position: relative;
@@ -1793,9 +1754,7 @@
   }
 }
 
-.aurora-command-centre__panel,
-.aurora-command-centre__ask,
-.aurora-command-centre__savings {
+.aurora-command-centre__panel {
   background: var(--aurora-canvas-raised);
   border: 1px solid var(--aurora-canvas-line);
   border-radius: 12px;
@@ -1905,27 +1864,6 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .aurora-command-centre__issue-bar::after { transition: none; }
-}
-
-.aurora-command-centre__savings {
-  padding: var(--aurora-space-4);
-  gap: var(--aurora-space-4);
-  border-color: color-mix(in srgb, var(--aurora-status-success) 32%, var(--aurora-canvas-line));
-  background:
-    color-mix(in srgb, var(--aurora-status-success) 6%, var(--aurora-canvas-raised));
-}
-.aurora-command-centre__savings-head {
-  display: flex;
-  flex-direction: column;
-  gap: var(--aurora-space-1);
-}
-
-.aurora-command-centre__ask {
-  padding: 0 0 var(--aurora-space-4);
-  gap: var(--aurora-space-4);
-}
-.aurora-command-centre__ask > :last-child {
-  margin: 0 var(--aurora-space-4);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════

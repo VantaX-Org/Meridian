@@ -31,9 +31,6 @@ export type {
 export { ProcessGraphEmergence } from "./process-emergence";
 export type { ProcessGraphEmergenceProps } from "./process-emergence";
 
-export { AskStreamingCard } from "./ask";
-export type { AskStreamingCardProps, AskStatus, AskCitation } from "./ask";
-
 export { RowHoverPreview, KanbanDrop, ConnectionTestButton } from "./interactions";
 export type {
   RowHoverPreviewProps,

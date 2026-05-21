@@ -46,14 +46,13 @@ def test_sidebar_steward_items():
 
 
 def test_sidebar_analyse_items():
-    """Analyse group has Dashboard, Findings, Analytics, Ask AI."""
+    """Analyse group has Dashboard, Findings, Analytics."""
     path = Path("frontend/app/(dashboard)/layout.tsx")
     content = path.read_text(encoding="utf-8")
     # Dashboard is "/"
     assert "Dashboard" in content
     assert "/findings" in content
     assert "/analytics" in content
-    assert "/nlp" in content
 
 
 def test_sidebar_report_items():
@@ -103,29 +102,6 @@ def test_ai_rules_page_approve_confirmation():
     path = Path("frontend/app/(dashboard)/ai/rules/page.tsx")
     content = path.read_text(encoding="utf-8")
     assert "will be added to the match engine" in content
-
-
-# ── O.3 Ask AI MDM context ─────────────────────────────────────────────────
-
-
-def test_nlp_page_mdm_suggested_questions():
-    """NLP page includes MDM-context suggested questions."""
-    path = Path("frontend/app/(dashboard)/nlp/page.tsx")
-    content = path.read_text(encoding="utf-8")
-    assert "golden records" in content.lower() or "Business Partners with confidence" in content
-    assert "mandatory fields" in content.lower() or "S/4HANA migration" in content
-    assert "sync run" in content.lower() or "quality score" in content
-    assert "merge decisions" in content.lower() or "pending for Material" in content
-
-
-def test_nlp_page_updated_description():
-    """NLP page description mentions MDM data sources."""
-    path = Path("frontend/app/(dashboard)/nlp/page.tsx")
-    content = path.read_text(encoding="utf-8")
-    assert "golden records" in content
-    assert "glossary" in content
-    assert "relationships" in content
-    assert "sync history" in content
 
 
 # ── O.4 Team settings — ai_reviewer role ────────────────────────────────────

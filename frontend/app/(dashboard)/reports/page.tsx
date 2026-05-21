@@ -1,385 +1,325 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { Download, ChevronDown, ChevronUp, Bell, FileJson, FileSpreadsheet } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Separator } from "@/components/ui/separator";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { PageHead, KPI, ModChip } from "@/components/meridian/atoms";
+import { ArrowRight, MoreH, SparklesIcon } from "@/components/meridian/icons";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getVersions } from "@/lib/api/versions";
 import { getReportDownloadUrl, getReportJsonExportUrl } from "@/lib/api/reports";
 import { getConfigMatchesExportUrl } from "@/lib/api/config-matches";
 import { downloadAuthenticated } from "@/lib/api/download";
-import { getSettings, saveNotificationSettings } from "@/lib/api/settings";
-import { formatModuleName, scoreColor } from "@/lib/format";
-import { useLicence } from "@/hooks/use-licence";
-import type { Version } from "@/types/api";
+import { copyToClipboard } from "@/components/meridian/actions";
+import { relativeTime } from "@/lib/format";
+import type { DQSSummary, Version } from "@/types/api";
 
-const READINESS_BADGE: Record<string, { label: string; className: string }> = {
-  go: { label: "Go", className: "bg-green-600" },
-  conditional: { label: "Conditional", className: "bg-amber-500 text-black" },
-  "no-go": { label: "No-go", className: "bg-red-600" },
+type ExportType = "PDF" | "JSON" | "XLSX";
+
+const TYPE_COLORS: Record<ExportType, { bg: string; fg: string }> = {
+  PDF:  { bg: "var(--mn-neg-bg)",     fg: "var(--mn-neg)" },
+  XLSX: { bg: "var(--mn-pos-bg)",     fg: "var(--mn-pos)" },
+  JSON: { bg: "var(--mn-primary-50)", fg: "var(--mn-primary-700)" },
 };
 
-export default function ReportsPage() {
-  const { isFeatureEnabled } = useLicence();
-  const exportEnabled = isFeatureEnabled("export_reports");
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+function averageDqs(summary: Record<string, DQSSummary> | null): number | null {
+  if (!summary) return null;
+  const scores = Object.values(summary).map((m) => m.composite_score);
+  if (scores.length === 0) return null;
+  return Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10;
+}
 
-  const { data: versionData, isLoading } = useQuery({
-    queryKey: ["versions-reports"],
-    queryFn: () => getVersions({ limit: 100 }),
-  });
+function totalRecords(summary: Record<string, DQSSummary> | null): number {
+  if (!summary) return 0;
+  return Object.values(summary).reduce((a, m) => a + (m.total_checks ?? 0), 0);
+}
 
-  const completedVersions = (versionData?.versions ?? []).filter(
-    (v) => v.status === "agents_complete" || v.status === "agents_failed"
-  );
-
+function isCompleteForExport(v: Version): boolean {
   return (
-    <div className="space-y-8">
-      <h1 className="text-2xl font-bold">Reports</h1>
-
-      {/* Reports list */}
-      {isLoading ? (
-        <div className="space-y-2">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-16" />
-          ))}
-        </div>
-      ) : (
-        <Card>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border text-left text-muted-foreground">
-                    <th className="px-4 py-3">Run Date</th>
-                    <th className="px-4 py-3">Label</th>
-                    <th className="px-4 py-3">Modules</th>
-                    <th className="px-4 py-3 text-right">DQS</th>
-                    <th className="px-4 py-3">Readiness</th>
-                    <th className="px-4 py-3">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {completedVersions.map((v) => {
-                    const dqs = v.dqs_summary
-                      ? Math.round(
-                          Object.values(v.dqs_summary).reduce(
-                            (sum, s) => sum + s.composite_score,
-                            0
-                          ) / Object.values(v.dqs_summary).length * 10
-                        ) / 10
-                      : null;
-                    const expanded = expandedId === v.id;
-
-                    return (
-                      <ReportRow
-                        key={v.id}
-                        version={v}
-                        dqs={dqs}
-                        expanded={expanded}
-                        exportEnabled={exportEnabled}
-                        onToggle={() =>
-                          setExpandedId(expanded ? null : v.id)
-                        }
-                      />
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <Separator />
-
-      {/* Schedule section */}
-      <NotificationSchedule />
-    </div>
+    (v.status === "agents_complete" || v.status === "ai_enriched" || v.status === "complete") &&
+    !!v.dqs_summary
   );
 }
 
-function ReportRow({
-  version,
-  dqs,
-  expanded,
-  exportEnabled,
-  onToggle,
-}: {
-  version: Version;
-  dqs: number | null;
-  expanded: boolean;
-  exportEnabled: boolean;
-  onToggle: () => void;
-}) {
-  // Determine readiness from DQS summary (approximation without report_json)
-  const critCount = version.dqs_summary
-    ? Object.values(version.dqs_summary).reduce(
-        (sum, s) => sum + s.critical_count,
-        0
-      )
-    : 0;
-  const readiness =
-    dqs != null && dqs >= 90 && critCount === 0
-      ? "go"
-      : dqs != null && (critCount >= 2 || (dqs != null && dqs < 60))
-        ? "no-go"
-        : "conditional";
-  const badge = READINESS_BADGE[readiness];
+export default function ReportsPage() {
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["reports.versions", { limit: 50 }],
+    queryFn: () => getVersions({ limit: 50 }),
+  });
+
+  const versions: Version[] = useMemo(() => data?.versions ?? [], [data]);
+  const exportable = useMemo(() => versions.filter(isCompleteForExport), [versions]);
+  const active = exportable.find((v) => v.id === activeId) ?? exportable[0];
+
+  const downloadPdf = async (versionId: string) => {
+    try {
+      await downloadAuthenticated(getReportDownloadUrl(versionId), `meridian_dq_report_${versionId}.pdf`);
+      toast.success("PDF report downloaded");
+    } catch {
+      toast.error("Failed to download PDF report");
+    }
+  };
+  const downloadJson = async (versionId: string) => {
+    try {
+      await downloadAuthenticated(getReportJsonExportUrl(versionId), `meridian_dq_report_${versionId}.json`);
+      toast.success("JSON report downloaded");
+    } catch {
+      toast.error("Failed to download JSON report");
+    }
+  };
+  const downloadConfigMatches = async (versionId: string) => {
+    try {
+      await downloadAuthenticated(
+        getConfigMatchesExportUrl(versionId),
+        `meridian-config-${versionId.slice(0, 8)}.xlsx`,
+      );
+      toast.success("Config matches downloaded");
+    } catch {
+      toast.error("Failed to download config matches");
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <>
+        <PageHead title="Reports" route="Report · /reports" sub="Loading reports…" />
+        <div className="mn-row" style={{ gridTemplateColumns: "repeat(4, 1fr)", marginBottom: 18 }}>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-20 rounded-[10px]" />
+          ))}
+        </div>
+        <Skeleton className="h-[420px] rounded-[10px]" />
+      </>
+    );
+  }
+
+  if (error) {
+    return (
+      <>
+        <PageHead title="Reports" route="Report · /reports" sub="Failed to load reports." />
+        <div className="mn-card mn-card-pad" style={{ color: "var(--mn-neg)" }}>
+          Could not reach <code>/api/v1/versions</code>.
+        </div>
+      </>
+    );
+  }
+
+  const total = exportable.length;
+  const last7 = exportable.filter(
+    (v) => Date.now() - new Date(v.run_at).getTime() < 7 * 86400 * 1000,
+  ).length;
+  const last30 = exportable.filter(
+    (v) => Date.now() - new Date(v.run_at).getTime() < 30 * 86400 * 1000,
+  ).length;
 
   return (
     <>
-      <tr className="border-b border-border/50 hover:bg-accent/30">
-        <td className="px-4 py-3">
-          {new Date(version.run_at).toLocaleString()}
-        </td>
-        <td className="px-4 py-3">{version.label ?? "—"}</td>
-        <td className="px-4 py-3">
-          {version.metadata?.modules?.map(formatModuleName).join(", ") ?? "—"}
-        </td>
-        <td className="px-4 py-3 text-right">
-          {dqs != null ? (
-            <span style={{ color: scoreColor(dqs) }}>{dqs}</span>
-          ) : (
-            "—"
-          )}
-        </td>
-        <td className="px-4 py-3">
-          <div className="flex items-center gap-2">
-            <Badge className={badge.className}>{badge.label}</Badge>
-            {version.status === "agents_failed" && (
-              <Badge
-                variant="outline"
-                className="border-amber-500 bg-amber-50 text-amber-700"
-                title="Deterministic report is available; AI insights (root causes, remediations) could not be generated"
-              >
-                AI unavailable
-              </Badge>
-            )}
-          </div>
-        </td>
-        <td className="px-4 py-3">
-          <div className="flex gap-1">
-            {exportEnabled ? (
+      <PageHead
+        title="Reports"
+        route="Report · /reports"
+        sub={
+          <>
+            <strong style={{ color: "var(--mn-ink-700)" }}>{total} reports</strong> available ·{" "}
+            <strong style={{ color: "var(--mn-pos)" }}>{last7} this week</strong>,{" "}
+            <strong style={{ color: "var(--mn-primary-700)" }}>{last30} this month</strong>.
+            {active?.label && (
               <>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={async () => {
-                    try {
-                      await downloadAuthenticated(
-                        getReportDownloadUrl(version.id),
-                        `meridian_dq_report_${version.id}.pdf`,
-                      );
-                    } catch {
-                      toast.error("Failed to download PDF report");
-                    }
-                  }}
-                >
-                  <Download className="mr-1 h-4 w-4" /> PDF
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  title="Export assembled report as JSON (always available when analysis is complete)"
-                  onClick={async () => {
-                    try {
-                      await downloadAuthenticated(
-                        getReportJsonExportUrl(version.id),
-                        `meridian_dq_report_${version.id}.json`,
-                      );
-                    } catch {
-                      toast.error("Failed to download JSON report");
-                    }
-                  }}
-                >
-                  <FileJson className="mr-1 h-4 w-4" /> JSON
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  title="Export live SAP config vs. standard-rule mismatches as an Excel workbook"
-                  onClick={async () => {
-                    try {
-                      await downloadAuthenticated(
-                        getConfigMatchesExportUrl(version.id),
-                        `meridian-config-${version.id.slice(0, 8)}.xlsx`,
-                      );
-                    } catch {
-                      toast.error("Failed to download config matches export");
-                    }
-                  }}
-                >
-                  <FileSpreadsheet className="mr-1 h-4 w-4" /> Config
-                </Button>
+                {" "}Latest: <strong style={{ color: "var(--mn-ink-700)" }}>{active.label}</strong>.
+              </>
+            )}
+          </>
+        }
+      />
+
+      <div className="mn-row mn-stagger" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))", marginBottom: 18 }}>
+        <KPI label="Total reports" value={total} hint={`${last7} this week`} />
+        <KPI label="This month" value={last30} tone="pos" />
+        <KPI label="Latest" value={active ? new Date(active.run_at).toLocaleDateString() : "—"} />
+        <KPI label="Latest DQS" value={active ? averageDqs(active.dqs_summary)?.toFixed(1) ?? "—" : "—"} tone="pos" />
+      </div>
+
+      {active && (
+        <div className="mn-narrative" style={{ marginBottom: 18 }}>
+          <div className="ico"><SparklesIcon size={15} /></div>
+          <div style={{ flex: 1 }}>
+            <div className="mn-narrative-headline">
+              Latest report ready — {active.label ?? "Unlabelled run"} · DQS{" "}
+              {averageDqs(active.dqs_summary)?.toFixed(1) ?? "—"}.
+            </div>
+            <div className="mn-narrative-detail">
+              {totalRecords(active.dqs_summary).toLocaleString()} records analysed ·{" "}
+              {Object.keys(active.dqs_summary ?? {}).length} modules
+            </div>
+          </div>
+          <button
+            type="button"
+            className="mn-btn mn-btn-primary"
+            onClick={() => downloadPdf(active.id)}
+          >
+            Download PDF
+          </button>
+        </div>
+      )}
+
+      <div className="mn-row mn-row-12">
+        <div className="mn-col-8">
+          <div className="mn-card" style={{ padding: 0, overflow: "hidden" }}>
+            <div className="mn-report-list">
+              {exportable.map((v) => {
+                const dqs = averageDqs(v.dqs_summary);
+                return (
+                  <div
+                    key={v.id}
+                    role="button"
+                    tabIndex={0}
+                    aria-pressed={v.id === active?.id}
+                    className={`mn-report-row ${v.id === active?.id ? "active" : ""}`}
+                    onClick={() => setActiveId(v.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setActiveId(v.id);
+                      }
+                    }}
+                  >
+                    <span
+                      className="mn-report-type"
+                      style={{ background: TYPE_COLORS.PDF.bg, color: TYPE_COLORS.PDF.fg }}
+                    >
+                      PDF
+                    </span>
+                    <div className="mn-report-meta">
+                      <div className="mn-report-title">{v.label ?? "Unlabelled run"}</div>
+                      <div className="mn-report-sub">
+                        <span className="mn-tabular">{v.id.slice(0, 8)}</span>
+                        <span className="dot">·</span>
+                        <span>{Object.keys(v.dqs_summary ?? {}).length} modules</span>
+                        <span className="dot">·</span>
+                        <span className="mn-tabular">{relativeTime(v.run_at)}</span>
+                      </div>
+                    </div>
+                    <div className="mn-report-stats">
+                      <div>
+                        <span className="mn-eyebrow">Records</span>
+                        <span className="v mn-tabular">{totalRecords(v.dqs_summary).toLocaleString()}</span>
+                      </div>
+                      {dqs !== null && (
+                        <div>
+                          <span className="mn-eyebrow">DQS</span>
+                          <span className="v mn-tabular">{dqs.toFixed(1)}</span>
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      className="mn-icon-btn"
+                      style={{ width: 30, height: 30 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        downloadPdf(v.id);
+                      }}
+                      aria-label="Download PDF"
+                    >
+                      ↓
+                    </button>
+                  </div>
+                );
+              })}
+              {exportable.length === 0 && (
+                <div style={{ padding: 32, textAlign: "center", color: "var(--mn-ink-400)" }}>
+                  No exportable reports yet. Reports become available once a version completes.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="mn-col-4">
+          <div className="mn-card mn-card-pad" style={{ height: "100%" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span className="mn-eyebrow">Preview · {active?.id.slice(0, 8) ?? "—"}</span>
+              <button
+                type="button"
+                className="mn-icon-btn"
+                style={{ width: 28, height: 28 }}
+                aria-label="Copy version ID"
+                onClick={() => active && copyToClipboard(active.id, "Version ID copied")}
+              >
+                <MoreH size={14} />
+              </button>
+            </div>
+
+            {active ? (
+              <>
+                <div className="mn-report-preview">
+                  <div className="mn-report-page">
+                    <div className="page-h">
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <ModChip>AUDIT</ModChip>
+                        <span
+                          className="mn-tabular"
+                          style={{ font: "500 9px/1 'JetBrains Mono', monospace", color: "var(--mn-ink-300)" }}
+                        >
+                          {active.id.slice(0, 6)}
+                        </span>
+                      </div>
+                      <div className="page-title">{active.label ?? "Unlabelled run"}</div>
+                      <div className="page-meta">{relativeTime(active.run_at)}</div>
+                    </div>
+                    <div className="page-body">
+                      {averageDqs(active.dqs_summary) !== null && (
+                        <div className="page-stat">
+                          <span className="mn-eyebrow">DQS</span>
+                          <span className="page-stat-v mn-tabular">
+                            {averageDqs(active.dqs_summary)?.toFixed(1)}
+                          </span>
+                        </div>
+                      )}
+                      <div style={{ height: 32, margin: "10px 0", borderRadius: 4, background: "var(--mn-primary-50)" }} />
+                      <div style={{ height: 4, background: "var(--mn-line-2)", borderRadius: 999, margin: "8px 0" }} />
+                      <div style={{ height: 4, background: "var(--mn-line-2)", borderRadius: 999, margin: "8px 0", width: "80%" }} />
+                      <div style={{ height: 4, background: "var(--mn-line-2)", borderRadius: 999, margin: "8px 0", width: "60%" }} />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mn-detail-section">
+                  <div className="mn-eyebrow">Details</div>
+                  <div className="mn-detail-meta">
+                    <div><span className="k">Version</span><span className="v mn-tabular">{active.id.slice(0, 8)}</span></div>
+                    <div><span className="k">Run</span><span className="v mn-tabular">{new Date(active.run_at).toLocaleString()}</span></div>
+                    <div><span className="k">Modules</span><span className="v mn-tabular">{Object.keys(active.dqs_summary ?? {}).length}</span></div>
+                    <div><span className="k">Records</span><span className="v mn-tabular">{totalRecords(active.dqs_summary).toLocaleString()}</span></div>
+                  </div>
+                </div>
+
+                <div className="mn-detail-actions">
+                  <button
+                    type="button"
+                    className="mn-btn mn-btn-primary"
+                    style={{ flex: 1, justifyContent: "center" }}
+                    onClick={() => downloadPdf(active.id)}
+                  >
+                    PDF <ArrowRight size={13} />
+                  </button>
+                  <button type="button" className="mn-btn mn-btn-ghost" onClick={() => downloadJson(active.id)}>
+                    JSON
+                  </button>
+                  <button type="button" className="mn-btn mn-btn-ghost" onClick={() => downloadConfigMatches(active.id)}>
+                    Config XLSX
+                  </button>
+                </div>
               </>
             ) : (
-              <Button variant="ghost" size="sm" disabled title="Not included in your current licence">
-                <Download className="mr-1 h-4 w-4" /> PDF
-              </Button>
+              <p style={{ color: "var(--mn-ink-400)", marginTop: 12 }}>
+                No completed report selected.
+              </p>
             )}
-            <Button variant="ghost" size="sm" onClick={onToggle}>
-              {expanded ? (
-                <ChevronUp className="h-4 w-4" />
-              ) : (
-                <ChevronDown className="h-4 w-4" />
-              )}
-              Summary
-            </Button>
           </div>
-        </td>
-      </tr>
-      {expanded && version.dqs_summary && (
-        <tr>
-          <td colSpan={6} className="bg-accent/30 px-6 py-4">
-            <div className="space-y-3">
-              <h4 className="text-sm font-medium">Module Scores</h4>
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {Object.entries(version.dqs_summary).map(([mod, s]) => (
-                  <div
-                    key={mod}
-                    className="flex items-center justify-between rounded-md border border-border p-2"
-                  >
-                    <span className="text-sm">{formatModuleName(mod)}</span>
-                    <span
-                      className="font-bold"
-                      style={{ color: scoreColor(s.composite_score) }}
-                    >
-                      {s.composite_score}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </td>
-        </tr>
-      )}
+        </div>
+      </div>
     </>
-  );
-}
-
-function NotificationSchedule() {
-  const { data: settings } = useQuery({
-    queryKey: ["settings"],
-    queryFn: getSettings,
-  });
-
-  const nc = settings?.notification_config;
-  const [email, setEmail] = useState(nc?.email ?? "");
-  const [teamsWebhook, setTeamsWebhook] = useState(nc?.teams_webhook ?? "");
-  const [daily, setDaily] = useState(nc?.daily_digest ?? false);
-  const [weekly, setWeekly] = useState(nc?.weekly_summary ?? false);
-  const [monthly, setMonthly] = useState(nc?.monthly_report ?? false);
-
-  // Sync when settings load
-  useState(() => {
-    if (nc) {
-      setEmail(nc.email);
-      setTeamsWebhook(nc.teams_webhook);
-      setDaily(nc.daily_digest);
-      setWeekly(nc.weekly_summary);
-      setMonthly(nc.monthly_report);
-    }
-  });
-
-  const saveMutation = useMutation({
-    mutationFn: () =>
-      saveNotificationSettings({
-        email,
-        teams_webhook: teamsWebhook,
-        daily_digest: daily,
-        weekly_summary: weekly,
-        monthly_report: monthly,
-      }),
-    onSuccess: () => toast.success("Notification settings saved"),
-    onError: () => toast.error("Failed to save settings"),
-  });
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Bell className="h-4 w-4" /> Scheduled Reports
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-3">
-          <label className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              checked={daily}
-              onChange={(e) => setDaily(e.target.checked)}
-              className="h-4 w-4 rounded"
-            />
-            <span className="text-sm">Daily digest email</span>
-          </label>
-          <label className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              checked={weekly}
-              onChange={(e) => setWeekly(e.target.checked)}
-              className="h-4 w-4 rounded"
-            />
-            <span className="text-sm">Weekly summary email</span>
-          </label>
-          <label className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              checked={monthly}
-              onChange={(e) => setMonthly(e.target.checked)}
-              className="h-4 w-4 rounded"
-            />
-            <span className="text-sm">Monthly executive report email</span>
-          </label>
-        </div>
-
-        <div className="space-y-2">
-          <label className="block text-sm font-medium">Email address</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="reports@company.com"
-            className="w-full rounded-md border border-border bg-accent px-3 py-2 text-sm"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <label className="block text-sm font-medium">
-            Teams Webhook URL (optional)
-          </label>
-          <input
-            type="url"
-            value={teamsWebhook}
-            onChange={(e) => setTeamsWebhook(e.target.value)}
-            placeholder="https://outlook.office.com/webhook/..."
-            className="w-full rounded-md border border-border bg-accent px-3 py-2 text-sm"
-          />
-        </div>
-
-        <Button
-          onClick={() => saveMutation.mutate()}
-          disabled={saveMutation.isPending}
-        >
-          Save Notification Settings
-        </Button>
-
-        {(daily || weekly || monthly) && (
-          <p className="text-xs text-muted-foreground">
-            Next scheduled report:{" "}
-            {daily
-              ? "Tomorrow at 07:00 SAST"
-              : weekly
-                ? "Next Monday at 07:00 SAST"
-                : "1st of next month at 07:00 SAST"}
-          </p>
-        )}
-      </CardContent>
-    </Card>
   );
 }
