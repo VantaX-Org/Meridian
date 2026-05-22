@@ -365,7 +365,7 @@ async def _validate_licence() -> dict | None:
     _last_checked_at = time.time()
 
     # Offline mode: skip network call entirely
-    licence_mode = os.getenv("LICENCE_MODE", "online")
+    licence_mode = settings.licence_mode
     if licence_mode == "offline":
         return _read_offline_licence()
 

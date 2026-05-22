@@ -1,4 +1,5 @@
 import os
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings
 from typing import Optional
 
@@ -28,12 +29,43 @@ class Settings(BaseSettings):
     minio_bucket_reports: str = "meridian-reports"
 
     # Licence
-    licence_key: Optional[str] = None
-    licence_server_url: str = "https://licence.meridian.vantax.co.za"
+    # `.env.example` documents these as MERIDIAN_LICENCE_* — accept both the
+    # MERIDIAN_-prefixed names and the bare names so a standard customer .env
+    # works without a workaround. licence_service.py already reads the
+    # MERIDIAN_-prefixed names; this keeps config.py — and the licence
+    # middleware that depends on it — consistent with that.
+    licence_key: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("LICENCE_KEY", "MERIDIAN_LICENCE_KEY"),
+    )
+    licence_server_url: str = Field(
+        default="https://licence.meridian.vantax.co.za",
+        validation_alias=AliasChoices(
+            "LICENCE_SERVER_URL", "MERIDIAN_LICENCE_SERVER_URL"
+        ),
+    )
+    licence_mode: str = Field(  # online | offline
+        default="online",
+        validation_alias=AliasChoices("LICENCE_MODE", "MERIDIAN_LICENCE_MODE"),
+    )
     licence_file: Optional[str] = None
-    licence_mode: str = "online"  # online | offline
     licence_file_path: Optional[str] = None
     licence_secret: Optional[str] = None
+
+    @field_validator("licence_server_url")
+    @classmethod
+    def _normalise_licence_server_url(cls, v: str) -> str:
+        """Accept either a base URL or a full `.../api/licence/validate` URL.
+
+        The licence middleware appends `/api/licence/validate` itself, so this
+        normalises to the base — `.env.example` ships the full-path form under
+        MERIDIAN_LICENCE_SERVER_URL, which would otherwise double the path.
+        """
+        v = v.rstrip("/")
+        suffix = "/api/licence/validate"
+        if v.endswith(suffix):
+            v = v[: -len(suffix)]
+        return v
 
     # Notifications
     resend_api_key: Optional[str] = None
