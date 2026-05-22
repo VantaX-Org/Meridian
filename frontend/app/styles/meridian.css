@@ -70,7 +70,11 @@
   background-position: -1px -1px;
   mask-image: radial-gradient(ellipse 130% 90% at 50% 0%, #000 40%, transparent 95%);
 }
-.mn-surface > * { position: relative; z-index: 1; }
+/* Lift children above the ::before grid backdrop. Exclude `.fixed` elements
+   (the sidebar + mobile backdrop): forcing position:relative on them pulls
+   them back into normal flow, so a "closed" sidebar still occupies its width
+   and leaves a blank gap. They already stack correctly via their own z-index. */
+.mn-surface > *:not(.fixed) { position: relative; z-index: 1; }
 
 /* ── 12-col grid helpers ─────────────────────────────────────────────── */
 .mn-row { display: grid; gap: 14px; }
@@ -83,7 +87,20 @@
 .mn-col-8 { grid-column: span 8; }
 .mn-col-12 { grid-column: span 12; }
 @media (max-width: 1080px) {
-  .mn-col-4, .mn-col-8 { grid-column: span 12; }
+  /* Tablet — collapse every 12-grid span to full width; KPI strips to 3-up. */
+  .mn-col-3, .mn-col-4, .mn-col-5,
+  .mn-col-6, .mn-col-7, .mn-col-8 { grid-column: span 12; }
+  .mn-row.mn-stagger { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+}
+@media (max-width: 640px) {
+  /* Phone — single column. `!important` is required because page KPI strips
+     set `grid-template-columns: repeat(4..6, …)` inline, and an inline style
+     cannot be overridden by an ordinary media-query rule. KPI strips keep two
+     columns so the small metric cards stay legible. */
+  .mn-row { grid-template-columns: 1fr !important; }
+  .mn-row.mn-stagger { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .mn-col-3, .mn-col-4, .mn-col-5, .mn-col-6,
+  .mn-col-7, .mn-col-8, .mn-col-12 { grid-column: auto !important; }
 }
 
 /* ── Page head ───────────────────────────────────────────────────────── */

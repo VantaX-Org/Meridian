@@ -63,7 +63,7 @@ def _populate_merge_decisions(session: Session, tid: str) -> int:
             FROM match_scores ms
             WHERE ms.tenant_id = :tid
               AND ms.total_score >= 0.30 AND ms.total_score <= 0.95
-              AND ms.auto_action = 'manual_review'
+              AND ms.auto_action = 'queued'
               AND NOT EXISTS (
                   SELECT 1 FROM stewardship_queue sq
                   WHERE sq.source_id = ms.id AND sq.item_type = 'merge_decision' AND sq.tenant_id = :tid

@@ -395,8 +395,8 @@ export default function UploadPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {match.mappings.slice(0, 12).map((m) => (
-                          <tr key={m.source_column}>
+                        {match.mappings.slice(0, 12).map((m, i) => (
+                          <tr key={`${m.source_column}-${i}`}>
                             <td>
                               <span
                                 className="mn-tabular"

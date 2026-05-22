@@ -41,6 +41,8 @@ import workers.tasks.populate_stewardship_queue  # noqa: F401
 import workers.tasks.snapshot_mdm_metrics  # noqa: F401
 import workers.tasks.ai_health_narrative  # noqa: F401
 import workers.tasks.ai_enrich_report  # noqa: F401
+import workers.tasks.mining.orchestrator  # noqa: F401 — registers dedup/anomaly/relationship + mining
+import workers.tasks.build_golden_records  # noqa: F401
 import workers.scheduler  # noqa: F401, E402 — registers beat schedule
 
 
