@@ -152,3 +152,46 @@ async def invite_user(
         logging.getLogger("meridian.users").error(f"Failed to queue invitation email: {e}")
 
     return {"id": new_id, "email": body.email, "role": body.role, "status": "invited"}
+
+
+# ── DELETE /api/v1/users/{id} ───────────────────────────────────────────────
+
+
+@router.delete("/users/{user_id}")
+async def delete_user(
+    user_id: str,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("manage_users")),
+):
+    """Hard-delete a user from this tenant.
+
+    Returns 409 if the user is referenced by other rows (audit log, findings,
+    etc.) — the operator should deactivate via PUT /users/{id} in that case.
+    """
+    from sqlalchemy.exc import IntegrityError
+
+    await _set_rls(db, tenant.id)
+
+    try:
+        result = await db.execute(
+            text(
+                "DELETE FROM users WHERE id = :uid AND tenant_id = :tid "
+                "RETURNING id"
+            ),
+            {"uid": user_id, "tid": str(tenant.id)},
+        )
+        if not result.fetchone():
+            raise HTTPException(status_code=404, detail="User not found")
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "User is referenced by other records (audit, findings, etc.) "
+                "and cannot be hard-deleted. Deactivate instead."
+            ),
+        )
+
+    return {"id": user_id, "status": "deleted"}

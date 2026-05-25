@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { PageHead, KPI, SectionHeader, StatusDot, OwnerChip } from "@/components/meridian/atoms";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { getUsers, inviteUser, updateUser } from "@/lib/api/users";
+import { deleteUser, getUsers, inviteUser, updateUser } from "@/lib/api/users";
 import { getAuditEntries } from "@/lib/api/audit";
 import { getLicenceManifest } from "@/lib/api/licence";
 import { downloadCsv } from "@/components/meridian/actions";
@@ -77,14 +77,33 @@ export default function AdminPage() {
     enabled: tab === "audit",
   });
 
-  const setActive = useMutation({
-    mutationFn: ({ id, active }: { id: string; active: boolean }) =>
-      updateUser(id, { is_active: active }),
+  const [editing, setEditing] = useState<User | null>(null);
+  const [editRole, setEditRole] = useState<UserRole>("analyst");
+  const [editActive, setEditActive] = useState(true);
+  const [confirmDelete, setConfirmDelete] = useState<User | null>(null);
+
+  const saveEdit = useMutation({
+    mutationFn: (body: { id: string; role: UserRole; is_active: boolean }) =>
+      updateUser(body.id, { role: body.role, is_active: body.is_active }),
     onSuccess: () => {
       toast.success("User updated");
       qc.invalidateQueries({ queryKey: ["users.list"] });
+      setEditing(null);
     },
-    onError: () => toast.error("Could not update user"),
+    onError: () => toast.error("Could not save user"),
+  });
+
+  const removeUser = useMutation({
+    mutationFn: deleteUser,
+    onSuccess: () => {
+      toast.success("User deleted");
+      qc.invalidateQueries({ queryKey: ["users.list"] });
+      setConfirmDelete(null);
+    },
+    onError: () =>
+      toast.error(
+        "Could not delete user — they may be referenced by other records. Try Deactivate via Edit instead.",
+      ),
   });
 
   const invite = useMutation({
@@ -257,66 +276,194 @@ export default function AdminPage() {
       </div>
 
       {tab === "users" && (
-        <div className="mn-card" style={{ padding: 0, overflow: "hidden" }}>
-          <div className="mn-table-wrap">
-            <table className="mn-table">
-              <thead>
-                <tr>
-                  <th style={{ paddingLeft: 20 }}>User</th>
-                  <th>Email</th>
-                  <th>Role</th>
-                  <th>Status</th>
-                  <th>Last active</th>
-                  <th style={{ width: 96 }}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((u) => (
-                  <tr key={u.id}>
-                    <td style={{ paddingLeft: 20 }}>
-                      <span className="ico-cell">
-                        <OwnerChip owner={initials(u.name)} />
-                        <span className="module">{u.name}</span>
-                      </span>
-                    </td>
-                    <td
-                      className="mn-tabular"
-                      style={{ font: "500 12px/1 'JetBrains Mono', monospace", color: "var(--mn-ink-500)" }}
-                    >
-                      {u.email}
-                    </td>
-                    <td><RoleChip role={u.role} /></td>
-                    <td><StatusDot status={u.is_active ? "healthy" : "scheduled"} /></td>
-                    <td
-                      className="mn-tabular"
-                      style={{ font: "500 11.5px/1 'JetBrains Mono', monospace", color: "var(--mn-ink-500)" }}
-                    >
-                      {u.last_login ? relativeTime(u.last_login) : "—"}
-                    </td>
-                    <td>
-                      <button
-                        type="button"
-                        className="mn-btn mn-btn-ghost"
-                        onClick={() => setActive.mutate({ id: u.id, active: !u.is_active })}
-                        disabled={setActive.isPending}
-                        style={{ padding: "5px 10px", fontSize: 12 }}
-                      >
-                        {u.is_active ? "Deactivate" : "Activate"}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {users.length === 0 && (
+        <>
+          <div className="mn-card" style={{ padding: 0, overflow: "hidden" }}>
+            <div className="mn-table-wrap">
+              <table className="mn-table">
+                <thead>
                   <tr>
-                    <td colSpan={6} style={{ padding: 32, textAlign: "center", color: "var(--mn-ink-400)" }}>
-                      No users.
-                    </td>
+                    <th style={{ paddingLeft: 20 }}>User</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Last active</th>
+                    <th style={{ width: 160 }} aria-label="Actions"></th>
                   </tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {users.map((u) => (
+                    <tr key={u.id}>
+                      <td style={{ paddingLeft: 20 }}>
+                        <span className="ico-cell">
+                          <OwnerChip owner={initials(u.name)} />
+                          <span className="module">{u.name}</span>
+                        </span>
+                      </td>
+                      <td
+                        className="mn-tabular"
+                        style={{ font: "500 12px/1 'JetBrains Mono', monospace", color: "var(--mn-ink-500)" }}
+                      >
+                        {u.email}
+                      </td>
+                      <td><RoleChip role={u.role} /></td>
+                      <td><StatusDot status={u.is_active ? "healthy" : "scheduled"} /></td>
+                      <td
+                        className="mn-tabular"
+                        style={{ font: "500 11.5px/1 'JetBrains Mono', monospace", color: "var(--mn-ink-500)" }}
+                      >
+                        {u.last_login ? relativeTime(u.last_login) : "—"}
+                      </td>
+                      <td>
+                        <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                          <button
+                            type="button"
+                            className="mn-btn mn-btn-ghost"
+                            onClick={() => {
+                              setEditing(u);
+                              setEditRole(u.role as UserRole);
+                              setEditActive(u.is_active);
+                            }}
+                            style={{ padding: "5px 10px", fontSize: 12 }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="mn-btn mn-btn-ghost"
+                            onClick={() => setConfirmDelete(u)}
+                            disabled={removeUser.isPending}
+                            style={{ padding: "5px 10px", fontSize: 12, color: "var(--mn-neg)" }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {users.length === 0 && (
+                    <tr>
+                      <td colSpan={6} style={{ padding: 32, textAlign: "center", color: "var(--mn-ink-400)" }}>
+                        No users.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+
+          {/* Edit user dialog — role + active status. updateUser only supports
+              these two fields server-side; name/email edits would need a
+              backend extension. */}
+          <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Edit user</DialogTitle>
+              </DialogHeader>
+              {editing && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 14, padding: "8px 0" }}>
+                  <div>
+                    <div className="mn-eyebrow" style={{ marginBottom: 6 }}>Account</div>
+                    <div style={{ fontSize: 13, color: "var(--mn-ink-700)" }}>{editing.name}</div>
+                    <div
+                      className="mn-tabular"
+                      style={{
+                        font: "500 12px/1 'JetBrains Mono', monospace",
+                        color: "var(--mn-ink-500)",
+                        marginTop: 4,
+                      }}
+                    >
+                      {editing.email}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="mn-eyebrow" style={{ display: "block", marginBottom: 6 }}>Role</label>
+                    <select
+                      aria-label="Role"
+                      value={editRole}
+                      onChange={(e) => setEditRole(e.target.value as UserRole)}
+                      style={{
+                        width: "100%",
+                        padding: "8px 10px",
+                        border: "1px solid var(--mn-line)",
+                        borderRadius: 6,
+                        fontSize: 13,
+                        background: "white",
+                      }}
+                    >
+                      {INVITE_ROLES.map((r) => (
+                        <option key={r} value={r}>{r.replace(/_/g, " ")}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+                    <input
+                      type="checkbox"
+                      checked={editActive}
+                      onChange={(e) => setEditActive(e.target.checked)}
+                    />
+                    Active
+                  </label>
+                </div>
+              )}
+              <DialogFooter>
+                <button
+                  type="button"
+                  className="mn-btn mn-btn-ghost"
+                  onClick={() => setEditing(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="mn-btn"
+                  onClick={() =>
+                    editing &&
+                    saveEdit.mutate({ id: editing.id, role: editRole, is_active: editActive })
+                  }
+                  disabled={saveEdit.isPending}
+                >
+                  {saveEdit.isPending ? "Saving…" : "Save"}
+                </button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Delete confirmation dialog. Hard delete fails (409) if the user
+              has FK references — the API returns guidance to deactivate. */}
+          <Dialog open={!!confirmDelete} onOpenChange={(o) => !o && setConfirmDelete(null)}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Delete user</DialogTitle>
+              </DialogHeader>
+              {confirmDelete && (
+                <p style={{ fontSize: 13, color: "var(--mn-ink-700)", padding: "8px 0" }}>
+                  Delete <strong>{confirmDelete.name}</strong> ({confirmDelete.email})? This
+                  can&apos;t be undone — they&apos;ll lose access immediately. If the user has
+                  activity history they may need to be deactivated via Edit instead.
+                </p>
+              )}
+              <DialogFooter>
+                <button
+                  type="button"
+                  className="mn-btn mn-btn-ghost"
+                  onClick={() => setConfirmDelete(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="mn-btn"
+                  style={{ background: "var(--mn-neg)", color: "white" }}
+                  onClick={() => confirmDelete && removeUser.mutate(confirmDelete.id)}
+                  disabled={removeUser.isPending}
+                >
+                  {removeUser.isPending ? "Deleting…" : "Delete"}
+                </button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </>
       )}
 
       {tab === "roles" && (
