@@ -42,33 +42,54 @@ def _load_tenant_config(session: Session, tenant_id: str) -> dict:
     }
 
 
+def _resolve_app_base_url() -> str:
+    """Derive the customer-facing base URL for this deployment.
+
+    Order: ``MERIDIAN_APP_URL`` (explicit override) → ``SERVER_DOMAIN`` +
+    ``SSL_MODE`` (set by ``meridian-deploy.sh`` at install) → ``localhost``.
+    """
+    override = os.getenv("MERIDIAN_APP_URL", "").strip().rstrip("/")
+    if override:
+        return override
+    host = os.getenv("SERVER_DOMAIN", "").strip() or "localhost"
+    # SSL_MODE: 1=none/http, 2=self-signed/https, 3=letsencrypt/https
+    # (matches meridian-deploy.sh's PROTO derivation).
+    proto = "http" if os.getenv("SSL_MODE", "1").strip() == "1" else "https"
+    return f"{proto}://{host}"
+
+
 def _build_invitation_email(
     recipient_email: str,
     recipient_name: str,
     role: str,
     tenant_name: str,
+    invite_token: str = "",
     login_url: str | None = None,
 ) -> tuple[str, str]:
     """Build subject and HTML body for invitation email.
 
-    ``login_url`` defaults to this deployment's own host, derived from the
-    ``SERVER_DOMAIN`` + ``SSL_MODE`` env vars that ``meridian-deploy.sh``
-    writes during initial setup. ``MERIDIAN_APP_URL`` (if set) wins as an
-    explicit override — useful if the public URL differs from the internal
-    domain. The path is ``/sign-in`` to match the Next.js route
-    (``frontend/app/sign-in/``) — *not* ``/login``.
+    If ``invite_token`` is provided the link goes to ``/accept-invite?token=…``
+    so the user lands on a set-password page first. Otherwise (legacy / no
+    token) it falls back to ``/sign-in``. ``login_url`` (if passed) overrides
+    URL construction wholesale — used by tests.
     """
     if login_url is None:
-        override = os.getenv("MERIDIAN_APP_URL", "").strip().rstrip("/")
-        if override:
-            base = override
+        base = _resolve_app_base_url()
+        if invite_token:
+            login_url = f"{base}/accept-invite?token={invite_token}"
         else:
-            host = os.getenv("SERVER_DOMAIN", "").strip() or "localhost"
-            # SSL_MODE: 1=none/http, 2=self-signed/https, 3=letsencrypt/https
-            # (matches meridian-deploy.sh's PROTO derivation).
-            proto = "http" if os.getenv("SSL_MODE", "1").strip() == "1" else "https"
-            base = f"{proto}://{host}"
-        login_url = f"{base}/sign-in"
+            login_url = f"{base}/sign-in"
+
+    # Button copy changes with the flow: first-time invite vs already-active.
+    if invite_token:
+        cta_label = "Set your password"
+        cta_help = (
+            "Click the button to set your password. Once that's done, "
+            "you'll be sent to the sign-in page."
+        )
+    else:
+        cta_label = "Sign in to Meridian"
+        cta_help = "Sign in to access your dashboards and start working with your data:"
 
     subject = f"Welcome to Meridian — {tenant_name} Data Quality Platform"
     
@@ -94,10 +115,10 @@ def _build_invitation_email(
             <strong style="color:#0F172A;">Role:</strong> {role_pretty}
           </div>
           <p style="font-size:14px;line-height:1.6;color:#475569;margin:0 0 14px;">
-            Sign in to access your dashboards and start working with your data:
+            {cta_help}
           </p>
           <p style="margin:8px 0 18px;">
-            <a href="{login_url}" style="display:inline-block;background:#F97316;color:#FFFFFF;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:600;font-size:14px;">Sign in to Meridian</a>
+            <a href="{login_url}" style="display:inline-block;background:#F97316;color:#FFFFFF;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:600;font-size:14px;">{cta_label}</a>
           </p>
           <p style="font-size:12px;color:#64748B;margin:0 0 14px;">
             Button not working? Copy this link:<br>
@@ -169,9 +190,12 @@ def _send_invitation_email(
     recipient_name: str,
     role: str,
     tenant_name: str,
+    invite_token: str = "",
 ):
     """Send invitation email via Microsoft Graph, SMTP, or Resend API."""
-    subject, body = _build_invitation_email(recipient_email, recipient_name, role, tenant_name)
+    subject, body = _build_invitation_email(
+        recipient_email, recipient_name, role, tenant_name, invite_token=invite_token,
+    )
 
     # Try Microsoft Graph first
     graph_client = create_graph_client()
@@ -196,15 +220,18 @@ def send_invitation_email(
     recipient_email: str,
     recipient_name: str,
     role: str,
+    invite_token: str = "",
 ):
     """Send invitation email to newly invited user.
-    
+
     Args:
         user_id: The newly created user ID
         tenant_id: The tenant ID
         recipient_email: Email address to send invitation to
         recipient_name: Name of the invited user
         role: Role assigned to the user
+        invite_token: Signed JWT for the /accept-invite page. If empty (legacy
+            callers, mid-rollout workers), the email links to /sign-in instead.
     """
     logger.info(f"send_invitation_email: user={user_id}, tenant={tenant_id}, email={recipient_email}")
 
@@ -225,6 +252,7 @@ def send_invitation_email(
                 recipient_name,
                 role,
                 tenant_name,
+                invite_token=invite_token,
             )
 
             logger.info(f"Invitation email sent for user={user_id}")

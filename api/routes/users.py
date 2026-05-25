@@ -137,6 +137,27 @@ async def invite_user(
     )
     await db.commit()
 
+    # Generate the invite acceptance token — a signed JWT the user redeems on
+    # the /accept-invite page to set their first password. Same HS256 secret
+    # the auth flow uses, with a distinct "purpose" claim. Silently omit if
+    # the tenant has no jwt_secret yet (legacy bootstrap edge-case).
+    invite_token = ""
+    try:
+        from api.services.local_auth import create_invite_token
+
+        secret_q = await db.execute(
+            text("SELECT jwt_secret FROM tenants WHERE id = :tid"),
+            {"tid": str(tenant.id)},
+        )
+        secret_row = secret_q.fetchone()
+        if secret_row and secret_row[0]:
+            invite_token = create_invite_token(new_id, str(tenant.id), secret_row[0])
+    except Exception as e:
+        import logging
+        logging.getLogger("meridian.users").warning(
+            f"Could not mint invite token for {body.email}: {e}"
+        )
+
     # Trigger invitation email (async — does not block response)
     try:
         send_invitation_email.delay(
@@ -145,6 +166,7 @@ async def invite_user(
             recipient_email=body.email,
             recipient_name=body.name or body.email.split("@")[0],
             role=body.role,
+            invite_token=invite_token,
         )
     except Exception as e:
         # Log but don't fail the response if Celery task fails to queue

@@ -296,3 +296,71 @@ def change_password(body: ChangePasswordRequest, request: Request):
         )
         conn.commit()
     return {"ok": True}
+
+
+class AcceptInviteRequest(BaseModel):
+    token: str
+    password: str
+
+
+@router.post("/accept-invite")
+def accept_invite(body: AcceptInviteRequest):
+    """Accept an invitation: set a new user's first password from an emailed token.
+
+    The token is a signed JWT issued by /users/invite with a ``purpose`` of
+    ``invite_accept``. Single-use: only succeeds while the user still has
+    ``password_hash IS NULL`` — once they've set a password, the link is
+    rejected so a leaked email link can't reset an active account.
+    """
+    new_password = (body.password or "").strip()
+    if len(new_password) < _MIN_PASSWORD_LENGTH:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Password must be at least {_MIN_PASSWORD_LENGTH} characters",
+        )
+
+    from api.services.local_auth import hash_password
+
+    engine = get_sync_engine_or_create()
+    with engine.connect() as conn:
+        _ensure_local_auth_schema(conn)
+        secret_row = conn.execute(
+            text("SELECT jwt_secret FROM tenants WHERE id = :tid"),
+            {"tid": DEV_TENANT_ID},
+        ).fetchone()
+        if not secret_row or not secret_row[0]:
+            raise HTTPException(status_code=503, detail="Auth not configured")
+
+        payload = decode_access_token(body.token, secret_row[0])
+        if not payload or payload.get("purpose") != "invite_accept":
+            raise HTTPException(
+                status_code=400,
+                detail="Invitation link is invalid or has expired. Please request a new invitation.",
+            )
+
+        user_id = payload.get("sub")
+        if not user_id:
+            raise HTTPException(status_code=400, detail="Invalid invitation token")
+
+        conn.execute(text(f"SET app.tenant_id = '{str(DEV_TENANT_ID)}'"))
+
+        # Atomic: only succeeds if no password set yet. Replay after the user
+        # has activated returns 409 instead of silently overwriting.
+        result = conn.execute(
+            text(
+                "UPDATE users "
+                "SET password_hash = :ph, must_change_password = false "
+                "WHERE id = :uid AND tenant_id = :tid AND password_hash IS NULL "
+                "RETURNING id, email"
+            ),
+            {"ph": hash_password(new_password), "uid": user_id, "tid": DEV_TENANT_ID},
+        )
+        row = result.fetchone()
+        if not row:
+            raise HTTPException(
+                status_code=409,
+                detail="This invitation has already been used. Sign in with the password you set, or ask an admin to resend the invite.",
+            )
+        conn.commit()
+
+    return {"ok": True, "email": row[1]}
