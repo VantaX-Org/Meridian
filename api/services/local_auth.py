@@ -79,3 +79,22 @@ def create_invite_token(user_id: str, tenant_id: str, secret: str, ttl_days: int
         "exp": now + timedelta(days=ttl_days),
     }
     return jwt.encode(payload, secret, algorithm=_JWT_ALGORITHM)
+
+
+def create_password_reset_token(
+    user_id: str, tenant_id: str, secret: str, ttl_minutes: int = 60
+) -> str:
+    """Create a signed JWT for the forgot-password flow.
+
+    Short TTL (default 1 hour) and a distinct ``purpose`` claim so it can't
+    be confused with an access token or invite token.
+    """
+    now = datetime.now(timezone.utc)
+    payload = {
+        "sub": user_id,
+        "tenant_id": tenant_id,
+        "purpose": "password_reset",
+        "iat": now,
+        "exp": now + timedelta(minutes=ttl_minutes),
+    }
+    return jwt.encode(payload, secret, algorithm=_JWT_ALGORITHM)

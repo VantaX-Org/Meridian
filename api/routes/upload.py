@@ -207,7 +207,11 @@ async def upload_file(
         "standard_fields_missing": sorted(missing_standard),
         "custom_fields": sorted(custom_fields),
     }
-    version = await create_version(db, tenant.id, metadata)
+    # Default label from the filename stem (e.g. "business-partner-clean.csv"
+    # -> "business-partner-clean") so the Reports / Versions pages don't show
+    # "Unlabelled run" for every upload. Capped at 120 chars for safety.
+    label = (filename.rsplit(".", 1)[0] if "." in filename else filename).strip()[:120] or None
+    version = await create_version(db, tenant.id, metadata, label=label)
     logger.info(f"Created version: {version.id}")
 
     # Seed progress so the frontend progress bar has something to show the

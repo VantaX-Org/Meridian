@@ -109,7 +109,7 @@ export default function SignInPage() {
                 <span className="box" />
                 <span>Keep me signed in</span>
               </label>
-              <Link className="login-forgot" href="#">
+              <Link className="login-forgot" href="/forgot-password">
                 Forgot password?
               </Link>
             </div>

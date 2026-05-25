@@ -364,3 +364,121 @@ def accept_invite(body: AcceptInviteRequest):
         conn.commit()
 
     return {"ok": True, "email": row[1]}
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+
+@router.post("/forgot-password")
+def forgot_password(body: ForgotPasswordRequest):
+    """Send a password-reset email to the given address.
+
+    Always returns 200 — never reveals whether an account exists for that
+    email, to prevent enumeration. The reset link is sent asynchronously
+    via the worker; queue/send failures are logged, not surfaced.
+    """
+    email = (body.email or "").strip().lower()
+    if not email:
+        return {"ok": True}
+
+    engine = get_sync_engine_or_create()
+    with engine.connect() as conn:
+        _ensure_local_auth_schema(conn)
+        secret_row = conn.execute(
+            text("SELECT jwt_secret FROM tenants WHERE id = :tid"),
+            {"tid": DEV_TENANT_ID},
+        ).fetchone()
+        if not secret_row or not secret_row[0]:
+            return {"ok": True}
+
+        conn.execute(text(f"SET app.tenant_id = '{str(DEV_TENANT_ID)}'"))
+        row = conn.execute(
+            text(
+                "SELECT id, name FROM users "
+                "WHERE LOWER(email) = :em AND tenant_id = :tid "
+                "  AND is_active = true AND password_hash IS NOT NULL"
+            ),
+            {"em": email, "tid": DEV_TENANT_ID},
+        ).fetchone()
+
+        if row:
+            from api.services.local_auth import create_password_reset_token
+
+            reset_token = create_password_reset_token(
+                str(row[0]), DEV_TENANT_ID, secret_row[0]
+            )
+            try:
+                from workers.tasks.send_password_reset import send_password_reset_email
+
+                send_password_reset_email.delay(
+                    user_id=str(row[0]),
+                    tenant_id=DEV_TENANT_ID,
+                    recipient_email=email,
+                    recipient_name=row[1] or email.split("@")[0],
+                    reset_token=reset_token,
+                )
+            except Exception as e:
+                import logging
+                logging.getLogger("meridian.auth").error(
+                    f"Could not queue password reset email: {e}"
+                )
+
+    return {"ok": True}
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    password: str
+
+
+@router.post("/reset-password")
+def reset_password(body: ResetPasswordRequest):
+    """Reset a user's password from an emailed reset token."""
+    new_password = (body.password or "").strip()
+    if len(new_password) < _MIN_PASSWORD_LENGTH:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Password must be at least {_MIN_PASSWORD_LENGTH} characters",
+        )
+
+    from api.services.local_auth import hash_password
+
+    engine = get_sync_engine_or_create()
+    with engine.connect() as conn:
+        _ensure_local_auth_schema(conn)
+        secret_row = conn.execute(
+            text("SELECT jwt_secret FROM tenants WHERE id = :tid"),
+            {"tid": DEV_TENANT_ID},
+        ).fetchone()
+        if not secret_row or not secret_row[0]:
+            raise HTTPException(status_code=503, detail="Auth not configured")
+
+        payload = decode_access_token(body.token, secret_row[0])
+        if not payload or payload.get("purpose") != "password_reset":
+            raise HTTPException(
+                status_code=400,
+                detail="Reset link is invalid or has expired. Request a new one from the Forgot password page.",
+            )
+
+        user_id = payload.get("sub")
+        if not user_id:
+            raise HTTPException(status_code=400, detail="Invalid reset token")
+
+        conn.execute(text(f"SET app.tenant_id = '{str(DEV_TENANT_ID)}'"))
+
+        result = conn.execute(
+            text(
+                "UPDATE users "
+                "SET password_hash = :ph, must_change_password = false "
+                "WHERE id = :uid AND tenant_id = :tid AND is_active = true "
+                "RETURNING id, email"
+            ),
+            {"ph": hash_password(new_password), "uid": user_id, "tid": DEV_TENANT_ID},
+        )
+        row = result.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Account not found or inactive")
+        conn.commit()
+
+    return {"ok": True, "email": row[1]}
