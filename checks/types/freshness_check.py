@@ -54,9 +54,24 @@ class FreshnessCheck(BaseCheck):
             newest = str(valid_dates.max()) if len(valid_dates) > 0 else "N/A"
 
             id_field = find_id_field(df)
-            # Only materialise the rows we actually need
-            failing_indices = failing_mask[failing_mask].index[:10]
-            sample_rows = df.loc[failing_indices, [id_field, field]]
+            # Only materialise the rows we actually need. Use scalar .at access
+            # and the already-parsed timestamps — selecting [id_field, field] as a
+            # frame breaks when id_field == field (e.g. a pruned single-column
+            # extract): duplicate columns make row[field] a Series, raising
+            # "truth value of a Series is ambiguous" and silently zeroing the count.
+            failing_indices = list(failing_mask[failing_mask].index[:10])
+            sample_failing_records = []
+            for idx in failing_indices:
+                ts = parsed.at[idx]
+                age_hours = (
+                    str(round((now - ts).total_seconds() / 3600, 1))
+                    if pd.notna(ts) else "N/A"
+                )
+                sample_failing_records.append({
+                    id_field: str(df.at[idx, id_field]),
+                    field: str(df.at[idx, field]),
+                    "age_hours": age_hours,
+                })
 
             details = safe_json({
                 "field_checked": field,
@@ -67,12 +82,7 @@ class FreshnessCheck(BaseCheck):
                 "id_field_used": id_field,
                 "failing_record_count": affected,
                 "message": self.rule.get("message", ""),
-                "sample_failing_records": [
-                    {id_field: str(row[id_field]), field: str(row[field]),
-                     "age_hours": str(round((now - pd.to_datetime(row[field], utc=True)).total_seconds() / 3600, 1))
-                     if pd.notna(row[field]) else "N/A"}
-                    for _, row in sample_rows.iterrows()
-                ],
+                "sample_failing_records": sample_failing_records,
             })
 
             return CheckResult(

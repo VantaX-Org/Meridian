@@ -651,6 +651,11 @@ rules:
     dimension: timeliness
     message: Customer master not updated in 2+ years — review if credit limits, payment terms, and addresses are still current
     rule_authority: best_practice
+    why_it_matters: "Customer master records unchanged for 2+ years may hold outdated credit limits, payment terms, or addresses, weakening credit control and dunning accuracy."
+    sap_impact: "Credit exposure is assessed on stale limits; invoices and dunning letters reach wrong addresses; collection effectiveness drops."
+    fix_map:
+      __blank__: "Review the customer in FD02 / XD02 (ECC) or Fiori Manage Business Partner (S/4HANA): reassess credit limit, payment terms, and address, then save to refresh the change date."
+    record_fix_template: "Customer {field} last changed {age_days} days ago. Reassess credit limit, terms, and address in FD02/XD02 or BP, then save."
 
   - id: AR027
     field: KNA1.STCEG

@@ -345,3 +345,8 @@ rules:
   dimension: timeliness
   message: Requisition open for 6+ months — long-open requisitions should be reviewed, refreshed, or closed
   rule_authority: best_practice
+  why_it_matters: "Requisitions open for 6+ months are usually stale, mis-prioritised, or filled-but-not-closed, skewing time-to-fill and pipeline metrics."
+  sap_impact: "Recruiting analytics report inflated open headcount and time-to-fill; candidates sit in limbo; approved budget is tied to dormant openings."
+  fix_map:
+    __blank__: "Review the requisition in SuccessFactors Recruiting: confirm it is still needed, refresh the posting and approvers, or close it if filled or cancelled."
+  record_fix_template: "Requisition {field} has been open {age_days} days. Confirm still needed and refresh, or close if filled or cancelled."

@@ -302,29 +302,29 @@ rules:
   check_class: domain_value_check
   allowed_values:
   - '0'
+  - '1'
   - '2'
   - '3'
-  - '5'
   - '7'
   - '9'
   severity: high
   dimension: validity
-  message: Item category must be a valid purchasing item category
+  message: Item category must be a valid purchasing item category (0, 1, 2, 3, 7, 9)
   why_it_matters: 'PSTYP (item category) controls the procurement behaviour of the PO line: standard, consignment, subcontracting,
     third-party, etc. Invalid values prevent goods receipt processing and invoice verification from working correctly.'
   rule_authority: sap_hard_constraint
   sap_impact: Goods receipt processing logic is undefined. Invoice verification behaviour is unknown. Account assignment may
     be incorrect.
   valid_values_with_labels:
-    '0': "Standard \u2014 normal stock or consumption procurement"
-    '2': "Consignment \u2014 vendor-owned stock at customer site"
-    '3': "Subcontracting \u2014 materials provided to vendor for processing"
-    '5': "Third-Party \u2014 direct shipment from vendor to customer"
-    '7': "Service \u2014 external service procurement"
-    '9': "Limit \u2014 framework order with value limit"
+    '0': Standard
+    '1': Consignment
+    '2': Subcontracting
+    '3': Service (limit)
+    '7': Stock transport order
+    '9': Third-party
   fix_map:
-    __other__: 'Item category ''{invalid_value}'' is not a recognised value. Valid categories: 0 (standard), 2 (consignment),
-      3 (subcontracting), 5 (third-party), 7 (service), 9 (limit). In ECC: correct via ME22N. In S/4HANA: use Fiori app F2229.'
+    __other__: 'Item category ''{invalid_value}'' is not a recognised value. Valid categories: 0 (standard), 1 (consignment),
+      2 (subcontracting), 3 (service/limit), 7 (stock transport order), 9 (third-party). In ECC: correct via ME22N. In S/4HANA: use Fiori app F2229.'
   record_fix_template: 'PO {EKKO.EBELN} item {EKPO.EBELP}: PSTYP is ''{actual_value}''. Set to a valid item category via ME22N
     or Fiori app F2229.'
 - id: PUR019
@@ -755,6 +755,11 @@ rules:
   dimension: timeliness
   message: Purchase order older than 1 year — open POs older than 12 months should be reviewed and closed if no longer needed
   rule_authority: best_practice
+  why_it_matters: "Purchase orders open beyond 12 months usually represent abandoned commitments, over-delivery risk, or uncleared GR/IR that distorts open-commitment reporting."
+  sap_impact: "Open commitment and accrual figures are overstated; GR/IR clearing is blocked; MRP plans against orders that will never be received."
+  fix_map:
+    __blank__: "Review the PO in ME23N / ME2M: confirm whether goods/invoice are still expected; close the line with a delivery-completed flag (ME22N) or set a deletion indicator if abandoned."
+  record_fix_template: "PO {field} dated {age_days} days ago. Confirm delivery still expected in ME23N; set delivery-completed or deletion indicator if abandoned."
 
 - id: PUR044
   field: EKPO.NETPR

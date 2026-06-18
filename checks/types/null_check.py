@@ -20,19 +20,26 @@ class NullCheck(BaseCheck):
             pass_rate = (non_null / total * 100) if total > 0 else 0.0
 
             id_field = find_id_field(df)
-            # Only materialise the rows we actually need
-            failing_indices = null_mask[null_mask].index[:10]
-            sample_rows = df.loc[failing_indices, [id_field, field]]
+            # Only materialise the rows we actually need. Use scalar .at access:
+            # selecting [id_field, field] as a frame breaks when id_field == field
+            # (e.g. a null check on a primary-key column, where find_id_field
+            # returns that same column) — duplicate columns trigger
+            # "DataFrame columns are not unique" and silently omit data.
+            failing_indices = list(null_mask[null_mask].index[:10])
+            sample_failing_records = [
+                {
+                    id_field: "" if pd.isna(df.at[idx, id_field]) else str(df.at[idx, id_field]),
+                    field: "" if pd.isna(df.at[idx, field]) else str(df.at[idx, field]),
+                }
+                for idx in failing_indices
+            ]
 
             details = safe_json({
                 "field_checked": field,
                 "id_field_used": id_field,
                 "failing_record_count": affected,
                 "message": self.rule.get("message", ""),
-                "sample_failing_records": sample_rows
-                    .fillna("")
-                    .astype(str)
-                    .to_dict(orient="records"),
+                "sample_failing_records": sample_failing_records,
             })
 
             return CheckResult(

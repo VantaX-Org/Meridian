@@ -120,29 +120,29 @@ rules:
   field: MARA.MBRSH
   check_class: domain_value_check
   allowed_values:
-  - M
-  - C
-  - P
-  - E
   - A
+  - C
+  - M
+  - P
+  - V
   severity: high
   dimension: validity
-  message: Industry sector must be a valid SAP industry code
+  message: Industry sector must be a valid SAP industry code (A, C, M, P, V)
   why_it_matters: MBRSH must match a configured industry sector. Invalid values prevent correct field selection and screen
     layout. In both ECC and S/4HANA, the valid values are maintained in table T137.
   rule_authority: sap_hard_constraint
   sap_impact: Material creation fails with invalid industry sector. Screen layout and field selections are undefined.
   valid_values_with_labels:
-    M: Mechanical engineering
-    C: Chemical industry
-    P: Pharmaceutical industry
-    E: Electrical engineering
     A: Plant engineering and construction
+    C: Chemical industry
+    M: Mechanical engineering
+    P: Pharmaceutical
+    V: Retail
   fix_map:
     __other__: 'Industry sector ''{invalid_value}'' is not valid. In ECC: check valid values in table T137 via SE16. In S/4HANA:
       check via SPRO or Fiori F1602.'
-  record_fix_template: 'Material {MARA.MATNR}: MBRSH is ''{actual_value}''. Correct to a valid industry sector (M, C, P, E,
-    A).'
+  record_fix_template: 'Material {MARA.MATNR}: MBRSH is ''{actual_value}''. Correct to a valid industry sector (A, C, M, P,
+    V).'
 - id: MM007
   field: MARA.MATKL
   check_class: null_check
@@ -2336,3 +2336,16 @@ rules:
   fix_map:
     __blank__: "Populate serial number via MM02 > Serial number views, or via SAP Service for goods movement (IQ01)."
   record_fix_template: "Material {MARA.MATNR} (type {MARA.MTART}): serial number is missing. Assign via MM02 or serial-number master (IQ01)."
+
+- id: MM144
+  field: MBEW.VPRSV
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: "Price control indicator (MBEW.VPRSV) is mandatory and must not be blank"
+  why_it_matters: "VPRSV controls whether the material is valuated at standard price (S) or moving average price (V). Without it, the valuation view is incomplete and SAP cannot determine how to value goods movements, blocking inventory postings and costing."
+  rule_authority: sap_hard_constraint
+  sap_impact: "Material valuation view is incomplete. Goods movements, invoice verification, and costing runs that reference this material will fail."
+  fix_map:
+    __blank__: "Assign price control via MM01/MM02 > Accounting view (S for standard price, V for moving average). In S/4HANA use Fiori app F1602 (Manage Product Master Data)."
+  record_fix_template: "Material {MARA.MATNR}: price control indicator (VPRSV) is missing. Assign S or V via MM02 Accounting view."

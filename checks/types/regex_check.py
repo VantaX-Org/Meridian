@@ -35,9 +35,9 @@ class RegexCheck(BaseCheck):
             pass_rate = ((check_total - affected) / check_total * 100) if check_total > 0 else 100.0
 
             id_field = find_id_field(df)
-            # Only materialise the rows we actually need
-            failing_indices = failing_mask[failing_mask].index[:10]
-            sample_rows = df.loc[failing_indices, [id_field, field]]
+            # Scalar .at access — selecting [id_field, field] as a frame breaks
+            # when id_field == field (e.g. a regex check on a key column).
+            failing_indices = list(failing_mask[failing_mask].index[:10])
 
             details = safe_json({
                 "field_checked": field,
@@ -46,8 +46,8 @@ class RegexCheck(BaseCheck):
                 "failing_record_count": affected,
                 "message": self.rule.get("message", ""),
                 "sample_failing_records": [
-                    {id_field: str(row[id_field]), field: str(row[field])}
-                    for _, row in sample_rows.iterrows()
+                    {id_field: str(df.at[idx, id_field]), field: str(df.at[idx, field])}
+                    for idx in failing_indices
                 ],
             })
 

@@ -24,9 +24,9 @@ class ReferentialCheck(BaseCheck):
             pass_rate = ((total - affected) / total * 100) if total > 0 else 0.0
 
             id_field = find_id_field(df)
-            # Only materialise the rows we actually need
-            failing_indices = failing_mask[failing_mask].index[:10]
-            sample_rows = df.loc[failing_indices, [id_field, field]]
+            # Scalar .at access — selecting [id_field, field] as a frame breaks
+            # when id_field == field (e.g. a referential check on a key column).
+            failing_indices = list(failing_mask[failing_mask].index[:10])
             failing_field_values = df.loc[failing_mask, field]
 
             details = safe_json({
@@ -38,8 +38,8 @@ class ReferentialCheck(BaseCheck):
                 "missing_values": failing_field_values
                     .dropna().astype(str).unique().tolist()[:20],
                 "sample_failing_records": [
-                    {id_field: str(row[id_field]), field: str(row[field])}
-                    for _, row in sample_rows.iterrows()
+                    {id_field: str(df.at[idx, id_field]), field: str(df.at[idx, field])}
+                    for idx in failing_indices
                 ],
             })
 

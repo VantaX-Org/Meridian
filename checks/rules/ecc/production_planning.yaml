@@ -470,6 +470,11 @@ rules:
   dimension: timeliness
   message: Routing not updated in 3+ years — review if operations, work centres, and standard values are still accurate
   rule_authority: best_practice
+  why_it_matters: "Routings not updated in 3+ years may specify obsolete operations, work centres, or standard values, corrupting capacity planning and product costing."
+  sap_impact: "Scheduling and capacity planning use wrong lead times; standard-cost estimates drift from actuals; shop-floor papers list retired work centres."
+  fix_map:
+    __blank__: "Review the routing in CA02: validate the operation sequence, work centres, and standard values against the current process; update or mark the group counter for deletion if superseded."
+  record_fix_template: "Routing {field} last changed {age_days} days ago. Validate operations, work centres, and standard values in CA02; supersede if obsolete."
 
 - id: PP029
   field: MARC.DISPO

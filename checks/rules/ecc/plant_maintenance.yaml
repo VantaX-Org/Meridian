@@ -550,6 +550,11 @@ rules:
   dimension: timeliness
   message: Equipment master created 10+ years ago � review if technical data, warranty, and maintenance plan are still current
   rule_authority: best_practice
+  why_it_matters: "Equipment master records created 10+ years ago often carry outdated technical data, warranty status, or location assignments that misroute maintenance planning."
+  sap_impact: "Maintenance plans and orders reference wrong technical objects; warranty claims are missed; functional-location structure drifts from reality."
+  fix_map:
+    __blank__: "Review the equipment in IE02: verify technical data, warranty dates, functional location, and status; deactivate via IE02 if scrapped or replaced."
+  record_fix_template: "Equipment {field} created {age_days} days ago. Verify technical data, warranty, and functional location in IE02; deactivate if scrapped."
 
 - id: PM035
   field: EQUI.BAUJJ

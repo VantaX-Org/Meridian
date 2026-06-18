@@ -618,6 +618,11 @@ rules:
   dimension: timeliness
   message: Sales order older than 1 year — open orders older than 12 months should be reviewed for closure or rejection
   rule_authority: best_practice
+  why_it_matters: "Sales orders open beyond 12 months usually represent stuck or abandoned demand that inflates the order backlog and misleads revenue forecasting."
+  sap_impact: "Backlog and forecast figures are overstated; ATP and MRP plan against demand that will not convert; incomplete orders block billing."
+  fix_map:
+    __blank__: "Review the order in VA02 / VA05: confirm whether it will still be delivered; complete the open items, reject the lines (reason for rejection), or close the order."
+  record_fix_template: "Sales order {field} dated {age_days} days ago. Confirm in VA02 whether still valid; reject lines or close if abandoned."
 
 - id: SDSO035
   field: VBAP.KWMENG

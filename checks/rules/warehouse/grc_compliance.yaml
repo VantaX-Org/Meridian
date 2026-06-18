@@ -321,3 +321,32 @@ rules:
     dimension: timeliness
     message: GRC role assignment older than 2 years — stale access assignments should be recertified
     rule_authority: best_practice
+    why_it_matters: "Role assignments older than 2 years usually violate least-privilege: access granted long ago is rarely revalidated and accumulates as excess entitlement."
+    sap_impact: "Stale access widens the attack surface and fails SoD and access-recertification audits; terminated or moved users may retain entitlements."
+    fix_map:
+      __blank__: "Run an access recertification: confirm the assignment is still required for the user's current role, revoke if not, and record the review to reset the validity date."
+    record_fix_template: "Role assignment {field} is {age_days} days old. Recertify against the user's current role; revoke if not required and record the review."
+
+  - id: GRC015
+    field: GRACRISK.RISK_LEVEL
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "Risk level (GRACRISK.RISK_LEVEL) is mandatory"
+    why_it_matters: >-
+      RISK_LEVEL classifies the severity of an access risk (e.g. Critical,
+      High, Medium, Low) in SAP GRC Access Control. Without it, the risk cannot
+      be prioritised for remediation, SoD violation reporting is incomplete,
+      and mitigation workflows cannot route the risk to the correct approver.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Risk cannot be prioritised. SoD violation reports and access-risk
+      dashboards are incomplete; mitigation routing fails. Audit finding.
+    fix_map:
+      __blank__: >-
+        Assign the correct risk level in GRC Access Control (NWBC > Setup >
+        Access Risks). In S/4HANA use the Fiori-based GRC access-risk
+        maintenance apps.
+    record_fix_template: >-
+      Access risk {GRACRISK.RISK_ID}: RISK_LEVEL is {actual_value}. Assign the
+      correct severity via GRC Access Control.

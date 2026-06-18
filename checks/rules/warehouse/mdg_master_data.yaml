@@ -385,3 +385,8 @@ rules:
     dimension: timeliness
     message: MDG change request older than 1 year — long-pending CRs should be reviewed, approved, or rejected
     rule_authority: best_practice
+    why_it_matters: "Change requests open for 1+ year are stalled governance items that hold master-data updates in limbo and clog the MDG workflow."
+    sap_impact: "Approved master-data changes never activate; the MDG worklist is cluttered with dormant CRs; data stewards lose visibility of real backlog."
+    fix_map:
+      __blank__: "Review the change request in MDG: confirm whether it is still required, route it to the current approver to complete, or withdraw and close it if obsolete."
+    record_fix_template: "Change request {field} open {age_days} days. Route to the current approver to complete, or withdraw and close if obsolete."

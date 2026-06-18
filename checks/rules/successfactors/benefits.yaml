@@ -276,3 +276,8 @@ rules:
     dimension: timeliness
     message: Benefit enrollment older than 2 years — verify enrollment is still valid and premiums are current
     rule_authority: best_practice
+    why_it_matters: "Benefit enrollments older than 2 years may reflect lapsed elections, changed dependents, or superseded plans, producing incorrect coverage and deductions."
+    sap_impact: "Payroll deducts for stale or invalid benefit elections; carriers receive outdated enrollment files; employees may be under- or over-covered."
+    fix_map:
+      __blank__: "Review the enrollment in the SuccessFactors Benefits module: confirm the elected plan, coverage tier, and dependents against current life events; re-enroll or terminate as needed."
+    record_fix_template: "Benefit enrollment {field} is {age_days} days old. Confirm plan, tier, and dependents in the Benefits module; re-enroll or terminate."
