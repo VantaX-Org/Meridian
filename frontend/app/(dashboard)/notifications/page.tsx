@@ -1,310 +1,192 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
-import {
-  Bell,
-  Check,
-  CheckCheck,
-  ExternalLink,
-  Filter,
-} from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { PageHead } from "@/components/meridian/atoms";
+import { ArrowRight } from "@/components/meridian/icons";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
   getNotifications,
-  markNotificationRead,
   markAllNotificationsRead,
+  markNotificationRead,
 } from "@/lib/api/notifications";
+import type { Notification, NotificationType } from "@/types/api";
 import { relativeTime } from "@/lib/format";
-import type { NotificationType } from "@/types/api";
 
-const TYPE_OPTIONS: { value: string; label: string }[] = [
-  { value: "", label: "All Types" },
-  { value: "finding", label: "Findings" },
-  { value: "cleaning", label: "Cleaning" },
-  { value: "exception", label: "Exceptions" },
-  { value: "approval", label: "Approvals" },
-  { value: "digest", label: "Digests" },
-  { value: "warning", label: "Warnings" },
-];
-
-const READ_OPTIONS = [
-  { value: "", label: "All" },
-  { value: "false", label: "Unread" },
-  { value: "true", label: "Read" },
-];
-
-const TYPE_ICONS: Record<string, string> = {
-  finding: "🔍",
-  cleaning: "✨",
-  exception: "🚨",
-  approval: "✅",
-  digest: "📊",
-  warning: "⚠️",
+const NOTIF_TYPES: Record<NotificationType, { bg: string; fg: string; l: string }> = {
+  finding:   { bg: "var(--mn-primary-50)",  fg: "var(--mn-primary-700)", l: "FINDING" },
+  cleaning:  { bg: "var(--mn-pos-bg)",      fg: "var(--mn-pos)",         l: "CLEANING" },
+  exception: { bg: "rgba(15,23,42,0.06)",   fg: "var(--mn-ink-500)",     l: "EXCEPTION" },
+  approval:  { bg: "rgba(124,58,237,0.12)", fg: "#7C3AED",               l: "APPROVAL" },
+  digest:    { bg: "rgba(14,165,164,0.12)", fg: "#0EA5A4",               l: "DIGEST" },
+  warning:   { bg: "var(--mn-warn-bg)",     fg: "var(--mn-warn)",        l: "WARNING" },
 };
 
-const TYPE_COLORS: Record<string, string> = {
-  finding: "bg-[#2563EB]/15 text-[#2563EB]",
-  cleaning: "bg-[#256F3A]/15 text-[#256F3A]",
-  exception: "bg-[#BB0000]/15 text-[#BB0000]",
-  approval: "bg-[#256F3A]/15 text-[#256F3A]",
-  digest: "bg-[#E76500]/15 text-[#E76500]",
-  warning: "bg-[#E76500]/15 text-[#E76500]",
-};
+type Filter = "all" | "unread" | NotificationType;
 
 export default function NotificationsPage() {
-  const router = useRouter();
   const qc = useQueryClient();
+  const [filter, setFilter] = useState<Filter>("all");
 
-  const [typeFilter, setTypeFilter] = useState("");
-  const [readFilter, setReadFilter] = useState("");
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [page, setPage] = useState(0);
-  const limit = 20;
+  const queryParams = filter === "all"
+    ? { limit: 100 }
+    : filter === "unread"
+      ? { limit: 100, is_read: false }
+      : { limit: 100, type: filter };
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["notifications-full", typeFilter, readFilter, page],
-    queryFn: () =>
-      getNotifications({
-        type: typeFilter || undefined,
-        is_read: readFilter === "" ? undefined : readFilter === "true",
-        limit,
-        offset: page * limit,
-      }),
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["notifications.list", filter],
+    queryFn: () => getNotifications(queryParams),
   });
 
-  const markAllMutation = useMutation({
+  const markOne = useMutation({
+    mutationFn: (id: string) => markNotificationRead(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["notifications.list"] });
+      qc.invalidateQueries({ queryKey: ["notifications-unread-count"] });
+    },
+  });
+
+  const markAll = useMutation({
     mutationFn: markAllNotificationsRead,
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["notifications-full"] });
+      qc.invalidateQueries({ queryKey: ["notifications.list"] });
       qc.invalidateQueries({ queryKey: ["notifications-unread-count"] });
     },
   });
 
-  const markReadMutation = useMutation({
-    mutationFn: async (ids: string[]) => {
-      for (const id of ids) {
-        await markNotificationRead(id);
-      }
-    },
-    onSuccess: () => {
-      setSelectedIds(new Set());
-      qc.invalidateQueries({ queryKey: ["notifications-full"] });
-      qc.invalidateQueries({ queryKey: ["notifications-unread-count"] });
-    },
-  });
-
-  const toggleSelect = (id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const toggleAll = () => {
-    if (!data?.items) return;
-    if (selectedIds.size === data.items.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(data.items.map((n) => n.id)));
-    }
-  };
+  const items: Notification[] = data?.items ?? [];
+  const unread = items.filter((i) => !i.is_read).length;
+  const totalKnown = data?.total ?? items.length;
 
   return (
-    <TooltipProvider delay={0}>
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Bell className="h-5 w-5 text-primary" />
-          <h1 className="text-2xl font-bold text-foreground">Notifications</h1>
-          {data && (
-            <Badge variant="secondary" className="ml-2">
-              {data.total}
-            </Badge>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          {selectedIds.size > 0 && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => markReadMutation.mutate([...selectedIds])}
-              disabled={markReadMutation.isPending}
-            >
-              <CheckCheck className="mr-1 h-4 w-4" />
-              Mark selected read ({selectedIds.size})
-            </Button>
-          )}
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => markAllMutation.mutate()}
-            disabled={markAllMutation.isPending}
+    <>
+      <PageHead
+        title="Notifications"
+        route="/notifications"
+        sub={
+          isLoading
+            ? "Loading…"
+            : error
+              ? "Could not load notifications."
+              : (
+                <>
+                  <strong style={{ color: "var(--mn-ink-700)" }}>{unread} unread</strong> of {totalKnown}
+                </>
+              )
+        }
+        actions={
+          <button
+            type="button"
+            className="mn-btn mn-btn-ghost"
+            onClick={() => markAll.mutate()}
+            disabled={markAll.isPending || unread === 0}
           >
-            <Check className="mr-1 h-4 w-4" />
             Mark all read
-          </Button>
-        </div>
-      </div>
+          </button>
+        }
+      />
 
-      {/* Filters */}
-      <div className="flex items-center gap-3">
-        <Filter className="h-4 w-4 text-muted-foreground" />
-        <select
-          value={typeFilter}
-          onChange={(e) => {
-            setTypeFilter(e.target.value);
-            setPage(0);
-          }}
-          className="rounded-md border border-black/[0.08] bg-white/[0.70] px-3 py-1.5 text-sm text-foreground"
-        >
-          {TYPE_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-        <select
-          value={readFilter}
-          onChange={(e) => {
-            setReadFilter(e.target.value);
-            setPage(0);
-          }}
-          className="rounded-md border border-black/[0.08] bg-white/[0.70] px-3 py-1.5 text-sm text-foreground"
-        >
-          {READ_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* List */}
-      <Card>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="space-y-2 p-4">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="h-16" />
-              ))}
-            </div>
-          ) : !data?.items?.length ? (
-            <div className="px-4 py-12 text-center text-sm text-muted-foreground">
-              No notifications found
-            </div>
-          ) : (
-            <>
-              {/* Select all header */}
-              <div className="flex items-center gap-3 border-b border-black/[0.08] px-4 py-2 text-xs text-muted-foreground">
-                <input
-                  type="checkbox"
-                  checked={selectedIds.size === data.items.length && data.items.length > 0}
-                  onChange={toggleAll}
-                  className="h-4 w-4 rounded border-black/[0.08] accent-primary"
-                />
-                <span>Select all</span>
-              </div>
-
-              {data.items.map((notif) => (
-                <div
-                  key={notif.id}
-                  className={`flex items-start gap-3 border-b border-black/[0.04] px-4 py-3 transition-colors hover:bg-black/[0.03] ${
-                    notif.is_read ? "opacity-60" : ""
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.has(notif.id)}
-                    onChange={() => toggleSelect(notif.id)}
-                    className="mt-1 h-4 w-4 rounded border-black/[0.08] accent-primary"
-                  />
-                  <span className="mt-0.5 text-base">
-                    {TYPE_ICONS[notif.type] || "📋"}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium text-foreground">
-                        {notif.title}
-                      </p>
-                      <Badge
-                        className={`text-xs ${TYPE_COLORS[notif.type] || "bg-white/[0.60] text-muted-foreground"}`}
-                      >
-                        {notif.type}
-                      </Badge>
-                      {!notif.is_read && (
-                        <span className="h-2 w-2 rounded-full bg-primary" />
-                      )}
-                    </div>
-                    <p className="mt-0.5 text-sm text-muted-foreground">{notif.body}</p>
-                    <p className="mt-1 text-xs text-muted-foreground/70">
-                      {relativeTime(notif.created_at)}
-                    </p>
-                  </div>
-                  {notif.link && (
-                    <Tooltip>
-                      <TooltipTrigger
-                        render={
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => router.push(notif.link!)}
-                            className="shrink-0 text-primary"
-                          />
-                        }
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </TooltipTrigger>
-                      <TooltipContent>Go to item</TooltipContent>
-                    </Tooltip>
-                  )}
-                </div>
-              ))}
-            </>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Pagination */}
-      {data && data.total > limit && (
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">
-            Showing {page * limit + 1}–
-            {Math.min((page + 1) * limit, data.total)} of {data.total}
+      <div className="mn-segment" style={{ marginBottom: 14, flexWrap: "wrap" }}>
+        <button type="button" className={filter === "all" ? "on" : ""} onClick={() => setFilter("all")}>
+          All
+        </button>
+        <button type="button" className={filter === "unread" ? "on" : ""} onClick={() => setFilter("unread")}>
+          Unread{" "}
+          <span className="mn-tabular" style={{ opacity: 0.6, marginLeft: 4 }}>
+            {unread}
           </span>
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={page === 0}
-              onClick={() => setPage((p) => p - 1)}
-            >
-              Previous
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={(page + 1) * limit >= data.total}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              Next
-            </Button>
-          </div>
+        </button>
+        {(Object.keys(NOTIF_TYPES) as NotificationType[]).map((t) => (
+          <button key={t} type="button" className={filter === t ? "on" : ""} onClick={() => setFilter(t)}>
+            {NOTIF_TYPES[t].l.charAt(0) + NOTIF_TYPES[t].l.slice(1).toLowerCase()}
+          </button>
+        ))}
+      </div>
+
+      {isLoading && (
+        <div className="mn-card" style={{ padding: 0, overflow: "hidden" }}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} style={{ padding: "16px 18px", borderBottom: "1px solid var(--mn-line-2)" }}>
+              <Skeleton className="h-3 w-24 rounded" />
+              <Skeleton className="h-4 w-2/3 rounded mt-2" />
+              <Skeleton className="h-3 w-1/2 rounded mt-1" />
+            </div>
+          ))}
         </div>
       )}
-    </div>
-    </TooltipProvider>
+
+      {error && (
+        <div className="mn-card mn-card-pad" style={{ color: "var(--mn-neg)" }}>
+          Could not reach <code>/api/v1/notifications</code>.
+        </div>
+      )}
+
+      {!isLoading && !error && items.length === 0 && (
+        <div className="mn-card mn-card-pad" style={{ textAlign: "center", color: "var(--mn-ink-400)" }}>
+          No notifications.
+        </div>
+      )}
+
+      {!isLoading && !error && items.length > 0 && (
+        <div className="mn-card" style={{ padding: 0, overflow: "hidden" }}>
+          {items.map((n) => {
+            const t = NOTIF_TYPES[n.type] ?? NOTIF_TYPES.digest;
+            return (
+              <button
+                key={n.id}
+                type="button"
+                className={`mn-notif ${n.is_read ? "read" : ""}`}
+                onClick={() => !n.is_read && markOne.mutate(n.id)}
+              >
+                {!n.is_read && <span className="mn-notif-dot" />}
+                <span
+                  style={{
+                    display: "inline-flex",
+                    padding: "3px 8px",
+                    borderRadius: 4,
+                    background: t.bg,
+                    color: t.fg,
+                    font: "700 9.5px/1 'JetBrains Mono', monospace",
+                    letterSpacing: "0.1em",
+                  }}
+                >
+                  {t.l}
+                </span>
+                <div className="mn-notif-body">
+                  <div className="mn-notif-title">{n.title}</div>
+                  <div className="mn-notif-text">{n.body}</div>
+                </div>
+                <div className="mn-notif-meta">
+                  <span
+                    className="mn-tabular"
+                    style={{
+                      font: "500 11px/1 'JetBrains Mono', monospace",
+                      color: "var(--mn-ink-400)",
+                      letterSpacing: "0.04em",
+                    }}
+                  >
+                    {relativeTime(n.created_at)}
+                  </span>
+                  {n.link && (
+                    <Link
+                      href={n.link}
+                      className="mn-link"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!n.is_read) markOne.mutate(n.id);
+                      }}
+                    >
+                      Open <ArrowRight size={11} />
+                    </Link>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </>
   );
 }

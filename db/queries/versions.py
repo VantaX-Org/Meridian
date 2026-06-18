@@ -8,10 +8,15 @@ from db.schema import AnalysisVersion
 
 
 async def create_version(
-    db: AsyncSession, tenant_id: uuid.UUID, metadata: dict
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    metadata: dict,
+    label: Optional[str] = None,
 ) -> AnalysisVersion:
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
-    version = AnalysisVersion(tenant_id=tenant_id, metadata_=metadata)
+    version = AnalysisVersion(
+        tenant_id=tenant_id, metadata_=metadata, label=label,
+    )
     db.add(version)
     await db.commit()
     await db.refresh(version)

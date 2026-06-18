@@ -1,1277 +1,480 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  DndContext,
-  DragOverlay,
-  closestCorners,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragStartEvent,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-  useSortable,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import {
-  ShieldAlert,
-  Clock,
-  AlertTriangle,
-  CheckCircle2,
-  Plus,
-  GripVertical,
-  MessageSquare,
-  User,
-  ArrowUpRight,
-  X,
-  ChevronDown,
-  ToggleLeft,
-  ToggleRight,
-  Search,
-} from "lucide-react";
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet";
+import { PageHead, KPI, ModChip } from "@/components/meridian/atoms";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@/components/ui/table";
-import type {
-  Exception,
-  ExceptionStatus,
-  ExceptionMetrics,
-  ExceptionRule,
-  ExceptionComment,
-} from "@/types/api";
-import {
-  getExceptions,
-  getException,
-  getExceptionMetrics,
-  getSAPMonitor,
-  getExceptionRules,
-  createExceptionRule,
-  updateExceptionRule,
-  assignException,
+  createException,
   escalateException,
+  getExceptions,
   resolveException,
-  addComment,
 } from "@/lib/api/exceptions";
+import { copyToClipboard } from "@/components/meridian/actions";
+import { relativeTime } from "@/lib/format";
+import type { Exception, ExceptionStatus } from "@/types/api";
 
-/* ─── Constants ─── */
+const STATUS_TONE: Record<ExceptionStatus, { bg: string; fg: string; l: string }> = {
+  open:              { bg: "var(--mn-pos-bg)",     fg: "var(--mn-pos)",         l: "OPEN" },
+  investigating:     { bg: "var(--mn-warn-bg)",    fg: "var(--mn-warn)",        l: "INVESTIGATING" },
+  pending_approval:  { bg: "var(--mn-primary-50)", fg: "var(--mn-primary-700)", l: "PENDING" },
+  resolved:          { bg: "var(--mn-pos-bg)",     fg: "var(--mn-pos)",         l: "RESOLVED" },
+  verified:          { bg: "var(--mn-pos-bg)",     fg: "var(--mn-pos)",         l: "VERIFIED" },
+  closed:            { bg: "rgba(15,23,42,0.06)",  fg: "var(--mn-ink-500)",     l: "CLOSED" },
+};
 
-const KANBAN_COLUMNS: { status: ExceptionStatus; label: string }[] = [
-  { status: "open", label: "Open" },
-  { status: "investigating", label: "Investigating" },
-  { status: "pending_approval", label: "Pending Approval" },
-  { status: "resolved", label: "Resolved" },
-  { status: "closed", label: "Closed" },
+const RESOLUTION_TYPES = [
+  { value: "steward", label: "Steward resolved" },
+  { value: "dedup", label: "Resolved via dedup" },
+  { value: "complex", label: "Complex / multi-step" },
+  { value: "custom_rule", label: "New rule created" },
+  { value: "auto_resolved", label: "Auto-resolved" },
 ];
 
-const SEVERITY_COLORS: Record<string, string> = {
-  critical: "bg-[#BB0000]/10 text-[#BB0000] border-[#BB0000]/20",
-  high: "bg-[#E76500]/10 text-[#E76500] border-[#E76500]/20",
-  medium: "bg-[#A45D00]/10 text-[#A45D00] border-[#A45D00]/20",
-  low: "bg-primary/10 text-primary border-primary/20",
-};
-
-const TYPE_COLORS: Record<string, string> = {
-  sap_transaction: "bg-[#7C3AED]/10 text-[#7C3AED] border-[#7C3AED]/20",
-  dq_rule: "bg-[#2563EB]/10 text-[#2563EB] border-[#2563EB]/20",
-  custom_business: "bg-[#256F3A]/10 text-[#256F3A] border-[#256F3A]/20",
-  anomaly: "bg-[#E76500]/10 text-[#E76500] border-[#E76500]/20",
-  contract_violation: "bg-[#BB0000]/10 text-[#BB0000] border-[#BB0000]/20",
-};
-
-const STATUS_COLORS: Record<string, string> = {
-  open: "bg-[#BB0000]/10 text-[#BB0000]",
-  investigating: "bg-[#E76500]/10 text-[#E76500]",
-  pending_approval: "bg-[#E76500]/10 text-[#E76500]",
-  resolved: "bg-[#256F3A]/10 text-[#256F3A]",
-  verified: "bg-primary/10 text-primary",
-  closed: "bg-white/[0.65] text-muted-foreground",
-};
-
-function formatType(t: string): string {
-  return t.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-function slaCountdown(deadline: string | null): {
-  text: string;
-  urgent: boolean;
-} {
-  if (!deadline) return { text: "No SLA", urgent: false };
-  const diff = new Date(deadline).getTime() - Date.now();
-  if (diff <= 0) return { text: "OVERDUE", urgent: true };
-  const hours = Math.floor(diff / 3_600_000);
-  const mins = Math.floor((diff % 3_600_000) / 60_000);
-  if (hours < 24)
-    return {
-      text: `${hours}h ${mins}m`,
-      urgent: hours < 2,
-    };
-  const days = Math.floor(hours / 24);
-  return { text: `${days}d ${hours % 24}h`, urgent: false };
-}
-
-function relativeTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60_000);
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
-}
-
-/* ─── Sortable Exception Card ─── */
-
-function SortableExceptionCard({
-  exception,
-  onClick,
-}: {
-  exception: Exception;
-  onClick: () => void;
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: exception.id, data: { exception } });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.4 : 1,
-  };
-
-  return (
-    <div ref={setNodeRef} style={style} {...attributes}>
-      <ExceptionCard
-        exception={exception}
-        onClick={onClick}
-        dragListeners={listeners}
-      />
-    </div>
-  );
-}
-
-function ExceptionCard({
-  exception,
-  onClick,
-  dragListeners,
-}: {
-  exception: Exception;
-  onClick: () => void;
-  dragListeners?: Record<string, unknown>;
-}) {
-  const sla = slaCountdown(exception.sla_deadline);
-
-  return (
-    <div
-      className="group cursor-pointer rounded-lg border border-black/[0.08] bg-white/[0.70] backdrop-blur-xl p-3 shadow-[0_4px_24px_rgba(0,0,0,0.12)] transition-shadow hover:shadow-md"
-      onClick={onClick}
-    >
-      <div className="mb-2 flex items-start justify-between gap-2">
-        <div
-          className="mt-0.5 cursor-grab text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
-          {...dragListeners}
-        >
-          <GripVertical className="h-3.5 w-3.5" />
-        </div>
-        <h4 className="flex-1 text-sm font-medium text-foreground line-clamp-2 leading-tight">
-          {exception.title}
-        </h4>
-        <span
-          className={`inline-flex shrink-0 items-center rounded-full border px-1.5 py-0.5 text-xs font-semibold uppercase ${SEVERITY_COLORS[exception.severity] || ""}`}
-        >
-          {exception.severity}
-        </span>
-      </div>
-      <div className="flex flex-wrap items-center gap-1.5">
-        <span
-          className={`inline-flex items-center rounded-full border px-1.5 py-0.5 text-xs font-medium ${TYPE_COLORS[exception.type] || ""}`}
-        >
-          {formatType(exception.type)}
-        </span>
-        {exception.assigned_to && (
-          <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
-            <User className="h-2.5 w-2.5" />
-            Assigned
-          </span>
-        )}
-      </div>
-      {sla.text !== "No SLA" && (
-        <div
-          className={`mt-2 flex items-center gap-1 text-[13px] ${sla.urgent ? "font-semibold text-[#BB0000]" : "text-muted-foreground"}`}
-        >
-          <Clock className="h-3 w-3" />
-          {sla.text}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ─── Kanban Column ─── */
-
-function KanbanColumn({
-  status,
-  label,
-  exceptions,
-  onCardClick,
-}: {
-  status: ExceptionStatus;
-  label: string;
-  exceptions: Exception[];
-  onCardClick: (id: string) => void;
-}) {
-  return (
-    <div className="flex min-h-[400px] w-[240px] shrink-0 flex-col rounded-xl border border-black/[0.08] bg-white/[0.60]">
-      <div className="flex items-center justify-between border-b border-black/[0.08] px-3 py-2.5">
-        <div className="flex items-center gap-2">
-          <span
-            className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[status] || ""}`}
-          >
-            {label}
-          </span>
-          <span className="text-xs font-medium text-muted-foreground">
-            {exceptions.length}
-          </span>
-        </div>
-      </div>
-      <SortableContext
-        items={exceptions.map((e) => e.id)}
-        strategy={verticalListSortingStrategy}
-      >
-        <div className="flex flex-1 flex-col gap-2 overflow-y-auto p-2">
-          {exceptions.map((exc) => (
-            <SortableExceptionCard
-              key={exc.id}
-              exception={exc}
-              onClick={() => onCardClick(exc.id)}
-            />
-          ))}
-          {exceptions.length === 0 && (
-            <p className="py-8 text-center text-xs text-muted-foreground">No items</p>
-          )}
-        </div>
-      </SortableContext>
-    </div>
-  );
-}
-
-/* ─── Exception Detail Sheet ─── */
-
-function ExceptionDetail({
-  exceptionId,
-  open,
-  onClose,
-}: {
-  exceptionId: string | null;
-  open: boolean;
-  onClose: () => void;
-}) {
-  const queryClient = useQueryClient();
-  const [commentText, setCommentText] = useState("");
-  const [resolveForm, setResolveForm] = useState(false);
-  const [resolutionType, setResolutionType] = useState("steward");
-  const [resolutionNotes, setResolutionNotes] = useState("");
-  const [rootCause, setRootCause] = useState("");
-
-  const { data: exc, isLoading } = useQuery({
-    queryKey: ["exception", exceptionId],
-    queryFn: () => getException(exceptionId!),
-    enabled: !!exceptionId && open,
-  });
-
-  const assignMut = useMutation({
-    mutationFn: (args: { user_id: string; user_name: string }) =>
-      assignException(exceptionId!, args),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["exceptions"] });
-      queryClient.invalidateQueries({
-        queryKey: ["exception", exceptionId],
-      });
-      toast.success("Exception assigned");
-    },
-  });
-
-  const escalateMut = useMutation({
-    mutationFn: (args: { reason: string; tier?: number }) =>
-      escalateException(exceptionId!, args),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["exceptions"] });
-      queryClient.invalidateQueries({
-        queryKey: ["exception", exceptionId],
-      });
-      toast.success("Exception escalated");
-    },
-  });
-
-  const resolveMut = useMutation({
-    mutationFn: () =>
-      resolveException(exceptionId!, {
-        resolution_type: resolutionType,
-        resolution_notes: resolutionNotes,
-        root_cause_category: rootCause,
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["exceptions"] });
-      queryClient.invalidateQueries({
-        queryKey: ["exception", exceptionId],
-      });
-      setResolveForm(false);
-      toast.success("Exception resolved");
-    },
-  });
-
-  const commentMut = useMutation({
-    mutationFn: () => addComment(exceptionId!, { text: commentText }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["exception", exceptionId],
-      });
-      setCommentText("");
-    },
-  });
-
-  return (
-    <Sheet
-      open={open}
-      onOpenChange={(v) => {
-        if (!v) onClose();
-      }}
-    >
-      <SheetContent
-        side="right"
-        className="w-full max-w-2xl overflow-y-auto border-l border-black/[0.08] bg-white/[0.70] backdrop-blur-xl p-0"
-      >
-        {isLoading || !exc ? (
-          <div className="space-y-4 p-6">
-            <Skeleton className="h-6 w-3/4" />
-            <Skeleton className="h-4 w-1/2" />
-            <Skeleton className="h-32 w-full" />
-          </div>
-        ) : (
-          <>
-            <SheetHeader className="border-b border-black/[0.08] p-5">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1">
-                  <SheetTitle className="text-base font-bold text-foreground">
-                    {exc.title}
-                  </SheetTitle>
-                  <SheetDescription className="mt-1 text-sm text-secondary-foreground">
-                    {exc.description}
-                  </SheetDescription>
-                </div>
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <span
-                  className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold uppercase ${SEVERITY_COLORS[exc.severity] || ""}`}
-                >
-                  {exc.severity}
-                </span>
-                <span
-                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[exc.status] || ""}`}
-                >
-                  {exc.status.replace(/_/g, " ")}
-                </span>
-                <span
-                  className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${TYPE_COLORS[exc.type] || ""}`}
-                >
-                  {formatType(exc.type)}
-                </span>
-                {exc.sla_deadline && (
-                  <span
-                    className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${slaCountdown(exc.sla_deadline).urgent ? "bg-[#BB0000]/10 font-semibold text-[#BB0000]" : "bg-white/[0.60] text-secondary-foreground"}`}
-                  >
-                    <Clock className="h-3 w-3" />
-                    SLA: {slaCountdown(exc.sla_deadline).text}
-                  </span>
-                )}
-              </div>
-            </SheetHeader>
-
-            {/* Info Grid */}
-            <div className="grid grid-cols-2 gap-3 border-b border-black/[0.08] p-5">
-              <div>
-                <span className="text-[13px] font-medium uppercase text-muted-foreground">
-                  Source
-                </span>
-                <p className="text-sm text-foreground">
-                  {exc.source_system || "Manual"}
-                </p>
-              </div>
-              <div>
-                <span className="text-[13px] font-medium uppercase text-muted-foreground">
-                  Escalation Tier
-                </span>
-                <p className="text-sm text-foreground">{exc.escalation_tier}</p>
-              </div>
-              <div>
-                <span className="text-[13px] font-medium uppercase text-muted-foreground">
-                  Category
-                </span>
-                <p className="text-sm text-foreground">{exc.category}</p>
-              </div>
-              <div>
-                <span className="text-[13px] font-medium uppercase text-muted-foreground">
-                  Created
-                </span>
-                <p className="text-sm text-foreground">
-                  {relativeTime(exc.created_at)}
-                </p>
-              </div>
-              {exc.linked_finding_id && (
-                <div className="col-span-2">
-                  <span className="text-[13px] font-medium uppercase text-muted-foreground">
-                    Linked Finding
-                  </span>
-                  <a
-                    href={`/findings?id=${exc.linked_finding_id}`}
-                    className="flex items-center gap-1 text-sm text-primary hover:underline"
-                  >
-                    View Finding
-                    <ArrowUpRight className="h-3 w-3" />
-                  </a>
-                </div>
-              )}
-              {exc.linked_cleaning_id && (
-                <div className="col-span-2">
-                  <span className="text-[13px] font-medium uppercase text-muted-foreground">
-                    Linked Cleaning Item
-                  </span>
-                  <a
-                    href={`/cleaning?id=${exc.linked_cleaning_id}`}
-                    className="flex items-center gap-1 text-sm text-primary hover:underline"
-                  >
-                    View Cleaning
-                    <ArrowUpRight className="h-3 w-3" />
-                  </a>
-                </div>
-              )}
-            </div>
-
-            {/* Actions */}
-            {exc.status !== "resolved" && exc.status !== "closed" && (
-              <div className="flex flex-wrap gap-2 border-b border-black/[0.08] p-5">
-                <button
-                  className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-primary/80"
-                  onClick={() =>
-                    assignMut.mutate({
-                      user_id: "00000000-0000-0000-0000-000000000001",
-                      user_name: "Dev User",
-                    })
-                  }
-                >
-                  Assign
-                </button>
-                <button
-                  className="rounded-lg bg-[#E76500] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#E76500]/80"
-                  onClick={() =>
-                    escalateMut.mutate({ reason: "Requires immediate attention" })
-                  }
-                >
-                  Escalate
-                </button>
-                <button
-                  className="rounded-lg bg-[#256F3A] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#256F3A]/80"
-                  onClick={() => setResolveForm(!resolveForm)}
-                >
-                  Resolve
-                </button>
-              </div>
-            )}
-
-            {/* Resolve Form */}
-            {resolveForm && (
-              <div className="space-y-3 border-b border-black/[0.08] p-5">
-                <h4 className="text-sm font-semibold text-foreground">
-                  Resolve Exception
-                </h4>
-                <select
-                  value={resolutionType}
-                  onChange={(e) => setResolutionType(e.target.value)}
-                  className="w-full rounded-lg border border-black/[0.08] px-3 py-2 text-sm"
-                >
-                  <option value="auto_resolved">Auto-resolved (Tier 1)</option>
-                  <option value="steward">Steward-resolved (Tier 2)</option>
-                  <option value="dedup">Complex/Dedup (Tier 3)</option>
-                  <option value="custom_rule">Custom Rule (Tier 4)</option>
-                </select>
-                <select
-                  value={rootCause}
-                  onChange={(e) => setRootCause(e.target.value)}
-                  className="w-full rounded-lg border border-black/[0.08] px-3 py-2 text-sm"
-                >
-                  <option value="">Select root cause...</option>
-                  <option value="data_entry_error">Data Entry Error</option>
-                  <option value="system_configuration">System Configuration</option>
-                  <option value="process_gap">Process Gap</option>
-                  <option value="integration_failure">Integration Failure</option>
-                  <option value="migration_issue">Migration Issue</option>
-                  <option value="other">Other</option>
-                </select>
-                <textarea
-                  placeholder="Resolution notes..."
-                  value={resolutionNotes}
-                  onChange={(e) => setResolutionNotes(e.target.value)}
-                  className="w-full rounded-lg border border-black/[0.08] px-3 py-2 text-sm"
-                  rows={3}
-                />
-                <button
-                  className="rounded-lg bg-[#256F3A] px-4 py-2 text-xs font-medium text-white hover:bg-[#256F3A]/80 disabled:opacity-50"
-                  disabled={!rootCause || !resolutionNotes || resolveMut.isPending}
-                  onClick={() => resolveMut.mutate()}
-                >
-                  {resolveMut.isPending ? "Resolving..." : "Confirm Resolution"}
-                </button>
-              </div>
-            )}
-
-            {/* Comment Thread */}
-            <div className="p-5">
-              <h4 className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                <MessageSquare className="h-4 w-4" />
-                Comments ({exc.comments?.length || 0})
-              </h4>
-              <div className="space-y-2">
-                {exc.comments?.map((c: ExceptionComment) => (
-                  <div
-                    key={c.id}
-                    className="rounded-lg bg-white/[0.60] px-3 py-2"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium text-primary">
-                        {c.user_name}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {relativeTime(c.created_at)}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-sm text-foreground">{c.text}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-3 flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Add a comment..."
-                  value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && commentText.trim()) {
-                      commentMut.mutate();
-                    }
-                  }}
-                  className="flex-1 rounded-lg border border-black/[0.08] px-3 py-2 text-sm"
-                />
-                <button
-                  className="rounded-lg bg-primary px-3 py-2 text-xs font-medium text-white disabled:opacity-50"
-                  disabled={!commentText.trim() || commentMut.isPending}
-                  onClick={() => commentMut.mutate()}
-                >
-                  Send
-                </button>
-              </div>
-            </div>
-          </>
-        )}
-      </SheetContent>
-    </Sheet>
-  );
-}
-
-/* ─── New Rule Modal ─── */
-
-function NewRuleModal({
-  open,
-  onClose,
-}: {
-  open: boolean;
-  onClose: () => void;
-}) {
-  const queryClient = useQueryClient();
-  const [form, setForm] = useState({
-    name: "",
-    description: "",
-    rule_type: "field_condition",
-    object_type: "business_partner",
-    condition: "",
-    severity: "medium",
-  });
-
-  const createMut = useMutation({
-    mutationFn: () => createExceptionRule(form),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["exception-rules"] });
-      toast.success("Rule created");
-      onClose();
-      setForm({
-        name: "",
-        description: "",
-        rule_type: "field_condition",
-        object_type: "business_partner",
-        condition: "",
-        severity: "medium",
-      });
-    },
-  });
-
-  if (!open) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="w-full max-w-lg rounded-xl border border-black/[0.08] bg-white/[0.70] backdrop-blur-xl shadow-[0_4px_24px_rgba(0,0,0,0.12)]">
-        <div className="flex items-center justify-between border-b border-black/[0.08] px-5 py-4">
-          <h3 className="text-base font-bold text-foreground">
-            New Exception Rule
-          </h3>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <div className="space-y-3 p-5">
-          <input
-            placeholder="Rule name"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            className="w-full rounded-lg border border-black/[0.08] px-3 py-2 text-sm"
-          />
-          <textarea
-            placeholder="Description"
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-            className="w-full rounded-lg border border-black/[0.08] px-3 py-2 text-sm"
-            rows={2}
-          />
-          <div className="grid grid-cols-2 gap-3">
-            <select
-              value={form.rule_type}
-              onChange={(e) => setForm({ ...form, rule_type: e.target.value })}
-              className="rounded-lg border border-black/[0.08] px-3 py-2 text-sm"
-            >
-              <option value="field_condition">Field Condition</option>
-              <option value="threshold">Threshold</option>
-              <option value="temporal">Temporal</option>
-              <option value="relationship">Relationship</option>
-              <option value="cross_record">Cross Record</option>
-              <option value="aggregate">Aggregate</option>
-            </select>
-            <select
-              value={form.object_type}
-              onChange={(e) =>
-                setForm({ ...form, object_type: e.target.value })
-              }
-              className="rounded-lg border border-black/[0.08] px-3 py-2 text-sm"
-            >
-              <option value="business_partner">Business Partner</option>
-              <option value="material_master">Material Master</option>
-              <option value="fi_gl">GL Accounts</option>
-              <option value="employee_central">Employee Central</option>
-              <option value="accounts_payable">Accounts Payable</option>
-              <option value="accounts_receivable">Accounts Receivable</option>
-            </select>
-          </div>
-          <input
-            placeholder="Condition (e.g. BU_TYPE IS NULL)"
-            value={form.condition}
-            onChange={(e) => setForm({ ...form, condition: e.target.value })}
-            className="w-full rounded-lg border border-black/[0.08] px-3 py-2 text-sm font-mono"
-          />
-          <select
-            value={form.severity}
-            onChange={(e) => setForm({ ...form, severity: e.target.value })}
-            className="w-full rounded-lg border border-black/[0.08] px-3 py-2 text-sm"
-          >
-            <option value="critical">Critical</option>
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
-          </select>
-          <button
-            className="w-full rounded-lg bg-primary py-2 text-sm font-medium text-white hover:bg-primary/80 disabled:opacity-50"
-            disabled={!form.name || !form.condition || createMut.isPending}
-            onClick={() => createMut.mutate()}
-          >
-            {createMut.isPending ? "Creating..." : "Create Rule"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ─── Main Page ─── */
+const ROOT_CAUSE_CATEGORIES = [
+  "missing_data",
+  "incorrect_data",
+  "duplicate_record",
+  "configuration_gap",
+  "process_gap",
+  "source_system_error",
+  "other",
+];
 
 export default function ExceptionsPage() {
-  const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState("kanban");
+  const qc = useQueryClient();
+  const [statusFilter, setStatusFilter] = useState<"all" | ExceptionStatus>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [draggingExc, setDraggingExc] = useState<Exception | null>(null);
-  const [newRuleOpen, setNewRuleOpen] = useState(false);
+  const [requestOpen, setRequestOpen] = useState(false);
+  const [resolveOpen, setResolveOpen] = useState(false);
 
-  // Filters for list view
-  const [filterType, setFilterType] = useState("");
-  const [filterStatus, setFilterStatus] = useState("");
-  const [filterSeverity, setFilterSeverity] = useState("");
-  const [listPage, setListPage] = useState(1);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
-  );
-
-  // Queries
-  const { data: exceptionsData, isLoading } = useQuery({
-    queryKey: [
-      "exceptions",
-      filterType,
-      filterStatus,
-      filterSeverity,
-      listPage,
-    ],
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["exceptions.list", { status: statusFilter }],
     queryFn: () =>
       getExceptions({
-        type: filterType || undefined,
-        status: filterStatus || undefined,
-        severity: filterSeverity || undefined,
-        page: listPage,
-        per_page: 200,
+        per_page: 100,
+        status: statusFilter === "all" ? undefined : statusFilter,
       }),
   });
 
-  const { data: metrics } = useQuery({
-    queryKey: ["exception-metrics"],
-    queryFn: () => getExceptionMetrics(),
-  });
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["exceptions.list"] });
 
-  const { data: sapMonitor } = useQuery({
-    queryKey: ["sap-monitor"],
-    queryFn: () => getSAPMonitor(),
-    enabled: activeTab === "sap-monitor",
-  });
-
-  const { data: rulesData } = useQuery({
-    queryKey: ["exception-rules"],
-    queryFn: () => getExceptionRules(),
-    enabled: activeTab === "rules",
-  });
-
-  const toggleRuleMut = useMutation({
-    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) =>
-      updateExceptionRule(id, { is_active }),
+  const resolveExc = useMutation({
+    mutationFn: ({
+      id,
+      body,
+    }: {
+      id: string;
+      body: { resolution_type: string; resolution_notes: string; root_cause_category: string };
+    }) => resolveException(id, body),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["exception-rules"] });
-      toast.success("Rule updated");
+      toast.success("Exception resolved");
+      setResolveOpen(false);
+      invalidate();
     },
+    onError: () => toast.error("Could not resolve exception"),
   });
 
-  const exceptions = exceptionsData?.exceptions || [];
+  const escalateExc = useMutation({
+    mutationFn: (id: string) =>
+      escalateException(id, { reason: "Escalated from workbench" }),
+    onSuccess: () => {
+      toast.success("Exception escalated");
+      invalidate();
+    },
+    onError: () => toast.error("Could not escalate exception"),
+  });
 
-  // Group by status for Kanban
-  const byStatus: Record<ExceptionStatus, Exception[]> = {
-    open: [],
-    investigating: [],
-    pending_approval: [],
-    resolved: [],
-    verified: [],
-    closed: [],
-  };
-  for (const exc of exceptions) {
-    if (byStatus[exc.status]) {
-      byStatus[exc.status].push(exc);
-    }
+  const createExc = useMutation({
+    mutationFn: createException,
+    onSuccess: () => {
+      toast.success("Exception submitted");
+      setRequestOpen(false);
+      invalidate();
+    },
+    onError: () => toast.error("Could not submit exception"),
+  });
+
+  const items: Exception[] = data?.exceptions ?? [];
+  const total = data?.total ?? items.length;
+  const selected = items.find((e) => e.id === selectedId) ?? items[0];
+
+  const open = items.filter((i) => i.status === "open").length;
+  const investigating = items.filter((i) => i.status === "investigating").length;
+  const escalated = items.filter((i) => i.escalation_tier > 0).length;
+
+  if (isLoading) {
+    return (
+      <>
+        <PageHead title="Exceptions" route="Steward · /exceptions" sub="Loading…" />
+        <Skeleton className="h-[420px] rounded-[10px]" />
+      </>
+    );
   }
-
-  const openDetail = useCallback((id: string) => {
-    setSelectedId(id);
-    setSheetOpen(true);
-  }, []);
-
-  // ── Drag handlers ──
-
-  function handleDragStart(event: DragStartEvent) {
-    const exc = (event.active.data.current as { exception: Exception })?.exception;
-    if (exc) setDraggingExc(exc);
+  if (error) {
+    return (
+      <>
+        <PageHead title="Exceptions" route="Steward · /exceptions" sub="Failed to load." />
+        <div className="mn-card mn-card-pad" style={{ color: "var(--mn-neg)" }}>
+          Could not reach <code>/api/v1/exceptions</code>.
+        </div>
+      </>
+    );
   }
-
-  function handleDragEnd(event: DragEndEvent) {
-    setDraggingExc(null);
-    const { active, over } = event;
-    if (!over) return;
-
-    const exc = (active.data.current as { exception: Exception })?.exception;
-    if (!exc) return;
-
-    // Determine target column — find which column the "over" item belongs to
-    let targetStatus: ExceptionStatus | null = null;
-    for (const col of KANBAN_COLUMNS) {
-      if (byStatus[col.status].some((e) => e.id === over.id)) {
-        targetStatus = col.status;
-        break;
-      }
-    }
-
-    if (!targetStatus || targetStatus === exc.status) return;
-
-    // Perform the appropriate API call based on the target column
-    if (targetStatus === "investigating") {
-      assignException(exc.id, {
-        user_id: "00000000-0000-0000-0000-000000000001",
-        user_name: "Dev User",
-      }).then(() => {
-        queryClient.invalidateQueries({ queryKey: ["exceptions"] });
-        toast.success(`Moved to ${targetStatus}`);
-      });
-    } else if (targetStatus === "resolved") {
-      resolveException(exc.id, {
-        resolution_type: "steward",
-        resolution_notes: "Resolved via Kanban drag",
-        root_cause_category: "other",
-      }).then(() => {
-        queryClient.invalidateQueries({ queryKey: ["exceptions"] });
-        toast.success("Exception resolved");
-      });
-    } else if (
-      targetStatus === "pending_approval" ||
-      targetStatus === "closed"
-    ) {
-      escalateException(exc.id, {
-        reason: `Status changed to ${targetStatus} via Kanban`,
-      }).then(() => {
-        queryClient.invalidateQueries({ queryKey: ["exceptions"] });
-        toast.success(`Moved to ${targetStatus}`);
-      });
-    }
-  }
-
-  // ── KPI Cards ──
-
-  const kpiCards = [
-    {
-      label: "Open",
-      value: metrics?.open_count ?? 0,
-      icon: ShieldAlert,
-      color: "text-[#BB0000]",
-      bg: "bg-[#BB0000]/5",
-    },
-    {
-      label: "Investigating",
-      value: byStatus.investigating.length,
-      icon: Search,
-      color: "text-[#E76500]",
-      bg: "bg-[#E76500]/5",
-    },
-    {
-      label: "Overdue SLA",
-      value: metrics?.overdue_count ?? 0,
-      icon: Clock,
-      color: "text-[#BB0000]",
-      bg: "bg-[#BB0000]/5",
-    },
-    {
-      label: "Resolved This Week",
-      value: metrics?.resolved_count ?? 0,
-      icon: CheckCircle2,
-      color: "text-[#256F3A]",
-      bg: "bg-[#256F3A]/5",
-    },
-  ];
 
   return (
-    <div className="space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-foreground">
-            Exception Management
-          </h1>
-          <p className="text-sm text-secondary-foreground">
-            SAP transaction monitors, custom rules, SLA escalation
-          </p>
-        </div>
+    <>
+      <PageHead
+        title="Exceptions"
+        route="Steward · /exceptions"
+        sub={
+          <>
+            <strong style={{ color: "var(--mn-pos)" }}>{open} open</strong>,{" "}
+            <strong style={{ color: "var(--mn-warn)" }}>{investigating} investigating</strong>,{" "}
+            <strong style={{ color: "var(--mn-neg)" }}>{escalated} escalated</strong>.
+          </>
+        }
+        actions={
+          <>
+            <Dialog open={requestOpen} onOpenChange={setRequestOpen}>
+              <DialogTrigger type="button" className="mn-btn mn-btn-primary">
+                Request exception
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Request exception</DialogTitle>
+                </DialogHeader>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const fd = new FormData(e.currentTarget);
+                    createExc.mutate({
+                      type: String(fd.get("type") ?? "data_quality"),
+                      category: String(fd.get("category") ?? "general"),
+                      severity: String(fd.get("severity") ?? "medium"),
+                      title: String(fd.get("title") ?? ""),
+                      description: String(fd.get("description") ?? ""),
+                    });
+                  }}
+                >
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 8 }}>
+                    <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                      <span style={{ color: "var(--mn-ink-500)" }}>Title</span>
+                      <input name="title" required className="mn-input" placeholder="Brief summary" />
+                    </label>
+                    <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                      <span style={{ color: "var(--mn-ink-500)" }}>Description</span>
+                      <textarea name="description" required rows={4} className="mn-input" placeholder="What needs an exception?" />
+                    </label>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                      <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                        <span style={{ color: "var(--mn-ink-500)" }}>Type</span>
+                        <select name="type" className="mn-input" defaultValue="data_quality">
+                          <option value="data_quality">Data quality</option>
+                          <option value="business_rule">Business rule</option>
+                          <option value="configuration">Configuration</option>
+                        </select>
+                      </label>
+                      <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                        <span style={{ color: "var(--mn-ink-500)" }}>Category</span>
+                        <input name="category" className="mn-input" defaultValue="general" />
+                      </label>
+                      <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                        <span style={{ color: "var(--mn-ink-500)" }}>Severity</span>
+                        <select name="severity" className="mn-input" defaultValue="medium">
+                          <option value="low">Low</option>
+                          <option value="medium">Medium</option>
+                          <option value="high">High</option>
+                          <option value="critical">Critical</option>
+                        </select>
+                      </label>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <button type="button" className="mn-btn mn-btn-ghost" onClick={() => setRequestOpen(false)}>
+                      Cancel
+                    </button>
+                    <button type="submit" className="mn-btn mn-btn-primary" disabled={createExc.isPending}>
+                      {createExc.isPending ? "Submitting…" : "Submit"}
+                    </button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </>
+        }
+      />
+
+      {selected && (
+        <Dialog open={resolveOpen} onOpenChange={setResolveOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Resolve exception</DialogTitle>
+            </DialogHeader>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const fd = new FormData(e.currentTarget);
+                resolveExc.mutate({
+                  id: selected.id,
+                  body: {
+                    resolution_type: String(fd.get("resolution_type") ?? "steward"),
+                    root_cause_category: String(fd.get("root_cause_category") ?? "other"),
+                    resolution_notes: String(fd.get("resolution_notes") ?? ""),
+                  },
+                });
+              }}
+            >
+              <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 8 }}>
+                <div
+                  style={{
+                    font: "500 11.5px/1.4 'JetBrains Mono', monospace",
+                    color: "var(--mn-ink-400)",
+                  }}
+                >
+                  {selected.id.slice(0, 8)} · {selected.title}
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                    <span style={{ color: "var(--mn-ink-500)" }}>Resolution type</span>
+                    <select name="resolution_type" className="mn-input" defaultValue="steward">
+                      {RESOLUTION_TYPES.map((r) => (
+                        <option key={r.value} value={r.value}>
+                          {r.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                    <span style={{ color: "var(--mn-ink-500)" }}>Root cause</span>
+                    <select name="root_cause_category" className="mn-input" defaultValue="incorrect_data">
+                      {ROOT_CAUSE_CATEGORIES.map((c) => (
+                        <option key={c} value={c}>
+                          {c.replace(/_/g, " ")}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                  <span style={{ color: "var(--mn-ink-500)" }}>Resolution notes</span>
+                  <textarea
+                    name="resolution_notes"
+                    required
+                    rows={4}
+                    className="mn-input"
+                    placeholder="What was done to resolve this exception?"
+                  />
+                </label>
+                <p style={{ fontSize: 11.5, color: "var(--mn-ink-400)", margin: 0 }}>
+                  Resolution type sets the billing tier; root cause feeds DQ trend analytics.
+                </p>
+              </div>
+              <DialogFooter>
+                <button type="button" className="mn-btn mn-btn-ghost" onClick={() => setResolveOpen(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="mn-btn mn-btn-primary" disabled={resolveExc.isPending}>
+                  {resolveExc.isPending ? "Resolving…" : "Resolve exception"}
+                </button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      <div className="mn-row mn-stagger" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))", marginBottom: 18 }}>
+        <KPI label="Total" value={total} />
+        <KPI label="Open" value={open} tone="pos" />
+        <KPI label="Investigating" value={investigating} tone="warn" />
+        <KPI label="Escalated" value={escalated} tone="neg" />
       </div>
 
-      {/* KPI Row */}
-      <div className="grid grid-cols-4 gap-4">
-        {kpiCards.map((kpi) => (
-          <Card
-            key={kpi.label}
-            className={`border-black/[0.08] ${kpi.bg}`}
-          >
-            <CardContent className="flex items-center gap-3 p-4">
-              <kpi.icon className={`h-8 w-8 ${kpi.color}`} />
-              <div>
-                <p className="text-2xl font-bold text-foreground">
-                  {kpi.value}
-                </p>
-                <p className="text-xs text-muted-foreground">{kpi.label}</p>
-              </div>
-            </CardContent>
-          </Card>
+      <div className="mn-segment" style={{ marginBottom: 12, flexWrap: "wrap" }}>
+        {(["all", "open", "investigating", "pending_approval", "resolved", "closed"] as const).map((k) => (
+          <button key={k} type="button" className={statusFilter === k ? "on" : ""} onClick={() => setStatusFilter(k)}>
+            {k === "all" ? "All" : STATUS_TONE[k as ExceptionStatus]?.l ?? k}
+          </button>
         ))}
       </div>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="kanban">Kanban View</TabsTrigger>
-          <TabsTrigger value="list">List View</TabsTrigger>
-          <TabsTrigger value="sap-monitor">SAP Monitor</TabsTrigger>
-          <TabsTrigger value="rules">Custom Rules</TabsTrigger>
-        </TabsList>
-
-        {/* ── Kanban View ── */}
-        <TabsContent value="kanban">
-          {isLoading ? (
-            <div className="flex gap-4">
-              {KANBAN_COLUMNS.map((c) => (
-                <Skeleton key={c.status} className="h-[400px] w-[240px]" />
-              ))}
+      <div className="mn-row mn-row-12">
+        <div className="mn-col-7" style={{ gridColumn: "span 7" }}>
+          <div className="mn-card" style={{ padding: 0, overflow: "hidden" }}>
+            <div className="mn-table-wrap">
+              <table className="mn-table">
+                <thead>
+                  <tr>
+                    <th style={{ paddingLeft: 20 }}>ID</th>
+                    <th>Exception</th>
+                    <th>Category</th>
+                    <th>Severity</th>
+                    <th>Age</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((e) => {
+                    const st = STATUS_TONE[e.status];
+                    return (
+                      <tr
+                        key={e.id}
+                        className={selected?.id === e.id ? "selected" : ""}
+                        onClick={() => setSelectedId(e.id)}
+                        style={{ cursor: "pointer" }}
+                      >
+                        <td style={{ paddingLeft: 20 }} className="mn-tabular">
+                          <span style={{ font: "600 11.5px/1 'JetBrains Mono', monospace", color: "var(--mn-ink-500)" }}>
+                            {e.id.slice(0, 8)}
+                          </span>
+                        </td>
+                        <td>
+                          <div style={{ fontWeight: 500, color: "var(--mn-ink-900)", fontSize: 13 }}>{e.title}</div>
+                          <div
+                            style={{
+                              font: "500 11px/1 'JetBrains Mono', monospace",
+                              color: "var(--mn-ink-400)",
+                              marginTop: 3,
+                              letterSpacing: "0.04em",
+                            }}
+                          >
+                            {e.source_system ?? "unknown"} · {e.type}
+                          </div>
+                        </td>
+                        <td><ModChip>{e.category}</ModChip></td>
+                        <td>
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              padding: "2px 7px",
+                              borderRadius: 4,
+                              background:
+                                e.severity === "critical"
+                                  ? "var(--mn-neg-bg)"
+                                  : e.severity === "high"
+                                    ? "var(--mn-warn-bg)"
+                                    : "rgba(15,23,42,0.06)",
+                              color:
+                                e.severity === "critical"
+                                  ? "var(--mn-neg)"
+                                  : e.severity === "high"
+                                    ? "var(--mn-warn)"
+                                    : "var(--mn-ink-500)",
+                              font: "700 9.5px/1 'JetBrains Mono', monospace",
+                              letterSpacing: "0.1em",
+                            }}
+                          >
+                            {e.severity.toUpperCase()}
+                          </span>
+                        </td>
+                        <td
+                          className="mn-tabular"
+                          style={{ font: "500 11.5px/1 'JetBrains Mono', monospace", color: "var(--mn-ink-500)" }}
+                        >
+                          {relativeTime(e.created_at)}
+                        </td>
+                        <td>
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              padding: "3px 8px",
+                              borderRadius: 4,
+                              background: st.bg,
+                              color: st.fg,
+                              font: "700 9.5px/1 'JetBrains Mono', monospace",
+                              letterSpacing: "0.1em",
+                            }}
+                          >
+                            {st.l}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {items.length === 0 && (
+                    <tr>
+                      <td colSpan={6} style={{ padding: 32, textAlign: "center", color: "var(--mn-ink-400)" }}>
+                        No exceptions.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
-          ) : (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCorners}
-              onDragStart={handleDragStart}
-              onDragEnd={handleDragEnd}
-            >
-              <div className="flex gap-4 overflow-x-auto pb-4">
-                {KANBAN_COLUMNS.map((col) => (
-                  <KanbanColumn
-                    key={col.status}
-                    status={col.status}
-                    label={col.label}
-                    exceptions={byStatus[col.status]}
-                    onCardClick={openDetail}
-                  />
-                ))}
-              </div>
-              <DragOverlay>
-                {draggingExc && (
-                  <ExceptionCard
-                    exception={draggingExc}
-                    onClick={() => {}}
-                  />
-                )}
-              </DragOverlay>
-            </DndContext>
-          )}
-        </TabsContent>
-
-        {/* ── List View ── */}
-        <TabsContent value="list">
-          <div className="mb-4 flex flex-wrap gap-3">
-            <select
-              value={filterType}
-              onChange={(e) => { setFilterType(e.target.value); setListPage(1); }}
-              className="rounded-lg border border-black/[0.08] px-3 py-2 text-sm"
-            >
-              <option value="">All Types</option>
-              <option value="sap_transaction">SAP Transaction</option>
-              <option value="dq_rule">DQ Rule</option>
-              <option value="custom_business">Custom Business</option>
-              <option value="anomaly">Anomaly</option>
-              <option value="contract_violation">Contract Violation</option>
-            </select>
-            <select
-              value={filterStatus}
-              onChange={(e) => { setFilterStatus(e.target.value); setListPage(1); }}
-              className="rounded-lg border border-black/[0.08] px-3 py-2 text-sm"
-            >
-              <option value="">All Statuses</option>
-              {KANBAN_COLUMNS.map((c) => (
-                <option key={c.status} value={c.status}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-            <select
-              value={filterSeverity}
-              onChange={(e) => { setFilterSeverity(e.target.value); setListPage(1); }}
-              className="rounded-lg border border-black/[0.08] px-3 py-2 text-sm"
-            >
-              <option value="">All Severities</option>
-              <option value="critical">Critical</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
-            </select>
           </div>
-
-          <div className="rounded-xl border border-black/[0.08] bg-white/[0.70] backdrop-blur-xl">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Severity</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>SLA</TableHead>
-                  <TableHead>Created</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {exceptions.map((exc) => {
-                  const sla = slaCountdown(exc.sla_deadline);
-                  return (
-                    <TableRow
-                      key={exc.id}
-                      className="cursor-pointer hover:bg-black/[0.03]"
-                      onClick={() => openDetail(exc.id)}
+        </div>
+        <div className="mn-col-5" style={{ gridColumn: "span 5" }}>
+          {selected ? (
+            <div className="mn-card mn-card-pad" style={{ height: "100%" }}>
+              <div className="mn-detail-head">
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span
+                      className="mn-tabular"
+                      style={{ font: "600 11.5px/1 'JetBrains Mono', monospace", color: "var(--mn-ink-500)" }}
                     >
-                      <TableCell className="max-w-[300px] truncate font-medium text-foreground">
-                        {exc.title}
-                      </TableCell>
-                      <TableCell>
-                        <span
-                          className={`inline-flex rounded-full border px-2 py-0.5 text-[13px] font-medium ${TYPE_COLORS[exc.type] || ""}`}
-                        >
-                          {formatType(exc.type)}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <span
-                          className={`inline-flex rounded-full border px-2 py-0.5 text-[13px] font-semibold uppercase ${SEVERITY_COLORS[exc.severity] || ""}`}
-                        >
-                          {exc.severity}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <span
-                          className={`inline-flex rounded-full px-2 py-0.5 text-[13px] font-medium ${STATUS_COLORS[exc.status] || ""}`}
-                        >
-                          {exc.status.replace(/_/g, " ")}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <span
-                          className={`text-xs ${sla.urgent ? "font-semibold text-[#BB0000]" : "text-muted-foreground"}`}
-                        >
-                          {sla.text}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {relativeTime(exc.created_at)}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-                {exceptions.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={6} className="py-12 text-center text-sm text-muted-foreground">
-                      No exceptions found
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-
-          {/* Pagination */}
-          {(exceptionsData?.total || 0) > 200 && (
-            <div className="mt-4 flex items-center justify-center gap-3">
-              <button
-                className="rounded-lg border border-black/[0.08] px-3 py-1.5 text-sm disabled:opacity-50"
-                disabled={listPage <= 1}
-                onClick={() => setListPage((p) => p - 1)}
-              >
-                Previous
-              </button>
-              <span className="text-sm text-muted-foreground">Page {listPage}</span>
-              <button
-                className="rounded-lg border border-black/[0.08] px-3 py-1.5 text-sm disabled:opacity-50"
-                disabled={exceptions.length < 200}
-                onClick={() => setListPage((p) => p + 1)}
-              >
-                Next
-              </button>
-            </div>
-          )}
-        </TabsContent>
-
-        {/* ── SAP Monitor ── */}
-        <TabsContent value="sap-monitor">
-          {!sapMonitor ? (
-            <Skeleton className="h-64 w-full" />
-          ) : (
-            <div className="space-y-4">
-              {Object.entries(sapMonitor.by_category).map(([cat, excs]) => (
-                <Card key={cat} className="border-black/[0.08]">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-semibold capitalize text-foreground">
-                      {cat} ({(excs as Exception[]).length})
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Title</TableHead>
-                          <TableHead>Severity</TableHead>
-                          <TableHead>Source</TableHead>
-                          <TableHead>SLA</TableHead>
-                          <TableHead>Status</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {(excs as Exception[]).map((exc) => {
-                          const sla = slaCountdown(exc.sla_deadline);
-                          return (
-                            <TableRow
-                              key={exc.id}
-                              className="cursor-pointer hover:bg-black/[0.03]"
-                              onClick={() => openDetail(exc.id)}
-                            >
-                              <TableCell className="font-medium text-foreground">
-                                {exc.title}
-                              </TableCell>
-                              <TableCell>
-                                <span
-                                  className={`inline-flex rounded-full border px-2 py-0.5 text-[13px] font-semibold uppercase ${SEVERITY_COLORS[exc.severity] || ""}`}
-                                >
-                                  {exc.severity}
-                                </span>
-                              </TableCell>
-                              <TableCell className="text-xs text-muted-foreground">
-                                {exc.source_system}
-                              </TableCell>
-                              <TableCell>
-                                <span
-                                  className={`text-xs ${sla.urgent ? "font-semibold text-[#BB0000]" : "text-muted-foreground"}`}
-                                >
-                                  {sla.text}
-                                </span>
-                              </TableCell>
-                              <TableCell>
-                                <span
-                                  className={`inline-flex rounded-full px-2 py-0.5 text-[13px] font-medium ${STATUS_COLORS[exc.status] || ""}`}
-                                >
-                                  {exc.status.replace(/_/g, " ")}
-                                </span>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                </Card>
-              ))}
-              {Object.keys(sapMonitor.by_category).length === 0 && (
-                <p className="py-12 text-center text-sm text-muted-foreground">
-                  No SAP transaction exceptions in the last 24 hours
+                      {selected.id.slice(0, 8)}
+                    </span>
+                  </div>
+                  <h3 className="mn-detail-title" style={{ marginTop: 8 }}>{selected.title}</h3>
+                </div>
+              </div>
+              <div className="mn-detail-meta">
+                <div><span className="k">Type</span><span className="v">{selected.type}</span></div>
+                <div><span className="k">Category</span><span className="v">{selected.category}</span></div>
+                <div><span className="k">Severity</span><span className="v">{selected.severity}</span></div>
+                <div><span className="k">Status</span><span className="v">{selected.status}</span></div>
+                <div><span className="k">Tier</span><span className="v mn-tabular">{selected.escalation_tier}</span></div>
+                <div><span className="k">Age</span><span className="v mn-tabular">{relativeTime(selected.created_at)}</span></div>
+              </div>
+              <div className="mn-detail-section">
+                <div className="mn-eyebrow">Description</div>
+                <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--mn-ink-500)", lineHeight: 1.55 }}>
+                  {selected.description}
                 </p>
+              </div>
+              {selected.resolution_notes && (
+                <div className="mn-detail-section">
+                  <div className="mn-eyebrow">Resolution notes</div>
+                  <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--mn-ink-500)", lineHeight: 1.55 }}>
+                    {selected.resolution_notes}
+                  </p>
+                </div>
               )}
+              <div className="mn-detail-actions">
+                <button
+                  type="button"
+                  className="mn-btn mn-btn-primary"
+                  style={{ flex: 1, justifyContent: "center" }}
+                  onClick={() => setResolveOpen(true)}
+                  disabled={resolveExc.isPending || selected.status === "resolved" || selected.status === "closed"}
+                >
+                  {resolveExc.isPending ? "Resolving…" : "Resolve"}
+                </button>
+                <button
+                  type="button"
+                  className="mn-btn mn-btn-ghost"
+                  onClick={() => escalateExc.mutate(selected.id)}
+                  disabled={escalateExc.isPending}
+                >
+                  {escalateExc.isPending ? "Escalating…" : "Escalate"}
+                </button>
+                <button
+                  type="button"
+                  className="mn-btn mn-btn-ghost"
+                  onClick={() => copyToClipboard(selected.id, "Exception ID copied")}
+                >
+                  Copy ID
+                </button>
+              </div>
             </div>
+          ) : (
+            <div className="mn-card mn-card-pad" style={{ color: "var(--mn-ink-400)" }}>No exception selected.</div>
           )}
-        </TabsContent>
-
-        {/* ── Custom Rules ── */}
-        <TabsContent value="rules">
-          <div className="mb-4 flex items-center justify-between">
-            <p className="text-sm text-secondary-foreground">
-              {rulesData?.rules.length ?? 0} rules configured
-            </p>
-            <button
-              className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-white hover:bg-primary/80"
-              onClick={() => setNewRuleOpen(true)}
-            >
-              <Plus className="h-4 w-4" />
-              New Rule
-            </button>
-          </div>
-
-          <div className="rounded-xl border border-black/[0.08] bg-white/[0.70] backdrop-blur-xl">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Object</TableHead>
-                  <TableHead>Severity</TableHead>
-                  <TableHead>Condition</TableHead>
-                  <TableHead>Active</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rulesData?.rules.map((rule: ExceptionRule) => (
-                  <TableRow key={rule.id}>
-                    <TableCell className="font-medium text-foreground">
-                      {rule.name}
-                    </TableCell>
-                    <TableCell className="text-xs text-secondary-foreground">
-                      {rule.rule_type.replace(/_/g, " ")}
-                    </TableCell>
-                    <TableCell className="text-xs text-secondary-foreground">
-                      {rule.object_type.replace(/_/g, " ")}
-                    </TableCell>
-                    <TableCell>
-                      <span
-                        className={`inline-flex rounded-full border px-2 py-0.5 text-[13px] font-semibold uppercase ${SEVERITY_COLORS[rule.severity] || ""}`}
-                      >
-                        {rule.severity}
-                      </span>
-                    </TableCell>
-                    <TableCell className="max-w-[200px] truncate font-mono text-xs text-muted-foreground">
-                      {rule.condition}
-                    </TableCell>
-                    <TableCell>
-                      <button
-                        onClick={() =>
-                          toggleRuleMut.mutate({
-                            id: rule.id,
-                            is_active: !rule.is_active,
-                          })
-                        }
-                        className={`transition-colors ${rule.is_active ? "text-[#256F3A]" : "text-muted-foreground"}`}
-                      >
-                        {rule.is_active ? (
-                          <ToggleRight className="h-6 w-6" />
-                        ) : (
-                          <ToggleLeft className="h-6 w-6" />
-                        )}
-                      </button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {(!rulesData || rulesData.rules.length === 0) && (
-                  <TableRow>
-                    <TableCell colSpan={6} className="py-12 text-center text-sm text-muted-foreground">
-                      No custom rules configured
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-
-          <NewRuleModal open={newRuleOpen} onClose={() => setNewRuleOpen(false)} />
-        </TabsContent>
-      </Tabs>
-
-      {/* Detail Sheet */}
-      <ExceptionDetail
-        exceptionId={selectedId}
-        open={sheetOpen}
-        onClose={() => setSheetOpen(false)}
-      />
-    </div>
+        </div>
+      </div>
+    </>
   );
 }

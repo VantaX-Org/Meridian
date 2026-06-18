@@ -42,57 +42,94 @@ def _load_tenant_config(session: Session, tenant_id: str) -> dict:
     }
 
 
+def _resolve_app_base_url() -> str:
+    """Derive the customer-facing base URL for this deployment.
+
+    Order: ``MERIDIAN_APP_URL`` (explicit override) → ``SERVER_DOMAIN`` +
+    ``SSL_MODE`` (set by ``meridian-deploy.sh`` at install) → ``localhost``.
+    """
+    override = os.getenv("MERIDIAN_APP_URL", "").strip().rstrip("/")
+    if override:
+        return override
+    host = os.getenv("SERVER_DOMAIN", "").strip() or "localhost"
+    # SSL_MODE: 1=none/http, 2=self-signed/https, 3=letsencrypt/https
+    # (matches meridian-deploy.sh's PROTO derivation).
+    proto = "http" if os.getenv("SSL_MODE", "1").strip() == "1" else "https"
+    return f"{proto}://{host}"
+
+
 def _build_invitation_email(
     recipient_email: str,
     recipient_name: str,
     role: str,
     tenant_name: str,
-    login_url: str = "https://meridian.vantax.co.za/login",
+    invite_token: str = "",
+    login_url: str | None = None,
 ) -> tuple[str, str]:
-    """Build subject and HTML body for invitation email."""
-    
+    """Build subject and HTML body for invitation email.
+
+    If ``invite_token`` is provided the link goes to ``/accept-invite?token=…``
+    so the user lands on a set-password page first. Otherwise (legacy / no
+    token) it falls back to ``/sign-in``. ``login_url`` (if passed) overrides
+    URL construction wholesale — used by tests.
+    """
+    if login_url is None:
+        base = _resolve_app_base_url()
+        if invite_token:
+            login_url = f"{base}/accept-invite?token={invite_token}"
+        else:
+            login_url = f"{base}/sign-in"
+
+    # Button copy changes with the flow: first-time invite vs already-active.
+    if invite_token:
+        cta_label = "Set your password"
+        cta_help = (
+            "Click the button to set your password. Once that's done, "
+            "you'll be sent to the sign-in page."
+        )
+    else:
+        cta_label = "Sign in to Meridian"
+        cta_help = "Sign in to access your dashboards and start working with your data:"
+
     subject = f"Welcome to Meridian — {tenant_name} Data Quality Platform"
     
+    # All styling is inline (no <style> block) — best compatibility with
+    # Outlook desktop and other clients that strip <head> styles. Brand colors
+    # follow the Meridian design system: --mn-primary (#F97316), --mn-primary-50
+    # (#FFF7ED), ink tones #0F172A / #475569 / #94A3B8.
+    role_pretty = role.replace('_', ' ').title()
     body = f"""
     <html>
-    <head>
-      <style>
-        body {{ font-family: Arial, sans-serif; color: #333; }}
-        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-        .header {{ background-color: #0F6E56; color: white; padding: 20px; border-radius: 4px 4px 0 0; }}
-        .content {{ background-color: #f7f8fa; padding: 20px; border-radius: 0 0 4px 4px; }}
-        .button {{ display: inline-block; background-color: #0F6E56; color: white; padding: 12px 24px; 
-                   text-decoration: none; border-radius: 4px; margin: 16px 0; font-weight: bold; }}
-        .footer {{ color: #666; font-size: 12px; margin-top: 24px; text-align: center; }}
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h2 style="margin: 0;">Meridian Data Quality</h2>
+    <body style="margin:0;padding:0;background-color:#F7F8FA;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;color:#0F172A;">
+      <div style="max-width:600px;margin:0 auto;padding:24px 16px;">
+        <div style="padding:20px 24px;background:#F97316;border-radius:10px 10px 0 0;">
+          <div style="color:#FFFFFF;font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;">Meridian &middot; Data Quality</div>
+          <h1 style="color:#FFFFFF;font-size:22px;font-weight:700;letter-spacing:-0.01em;margin:6px 0 0;">Welcome to {tenant_name}</h1>
         </div>
-        <div class="content">
-          <p>Hi {recipient_name},</p>
-          
-          <p>You've been invited to join <strong>{tenant_name}</strong> on the Meridian SAP Data Quality platform.</p>
-          
-          <p><strong>Your Role:</strong> {role.replace('_', ' ').title()}</p>
-          
-          <p>Log in to access your tenant environment and start working with your data quality dashboards:</p>
-          
-          <a href="{login_url}" class="button">Access Meridian</a>
-          
-          <p style="font-size: 12px; color: #666;">
-            If the button doesn't work, copy this link:<br>
-            <code>{login_url}</code>
+        <div style="background:#FFFFFF;padding:28px 24px;border-radius:0 0 10px 10px;border:1px solid #E5E7EB;border-top:none;">
+          <p style="font-size:16px;font-weight:600;color:#0F172A;margin:0 0 12px;">Hi {recipient_name},</p>
+          <p style="font-size:14px;line-height:1.6;color:#475569;margin:0 0 14px;">
+            You&rsquo;ve been invited to join <strong style="color:#0F172A;">{tenant_name}</strong> on the Meridian SAP Data Quality platform.
           </p>
-          
-          <p>If you have any questions, contact your administrator.</p>
-          
-          <div class="footer">
-            <p>This is an automated message from Meridian. Please do not reply to this email.</p>
-            <p>© 2026 VantaX. All rights reserved.</p>
+          <div style="font-size:13px;color:#475569;background:#FFF7ED;padding:12px 14px;border-radius:8px;border-left:3px solid #F97316;margin:18px 0;">
+            <strong style="color:#0F172A;">Role:</strong> {role_pretty}
           </div>
+          <p style="font-size:14px;line-height:1.6;color:#475569;margin:0 0 14px;">
+            {cta_help}
+          </p>
+          <p style="margin:8px 0 18px;">
+            <a href="{login_url}" style="display:inline-block;background:#F97316;color:#FFFFFF;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:600;font-size:14px;">{cta_label}</a>
+          </p>
+          <p style="font-size:12px;color:#64748B;margin:0 0 14px;">
+            Button not working? Copy this link:<br>
+            <code style="background:#F1F5F9;padding:2px 6px;border-radius:4px;font-family:'JetBrains Mono',Menlo,Consolas,monospace;font-size:11px;color:#334155;word-break:break-all;">{login_url}</code>
+          </p>
+          <p style="font-size:13px;line-height:1.6;color:#475569;margin:18px 0 0;">
+            Questions? Contact your administrator.
+          </p>
+        </div>
+        <div style="margin-top:24px;text-align:center;font-size:11px;color:#94A3B8;letter-spacing:0.06em;">
+          AUTOMATED MESSAGE &middot; MERIDIAN &middot; &copy; 2026 VANTAX
         </div>
       </div>
     </body>
@@ -153,9 +190,12 @@ def _send_invitation_email(
     recipient_name: str,
     role: str,
     tenant_name: str,
+    invite_token: str = "",
 ):
     """Send invitation email via Microsoft Graph, SMTP, or Resend API."""
-    subject, body = _build_invitation_email(recipient_email, recipient_name, role, tenant_name)
+    subject, body = _build_invitation_email(
+        recipient_email, recipient_name, role, tenant_name, invite_token=invite_token,
+    )
 
     # Try Microsoft Graph first
     graph_client = create_graph_client()
@@ -180,15 +220,18 @@ def send_invitation_email(
     recipient_email: str,
     recipient_name: str,
     role: str,
+    invite_token: str = "",
 ):
     """Send invitation email to newly invited user.
-    
+
     Args:
         user_id: The newly created user ID
         tenant_id: The tenant ID
         recipient_email: Email address to send invitation to
         recipient_name: Name of the invited user
         role: Role assigned to the user
+        invite_token: Signed JWT for the /accept-invite page. If empty (legacy
+            callers, mid-rollout workers), the email links to /sign-in instead.
     """
     logger.info(f"send_invitation_email: user={user_id}, tenant={tenant_id}, email={recipient_email}")
 
@@ -209,6 +252,7 @@ def send_invitation_email(
                 recipient_name,
                 role,
                 tenant_name,
+                invite_token=invite_token,
             )
 
             logger.info(f"Invitation email sent for user={user_id}")

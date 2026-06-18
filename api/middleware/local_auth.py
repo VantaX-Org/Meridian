@@ -75,15 +75,17 @@ class LocalAuthMiddleware(BaseHTTPMiddleware):
         if request.method == "OPTIONS":
             return await call_next(request)
 
-        # Extract Bearer token
+        # Extract Bearer token (header first, cookie fallback for download links)
         auth_header = request.headers.get("authorization", "")
-        if not auth_header.startswith("Bearer "):
-            return JSONResponse(
-                status_code=401,
-                content={"detail": "Not authenticated"},
-            )
-
-        token = auth_header[7:]
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:]
+        else:
+            token = request.cookies.get("mn_auth_token", "")
+            if not token:
+                return JSONResponse(
+                    status_code=401,
+                    content={"detail": "Not authenticated"},
+                )
 
         # Get jwt_secret
         secret = _load_jwt_secret()

@@ -111,7 +111,7 @@ export default function StewardshipMetricsPage() {
     refetchInterval: 30_000,
   });
 
-  const isAiReviewer = userRole === "ai_reviewer";
+  const isAiReviewer = false;
 
   if (isLoading || !metrics) {
     return (
@@ -185,7 +185,7 @@ export default function StewardshipMetricsPage() {
         {metrics.ai_acceptance_rate !== null &&
           metrics.ai_acceptance_rate !== undefined && (
             <StatCard
-              label="AI Acceptance Rate"
+              label="Suggestion Acceptance"
               value={`${Math.round(metrics.ai_acceptance_rate * 100)}%`}
               icon={<Brain className="h-5 w-5" />}
               color="text-[#7C3AED]"
@@ -271,7 +271,7 @@ export default function StewardshipMetricsPage() {
           </CardContent>
         </Card>
 
-        {/* Steward breakdown — NOT visible to ai_reviewer */}
+        {/* Steward breakdown */}
         {!isAiReviewer && metrics.steward_breakdown && (
           <Card>
             <CardContent className="p-4">
@@ -313,17 +313,7 @@ export default function StewardshipMetricsPage() {
           </Card>
         )}
 
-        {/* ai_reviewer notice */}
-        {isAiReviewer && (
-          <Card>
-            <CardContent className="flex h-full items-center justify-center p-4">
-              <p className="text-sm text-muted-foreground">
-                Individual steward metrics are not visible to the AI Reviewer
-                role.
-              </p>
-            </CardContent>
-          </Card>
-        )}
+        {/* (Legacy reviewer-only notice removed.) */}
       </div>
     </div>
   );

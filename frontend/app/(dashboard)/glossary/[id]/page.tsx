@@ -155,7 +155,7 @@ export default function GlossaryDetailPage() {
             {statusBadge(term.status)}
             {term.ai_drafted && (
               <Badge className="bg-[#7C3AED]/10 text-[#7C3AED] border border-[#7C3AED]/20">
-                <Sparkles className="h-3 w-3 mr-0.5" /> AI Drafted
+                <Sparkles className="h-3 w-3 mr-0.5" /> Auto-drafted
               </Badge>
             )}
             {term.rule_authority && (
@@ -189,7 +189,7 @@ export default function GlossaryDetailPage() {
                 disabled={draftLoading}
               >
                 <Sparkles className="h-3.5 w-3.5 mr-1" />
-                {draftLoading ? "Drafting..." : "AI Draft"}
+                {draftLoading ? "Drafting..." : "Auto-draft"}
               </Button>
               {editDef !== null && editDef !== (term.business_definition ?? "") && (
                 <>
@@ -221,7 +221,7 @@ export default function GlossaryDetailPage() {
                        resize-y"
             value={currentDef}
             onChange={(e) => setEditDef(e.target.value)}
-            placeholder="No business definition yet. Click 'AI Draft' to generate one."
+            placeholder="No business definition yet. Click 'Auto-draft' to generate one."
           />
           {term.why_it_matters && (
             <div className="mt-3 p-3 bg-white/[0.60] rounded-md">
@@ -314,11 +314,11 @@ export default function GlossaryDetailPage() {
                       {rule.pass_rate !== null ? (
                         <div className="flex items-center gap-2">
                           <Progress
-                            value={rule.pass_rate * 100}
+                            value={rule.pass_rate}
                             className="h-2 w-20"
                           />
                           <span className={`text-xs ${passRateColor(rule.pass_rate)}`}>
-                            {(rule.pass_rate * 100).toFixed(1)}%
+                            {rule.pass_rate.toFixed(1)}%
                           </span>
                         </div>
                       ) : (
@@ -402,13 +402,13 @@ export default function GlossaryDetailPage() {
         )}
       </div>
 
-      {/* AI Draft Modal */}
+      {/* Auto-draft Modal */}
       <Dialog open={draftModal} onOpenChange={setDraftModal}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-[#7C3AED]" />
-              AI Draft
+              Auto-draft
             </DialogTitle>
           </DialogHeader>
           {draft && (

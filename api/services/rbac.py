@@ -32,10 +32,10 @@ PERMISSIONS: dict[str, set[str]] = {
         "manage_users", "manage_rules", "manage_field_mappings", "manage_llm",
         "ai_feedback", "review_ai_rules", "trigger_ai", "view_ai_confidence",
         "trigger_sync",
-        # mdm.* — mining pipeline + llm-savings endpoints. Admin gets both
-        # read and write. These were added to route guards in an earlier
-        # phase but the PERMISSIONS dict was never updated, so every role
-        # 403'd. Sweep-added here.
+        # mdm.* — mining pipeline endpoints. Admin gets both read and
+        # write. These were added to route guards in an earlier phase but
+        # the PERMISSIONS dict was never updated, so every role 403'd.
+        # Sweep-added here.
         "mdm.read", "mdm.write",
     },
     "manager": {

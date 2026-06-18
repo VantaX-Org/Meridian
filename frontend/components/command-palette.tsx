@@ -9,7 +9,6 @@ import {
   Brain,
   BrainCircuit,
   ClipboardList,
-  Coins,
   Database,
   FileText,
   GitCompareArrows,
@@ -19,7 +18,6 @@ import {
   Play,
   Plug2,
   RefreshCw,
-  Search,
   Server,
   Settings,
   Sparkles,
@@ -53,7 +51,6 @@ const PAGES: ReadonlyArray<{ group: string; items: NavOption[] }> = [
       { href: "/", label: "Dashboard", icon: LayoutDashboard, keywords: "overview home dqs", shortcut: "⌘1" },
       { href: "/findings", label: "Findings", icon: AlertTriangle, keywords: "issues critical severity" },
       { href: "/analytics", label: "Analytics", icon: BarChart3, keywords: "charts metrics" },
-      { href: "/nlp", label: "Ask AI", icon: BrainCircuit, keywords: "chat nlp question" },
       { href: "/mining", label: "Mining", icon: Sparkles, keywords: "patterns clustering" },
       { href: "/run-sync", label: "Run Sync", icon: Play, keywords: "trigger sync module" },
       { href: "/upload", label: "Import", icon: Upload, keywords: "load data file" },
@@ -83,7 +80,6 @@ const PAGES: ReadonlyArray<{ group: string; items: NavOption[] }> = [
     items: [
       { href: "/reports", label: "Reports", icon: FileText, keywords: "pdf analysis" },
       { href: "/versions", label: "Versions", icon: GitCompareArrows, keywords: "history snapshots" },
-      { href: "/llm-savings", label: "LLM Savings", icon: Coins, keywords: "cost reduction" },
     ],
   },
   {
@@ -111,13 +107,6 @@ const QUICK_ACTIONS: ReadonlyArray<QuickAction> = [
     hint: "Opens /findings with the last saved view applied",
     icon: Bookmark,
     run: ({ router }) => router.push("/findings"),
-  },
-  {
-    id: "search-global",
-    label: "Global search",
-    hint: "Find findings, systems, modules by id or label",
-    icon: Search,
-    run: ({ router }) => router.push("/nlp"),
   },
 ];
 
@@ -150,7 +139,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
             Jump to any page, action, or saved view.
           </DialogPrimitive.Description>
           <Command label="Command palette" loop className="bg-transparent">
-            <CommandInput placeholder="Jump to… (try 'findings', 'sap systems', 'llm')" autoFocus />
+            <CommandInput placeholder="Jump to… (try 'findings', 'sap systems')" autoFocus />
             <CommandList>
               <CommandEmpty>No matches.</CommandEmpty>
               {PAGES.map((group, gi) => (

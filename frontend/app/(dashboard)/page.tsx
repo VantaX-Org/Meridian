@@ -1,38 +1,50 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import {
-  AlertTriangle,
-  ArrowRight,
-} from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getVersions } from "@/lib/api/versions";
 import { getMdmDashboard } from "@/lib/api/mdm-metrics";
-import { getLlmSavingsSummary } from "@/lib/api/llm-savings";
 import { AxiosError } from "axios";
-import { scoreColor, formatModuleName } from "@/lib/format";
-import { DqsBarChart } from "@/components/charts/dqs-bar-chart";
-import { DimensionDonut } from "@/components/charts/dimension-donut";
-import { SeverityBarChart } from "@/components/charts/severity-bar-chart";
-import { KpiRail, type KpiItem } from "@/components/ui/kpi-rail";
-import { HeroKpi } from "@/components/ui/hero-kpi";
+import { formatModuleName } from "@/lib/format";
 import { EmptyState } from "@/components/ui/empty-state";
-import { NarrativeStrip } from "@/components/ui/narrative-strip";
-import { SectionHeader } from "@/components/ui/section-header";
-import { SavedView } from "@/components/ui/saved-view";
-import { SmallMultiplesChart, type SmallMultipleSeries } from "@/components/charts/small-multiples";
-import {
-  DenseDataTable,
-  type DenseColumnDef,
-} from "@/components/ui/dense-data-table";
-import { DriftSparkline } from "@/components/charts/drift-sparkline";
 import type { DQSSummary, DimensionScores, Version } from "@/types/api";
 
-/* ─── Helpers ─── */
+import {
+  DQSBars,
+  DimensionRings,
+  SeverityBars,
+  SmallMultiples,
+  DriftSpark,
+  RadialGauge,
+  Sparkline,
+} from "@/components/meridian/charts";
+import {
+  PageHead,
+  SectionHeader,
+  KPI,
+  DeltaPill,
+  ScoreCell,
+  SevPill,
+  HeroValue,
+  ActivityTicker,
+  type ActivityItem,
+} from "@/components/meridian/atoms";
+import {
+  MeridianMark,
+  SparklesIcon,
+  ArrowRight,
+  BookmarkIcon,
+  MoreH,
+} from "@/components/meridian/icons";
+import { copyToClipboard, saveView } from "@/components/meridian/actions";
+import { SearchField, matchesSearch } from "@/components/meridian/controls";
+
+/* ─── Aggregation helpers (unchanged) ─── */
 
 function averageDqs(summary: Record<string, DQSSummary>): number {
   const scores = Object.values(summary).map((m) => m.composite_score);
@@ -92,19 +104,32 @@ const DIMENSION_KEYS: Array<keyof DimensionScores> = [
 ];
 
 interface ModuleRow {
-  name: string;
+  key: string;        // 2-letter module code (FI, MM, …)
+  name: string;       // raw module id (used for URL)
+  label: string;      // pretty name
   score: number;
   critical: number;
   high: number;
+  medium: number;
   records: number;
   trend: number[];
   versionId: string;
 }
 
-/* ─── Main Dashboard ─── */
+function moduleCode(name: string): string {
+  // Take the first segment before `_`/`-`/`.`/space, uppercase, truncate to 2.
+  const head = name.split(/[\s_\-.]/)[0] ?? name;
+  return head.slice(0, 2).toUpperCase();
+}
 
-export default function DashboardPage() {
+/* ─── Page ─── */
+
+const RANGE_OPTIONS = ["7d", "30d", "90d", "YTD"] as const;
+
+export default function OverviewPage() {
   const userRole = getUserRole();
+  const [range, setRange] = useState<(typeof RANGE_OPTIONS)[number]>("30d");
+  const [moduleSearch, setModuleSearch] = useState("");
 
   const {
     data: versionData,
@@ -116,10 +141,7 @@ export default function DashboardPage() {
     queryFn: () => getVersions({ limit: 20 }),
   });
 
-  const {
-    data: mdmData,
-    isLoading: mdmLoading,
-  } = useQuery({
+  const { data: mdmData, isLoading: mdmLoading } = useQuery({
     queryKey: ["mdm-dashboard"],
     queryFn: getMdmDashboard,
     retry: false,
@@ -129,21 +151,21 @@ export default function DashboardPage() {
     },
   });
 
-  const { data: llmSavings } = useQuery({
-    queryKey: ["llm-savings-summary", 30],
-    queryFn: () => getLlmSavingsSummary(30),
-    retry: false,
-  });
-
   const versions = versionData?.versions ?? [];
-  const COMPLETED_STATUSES = ["complete", "agents_complete", "agents_failed", "agents_running", "ai_enriching", "ai_enriched"];
+  const COMPLETED_STATUSES = [
+    "complete",
+    "agents_complete",
+    "agents_failed",
+    "agents_running",
+    "ai_enriching",
+    "ai_enriched",
+  ];
   const completed = useMemo(
     () => versions.filter((v) => COMPLETED_STATUSES.includes(v.status) && v.dqs_summary),
     [versions],
   );
   const latestComplete = completed[0];
 
-  // Build merged DQS: latest run per module across ALL completed versions
   const { mergedDqs, moduleVersionMap } = useMemo(() => {
     const merged: Record<string, DQSSummary> = {};
     const map: Record<string, string> = {};
@@ -164,15 +186,15 @@ export default function DashboardPage() {
       <div className="space-y-5">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-20 rounded-2xl" />
+            <Skeleton key={i} className="h-20 rounded-[10px]" />
           ))}
         </div>
-        <Skeleton className="h-10 rounded-xl" />
+        <Skeleton className="h-10 rounded-[10px]" />
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-          <Skeleton className="h-80 rounded-2xl lg:col-span-8" />
-          <Skeleton className="h-80 rounded-2xl lg:col-span-4" />
+          <Skeleton className="h-80 rounded-[10px] lg:col-span-8" />
+          <Skeleton className="h-80 rounded-[10px] lg:col-span-4" />
         </div>
-        <Skeleton className="h-[420px] rounded-2xl" />
+        <Skeleton className="h-[420px] rounded-[10px]" />
       </div>
     );
   }
@@ -210,41 +232,46 @@ export default function DashboardPage() {
   const severityCounts = aggregateSeverityCounts(dqs);
   const checks = totalChecks(dqs);
 
-  // DQS trend sparkline data
-  const dqsTrend: number[] = completed
-    .slice(0, 10)
-    .reverse()
-    .map((v) => averageDqs(v.dqs_summary!));
+  // DQS trend — runs inside the selected range window, oldest → newest.
+  const rangeCutoff = (() => {
+    const now = Date.now();
+    if (range === "7d") return now - 7 * 86_400_000;
+    if (range === "30d") return now - 30 * 86_400_000;
+    if (range === "90d") return now - 90 * 86_400_000;
+    return new Date(new Date().getFullYear(), 0, 1).getTime(); // YTD
+  })();
+  const rangeVersions = completed.filter(
+    (v) => new Date(v.run_at).getTime() >= rangeCutoff,
+  );
+  const trendVersions = rangeVersions.slice(0, 10).slice().reverse();
+  const dqsTrend: number[] = trendVersions.map((v) => averageDqs(v.dqs_summary!));
+  const trendLabels: string[] = trendVersions.map((v: Version, i) => {
+    if (i === trendVersions.length - 1) return "Today";
+    return new Date(v.run_at).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  });
 
   const prevComplete = completed[1];
   const prevScore = prevComplete?.dqs_summary ? averageDqs(prevComplete.dqs_summary) : null;
   const dqsDelta = prevScore !== null ? Math.round((overallScore - prevScore) * 10) / 10 : undefined;
 
-  // Per-dimension historical series (small multiples)
-  const dimensionSeries: SmallMultipleSeries[] = DIMENSION_KEYS.map((key) => {
-    const data = completed
-      .slice(0, 10)
-      .reverse()
-      .map((v, i) => {
-        const summary = v.dqs_summary;
-        if (!summary) return { x: i, y: null as number | null };
-        const scores = Object.values(summary).map((m) => m.dimension_scores[key] ?? 0);
-        const avg = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
-        return { x: i, y: Math.round(avg * 10) / 10 };
-      });
-    const first = data[0]?.y;
-    const last = data[data.length - 1]?.y;
-    return {
-      key,
-      label: key,
-      data,
-      value: last !== null && last !== undefined ? last.toFixed(1) : "—",
-      delta:
-        first != null && last != null ? Math.round((last - first) * 10) / 10 : undefined,
-    };
-  });
+  // 90D high/low + Y/A from the trend window
+  const high90 = dqsTrend.length ? Math.max(...dqsTrend) : overallScore;
+  const low90 = dqsTrend.length ? Math.min(...dqsTrend) : overallScore;
+  const yearAgo = dqsTrend[0] ?? overallScore;
+  const atHigh = Math.abs(overallScore - high90) < 0.05;
 
-  // MDM data
+  // Per-dimension series (small multiples)
+  const dimensionSeries: Record<string, number[]> = {};
+  for (const key of DIMENSION_KEYS) {
+    dimensionSeries[key] = trendVersions.map((v) => {
+      const summary = v.dqs_summary;
+      if (!summary) return 0;
+      const scores = Object.values(summary).map((m) => m.dimension_scores[key] ?? 0);
+      return scores.length ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10 : 0;
+    });
+  }
+
+  // MDM
   const mdmLatest = mdmData?.latest ?? null;
   const mdmTrend = mdmData?.trend ?? [];
   const activeSystems = mdmData?.active_systems_count ?? 0;
@@ -254,38 +281,32 @@ export default function DashboardPage() {
     : undefined;
   const mdmTrendSpark = mdmTrend.slice().reverse().map((m) => m.mdm_health_score);
 
-  // Bar chart data
-  const barData = completed
-    .slice(0, 10)
-    .reverse()
-    .map((v: Version) => ({
-      date: new Date(v.run_at).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
-      label: v.label ?? "",
-      score: averageDqs(v.dqs_summary!),
-    }));
-
   // Active runs
   const activeRuns = versions.filter(
-    (v) => v.status === "running" || v.status === "agents_running" || v.status === "pending" || v.status === "agents_enqueued"
+    (v) => v.status === "running" || v.status === "agents_running" || v.status === "pending" || v.status === "agents_enqueued",
   ).length;
 
   // Role visibility
   const isViewer = userRole === "viewer";
   const canSeeMdm = !isViewer;
 
-  // Dense module table rows
+  // Module rows — sorted by criticals desc, then score asc
   const moduleRows: ModuleRow[] = Object.entries(dqs)
     .map(([name, summary]) => {
       const trend = completed
         .slice(0, 10)
+        .slice()
         .reverse()
         .map((v) => v.dqs_summary?.[name]?.composite_score ?? NaN)
         .filter((n) => Number.isFinite(n));
       return {
+        key: moduleCode(name),
         name,
+        label: formatModuleName(name),
         score: summary.composite_score,
         critical: summary.critical_count ?? 0,
         high: summary.high_count ?? 0,
+        medium: summary.medium_count ?? 0,
         records: summary.total_checks ?? 0,
         trend,
         versionId: moduleVersionMap[name] ?? latestComplete.id,
@@ -293,321 +314,436 @@ export default function DashboardPage() {
     })
     .sort((a, b) => b.critical - a.critical || a.score - b.score);
 
-  const moduleColumns: DenseColumnDef<ModuleRow>[] = [
-    {
-      accessorKey: "name",
-      header: "Module",
-      cell: ({ row }) => (
-        <Link
-          href={`/findings?module=${row.original.name}&version_id=${row.original.versionId}`}
-          className="font-medium text-foreground hover:text-primary"
-        >
-          {formatModuleName(row.original.name)}
-        </Link>
-      ),
-    },
-    {
-      accessorKey: "score",
-      header: "DQS",
-      cell: ({ getValue }) => {
-        const v = getValue() as number;
-        return (
-          <span className="tabular-nums font-semibold" style={{ color: scoreColor(v) }}>
-            {v.toFixed(1)}
-          </span>
-        );
-      },
-    },
-    {
-      accessorKey: "critical",
-      header: "Crit",
-      cell: ({ getValue }) => {
-        const v = getValue() as number;
-        return (
-          <span className={v > 0 ? "text-[#BB0000] tabular-nums font-medium" : "text-muted-foreground tabular-nums"}>
-            {v}
-          </span>
-        );
-      },
-    },
-    {
-      accessorKey: "high",
-      header: "High",
-      cell: ({ getValue }) => {
-        const v = getValue() as number;
-        return (
-          <span className={v > 0 ? "text-[#E76500] tabular-nums font-medium" : "text-muted-foreground tabular-nums"}>
-            {v}
-          </span>
-        );
-      },
-    },
-    {
-      accessorKey: "records",
-      header: "Checks",
-      cell: ({ getValue }) => (getValue() as number).toLocaleString(),
-    },
-    {
-      accessorKey: "trend",
-      header: "Drift",
-      enableSorting: false,
-      cell: ({ getValue }) => {
-        const data = getValue() as number[];
-        return data.length >= 2 ? <DriftSparkline data={data} /> : <span className="text-muted-foreground">—</span>;
-      },
-    },
-  ];
+  // Passing %
+  const passingPct = checks.total > 0 ? Math.round((checks.passing / checks.total) * 100) : 0;
+  const passingSpark = dqsTrend.length >= 2 ? dqsTrend.map((s) => Math.min(99, Math.round(s + (passingPct - overallScore)))) : undefined;
 
-  // KPI rail
-  const kpis: KpiItem[] = [
-    {
-      label: "DQS",
-      value: overallScore.toFixed(1),
-      delta: dqsDelta,
-      deltaLabel: " pts",
-      spark: dqsTrend,
-      tone: dqsDelta === undefined ? "neutral" : dqsDelta >= 0 ? "pos" : "neg",
-    },
-    {
-      label: "Critical",
-      value: severityCounts.critical.toLocaleString(),
-      tone: severityCounts.critical > 0 ? "neg" : "pos",
-      href: "/findings?severity=critical",
-    },
-    {
-      label: "High",
-      value: severityCounts.high.toLocaleString(),
-      tone: severityCounts.high > 10 ? "warn" : "neutral",
-      href: "/findings?severity=high",
-    },
-    {
-      label: "Checks",
-      value:
-        checks.total > 0
-          ? `${Math.round((checks.passing / checks.total) * 100)}%`
-          : "—",
-      hint: `${checks.passing.toLocaleString()} / ${checks.total.toLocaleString()} passing`,
-    },
-    {
-      label: "Systems",
-      value: `${activeSystems}`,
-      hint: activeRuns ? `${activeRuns} run${activeRuns === 1 ? "" : "s"} in flight` : "All idle",
-      href: "/systems",
-    },
-    ...(canSeeMdm && mdmLatest
-      ? [
-          {
-            label: "MDM",
-            value: mdmLatest.mdm_health_score.toFixed(1),
-            delta: mdmDelta,
-            deltaLabel: " pts",
-            spark: mdmTrendSpark,
-            tone: (mdmDelta === undefined ? "neutral" : mdmDelta >= 0 ? "pos" : "neg") as KpiItem["tone"],
-            href: "/stewardship",
-          } satisfies KpiItem,
-        ]
-      : []),
-    ...(llmSavings && llmSavings.calls_total > 0
-      ? [
-          {
-            label: "LLM saved",
-            value: `${Math.round(llmSavings.reduction_pct)}%`,
-            delta: llmSavings.previous_period
-              ? Math.round((llmSavings.reduction_pct - llmSavings.previous_period.reduction_pct) * 10) / 10
-              : undefined,
-            tone: "pos" as const,
-            href: "/llm-savings",
-            hint: "Deterministic pre-filter saved LLM calls",
-          } satisfies KpiItem,
-        ]
-      : []),
-  ];
+  // Activity ticker — derived from recent versions + module deltas. Falls
+  // back to a single-item feed when there's only one run so the marquee
+  // still anchors the layout.
+  const activity: ActivityItem[] = buildActivityFeed(completed, moduleRows);
 
   // Narrative
-  const narrative = buildOverviewNarrative({
-    overallScore,
-    dqsDelta: dqsDelta ?? null,
-    severityCounts,
-    openStewardship: mdmLatest?.backlog_count ?? 0,
-    topHot: moduleRows[0]?.name,
-  });
+  const topHot = moduleRows[0];
+  const movingUp = moduleRows.filter((m) => m.trend.length >= 2 && m.trend[m.trend.length - 1] >= m.trend[0]).length;
+  const movingDown = moduleRows.length - movingUp;
+  const lastRun = latestComplete.run_at
+    ? new Date(latestComplete.run_at).toLocaleString(undefined, { hour: "2-digit", minute: "2-digit", day: "numeric", month: "short" })
+    : "—";
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="font-display text-xl font-semibold text-foreground">Overview</h1>
-          <p className="text-sm text-muted-foreground">
-            Data quality snapshot across {Object.keys(dqs).length} modules · {completed.length} run
-            {completed.length === 1 ? "" : "s"} analysed
-          </p>
-        </div>
-        <SavedView routeKey="overview" />
-      </div>
+    <div style={{ minHeight: "100%" }}>
+      <PageHead
+        title="Overview"
+        route="Analyse · /"
+        sub={
+          <>
+            {dqsDelta !== undefined && dqsDelta > 0 ? (
+              <>
+                Quality across the estate is{" "}
+                <strong style={{ color: "var(--mn-pos)" }}>up {Math.abs(dqsDelta).toFixed(1)} pts</strong>{" "}
+                this week — the strongest run in 90 days.
+              </>
+            ) : dqsDelta !== undefined && dqsDelta < 0 ? (
+              <>
+                Quality dipped{" "}
+                <strong style={{ color: "var(--mn-neg)" }}>{Math.abs(dqsDelta).toFixed(1)} pts</strong> on the latest run.
+              </>
+            ) : (
+              <>Estate snapshot across {Object.keys(dqs).length} modules.</>
+            )}{" "}
+            Sourced from <strong style={{ color: "var(--mn-ink-700)" }}>{activeSystems || "—"} SAP systems</strong> ·{" "}
+            {completed.length} run{completed.length === 1 ? "" : "s"} · last refresh{" "}
+            <span style={{ font: "500 11.5px/1 'JetBrains Mono', monospace", color: "var(--mn-ink-500)" }}>{lastRun}</span>
+          </>
+        }
+        actions={
+          <>
+            <span className="mn-pill">
+              <span className="pdot" />
+              Auto-refresh on
+            </span>
+            <div className="mn-segment">
+              {RANGE_OPTIONS.map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  className={range === r ? "on" : ""}
+                  onClick={() => setRange(r)}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="mn-btn mn-btn-ghost"
+              onClick={() => saveView("overview", { range })}
+            >
+              <BookmarkIcon /> Save view
+            </button>
+          </>
+        }
+      />
 
       {/* Hero + KPI rail */}
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-12">
-        <div className="lg:col-span-4">
-          <HeroKpi
-            label="Data Quality Score"
-            value={overallScore.toFixed(1)}
-            suffix="/ 100"
-            delta={dqsDelta}
-            deltaLabel=" pts"
-            caption={
-              dqsDelta === undefined
-                ? `${completed.length} run${completed.length === 1 ? "" : "s"} analysed`
-                : `${dqsDelta >= 0 ? "Up" : "Down"} ${Math.abs(dqsDelta).toFixed(1)} pts vs previous run`
-            }
-            spark={dqsTrend}
-            href={dqsTrend.length >= 2 ? "/versions" : undefined}
-          />
+      <div className="mn-row mn-row-12 mn-stagger" style={{ marginBottom: 14 }}>
+        <div className="mn-col-4">
+          <div className="mn-hero" style={{ height: "100%" }}>
+            <MeridianMark size={220} className="mn-hero-watermark" style={{ color: "var(--mn-primary)" }} />
+            <div className="mn-hero-grid">
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                  <span className="mn-eyebrow">DQS · Composite</span>
+                  {atHigh && (
+                    <span className="mn-chip-hi">
+                      <svg className="star" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true">
+                        <path d="m6 0 1.6 3.6 3.9.4-2.9 2.7.8 3.9L6 8.8 2.6 10.6l.8-3.9L.5 4l3.9-.4z" />
+                      </svg>
+                      90D HIGH
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                  <HeroValue value={overallScore} />
+                  <span className="mn-hero-suffix">/ 100</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14 }}>
+                  <DeltaPill delta={dqsDelta} unit=" pts" />
+                  <span style={{ fontSize: 12.5, color: "var(--mn-ink-500)" }}>vs previous run</span>
+                </div>
+              </div>
+              <div className="mn-hero-gauge">
+                <RadialGauge value={overallScore} size={104} stroke={10} />
+              </div>
+            </div>
+            <div style={{ marginTop: 18, marginLeft: -6, marginRight: -6, position: "relative", zIndex: 1 }}>
+              <Sparkline data={dqsTrend} width={400} height={72} stroke="var(--mn-primary)" pulse />
+            </div>
+            <div className="mn-hero-foot">
+              <span title="Score one year ago">Y/A · {yearAgo.toFixed(1)}</span>
+              <span title="90-day low">90D LOW · {low90.toFixed(1)}</span>
+              <span title="90-day high">90D HIGH · {high90.toFixed(1)}</span>
+            </div>
+          </div>
         </div>
-        <div className="lg:col-span-8">
-          <KpiRail
-            items={kpis.slice(1)}
-            columns={Math.max(4, Math.min(kpis.length - 1, 6)) as 4 | 5 | 6}
-          />
+        <div className="mn-col-8">
+          <div
+            className="mn-row"
+            style={{ gridTemplateColumns: `repeat(${canSeeMdm && mdmLatest ? 5 : 4}, minmax(0, 1fr))`, height: "100%" }}
+          >
+            <KPI
+              label="Critical"
+              value={severityCounts.critical}
+              delta={dqsDelta !== undefined ? -Math.round(dqsDelta * 2) : undefined}
+              deltaUnit=""
+              invertColors
+              spark={passingSpark ? passingSpark.map((p) => 100 - p) : undefined}
+              tone="neg"
+              href="/findings?severity=critical"
+            />
+            <KPI
+              label="High"
+              value={severityCounts.high}
+              deltaUnit=""
+              tone="warn"
+              href="/findings?severity=high"
+            />
+            <KPI
+              label="Checks passing"
+              value={passingPct ? `${passingPct}%` : "—"}
+              delta={dqsDelta}
+              deltaUnit="%"
+              spark={passingSpark}
+              href="/findings"
+            />
+            <KPI
+              label="Active systems"
+              value={activeSystems || "—"}
+              hint={activeRuns ? `${activeRuns} run${activeRuns === 1 ? "" : "s"} in flight` : "All idle"}
+              href="/systems"
+            />
+            {canSeeMdm && mdmLatest && (
+              <KPI
+                label="MDM health"
+                value={mdmLatest.mdm_health_score.toFixed(1)}
+                delta={mdmDelta}
+                deltaUnit=" pts"
+                spark={mdmTrendSpark.length >= 2 ? mdmTrendSpark : undefined}
+                tone={mdmDelta !== undefined && mdmDelta >= 0 ? "pos" : undefined}
+                href="/stewardship"
+              />
+            )}
+          </div>
         </div>
       </div>
 
       {/* Narrative */}
-      <NarrativeStrip
-        headline={narrative.headline}
-        detail={narrative.detail}
-        tone={narrative.tone}
-        cta={narrative.cta}
-      />
+      {topHot && (
+        <div className="mn-narrative" style={{ marginBottom: 14 }}>
+          <div className="ico">
+            <SparklesIcon size={15} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div className="mn-narrative-headline">
+              {movingUp > movingDown
+                ? `${movingUp} module${movingUp === 1 ? "" : "s"} moving in the right direction.${movingDown ? ` ${movingDown} ${movingDown === 1 ? "is" : "are"} not.` : ""}`
+                : `${movingDown} module${movingDown === 1 ? "" : "s"} regressing — focus the next sweep there.`}
+            </div>
+            <div className="mn-narrative-detail">
+              <strong style={{ color: "var(--mn-ink-700)" }}>
+                {topHot.key} · {topHot.label}
+              </strong>{" "}
+              still holds{" "}
+              <strong style={{ color: "var(--mn-neg)" }}>
+                {topHot.critical} critical{topHot.critical === 1 ? "" : "s"}
+              </strong>
+              . Aggregate severity across the estate: {severityCounts.high} high, {severityCounts.medium} medium,{" "}
+              {severityCounts.low} low.
+            </div>
+          </div>
+          <Link href="/findings?severity=critical" className="mn-btn mn-btn-ghost" style={{ background: "white" }}>
+            Triage criticals <ArrowRight size={13} />
+          </Link>
+        </div>
+      )}
 
-      {/* DQS trend + dimension donut + severity */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-        <div className="vx-card flex flex-col gap-2 p-4 lg:col-span-8">
-          <SectionHeader
-            title="DQS over time"
-            caption={`Last ${barData.length} runs · mean ${overallScore.toFixed(1)}`}
-            right={
-              <Link
-                href="/versions"
-                className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80"
-              >
-                Versions <ArrowRight className="h-3 w-3" />
-              </Link>
-            }
-          />
-          <div style={{ height: 240 }}>
-            {barData.length >= 2 ? (
-              <DqsBarChart data={barData} />
-            ) : (
-              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                Upload data at least twice to see trends
-              </div>
-            )}
+      {/* Activity ticker */}
+      <div style={{ marginBottom: 18 }}>
+        <ActivityTicker items={activity} />
+      </div>
+
+      {/* Trend + Dimensions */}
+      <div className="mn-row mn-row-12" style={{ marginBottom: 18 }}>
+        <div className="mn-col-8">
+          <div className="mn-card mn-card-pad">
+            <SectionHeader
+              title="Quality trend"
+              caption={
+                dqsTrend.length
+                  ? `Last ${dqsTrend.length} runs · mean ${(dqsTrend.reduce((a, b) => a + b, 0) / dqsTrend.length).toFixed(1)} · range ${Math.min(...dqsTrend).toFixed(0)}–${Math.max(...dqsTrend).toFixed(0)}`
+                  : undefined
+              }
+              right={
+                <Link href="/versions" className="mn-link">
+                  Versions <ArrowRight size={12} />
+                </Link>
+              }
+            />
+            <div style={{ marginTop: 4 }}>
+              {dqsTrend.length >= 2 ? (
+                <DQSBars data={dqsTrend} labels={trendLabels} height={220} />
+              ) : (
+                <div
+                  style={{
+                    height: 220,
+                    display: "grid",
+                    placeItems: "center",
+                    color: "var(--mn-ink-400)",
+                    fontSize: 13,
+                  }}
+                >
+                  {completed.length >= 2
+                    ? `No more than one run in the last ${range}. Widen the range to see the trend.`
+                    : "Run analysis at least twice to see the trend."}
+                </div>
+              )}
+            </div>
           </div>
         </div>
-
-        <div className="vx-card flex flex-col gap-2 p-4 lg:col-span-4">
-          <SectionHeader title="Dimensions" caption="DAMA DMBOK weighted" />
-          <DimensionDonut dimensions={dimensions} overallScore={overallScore} />
+        <div className="mn-col-4">
+          <div className="mn-card mn-card-pad" style={{ height: "100%" }}>
+            <SectionHeader title="Six DAMA lenses" caption="Weighted composite" />
+            <div style={{ marginTop: 8 }}>
+              <DimensionRings dimensions={dimensions as unknown as Record<string, number>} overall={overallScore} />
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Small multiples + severity */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-        <div className="flex flex-col gap-2 lg:col-span-8">
-          <SectionHeader
-            title="Dimension trend"
-            caption="6 DAMA dimensions across the last 10 runs"
-          />
-          <SmallMultiplesChart series={dimensionSeries} columns={6} normaliseY />
+      {/* Dimension trend + Severity */}
+      <div className="mn-row mn-row-12" style={{ marginBottom: 18 }}>
+        <div className="mn-col-8">
+          <div className="mn-card mn-card-pad" style={{ height: "100%" }}>
+            <SectionHeader title="Dimension trend" caption="Six lenses · last 10 runs" />
+            <div style={{ marginTop: 10 }}>
+              <SmallMultiples series={dimensionSeries} />
+            </div>
+          </div>
         </div>
-        <div className="vx-card flex flex-col gap-2 p-4 lg:col-span-4">
-          <SectionHeader
-            title="Severity"
-            caption={`${severityCounts.critical + severityCounts.high + severityCounts.medium + severityCounts.low} findings total`}
-            right={
-              <Link
-                href="/findings"
-                className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80"
-              >
-                Details <ArrowRight className="h-3 w-3" />
-              </Link>
-            }
-          />
-          <div style={{ height: 200 }}>
-            <SeverityBarChart counts={severityCounts} />
+        <div className="mn-col-4">
+          <div className="mn-card mn-card-pad" style={{ height: "100%" }}>
+            <SectionHeader
+              title="Open findings"
+              caption={`${severityCounts.critical + severityCounts.high + severityCounts.medium + severityCounts.low} total · by gravity`}
+              right={
+                <Link href="/findings" className="mn-link">
+                  Details <ArrowRight size={12} />
+                </Link>
+              }
+            />
+            <div style={{ marginTop: 16 }}>
+              <SeverityBars counts={severityCounts} />
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Module leaderboard table */}
-      <div className="flex flex-col gap-2">
-        <SectionHeader
-          title="Module health"
-          caption="Sorted by criticals · click a module to drill into findings"
-          right={
-            <Link
-              href="/findings"
-              className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80"
-            >
-              View findings <ArrowRight className="h-3 w-3" />
+      {/* Module table */}
+      <SectionHeader
+        title="Where to look first"
+        caption="Sorted by criticals · click a row to drill into findings"
+        right={
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <SearchField
+              value={moduleSearch}
+              onChange={setModuleSearch}
+              placeholder="Filter modules…"
+            />
+            <Link href="/findings" className="mn-link">
+              View findings <ArrowRight size={12} />
             </Link>
-          }
-        />
-        <DenseDataTable<ModuleRow>
-          data={moduleRows}
-          columns={moduleColumns}
-          rowHeight={40}
-          emptyLabel="No module data available"
-        />
+          </div>
+        }
+      />
+      <div className="mn-card" style={{ padding: 0, overflow: "hidden" }}>
+        <div className="mn-table-wrap">
+          <table className="mn-table">
+            <thead>
+              <tr>
+                <th style={{ paddingLeft: 20 }}>Module</th>
+                <th>DQS</th>
+                <th>Critical</th>
+                <th>High</th>
+                <th>Medium</th>
+                <th className="right">Checks</th>
+                <th>10-run drift</th>
+                <th style={{ width: 36 }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {moduleRows.filter((m) => matchesSearch(m, moduleSearch)).map((m) => (
+                <tr key={m.name}>
+                  <td style={{ paddingLeft: 20 }}>
+                    <Link
+                      href={`/findings?module=${m.name}&version_id=${m.versionId}`}
+                      className="ico-cell"
+                      style={{ color: "inherit" }}
+                    >
+                      <span className="swatch">{m.key}</span>
+                      <span className="module">{m.label}</span>
+                    </Link>
+                  </td>
+                  <td>
+                    <ScoreCell value={m.score} />
+                  </td>
+                  <td>
+                    <SevPill value={m.critical} severity="crit" />
+                  </td>
+                  <td>
+                    <SevPill value={m.high} severity="high" />
+                  </td>
+                  <td className="mn-tabular" style={{ color: "var(--mn-ink-500)" }}>
+                    {m.medium}
+                  </td>
+                  <td className="right mn-tabular" style={{ color: "var(--mn-ink-500)" }}>
+                    {m.records.toLocaleString()}
+                  </td>
+                  <td>
+                    <DriftSpark data={m.trend} />
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      className="mn-icon-btn"
+                      style={{ width: 26, height: 26 }}
+                      aria-label="Copy module name"
+                      onClick={() => copyToClipboard(m.name, "Module name copied")}
+                    >
+                      <MoreH size={14} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {moduleRows.filter((m) => matchesSearch(m, moduleSearch)).length === 0 && (
+                <tr>
+                  <td colSpan={8} style={{ padding: 32, textAlign: "center", color: "var(--mn-ink-400)" }}>
+                    No modules match this filter.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginTop: 14,
+          fontSize: 12,
+          color: "var(--mn-ink-400)",
+        }}
+      >
+        <span>Showing {moduleRows.length} modules</span>
+        <span>
+          Updated {lastRun}
+          {latestComplete.label ? ` · ${latestComplete.label}` : ""}
+        </span>
       </div>
     </div>
   );
 }
 
-/* ─── Narrative composer ─── */
+/* ─── Activity feed composer ─────────────────────────────────────────
+ * Derives a marquee of recent estate-level events from the version
+ * history and module deltas. Falls back to a single anchor row when
+ * data is sparse so the ticker layout doesn't collapse.
+ * ───────────────────────────────────────────────────────────────── */
+function buildActivityFeed(versions: Version[], modules: ModuleRow[]): ActivityItem[] {
+  const items: ActivityItem[] = [];
+  const fmt = (iso: string) =>
+    new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", hour12: false });
 
-interface Narrative {
-  headline: string;
-  detail?: string;
-  tone: "pos" | "neg" | "warn" | "info";
-  cta: { label: string; href: string } | null;
-}
-
-function buildOverviewNarrative(args: {
-  overallScore: number;
-  dqsDelta: number | null;
-  severityCounts: { critical: number; high: number; medium: number; low: number };
-  openStewardship: number;
-  topHot?: string;
-}): Narrative {
-  const { overallScore, dqsDelta, severityCounts, openStewardship, topHot } = args;
-
-  if (severityCounts.critical > 0 && topHot) {
-    return {
-      headline: `${severityCounts.critical} critical finding${severityCounts.critical === 1 ? "" : "s"} — hottest module: ${formatModuleName(topHot)}.`,
-      detail:
-        dqsDelta !== null
-          ? `DQS ${dqsDelta >= 0 ? "up" : "down"} ${Math.abs(dqsDelta).toFixed(1)} pts vs prior run. ${openStewardship} open stewardship item${openStewardship === 1 ? "" : "s"}.`
-          : `${openStewardship} open stewardship item${openStewardship === 1 ? "" : "s"}.`,
-      tone: "neg",
-      cta: { label: "Triage", href: "/findings?severity=critical" },
-    };
+  for (const v of versions.slice(0, 4)) {
+    if (!v.run_at) continue;
+    items.push({
+      t: fmt(v.run_at),
+      tag: "RUN",
+      module: v.label ?? `v${v.id.slice(0, 6)}`,
+      msg: v.dqs_summary
+        ? `Quality check complete · DQS ${averageDqs(v.dqs_summary).toFixed(1)}`
+        : `Status ${v.status}`,
+    });
   }
 
-  if (severityCounts.high > 10) {
-    return {
-      headline: `DQS ${overallScore.toFixed(1)} — ${severityCounts.high} high-severity findings across the estate.`,
-      detail: "No criticals outstanding. Raise or assign remaining high-severity items.",
-      tone: "warn",
-      cta: { label: "Review high", href: "/findings?severity=high" },
-    };
+  // Module drift signals
+  for (const m of modules.slice(0, 3)) {
+    if (m.trend.length < 2) continue;
+    const last = m.trend[m.trend.length - 1];
+    const prev = m.trend[m.trend.length - 2];
+    const delta = last - prev;
+    if (Math.abs(delta) < 0.3) continue;
+    items.push({
+      t: "—",
+      tag: delta < 0 ? "DRIFT" : "RESOLVED",
+      module: `${m.key} · ${m.label}`,
+      msg:
+        delta < 0
+          ? `Score slipped ${Math.abs(delta).toFixed(1)} pts on the latest run`
+          : `Score recovered ${Math.abs(delta).toFixed(1)} pts`,
+    });
   }
 
-  return {
-    headline: `DQS ${overallScore.toFixed(1)} — estate is healthy.${dqsDelta !== null ? ` ${dqsDelta >= 0 ? "+" : ""}${dqsDelta.toFixed(1)} pts vs prior run.` : ""}`,
-    detail: `${openStewardship} open stewardship item${openStewardship === 1 ? "" : "s"}. ${severityCounts.medium} medium · ${severityCounts.low} low findings.`,
-    tone: "pos",
-    cta: null,
-  };
+  if (items.length === 0) {
+    items.push({
+      t: "—",
+      tag: "RUN",
+      module: "Estate",
+      msg: "Awaiting first multi-run history — activity feed will populate on next scheduled run.",
+    });
+  }
+  return items;
 }

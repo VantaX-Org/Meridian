@@ -8,8 +8,7 @@
  * The "Use live data" toggle swaps fixtures for real react-query
  * fetches via `composeCommandCentre` — the same aggregator the live
  * `/command-centre` page consumes. Verdict sentence is composed by
- * `buildVerdict`; the LLM-savings strip reveals only when
- * `isSavingsNonTrivial` holds (≥ 20 % reduction or ≥ $50 saved).
+ * `buildVerdict`.
  */
 
 "use client";
@@ -24,15 +23,12 @@ import {
   type CommandCentreInboxItem,
   type CommandCentreIssueBucket,
   type CommandCentreKpi,
-  type CommandCentreLlmSavings,
   type CommandCentreTrendPoint,
-  isSavingsNonTrivial,
   Stack,
   Text,
 } from "@/components/aurora";
 import { composeCommandCentre } from "@/lib/api/command-centre";
 import { getFindings } from "@/lib/api/findings";
-import { getLlmSavingsSummary } from "@/lib/api/llm-savings";
 import { getMdmDashboard } from "@/lib/api/mdm-metrics";
 
 /* -------------------------------------------------------------- Fixtures */
@@ -95,18 +91,6 @@ const FIXTURE_ISSUES: ReadonlyArray<CommandCentreIssueBucket> = [
   { severity: "low", count: 142 },
 ];
 
-const FIXTURE_SAVINGS: CommandCentreLlmSavings = {
-  reductionPct: 61.4,
-  costSavedUsd: 1284,
-  callsTotal: 18432,
-  callsSaved: 11318,
-  windowDays: 30,
-  series: Array.from({ length: 30 }, (_, i) => ({
-    date: `2026-03-${String(i + 1).padStart(2, "0")}`,
-    reduction: 0.4 + Math.sin(i / 4) * 0.08 + i / 60,
-  })),
-};
-
 const FIXTURE_VERDICT = buildVerdict({
   dqs: 78.4,
   previousDqs: 80.1,
@@ -139,12 +123,6 @@ export default function CommandCentrePlaygroundPage() {
     enabled: useLive,
     retry: false,
   });
-  const savingsQuery = useQuery({
-    queryKey: ["playground.llm-savings", 30],
-    queryFn: () => getLlmSavingsSummary(30),
-    enabled: useLive,
-    retry: false,
-  });
   const findingsQuery = useQuery({
     queryKey: ["playground.findings"],
     queryFn: () => getFindings({ limit: 200 }),
@@ -157,9 +135,8 @@ export default function CommandCentrePlaygroundPage() {
       composeCommandCentre({
         mdm: mdmQuery.data,
         findings: findingsQuery.data,
-        savings: savingsQuery.data,
       }),
-    [mdmQuery.data, findingsQuery.data, savingsQuery.data],
+    [mdmQuery.data, findingsQuery.data],
   );
 
   const verdict = useLive ? live.verdict : FIXTURE_VERDICT;
@@ -167,7 +144,6 @@ export default function CommandCentrePlaygroundPage() {
   const inbox = useLive ? live.inbox : FIXTURE_INBOX;
   const trend = useLive && live.trend.length > 0 ? live.trend : FIXTURE_TREND;
   const issues = useLive ? live.issues : FIXTURE_ISSUES;
-  const llmSavings = useLive ? live.llmSavings : FIXTURE_SAVINGS;
 
   return (
     <div style={{ minHeight: "100dvh", background: "var(--aurora-canvas-base)" }}>
@@ -185,7 +161,7 @@ export default function CommandCentrePlaygroundPage() {
           <Text variant="text-micro" tone="tertiary">
             Aurora · WS6 gallery
           </Text>
-          <Text variant="text-lead">Command Centre — verdict → inbox → trends → ask</Text>
+          <Text variant="text-lead">Command Centre — verdict → inbox → trends</Text>
         </Stack>
         <Stack direction="row" gap={2} align="center">
           <Text variant="text-small" tone="secondary" as="span">
@@ -231,33 +207,6 @@ export default function CommandCentrePlaygroundPage() {
         }}
         trend={trend}
         issues={issues}
-        ask={{
-          question: "Why did DQS dip 3 points in the last week?",
-          answer:
-            "Business Partner completeness fell 3.1 points — 312 records are missing tax_number. Two open critical findings are blocking Order-to-Cash readiness; both are single-record fixes.",
-          status: "done",
-          citations: [
-            {
-              id: "bp-001",
-              label: "BP · tax_number",
-              kind: "312 records",
-              onOpen: () => {
-                // eslint-disable-next-line no-console -- playground affordance
-                console.info("Command Centre · citation open", "bp-001");
-              },
-            },
-            {
-              id: "mm-004",
-              label: "MM · UoM conversion",
-              kind: "87 records",
-              onOpen: () => {
-                // eslint-disable-next-line no-console -- playground affordance
-                console.info("Command Centre · citation open", "mm-004");
-              },
-            },
-          ],
-        }}
-        llmSavings={isSavingsNonTrivial(llmSavings) ? llmSavings : undefined}
       />
     </div>
   );

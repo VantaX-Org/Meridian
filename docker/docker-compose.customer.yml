@@ -9,7 +9,7 @@
 
 services:
   nginx:
-    image: ghcr.io/vantax-org/meridian-nginx:{{VERSION}}
+    image: ghcr.io/vantax-org/meridian-nginx:latest
     restart: unless-stopped
     ports:
       - "80:80"
@@ -35,7 +35,7 @@ services:
       start_period: 15s
 
   api:
-    image: ghcr.io/vantax-org/meridian-api:{{VERSION}}
+    image: ghcr.io/vantax-org/meridian-api:latest
     extra_hosts:
       - "host.docker.internal:host-gateway"
     env_file: .env
@@ -68,7 +68,7 @@ services:
       - 8.8.4.4
 
   worker:
-    image: ghcr.io/vantax-org/meridian-worker:{{VERSION}}
+    image: ghcr.io/vantax-org/meridian-worker:latest
     extra_hosts:
       - "host.docker.internal:host-gateway"
     env_file: .env
@@ -91,7 +91,7 @@ services:
       - 8.8.4.4
 
   beat:
-    image: ghcr.io/vantax-org/meridian-worker:{{VERSION}}
+    image: ghcr.io/vantax-org/meridian-worker:latest
     command: ["celery", "-A", "workers.celery_app", "beat", "--loglevel=info"]
     env_file: .env
     depends_on:
@@ -101,7 +101,7 @@ services:
     restart: unless-stopped
 
   frontend:
-    image: ghcr.io/vantax-org/meridian-frontend:{{VERSION}}
+    image: ghcr.io/vantax-org/meridian-frontend:latest
     expose:
       - "3000"
     env_file: .env

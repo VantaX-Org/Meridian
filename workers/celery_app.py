@@ -32,6 +32,7 @@ import workers.tasks.run_agents  # noqa: F401, E402
 import workers.tasks.generate_pdf  # noqa: F401, E402
 import workers.tasks.send_notifications  # noqa: F401, E402
 import workers.tasks.send_user_invitation  # noqa: F401, E402
+import workers.tasks.send_password_reset  # noqa: F401, E402
 import workers.tasks.run_cleaning  # noqa: F401
 import workers.tasks.run_exception_scan  # noqa: F401
 import workers.tasks.run_sync  # noqa: F401
@@ -41,6 +42,8 @@ import workers.tasks.populate_stewardship_queue  # noqa: F401
 import workers.tasks.snapshot_mdm_metrics  # noqa: F401
 import workers.tasks.ai_health_narrative  # noqa: F401
 import workers.tasks.ai_enrich_report  # noqa: F401
+import workers.tasks.mining.orchestrator  # noqa: F401 — registers dedup/anomaly/relationship + mining
+import workers.tasks.build_golden_records  # noqa: F401
 import workers.scheduler  # noqa: F401, E402 — registers beat schedule
 
 

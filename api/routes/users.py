@@ -137,6 +137,27 @@ async def invite_user(
     )
     await db.commit()
 
+    # Generate the invite acceptance token — a signed JWT the user redeems on
+    # the /accept-invite page to set their first password. Same HS256 secret
+    # the auth flow uses, with a distinct "purpose" claim. Silently omit if
+    # the tenant has no jwt_secret yet (legacy bootstrap edge-case).
+    invite_token = ""
+    try:
+        from api.services.local_auth import create_invite_token
+
+        secret_q = await db.execute(
+            text("SELECT jwt_secret FROM tenants WHERE id = :tid"),
+            {"tid": str(tenant.id)},
+        )
+        secret_row = secret_q.fetchone()
+        if secret_row and secret_row[0]:
+            invite_token = create_invite_token(new_id, str(tenant.id), secret_row[0])
+    except Exception as e:
+        import logging
+        logging.getLogger("meridian.users").warning(
+            f"Could not mint invite token for {body.email}: {e}"
+        )
+
     # Trigger invitation email (async — does not block response)
     try:
         send_invitation_email.delay(
@@ -145,6 +166,7 @@ async def invite_user(
             recipient_email=body.email,
             recipient_name=body.name or body.email.split("@")[0],
             role=body.role,
+            invite_token=invite_token,
         )
     except Exception as e:
         # Log but don't fail the response if Celery task fails to queue
@@ -152,3 +174,46 @@ async def invite_user(
         logging.getLogger("meridian.users").error(f"Failed to queue invitation email: {e}")
 
     return {"id": new_id, "email": body.email, "role": body.role, "status": "invited"}
+
+
+# ── DELETE /api/v1/users/{id} ───────────────────────────────────────────────
+
+
+@router.delete("/users/{user_id}")
+async def delete_user(
+    user_id: str,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("manage_users")),
+):
+    """Hard-delete a user from this tenant.
+
+    Returns 409 if the user is referenced by other rows (audit log, findings,
+    etc.) — the operator should deactivate via PUT /users/{id} in that case.
+    """
+    from sqlalchemy.exc import IntegrityError
+
+    await _set_rls(db, tenant.id)
+
+    try:
+        result = await db.execute(
+            text(
+                "DELETE FROM users WHERE id = :uid AND tenant_id = :tid "
+                "RETURNING id"
+            ),
+            {"uid": user_id, "tid": str(tenant.id)},
+        )
+        if not result.fetchone():
+            raise HTTPException(status_code=404, detail="User not found")
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "User is referenced by other records (audit, findings, etc.) "
+                "and cannot be hard-deleted. Deactivate instead."
+            ),
+        )
+
+    return {"id": user_id, "status": "deleted"}

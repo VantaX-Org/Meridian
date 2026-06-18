@@ -1,420 +1,183 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Sparkles, RefreshCw } from "lucide-react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { PageHead, KPI } from "@/components/meridian/atoms";
+import { ArrowRight } from "@/components/meridian/icons";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
+  EMPTY_MINING_SUMMARY,
   getMiningPatterns,
-  getMiningRuns,
   getMiningSummary,
+  isMiningAvailable,
   type MiningPattern,
 } from "@/lib/api/mining";
-import { KpiRail, type KpiItem } from "@/components/ui/kpi-rail";
-import { NarrativeStrip } from "@/components/ui/narrative-strip";
-import { SectionHeader } from "@/components/ui/section-header";
-import { SavedView } from "@/components/ui/saved-view";
-import { FilterChipBar } from "@/components/ui/filter-chip-bar";
-import { useUrlMultiState } from "@/hooks/use-url-state";
-import {
-  DenseDataTable,
-  type DenseColumnDef,
-} from "@/components/ui/dense-data-table";
-import {
-  SmallMultiplesChart,
-  type SmallMultipleSeries,
-} from "@/components/charts/small-multiples";
-import { PatternTreemap } from "@/components/charts/pattern-treemap";
-import { DriftSparkline } from "@/components/charts/drift-sparkline";
-import { relativeTime, severityColor, formatModuleName } from "@/lib/format";
+import { copyToClipboard } from "@/components/meridian/actions";
+import { SearchField, matchesSearch } from "@/components/meridian/controls";
+import { relativeTime } from "@/lib/format";
 
-const SEVERITIES: MiningPattern["severity"][] = ["critical", "high", "medium", "low"];
+const SEV_TONE: Record<MiningPattern["severity"], { bg: string; fg: string; l: string }> = {
+  critical: { bg: "var(--mn-neg-bg)",     fg: "var(--mn-neg)",  l: "CRITICAL" },
+  high:     { bg: "var(--mn-warn-bg)",    fg: "var(--mn-warn)", l: "HIGH" },
+  medium:   { bg: "var(--mn-primary-50)", fg: "var(--mn-primary-700)", l: "MEDIUM" },
+  low:      { bg: "rgba(15,23,42,0.06)",  fg: "var(--mn-ink-500)", l: "LOW" },
+};
+
+const PATTERN_LABEL: Record<string, string> = {
+  drift: "DRIFT",
+  anomaly: "ANOMALY",
+  pii: "PII",
+  dup: "DUPLICATE",
+  duplicate: "DUPLICATE",
+};
 
 export default function MiningPage() {
-  const [severities, setSeverities] = useUrlMultiState("severity");
-  const [modules, setModules] = useUrlMultiState("module");
-  const [selected, setSelected] = useState<MiningPattern | null>(null);
+  const [filter, setFilter] = useState<"all" | string>("all");
+  const [search, setSearch] = useState("");
 
-  const { data: summary, isLoading: summaryLoading } = useQuery({
-    queryKey: ["mining-summary", 30],
+  const summaryQ = useQuery({
+    queryKey: ["mining.summary"],
     queryFn: () => getMiningSummary(30),
-    retry: false,
   });
-  const { data: patternsData, isLoading: patternsLoading } = useQuery({
-    queryKey: ["mining-patterns"],
-    queryFn: () => getMiningPatterns({ limit: 2000 }),
-    retry: false,
-  });
-  const { data: runsData } = useQuery({
-    queryKey: ["mining-runs", 20],
-    queryFn: () => getMiningRuns(20),
-    retry: false,
+  const patternsQ = useQuery({
+    queryKey: ["mining.patterns", { filter }],
+    queryFn: () =>
+      getMiningPatterns({
+        pattern_type: filter === "all" ? undefined : filter,
+        limit: 100,
+      }),
   });
 
-  const patterns = patternsData?.patterns ?? [];
-  const runs = runsData?.runs ?? [];
+  if (summaryQ.isLoading || patternsQ.isLoading) {
+    return (
+      <>
+        <PageHead title="Mining" route="Analyse · /mining" sub="Loading…" />
+        <Skeleton className="h-[420px] rounded-[10px]" />
+      </>
+    );
+  }
 
-  const availableModules = useMemo(() => {
-    const set = new Set<string>();
-    for (const p of patterns) set.add(p.module);
-    return Array.from(set).sort();
-  }, [patterns]);
+  if (summaryQ.error || patternsQ.error) {
+    return (
+      <>
+        <PageHead title="Mining" route="Analyse · /mining" sub="Failed to load." />
+        <div className="mn-card mn-card-pad" style={{ color: "var(--mn-neg)" }}>
+          Could not reach <code>/api/v1/mining/*</code>.
+        </div>
+      </>
+    );
+  }
 
-  const filtered = useMemo(() => {
-    const sevSet = new Set(severities);
-    const modSet = new Set(modules);
-    return patterns.filter((p) => {
-      if (sevSet.size > 0 && !sevSet.has(p.severity)) return false;
-      if (modSet.size > 0 && !modSet.has(p.module)) return false;
-      return true;
-    });
-  }, [patterns, severities, modules]);
-
-  const kpis: KpiItem[] = useMemo(() => {
-    if (!summary) return [];
-    const promoted = filtered.filter((p) => p.promoted_to_rule).length;
-    return [
-      { label: "Patterns", value: summary.total_patterns.toLocaleString() },
-      {
-        label: "Anomalies",
-        value: summary.new_anomalies,
-        tone: summary.new_anomalies > 0 ? "warn" : "neutral",
-      },
-      { label: "Stable", value: summary.stable_patterns },
-      {
-        label: "Coverage",
-        value: `${summary.coverage_pct.toFixed(0)}%`,
-        tone: summary.coverage_pct >= 80 ? "pos" : summary.coverage_pct >= 50 ? "warn" : "neg",
-        hint: "Share of SAP tables with at least one mined pattern",
-      },
-      { label: "Runs", value: summary.runs_total },
-      {
-        label: "Cost",
-        value: `$${summary.cost_usd.toFixed(2)}`,
-        hint: "LLM cost over the last 30 days",
-      },
-      {
-        label: "Promoted",
-        value: promoted,
-        tone: promoted > 0 ? "pos" : "neutral",
-        hint: "Patterns already promoted to rules",
-      },
-    ];
-  }, [summary, filtered]);
-
-  const topPatternSeries: SmallMultipleSeries[] = useMemo(() => {
-    const top = [...filtered]
-      .sort((a, b) => b.occurrences - a.occurrences)
-      .slice(0, 6);
-    return top.map((p, i) => ({
-      key: p.id,
-      label: p.name,
-      data: (p.trend ?? []).map((y, x) => ({ x, y: y ?? null })),
-      value: p.occurrences.toLocaleString(),
-      color: i % 2 === 0 ? "#0070F2" : "#7C3AED",
-    }));
-  }, [filtered]);
-
-  const narrative = useMemo(() => {
-    if (!summary) return null;
-    if (summary.runs_total === 0) {
-      return {
-        headline: "Mining service not yet active.",
-        detail:
-          "Pattern mining will start automatically once the LLM-reduction worker is deployed. Check back after the next maintenance window.",
-        tone: "info" as const,
-      };
-    }
-    if (summary.new_anomalies > 0) {
-      return {
-        headline: `${summary.new_anomalies.toLocaleString()} new anomal${summary.new_anomalies === 1 ? "y" : "ies"} detected in the last 30 days.`,
-        detail: `${summary.stable_patterns.toLocaleString()} stable patterns — candidates for promotion to deterministic rules.`,
-        tone: "warn" as const,
-      };
-    }
-    return {
-      headline: `${summary.total_patterns.toLocaleString()} pattern${summary.total_patterns === 1 ? "" : "s"} under watch — no new anomalies.`,
-      detail: `${summary.runs_total} mining runs executed · $${summary.cost_usd.toFixed(2)} spent.`,
-      tone: "pos" as const,
-    };
-  }, [summary]);
-
-  const columns: DenseColumnDef<MiningPattern>[] = useMemo(
-    () => [
-      {
-        accessorKey: "severity",
-        header: "Sev",
-        size: 88,
-        cell: ({ getValue }) => (
-          <Badge className={`text-[10px] ${severityColor(getValue() as string)}`}>
-            {getValue() as string}
-          </Badge>
-        ),
-      },
-      {
-        accessorKey: "name",
-        header: "Pattern",
-        cell: ({ getValue }) => (
-          <span className="text-foreground">{getValue() as string}</span>
-        ),
-      },
-      {
-        accessorKey: "module",
-        header: "Module",
-        cell: ({ getValue }) => (
-          <span className="text-muted-foreground">
-            {formatModuleName(getValue() as string)}
-          </span>
-        ),
-      },
-      {
-        accessorKey: "pattern_type",
-        header: "Type",
-        cell: ({ getValue }) => (
-          <span className="text-muted-foreground">{getValue() as string}</span>
-        ),
-      },
-      {
-        accessorKey: "occurrences",
-        header: "Count",
-        size: 96,
-        cell: ({ getValue }) => (
-          <span className="tabular-nums text-foreground">
-            {(getValue() as number).toLocaleString()}
-          </span>
-        ),
-      },
-      {
-        accessorKey: "confidence",
-        header: "Conf",
-        size: 80,
-        cell: ({ getValue }) => {
-          const v = getValue() as number;
-          return (
-            <span className="tabular-nums text-foreground">{(v * 100).toFixed(0)}%</span>
-          );
-        },
-      },
-      {
-        accessorKey: "last_seen",
-        header: "Last",
-        size: 100,
-        cell: ({ getValue }) => (
-          <span className="text-muted-foreground">
-            {relativeTime(getValue() as string)}
-          </span>
-        ),
-      },
-      {
-        accessorKey: "trend",
-        header: "Drift",
-        size: 120,
-        enableSorting: false,
-        cell: ({ getValue }) => (
-          <DriftSparkline data={getValue() as ReadonlyArray<number | null>} />
-        ),
-      },
-      {
-        accessorKey: "promoted_to_rule",
-        header: "Rule",
-        size: 84,
-        cell: ({ getValue }) =>
-          (getValue() as boolean) ? (
-            <Badge className="bg-primary/10 text-[10px] text-primary">Promoted</Badge>
-          ) : (
-            <span className="text-muted-foreground">—</span>
-          ),
-      },
-    ],
-    [],
-  );
-
-  const isLoading = summaryLoading || patternsLoading;
+  const summary = summaryQ.data ?? EMPTY_MINING_SUMMARY;
+  const patterns = patternsQ.data?.patterns ?? [];
+  const filtered = patterns.filter((p) => matchesSearch(p, search));
+  const available = isMiningAvailable(summary);
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-2 font-display text-xl font-semibold text-foreground">
-            <Sparkles className="h-5 w-5 text-primary" />
-            Mining
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Deterministic pattern discovery across SAP — mines drift, anomalies, and
-            promote-to-rule candidates.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <SavedView routeKey="mining" />
-          <Badge variant="outline" className="text-xs text-muted-foreground">
-            <RefreshCw className="mr-1 h-3 w-3" />
-            {runs.length > 0
-              ? `Last run ${relativeTime(runs[0].started_at)}`
-              : "No runs yet"}
-          </Badge>
-        </div>
-      </div>
-
-      {kpis.length > 0 ? <KpiRail items={kpis} columns={7} /> : null}
-
-      {narrative ? (
-        <NarrativeStrip
-          headline={narrative.headline}
-          detail={narrative.detail}
-          tone={narrative.tone}
-          cta={null}
-        />
-      ) : null}
-
-      <FilterChipBar
-        groups={[
-          {
-            key: "severity",
-            label: "Severity",
-            selected: severities,
-            onChange: setSeverities,
-            options: SEVERITIES.map((s) => ({ value: s, label: s })),
-          },
-          {
-            key: "module",
-            label: "Module",
-            selected: modules,
-            onChange: setModules,
-            options: availableModules.map((m) => ({
-              value: m,
-              label: formatModuleName(m),
-            })),
-          },
-        ]}
+    <>
+      <PageHead
+        title="Mining"
+        route="Analyse · /mining"
+        sub={
+          available
+            ? (
+              <>
+                <strong style={{ color: "var(--mn-ink-700)" }}>{summary.total_patterns}</strong> patterns over the last{" "}
+                {summary.window_days} days · <strong style={{ color: "var(--mn-warn)" }}>{summary.new_anomalies} new anomalies</strong>.
+              </>
+            )
+            : "Mining is not yet enabled on this deployment."
+        }
+        actions={
+          <SearchField value={search} onChange={setSearch} placeholder="Filter patterns…" />
+        }
       />
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-        <div className="lg:col-span-7">
-          <SectionHeader
-            title="Pattern frequency"
-            caption="Area ∝ occurrences · colour = severity"
-          />
-          <div className="mt-2">
-            {isLoading ? (
-              <Skeleton className="h-80 w-full rounded-xl" />
-            ) : (
-              <PatternTreemap patterns={filtered} height={360} />
-            )}
-          </div>
-        </div>
-
-        <div className="lg:col-span-5">
-          <SectionHeader
-            title="Top 6 patterns — drift"
-            caption="30-day occurrence trend"
-          />
-          <div className="mt-2">
-            {isLoading ? (
-              <Skeleton className="h-80 w-full rounded-xl" />
-            ) : (
-              <SmallMultiplesChart series={topPatternSeries} columns={2} height={140} />
-            )}
-          </div>
-        </div>
+      <div className="mn-row mn-stagger" style={{ gridTemplateColumns: "repeat(5, minmax(0, 1fr))", marginBottom: 18 }}>
+        <KPI label="Patterns" value={summary.total_patterns} />
+        <KPI label="New anomalies · 30d" value={summary.new_anomalies} tone="warn" />
+        <KPI label="Stable patterns" value={summary.stable_patterns} tone="pos" />
+        <KPI label="Coverage" value={`${Math.round(summary.coverage_pct)}%`} />
+        <KPI label="Runs · all-time" value={summary.runs_total} />
       </div>
 
-      <div>
-        <SectionHeader
-          title="Patterns"
-          caption={`${filtered.length.toLocaleString()} after filters${filtered.length > 500 ? " · virtualized" : ""}`}
-        />
-        <div className="mt-2">
-          {isLoading ? (
-            <Skeleton className="h-80 w-full rounded-xl" />
-          ) : (
-            <DenseDataTable<MiningPattern>
-              data={filtered}
-              columns={columns}
-              onRowClick={(p) => setSelected(p)}
-              emptyLabel={
-                patterns.length === 0
-                  ? "Mining has not produced any patterns yet"
-                  : "No patterns match these filters"
-              }
-            />
-          )}
-        </div>
+      <div className="mn-segment" style={{ marginBottom: 12 }}>
+        {(["all", "anomaly", "drift", "duplicate", "pii"]).map((k) => (
+          <button key={k} type="button" className={filter === k ? "on" : ""} onClick={() => setFilter(k)}>
+            {k === "all" ? "All" : (PATTERN_LABEL[k] ?? k.toUpperCase())}
+          </button>
+        ))}
       </div>
 
-      <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
-        <DialogContent className="max-w-xl">
-          {selected ? (
-            <>
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <Badge className={`text-[10px] ${severityColor(selected.severity)}`}>
-                    {selected.severity}
-                  </Badge>
-                  <span>{selected.name}</span>
-                  <span className="text-muted-foreground">· {formatModuleName(selected.module)}</span>
-                </DialogTitle>
-              </DialogHeader>
-              <div className="space-y-3 text-sm">
-                <div className="grid grid-cols-2 gap-3">
-                  <Stat label="Type" value={selected.pattern_type} />
-                  <Stat
-                    label="Occurrences"
-                    value={selected.occurrences.toLocaleString()}
-                  />
-                  <Stat
-                    label="Confidence"
-                    value={`${(selected.confidence * 100).toFixed(0)}%`}
-                  />
-                  <Stat
-                    label="First seen"
-                    value={relativeTime(selected.first_seen)}
-                  />
-                  <Stat
-                    label="Last seen"
-                    value={relativeTime(selected.last_seen)}
-                  />
-                  <Stat
-                    label="Promoted"
-                    value={selected.promoted_to_rule ? "Yes" : "No"}
-                  />
+      <div className="mn-insight-list">
+        {filtered.map((p) => {
+          const t = SEV_TONE[p.severity];
+          return (
+            <div key={p.id} className="mn-insight">
+              <div className="mn-insight-stripe" style={{ background: t.fg }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="mn-insight-head">
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      padding: "3px 8px",
+                      borderRadius: 4,
+                      background: "var(--mn-primary-50)",
+                      color: "var(--mn-primary-700)",
+                      font: "700 10px/1 'JetBrains Mono', monospace",
+                      letterSpacing: "0.1em",
+                    }}
+                  >
+                    {PATTERN_LABEL[p.pattern_type] ?? p.pattern_type.toUpperCase()}
+                  </span>
+                  <span
+                    className="mn-tabular"
+                    style={{ font: "600 11px/1 'JetBrains Mono', monospace", color: "var(--mn-ink-500)" }}
+                  >
+                    {p.id.slice(0, 8)}
+                  </span>
+                  <span
+                    style={{
+                      font: "500 11.5px/1 'JetBrains Mono', monospace",
+                      color: t.fg,
+                      letterSpacing: "0.06em",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {t.l}
+                  </span>
+                  <span style={{ font: "500 11.5px/1 'JetBrains Mono', monospace", color: "var(--mn-ink-400)" }}>
+                    confidence {Math.round(p.confidence * 100)}%
+                  </span>
                 </div>
-                <div>
-                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    30-day drift
-                  </p>
-                  <DriftSparkline data={selected.trend} height={48} fullWidth />
+                <div className="mn-insight-title">{p.name}</div>
+                <div className="mn-insight-target">
+                  <span
+                    className="mn-tabular"
+                    style={{ font: "500 11.5px/1 'JetBrains Mono', monospace", color: "var(--mn-ink-500)" }}
+                  >
+                    {p.module} · {p.occurrences} occurrences · last seen {relativeTime(p.last_seen)}
+                  </span>
                 </div>
-                {!selected.promoted_to_rule ? (
-                  <p className="text-xs text-muted-foreground">
-                    Promotion to a deterministic rule is managed in
-                    <span className="mx-1 rounded bg-black/[0.04] px-1 py-0.5 font-mono">
-                      /api/v1/mining/promote
-                    </span>
-                    (phase 2 UI).
-                  </p>
-                ) : null}
               </div>
-            </>
-          ) : null}
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div>
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="font-medium text-foreground">{value}</p>
-    </div>
+              <div className="mn-insight-actions">
+                <button
+                  type="button"
+                  className="mn-btn mn-btn-ghost"
+                  onClick={() => copyToClipboard(p.id, "Pattern ID copied")}
+                >
+                  Copy ID <ArrowRight size={13} />
+                </button>
+              </div>
+            </div>
+          );
+        })}
+        {filtered.length === 0 && (
+          <div className="mn-card mn-card-pad" style={{ textAlign: "center", color: "var(--mn-ink-400)" }}>
+            No patterns match this filter.
+          </div>
+        )}
+      </div>
+    </>
   );
 }

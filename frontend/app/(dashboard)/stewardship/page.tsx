@@ -1,709 +1,329 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
-  ClipboardList,
-  Crown,
-  AlertTriangle,
-  FileCheck2,
-  XCircle,
-  BookOpen,
-  GitMerge,
-  Brain,
-} from "lucide-react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+  PageHead,
+  KPI,
+  SectionHeader,
+  PriorityChip,
+  ModChip,
+  OwnerChip,
+} from "@/components/meridian/atoms";
+import { ArrowRight, MoreH, SparklesIcon } from "@/components/meridian/icons";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { DetailPanel } from "@/components/ui/detail-panel";
-import { LegacyPageBanner } from "@/components/ui/legacy-page-banner";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  bulkApprove,
-  escalateItem,
-  getQueueItems,
-  resolveItem,
-} from "@/lib/api/stewardship";
+import { getMetrics, getQueueItems } from "@/lib/api/stewardship";
+import { getUsers } from "@/lib/api/users";
+import { copyToClipboard } from "@/components/meridian/actions";
+import { SearchField, matchesSearch } from "@/components/meridian/controls";
 import { relativeTime } from "@/lib/format";
-import type {
-  StewardshipItemType,
-  StewardshipQueueItem,
-} from "@/types/api";
-import { KpiRail, type KpiItem } from "@/components/ui/kpi-rail";
-import { NarrativeStrip } from "@/components/ui/narrative-strip";
-import { SectionHeader } from "@/components/ui/section-header";
-import { SavedView } from "@/components/ui/saved-view";
-import { FilterChipBar } from "@/components/ui/filter-chip-bar";
-import { useUrlMultiState } from "@/hooks/use-url-state";
-import {
-  DenseDataTable,
-  type DenseColumnDef,
-} from "@/components/ui/dense-data-table";
-import {
-  SmallMultiplesChart,
-  type SmallMultipleSeries,
-} from "@/components/charts/small-multiples";
+import type { StewardBreakdown, StewardshipQueueItem, User } from "@/types/api";
 
-/* ── Config ─────────────────────────────────────────────── */
+const STEWARD_ROLES = new Set(["steward", "admin", "approver", "ai_reviewer"]);
 
-const ITEM_TYPE_CONFIG: Record<
-  StewardshipItemType,
-  { label: string; icon: React.ReactNode; color: string }
-> = {
-  merge_decision: {
-    label: "Merge",
-    icon: <GitMerge className="h-3 w-3" />,
-    color: "bg-[#7C3AED]/10 text-[#7C3AED] border-[#7C3AED]/20",
-  },
-  golden_record_review: {
-    label: "Golden",
-    icon: <Crown className="h-3 w-3" />,
-    color: "bg-[#E76500]/10 text-[#E76500] border-[#E76500]/20",
-  },
-  exception: {
-    label: "Exception",
-    icon: <AlertTriangle className="h-3 w-3" />,
-    color: "bg-[#BB0000]/10 text-[#BB0000] border-[#BB0000]/20",
-  },
-  writeback_approval: {
-    label: "Writeback",
-    icon: <FileCheck2 className="h-3 w-3" />,
-    color: "bg-primary/10 text-primary border-primary/20",
-  },
-  contract_breach: {
-    label: "Contract",
-    icon: <XCircle className="h-3 w-3" />,
-    color: "bg-[#BB0000]/10 text-[#BB0000] border-[#BB0000]/20",
-  },
-  glossary_review: {
-    label: "Glossary",
-    icon: <BookOpen className="h-3 w-3" />,
-    color: "bg-[#256F3A]/10 text-[#256F3A] border-[#256F3A]/20",
-  },
-};
-
-const PRIORITY_LABELS: Record<number, { label: string; color: string }> = {
-  1: { label: "Crit", color: "bg-[#BB0000]/10 text-[#BB0000]" },
-  2: { label: "High", color: "bg-[#E76500]/10 text-[#E76500]" },
-  3: { label: "Med", color: "bg-primary/10 text-primary" },
-  4: { label: "Low", color: "bg-[#256F3A]/10 text-[#256F3A]" },
-  5: { label: "Info", color: "bg-white/[0.65] text-muted-foreground" },
-};
-
-function ConfidenceBar({ confidence }: { confidence: number }) {
-  const pct = Math.round(confidence * 100);
-  const color =
-    confidence >= 0.85 ? "bg-[#256F3A]" : confidence >= 0.6 ? "bg-[#E76500]" : "bg-[#BB0000]";
-  return (
-    <div className="flex items-center gap-1.5">
-      <div className="h-1.5 w-16 overflow-hidden rounded-full bg-black/[0.06]">
-        <div className={`h-full ${color}`} style={{ width: `${pct}%` }} />
-      </div>
-      <span className="w-8 text-right text-[11px] tabular-nums text-muted-foreground">{pct}%</span>
-    </div>
-  );
+function initials(name: string): string {
+  const parts = name.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "—";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-function ageHours(created_at: string): number {
-  return (Date.now() - new Date(created_at).getTime()) / 3_600_000;
+function loadChipClass(n: number): "low" | "med" | "high" {
+  if (n >= 6) return "high";
+  if (n >= 4) return "med";
+  return "low";
 }
 
-function ageTone(hours: number, sla: number | null): "pos" | "neutral" | "warn" | "neg" {
-  if (sla === null) return hours > 48 ? "warn" : "neutral";
-  const pct = hours / sla;
-  if (pct >= 1) return "neg";
-  if (pct >= 0.7) return "warn";
-  return "pos";
+function priorityChip(p: number): "P1" | "P2" | "P3" {
+  if (p === 1) return "P1";
+  if (p === 2) return "P2";
+  return "P3";
 }
 
-/* ── Page ──────────────────────────────────────────────── */
+function slaLabel(item: StewardshipQueueItem): string {
+  if (!item.sla_hours) return "—";
+  return item.sla_hours < 24 ? `${item.sla_hours}h` : `${Math.round(item.sla_hours / 24)}d`;
+}
 
 export default function StewardshipPage() {
-  const [types, setTypes] = useUrlMultiState("type");
-  const [statuses, setStatuses] = useUrlMultiState("status", ["open"]);
-  const [priorities, setPriorities] = useUrlMultiState("priority");
-  const [selected, setSelected] = useState<StewardshipQueueItem | null>(null);
-  const [overrideOpen, setOverrideOpen] = useState(false);
-  const [overrideReason, setOverrideReason] = useState("");
-  const queryClient = useQueryClient();
-
-  const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["stewardship-queue", statuses[0] ?? "open"],
-    queryFn: () => getQueueItems({ status: statuses[0] ?? "open", limit: 200 }),
+  const [search, setSearch] = useState("");
+  const queueQ = useQuery({
+    queryKey: ["stewardship.queue", { status: "open", limit: 200 }],
+    queryFn: () => getQueueItems({ status: "open", limit: 200 }),
   });
-  const items = data?.items ?? [];
-
-  const resolveMutation = useMutation({
-    mutationFn: ({ id, action, notes }: { id: string; action: "approve" | "reject"; notes?: string }) =>
-      resolveItem(id, action, notes),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["stewardship-queue"] });
-      setSelected(null);
-    },
+  const metricsQ = useQuery({
+    queryKey: ["stewardship.metrics"],
+    queryFn: getMetrics,
+  });
+  const usersQ = useQuery({
+    queryKey: ["users.list"],
+    queryFn: getUsers,
   });
 
-  const escalateMutation = useMutation({
-    mutationFn: (id: string) => escalateItem(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["stewardship-queue"] });
-      setSelected(null);
-    },
-  });
+  // All hooks must run before any conditional return. Pull the underlying
+  // arrays defensively so the derived memos don't crash on an in-flight query.
+  const items: StewardshipQueueItem[] = queueQ.data?.items ?? [];
+  const allUsers: User[] = usersQ.data?.users ?? [];
 
-  const bulkMutation = useMutation({
-    mutationFn: (ids: string[]) => bulkApprove(ids, 0.85),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["stewardship-queue"] }),
-  });
-
-  // Apply type + priority filters client-side
-  const filtered = useMemo(() => {
-    const typeSet = new Set(types);
-    const priSet = new Set(priorities.map(Number));
-    return items.filter((i) => {
-      if (typeSet.size > 0 && !typeSet.has(i.item_type)) return false;
-      if (priSet.size > 0 && !priSet.has(i.priority)) return false;
-      return true;
-    });
-  }, [items, types, priorities]);
-
-  // Keyboard shortcuts — A approve, R reject (reason), N next item, E escalate.
-  // Disabled while typing in a field or while the reject dialog is open.
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      const t = e.target as HTMLElement | null;
-      if (
-        overrideOpen ||
-        e.metaKey ||
-        e.ctrlKey ||
-        e.altKey ||
-        (t &&
-          (t.tagName === "INPUT" ||
-            t.tagName === "TEXTAREA" ||
-            t.isContentEditable))
-      ) {
-        return;
-      }
-
-      const selectNext = () => {
-        if (filtered.length === 0) return;
-        const idx = selected ? filtered.findIndex((i) => i.id === selected.id) : -1;
-        const next = filtered[(idx + 1) % filtered.length];
-        if (next) setSelected(next);
-      };
-
-      switch (e.key) {
-        case "a":
-        case "A":
-          if (selected) resolveMutation.mutate({ id: selected.id, action: "approve" });
-          break;
-        case "r":
-        case "R":
-          if (selected) setOverrideOpen(true);
-          break;
-        case "n":
-        case "N":
-          e.preventDefault();
-          selectNext();
-          break;
-        case "e":
-        case "E":
-          if (selected) escalateMutation.mutate(selected.id);
-          break;
-        default:
-          return;
-      }
+  const loadByUser = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const item of items) {
+      if (item.assigned_to) counts.set(item.assigned_to, (counts.get(item.assigned_to) ?? 0) + 1);
     }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [filtered, selected, overrideOpen, resolveMutation, escalateMutation]);
+    return counts;
+  }, [items]);
 
-  // KPIs
-  const kpis = useMemo((): KpiItem[] => {
-    let critical = 0,
-      overSla = 0,
-      autoApprovable = 0,
-      withAi = 0,
-      confSum = 0;
-    for (const item of filtered) {
-      if (item.priority === 1) critical++;
-      const age = ageHours(item.created_at);
-      if (item.sla_hours !== null && age > item.sla_hours) overSla++;
-      if (item.ai_confidence !== null && item.ai_confidence !== undefined) {
-        withAi++;
-        confSum += item.ai_confidence;
-        if (item.ai_confidence >= 0.85) autoApprovable++;
-      }
+  const breakdownByName = useMemo(() => {
+    const m = new Map<string, StewardBreakdown>();
+    const breakdown = metricsQ.data?.steward_breakdown;
+    if (breakdown) {
+      for (const row of breakdown) m.set(row.steward_name, row);
     }
-    const avgConf = withAi > 0 ? (confSum / withAi) * 100 : 0;
-    return [
-      { label: "Open", value: filtered.length.toLocaleString() },
-      { label: "Critical", value: critical, tone: critical > 0 ? "neg" : "pos" },
-      { label: "Over SLA", value: overSla, tone: overSla > 0 ? "warn" : "pos" },
-      {
-        label: "Auto-approvable",
-        value: autoApprovable,
-        hint: "AI confidence ≥ 85%",
-        tone: autoApprovable > 0 ? "pos" : "neutral",
-      },
-      {
-        label: "Avg confidence",
-        value: withAi > 0 ? `${avgConf.toFixed(0)}%` : "—",
-        tone: avgConf >= 85 ? "pos" : avgConf >= 60 ? "warn" : "neg",
-      },
-      {
-        label: "With AI",
-        value: withAi,
-        hint: `${filtered.length - withAi} items lack AI recommendation`,
-      },
-    ];
-  }, [filtered]);
+    return m;
+  }, [metricsQ.data]);
 
-  // Small multiples — counts per type (use totals as single-value "bars")
-  const typeSeries: SmallMultipleSeries[] = useMemo(() => {
-    const keys: StewardshipItemType[] = [
-      "merge_decision",
-      "golden_record_review",
-      "exception",
-      "writeback_approval",
-      "contract_breach",
-      "glossary_review",
-    ];
-    return keys.map((k, i) => {
-      const slice = filtered.filter((f) => f.item_type === k);
-      const count = slice.length;
-      // Fake a 7-point series from priority buckets (P1..P5 → counts)
-      const data = [1, 2, 3, 4, 5].map((p) => ({
-        x: p,
-        y: slice.filter((s) => s.priority === p).length,
-      }));
-      return {
-        key: k,
-        label: ITEM_TYPE_CONFIG[k]?.label ?? k,
-        data,
-        value: count,
-        color: i % 2 === 0 ? "#0070F2" : "#7C3AED",
-      };
-    });
-  }, [filtered]);
+  if (queueQ.isLoading || metricsQ.isLoading || usersQ.isLoading) {
+    return (
+      <>
+        <PageHead title="Steward Workbench" route="Steward · /stewardship" sub="Loading team…" />
+        <Skeleton className="h-[420px] rounded-[10px]" />
+      </>
+    );
+  }
+  if (queueQ.error || metricsQ.error || usersQ.error) {
+    return (
+      <>
+        <PageHead title="Steward Workbench" route="Steward · /stewardship" sub="Failed to load." />
+        <div className="mn-card mn-card-pad" style={{ color: "var(--mn-neg)" }}>
+          Could not reach the stewardship or users endpoints.
+        </div>
+      </>
+    );
+  }
 
-  const autoApprovableIds = useMemo(
-    () =>
-      filtered
-        .filter((f) => f.ai_confidence !== null && (f.ai_confidence ?? 0) >= 0.85 && f.status === "open")
-        .map((f) => f.id),
-    [filtered],
-  );
+  const metrics = metricsQ.data!;
+  const stewards = allUsers.filter((u) => u.is_active && STEWARD_ROLES.has(u.role));
 
-  // Narrative
-  const narrative = useMemo(() => {
-    const critical = filtered.filter((f) => f.priority === 1).length;
-    const autoCount = autoApprovableIds.length;
-    const overSla = filtered.filter(
-      (f) => f.sla_hours !== null && ageHours(f.created_at) > f.sla_hours,
-    ).length;
-
-    if (critical > 0) {
-      return {
-        headline: `${critical} critical item${critical === 1 ? "" : "s"} in the queue${overSla > 0 ? ` · ${overSla} past SLA` : ""}.`,
-        detail:
-          autoCount > 0
-            ? `${autoCount} more items are AI-confident above 85% and eligible for bulk approval.`
-            : "Triage the criticals manually.",
-        tone: "neg" as const,
-      };
-    }
-    if (autoCount > 0) {
-      return {
-        headline: `${autoCount} item${autoCount === 1 ? "" : "s"} are AI-confident ≥ 85% — ready for bulk approval.`,
-        detail: `${filtered.length - autoCount} still need human judgement.`,
-        tone: "info" as const,
-      };
-    }
-    return {
-      headline: `${filtered.length.toLocaleString()} item${filtered.length === 1 ? "" : "s"} in queue — no criticals, no auto-approvable.`,
-      detail: overSla > 0 ? `${overSla} are past SLA.` : "All items within SLA.",
-      tone: overSla > 0 ? ("warn" as const) : ("pos" as const),
-    };
-  }, [filtered, autoApprovableIds]);
-
-  const columns: DenseColumnDef<StewardshipQueueItem>[] = useMemo(
-    () => [
-      {
-        accessorKey: "priority",
-        header: "P",
-        size: 56,
-        cell: ({ getValue }) => {
-          const p = getValue() as number;
-          const cfg = PRIORITY_LABELS[p] ?? PRIORITY_LABELS[3];
-          return <Badge className={`text-[10px] ${cfg.color}`}>{cfg.label}</Badge>;
-        },
-      },
-      {
-        accessorKey: "item_type",
-        header: "Type",
-        cell: ({ getValue }) => {
-          const t = getValue() as StewardshipItemType;
-          const cfg = ITEM_TYPE_CONFIG[t] ?? {
-            label: t,
-            icon: <ClipboardList className="h-3 w-3" />,
-            color: "bg-white/[0.65] text-muted-foreground",
-          };
-          return (
-            <Badge variant="outline" className={`text-[10px] ${cfg.color}`}>
-              {cfg.icon}
-              <span className="ml-1">{cfg.label}</span>
-            </Badge>
-          );
-        },
-      },
-      {
-        accessorKey: "domain",
-        header: "Subject",
-        cell: ({ getValue }) => (
-          <span className="max-w-[280px] truncate text-foreground">{getValue() as string}</span>
-        ),
-      },
-      {
-        accessorKey: "ai_confidence",
-        header: "AI",
-        size: 128,
-        cell: ({ getValue }) => {
-          const v = getValue() as number | null;
-          if (v === null || v === undefined) return <span className="text-muted-foreground">—</span>;
-          return <ConfidenceBar confidence={v} />;
-        },
-      },
-      {
-        accessorKey: "assigned_to",
-        header: "Assignee",
-        cell: ({ getValue }) =>
-          getValue() ? (
-            <span className="text-foreground">{getValue() as string}</span>
-          ) : (
-            <span className="text-muted-foreground">unassigned</span>
-          ),
-      },
-      {
-        accessorKey: "created_at",
-        header: "Age",
-        size: 96,
-        cell: ({ row }) => {
-          const age = ageHours(row.original.created_at);
-          const tone = ageTone(age, row.original.sla_hours);
-          return (
-            <span
-              className={
-                tone === "neg"
-                  ? "font-medium text-[#BB0000] tabular-nums"
-                  : tone === "warn"
-                    ? "font-medium text-[#E76500] tabular-nums"
-                    : "text-muted-foreground tabular-nums"
-              }
-            >
-              {relativeTime(row.original.created_at)}
-            </span>
-          );
-        },
-      },
-      {
-        accessorKey: "status",
-        header: "Status",
-        size: 96,
-        cell: ({ getValue }) => (
-          <span className="capitalize text-muted-foreground">
-            {(getValue() as string).replace("_", " ")}
-          </span>
-        ),
-      },
-    ],
-    [],
-  );
+  const slaBreaches7d = items.filter(
+    (t) => t.sla_hours !== null && t.due_at && new Date(t.due_at).getTime() < Date.now(),
+  ).length;
 
   return (
-    <div className="space-y-4">
-      <LegacyPageBanner
-        auroraHref="/workbench"
-        auroraLabel="Workbench"
-        note="Aurora's Workbench combines the stewardship queue with findings triage and the record drawer in one keyboard-first surface."
+    <>
+      <PageHead
+        title="Steward Workbench"
+        route="Steward · /stewardship"
+        sub={
+          <>
+            Team view of stewardship —{" "}
+            <strong style={{ color: "var(--mn-ink-700)" }}>{items.length} open tasks</strong> across{" "}
+            <strong style={{ color: "var(--mn-ink-700)" }}>{stewards.length} stewards</strong>.{" "}
+            <strong style={{ color: "var(--mn-warn)" }}>
+              {Math.round(metrics.sla_compliance_rate * 100)}% SLA
+            </strong>
+            .
+          </>
+        }
+        actions={
+          <>
+            <SearchField value={search} onChange={setSearch} placeholder="Filter tasks…" />
+            <Link href="/workbench" className="mn-btn mn-btn-ghost">
+              Open my workbench <ArrowRight size={13} />
+            </Link>
+            <Link href="/workbench" className="mn-btn mn-btn-primary">Assign tasks</Link>
+          </>
+        }
       />
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="font-display text-xl font-semibold text-foreground">Stewardship queue</h1>
-          <p className="text-sm text-muted-foreground">
-            Manual decisions pending review · {items.length.toLocaleString()} total
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <SavedView routeKey="stewardship" />
-          {autoApprovableIds.length > 0 ? (
-            <Button
-              size="sm"
-              onClick={() => bulkMutation.mutate(autoApprovableIds)}
-              disabled={bulkMutation.isPending}
-              className="gap-1 bg-primary text-primary-foreground hover:bg-primary/90"
-            >
-              <Brain className="h-3.5 w-3.5" />
-              Bulk approve {autoApprovableIds.length}
-            </Button>
-          ) : null}
-          <Link href="/stewardship/metrics">
-            <Button variant="outline" size="sm">
-              Metrics
-            </Button>
-          </Link>
-        </div>
+
+      <div className="mn-row mn-stagger" style={{ gridTemplateColumns: "repeat(5, minmax(0, 1fr))", marginBottom: 18 }}>
+        <KPI label="Open tasks" value={items.length} hint={`${stewards.length} stewards`} tone="warn" />
+        <KPI label="Backlog" value={metrics.backlog_total} />
+        <KPI
+          label="SLA compliance"
+          value={`${Math.round(metrics.sla_compliance_rate * 100)}%`}
+          tone={metrics.sla_compliance_rate >= 0.95 ? "pos" : "warn"}
+        />
+        <KPI
+          label="Suggestion acceptance"
+          value={metrics.ai_acceptance_rate !== null ? `${Math.round(metrics.ai_acceptance_rate * 100)}%` : "—"}
+          tone="pos"
+        />
+        <KPI label="SLA breaches" value={slaBreaches7d} tone={slaBreaches7d > 0 ? "neg" : "pos"} />
       </div>
 
-      <FilterChipBar
-        groups={[
-          {
-            key: "status",
-            label: "Status",
-            selected: statuses,
-            onChange: setStatuses,
-            single: true,
-            options: [
-              { value: "open", label: "Open" },
-              { value: "in_progress", label: "In progress" },
-              { value: "resolved", label: "Resolved" },
-              { value: "escalated", label: "Escalated" },
-            ],
-          },
-          {
-            key: "type",
-            label: "Type",
-            selected: types,
-            onChange: setTypes,
-            options: (Object.keys(ITEM_TYPE_CONFIG) as StewardshipItemType[]).map((k) => ({
-              value: k,
-              label: ITEM_TYPE_CONFIG[k].label,
-            })),
-          },
-          {
-            key: "priority",
-            label: "Priority",
-            selected: priorities,
-            onChange: setPriorities,
-            options: Object.entries(PRIORITY_LABELS).map(([k, v]) => ({
-              value: k,
-              label: `P${k} · ${v.label}`,
-            })),
-          },
-        ]}
-      />
-
-      <KpiRail items={kpis} columns={6} />
-
-      <NarrativeStrip
-        headline={narrative.headline}
-        detail={narrative.detail}
-        tone={narrative.tone}
-        cta={
-          autoApprovableIds.length > 0
-            ? {
-                label: `Bulk approve ${autoApprovableIds.length}`,
-                href: "#",
-              }
-            : null
-        }
-      />
-
-      {isLoading ? (
-        <div className="space-y-2">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-9 w-full rounded-lg" />
-          ))}
-        </div>
-      ) : error ? (
-        <Alert variant="destructive">
-          <AlertDescription>
-            Failed to load queue.{" "}
-            <Button variant="link" className="px-0" onClick={() => refetch()}>
-              Retry
-            </Button>
-          </AlertDescription>
-        </Alert>
-      ) : (
-        <>
-          <div>
-            <SectionHeader
-              title="Queue"
-              caption={`${filtered.length.toLocaleString()} match filters${filtered.length > 500 ? " · virtualized" : ""}`}
-            />
-            <div className="mt-2">
-              <DenseDataTable<StewardshipQueueItem>
-                data={filtered}
-                columns={columns}
-                onRowClick={(f) => setSelected(f)}
-                maxHeight={560}
-                emptyLabel="No items match these filters"
-              />
+      {/* Auto-rebalance suggestion when one steward has a notably higher load */}
+      {(() => {
+        if (stewards.length === 0 || loadByUser.size === 0) return null;
+        const sorted = [...loadByUser.entries()].sort((a, b) => b[1] - a[1]);
+        const [topId, topLoad] = sorted[0];
+        const topUser = stewards.find((u) => u.id === topId);
+        const avg = items.length / Math.max(stewards.length, 1);
+        if (!topUser || topLoad < avg * 1.4) return null;
+        return (
+          <div className="mn-narrative" style={{ marginBottom: 18 }}>
+            <div className="ico"><SparklesIcon size={15} /></div>
+            <div style={{ flex: 1 }}>
+              <div className="mn-narrative-headline">
+                {topUser.name} carries {topLoad} open task{topLoad === 1 ? "" : "s"} — above the {avg.toFixed(1)}-task team average.
+              </div>
+              <div className="mn-narrative-detail">
+                Reassign tasks in the workbench to keep everyone within the SLA window.
+              </div>
             </div>
+            <Link href="/workbench" className="mn-btn mn-btn-ghost" style={{ background: "white" }}>
+              Open workbench <ArrowRight size={13} />
+            </Link>
           </div>
+        );
+      })()}
 
-          <div>
-            <SectionHeader title="By type" caption="Counts split across priority" />
-            <div className="mt-2">
-              <SmallMultiplesChart series={typeSeries} columns={6} />
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Detail slide-over */}
-      <DetailPanel
-        open={!!selected}
-        onOpenChange={(o) => !o && setSelected(null)}
-        width={520}
-        title={
-          selected ? (
-            <span className="flex items-center gap-2">
-              <Badge className={PRIORITY_LABELS[selected.priority]?.color}>
-                P{selected.priority}
-              </Badge>
-              <span>{ITEM_TYPE_CONFIG[selected.item_type]?.label ?? selected.item_type}</span>
-            </span>
-          ) : null
-        }
-        subtitle={selected ? <span className="font-mono">{selected.domain}</span> : undefined}
-        onPrev={
-          selected
-            ? () => {
-                const i = filtered.findIndex((x) => x.id === selected.id);
-                if (i > 0) setSelected(filtered[i - 1]);
-              }
-            : undefined
-        }
-        onNext={
-          selected
-            ? () => {
-                const i = filtered.findIndex((x) => x.id === selected.id);
-                if (i >= 0 && i < filtered.length - 1) setSelected(filtered[i + 1]);
-              }
-            : undefined
-        }
-        footer={
-          selected ? (
-            <div className="flex items-center justify-end gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => escalateMutation.mutate(selected.id)}
-                disabled={escalateMutation.isPending}
-              >
-                Escalate
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setOverrideOpen(true)}
-              >
-                Reject
-              </Button>
-              <Button
-                size="sm"
-                className="bg-primary text-primary-foreground hover:bg-primary/90"
-                disabled={resolveMutation.isPending}
-                onClick={() =>
-                  resolveMutation.mutate({ id: selected.id, action: "approve" })
-                }
-              >
-                Approve
-              </Button>
-            </div>
-          ) : null
-        }
+      <SectionHeader title="Team" caption="Workload, throughput, accuracy" />
+      <div
+        className="mn-row"
+        style={{
+          gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+          marginBottom: 18,
+        }}
       >
-        {selected ? (
-          <div className="space-y-3 text-sm">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <p className="text-xs text-muted-foreground">Source ID</p>
-                <p className="font-mono text-xs text-foreground">{selected.source_id}</p>
+        {stewards.map((u) => {
+          const load = loadByUser.get(u.id) ?? 0;
+          const stats = breakdownByName.get(u.name);
+          return (
+            <div key={u.id} className="mn-steward-card">
+              <div className="mn-steward-head">
+                <span className="mn-steward-avatar">{initials(u.name)}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="mn-steward-name">{u.name}</div>
+                  <div className="mn-steward-role">{u.role}</div>
+                </div>
+                <span className={`mn-load-chip ${loadChipClass(load)}`}>{load} open</span>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Status</p>
-                <p className="capitalize text-foreground">{selected.status}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Created</p>
-                <p className="text-foreground">{relativeTime(selected.created_at)}</p>
-              </div>
-              {selected.sla_hours ? (
+              <div className="mn-steward-stats">
                 <div>
-                  <p className="text-xs text-muted-foreground">SLA</p>
-                  <p className="text-foreground">{selected.sla_hours}h</p>
+                  <span className="mn-eyebrow">Resolved · 30d</span>
+                  <span className="v mn-tabular">{stats?.resolved ?? 0}</span>
                 </div>
-              ) : null}
-            </div>
-
-            {selected.ai_recommendation ? (
-              <div className="rounded-lg border border-black/[0.06] bg-[#7858FF]/[0.05] p-3">
-                <div className="flex items-center gap-2">
-                  <Brain className="h-4 w-4 text-[#7858FF]" />
-                  <span className="text-xs font-semibold uppercase tracking-wide text-[#7858FF]">
-                    AI recommendation
+                <div>
+                  <span className="mn-eyebrow">Avg resolve</span>
+                  <span className="v mn-tabular">
+                    {stats?.avg_resolution_hours !== null && stats?.avg_resolution_hours !== undefined
+                      ? `${stats.avg_resolution_hours.toFixed(1)}h`
+                      : "—"}
                   </span>
-                  {selected.ai_confidence !== null && selected.ai_confidence !== undefined ? (
-                    <ConfidenceBar confidence={selected.ai_confidence} />
-                  ) : null}
                 </div>
-                <p className="mt-1 text-sm text-foreground">{selected.ai_recommendation}</p>
               </div>
-            ) : null}
+            </div>
+          );
+        })}
+        {stewards.length === 0 && (
+          <div className="mn-card mn-card-pad" style={{ textAlign: "center", color: "var(--mn-ink-400)" }}>
+            No active stewards.
           </div>
-        ) : null}
-      </DetailPanel>
+        )}
+      </div>
 
-      {/* Override / reject reason dialog */}
-      <Dialog open={overrideOpen} onOpenChange={setOverrideOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Reject with reason</DialogTitle>
-          </DialogHeader>
-          <Textarea
-            value={overrideReason}
-            onChange={(e) => setOverrideReason(e.target.value)}
-            placeholder="Correction reason (required)"
-            rows={4}
-          />
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setOverrideOpen(false);
-                setOverrideReason("");
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              disabled={!overrideReason.trim() || !selected}
-              onClick={() => {
-                if (!selected) return;
-                resolveMutation.mutate({
-                  id: selected.id,
-                  action: "reject",
-                  notes: overrideReason.trim(),
-                });
-                setOverrideOpen(false);
-                setOverrideReason("");
-              }}
-            >
-              Submit
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+      <SectionHeader
+        title="Team queue"
+        caption={
+          search.trim()
+            ? `${items.filter((t) => matchesSearch(t, search)).length} of ${items.length} tasks match`
+            : `${items.length} tasks across the team`
+        }
+        right={
+          <Link href="/workbench" className="mn-link">
+            Open in workbench <ArrowRight size={11} />
+          </Link>
+        }
+      />
+      <div className="mn-card" style={{ padding: 0, overflow: "hidden" }}>
+        <div className="mn-table-wrap">
+          <table className="mn-table">
+            <thead>
+              <tr>
+                <th style={{ paddingLeft: 20 }}>Task</th>
+                <th>Domain</th>
+                <th>Priority</th>
+                <th>Assignee</th>
+                <th>SLA</th>
+                <th>Age</th>
+                <th style={{ width: 36 }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.filter((t) => matchesSearch(t, search)).map((t) => {
+                const assignee = allUsers.find((u) => u.id === t.assigned_to);
+                return (
+                  <tr key={t.id}>
+                    <td style={{ paddingLeft: 20 }}>
+                      <span
+                        className="mn-tabular"
+                        style={{ font: "600 11px/1 'JetBrains Mono', monospace", color: "var(--mn-ink-500)" }}
+                      >
+                        {t.id.slice(0, 8)}
+                      </span>
+                      <div style={{ fontWeight: 500, color: "var(--mn-ink-900)", marginTop: 3, fontSize: 13 }}>
+                        {t.item_type.replace(/_/g, " ")}
+                      </div>
+                      <div
+                        style={{
+                          font: "500 11.5px/1 'JetBrains Mono', monospace",
+                          color: "var(--mn-ink-400)",
+                          marginTop: 3,
+                        }}
+                      >
+                        {t.source_id}
+                      </div>
+                    </td>
+                    <td><ModChip>{t.domain}</ModChip></td>
+                    <td><PriorityChip p={priorityChip(t.priority)} /></td>
+                    <td>
+                      {assignee ? (
+                        <span className="ico-cell">
+                          <OwnerChip owner={initials(assignee.name)} />
+                          <span>{assignee.name.split(" ")[0]}</span>
+                        </span>
+                      ) : (
+                        <span style={{ color: "var(--mn-ink-300)" }}>Unassigned</span>
+                      )}
+                    </td>
+                    <td
+                      className="mn-tabular"
+                      style={{ font: "500 11.5px/1 'JetBrains Mono', monospace", color: "var(--mn-warn)" }}
+                    >
+                      {slaLabel(t)}
+                    </td>
+                    <td
+                      className="mn-tabular"
+                      style={{ font: "500 11.5px/1 'JetBrains Mono', monospace", color: "var(--mn-ink-500)" }}
+                    >
+                      {relativeTime(t.created_at)}
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        className="mn-icon-btn"
+                        style={{ width: 26, height: 26 }}
+                        aria-label="Copy task ID"
+                        onClick={() => copyToClipboard(t.id, "Task ID copied")}
+                      >
+                        <MoreH size={14} />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+              {items.filter((t) => matchesSearch(t, search)).length === 0 && (
+                <tr>
+                  <td colSpan={7} style={{ padding: 32, textAlign: "center", color: "var(--mn-ink-400)" }}>
+                    {items.length === 0 ? "No open tasks." : "No tasks match this filter."}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
   );
 }

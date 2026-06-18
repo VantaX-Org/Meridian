@@ -130,7 +130,6 @@ export default function AdminPlaygroundPage() {
             ),
           },
           { id: "sync", label: "Sync Monitor" },
-          { id: "ai", label: "AI" },
           { id: "rules", label: "Rules", count: 541 },
           { id: "licence", label: "Licence" },
           {

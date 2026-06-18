@@ -1,452 +1,193 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AlertOctagon, AlertTriangle, CheckCircle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { Badge } from "@/components/ui/badge";
+import { PageHead, KPI, ModChip } from "@/components/meridian/atoms";
+import { MoreH } from "@/components/meridian/icons";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { getVersions } from "@/lib/api/versions";
 import { getConfigImpact } from "@/lib/api/connectivity";
-import { severityColor } from "@/lib/format";
+import { getVersions } from "@/lib/api/versions";
+import { copyToClipboard } from "@/components/meridian/actions";
+import { SearchField, matchesSearch } from "@/components/meridian/controls";
 import type { ConfigImpactResult, Version } from "@/types/api";
-import { KpiRail, type KpiItem } from "@/components/ui/kpi-rail";
-import { NarrativeStrip } from "@/components/ui/narrative-strip";
-import { SectionHeader } from "@/components/ui/section-header";
-import { SavedView } from "@/components/ui/saved-view";
-import { FilterChipBar } from "@/components/ui/filter-chip-bar";
-import { useUrlMultiState, useUrlState } from "@/hooks/use-url-state";
-import {
-  DenseDataTable,
-  type DenseColumnDef,
-} from "@/components/ui/dense-data-table";
-import {
-  SmallMultiplesChart,
-  type SmallMultipleSeries,
-} from "@/components/charts/small-multiples";
-import { ConfigSankey } from "@/components/charts/config-sankey";
 
-type Status = "blocked" | "degraded" | "ok";
-
-const STATUS_CONFIG: Record<Status, { icon: React.ReactNode; badge: string; label: string }> = {
-  blocked: {
-    icon: <AlertOctagon className="h-3 w-3" />,
-    badge: "bg-[#BB0000]/10 text-[#BB0000] border-[#BB0000]/20",
-    label: "Blocked",
-  },
-  degraded: {
-    icon: <AlertTriangle className="h-3 w-3" />,
-    badge: "bg-[#E76500]/10 text-[#E76500] border-[#E76500]/20",
-    label: "Degraded",
-  },
-  ok: {
-    icon: <CheckCircle className="h-3 w-3" />,
-    badge: "bg-[#256F3A]/10 text-[#256F3A] border-[#256F3A]/20",
-    label: "OK",
-  },
+const STATUS_TONE: Record<ConfigImpactResult["status"], { bg: string; fg: string; l: string }> = {
+  blocked:  { bg: "var(--mn-neg-bg)",     fg: "var(--mn-neg)",  l: "BLOCKED" },
+  degraded: { bg: "var(--mn-warn-bg)",    fg: "var(--mn-warn)", l: "DEGRADED" },
+  ok:       { bg: "var(--mn-pos-bg)",     fg: "var(--mn-pos)",  l: "OK" },
 };
 
+function isCompleteVersion(v: Version): boolean {
+  return (v.status === "agents_complete" || v.status === "complete" || v.status === "ai_enriched") && !!v.dqs_summary;
+}
+
 export default function ConfigImpactPage() {
-  const [versionId, setVersionId] = useUrlState("version_id");
-  const [statuses, setStatuses] = useUrlMultiState("status");
-  const [systems, setSystems] = useUrlMultiState("system");
-  const [selected, setSelected] = useState<ConfigImpactResult | null>(null);
-
-  const { data: versionData, isLoading: versionsLoading } = useQuery({
-    queryKey: ["versions-list"],
-    queryFn: () => getVersions({ limit: 20 }),
+  const [search, setSearch] = useState("");
+  const versionsQ = useQuery({
+    queryKey: ["versions.list", { limit: 1 }],
+    queryFn: () => getVersions({ limit: 10 }),
   });
-  const completedVersions = (versionData?.versions ?? []).filter(
-    (v: Version) => v.status === "agents_complete" || v.status === "complete",
+
+  const latest = useMemo(
+    () => versionsQ.data?.versions.find(isCompleteVersion),
+    [versionsQ.data],
   );
-  const activeVersion = versionId || completedVersions[0]?.id || "";
 
-  const {
-    data: impactData,
-    isLoading: impactLoading,
-    isError,
-    refetch,
-  } = useQuery({
-    queryKey: ["config-impact", activeVersion],
-    queryFn: () => getConfigImpact(activeVersion),
-    enabled: Boolean(activeVersion),
+  const impactQ = useQuery({
+    queryKey: ["config-impact", latest?.id],
+    queryFn: () => getConfigImpact(latest!.id),
+    enabled: !!latest,
   });
 
-  const results = impactData?.results ?? [];
-  const summary = impactData?.summary;
-
-  const availableSystems = useMemo(() => {
-    const set = new Set<string>();
-    for (const r of results) set.add(r.system);
-    return Array.from(set).sort();
-  }, [results]);
-
-  const filtered = useMemo(() => {
-    const statusSet = new Set(statuses);
-    const systemSet = new Set(systems);
-    return results.filter((r) => {
-      if (statusSet.size > 0 && !statusSet.has(r.status)) return false;
-      if (systemSet.size > 0 && !systemSet.has(r.system)) return false;
-      return true;
-    });
-  }, [results, statuses, systems]);
-
-  const kpis = useMemo((): KpiItem[] => {
-    const blocked = filtered.filter((r) => r.status === "blocked").length;
-    const degraded = filtered.filter((r) => r.status === "degraded").length;
-    const ok = filtered.filter((r) => r.status === "ok").length;
-    const totalRecords = filtered.reduce((s, r) => s + r.total_affected_records, 0);
-    const totalTransactions = filtered.reduce(
-      (s, r) => s + (r.blocked_transactions?.length ?? 0),
-      0,
+  if (versionsQ.isLoading || (latest && impactQ.isLoading)) {
+    return (
+      <>
+        <PageHead title="Config Impact" route="Connect · /config-impact" sub="Loading…" />
+        <Skeleton className="h-[420px] rounded-[10px]" />
+      </>
     );
-    const systemCount = availableSystems.length;
-    return [
-      { label: "Features", value: filtered.length },
-      { label: "Blocked", value: blocked, tone: blocked > 0 ? "neg" : "pos" },
-      { label: "Degraded", value: degraded, tone: degraded > 0 ? "warn" : "neutral" },
-      { label: "OK", value: ok, tone: ok > 0 ? "pos" : "neutral" },
-      {
-        label: "Affected",
-        value: totalRecords.toLocaleString(),
-        hint: "Total affected records across blocking findings",
-      },
-      {
-        label: "Txns blocked",
-        value: totalTransactions,
-        tone: totalTransactions > 0 ? "neg" : "neutral",
-      },
-      { label: "Systems", value: systemCount },
-    ];
-  }, [filtered, availableSystems]);
+  }
 
-  const systemSeries: SmallMultipleSeries[] = useMemo(() => {
-    return availableSystems.slice(0, 6).map((system, i) => {
-      const slice = filtered.filter((r) => r.system === system);
-      const blocked = slice.filter((r) => r.status === "blocked").length;
-      const degraded = slice.filter((r) => r.status === "degraded").length;
-      const ok = slice.filter((r) => r.status === "ok").length;
-      const data = [
-        { x: 0, y: blocked },
-        { x: 1, y: degraded },
-        { x: 2, y: ok },
-      ];
-      return {
-        key: system,
-        label: system,
-        data,
-        value: slice.length,
-        color: i % 2 === 0 ? "#BB0000" : "#E76500",
-      };
-    });
-  }, [availableSystems, filtered]);
+  if (!latest) {
+    return (
+      <>
+        <PageHead
+          title="Config Impact"
+          route="Connect · /config-impact"
+          sub="Config impact analysis runs against a completed version. None available yet."
+        />
+        <div className="mn-card mn-card-pad" style={{ textAlign: "center", color: "var(--mn-ink-400)" }}>
+          Run an analysis from <code>/run-sync</code> to populate config impact.
+        </div>
+      </>
+    );
+  }
 
-  const narrative = useMemo(() => {
-    const blocked = filtered.filter((r) => r.status === "blocked").length;
-    const topBlocked = [...filtered]
-      .filter((r) => r.status === "blocked")
-      .sort((a, b) => b.total_affected_records - a.total_affected_records)[0];
-    if (blocked > 0 && topBlocked) {
-      return {
-        headline: `${blocked} feature${blocked === 1 ? "" : "s"} blocked — worst: ${topBlocked.feature} on ${topBlocked.system} (${topBlocked.total_affected_records.toLocaleString()} records).`,
-        detail: topBlocked.opportunity_cost_summary || "Clear the blocking findings to restore this flow.",
-        tone: "neg" as const,
-      };
-    }
-    const degraded = filtered.filter((r) => r.status === "degraded").length;
-    if (degraded > 0) {
-      return {
-        headline: `${degraded} feature${degraded === 1 ? "" : "s"} degraded but none blocked.`,
-        detail: "Data quality findings are slowing these flows.",
-        tone: "warn" as const,
-      };
-    }
-    return {
-      headline: `${filtered.length} feature${filtered.length === 1 ? "" : "s"} assessed — all healthy.`,
-      detail: "No blocked or degraded flows in this run.",
-      tone: "pos" as const,
-    };
-  }, [filtered]);
+  if (versionsQ.error || impactQ.error) {
+    return (
+      <>
+        <PageHead title="Config Impact" route="Connect · /config-impact" sub="Failed to load." />
+        <div className="mn-card mn-card-pad" style={{ color: "var(--mn-neg)" }}>
+          Could not reach <code>/api/v1/config-impact/{"{versionId}"}</code>.
+        </div>
+      </>
+    );
+  }
 
-  const columns: DenseColumnDef<ConfigImpactResult>[] = useMemo(
-    () => [
-      {
-        accessorKey: "status",
-        header: "Status",
-        size: 100,
-        cell: ({ getValue }) => {
-          const s = getValue() as Status;
-          const cfg = STATUS_CONFIG[s];
-          return (
-            <Badge variant="outline" className={`text-[10px] ${cfg.badge}`}>
-              {cfg.icon}
-              <span className="ml-1">{cfg.label}</span>
-            </Badge>
-          );
-        },
-      },
-      {
-        accessorKey: "feature",
-        header: "Feature",
-        cell: ({ getValue }) => <span className="text-foreground">{getValue() as string}</span>,
-      },
-      {
-        accessorKey: "system",
-        header: "System",
-        cell: ({ getValue }) => (
-          <span className="text-muted-foreground">{getValue() as string}</span>
-        ),
-      },
-      {
-        accessorKey: "total_affected_records",
-        header: "Affected",
-        size: 100,
-        cell: ({ getValue }) => (
-          <span className="tabular-nums text-foreground">
-            {(getValue() as number).toLocaleString()}
-          </span>
-        ),
-      },
-      {
-        id: "blocking_count",
-        header: "Findings",
-        size: 90,
-        cell: ({ row }) => (
-          <span className="tabular-nums text-muted-foreground">
-            {row.original.blocking_findings.length}
-          </span>
-        ),
-      },
-      {
-        id: "txns",
-        header: "Txns",
-        size: 80,
-        cell: ({ row }) => (
-          <span className="tabular-nums text-muted-foreground">
-            {row.original.blocked_transactions?.length ?? 0}
-          </span>
-        ),
-      },
-      {
-        accessorKey: "opportunity_cost_summary",
-        header: "Cost",
-        enableSorting: false,
-        cell: ({ getValue }) => (
-          <span className="block max-w-[320px] truncate text-xs text-muted-foreground">
-            {(getValue() as string) || "—"}
-          </span>
-        ),
-      },
-    ],
-    [],
-  );
-
-  const isLoading = versionsLoading || impactLoading;
+  const results = impactQ.data?.results ?? [];
+  const summary = impactQ.data?.summary ?? {
+    total_features_assessed: 0,
+    features_blocked: 0,
+    features_degraded: 0,
+    features_ok: 0,
+    top_blocked_features: [] as string[],
+  };
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="font-display text-xl font-semibold text-foreground">Config impact</h1>
-          <p className="text-sm text-muted-foreground">
-            How configuration findings affect business features across systems
-            {summary ? ` · ${summary.total_features_assessed} feature${summary.total_features_assessed === 1 ? "" : "s"} assessed` : ""}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <select
-            value={activeVersion}
-            onChange={(e) => setVersionId(e.target.value)}
-            disabled={versionsLoading}
-            className="rounded-full border border-black/[0.08] bg-white/[0.60] px-2.5 py-1 text-xs"
-          >
-            {completedVersions.map((v: Version) => (
-              <option key={v.id} value={v.id}>
-                {v.label || new Date(v.run_at).toLocaleDateString()}
-              </option>
-            ))}
-            {completedVersions.length === 0 && !versionsLoading && (
-              <option value="">No completed analyses</option>
-            )}
-          </select>
-          <SavedView routeKey="config-impact" />
-        </div>
+    <>
+      <PageHead
+        title="Config Impact"
+        route="Connect · /config-impact"
+        sub={
+          <>
+            <strong style={{ color: "var(--mn-ink-700)" }}>{summary.total_features_assessed}</strong> features assessed against version{" "}
+            <span style={{ font: "500 12px/1 'JetBrains Mono', monospace", color: "var(--mn-ink-500)" }}>{latest.id.slice(0, 8)}</span>{" "}
+            ({latest.label ?? "Unlabelled run"}).
+          </>
+        }
+        actions={
+          <SearchField value={search} onChange={setSearch} placeholder="Filter features…" />
+        }
+      />
+
+      <div className="mn-row mn-stagger" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))", marginBottom: 18 }}>
+        <KPI label="Features assessed" value={summary.total_features_assessed} />
+        <KPI label="Blocked" value={summary.features_blocked} tone="neg" />
+        <KPI label="Degraded" value={summary.features_degraded} tone="warn" />
+        <KPI label="OK" value={summary.features_ok} tone="pos" />
       </div>
 
-      <FilterChipBar
-        groups={[
-          {
-            key: "status",
-            label: "Status",
-            selected: statuses,
-            onChange: setStatuses,
-            options: (Object.keys(STATUS_CONFIG) as Status[]).map((s) => ({
-              value: s,
-              label: STATUS_CONFIG[s].label,
-            })),
-          },
-          {
-            key: "system",
-            label: "System",
-            selected: systems,
-            onChange: setSystems,
-            options: availableSystems.map((s) => ({ value: s, label: s })),
-          },
-        ]}
-      />
-
-      <KpiRail items={kpis} columns={7} />
-
-      <NarrativeStrip
-        headline={narrative.headline}
-        detail={narrative.detail}
-        tone={narrative.tone}
-        cta={null}
-      />
-
-      {isLoading ? (
-        <Skeleton className="h-80 w-full rounded-xl" />
-      ) : isError ? (
-        <Alert variant="destructive">
-          <AlertDescription>
-            Failed to load config impact.{" "}
-            <Button variant="link" className="px-0" onClick={() => refetch()}>
-              Retry
-            </Button>
-          </AlertDescription>
-        </Alert>
-      ) : (
-        <>
-          <div>
-            <SectionHeader
-              title="Findings → features → systems"
-              caption="Width ∝ affected records on each edge"
-            />
-            <div className="mt-2">
-              <ConfigSankey results={filtered} height={360} />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-            <div className="lg:col-span-12">
-              <SectionHeader
-                title="Feature impact"
-                caption={`${filtered.length.toLocaleString()} feature${filtered.length === 1 ? "" : "s"} after filters`}
-              />
-              <div className="mt-2">
-                <DenseDataTable<ConfigImpactResult>
-                  data={filtered}
-                  columns={columns}
-                  onRowClick={(r) => setSelected(r)}
-                  emptyLabel="No features match these filters"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <SectionHeader title="By system" caption="Status split across top 6 systems" />
-            <div className="mt-2">
-              <SmallMultiplesChart series={systemSeries} columns={6} />
-            </div>
-          </div>
-        </>
-      )}
-
-      <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
-        <DialogContent className="max-w-2xl">
-          {selected ? (
-            <>
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <Badge
-                    variant="outline"
-                    className={`text-[10px] ${STATUS_CONFIG[selected.status].badge}`}
-                  >
-                    {STATUS_CONFIG[selected.status].icon}
-                    <span className="ml-1">{STATUS_CONFIG[selected.status].label}</span>
-                  </Badge>
-                  <span>{selected.feature}</span>
-                  <span className="text-muted-foreground">·</span>
-                  <span className="text-muted-foreground">{selected.system}</span>
-                </DialogTitle>
-              </DialogHeader>
-              <div className="space-y-3 text-sm">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Affected records</p>
-                    <p className="font-semibold text-foreground tabular-nums">
-                      {selected.total_affected_records.toLocaleString()}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Blocked transactions</p>
-                    <p className="font-semibold text-foreground tabular-nums">
-                      {selected.blocked_transactions?.length ?? 0}
-                    </p>
-                  </div>
-                </div>
-
-                {selected.opportunity_cost_summary ? (
-                  <div>
-                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Opportunity cost
-                    </p>
-                    <p className="text-sm text-foreground">{selected.opportunity_cost_summary}</p>
-                  </div>
-                ) : null}
-
-                {selected.blocking_findings.length > 0 ? (
-                  <div>
-                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Blocking findings ({selected.blocking_findings.length})
-                    </p>
-                    <div className="divide-y divide-black/[0.06] rounded-lg border border-black/[0.06] bg-white/[0.60]">
-                      {selected.blocking_findings.slice(0, 8).map((b, i) => (
-                        <div key={i} className="flex items-center gap-2 px-2.5 py-1.5 text-xs">
-                          <Badge className={`text-[10px] ${severityColor(b.severity)}`}>
-                            {b.severity}
-                          </Badge>
-                          <span className="font-mono text-foreground">{b.check_id}</span>
-                          <span className="text-muted-foreground">· {b.module}</span>
-                          <span className="ml-auto tabular-nums text-muted-foreground">
-                            {b.affected_count.toLocaleString()}
-                          </span>
+      <div className="mn-card" style={{ padding: 0, overflow: "hidden" }}>
+        <div className="mn-table-wrap">
+          <table className="mn-table">
+            <thead>
+              <tr>
+                <th style={{ paddingLeft: 20 }}>Feature</th>
+                <th>System</th>
+                <th>Status</th>
+                <th className="right">Blocking</th>
+                <th className="right">Records</th>
+                <th>Opportunity</th>
+                <th style={{ width: 36 }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {results.filter((r) => matchesSearch(r, search)).map((r, i) => {
+                const st = STATUS_TONE[r.status];
+                return (
+                  <tr key={`${r.feature}-${i}`}>
+                    <td style={{ paddingLeft: 20 }}>
+                      <div style={{ fontWeight: 500, color: "var(--mn-ink-900)", fontSize: 13 }}>{r.feature}</div>
+                      {r.blocked_transactions.length > 0 && (
+                        <div
+                          style={{
+                            font: "500 11px/1 'JetBrains Mono', monospace",
+                            color: "var(--mn-ink-400)",
+                            marginTop: 3,
+                            letterSpacing: "0.04em",
+                          }}
+                        >
+                          {r.blocked_transactions.slice(0, 3).join(" · ")}
+                          {r.blocked_transactions.length > 3 ? ` +${r.blocked_transactions.length - 3}` : ""}
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-
-                {selected.cross_system_dependencies &&
-                Object.keys(selected.cross_system_dependencies).length > 0 ? (
-                  <div>
-                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Cross-system dependencies
-                    </p>
-                    <ul className="space-y-0.5 text-xs text-muted-foreground">
-                      {Object.entries(selected.cross_system_dependencies).map(([k, v]) => (
-                        <li key={k}>
-                          <span className="font-mono text-foreground">{k}</span>
-                          {" → "}
-                          <span>{v}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
-              </div>
-            </>
-          ) : null}
-        </DialogContent>
-      </Dialog>
-    </div>
+                      )}
+                    </td>
+                    <td><ModChip>{r.system}</ModChip></td>
+                    <td>
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          padding: "3px 8px",
+                          borderRadius: 4,
+                          background: st.bg,
+                          color: st.fg,
+                          font: "700 9.5px/1 'JetBrains Mono', monospace",
+                          letterSpacing: "0.1em",
+                        }}
+                      >
+                        {st.l}
+                      </span>
+                    </td>
+                    <td className="right mn-tabular">{r.blocking_findings.length}</td>
+                    <td className="right mn-tabular">{r.total_affected_records.toLocaleString()}</td>
+                    <td style={{ fontSize: 12.5, color: "var(--mn-ink-500)" }}>{r.opportunity_cost_summary}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="mn-icon-btn"
+                        style={{ width: 26, height: 26 }}
+                        aria-label="Copy feature name"
+                        onClick={() => copyToClipboard(r.feature, "Feature name copied")}
+                      >
+                        <MoreH size={14} />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+              {results.filter((r) => matchesSearch(r, search)).length === 0 && (
+                <tr>
+                  <td colSpan={7} style={{ padding: 32, textAlign: "center", color: "var(--mn-ink-400)" }}>
+                    {results.length === 0
+                      ? "No config impact results yet for this version."
+                      : "No features match this filter."}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
   );
 }

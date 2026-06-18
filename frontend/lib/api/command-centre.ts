@@ -1,12 +1,10 @@
 /**
  * Typed aggregator for the Aurora Command Centre surface.
  *
- * Command Centre composes three live data sources:
+ * Command Centre composes two live data sources:
  *
  *   • `/api/v1/mdm/dashboard` — headline health score + trend history.
  *   • `/api/v1/findings`      — inbox rows (critical + high only).
- *   • `/api/v1/metrics/llm-savings` — Tier-0 reduction strip (shown
- *     only when savings are non-trivial per `isSavingsNonTrivial`).
  *
  * `composeCommandCentre` shapes the raw responses into the exact prop
  * contract `<CommandCentre>` expects. The Command Centre page calls
@@ -19,7 +17,6 @@ import {
   type CommandCentreInboxItem,
   type CommandCentreIssueBucket,
   type CommandCentreKpi,
-  type CommandCentreLlmSavings,
   type CommandCentreTrendPoint,
   type CommandCentreVerdict,
 } from "@/components/aurora";
@@ -28,7 +25,6 @@ import type {
   FindingList,
   MdmDashboardResponse,
 } from "@/types/api";
-import type { LlmSavingsSummary } from "./llm-savings";
 
 export interface CommandCentreViewModel {
   verdict: CommandCentreVerdict;
@@ -36,7 +32,6 @@ export interface CommandCentreViewModel {
   inbox: CommandCentreInboxItem[];
   trend: CommandCentreTrendPoint[];
   issues: CommandCentreIssueBucket[];
-  llmSavings: CommandCentreLlmSavings | undefined;
   /** Raw counts — handy for narrative copy in the page wrapper. */
   counts: { critical: number; high: number; medium: number; low: number };
   topModule: string | null;
@@ -45,13 +40,11 @@ export interface CommandCentreViewModel {
 export interface ComposeCommandCentreInput {
   mdm: MdmDashboardResponse | undefined;
   findings: FindingList | undefined;
-  savings: LlmSavingsSummary | undefined;
 }
 
 export function composeCommandCentre({
   mdm,
   findings,
-  savings,
 }: ComposeCommandCentreInput): CommandCentreViewModel {
   // Use `mdm_health_score` as the headline score until a dedicated
   // composite-DQS endpoint lands (tracked in PLAN_AURORA.md §10 · backend
@@ -136,28 +129,12 @@ export function composeCommandCentre({
     { severity: "low", count: low },
   ];
 
-  const llmSavings: CommandCentreLlmSavings | undefined = savings
-    ? {
-        reductionPct: savings.reduction_pct,
-        costSavedUsd: savings.cost_saved_usd,
-        callsTotal: savings.calls_total,
-        callsSaved: savings.calls_saved,
-        windowDays: savings.window_days,
-        series: savings.series.map((point) => ({
-          date: point.date,
-          reduction:
-            point.calls_total === 0 ? 0 : point.calls_saved / point.calls_total,
-        })),
-      }
-    : undefined;
-
   return {
     verdict,
     kpis,
     inbox,
     trend,
     issues,
-    llmSavings,
     counts: { critical, high, medium, low },
     topModule,
   };

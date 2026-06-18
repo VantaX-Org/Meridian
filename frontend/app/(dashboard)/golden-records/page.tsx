@@ -1,286 +1,286 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import {
-  Crown,
-  Filter,
-  Loader2,
-  ChevronRight,
-  Database,
-  AlertTriangle,
-  CheckCircle2,
-  Clock,
-  XCircle,
-} from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { PageHead, KPI, SectionHeader, StatusDot, ModChip } from "@/components/meridian/atoms";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getMasterRecords } from "@/lib/api/master-records";
-import { formatModuleName, relativeTime } from "@/lib/format";
-import type { MasterRecordSummary, MasterRecordStatus } from "@/types/api";
+import { downloadCsv } from "@/components/meridian/actions";
+import { relativeTime } from "@/lib/format";
+import type { MasterRecordStatus, MasterRecordSummary } from "@/types/api";
 
-const STATUS_CONFIG: Record<
-  MasterRecordStatus,
-  { label: string; icon: React.ReactNode; classes: string }
-> = {
-  candidate: {
-    label: "Candidate",
-    icon: <Clock className="h-3.5 w-3.5" />,
-    classes: "bg-primary/10 text-primary border-primary/20",
-  },
-  pending_review: {
-    label: "Pending Review",
-    icon: <AlertTriangle className="h-3.5 w-3.5" />,
-    classes: "bg-[#E76500]/10 text-[#E76500] border-[#E76500]/20",
-  },
-  golden: {
-    label: "Golden",
-    icon: <Crown className="h-3.5 w-3.5" />,
-    classes: "bg-[#256F3A]/10 text-[#256F3A] border-[#256F3A]/20",
-  },
-  superseded: {
-    label: "Superseded",
-    icon: <XCircle className="h-3.5 w-3.5" />,
-    classes: "bg-muted-foreground/10 text-muted-foreground border-muted-foreground/20",
-  },
+const KIND_LABELS: Record<string, { bg: string; fg: string; l: string }> = {
+  vendor:   { bg: "var(--mn-primary-50)",   fg: "var(--mn-primary-700)", l: "VENDOR" },
+  customer: { bg: "rgba(124,58,237,0.12)",  fg: "#7C3AED",               l: "CUSTOMER" },
+  material: { bg: "rgba(14,165,164,0.12)",  fg: "#0EA5A4",               l: "MATERIAL" },
+  employee: { bg: "var(--mn-warn-bg)",      fg: "var(--mn-warn)",        l: "EMPLOYEE" },
 };
 
-function ConfidenceBar({ confidence }: { confidence: number }) {
-  const pct = Math.round(confidence * 100);
-  const color =
-    pct >= 85 ? "bg-[#256F3A]" : pct >= 60 ? "bg-[#E76500]" : "bg-destructive";
+function KindChip({ domain }: { domain: string }) {
+  const key = domain.toLowerCase();
+  const t = KIND_LABELS[key] ?? { bg: "rgba(15,23,42,0.06)", fg: "var(--mn-ink-500)", l: domain.toUpperCase() };
   return (
-    <div className="flex items-center gap-2">
-      <div className="h-1.5 w-20 rounded-full bg-white/[0.60]">
-        <div
-          className={`h-1.5 rounded-full ${color}`}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      <span className="text-xs font-medium text-foreground">{pct}%</span>
-    </div>
+    <span
+      style={{
+        display: "inline-flex",
+        padding: "3px 7px",
+        borderRadius: 4,
+        background: t.bg,
+        color: t.fg,
+        font: "700 10px/1 'JetBrains Mono', monospace",
+        letterSpacing: "0.08em",
+      }}
+    >
+      {t.l}
+    </span>
   );
 }
 
-const FALLBACK_STATUS = {
-  label: "Unknown",
-  icon: <Clock className="h-3.5 w-3.5" />,
-  classes: "bg-muted-foreground/10 text-muted-foreground border-muted-foreground/20",
-};
-
-function RecordRow({ record }: { record: MasterRecordSummary }) {
-  const statusConfig = STATUS_CONFIG[record.status] ?? FALLBACK_STATUS;
-
-  return (
-    <Link href={`/golden-records/${record.id}`}>
-      <div className="flex items-center justify-between rounded-lg border border-black/[0.08] bg-white/[0.70] px-4 py-3 transition-colors hover:border-primary/30 hover:bg-black/[0.03]">
-        <div className="flex items-center gap-4">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/[0.65]">
-            <Database className="h-4 w-4 text-primary" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-medium text-foreground">
-                {record.sap_object_key}
-              </span>
-              <Badge
-                variant="outline"
-                className={`text-xs gap-1 ${statusConfig.classes}`}
-              >
-                {statusConfig.icon}
-                {statusConfig.label}
-              </Badge>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {formatModuleName(record.domain)} &middot;{" "}
-              {record.source_count} source{record.source_count !== 1 ? "s" : ""}{" "}
-              &middot; Updated {relativeTime(record.updated_at)}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-6">
-          {record.pending_issues > 0 && (
-            <div className="flex items-center gap-1 text-xs text-[#E76500]">
-              <AlertTriangle className="h-3.5 w-3.5" />
-              {record.pending_issues} AI conflict{record.pending_issues !== 1 ? "s" : ""}
-            </div>
-          )}
-          <ConfidenceBar confidence={record.overall_confidence} />
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-        </div>
-      </div>
-    </Link>
-  );
+function StatusForRecord({ s }: { s: MasterRecordStatus }) {
+  if (s === "golden") return <StatusDot status="healthy" />;
+  if (s === "pending_review") return <StatusDot status="in-review" />;
+  if (s === "candidate") return <StatusDot status="open" />;
+  return <StatusDot status="scheduled" />;
 }
 
 export default function GoldenRecordsPage() {
-  const [domain, setDomain] = useState<string>("");
-  const [status, setStatus] = useState<string>("");
-  const [page, setPage] = useState(1);
-
-  const { data, isLoading } = useQuery({
-    queryKey: ["master-records", domain, status, page],
+  const [domainFilter, setDomainFilter] = useState<"all" | string>("all");
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["master-records.list", { domain: domainFilter }],
     queryFn: () =>
       getMasterRecords({
-        domain: domain || undefined,
-        status: status || undefined,
-        page,
-        per_page: 20,
+        per_page: 100,
+        domain: domainFilter === "all" ? undefined : domainFilter,
       }),
   });
 
-  const records = data?.records ?? [];
-  const total = data?.total ?? 0;
-  const totalPages = Math.ceil(total / 20);
+  const records: MasterRecordSummary[] = data?.records ?? [];
+  const total = data?.total ?? records.length;
 
-  // Stats from current page data
-  const goldenCount = records.filter((r) => r.status === "golden").length;
-  const pendingCount = records.filter((r) => r.status === "pending_review").length;
-  const candidateCount = records.filter((r) => r.status === "candidate").length;
+  const byKind = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const r of records) counts[r.domain] = (counts[r.domain] ?? 0) + 1;
+    return counts;
+  }, [records]);
+
+  const golden = records.filter((r) => r.status === "golden").length;
+  const pending = records.filter((r) => r.status === "pending_review").length;
+  const conflicts = records.reduce((a, r) => a + r.pending_issues, 0);
+
+  const meanConfidence = records.length
+    ? Math.round(
+        (records.reduce((a, r) => a + r.overall_confidence, 0) / records.length) * 100,
+      )
+    : null;
+
+  if (isLoading) {
+    return (
+      <>
+        <PageHead title="Golden Records" route="Govern · /golden-records" sub="Loading master records…" />
+        <Skeleton className="h-[420px] rounded-[10px]" />
+      </>
+    );
+  }
+  if (error) {
+    return (
+      <>
+        <PageHead title="Golden Records" route="Govern · /golden-records" sub="Failed to load." />
+        <div className="mn-card mn-card-pad" style={{ color: "var(--mn-neg)" }}>
+          Could not reach <code>/api/v1/master-records</code>.
+        </div>
+      </>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-display text-xl font-bold text-foreground">
-            Golden Records
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Steward-approved authoritative master data records with field-level
-            provenance
-          </p>
-        </div>
-      </div>
-
-      {/* Summary cards */}
-      <div className="grid grid-cols-3 gap-4">
-        <Card className="border-black/[0.08] bg-white/[0.70]">
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#256F3A]/10">
-              <Crown className="h-5 w-5 text-[#256F3A]" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{goldenCount}</p>
-              <p className="text-xs text-muted-foreground">Golden</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-black/[0.08] bg-white/[0.70]">
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#E76500]/10">
-              <AlertTriangle className="h-5 w-5 text-[#E76500]" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{pendingCount}</p>
-              <p className="text-xs text-muted-foreground">Pending Review</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-black/[0.08] bg-white/[0.70]">
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-              <CheckCircle2 className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{candidateCount}</p>
-              <p className="text-xs text-muted-foreground">Candidates</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters */}
-      <div className="flex items-center gap-3">
-        <Filter className="h-4 w-4 text-muted-foreground" />
-        <select
-          value={domain}
-          onChange={(e) => {
-            setDomain(e.target.value);
-            setPage(1);
-          }}
-          className="rounded-md border border-black/[0.08] bg-white/[0.70] px-3 py-1.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-        >
-          <option value="">All Domains</option>
-          <option value="business_partner">Business Partner</option>
-          <option value="material_master">Material Master</option>
-          <option value="fi_gl">GL Accounts</option>
-          <option value="employee_central">Employee Central</option>
-        </select>
-        <select
-          value={status}
-          onChange={(e) => {
-            setStatus(e.target.value);
-            setPage(1);
-          }}
-          className="rounded-md border border-black/[0.08] bg-white/[0.70] px-3 py-1.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-        >
-          <option value="">All Statuses</option>
-          <option value="candidate">Candidate</option>
-          <option value="pending_review">Pending Review</option>
-          <option value="golden">Golden</option>
-          <option value="superseded">Superseded</option>
-        </select>
-        <span className="ml-auto text-xs text-muted-foreground">
-          {total} record{total !== 1 ? "s" : ""}
-        </span>
-      </div>
-
-      {/* Records list */}
-      {isLoading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        </div>
-      ) : records.length === 0 ? (
-        <Card className="border-black/[0.08] bg-white/[0.70]">
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <Database className="h-12 w-12 text-white/[0.08]" />
-            <h3 className="mt-4 font-semibold text-foreground">
-              No golden records yet
-            </h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Golden records are created when sync batches are processed through
-              the survivorship engine
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-2">
-          {records.map((record) => (
-            <RecordRow key={record.id} record={record} />
-          ))}
-        </div>
-      )}
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page <= 1}
-            onClick={() => setPage(page - 1)}
-            className="border-black/[0.08] text-foreground"
+    <>
+      <PageHead
+        title="Golden Records"
+        route="Govern · /golden-records"
+        sub={
+          <>
+            <strong style={{ color: "var(--mn-ink-700)" }}>{total.toLocaleString()} master records</strong> across the estate ·{" "}
+            <strong style={{ color: "var(--mn-pos)" }}>{golden} golden</strong>,{" "}
+            <strong style={{ color: "var(--mn-warn)" }}>{pending} pending review</strong>,{" "}
+            <strong style={{ color: "var(--mn-neg)" }}>{conflicts} open issues</strong>.
+          </>
+        }
+        actions={
+          <button
+            type="button"
+            className="mn-btn mn-btn-ghost"
+            onClick={() =>
+              downloadCsv(
+                "meridian-golden-records.csv",
+                records.map((r) => ({
+                  id: r.id,
+                  domain: r.domain,
+                  sap_key: r.sap_object_key,
+                  sources: r.source_count,
+                  confidence: Math.round(r.overall_confidence * 100) + "%",
+                  issues: r.pending_issues,
+                  status: r.status,
+                  updated_at: r.updated_at,
+                })),
+              )
+            }
           >
-            Previous
-          </Button>
-          <span className="text-sm text-muted-foreground">
-            Page {page} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page >= totalPages}
-            onClick={() => setPage(page + 1)}
-            className="border-black/[0.08] text-foreground"
-          >
-            Next
-          </Button>
+            Export
+          </button>
+        }
+      />
+
+      <div className="mn-row mn-stagger" style={{ gridTemplateColumns: "repeat(5, minmax(0, 1fr))", marginBottom: 18 }}>
+        <KPI label="Golden" value={golden} hint={`${total - golden} non-golden`} tone="pos" />
+        <KPI label="Pending review" value={pending} tone="warn" />
+        <KPI label="Open issues" value={conflicts} tone={conflicts > 0 ? "neg" : "pos"} />
+        <KPI label="Domains" value={Object.keys(byKind).length} />
+        <KPI label="Mean confidence" value={meanConfidence !== null ? `${meanConfidence}%` : "—"} tone="pos" />
+      </div>
+
+      <div className="mn-row mn-row-12" style={{ marginBottom: 18 }}>
+        <div className="mn-col-8">
+          <div className="mn-card mn-card-pad">
+            <SectionHeader title="Coverage by domain" caption="Share of master records by domain" />
+            <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 12 }}>
+              {Object.entries(byKind).map(([k, v]) => {
+                const pct = (v / Math.max(total, 1)) * 100;
+                const fg = KIND_LABELS[k.toLowerCase()]?.fg ?? "var(--mn-primary)";
+                return (
+                  <div key={k} style={{ display: "grid", gridTemplateColumns: "120px 1fr 120px", alignItems: "center", gap: 14 }}>
+                    <KindChip domain={k} />
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{ flex: 1, height: 8, background: "rgba(15,23,42,0.05)", borderRadius: 4, overflow: "hidden" }}>
+                        <div
+                          style={{
+                            width: `${pct}%`,
+                            height: "100%",
+                            background: fg,
+                            borderRadius: 4,
+                            transition: "width 900ms cubic-bezier(.2,.7,.2,1)",
+                          }}
+                        />
+                      </div>
+                      <span className="mn-tabular" style={{ fontSize: 11.5, color: "var(--mn-ink-400)", minWidth: 45, textAlign: "right" }}>
+                        {pct.toFixed(1)}%
+                      </span>
+                    </div>
+                    <span className="mn-tabular" style={{ font: "600 14px/1 'Inter Tight'", color: "var(--mn-ink-900)", textAlign: "right" }}>
+                      {v.toLocaleString()}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
-      )}
-    </div>
+        <div className="mn-col-4">
+          <div className="mn-card mn-card-pad" style={{ height: "100%" }}>
+            <SectionHeader title="Confidence" caption="Mean across all surfaced records" />
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 10 }}>
+              <span className="mn-tabular" style={{ font: "600 36px/1 'Inter Tight'", letterSpacing: "-0.025em" }}>
+                {meanConfidence !== null ? meanConfidence : "—"}
+              </span>
+              <span style={{ font: "500 14px/1 'Inter Tight'", color: "var(--mn-ink-300)" }}>%</span>
+            </div>
+            <div style={{ marginTop: 12, fontSize: 12, color: "var(--mn-ink-500)" }}>
+              Higher confidence reflects strong cross-source agreement on golden fields.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mn-segment" style={{ marginBottom: 12, flexWrap: "wrap" }}>
+        <button type="button" className={domainFilter === "all" ? "on" : ""} onClick={() => setDomainFilter("all")}>
+          All <span className="mn-tabular" style={{ opacity: 0.6, marginLeft: 4 }}>{total}</span>
+        </button>
+        {Object.entries(byKind).map(([k, v]) => (
+          <button key={k} type="button" className={domainFilter === k ? "on" : ""} onClick={() => setDomainFilter(k)}>
+            {k} <span className="mn-tabular" style={{ opacity: 0.6, marginLeft: 4 }}>{v}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="mn-card" style={{ padding: 0, overflow: "hidden" }}>
+        <div className="mn-table-wrap">
+          <table className="mn-table">
+            <thead>
+              <tr>
+                <th style={{ paddingLeft: 20 }}>ID</th>
+                <th>Kind</th>
+                <th>SAP key</th>
+                <th className="right">Sources</th>
+                <th>Confidence</th>
+                <th>Issues</th>
+                <th>Updated</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {records.map((r) => (
+                <tr key={r.id}>
+                  <td style={{ paddingLeft: 20 }} className="mn-tabular">
+                    <Link
+                      href={`/golden-records/${r.id}`}
+                      style={{
+                        font: "600 11.5px/1 'JetBrains Mono', monospace",
+                        color: "var(--mn-primary-700)",
+                      }}
+                    >
+                      {r.id.slice(0, 10)}
+                    </Link>
+                  </td>
+                  <td><KindChip domain={r.domain} /></td>
+                  <td>
+                    <ModChip>{r.sap_object_key}</ModChip>
+                  </td>
+                  <td className="right mn-tabular">{r.source_count}</td>
+                  <td>
+                    <span
+                      className="mn-tabular"
+                      style={{ color: r.overall_confidence >= 0.9 ? "var(--mn-pos)" : r.overall_confidence >= 0.8 ? "var(--mn-primary)" : "var(--mn-warn)" }}
+                    >
+                      {Math.round(r.overall_confidence * 100)}%
+                    </span>
+                  </td>
+                  <td>
+                    {r.pending_issues > 0 ? (
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          padding: "3px 7px",
+                          borderRadius: 4,
+                          background: "var(--mn-neg-bg)",
+                          color: "var(--mn-neg)",
+                          font: "600 11.5px/1 'Inter'",
+                          fontVariantNumeric: "tabular-nums",
+                        }}
+                      >
+                        ⚠ {r.pending_issues}
+                      </span>
+                    ) : (
+                      <span style={{ color: "var(--mn-ink-300)" }}>—</span>
+                    )}
+                  </td>
+                  <td className="mn-tabular" style={{ font: "500 11.5px/1 'JetBrains Mono', monospace", color: "var(--mn-ink-500)" }}>
+                    {relativeTime(r.updated_at)}
+                  </td>
+                  <td><StatusForRecord s={r.status} /></td>
+                </tr>
+              ))}
+              {records.length === 0 && (
+                <tr>
+                  <td colSpan={8} style={{ padding: 32, textAlign: "center", color: "var(--mn-ink-400)" }}>
+                    No master records yet.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
   );
 }

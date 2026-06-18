@@ -457,10 +457,7 @@ async def _apply_source_action(
     """Apply the steward's decision to the source record."""
     if item.item_type == "merge_decision":
         if action == "approve":
-            await db.execute(
-                text("UPDATE match_scores SET reviewed_by = :uid, reviewed_at = now() WHERE id = :sid"),
-                {"uid": user_id, "sid": item.source_id},
-            )
+            await _execute_merge(db, item, user_id, notes)
         # reject leaves match_score unreviewed
 
     elif item.item_type == "golden_record_review":
@@ -508,6 +505,83 @@ async def _apply_source_action(
                 text("UPDATE glossary_terms SET last_reviewed_at = now(), updated_at = now() WHERE id = :sid"),
                 {"sid": item.source_id},
             )
+
+
+async def _execute_merge(
+    db: AsyncSession, item: QueueItemOut, user_id: str, notes: str | None
+) -> None:
+    """Approve a merge_decision — consolidate the two matched master records.
+
+    The survivor is the higher-confidence master record; the other is marked
+    ``superseded`` with a master_record_history entry. If golden records don't
+    yet exist for the matched keys the match is still marked reviewed so the
+    queue item resolves cleanly.
+    """
+    import json
+
+    ms = (
+        await db.execute(
+            text(
+                "SELECT candidate_a_key, candidate_b_key, domain "
+                "FROM match_scores WHERE id = :sid AND tenant_id = :tid"
+            ),
+            {"sid": item.source_id, "tid": item.tenant_id},
+        )
+    ).fetchone()
+
+    if ms is not None:
+        a_key, b_key, domain = ms[0], ms[1], ms[2]
+        recs = (
+            await db.execute(
+                text(
+                    "SELECT id, sap_object_key, overall_confidence "
+                    "FROM master_records "
+                    "WHERE tenant_id = :tid AND domain = :domain "
+                    "  AND sap_object_key IN (:a, :b) AND status <> 'superseded'"
+                ),
+                {"tid": item.tenant_id, "domain": domain, "a": a_key, "b": b_key},
+            )
+        ).fetchall()
+
+        if len(recs) == 2:
+            survivor, loser = sorted(recs, key=lambda r: (r[2] or 0.0), reverse=True)
+            await db.execute(
+                text(
+                    "UPDATE master_records SET status = 'superseded', "
+                    "updated_at = now() WHERE id = :lid AND tenant_id = :tid"
+                ),
+                {"lid": loser[0], "tid": item.tenant_id},
+            )
+            await db.execute(
+                text(
+                    "INSERT INTO master_record_history "
+                    "(id, tenant_id, master_record_id, action, changed_by, "
+                    " changed_at, details) "
+                    "VALUES (gen_random_uuid(), :tid, :mid, "
+                    " 'merged_via_workbench', :uid, now(), CAST(:details AS jsonb))"
+                ),
+                {
+                    "tid": item.tenant_id,
+                    "mid": loser[0],
+                    "uid": user_id,
+                    "details": json.dumps(
+                        {
+                            "merged_into": str(survivor[1]),
+                            "match_score_id": str(item.source_id),
+                            "notes": notes or "",
+                        }
+                    ),
+                },
+            )
+
+    # Mark the match reviewed + merged so the queue item resolves.
+    await db.execute(
+        text(
+            "UPDATE match_scores SET reviewed_by = :uid, reviewed_at = now(), "
+            "auto_action = 'merged' WHERE id = :sid AND tenant_id = :tid"
+        ),
+        {"uid": user_id, "sid": item.source_id, "tid": item.tenant_id},
+    )
 
 
 # ── PUT /stewardship/{id}/escalate ───────────────────────────────────────────

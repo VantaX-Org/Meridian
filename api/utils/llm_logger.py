@@ -30,10 +30,9 @@ def log_llm_call(
     """Insert a row into llm_audit_log. Prompt content is hashed, never stored.
 
     When ``deterministic_hit=True``, the row records a decision that was made
-    *without* calling the LLM — this powers the `/api/v1/metrics/llm-savings`
-    endpoint that shows how many calls were short-circuited by deterministic
-    rules. ``skip_reason`` is a short token (e.g. 'closed_domain', 'canonical',
-    'cache_hit') that explains why no LLM round-trip happened.
+    *without* calling the LLM. ``skip_reason`` is a short token (e.g.
+    'closed_domain', 'canonical', 'cache_hit') that explains why no LLM
+    round-trip happened. Kept as a compliance audit substrate.
     """
     prompt_hash = hashlib.sha256(prompt.encode()).hexdigest()
 

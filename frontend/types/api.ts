@@ -343,21 +343,6 @@ export interface ExceptionListResponse {
   per_page: number;
 }
 
-/* ─── NLP ─── */
-
-export interface NlpSource {
-  type: string;
-  id: string;
-  relevance: string;
-}
-
-export interface NlpResponse {
-  answer: string;
-  sources: NlpSource[];
-  data?: Record<string, unknown>[] | null;
-  chart_type?: "bar" | "line" | "pie" | null;
-}
-
 /* ─── Lineage ─── */
 
 export interface LineageNode {

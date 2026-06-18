@@ -22,3 +22,12 @@ export async function inviteUser(body: {
   const { data } = await apiClient.post("/api/v1/users/invite", body);
   return data;
 }
+
+export async function deleteUser(
+  userId: string,
+): Promise<{ id: string; status: string }> {
+  const { data } = await apiClient.delete<{ id: string; status: string }>(
+    `/api/v1/users/${userId}`,
+  );
+  return data;
+}

@@ -365,7 +365,7 @@ async def _validate_licence() -> dict | None:
     _last_checked_at = time.time()
 
     # Offline mode: skip network call entirely
-    licence_mode = os.getenv("LICENCE_MODE", "online")
+    licence_mode = settings.licence_mode
     if licence_mode == "offline":
         return _read_offline_licence()
 
@@ -382,7 +382,7 @@ async def _validate_licence() -> dict | None:
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.post(
-                f"{settings.licence_server_url}/validate",
+                f"{settings.licence_server_url}/api/licence/validate",
                 json={
                     "licenceKey": settings.licence_key,
                     "machineFingerprint": _get_machine_fingerprint(),
@@ -409,7 +409,6 @@ FEATURE_ROUTE_MAP: dict[str, str] = {
     "/api/v1/cleaning": "cleaning",
     "/api/v1/exceptions": "exceptions",
     "/api/v1/analytics": "analytics",
-    "/api/v1/nlp": "nlp",
     "/api/v1/contracts": "contracts",
     "/api/v1/notifications": "notifications",
     "/api/v1/reports": "export_reports",

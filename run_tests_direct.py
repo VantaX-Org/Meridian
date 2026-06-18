@@ -85,16 +85,6 @@ def test_task_01():
     else:
         print_fail("safe_invoke not exported")
 
-def test_task_02():
-    """Task 02: NLP service timeout wrapping"""
-    print_header(2, "NLP Service Timeout Wrapping")
-    
-    print_test("Verify NLP service uses safe_ainvoke")
-    if file_contains("api/services/nlp_service.py", "safe_ainvoke"):
-        print_pass("NLP service wrapped")
-    else:
-        print_fail("NLP service not using safe_ainvoke")
-
 def test_task_03():
     """Task 03: 8 LLM invoke sites wrapped"""
     print_header(3, "8 LLM Invoke Sites Wrapped")
@@ -149,16 +139,6 @@ def test_task_05():
             print_pass(f"{label} timeout found")
         else:
             print_fail(f"{label} timeout missing")
-
-def test_task_06():
-    """Task 06: Error differentiation"""
-    print_header(6, "Differentiated Error Messages")
-    
-    print_test("Verify error message differentiation")
-    if file_contains("api/services/nlp_service.py", "timeout") or file_contains("api/services/nlp_service.py", "unavailable"):
-        print_pass("Error messages differentiated")
-    else:
-        print_fail("Error messages not differentiated")
 
 def test_task_07():
     """Task 07: agents_failed reports"""
@@ -302,11 +282,9 @@ def main():
     
     # Run all tests
     test_task_01()
-    test_task_02()
     test_task_03()
     test_task_04()
     test_task_05()
-    test_task_06()
     test_task_07()
     test_task_08()
     test_task_09()

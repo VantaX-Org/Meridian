@@ -1,203 +1,193 @@
 "use client";
 
-import { useState } from "react";
-import {
-  Workflow,
-  Loader2,
-  AlertCircle,
-} from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getVersions } from "@/lib/api/versions";
+import { PageHead, KPI, SectionHeader } from "@/components/meridian/atoms";
+import { ArrowRight } from "@/components/meridian/icons";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getBusinessProcess } from "@/lib/api/connectivity";
-import { ProcessReadinessTree } from "@/components/charts/process-readiness-tree";
-import { formatModuleName } from "@/lib/format";
-import type { Version } from "@/types/api";
+import { getVersions } from "@/lib/api/versions";
+import { SearchField, matchesSearch } from "@/components/meridian/controls";
+import type { BusinessProcessL1, Version } from "@/types/api";
 
-const ALL_MODULES = [
-  "business_partner",
-  "material_master",
-  "fi_gl",
-  "accounts_payable",
-  "accounts_receivable",
-  "asset_accounting",
-  "mm_purchasing",
-  "plant_maintenance",
-  "production_planning",
-  "sd_customer_master",
-  "sd_sales_orders",
-  "employee_central",
-];
-
-function SkeletonTree() {
-  return (
-    <div className="space-y-3">
-      {Array.from({ length: 3 }).map((_, i) => (
-        <div key={i} className="rounded-xl border border-black/[0.08] bg-white/[0.70] p-4 space-y-3">
-          <Skeleton className="h-5 w-48" />
-          <div className="ml-4 space-y-2">
-            <Skeleton className="h-4 w-40" />
-            <Skeleton className="h-4 w-36" />
-            <Skeleton className="h-4 w-44" />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
+function isCompleteVersion(v: Version): boolean {
+  return (v.status === "agents_complete" || v.status === "complete" || v.status === "ai_enriched") && !!v.dqs_summary;
 }
 
-export default function BusinessProcessPage() {
-  const [versionId, setVersionId] = useState<string>("");
-  const [module, setModule] = useState<string>(ALL_MODULES[0]);
-
-  // Load versions
-  const { data: versionData, isLoading: versionsLoading } = useQuery({
-    queryKey: ["versions"],
-    queryFn: () => getVersions({ limit: 20 }),
-  });
-
-  const completedVersions = (versionData?.versions ?? []).filter(
-    (v: Version) => v.status === "agents_complete" || v.status === "complete"
-  );
-
-  const activeVersionId = versionId || completedVersions[0]?.id || "";
-
-  // Load business process
-  const {
-    data: processes,
-    isLoading: processLoading,
-    isError,
-    error,
-  } = useQuery({
-    queryKey: ["business-process", activeVersionId, module],
-    queryFn: () => getBusinessProcess(activeVersionId, module),
-    enabled: Boolean(activeVersionId) && Boolean(module),
-  });
-
-  // Readiness summary counts
-  const readinessCounts = { green: 0, amber: 0, red: 0 };
-  if (processes) {
-    for (const l1 of processes) {
-      for (const l2 of l1.l2_groups) {
-        for (const l3 of l2.l3_processes) {
-          readinessCounts[l3.overall_readiness]++;
+function dqStatusForProcess(p: BusinessProcessL1): "healthy" | "at-risk" | "broken" {
+  let red = 0, amber = 0, green = 0;
+  for (const l2 of p.l2_groups) {
+    for (const l3 of l2.l3_processes ?? []) {
+      for (const l4 of l3.l4_steps ?? []) {
+        for (const l5 of l4.l5_fields ?? []) {
+          if (l5.dq_status === "red") red++;
+          else if (l5.dq_status === "amber") amber++;
+          else green++;
         }
       }
     }
   }
-  const totalProcesses = readinessCounts.green + readinessCounts.amber + readinessCounts.red;
+  if (red > 0) return "broken";
+  if (amber > 0) return "at-risk";
+  return "healthy";
+}
+
+export default function BusinessProcessPage() {
+  const versionsQ = useQuery({
+    queryKey: ["versions.list", { limit: 10 }],
+    queryFn: () => getVersions({ limit: 10 }),
+  });
+
+  const latest = useMemo(
+    () => versionsQ.data?.versions.find(isCompleteVersion),
+    [versionsQ.data],
+  );
+  const availableModules = useMemo(
+    () => (latest?.dqs_summary ? Object.keys(latest.dqs_summary) : []),
+    [latest],
+  );
+
+  const [module, setModule] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const effectiveModule = module ?? availableModules[0] ?? null;
+
+  const bpQ = useQuery({
+    queryKey: ["business-process", latest?.id, effectiveModule],
+    queryFn: () => getBusinessProcess(latest!.id, effectiveModule!),
+    enabled: !!latest && !!effectiveModule,
+  });
+
+  if (versionsQ.isLoading) {
+    return (
+      <>
+        <PageHead title="Business Processes" route="Connect · /business-process" sub="Loading…" />
+        <Skeleton className="h-[420px] rounded-[10px]" />
+      </>
+    );
+  }
+
+  if (!latest) {
+    return (
+      <>
+        <PageHead
+          title="Business Processes"
+          route="Connect · /business-process"
+          sub="Business process readiness runs against a completed version."
+        />
+        <div className="mn-card mn-card-pad" style={{ textAlign: "center", color: "var(--mn-ink-400)" }}>
+          Run an analysis from <code>/run-sync</code> to populate process readiness.
+        </div>
+      </>
+    );
+  }
+
+  const processes: BusinessProcessL1[] = bpQ.data ?? [];
+  const healthy = processes.filter((p) => dqStatusForProcess(p) === "healthy").length;
+  const atRisk = processes.filter((p) => dqStatusForProcess(p) === "at-risk").length;
+  const broken = processes.filter((p) => dqStatusForProcess(p) === "broken").length;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="font-display text-xl font-bold text-foreground">Business Processes</h1>
-          <p className="text-sm text-muted-foreground">
-            View SAP business process hierarchy with data quality readiness at each level
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          {/* Module selector */}
-          <select
-            value={module}
-            onChange={(e) => setModule(e.target.value)}
-            className="rounded-md border border-black/[0.08] bg-white/[0.70] px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-          >
-            {ALL_MODULES.map((m) => (
-              <option key={m} value={m}>
-                {formatModuleName(m)}
-              </option>
-            ))}
-          </select>
+    <>
+      <PageHead
+        title="Business Processes"
+        route="Connect · /business-process"
+        sub={
+          <>
+            Process readiness for version{" "}
+            <span style={{ font: "500 12px/1 'JetBrains Mono', monospace", color: "var(--mn-ink-500)" }}>
+              {latest.id.slice(0, 8)}
+            </span>{" "}
+            ({latest.label ?? "Unlabelled run"}).
+          </>
+        }
+        actions={
+          <SearchField value={search} onChange={setSearch} placeholder="Filter processes…" />
+        }
+      />
 
-          {/* Version selector */}
-          <select
-            value={activeVersionId}
-            onChange={(e) => setVersionId(e.target.value)}
-            disabled={versionsLoading}
-            className="rounded-md border border-black/[0.08] bg-white/[0.70] px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-          >
-            {versionsLoading && <option>Loading...</option>}
-            {completedVersions.map((v: Version) => (
-              <option key={v.id} value={v.id}>
-                {v.label || new Date(v.run_at).toLocaleDateString()}
-              </option>
-            ))}
-            {completedVersions.length === 0 && !versionsLoading && (
-              <option value="">No completed analyses</option>
-            )}
-          </select>
-        </div>
+      <div className="mn-row mn-stagger" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))", marginBottom: 18 }}>
+        <KPI label="Processes" value={processes.length} />
+        <KPI label="Healthy" value={healthy} tone="pos" />
+        <KPI label="At risk" value={atRisk} tone="warn" />
+        <KPI label="Broken" value={broken} tone="neg" />
       </div>
 
-      {/* Readiness summary */}
-      {totalProcesses > 0 && (
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Card className="border-[#256F3A]/10 bg-[#256F3A]/[0.04]">
-            <CardContent className="flex items-center gap-3 p-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#256F3A]/10">
-                <div className="h-3 w-3 rounded-full bg-[#256F3A]" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-[#256F3A]">{readinessCounts.green}</p>
-                <p className="text-xs text-muted-foreground">Ready (Green)</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border-[#E76500]/10 bg-[#E76500]/[0.04]">
-            <CardContent className="flex items-center gap-3 p-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#E76500]/10">
-                <div className="h-3 w-3 rounded-full bg-[#E76500]" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-[#E76500]">{readinessCounts.amber}</p>
-                <p className="text-xs text-muted-foreground">Conditional (Amber)</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border-destructive/10 bg-destructive/[0.04]">
-            <CardContent className="flex items-center gap-3 p-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-destructive/10">
-                <div className="h-3 w-3 rounded-full bg-destructive" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-destructive">{readinessCounts.red}</p>
-                <p className="text-xs text-muted-foreground">Not Ready (Red)</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      <div className="mn-segment" style={{ marginBottom: 14, flexWrap: "wrap" }}>
+        {availableModules.map((m) => (
+          <button
+            key={m}
+            type="button"
+            className={effectiveModule === m ? "on" : ""}
+            onClick={() => setModule(m)}
+          >
+            {m}
+          </button>
+        ))}
+      </div>
 
-      {/* Error state */}
-      {isError && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Failed to load business processes: {(error as Error).message}
-          </AlertDescription>
-        </Alert>
-      )}
+      {bpQ.isLoading && <Skeleton className="h-60 rounded-[10px]" />}
 
-      {/* Process tree */}
-      {processLoading ? (
-        <SkeletonTree />
-      ) : processes ? (
-        <ProcessReadinessTree processes={processes} />
-      ) : !activeVersionId ? (
-        <Card className="border-black/[0.08] bg-white/[0.70]">
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <Workflow className="h-12 w-12 text-muted-foreground/20" />
-            <h3 className="mt-4 font-semibold text-foreground">No analysis available</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Run an analysis first to see business process readiness
-            </p>
-          </CardContent>
-        </Card>
-      ) : null}
-    </div>
+      {!bpQ.isLoading && (
+        <>
+          <SectionHeader title="Process portfolio" caption={`L1 processes for module ${effectiveModule}`} />
+          <div className="mn-row" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(380px, 1fr))" }}>
+            {processes.filter((p) => matchesSearch(p, search)).map((p) => {
+              const status = dqStatusForProcess(p);
+              const stroke =
+                status === "healthy"
+                  ? "var(--mn-pos)"
+                  : status === "at-risk"
+                    ? "var(--mn-warn)"
+                    : "var(--mn-neg)";
+              const l5Count = p.l2_groups.reduce(
+                (a, l2) => a + (l2.l3_processes ?? []).reduce(
+                  (b, l3) => b + (l3.l4_steps ?? []).reduce(
+                    (c, l4) => c + (l4.l5_fields ?? []).length, 0,
+                  ), 0,
+                ), 0,
+              );
+              return (
+                <div key={p.l1_id} className={`mn-process-card ${status === "broken" ? "broken" : ""}`}>
+                  <div className="mn-process-head">
+                    <div>
+                      <span className="mn-eyebrow">{p.l1_id}</span>
+                      <div className="mn-process-name">{p.l1_name}</div>
+                      <div className="mn-process-owner">{p.system}</div>
+                    </div>
+                    <ArrowRight size={14} style={{ color: "var(--mn-ink-300)" }} />
+                  </div>
+                  <p style={{ margin: 0, fontSize: 12.5, color: "var(--mn-ink-500)", lineHeight: 1.45 }}>
+                    {p.l1_description}
+                  </p>
+                  <div className="mn-process-stats">
+                    <div>
+                      <span className="mn-eyebrow">L2 groups</span>
+                      <span className="v mn-tabular">{p.l2_groups.length}</span>
+                    </div>
+                    <div>
+                      <span className="mn-eyebrow">L5 fields</span>
+                      <span className="v mn-tabular">{l5Count}</span>
+                    </div>
+                    <div>
+                      <span className="mn-eyebrow">Status</span>
+                      <span className="v" style={{ color: stroke, textTransform: "uppercase", fontSize: 12 }}>
+                        {status}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            {processes.filter((p) => matchesSearch(p, search)).length === 0 && (
+              <div className="mn-card mn-card-pad" style={{ textAlign: "center", color: "var(--mn-ink-400)" }}>
+                {processes.length === 0
+                  ? `No process data for ${effectiveModule}.`
+                  : "No processes match this filter."}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </>
   );
 }

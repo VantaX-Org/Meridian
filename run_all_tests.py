@@ -87,20 +87,6 @@ def test_task_01():
         print_fail(f"Timeout parameter missing: {err}")
         tests_failed += 1
 
-def test_task_02():
-    """Task 02: NLP service timeout wrapping"""
-    global tests_passed, tests_failed
-    print_header(2, "NLP Service Timeout Wrapping")
-    
-    print_test("Verify NLP service imports safe_invoke")
-    code, out, err = docker_cmd("grep -l 'safe_invoke' api/services/nlp_service.py 2>/dev/null")
-    if code == 0:
-        print_pass()
-        tests_passed += 1
-    else:
-        print_fail("NLP service not using safe_invoke")
-        tests_failed += 1
-
 def test_task_03():
     """Task 03: 8 LLM invoke call sites wrapped"""
     global tests_passed, tests_failed
@@ -200,20 +186,6 @@ def test_task_05():
         tests_passed += 1
     else:
         print_fail("300s timeout missing")
-        tests_failed += 1
-
-def test_task_06():
-    """Task 06: Differentiated error messages"""
-    global tests_passed, tests_failed
-    print_header(6, "Differentiated Error Messages")
-    
-    print_test("Verify error message differentiation in NLP service")
-    code, out, err = docker_cmd("grep -c 'timeout\\|unavailable' api/services/nlp_service.py")
-    if code == 0 and int(out.strip() or 0) > 0:
-        print_pass()
-        tests_passed += 1
-    else:
-        print_fail("Error messages not differentiated")
         tests_failed += 1
 
 def test_task_07():
@@ -413,11 +385,9 @@ def main():
     
     # Run all test functions
     test_task_01()
-    test_task_02()
     test_task_03()
     test_task_04()
     test_task_05()
-    test_task_06()
     test_task_07()
     test_task_08()
     test_task_09()

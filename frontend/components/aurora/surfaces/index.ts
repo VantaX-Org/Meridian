@@ -9,9 +9,7 @@
 
 export {
   CommandCentre,
-  LlmSavingsStrip,
   buildVerdict,
-  isSavingsNonTrivial,
 } from "./command-centre";
 export type {
   CommandCentreProps,
@@ -20,9 +18,6 @@ export type {
   CommandCentreInboxItem,
   CommandCentreTrendPoint,
   CommandCentreIssueBucket,
-  CommandCentreLlmSavings,
-  CommandCentreAskState,
-  LlmSavingsStripProps,
   BuildVerdictInput,
 } from "./command-centre";
 

@@ -488,6 +488,43 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
         except Exception as e:
             logger.warning(f"Failed to enqueue run_exception_scan (non-fatal): {e}")
 
+        # Enqueue mining — dedup / anomaly / relationship (non-blocking).
+        # Mirrors the run_cleaning fan-out: each module's mining runs against
+        # the same uploaded parquet and writes data_duplicates / data_anomalies
+        # / data_relationships, which back the Dedup, Mining and Relationships
+        # pages. Previously nothing enqueued these, so those pages stayed empty.
+        # Failure is non-fatal — it must never block analysis completion.
+        try:
+            from workers.tasks.mining.dedup import run_dedup
+            from workers.tasks.mining.anomaly import run_anomaly
+            from workers.tasks.mining.relationship import run_relationship
+            for module_name in modules:
+                run_dedup.delay(version_id, tenant_id, module_name, parquet_path)
+                run_anomaly.delay(version_id, tenant_id, module_name, parquet_path)
+                run_relationship.delay(version_id, tenant_id, module_name, parquet_path)
+            logger.info(
+                f"Enqueued mining (dedup/anomaly/relationship) for "
+                f"version_id={version_id}, modules={modules}"
+            )
+        except Exception as e:
+            logger.warning(f"Failed to enqueue mining tasks (non-fatal): {e}")
+
+        # Enqueue golden-record build (non-blocking — failure is non-fatal).
+        # Registers the uploaded records as master_records via the existing
+        # survivorship engine (golden_record_engine), so the Golden Records
+        # workbench reflects real uploaded data. Previously that engine had
+        # no caller at all.
+        try:
+            from workers.tasks.build_golden_records import build_golden_records
+            for module_name in modules:
+                build_golden_records.delay(version_id, tenant_id, module_name, parquet_path)
+            logger.info(
+                f"Enqueued build_golden_records for version_id={version_id}, "
+                f"modules={modules}"
+            )
+        except Exception as e:
+            logger.warning(f"Failed to enqueue build_golden_records (non-fatal): {e}")
+
         return {"version_id": version_id, "status": "complete", "findings_count": len(all_results)}
 
     except Exception as e:

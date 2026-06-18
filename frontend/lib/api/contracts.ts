@@ -1,9 +1,8 @@
-import apiClient, { longApiClient } from "./client";
+import apiClient from "./client";
 import type {
   ContractListResponse,
   Contract,
   ComplianceHistoryResponse,
-  NlpResponse,
   LineageGraph,
 } from "@/types/api";
 
@@ -64,15 +63,6 @@ export async function getContractCompliance(
     `/api/v1/contracts/${id}/compliance`,
     { params: days ? { days } : undefined },
   );
-  return data;
-}
-
-export async function sendNlpQuery(
-  question: string,
-): Promise<NlpResponse> {
-  const { data } = await longApiClient.post<NlpResponse>("/api/v1/nlp/query", {
-    question,
-  });
   return data;
 }
 

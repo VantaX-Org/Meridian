@@ -61,3 +61,40 @@ def decode_access_token(token: str, secret: str) -> dict | None:
         return jwt.decode(token, secret, algorithms=[_JWT_ALGORITHM])
     except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
         return None
+
+
+def create_invite_token(user_id: str, tenant_id: str, secret: str, ttl_days: int = 7) -> str:
+    """Create a signed JWT for accepting an invitation (sets first password).
+
+    Same HS256 + tenant secret as access tokens, with a distinct ``purpose``
+    claim so an access token can't be substituted for an invite acceptance
+    and vice versa. Default 7-day expiry.
+    """
+    now = datetime.now(timezone.utc)
+    payload = {
+        "sub": user_id,
+        "tenant_id": tenant_id,
+        "purpose": "invite_accept",
+        "iat": now,
+        "exp": now + timedelta(days=ttl_days),
+    }
+    return jwt.encode(payload, secret, algorithm=_JWT_ALGORITHM)
+
+
+def create_password_reset_token(
+    user_id: str, tenant_id: str, secret: str, ttl_minutes: int = 60
+) -> str:
+    """Create a signed JWT for the forgot-password flow.
+
+    Short TTL (default 1 hour) and a distinct ``purpose`` claim so it can't
+    be confused with an access token or invite token.
+    """
+    now = datetime.now(timezone.utc)
+    payload = {
+        "sub": user_id,
+        "tenant_id": tenant_id,
+        "purpose": "password_reset",
+        "iat": now,
+        "exp": now + timedelta(minutes=ttl_minutes),
+    }
+    return jwt.encode(payload, secret, algorithm=_JWT_ALGORITHM)

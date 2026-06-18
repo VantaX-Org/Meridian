@@ -152,35 +152,73 @@ def _build_email_content(config: dict, version_data: dict, trigger: str) -> tupl
     else:
         subject = "Meridian Data Quality Alert"
 
-    # Build HTML body
-    findings_html = ""
+    # Build HTML body. All styling is inline (no <style> block) — best
+    # compatibility with Outlook desktop and other clients that strip <head>.
+    # Brand colors match the Meridian design system: --mn-primary (#F97316),
+    # ink tones #0F172A / #475569 / #94A3B8.
+    findings_rows = ""
     for f in version_data.get("critical_findings", [])[:5]:
-        findings_html += f"""
+        findings_rows += f"""
         <tr>
-          <td style="padding:4px 8px;border:1px solid #ddd">{f['check_id']}</td>
-          <td style="padding:4px 8px;border:1px solid #ddd">{f['module']}</td>
-          <td style="padding:4px 8px;border:1px solid #ddd">{f['message'][:100]}</td>
-          <td style="padding:4px 8px;border:1px solid #ddd">{f['affected_count']}</td>
+          <td style="padding:8px 10px;border-bottom:1px solid #F1F5F9;color:#334155;">{f['check_id']}</td>
+          <td style="padding:8px 10px;border-bottom:1px solid #F1F5F9;color:#334155;">{f['module']}</td>
+          <td style="padding:8px 10px;border-bottom:1px solid #F1F5F9;color:#334155;">{f['message'][:100]}</td>
+          <td style="padding:8px 10px;border-bottom:1px solid #F1F5F9;color:#334155;">{f['affected_count']}</td>
         </tr>"""
 
     report_json = version_data.get("report_json", {})
     executive_summary = report_json.get("executive_summary", "No summary available.")
+    critical_color = "#BB0000" if critical_count > 0 else "#0F172A"
+
+    if findings_rows:
+        findings_section = (
+            '<h3 style="font-size:13px;font-weight:700;letter-spacing:0.08em;'
+            'text-transform:uppercase;color:#475569;margin:18px 0 8px;">'
+            'Top Critical Findings</h3>'
+            '<table cellspacing="0" cellpadding="0" border="0" '
+            'style="border-collapse:collapse;width:100%;font-size:12.5px;">'
+            '<thead><tr>'
+            '<th style="background:#F1F5F9;padding:8px 10px;text-align:left;'
+            'font-weight:600;color:#475569;border-bottom:1px solid #E5E7EB;">Check</th>'
+            '<th style="background:#F1F5F9;padding:8px 10px;text-align:left;'
+            'font-weight:600;color:#475569;border-bottom:1px solid #E5E7EB;">Module</th>'
+            '<th style="background:#F1F5F9;padding:8px 10px;text-align:left;'
+            'font-weight:600;color:#475569;border-bottom:1px solid #E5E7EB;">Message</th>'
+            '<th style="background:#F1F5F9;padding:8px 10px;text-align:left;'
+            'font-weight:600;color:#475569;border-bottom:1px solid #E5E7EB;">Affected</th>'
+            f'</tr></thead><tbody>{findings_rows}</tbody></table>'
+        )
+    else:
+        findings_section = ""
 
     body = f"""
     <html>
-    <body style="font-family:Arial,sans-serif;color:#333">
-      <h2 style="color:#0F6E56">Meridian Data Quality Report — {tenant_name}</h2>
-      <p>{executive_summary}</p>
-      <table style="margin:16px 0">
-        <tr><td><strong>Overall DQS:</strong></td><td>{overall_dqs}</td></tr>
-        <tr><td><strong>Critical findings:</strong></td><td>{critical_count}</td></tr>
-      </table>
-      {f'<h3>Top Critical Findings</h3><table style="border-collapse:collapse">' +
-       '<tr><th style="padding:4px 8px;border:1px solid #ddd">Check</th><th style="padding:4px 8px;border:1px solid #ddd">Module</th><th style="padding:4px 8px;border:1px solid #ddd">Message</th><th style="padding:4px 8px;border:1px solid #ddd">Affected</th></tr>' +
-       findings_html + '</table>' if findings_html else ''}
-      <p style="color:#666;font-size:12px;margin-top:24px">
-        This is an automated report from Meridian SAP Data Quality Agent.
-      </p>
+    <body style="margin:0;padding:0;background-color:#F7F8FA;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;color:#0F172A;">
+      <div style="max-width:640px;margin:0 auto;padding:24px 16px;">
+        <div style="padding:18px 24px;background:#F97316;border-radius:10px 10px 0 0;">
+          <div style="color:#FFFFFF;font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;">Meridian &middot; Data Quality</div>
+          <h1 style="color:#FFFFFF;font-size:20px;font-weight:700;letter-spacing:-0.01em;margin:6px 0 0;">{tenant_name}</h1>
+        </div>
+        <div style="background:#FFFFFF;padding:24px;border-radius:0 0 10px 10px;border:1px solid #E5E7EB;border-top:none;">
+          <p style="font-size:14px;line-height:1.6;color:#334155;margin:0 0 18px;">{executive_summary}</p>
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="width:100%;margin:0 0 18px;border-collapse:separate;border-spacing:8px 0;">
+            <tr>
+              <td style="padding:14px 16px;background:#F8FAFC;border:1px solid #E5E7EB;border-radius:8px;vertical-align:top;width:50%;">
+                <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#64748B;margin:0 0 6px;">Overall DQS</div>
+                <div style="font-size:22px;font-weight:700;color:#0F172A;font-family:'JetBrains Mono',Menlo,Consolas,monospace;letter-spacing:-0.01em;">{overall_dqs}</div>
+              </td>
+              <td style="padding:14px 16px;background:#F8FAFC;border:1px solid #E5E7EB;border-radius:8px;vertical-align:top;width:50%;">
+                <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#64748B;margin:0 0 6px;">Critical findings</div>
+                <div style="font-size:22px;font-weight:700;color:{critical_color};font-family:'JetBrains Mono',Menlo,Consolas,monospace;letter-spacing:-0.01em;">{critical_count}</div>
+              </td>
+            </tr>
+          </table>
+          {findings_section}
+        </div>
+        <div style="margin-top:18px;text-align:center;font-size:11px;color:#94A3B8;letter-spacing:0.06em;">
+          AUTOMATED REPORT &middot; MERIDIAN &middot; &copy; 2026 VANTAX
+        </div>
+      </div>
     </body>
     </html>
     """

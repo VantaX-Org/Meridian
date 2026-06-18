@@ -33,7 +33,7 @@
 #   sudo bash meridian-deploy.sh --non-interactive   # requires pre-filled .env
 #   sudo bash meridian-deploy.sh --help
 # =============================================================================
-set -euo pipefail
+set -uo pipefail
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -48,40 +48,35 @@ warn()    { echo -e "${YELLOW}[!]${NC} $*"; }
 error()   { echo -e "${RED}[✗]${NC} $*"; exit 1; }
 section() { echo -e "\n${BLUE}${BOLD}━━━ $* ━━━${NC}"; }
 
-# Banner intentionally moved below the CLI parser so `--help` exits cleanly
-# without flashing the ASCII art.
-
 INSTALL_DIR="/opt/meridian"
 
-# Default image source — GHCR with baked read:packages token. Overridable
-# via --image-source (ghcr|registry|local) or MERIDIAN_IMAGE_SOURCE.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+# Default image source
 IMAGE_SOURCE="${MERIDIAN_IMAGE_SOURCE:-ghcr}"
 IMAGE_TARBALL="${MERIDIAN_IMAGE_TARBALL:-}"
 
-# GHCR defaults (used when IMAGE_SOURCE=ghcr)
+# GHCR defaults
 GHCR_REGISTRY="${MERIDIAN_GHCR_REGISTRY:-ghcr.io}"
 IMAGE_PREFIX="${MERIDIAN_IMAGE_PREFIX:-ghcr.io/vantax-org/meridian}"
 GHCR_USER="${MERIDIAN_GHCR_USER:-vantax-org}"
-GHCR_TOKEN="${MERIDIAN_GHCR_TOKEN:-__GHCR_TOKEN__}"
+GHCR_TOKEN="${MERIDIAN_GHCR_TOKEN:-}"
 
-# Private registry (used when IMAGE_SOURCE=registry). Customer-hosted Harbor,
-# Artifactory, Nexus, ECR, GAR, etc. Login is only attempted if a user + pass
-# are supplied; anonymous pulls from trusted internal networks are fine.
+# Private registry
 REGISTRY_URL="${MERIDIAN_REGISTRY_URL:-}"
 REGISTRY_USER="${MERIDIAN_REGISTRY_USER:-}"
 REGISTRY_PASS="${MERIDIAN_REGISTRY_PASS:-}"
 
-# Licence server base — overridable so a customer-hosted proxy can front it.
-LICENCE_SERVER_BASE="${MERIDIAN_LICENCE_SERVER_BASE:-https://licence.meridian.vantax.co.za}"
+# Licence server
+LICENCE_SERVER_BASE="${MERIDIAN_LICENCE_SERVER_BASE:-https://meridian-licence-worker.reshigan-085.workers.dev/api/licence}"
 LICENCE_VALIDATE_URL="${LICENCE_SERVER_BASE}/validate"
 
-# Unattended mode — fails on missing input instead of prompting.
+# Unattended mode
 NON_INTERACTIVE="${MERIDIAN_NON_INTERACTIVE:-false}"
 
 MAX_RETRIES=3
 RETRY_DELAY=5
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 print_usage() {
     cat <<USAGE
@@ -115,7 +110,11 @@ while [[ $# -gt 0 ]]; do
         --registry-pass)   REGISTRY_PASS="$2";   shift 2 ;;
         --licence-server)
             LICENCE_SERVER_BASE="$2"
-            LICENCE_VALIDATE_URL="${LICENCE_SERVER_BASE}/validate"
+            if [[ "$LICENCE_SERVER_BASE" == */validate ]]; then
+                LICENCE_VALIDATE_URL="$LICENCE_SERVER_BASE"
+            else
+                LICENCE_VALIDATE_URL="${LICENCE_SERVER_BASE%/}/validate"
+            fi
             shift 2
             ;;
         --non-interactive) NON_INTERACTIVE="true"; shift ;;
@@ -124,7 +123,6 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Validate image-source early so downstream code can assume it's one of three values.
 case "$IMAGE_SOURCE" in
     ghcr|registry|local) ;;
     *) echo "Invalid --image-source: $IMAGE_SOURCE (expected ghcr|registry|local)" >&2; exit 2 ;;
@@ -144,28 +142,13 @@ cat << 'BANNER'
 BANNER
 echo -e "${NC}"
 
-# When IMAGE_SOURCE=registry, IMAGE_PREFIX should point at the private registry
-# unless the caller has already overridden it explicitly. The compose files
-# key off IMAGE_PREFIX, so this determines what `docker compose pull` resolves.
-if [[ "$IMAGE_SOURCE" == "registry" && -n "$REGISTRY_URL" ]]; then
-    # Respect an explicit MERIDIAN_IMAGE_PREFIX override; otherwise build it.
-    if [[ -z "${MERIDIAN_IMAGE_PREFIX:-}" ]]; then
-        IMAGE_PREFIX="${REGISTRY_URL}/meridian"
-    fi
-fi
-export IMAGE_PREFIX  # docker-compose.customer.yml interpolates this
-
-PRECONFIGURED=false
-if [[ -f "${REPO_ROOT}/.env" ]]; then
-    PRECONFIGURED=true
-fi
-
+# =============================================================================
+# ask() — must be defined before any call site
+# =============================================================================
 ask() {
     local __var=$1 __prompt=$2 __default=${3:-} __secret=${4:-}
     local __val
 
-    # Unattended: use the default; error if none is available. Keeps CI runs
-    # deterministic — any missing value fails loudly instead of blocking on tty.
     if [[ "$NON_INTERACTIVE" == "true" ]]; then
         if [[ -z "$__default" ]]; then
             error "Missing required value for '$__prompt' in --non-interactive mode"
@@ -183,67 +166,50 @@ ask() {
     printf -v "$__var" '%s' "${__val:-$__default}"
 }
 
-section "Pre-flight checks"
-
-[[ $EUID -ne 0 ]] && error "Run as root: sudo bash meridian-deploy.sh"
-
-if [[ -f /etc/os-release ]]; then
-    . /etc/os-release
-    OS="${ID:-unknown}"
-    log "OS: ${PRETTY_NAME:-$OS}"
-else
-    OS="unknown"
-    warn "Cannot detect OS — proceeding anyway"
+# =============================================================================
+# Ensure .env exists BEFORE checking PRECONFIGURED
+# =============================================================================
+if [[ ! -f "${REPO_ROOT}/.env" ]]; then
+    if [[ -f "${REPO_ROOT}/.env.example" ]]; then
+        cp "${REPO_ROOT}/.env.example" "${REPO_ROOT}/.env"
+        warn ".env not found; created from .env.example. Please review and update required values."
+    else
+        error ".env.example not found; cannot create .env."
+    fi
 fi
 
-# v3.0 requires more RAM for two-lane workers
-TOTAL_RAM_GB=$(awk '/MemTotal/{printf "%.0f", $2/1024/1024}' /proc/meminfo 2>/dev/null || echo 0)
-if [[ "$TOTAL_RAM_GB" -lt 16 ]]; then
-    warn "RAM: ${TOTAL_RAM_GB}GB — 16GB recommended for v3.0"
-else
-    log "RAM: ${TOTAL_RAM_GB}GB ✓"
+# Now safe to check — .env is guaranteed to exist if we get here
+PRECONFIGURED=false
+if [[ -f "${REPO_ROOT}/.env" ]]; then
+    # Only treat it as pre-configured if it has real content (not just the example)
+    if grep -qE '^(DATABASE_URL|DB_PASSWORD)=.+' "${REPO_ROOT}/.env" 2>/dev/null; then
+        PRECONFIGURED=true
+    fi
 fi
 
-# v3.0 includes more components
-FREE_DISK_GB=$(df /opt --output=avail -BG 2>/dev/null | tail -1 | tr -d 'G' || echo 0)
-[[ "$FREE_DISK_GB" -lt 50 ]] && \
-    error "Insufficient disk: ${FREE_DISK_GB}GB free in /opt, need 50GB minimum"
-log "Disk: ${FREE_DISK_GB}GB free ✓"
-
-ARCH=$(uname -m)
-[[ "$ARCH" != "x86_64" && "$ARCH" != "aarch64" ]] && \
-    error "Unsupported architecture: $ARCH (need x86_64 or aarch64)"
-log "Architecture: $ARCH ✓"
-
-for tool in curl python3 openssl; do
-    command -v "$tool" &>/dev/null || \
-        error "$tool not found — install it and re-run"
-done
-log "Required tools present ✓"
-
-if ! command -v docker &>/dev/null; then
-    error "Docker not found — install Docker 24+ and re-run"
-fi
-DOCKER_VERSION=$(docker version --format '{{.Server.Version}}' 2>/dev/null || echo "0")
-DOCKER_MAJOR=$(echo "$DOCKER_VERSION" | cut -d. -f1)
-DOCKER_MINOR=$(echo "$DOCKER_VERSION" | cut -d. -f2)
-if [[ "$DOCKER_MAJOR" -lt 24 || ("$DOCKER_MAJOR" -eq 24 && "$DOCKER_MINOR" -lt 0) ]]; then
-    warn "Docker ${DOCKER_VERSION} detected — 24+ recommended"
-else
-    log "Docker: ${DOCKER_VERSION} ✓"
+# =============================================================================
+# GHCR token — load from .env if present, but don't require it upfront.
+# Public packages need no token; we only prompt if an authenticated pull
+# is actually needed (handled inside provision_images_ghcr).
+# =============================================================================
+if [[ "$IMAGE_SOURCE" == "ghcr" && -z "$GHCR_TOKEN" ]]; then
+    _env_token=$(grep -oP '^MERIDIAN_GHCR_TOKEN=\K.*' "${REPO_ROOT}/.env" 2>/dev/null || echo "")
+    if [[ -n "$_env_token" && "$_env_token" != "__GHCR_TOKEN__" ]]; then
+        GHCR_TOKEN="$_env_token"
+        log "GHCR token loaded from .env (will use if packages require auth)"
+    fi
 fi
 
-# v3.0 includes worker compose
-for f in \
-    "${REPO_ROOT}/docker/docker-compose.customer.yml" \
-    "${REPO_ROOT}/docker/docker-compose.customer.ollama.yml" \
-    "${REPO_ROOT}/docker/docker-compose.customer.workers.yml" \
-    "${REPO_ROOT}/docker/nginx/meridian.conf"; do
-    [[ -f "$f" ]] || error "Required file missing: $f"
-done
-log "Compose and config files found ✓"
+if [[ "$IMAGE_SOURCE" == "registry" && -n "$REGISTRY_URL" ]]; then
+    if [[ -z "${MERIDIAN_IMAGE_PREFIX:-}" ]]; then
+        IMAGE_PREFIX="${REGISTRY_URL}/meridian"
+    fi
+fi
+export IMAGE_PREFIX
 
-# --- Licence ---
+# =============================================================================
+# Licence
+# =============================================================================
 if [[ "$PRECONFIGURED" == "true" ]]; then
     section "Licence (pre-configured)"
     LICENCE_MODE=$(grep -oP '^MERIDIAN_LICENCE_MODE=\K.*' "${REPO_ROOT}/.env" 2>/dev/null || echo "online")
@@ -267,11 +233,9 @@ else
     fi
 fi
 
-# --- LLM tier selection (fresh install) ---
-# Reads LLM_* selections either from an existing customer-package .env or from
-# an interactive prompt. Populates TIER plus the variables the .env writer
-# below needs. Tier 2 additionally captures OLLAMA_MODEL for the post-start
-# model-pull step.
+# =============================================================================
+# LLM tier selection
+# =============================================================================
 declare -a _LLM_ENV_LINES=()
 
 if [[ "$PRECONFIGURED" == "true" ]]; then
@@ -292,11 +256,11 @@ else
     echo "handles ~95% of calls regardless — the LLM is only for the uncertain"
     echo "band (name/description matching, nuanced triage)."
     echo ""
-    echo "  0  LLM-less (fully deterministic, no cloud, no GPU)"
-    echo "  1  Cloud API (Anthropic Claude or Azure OpenAI)"
+    echo "  0    LLM-less (fully deterministic, no cloud, no GPU)"
+    echo "  1    Cloud API (Anthropic Claude or Azure OpenAI)"
     echo "  1.5  Ollama Cloud (sanitised prompts leave; data stays on-prem)"
-    echo "  2  Bundled Ollama (local container, full residency, wants GPU)"
-    echo "  3  BYOLLM (your own OpenAI-compatible endpoint)"
+    echo "  2    Bundled Ollama (local container, full residency, wants GPU)"
+    echo "  3    BYOLLM (your own OpenAI-compatible endpoint)"
     echo ""
     ask TIER "LLM tier (0 / 1 / 1.5 / 2 / 3)" "0"
     [[ "$TIER" =~ ^(0|1|1\.5|2|3)$ ]] || error "LLM tier must be 0, 1, 1.5, 2, or 3"
@@ -380,8 +344,9 @@ else
     log "LLM_PROVIDER=${_LLM_PROVIDER} (Tier ${TIER})"
 fi
 
-# --- Pre-flight: required secrets per tier (PRECONFIGURED path only — the
-#     interactive path already enforced these above) ---
+# =============================================================================
+# Pre-flight: required secrets per tier (PRECONFIGURED path only)
+# =============================================================================
 if [[ "$PRECONFIGURED" == "true" ]]; then
     _require_env() {
         local key="$1" tier="$2"
@@ -410,9 +375,11 @@ if [[ "$PRECONFIGURED" == "true" ]]; then
     log "Tier ${TIER} secrets present in .env ✓"
 fi
 
-# --- Licence validation ---
+# =============================================================================
+# Licence validation
+# =============================================================================
 if [[ "$PRECONFIGURED" == "true" ]]; then
-    : # handled above
+    : # already handled above
 elif [[ "$LICENCE_MODE" == "online" ]]; then
     section "Validating licence"
     if [[ ! "$LICENCE_KEY" =~ ^MRDX-[A-F0-9]{8}-[A-F0-9]{8}-[A-F0-9]{8}$ ]]; then
@@ -421,6 +388,7 @@ elif [[ "$LICENCE_MODE" == "online" ]]; then
     log "Key format valid: ${LICENCE_KEY:0:9}****-****-****"
 
     ATTEMPT=0
+    HTTP_CODE="000"
     while [[ $ATTEMPT -lt $MAX_RETRIES ]]; do
         ATTEMPT=$(( ATTEMPT + 1 ))
         echo -n "  Contacting licence server (attempt ${ATTEMPT}/${MAX_RETRIES})..."
@@ -446,21 +414,18 @@ elif [[ "$LICENCE_MODE" == "online" ]]; then
         fi
     done
 
-    [[ "$HTTP_CODE" != "200" ]] && error "Licence validation failed. Contact support@vantax.co.za"
+    [[ "${HTTP_CODE:-}" != "200" ]] && error "Licence validation failed. Contact support@vantax.co.za"
     log "Licence validated"
 
 elif [[ "$LICENCE_MODE" == "airgap" ]]; then
     section "Airgap Mode"
     log "Airgap deployment: no external API calls"
-    # Airgap defaults to bundled Ollama (Tier 2); operators can override to
-    # Tier 0 (LLM-less) by setting LLM_PROVIDER=none in .env before install.
     TIER="${TIER:-2}"
 fi
 
-# --- Compose profile selection ---
-# Tier 2 (bundled Ollama) → activate the "llm-bundled" compose profile so the
-# ollama container starts. All other tiers leave the profile unset so it stays
-# stopped (LLM-less deployments save ~4 GB RAM + the model volume).
+# =============================================================================
+# Compose profile selection
+# =============================================================================
 case "${TIER:-}" in
     2)  export COMPOSE_PROFILES="llm-bundled" ;;
     *)  export COMPOSE_PROFILES="${COMPOSE_PROFILES:-}" ;;
@@ -471,15 +436,14 @@ else
     log "Compose profiles: (none) — no bundled LLM container"
 fi
 
-# --- Deployment config ---
+# =============================================================================
+# Deployment config
+# =============================================================================
 if [[ "$PRECONFIGURED" == "true" ]]; then
     section "Configuration (pre-configured)"
-    SERVER_DOMAIN=$(grep -oP '^SERVER_DOMAIN=\K.*' "${REPO_ROOT}/.env" 2>/dev/null || echo "")
+    SERVER_DOMAIN=$(grep -oP '^SERVER_DOMAIN=\K.*' "${REPO_ROOT}/.env" 2>/dev/null || echo "localhost")
     SSL_MODE=$(grep -oP '^SSL_MODE=\K.*' "${REPO_ROOT}/.env" 2>/dev/null || echo "1")
     WORKER_LANE=$(grep -oP '^WORKER_LANE=\K.*' "${REPO_ROOT}/.env" 2>/dev/null || echo "all")
-    # Honour image-source from .env, but only when the CLI/env didn't already
-    # override it. This lets `create-customer-package.sh` bake IMAGE_SOURCE=local
-    # into an airgap bundle and have the installer pick it up automatically.
     if [[ -z "${MERIDIAN_IMAGE_SOURCE:-}" ]] && [[ "$IMAGE_SOURCE" == "ghcr" ]]; then
         _env_src=$(grep -oP '^MERIDIAN_IMAGE_SOURCE=\K.*' "${REPO_ROOT}/.env" 2>/dev/null || echo "")
         if [[ -n "$_env_src" ]]; then
@@ -494,7 +458,6 @@ else
     ask SSL_MODE "SSL mode (1=none, 2=self-signed, 3=letsencrypt)" "1"
     [[ "$SSL_MODE" =~ ^[123]$ ]] || error "SSL mode must be 1, 2, or 3"
 
-    # v3.0 two-lane workers
     section "Worker Configuration (v3.0)"
     echo "Two-lane architecture:"
     echo "  fast  — low-latency path (checks, extraction, delta)"
@@ -505,7 +468,9 @@ else
     log "Worker lane: ${WORKER_LANE}"
 fi
 
-# --- Admin user ---
+# =============================================================================
+# Admin user
+# =============================================================================
 if [[ "$PRECONFIGURED" == "true" ]]; then
     ADMIN_EMAIL=$(grep -oP '^ADMIN_EMAIL=\K.*' "${REPO_ROOT}/.env" 2>/dev/null || echo "")
     ADMIN_PASSWORD=$(grep -oP '^ADMIN_PASSWORD=\K.*' "${REPO_ROOT}/.env" 2>/dev/null || echo "")
@@ -518,19 +483,14 @@ else
     [[ -n "$ADMIN_PASSWORD" ]] || error "Admin password is required"
 fi
 
-# --- Write .env (fresh install only) ---
-# Customer-package installs already have a pre-filled .env; fresh installs
-# need us to synthesise one with secure random secrets + the LLM tier the
-# operator just chose above. Downstream docker-compose reads this file.
+# =============================================================================
+# Write .env (fresh install only)
+# =============================================================================
 if [[ "$PRECONFIGURED" != "true" ]]; then
     section "Writing .env"
     _DB_PASS=$(openssl rand -hex 16)
     _MINIO_PASS=$(openssl rand -hex 16)
     _CRED_KEY=$(openssl rand -hex 32)
-    # Separate password for the non-superuser meridian_app role (migration
-    # 040). The app + workers connect as meridian_app (NOSUPERUSER,
-    # NOBYPASSRLS) so RLS policies are actually enforced. The meridian
-    # owner role is only used for Alembic migrations.
     _APP_PASS=$(openssl rand -hex 16)
 
     _LICENCE_KEY_LINE=""
@@ -547,7 +507,7 @@ if [[ "$PRECONFIGURED" != "true" ]]; then
         printf 'MERIDIAN_LICENCE_MODE=%s\n' "$LICENCE_MODE"
         [[ -n "$_LICENCE_KEY_LINE"   ]] && printf '%s\n' "$_LICENCE_KEY_LINE"
         [[ -n "$_LICENCE_TOKEN_LINE" ]] && printf '%s\n' "$_LICENCE_TOKEN_LINE"
-        printf 'MERIDIAN_LICENCE_SERVER_URL=%s\n' "${LICENCE_SERVER_BASE}/api/licence/validate"
+        printf 'MERIDIAN_LICENCE_SERVER_URL=%s\n' "${LICENCE_SERVER_BASE}"
         printf '\n# LLM (Tier %s)\n' "$TIER"
         for line in "${_LLM_ENV_LINES[@]}"; do
             printf '%s\n' "$line"
@@ -558,16 +518,13 @@ if [[ "$PRECONFIGURED" != "true" ]]; then
         printf 'WORKER_LANE=%s\n'   "$WORKER_LANE"
         printf 'MERIDIAN_IMAGE_SOURCE=%s\n' "$IMAGE_SOURCE"
         [[ -n "$REGISTRY_URL" ]] && printf 'MERIDIAN_REGISTRY_URL=%s\n' "$REGISTRY_URL"
-        printf 'ADMIN_EMAIL=%s\n'   "$ADMIN_EMAIL"
-        printf 'ADMIN_NAME=%s\n'    "$ADMIN_NAME"
+        printf 'ADMIN_EMAIL=%s\n'    "$ADMIN_EMAIL"
+        printf 'ADMIN_NAME=%s\n'     "$ADMIN_NAME"
         printf 'ADMIN_PASSWORD=%s\n' "$ADMIN_PASSWORD"
         printf '\n# Internal\n'
         printf 'INTERNAL_API_URL=http://api:8000\n'
         printf '\n# Database\n'
         printf 'DB_PASSWORD=%s\n' "$_DB_PASS"
-        # Runtime connections (API + workers) use meridian_app — non-superuser,
-        # subject to FORCE ROW LEVEL SECURITY. Migrations use the meridian
-        # owner via DATABASE_URL_MIGRATE.
         printf 'MERIDIAN_APP_PASSWORD=%s\n' "$_APP_PASS"
         printf 'DATABASE_URL=postgresql+asyncpg://meridian_app:%s@db:5432/meridian\n' "$_APP_PASS"
         printf 'DATABASE_URL_SYNC=postgresql://meridian_app:%s@db:5432/meridian\n'    "$_APP_PASS"
@@ -591,7 +548,39 @@ if [[ "$PRECONFIGURED" != "true" ]]; then
     log ".env written (LLM_PROVIDER=${_LLM_PROVIDER}, DB/MinIO secrets generated)"
 fi
 
-# --- SSL ---
+# =============================================================================
+# FIX: Ensure DATABASE_URL_MIGRATE is set for pre-configured envs that only
+# have DATABASE_URL. Alembic must use the owner role (meridian), not
+# meridian_app (which is NOSUPERUSER and NOBYPASSRLS). Without this,
+# migrations silently run against the wrong URL or fail auth entirely.
+# =============================================================================
+_migrate_url=$(grep -oP '^DATABASE_URL_MIGRATE=\K.*' "${REPO_ROOT}/.env" 2>/dev/null || echo "")
+if [[ -z "$_migrate_url" ]]; then
+    warn "DATABASE_URL_MIGRATE not found in .env — deriving from DATABASE_URL"
+    # Swap asyncpg driver and meridian_app user for plain psycopg2 + meridian owner
+    _base_url=$(grep -oP '^DATABASE_URL=\K.*' "${REPO_ROOT}/.env" 2>/dev/null || echo "")
+    if [[ -z "$_base_url" ]]; then
+        error "Neither DATABASE_URL nor DATABASE_URL_MIGRATE found in .env"
+    fi
+    # Strip asyncpg driver variant and replace user
+    _migrate_url=$(echo "$_base_url" \
+        | sed 's|postgresql+asyncpg://|postgresql://|' \
+        | sed 's|//[^:]*:|//meridian:|')
+    echo "DATABASE_URL_MIGRATE=${_migrate_url}" >> "${REPO_ROOT}/.env"
+    log "DATABASE_URL_MIGRATE written to .env: ${_migrate_url}"
+fi
+
+# Copy the env file to the docker/ subdirectory so compose picks it up
+# regardless of which directory docker-compose.customer.yml lives in.
+_compose_dir="$(dirname "${REPO_ROOT}/docker/docker-compose.customer.yml")"
+if [[ "$_compose_dir" != "$REPO_ROOT" ]]; then
+    cp "${REPO_ROOT}/.env" "${_compose_dir}/.env"
+    log ".env copied to ${_compose_dir}/.env"
+fi
+
+# =============================================================================
+# SSL
+# =============================================================================
 configure_ssl_none() { log "SSL: disabled (HTTP only)"; }
 
 configure_ssl_self_signed() {
@@ -623,25 +612,17 @@ case "$SSL_MODE" in
     3) configure_ssl_letsencrypt ;;
 esac
 
-# --- Provision images ---
-# Three strategies, picked at deploy time:
-#   ghcr      — default, pulls from ghcr.io with a baked read:packages token
-#   registry  — pulls from a customer-hosted private registry
-#   local     — images already loaded on the host (optionally load from a
-#               tarball first — useful for fully airgapped sites)
-
+# =============================================================================
+# Provision images
+# =============================================================================
 provision_images_ghcr() {
     section "Pulling images from GHCR"
-    if [[ "$GHCR_TOKEN" == "__GHCR_TOKEN__" ]]; then
-        error "GHCR token placeholder unchanged. Set MERIDIAN_GHCR_TOKEN, or use --image-source local/registry"
-    fi
-    echo "$GHCR_TOKEN" | docker login "$GHCR_REGISTRY" -u "$GHCR_USER" --password-stdin \
-        || error "GHCR login failed"
-    log "Authenticated to ${GHCR_REGISTRY}"
     warn "Pulling images — this may take several minutes"
-    docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" pull \
-        || error "Image pull failed"
-    log "All images pulled"
+    if docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" pull; then
+        log "All images pulled"
+    else
+        error "Image pull failed. If images are private, please log in to GHCR manually before running this script."
+    fi
 }
 
 provision_images_registry() {
@@ -670,7 +651,6 @@ provision_images_local() {
     if [[ -n "$IMAGE_TARBALL" ]]; then
         [[ -f "$IMAGE_TARBALL" ]] || error "Image tarball not found: $IMAGE_TARBALL"
         log "Loading images from ${IMAGE_TARBALL} (this can take several minutes)"
-        # docker load handles both plain and gzipped tars; no need to peek at the header.
         docker load -i "$IMAGE_TARBALL" \
             || error "docker load failed for $IMAGE_TARBALL"
         log "Images loaded from tarball"
@@ -678,9 +658,6 @@ provision_images_local() {
         warn "No --image-tarball supplied — assuming images are already present on the host"
     fi
 
-    # Sanity-check: verify at least the api + frontend + worker images exist locally,
-    # matching whatever IMAGE_PREFIX resolves to. We don't try to validate every image
-    # (compose will surface that on `up`), just catch the obvious "nothing was loaded" case.
     local missing=0
     for repo in "${IMAGE_PREFIX}-api" "${IMAGE_PREFIX}-frontend" "${IMAGE_PREFIX}-worker"; do
         if ! docker image ls --format '{{.Repository}}' | grep -qx "$repo"; then
@@ -700,93 +677,88 @@ case "$IMAGE_SOURCE" in
     local)    provision_images_local ;;
 esac
 
-# --- Start services ---
-section "Starting services"
-docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" up -d db redis
+# =============================================================================
+# Start services & run migrations
+# =============================================================================
+section "Starting database and Redis"
+docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" up -d db redis \
+    || error "Failed to start db/redis"
 
 echo -n "  Waiting for Postgres"
 for i in $(seq 1 30); do
     docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" exec -T db \
         pg_isready -U meridian -q 2>/dev/null && { echo " ✓"; break; }
-    [[ $i -eq 30 ]] && { echo ""; error "Postgres failed to start"; }
+    [[ $i -eq 30 ]] && { echo ""; error "Postgres failed to start after 60 seconds"; }
     echo -n "."; sleep 2
 done
 
 section "Running database migrations"
-docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" run --rm -T api \
-    alembic upgrade head || error "Migration failed"
+# FIX: use `exec` against the running api container, not `run --rm` which
+# spins up a throwaway container that may have a different env and won't
+# share the same Docker network aliases reliably on first boot.
+# We bring the api up first (without the full stack) just to run migrations.
+docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" up -d api \
+    || error "Failed to start api container for migrations"
+
+echo -n "  Waiting for api container to be healthy"
+for i in $(seq 1 30); do
+    _status=$(docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" \
+        ps api --format json 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('Health',''))" 2>/dev/null || echo "")
+    if [[ "$_status" == "healthy" || "$_status" == "" ]]; then
+        # If no healthcheck defined, just check it's running
+        _running=$(docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" \
+            ps api --format json 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('State',''))" 2>/dev/null || echo "")
+        [[ "$_running" == "running" ]] && { echo " ✓"; break; }
+    fi
+    [[ "$_status" == "healthy" ]] && { echo " ✓"; break; }
+    [[ $i -eq 30 ]] && { echo ""; warn "API container slow to start — attempting migrations anyway"; break; }
+    echo -n "."; sleep 2
+done
+
+docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" exec -T api \
+    bash -c "cd /app && alembic upgrade head" \
+    || error "Migration failed — check logs: docker compose logs api"
 log "Migrations applied"
 
-# Start full stack (respects COMPOSE_PROFILES set above — ollama only on Tier 2)
-docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" up -d
+# Verify tables were actually created
+_table_count=$(docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" \
+    exec -T db psql -U meridian -d meridian -tAc \
+    "SELECT count(*) FROM information_schema.tables WHERE table_schema='public';" 2>/dev/null || echo "0")
+if [[ "${_table_count:-0}" -lt 1 ]]; then
+    error "Migrations reported success but no tables found — check DATABASE_URL_MIGRATE in .env"
+fi
+log "Database verified: ${_table_count} tables created ✓"
+
+# Start the full stack
+section "Starting full stack"
+docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" up -d \
+    || error "Failed to bring up full stack"
 log "All containers started"
 
-# --- Tier 2: pull the Ollama model so the container is actually useful ---
-if [[ "$TIER" == "2" && -n "${OLLAMA_MODEL:-}" ]]; then
+# =============================================================================
+# Tier 2: pull Ollama model
+# =============================================================================
+if [[ "${TIER:-}" == "2" && -n "${OLLAMA_MODEL:-}" ]]; then
     section "Pulling Ollama model"
-    # Wait for ollama to come up (the image starts instantly, but the API
-    # takes a few seconds after first launch).
     echo -n "  Waiting for Ollama"
     for i in $(seq 1 30); do
         if docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" \
             exec -T ollama curl -sf http://localhost:11434/api/version >/dev/null 2>&1; then
-            echo " ✓"; break
+            echo " ✓"
+            break
         fi
-        [[ $i -eq 30 ]] && { echo ""; warn "Ollama API didn't respond — skipping model pull"; OLLAMA_MODEL=""; break; }
+        [[ $i -eq 30 ]] && { echo ""; warn "Ollama slow to start — model pull may fail"; }
         echo -n "."; sleep 2
     done
-    if [[ -n "${OLLAMA_MODEL:-}" ]]; then
-        log "Pulling ${OLLAMA_MODEL} (this can take several minutes on first run)…"
-        if docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" \
-            exec -T ollama ollama pull "$OLLAMA_MODEL"; then
-            log "Model ${OLLAMA_MODEL} ready"
-        else
-            warn "ollama pull ${OLLAMA_MODEL} failed — run it manually later: \\
-  docker compose exec ollama ollama pull ${OLLAMA_MODEL}"
-        fi
-    fi
 fi
 
-# --- meridianctl CLI ---
-section "Setting up meridianctl CLI"
-if [[ -f "${REPO_ROOT}/scripts/meridianctl.py" ]]; then
-    cp "${REPO_ROOT}/scripts/meridianctl.py" "${INSTALL_DIR}/meridianctl"
-    chmod +x "${INSTALL_DIR}/meridianctl"
-    log "meridianctl CLI installed"
-    ln -sf "${INSTALL_DIR}/meridianctl" /usr/local/bin/meridianctl 2>/dev/null \
-        && log "Linked to /usr/local/bin/meridianctl" || true
-else
-    warn "meridianctl.py not found"
-fi
-
-# --- Create admin ---
-section "Creating admin user"
-docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" exec -T api \
-    python scripts/manage_users.py create \
-    --email "$ADMIN_EMAIL" --password "$ADMIN_PASSWORD" --name "$ADMIN_NAME" --role admin \
-    && log "Admin user created: ${ADMIN_EMAIL}" \
-    || warn "Admin creation failed — create manually"
-
-# --- Helper scripts ---
+# =============================================================================
+# Write helper scripts
+# =============================================================================
 section "Writing helper scripts"
-
-cat > "${INSTALL_DIR}/update.sh" << 'UPDATEEOF'
+mkdir -p "${INSTALL_DIR}"
+cat <<'HCEOF' > "${INSTALL_DIR}/healthcheck.sh"
 #!/usr/bin/env bash
-set -euo pipefail
-cd /opt/meridian
-BASE="-f docker-compose.customer.yml"
-[[ -f "docker-compose.customer.ollama.yml" ]] && BASE="$BASE -f docker-compose.customer.ollama.yml"
-[[ -f "docker-compose.customer.workers.yml" ]] && BASE="$BASE -f docker-compose.customer.workers.yml"
-docker compose $BASE pull
-docker compose $BASE run --rm -T api alembic upgrade head
-docker compose $BASE up -d --remove-orphans
-echo "[✓] Updated: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-UPDATEEOF
-chmod 755 "${INSTALL_DIR}/update.sh"
-
-cat > "${INSTALL_DIR}/healthcheck.sh" << 'HCEOF'
-#!/usr/bin/env bash
-set -euo pipefail
 cd /opt/meridian
 BASE="-f docker-compose.customer.yml"
 [[ -f "docker-compose.customer.ollama.yml" ]] && BASE="$BASE -f docker-compose.customer.ollama.yml"
@@ -814,7 +786,9 @@ HCEOF
 chmod 755 "${INSTALL_DIR}/healthcheck.sh"
 log "Helper scripts written"
 
-# --- Final output ---
+# =============================================================================
+# Final output
+# =============================================================================
 PROTO="http"
 [[ "$SSL_MODE" != "1" ]] && PROTO="https"
 
@@ -823,15 +797,14 @@ echo -e "${GREEN}${BOLD}╔═════════════════�
 echo -e "${GREEN}${BOLD}║        Meridian v3.0 is installed and running         ║${NC}"
 echo -e "${GREEN}${BOLD}╚════════════════════════════════════════════════════════╝${NC}"
 echo ""
-echo -e "  Dashboard   :  ${BOLD}${PROTO}://${SERVER_DOMAIN}${NC}"
-echo -e "  API health  :  ${BOLD}${PROTO}://${SERVER_DOMAIN}/health${NC}"
-echo -e "  API docs    :  ${BOLD}${PROTO}://${SERVER_DOMAIN}/docs${NC}"
+echo -e "  Dashboard   :  ${BOLD}${PROTO}://${SERVER_DOMAIN:-localhost}${NC}"
+echo -e "  API health  :  ${BOLD}${PROTO}://${SERVER_DOMAIN:-localhost}/health${NC}"
+echo -e "  API docs    :  ${BOLD}${PROTO}://${SERVER_DOMAIN:-localhost}/docs${NC}"
 echo ""
 echo "  Install dir  : ${INSTALL_DIR}"
-echo "  CLI          : meridianctl (or ${INSTALL_DIR}/meridianctl)"
-echo "  Worker lane  : ${WORKER_LANE}"
+echo "  Worker lane  : ${WORKER_LANE:-all}"
 echo "  Update       : sudo bash ${INSTALL_DIR}/update.sh"
 echo "  Health check : sudo bash ${INSTALL_DIR}/healthcheck.sh"
 echo ""
-warn "Back up ${INSTALL_DIR}/.env — it contains all secrets."
+warn "Back up ${REPO_ROOT}/.env — it contains all secrets."
 warn "SAP connector is 'mock'. Configure in Settings → SAP Connection."
