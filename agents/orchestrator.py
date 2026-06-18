@@ -1,7 +1,12 @@
-"""LangGraph orchestrator — wires five sub-agents into a StateGraph.
+"""LangGraph orchestrator — wires the sub-agents into a StateGraph.
 
-Graph: analyst → config_matching → remediation → readiness → report_agent → END
-Each node checks for errors and routes to END if state["error"] is set.
+Graph: analyst → config_matching → config_impact → remediation → readiness
+       → report_agent → END
+
+The pipeline is intentionally linear and resilient: there is no error
+short-circuit. Each node degrades gracefully on LLM failure (skipping its
+work and leaving its slice of state empty) rather than aborting the run, so
+a partial result is always better than no result.
 """
 
 import json

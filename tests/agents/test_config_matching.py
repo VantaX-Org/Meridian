@@ -74,7 +74,7 @@ CONFIG_DEVIATION_RESPONSE = json.dumps({
 })
 
 
-@patch("agents.config_matching.get_llm")
+@patch("agents.config_matching.get_llm_safe")
 def test_config_matching_returns_data_error(mock_get_llm):
     """Mock returns data_error — classification propagates correctly."""
     mock_llm = MagicMock()
@@ -91,7 +91,7 @@ def test_config_matching_returns_data_error(mock_get_llm):
     assert "error" not in result
 
 
-@patch("agents.config_matching.get_llm")
+@patch("agents.config_matching.get_llm_safe")
 def test_config_matching_returns_config_deviation(mock_get_llm):
     """Mock returns config_deviation — module appears in modules_with_deviations."""
     mock_llm = MagicMock()
@@ -107,7 +107,7 @@ def test_config_matching_returns_config_deviation(mock_get_llm):
     assert "error" not in result
 
 
-@patch("agents.config_matching.get_llm")
+@patch("agents.config_matching.get_llm_safe")
 def test_config_matching_invalid_json_retry(mock_get_llm):
     """Invalid JSON on first call, valid on second — retry succeeds."""
     mock_llm = MagicMock()
@@ -136,7 +136,7 @@ def test_config_matching_empty_findings():
     # No exception was raised — we reach here
 
 
-@patch("agents.config_matching.get_llm")
+@patch("agents.config_matching.get_llm_safe")
 def test_config_matching_llm_total_failure_degrades_gracefully(mock_get_llm):
     """Both LLM calls return invalid JSON — all classifications become ambiguous, no error key."""
     mock_llm = MagicMock()

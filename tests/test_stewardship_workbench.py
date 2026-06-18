@@ -327,12 +327,14 @@ def test_frontend_stewardship_keyboard_shortcuts():
 
 
 def test_frontend_stewardship_override_modal():
-    """Workbench page has override modal for AI recommendation."""
+    """Workbench page has an override dialog that rejects an AI recommendation
+    with a required correction reason. Implemented inline as a Dialog gated by
+    `overrideOpen` rather than a separate OverrideModal component."""
     path = Path("frontend/app/(dashboard)/stewardship/page.tsx")
     content = path.read_text()
-    assert "OverrideModal" in content
-    assert "Override AI Recommendation" in content
-    assert "correction_reason" in content
+    assert "overrideOpen" in content
+    assert "Reject with reason" in content
+    assert "Correction reason" in content
 
 
 def test_frontend_metrics_ai_acceptance_rate():

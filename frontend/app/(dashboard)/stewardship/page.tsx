@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ClipboardList,
@@ -174,6 +174,57 @@ export default function StewardshipPage() {
       return true;
     });
   }, [items, types, priorities]);
+
+  // Keyboard shortcuts — A approve, R reject (reason), N next item, E escalate.
+  // Disabled while typing in a field or while the reject dialog is open.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const t = e.target as HTMLElement | null;
+      if (
+        overrideOpen ||
+        e.metaKey ||
+        e.ctrlKey ||
+        e.altKey ||
+        (t &&
+          (t.tagName === "INPUT" ||
+            t.tagName === "TEXTAREA" ||
+            t.isContentEditable))
+      ) {
+        return;
+      }
+
+      const selectNext = () => {
+        if (filtered.length === 0) return;
+        const idx = selected ? filtered.findIndex((i) => i.id === selected.id) : -1;
+        const next = filtered[(idx + 1) % filtered.length];
+        if (next) setSelected(next);
+      };
+
+      switch (e.key) {
+        case "a":
+        case "A":
+          if (selected) resolveMutation.mutate({ id: selected.id, action: "approve" });
+          break;
+        case "r":
+        case "R":
+          if (selected) setOverrideOpen(true);
+          break;
+        case "n":
+        case "N":
+          e.preventDefault();
+          selectNext();
+          break;
+        case "e":
+        case "E":
+          if (selected) escalateMutation.mutate(selected.id);
+          break;
+        default:
+          return;
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [filtered, selected, overrideOpen, resolveMutation, escalateMutation]);
 
   // KPIs
   const kpis = useMemo((): KpiItem[] => {
