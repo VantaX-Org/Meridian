@@ -46,11 +46,19 @@ async def flush_pending_audits(timeout: float = 10.0) -> int:
             timeout=timeout,
         )
     except asyncio.TimeoutError:
+        # wait_for cancels the gather (and its child tasks) on timeout, so the
+        # stuck writes are abandoned here. Count them from `pending` directly —
+        # the done-callback may already have discarded them from the set.
         logger.warning(
             f"audit flush timed out after {timeout}s with "
-            f"{len(_pending_audit_tasks)} tasks still pending"
+            f"{sum(1 for t in pending if not t.done())} tasks still pending"
         )
-    return len(pending) - len(_pending_audit_tasks)
+    # Only tasks whose write genuinely finished count as drained — a task
+    # cancelled by the timeout above did NOT persist its audit row, so it must
+    # not inflate the count.
+    return sum(
+        1 for t in pending if t.done() and not t.cancelled() and t.exception() is None
+    )
 
 _AUDITED_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 

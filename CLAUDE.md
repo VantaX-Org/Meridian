@@ -6,7 +6,7 @@ You are building **Meridian**, a customer-deployed SAP Data Quality and Master D
 
 ## What you are building
 
-Meridian analyses SAP data quality across **29 modules** and **254+ predefined validation checks** on data from **7 SAP system types** (ECC, S/4HANA Cloud, SuccessFactors, Concur, Ariba, eWMS, BTP). It ships as a customer-hosted Docker Compose stack — SAP data, findings, and reports never leave the customer's own environment.
+Meridian analyses SAP data quality across **29 modules** and **800+ predefined validation checks** on data from **7 SAP system types** (ECC, S/4HANA Cloud, SuccessFactors, Concur, Ariba, eWMS, BTP). It ships as a customer-hosted Docker Compose stack — SAP data, findings, and reports never leave the customer's own environment.
 
 The product includes:
 - **Data Quality Engine** — deterministic checks with DAMA DMBOK scoring (6 dimensions, record-level pass rates)
@@ -65,12 +65,12 @@ meridian/
 ├── .github/workflows/               ← CI/CD (build, test, release, deploy)
 │
 ├── api/                             ← FastAPI application
-│   ├── main.py                      ← 36 registered routers + GzipMiddleware
+│   ├── main.py                      ← 45 registered routers + GzipMiddleware
 │   ├── middleware/
 │   │   ├── tenant.py                ← JWT → tenant_id → Postgres RLS
 │   │   ├── licence.py               ← module entitlement enforcement
 │   │   └── cache.py                 ← Redis response caching decorator
-│   ├── routes/                      ← all API endpoints (36 route modules)
+│   ├── routes/                      ← all API endpoints (45 route modules)
 │   │   ├── connectivity.py          ← module-aware extraction, config sync, health
 │   │   ├── spro_config.py           ← SPRO configuration reader
 │   │   ├── config_impact.py         ← feature-level impact analysis
@@ -118,9 +118,9 @@ meridian/
 │   │   └── ...                      ← cleaning, sync, PDF, notifications, etc.
 │   └── scheduler.py                 ← 12 beat tasks inc. health check every 30min
 │
-├── db/                              ← SQLAlchemy schema + Alembic migrations (033)
+├── db/                              ← SQLAlchemy schema + Alembic migrations (043)
 │   ├── schema.py                    ← all models inc. ConfigImpactResult, ConfigSnapshot, SystemModuleMap
-│   ├── migrations/versions/         ← 033 migrations
+│   ├── migrations/versions/         ← 41 migrations (head 043)
 │   └── seeds/config_impact_rules.yaml ← 52 feature impact rules
 │
 ├── llm/provider.py                  ← swappable LLM with request_timeout=120
