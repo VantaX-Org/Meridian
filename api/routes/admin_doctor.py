@@ -78,11 +78,12 @@ async def _check_postgres() -> DoctorItem:
             detail="connection timed out after 3s",
         )
     except Exception as e:
+        # Class name only — DB errors can embed the DSN (host/user/password).
         return DoctorItem(
             id="postgres",
             label="Postgres reachable",
             status="fail",
-            detail=f"{type(e).__name__}: {e}",
+            detail=type(e).__name__,
         )
 
 

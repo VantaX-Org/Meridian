@@ -307,3 +307,8 @@ rules:
   dimension: timeliness
   message: Transfer order older than 30 days and not confirmed — stuck TOs block bin capacity and distort available stock
   rule_authority: best_practice
+  why_it_matters: "Transfer orders open beyond 30 days are almost always stuck: the move never confirmed, leaving bins blocked and stock in an in-transit limbo."
+  sap_impact: "Bin capacity is blocked by phantom moves; available stock is understated; putaway and picking are obstructed by unconfirmed TOs."
+  fix_map:
+    __blank__: "Review the open TO in the EWM/WM warehouse monitor: confirm or cancel the transfer order, resolve the physical move, and release the blocked source/destination bins."
+  record_fix_template: "Transfer order {field} open {age_days} days unconfirmed. Confirm or cancel in the warehouse monitor and release the blocked bins."

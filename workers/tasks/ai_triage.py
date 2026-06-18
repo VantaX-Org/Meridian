@@ -133,7 +133,8 @@ def _call_llm(prompt: str, tenant_id: str) -> tuple[str, float]:
         from llm.provider import get_llm, safe_invoke
 
         llm = get_llm()
-        response = safe_invoke(llm, prompt, timeout_seconds=35)
+        # Enforce the 800-token output cap documented in the module header.
+        response = safe_invoke(llm, prompt, timeout_seconds=35, max_tokens=MAX_TOKENS)
         if response is None:
             logger.warning("Triage LLM timeout — falling back to review_manually")
             return "review_manually", 0.0

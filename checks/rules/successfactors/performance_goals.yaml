@@ -272,3 +272,8 @@ rules:
   dimension: timeliness
   message: Performance review older than 2 years — review cycle may be stalled or employee was missed in current cycle
   rule_authority: best_practice
+  why_it_matters: "Performance reviews older than 2 years indicate a stalled review cycle or an employee whose goals are no longer being managed."
+  sap_impact: "Talent calibration and succession decisions use outdated ratings; merit and promotion inputs are stale; the employee may be effectively unmanaged."
+  fix_map:
+    __blank__: "In SuccessFactors Performance & Goals: confirm the employee's current cycle assignment, restart or reassign the form, and ensure the manager completes the outstanding review."
+  record_fix_template: "Performance review {field} is {age_days} days old. Confirm cycle assignment and ensure the manager completes the outstanding review."

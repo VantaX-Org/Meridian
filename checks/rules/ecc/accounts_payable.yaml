@@ -558,6 +558,11 @@ rules:
   dimension: timeliness
   message: Vendor master not updated in 2+ years — review if bank details, payment terms, and addresses are still current
   rule_authority: best_practice
+  why_it_matters: "Vendor master records untouched for 2+ years often carry outdated bank details, payment terms, or addresses. Stale banking data is a primary vector for misdirected and fraudulent payments."
+  sap_impact: "Payments may be remitted to closed or changed bank accounts; duplicate or one-time vendors accumulate; supplier reconciliation drifts."
+  fix_map:
+    __blank__: "Re-validate the vendor in FK02 / XK02 (ECC) or Fiori app F3893 Manage Business Partner (S/4HANA): confirm bank details, payment terms, and address against a current supplier statement, then save to refresh the change date."
+  record_fix_template: "Vendor {field} last changed {age_days} days ago. Re-validate bank, payment terms, and address in FK02/XK02 or BP, then save."
 
 - id: AP034
   field: LFA1.STCEG

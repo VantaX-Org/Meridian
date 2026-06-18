@@ -667,3 +667,8 @@ rules:
     dimension: timeliness
     message: SD customer master not updated in 2+ years — review if pricing, shipping, and partner functions are still current
     rule_authority: best_practice
+    why_it_matters: "Sales-area customer data unchanged for 2+ years may hold outdated pricing, shipping, or payment determination that produces wrong order conditions."
+    sap_impact: "Sales orders derive incorrect pricing procedures, shipping points, or payment terms; deliveries route to obsolete addresses."
+    fix_map:
+      __blank__: "Review the customer sales area in VD02 / XD02: verify pricing procedure, shipping conditions, incoterms, and payment terms, then save to refresh the change date."
+    record_fix_template: "SD customer {field} last changed {age_days} days ago. Verify pricing, shipping, and payment terms in VD02/XD02, then save."

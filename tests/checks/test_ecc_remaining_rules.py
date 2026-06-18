@@ -12,14 +12,14 @@ RULES_DIR = Path(__file__).parent.parent.parent / "checks" / "rules" / "ecc"
 
 # Expected rule counts per module
 EXPECTED_COUNTS = {
-    "accounts_payable": 10,
-    "accounts_receivable": 10,
-    "asset_accounting": 9,
-    "mm_purchasing": 8,
-    "sd_customer_master": 10,
-    "sd_sales_orders": 9,
-    "production_planning": 10,
-    "plant_maintenance": 8,
+    "accounts_payable": 39,
+    "accounts_receivable": 28,
+    "asset_accounting": 32,
+    "mm_purchasing": 45,
+    "sd_customer_master": 26,
+    "sd_sales_orders": 35,
+    "production_planning": 29,
+    "plant_maintenance": 35,
 }
 
 REQUIRED_ENRICHMENT_FIELDS = ["fix_map", "rule_authority", "why_it_matters", "sap_impact"]
@@ -56,6 +56,9 @@ def _make_ap_dataframe(n: int = 50) -> pd.DataFrame:
                 "vendor@example.com" if clean else ("" if i < 3 else "bad-email")
             ),
             "LFB1.FDGRV": "A1" if clean else (None if i < 4 else "A1"),
+            # Deletion flag — allowed values are "X"/""; "Z" is invalid and
+            # exercises the domain_value_check value_fix_map (__other__ key).
+            "LFA1.LOEVM": "" if clean else ("Z" if i in (5, 6) else ""),
         })
     return pd.DataFrame(rows)
 
@@ -102,6 +105,7 @@ def test_ap_checks_run_with_enrichment():
     df = _make_ap_dataframe(50)
     results = run_checks("accounts_payable", df, "test-tenant")
 
+    # Non-None results = rules whose fields exist in this synthetic extract.
     assert len(results) == 10
     assert all(isinstance(r, CheckResult) for r in results)
 
@@ -126,12 +130,12 @@ def test_ap_checks_run_with_enrichment():
 # ---- Test 5: Total rule count across all 8 new ECC modules ----
 
 def test_total_new_ecc_rule_count():
-    """Total across all 8 new ECC modules should be 74 rules."""
+    """Total across the 8 ECC modules in EXPECTED_COUNTS should be 269 rules."""
     total = 0
     for module_name in EXPECTED_COUNTS:
         rules = _load_rules(module_name)
         total += len(rules)
-    assert total == 74, f"Expected 74 total new ECC rules, got {total}"
+    assert total == 269, f"Expected 269 total ECC rules, got {total}"
 
 
 # ---- Test 6: domain_value_check rules have valid_values_with_labels ----

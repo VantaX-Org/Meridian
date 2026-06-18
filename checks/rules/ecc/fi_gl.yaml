@@ -455,10 +455,10 @@ rules:
   - id: GL018
     field: SKB1.MITKZ
     check_class: domain_value_check
-    allowed_values: ["D", "K", "A", "S", ""]
+    allowed_values: ["", "D", "K", "A"]
     severity: critical
     dimension: validity
-    message: "Reconciliation account type must be D (customer), K (vendor), A (asset), S (GL), or empty"
+    message: "Reconciliation account indicator must be blank (not a recon account), D (customer), K (vendor), or A (asset)"
     why_it_matters: >-
       MITKZ identifies this account as a reconciliation account for a specific
       sub-ledger. Incorrect values prevent the sub-ledger from posting to the
@@ -474,15 +474,14 @@ rules:
       "D": "Customer reconciliation account (AR sub-ledger)"
       "K": "Vendor reconciliation account (AP sub-ledger)"
       "A": "Asset reconciliation account (AA sub-ledger)"
-      "S": "GL reconciliation account"
       "": "Not a reconciliation account"
     fix_map:
       __other__: >-
         Value '{invalid_value}' is not valid. Must be D (customer), K (vendor),
-        A (asset), S (GL), or empty. In ECC: correct via T-code FS00 > Control
+        A (asset), or empty. In ECC: correct via T-code FS00 > Control
         Data. In S/4HANA: use Fiori app F2735.
     record_fix_template: >-
-      GL Account {SKA1.SAKNR}: MITKZ is '{actual_value}'. Set to D, K, A, S,
+      GL Account {SKA1.SAKNR}: MITKZ is '{actual_value}'. Set to D, K, A,
       or empty via FS00 / Fiori app F2735.
 
   - id: GL019
@@ -689,6 +688,11 @@ rules:
     dimension: timeliness
     message: GL account created 5+ years ago and may contain outdated configuration � review account determination and field status
     rule_authority: best_practice
+    why_it_matters: "GL accounts created 5+ years ago may retain outdated field-status, tax, or open-item configuration that no longer matches current accounting policy."
+    sap_impact: "Postings may apply wrong tax categories or field status; reconciliation accounts behave unexpectedly; reporting hierarchies misclassify the account."
+    fix_map:
+      __blank__: "Review the account in FS00: verify account group, field-status, tax category, and open-item management against current chart-of-accounts policy; block via FS00 if obsolete."
+    record_fix_template: "GL account {field} created {age_days} days ago. Verify field-status, tax category, and open-item settings in FS00; block if obsolete."
 
   - id: GL027
     field: SKA1.TXT50
@@ -732,3 +736,49 @@ rules:
       __blank__: "BLART is mandatory at posting. A blank value indicates a corrupt header — engage SAP support to repair."
       __other__: "Document type '{invalid_value}' not in T003. Correct via data fix (FI-only — must be done by functional support) or configure in SPRO > Financial Accounting > Financial Accounting Global Settings > Document > Document Types (OBA7)."
     record_fix_template: "Document {BKPF.BELNR}: document type '{actual_value}' is not in T003."
+
+  - id: GL030
+    field: SKA1.SAKNR
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "G/L account number (SKA1.SAKNR) is mandatory"
+    why_it_matters: >-
+      SAKNR is the primary key of the G/L account master at chart-of-accounts
+      level. Without it the account cannot be identified, opened in FS00, or
+      referenced by any FI posting. Every line item in BSEG ties back to SAKNR.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      G/L master record cannot exist. All FI postings (FB50, F-02) and
+      period-end closing referencing this account fail.
+    fix_map:
+      __blank__: >-
+        Assign the G/L account number at FS00 creation following the chart-of-
+        accounts number range. In S/4HANA use Fiori app F2735 (Manage G/L
+        Account Master Data).
+    record_fix_template: >-
+      G/L Account record: SAKNR is {actual_value}. Assign a valid account
+      number via FS00 / Fiori app F2735.
+
+  - id: GL031
+    field: SKB1.WAERS
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "Account currency (SKB1.WAERS) is mandatory"
+    why_it_matters: >-
+      WAERS at company-code level (SKB1) defines the account currency for the
+      G/L account. Without it, SAP cannot determine the currency for postings,
+      blocking line-item entry and breaking currency translation in reporting.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Company-code segment of the G/L master is incomplete. Postings to this
+      account cannot be made and currency translation for reporting fails.
+    fix_map:
+      __blank__: >-
+        Assign account currency via FS00 > Control Data tab at company-code
+        level (typically the company-code currency). In S/4HANA use Fiori app
+        F2735 (Manage G/L Account Master Data).
+    record_fix_template: >-
+      G/L Account {SKB1.SAKNR}: account currency WAERS is {actual_value}.
+      Assign via FS00 / Fiori app F2735.

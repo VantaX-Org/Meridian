@@ -300,3 +300,8 @@ rules:
   dimension: timeliness
   message: Vehicle not serviced in 1+ year — overdue maintenance creates safety and warranty risk
   rule_authority: best_practice
+  why_it_matters: "Vehicles not serviced in 1+ year are overdue for preventive maintenance, creating safety, warranty, and regulatory-compliance exposure."
+  sap_impact: "Unserviced vehicles risk breakdown and accident liability; warranties may be voided; statutory roadworthiness/inspection requirements go unmet."
+  fix_map:
+    __blank__: "Schedule the overdue service: raise a maintenance order against the vehicle, confirm odometer/usage, and record the completed service to refresh the service date."
+  record_fix_template: "Vehicle {field} not serviced {age_days} days. Raise a maintenance order, perform the overdue service, and record completion."

@@ -54,3 +54,6 @@ db/migrations/versions/__pycache__/
 # Wrangler build cache
 .wrangler/
 seed/
+
+# graphify knowledge-graph output (generated, not source)
+graphify-out/

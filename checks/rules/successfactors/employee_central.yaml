@@ -211,13 +211,14 @@ rules:
   field: EMPEMPLOYMENT.STATUS
   check_class: domain_value_check
   allowed_values:
-  - active
-  - inactive
-  - terminated
-  - leave_of_absence
+  - A
+  - I
+  - T
+  - S
+  - R
   severity: critical
   dimension: accuracy
-  message: Employment status must be a valid lifecycle state
+  message: "Employment status must be a valid SAP code: A (active), I (inactive/leave), T (terminated), S (suspended), R (retired)"
   why_it_matters: STATUS controls whether the employee is included in active headcount, eligible for payroll processing, and
     visible in self-service portals. An invalid status causes the employee to fall outside all lifecycle rules, potentially
     resulting in incorrect payroll processing or missed termination actions.
@@ -225,14 +226,15 @@ rules:
   sap_impact: Employee may be paid after termination or excluded from active headcount. Benefit enrolment and leave accruals
     may be applied incorrectly.
   valid_values_with_labels:
-    active: "Active \u2014 currently employed and eligible for all processes"
-    inactive: "Inactive \u2014 employment paused but not terminated"
-    terminated: "Terminated \u2014 employment ended"
-    leave_of_absence: "Leave of Absence \u2014 temporarily away from work"
+    A: Active
+    I: Inactive / Leave
+    T: Terminated
+    S: Suspended
+    R: Retired
   fix_map:
-    __blank__: Assign the correct employment status via Admin Center > Employment Information. Use active, inactive, terminated,
-      or leave_of_absence.
-    __other__: Employment status '{invalid_value}' is not valid. Use active, inactive, terminated, or leave_of_absence. Update
+    __blank__: Assign the correct employment status via Admin Center > Employment Information. Use A (active), I (inactive/leave),
+      T (terminated), S (suspended), or R (retired).
+    __other__: Employment status '{invalid_value}' is not valid. Use A (active), I (inactive/leave), T (terminated), S (suspended), or R (retired). Update
       via Admin Center > Employment Information.
   record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: STATUS ''{actual_value}'' is invalid. Set to a valid lifecycle state
     via Admin Center > Employment Information.'
@@ -348,11 +350,11 @@ rules:
   allowed_values:
   - M
   - F
-  - N
+  - O
   - U
   severity: medium
   dimension: accuracy
-  message: Gender must be a valid code (M, F, N, U)
+  message: "Gender must be a valid code: M (male), F (female), O (other/non-binary), U (undeclared)"
   why_it_matters: GENDER is used in diversity reporting, pay equity analysis, and regulatory compliance filings. An invalid
     code corrupts diversity metrics and may cause regulatory reports to fail validation.
   rule_authority: best_practice
@@ -361,12 +363,12 @@ rules:
   valid_values_with_labels:
     M: Male
     F: Female
-    N: Non-binary
-    U: Undisclosed
+    O: Other / Non-binary
+    U: Undeclared / Prefer not to say
   fix_map:
-    __blank__: Set gender code via Admin Center > Personal Information. Use M, F, N, or U.
-    __other__: Gender '{invalid_value}' is not a valid code. Use M, F, N, or U. Update via Admin Center > Personal Information.
-  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: GENDER ''{actual_value}'' is invalid. Set to M/F/N/U via Admin Center
+    __blank__: Set gender code via Admin Center > Personal Information. Use M, F, O, or U.
+    __other__: Gender '{invalid_value}' is not a valid code. Use M, F, O, or U. Update via Admin Center > Personal Information.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: GENDER ''{actual_value}'' is invalid. Set to M/F/O/U via Admin Center
     > Personal Information.'
 - id: EC022
   field: PERINFO.DATE_OF_BIRTH
@@ -690,3 +692,27 @@ rules:
     __blank__: "Assign a valid event reason at event creation via Admin Center > Manage Job History."
     __other__: "Event reason '{invalid_value}' is not in FOEventReason. Reassign via Admin Center > Manage Job History, or configure the missing reason in Admin Center > Foundation Objects > Event Reason."
   record_fix_template: "Employee {EMPEMPLOYMENT.USERID}: event reason '{actual_value}' is not in FOEventReason."
+- id: EC044
+  field: EMPEMPLOYMENT.STATUS
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: "Employment status (EMPEMPLOYMENT.STATUS) is mandatory"
+  why_it_matters: "STATUS determines whether an employee is active, on leave, terminated, or retired. Without it, SuccessFactors cannot determine eligibility for payroll, time, and benefits processing, and the record is excluded from active-headcount reporting."
+  rule_authority: best_practice
+  sap_impact: "Employee status undeterminable. Payroll, Time, and Benefits eligibility cannot be evaluated; headcount reporting is incorrect."
+  fix_map:
+    __blank__: "Assign a valid employment status via Admin Center > Employee Data > Employment Information > Employee Status."
+  record_fix_template: "Employee {EMPEMPLOYMENT.USERID}: employment status is missing. Assign via Admin Center > Employment Information."
+- id: EC045
+  field: PEREMAIL.EMAIL_TYPE
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: "Email type (PEREMAIL.EMAIL_TYPE) is mandatory"
+  why_it_matters: "EMAIL_TYPE distinguishes business from personal email addresses in SuccessFactors. Without it, the email record cannot be classified, notifications may route to the wrong address, and primary-email logic fails."
+  rule_authority: best_practice
+  sap_impact: "Email record cannot be classified. Notification routing and primary-email determination fail for the employee."
+  fix_map:
+    __blank__: "Assign a valid email type (Business / Personal) via Admin Center > Employee Data > Email Information."
+  record_fix_template: "Employee {EMPEMPLOYMENT.USERID}: email type is missing. Assign via Admin Center > Email Information."

@@ -19,14 +19,61 @@ Usage:
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any, Callable
 
 import pandas as pd
 
 from sap.base import CloudConnectionParams, SAPConnectionParams, SAPConnectorError
 from sap.spro_tables import SPRO_REGISTRY, SPROEntry
 
+if TYPE_CHECKING:
+    from sap.field_status import (
+        FieldStatusOverrides,
+        FieldStatusResolution,
+        FieldStatusSource,
+    )
+    from sap.field_status_inference import InferenceResult
+
 logger = logging.getLogger("meridian.services.spro_reader")
+
+
+# A field-selection decoder reads live SAP customizing and returns the per-field
+# field-status mapping for one account group, in the shape ``resolve_*`` expects
+# (``{"NAME1": FieldStatus.REQUIRED, ...}``) — or ``None`` for no opinion.
+#
+# Signature: ``(reader, table_upper, account_group, module) -> overrides | None``.
+#
+# The registry is deliberately empty: SAP's account-group-dependent field
+# selection lives in customizing whose table name and byte-level field-selection
+# encoding are customer-specific, and Meridian must not guess SAP schema (see
+# CLAUDE.md and :mod:`sap.field_status`). Registering a decoder here — once the
+# governing customizing table and its encoding are confirmed for a deployment —
+# is what switches the live-SPRO field-status path from "no opinion" to a real
+# config-grounded read. Everything downstream (the cascade, the façade, the
+# provenance labelling) is already wired for it.
+FieldSelectionDecoder = Callable[
+    ["SPROReader", str, "str | None", "str | None"], "FieldStatusOverrides | None"
+]
+_FIELD_SELECTION_DECODERS: dict[str, FieldSelectionDecoder] = {}
+
+
+def register_field_selection_decoder(
+    table: str, decoder: FieldSelectionDecoder
+) -> None:
+    """Register a live field-selection *decoder* for a master *table*.
+
+    Call this once a deployment's governing field-status customizing table and
+    its field-selection encoding are confirmed. After registration,
+    :meth:`SPROReader.live_field_status_overrides` (and the smart cascade) will
+    return ``LIVE_SPRO``-grounded statuses for *table* instead of falling
+    through to inference.
+    """
+    _FIELD_SELECTION_DECODERS[table.strip().upper()] = decoder
+
+
+def unregister_field_selection_decoder(table: str) -> None:
+    """Remove a previously-registered decoder (mainly for tests/teardown)."""
+    _FIELD_SELECTION_DECODERS.pop(table.strip().upper(), None)
 
 
 class SPROReader:
@@ -172,6 +219,154 @@ class SPROReader:
                 }
 
         return {}
+
+    def get_field_status(
+        self,
+        table: str,
+        field: str,
+        *,
+        account_group: str | None = None,
+        overrides: "FieldStatusOverrides | None" = None,
+        override_source: "FieldStatusSource | None" = None,
+    ) -> "FieldStatusResolution | None":
+        """Resolve whether *field* is required/optional/suppressed/display.
+
+        Thin façade over :func:`sap.field_status.resolve_field_status` so the
+        SPRO reader stays the single configuration entry point. ``overrides`` is
+        a field-status mapping for the record's account group; ``override_source``
+        stamps its provenance (``LIVE_SPRO`` for a live customizing read,
+        ``INFERRED`` for one derived from data). When ``overrides`` is ``None``
+        the resolution falls back to the data-dictionary baseline.
+        """
+        from sap.field_status import FieldStatusSource, resolve_field_status
+
+        return resolve_field_status(
+            table,
+            field,
+            account_group=account_group,
+            overrides=overrides,
+            override_source=override_source or FieldStatusSource.LIVE_SPRO,
+        )
+
+    # ------------------------------------------------------------------
+    # Smart, dynamic field-status resolution (live SPRO → data → dictionary)
+    # ------------------------------------------------------------------
+
+    def infer_field_status(
+        self,
+        records: pd.DataFrame,
+        table: str,
+        *,
+        account_group_field: str | None = None,
+        min_sample: int | None = None,
+        required_threshold: float | None = None,
+    ) -> "dict[str | None, InferenceResult]":
+        """Infer field status for *table* from the customer's own *records*.
+
+        Delegates to :func:`sap.field_status_inference.build_inferred_overrides`.
+        Returns ``{account_group_value | None: InferenceResult}``; pass the
+        result for a record's account group to :meth:`resolve_field_status_smart`
+        (or :meth:`get_field_status` with ``override_source=INFERRED``).
+        """
+        from sap.field_status_inference import (
+            DEFAULT_MIN_SAMPLE,
+            DEFAULT_REQUIRED_THRESHOLD,
+            build_inferred_overrides,
+        )
+
+        return build_inferred_overrides(
+            records,
+            table,
+            min_sample=DEFAULT_MIN_SAMPLE if min_sample is None else min_sample,
+            required_threshold=(
+                DEFAULT_REQUIRED_THRESHOLD
+                if required_threshold is None
+                else required_threshold
+            ),
+            account_group_field=account_group_field,
+        )
+
+    def live_field_status_overrides(
+        self,
+        table: str,
+        *,
+        account_group: str | None = None,
+        module: str | None = None,
+    ) -> "FieldStatusOverrides | None":
+        """Read live SAP field-status customizing for *table* / *account_group*.
+
+        This is the **live-SPRO seam**. SAP stores the per-field required/
+        optional/suppressed/display selection in account-group-dependent
+        customizing whose table name *and* field-selection byte encoding are
+        SAP-customer-specific; Meridian must not guess them (see
+        :mod:`sap.field_status`). The method therefore dispatches to a registered
+        *field-selection decoder* — see
+        :func:`register_field_selection_decoder` — and returns ``None`` when no
+        decoder is registered for *table* (the cascade then falls through to
+        inference, then the dictionary).
+
+        Wiring a decoder is the single confirmed input that turns this path on;
+        until then live config simply contributes no opinion rather than a
+        guessed one.
+        """
+        decoder = _FIELD_SELECTION_DECODERS.get(table.strip().upper())
+        if decoder is None:
+            return None
+
+        try:
+            return decoder(self, table.strip().upper(), account_group, module)
+        except Exception as exc:  # never let config decode crash resolution
+            logger.warning(
+                "Live field-status decode failed for %s (account_group=%s): %s",
+                table,
+                account_group,
+                exc,
+            )
+            return None
+
+    def resolve_field_status_smart(
+        self,
+        table: str,
+        field: str,
+        *,
+        account_group: str | None = None,
+        records: "pd.DataFrame | None" = None,
+        inferred_overrides: "FieldStatusOverrides | None" = None,
+        module: str | None = None,
+    ) -> "FieldStatusResolution | None":
+        """Resolve *table.field* using the full cascade: live → inferred → dict.
+
+        * **Live** config is read via :meth:`live_field_status_overrides`.
+        * **Inferred** status comes from ``inferred_overrides`` if supplied, else
+          is computed on the fly from ``records`` (the extracted DataFrame for
+          this table) for the given ``account_group``.
+        * **Dictionary** is the always-present baseline.
+
+        The result's ``source`` tells the caller which tier won, so a downstream
+        report can say "required (live SAP config)" vs "required (observed in
+        99.8 % of records)" vs "required (baseline default)".
+        """
+        from sap.field_status import resolve_field_status_smart
+
+        live = self.live_field_status_overrides(
+            table, account_group=account_group, module=module
+        )
+
+        inferred = inferred_overrides
+        if inferred is None and records is not None:
+            by_group = self.infer_field_status(records, table)
+            result = by_group.get(account_group)
+            if result is None and account_group is None and None in by_group:
+                result = by_group[None]
+            inferred = result.as_overrides() if result is not None else None
+
+        return resolve_field_status_smart(
+            table,
+            field,
+            account_group=account_group,
+            live_overrides=live,
+            inferred_overrides=inferred,
+        )
 
     # ------------------------------------------------------------------
     # Private — live SAP read

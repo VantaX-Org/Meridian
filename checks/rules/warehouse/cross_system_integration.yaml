@@ -303,6 +303,11 @@ rules:
     dimension: timeliness
     message: Cross-system posting older than 3 months � verify integration is running and postings are being replicated
     rule_authority: best_practice
+    why_it_matters: "Cross-system postings older than 3 months with no newer activity suggest the integration between systems has stalled or a document is stuck in the queue."
+    sap_impact: "Inventory and financial positions diverge between the connected systems; stuck IDocs or queue entries block downstream postings; reconciliation breaks."
+    fix_map:
+      __blank__: "Check the integration monitor and queue (e.g. SMQ1/SMQ2, BD87 for IDocs): clear stuck entries, reprocess failed documents, and confirm the connector schedule is running."
+    record_fix_template: "Cross-system posting {field} is {age_days} days old. Clear stuck queue/IDoc entries (SMQ2/BD87) and confirm the connector is running."
 
   - id: XSYS015
     field: MATNR_CROSS

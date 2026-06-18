@@ -95,11 +95,11 @@ VALID_CONFIG_MATCHES = json.dumps({
 })
 
 
-@patch("agents.report_agent.get_llm")
-@patch("agents.readiness.get_llm")
-@patch("agents.remediation.get_llm")
-@patch("agents.config_matching.get_llm")
-@patch("agents.analyst.get_llm")
+@patch("agents.report_agent.get_llm_safe")
+@patch("agents.readiness.get_llm_safe")
+@patch("agents.remediation.get_llm_safe")
+@patch("agents.config_matching.get_llm_safe")
+@patch("agents.analyst.get_llm_safe")
 def test_graph_full_run(mock_analyst_llm, mock_config_llm, mock_rem_llm, mock_ready_llm, mock_report_llm):
     """Full mock of all five sub-agents — graph runs to END, state is complete."""
     # Configure mocks
@@ -127,20 +127,38 @@ def test_graph_full_run(mock_analyst_llm, mock_config_llm, mock_rem_llm, mock_re
     assert final["report"]["migration_readiness"]["overall_status"] in ("go", "no-go", "conditional")
 
 
-@patch("agents.analyst.get_llm")
-def test_graph_analyst_error_routes_to_end(mock_analyst_llm):
-    """Analyst sets error → graph routes to END, remediation not called."""
-    mock_llm = MagicMock()
-    mock_llm.invoke.return_value = MagicMock(content="not json")
-    mock_analyst_llm.return_value = mock_llm
+@patch("agents.report_agent.get_llm_safe")
+@patch("agents.readiness.get_llm_safe")
+@patch("agents.remediation.get_llm_safe")
+@patch("agents.config_matching.get_llm_safe")
+@patch("agents.analyst.get_llm_safe")
+def test_graph_resilient_to_analyst_failure(
+    mock_analyst_llm, mock_config_llm, mock_rem_llm, mock_ready_llm, mock_report_llm
+):
+    """Analyst returns unparseable JSON → it skips the chunk (empty root_causes)
+    but the graph is resilient: downstream nodes still run and the report is
+    still produced. The pipeline has no error short-circuit — every node runs."""
+    # Analyst always emits junk; the rest of the pipeline behaves normally.
+    for mock_fn, response in [
+        (mock_analyst_llm, "not json"),
+        (mock_config_llm, VALID_CONFIG_MATCHES),
+        (mock_rem_llm, VALID_REMEDIATIONS),
+        (mock_ready_llm, VALID_READINESS),
+        (mock_report_llm, EXEC_SUMMARY),
+    ]:
+        mock_llm = MagicMock()
+        mock_llm.invoke.return_value = MagicMock(content=response)
+        mock_fn.return_value = mock_llm
 
     from agents.orchestrator import graph
 
     initial = _make_initial_state()
     final = graph.invoke(initial)
 
-    assert final.get("error") is not None
-    assert "invalid JSON" in final["error"]
-    # Remediation should not have been called — remediations stays empty
-    assert final.get("remediations") == []
-    assert final.get("report") is None
+    # No hard error — analyst degraded gracefully
+    assert final.get("error") is None
+    # Analyst produced no root causes (both attempts failed to parse)
+    assert final.get("root_causes") == []
+    # Downstream still ran — remediation and report were produced
+    assert len(final.get("remediations", [])) > 0
+    assert final.get("report") is not None

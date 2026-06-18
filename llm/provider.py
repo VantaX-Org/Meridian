@@ -298,8 +298,31 @@ def is_llm_disabled() -> bool:
     return os.getenv("LLM_PROVIDER", "ollama").strip().lower() in ("none", "off", "")
 
 
-def safe_invoke(llm, messages, *, timeout_seconds: int = 90) -> str | None:
-    """Invoke the LLM with a hard timeout. Returns content string or None."""
+def _bind_max_tokens(llm, max_tokens: int):
+    """Bind a per-call output cap onto an arbitrary chat model.
+
+    Providers name the parameter differently — ChatOllama uses ``num_predict``
+    while OpenAI/Anthropic/Azure use ``max_tokens`` — so we pick the key by the
+    model's own attributes. ``.bind()`` returns a Runnable that forwards the
+    kwarg on every ``invoke`` without mutating the shared cached instance. Any
+    binding error is swallowed so a cap that a given provider can't honour never
+    breaks the call.
+    """
+    try:
+        if hasattr(llm, "num_predict"):
+            return llm.bind(num_predict=max_tokens)
+        return llm.bind(max_tokens=max_tokens)
+    except Exception:
+        return llm
+
+
+def safe_invoke(llm, messages, *, timeout_seconds: int = 90, max_tokens: int | None = None) -> str | None:
+    """Invoke the LLM with a hard timeout. Returns content string or None.
+
+    ``max_tokens`` caps the response length for this call only (see
+    ``_bind_max_tokens``); pass it when a caller has a tighter budget than the
+    model's configured default.
+    """
     import concurrent.futures
 
     if is_llm_disabled() or isinstance(llm, _NoopLLM):
@@ -309,6 +332,9 @@ def safe_invoke(llm, messages, *, timeout_seconds: int = 90) -> str | None:
     if _circuit_is_open():
         logger.debug("LLM circuit breaker is open; short-circuiting call")
         return None
+
+    if max_tokens is not None:
+        llm = _bind_max_tokens(llm, max_tokens)
 
     def _call():
         response = llm.invoke(messages)

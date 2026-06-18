@@ -107,22 +107,18 @@ rules:
   check_class: domain_value_check
   severity: high
   dimension: accuracy
-  message: Stock category must be a valid WM stock type
+  message: "Stock category must be a valid WM stock type: blank (unrestricted), Q (quality inspection), S (blocked), R (returns)"
   allowed_values:
   - ''
-  - S
-  - X
   - Q
-  - '2'
-  - '3'
+  - S
+  - R
   valid_values_with_labels:
     ? ''
     : Unrestricted use
+    Q: Quality inspection stock
     S: Blocked stock
-    X: Quality inspection
-    Q: Quality inspection (alternative)
-    '2': Returns
-    '3': Transfer stock (plant to plant)
+    R: Returns stock
   why_it_matters: "Stock category (BESTQ) determines which processes can consume this stock. An invalid value means the WM\
     \ system cannot classify the stock correctly \u2014 it may be treated as unrestricted when it should be blocked, or vice\
     \ versa. This affects picking eligibility, quality inspection routing, and financial valuation."
@@ -130,8 +126,8 @@ rules:
   sap_impact: Incorrect stock categorisation. Quality inspection stock may be picked for delivery. Blocked stock may be incorrectly
     released. Returns may not be routed to inspection.
   fix_map:
-    __other__: 'BESTQ value ''{invalid_value}'' is not a valid stock category. Valid values: blank (unrestricted), S (blocked),
-      X/Q (quality inspection), 2 (returns), 3 (transfer). In ECC: correct via LQ02. In S/4HANA: use /SCWM/MON.'
+    __other__: 'BESTQ value ''{invalid_value}'' is not a valid stock category. Valid values: blank (unrestricted), Q (quality inspection),
+      S (blocked), R (returns). In ECC: correct via LQ02. In S/4HANA: use /SCWM/MON.'
   record_fix_template: 'Quant {LQUA.MATNR} in bin {LGPLA.LGPLA}: BESTQ is ''{actual_value}''. Set to a valid stock category
     via LQ02 (ECC) or /SCWM/MON (S/4HANA).'
 - id: EWMS008
@@ -381,6 +377,11 @@ rules:
   dimension: timeliness
   message: Stock record unchanged for 1+ year — slow-moving or dead stock should be reviewed for disposal or write-down
   rule_authority: best_practice
+  why_it_matters: "Stock records unchanged for 1+ year typically represent slow-moving or dead stock that ties up bin capacity and working capital."
+  sap_impact: "Warehouse capacity and carrying cost are inflated by dead stock; valuation may overstate usable inventory; obsolescence provisions are missed."
+  fix_map:
+    __blank__: "Run a slow/dead-stock analysis: confirm the material is still required, relocate or consolidate the stock, and initiate scrap, return, or a write-down for genuine dead stock."
+  record_fix_template: "Stock record {field} unchanged {age_days} days. Confirm still required; relocate, return, or initiate scrap/write-down for dead stock."
 
 - id: EWMS024
   field: LGPLA.LGTYP
@@ -396,3 +397,16 @@ rules:
     __blank__: "Assign storage type at bin creation (/SCWM/LS02N). Required for every storage bin."
     __other__: "Storage type '{invalid_value}' is not in /SCWM/T301. Reclassify the bin via /SCWM/LS02N or configure the missing type in EWMS customising (/SCWM/SPRO > EWM > Master Data > Define Storage Type)."
   record_fix_template: "Storage bin {LGPLA.LGPBE}: storage type '{actual_value}' is not in /SCWM/T301."
+
+- id: EWMS025
+  field: LQUA.LGNUM
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: "Warehouse number (LQUA.LGNUM) is mandatory"
+  why_it_matters: "LGNUM identifies the warehouse that owns the quant in LQUA. Without it, the stock quant cannot be assigned to a warehouse, making it unaddressable for transfer orders and goods movements and orphaning the stock from all WM processes."
+  rule_authority: sap_hard_constraint
+  sap_impact: "Quant cannot be located in a warehouse. Transfer orders and goods movements referencing this stock fail; the stock is invisible to WM processing."
+  fix_map:
+    __blank__: "Assign the warehouse number via the goods-movement / putaway transaction (LT01) or correct the quant in /SCWM/MON. Required for every LQUA quant."
+  record_fix_template: "Quant {LQUA.LQNUM}: warehouse number (LGNUM) is missing. Assign via LT01 / /SCWM/MON."
