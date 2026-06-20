@@ -954,3 +954,86 @@ export interface BusinessProcessL1 {
   system: string;
   l2_groups: BusinessProcessL2[];
 }
+
+// ── Migration mode ───────────────────────────────────────────────────────────
+
+export type MigrationMode = "source_to_source" | "source_to_destination";
+export type MigrationStatus =
+  | "queued"
+  | "running"
+  | "analysed"
+  | "exported"
+  | "failed";
+export type TransferVerdict = "go" | "conditional" | "no-go";
+
+export interface MigrationRun {
+  id: string;
+  mode: MigrationMode;
+  source_system_id: string;
+  dest_system_id: string | null;
+  modules: string[];
+  status: MigrationStatus;
+  readiness_verdict: TransferVerdict | null;
+  readiness_score: number | null;
+  critical_count: number;
+  created_at: string;
+  completed_at: string | null;
+}
+
+export interface MigrationModuleSummary {
+  score: number;
+  status: TransferVerdict;
+  critical: number;
+  high: number;
+  medium: number;
+  low: number;
+  blocking: number;
+  records: number;
+  ready: number;
+  capped: boolean;
+  cap_reason: string | null;
+}
+
+export interface MigrationGapSummary {
+  status: TransferVerdict;
+  score: number;
+  critical_count: number;
+  blocking_count: number;
+  ungrounded_count: number;
+  by_module: Record<string, MigrationModuleSummary>;
+  blockers: string[];
+  conditions: string[];
+  mode?: string;
+  delegated_to?: string;
+}
+
+export interface MigrationGapFinding {
+  module: string;
+  object_type: string | null;
+  record_key: string | null;
+  dest_table: string | null;
+  field: string | null;
+  gap_type: "field_mapping" | "target_mandatory" | "value_domain" | "type_mismatch";
+  severity: Severity;
+  detail: string | null;
+  status_source: string | null;
+  domain_provenance: string | null;
+}
+
+export interface MigrationRunDetail {
+  run: MigrationRun & { gap_summary: MigrationGapSummary | null; error_detail: string | null };
+  findings_total: number;
+  findings: MigrationGapFinding[];
+}
+
+export interface TransferFieldMapping {
+  id: string;
+  module: string;
+  source_field: string;
+  source_data_type: string | null;
+  dest_system_type: string;
+  dest_table: string | null;
+  dest_field: string | null;
+  transform_note: string | null;
+  is_confirmed: boolean;
+}

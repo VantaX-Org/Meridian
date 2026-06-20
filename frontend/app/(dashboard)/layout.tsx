@@ -212,6 +212,7 @@ function HeaderExportMenu() {
 import {
   type LucideIcon,
   Eraser,        // Cleaning — keep lucide for now
+  ArrowLeftRight,// Migration — source→destination transfer
   Sliders,       // Settings sub-nav
   Map as MapIcon,// Settings sub-nav
 } from "lucide-react";
@@ -286,6 +287,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/stewardship": "Stewardship",
   "/exceptions": "Exceptions",
   "/cleaning": "Cleaning Queue",
+  "/migration": "Migration",
   "/dedup": "Deduplication",
   "/match-rules": "Match Rules",
   "/findings": "Findings",
@@ -494,6 +496,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/stewardship", label: "Workbench", icon: ClipboardIcon, licenceKey: "stewardship" },
       { href: "/exceptions", label: "Exceptions", icon: AlertIcon },
       { href: "/cleaning", label: "Cleaning", icon: Eraser },
+      { href: "/migration", label: "Migration", icon: ArrowLeftRight },
       { href: "/dedup", label: "Dedup", icon: GitCompareIcon },
     ],
   },
