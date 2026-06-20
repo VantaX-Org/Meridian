@@ -19,7 +19,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
-from api.services.rbac import has_permission, require_permission
+from api.services.rbac import dev_role_override, has_permission, require_permission
 
 router = APIRouter(prefix="/api/v1", tags=["stewardship"])
 
@@ -123,9 +123,9 @@ async def _resolve_user_id(db: AsyncSession, tenant: Tenant, request: Request) -
 
 async def _get_user_role(db: AsyncSession, tenant: Tenant, request: Request) -> str:
     """Resolve user role for fine-grained access checks."""
-    role_header = request.headers.get("x-user-role")
-    if role_header:
-        return role_header
+    dev_role = dev_role_override(request)
+    if dev_role:
+        return dev_role
     # Use local auth user ID to look up role
     local_user_id = getattr(request.state, "local_user_id", None)
     if local_user_id:

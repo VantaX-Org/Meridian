@@ -15,6 +15,7 @@ Actions: view, upload, analyse, approve, apply, export, manage_users, manage_rul
          trigger_sync, manage_field_mappings
 """
 
+import os
 from typing import Optional
 
 from fastapi import Depends, HTTPException, Request
@@ -92,14 +93,25 @@ def can_approve_for_object(
     return bool(object_perms.get("approve", True))
 
 
+def dev_role_override(request: Request) -> Optional[str]:
+    """Honour the X-User-Role header ONLY when explicitly enabled for local dev
+    (MERIDIAN_DEV_ROLE_HEADER=1). Off by default — in production the header is
+    ignored, closing the privilege-escalation hole where any caller could send
+    `X-User-Role: admin`. Returns None unless the flag is set AND the supplied
+    role is a known role."""
+    if os.environ.get("MERIDIAN_DEV_ROLE_HEADER") != "1":
+        return None
+    role = request.headers.get("x-user-role")
+    return role if role in VALID_ROLES else None
+
+
 async def _get_user_role(
     tenant: Tenant, db: AsyncSession, request: Request
 ) -> str:
     """Resolve the current user's role from the users table or tenant default."""
-    # In local dev mode, check for X-User-Role header override
-    role_header = request.headers.get("x-user-role")
-    if role_header and role_header in VALID_ROLES:
-        return role_header
+    dev_role = dev_role_override(request)
+    if dev_role:
+        return dev_role
 
     # Check for local auth JWT claims
     from api.config import settings
@@ -116,8 +128,9 @@ async def _get_user_role(
                 if not row[1]:
                     raise HTTPException(status_code=403, detail="User account is deactivated")
                 return row[0]
-        # No JWT present (shouldn't happen if middleware is active, but safe fallback)
-        return "admin"
+        # No authenticated user — fail closed (was: return "admin", a privilege
+        # escalation if middleware ever failed to populate local_user_id).
+        raise HTTPException(status_code=403, detail="Authentication required")
     return "analyst"
 
 

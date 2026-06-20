@@ -50,7 +50,7 @@ def _get_minio_client():
     return Minio(
         endpoint=os.getenv("MINIO_ENDPOINT", "minio:9000"),
         access_key=os.getenv("MINIO_ACCESS_KEY", "meridian"),
-        secret_key=os.getenv("MINIO_SECRET_KEY", ""),
+        secret_key=os.getenv("MINIO_SECRET_KEY") or os.getenv("MINIO_PASSWORD") or "",
         secure=False,
     )
 
