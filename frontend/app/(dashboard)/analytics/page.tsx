@@ -10,6 +10,11 @@ import { getMdmDashboard, getMdmHistory } from "@/lib/api/mdm-metrics";
 import { getSystems, getSyncRuns } from "@/lib/api/systems";
 import { getCleaningMetrics } from "@/lib/api/cleaning";
 import { getMetrics as getStewardshipMetrics } from "@/lib/api/stewardship";
+import {
+  getPredictiveAnalytics,
+  getPrescriptiveAnalytics,
+} from "@/lib/api/analytics";
+import type { DqsForecast, EarlyWarning } from "@/lib/api/analytics";
 import { downloadCsv, saveView } from "@/components/meridian/actions";
 import { relativeTime } from "@/lib/format";
 import type { MdmMetric, SAPSystem, SyncRun } from "@/types/api";
@@ -18,8 +23,8 @@ const TABS = [
   { k: "mdm",          l: "MDM Health",   d: "Vendor · Customer · Material · Employee" },
   { k: "operational",  l: "Operational",  d: "Run cadence, latency, failures" },
   { k: "impact",       l: "Impact",       d: "Hours saved, throughput, decisions" },
-  { k: "predictive",   l: "Predictive",   d: "Forecast trend (preview)" },
-  { k: "prescriptive", l: "Prescriptive", d: "Next-best plays (endpoint pending)" },
+  { k: "predictive",   l: "Predictive",   d: "Per-module DQS forecast + early warnings" },
+  { k: "prescriptive", l: "Prescriptive", d: "Next-best plays ranked by ROI" },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["k"];
@@ -439,88 +444,228 @@ function ImpactPanel() {
 }
 
 /* ── Predictive ────────────────────────────────────────────────── */
+const TREND_TONE: Record<DqsForecast["trend"], "pos" | "neg" | "warn"> = {
+  improving: "pos",
+  stable: "pos",
+  declining: "warn",
+  critical: "neg",
+};
+const SIGNAL_COLOR: Record<EarlyWarning["signal"], string> = {
+  red: "var(--mn-neg)",
+  amber: "var(--mn-warn)",
+  green: "var(--mn-pos)",
+};
+
 function PredictivePanel() {
-  const histQ = useQuery({
-    queryKey: ["mdm.history", { days: 30 }],
-    queryFn: () => getMdmHistory({ days: 30 }),
+  const fcQ = useQuery({
+    queryKey: ["analytics.predictive"],
+    queryFn: () => getPredictiveAnalytics(),
   });
 
-  if (histQ.isLoading) {
+  if (fcQ.isLoading) {
     return <Skeleton className="h-72 rounded-[10px]" />;
   }
-  if (histQ.error) {
+  if (fcQ.error) {
     return (
       <div className="mn-card mn-card-pad" style={{ color: "var(--mn-neg)" }}>
-        Could not reach <code>/api/v1/mdm/history</code>.
+        Could not reach <code>/api/v1/analytics/predictive</code>.
       </div>
     );
   }
 
-  const history = histQ.data?.history ?? [];
-  const composite = history.filter((h) => !h.domain).slice().reverse();
-  const series = composite.map((h) => h.mdm_health_score);
+  const forecasts = fcQ.data?.forecasts ?? [];
+  const warnings = fcQ.data?.early_warnings ?? [];
 
-  if (series.length < 5) {
+  if (forecasts.length === 0) {
     return (
       <div className="mn-card mn-card-pad" style={{ color: "var(--mn-ink-500)", textAlign: "center" }}>
-        Need at least 5 historical snapshots to surface a trend.
+        No DQS forecasts yet.
         <div style={{ marginTop: 8, fontSize: 12, color: "var(--mn-ink-400)" }}>
-          Predictive forecasting (confidence band, per-module risk) requires a dedicated
-          backend endpoint — not yet wired.
+          Forecasting needs at least 3 DQS history snapshots per module. Run more
+          analyses over time and per-module projections will surface here.
         </div>
       </div>
     );
   }
 
-  const current = series.at(-1) ?? 0;
-  const window = series.slice(-7);
-  const avgDelta = (window.at(-1)! - window[0]) / Math.max(window.length - 1, 1);
-  const projected = +(current + avgDelta * 7).toFixed(1);
-  const horizonDelta = +(projected - current).toFixed(1);
+  const improving = forecasts.filter((f) => f.trend === "improving").length;
+  const atRisk = forecasts.filter((f) => f.trend === "declining" || f.trend === "critical").length;
+  const redSignals = warnings.filter((w) => w.signal === "red").length;
 
   return (
     <>
       <div className="mn-row mn-stagger" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))", marginBottom: 18 }}>
-        <KPI label="Current composite" value={current.toFixed(1)} tone="pos" />
-        <KPI label="Projected · 7 snapshots" value={projected.toFixed(1)} delta={horizonDelta} deltaUnit=" pts" tone={horizonDelta >= 0 ? "pos" : "neg"} />
-        <KPI label="Snapshots used" value={series.length} hint="for the simple linear trend" />
-        <KPI label="Window" value="last 7" hint="rolling delta" />
+        <KPI label="Modules forecast" value={forecasts.length} hint="linear regression over DQS history" />
+        <KPI label="Improving" value={improving} tone="pos" />
+        <KPI label="Declining / critical" value={atRisk} tone={atRisk > 0 ? "neg" : "pos"} />
+        <KPI label="Red early-warnings" value={redSignals} tone={redSignals > 0 ? "neg" : "pos"} />
       </div>
 
-      <div className="mn-card mn-card-pad">
+      <div className="mn-card mn-card-pad" style={{ marginBottom: 18 }}>
         <SectionHeader
-          title="DQS trend"
-          caption="Linear projection from the last 7 composite snapshots — not a fitted model"
+          title="Per-module DQS forecast"
+          caption="Regression projection over recorded DQS history — current vs 7 / 30 / 90 day horizons"
         />
-        <div style={{ marginTop: 10 }}>
-          <Sparkline data={series} width={1100} height={140} stroke="var(--mn-primary)" pulse />
-        </div>
-        <div className="mn-narrative" style={{ marginTop: 14, padding: 10 }}>
-          <div className="ico"><SparklesIcon size={13} /></div>
-          <div style={{ flex: 1, fontSize: 12.5, color: "var(--mn-ink-700)" }}>
-            This is a placeholder for a real forecast. A dedicated <code>/api/v1/analytics/forecast</code> endpoint
-            (with confidence intervals + per-module risk drivers) hasn&rsquo;t been built yet.
-          </div>
+        <div style={{ marginTop: 10, overflowX: "auto" }}>
+          <table className="mn-table" style={{ width: "100%", fontSize: 12.5 }}>
+            <thead>
+              <tr>
+                <th style={{ textAlign: "left" }}>Module</th>
+                <th>Current</th>
+                <th>7d</th>
+                <th>30d</th>
+                <th>90d</th>
+                <th>Trend</th>
+                <th>Confidence</th>
+              </tr>
+            </thead>
+            <tbody>
+              {forecasts.map((f) => {
+                const proj = [f.current_score, f.forecast_7d, f.forecast_30d, f.forecast_90d];
+                return (
+                  <tr key={f.module_id}>
+                    <td style={{ textAlign: "left" }}>
+                      <div style={{ fontWeight: 600 }}>{f.module_id}</div>
+                      <div style={{ marginTop: 4, maxWidth: 220 }}>
+                        <Sparkline data={proj} width={220} height={32} stroke="var(--mn-primary)" />
+                      </div>
+                      {f.contributing_factors.length > 0 && (
+                        <div style={{ fontSize: 11, color: "var(--mn-ink-400)", marginTop: 2 }}>
+                          {f.contributing_factors.join(" · ")}
+                        </div>
+                      )}
+                    </td>
+                    <td className="aurora-number">{f.current_score.toFixed(1)}</td>
+                    <td className="aurora-number">{f.forecast_7d.toFixed(1)}</td>
+                    <td className="aurora-number">{f.forecast_30d.toFixed(1)}</td>
+                    <td className="aurora-number">{f.forecast_90d.toFixed(1)}</td>
+                    <td style={{ color: `var(--mn-${TREND_TONE[f.trend]})`, fontWeight: 600 }}>
+                      {f.trend}
+                    </td>
+                    <td className="aurora-number">{f.confidence}%</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
+
+      {warnings.length > 0 && (
+        <div className="mn-card mn-card-pad">
+          <SectionHeader title="Early warnings" caption="Per-module signal vs target threshold" />
+          <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+            {warnings.map((w) => (
+              <div key={w.module_id} className="mn-narrative" style={{ padding: 10, alignItems: "flex-start" }}>
+                <span
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: 999,
+                    background: SIGNAL_COLOR[w.signal],
+                    marginTop: 5,
+                    flexShrink: 0,
+                  }}
+                />
+                <div style={{ flex: 1, fontSize: 12.5, color: "var(--mn-ink-700)" }}>
+                  <strong>{w.module_id}</strong> — {w.message}
+                  <div style={{ fontSize: 12, color: "var(--mn-ink-500)", marginTop: 2 }}>
+                    {w.recommended_action}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </>
   );
 }
 
 /* ── Prescriptive ──────────────────────────────────────────────── */
+const zar = (n: number) =>
+  "R" + Math.round(n).toLocaleString("en-ZA");
+
 function PrescriptivePanel() {
-  return (
-    <div className="mn-card mn-card-pad" style={{ textAlign: "center", color: "var(--mn-ink-500)" }}>
-      <div className="mn-coming-icon" style={{ margin: "12px auto" }}>
-        <SparklesIcon size={20} />
+  const rxQ = useQuery({
+    queryKey: ["analytics.prescriptive"],
+    queryFn: () => getPrescriptiveAnalytics({ limit: 20 }),
+  });
+
+  if (rxQ.isLoading) {
+    return <Skeleton className="h-72 rounded-[10px]" />;
+  }
+  if (rxQ.error) {
+    return (
+      <div className="mn-card mn-card-pad" style={{ color: "var(--mn-neg)" }}>
+        Could not reach <code>/api/v1/analytics/prescriptive</code>.
       </div>
-      <div className="mn-h1" style={{ fontSize: 18, marginTop: 8 }}>Prescriptive lens · endpoint pending</div>
-      <p style={{ maxWidth: 480, margin: "8px auto 0", fontSize: 13, color: "var(--mn-ink-500)" }}>
-        Ranked &ldquo;next-best-action&rdquo; plays need a dedicated{" "}
-        <code>/api/v1/analytics/plays</code> endpoint that simulates rule promotions and
-        survivorship policies against history. Not yet wired.
-      </p>
-    </div>
+    );
+  }
+
+  const actions = rxQ.data?.actions ?? [];
+  const sprints = rxQ.data?.sprints ?? [];
+
+  if (actions.length === 0) {
+    return (
+      <div className="mn-card mn-card-pad" style={{ textAlign: "center", color: "var(--mn-ink-500)" }}>
+        <div className="mn-coming-icon" style={{ margin: "12px auto" }}>
+          <SparklesIcon size={20} />
+        </div>
+        <div className="mn-h1" style={{ fontSize: 18, marginTop: 8 }}>No actions to rank yet</div>
+        <p style={{ maxWidth: 480, margin: "8px auto 0", fontSize: 13, color: "var(--mn-ink-500)" }}>
+          Next-best plays are derived from open findings, the cleaning queue and
+          exceptions. Run an analysis to populate them.
+        </p>
+      </div>
+    );
+  }
+
+  const totalImpact = actions.reduce((s, a) => s + a.estimated_impact_zar, 0);
+  const totalEffort = actions.reduce((s, a) => s + a.effort_hours, 0);
+
+  return (
+    <>
+      <div className="mn-row mn-stagger" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))", marginBottom: 18 }}>
+        <KPI label="Ranked plays" value={actions.length} hint="by ROI per hour" />
+        <KPI label="Total impact" value={zar(totalImpact)} tone="pos" />
+        <KPI label="Total effort" value={`${totalEffort.toFixed(1)}h`} />
+        <KPI label="Sprints" value={sprints.length} hint="40h buckets" />
+      </div>
+
+      <div className="mn-card mn-card-pad">
+        <SectionHeader
+          title="Next-best actions"
+          caption="Findings, cleaning and exceptions ranked deterministically by ROI per hour"
+        />
+        <div style={{ marginTop: 10, overflowX: "auto" }}>
+          <table className="mn-table" style={{ width: "100%", fontSize: 12.5 }}>
+            <thead>
+              <tr>
+                <th style={{ textAlign: "left" }}>Action</th>
+                <th style={{ textAlign: "left" }}>Type</th>
+                <th>Impact</th>
+                <th>Effort</th>
+                <th>ROI / h</th>
+                <th>Priority</th>
+              </tr>
+            </thead>
+            <tbody>
+              {actions.map((a) => (
+                <tr key={`${a.type}-${a.id}`}>
+                  <td style={{ textAlign: "left" }}>{a.title || "(untitled)"}</td>
+                  <td style={{ textAlign: "left" }}>{a.type}</td>
+                  <td className="aurora-number">{zar(a.estimated_impact_zar)}</td>
+                  <td className="aurora-number">{a.effort_hours.toFixed(1)}h</td>
+                  <td className="aurora-number" style={{ fontWeight: 600 }}>{a.roi_per_hour.toFixed(1)}</td>
+                  <td className="aurora-number">{a.priority_score.toFixed(1)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -546,8 +691,9 @@ export default function AnalyticsPage() {
             Multi-lens analytical drilldown.{" "}
             <strong style={{ color: "var(--mn-primary-700)" }}>MDM Health</strong>,{" "}
             <strong style={{ color: "var(--mn-primary-700)" }}>Operational</strong> and{" "}
-            <strong style={{ color: "var(--mn-primary-700)" }}>Impact</strong> read real data;
-            forecasting + prescriptive plays surface when their endpoints land.
+            <strong style={{ color: "var(--mn-primary-700)" }}>Impact</strong>,{" "}
+            <strong style={{ color: "var(--mn-primary-700)" }}>Predictive</strong> and{" "}
+            <strong style={{ color: "var(--mn-primary-700)" }}>Prescriptive</strong> all read live data.
           </>
         }
         actions={

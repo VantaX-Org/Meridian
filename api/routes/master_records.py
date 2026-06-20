@@ -420,12 +420,24 @@ async def writeback_master_record(
             detail="Only golden records can be written back — promote first"
         )
 
-    # Return the golden fields for the existing writeback flow to process
+    # SAP write-back is finding-driven by design: write_back_log.finding_id is
+    # NOT NULL and the 4-eyes BAPI flow (api/routes/writeback.py) executes the
+    # deterministic record_fixes attached to a finding. A golden record on its
+    # own carries no finding/sql_statement, so this endpoint does NOT write to
+    # SAP — it returns the golden field values and routes the steward to the
+    # supported path (apply the validated findings via 4-eyes write-back).
+    # ponytail: guidance, not a write. One-click golden-record write-back needs
+    # a nullable-finding write_back_log + golden-field BAPI mapping — tracked.
     return {
         "record_id": str(row[0]),
         "domain": row[3],
         "golden_fields": row[2] or {},
-        "message": "Use POST /api/v1/writeback with these fields to initiate 4-eyes write-back",
+        "writeback_supported": False,
+        "message": (
+            "Golden field values are ready. SAP write-back runs from validated "
+            "findings via the 4-eyes flow — open this record's findings and apply "
+            "the deterministic fixes to push changes to SAP."
+        ),
     }
 
 

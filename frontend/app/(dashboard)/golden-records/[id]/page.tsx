@@ -7,7 +7,6 @@ import {
   ArrowLeft,
   Crown,
   Loader2,
-  CheckCircle2,
   AlertTriangle,
   Send,
   Clock,
@@ -519,12 +518,18 @@ export default function GoldenRecordDetailPage() {
         </CardContent>
       </Card>
 
-      {/* Writeback success message */}
+      {/* Writeback guidance — this does NOT write to SAP. SAP write-back is
+          finding-driven via the 4-eyes flow; route the steward there. */}
       {writebackMutation.isSuccess && writebackMutation.data && (
-        <Card className="border-[#256F3A]/20 bg-[#256F3A]/5">
-          <CardContent className="p-4 text-sm text-[#256F3A]">
-            <CheckCircle2 className="mb-1 inline h-4 w-4" />{" "}
-            {writebackMutation.data.message}
+        <Card className="border-[#E76500]/20 bg-[#E76500]/5">
+          <CardContent className="flex items-start gap-2 p-4 text-sm text-[#E76500]">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>
+              {writebackMutation.data.message}{" "}
+              <Link href="/findings" className="font-medium underline">
+                Open findings
+              </Link>
+            </span>
           </CardContent>
         </Card>
       )}
