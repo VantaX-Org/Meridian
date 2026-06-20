@@ -61,11 +61,18 @@ def run_null_check(lf: pl.LazyFrame, field: str, rule: dict) -> dict:
     }
 
 
+def _non_blank(field: str) -> "pl.Expr":
+    """Non-null AND non-empty (after trim). Mirrors the pandas engine, where
+    blanks are null_check's responsibility and excluded from regex/domain so
+    the two engines never disagree on a value's denominator."""
+    return pl.col(field).is_not_null() & (pl.col(field).cast(pl.Utf8).str.strip_chars() != "")
+
+
 def run_regex_check(lf: pl.LazyFrame, field: str, pattern: str, rule: dict) -> dict:
     """Vectorised regex in Polars using Rust regex engine."""
     try:
         stats = (
-            lf.filter(pl.col(field).is_not_null())
+            lf.filter(_non_blank(field))
             .select(
                 pl.len().alias("total"),
                 pl.col(field)
@@ -108,7 +115,7 @@ def run_domain_check(lf: pl.LazyFrame, field: str, allowed: list[str], rule: dic
     """Set membership check using Polars hash sets."""
     try:
         stats = (
-            lf.filter(pl.col(field).is_not_null())
+            lf.filter(_non_blank(field))
             .select(
                 pl.len().alias("total"),
                 pl.col(field)
@@ -138,7 +145,7 @@ def run_domain_check(lf: pl.LazyFrame, field: str, allowed: list[str], rule: dic
         try:
             invalid_df = (
                 lf.filter(
-                    pl.col(field).is_not_null()
+                    _non_blank(field)
                     & pl.col(field).cast(pl.Utf8).is_in(allowed).not_()
                 )
                 .select(pl.col(field).cast(pl.Utf8))
@@ -284,20 +291,19 @@ def run_referential_check(
 ) -> dict:
     """Referential integrity check — field values must be in reference set.
 
-    Mirrors the pandas ReferentialCheck: nulls count as failures (the pandas
-    engine treats them as missing references), and the result shape matches
-    so downstream fix enrichment works unchanged.
+    Mirrors the pandas ReferentialCheck: nulls are EXCLUDED (null detection is
+    null_check's sole job, else a missing value is double-counted by both),
+    the denominator is the non-null count, and the result shape matches so
+    downstream fix enrichment works unchanged.
     """
     ref_set = [str(v) for v in reference_values]
+    non_null = pl.col(field).is_not_null() & (pl.col(field).cast(pl.Utf8).str.strip_chars() != "")
 
     try:
         stats = (
             lf.select(
-                pl.len().alias("total"),
-                (
-                    pl.col(field).is_null()
-                    | pl.col(field).cast(pl.Utf8).is_in(ref_set).not_()
-                )
+                non_null.sum().alias("total"),
+                (non_null & pl.col(field).cast(pl.Utf8).is_in(ref_set).not_())
                 .sum()
                 .alias("fail_count"),
             )
@@ -321,7 +327,7 @@ def run_referential_check(
         try:
             missing_df = (
                 lf.filter(
-                    pl.col(field).is_not_null()
+                    _non_blank(field)
                     & pl.col(field).cast(pl.Utf8).is_in(ref_set).not_()
                 )
                 .select(pl.col(field).cast(pl.Utf8).unique().head(20))
@@ -351,6 +357,28 @@ def run_referential_check(
     }
 
 
+def run_format_check(lf: pl.LazyFrame, field: str, rule: dict) -> dict:
+    """Check-digit / format-mask validation.
+
+    The validators (IBAN mod-97, GTIN mod-10, Luhn) are inherently row-wise,
+    not column-vectorisable, so this collects to pandas and reuses the single
+    FormatCheck implementation — same pattern as cross_field. One algorithm,
+    no divergence between engines.
+    """
+    from checks.types.format_check import FormatCheck
+
+    try:
+        available = set(lf.collect_schema().names())
+    except AttributeError:
+        available = set(lf.columns)  # type: ignore[attr-defined]
+    if field not in available:
+        return None
+
+    pdf = lf.collect().to_pandas()
+    result = FormatCheck(rule).run(pdf)
+    return None if result is None else result.model_dump()
+
+
 # ---------------------------------------------------------------------------
 # Dispatch map: check_class name -> handler function
 # ---------------------------------------------------------------------------
@@ -378,6 +406,7 @@ _DISPATCH = {
     "referential_check": lambda lf, rule: run_referential_check(
         lf, rule["field"], rule.get("reference_values", []), rule
     ),
+    "format_check": lambda lf, rule: run_format_check(lf, rule["field"], rule),
 }
 
 

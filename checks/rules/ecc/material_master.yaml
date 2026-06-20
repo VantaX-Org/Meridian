@@ -371,6 +371,23 @@ rules:
       via MM02 > Basic Data 1. In S/4HANA: use Fiori F1602. Verify against GS1 registry.'
   record_fix_template: 'Material {MARA.MATNR}: EAN11 is ''{actual_value}''. Correct the barcode format (8-14 numeric digits)
     via MM02 (ECC) or Fiori F1602 (S/4HANA).'
+- id: MM018B
+  field: MARA.EAN11
+  check_class: format_check
+  format: gtin
+  severity: medium
+  dimension: validity
+  message: GTIN/EAN check digit must be valid (GS1 mod-10)
+  why_it_matters: A barcode can be the right length and all-numeric yet still be wrong — the final digit is a GS1 mod-10 check
+    digit computed from the others. A transposed or mistyped digit produces a structurally-valid-looking but invalid GTIN that
+    scanners reject and trading partners bounce in EDI. The digit-count regex (MM018) cannot catch this; the check digit can.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scanning and EDI failures that pass a format check still slip through. A valid check digit is the only deterministic
+    proof the barcode is internally consistent before it reaches a scanner or a DESADV/ORDERS message.
+  fix_map:
+    __other__: 'EAN/GTIN ''{invalid_value}'' has an invalid GS1 check digit. Verify the barcode against the GS1 registry and
+      re-key it via MM02 > Basic Data 1 (ECC) or Fiori F1602 (S/4HANA).'
+  record_fix_template: 'Material {MARA.MATNR}: EAN11 ''{actual_value}'' fails the GS1 mod-10 check digit. Re-verify the barcode.'
 - id: MM019
   field: MARA.MSTAE
   check_class: domain_value_check
