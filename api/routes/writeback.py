@@ -9,12 +9,13 @@ Rules (non-negotiable):
 """
 
 import logging
+import os
 import re
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -82,12 +83,25 @@ def _mask_password(msg: str, password: str) -> str:
     return msg
 
 
+def _require_user(request: Request) -> str:
+    """Return the authenticated user id, or fail closed.
+
+    The 4-eyes control over SAP writes is only meaningful if requester and
+    approver are the REAL users — never a synthetic per-tenant constant.
+    """
+    user_id = getattr(request.state, "local_user_id", None)
+    if not user_id:
+        raise HTTPException(status_code=403, detail="Authentication required")
+    return str(user_id)
+
+
 @router.post(
     "/writeback",
     response_model=WriteBackResponse,
     dependencies=[Depends(require_permission("apply"))],
 )
 async def create_writeback(
+    request: Request,
     body: WriteBackRequest,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
@@ -128,8 +142,9 @@ async def create_writeback(
             pending_approval_id=None,
         )
 
-    # Get requesting user (from tenant context for now)
-    requesting_user = f"tenant:{tenant_id}"
+    # Requesting user — the real authenticated user, so 4-eyes can compare it
+    # against the approver at approval time.
+    requesting_user = _require_user(request)
 
     # Dry run: validate BAPIs can be called
     errors: list[str] = []
@@ -216,6 +231,7 @@ async def create_writeback(
     dependencies=[Depends(require_permission("approve"))],
 )
 async def approve_writeback(
+    request: Request,
     approval_id: str,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
@@ -241,7 +257,7 @@ async def approve_writeback(
         raise HTTPException(status_code=409, detail="Write-back already approved")
 
     # 4-eyes: approving user must differ from requesting user
-    approving_user = f"tenant:{tenant_id}:approver"
+    approving_user = _require_user(request)
     if approving_user == record[1]:
         raise HTTPException(
             status_code=403,
@@ -272,34 +288,57 @@ async def approve_writeback(
     elif not valid_fixes:
         errors.append("No deterministic fixes available")
     else:
-        # Execute via SAP connector
+        # Execute via SAP connector. Resolve REAL credentials from the
+        # registered on-prem SAP system matching this write-back's host —
+        # never fabricate a user/password (the old "WRITEBACK"/"****" literals
+        # could never connect). Decrypted only here, at execution time.
         from sap import get_connector
         from sap.base import SAPConnectionParams, SAPConnectorError, BAPICall
 
-        params = SAPConnectionParams(
-            host=record[4],   # sap_host from write_back_log
-            client="100",
-            sysnr="00",
-            user="WRITEBACK",
-            password="****",  # sourced from secure store — placeholder matches existing
+        sys_result = await db.execute(
+            text("""
+                SELECT s.client, s.sysnr, c.encrypted_password
+                FROM sap_systems s
+                JOIN system_credentials c ON c.system_id = s.id
+                WHERE s.tenant_id = :tid AND s.host = :host
+                  AND s.system_type IN ('ecc', 's4hana_onprem', 'ewm')
+                LIMIT 1
+            """),
+            {"tid": tenant_id, "host": record[4]},
         )
-        try:
-            with get_connector() as conn:
-                conn.connect(params)
-                for fix in valid_fixes:
-                    try:
-                        conn.execute_bapi(BAPICall(
-                            bapi_name=bapi,
-                            params=fix.get("bapi_params", {}),
-                        ))
-                        applied += 1
-                    except SAPConnectorError as e:
-                        errors.append(f"BAPI call failed for {fix.get('field', '?')}: {str(e)}")
-        except SAPConnectorError as e:
-            if "pyrfc_not_installed" in str(e):
-                errors.append("PyRFC not installed")
-            else:
-                errors.append(f"RFC connection failed: {str(e)}")
+        sys_row = sys_result.fetchone()
+        if not sys_row:
+            errors.append(
+                "No registered SAP system with stored credentials for this host "
+                "— register and connect the system before write-back"
+            )
+        else:
+            from api.services.credential_store import decrypt_password
+
+            params = SAPConnectionParams(
+                host=record[4],   # sap_host from write_back_log
+                client=sys_row[0] or "",
+                sysnr=sys_row[1] or "",
+                user=os.getenv("SAP_RFC_USER", "RFC_USER"),
+                password=decrypt_password(tenant_id, sys_row[2]),
+            )
+            try:
+                with get_connector() as conn:
+                    conn.connect(params)
+                    for fix in valid_fixes:
+                        try:
+                            conn.execute_bapi(BAPICall(
+                                bapi_name=bapi,
+                                params=fix.get("bapi_params", {}),
+                            ))
+                            applied += 1
+                        except SAPConnectorError as e:
+                            errors.append(f"BAPI call failed for {fix.get('field', '?')}: {str(e)}")
+            except SAPConnectorError as e:
+                if "pyrfc_not_installed" in str(e):
+                    errors.append("PyRFC not installed")
+                else:
+                    errors.append(f"RFC connection failed: {str(e)}")
 
     # Update the log record
     await db.execute(

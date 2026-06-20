@@ -342,10 +342,10 @@ rules:
       Verify via XK03 (ECC) or Fiori app F0843 (S/4HANA) and correct.
 
   - id: TM016
-    field: TKNUM
+    field: VTTK.TKNUM
     check_class: cross_field_check
-    fields: ['TKNUM']
-    condition: "~`TKNUM`.duplicated(keep=False)"
+    fields: ['VTTK.TKNUM']
+    condition: "~`VTTK.TKNUM`.duplicated(keep=False)"
     severity: critical
     dimension: uniqueness
     message: Duplicate shipment numbers detected — each shipment must be unique
@@ -356,7 +356,7 @@ rules:
       __blank__: "De-duplicate the data extract at shipment header level. If genuine duplicates exist, escalate to Basis."
 
   - id: TM017
-    field: ERDAT_TM
+    field: VTTK.ERDAT
     check_class: freshness_check
     max_age_hours: 2190
     severity: medium

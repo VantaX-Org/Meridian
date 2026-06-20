@@ -266,10 +266,10 @@ rules:
       update readiness assessment.
 
   - id: SUC011
-    field: NOMINEE_ID
+    field: SUCCESSIONCANDIDATE.NOMINEE_ID
     check_class: cross_field_check
-    fields: ['NOMINEE_ID']
-    condition: "~`NOMINEE_ID`.duplicated(keep=False)"
+    fields: ['SUCCESSIONCANDIDATE.NOMINEE_ID']
+    condition: "~`SUCCESSIONCANDIDATE.NOMINEE_ID`.duplicated(keep=False)"
     severity: medium
     dimension: uniqueness
     message: Duplicate succession nominations detected — same nominee appears multiple times for same position

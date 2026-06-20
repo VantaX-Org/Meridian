@@ -650,10 +650,10 @@ rules:
   record_fix_template: Record is missing PERPHONE.PHONE_NUMBER. Maintain via SuccessFactors Admin Center > Employee Central
     > People Profile.
 - id: EC041
-  field: USERID
+  field: EMPEMPLOYMENT.USERID
   check_class: cross_field_check
-  fields: ['USERID']
-  condition: "~`USERID`.duplicated(keep=False)"
+  fields: ['EMPEMPLOYMENT.USERID']
+  condition: "~`EMPEMPLOYMENT.USERID`.duplicated(keep=False)"
   severity: critical
   dimension: uniqueness
   message: Duplicate employee user IDs detected — each employee must have a unique USERID
