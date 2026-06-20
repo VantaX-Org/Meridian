@@ -427,6 +427,21 @@ FEATURE_ROUTE_MAP: dict[str, str] = {
 }
 
 
+def _features_to_list(features) -> list[str]:
+    """Normalise the manifest `features` field to a list of enabled keys.
+
+    Accepts the new dict form ({feat: bool}) or legacy list form. Empty/missing
+    means "no explicit feature list" → ["*"] so the feature gate is a no-op and
+    entitlement falls to enabled_modules. NEVER returns ["*"] as a security
+    grant — it only disables the feature-level gate.
+    """
+    if isinstance(features, list):
+        return features
+    if isinstance(features, dict) and features:
+        return [k for k, v in features.items() if v]
+    return ["*"]
+
+
 def _check_feature_gate(path: str, licensed_features: list[str]) -> JSONResponse | None:
     """Return a 402 response if the route requires a feature not in the licence."""
     if "*" in licensed_features:
@@ -444,6 +459,34 @@ def _check_feature_gate(path: str, licensed_features: list[str]) -> JSONResponse
                 )
             break
     return None
+
+
+def enforce_licensed_modules(request: Request, requested: list[str]) -> None:
+    """Reject any requested SAP module the licence does not entitle.
+
+    The middleware sets request.state.licensed_modules from the validated
+    manifest but nothing consumed it — a tenant licensed for one module could
+    extract/upload all 29. This is the real entitlement boundary: it runs where
+    module-scoped data ENTERS the system (extract, upload). "*" entitles all.
+
+    Raises HTTPException(402) listing the unlicensed modules. Caller is a route,
+    so the short message is safe to surface (no stack trace).
+    """
+    from fastapi import HTTPException
+
+    licensed = getattr(request.state, "licensed_modules", None)
+    if licensed is None or "*" in licensed:
+        return
+    unlicensed = [m for m in requested if m not in licensed]
+    if unlicensed:
+        raise HTTPException(
+            status_code=402,
+            detail={
+                "error": "module_not_licenced",
+                "modules": unlicensed,
+                "upgrade_url": "https://meridian-hq.vantax.co.za/upgrade",
+            },
+        )
 
 
 class LicenceMiddleware(BaseHTTPMiddleware):
@@ -464,11 +507,7 @@ class LicenceMiddleware(BaseHTTPMiddleware):
             cached = _cache["response"]
             if cached.get("valid"):
                 enabled_modules = cached.get("enabled_modules") or cached.get("modules", [])
-                features = cached.get("features", {})
-                if isinstance(features, list):
-                    licensed_features = features
-                else:
-                    licensed_features = [k for k, v in features.items() if v] if features else ["*"]
+                licensed_features = _features_to_list(cached.get("features", {}))
                 request.state.licensed_modules = enabled_modules
                 request.state.licensed_features = licensed_features
                 request.state.licence_manifest = cached
@@ -487,11 +526,40 @@ class LicenceMiddleware(BaseHTTPMiddleware):
         result = await _validate_licence()
 
         if result is None:
-            # Licence server unreachable — graceful degradation
-            logger.warning("Licence server unreachable — allowing request through")
-            request.state.licensed_modules = ["*"]
-            request.state.licensed_features = ["*"]
-            return await call_next(request)
+            # Licence server unreachable. FAIL CLOSED — granting ["*"] here let
+            # anyone bypass licensing entirely by blocking the licence server
+            # (firewall it, or never configure it). Degrade ONLY on a licence
+            # this deployment previously validated, using its LAST KNOWN
+            # entitlements, and only inside the degradation grace window. No
+            # prior valid licence (fresh boot, never validated) → deny.
+            last_known = _cache.get("response")
+            if (
+                last_known
+                and last_known.get("valid")
+                and not is_cloudflare_unreachable()
+            ):
+                logger.warning(
+                    "Licence server unreachable — running degraded on the last "
+                    "validated licence's entitlements"
+                )
+                enabled_modules = (
+                    last_known.get("enabled_modules") or last_known.get("modules", [])
+                )
+                licensed_features = _features_to_list(last_known.get("features", {}))
+                request.state.licensed_modules = enabled_modules
+                request.state.licensed_features = licensed_features
+                request.state.licence_manifest = last_known
+                feature_block = _check_feature_gate(request.url.path, licensed_features)
+                if feature_block:
+                    return feature_block
+                return await call_next(request)
+            logger.error(
+                "Licence server unreachable and no valid cached licence — denying"
+            )
+            return JSONResponse(
+                {"error": "licence_unverified", "reason": "licence_server_unreachable"},
+                status_code=403,
+            )
 
         # Task 08: Check cutoff rejection reason
         if result.get("reason") == "licence_server_unreachable_cutoff":
@@ -506,13 +574,7 @@ class LicenceMiddleware(BaseHTTPMiddleware):
 
         if result.get("valid"):
             enabled_modules = result.get("enabled_modules") or result.get("modules", [])
-            features = result.get("features", {})
-            # features may be a dict (new format) or list (legacy format)
-            if isinstance(features, list):
-                licensed_features = features
-            else:
-                # Convert dict features to list of enabled feature keys for legacy gate check
-                licensed_features = [k for k, v in features.items() if v] if features else ["*"]
+            licensed_features = _features_to_list(result.get("features", {}))
 
             request.state.licensed_modules = enabled_modules
             request.state.licensed_features = licensed_features
