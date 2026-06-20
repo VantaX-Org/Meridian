@@ -9,7 +9,9 @@
  * Auth:
  *   POST /api/admin/login                 — email + password → JWT
  *
- * Admin endpoints (require Authorization: Bearer <jwt>):
+ * Admin endpoints (require Authorization: Bearer <jwt>, OR the
+ * X-Admin-Secret header matching LICENCE_ADMIN_SECRET for server-to-server
+ * calls from the HQ portal):
  *   GET    /api/admin/analytics
  *   GET    /api/admin/tenants
  *   POST   /api/admin/tenants
@@ -50,6 +52,11 @@ interface Env {
   ADMIN_PASSWORD_HASH: string;
   /** HMAC-SHA-256 signing secret for admin JWTs — set via wrangler secret put JWT_SECRET */
   JWT_SECRET: string;
+  /** Shared secret for server-to-server admin calls from the HQ portal
+   * (itself behind Cloudflare Access OTP), sent as the X-Admin-Secret
+   * header. Set via wrangler secret put LICENCE_ADMIN_SECRET; must match
+   * the portal's LICENCE_ADMIN_SECRET. */
+  LICENCE_ADMIN_SECRET?: string;
   /** RSA-PKCS8 private key PEM for offline JWT signing (set as Worker secret) */
   OFFLINE_JWT_PRIVATE_KEY?: string;
   /** Comma-separated list of allowed CORS origins. Falls back to `*`
@@ -432,11 +439,38 @@ async function verifyJwt(
 type AuthOk = { ok: true; payload: Record<string, unknown> };
 type AuthFail = { ok: false; response: Response };
 
+// Constant-time string compare — avoids leaking the admin secret via
+// response timing. Length mismatch returns false immediately (length is
+// not itself secret).
+function timingSafeEqualStr(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
+}
+
 async function requireAuth(
   request: Request,
   env: Env,
   allowedRoles: string[] = ["admin"]
 ): Promise<AuthOk | AuthFail> {
+  // Server-to-server: the HQ portal (gated by Cloudflare Access OTP at the
+  // edge) authenticates to admin endpoints with the shared
+  // LICENCE_ADMIN_SECRET rather than a per-user JWT. A constant-time match
+  // grants full admin. On mismatch we fall through to the JWT path so a
+  // stray header never locks out a valid Bearer caller.
+  const adminSecret = request.headers.get("X-Admin-Secret");
+  if (
+    adminSecret &&
+    env.LICENCE_ADMIN_SECRET &&
+    allowedRoles.includes("admin") &&
+    timingSafeEqualStr(adminSecret, env.LICENCE_ADMIN_SECRET)
+  ) {
+    return { ok: true, payload: { sub: "hq-portal", role: "admin", via: "admin_secret" } };
+  }
+
   const authHeader = request.headers.get("Authorization");
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return { ok: false, response: json({ error: "unauthorized", message: "Missing or invalid Authorization header" }, 401) };
