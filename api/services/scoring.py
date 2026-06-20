@@ -18,6 +18,7 @@ class DQSResult(BaseModel):
     module: str
     composite_score: float  # 0.0 to 100.0
     dimension_scores: dict  # {dimension: score} for all 6 dimensions
+    dimension_coverage: dict = {}  # {dimension: n_checks backing the score}
     critical_count: int
     high_count: int
     medium_count: int
@@ -35,6 +36,7 @@ def score_module(findings: list[CheckResult], tenant_config: dict) -> DQSResult:
             module="",
             composite_score=100.0,
             dimension_scores={d: 100.0 for d in DEFAULT_WEIGHTS},
+            dimension_coverage={d: 0 for d in DEFAULT_WEIGHTS},
             critical_count=0,
             high_count=0,
             medium_count=0,
@@ -61,12 +63,24 @@ def score_module(findings: list[CheckResult], tenant_config: dict) -> DQSResult:
         dimension_findings.setdefault(dim, []).append(f)
 
     dimension_scores = {}
+    dimension_coverage = {}
     for dim in DEFAULT_WEIGHTS:
         dim_list = dimension_findings.get(dim, [])
+        dimension_coverage[dim] = len(dim_list)
         if dim_list:
-            dimension_scores[dim] = sum(f.pass_rate for f in dim_list) / len(dim_list)
+            # Record-level averaging: weight each check's pass_rate by the
+            # number of records it actually assessed (total_count), so a check
+            # over 1M rows outweighs one over 10. Falls back to an unweighted
+            # mean when total_counts are unavailable (all zero).
+            weight = sum(f.total_count for f in dim_list)
+            if weight > 0:
+                dimension_scores[dim] = sum(f.pass_rate * f.total_count for f in dim_list) / weight
+            else:
+                dimension_scores[dim] = sum(f.pass_rate for f in dim_list) / len(dim_list)
         else:
-            dimension_scores[dim] = 100.0  # No checks for this dimension = perfect
+            # No checks for this dimension — neutral 100, but coverage=0 above
+            # makes the absence of evidence explicit rather than a fabricated pass.
+            dimension_scores[dim] = 100.0
 
     # Weighted composite score
     composite = sum(
@@ -95,6 +109,7 @@ def score_module(findings: list[CheckResult], tenant_config: dict) -> DQSResult:
         module=module,
         composite_score=round(composite, 2),
         dimension_scores={k: round(v, 2) for k, v in dimension_scores.items()},
+        dimension_coverage=dimension_coverage,
         critical_count=critical_failures,
         high_count=severity_counts["high"],
         medium_count=severity_counts["medium"],
