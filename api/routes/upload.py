@@ -4,7 +4,7 @@ import re
 import uuid
 
 import pandas as pd
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -39,6 +39,7 @@ class UploadResponse(BaseModel):
 
 @router.post("/upload", response_model=UploadResponse, dependencies=[Depends(_upload_rate_limit)])
 async def upload_file(
+    request: Request,
     file: UploadFile = File(...),
     module: str = Form(...),
     column_mapping: str = Form(None),
@@ -46,6 +47,10 @@ async def upload_file(
     tenant: Tenant = Depends(get_tenant),
 ):
     """Upload a CSV or Excel file for analysis."""
+    from api.middleware.licence import enforce_licensed_modules
+
+    enforce_licensed_modules(request, [module])
+
     # Step 1-2: Read in chunks — abort early if file exceeds MAX_FILE_SIZE (OOM prevention)
     chunks: list[bytes] = []
     total = 0
