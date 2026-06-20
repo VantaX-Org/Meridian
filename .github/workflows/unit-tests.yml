@@ -1,0 +1,70 @@
+name: Unit tests
+
+# Runs the full pytest suite. Without this, an import that breaks collection
+# (e.g. a module imported but missing from the branch) ships undetected — the
+# narrow rls-tests / perf-400k jobs only touch a single test file each.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: meridian_test
+          POSTGRES_DB: meridian_test
+          POSTGRES_USER: meridian_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U meridian_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      MERIDIAN_TEST_DB_URL: postgresql://meridian_test:meridian_test@localhost:5432/meridian_test
+      DATABASE_URL: postgresql+asyncpg://meridian_test:meridian_test@localhost:5432/meridian_test
+      DATABASE_URL_SYNC: postgresql://meridian_test:meridian_test@localhost:5432/meridian_test
+      REDIS_URL: redis://localhost:6379/0
+      LLM_PROVIDER: none
+      PYTHONUNBUFFERED: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install "pytest>=8.0.0" "pytest-asyncio>=0.24.0"
+
+      # Fast fail on collection errors (import breaks) before running anything.
+      - name: Collect tests
+        run: pytest tests/ --collect-only -q
+
+      - name: Run tests
+        run: pytest tests/ -q

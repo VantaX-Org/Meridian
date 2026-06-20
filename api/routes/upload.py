@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.config import settings
 from api.deps import Tenant, get_db, get_tenant
+from api.services.rbac import require_permission
 from api.services.column_mapper import apply_column_mapping, get_required_fields, get_standard_fields
 from api.services.rate_limiter import rate_limit
 from api.services.storage import upload_file as minio_upload
@@ -37,7 +38,11 @@ class UploadResponse(BaseModel):
     status: str
 
 
-@router.post("/upload", response_model=UploadResponse, dependencies=[Depends(_upload_rate_limit)])
+@router.post(
+    "/upload",
+    response_model=UploadResponse,
+    dependencies=[Depends(_upload_rate_limit), Depends(require_permission("upload"))],
+)
 async def upload_file(
     request: Request,
     file: UploadFile = File(...),
@@ -70,10 +75,14 @@ async def upload_file(
     filename = file.filename or "upload"
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
 
+    # Hard allow-list on the extension — never trust the client content-type as a
+    # substitute. Also guarantees `ext` is path-safe for the MinIO object key
+    # below (a crafted filename like "x.csv/../y" can't yield a real extension).
     if ext not in ("csv", "xlsx", "xls"):
-        content_type = file.content_type or ""
-        if "csv" not in content_type and "excel" not in content_type and "spreadsheet" not in content_type:
-            raise HTTPException(status_code=422, detail={"error": "invalid_file_type", "detail": "Only CSV and Excel files are supported"})
+        raise HTTPException(
+            status_code=422,
+            detail={"error": "invalid_file_type", "detail": "Only .csv, .xlsx and .xls files are supported"},
+        )
 
     # Validate magic bytes before parsing (prevents binary-as-CSV attacks)
     _validate_magic_bytes(content, ext)
@@ -254,7 +263,9 @@ async def upload_file(
 
 # ── Security helpers ──────────────────────────────────────────────────────────
 
-_FORMULA_PREFIX = re.compile(r"^[=+\-@]")
+# Leading whitespace before a formula char still executes in Excel/Sheets
+# (they strip it), so match optional whitespace (\t \r \n space) first.
+_FORMULA_PREFIX = re.compile(r"^\s*[=+\-@]")
 
 
 def _validate_magic_bytes(content: bytes, ext: str) -> None:

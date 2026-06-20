@@ -239,6 +239,7 @@ async def get_master_record(
 @router.post("/master-records/{record_id}/promote")
 async def promote_master_record(
     record_id: str,
+    request: Request,
     body: PromoteRequest = PromoteRequest(),
     role: str = Depends(require_permission("approve")),
     db: AsyncSession = Depends(get_db),
@@ -268,8 +269,12 @@ async def promote_master_record(
         raise HTTPException(status_code=409, detail="Cannot promote a superseded record")
 
     now = datetime.now(timezone.utc)
-    # Use a placeholder user ID — in production this comes from JWT
-    user_id = str(uuid.uuid4())
+    # Attribute the promotion to the authenticated user (golden-record audit
+    # trail must name the real approver, not a random UUID).
+    user_id = getattr(request.state, "local_user_id", None)
+    if not user_id:
+        raise HTTPException(status_code=403, detail="Authentication required")
+    user_id = str(user_id)
 
     # Check if AI was involved in any field
     source_contributions = row[3] or {}

@@ -20,6 +20,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
+from api.services.rbac import require_permission
 
 router = APIRouter(prefix="/api/v1", tags=["writeback"])
 logger = logging.getLogger("meridian.writeback")
@@ -81,7 +82,11 @@ def _mask_password(msg: str, password: str) -> str:
     return msg
 
 
-@router.post("/writeback", response_model=WriteBackResponse)
+@router.post(
+    "/writeback",
+    response_model=WriteBackResponse,
+    dependencies=[Depends(require_permission("apply"))],
+)
 async def create_writeback(
     body: WriteBackRequest,
     db: AsyncSession = Depends(get_db),
@@ -205,7 +210,11 @@ async def create_writeback(
     )
 
 
-@router.post("/writeback/approve/{approval_id}", response_model=ApprovalResponse)
+@router.post(
+    "/writeback/approve/{approval_id}",
+    response_model=ApprovalResponse,
+    dependencies=[Depends(require_permission("approve"))],
+)
 async def approve_writeback(
     approval_id: str,
     db: AsyncSession = Depends(get_db),
