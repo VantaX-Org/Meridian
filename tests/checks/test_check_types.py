@@ -141,7 +141,10 @@ class TestReferentialCheck:
         df = pd.DataFrame({"country": ["ZA", "XX", None, "US"]})
         result = ReferentialCheck(rule).run(df)
         assert result.passed is False
-        assert result.affected_count == 2
+        # Only "XX" fails. The null is null_check's responsibility, not
+        # referential's — counting it here double-counts the missing value.
+        assert result.affected_count == 1
+        assert result.total_count == 3  # non-null denominator
 
 
 # --- FreshnessCheck ---
