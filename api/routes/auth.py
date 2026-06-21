@@ -3,6 +3,7 @@
 Active only when AUTH_MODE=local.
 """
 
+import os
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
@@ -22,6 +23,11 @@ from api.services.rate_limiter import rate_limit
 # minute. Tight enough to slow credential stuffing, loose enough that a
 # legitimate user fat-fingering the password a few times isn't locked out.
 _login_rate_limit = rate_limit("auth_login", limit=10, window_s=60, key_by="ip")
+# Password-reset and invite-accept flows are unauthenticated and email-driven.
+# Rate-limit by IP to blunt enumeration and reset-email flooding: 5/min.
+_forgot_rate_limit = rate_limit("auth_forgot", limit=5, window_s=60, key_by="ip")
+_reset_rate_limit = rate_limit("auth_reset", limit=5, window_s=60, key_by="ip")
+_invite_rate_limit = rate_limit("auth_invite", limit=5, window_s=60, key_by="ip")
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
@@ -155,15 +161,18 @@ def login(body: LoginRequest, response: Response):
             secret=jwt_secret,
         )
         # Cookie fallback for browser-initiated downloads (anchor/open-in-new-tab)
-        # where custom Authorization headers are not reliably attached.
+        # where custom Authorization headers are not reliably attached. httponly
+        # so JS can't read the JWT (the browser still sends it on downloads);
+        # secure by default — set AUTH_COOKIE_SECURE=false only for local HTTP dev.
+        cookie_secure = os.getenv("AUTH_COOKIE_SECURE", "true").lower() != "false"
         response.set_cookie(
             key="mn_auth_token",
             value=token,
             max_age=24 * 60 * 60,
             path="/",
             samesite="lax",
-            httponly=False,
-            secure=False,
+            httponly=True,
+            secure=cookie_secure,
         )
 
         # Update last_login
@@ -303,7 +312,7 @@ class AcceptInviteRequest(BaseModel):
     password: str
 
 
-@router.post("/accept-invite")
+@router.post("/accept-invite", dependencies=[Depends(_invite_rate_limit)])
 def accept_invite(body: AcceptInviteRequest):
     """Accept an invitation: set a new user's first password from an emailed token.
 
@@ -370,7 +379,7 @@ class ForgotPasswordRequest(BaseModel):
     email: str
 
 
-@router.post("/forgot-password")
+@router.post("/forgot-password", dependencies=[Depends(_forgot_rate_limit)])
 def forgot_password(body: ForgotPasswordRequest):
     """Send a password-reset email to the given address.
 
@@ -432,7 +441,7 @@ class ResetPasswordRequest(BaseModel):
     password: str
 
 
-@router.post("/reset-password")
+@router.post("/reset-password", dependencies=[Depends(_reset_rate_limit)])
 def reset_password(body: ResetPasswordRequest):
     """Reset a user's password from an emailed reset token."""
     new_password = (body.password or "").strip()
