@@ -18,6 +18,7 @@ import {
   type MatchResponse,
 } from "@/lib/api/upload";
 import { getVersions } from "@/lib/api/versions";
+import { getSystems } from "@/lib/api/systems";
 import { copyToClipboard } from "@/components/meridian/actions";
 import { relativeTime } from "@/lib/format";
 import type { Version } from "@/types/api";
@@ -232,6 +233,15 @@ export default function UploadPage() {
     },
   });
 
+  // Live SAP connections make one-off file uploads optional — surface them so
+  // the user knows extraction is available instead of manual imports.
+  const systemsQ = useQuery({
+    queryKey: ["systems.list"],
+    queryFn: getSystems,
+    staleTime: 60_000,
+  });
+  const connectedSystems = systemsQ.data ?? [];
+
   // When a new file is picked, kick off column detection.
   useEffect(() => {
     if (!file) return;
@@ -306,6 +316,35 @@ export default function UploadPage() {
           </>
         }
       />
+
+      {connectedSystems.length > 0 && (
+        <div
+          className="mn-card mn-card-pad"
+          style={{
+            marginBottom: 18,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 16,
+            borderLeft: "3px solid var(--mn-primary)",
+          }}
+        >
+          <div>
+            <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--mn-ink-700)" }}>
+              Connected SAP systems detected
+            </div>
+            <div style={{ marginTop: 4, fontSize: 12.5, color: "var(--mn-ink-400)", maxWidth: 560 }}>
+              {connectedSystems.length} live{" "}
+              {connectedSystems.length === 1 ? "connection is" : "connections are"} configured. Pull
+              data straight from source instead of uploading files — manual imports are best kept for
+              one-off assessments.
+            </div>
+          </div>
+          <Link href="/connectivity" className="mn-btn mn-btn-ghost" style={{ whiteSpace: "nowrap" }}>
+            Extract from source <ArrowRight size={13} />
+          </Link>
+        </div>
+      )}
 
       {/* Drop area + stepper */}
       <div className="mn-row mn-row-12" style={{ marginBottom: 18 }}>

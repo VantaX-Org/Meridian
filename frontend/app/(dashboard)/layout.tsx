@@ -285,6 +285,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/contracts": "Data Contracts",
   "/relationships": "Relationships",
   "/stewardship": "Stewardship",
+  "/ai/rules": "AI Rules",
   "/exceptions": "Exceptions",
   "/cleaning": "Cleaning Queue",
   "/migration": "Migration",
@@ -459,6 +460,11 @@ interface NavGroup {
   items: NavItem[];
 }
 
+// Roles permitted to review AI-proposed match rules — mirrors the
+// review_ai_rules permission in api/services/rbac.py (admin, steward,
+// ai_reviewer). Used to gate the Steward · AI Rules nav item.
+const ROLES_WITH_AI_RULES = ["admin", "steward", "ai_reviewer"];
+
 // Nav groups follow the Claude Design handoff (Aurora · Analyse · Report ·
 // Steward · Govern · Connect · Settings) and use the bespoke per-item icon
 // set from components/meridian/nav-icons.tsx.
@@ -494,6 +500,7 @@ const NAV_GROUPS: NavGroup[] = [
     group: "Steward",
     items: [
       { href: "/stewardship", label: "Workbench", icon: ClipboardIcon, licenceKey: "stewardship" },
+      { href: "/ai/rules", label: "AI Rules", icon: SparklesNavIcon, permission: "review_ai_rules" },
       { href: "/exceptions", label: "Exceptions", icon: AlertIcon },
       { href: "/cleaning", label: "Cleaning", icon: Eraser },
       { href: "/migration", label: "Migration", icon: ArrowLeftRight },
@@ -555,7 +562,7 @@ function SidebarNav({
   userRole: string;
   onNavClick?: () => void;
 }) {
-  const { can } = useRole();
+  const { can, role } = useRole();
   const { isMenuItemEnabled } = useLicence();
 
   return (
@@ -564,6 +571,9 @@ function SidebarNav({
         const visibleItems = items.filter((item) => {
           // Check licence: item must be enabled in manifest
           if (item.licenceKey && !isMenuItemEnabled(item.licenceKey)) return false;
+          // Check permission: AI Rules is gated on review_ai_rules
+          if (item.permission === "review_ai_rules" && !ROLES_WITH_AI_RULES.includes(role)) return false;
+          if (item.permission && !can(item.permission)) return false;
           return true;
         });
         if (visibleItems.length === 0) return null;

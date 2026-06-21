@@ -56,7 +56,20 @@ function initials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-const INVITE_ROLES: UserRole[] = ["admin", "steward", "approver", "analyst", "viewer", "auditor"];
+const INVITE_ROLES: UserRole[] = ["admin", "steward", "ai_reviewer", "approver", "analyst", "viewer", "auditor"];
+
+// Role capability reference — mirrors api/services/rbac.py. Rendered read-only
+// in the Roles tab so admins can see what each role can do, including which
+// roles may review (approve proposed rules) AI-proposed match rules.
+const ROLE_META: { role: string; label: string; desc: string; aiReview: boolean }[] = [
+  { role: "admin", label: "Admin", desc: "Full access — manage users, rules, and approve proposed rules.", aiReview: true },
+  { role: "steward", label: "Steward", desc: "Clean and match data, and approve proposed rules.", aiReview: true },
+  { role: "ai_reviewer", label: "AI Reviewer", desc: "Review and approve proposed rules from steward corrections.", aiReview: true },
+  { role: "approver", label: "Approver", desc: "Approve golden records and stewardship changes.", aiReview: false },
+  { role: "analyst", label: "Analyst", desc: "Run analysis and view findings.", aiReview: false },
+  { role: "viewer", label: "Viewer", desc: "Read-only access to dashboards and findings.", aiReview: false },
+  { role: "auditor", label: "Auditor", desc: "Read-only access including the audit log.", aiReview: false },
+];
 
 export default function AdminPage() {
   const qc = useQueryClient();
@@ -467,6 +480,34 @@ export default function AdminPage() {
       )}
 
       {tab === "roles" && (
+        <>
+        <div className="mn-card" style={{ padding: 0, overflow: "hidden", marginBottom: 18 }}>
+          <SectionHeader title="Role capabilities" caption="What each role can do · mirrors the access policy" />
+          <div className="mn-table-wrap">
+            <table className="mn-table">
+              <thead>
+                <tr>
+                  <th style={{ paddingLeft: 20 }}>Role</th>
+                  <th>Description</th>
+                  <th style={{ width: 120, textAlign: "center" }}>AI Review</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ROLE_META.map((m) => (
+                  <tr key={m.role}>
+                    <td style={{ paddingLeft: 20 }} title={m.desc}>
+                      <RoleChip role={m.role} />
+                    </td>
+                    <td style={{ color: "var(--mn-ink-500)", fontSize: 12.5 }}>{m.desc}</td>
+                    <td style={{ textAlign: "center", color: m.aiReview ? "var(--mn-pos)" : "var(--mn-ink-300)" }}>
+                      {m.aiReview ? "✓" : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
         <div className="mn-row" style={{ gridTemplateColumns: "repeat(2, 1fr)" }}>
           {rolesGroups.map(([role, list]) => (
             <div key={role} className="mn-card mn-card-pad">
@@ -506,6 +547,7 @@ export default function AdminPage() {
             </div>
           )}
         </div>
+        </>
       )}
 
       {tab === "licence" && (
