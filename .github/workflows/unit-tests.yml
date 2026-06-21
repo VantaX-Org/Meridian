@@ -44,7 +44,11 @@ jobs:
       DATABASE_URL: postgresql+asyncpg://meridian_test:meridian_test@localhost:5432/meridian_test
       DATABASE_URL_SYNC: postgresql://meridian_test:meridian_test@localhost:5432/meridian_test
       REDIS_URL: redis://localhost:6379/0
-      LLM_PROVIDER: none
+      # NB: do not pin LLM_PROVIDER here. Unit tests mock the LLM; a job-wide
+      # 'none' makes safe_invoke() short-circuit before the injected mock runs,
+      # silently failing every LLM-enabled agent/provider test. The Tier-0
+      # (LLM-less) tests set LLM_PROVIDER=none themselves via monkeypatch, so
+      # they stay hermetic without a global default.
       PYTHONUNBUFFERED: "1"
 
     steps:
