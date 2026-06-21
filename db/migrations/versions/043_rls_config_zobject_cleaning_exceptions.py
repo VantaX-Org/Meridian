@@ -34,14 +34,16 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
-# Every table here has a NOT NULL ``tenant_id UUID`` column.
+# Every table here has a NOT NULL ``tenant_id UUID`` column, so its policy keys
+# directly on ``tenant_id``. ``config_process_steps`` is the exception — it has
+# no ``tenant_id`` of its own and scopes through its parent ``config_processes``
+# via ``process_id`` (handled separately below).
 _RLS_TABLES: tuple[str, ...] = (
     "cleaning_rules",
     "exception_rules",
     "exception_billing",
     "config_inventory",
     "config_processes",
-    "config_process_steps",
     "config_alignment_findings",
     "config_health_scores",
     "config_drift_log",
@@ -51,6 +53,14 @@ _RLS_TABLES: tuple[str, ...] = (
     "z_object_anomalies",
     "z_object_rules",
     "z_object_findings",
+)
+
+# Child table with no own ``tenant_id``: isolate via the parent's tenant_id.
+_CHILD_TABLE = "config_process_steps"
+_CHILD_POLICY = (
+    f"CREATE POLICY {_CHILD_TABLE}_rls ON {_CHILD_TABLE} "
+    "USING (process_id IN (SELECT id FROM config_processes "
+    "WHERE tenant_id = current_setting('app.tenant_id')::uuid))"
 )
 
 
@@ -65,9 +75,14 @@ def upgrade() -> None:
             "USING (tenant_id = current_setting('app.tenant_id')::uuid)"
         )
 
+    op.execute(f"ALTER TABLE {_CHILD_TABLE} ENABLE ROW LEVEL SECURITY")
+    op.execute(f"ALTER TABLE {_CHILD_TABLE} FORCE ROW LEVEL SECURITY")
+    op.execute(f"DROP POLICY IF EXISTS {_CHILD_TABLE}_rls ON {_CHILD_TABLE}")
+    op.execute(_CHILD_POLICY)
+
 
 def downgrade() -> None:
-    for table in _RLS_TABLES:
+    for table in (*_RLS_TABLES, _CHILD_TABLE):
         op.execute(f"DROP POLICY IF EXISTS {table}_rls ON {table}")
         op.execute(f"ALTER TABLE {table} NO FORCE ROW LEVEL SECURITY")
         op.execute(f"ALTER TABLE {table} DISABLE ROW LEVEL SECURITY")
