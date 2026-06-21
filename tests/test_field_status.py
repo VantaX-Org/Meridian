@@ -1,9 +1,12 @@
 """Tests for sap/field_status.py — SAP field-status resolution.
 
-Verifies the two-source resolution contract:
+Verifies the resolution contract:
   - live overrides (a resolved field-status group) win and are labelled LIVE_SPRO
   - the data-dictionary baseline derives REQUIRED from key/mandatory, else OPTIONAL
-  - unknown fields return None (no opinion — never silently "optional")
+  - a customer-namespace (Z/Y) field the dictionary doesn't know resolves CUSTOM
+    + OPTIONAL — recognised by name, never silently dropped
+  - an unknown *standard*-namespace field returns None (no opinion — never
+    silently "optional")
   - the dictionary alone can never yield SUPPRESSED/DISPLAY (only live config can)
 """
 
@@ -64,12 +67,15 @@ def test_plain_field_is_optional_from_dictionary():
     assert res.source is FieldStatusSource.DICTIONARY
 
 
-def test_unknown_field_returns_none():
-    # No opinion — caller must not treat absence as "optional".
-    assert resolve_field_status(_TABLE, "ZZ_NOT_A_REAL_FIELD") is None
+def test_unknown_standard_field_returns_none():
+    # A standard-namespace field absent from the dictionary → no opinion. The
+    # caller must not treat absence as "optional". (A Z/Y field is different —
+    # see the custom-namespace section below.)
+    assert resolve_field_status(_TABLE, "AENAM_NOT_A_REAL_FIELD") is None
 
 
-def test_unknown_table_returns_none():
+def test_unknown_standard_table_returns_none():
+    # "ANYTHING" is a standard-namespace field name on an unknown table.
     assert resolve_field_status("ZZ_NOT_A_TABLE", "ANYTHING") is None
 
 
@@ -80,6 +86,80 @@ def test_case_insensitive_lookup():
     assert lower is not None and upper is not None
     assert lower.status is upper.status
     assert lower.field == upper.field == fld.upper()
+
+
+# ── Customer-namespace (Z/Y) custom fields ───────────────────────────────────
+
+
+def test_custom_zz_append_field_resolves_optional_custom():
+    # A ZZ* append field on a standard table is not in the shipped dictionary,
+    # but is recognised by namespace and resolved OPTIONAL/CUSTOM rather than
+    # dropped as "no opinion".
+    res = resolve_field_status(_TABLE, "ZZRISK_CLASS")
+    assert res is not None
+    assert res.status is FieldStatus.OPTIONAL
+    assert res.source is FieldStatusSource.CUSTOM
+    assert res.is_custom
+    assert not res.is_grounded  # name-only recognition is not evidence
+    assert "custom" in res.reason.lower()
+
+
+def test_custom_y_namespace_field_is_custom():
+    res = resolve_field_status(_TABLE, "YYFLAG")
+    assert res is not None and res.source is FieldStatusSource.CUSTOM
+
+
+def test_qualified_custom_field_resolves_custom():
+    # Qualified TABLE.FIELD form — the tail is what decides custom-ness.
+    res = resolve_field_status(_TABLE, "LFA1.ZZSEGMENT")
+    assert res is not None and res.source is FieldStatusSource.CUSTOM
+
+
+def test_custom_field_known_to_dictionary_keeps_dictionary_source():
+    # If a Z field somehow IS in the dictionary, the dictionary wins over the
+    # bare custom recognition (CUSTOM is the weakest tier).
+    fld = next(
+        (f for f in (get_table_metadata(_TABLE) or {}) if f.upper().startswith(("Z", "Y"))),
+        None,
+    )
+    if fld is None:
+        pytest.skip(f"{_TABLE} has no Z/Y field in the dictionary")
+    res = resolve_field_status(_TABLE, fld)
+    assert res is not None and res.source is FieldStatusSource.DICTIONARY
+
+
+def test_live_override_beats_custom_recognition():
+    # A live field-status group for a Z field overrides the OPTIONAL/CUSTOM
+    # baseline — config-grounded evidence wins.
+    res = resolve_field_status(
+        _TABLE, "ZZRISK_CLASS", account_group="0001",
+        overrides={"ZZRISK_CLASS": FieldStatus.REQUIRED},
+    )
+    assert res is not None
+    assert res.status is FieldStatus.REQUIRED
+    assert res.source is FieldStatusSource.LIVE_SPRO
+
+
+def test_smart_cascade_custom_field_falls_to_custom_baseline():
+    from sap.field_status import resolve_field_status_smart
+
+    res = resolve_field_status_smart(_TABLE, "ZZRISK_CLASS")
+    assert res is not None
+    assert res.status is FieldStatus.OPTIONAL
+    assert res.source is FieldStatusSource.CUSTOM
+
+
+def test_smart_cascade_inferred_beats_custom_baseline():
+    from sap.field_status import resolve_field_status_smart
+
+    # Inference says the Z field is always filled → REQUIRED beats CUSTOM.
+    res = resolve_field_status_smart(
+        _TABLE, "ZZRISK_CLASS",
+        inferred_overrides={"ZZRISK_CLASS": FieldStatus.REQUIRED},
+    )
+    assert res is not None
+    assert res.status is FieldStatus.REQUIRED
+    assert res.source is FieldStatusSource.INFERRED
 
 
 # ── Live override seam ───────────────────────────────────────────────────────

@@ -33,6 +33,7 @@ import enum
 from collections.abc import Mapping
 from dataclasses import dataclass
 
+from sap.custom_namespace import is_custom_field
 from sap.data_dictionary import get_field_metadata, get_table_metadata
 
 
@@ -49,12 +50,14 @@ class FieldStatusSource(str, enum.Enum):
     """Where a field-status resolution came from — its provenance.
 
     Ordered most-trusted first: a live customizing read beats data inference,
-    which beats the shipped dictionary baseline.
+    which beats the shipped dictionary baseline, which beats a bare
+    customer-namespace recognition (a ``Z``/``Y`` field we know only by its name).
     """
 
     LIVE_SPRO = "live_spro"  # resolved field-status group from a live SAP read
     INFERRED = "inferred"  # statistically inferred from the customer's own data
     DICTIONARY = "dictionary"  # derived from data_dictionary key/mandatory flags
+    CUSTOM = "custom"  # customer-namespace (Z/Y) field, absent from the dictionary
 
 
 # A field-status group already resolved for one account group:
@@ -95,6 +98,12 @@ class FieldStatusResolution:
         data) rather than the shipped dictionary default."""
         return self.source in (FieldStatusSource.LIVE_SPRO, FieldStatusSource.INFERRED)
 
+    @property
+    def is_custom(self) -> bool:
+        """True when this is a customer-namespace (Z/Y) field the shipped
+        dictionary does not describe — recognised by name only."""
+        return self.source is FieldStatusSource.CUSTOM
+
 
 def _normalise(name: str) -> str:
     return name.strip().upper()
@@ -118,6 +127,9 @@ def resolve_field_status(
          customer's own data — see :mod:`sap.field_status_inference`).
       2. data dictionary — ``key`` or ``mandatory`` → ``REQUIRED``, else
          ``OPTIONAL``. Source = ``DICTIONARY``.
+      3. customer namespace — a ``Z``/``Y`` field the dictionary doesn't know is
+         recognised as a custom extension and resolved ``OPTIONAL``. Source =
+         ``CUSTOM``.
 
     Args:
         table: SAP table name (e.g. ``"LFA1"``). Case-insensitive.
@@ -130,8 +142,10 @@ def resolve_field_status(
 
     Returns:
         A :class:`FieldStatusResolution`, or ``None`` when the field is unknown
-        to both the override mapping and the data dictionary (no opinion — the
-        caller must not treat absence as "optional").
+        to the override mapping, the data dictionary, *and* the customer
+        namespace (no opinion — the caller must not treat absence as "optional").
+        A standard-namespace field absent from the dictionary returns ``None``; a
+        ``Z``/``Y`` field absent from it returns a ``CUSTOM`` resolution.
     """
     tbl = _normalise(table)
     fld = _normalise(field)
@@ -164,6 +178,24 @@ def resolve_field_status(
 
     meta = get_field_metadata(tbl, fld)
     if meta is None:
+        # The dictionary has no opinion. Before giving up, recognise a
+        # customer-namespace (Z/Y) field by its name: it is a real customer
+        # extension, not noise. Custom append fields are optional at the DDIC
+        # level (a customer cannot make a standard table's append mandatory
+        # without a field-status group), so the honest baseline is OPTIONAL —
+        # which live-SPRO or data inference can still upgrade. A non-custom field
+        # the dictionary doesn't know stays "no opinion" (``None``).
+        if is_custom_field(fld):
+            return FieldStatusResolution(
+                table=tbl,
+                field=fld,
+                status=FieldStatus.OPTIONAL,
+                source=FieldStatusSource.CUSTOM,
+                reason="customer-namespace (Z/Y) custom field, absent from the "
+                "shipped dictionary — optional unless live config or inference "
+                "says otherwise",
+                account_group=account_group,
+            )
         return None
 
     if meta.get("key"):
@@ -267,13 +299,15 @@ def resolve_field_status_smart(
          (``LIVE_SPRO``).
       2. ``inferred_overrides`` — status inferred from the customer's own data
          (``INFERRED``; see :mod:`sap.field_status_inference`).
-      3. data dictionary baseline (``DICTIONARY``).
+      3. data dictionary baseline (``DICTIONARY``), or — for a ``Z``/``Y`` field
+         the dictionary doesn't describe — a customer-namespace baseline
+         (``CUSTOM``, ``OPTIONAL``).
 
     Each tier is consulted only for the *specific field*: if ``live_overrides``
     is supplied but does not mention ``field``, the cascade falls through to the
-    inferred tier, then the dictionary — a present-but-silent mapping never
-    blocks weaker evidence. Returns ``None`` only when even the dictionary has no
-    opinion (unknown field/table).
+    inferred tier, then the dictionary/custom baseline — a present-but-silent
+    mapping never blocks weaker evidence. Returns ``None`` only when no tier has
+    an opinion (an unknown *standard*-namespace field/table).
     """
     if live_overrides:
         res = resolve_field_status(
