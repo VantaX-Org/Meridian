@@ -74,7 +74,7 @@ jobs:
 
       - name: Trivy vulnerability scan
         if: steps.build.outputs.skip != 'true'
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.28.0
         with:
           image-ref: ${{ matrix.image }}:scan
           format: table
@@ -85,7 +85,7 @@ jobs:
 
       - name: Trivy SBOM (advisory only, weekly)
         if: steps.build.outputs.skip != 'true' && github.event_name == 'schedule'
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.28.0
         with:
           image-ref: ${{ matrix.image }}:scan
           format: cyclonedx

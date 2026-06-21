@@ -76,9 +76,16 @@ jobs:
       - name: Render customer compose with the test tag
         run: |
           mkdir -p smoke
+          # The shipped customer compose pins images to ':latest' (the deploy
+          # contract — update.sh tags/pulls :latest). For the smoke run we must
+          # exercise the images just built from THIS PR, not the last published
+          # :latest, so rewrite the ghcr refs to the local-test tag in the
+          # rendered copy only. Without this, `compose run api alembic upgrade`
+          # silently pulls stale published images and never tests PR code.
           sed -e 's|{{VERSION}}|local-test|g' \
               -e 's|{{CUSTOMER_NAME}}|ci-smoke|g' \
               -e 's|{{TIER}}|0|g' \
+              -e 's|\(ghcr.io/vantax-org/meridian-[a-z]*\):latest|\1:local-test|g' \
               docker/docker-compose.customer.yml > smoke/docker-compose.yml
           cp docker/nginx/meridian.conf smoke/nginx-meridian.conf || true
           mkdir -p smoke/nginx
