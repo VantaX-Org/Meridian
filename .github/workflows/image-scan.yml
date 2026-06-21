@@ -81,7 +81,7 @@ jobs:
         if: steps.build.outputs.skip != 'true'
         run: |
           curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
-            | sh -s -- -b /usr/local/bin v0.58.1
+            | sudo sh -s -- -b /usr/local/bin v0.58.1
           trivy --version
 
       - name: Trivy vulnerability scan
