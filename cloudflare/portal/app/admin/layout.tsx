@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import Link from "next/link";
+import PwaInstall from "../pwa-install";
 
 const NAV = [
   { href: "/admin/dashboard", label: "Dashboard" },
@@ -77,6 +78,9 @@ export default async function AdminLayout({
 
       {/* Page content */}
       <main className="mx-auto max-w-7xl px-6 py-8">{children}</main>
+
+      {/* Auto-appearing PWA install affordance (admin portal only) */}
+      <PwaInstall />
     </div>
   );
 }
