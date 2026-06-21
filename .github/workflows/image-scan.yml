@@ -72,24 +72,36 @@ jobs:
             ${{ matrix.context }}
           echo "skip=false" >> $GITHUB_OUTPUT
 
+      # Install the trivy CLI directly instead of via aquasecurity/trivy-action.
+      # The action wrapper internally pins setup-trivy@v0.2.1, a tag that was
+      # deleted upstream — so every pinned trivy-action release that referenced
+      # it now fails at "resolve action". The official install script has no
+      # such indirection and pins a known trivy version.
+      - name: Install Trivy
+        if: steps.build.outputs.skip != 'true'
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
+            | sh -s -- -b /usr/local/bin v0.58.1
+          trivy --version
+
       - name: Trivy vulnerability scan
         if: steps.build.outputs.skip != 'true'
-        uses: aquasecurity/trivy-action@v0.28.0
-        with:
-          image-ref: ${{ matrix.image }}:scan
-          format: table
-          severity: HIGH,CRITICAL
-          exit-code: "1"
-          ignore-unfixed: true          # fixed CVEs only — no point bleeding on ones with no remediation
-          vuln-type: os,library
+        run: |
+          trivy image \
+            --severity HIGH,CRITICAL \
+            --exit-code 1 \
+            --ignore-unfixed \
+            --pkg-types os,library \
+            --format table \
+            ${{ matrix.image }}:scan
 
       - name: Trivy SBOM (advisory only, weekly)
         if: steps.build.outputs.skip != 'true' && github.event_name == 'schedule'
-        uses: aquasecurity/trivy-action@v0.28.0
-        with:
-          image-ref: ${{ matrix.image }}:scan
-          format: cyclonedx
-          output: sbom-${{ matrix.image }}.cdx.json
+        run: |
+          trivy image \
+            --format cyclonedx \
+            --output sbom-${{ matrix.image }}.cdx.json \
+            ${{ matrix.image }}:scan
 
       - name: Upload SBOM (weekly)
         if: steps.build.outputs.skip != 'true' && github.event_name == 'schedule'
