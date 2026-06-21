@@ -23,6 +23,7 @@ the abuse risk than take the whole product down.
 from __future__ import annotations
 
 import logging
+import os
 import time
 from typing import Callable, Literal
 
@@ -61,10 +62,25 @@ def _resolve_key(request: Request, name: str, key_by: KeyBy, window_s: int) -> s
     return None
 
 
+# Number of trusted reverse proxies in front of the API (1 = the bundled
+# nginx). The real client IP is the Nth entry from the RIGHT of
+# X-Forwarded-For — every entry further left is appended by an untrusted hop
+# and is attacker-controllable, so trusting the leftmost entry let anyone
+# spoof their IP and dodge per-IP rate limits. Override only if you add proxy
+# layers (e.g. Cloudflare in front of nginx → 2).
+_TRUSTED_PROXY_HOPS = max(0, int(os.getenv("TRUSTED_PROXY_HOPS", "1")))
+
+
 def _client_ip(request: Request) -> str | None:
-    xff = request.headers.get("x-forwarded-for")
-    if xff:
-        return xff.split(",")[0].strip()
+    if _TRUSTED_PROXY_HOPS > 0:
+        xff = request.headers.get("x-forwarded-for")
+        if xff:
+            chain = [p.strip() for p in xff.split(",") if p.strip()]
+            if chain:
+                # Nth from the right; clamp to the leftmost if the chain is
+                # shorter than expected (misconfigured proxy) — still bounded.
+                idx = min(_TRUSTED_PROXY_HOPS, len(chain))
+                return chain[-idx]
     if request.client is not None:
         return request.client.host
     return None

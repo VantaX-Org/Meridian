@@ -356,10 +356,10 @@ rules:
     transactions.'
 
 - id: EWMS022
-  field: LGNUM
+  field: LGPLA.LGNUM
   check_class: cross_field_check
-  fields: ['LGNUM']
-  condition: "~`LGNUM`.duplicated(keep=False)"
+  fields: ['LGPLA.LGNUM']
+  condition: "~`LGPLA.LGNUM`.duplicated(keep=False)"
   severity: high
   dimension: uniqueness
   message: Duplicate stock records detected — indicates data extract or quant duplication issue
@@ -368,20 +368,6 @@ rules:
   sap_impact: Available stock is overstated. Warehouse tasks are created for non-existent stock. Physical inventory count will show variances.
   fix_map:
     __blank__: "Verify the data extract is at quant level (one row per storage bin per material per batch). If genuine quant duplicates exist, run /SCWM/AQUA to reconcile."
-
-- id: EWMS023
-  field: LGNUM
-  check_class: freshness_check
-  max_age_hours: 8760
-  severity: low
-  dimension: timeliness
-  message: Stock record unchanged for 1+ year — slow-moving or dead stock should be reviewed for disposal or write-down
-  rule_authority: best_practice
-  why_it_matters: "Stock records unchanged for 1+ year typically represent slow-moving or dead stock that ties up bin capacity and working capital."
-  sap_impact: "Warehouse capacity and carrying cost are inflated by dead stock; valuation may overstate usable inventory; obsolescence provisions are missed."
-  fix_map:
-    __blank__: "Run a slow/dead-stock analysis: confirm the material is still required, relocate or consolidate the stock, and initiate scrap, return, or a write-down for genuine dead stock."
-  record_fix_template: "Stock record {field} unchanged {age_days} days. Confirm still required; relocate, return, or initiate scrap/write-down for dead stock."
 
 - id: EWMS024
   field: LGPLA.LGTYP

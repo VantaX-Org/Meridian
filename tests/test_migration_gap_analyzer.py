@@ -1,161 +1,163 @@
-"""Deterministic gap-analyzer tests — no DB, no live SPRO, no LLM.
+"""Deterministic checks for the source→destination transfer gap analyzer.
 
-The analyzer's ``_reader`` (a SPROReader) is replaced with a controlled stub so
-every SPRO answer is fixed; everything else (data dictionary, custom-namespace,
-account-group inference, scoring) runs for real against module ``accounts_payable``
-(primary table LFA1, account-group field KTOKK).
+Hermetic: the destination dictionary + live SPRO reader are stubbed so every
+assertion is about the analyzer's own logic, not real SAP metadata. Run:
+
+    pytest tests/test_migration_gap_analyzer.py
 """
 
-from __future__ import annotations
-
-from dataclasses import dataclass
+import sys
+import types
+from types import SimpleNamespace
 
 import pytest
 
+# agents.readiness (the real deterministic verdict fn we want to exercise) sits
+# in a module that imports the langchain LLM backends at top level. Those aren't
+# installed in the test env and aren't used by the deterministic path, so stub
+# the provider module before the import chain runs.
+if "llm.provider" not in sys.modules:
+    _stub = types.ModuleType("llm.provider")
+    _stub.get_llm_safe = lambda *a, **k: None
+    _stub.safe_invoke = lambda *a, **k: None
+    _stub.test_llm_connection = lambda *a, **k: False
+    sys.modules["llm.provider"] = _stub
+
+import api.services.migration.gap_analyzer as ga
 from agents.readiness import compute_readiness_status
 from api.services.migration.gap_analyzer import TransferGapAnalyzer
-from api.services.migration.models import DomainProvenance, GapSeverity, GapType, VerdictStatus
-from api.services.migration.serializers import gap_summary_from_result
+from api.services.migration.models import GapSeverity, GapType
 from api.services.migration.source_target_map import SourceTargetMap
 
-MODULE = "accounts_payable"
+MODULE = "txfer"
 
-
-@dataclass(frozen=True)
-class _Source:
-    value: str
-
-
-@dataclass(frozen=True)
-class _Resolution:
-    is_required: bool
-    source: _Source
-    is_grounded: bool = True
+# Destination metadata the stubs answer with.
+_FIELDS = {
+    ("LFA1", "LIFNR"): {"data_type": "CHAR"},
+    ("LFA1", "KTOKK"): {"data_type": "CHAR"},
+    ("LFA1", "NAME1"): {"data_type": "CHAR"},
+    ("LFA1", "LAND1"): {"data_type": "CHAR"},
+    ("LFA1", "ZZNOTE"): {"data_type": "CHAR"},
+}
+_LIVE_DOMAIN = {"LFA1.KTOKK": ["KRED"], "LFA1.LAND1": ["US", "DE"]}
 
 
 class _FakeReader:
-    """Fixed SPRO answers. KTOKK governs the account group; ZTERM is governed."""
+    def __init__(self, *_a, **_k):
+        pass
 
-    def get_valid_values(self, module: str, qualified: str):
-        return {
-            "LFA1.KTOKK": ["KRED", "LIEF"],
-            "LFB1.ZTERM": ["Z030", "N030"],
-        }.get(qualified, [])
+    def read_config(self, _module):
+        return {}
 
-    def resolve_field_status_smart(self, table, field, *, account_group=None, module=None):
-        required = field.upper() == "NAME1"
-        return _Resolution(is_required=required, source=_Source("FAKE_SPRO"))
+    def get_valid_values(self, _module, qualified):
+        return _LIVE_DOMAIN.get(qualified, [])
 
-
-def _map():
-    rows = [
-        {"module": MODULE, "source_field": "KTOKK", "dest_table": "LFA1", "dest_field": "KTOKK"},
-        {"module": MODULE, "source_field": "NAME1", "dest_table": "LFA1", "dest_field": "NAME1"},
-        {"module": MODULE, "source_field": "ZTERM", "dest_table": "LFB1", "dest_field": "ZTERM"},
-        {"module": MODULE, "source_field": "BADF", "dest_table": "LFA1", "dest_field": "NOPE"},
-        # ZZNOTE intentionally absent → unmapped custom field
-    ]
-    return SourceTargetMap(rows)
-
-
-def _analyzer():
-    a = TransferGapAnalyzer("ecc")
-    a._reader = _FakeReader()  # type: ignore[assignment]
-    return a
-
-
-def _findings_for(result, record_key):
-    return [f for f in result.findings if f.record_key == record_key]
+    def resolve_field_status_smart(self, _table, field, account_group=None, module=None):
+        # Only NAME1 is mandatory in the destination.
+        return SimpleNamespace(
+            is_required=(field == "NAME1"),
+            source=SimpleNamespace(value="live_customizing"),
+            is_grounded=True,
+        )
 
 
 @pytest.fixture
-def result():
-    records = [
-        {"record_key": "r1", "data": {"KTOKK": "KRED", "NAME1": ""}},          # mandatory blank
-        {"record_key": "r2", "data": {"KTOKK": "KRED", "NAME1": "0"}},         # "0" is NOT blank
-        {"record_key": "r3", "data": {"KTOKK": "KRED", "ZTERM": "XXXX"}},      # out-of-domain
-        {"record_key": "r4", "data": {"KTOKK": "KRED", "NAME1": "Acme Ltd"}},  # clean
-        {"record_key": "r5", "data": {"KTOKK": "KRED", "BADF": "x"}},          # dest field missing
-        {"record_key": "r6", "data": {"KTOKK": "KRED", "ZZNOTE": "hi"}},       # unmapped custom
-        {"record_key": "r7", "data": {"KTOKK": "ZZZ", "NAME1": "X"}},          # bad account group
-    ]
-    return _analyzer().analyze(MODULE, records, _map())
+def analyzer(monkeypatch):
+    monkeypatch.setattr(ga, "SPRO_REGISTRY", {MODULE: [{"governs_fields": ["LFA1.KTOKK", "LFA1.LAND1"]}]})
+    monkeypatch.setattr(ga, "SPROReader", _FakeReader)
+    monkeypatch.setattr(ga, "get_key_fields", lambda t: ["LIFNR"] if t == "LFA1" else [])
+    monkeypatch.setattr(ga, "account_group_field_for", lambda t: "KTOKK" if t == "LFA1" else None)
+    monkeypatch.setattr(ga, "get_field_metadata", lambda t, f: _FIELDS.get((t, f)))
+    monkeypatch.setattr(ga, "get_valid_values", lambda t, f: [])  # no dictionary domains here
+    return TransferGapAnalyzer("ecc", None)
 
 
-def test_target_mandatory_on_blank(result):
-    fs = _findings_for(result, "r1")
-    assert any(
-        f.gap_type == GapType.TARGET_MANDATORY
-        and f.severity == GapSeverity.CRITICAL
-        and f.severity_is_blocking
-        and f.status_source == "FAKE_SPRO"
-        and f.is_grounded
-        for f in fs
+def _map(*pairs):
+    """pairs of (source_field, dest_table, dest_field) → SourceTargetMap."""
+    return SourceTargetMap(
+        [{"module": MODULE, "source_field": s, "dest_table": dt, "dest_field": df} for s, dt, df in pairs]
     )
-    assert result.transfer_ready_by_record["r1"] is False
 
 
-def test_zero_is_not_blank(result):
-    # NAME1="0" must NOT trigger target_mandatory; NAME1 is free-form so no domain finding.
-    assert _findings_for(result, "r2") == []
-    assert result.transfer_ready_by_record["r2"] is True
+def _by_type(result, gap_type):
+    return [f for f in result.findings if f.gap_type is gap_type]
 
 
-def test_value_domain_live_spro(result):
-    fs = _findings_for(result, "r3")
-    f = next(f for f in fs if f.gap_type == GapType.VALUE_DOMAIN)
-    assert f.severity == GapSeverity.HIGH
-    assert f.domain_provenance == DomainProvenance.LIVE_SPRO
-    assert not f.severity_is_blocking  # value-domain is non-blocking
-    assert result.transfer_ready_by_record["r3"] is True
-
-
-def test_clean_record_has_no_findings(result):
-    assert _findings_for(result, "r4") == []
-    assert result.transfer_ready_by_record["r4"] is True
-
-
-def test_field_mapping_critical_on_missing_dest(result):
-    fs = _findings_for(result, "r5")
-    f = next(f for f in fs if f.gap_type == GapType.FIELD_MAPPING)
-    assert f.severity == GapSeverity.CRITICAL and f.severity_is_blocking
-    assert result.transfer_ready_by_record["r5"] is False
-
-
-def test_unmapped_custom_field_is_low_not_blocking(result):
-    fs = _findings_for(result, "r6")
-    f = next(f for f in fs if f.gap_type == GapType.FIELD_MAPPING)
-    assert f.severity == GapSeverity.LOW and not f.severity_is_blocking
-    assert result.transfer_ready_by_record["r6"] is True
-
-
-def test_account_group_sweep(result):
-    sweep = [f for f in result.findings if f.record_key == "account_group:ZZZ"]
-    assert sweep and sweep[0].severity == GapSeverity.CRITICAL
-    assert sweep[0].domain_provenance == DomainProvenance.LIVE_SPRO
-    assert result.transfer_ready_by_record["r7"] is False
-
-
-def test_verdict_matches_readiness_function(result):
-    s = result.score
-    assert s.critical_count >= 2  # r1, r5, sweep
-    assert s.score <= 70.0  # 2+ criticals cap
-    assert s.status == VerdictStatus(compute_readiness_status(s.score, s.critical_count))
-    assert s.status == VerdictStatus.NO_GO
-
-
-def test_unknown_module_raises():
+def test_module_not_in_registry_raises(analyzer):
     with pytest.raises(ValueError):
-        _analyzer().analyze("not_a_real_module", [], _map())
+        analyzer.analyze("not_a_module", [{"LIFNR": "1"}], _map())
 
 
-def test_gap_summary_rollup_leaks_no_raw_values(result):
-    import json
+def test_unmapped_field_severity_and_custom_never_critical(analyzer):
+    # PLAIN unmapped → MEDIUM; ZZX custom unmapped → LOW; neither CRITICAL.
+    res = analyzer.analyze(MODULE, [{"PLAIN": "a", "ZZX": "b"}], _map())
+    fm = {f.source_field: f.severity for f in _by_type(res, GapType.FIELD_MAPPING)}
+    assert fm["PLAIN"] is GapSeverity.MEDIUM
+    assert fm["ZZX"] is GapSeverity.LOW
+    assert all(f.severity is not GapSeverity.CRITICAL for f in res.findings)
 
-    summary = gap_summary_from_result(result)
-    blob = json.dumps(summary)
-    # Distinctive raw master-data values from the fixtures must never appear in
-    # the persisted rollup (CLAUDE.md: gap_summary is counts-only, no raw SAP data).
-    for raw in ("Acme Ltd", "XXXX", "Whatever"):
-        assert raw not in blob
-    assert set(summary) >= {"score", "status", "critical", "high", "medium", "low", "n_records"}
+
+def test_mapped_to_nonexistent_dest_is_critical(analyzer):
+    res = analyzer.analyze(MODULE, [{"GHOST": "x"}], _map(("GHOST", "LFA1", "NOPE")))
+    crit = [f for f in _by_type(res, GapType.FIELD_MAPPING) if f.severity is GapSeverity.CRITICAL]
+    assert len(crit) == 1
+    assert crit[0].dest_field == "NOPE"
+
+
+def test_target_mandatory_fires_on_blank_not_on_zero(analyzer):
+    fmap = _map(("LIFNR", "LFA1", "LIFNR"), ("NAME1", "LFA1", "NAME1"))
+    blank = analyzer.analyze(MODULE, [{"LIFNR": "1", "NAME1": ""}], fmap)
+    assert len(_by_type(blank, GapType.TARGET_MANDATORY)) == 1
+    assert _by_type(blank, GapType.TARGET_MANDATORY)[0].severity is GapSeverity.CRITICAL
+
+    # "0" is a real SAP value, not blank — no mandatory gap.
+    zero = analyzer.analyze(MODULE, [{"LIFNR": "1", "NAME1": "0"}], fmap)
+    assert _by_type(zero, GapType.TARGET_MANDATORY) == []
+
+
+def test_value_domain_live_spro_high_and_silent_when_valid(analyzer):
+    fmap = _map(("LIFNR", "LFA1", "LIFNR"), ("KTOKK", "LFA1", "KTOKK"), ("LAND1", "LFA1", "LAND1"))
+    bad = analyzer.analyze(MODULE, [{"LIFNR": "1", "KTOKK": "KRED", "LAND1": "FR"}], fmap)
+    vd = _by_type(bad, GapType.VALUE_DOMAIN)
+    assert len(vd) == 1 and vd[0].severity is GapSeverity.HIGH
+    assert vd[0].domain_provenance == "live_spro"
+
+    ok = analyzer.analyze(MODULE, [{"LIFNR": "1", "KTOKK": "KRED", "LAND1": "US"}], fmap)
+    assert _by_type(ok, GapType.VALUE_DOMAIN) == []
+
+
+def test_account_group_sweep_once_per_bad_group(analyzer):
+    fmap = _map(("LIFNR", "LFA1", "LIFNR"), ("KTOKK", "LFA1", "KTOKK"))
+    res = analyzer.analyze(
+        MODULE,
+        [{"LIFNR": "1", "KTOKK": "BADGRP"}, {"LIFNR": "2", "KTOKK": "BADGRP"}],
+        fmap,
+    )
+    sweep = [f for f in _by_type(res, GapType.VALUE_DOMAIN) if f.record_key.startswith("account_group=")]
+    assert len(sweep) == 1  # one finding for the group, not one per record
+    assert sweep[0].severity is GapSeverity.CRITICAL
+
+
+def test_clean_record_is_ready_and_verdict_matches_readiness(analyzer):
+    fmap = _map(
+        ("LIFNR", "LFA1", "LIFNR"),
+        ("KTOKK", "LFA1", "KTOKK"),
+        ("NAME1", "LFA1", "NAME1"),
+        ("LAND1", "LFA1", "LAND1"),
+    )
+    res = analyzer.analyze(
+        MODULE,
+        [{"LIFNR": "1", "KTOKK": "KRED", "NAME1": "Acme", "LAND1": "US"}],
+        fmap,
+        record_keys=["1"],
+    )
+    assert res.findings == []
+    assert "1" in res.ready_record_keys
+    assert res.module_score.status == "go"
+    assert res.module_score.status == compute_readiness_status(
+        res.module_score.score, res.module_score.critical_count
+    )
+
+
+if __name__ == "__main__":
+    raise SystemExit(pytest.main([__file__, "-q"]))

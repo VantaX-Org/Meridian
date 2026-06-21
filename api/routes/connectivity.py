@@ -2,7 +2,7 @@
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -76,11 +76,15 @@ async def list_system_modules(
 @router.post("/extract")
 async def extract_modules(
     body: ExtractModuleRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
     """Extract data and/or config for selected modules from a system."""
+    from api.middleware.licence import enforce_licensed_modules
     from workers.tasks.run_extraction import run_extraction
+
+    enforce_licensed_modules(request, body.modules)
 
     job = run_extraction.delay(
         str(tenant.id), body.system_id, body.modules,
@@ -92,11 +96,15 @@ async def extract_modules(
 @router.post("/config-sync")
 async def sync_config(
     body: ConfigSyncRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
     """Sync SPRO/FO configuration only (no transactional data)."""
+    from api.middleware.licence import enforce_licensed_modules
     from workers.tasks.run_config_sync import run_config_sync
+
+    enforce_licensed_modules(request, body.modules)
 
     job = run_config_sync.delay(str(tenant.id), body.system_id, body.modules)
     return {"job_id": job.id, "status": "queued"}

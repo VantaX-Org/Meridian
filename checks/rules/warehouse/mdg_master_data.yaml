@@ -364,10 +364,10 @@ rules:
       format. Verify via SU01 (ECC) or Fiori app F1603 (S/4HANA).
 
   - id: MDG016
-    field: CREQU_ID
+    field: USMD_CREQU.CREQU_ID
     check_class: cross_field_check
-    fields: ['CREQU_ID']
-    condition: "~`CREQU_ID`.duplicated(keep=False)"
+    fields: ['USMD_CREQU.CREQU_ID']
+    condition: "~`USMD_CREQU.CREQU_ID`.duplicated(keep=False)"
     severity: high
     dimension: uniqueness
     message: Duplicate MDG change request IDs detected — each CR must be unique
@@ -378,7 +378,7 @@ rules:
       __blank__: "Investigate duplicate CR IDs. This is typically a data extract issue. If genuine, escalate to MDG administration — number range collision or replication error."
 
   - id: MDG017
-    field: CREATED_BY_MDG
+    field: USMD_CREQU.CREATED_DATE
     check_class: freshness_check
     max_age_hours: 8760
     severity: low

@@ -115,7 +115,7 @@ def test_ec_null_check_finds_failures_with_enrichment():
     results = run_checks("employee_central", df, "test-tenant")
 
     # Non-None results = rules whose fields exist in this synthetic extract.
-    assert len(results) == 15
+    assert len(results) == 16
     assert all(isinstance(r, CheckResult) for r in results)
 
     failing = [r for r in results if not r.passed and not r.error]

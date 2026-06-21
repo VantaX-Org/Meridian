@@ -1,3 +1,4 @@
+import base64
 import hashlib
 import hmac as hmac_mod
 import json
@@ -359,6 +360,103 @@ def _do_sync_manifest(rules: list, field_mappings: list) -> None:
         logger.warning(f"Failed to sync manifest to DB: {e}")
 
 
+# ── Response signature verification (anti-self-grant) ─────────────────────────
+# The worker RSA-signs every valid licence response. A customer holding the image
+# could otherwise MITM their own licence check and forge `valid:true`; an HMAC
+# wouldn't stop them (they'd hold the secret), so the worker signs with a private
+# key and we verify with the PUBLIC key here. Enforcement is OFF until
+# LICENCE_SERVER_PUBLIC_KEY is set — lets the worker deploy first, then the
+# operator flips enforcement on with no forced lockout (safe rollout).
+
+# 7 days — matches the worker's expiry grace window. Bounds replay of a captured
+# response to this window; after it, the stale signature is rejected.
+LICENCE_SIGNATURE_MAX_AGE = int(
+    os.getenv("LICENCE_SIGNATURE_MAX_AGE_SECONDS", str(7 * 24 * 60 * 60))
+)
+
+
+def _entitlement_canonical(result: dict, signed_at) -> bytes:
+    """Byte-identical twin of the worker's `entitlementCanonical` (index.ts).
+
+    Fixed field list + "\\n" join (not JSON) so JS and Python cannot diverge on
+    key order or escaping. Covers the entitlement fields that gate access.
+    """
+    features = result.get("features") or {}
+    if isinstance(features, dict):
+        feat_keys = sorted(k for k, v in features.items() if v)
+    else:
+        feat_keys = sorted(features)
+    parts = [
+        "meridian-licence-v1",
+        "1",  # valid
+        result.get("tenant_id") or "",
+        result.get("expiry_date") or "",
+        ",".join(sorted(result.get("enabled_modules") or [])),
+        ",".join(sorted(result.get("enabled_menu_items") or [])),
+        ",".join(feat_keys),
+        result.get("machine_fingerprint") or "",
+        str(signed_at),
+    ]
+    return "\n".join(parts).encode()
+
+
+def _licence_public_key():
+    pem = os.getenv("LICENCE_SERVER_PUBLIC_KEY")
+    if not pem:
+        return None
+    from cryptography.hazmat.primitives.serialization import load_pem_public_key
+
+    return load_pem_public_key(pem.encode())
+
+
+def _verify_response_signature(result: dict) -> bool:
+    """True if the response is authentic OR enforcement is disabled.
+
+    Disabled (no LICENCE_SERVER_PUBLIC_KEY) → True (rollout passthrough). Enabled
+    → the response MUST carry a fresh RSA signature over its entitlement fields,
+    bound to this node's fingerprint; otherwise False (reject the grant).
+    """
+    pub = _licence_public_key()
+    if pub is None:
+        return True  # enforcement not enabled yet — worker-first rollout
+
+    sig_b64 = result.get("signature")
+    signed_at = result.get("signed_at")
+    if not sig_b64 or signed_at is None:
+        logger.error("Licence response unsigned but signature enforcement is on — rejecting")
+        return False
+
+    try:
+        if abs(time.time() - float(signed_at)) > LICENCE_SIGNATURE_MAX_AGE:
+            logger.error("Licence response signature stale — rejecting")
+            return False
+    except (TypeError, ValueError):
+        return False
+
+    # Node binding: a response captured for another node carries that node's
+    # fingerprint and will not match ours.
+    echoed_fp = result.get("machine_fingerprint") or ""
+    if echoed_fp and echoed_fp != _get_machine_fingerprint():
+        logger.error("Licence response fingerprint mismatch — rejecting")
+        return False
+
+    from cryptography.exceptions import InvalidSignature
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.asymmetric import padding
+
+    try:
+        pub.verify(
+            base64.b64decode(sig_b64),
+            _entitlement_canonical(result, signed_at),
+            padding.PKCS1v15(),
+            hashes.SHA256(),
+        )
+        return True
+    except (InvalidSignature, ValueError, TypeError) as e:
+        logger.error(f"Licence response signature invalid — rejecting: {type(e).__name__}")
+        return False
+
+
 async def _validate_licence() -> dict | None:
     """Call the licence server or read offline file. Returns the response dict or None on failure."""
     global _last_checked_at
@@ -391,6 +489,10 @@ async def _validate_licence() -> dict | None:
             result = resp.json()
             # Connection successful — clear degraded state
             _mark_cloudflare_healthy()
+            # Anti-self-grant: when a public key is configured, a forged or
+            # replayed `valid:true` is rejected here before it can entitle anything.
+            if result.get("valid") and not _verify_response_signature(result):
+                return {"valid": False, "reason": "signature_invalid"}
             return result
     except Exception as e:
         logger.warning(f"Licence server unreachable: {e}")
@@ -427,6 +529,21 @@ FEATURE_ROUTE_MAP: dict[str, str] = {
 }
 
 
+def _features_to_list(features) -> list[str]:
+    """Normalise the manifest `features` field to a list of enabled keys.
+
+    Accepts the new dict form ({feat: bool}) or legacy list form. Empty/missing
+    means "no explicit feature list" → ["*"] so the feature gate is a no-op and
+    entitlement falls to enabled_modules. NEVER returns ["*"] as a security
+    grant — it only disables the feature-level gate.
+    """
+    if isinstance(features, list):
+        return features
+    if isinstance(features, dict) and features:
+        return [k for k, v in features.items() if v]
+    return ["*"]
+
+
 def _check_feature_gate(path: str, licensed_features: list[str]) -> JSONResponse | None:
     """Return a 402 response if the route requires a feature not in the licence."""
     if "*" in licensed_features:
@@ -444,6 +561,34 @@ def _check_feature_gate(path: str, licensed_features: list[str]) -> JSONResponse
                 )
             break
     return None
+
+
+def enforce_licensed_modules(request: Request, requested: list[str]) -> None:
+    """Reject any requested SAP module the licence does not entitle.
+
+    The middleware sets request.state.licensed_modules from the validated
+    manifest but nothing consumed it — a tenant licensed for one module could
+    extract/upload all 29. This is the real entitlement boundary: it runs where
+    module-scoped data ENTERS the system (extract, upload). "*" entitles all.
+
+    Raises HTTPException(402) listing the unlicensed modules. Caller is a route,
+    so the short message is safe to surface (no stack trace).
+    """
+    from fastapi import HTTPException
+
+    licensed = getattr(request.state, "licensed_modules", None)
+    if licensed is None or "*" in licensed:
+        return
+    unlicensed = [m for m in requested if m not in licensed]
+    if unlicensed:
+        raise HTTPException(
+            status_code=402,
+            detail={
+                "error": "module_not_licenced",
+                "modules": unlicensed,
+                "upgrade_url": "https://meridian-hq.vantax.co.za/upgrade",
+            },
+        )
 
 
 class LicenceMiddleware(BaseHTTPMiddleware):
@@ -464,11 +609,7 @@ class LicenceMiddleware(BaseHTTPMiddleware):
             cached = _cache["response"]
             if cached.get("valid"):
                 enabled_modules = cached.get("enabled_modules") or cached.get("modules", [])
-                features = cached.get("features", {})
-                if isinstance(features, list):
-                    licensed_features = features
-                else:
-                    licensed_features = [k for k, v in features.items() if v] if features else ["*"]
+                licensed_features = _features_to_list(cached.get("features", {}))
                 request.state.licensed_modules = enabled_modules
                 request.state.licensed_features = licensed_features
                 request.state.licence_manifest = cached
@@ -487,11 +628,40 @@ class LicenceMiddleware(BaseHTTPMiddleware):
         result = await _validate_licence()
 
         if result is None:
-            # Licence server unreachable — graceful degradation
-            logger.warning("Licence server unreachable — allowing request through")
-            request.state.licensed_modules = ["*"]
-            request.state.licensed_features = ["*"]
-            return await call_next(request)
+            # Licence server unreachable. FAIL CLOSED — granting ["*"] here let
+            # anyone bypass licensing entirely by blocking the licence server
+            # (firewall it, or never configure it). Degrade ONLY on a licence
+            # this deployment previously validated, using its LAST KNOWN
+            # entitlements, and only inside the degradation grace window. No
+            # prior valid licence (fresh boot, never validated) → deny.
+            last_known = _cache.get("response")
+            if (
+                last_known
+                and last_known.get("valid")
+                and not is_cloudflare_unreachable()
+            ):
+                logger.warning(
+                    "Licence server unreachable — running degraded on the last "
+                    "validated licence's entitlements"
+                )
+                enabled_modules = (
+                    last_known.get("enabled_modules") or last_known.get("modules", [])
+                )
+                licensed_features = _features_to_list(last_known.get("features", {}))
+                request.state.licensed_modules = enabled_modules
+                request.state.licensed_features = licensed_features
+                request.state.licence_manifest = last_known
+                feature_block = _check_feature_gate(request.url.path, licensed_features)
+                if feature_block:
+                    return feature_block
+                return await call_next(request)
+            logger.error(
+                "Licence server unreachable and no valid cached licence — denying"
+            )
+            return JSONResponse(
+                {"error": "licence_unverified", "reason": "licence_server_unreachable"},
+                status_code=403,
+            )
 
         # Task 08: Check cutoff rejection reason
         if result.get("reason") == "licence_server_unreachable_cutoff":
@@ -506,13 +676,7 @@ class LicenceMiddleware(BaseHTTPMiddleware):
 
         if result.get("valid"):
             enabled_modules = result.get("enabled_modules") or result.get("modules", [])
-            features = result.get("features", {})
-            # features may be a dict (new format) or list (legacy format)
-            if isinstance(features, list):
-                licensed_features = features
-            else:
-                # Convert dict features to list of enabled feature keys for legacy gate check
-                licensed_features = [k for k, v in features.items() if v] if features else ["*"]
+            licensed_features = _features_to_list(result.get("features", {}))
 
             request.state.licensed_modules = enabled_modules
             request.state.licensed_features = licensed_features

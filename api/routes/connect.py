@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
+from api.services.rbac import require_permission
 
 router = APIRouter(prefix="/api/v1", tags=["connect"])
 logger = logging.getLogger("meridian.connect")
@@ -109,7 +110,11 @@ def _mask_password(msg: str, password: str) -> str:
     return msg
 
 
-@router.post("/connect", response_model=SAPConnectionResponse)
+@router.post(
+    "/connect",
+    response_model=SAPConnectionResponse,
+    dependencies=[Depends(require_permission("analyse"))],
+)
 async def connect_sap(
     body: SAPConnectionRequest,
     db: AsyncSession = Depends(get_db),

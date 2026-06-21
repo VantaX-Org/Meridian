@@ -704,6 +704,103 @@ class SyncProfile(Base):
     )
 
 
+class MigrationRun(Base):
+    __tablename__ = "migration_runs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    mode = Column(Text, nullable=False)  # source_to_source | source_to_destination
+    source_system_id = Column(UUID(as_uuid=True), ForeignKey("sap_systems.id"), nullable=False)
+    dest_system_id = Column(UUID(as_uuid=True), ForeignKey("sap_systems.id"), nullable=True)
+    modules = Column(ARRAY(Text), server_default="{}")
+    status = Column(Text, server_default="queued")  # queued|running|analysed|exported|failed
+    readiness_verdict = Column(Text, nullable=True)  # go|conditional|no-go
+    readiness_score = Column(Float, nullable=True)
+    critical_count = Column(Integer, server_default="0")
+    gap_summary = Column(JSONB, nullable=True)
+    task_id = Column(Text, nullable=True)
+    error_detail = Column(Text, nullable=True)
+    requested_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
+
+    findings = relationship("MigrationGapFinding", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("ix_migration_runs_tenant_status", "tenant_id", "status"),
+    )
+
+
+class MigrationGapFinding(Base):
+    __tablename__ = "migration_gap_findings"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    run_id = Column(UUID(as_uuid=True), ForeignKey("migration_runs.id", ondelete="CASCADE"), nullable=False)
+    module = Column(Text, nullable=False)
+    object_type = Column(Text, nullable=True)
+    record_key = Column(Text, nullable=True)
+    dest_table = Column(Text, nullable=True)
+    field = Column(Text, nullable=True)
+    gap_type = Column(Text, nullable=False)  # field_mapping|target_mandatory|value_domain|type_mismatch
+    severity = Column(Text, server_default="medium")
+    detail = Column(Text, nullable=True)
+    status_source = Column(Text, nullable=True)
+    domain_provenance = Column(Text, nullable=True)
+    transfer_ready = Column(Boolean, server_default="false")
+    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
+
+    __table_args__ = (
+        Index("ix_migration_gap_findings_run", "run_id"),
+        Index("ix_migration_gap_findings_run_ready", "run_id", "transfer_ready"),
+        Index("ix_migration_gap_findings_tenant", "tenant_id"),
+    )
+
+
+class MigrationExportFile(Base):
+    __tablename__ = "migration_export_files"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    run_id = Column(UUID(as_uuid=True), ForeignKey("migration_runs.id", ondelete="CASCADE"), nullable=False)
+    export_format = Column(Text, nullable=False)
+    object_type = Column(Text, nullable=True)
+    record_count = Column(Integer, server_default="0")
+    record_keys = Column(ARRAY(Text), server_default="{}")
+    filename = Column(Text, nullable=False)
+    exported_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
+
+    __table_args__ = (
+        Index("ix_migration_export_files_run", "run_id"),
+        Index("ix_migration_export_files_tenant", "tenant_id"),
+    )
+
+
+class TransferFieldMapping(Base):
+    __tablename__ = "transfer_field_mappings"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    module = Column(Text, nullable=False)
+    source_field = Column(Text, nullable=False)
+    source_data_type = Column(Text, nullable=True)
+    dest_system_type = Column(Text, nullable=False)
+    dest_table = Column(Text, nullable=True)
+    dest_field = Column(Text, nullable=True)  # NULL ⇒ explicitly unmapped/skipped
+    transform_note = Column(Text, nullable=True)
+    is_confirmed = Column(Boolean, server_default="false")
+    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
+    updated_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "module", "source_field", "dest_system_type", name="uq_transfer_field_mappings"),
+        Index("ix_transfer_field_mappings_tenant", "tenant_id"),
+        Index("ix_transfer_field_mappings_lookup", "tenant_id", "module", "dest_system_type"),
+    )
+
+
 class SyncRun(Base):
     __tablename__ = "sync_runs"
 
@@ -1305,111 +1402,4 @@ class RecordFix(Base):
         Index("ix_record_fixes_version_check", "version_id", "check_id"),
         Index("ix_record_fixes_version_status", "version_id", "status"),
         Index("ix_record_fixes_tenant", "tenant_id"),
-    )
-
-
-# ── Migration mode (044) ──────────────────────────────────────────────────────
-
-
-class MigrationRun(Base):
-    """One source→source or source→destination transfer run."""
-
-    __tablename__ = "migration_runs"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
-    mode = Column(Text, nullable=False)  # source_to_source | source_to_destination
-    source_system_id = Column(UUID(as_uuid=True), ForeignKey("sap_systems.id"), nullable=False)
-    dest_system_id = Column(UUID(as_uuid=True), ForeignKey("sap_systems.id"), nullable=True)
-    modules = Column(ARRAY(Text), server_default="{}")
-    status = Column(Text, server_default="queued")  # queued|running|analysed|exported|failed
-    readiness_verdict = Column(Text, nullable=True)  # go|conditional|no-go
-    readiness_score = Column(Float, nullable=True)
-    critical_count = Column(Integer, server_default="0")
-    gap_summary = Column(JSONB, nullable=True)  # rollup only — no raw SAP values
-    task_id = Column(Text, nullable=True)
-    error_detail = Column(Text, nullable=True)
-    requested_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
-    started_at = Column(DateTime(timezone=True), nullable=True)
-    completed_at = Column(DateTime(timezone=True), nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
-
-    __table_args__ = (
-        Index("ix_migration_runs_tenant_status", "tenant_id", "status"),
-    )
-
-
-class MigrationGapFinding(Base):
-    """Per-record source-vs-destination gap finding (no raw SAP values)."""
-
-    __tablename__ = "migration_gap_findings"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
-    run_id = Column(UUID(as_uuid=True), ForeignKey("migration_runs.id", ondelete="CASCADE"), nullable=False)
-    module = Column(Text, nullable=False)
-    object_type = Column(Text, nullable=True)
-    record_key = Column(Text, nullable=True)
-    dest_table = Column(Text, nullable=True)
-    field = Column(Text, nullable=True)
-    gap_type = Column(Text, nullable=False)  # field_mapping|target_mandatory|value_domain|type_mismatch
-    severity = Column(Text, server_default="medium")
-    detail = Column(Text, nullable=True)
-    status_source = Column(Text, nullable=True)
-    domain_provenance = Column(Text, nullable=True)
-    transfer_ready = Column(Boolean, server_default="false")
-    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
-
-    __table_args__ = (
-        Index("ix_migration_gap_findings_run", "run_id"),
-        Index("ix_migration_gap_findings_run_ready", "run_id", "transfer_ready"),
-        Index("ix_migration_gap_findings_tenant", "tenant_id"),
-    )
-
-
-class MigrationExportFile(Base):
-    """Audit metadata for a generated SAP load file (bytes regenerated on download)."""
-
-    __tablename__ = "migration_export_files"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
-    run_id = Column(UUID(as_uuid=True), ForeignKey("migration_runs.id", ondelete="CASCADE"), nullable=False)
-    export_format = Column(Text, nullable=False)
-    object_type = Column(Text, nullable=True)
-    record_count = Column(Integer, server_default="0")
-    record_keys = Column(ARRAY(Text), server_default="{}")
-    filename = Column(Text, nullable=False)
-    exported_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
-
-    __table_args__ = (
-        Index("ix_migration_export_files_run", "run_id"),
-        Index("ix_migration_export_files_tenant", "tenant_id"),
-    )
-
-
-class TransferFieldMapping(Base):
-    """Source-field → destination-SAP-field map (separate from field_mappings)."""
-
-    __tablename__ = "transfer_field_mappings"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
-    module = Column(Text, nullable=False)
-    source_field = Column(Text, nullable=False)
-    source_data_type = Column(Text, nullable=True)
-    dest_system_type = Column(Text, nullable=False)
-    dest_table = Column(Text, nullable=True)
-    dest_field = Column(Text, nullable=True)  # NULL ⇒ explicitly unmapped/skipped
-    transform_note = Column(Text, nullable=True)
-    is_confirmed = Column(Boolean, server_default="false")
-    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
-    updated_at = Column(DateTime(timezone=True), nullable=True)
-
-    __table_args__ = (
-        UniqueConstraint("tenant_id", "module", "source_field", "dest_system_type",
-                         name="uq_transfer_field_mappings_key"),
-        Index("ix_transfer_field_mappings_tenant", "tenant_id"),
-        Index("ix_transfer_field_mappings_lookup", "tenant_id", "module", "dest_system_type"),
     )

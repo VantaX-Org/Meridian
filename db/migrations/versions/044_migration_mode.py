@@ -1,27 +1,21 @@
-"""Migration mode — source→source / source→destination transfer runs.
+"""Source→Source / Source→Destination migration mode.
 
-Adds the four tenant-scoped tables behind the MODE selector on the transfer
-workflow:
-
-  migration_runs          one row per analyse/export run (queued→…→exported)
-  migration_gap_findings  per-record source-vs-destination gap findings
-  migration_export_files  audit metadata for generated SAP load files
-  transfer_field_mappings source-field → destination-SAP-field map (editable)
-
-Every table carries a NOT NULL ``tenant_id`` and ships with RLS
-ENABLE+FORCE+policy from the outset (no repeat of the 043 retrofit). App-role
-grants are already covered by 040's blanket grant on the schema.
+Four tenant-scoped tables backing the transfer-readiness workflow:
+  - migration_runs          one row per analyse/export run
+  - migration_gap_findings  per-record source-vs-destination gaps
+  - migration_export_files   audit of generated SAP load files
+  - transfer_field_mappings source→destination field map (steward-edited)
 
 Revision ID: 044
 Revises: 043
-Create Date: 2026-06-21
+Create Date: 2026-06-20
 """
 
 from typing import Sequence, Union
 
 import sqlalchemy as sa
 from alembic import op
-from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 
 
 revision: str = "044"
@@ -29,8 +23,7 @@ down_revision: Union[str, None] = "043"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
-
-_RLS_TABLES: tuple[str, ...] = (
+_TABLES = (
     "migration_runs",
     "migration_gap_findings",
     "migration_export_files",
@@ -73,8 +66,8 @@ def upgrade() -> None:
         sa.Column("field", sa.Text(), nullable=True),
         sa.Column("gap_type", sa.Text(), nullable=False),  # field_mapping|target_mandatory|value_domain|type_mismatch
         sa.Column("severity", sa.Text(), server_default="medium"),
-        sa.Column("detail", sa.Text(), nullable=True),  # sanitised
-        sa.Column("status_source", sa.Text(), nullable=True),  # FieldStatusSource provenance
+        sa.Column("detail", sa.Text(), nullable=True),
+        sa.Column("status_source", sa.Text(), nullable=True),
         sa.Column("domain_provenance", sa.Text(), nullable=True),
         sa.Column("transfer_ready", sa.Boolean(), server_default="false"),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()")),
@@ -113,14 +106,16 @@ def upgrade() -> None:
         sa.Column("is_confirmed", sa.Boolean(), server_default="false"),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()")),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
-        sa.UniqueConstraint("tenant_id", "module", "source_field", "dest_system_type",
-                            name="uq_transfer_field_mappings_key"),
+        sa.UniqueConstraint("tenant_id", "module", "source_field", "dest_system_type", name="uq_transfer_field_mappings"),
     )
     op.create_index("ix_transfer_field_mappings_tenant", "transfer_field_mappings", ["tenant_id"])
-    op.create_index("ix_transfer_field_mappings_lookup", "transfer_field_mappings",
-                    ["tenant_id", "module", "dest_system_type"])
+    op.create_index(
+        "ix_transfer_field_mappings_lookup",
+        "transfer_field_mappings",
+        ["tenant_id", "module", "dest_system_type"],
+    )
 
-    for table in _RLS_TABLES:
+    for table in _TABLES:
         op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY")
         op.execute(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY")
         op.execute(f"DROP POLICY IF EXISTS {table}_rls ON {table}")
@@ -131,11 +126,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    for table in _RLS_TABLES:
+    for table in _TABLES:
         op.execute(f"DROP POLICY IF EXISTS {table}_rls ON {table}")
-        op.execute(f"ALTER TABLE {table} NO FORCE ROW LEVEL SECURITY")
-        op.execute(f"ALTER TABLE {table} DISABLE ROW LEVEL SECURITY")
-    op.drop_table("transfer_field_mappings")
-    op.drop_table("migration_export_files")
     op.drop_table("migration_gap_findings")
+    op.drop_table("migration_export_files")
+    op.drop_table("transfer_field_mappings")
     op.drop_table("migration_runs")

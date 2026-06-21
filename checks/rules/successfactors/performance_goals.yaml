@@ -251,10 +251,10 @@ rules:
   record_fix_template: Record is missing PMREVIEWRESULT.SELF_RATING. Maintain via SuccessFactors Admin Center > Performance
     & Goals module.
 - id: PERF015
-  field: USERID_PERF
+  field: PMREVIEWRESULT.USERID
   check_class: cross_field_check
-  fields: ['USERID_PERF']
-  condition: "~`USERID_PERF`.duplicated(keep=False)"
+  fields: ['PMREVIEWRESULT.USERID']
+  condition: "~`PMREVIEWRESULT.USERID`.duplicated(keep=False)"
   severity: high
   dimension: uniqueness
   message: Duplicate performance review records per employee per cycle — only one review should exist
@@ -265,7 +265,7 @@ rules:
     __blank__: "Identify duplicate review forms in Admin Center > Performance. Delete the incorrect form. Verify the correct form is routed in the current cycle."
 
 - id: PERF016
-  field: REVIEW_DATE
+  field: PMREVIEWRESULT.REVIEW_DATE
   check_class: freshness_check
   max_age_hours: 17520
   severity: medium

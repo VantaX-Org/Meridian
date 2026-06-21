@@ -279,10 +279,10 @@ rules:
     Use Fiori app F4283.'
 
 - id: FLEET017
-  field: REG_NUMBER
+  field: FLEET_MASTER.REG_NUMBER
   check_class: cross_field_check
-  fields: ['REG_NUMBER']
-  condition: "~`REG_NUMBER`.duplicated(keep=False)"
+  fields: ['FLEET_MASTER.REG_NUMBER']
+  condition: "~`FLEET_MASTER.REG_NUMBER`.duplicated(keep=False)"
   severity: critical
   dimension: uniqueness
   message: Duplicate vehicle registration numbers detected — each vehicle must be unique
@@ -293,7 +293,7 @@ rules:
     __blank__: "Identify duplicate vehicle records. Merge or archive the duplicate via fleet management transaction. Update all linked maintenance orders."
 
 - id: FLEET018
-  field: LAST_SERVICE_DATE
+  field: FLEET_MASTER.LAST_SERVICE_DATE
   check_class: freshness_check
   max_age_hours: 8760
   severity: medium

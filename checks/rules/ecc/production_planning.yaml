@@ -449,10 +449,10 @@ rules:
   record_fix_template: 'Record is missing STPO.SORTF. In ECC: Set via CA02 (routing) or CS02 (BOM). In S/4HANA: Use the corresponding
     Fiori apps.'
 - id: PP027
-  field: PLNNR
+  field: PLKOD.PLNNR
   check_class: cross_field_check
-  fields: ['PLNNR']
-  condition: "~`PLNNR`.duplicated(keep=False)"
+  fields: ['PLKOD.PLNNR']
+  condition: "~`PLKOD.PLNNR`.duplicated(keep=False)"
   severity: critical
   dimension: uniqueness
   message: Duplicate routing numbers detected — each routing must be unique
@@ -463,7 +463,7 @@ rules:
     __blank__: "Investigate duplicate routing numbers. If caused by extract join, de-duplicate the extract. If genuine, archive the unused routing via CA02."
 
 - id: PP028
-  field: PLNNR
+  field: PLKOD.DAESSION
   check_class: freshness_check
   max_age_hours: 26280
   severity: medium

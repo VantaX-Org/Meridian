@@ -1,14 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { PageHead } from "@/components/meridian/atoms";
+import { PageHead, KPI, SectionHeader } from "@/components/meridian/atoms";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -18,136 +17,201 @@ import {
   approveProposedRule,
   rejectProposedRule,
 } from "@/lib/api/match-rules";
+import { relativeTime } from "@/lib/format";
 import type { AIProposedRule } from "@/types/api";
 
-export default function AIRulesPage() {
+/**
+ * AI Rules — steward review queue for match rules the engine proposes from
+ * accepted steward corrections. Approving a rule promotes it into the live
+ * match engine; rejecting drops it. Pure review surface over
+ * ``/api/v1/ai/proposed-rules`` — no rule logic lives here.
+ */
+export default function AiRulesPage() {
   const qc = useQueryClient();
-  const [confirm, setConfirm] = useState<AIProposedRule | null>(null);
+  const [confirmApprove, setConfirmApprove] = useState<AIProposedRule | null>(null);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["ai-proposed-rules", "pending"],
+  const rulesQ = useQuery({
+    queryKey: ["ai.proposed-rules", "pending"],
     queryFn: () => getProposedRules("pending"),
   });
 
-  const invalidate = () =>
-    qc.invalidateQueries({ queryKey: ["ai-proposed-rules"] });
-
   const approve = useMutation({
-    mutationFn: (id: string) => approveProposedRule(id),
+    mutationFn: approveProposedRule,
     onSuccess: () => {
       toast.success("Rule approved — added to the match engine");
-      setConfirm(null);
-      invalidate();
+      qc.invalidateQueries({ queryKey: ["ai.proposed-rules"] });
+      setConfirmApprove(null);
     },
     onError: () => toast.error("Could not approve rule"),
   });
 
   const reject = useMutation({
-    mutationFn: (id: string) => rejectProposedRule(id),
+    mutationFn: rejectProposedRule,
     onSuccess: () => {
       toast.success("Rule rejected");
-      invalidate();
+      qc.invalidateQueries({ queryKey: ["ai.proposed-rules"] });
     },
     onError: () => toast.error("Could not reject rule"),
   });
 
-  const rules = data?.rules ?? [];
+  const rules = useMemo(() => rulesQ.data?.rules ?? [], [rulesQ.data]);
+  const corrections = useMemo(
+    () => rules.reduce((n, r) => n + r.supporting_correction_count, 0),
+    [rules],
+  );
+  const domains = useMemo(
+    () => new Set(rules.map((r) => r.domain)).size,
+    [rules],
+  );
+
+  if (rulesQ.isLoading) {
+    return (
+      <>
+        <PageHead title="AI Rules" route="Steward · /ai/rules" sub="Loading proposals…" />
+        <Skeleton className="h-[420px] rounded-[10px]" />
+      </>
+    );
+  }
+  if (rulesQ.error) {
+    return (
+      <>
+        <PageHead title="AI Rules" route="Steward · /ai/rules" sub="Failed to load." />
+        <div className="mn-card mn-card-pad" style={{ color: "var(--mn-neg)" }}>
+          Could not reach <code>/api/v1/ai/proposed-rules</code>.
+        </div>
+      </>
+    );
+  }
 
   return (
-    <div className="space-y-6">
+    <>
       <PageHead
         title="AI Rules"
-        route="/ai/rules"
-        sub="Review match rules the AI proposes from accumulated steward corrections."
+        route="Steward · /ai/rules"
+        sub="Match rules proposed by the engine from accepted steward corrections. Approve to promote into the live match engine."
       />
 
-      {isLoading ? (
-        <div className="space-y-3">
-          <Skeleton className="h-20 w-full" />
-          <Skeleton className="h-20 w-full" />
-        </div>
-      ) : rules.length === 0 ? (
-        <div className="vx-card flex flex-col items-center justify-center gap-2 p-12 text-center">
-          <p className="text-sm font-medium text-[var(--mn-ink-700)]">
+      <div
+        className="mn-row mn-stagger"
+        style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))", marginBottom: 18 }}
+      >
+        <KPI label="Awaiting review" value={rules.length} tone={rules.length > 0 ? "warn" : "pos"} />
+        <KPI label="Domains" value={domains} />
+        <KPI label="Supporting corrections" value={corrections} hint="steward corrections behind these proposals" />
+      </div>
+
+      {rules.length === 0 ? (
+        <div className="mn-card mn-card-pad" style={{ textAlign: "center", padding: 48 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: "var(--mn-ink-700)" }}>
             No AI-proposed rules awaiting review
-          </p>
-          <p className="text-xs text-[var(--mn-ink-400)]">
-            Proposals appear here once enough steward corrections support a new
-            match rule.
-          </p>
+          </div>
+          <div style={{ marginTop: 6, fontSize: 13, color: "var(--mn-ink-400)", maxWidth: 460, marginInline: "auto" }}>
+            The engine proposes new match rules once enough steward corrections
+            accumulate. Keep reviewing the stewardship queue and proposals will
+            appear here.
+          </div>
         </div>
       ) : (
-        <div className="space-y-3">
-          {rules.map((r) => (
-            <div key={r.id} className="vx-card flex flex-col gap-3 p-4">
-              <div className="flex items-start justify-between gap-4">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs uppercase tracking-wide text-[var(--mn-ink-400)]">
-                      {r.domain}
-                    </span>
-                    <span className="text-sm font-semibold text-[var(--mn-ink-700)]">
-                      {r.proposed_rule.field} · {r.proposed_rule.match_type}
-                    </span>
-                  </div>
-                  <p className="text-xs text-[var(--mn-ink-500)]">{r.rationale}</p>
-                  <p className="text-[11px] text-[var(--mn-ink-400)]">
-                    weight {r.proposed_rule.weight} · threshold{" "}
-                    {r.proposed_rule.threshold} · backed by{" "}
-                    {r.supporting_correction_count} steward corrections
-                  </p>
-                </div>
-                <div className="flex shrink-0 gap-2">
-                  <button
-                    type="button"
-                    className="rounded-md border border-[var(--mn-line)] px-3 py-1.5 text-xs font-medium text-[var(--mn-ink-600)] hover:bg-[var(--mn-surface-2)] disabled:opacity-50"
-                    disabled={reject.isPending}
-                    onClick={() => reject.mutate(r.id)}
-                  >
-                    Reject
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-md bg-[var(--mn-primary-700)] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
-                    onClick={() => setConfirm(r)}
-                  >
-                    Approve
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
+        <div className="mn-card" style={{ padding: 0, overflow: "hidden" }}>
+          <SectionHeader title="Proposed rules" caption="Pending steward decision" />
+          <div className="mn-table-wrap">
+            <table className="mn-table">
+              <thead>
+                <tr>
+                  <th style={{ paddingLeft: 20 }}>Domain</th>
+                  <th>Field</th>
+                  <th>Match</th>
+                  <th>Weight</th>
+                  <th>Threshold</th>
+                  <th>Corrections</th>
+                  <th>Rationale</th>
+                  <th>Proposed</th>
+                  <th style={{ width: 160 }} aria-label="Actions"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {rules.map((r) => (
+                  <tr key={r.id}>
+                    <td style={{ paddingLeft: 20, textTransform: "capitalize" }}>
+                      {r.domain.replace(/_/g, " ")}
+                    </td>
+                    <td className="mn-tabular" style={{ font: "500 12px/1 'JetBrains Mono', monospace" }}>
+                      {r.proposed_rule.field}
+                    </td>
+                    <td>{r.proposed_rule.match_type}</td>
+                    <td className="mn-tabular">{r.proposed_rule.weight}</td>
+                    <td className="mn-tabular">{r.proposed_rule.threshold}</td>
+                    <td className="mn-tabular">{r.supporting_correction_count}</td>
+                    <td style={{ maxWidth: 280, color: "var(--mn-ink-500)", fontSize: 12.5 }}>
+                      {r.rationale}
+                    </td>
+                    <td
+                      className="mn-tabular"
+                      style={{ font: "500 11.5px/1 'JetBrains Mono', monospace", color: "var(--mn-ink-500)" }}
+                    >
+                      {relativeTime(r.created_at)}
+                    </td>
+                    <td>
+                      <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                        <button
+                          type="button"
+                          className="mn-btn mn-btn-primary"
+                          style={{ padding: "5px 10px", fontSize: 12 }}
+                          onClick={() => setConfirmApprove(r)}
+                        >
+                          Approve
+                        </button>
+                        <button
+                          type="button"
+                          className="mn-btn mn-btn-ghost"
+                          style={{ padding: "5px 10px", fontSize: 12, color: "var(--mn-neg)" }}
+                          disabled={reject.isPending}
+                          onClick={() => reject.mutate(r.id)}
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
-      <Dialog open={!!confirm} onOpenChange={(o) => !o && setConfirm(null)}>
+      {/* Approve confirmation — promotes the proposal into the live match engine. */}
+      <Dialog open={!!confirmApprove} onOpenChange={(o) => !o && setConfirmApprove(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Approve proposed rule?</DialogTitle>
-            <DialogDescription>
-              This rule will be added to the match engine and applied to future
-              matching runs.
-            </DialogDescription>
+            <DialogTitle>Approve proposed rule</DialogTitle>
           </DialogHeader>
+          {confirmApprove && (
+            <p style={{ fontSize: 13, color: "var(--mn-ink-700)", padding: "8px 0" }}>
+              Approve the <strong>{confirmApprove.proposed_rule.match_type}</strong> rule on{" "}
+              <strong>{confirmApprove.proposed_rule.field}</strong> for{" "}
+              <strong style={{ textTransform: "capitalize" }}>
+                {confirmApprove.domain.replace(/_/g, " ")}
+              </strong>
+              ? It will be added to the match engine and applied to future
+              match runs immediately.
+            </p>
+          )}
           <DialogFooter>
-            <button
-              type="button"
-              className="rounded-md border border-[var(--mn-line)] px-3 py-1.5 text-xs font-medium"
-              onClick={() => setConfirm(null)}
-            >
+            <button type="button" className="mn-btn mn-btn-ghost" onClick={() => setConfirmApprove(null)}>
               Cancel
             </button>
             <button
               type="button"
-              className="rounded-md bg-[var(--mn-primary-700)] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+              className="mn-btn mn-btn-primary"
               disabled={approve.isPending}
-              onClick={() => confirm && approve.mutate(confirm.id)}
+              onClick={() => confirmApprove && approve.mutate(confirmApprove.id)}
             >
-              Approve rule
+              {approve.isPending ? "Approving…" : "Approve & promote"}
             </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }

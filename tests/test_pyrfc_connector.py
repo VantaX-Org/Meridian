@@ -5,7 +5,8 @@ All tests use mocked pyrfc to avoid needing a real SAP system.
 
 import io
 import logging
-from unittest.mock import MagicMock, patch
+import os
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pandas as pd
 import pytest
@@ -44,6 +45,7 @@ def client():
 
     with patch("api.routes.connect._check_rfc_rate_limit"), \
          patch("api.middleware.local_auth._load_jwt_secret", return_value="test-secret"), \
+         patch.dict(os.environ, {"MERIDIAN_DEV_ROLE_HEADER": "1"}), \
          patch(
              "api.middleware.local_auth.decode_access_token",
              return_value={
@@ -58,7 +60,11 @@ def client():
 
         app.dependency_overrides[get_db] = _fake_db
         c = TestClient(app)
-        c.headers.update({"Authorization": "Bearer test-token"})
+        # require_permission("analyse") on /connect resolves the role via an async
+        # db.execute; the stub session is a plain MagicMock (not awaitable). The
+        # X-User-Role header + MERIDIAN_DEV_ROLE_HEADER=1 makes rbac return the role
+        # before touching the db, keeping this an SAP-connector unit test.
+        c.headers.update({"Authorization": "Bearer test-token", "X-User-Role": "admin"})
         try:
             yield c
         finally:
@@ -169,7 +175,7 @@ class TestConnectionAlwaysClosed:
         with patch.dict("sys.modules", {"pyrfc": mock_module}):
             with patch("api.services.column_mapper.apply_column_mapping", side_effect=lambda df, m: df):
                 with patch("api.services.storage.upload_file"):
-                    with patch("db.queries.versions.create_version") as mock_version:
+                    with patch("db.queries.versions.create_version", new_callable=AsyncMock) as mock_version:
                         mock_v = MagicMock()
                         mock_v.id = "test-version-id"
                         mock_version.return_value = mock_v
@@ -234,7 +240,7 @@ class TestLargeTableParsing:
         with patch.dict("sys.modules", {"pyrfc": mock_module}):
             with patch("api.services.column_mapper.apply_column_mapping", side_effect=lambda df, m: df):
                 with patch("api.services.storage.upload_file"):
-                    with patch("db.queries.versions.create_version") as mock_version:
+                    with patch("db.queries.versions.create_version", new_callable=AsyncMock) as mock_version:
                         mock_v = MagicMock()
                         mock_v.id = "test-version-id"
                         mock_version.return_value = mock_v

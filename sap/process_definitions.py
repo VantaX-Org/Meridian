@@ -718,18 +718,16 @@ def get_l3_transactions(process_id: str) -> list[L3Transaction]:
 
 
 def get_all_tcodes() -> set[str]:
-    """Every standard SAP transaction code modelled by the process definitions.
+    """All standard SAP t-codes modelled across every shipped process.
 
-    This is the "known" set to compare observed transactions against (see
-    :func:`sap.custom_namespace.partition_transactions`): an observed t-code not
-    in here and in the customer namespace (``Z``/``Y``) is a custom process
-    Meridian didn't ship a signature for, and is surfaced rather than dropped.
+    Used as the "known" baseline for custom-namespace partitioning — any
+    transaction not in this set (e.g. a Z-prefixed variant) is treated as
+    customer-defined.
     """
-    tcodes: set[str] = set()
-    for proc in PROCESS_DEFINITIONS:
-        for l2 in proc.get("l2_processes", []):
-            for l3 in l2.get("l3_transactions", []):
-                tcode = l3.get("tcode")
-                if tcode:
-                    tcodes.add(str(tcode).strip().upper())
-    return tcodes
+    return {
+        l3["tcode"]
+        for proc in PROCESS_DEFINITIONS
+        for l2 in proc.get("l2_processes", [])
+        for l3 in l2.get("l3_transactions", [])
+        if l3.get("tcode")
+    }

@@ -955,29 +955,56 @@ export interface BusinessProcessL1 {
   l2_groups: BusinessProcessL2[];
 }
 
-// ── Migration mode ─────────────────────────────────────────────────────────
+// ── Migration mode ───────────────────────────────────────────────────────────
 
-export type MigrationRunStatus =
+export type MigrationMode = "source_to_source" | "source_to_destination";
+export type MigrationStatus =
   | "queued"
   | "running"
   | "analysed"
   | "exported"
   | "failed";
-export type ReadinessVerdict = "go" | "conditional" | "no-go";
+export type TransferVerdict = "go" | "conditional" | "no-go";
 
 export interface MigrationRun {
   id: string;
-  mode: "source_to_source" | "source_to_destination";
+  mode: MigrationMode;
   source_system_id: string;
   dest_system_id: string | null;
   modules: string[];
-  status: MigrationRunStatus;
-  readiness_verdict: ReadinessVerdict | null;
+  status: MigrationStatus;
+  readiness_verdict: TransferVerdict | null;
   readiness_score: number | null;
   critical_count: number;
-  task_id: string | null;
-  created_at: string | null;
+  created_at: string;
   completed_at: string | null;
+}
+
+export interface MigrationModuleSummary {
+  score: number;
+  status: TransferVerdict;
+  critical: number;
+  high: number;
+  medium: number;
+  low: number;
+  blocking: number;
+  records: number;
+  ready: number;
+  capped: boolean;
+  cap_reason: string | null;
+}
+
+export interface MigrationGapSummary {
+  status: TransferVerdict;
+  score: number;
+  critical_count: number;
+  blocking_count: number;
+  ungrounded_count: number;
+  by_module: Record<string, MigrationModuleSummary>;
+  blockers: string[];
+  conditions: string[];
+  mode?: string;
+  delegated_to?: string;
 }
 
 export interface MigrationGapFinding {
@@ -987,19 +1014,16 @@ export interface MigrationGapFinding {
   dest_table: string | null;
   field: string | null;
   gap_type: "field_mapping" | "target_mandatory" | "value_domain" | "type_mismatch";
-  severity: "critical" | "high" | "medium" | "low";
+  severity: Severity;
   detail: string | null;
   status_source: string | null;
   domain_provenance: string | null;
-  transfer_ready: boolean;
 }
 
-export interface MigrationRunDetail extends MigrationRun {
-  gap_summary: Record<string, unknown> | null;
-  error_detail: string | null;
-  findings: MigrationGapFinding[];
+export interface MigrationRunDetail {
+  run: MigrationRun & { gap_summary: MigrationGapSummary | null; error_detail: string | null };
   findings_total: number;
-  transfer_ready_count: number;
+  findings: MigrationGapFinding[];
 }
 
 export interface TransferFieldMapping {

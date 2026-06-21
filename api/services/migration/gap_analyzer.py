@@ -1,483 +1,296 @@
-"""Deterministic source→destination gap analyzer.
+"""Deterministic source→destination transfer gap analyzer.
 
-Pure Python. For one module: read the DESTINATION SAP system's own config +
-field rules (via :class:`SPROReader`) and decide, per source record, whether
-each cleaned source field is loadable into the destination. No LLM, no raw SAP
-values in any finding's ``reason``.
+Pure Python. Consumes already-extracted/cleaned source records and a *live*
+destination SPRO reader, and reports why each record/field cannot load into the
+destination. No LLM, no guessing: every required-field and domain decision is
+grounded in the destination's own dictionary / live customizing, with provenance
+stamped on each finding (see CLAUDE.md).
+
+Structural gaps (field mapping) are computed once per module — they apply to
+every record — while value gaps (mandatory-blank, domain, type) are per record.
 """
 
 from __future__ import annotations
 
 import hashlib
-from typing import Any, Optional
+import math
 
-from api.services.migration.models import (
+from sap.custom_namespace import is_custom_field
+from sap.data_dictionary import get_field_metadata, get_key_fields, get_valid_values
+from sap.field_status_inference import account_group_field_for
+from sap.spro_tables import SPRO_REGISTRY
+from api.services.spro_reader import SPROReader
+from agents.readiness import compute_readiness_status
+
+from .models import (
     DomainProvenance,
     GapFinding,
     GapSeverity,
     GapType,
     ModuleGapScore,
+    SEVERITY_WEIGHT,
     TransferGapResult,
-    VerdictStatus,
 )
-from api.services.migration.source_target_map import SourceTargetMap, TargetFieldRef
-from sap.custom_namespace import is_custom_field
-from sap.data_dictionary import get_field_metadata, get_valid_values
-from sap.field_status_inference import account_group_field_for
-from sap.spro_tables import SPRO_REGISTRY
+from .source_target_map import SourceTargetMap
 
-# Numeric/date SAP data types that a free-text string can clearly clash with.
-_NUMERIC_TYPES = {"NUMC", "DEC", "CURR", "QUAN", "INT", "INT1", "INT2", "INT4", "FLTP"}
-_DATE_TYPES = {"DATS"}
+_NUMERIC_TYPES = {
+    "NUMC", "DEC", "CURR", "QUAN", "INT1", "INT2", "INT4",
+    "FLTP", "DF16_DEC", "DF34_DEC",
+}
 
 
-def _is_blank(value: Any) -> bool:
-    """SAP-blank-aware. Mirrors ``field_status_inference._filled_mask`` exactly.
-
-    None / NaN / empty / whitespace-only are blank. Numeric ``0`` and ``"0"``
-    and ``"00000000"`` are NOT blank — we never guess field-specific sentinels.
-    """
-    # ponytail: replicates _filled_mask per-value to avoid a pd.Series per cell.
+def _is_blank(value) -> bool:
+    """SAP-blank-aware: None/NaN/empty/whitespace are blank; ``0``/``00000000`` are not."""
     if value is None:
         return True
-    if isinstance(value, float) and value != value:  # NaN
+    if isinstance(value, float) and math.isnan(value):
         return True
     return str(value).strip() == ""
 
 
-def _looks_numeric(value: Any) -> bool:
-    try:
-        float(str(value).strip())
-        return True
-    except (ValueError, TypeError):
-        return False
-
-
-def _looks_date(value: Any) -> bool:
-    s = str(value).strip()
-    # SAP DATS is YYYYMMDD; accept 8 digits or ISO-ish with separators.
-    digits = s.replace("-", "").replace("/", "").replace(".", "")
-    return digits.isdigit() and len(digits) == 8
+def _record_key(record: dict, dest_key_field: str | None, key_source_field: str | None) -> str:
+    """Stable per-record identifier — the source value of the dest key, else a hash."""
+    if key_source_field:
+        val = record.get(key_source_field)
+        if not _is_blank(val):
+            return str(val).strip()
+    items = sorted((str(k), str(v)) for k, v in record.items())
+    return "rec:" + hashlib.sha1(repr(items).encode("utf-8")).hexdigest()[:12]
 
 
 class TransferGapAnalyzer:
-    """Analyse source records against a live destination's config, per module."""
+    """Gap-analyse one module's source records against a live destination."""
 
-    def __init__(
-        self,
-        dest_system_type: str,
-        dest_connection_params: Optional[dict[str, Any]] = None,
-    ) -> None:
-        # Lazy import keeps the engine importable without the heavier reader deps.
-        from api.services.spro_reader import SPROReader
-
+    def __init__(self, dest_system_type: str, dest_connection_params: dict | None):
         self.dest_system_type = dest_system_type
-        self._reader = SPROReader(dest_system_type, dest_connection_params)
+        self.reader = SPROReader(dest_system_type, dest_connection_params)
 
-    # ------------------------------------------------------------------
+    # -- domain resolution -----------------------------------------------------
+
+    def _domain(self, module: str, dest_table: str, dest_field: str):
+        """Return (allowed_set | None, DomainProvenance | None) for a dest field."""
+        qualified = f"{dest_table}.{dest_field}"
+        governed = any(
+            qualified in entry.get("governs_fields", [])
+            for entry in SPRO_REGISTRY.get(module, [])
+        )
+        if governed:
+            vals = self.reader.get_valid_values(module, qualified)
+            if vals:
+                return {str(v).strip() for v in vals}, DomainProvenance.LIVE_SPRO
+            # governed but no rows read — cannot verify (never fabricate a pass)
+            return None, DomainProvenance.UNAVAILABLE
+        dv = get_valid_values(dest_table, dest_field)
+        if dv:
+            return {str(v).strip() for v in dv}, DomainProvenance.DICTIONARY
+        if is_custom_field(dest_field):
+            return None, DomainProvenance.CUSTOM
+        return None, None  # genuinely free-form — no domain finding
+
+    # -- main ------------------------------------------------------------------
 
     def analyze(
         self,
         module: str,
         source_records: list[dict],
         field_map: SourceTargetMap,
+        object_type: str | None = None,
+        record_keys: list[str] | None = None,
     ) -> TransferGapResult:
-        """Gap-analyse one module.
-
-        Args:
-            module: SPRO-registry module id (raises if unknown — no fabrication).
-            source_records: list of ``{"record_key": str|None, "data": {field: value}}``.
-            field_map: source→destination field map for this module.
-        """
         if module not in SPRO_REGISTRY:
             raise ValueError(
-                f"Module '{module}' is not in the SPRO registry — cannot analyse "
-                f"a destination with no known config. Available: "
+                f"Module '{module}' is not in the SPRO registry — cannot gap-analyse "
+                f"against the destination without confirmed config. Available: "
                 f"{', '.join(sorted(SPRO_REGISTRY.keys()))}"
             )
 
-        primary_table = field_map.primary_table(module)
-        ag_field = account_group_field_for(primary_table) if primary_table else None
-        governed = self._governed_fields(module)
+        object_type = object_type or module
+        # Warm/confirm the live destination config read (raises nothing; cached).
+        self.reader.read_config(module)
 
-        # Destination's allowed account-group domain (for the sweep).
-        ag_qualified = f"{primary_table}.{ag_field}" if (primary_table and ag_field) else None
-        ag_allowed: list[str] = (
-            self._reader.get_valid_values(module, ag_qualified) if ag_qualified else []
-        )
+        # Normalise record keys to upper-case once.
+        records = [{str(k).upper(): v for k, v in r.items()} for r in source_records]
+
+        primary_table = field_map.primary_table(module)
+        dest_key_field = (get_key_fields(primary_table)[0] if primary_table
+                          and get_key_fields(primary_table) else None)
+        ag_field = account_group_field_for(primary_table) if primary_table else None
+
+        # Reverse-map dest key / account-group fields back to their source field.
+        key_source_field = self._source_for_dest(module, field_map, dest_key_field, records)
+        ag_source_field = self._source_for_dest(module, field_map, ag_field, records)
 
         findings: list[GapFinding] = []
-        ready_by_record: dict[str, bool] = {}
-        seen_account_groups: set[str] = set()
-        n_fields_assessed = 0
-        object_type: Optional[str] = None
+        critical_fields: set[tuple] = set()
 
-        for rec in source_records:
-            data = rec.get("data") or {}
-            if object_type is None:
-                object_type = rec.get("object_type")
-            record_key = rec.get("record_key") or self._hash_key(data)
+        def emit(f: GapFinding):
+            findings.append(f)
+            if f.severity is GapSeverity.CRITICAL:
+                critical_fields.add((f.gap_type, f.dest_field, f.record_key))
 
-            account_group = self._resolve_account_group(
-                module, data, field_map, primary_table, ag_field
-            )
-            if account_group is not None and not _is_blank(account_group):
-                seen_account_groups.add(str(account_group))
+        # --- structural (schema-level, once) ---------------------------------
+        source_fields = sorted({k for r in records for k in r.keys()})
+        schema_blocking = False
+        for sfield in source_fields:
+            ref = field_map.resolve(module, sfield)
+            if ref is None:
+                # Unconfirmed field — steward hasn't decided. Custom Z/Y = low.
+                sev = GapSeverity.LOW if is_custom_field(sfield) else GapSeverity.MEDIUM
+                schema_blocking = schema_blocking or sev is not GapSeverity.LOW
+                emit(GapFinding(
+                    gap_type=GapType.FIELD_MAPPING, module=module, record_key="(all records)",
+                    object_type=object_type, severity=sev, source_field=sfield,
+                    reason=f"source field {sfield} is not mapped to a destination field",
+                ))
+                continue
+            if not ref.is_mapped:
+                continue  # explicit skip — steward left dest blank on purpose
+            # Mapped — does the destination field exist?
+            exists = get_field_metadata(ref.dest_table, ref.dest_field) is not None
+            if not exists and not is_custom_field(ref.dest_field):
+                schema_blocking = True
+                emit(GapFinding(
+                    gap_type=GapType.FIELD_MAPPING, module=module, record_key="(all records)",
+                    object_type=object_type, severity=GapSeverity.CRITICAL, source_field=sfield,
+                    dest_table=ref.dest_table, dest_field=ref.dest_field,
+                    reason=f"destination field {ref.dest_table}.{ref.dest_field} does not exist — load impossible",
+                ))
 
-            record_findings: list[GapFinding] = []
-            for source_field, value in data.items():
-                ref = field_map.resolve(module, source_field)
-                finding = self._assess_field(
-                    module=module,
-                    object_type=object_type,
-                    record_key=record_key,
-                    source_field=source_field,
-                    value=value,
-                    ref=ref,
-                    account_group=account_group,
-                    ag_field=ag_field,
-                    governed=governed,
+        # --- account-group sweep (schema-level, once per bad group) -----------
+        bad_groups: set[str] = set()
+        if ag_field and ag_source_field and primary_table:
+            allowed, prov = self._domain(module, primary_table, ag_field)
+            if allowed is not None:
+                seen = {str(r.get(ag_source_field)).strip() for r in records
+                        if not _is_blank(r.get(ag_source_field))}
+                for ag in sorted(seen):
+                    if ag not in allowed:
+                        bad_groups.add(ag)
+                        emit(GapFinding(
+                            gap_type=GapType.VALUE_DOMAIN, module=module,
+                            record_key=f"account_group={ag}", object_type=object_type,
+                            severity=GapSeverity.CRITICAL, dest_table=primary_table,
+                            dest_field=ag_field, domain_provenance=prov.value,
+                            reason=f"account group '{ag}' is not valid in the destination",
+                        ))
+
+        # --- per-record value gaps -------------------------------------------
+        ready_keys: list[str] = []
+        for i, r in enumerate(records):
+            rkey = (record_keys[i] if record_keys and i < len(record_keys)
+                    else _record_key(r, dest_key_field, key_source_field))
+            ag_val = (str(r.get(ag_source_field)).strip()
+                      if ag_source_field and not _is_blank(r.get(ag_source_field)) else None)
+            in_bad_group = ag_val in bad_groups
+            record_gaps = 0
+
+            for sfield, value in r.items():
+                ref = field_map.resolve(module, sfield)
+                if ref is None or not ref.is_mapped:
+                    continue
+                if get_field_metadata(ref.dest_table, ref.dest_field) is None and not is_custom_field(ref.dest_field):
+                    continue  # structural gap already reported at schema level
+                # skip the account-group field here — handled by the sweep
+                if ag_field and ref.dest_field and ref.dest_field.upper() == ag_field.upper():
+                    continue
+
+                # target_mandatory
+                res = self.reader.resolve_field_status_smart(
+                    ref.dest_table, ref.dest_field, account_group=ag_val, module=module,
                 )
-                if finding is not None:
-                    record_findings.append(finding)
-                if ref is not None and ref.is_mapped:
-                    n_fields_assessed += 1
+                if res is not None and res.is_required and _is_blank(value):
+                    record_gaps += 1
+                    emit(GapFinding(
+                        gap_type=GapType.TARGET_MANDATORY, module=module, record_key=rkey,
+                        object_type=object_type, severity=GapSeverity.CRITICAL,
+                        dest_table=ref.dest_table, dest_field=ref.dest_field,
+                        status_source=res.source.value, is_grounded=res.is_grounded,
+                        reason=f"{ref.dest_table}.{ref.dest_field} is required in the destination but the source value is blank",
+                    ))
+                    continue
 
-            findings.extend(record_findings)
-            # A record is transfer-ready when none of its findings are blocking.
-            ready_by_record[record_key] = not any(
-                f.severity_is_blocking for f in record_findings
-            )
+                if _is_blank(value):
+                    continue  # nothing more to check on a blank optional field
 
-        # Account-group sweep: any distinct source group absent from the
-        # destination's allowed domain blocks every record in it.
-        if ag_allowed:
-            for grp in sorted(seen_account_groups):
-                if grp not in ag_allowed:
-                    findings.append(
-                        GapFinding(
-                            gap_type=GapType.VALUE_DOMAIN,
-                            module=module,
-                            record_key=f"account_group:{grp}",
-                            source_field=ag_field or "account_group",
-                            severity=GapSeverity.CRITICAL,
-                            severity_is_blocking=True,
-                            reason=(
-                                f"Account group '{grp}' does not exist in the "
-                                f"destination's allowed groups — every record in it "
-                                f"will fail to load."
-                            ),
-                            object_type=object_type,
-                            target_ref=ag_qualified,
-                            dest_table=primary_table,
-                            domain_provenance=DomainProvenance.LIVE_SPRO,
-                            account_group=grp,
-                            is_grounded=True,
-                        )
-                    )
-                    # Mark every record in this group not transfer-ready.
-                    for rec in source_records:
-                        data = rec.get("data") or {}
-                        rk = rec.get("record_key") or self._hash_key(data)
-                        ag = self._resolve_account_group(
-                            module, data, field_map, primary_table, ag_field
-                        )
-                        if ag is not None and str(ag) == grp:
-                            ready_by_record[rk] = False
+                # value_domain
+                allowed, prov = self._domain(module, ref.dest_table, ref.dest_field)
+                if allowed is not None and str(value).strip() not in allowed:
+                    record_gaps += 1
+                    sev = GapSeverity.HIGH if prov is DomainProvenance.LIVE_SPRO else GapSeverity.MEDIUM
+                    emit(GapFinding(
+                        gap_type=GapType.VALUE_DOMAIN, module=module, record_key=rkey,
+                        object_type=object_type, severity=sev, dest_table=ref.dest_table,
+                        dest_field=ref.dest_field, domain_provenance=prov.value,
+                        reason=f"value '{str(value).strip()}' is not in the destination's allowed domain for {ref.dest_field}",
+                    ))
+                    continue
+                if allowed is None and prov is DomainProvenance.UNAVAILABLE:
+                    record_gaps += 1
+                    emit(GapFinding(
+                        gap_type=GapType.VALUE_DOMAIN, module=module, record_key=rkey,
+                        object_type=object_type, severity=GapSeverity.LOW, dest_table=ref.dest_table,
+                        dest_field=ref.dest_field, domain_provenance=prov.value, is_grounded=False,
+                        reason=f"{ref.dest_field} is governed but the destination returned no values — not verified",
+                    ))
 
-        score = self._score(module, findings, len(source_records), n_fields_assessed)
+                # type_mismatch (numeric only — no length/format guessing)
+                meta = get_field_metadata(ref.dest_table, ref.dest_field) or {}
+                if meta.get("data_type") in _NUMERIC_TYPES and any(c.isalpha() for c in str(value)):
+                    record_gaps += 1
+                    emit(GapFinding(
+                        gap_type=GapType.TYPE_MISMATCH, module=module, record_key=rkey,
+                        object_type=object_type, severity=GapSeverity.MEDIUM,
+                        dest_table=ref.dest_table, dest_field=ref.dest_field,
+                        reason=f"value '{str(value).strip()}' is not numeric but {ref.dest_field} is a numeric field",
+                    ))
+
+            if record_gaps == 0 and not in_bad_group and not schema_blocking:
+                ready_keys.append(rkey)
+
+        score = self._score(module, findings, len(records), field_map.mapped_field_count(module),
+                            len(critical_fields))
         return TransferGapResult(
-            module=module,
-            object_type=object_type,
-            findings=findings,
-            score=score,
-            transfer_ready_by_record=ready_by_record,
+            module=module, object_type=object_type, findings=findings,
+            module_score=score, ready_record_keys=ready_keys, total_records=len(records),
         )
 
-    # ------------------------------------------------------------------
-    # Per-field assessment
-    # ------------------------------------------------------------------
+    # -- helpers ---------------------------------------------------------------
 
-    def _assess_field(
-        self,
-        *,
-        module: str,
-        object_type: Optional[str],
-        record_key: str,
-        source_field: str,
-        value: Any,
-        ref: Optional[TargetFieldRef],
-        account_group: Optional[str],
-        ag_field: Optional[str],
-        governed: set[str],
-    ) -> Optional[GapFinding]:
-        # 4a. Unmapped → field will not be carried into the load file.
-        if ref is None or not ref.is_mapped:
-            sev = GapSeverity.LOW if is_custom_field(source_field) else GapSeverity.MEDIUM
-            return GapFinding(
-                gap_type=GapType.FIELD_MAPPING,
-                module=module,
-                record_key=record_key,
-                source_field=source_field,
-                severity=sev,
-                severity_is_blocking=False,
-                reason=f"Source field '{source_field}' is not mapped to a destination field.",
-                object_type=object_type,
-            )
-
-        dest_table = ref.dest_table.upper()
-        dest_field = ref.dest_field.upper()
-        qualified = f"{dest_table}.{dest_field}"
-        meta = get_field_metadata(dest_table, dest_field)
-
-        # 4b. Mapped to a field the destination does not have (and not custom) → load impossible.
-        if meta is None and not is_custom_field(dest_field):
-            return GapFinding(
-                gap_type=GapType.FIELD_MAPPING,
-                module=module,
-                record_key=record_key,
-                source_field=source_field,
-                severity=GapSeverity.CRITICAL,
-                severity_is_blocking=True,
-                reason=f"Mapped destination field '{qualified}' does not exist in the target.",
-                object_type=object_type,
-                target_ref=qualified,
-                dest_table=dest_table,
-            )
-
-        blank = _is_blank(value)
-
-        # 5. target_mandatory — destination requires it, source blank.
-        if blank:
-            resolution = self._reader.resolve_field_status_smart(
-                dest_table, dest_field, account_group=account_group, module=module
-            )
-            if resolution is not None and resolution.is_required:
-                return GapFinding(
-                    gap_type=GapType.TARGET_MANDATORY,
-                    module=module,
-                    record_key=record_key,
-                    source_field=source_field,
-                    severity=GapSeverity.CRITICAL,
-                    severity_is_blocking=True,
-                    reason=f"Destination requires '{qualified}' but the source value is blank.",
-                    object_type=object_type,
-                    target_ref=qualified,
-                    dest_table=dest_table,
-                    status_source=resolution.source.value,
-                    account_group=account_group,
-                    is_grounded=resolution.is_grounded,
-                )
-            return None  # blank + not required → nothing to flag
-
-        # The account-group field is handled by the sweep — don't double-flag it.
-        if ag_field and dest_field == ag_field.upper():
-            return self._type_mismatch(
-                module, object_type, record_key, source_field, value, meta, qualified, dest_table
-            )
-
-        # 6. value_domain (non-blank values only).
-        domain_finding = self._value_domain(
-            module=module,
-            object_type=object_type,
-            record_key=record_key,
-            source_field=source_field,
-            value=value,
-            dest_table=dest_table,
-            dest_field=dest_field,
-            qualified=qualified,
-            governed=governed,
-        )
-        if domain_finding is not None:
-            return domain_finding
-
-        # 7. type_mismatch — clear category clash only.
-        return self._type_mismatch(
-            module, object_type, record_key, source_field, value, meta, qualified, dest_table
-        )
-
-    def _value_domain(
-        self,
-        *,
-        module: str,
-        object_type: Optional[str],
-        record_key: str,
-        source_field: str,
-        value: Any,
-        dest_table: str,
-        dest_field: str,
-        qualified: str,
-        governed: set[str],
-    ) -> Optional[GapFinding]:
-        sval = str(value).strip()
-
-        if qualified in governed:
-            allowed = self._reader.get_valid_values(module, qualified)
-            if allowed:
-                if sval not in allowed:
-                    return GapFinding(
-                        gap_type=GapType.VALUE_DOMAIN,
-                        module=module,
-                        record_key=record_key,
-                        source_field=source_field,
-                        severity=GapSeverity.HIGH,
-                        severity_is_blocking=False,
-                        reason=f"Value not in the destination's live allowed set for '{qualified}'.",
-                        object_type=object_type,
-                        target_ref=qualified,
-                        dest_table=dest_table,
-                        domain_provenance=DomainProvenance.LIVE_SPRO,
-                        is_grounded=True,
-                    )
-                return None
-            # Governed but no rows came back — cannot verify, don't fabricate a pass.
-            return GapFinding(
-                gap_type=GapType.VALUE_DOMAIN,
-                module=module,
-                record_key=record_key,
-                source_field=source_field,
-                severity=GapSeverity.LOW,
-                severity_is_blocking=False,
-                reason=f"Destination domain for '{qualified}' is governed but returned no values — not verified.",
-                object_type=object_type,
-                target_ref=qualified,
-                dest_table=dest_table,
-                domain_provenance=DomainProvenance.UNAVAILABLE,
-                is_grounded=False,
-            )
-
-        # Not governed by SPRO → fall back to the data dictionary's enumeration.
-        dict_allowed = get_valid_values(dest_table, dest_field)
-        if dict_allowed is not None:
-            if sval not in [str(v) for v in dict_allowed]:
-                return GapFinding(
-                    gap_type=GapType.VALUE_DOMAIN,
-                    module=module,
-                    record_key=record_key,
-                    source_field=source_field,
-                    severity=GapSeverity.MEDIUM,
-                    severity_is_blocking=False,
-                    reason=f"Value not in the data-dictionary allowed set for '{qualified}'.",
-                    object_type=object_type,
-                    target_ref=qualified,
-                    dest_table=dest_table,
-                    domain_provenance=DomainProvenance.DICTIONARY,
-                    is_grounded=False,
-                )
+    def _source_for_dest(self, module, field_map, dest_field, records) -> str | None:
+        """Find the source field that maps to *dest_field* (upper-cased)."""
+        if not dest_field:
             return None
-
-        # Free-form field (dict valid_values None) or custom field — no domain to check.
+        target = dest_field.upper()
+        for r in records[:1] or [{}]:
+            for sfield in r.keys():
+                ref = field_map.resolve(module, sfield)
+                if ref and ref.dest_field and ref.dest_field.upper() == target:
+                    return sfield
+        # records may be empty or first record missing the field — scan the map
+        for sfield, ref in field_map._by_module.get(module, {}).items():
+            if ref.dest_field and ref.dest_field.upper() == target:
+                return sfield
         return None
 
-    def _type_mismatch(
-        self,
-        module: str,
-        object_type: Optional[str],
-        record_key: str,
-        source_field: str,
-        value: Any,
-        meta: Optional[dict],
-        qualified: str,
-        dest_table: str,
-    ) -> Optional[GapFinding]:
-        if meta is None:
-            return None
-        dtype = str(meta.get("data_type", "")).upper()
-        if dtype in _NUMERIC_TYPES and not _looks_numeric(value):
-            kind = "numeric"
-        elif dtype in _DATE_TYPES and not _looks_date(value):
-            kind = "date"
-        else:
-            return None
-        return GapFinding(
-            gap_type=GapType.TYPE_MISMATCH,
-            module=module,
-            record_key=record_key,
-            source_field=source_field,
-            severity=GapSeverity.HIGH,
-            severity_is_blocking=False,
-            reason=f"Source value is not a valid {kind} for destination '{qualified}' ({dtype}).",
-            object_type=object_type,
-            target_ref=qualified,
-            dest_table=dest_table,
-            is_grounded=True,
-        )
-
-    # ------------------------------------------------------------------
-    # Scoring (mirrors api/services/scoring.py caps + agents/readiness.py status)
-    # ------------------------------------------------------------------
-
-    def _score(
-        self, module: str, findings: list[GapFinding], n_records: int, n_fields: int
-    ) -> ModuleGapScore:
-        from agents.readiness import compute_readiness_status
-
-        counts = {s: 0 for s in GapSeverity}
-        for f in findings:
-            counts[f.severity] += 1
-        critical = counts[GapSeverity.CRITICAL]
-        high = counts[GapSeverity.HIGH]
-        medium = counts[GapSeverity.MEDIUM]
-        low = counts[GapSeverity.LOW]
-        blocking = sum(1 for f in findings if f.severity_is_blocking)
-
-        weighted_gap = 3 * critical + 2 * high + 1 * medium + 0.5 * low
+    def _score(self, module, findings, n_records, n_fields, critical_count) -> ModuleGapScore:
+        weighted = sum(SEVERITY_WEIGHT[f.severity] for f in findings)
         denom = max(n_records * max(n_fields, 1), 1)
-        raw = max(0.0, 100.0 - 100.0 * weighted_gap / denom)
+        raw = max(0.0, 100.0 - 100.0 * weighted / denom)
 
-        capped = False
-        cap_reason = None
-        if critical >= 2 and raw > 70:
-            raw, capped, cap_reason = 70.0, True, f"{critical} critical gaps — capped at 70"
-        elif critical == 1 and raw > 85:
+        capped, cap_reason = False, None
+        if critical_count >= 2 and raw > 70:
+            raw, capped, cap_reason = 70.0, True, f"{critical_count} critical gaps — capped at 70"
+        elif critical_count == 1 and raw > 85:
             raw, capped, cap_reason = 85.0, True, "1 critical gap — capped at 85"
 
-        status = VerdictStatus(compute_readiness_status(raw, critical))
+        sev = {s: 0 for s in GapSeverity}
+        for f in findings:
+            sev[f.severity] += 1
+
+        status = compute_readiness_status(raw, critical_count)
         return ModuleGapScore(
-            module=module,
-            score=round(raw, 2),
-            status=status,
-            n_records=n_records,
-            n_fields_assessed=n_fields,
-            blocking_count=blocking,
-            critical_count=critical,
-            high_count=high,
-            medium_count=medium,
-            low_count=low,
-            capped=capped,
-            cap_reason=cap_reason,
+            module=module, score=round(raw, 2), status=status, n_records=n_records,
+            n_fields_assessed=n_fields, blocking_count=len(findings), critical_count=critical_count,
+            high_count=sev[GapSeverity.HIGH], medium_count=sev[GapSeverity.MEDIUM],
+            low_count=sev[GapSeverity.LOW], capped=capped, cap_reason=cap_reason,
         )
-
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def _governed_fields(module: str) -> set[str]:
-        out: set[str] = set()
-        for entry in SPRO_REGISTRY.get(module, []):
-            for gf in entry.get("governs_fields", []):
-                out.add(gf.upper())
-        return out
-
-    @staticmethod
-    def _resolve_account_group(
-        module: str,
-        data: dict,
-        field_map: SourceTargetMap,
-        primary_table: Optional[str],
-        ag_field: Optional[str],
-    ) -> Optional[str]:
-        if not primary_table or not ag_field:
-            return None
-        target = f"{primary_table}.{ag_field}".upper()
-        for source_field, value in data.items():
-            ref = field_map.resolve(module, source_field)
-            if ref is not None and ref.is_mapped and ref.qualified and ref.qualified.upper() == target:
-                return None if _is_blank(value) else str(value)
-        return None
-
-    @staticmethod
-    def _hash_key(data: dict) -> str:
-        payload = "|".join(f"{k}={data[k]}" for k in sorted(data))
-        return "rec:" + hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]

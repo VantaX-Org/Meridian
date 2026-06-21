@@ -269,14 +269,12 @@ async def promote_master_record(
         raise HTTPException(status_code=409, detail="Cannot promote a superseded record")
 
     now = datetime.now(timezone.utc)
-    # Acting user from the auth proxy (x-user-id). promoted_by / changed_by are
-    # nullable UUID FKs to users.id — store the real promoter or NULL, never a
-    # fabricated id (which would dangle off the FK). Guard non-UUID header values.
-    raw_user = request.headers.get("x-user-id")
-    try:
-        user_id = str(uuid.UUID(raw_user)) if raw_user else None
-    except ValueError:
-        user_id = None
+    # Attribute the promotion to the authenticated user (golden-record audit
+    # trail must name the real approver, not a random UUID).
+    user_id = getattr(request.state, "local_user_id", None)
+    if not user_id:
+        raise HTTPException(status_code=403, detail="Authentication required")
+    user_id = str(user_id)
 
     # Check if AI was involved in any field
     source_contributions = row[3] or {}
@@ -422,12 +420,24 @@ async def writeback_master_record(
             detail="Only golden records can be written back — promote first"
         )
 
-    # Return the golden fields for the existing writeback flow to process
+    # SAP write-back is finding-driven by design: write_back_log.finding_id is
+    # NOT NULL and the 4-eyes BAPI flow (api/routes/writeback.py) executes the
+    # deterministic record_fixes attached to a finding. A golden record on its
+    # own carries no finding/sql_statement, so this endpoint does NOT write to
+    # SAP — it returns the golden field values and routes the steward to the
+    # supported path (apply the validated findings via 4-eyes write-back).
+    # ponytail: guidance, not a write. One-click golden-record write-back needs
+    # a nullable-finding write_back_log + golden-field BAPI mapping — tracked.
     return {
         "record_id": str(row[0]),
         "domain": row[3],
         "golden_fields": row[2] or {},
-        "message": "Use POST /api/v1/writeback with these fields to initiate 4-eyes write-back",
+        "writeback_supported": False,
+        "message": (
+            "Golden field values are ready. SAP write-back runs from validated "
+            "findings via the 4-eyes flow — open this record's findings and apply "
+            "the deterministic fixes to push changes to SAP."
+        ),
     }
 
 

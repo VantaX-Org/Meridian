@@ -300,10 +300,10 @@ rules:
       SU01 (ECC) or Fiori app F1603 (S/4HANA).
 
   - id: GRC013
-    field: USERID_GRC
+    field: GRACUSERROLE.USERID
     check_class: cross_field_check
-    fields: ['USERID_GRC']
-    condition: "~`USERID_GRC`.duplicated(keep=False)"
+    fields: ['GRACUSERROLE.USERID']
+    condition: "~`GRACUSERROLE.USERID`.duplicated(keep=False)"
     severity: high
     dimension: uniqueness
     message: Duplicate GRC user-role assignments detected — indicates access control inconsistency
@@ -314,7 +314,7 @@ rules:
       __blank__: "Review duplicate role assignments in GRC Access Control. Remove the duplicate assignment. Re-run SoD analysis for affected users."
 
   - id: GRC014
-    field: VALID_FROM_GRC
+    field: GRACUSERROLE.VALID_FROM
     check_class: freshness_check
     max_age_hours: 17520
     severity: medium
