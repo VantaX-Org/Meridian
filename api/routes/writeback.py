@@ -14,7 +14,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -84,6 +84,7 @@ def _mask_password(msg: str, password: str) -> str:
 @router.post("/writeback", response_model=WriteBackResponse)
 async def create_writeback(
     body: WriteBackRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
@@ -123,8 +124,9 @@ async def create_writeback(
             pending_approval_id=None,
         )
 
-    # Get requesting user (from tenant context for now)
-    requesting_user = f"tenant:{tenant_id}"
+    # Acting user identity from the auth proxy (x-user-id). Falls back to a
+    # tenant-scoped marker only in local/dev where no per-user header exists.
+    requesting_user = request.headers.get("x-user-id") or f"tenant:{tenant_id}"
 
     # Dry run: validate BAPIs can be called
     errors: list[str] = []
@@ -208,6 +210,7 @@ async def create_writeback(
 @router.post("/writeback/approve/{approval_id}", response_model=ApprovalResponse)
 async def approve_writeback(
     approval_id: str,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
@@ -231,8 +234,15 @@ async def approve_writeback(
     if record[2]:  # approved_by already set
         raise HTTPException(status_code=409, detail="Write-back already approved")
 
-    # 4-eyes: approving user must differ from requesting user
-    approving_user = f"tenant:{tenant_id}:approver"
+    # 4-eyes: a real, distinct approver identity is required. Without a per-user
+    # identity from the auth proxy the two-person rule cannot be enforced, so
+    # fail closed rather than rubber-stamp a live SAP write.
+    approving_user = request.headers.get("x-user-id")
+    if not approving_user:
+        raise HTTPException(
+            status_code=403,
+            detail="4-eyes: approver identity required",
+        )
     if approving_user == record[1]:
         raise HTTPException(
             status_code=403,
@@ -264,15 +274,45 @@ async def approve_writeback(
         errors.append("No deterministic fixes available")
     else:
         # Execute via SAP connector
+        import os
+
         from sap import get_connector
         from sap.base import SAPConnectionParams, SAPConnectorError, BAPICall
+        from api.services.credential_store import decrypt_password
 
+        # Resolve real connection params from the registered destination system.
+        # Never write to a live SAP system with placeholder creds — fail closed
+        # if the host isn't a registered on-prem RFC system with stored creds.
+        sys_row = (await db.execute(
+            text("""
+                SELECT id, client, sysnr, system_type
+                FROM sap_systems
+                WHERE tenant_id = :tid AND host = :host
+                  AND system_type IN ('ecc', 's4hana_onprem', 'ewm')
+                LIMIT 1
+            """),
+            {"tid": tenant_id, "host": record[4]},
+        )).fetchone()
+        if not sys_row:
+            raise HTTPException(
+                status_code=409,
+                detail="Write-back blocked: destination host is not a registered on-prem SAP system",
+            )
+        enc = (await db.execute(
+            text("SELECT encrypted_password FROM system_credentials WHERE system_id = :sid"),
+            {"sid": str(sys_row[0])},
+        )).scalar()
+        if not enc:
+            raise HTTPException(
+                status_code=409,
+                detail="Write-back blocked: no stored credentials for destination system",
+            )
         params = SAPConnectionParams(
-            host=record[4],   # sap_host from write_back_log
-            client="100",
-            sysnr="00",
-            user="WRITEBACK",
-            password="****",  # sourced from secure store — placeholder matches existing
+            host=record[4],
+            client=sys_row[1] or "100",
+            sysnr=sys_row[2] or "00",
+            user=os.getenv("SAP_RFC_USER", "RFC_USER"),
+            password=decrypt_password(tenant_id, enc),
         )
         try:
             with get_connector() as conn:

@@ -239,6 +239,7 @@ async def get_master_record(
 @router.post("/master-records/{record_id}/promote")
 async def promote_master_record(
     record_id: str,
+    request: Request,
     body: PromoteRequest = PromoteRequest(),
     role: str = Depends(require_permission("approve")),
     db: AsyncSession = Depends(get_db),
@@ -268,8 +269,14 @@ async def promote_master_record(
         raise HTTPException(status_code=409, detail="Cannot promote a superseded record")
 
     now = datetime.now(timezone.utc)
-    # Use a placeholder user ID — in production this comes from JWT
-    user_id = str(uuid.uuid4())
+    # Acting user from the auth proxy (x-user-id). promoted_by / changed_by are
+    # nullable UUID FKs to users.id — store the real promoter or NULL, never a
+    # fabricated id (which would dangle off the FK). Guard non-UUID header values.
+    raw_user = request.headers.get("x-user-id")
+    try:
+        user_id = str(uuid.UUID(raw_user)) if raw_user else None
+    except ValueError:
+        user_id = None
 
     # Check if AI was involved in any field
     source_contributions = row[3] or {}
