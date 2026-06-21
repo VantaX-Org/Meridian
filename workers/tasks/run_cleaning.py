@@ -95,6 +95,25 @@ def run_cleaning(self, version_id: str, tenant_id: str, object_type: str, parque
                     c['golden_record_id'] = None
                     c['golden_field_value'] = None
 
+            # Idempotency: a re-run of checks re-enqueues run_cleaning for the same
+            # version+object_type. Clear prior auto-detected rows first so we don't
+            # double-insert (ponytail: delete-before-insert, like run_migration.py;
+            # status filter preserves rows a steward has already progressed).
+            session.execute(
+                text(
+                    "DELETE FROM cleaning_queue WHERE tenant_id = :tid "
+                    "AND version_id = :vid AND object_type = :ot AND status = 'detected'"
+                ),
+                {"tid": tenant_id, "vid": version_id, "ot": object_type},
+            )
+            session.execute(
+                text(
+                    "DELETE FROM dedup_candidates WHERE tenant_id = :tid "
+                    "AND object_type = :ot AND status = 'pending'"
+                ),
+                {"tid": tenant_id, "ot": object_type},
+            )
+
             for c in candidates:
                 # Separate dedup candidates
                 if c.get("category") == "dedup" and c.get("merge_preview"):

@@ -1,9 +1,23 @@
 name = "vantax-portal"
-pages_build_output_dir = ".open-next/assets"
+main = ".open-next/worker.js"
 compatibility_date = "2024-12-01"
 compatibility_flags = ["nodejs_compat"]
 
+# Admin portal — apex hostname. wrangler provisions DNS + edge cert on deploy
+# (zone vantax.co.za on this account). The licence API lives on the sibling
+# host licence.meridian.vantax.co.za (licence-worker).
+[[routes]]
+pattern = "meridian.vantax.co.za"
+custom_domain = true
+
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
+
 [vars]
 NEXTJS_ENV = "production"
-NEXT_PUBLIC_LICENCE_WORKER_URL = "https://meridian-licence-worker.reshigan-085.workers.dev"
-NEXT_PUBLIC_CLOUDFLARE_PAGES_ANALYTICS_ENABLED = "false"
+# Server-side admin/licence calls go to the licence worker's custom domain.
+LICENCE_WORKER_URL = "https://licence.meridian.vantax.co.za"
+
+# Secret — set via: wrangler secret put LICENCE_ADMIN_SECRET
+# Must match the licence worker's LICENCE_ADMIN_SECRET (X-Admin-Secret header).

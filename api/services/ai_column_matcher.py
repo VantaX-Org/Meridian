@@ -316,14 +316,17 @@ def _llm_match_columns(
     module_name: str,
 ) -> list[dict]:
     """Call the LLM to map unmatched columns. Returns list of {source, target, confidence}."""
-    # Build sample data for unmatched columns only
+    # Build sample data for unmatched columns only. Values pass through
+    # sanitise_for_prompt so PII-mapped SAP fields are redacted before reaching
+    # the LLM (same boundary the other AI services enforce).
+    from api.utils.pii_fields import sanitise_for_prompt
     unmatched_indices = [i for i, h in enumerate(all_headers) if h in unmatched_headers]
     sample_data_lines = []
     for row in sample_rows[:3]:
         sample_vals = []
         for idx in unmatched_indices:
             if idx < len(row):
-                sample_vals.append(f"{all_headers[idx]}={row[idx]}")
+                sample_vals.append(f"{all_headers[idx]}={sanitise_for_prompt(all_headers[idx], row[idx])}")
         if sample_vals:
             sample_data_lines.append(", ".join(sample_vals))
 

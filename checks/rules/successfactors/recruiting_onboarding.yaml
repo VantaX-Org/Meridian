@@ -324,10 +324,10 @@ rules:
   record_fix_template: Record is missing ONBOARDINGCANDIDATEINFO.TASK_COMPLETION. Maintain via SuccessFactors Admin Center
     > Recruiting or Onboarding module.
 - id: REC019
-  field: CANDIDATE_ID
+  field: JOBAPPLICATION.CANDIDATE_ID
   check_class: cross_field_check
-  fields: ['CANDIDATE_ID']
-  condition: "~`CANDIDATE_ID`.duplicated(keep=False)"
+  fields: ['JOBAPPLICATION.CANDIDATE_ID']
+  condition: "~`JOBAPPLICATION.CANDIDATE_ID`.duplicated(keep=False)"
   severity: high
   dimension: uniqueness
   message: Duplicate candidate records detected — same candidate appears multiple times

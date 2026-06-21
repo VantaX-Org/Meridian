@@ -107,9 +107,11 @@ def test_ai_rules_page_approve_confirmation():
 # ── O.4 Team settings — ai_reviewer role ────────────────────────────────────
 
 
+# RBAC role administration moved from /settings to /admin (settings is now an
+# index page that delegates user management to /admin).
 def test_settings_has_ai_reviewer_role():
-    """Settings page includes ai_reviewer in ROLE_OPTIONS."""
-    path = Path("frontend/app/(dashboard)/settings/page.tsx")
+    """Admin page includes ai_reviewer in the invitable roles."""
+    path = Path("frontend/app/(dashboard)/admin/page.tsx")
     content = path.read_text(encoding="utf-8")
     assert "ai_reviewer" in content
     assert "AI Reviewer" in content
@@ -117,21 +119,21 @@ def test_settings_has_ai_reviewer_role():
 
 def test_settings_ai_reviewer_purple_badge():
     """ai_reviewer role uses purple badge colour."""
-    path = Path("frontend/app/(dashboard)/settings/page.tsx")
+    path = Path("frontend/app/(dashboard)/admin/page.tsx")
     content = path.read_text(encoding="utf-8")
-    assert "bg-[#7C3AED]/10 text-[#7C3AED]" in content
+    assert "#7C3AED" in content
 
 
 def test_settings_ai_reviewer_tooltip():
     """ai_reviewer has descriptive tooltip."""
-    path = Path("frontend/app/(dashboard)/settings/page.tsx")
+    path = Path("frontend/app/(dashboard)/admin/page.tsx")
     content = path.read_text(encoding="utf-8")
     assert "approve proposed rules" in content
 
 
 def test_settings_permissions_table_has_ai_review_column():
-    """Role permissions table includes AI Review column."""
-    path = Path("frontend/app/(dashboard)/settings/page.tsx")
+    """Role capabilities table includes AI Review column."""
+    path = Path("frontend/app/(dashboard)/admin/page.tsx")
     content = path.read_text(encoding="utf-8")
     assert "AI Review" in content
 

@@ -1,3 +1,4 @@
+import base64
 import hashlib
 import hmac as hmac_mod
 import json
@@ -359,6 +360,103 @@ def _do_sync_manifest(rules: list, field_mappings: list) -> None:
         logger.warning(f"Failed to sync manifest to DB: {e}")
 
 
+# ── Response signature verification (anti-self-grant) ─────────────────────────
+# The worker RSA-signs every valid licence response. A customer holding the image
+# could otherwise MITM their own licence check and forge `valid:true`; an HMAC
+# wouldn't stop them (they'd hold the secret), so the worker signs with a private
+# key and we verify with the PUBLIC key here. Enforcement is OFF until
+# LICENCE_SERVER_PUBLIC_KEY is set — lets the worker deploy first, then the
+# operator flips enforcement on with no forced lockout (safe rollout).
+
+# 7 days — matches the worker's expiry grace window. Bounds replay of a captured
+# response to this window; after it, the stale signature is rejected.
+LICENCE_SIGNATURE_MAX_AGE = int(
+    os.getenv("LICENCE_SIGNATURE_MAX_AGE_SECONDS", str(7 * 24 * 60 * 60))
+)
+
+
+def _entitlement_canonical(result: dict, signed_at) -> bytes:
+    """Byte-identical twin of the worker's `entitlementCanonical` (index.ts).
+
+    Fixed field list + "\\n" join (not JSON) so JS and Python cannot diverge on
+    key order or escaping. Covers the entitlement fields that gate access.
+    """
+    features = result.get("features") or {}
+    if isinstance(features, dict):
+        feat_keys = sorted(k for k, v in features.items() if v)
+    else:
+        feat_keys = sorted(features)
+    parts = [
+        "meridian-licence-v1",
+        "1",  # valid
+        result.get("tenant_id") or "",
+        result.get("expiry_date") or "",
+        ",".join(sorted(result.get("enabled_modules") or [])),
+        ",".join(sorted(result.get("enabled_menu_items") or [])),
+        ",".join(feat_keys),
+        result.get("machine_fingerprint") or "",
+        str(signed_at),
+    ]
+    return "\n".join(parts).encode()
+
+
+def _licence_public_key():
+    pem = os.getenv("LICENCE_SERVER_PUBLIC_KEY")
+    if not pem:
+        return None
+    from cryptography.hazmat.primitives.serialization import load_pem_public_key
+
+    return load_pem_public_key(pem.encode())
+
+
+def _verify_response_signature(result: dict) -> bool:
+    """True if the response is authentic OR enforcement is disabled.
+
+    Disabled (no LICENCE_SERVER_PUBLIC_KEY) → True (rollout passthrough). Enabled
+    → the response MUST carry a fresh RSA signature over its entitlement fields,
+    bound to this node's fingerprint; otherwise False (reject the grant).
+    """
+    pub = _licence_public_key()
+    if pub is None:
+        return True  # enforcement not enabled yet — worker-first rollout
+
+    sig_b64 = result.get("signature")
+    signed_at = result.get("signed_at")
+    if not sig_b64 or signed_at is None:
+        logger.error("Licence response unsigned but signature enforcement is on — rejecting")
+        return False
+
+    try:
+        if abs(time.time() - float(signed_at)) > LICENCE_SIGNATURE_MAX_AGE:
+            logger.error("Licence response signature stale — rejecting")
+            return False
+    except (TypeError, ValueError):
+        return False
+
+    # Node binding: a response captured for another node carries that node's
+    # fingerprint and will not match ours.
+    echoed_fp = result.get("machine_fingerprint") or ""
+    if echoed_fp and echoed_fp != _get_machine_fingerprint():
+        logger.error("Licence response fingerprint mismatch — rejecting")
+        return False
+
+    from cryptography.exceptions import InvalidSignature
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.asymmetric import padding
+
+    try:
+        pub.verify(
+            base64.b64decode(sig_b64),
+            _entitlement_canonical(result, signed_at),
+            padding.PKCS1v15(),
+            hashes.SHA256(),
+        )
+        return True
+    except (InvalidSignature, ValueError, TypeError) as e:
+        logger.error(f"Licence response signature invalid — rejecting: {type(e).__name__}")
+        return False
+
+
 async def _validate_licence() -> dict | None:
     """Call the licence server or read offline file. Returns the response dict or None on failure."""
     global _last_checked_at
@@ -391,6 +489,10 @@ async def _validate_licence() -> dict | None:
             result = resp.json()
             # Connection successful — clear degraded state
             _mark_cloudflare_healthy()
+            # Anti-self-grant: when a public key is configured, a forged or
+            # replayed `valid:true` is rejected here before it can entitle anything.
+            if result.get("valid") and not _verify_response_signature(result):
+                return {"valid": False, "reason": "signature_invalid"}
             return result
     except Exception as e:
         logger.warning(f"Licence server unreachable: {e}")

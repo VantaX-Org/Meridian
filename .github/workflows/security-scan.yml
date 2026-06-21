@@ -86,11 +86,19 @@ jobs:
           node-version: "20"
       - name: Audit ${{ matrix.dir }}
         working-directory: ${{ matrix.dir }}
-        # --audit-level=high fails the step on high or critical
-        # findings only — moderate / low are reported but don't block.
+        # --audit-level=high fails the step on high or critical findings only
+        # — moderate / low are reported but don't block.
+        # --omit=dev gates on what actually ships: runtime dependencies. The
+        # Cloudflare workers bundle only their src (dependencies: {}), so their
+        # devDependency CVEs (vitest/vite/ws/esbuild test tooling) never reach
+        # production; frontend's runtime deps (incl. xlsx) are still fully
+        # audited. Run a full audit too, advisory-only, so dev-tooling CVEs stay
+        # visible without blocking the gate.
         run: |
           if [ -f package-lock.json ]; then
-            npm audit --audit-level=high
+            npm audit --audit-level=high --omit=dev
+            echo "--- full audit (advisory, incl. devDependencies) ---"
+            npm audit || true
           else
             echo "no package-lock.json — skip"
           fi

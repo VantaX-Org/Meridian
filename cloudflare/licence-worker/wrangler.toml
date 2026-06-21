@@ -12,6 +12,13 @@ binding = "DB"
 database_name = "meridian-licence"
 database_id = "a71c8296-6bb7-454b-a2bf-818d69b76bef"
 
+# Custom domain — the hostname clients validate against
+# (api/config.py licence_server_url default). wrangler provisions the DNS record
+# + edge cert on deploy (zone vantax.co.za must be on this account).
+[[routes]]
+pattern = "licence.meridian.vantax.co.za"
+custom_domain = true
+
 [vars]
 ENVIRONMENT = "production"
 

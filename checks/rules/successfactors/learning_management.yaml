@@ -309,10 +309,10 @@ rules:
       (value: {actual_value}). Convert to YYYY-MM-DD.
 
   - id: LMS013
-    field: USERID_LMS
+    field: LEARNINGASSIGNMENT.USERID
     check_class: cross_field_check
-    fields: ['USERID_LMS']
-    condition: "~`USERID_LMS`.duplicated(keep=False)"
+    fields: ['LEARNINGASSIGNMENT.USERID']
+    condition: "~`LEARNINGASSIGNMENT.USERID`.duplicated(keep=False)"
     severity: high
     dimension: uniqueness
     message: Duplicate learning assignment records per employee — same course assigned multiple times
@@ -323,7 +323,7 @@ rules:
       __blank__: "Review duplicate assignments in Learning > Admin > Assignment Rules. Remove the duplicate assignment. Verify completion status on the surviving record."
 
   - id: LMS014
-    field: DUE_DATE
+    field: LEARNINGASSIGNMENT.DUE_DATE
     check_class: freshness_check
     max_age_hours: 0
     severity: high

@@ -9,7 +9,9 @@
  * Auth:
  *   POST /api/admin/login                 — email + password → JWT
  *
- * Admin endpoints (require Authorization: Bearer <jwt>):
+ * Admin endpoints (require Authorization: Bearer <jwt>, OR the
+ * X-Admin-Secret header matching LICENCE_ADMIN_SECRET for server-to-server
+ * calls from the HQ portal):
  *   GET    /api/admin/analytics
  *   GET    /api/admin/tenants
  *   POST   /api/admin/tenants
@@ -50,6 +52,11 @@ interface Env {
   ADMIN_PASSWORD_HASH: string;
   /** HMAC-SHA-256 signing secret for admin JWTs — set via wrangler secret put JWT_SECRET */
   JWT_SECRET: string;
+  /** Shared secret for server-to-server admin calls from the HQ portal
+   * (itself behind Cloudflare Access OTP), sent as the X-Admin-Secret
+   * header. Set via wrangler secret put LICENCE_ADMIN_SECRET; must match
+   * the portal's LICENCE_ADMIN_SECRET. */
+  LICENCE_ADMIN_SECRET?: string;
   /** RSA-PKCS8 private key PEM for offline JWT signing (set as Worker secret) */
   OFFLINE_JWT_PRIVATE_KEY?: string;
   /** Comma-separated list of allowed CORS origins. Falls back to `*`
@@ -432,11 +439,38 @@ async function verifyJwt(
 type AuthOk = { ok: true; payload: Record<string, unknown> };
 type AuthFail = { ok: false; response: Response };
 
+// Constant-time string compare — avoids leaking the admin secret via
+// response timing. Length mismatch returns false immediately (length is
+// not itself secret).
+function timingSafeEqualStr(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
+}
+
 async function requireAuth(
   request: Request,
   env: Env,
   allowedRoles: string[] = ["admin"]
 ): Promise<AuthOk | AuthFail> {
+  // Server-to-server: the HQ portal (gated by Cloudflare Access OTP at the
+  // edge) authenticates to admin endpoints with the shared
+  // LICENCE_ADMIN_SECRET rather than a per-user JWT. A constant-time match
+  // grants full admin. On mismatch we fall through to the JWT path so a
+  // stray header never locks out a valid Bearer caller.
+  const adminSecret = request.headers.get("X-Admin-Secret");
+  if (
+    adminSecret &&
+    env.LICENCE_ADMIN_SECRET &&
+    allowedRoles.includes("admin") &&
+    timingSafeEqualStr(adminSecret, env.LICENCE_ADMIN_SECRET)
+  ) {
+    return { ok: true, payload: { sub: "hq-portal", role: "admin", via: "admin_secret" } };
+  }
+
   const authHeader = request.headers.get("Authorization");
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return { ok: false, response: json({ error: "unauthorized", message: "Missing or invalid Authorization header" }, 401) };
@@ -874,6 +908,86 @@ async function handleGenerateOfflineToken(
   return json({ token: `${signingInput}.${sig}`, expiresAt, expiryDays });
 }
 
+// ─── Response signing (anti-self-grant) ───────────────────────────────────────
+// A customer who holds the image can MITM their own licence check; an HMAC with
+// a shared secret in the image would not stop them (they hold the secret). Only
+// an asymmetric signature — private key here in Cloudflare, public key in the
+// client env — prevents a self-granted `valid:true`. We reuse the existing
+// OFFLINE_JWT_PRIVATE_KEY (RSASSA-PKCS1-v1_5 / SHA-256). Clients verify ONLY when
+// LICENCE_SERVER_PUBLIC_KEY is configured, so the worker deploys first and the
+// operator flips enforcement on afterwards — no forced lockout.
+
+// Canonical entitlement string — MUST be byte-identical to the Python client's
+// `_entitlement_canonical` in api/middleware/licence.py. Fixed field list and a
+// "\n" join (not JSON) so the two languages cannot diverge on key order or
+// whitespace/escaping. Covers the entitlement fields that gate access; rules and
+// field_mappings are data sync, not entitlement, so tampering them grants nothing.
+function entitlementCanonical(f: {
+  tenant_id: string;
+  expiry_date: string;
+  enabled_modules: string[];
+  enabled_menu_items: string[];
+  features: Record<string, unknown>;
+  machine_fingerprint: string;
+  signed_at: number;
+}): string {
+  const featKeys = Object.keys(f.features)
+    .filter((k) => !!f.features[k])
+    .sort();
+  return [
+    "meridian-licence-v1",
+    "1", // valid
+    f.tenant_id,
+    f.expiry_date,
+    [...f.enabled_modules].sort().join(","),
+    [...f.enabled_menu_items].sort().join(","),
+    featKeys.join(","),
+    f.machine_fingerprint || "",
+    String(f.signed_at),
+  ].join("\n");
+}
+
+// Returns standard (padded) base64 signature, or null when no signing key is set
+// (older deployments / not-yet-configured — client treats unsigned as legacy).
+async function signEntitlement(env: Env, canonical: string): Promise<string | null> {
+  if (!env.OFFLINE_JWT_PRIVATE_KEY) return null;
+  const pemBody = env.OFFLINE_JWT_PRIVATE_KEY.trim()
+    .replace(/-----BEGIN PRIVATE KEY-----/, "")
+    .replace(/-----END PRIVATE KEY-----/, "")
+    .replace(/\s/g, "");
+  const keyDer = Uint8Array.from(atob(pemBody), (c) => c.charCodeAt(0));
+  const cryptoKey = await crypto.subtle.importKey(
+    "pkcs8",
+    keyDer.buffer,
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const sigBuf = await crypto.subtle.sign(
+    "RSASSA-PKCS1-v1_5",
+    cryptoKey,
+    new TextEncoder().encode(canonical)
+  );
+  return btoa(String.fromCharCode(...new Uint8Array(sigBuf)));
+}
+
+// Soft node-lock: the client fingerprint is sha256(hostname + MAC), which CHANGES
+// on every Docker container restart/reschedule, so a hard lock would lock out
+// legitimate customers. Instead we record each distinct fingerprint per tenant
+// and surface concurrent ones to admin as a licence-sharing SIGNAL — never reject.
+// Best-effort: a failure here (e.g. table missing pre-migration) must never break
+// validation, so the caller wraps this in try/catch.
+async function trackNode(env: Env, tenantId: string, fingerprint: string): Promise<void> {
+  await env.DB.prepare(
+    `INSERT INTO licence_nodes (tenant_id, fingerprint, first_seen, last_seen, ping_count)
+     VALUES (?, ?, ?, ?, 1)
+     ON CONFLICT(tenant_id, fingerprint)
+     DO UPDATE SET last_seen = excluded.last_seen, ping_count = ping_count + 1`
+  )
+    .bind(tenantId, fingerprint, nowIso(), nowIso())
+    .run();
+}
+
 // ─── Licence Validation ───────────────────────────────────────────────────────
 
 async function handleValidate(request: Request, env: Env): Promise<Response> {
@@ -932,6 +1046,16 @@ async function handleValidate(request: Request, env: Env): Promise<Response> {
     .bind(nowIso(), machineFingerprint || null, nowIso(), row.id)
     .run();
 
+  // Soft node-lock — record the fingerprint for admin sharing-detection. Never
+  // fatal: a failure here must not break a valid licence check.
+  if (machineFingerprint) {
+    try {
+      await trackNode(env, row.id, machineFingerprint);
+    } catch (e) {
+      console.warn("node tracking failed (non-fatal):", e);
+    }
+  }
+
   const enabledModules = JSON.parse(row.enabled_modules || "[]") as string[];
   let rules: ReturnType<typeof parseRule>[] = [];
   if (enabledModules.length > 0) {
@@ -950,6 +1074,27 @@ async function handleValidate(request: Request, env: Env): Promise<Response> {
     .bind(row.id)
     .all<FieldMappingRow>();
 
+  const enabledMenuItems = JSON.parse(row.enabled_menu_items || "[]") as string[];
+  const features = JSON.parse(row.features || "{}") as TenantFeatures;
+
+  // Sign the entitlement so a customer cannot forge `valid:true` by MITMing
+  // their own licence check. signed_at is covered by the signature (freshness)
+  // and machine_fingerprint binds the grant to the requesting node.
+  const signedAt = Math.floor(Date.now() / 1000);
+  const fingerprint = machineFingerprint || "";
+  const signature = await signEntitlement(
+    env,
+    entitlementCanonical({
+      tenant_id: row.id,
+      expiry_date: row.expiry_date,
+      enabled_modules: enabledModules,
+      enabled_menu_items: enabledMenuItems,
+      features: features as Record<string, unknown>,
+      machine_fingerprint: fingerprint,
+      signed_at: signedAt,
+    })
+  );
+
   return json({
     valid: true,
     tenant_id: row.id,
@@ -959,11 +1104,16 @@ async function handleValidate(request: Request, env: Env): Promise<Response> {
     expiry_date: row.expiry_date,
     days_remaining: daysRemaining(row.expiry_date),
     enabled_modules: enabledModules,
-    enabled_menu_items: JSON.parse(row.enabled_menu_items || "[]") as string[],
-    features: JSON.parse(row.features || "{}") as TenantFeatures,
+    enabled_menu_items: enabledMenuItems,
+    features,
     rules,
     field_mappings: (mappingsResult.results || []).map(parseFieldMapping),
     llm_config: JSON.parse(row.llm_config || "{}") as LlmConfig,
+    // Anti-self-grant signature (verified by clients that set LICENCE_SERVER_PUBLIC_KEY).
+    signature,
+    signed_at: signedAt,
+    machine_fingerprint: fingerprint,
+    signature_alg: "RS256-canonical-v1",
   });
 }
 
@@ -1080,12 +1230,33 @@ async function handleAdminAnalytics(request: Request, env: Env): Promise<Respons
     "SELECT id, company_name, last_ping, status FROM tenants WHERE last_ping IS NOT NULL ORDER BY last_ping DESC LIMIT 10"
   ).all<{ id: string; company_name: string; last_ping: string; status: string }>();
 
+  // Soft node-lock signal: tenants seen on >1 distinct fingerprint in the last
+  // 24h — a possible shared/duplicated licence. Informational only, never blocks.
+  // Wrapped so a pre-migration missing table can't 500 the analytics page.
+  let concurrentNodes: Array<{ id: string; company_name: string; node_count: number }> = [];
+  try {
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const sharingResult = await env.DB.prepare(
+      `SELECT n.tenant_id AS id, t.company_name AS company_name, COUNT(*) AS node_count
+       FROM licence_nodes n JOIN tenants t ON t.id = n.tenant_id
+       WHERE n.last_seen >= ?
+       GROUP BY n.tenant_id HAVING COUNT(*) > 1
+       ORDER BY node_count DESC LIMIT 10`
+    )
+      .bind(since)
+      .all<{ id: string; company_name: string; node_count: number }>();
+    concurrentNodes = sharingResult.results || [];
+  } catch (e) {
+    console.warn("concurrent-node query failed (non-fatal):", e);
+  }
+
   return json({
     total,
     by_status: byStatus,
     by_tier: byTier,
     expiring_soon: expiringResult.results || [],
     recent_activity: recentPingsResult.results || [],
+    concurrent_nodes: concurrentNodes,
   });
 }
 

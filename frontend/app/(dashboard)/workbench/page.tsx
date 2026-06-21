@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   PageHead,
@@ -19,9 +19,17 @@ import {
   getQueueItems,
   getMetrics,
   resolveItem,
+  submitAiFeedback,
 } from "@/lib/api/stewardship";
 import { copyToClipboard } from "@/components/meridian/actions";
 import { ConfirmDialog } from "@/components/meridian/controls";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { relativeTime } from "@/lib/format";
 import type { StewardshipQueueItem } from "@/types/api";
 
@@ -59,6 +67,8 @@ export default function WorkbenchPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<"sla" | "priority" | "age">("sla");
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [overrideOpen, setOverrideOpen] = useState(false);
+  const [overrideReason, setOverrideReason] = useState("");
 
   const queueQ = useQuery({
     queryKey: ["stewardship.queue", { status: "open", limit: 200 }],
@@ -77,6 +87,29 @@ export default function WorkbenchPage() {
       qc.invalidateQueries({ queryKey: ["stewardship.queue"] });
     },
     onError: () => toast.error("Could not resolve task"),
+  });
+
+  // Rejecting an AI recommendation captures a correction reason — this both
+  // records the rejection and feeds the AI-feedback loop that proposes new
+  // match rules (see /ai/rules). Reject without context teaches the engine
+  // nothing, so the reason is required.
+  const override = useMutation({
+    mutationFn: async ({ item, reason }: { item: StewardshipQueueItem; reason: string }) => {
+      await resolveItem(item.id, "reject", reason);
+      await submitAiFeedback({
+        queue_item_id: item.id,
+        steward_decision: "reject",
+        correction_reason: reason,
+        domain: item.domain,
+      });
+    },
+    onSuccess: () => {
+      toast.success("Rejected — correction sent to the rule engine");
+      qc.invalidateQueries({ queryKey: ["stewardship.queue"] });
+      setOverrideOpen(false);
+      setOverrideReason("");
+    },
+    onError: () => toast.error("Could not reject task"),
   });
 
   const escalate = useMutation({
@@ -109,6 +142,40 @@ export default function WorkbenchPage() {
     }
     return arr;
   }, [rawItems, sortMode]);
+
+  // Steward keyboard shortcuts on the focused task: A approve · R reject
+  // (opens the correction-reason override) · N next · E escalate. Ignored
+  // while typing in a field or when a dialog is open.
+  const focused = items.find((t) => t.id === activeId) ?? items[0];
+  const onKey = useCallback(
+    (ev: KeyboardEvent) => {
+      if (overrideOpen || bulkOpen) return;
+      const el = ev.target as HTMLElement | null;
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
+      if (!focused) return;
+      const k = ev.key;
+      if (k === "a" || k === "A") {
+        resolve.mutate({ id: focused.id, action: "approve" });
+      } else if (k === "r" || k === "R") {
+        setOverrideReason("");
+        setOverrideOpen(true);
+      } else if (k === "e" || k === "E") {
+        escalate.mutate(focused.id);
+      } else if (k === "n" || k === "N") {
+        const idx = items.findIndex((t) => t.id === focused.id);
+        const next = items[(idx + 1) % items.length];
+        if (next) setActiveId(next.id);
+      } else {
+        return;
+      }
+      ev.preventDefault();
+    },
+    [focused, items, overrideOpen, bulkOpen, resolve, escalate],
+  );
+  useEffect(() => {
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onKey]);
 
   if (queueQ.isLoading || metricsQ.isLoading) {
     return (
@@ -188,6 +255,46 @@ export default function WorkbenchPage() {
         }
         onConfirm={() => bulk.mutate(items.slice(0, 25).map((t) => t.id))}
       />
+
+      {/* Reject with reason — overrides the AI recommendation and feeds the
+          correction back into the rule-proposal engine. */}
+      <Dialog open={overrideOpen} onOpenChange={(o) => !o && setOverrideOpen(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject with reason</DialogTitle>
+          </DialogHeader>
+          <div style={{ padding: "8px 0" }}>
+            <label
+              htmlFor="correction-reason"
+              style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--mn-ink-700)", marginBottom: 6 }}
+            >
+              Correction reason
+            </label>
+            <textarea
+              id="correction-reason"
+              className="mn-input"
+              style={{ width: "100%", minHeight: 96, resize: "vertical" }}
+              placeholder="Why is the recommendation wrong? This trains the match-rule engine."
+              value={overrideReason}
+              onChange={(e) => setOverrideReason(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <button type="button" className="mn-btn mn-btn-ghost" onClick={() => setOverrideOpen(false)}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="mn-btn mn-btn-primary"
+              disabled={!overrideReason.trim() || override.isPending || !selected}
+              onClick={() => selected && override.mutate({ item: selected, reason: overrideReason.trim() })}
+            >
+              {override.isPending ? "Rejecting…" : "Reject & correct"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="mn-row mn-stagger" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))", marginBottom: 18 }}>
         <KPI label="Assigned" value={assignedToMe} hint={`${items.length - assignedToMe} unassigned`} tone="warn" />
@@ -310,8 +417,11 @@ export default function WorkbenchPage() {
                 <button
                   type="button"
                   className="mn-btn mn-btn-ghost"
-                  onClick={() => resolve.mutate({ id: selected.id, action: "reject" })}
-                  disabled={resolve.isPending}
+                  onClick={() => {
+                    setOverrideReason("");
+                    setOverrideOpen(true);
+                  }}
+                  disabled={resolve.isPending || override.isPending}
                 >
                   Reject
                 </button>

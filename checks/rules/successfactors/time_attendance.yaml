@@ -285,10 +285,10 @@ rules:
       Correct via Admin Center > Time Management.
 
   - id: TIME013
-    field: USERID_TIME
+    field: TIMESHEET.USERID
     check_class: cross_field_check
-    fields: ['USERID_TIME']
-    condition: "~`USERID_TIME`.duplicated(keep=False)"
+    fields: ['TIMESHEET.USERID']
+    condition: "~`TIMESHEET.USERID`.duplicated(keep=False)"
     severity: high
     dimension: uniqueness
     message: Duplicate time records per employee per period — indicates time recording error
@@ -299,7 +299,7 @@ rules:
       __blank__: "Review duplicate time records in Time Management > Admin. Delete the duplicate entry. Verify the correct time record feeds to payroll."
 
   - id: TIME014
-    field: USERID_TIME
+    field: TIMESHEET.DATE
     check_class: freshness_check
     max_age_hours: 2190
     severity: medium
