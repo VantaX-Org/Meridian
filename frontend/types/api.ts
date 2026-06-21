@@ -954,3 +954,62 @@ export interface BusinessProcessL1 {
   system: string;
   l2_groups: BusinessProcessL2[];
 }
+
+// ── Migration mode ─────────────────────────────────────────────────────────
+
+export type MigrationRunStatus =
+  | "queued"
+  | "running"
+  | "analysed"
+  | "exported"
+  | "failed";
+export type ReadinessVerdict = "go" | "conditional" | "no-go";
+
+export interface MigrationRun {
+  id: string;
+  mode: "source_to_source" | "source_to_destination";
+  source_system_id: string;
+  dest_system_id: string | null;
+  modules: string[];
+  status: MigrationRunStatus;
+  readiness_verdict: ReadinessVerdict | null;
+  readiness_score: number | null;
+  critical_count: number;
+  task_id: string | null;
+  created_at: string | null;
+  completed_at: string | null;
+}
+
+export interface MigrationGapFinding {
+  module: string;
+  object_type: string | null;
+  record_key: string | null;
+  dest_table: string | null;
+  field: string | null;
+  gap_type: "field_mapping" | "target_mandatory" | "value_domain" | "type_mismatch";
+  severity: "critical" | "high" | "medium" | "low";
+  detail: string | null;
+  status_source: string | null;
+  domain_provenance: string | null;
+  transfer_ready: boolean;
+}
+
+export interface MigrationRunDetail extends MigrationRun {
+  gap_summary: Record<string, unknown> | null;
+  error_detail: string | null;
+  findings: MigrationGapFinding[];
+  findings_total: number;
+  transfer_ready_count: number;
+}
+
+export interface TransferFieldMapping {
+  id: string;
+  module: string;
+  source_field: string;
+  source_data_type: string | null;
+  dest_system_type: string;
+  dest_table: string | null;
+  dest_field: string | null;
+  transform_note: string | null;
+  is_confirmed: boolean;
+}
