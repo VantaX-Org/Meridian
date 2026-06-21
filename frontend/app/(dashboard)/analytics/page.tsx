@@ -11,6 +11,7 @@ import { getSystems, getSyncRuns } from "@/lib/api/systems";
 import { getCleaningMetrics } from "@/lib/api/cleaning";
 import { getMetrics as getStewardshipMetrics } from "@/lib/api/stewardship";
 import {
+  getImpactAnalytics,
   getPredictiveAnalytics,
   getPrescriptiveAnalytics,
 } from "@/lib/api/analytics";
@@ -287,6 +288,10 @@ function ImpactPanel() {
     queryKey: ["stewardship.metrics"],
     queryFn: getStewardshipMetrics,
   });
+  const impactQ = useQuery({
+    queryKey: ["analytics.impact"],
+    queryFn: () => getImpactAnalytics(),
+  });
 
   if (cleanQ.isLoading || stewardQ.isLoading) {
     return <Skeleton className="h-[420px] rounded-[10px]" />;
@@ -430,12 +435,47 @@ function ImpactPanel() {
                 </div>
               </div>
             </div>
-            <div className="mn-narrative" style={{ marginTop: 14, padding: 10 }}>
-              <div className="ico"><SparklesIcon size={13} /></div>
-              <div style={{ flex: 1, fontSize: 12.5, color: "var(--mn-ink-700)" }}>
-                Throughput modelling will surface here once the impact endpoint lands.
-              </div>
-            </div>
+            {(() => {
+              const roi = impactQ.data?.roi;
+              if (!roi || roi.risk_mitigated <= 0) {
+                return (
+                  <div className="mn-narrative" style={{ marginTop: 14, padding: 10 }}>
+                    <div className="ico"><SparklesIcon size={13} /></div>
+                    <div style={{ flex: 1, fontSize: 12.5, color: "var(--mn-ink-700)" }}>
+                      Run an analysis to quantify business-impact risk and ROI.
+                    </div>
+                  </div>
+                );
+              }
+              return (
+                <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 14 }}>
+                  <div>
+                    <div className="mn-eyebrow">Risk mitigated · annual</div>
+                    <div className="mn-tabular" style={{ font: "600 22px/1 'Inter Tight'", color: "var(--mn-pos)" }}>
+                      {zar(roi.risk_mitigated)}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="mn-eyebrow">ROI multiple</div>
+                    <div className="mn-tabular" style={{ font: "600 22px/1 'Inter Tight'" }}>
+                      {roi.roi_multiple}×
+                    </div>
+                  </div>
+                  <div>
+                    <div className="mn-eyebrow">Payback</div>
+                    <div className="mn-tabular" style={{ font: "600 22px/1 'Inter Tight'" }}>
+                      {roi.payback_months} mo
+                    </div>
+                  </div>
+                  <div>
+                    <div className="mn-eyebrow">Subscription · annual</div>
+                    <div className="mn-tabular" style={{ font: "600 22px/1 'Inter Tight'" }}>
+                      {zar(roi.subscription_annual)}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>

@@ -50,6 +50,37 @@ export interface PrescriptiveResponse {
   sprints: Sprint[];
 }
 
+export interface ImpactBucket {
+  category: string;
+  annual_risk_zar: number;
+  mitigated_zar: number;
+  finding_count: number;
+  calculation_method: string;
+}
+
+export interface RoiSummary {
+  subscription_annual: number;
+  risk_mitigated: number;
+  roi_multiple: number;
+  payback_months: number;
+}
+
+export interface ImpactResponse {
+  impacts: ImpactBucket[];
+  roi: RoiSummary;
+  version_id?: string;
+}
+
+export async function getImpactAnalytics(
+  versionId?: string
+): Promise<ImpactResponse> {
+  const { data } = await apiClient.get<ImpactResponse>(
+    "/api/v1/analytics/impact",
+    { params: versionId ? { version_id: versionId } : undefined }
+  );
+  return data;
+}
+
 export async function getPredictiveAnalytics(
   moduleId?: string
 ): Promise<PredictiveResponse> {
