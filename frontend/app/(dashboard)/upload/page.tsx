@@ -18,6 +18,7 @@ import {
   type MatchResponse,
 } from "@/lib/api/upload";
 import { getVersions } from "@/lib/api/versions";
+import { getSystems } from "@/lib/api/connectivity";
 import { copyToClipboard } from "@/components/meridian/actions";
 import { relativeTime } from "@/lib/format";
 import type { Version } from "@/types/api";
@@ -220,6 +221,12 @@ export default function UploadPage() {
     },
   });
 
+  const systemsQ = useQuery({
+    queryKey: ["systems.list"],
+    queryFn: () => getSystems(),
+  });
+  const connectedSystems = systemsQ.data?.length ?? 0;
+
   const recentQ = useQuery({
     queryKey: ["versions.list", { limit: 6 }],
     queryFn: () => getVersions({ limit: 6 }),
@@ -306,6 +313,25 @@ export default function UploadPage() {
           </>
         }
       />
+
+      {connectedSystems > 0 && (
+        <div
+          className="mn-narrative"
+          style={{ marginBottom: 18, background: "var(--mn-primary-50)" }}
+        >
+          <div className="ico" style={{ background: "var(--mn-primary-100)", color: "var(--mn-primary-700)" }}>
+            <ArrowRight size={13} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <strong>Connected SAP systems detected</strong> — {connectedSystems}{" "}
+            registered. File import is for one-off assessments; for live data use{" "}
+            <Link className="mn-link" href="/run-sync" style={{ padding: 0 }}>
+              Run Sync
+            </Link>{" "}
+            instead.
+          </div>
+        </div>
+      )}
 
       {/* Drop area + stepper */}
       <div className="mn-row mn-row-12" style={{ marginBottom: 18 }}>

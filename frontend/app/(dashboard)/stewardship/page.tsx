@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   PageHead,
   KPI,
@@ -13,7 +14,20 @@ import {
 } from "@/components/meridian/atoms";
 import { ArrowRight, MoreH, SparklesIcon } from "@/components/meridian/icons";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getMetrics, getQueueItems } from "@/lib/api/stewardship";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  escalateItem,
+  getMetrics,
+  getQueueItems,
+  resolveItem,
+} from "@/lib/api/stewardship";
 import { getUsers } from "@/lib/api/users";
 import { copyToClipboard } from "@/components/meridian/actions";
 import { SearchField, matchesSearch } from "@/components/meridian/controls";
@@ -47,7 +61,11 @@ function slaLabel(item: StewardshipQueueItem): string {
 }
 
 export default function StewardshipPage() {
+  const qc = useQueryClient();
   const [search, setSearch] = useState("");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [overrideOpen, setOverrideOpen] = useState(false);
+  const [correctionReason, setCorrectionReason] = useState("");
   const queueQ = useQuery({
     queryKey: ["stewardship.queue", { status: "open", limit: 200 }],
     queryFn: () => getQueueItems({ status: "open", limit: 200 }),
@@ -82,6 +100,69 @@ export default function StewardshipPage() {
     }
     return m;
   }, [metricsQ.data]);
+
+  const visibleItems = useMemo(
+    () => items.filter((t) => matchesSearch(t, search)),
+    [items, search],
+  );
+
+  const refresh = useCallback(() => {
+    qc.invalidateQueries({ queryKey: ["stewardship.queue"] });
+    qc.invalidateQueries({ queryKey: ["stewardship.metrics"] });
+  }, [qc]);
+
+  const resolveMut = useMutation({
+    mutationFn: ({ id, action, notes }: { id: string; action: "approve" | "reject"; notes?: string }) =>
+      resolveItem(id, action, notes),
+    onSuccess: (_d, v) => {
+      toast.success(v.action === "approve" ? "Task approved" : "Task rejected");
+      setOverrideOpen(false);
+      setCorrectionReason("");
+      refresh();
+    },
+    onError: () => toast.error("Could not resolve task — AI Reviewers cannot approve data actions"),
+  });
+
+  const escalateMut = useMutation({
+    mutationFn: (id: string) => escalateItem(id),
+    onSuccess: () => {
+      toast.success("Task escalated");
+      refresh();
+    },
+    onError: () => toast.error("Could not escalate task"),
+  });
+
+  // Keyboard triage: A approve · R reject-with-reason · N next · E escalate.
+  // Ignored while typing in an input or while the override modal is open.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || overrideOpen) return;
+      // Accept both lower- and upper-case (caps lock / shift) for each action.
+      const approve = e.key === "a" || e.key === "A";
+      const reject = e.key === "r" || e.key === "R";
+      const next = e.key === "n" || e.key === "N";
+      const escalate = e.key === "e" || e.key === "E";
+      if (!approve && !reject && !next && !escalate) return;
+      const list = visibleItems;
+      if (list.length === 0) return;
+      const idx = list.findIndex((t) => t.id === selectedId);
+      const current = idx >= 0 ? list[idx] : list[0];
+      if (next) {
+        const nextItem = list[(idx + 1) % list.length] ?? list[0];
+        setSelectedId(nextItem.id);
+      } else if (approve) {
+        resolveMut.mutate({ id: current.id, action: "approve" });
+      } else if (reject) {
+        setSelectedId(current.id);
+        setOverrideOpen(true);
+      } else if (escalate) {
+        escalateMut.mutate(current.id);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [visibleItems, selectedId, overrideOpen, resolveMut, escalateMut]);
 
   if (queueQ.isLoading || metricsQ.isLoading || usersQ.isLoading) {
     return (
@@ -128,6 +209,9 @@ export default function StewardshipPage() {
         actions={
           <>
             <SearchField value={search} onChange={setSearch} placeholder="Filter tasks…" />
+            <span className="mn-kbd-hint" style={{ fontSize: 11, color: "var(--mn-ink-400)" }}>
+              <kbd>A</kbd> approve · <kbd>R</kbd> reject · <kbd>N</kbd> next · <kbd>E</kbd> escalate
+            </span>
             <Link href="/workbench" className="mn-btn mn-btn-ghost">
               Open my workbench <ArrowRight size={13} />
             </Link>
@@ -227,7 +311,7 @@ export default function StewardshipPage() {
         title="Team queue"
         caption={
           search.trim()
-            ? `${items.filter((t) => matchesSearch(t, search)).length} of ${items.length} tasks match`
+            ? `${visibleItems.length} of ${items.length} tasks match`
             : `${items.length} tasks across the team`
         }
         right={
@@ -251,10 +335,14 @@ export default function StewardshipPage() {
               </tr>
             </thead>
             <tbody>
-              {items.filter((t) => matchesSearch(t, search)).map((t) => {
+              {visibleItems.map((t) => {
                 const assignee = allUsers.find((u) => u.id === t.assigned_to);
                 return (
-                  <tr key={t.id}>
+                  <tr
+                    key={t.id}
+                    onClick={() => setSelectedId(t.id)}
+                    style={t.id === selectedId ? { background: "var(--mn-primary-50)" } : undefined}
+                  >
                     <td style={{ paddingLeft: 20 }}>
                       <span
                         className="mn-tabular"
@@ -313,7 +401,7 @@ export default function StewardshipPage() {
                   </tr>
                 );
               })}
-              {items.filter((t) => matchesSearch(t, search)).length === 0 && (
+              {visibleItems.length === 0 && (
                 <tr>
                   <td colSpan={7} style={{ padding: 32, textAlign: "center", color: "var(--mn-ink-400)" }}>
                     {items.length === 0 ? "No open tasks." : "No tasks match this filter."}
@@ -324,6 +412,48 @@ export default function StewardshipPage() {
           </table>
         </div>
       </div>
+
+      <Dialog open={overrideOpen} onOpenChange={setOverrideOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject with reason</DialogTitle>
+            <DialogDescription>
+              Override the AI recommendation for this task. A correction reason is
+              required and feeds back into rule tuning.
+            </DialogDescription>
+          </DialogHeader>
+          <label className="block text-xs font-medium text-[var(--mn-ink-500)]">
+            Correction reason
+            <textarea
+              className="mt-1 w-full rounded-md border border-[var(--mn-line)] p-2 text-sm"
+              rows={3}
+              value={correctionReason}
+              onChange={(e) => setCorrectionReason(e.target.value)}
+              placeholder="Why is the AI recommendation wrong?"
+            />
+          </label>
+          <DialogFooter>
+            <button
+              type="button"
+              className="rounded-md border border-[var(--mn-line)] px-3 py-1.5 text-xs font-medium"
+              onClick={() => setOverrideOpen(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="rounded-md bg-[var(--mn-neg)] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+              disabled={!correctionReason.trim() || !selectedId || resolveMut.isPending}
+              onClick={() =>
+                selectedId &&
+                resolveMut.mutate({ id: selectedId, action: "reject", notes: correctionReason.trim() })
+              }
+            >
+              Reject task
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
