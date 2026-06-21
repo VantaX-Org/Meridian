@@ -72,22 +72,19 @@ jobs:
             ${{ matrix.context }}
           echo "skip=false" >> $GITHUB_OUTPUT
 
-      # Install the trivy CLI directly instead of via aquasecurity/trivy-action.
-      # The action wrapper internally pins setup-trivy@v0.2.1, a tag that was
-      # deleted upstream — so every pinned trivy-action release that referenced
-      # it now fails at "resolve action". The official install script has no
-      # such indirection and pins a known trivy version.
-      - name: Install Trivy
-        if: steps.build.outputs.skip != 'true'
-        run: |
-          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
-            | sudo sh -s -- -b /usr/local/bin v0.58.1
-          trivy --version
-
+      # Run trivy via its official Docker image instead of aquasecurity/trivy-action.
+      # The action wrapper pins setup-trivy@v0.2.1 (a tag deleted upstream, so it
+      # fails at "resolve action"), and the install.sh script flakes on the GitHub
+      # release download. Docker is already on the runner; mount the daemon socket
+      # so trivy can read the locally-built image, and persist the vuln DB cache.
       - name: Trivy vulnerability scan
         if: steps.build.outputs.skip != 'true'
         run: |
-          trivy image \
+          mkdir -p "$HOME/.cache/trivy"
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$HOME/.cache/trivy":/root/.cache/trivy \
+            aquasec/trivy:0.58.1 image \
             --severity HIGH,CRITICAL \
             --exit-code 1 \
             --ignore-unfixed \
@@ -98,7 +95,12 @@ jobs:
       - name: Trivy SBOM (advisory only, weekly)
         if: steps.build.outputs.skip != 'true' && github.event_name == 'schedule'
         run: |
-          trivy image \
+          mkdir -p "$HOME/.cache/trivy"
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$HOME/.cache/trivy":/root/.cache/trivy \
+            -v "$PWD":/work -w /work \
+            aquasec/trivy:0.58.1 image \
             --format cyclonedx \
             --output sbom-${{ matrix.image }}.cdx.json \
             ${{ matrix.image }}:scan
