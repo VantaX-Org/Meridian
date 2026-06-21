@@ -5,7 +5,7 @@
 #   -v /opt/meridian/nginx/meridian.conf:/etc/nginx/conf.d/meridian.conf
 # =========================================================
 
-FROM nginx:1.27-alpine
+FROM nginx:1.31-alpine
 
 # Pull the latest patched OS packages (openssl/libexpat/libpng/etc.) from the
 # alpine security branch — the base tag bakes stale versions that trivy flags
