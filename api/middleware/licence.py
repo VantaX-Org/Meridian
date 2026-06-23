@@ -388,7 +388,30 @@ async def _validate_licence() -> dict | None:
                     "machineFingerprint": _get_machine_fingerprint(),
                 },
             )
-            result = resp.json()
+            # A non-200 means the server is reachable but the request didn't
+            # succeed — almost always a misconfigured LICENCE_SERVER_URL (wrong
+            # host/path → 404) or an HQ-side outage (5xx). Surface the real
+            # status instead of letting resp.json() throw a cryptic
+            # "Expecting value: line 1 column 1" on the HTML error body.
+            if resp.status_code != 200:
+                logger.warning(
+                    "Licence server returned HTTP %s for %s/api/licence/validate "
+                    "— check LICENCE_SERVER_URL. Treating as unreachable.",
+                    resp.status_code,
+                    settings.licence_server_url,
+                )
+                _mark_cloudflare_degraded()
+                return None
+            try:
+                result = resp.json()
+            except Exception as e:
+                logger.warning(
+                    "Licence server returned a non-JSON 200 response (%s). "
+                    "Treating as unreachable.",
+                    e,
+                )
+                _mark_cloudflare_degraded()
+                return None
             # Connection successful — clear degraded state
             _mark_cloudflare_healthy()
             return result
@@ -397,6 +420,17 @@ async def _validate_licence() -> dict | None:
         # Task 08: Mark first failure time for cutoff tracking
         _mark_cloudflare_degraded()
         return None
+
+
+# Routes that must remain reachable even when licence validation fails hard.
+# Authentication must never depend on the licence server being healthy, and
+# the licence-status route itself has to stay readable so the UI can explain
+# the problem. Matched with str.startswith, so this covers /api/v1/auth/login,
+# /api/v1/auth/me, /api/v1/auth/change-password, etc.
+_LICENCE_EXEMPT_PREFIXES = (
+    "/api/v1/auth",
+    "/api/v1/licence",
+)
 
 
 # Feature flag route mapping — routes requiring specific licence features.
@@ -450,6 +484,16 @@ class LicenceMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         # Only check /api/v1/* routes
         if not request.url.path.startswith("/api/v1"):
+            return await call_next(request)
+
+        # Authentication and licence-status routes are NEVER licence-gated.
+        # The degradation cutoff returns 403 on the gated path; if it also
+        # covered /auth/login, any HQ-side outage or misconfigured
+        # LICENCE_SERVER_URL would lock every user out of the product — unable
+        # to even sign in or read why. Feature/module gating still applies to
+        # all other routes, so the anti-piracy cutoff keeps biting where it
+        # should (the licensed features), just not the front door.
+        if request.url.path.startswith(_LICENCE_EXEMPT_PREFIXES):
             return await call_next(request)
 
         # Dev mode — skip validation if no licence key and AUTH_MODE=local

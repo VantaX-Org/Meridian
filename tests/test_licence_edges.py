@@ -276,3 +276,119 @@ async def test_validate_licence_short_circuits_past_cutoff(monkeypatch):
 
     result = await lic._validate_licence()
     assert result == {"valid": False, "reason": "licence_server_unreachable_cutoff"}
+
+
+@pytest.mark.asyncio
+async def test_validate_licence_non_200_marks_degraded_without_parsing(monkeypatch):
+    """A 404 (e.g. wrong LICENCE_SERVER_URL) must not be misread as a JSON
+    parse error. We mark degraded and return None — but crucially never call
+    resp.json() on the HTML error body."""
+    from api.middleware import licence as lic
+
+    monkeypatch.setenv("LICENCE_MODE", "online")
+    monkeypatch.setattr(lic.settings, "licence_file", None)
+    monkeypatch.setattr(lic.settings, "licence_key", "MRDX-TEST")
+    lic._degraded_at = None
+
+    class _Resp:
+        status_code = 404
+
+        def json(self):  # pragma: no cover - must not be reached
+            raise AssertionError("json() must not be called on a non-200 response")
+
+    class _Client:
+        def __init__(self, *a, **kw):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def post(self, *a, **kw):
+            return _Resp()
+
+    monkeypatch.setattr(lic.httpx, "AsyncClient", _Client)
+
+    result = await lic._validate_licence()
+    assert result is None
+    # Grace clock started — the failure is tracked, just not as a parse error.
+    assert lic._degraded_at is not None
+
+
+# ── Auth/licence routes never gated (HQ-outage lockout regression) ────────────
+
+
+class _FakeURL:
+    def __init__(self, path: str) -> None:
+        self.path = path
+
+
+class _FakeRequest:
+    """Minimal stand-in for starlette Request — dispatch only reads .url.path
+    for the routing decisions exercised here."""
+
+    def __init__(self, path: str, method: str = "POST") -> None:
+        self.url = _FakeURL(path)
+        self.method = method
+        self.state = type("S", (), {})()
+        self.headers: dict = {}
+        self.cookies: dict = {}
+
+
+async def _ok_call_next(request):
+    from starlette.responses import JSONResponse
+
+    return JSONResponse({"ok": True}, status_code=200)
+
+
+@pytest.mark.asyncio
+async def test_auth_login_not_gated_during_cutoff(monkeypatch):
+    """Even with a licence key set and the hard cutoff tripped, /auth/login
+    must pass through — otherwise an HQ outage locks everyone out."""
+    from api.middleware import licence as lic
+
+    monkeypatch.setattr(lic.settings, "licence_key", "MRDX-TEST")
+    monkeypatch.setattr(lic.settings, "auth_mode", "local")
+    lic._degraded_at = time.time() - (lic.LICENCE_DEGRADED_CUTOFF_SECONDS + 60)
+
+    mw = lic.LicenceMiddleware(app=None)
+    resp = await mw.dispatch(_FakeRequest("/api/v1/auth/login"), _ok_call_next)
+    assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_licence_status_route_not_gated_during_cutoff(monkeypatch):
+    from api.middleware import licence as lic
+
+    monkeypatch.setattr(lic.settings, "licence_key", "MRDX-TEST")
+    monkeypatch.setattr(lic.settings, "auth_mode", "local")
+    lic._degraded_at = time.time() - (lic.LICENCE_DEGRADED_CUTOFF_SECONDS + 60)
+
+    mw = lic.LicenceMiddleware(app=None)
+    resp = await mw.dispatch(_FakeRequest("/api/v1/licence"), _ok_call_next)
+    assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_feature_route_still_403s_during_cutoff(monkeypatch):
+    """The anti-piracy cutoff must still bite non-exempt routes — only auth
+    and licence-status are spared."""
+    from api.middleware import licence as lic
+
+    monkeypatch.setenv("LICENCE_MODE", "online")
+    monkeypatch.setattr(lic.settings, "licence_file", None)
+    monkeypatch.setattr(lic.settings, "licence_key", "MRDX-TEST")
+    monkeypatch.setattr(lic.settings, "auth_mode", "local")
+    lic._degraded_at = time.time() - (lic.LICENCE_DEGRADED_CUTOFF_SECONDS + 60)
+
+    class _Boom:
+        def __init__(self, *a, **kw):
+            raise AssertionError("should not attempt network past cutoff")
+
+    monkeypatch.setattr(lic.httpx, "AsyncClient", _Boom)
+
+    mw = lic.LicenceMiddleware(app=None)
+    resp = await mw.dispatch(_FakeRequest("/api/v1/findings"), _ok_call_next)
+    assert resp.status_code == 403
