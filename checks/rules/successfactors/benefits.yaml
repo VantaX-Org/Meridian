@@ -255,10 +255,10 @@ rules:
       (value: {actual_value}). Convert to YYYY-MM-DD.
 
   - id: BEN011
-    field: USERID_BEN
+    field: BENEFITENROLLMENT.USERID
     check_class: cross_field_check
-    fields: ['USERID_BEN']
-    condition: "~`USERID_BEN`.duplicated(keep=False)"
+    fields: ['BENEFITENROLLMENT.USERID']
+    condition: "~`BENEFITENROLLMENT.USERID`.duplicated(keep=False)"
     severity: high
     dimension: uniqueness
     message: Duplicate benefit enrollment records per employee — review for over-enrollment
@@ -269,10 +269,15 @@ rules:
       __blank__: "Review duplicate enrollments in Admin Center > Benefits. End-date or delete the incorrect enrollment. Verify carrier feed after correction."
 
   - id: BEN012
-    field: ENROL_DATE
+    field: BENEFITENROLLMENT.ENROL_DATE
     check_class: freshness_check
     max_age_hours: 17520
     severity: low
     dimension: timeliness
     message: Benefit enrollment older than 2 years — verify enrollment is still valid and premiums are current
     rule_authority: best_practice
+    why_it_matters: "Benefit enrollments older than 2 years may reflect lapsed elections, changed dependents, or superseded plans, producing incorrect coverage and deductions."
+    sap_impact: "Payroll deducts for stale or invalid benefit elections; carriers receive outdated enrollment files; employees may be under- or over-covered."
+    fix_map:
+      __blank__: "Review the enrollment in the SuccessFactors Benefits module: confirm the elected plan, coverage tier, and dependents against current life events; re-enroll or terminate as needed."
+    record_fix_template: "Benefit enrollment {field} is {age_days} days old. Confirm plan, tier, and dependents in the Benefits module; re-enroll or terminate."

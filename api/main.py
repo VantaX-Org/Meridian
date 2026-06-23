@@ -19,6 +19,7 @@ from api.routes.llm_settings import router as llm_settings_router
 from api.routes.connect import router as connect_router
 from api.routes.writeback import router as writeback_router
 from api.routes.cleaning import router as cleaning_router
+from api.routes.migration import router as migration_router
 from api.routes.exceptions import router as exceptions_router
 from api.routes.analytics import router as analytics_router
 from api.routes.contracts import router as contracts_router
@@ -247,6 +248,7 @@ app.include_router(llm_settings_router)
 app.include_router(connect_router)
 app.include_router(writeback_router)
 app.include_router(cleaning_router)
+app.include_router(migration_router)
 app.include_router(exceptions_router)
 app.include_router(analytics_router)
 app.include_router(contracts_router)

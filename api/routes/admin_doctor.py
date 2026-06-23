@@ -78,11 +78,12 @@ async def _check_postgres() -> DoctorItem:
             detail="connection timed out after 3s",
         )
     except Exception as e:
+        # Class name only — DB errors can embed the DSN (host/user/password).
         return DoctorItem(
             id="postgres",
             label="Postgres reachable",
             status="fail",
-            detail=f"{type(e).__name__}: {e}",
+            detail=type(e).__name__,
         )
 
 
@@ -139,7 +140,7 @@ async def _check_minio() -> DoctorItem:
         client = Minio(
             endpoint=os.getenv("MINIO_ENDPOINT", "minio:9000"),
             access_key=os.getenv("MINIO_ACCESS_KEY", "meridian"),
-            secret_key=os.getenv("MINIO_SECRET_KEY", ""),
+            secret_key=os.getenv("MINIO_SECRET_KEY") or os.getenv("MINIO_PASSWORD") or "",
             secure=False,
         )
         bucket = os.getenv("MINIO_BUCKET_UPLOADS", "meridian-uploads")

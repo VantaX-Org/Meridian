@@ -106,7 +106,7 @@ async def download_report(
             )
             raise HTTPException(
                 status_code=500,
-                detail=f"Failed to generate PDF report: {e.__class__.__name__}",
+                detail="Failed to generate PDF report",
             ) from e
 
     return Response(

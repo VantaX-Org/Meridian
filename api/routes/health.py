@@ -1,9 +1,12 @@
+import logging
 from datetime import datetime, timezone
 
 from fastapi import APIRouter
 
 from api.config import settings
 from api.middleware.licence import get_cached_licence
+
+logger = logging.getLogger("meridian.health")
 
 router = APIRouter()
 
@@ -69,4 +72,6 @@ async def llm_health():
     except asyncio.TimeoutError:
         return {"llm_available": False, "reason": "timeout"}
     except Exception as e:
-        return {"llm_available": False, "reason": str(e)}
+        # Never return str(e) — provider errors can embed the endpoint URL/key.
+        logger.warning("LLM availability probe failed: %s", e)
+        return {"llm_available": False, "reason": "error"}

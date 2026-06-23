@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Meridian HQ">
+  <rect width="512" height="512" rx="96" fill="#0057D2"/>
+  <!-- "M" kept inside the central 80% maskable safe zone -->
+  <path d="M140 360 V152 h44 l72 120 72 -120 h44 V360 h-44 V236 l-72 118 -72 -118 V360 z" fill="#FFFFFF"/>
+</svg>

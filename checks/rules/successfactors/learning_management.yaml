@@ -309,10 +309,10 @@ rules:
       (value: {actual_value}). Convert to YYYY-MM-DD.
 
   - id: LMS013
-    field: USERID_LMS
+    field: LEARNINGASSIGNMENT.USERID
     check_class: cross_field_check
-    fields: ['USERID_LMS']
-    condition: "~`USERID_LMS`.duplicated(keep=False)"
+    fields: ['LEARNINGASSIGNMENT.USERID']
+    condition: "~`LEARNINGASSIGNMENT.USERID`.duplicated(keep=False)"
     severity: high
     dimension: uniqueness
     message: Duplicate learning assignment records per employee — same course assigned multiple times
@@ -323,10 +323,39 @@ rules:
       __blank__: "Review duplicate assignments in Learning > Admin > Assignment Rules. Remove the duplicate assignment. Verify completion status on the surviving record."
 
   - id: LMS014
-    field: DUE_DATE
+    field: LEARNINGASSIGNMENT.DUE_DATE
     check_class: freshness_check
     max_age_hours: 0
     severity: high
     dimension: timeliness
     message: Learning assignment past due date — overdue mandatory training creates compliance risk
     rule_authority: best_practice
+    why_it_matters: "Learning assignments past their due date represent overdue mandatory training — a direct compliance and audit exposure, especially for regulated curricula."
+    sap_impact: "Compliance dashboards report false completion; audits flag overdue mandatory training; certifications lapse and access entitlements based on training become invalid."
+    fix_map:
+      __blank__: "In SuccessFactors Learning: notify the assignee and manager, extend or reassign the item if appropriate, and escalate persistently overdue mandatory training to the compliance owner."
+    record_fix_template: "Learning assignment {field} is overdue by {age_days} days. Notify assignee/manager, reassign or extend, and escalate if mandatory."
+
+  - id: LMS015
+    field: LEARNINGASSIGNMENT.STATUS
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "Learning assignment status (LEARNINGASSIGNMENT.STATUS) is mandatory"
+    why_it_matters: >-
+      STATUS records whether a learning assignment is assigned, in progress,
+      completed, or overdue. Without it, the assignment cannot be tracked on
+      the employee transcript and compliance completion reporting is impossible
+      — for mandatory training this breaks the auditable evidence trail.
+    rule_authority: best_practice
+    sap_impact: >-
+      Assignment progress cannot be determined. Compliance dashboards report
+      incorrect completion rates and the audit trail for mandatory training is
+      incomplete.
+    fix_map:
+      __blank__: >-
+        Set the correct assignment status via Learning > Admin > Assignment
+        Management. Reconcile with the learner's actual completion record.
+    record_fix_template: >-
+      Assignment {LEARNINGASSIGNMENT.USERID}: status is missing. Set via
+      Learning > Admin > Assignment Management.

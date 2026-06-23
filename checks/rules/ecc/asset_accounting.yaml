@@ -493,6 +493,11 @@ rules:
   dimension: timeliness
   message: Asset capitalised more than 10 years ago — review if useful life and depreciation parameters are still appropriate
   rule_authority: best_practice
+  why_it_matters: "Assets capitalised more than 10 years ago frequently outlive their planned useful life; depreciation terms and impairment status may no longer reflect reality."
+  sap_impact: "Balance sheet may overstate net book value; depreciation runs post against outdated useful life; retired assets linger as active."
+  fix_map:
+    __blank__: "Review the asset in AS02: confirm useful life, depreciation key, and whether the asset is still in use; retire via ABAVN if disposed, or update depreciation terms."
+  record_fix_template: "Asset {field} capitalised {age_days} days ago. Confirm useful life/depreciation key in AS02, or retire via ABAVN if disposed."
 
 - id: AA032
   field: ANLA.AFASL

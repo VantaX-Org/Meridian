@@ -12,15 +12,15 @@ RULES_DIR = Path(__file__).parent.parent.parent / "checks" / "rules" / "warehous
 
 # Expected rule counts per module
 EXPECTED_COUNTS = {
-    "ewms_stock": 8,
-    "ewms_transfer_orders": 7,
-    "fleet_management": 8,
-    "cross_system_integration": 8,
-    "transport_management": 7,
-    "batch_management": 7,
-    "wm_interface": 6,
-    "grc_compliance": 6,
-    "mdg_master_data": 8,
+    "ewms_stock": 24,
+    "ewms_transfer_orders": 19,
+    "fleet_management": 18,
+    "cross_system_integration": 15,
+    "transport_management": 18,
+    "batch_management": 16,
+    "wm_interface": 14,
+    "grc_compliance": 15,
+    "mdg_master_data": 17,
 }
 
 REQUIRED_ENRICHMENT_FIELDS = ["fix_map", "rule_authority", "why_it_matters", "sap_impact"]
@@ -85,7 +85,8 @@ def test_runner_discovers_warehouse_modules():
     })
     results = run_checks("ewms_stock", df, "test-tenant")
 
-    assert len(results) == 8
+    # Non-None results = rules whose fields exist in this synthetic extract.
+    assert len(results) == 11
     assert all(isinstance(r, CheckResult) for r in results)
 
     # Should have some failing checks with the dirty data
@@ -96,12 +97,17 @@ def test_runner_discovers_warehouse_modules():
 # ---- Test 5: Total rule count across all 9 warehouse modules ----
 
 def test_total_warehouse_rule_count():
-    """Total across all 9 warehouse modules should be 65 rules."""
+    """Total across all 9 warehouse modules should be 156 rules.
+
+    Two freshness rules (EWMS023 on LGPLA, WM014 on MLGN) were removed: their
+    tables carry no change-date column, so freshness parsed a warehouse-number
+    key as a date — every value coerced to NaT, tanking timeliness to 0%.
+    """
     total = 0
     for module_name in EXPECTED_COUNTS:
         rules = _load_rules(module_name)
         total += len(rules)
-    assert total == 65, f"Expected 65 total warehouse rules, got {total}"
+    assert total == 156, f"Expected 156 total warehouse rules, got {total}"
 
 
 # ---- Test 6: domain_value_check rules have valid_values_with_labels ----

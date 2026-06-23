@@ -48,7 +48,7 @@ VALID_RESPONSE = json.dumps({
 })
 
 
-@patch("agents.analyst.get_llm")
+@patch("agents.analyst.get_llm_safe")
 def test_analyst_valid_response(mock_get_llm):
     """Valid JSON response populates root_causes."""
     mock_llm = MagicMock()
@@ -64,7 +64,7 @@ def test_analyst_valid_response(mock_get_llm):
     assert "error" not in result
 
 
-@patch("agents.analyst.get_llm")
+@patch("agents.analyst.get_llm_safe")
 def test_analyst_retry_on_invalid_json(mock_get_llm):
     """Invalid JSON on first call, valid on retry — retry logic works."""
     mock_llm = MagicMock()
@@ -82,9 +82,11 @@ def test_analyst_retry_on_invalid_json(mock_get_llm):
     assert mock_llm.invoke.call_count == 2
 
 
-@patch("agents.analyst.get_llm")
-def test_analyst_error_on_double_failure(mock_get_llm):
-    """Invalid JSON on both calls — sets error."""
+@patch("agents.analyst.get_llm_safe")
+def test_analyst_skips_chunk_on_double_failure(mock_get_llm):
+    """Invalid JSON on both first call and retry — analyst skips the chunk
+    rather than failing the pipeline. Resilient design: no error key, the
+    chunk's root causes are simply dropped, and the graph continues."""
     mock_llm = MagicMock()
     mock_llm.invoke.return_value = MagicMock(content="not json")
     mock_get_llm.return_value = mock_llm
@@ -92,12 +94,14 @@ def test_analyst_error_on_double_failure(mock_get_llm):
     state = _make_state()
     result = analyst_node(state)
 
-    assert "error" in result
-    assert result["error"] is not None
-    assert "invalid JSON" in result["error"]
+    # Chunk dropped — no root causes, but no hard error
+    assert result["root_causes"] == []
+    assert "error" not in result
+    # First attempt + one retry
+    assert mock_llm.invoke.call_count == 2
 
 
-@patch("agents.analyst.get_llm")
+@patch("agents.analyst.get_llm_safe")
 def test_analyst_empty_findings(mock_get_llm):
     """Empty findings produces empty root_causes, no LLM call."""
     mock_llm = MagicMock()

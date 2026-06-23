@@ -30,12 +30,13 @@ class TestNullCheck:
         assert result.affected_count == 2  # None and ""
         assert result.pass_rate == 50.0
 
-    def test_missing_column_returns_error(self):
+    def test_missing_column_is_skipped(self):
+        # A field absent from a partial extract is skipped (returns None), not
+        # failed — same convention as FreshnessCheck. The runner drops Nones.
         rule = {"id": "N003", "field": "missing_col", "severity": "medium", "dimension": "completeness", "message": "test"}
         df = pd.DataFrame({"other": [1, 2]})
         result = NullCheck(rule).run(df)
-        assert result.passed is False
-        assert result.error is not None
+        assert result is None
 
 
 # --- RegexCheck ---
@@ -140,7 +141,10 @@ class TestReferentialCheck:
         df = pd.DataFrame({"country": ["ZA", "XX", None, "US"]})
         result = ReferentialCheck(rule).run(df)
         assert result.passed is False
-        assert result.affected_count == 2
+        # Only "XX" fails. The null is null_check's responsibility, not
+        # referential's — counting it here double-counts the missing value.
+        assert result.affected_count == 1
+        assert result.total_count == 3  # non-null denominator
 
 
 # --- FreshnessCheck ---

@@ -14,6 +14,7 @@ from checks.types.domain_value_check import DomainValueCheck
 from checks.types.cross_field_check import CrossFieldCheck
 from checks.types.referential_check import ReferentialCheck
 from checks.types.freshness_check import FreshnessCheck
+from checks.types.format_check import FormatCheck
 
 logger = logging.getLogger("meridian.checks")
 
@@ -71,6 +72,7 @@ REGISTRY: dict[str, type[BaseCheck]] = {
     "cross_field_check": CrossFieldCheck,
     "referential_check": ReferentialCheck,
     "freshness_check": FreshnessCheck,
+    "format_check": FormatCheck,
 }
 
 RULES_DIR = Path(__file__).parent / "rules"

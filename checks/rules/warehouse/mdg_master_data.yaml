@@ -364,10 +364,10 @@ rules:
       format. Verify via SU01 (ECC) or Fiori app F1603 (S/4HANA).
 
   - id: MDG016
-    field: CREQU_ID
+    field: USMD_CREQU.CREQU_ID
     check_class: cross_field_check
-    fields: ['CREQU_ID']
-    condition: "~`CREQU_ID`.duplicated(keep=False)"
+    fields: ['USMD_CREQU.CREQU_ID']
+    condition: "~`USMD_CREQU.CREQU_ID`.duplicated(keep=False)"
     severity: high
     dimension: uniqueness
     message: Duplicate MDG change request IDs detected — each CR must be unique
@@ -378,10 +378,15 @@ rules:
       __blank__: "Investigate duplicate CR IDs. This is typically a data extract issue. If genuine, escalate to MDG administration — number range collision or replication error."
 
   - id: MDG017
-    field: CREATED_BY_MDG
+    field: USMD_CREQU.CREATED_DATE
     check_class: freshness_check
     max_age_hours: 8760
     severity: low
     dimension: timeliness
     message: MDG change request older than 1 year — long-pending CRs should be reviewed, approved, or rejected
     rule_authority: best_practice
+    why_it_matters: "Change requests open for 1+ year are stalled governance items that hold master-data updates in limbo and clog the MDG workflow."
+    sap_impact: "Approved master-data changes never activate; the MDG worklist is cluttered with dormant CRs; data stewards lose visibility of real backlog."
+    fix_map:
+      __blank__: "Review the change request in MDG: confirm whether it is still required, route it to the current approver to complete, or withdraw and close it if obsolete."
+    record_fix_template: "Change request {field} open {age_days} days. Route to the current approver to complete, or withdraw and close if obsolete."

@@ -369,3 +369,8 @@ rules:
     dimension: timeliness
     message: Payroll result older than 3 months — verify integration is running and results are being replicated
     rule_authority: best_practice
+    why_it_matters: "Payroll results older than 3 months suggest the integration has stopped delivering, or a population is no longer being paid through the expected run."
+    sap_impact: "Downstream GL postings, statutory filings, and reconciliations run on stale results; missing pay results may hide employees dropped from the run."
+    fix_map:
+      __blank__: "Verify the payroll integration job and connector logs: confirm the most recent run delivered for all populations; reprocess or backfill the missing period and fix the broken schedule."
+    record_fix_template: "Payroll result {field} is {age_days} days old. Verify the integration job ran for all populations; reprocess the missing period."

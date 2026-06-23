@@ -318,37 +318,42 @@ def test_frontend_stewardship_metrics_page_exists():
     assert path.exists()
 
 
+# Per-item steward actions live on the personal /workbench surface;
+# /stewardship is the team overview. Keyboard shortcuts + override modal are
+# on the workbench where tasks are actually resolved.
 def test_frontend_stewardship_keyboard_shortcuts():
     """Workbench page implements keyboard shortcuts A, R, N, E."""
-    path = Path("frontend/app/(dashboard)/stewardship/page.tsx")
+    path = Path("frontend/app/(dashboard)/workbench/page.tsx")
     content = path.read_text()
     for key in ['"a"', '"r"', '"n"', '"e"', '"A"', '"R"', '"N"', '"E"']:
         assert key in content, f"Missing keyboard shortcut: {key}"
 
 
 def test_frontend_stewardship_override_modal():
-    """Workbench page has override modal for AI recommendation."""
-    path = Path("frontend/app/(dashboard)/stewardship/page.tsx")
+    """Workbench page has an override dialog that rejects an AI recommendation
+    with a required correction reason. Implemented inline as a Dialog gated by
+    `overrideOpen` rather than a separate OverrideModal component."""
+    path = Path("frontend/app/(dashboard)/workbench/page.tsx")
     content = path.read_text()
-    assert "OverrideModal" in content
-    assert "Override AI Recommendation" in content
-    assert "correction_reason" in content
+    assert "overrideOpen" in content
+    assert "Reject with reason" in content
+    assert "Correction reason" in content
 
 
 def test_frontend_metrics_ai_acceptance_rate():
-    """Metrics page displays AI Acceptance Rate."""
+    """Metrics page displays the AI suggestion-acceptance metric."""
     path = Path("frontend/app/(dashboard)/stewardship/metrics/page.tsx")
     content = path.read_text()
-    assert "AI Acceptance Rate" in content
+    assert "Suggestion Acceptance" in content
     assert "ai_acceptance_rate" in content
 
 
 def test_frontend_metrics_steward_breakdown_hidden_for_ai_reviewer():
-    """Metrics page hides steward breakdown for ai_reviewer."""
+    """Metrics page gates the individual steward breakdown behind !isAiReviewer."""
     path = Path("frontend/app/(dashboard)/stewardship/metrics/page.tsx")
     content = path.read_text()
     assert "isAiReviewer" in content
-    assert "Individual steward metrics are not visible" in content
+    assert "!isAiReviewer && metrics.steward_breakdown" in content
 
 
 def test_frontend_api_client_exists():
@@ -379,7 +384,7 @@ def test_frontend_nav_has_stewardship():
     content = path.read_text(encoding="utf-8")
     assert "/stewardship" in content
     assert "Steward" in content  # group label
-    assert "ClipboardList" in content
+    assert "ClipboardIcon" in content
 
 
 # ── L.2 ai_triage task file structure ────────────────────────────────────────

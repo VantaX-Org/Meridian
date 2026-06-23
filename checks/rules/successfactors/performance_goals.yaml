@@ -251,10 +251,10 @@ rules:
   record_fix_template: Record is missing PMREVIEWRESULT.SELF_RATING. Maintain via SuccessFactors Admin Center > Performance
     & Goals module.
 - id: PERF015
-  field: USERID_PERF
+  field: PMREVIEWRESULT.USERID
   check_class: cross_field_check
-  fields: ['USERID_PERF']
-  condition: "~`USERID_PERF`.duplicated(keep=False)"
+  fields: ['PMREVIEWRESULT.USERID']
+  condition: "~`PMREVIEWRESULT.USERID`.duplicated(keep=False)"
   severity: high
   dimension: uniqueness
   message: Duplicate performance review records per employee per cycle — only one review should exist
@@ -265,10 +265,15 @@ rules:
     __blank__: "Identify duplicate review forms in Admin Center > Performance. Delete the incorrect form. Verify the correct form is routed in the current cycle."
 
 - id: PERF016
-  field: REVIEW_DATE
+  field: PMREVIEWRESULT.REVIEW_DATE
   check_class: freshness_check
   max_age_hours: 17520
   severity: medium
   dimension: timeliness
   message: Performance review older than 2 years — review cycle may be stalled or employee was missed in current cycle
   rule_authority: best_practice
+  why_it_matters: "Performance reviews older than 2 years indicate a stalled review cycle or an employee whose goals are no longer being managed."
+  sap_impact: "Talent calibration and succession decisions use outdated ratings; merit and promotion inputs are stale; the employee may be effectively unmanaged."
+  fix_map:
+    __blank__: "In SuccessFactors Performance & Goals: confirm the employee's current cycle assignment, restart or reassign the form, and ensure the manager completes the outstanding review."
+  record_fix_template: "Performance review {field} is {age_days} days old. Confirm cycle assignment and ensure the manager completes the outstanding review."

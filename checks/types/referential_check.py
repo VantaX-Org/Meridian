@@ -17,16 +17,21 @@ class ReferentialCheck(BaseCheck):
                 return None  # Skip — field not in partial extract
 
             ref_set = set(str(v) for v in reference_values)
+            # Null detection is the sole responsibility of null_check — referential
+            # only judges non-null values against the reference set, else a missing
+            # value is counted as a failure by both checks (double-counted).
+            non_null = df[field].notna() & (df[field].astype(str).str.strip() != "")
             values = df[field].astype(str)
-            failing_mask = ~values.isin(ref_set) | df[field].isna()
+            failing_mask = non_null & ~values.isin(ref_set)
 
+            check_total = int(non_null.sum())
             affected = int(failing_mask.sum())
-            pass_rate = ((total - affected) / total * 100) if total > 0 else 0.0
+            pass_rate = ((check_total - affected) / check_total * 100) if check_total > 0 else 100.0
 
             id_field = find_id_field(df)
-            # Only materialise the rows we actually need
-            failing_indices = failing_mask[failing_mask].index[:10]
-            sample_rows = df.loc[failing_indices, [id_field, field]]
+            # Scalar .at access — selecting [id_field, field] as a frame breaks
+            # when id_field == field (e.g. a referential check on a key column).
+            failing_indices = list(failing_mask[failing_mask].index[:10])
             failing_field_values = df.loc[failing_mask, field]
 
             details = safe_json({
@@ -38,8 +43,8 @@ class ReferentialCheck(BaseCheck):
                 "missing_values": failing_field_values
                     .dropna().astype(str).unique().tolist()[:20],
                 "sample_failing_records": [
-                    {id_field: str(row[id_field]), field: str(row[field])}
-                    for _, row in sample_rows.iterrows()
+                    {id_field: str(df.at[idx, id_field]), field: str(df.at[idx, field])}
+                    for idx in failing_indices
                 ],
             })
 
@@ -51,7 +56,7 @@ class ReferentialCheck(BaseCheck):
                 dimension=self.rule.get("dimension", "consistency"),
                 passed=(affected == 0),
                 affected_count=affected,
-                total_count=total,
+                total_count=check_total,
                 pass_rate=round(pass_rate, 2),
                 message=self.rule.get("message", ""),
                 details=details,

@@ -342,10 +342,10 @@ rules:
       Verify via XK03 (ECC) or Fiori app F0843 (S/4HANA) and correct.
 
   - id: TM016
-    field: TKNUM
+    field: VTTK.TKNUM
     check_class: cross_field_check
-    fields: ['TKNUM']
-    condition: "~`TKNUM`.duplicated(keep=False)"
+    fields: ['VTTK.TKNUM']
+    condition: "~`VTTK.TKNUM`.duplicated(keep=False)"
     severity: critical
     dimension: uniqueness
     message: Duplicate shipment numbers detected — each shipment must be unique
@@ -356,13 +356,18 @@ rules:
       __blank__: "De-duplicate the data extract at shipment header level. If genuine duplicates exist, escalate to Basis."
 
   - id: TM017
-    field: ERDAT_TM
+    field: VTTK.ERDAT
     check_class: freshness_check
     max_age_hours: 2190
     severity: medium
     dimension: timeliness
     message: Shipment created 3+ months ago — long-open shipments should be reviewed for completion or cancellation
     rule_authority: best_practice
+    why_it_matters: "Shipments open 3+ months are usually completed-but-not-closed or abandoned, distorting freight cost accruals and on-time-delivery metrics."
+    sap_impact: "Freight accruals and settlement are overstated or stuck; transportation KPIs are skewed; carrier invoices cannot be matched and cleared."
+    fix_map:
+      __blank__: "Review the shipment in the TM document: confirm execution status, complete the outstanding events and freight settlement, or cancel if the shipment did not occur."
+    record_fix_template: "Shipment {field} open {age_days} days. Complete outstanding events and freight settlement, or cancel if it did not occur."
 
   - id: TM018
     field: VTTK.TDLNR

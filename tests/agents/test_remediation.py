@@ -79,7 +79,7 @@ VALID_RESPONSE = json.dumps({
 })
 
 
-@patch("agents.remediation.get_llm")
+@patch("agents.remediation.get_llm_safe")
 def test_remediation_valid_response(mock_get_llm):
     """Valid LLM response populates remediations dict."""
     mock_llm = MagicMock()
@@ -96,7 +96,7 @@ def test_remediation_valid_response(mock_get_llm):
     assert rems["effort_estimates"][0]["check_id"] == "BP001"
 
 
-@patch("agents.remediation.get_llm")
+@patch("agents.remediation.get_llm_safe")
 def test_remediation_empty_findings_returns_empty_dict(mock_get_llm):
     """Zero findings — returns empty structure, no LLM call."""
     mock_llm = MagicMock()
@@ -112,7 +112,7 @@ def test_remediation_empty_findings_returns_empty_dict(mock_get_llm):
     mock_llm.invoke.assert_not_called()
 
 
-@patch("agents.remediation.get_llm")
+@patch("agents.remediation.get_llm_safe")
 def test_remediation_calls_llm_once(mock_get_llm):
     """All findings are processed in a single LLM call."""
     mock_llm = MagicMock()
@@ -126,7 +126,7 @@ def test_remediation_calls_llm_once(mock_get_llm):
     assert "remediations" in result
 
 
-@patch("agents.remediation.get_llm")
+@patch("agents.remediation.get_llm_safe")
 def test_remediation_only_medium_low(mock_get_llm):
     """Only medium/low findings — still processes them."""
     mock_llm = MagicMock()

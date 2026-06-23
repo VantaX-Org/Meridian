@@ -285,10 +285,10 @@ rules:
       Correct via Admin Center > Time Management.
 
   - id: TIME013
-    field: USERID_TIME
+    field: TIMESHEET.USERID
     check_class: cross_field_check
-    fields: ['USERID_TIME']
-    condition: "~`USERID_TIME`.duplicated(keep=False)"
+    fields: ['TIMESHEET.USERID']
+    condition: "~`TIMESHEET.USERID`.duplicated(keep=False)"
     severity: high
     dimension: uniqueness
     message: Duplicate time records per employee per period — indicates time recording error
@@ -299,10 +299,15 @@ rules:
       __blank__: "Review duplicate time records in Time Management > Admin. Delete the duplicate entry. Verify the correct time record feeds to payroll."
 
   - id: TIME014
-    field: USERID_TIME
+    field: TIMESHEET.DATE
     check_class: freshness_check
     max_age_hours: 2190
     severity: medium
     dimension: timeliness
     message: Time record older than 3 months — stale time records may indicate inactive time recording for this employee
     rule_authority: best_practice
+    why_it_matters: "Time records older than 3 months with no newer activity often indicate an inactive worker, a broken time feed, or unprocessed time off."
+    sap_impact: "Time evaluation and leave accruals run on stale data; payroll may miss or double-count time; inactive workers retain open time profiles."
+    fix_map:
+      __blank__: "Review the time account in SuccessFactors Time: confirm the worker is active and the time feed is current; process outstanding time and close profiles for inactive workers."
+    record_fix_template: "Time record {field} is {age_days} days old. Confirm the worker is active and the feed is current; process outstanding time."

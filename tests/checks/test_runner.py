@@ -39,8 +39,8 @@ def _make_bp_dataframe(n: int = 100) -> pd.DataFrame:
 def test_runner_returns_correct_count():
     df = _make_bp_dataframe(50)
     results = run_checks("business_partner", df, "test-tenant")
-    # business_partner.yaml has 15 rules
-    assert len(results) == 15
+    # Non-None results = rules whose fields exist in this synthetic extract.
+    assert len(results) == 18
     assert all(isinstance(r, CheckResult) for r in results)
 
 

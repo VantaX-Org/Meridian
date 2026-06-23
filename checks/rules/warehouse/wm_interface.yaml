@@ -282,10 +282,10 @@ rules:
       SPRO (ECC) or /SCWM/SPRO (S/4HANA embedded EWM).
 
   - id: WM013
-    field: LGNUM_WM
+    field: MLGN.LGNUM
     check_class: cross_field_check
-    fields: ['LGNUM_WM']
-    condition: "~`LGNUM_WM`.duplicated(keep=False)"
+    fields: ['MLGN.LGNUM']
+    condition: "~`MLGN.LGNUM`.duplicated(keep=False)"
     severity: high
     dimension: uniqueness
     message: Duplicate WM interface records detected — indicates data transfer duplication
@@ -295,17 +295,8 @@ rules:
     fix_map:
       __blank__: "De-duplicate the data extract. If genuine duplicates exist in the WM interface, run LX23 to reconcile WM and IM stock."
 
-  - id: WM014
-    field: LGNUM_WM
-    check_class: freshness_check
-    max_age_hours: 8760
-    severity: low
-    dimension: timeliness
-    message: WM interface record older than 1 year — stale interface records may indicate broken WM-IM integration
-    rule_authority: best_practice
-
   - id: WM015
-    field: LGNUM_WM
+    field: MLGN.LGNUM
     check_class: regex_check
     pattern: "^[A-Z0-9]{3,4}$"
     severity: medium

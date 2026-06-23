@@ -92,7 +92,7 @@ VALID_RESPONSE = json.dumps({
 })
 
 
-@patch("agents.readiness.get_llm")
+@patch("agents.readiness.get_llm_safe")
 def test_readiness_node_go(mock_get_llm):
     """Score >= 90, 0 critical → status is go, LLM called for blockers/conditions."""
     mock_llm = MagicMock()
@@ -110,7 +110,7 @@ def test_readiness_node_go(mock_get_llm):
     mock_llm.invoke.assert_called_once()
 
 
-@patch("agents.readiness.get_llm")
+@patch("agents.readiness.get_llm_safe")
 def test_readiness_node_no_go(mock_get_llm):
     """Score < 60, 2 critical → no-go computed in Python before LLM call."""
     mock_llm = MagicMock()
@@ -123,7 +123,7 @@ def test_readiness_node_no_go(mock_get_llm):
     assert result["readiness_scores"]["business_partner"]["status"] == "no-go"
 
 
-@patch("agents.readiness.get_llm")
+@patch("agents.readiness.get_llm_safe")
 def test_readiness_node_conditional(mock_get_llm):
     """Score 75, 1 critical → conditional."""
     mock_llm = MagicMock()

@@ -397,7 +397,8 @@ async def test_llm_connection_endpoint(
 
     except Exception as e:
         logger.warning(f"LLM test failed for provider={body.provider}: {e}")
+        # Class name only — httpx errors can embed the endpoint URL + API key.
         return LLMTestResponse(
             success=False,
-            message=f"Connection failed: {str(e)[:200]}",
+            message=f"Connection failed: {type(e).__name__}",
         )

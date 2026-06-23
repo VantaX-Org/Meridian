@@ -401,6 +401,11 @@ rules:
     dimension: timeliness
     message: Compensation record not updated in 2+ years — salary may be outdated, review against current pay ranges
     rule_authority: best_practice
+    why_it_matters: "Compensation records unchanged for 2+ years usually mean a missed review cycle; the stored salary likely lags market and internal-equity benchmarks."
+    sap_impact: "Pay-equity and budget reports use outdated figures; merit and bonus calculations seed from a stale base; retention risk goes unflagged."
+    fix_map:
+      __blank__: "Review the record in the SuccessFactors Compensation module: validate base pay against the latest comp review and pay range; process an adjustment or document why no change applies."
+    record_fix_template: "Compensation record {field} is {age_days} days old. Validate base pay against the latest review and range; adjust or document."
 
   - id: COMP018
     field: COMPINFO.PAY_GRADE

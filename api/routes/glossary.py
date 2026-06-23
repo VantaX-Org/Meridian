@@ -363,7 +363,8 @@ async def ai_draft(
     except RateLimitExceeded:
         raise HTTPException(status_code=429, detail="Rate limit: 20 AI drafts per hour")
     except LLMError as e:
-        raise HTTPException(status_code=502, detail=f"AI enrichment failed: {e}")
+        logger.warning("AI glossary enrichment failed: %s", e)
+        raise HTTPException(status_code=502, detail="AI enrichment failed")
 
     return AIDraftResponse(
         business_definition=draft.get("business_definition", ""),

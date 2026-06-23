@@ -715,3 +715,19 @@ def get_l3_transactions(process_id: str) -> list[L3Transaction]:
     for l2 in proc.get("l2_processes", []):
         txns.extend(l2.get("l3_transactions", []))
     return txns
+
+
+def get_all_tcodes() -> set[str]:
+    """All standard SAP t-codes modelled across every shipped process.
+
+    Used as the "known" baseline for custom-namespace partitioning — any
+    transaction not in this set (e.g. a Z-prefixed variant) is treated as
+    customer-defined.
+    """
+    return {
+        l3["tcode"]
+        for proc in PROCESS_DEFINITIONS
+        for l2 in proc.get("l2_processes", [])
+        for l3 in l2.get("l3_transactions", [])
+        if l3.get("tcode")
+    }

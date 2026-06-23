@@ -61,6 +61,18 @@ CREATE TABLE IF NOT EXISTS tenant_users (
     UNIQUE(tenant_id, email)
 );
 
+-- Soft node-lock: distinct fingerprints seen per tenant (sharing-detection signal,
+-- never an enforcement gate — the client fingerprint changes on container restart).
+CREATE TABLE IF NOT EXISTS licence_nodes (
+    tenant_id TEXT NOT NULL,
+    fingerprint TEXT NOT NULL,
+    first_seen TEXT NOT NULL,
+    last_seen TEXT NOT NULL,
+    ping_count INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (tenant_id, fingerprint)
+);
+
+CREATE INDEX IF NOT EXISTS idx_licence_nodes_tenant ON licence_nodes(tenant_id, last_seen);
 CREATE INDEX IF NOT EXISTS idx_tenants_key_hash ON tenants(licence_key_hash);
 CREATE INDEX IF NOT EXISTS idx_rules_module ON rules(module);
 CREATE INDEX IF NOT EXISTS idx_rules_category ON rules(category);

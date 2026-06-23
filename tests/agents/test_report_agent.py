@@ -92,7 +92,7 @@ EXEC_SUMMARY = (
 )
 
 
-@patch("agents.report_agent.get_llm")
+@patch("agents.report_agent.get_llm_safe")
 def test_report_full_state(mock_get_llm):
     """Full state → report matches schema."""
     mock_llm = MagicMock()
@@ -120,7 +120,7 @@ def test_report_full_state(mock_get_llm):
     assert isinstance(report["migration_readiness"]["summary"], str)
 
 
-@patch("agents.report_agent.get_llm")
+@patch("agents.report_agent.get_llm_safe")
 def test_report_overall_status_python(mock_get_llm):
     """Overall status is computed in Python regardless of LLM output."""
     mock_llm = MagicMock()
@@ -139,7 +139,7 @@ def test_report_overall_status_python(mock_get_llm):
     assert result["report"]["migration_readiness"]["overall_status"] == "no-go"
 
 
-@patch("agents.report_agent.get_llm")
+@patch("agents.report_agent.get_llm_safe")
 def test_report_executive_summary_length(mock_get_llm):
     """Executive summary is between 50 and 500 characters."""
     mock_llm = MagicMock()

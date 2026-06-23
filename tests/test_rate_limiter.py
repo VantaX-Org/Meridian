@@ -29,13 +29,36 @@ class _FakeRedis:
         self.ttls[key] = seconds
 
 
-def _make_request(state: dict[str, Any] | None = None, ip: str = "1.2.3.4"):
+def _make_request(state: dict[str, Any] | None = None, ip: str = "1.2.3.4", xff: str | None = None):
     r = MagicMock()
     r.state.tenant_id = (state or {}).get("tenant_id")
     r.client.host = ip
     # headers acts like an immutable mapping in Starlette
-    r.headers = {}
+    r.headers = {"x-forwarded-for": xff} if xff is not None else {}
     return r
+
+
+def test_client_ip_ignores_spoofed_xff(monkeypatch: pytest.MonkeyPatch) -> None:
+    """With one trusted proxy, the real client IP is the rightmost XFF entry —
+    a caller prepending a fake IP must NOT shift their rate-limit bucket."""
+    from api.services import rate_limiter
+
+    monkeypatch.setattr(rate_limiter, "_TRUSTED_PROXY_HOPS", 1)
+    # Attacker sends XFF: "9.9.9.9"; nginx appends the true peer "5.5.5.5".
+    req = _make_request(ip="10.0.0.1", xff="9.9.9.9, 5.5.5.5")
+    assert rate_limiter._client_ip(req) == "5.5.5.5"
+    # Spoofing a different left value still resolves to the same real client.
+    req2 = _make_request(ip="10.0.0.1", xff="1.1.1.1, 5.5.5.5")
+    assert rate_limiter._client_ip(req2) == "5.5.5.5"
+
+
+def test_client_ip_falls_back_to_peer_without_proxies(monkeypatch: pytest.MonkeyPatch) -> None:
+    """TRUSTED_PROXY_HOPS=0 → ignore XFF entirely, trust only the socket peer."""
+    from api.services import rate_limiter
+
+    monkeypatch.setattr(rate_limiter, "_TRUSTED_PROXY_HOPS", 0)
+    req = _make_request(ip="5.5.5.5", xff="9.9.9.9")
+    assert rate_limiter._client_ip(req) == "5.5.5.5"
 
 
 @pytest.mark.asyncio

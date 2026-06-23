@@ -46,6 +46,7 @@ export async function writebackMasterRecord(
   record_id: string;
   domain: string;
   golden_fields: Record<string, unknown>;
+  writeback_supported: boolean;
   message: string;
 }> {
   const { data } = await apiClient.post(
