@@ -55,16 +55,20 @@ class Settings(BaseSettings):
     @field_validator("licence_server_url")
     @classmethod
     def _normalise_licence_server_url(cls, v: str) -> str:
-        """Accept either a base URL or a full `.../api/licence/validate` URL.
+        """Accept a bare base URL, a `.../api/licence` URL, or a full
+        `.../api/licence/validate` URL — normalising all three to the base.
 
-        The licence middleware appends `/api/licence/validate` itself, so this
-        normalises to the base — `.env.example` ships the full-path form under
-        MERIDIAN_LICENCE_SERVER_URL, which would otherwise double the path.
+        The licence middleware appends `/api/licence/validate` itself, so any
+        of these forms left un-stripped doubles the path (404, mis-logged as
+        "licence server unreachable"). `.env.example` ships the full-path
+        form under MERIDIAN_LICENCE_SERVER_URL; the `/api/licence` mid-form
+        has shipped from at least one install path too — strip both.
         """
         v = v.rstrip("/")
-        suffix = "/api/licence/validate"
-        if v.endswith(suffix):
-            v = v[: -len(suffix)]
+        for suffix in ("/api/licence/validate", "/api/licence"):
+            if v.endswith(suffix):
+                v = v[: -len(suffix)]
+                break
         return v
 
     # Notifications
