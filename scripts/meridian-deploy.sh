@@ -746,6 +746,26 @@ if [[ "${_table_count:-0}" -lt 1 ]]; then
 fi
 log "Database verified: ${_table_count} tables created ✓"
 
+# =============================================================================
+# Create the admin user
+# =============================================================================
+# The API's dev-tenant auto-seed (api/main.py lifespan) runs on container start,
+# which happens BEFORE migrations create the users/tenants tables — so it fails
+# silently, and since `up -d` never recreates an already-running api container,
+# it's never retried. Without this step no admin account is ever created —
+# ADMIN_EMAIL/ADMIN_PASSWORD would sit unused in .env and nothing could log in.
+section "Creating admin user"
+if docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" exec -T api \
+    python scripts/manage_users.py create \
+    --email "$ADMIN_EMAIL" --name "$ADMIN_NAME" --password "$ADMIN_PASSWORD" --role admin; then
+    log "Admin user created: ${ADMIN_EMAIL}"
+else
+    warn "Admin user creation failed (already exists, or a DB error — see output above)."
+    warn "Create it manually with:"
+    warn "  docker compose -f ${REPO_ROOT}/docker/docker-compose.customer.yml exec api \\"
+    warn "    python scripts/manage_users.py create --email <email> --password <password> --role admin"
+fi
+
 # Start the full stack
 section "Starting full stack"
 docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" up -d \

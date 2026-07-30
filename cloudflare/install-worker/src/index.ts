@@ -152,6 +152,45 @@ sudo mkdir -p "$DIR/scripts" "$DIR/docker/nginx"
 # locally, never printed. meridian-deploy.sh runs in PRECONFIGURED mode off it.
 sudo tee "$DIR/.env" >/dev/null <<'MERIDIAN_ENV'
 ${envFile}MERIDIAN_ENV
+sudo chmod 600 "$DIR/.env"
+
+# Ask for the real admin email + a chosen password. Reads from /dev/tty so
+# this still works when the script itself arrived via a pipe (curl | sudo
+# bash) — stdin is occupied by the script body, not the terminal. Falls back
+# to the generated defaults when no terminal is attached (e.g. unattended/CI).
+ADMIN_EMAIL="${adminEmail}"
+ADMIN_PASSWORD="${adminPassword}"
+if [ -r /dev/tty ]; then
+  echo ""
+  read -rp "Admin email [${adminEmail}]: " _INPUT_EMAIL < /dev/tty || true
+  [ -n "\${_INPUT_EMAIL:-}" ] && ADMIN_EMAIL="\$_INPUT_EMAIL"
+  while true; do
+    read -rsp "Admin password (min 12 chars, blank = keep generated): " _PW1 < /dev/tty || true
+    echo
+    if [ -z "\${_PW1:-}" ]; then break; fi
+    if [ "\${#_PW1}" -lt 12 ]; then echo "  Too short — need at least 12 characters."; continue; fi
+    read -rsp "Confirm password: " _PW2 < /dev/tty || true
+    echo
+    if [ "\$_PW1" != "\${_PW2:-}" ]; then echo "  Passwords did not match — try again."; continue; fi
+    ADMIN_PASSWORD="\$_PW1"
+    break
+  done
+else
+  echo "  (no terminal attached — using generated admin credentials)"
+fi
+
+# Patch the chosen email/password into .env — via a temp file, never through
+# an in-place stream edit (piping a file's own read back into itself races
+# with truncation) or sed (the password may contain characters sed's
+# delimiter/replacement syntax would misinterpret).
+sudo grep -v -E '^ADMIN_EMAIL=|^ADMIN_PASSWORD=|^ADMIN_NAME=' "$DIR/.env" | sudo tee "$DIR/.env.tmp" >/dev/null
+{
+  cat "$DIR/.env.tmp"
+  printf 'ADMIN_EMAIL=%s\\n' "$ADMIN_EMAIL"
+  printf 'ADMIN_NAME=Admin\\n'
+  printf 'ADMIN_PASSWORD=%s\\n' "$ADMIN_PASSWORD"
+} | sudo tee "$DIR/.env" >/dev/null
+sudo rm -f "$DIR/.env.tmp"
 sudo cp "$DIR/.env" "$DIR/docker/.env"
 sudo chmod 600 "$DIR/.env" "$DIR/docker/.env"
 
@@ -169,7 +208,7 @@ sudo bash scripts/meridian-deploy.sh --non-interactive
 echo ""
 echo "════════════════════════════════════════════════"
 echo "  Meridian installed."
-echo "  Admin login: ${adminEmail} / ${adminPassword}"
+echo "  Admin login: $ADMIN_EMAIL / $ADMIN_PASSWORD"
 echo "  (change it immediately after first sign-in)"
 echo "════════════════════════════════════════════════"
 `;
