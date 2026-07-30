@@ -13,32 +13,19 @@
 #
 # Requirements on the host: docker 24+, curl, python3, openssl (same as deploy).
 #
-<<<<<<< HEAD
 # One-liner (interactive install). Use process substitution — NOT `curl | bash`
 # — so the installer's prompts (licence key, tier, admin password) can still
 # read from your terminal:
 #   export GH_TOKEN=ghp_xxx        # PAT with scopes: repo + read:packages
 #   export GH_USER=your-gh-user
 #   sudo -E bash <(curl -fsSL https://<where-you-host-this>/install.sh)
-=======
-# Usage (interactive install):
-#   export GH_TOKEN=ghp_xxx        # PAT with scopes: repo + read:packages
-#   export GH_USER=your-gh-user
-#   curl -fsSL https://<where-you-host-this>/install.sh | sudo -E bash
->>>>>>> 77c7ff82a708abf035005eeb1a1060566d2934da
 #
 # Or save it and run:
 #   sudo GH_TOKEN=ghp_xxx GH_USER=your-gh-user bash install.sh
 #
-<<<<<<< HEAD
 # Extra flags pass through to meridian-deploy.sh. Piping `curl | bash` only
 # works for a fully non-interactive run (pre-seeded .env), e.g.:
 #   curl -fsSL <url> | sudo -E bash -s -- --non-interactive
-=======
-# Any extra flags are passed through to meridian-deploy.sh, e.g.:
-#   sudo -E bash install.sh --non-interactive
-#   sudo -E bash install.sh --licence-server https://licence.meridian.vantax.co.za
->>>>>>> 77c7ff82a708abf035005eeb1a1060566d2934da
 # =============================================================================
 set -euo pipefail
 
