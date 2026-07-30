@@ -34,6 +34,8 @@ const ALLOWED_FILES = new Set<string>([
   "scripts/update.sh",
   "docker/docker-compose.customer.yml",
   "docker/docker-compose.customer.ollama.yml",
+  "docker/nginx/meridian.conf",
+  "docker/nginx/nginx.conf",
 ]);
 
 const LICENCE_KEY_RE = /^MRDX-[A-F0-9]{8}-[A-F0-9]{8}-[A-F0-9]{8}$/;
@@ -154,9 +156,11 @@ sudo cp "$DIR/.env" "$DIR/docker/.env"
 sudo chmod 600 "$DIR/.env" "$DIR/docker/.env"
 
 # Fetch deploy files from the installer host (no repo clone, no token).
-get() { curl -fsSL "$BASE/files/$1" | sudo tee "$DIR/$1" >/dev/null && echo "  got $1"; }
+get() { sudo mkdir -p "$DIR/$(dirname "$1")"; curl -fsSL "$BASE/files/$1" | sudo tee "$DIR/$1" >/dev/null && echo "  got $1"; }
 get scripts/meridian-deploy.sh
 get docker/docker-compose.customer.yml
+get docker/nginx/meridian.conf
+get docker/nginx/nginx.conf
 ${overlay}
 cd "$DIR"
 sudo bash scripts/meridian-deploy.sh --non-interactive

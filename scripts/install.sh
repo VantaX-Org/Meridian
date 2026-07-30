@@ -60,6 +60,8 @@ mkdir -p "${INSTALL_DIR}"
 
 echo "→ Downloading deployment files (no clone) from ${REPO}@${REF}"
 fetch "docker/docker-compose.customer.yml" "${INSTALL_DIR}/docker/docker-compose.customer.yml"
+fetch "docker/nginx/meridian.conf"         "${INSTALL_DIR}/docker/nginx/meridian.conf"
+fetch "docker/nginx/nginx.conf"            "${INSTALL_DIR}/docker/nginx/nginx.conf"
 fetch ".env.example"                       "${INSTALL_DIR}/.env.example"
 fetch "scripts/meridian-deploy.sh"         "${INSTALL_DIR}/scripts/meridian-deploy.sh"
 fetch "scripts/update.sh"                  "${INSTALL_DIR}/scripts/update.sh"
