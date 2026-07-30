@@ -31,7 +31,6 @@ export default function SettingsLicencePage() {
   }
 
   const licence = data;
-  const enabledMenu = licence.enabled_menu_items ?? [];
   const enabledModules = licence.enabled_modules ?? [];
   const seatsMax = licence.features?.max_users ?? 0;
 
@@ -101,9 +100,9 @@ export default function SettingsLicencePage() {
 
         <div className="mn-col-7" style={{ gridColumn: "span 7" }}>
           <div className="mn-card mn-card-pad">
-            <SectionHeader title="Modules" caption="Surfaces enabled on this licence" />
+            <SectionHeader title="Modules" caption="SAP modules enabled on this licence" />
             <div className="mn-modlist">
-              {enabledMenu.map((name) => (
+              {enabledModules.map((name) => (
                 <div key={name} className="mn-modrow">
                   <span style={{ fontWeight: 500, color: "var(--mn-ink-900)", textTransform: "capitalize" }}>
                     {name.replace(/_/g, " ")}
@@ -113,7 +112,7 @@ export default function SettingsLicencePage() {
                   </span>
                 </div>
               ))}
-              {enabledMenu.length === 0 && (
+              {enabledModules.length === 0 && (
                 <div style={{ color: "var(--mn-ink-400)", padding: 8 }}>No modules enabled.</div>
               )}
             </div>
