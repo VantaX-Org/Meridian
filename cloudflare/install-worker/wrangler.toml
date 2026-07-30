@@ -1,0 +1,40 @@
+# =============================================================================
+# Meridian — Install Worker
+# Serves the hosted one-liner installer:
+#   curl -fsSL "https://get.meridian.vantax.co.za/install?key=MRDX-..." | sudo bash
+#
+# It validates the licence key, then returns a bootstrap shell script with the
+# GHCR read token injected SERVER-SIDE (from a Worker secret) — so the customer
+# never supplies a GitHub token or username. Deploy files are proxied from the
+# private repo using a server-side repo token, so updating the installer is just
+# a repo push (no worker redeploy).
+# =============================================================================
+name = "meridian-install-worker"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+
+[vars]
+# Non-secret config. Override per-environment as needed.
+GHCR_USER            = "vantax-org"
+IMAGE_PREFIX         = "ghcr.io/vantax-org/meridian"
+LICENCE_VALIDATE_URL = "https://licence.meridian.vantax.co.za/api/licence/validate"
+LICENCE_SERVER_BASE  = "https://licence.meridian.vantax.co.za/api/licence"
+REPO                 = "VantaX-Org/Meridian"
+REPO_REF             = "main"
+
+# ── Secrets (set with `wrangler secret put <NAME>`; never commit these) ───────
+#   GHCR_TOKEN  — read:packages PAT, injected into the returned script so the
+#                 customer's `docker login ghcr.io` works without their own token
+#   REPO_TOKEN  — repo (contents:read) PAT, used server-side to proxy the deploy
+#                 files from the private repo via the GitHub Contents API
+#
+#   wrangler secret put GHCR_TOKEN
+#   wrangler secret put REPO_TOKEN
+
+# ── Route ─────────────────────────────────────────────────────────────────────
+# Requires the vantax.co.za zone to live in this Cloudflare account. Uncomment
+# and deploy, then add a DNS record for get.meridian pointing at the worker
+# (an AAAA/A to 100:: / a CNAME to the workers.dev host, or a Custom Domain).
+# [[routes]]
+# pattern   = "get.meridian.vantax.co.za/*"
+# zone_name = "vantax.co.za"
