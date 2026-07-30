@@ -60,6 +60,12 @@ def run_migrations_online() -> None:
         if app_password:
             escaped = app_password.replace("'", "''")
             connection.execute(text(f"SET meridian.app_password = '{escaped}'"))
+            # End the implicit transaction the SET opened (SQLAlchemy 2.0
+            # "commit as you go"). Left open, alembic's begin_transaction()
+            # joins it as a nested no-op and the connection close ROLLS BACK
+            # every migration while still logging success. SET is
+            # session-scoped, so the GUC survives this commit.
+            connection.commit()
 
         context.configure(
             connection=connection, target_metadata=target_metadata
