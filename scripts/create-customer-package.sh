@@ -217,6 +217,13 @@ ${LICENCE_KEY_LINE}
 ${LICENCE_TOKEN_LINE}
 MERIDIAN_LICENCE_SERVER_URL=https://licence.meridian.vantax.co.za/api/licence/validate
 
+# ── Image registry (baked deploy credentials) ─────────────
+# read:packages-only token so the customer never supplies a GH token or user.
+# Treat this file as a secret: anyone with the tarball can read this token.
+# Use a narrowly-scoped, revocable machine PAT.
+MERIDIAN_GHCR_USER=vantax-org
+MERIDIAN_GHCR_TOKEN=${GHCR_READ_TOKEN}
+
 # ── Internal API proxy (used by Next.js rewrites — do not change) ──
 INTERNAL_API_URL=http://api:8000
 

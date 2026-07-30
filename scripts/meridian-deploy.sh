@@ -620,11 +620,25 @@ esac
 # =============================================================================
 provision_images_ghcr() {
     section "Pulling images from GHCR"
+    # Authenticate with the baked/env token so a packaged deployment can pull
+    # private images without the operator ever running `docker login` or
+    # supplying a token themselves. No token → anonymous pull (public images
+    # only). GHCR_TOKEN is populated from the environment or the .env
+    # (MERIDIAN_GHCR_TOKEN) earlier in this script.
+    if [[ -n "$GHCR_TOKEN" ]]; then
+        if echo "$GHCR_TOKEN" | docker login "$GHCR_REGISTRY" -u "$GHCR_USER" --password-stdin >/dev/null 2>&1; then
+            log "Authenticated to ${GHCR_REGISTRY} as ${GHCR_USER}"
+        else
+            warn "GHCR login failed — falling back to anonymous pull (works only for public images)"
+        fi
+    else
+        warn "No GHCR token present — attempting anonymous pull (private images will be denied)"
+    fi
     warn "Pulling images — this may take several minutes"
     if docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" pull; then
         log "All images pulled"
     else
-        error "Image pull failed. If images are private, please log in to GHCR manually before running this script."
+        error "Image pull failed. For private images, ensure the deployment package embeds a valid GHCR token (MERIDIAN_GHCR_TOKEN)."
     fi
 }
 
