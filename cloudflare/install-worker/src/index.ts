@@ -243,7 +243,7 @@ export default {
       return text(
         "Meridian installer.\n\n" +
           '  curl -fsSL "https://get.meridian.vantax.co.za/install?key=MRDX-XXXXXXXX-XXXXXXXX-XXXXXXXX" | sudo bash\n\n' +
-          "Optional query params: tier (0|2), domain, admin_email, admin_password.\n",
+          "Optional query params: tier (0|2), domain (auto-detected from the caller's public IP if omitted), admin_email, admin_password.\n",
       );
     }
 
@@ -262,7 +262,21 @@ export default {
       }
 
       const tier = (url.searchParams.get("tier") || "0").trim();
-      const domain = (url.searchParams.get("domain") || "localhost").trim();
+      // Auto-detect the caller's public IP when ?domain= isn't given, so the
+      // install banner prints something the customer can actually browse to
+      // instead of "localhost". Since the SERVER itself is the one calling
+      // this endpoint (curl | sudo bash), the client IP Cloudflare saw on
+      // this request IS the server's real public address — exactly what a
+      // browser elsewhere would need to reach it. No extra network round
+      // trip, and works on any host/cloud, not just AWS. cf-connecting-ip +
+      // x-forwarded-for fallback matches the convention already used in
+      // cloudflare/licence-worker.
+      const domain = (
+        url.searchParams.get("domain") ||
+        request.headers.get("cf-connecting-ip") ||
+        request.headers.get("x-forwarded-for")?.split(",")[0] ||
+        "localhost"
+      ).trim();
       const adminEmail = (url.searchParams.get("admin_email") || `admin@${domain}`).trim();
       const adminPassword = (url.searchParams.get("admin_password") || hex(12)).trim();
 
