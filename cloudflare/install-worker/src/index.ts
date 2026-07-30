@@ -34,6 +34,7 @@ const ALLOWED_FILES = new Set<string>([
   "scripts/update.sh",
   "docker/docker-compose.customer.yml",
   "docker/docker-compose.customer.ollama.yml",
+  "docker/nginx/meridian.conf",
 ]);
 
 const LICENCE_KEY_RE = /^MRDX-[A-F0-9]{8}-[A-F0-9]{8}-[A-F0-9]{8}$/;
@@ -144,7 +145,7 @@ DIR=/opt/meridian
 BASE="${origin}"
 
 echo "→ Installing Meridian into $DIR"
-sudo mkdir -p "$DIR/scripts" "$DIR/docker"
+sudo mkdir -p "$DIR/scripts" "$DIR/docker/nginx"
 
 # Pre-configured .env (licence + GHCR token + generated secrets) — written
 # locally, never printed. meridian-deploy.sh runs in PRECONFIGURED mode off it.
@@ -154,9 +155,11 @@ sudo cp "$DIR/.env" "$DIR/docker/.env"
 sudo chmod 600 "$DIR/.env" "$DIR/docker/.env"
 
 # Fetch deploy files from the installer host (no repo clone, no token).
-get() { curl -fsSL "$BASE/files/$1" | sudo tee "$DIR/$1" >/dev/null && echo "  got $1"; }
+# get() auto-creates the destination subdir so nested paths (docker/nginx/…) work.
+get() { sudo mkdir -p "$DIR/$(dirname "$1")"; curl -fsSL "$BASE/files/$1" | sudo tee "$DIR/$1" >/dev/null && echo "  got $1"; }
 get scripts/meridian-deploy.sh
 get docker/docker-compose.customer.yml
+get docker/nginx/meridian.conf
 ${overlay}
 cd "$DIR"
 sudo bash scripts/meridian-deploy.sh --non-interactive
