@@ -7,12 +7,14 @@ services:
       context: .
       dockerfile: docker/Dockerfile.api.prod
       args:
-        INSTALL_PYRFC: "false"
+        INSTALL_PYRFC: ${INSTALL_PYRFC:-false}
 
   worker:
     build:
       context: .
       dockerfile: docker/Dockerfile.worker.prod
+      args:
+        INSTALL_PYRFC: ${INSTALL_PYRFC:-false}
 
   frontend:
     build:

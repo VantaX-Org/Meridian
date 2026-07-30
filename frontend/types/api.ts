@@ -489,9 +489,13 @@ export interface UserListResponse {
 export interface SAPSystem {
   id: string;
   name: string;
-  host: string;
-  client: string;
-  sysnr: string;
+  system_type: SystemType;
+  host: string | null;
+  client: string | null;
+  sysnr: string | null;
+  base_url: string | null;
+  company_id: string | null;
+  auth_type: AuthType | null;
   description: string | null;
   environment: "PRD" | "QAS" | "DEV";
   is_active: boolean;
@@ -848,7 +852,7 @@ export interface MdmHistoryResponse {
 }
 
 /* -- System Types (Extended) -- */
-export type SystemType = "ecc" | "s4hana_onprem" | "s4hana_cloud" | "successfactors" | "concur" | "ariba" | "ewm" | "fieldglass" | "btp";
+export type SystemType = "ecc" | "s4hana_onprem" | "s4hana_cloud" | "successfactors" | "concur" | "ariba" | "ewm";
 export type AuthType = "rfc" | "basic" | "oauth2_client_credentials" | "oauth2_saml" | "api_key";
 export type HealthStatus = "healthy" | "degraded" | "unreachable" | "auth_failed" | "unknown";
 

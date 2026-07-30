@@ -63,4 +63,8 @@ sentry-sdk[fastapi]>=2.19.0
 scikit-learn==1.6.1
 
 # SAP connector — optional, required when SAP_CONNECTOR=rfc (default)
-# pyrfc>=3.1.0  # Install separately: requires SAP NW RFC SDK. See docs/sap-connector.md.
+# pyrfc>=3.1.0 is installed by the Docker build itself, gated on the
+# INSTALL_PYRFC build arg, once vendor/nwrfcsdk/ has the SAP NW RFC SDK in it.
+# See docs/sap-connector.md. Not listed here because it fails to build without
+# the SDK present, which would break `pip install -r requirements.txt` for
+# everyone who doesn't have it.

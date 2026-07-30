@@ -15,6 +15,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.services.rbac import require_permission
+from api.services.connectivity_manager import (
+    RFC_SYSTEM_TYPES,
+    CLOUD_SYSTEM_TYPES,
+    connect_sap_system,
+)
 
 router = APIRouter(prefix="/api/v1", tags=["systems"])
 logger = logging.getLogger("meridian.systems")
@@ -25,12 +30,19 @@ logger = logging.getLogger("meridian.systems")
 
 class RegisterSystemRequest(BaseModel):
     name: str
-    host: str
-    client: str
-    sysnr: str
-    description: Optional[str] = None
+    system_type: str = Field(default="ecc")
     environment: str = Field(default="DEV", pattern="^(PRD|QAS|DEV)$")
-    password: str = Field(..., description="SAP RFC password — encrypted at rest, never returned")
+    description: Optional[str] = None
+    # RFC fields — required when system_type in RFC_SYSTEM_TYPES
+    host: Optional[str] = None
+    client: Optional[str] = None
+    sysnr: Optional[str] = None
+    # Cloud fields — required when system_type in CLOUD_SYSTEM_TYPES
+    base_url: Optional[str] = None
+    company_id: Optional[str] = None
+    auth_type: Optional[str] = None
+    # RFC: {"password": ...}. Cloud: {"client_id", "client_secret", "api_key", "password" (basic auth)}
+    credentials: dict[str, str] = Field(default_factory=dict)
 
 
 class SystemResponse(BaseModel):
@@ -62,10 +74,13 @@ class UpdateSystemRequest(BaseModel):
     host: Optional[str] = None
     client: Optional[str] = None
     sysnr: Optional[str] = None
+    base_url: Optional[str] = None
+    company_id: Optional[str] = None
+    auth_type: Optional[str] = None
     description: Optional[str] = None
     environment: Optional[str] = None
     is_active: Optional[bool] = None
-    password: Optional[str] = None
+    credentials: dict[str, str] = Field(default_factory=dict)
 
 
 class TestConnectionResponse(BaseModel):
@@ -119,24 +134,47 @@ async def register_system(
     """Register a new SAP system. Admin and Steward only."""
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
 
-    # Encrypt the password
-    from api.services.credential_store import encrypt_password
-    encrypted = encrypt_password(str(tenant.id), body.password)
+    if body.system_type not in RFC_SYSTEM_TYPES and body.system_type not in CLOUD_SYSTEM_TYPES:
+        raise HTTPException(status_code=400, detail=f"Unsupported system_type: {body.system_type}")
 
-    # Insert system
+    if body.system_type in RFC_SYSTEM_TYPES:
+        if not (body.host and body.client and body.sysnr and body.credentials.get("password")):
+            raise HTTPException(
+                status_code=400,
+                detail="host, client, sysnr and credentials.password are required for this system_type",
+            )
+        auth_type = "rfc"
+    else:
+        if not body.base_url:
+            raise HTTPException(status_code=400, detail="base_url is required for this system_type")
+        auth_type = body.auth_type or "oauth2_client_credentials"
+
+    from api.services.credential_store import encrypt_password
+
     result = await db.execute(
         text("""
-            INSERT INTO sap_systems (id, tenant_id, name, host, client, sysnr, description, environment)
-            VALUES (gen_random_uuid(), :tid, :name, :host, :client, :sysnr, :description, :environment)
-            RETURNING id, name, host, client, sysnr, description, environment, is_active,
+            INSERT INTO sap_systems (
+                id, tenant_id, name, system_type, host, client, sysnr,
+                base_url, company_id, auth_type, description, environment
+            )
+            VALUES (
+                gen_random_uuid(), :tid, :name, :system_type, :host, :client, :sysnr,
+                :base_url, :company_id, :auth_type, :description, :environment
+            )
+            RETURNING id, name, system_type, host, client, sysnr, base_url, company_id,
+                      auth_type, description, environment, is_active,
                       created_at::text, updated_at::text
         """),
         {
             "tid": str(tenant.id),
             "name": body.name,
+            "system_type": body.system_type,
             "host": body.host,
             "client": body.client,
             "sysnr": body.sysnr,
+            "base_url": body.base_url,
+            "company_id": body.company_id,
+            "auth_type": auth_type,
             "description": body.description,
             "environment": body.environment,
         },
@@ -144,27 +182,53 @@ async def register_system(
     row = result.fetchone()
     system_id = str(row[0])
 
-    # Store encrypted credentials
-    await db.execute(
-        text("""
-            INSERT INTO system_credentials (id, system_id, encrypted_password, key_version)
-            VALUES (gen_random_uuid(), :sid, :epw, 1)
-        """),
-        {"sid": system_id, "epw": encrypted},
-    )
+    # Password-based secret (RFC user/password, or cloud basic auth) -> system_credentials
+    password = body.credentials.get("password")
+    if password:
+        encrypted = encrypt_password(str(tenant.id), password)
+        await db.execute(
+            text("""
+                INSERT INTO system_credentials (id, system_id, encrypted_password, key_version)
+                VALUES (gen_random_uuid(), :sid, :epw, 1)
+            """),
+            {"sid": system_id, "epw": encrypted},
+        )
+
+    # OAuth/API-key secrets live directly on sap_systems
+    cloud_secret_columns = {
+        "client_id": "client_id_encrypted",
+        "client_secret": "client_secret_encrypted",
+        "api_key": "api_key_encrypted",
+    }
+    cloud_updates = {
+        column: encrypt_password(str(tenant.id), body.credentials[cred_key])
+        for cred_key, column in cloud_secret_columns.items()
+        if body.credentials.get(cred_key)
+    }
+    if cloud_updates:
+        set_clause = ", ".join(f"{col} = :{col}" for col in cloud_updates)
+        await db.execute(
+            text(f"UPDATE sap_systems SET {set_clause} WHERE id = :sid"),
+            {**cloud_updates, "sid": system_id},
+        )
+
     await db.commit()
 
     return SystemResponse(
         id=system_id,
         name=row[1],
-        host=row[2],
-        client=row[3],
-        sysnr=row[4],
-        description=row[5],
-        environment=row[6],
-        is_active=row[7],
-        created_at=row[8],
-        updated_at=row[9],
+        system_type=row[2],
+        host=row[3],
+        client=row[4],
+        sysnr=row[5],
+        base_url=row[6],
+        company_id=row[7],
+        auth_type=row[8],
+        description=row[9],
+        environment=row[10],
+        is_active=row[11],
+        created_at=row[12],
+        updated_at=row[13],
     )
 
 
@@ -240,6 +304,15 @@ async def update_system(
     if body.sysnr is not None:
         set_parts.append("sysnr = :sysnr")
         updates["sysnr"] = body.sysnr
+    if body.base_url is not None:
+        set_parts.append("base_url = :base_url")
+        updates["base_url"] = body.base_url
+    if body.company_id is not None:
+        set_parts.append("company_id = :company_id")
+        updates["company_id"] = body.company_id
+    if body.auth_type is not None:
+        set_parts.append("auth_type = :auth_type")
+        updates["auth_type"] = body.auth_type
     if body.description is not None:
         set_parts.append("description = :description")
         updates["description"] = body.description
@@ -259,23 +332,43 @@ async def update_system(
             updates,
         )
 
-    # Update password if provided
-    if body.password is not None:
+    # Update credentials if provided
+    if password := body.credentials.get("password"):
         from api.services.credential_store import encrypt_password
-        encrypted = encrypt_password(str(tenant.id), body.password)
+        encrypted = encrypt_password(str(tenant.id), password)
         await db.execute(
             text("""
-                UPDATE system_credentials SET encrypted_password = :epw, key_version = key_version + 1
-                WHERE system_id = :sid
+                INSERT INTO system_credentials (id, system_id, encrypted_password, key_version)
+                VALUES (gen_random_uuid(), :sid, :epw, 1)
+                ON CONFLICT (system_id) DO UPDATE
+                    SET encrypted_password = :epw, key_version = system_credentials.key_version + 1
             """),
             {"epw": encrypted, "sid": system_id},
+        )
+
+    cloud_secret_columns = {
+        "client_id": "client_id_encrypted",
+        "client_secret": "client_secret_encrypted",
+        "api_key": "api_key_encrypted",
+    }
+    cloud_secret_updates = {}
+    for cred_key, column in cloud_secret_columns.items():
+        if value := body.credentials.get(cred_key):
+            from api.services.credential_store import encrypt_password
+            cloud_secret_updates[column] = encrypt_password(str(tenant.id), value)
+    if cloud_secret_updates:
+        set_clause = ", ".join(f"{col} = :{col}" for col in cloud_secret_updates)
+        await db.execute(
+            text(f"UPDATE sap_systems SET {set_clause} WHERE id = :sid AND tenant_id = :tid"),
+            {**cloud_secret_updates, "sid": system_id, "tid": str(tenant.id)},
         )
 
     await db.commit()
 
     result = await db.execute(
         text("""
-            SELECT id, name, host, client, sysnr, description, environment, is_active,
+            SELECT id, name, system_type, host, client, sysnr, base_url, company_id,
+                   auth_type, description, environment, is_active,
                    created_at::text, updated_at::text
             FROM sap_systems WHERE id = :sid AND tenant_id = :tid
         """),
@@ -286,9 +379,10 @@ async def update_system(
         raise HTTPException(status_code=404, detail="System not found")
 
     return SystemResponse(
-        id=str(row[0]), name=row[1], host=row[2], client=row[3], sysnr=row[4],
-        description=row[5], environment=row[6], is_active=row[7],
-        created_at=row[8], updated_at=row[9],
+        id=str(row[0]), name=row[1], system_type=row[2], host=row[3], client=row[4],
+        sysnr=row[5], base_url=row[6], company_id=row[7], auth_type=row[8],
+        description=row[9], environment=row[10], is_active=row[11],
+        created_at=row[12], updated_at=row[13],
     )
 
 
@@ -325,15 +419,18 @@ async def test_connection(
     tenant: Tenant = Depends(get_tenant),
     role: str = Depends(require_permission("manage_rules")),
 ):
-    """Test RFC connection to an SAP system. Admin and Steward only."""
+    """Test the connection to an SAP system, for any system_type. Admin and Steward only."""
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
 
-    # Load system and credentials
+    # LEFT JOIN — cloud systems using pure OAuth client-credentials never get a
+    # system_credentials row, so an INNER JOIN here would 404 a system that exists.
     result = await db.execute(
         text("""
-            SELECT s.host, s.client, s.sysnr, sc.encrypted_password
+            SELECT s.system_type, s.host, s.client, s.sysnr, s.base_url, s.company_id,
+                   s.auth_type, s.client_id_encrypted, s.client_secret_encrypted,
+                   s.api_key_encrypted, sc.encrypted_password
             FROM sap_systems s
-            JOIN system_credentials sc ON sc.system_id = s.id
+            LEFT JOIN system_credentials sc ON sc.system_id = s.id
             WHERE s.id = :sid AND s.tenant_id = :tid
         """),
         {"sid": system_id, "tid": str(tenant.id)},
@@ -342,42 +439,63 @@ async def test_connection(
     if not row:
         raise HTTPException(status_code=404, detail="System not found")
 
-    host, client, sysnr, encrypted_password = row
+    (system_type, host, client, sysnr, base_url, company_id, auth_type,
+     client_id_encrypted, client_secret_encrypted, api_key_encrypted, encrypted_password) = row
 
     from api.services.credential_store import decrypt_password
+    from sap.base import SAPConnectorError
     import os
 
+    def safe_decrypt(value: Optional[str]) -> str:
+        return decrypt_password(str(tenant.id), value) if value else ""
+
     try:
-        password = decrypt_password(str(tenant.id), encrypted_password)
+        password = safe_decrypt(encrypted_password)
+        client_id = safe_decrypt(client_id_encrypted)
+        client_secret = safe_decrypt(client_secret_encrypted)
+        api_key = safe_decrypt(api_key_encrypted)
     except Exception:
         return TestConnectionResponse(connected=False, message="Failed to decrypt credentials")
 
-    from sap import get_connector
-    from sap.base import SAPConnectionParams, SAPConnectorError
-
     rfc_user = os.getenv("SAP_RFC_USER", "RFC_USER")
+    params = {
+        "host": host,
+        "client": client,
+        "sysnr": sysnr,
+        "user": rfc_user,
+        "password": password,
+        "base_url": base_url,
+        "company_id": company_id,
+        "auth_type": auth_type,
+        "username": rfc_user if system_type in CLOUD_SYSTEM_TYPES else "",
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "api_key": api_key,
+        "token_url": "",
+    }
 
-    params = SAPConnectionParams(
-        host=host,
-        client=client,
-        sysnr=sysnr,
-        user=rfc_user,
-        password=password,
-    )
+    secrets_to_mask = [s for s in (password, client_secret, api_key) if s]
+
+    def mask(message: str) -> str:
+        for secret in secrets_to_mask:
+            message = re.sub(re.escape(secret), "****", message)
+        return message
+
+    connector = None
     try:
-        with get_connector() as conn:
-            conn.connect(params)
-            connected = conn.ping()
-        password = ""  # clear from memory
+        connector = connect_sap_system(system_type, params)
+        connected = connector.ping()
         if connected:
             return TestConnectionResponse(connected=True, message="Connection successful")
         return TestConnectionResponse(connected=False, message="Ping failed")
     except SAPConnectorError as e:
-        safe_msg = re.sub(re.escape(password), "****", str(e)) if password else str(e)
-        password = ""  # clear from memory
         if "pyrfc_not_installed" in str(e):
             return TestConnectionResponse(connected=False, message="PyRFC is not installed")
-        return TestConnectionResponse(connected=False, message=f"Connection failed: {safe_msg}")
+        return TestConnectionResponse(connected=False, message=f"Connection failed: {mask(str(e))}")
+    finally:
+        if connector is not None:
+            connector.close()
+        password = client_secret = api_key = ""  # clear from memory
 
 
 @router.post("/systems/{system_id}/sync")

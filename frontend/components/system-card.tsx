@@ -21,8 +21,6 @@ const TYPE_LABELS: Record<string, string> = {
   concur: "Concur",
   ariba: "Ariba",
   ewm: "EWM",
-  fieldglass: "Fieldglass",
-  btp: "BTP",
 };
 
 const HEALTH_DOT: Record<HealthStatus, string> = {
@@ -34,7 +32,7 @@ const HEALTH_DOT: Record<HealthStatus, string> = {
 };
 
 function TypeIcon({ type }: { type: string }) {
-  const isCloud = ["s4hana_cloud", "successfactors", "concur", "ariba", "fieldglass", "btp"].includes(type);
+  const isCloud = ["s4hana_cloud", "successfactors", "concur", "ariba"].includes(type);
   const Icon = isCloud ? Cloud : Server;
   return (
     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/[0.65]">

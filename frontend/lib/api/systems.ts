@@ -4,6 +4,7 @@ import type {
   SAPSystemListResponse,
   SyncProfile,
   SyncRun,
+  SystemType,
   TestConnectionResponse,
 } from "@/types/api";
 
@@ -14,12 +15,19 @@ export async function getSystems(): Promise<SAPSystem[]> {
 
 export async function registerSystem(body: {
   name: string;
-  host: string;
-  client: string;
-  sysnr: string;
-  description?: string;
+  system_type: SystemType;
   environment: string;
-  password: string;
+  description?: string;
+  // RFC fields (ecc, s4hana_onprem, ewm)
+  host?: string;
+  client?: string;
+  sysnr?: string;
+  // Cloud fields (s4hana_cloud, successfactors, concur, ariba)
+  base_url?: string;
+  company_id?: string;
+  auth_type?: string;
+  // RFC: { password }. Cloud: { client_id, client_secret, api_key, password? (basic auth) }
+  credentials: Record<string, string>;
 }): Promise<SAPSystem> {
   const { data } = await apiClient.post<SAPSystem>("/api/v1/systems", body);
   return data;
@@ -32,10 +40,13 @@ export async function updateSystem(
     host?: string;
     client?: string;
     sysnr?: string;
+    base_url?: string;
+    company_id?: string;
+    auth_type?: string;
     description?: string;
     environment?: string;
     is_active?: boolean;
-    password?: string;
+    credentials?: Record<string, string>;
   }
 ): Promise<SAPSystem> {
   const { data } = await apiClient.put<SAPSystem>(

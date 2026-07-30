@@ -24,6 +24,29 @@ Then restart:
 docker compose restart api worker
 ```
 
+## Enabling the `rfc` backend (pyrfc + SAP NW RFC SDK)
+
+`pyrfc` and the SAP NW RFC SDK are **not** in the prebuilt `ghcr.io` images —
+the SDK is SAP-licensed binary software and cannot be redistributed. To use
+`SAP_CONNECTOR=rfc` against a real ECC/S/4HANA-on-prem/eWMS system, you must
+build the images yourself with the SDK supplied:
+
+1. Obtain the SAP NW RFC SDK from the SAP Support Portal (requires an SAP
+   licence) and extract it into `vendor/nwrfcsdk/` so it contains `lib/` and
+   `include/`. See `vendor/nwrfcsdk/README.md`.
+2. Build with `INSTALL_PYRFC=true`:
+   ```bash
+   echo "INSTALL_PYRFC=true" >> .env
+   docker compose -f docker-compose.yml -f docker-compose.build.yml build api worker
+   docker compose up -d
+   ```
+
+Without this, `SAP_CONNECTOR=rfc` will connect to nothing — `RFCConnector`
+raises `pyrfc_not_installed` on every `connect()` call, and
+`POST /api/v1/systems/{id}/test` will report `"PyRFC is not installed"`.
+`mock`, `odata`, and the cloud connectors (`successfactors`, `concur`,
+`ariba`, `s4hana_cloud`) don't need the SDK and work in the prebuilt images.
+
 ## Adding a new backend
 
 1. Create `sap/<backend>.py` implementing all methods of `sap.base.SAPConnector`

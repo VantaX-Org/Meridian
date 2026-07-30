@@ -16,8 +16,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /build
 
+ARG INSTALL_PYRFC=false
+
+# Optional customer-supplied SAP NW RFC SDK (SAP-licensed binary — cannot ship
+# in this repo). Drop it into vendor/nwrfcsdk/ before building with
+# INSTALL_PYRFC=true. See docs/sap-connector.md.
+COPY vendor/nwrfcsdk/ /opt/nwrfcsdk/
+ENV SAPNWRFC_HOME=/opt/nwrfcsdk
+ENV LD_LIBRARY_PATH=/opt/nwrfcsdk/lib:${LD_LIBRARY_PATH}
+
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt \
+    && if [ "$INSTALL_PYRFC" = "true" ]; then pip install --no-cache-dir "pyrfc>=3.1.0"; fi
 
 COPY api/ api/
 COPY llm/ llm/
@@ -50,6 +60,12 @@ WORKDIR /app
 
 COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
+
+# SAP NW RFC SDK runtime libraries (present only if INSTALL_PYRFC=true was set above)
+COPY --from=builder /opt/nwrfcsdk /opt/nwrfcsdk
+ENV SAPNWRFC_HOME=/opt/nwrfcsdk
+ENV LD_LIBRARY_PATH=/opt/nwrfcsdk/lib:${LD_LIBRARY_PATH}
+
 COPY --from=builder /build .
 
 RUN find . -name "*.py" ! -name "__init__.py" -delete 2>/dev/null || true

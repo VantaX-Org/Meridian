@@ -30,6 +30,89 @@ from sap.extraction_registry import (
 
 logger = logging.getLogger("meridian.connectivity_manager")
 
+RFC_SYSTEM_TYPES = ("ecc", "s4hana_onprem", "ewm")
+CLOUD_SYSTEM_TYPES = ("successfactors", "concur", "ariba", "s4hana_cloud")
+
+
+def connect_sap_system(system_type: str, params: dict):
+    """Build and connect the correct SAP connector for a system_type.
+
+    `params` must carry the fields for that system_type, as built by
+    `ConnectivityManager._build_connection_params()`. Shared by the
+    connectivity manager (extraction/config-sync) and the systems API
+    (test-connection) so there is exactly one dispatch table for
+    system_type -> connector. Caller owns the returned connector's
+    lifecycle and must call close().
+    """
+    if system_type in RFC_SYSTEM_TYPES:
+        from sap import get_connector
+        connector = get_connector()
+        connector.connect(SAPConnectionParams(
+            host=params["host"],
+            client=params["client"],
+            sysnr=params["sysnr"],
+            user=params["user"],
+            password=params["password"],
+        ))
+        return connector
+
+    elif system_type == "successfactors":
+        from sap.successfactors import SuccessFactorsConnector
+        connector = SuccessFactorsConnector()
+        connector.connect(CloudConnectionParams(
+            base_url=params["base_url"],
+            company_id=params.get("company_id", ""),
+            auth_type=params.get("auth_type") or "basic",
+            username=params.get("username", ""),
+            password=params.get("password", ""),
+            client_id=params.get("client_id", ""),
+            client_secret=params.get("client_secret", ""),
+            token_url=params.get("token_url", ""),
+        ))
+        return connector
+
+    elif system_type == "concur":
+        from sap.concur import ConcurConnector
+        connector = ConcurConnector()
+        connector.connect(CloudConnectionParams(
+            base_url=params["base_url"],
+            company_id=params.get("company_id", ""),
+            auth_type="oauth2_client_credentials",
+            client_id=params.get("client_id", ""),
+            client_secret=params.get("client_secret", ""),
+            token_url=params.get("token_url", ""),
+        ))
+        return connector
+
+    elif system_type == "ariba":
+        from sap.ariba import AribaConnector
+        connector = AribaConnector()
+        connector.connect(CloudConnectionParams(
+            base_url=params["base_url"],
+            company_id=params.get("company_id", ""),
+            auth_type="oauth2_client_credentials",
+            client_id=params.get("client_id", ""),
+            client_secret=params.get("client_secret", ""),
+            token_url=params.get("token_url", ""),
+            api_key=params.get("api_key", ""),
+        ))
+        return connector
+
+    elif system_type == "s4hana_cloud":
+        from sap.s4hana_cloud import S4HanaCloudConnector
+        connector = S4HanaCloudConnector()
+        connector.connect(CloudConnectionParams(
+            base_url=params["base_url"],
+            company_id=params.get("company_id", ""),
+            auth_type=params.get("auth_type") or "oauth2_client_credentials",
+            client_id=params.get("client_id", ""),
+            client_secret=params.get("client_secret", ""),
+            token_url=params.get("token_url", ""),
+        ))
+        return connector
+
+    raise SAPConnectorError(f"No connector for system_type: {system_type}")
+
 
 class ConnectivityManager:
     """Manages all SAP system connections for a tenant."""
@@ -92,74 +175,7 @@ class ConnectivityManager:
 
     def _get_connector(self, system_type: str, params: dict):
         """Return the correct connector instance for a system type."""
-        if system_type in ("ecc", "s4hana_onprem", "ewm"):
-            from sap import get_connector
-            connector = get_connector()
-            connector.connect(SAPConnectionParams(
-                host=params["host"],
-                client=params["client"],
-                sysnr=params["sysnr"],
-                user=params["user"],
-                password=params["password"],
-            ))
-            return connector
-
-        elif system_type == "successfactors":
-            from sap.successfactors import SuccessFactorsConnector
-            connector = SuccessFactorsConnector()
-            connector.connect(CloudConnectionParams(
-                base_url=params["base_url"],
-                company_id=params["company_id"],
-                auth_type=params["auth_type"],
-                username=params.get("username", ""),
-                password=params.get("password", ""),
-                client_id=params.get("client_id", ""),
-                client_secret=params.get("client_secret", ""),
-                token_url=params.get("token_url", ""),
-            ))
-            return connector
-
-        elif system_type == "concur":
-            from sap.concur import ConcurConnector
-            connector = ConcurConnector()
-            connector.connect(CloudConnectionParams(
-                base_url=params["base_url"],
-                company_id=params.get("company_id", ""),
-                auth_type="oauth2_client_credentials",
-                client_id=params.get("client_id", ""),
-                client_secret=params.get("client_secret", ""),
-                token_url=params.get("token_url", ""),
-            ))
-            return connector
-
-        elif system_type == "ariba":
-            from sap.ariba import AribaConnector
-            connector = AribaConnector()
-            connector.connect(CloudConnectionParams(
-                base_url=params["base_url"],
-                company_id=params.get("company_id", ""),
-                auth_type="oauth2_client_credentials",
-                client_id=params.get("client_id", ""),
-                client_secret=params.get("client_secret", ""),
-                token_url=params.get("token_url", ""),
-                api_key=params.get("api_key", ""),
-            ))
-            return connector
-
-        elif system_type == "s4hana_cloud":
-            from sap.s4hana_cloud import S4HanaCloudConnector
-            connector = S4HanaCloudConnector()
-            connector.connect(CloudConnectionParams(
-                base_url=params["base_url"],
-                company_id=params.get("company_id", ""),
-                auth_type=params.get("auth_type", "oauth2_client_credentials"),
-                client_id=params.get("client_id", ""),
-                client_secret=params.get("client_secret", ""),
-                token_url=params.get("token_url", ""),
-            ))
-            return connector
-
-        raise SAPConnectorError(f"No connector for system_type: {system_type}")
+        return connect_sap_system(system_type, params)
 
     # -- Extraction ------------------------------------------------------------
 

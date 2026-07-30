@@ -27,9 +27,8 @@ function connKindFor(sys: SAPSystemExtended): ConnKind {
   // mapping here matches the canonical /sap/* connector layer (see CLAUDE.md).
   if (sys.auth_type === "rfc") return "RFC";
   if (sys.system_type === "s4hana_cloud" || sys.system_type === "successfactors") return "OData";
-  if (sys.system_type === "ecc" || sys.system_type === "s4hana_onprem") return "RFC";
-  if (sys.system_type === "concur" || sys.system_type === "ariba" || sys.system_type === "fieldglass") return "REST";
-  if (sys.system_type === "btp") return "REST";
+  if (sys.system_type === "ecc" || sys.system_type === "s4hana_onprem" || sys.system_type === "ewm") return "RFC";
+  if (sys.system_type === "concur" || sys.system_type === "ariba") return "REST";
   if (sys.auth_type === "basic" || sys.auth_type === "oauth2_client_credentials" || sys.auth_type === "oauth2_saml" || sys.auth_type === "api_key") return "REST";
   return "REST";
 }

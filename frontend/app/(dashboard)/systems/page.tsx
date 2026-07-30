@@ -9,7 +9,23 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { getSystems, registerSystem, testConnection, triggerSync } from "@/lib/api/systems";
 import { relativeTime } from "@/lib/format";
-import type { SAPSystem } from "@/types/api";
+import type { SAPSystem, SystemType } from "@/types/api";
+
+const RFC_SYSTEM_TYPES: SystemType[] = ["ecc", "s4hana_onprem", "ewm"];
+const CLOUD_SYSTEM_TYPES: SystemType[] = ["s4hana_cloud", "successfactors", "concur", "ariba"];
+const SYSTEM_TYPE_OPTIONS: { value: SystemType; label: string }[] = [
+  { value: "ecc", label: "ECC" },
+  { value: "s4hana_onprem", label: "S/4HANA On-Prem" },
+  { value: "ewm", label: "EWM" },
+  { value: "s4hana_cloud", label: "S/4HANA Cloud" },
+  { value: "successfactors", label: "SuccessFactors" },
+  { value: "concur", label: "Concur" },
+  { value: "ariba", label: "Ariba" },
+];
+
+function isRfcType(t: SystemType): boolean {
+  return RFC_SYSTEM_TYPES.includes(t);
+}
 
 function envColor(env: SAPSystem["environment"]): string {
   switch (env) {
@@ -41,6 +57,7 @@ export default function SystemsPage() {
   const qc = useQueryClient();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [connectOpen, setConnectOpen] = useState(false);
+  const [connectType, setConnectType] = useState<SystemType>("ecc");
 
   const { data: systems, isLoading, error } = useQuery({
     queryKey: ["systems.list"],
@@ -79,6 +96,7 @@ export default function SystemsPage() {
     onSuccess: () => {
       toast.success("System registered");
       setConnectOpen(false);
+      setConnectType("ecc");
       qc.invalidateQueries({ queryKey: ["systems.list"] });
     },
     onError: () => toast.error("Could not register system"),
@@ -164,50 +182,108 @@ export default function SystemsPage() {
                   onSubmit={(e) => {
                     e.preventDefault();
                     const fd = new FormData(e.currentTarget);
+                    const isRfc = isRfcType(connectType);
+                    const credentials: Record<string, string> = {};
+                    if (isRfc) {
+                      credentials.password = String(fd.get("password") ?? "");
+                    } else {
+                      const clientId = String(fd.get("client_id") ?? "");
+                      const clientSecret = String(fd.get("client_secret") ?? "");
+                      const apiKey = String(fd.get("api_key") ?? "");
+                      if (clientId) credentials.client_id = clientId;
+                      if (clientSecret) credentials.client_secret = clientSecret;
+                      if (apiKey) credentials.api_key = apiKey;
+                    }
                     register.mutate({
                       name: String(fd.get("name") ?? ""),
-                      host: String(fd.get("host") ?? ""),
-                      client: String(fd.get("client") ?? ""),
-                      sysnr: String(fd.get("sysnr") ?? ""),
+                      system_type: connectType,
                       environment: String(fd.get("environment") ?? "DEV"),
-                      password: String(fd.get("password") ?? ""),
                       description: String(fd.get("description") ?? "") || undefined,
+                      host: isRfc ? String(fd.get("host") ?? "") : undefined,
+                      client: isRfc ? String(fd.get("client") ?? "") : undefined,
+                      sysnr: isRfc ? String(fd.get("sysnr") ?? "") : undefined,
+                      base_url: isRfc ? undefined : String(fd.get("base_url") ?? ""),
+                      company_id: isRfc ? undefined : String(fd.get("company_id") ?? ""),
+                      credentials,
                     });
                   }}
                 >
                   <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 8 }}>
                     <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                      <span style={{ color: "var(--mn-ink-500)" }}>System type</span>
+                      <select
+                        className="mn-input"
+                        value={connectType}
+                        onChange={(e) => setConnectType(e.target.value as SystemType)}
+                      >
+                        {SYSTEM_TYPE_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
                       <span style={{ color: "var(--mn-ink-500)" }}>System name</span>
                       <input name="name" required className="mn-input" placeholder="e.g. ECC Production" />
                     </label>
-                    <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 12 }}>
-                      <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
-                        <span style={{ color: "var(--mn-ink-500)" }}>Host</span>
-                        <input name="host" required className="mn-input" placeholder="sap.example.com" />
-                      </label>
-                      <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
-                        <span style={{ color: "var(--mn-ink-500)" }}>Client</span>
-                        <input name="client" required className="mn-input" placeholder="100" />
-                      </label>
-                      <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
-                        <span style={{ color: "var(--mn-ink-500)" }}>Sysnr</span>
-                        <input name="sysnr" required className="mn-input" placeholder="00" />
-                      </label>
-                    </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                      <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
-                        <span style={{ color: "var(--mn-ink-500)" }}>Environment</span>
-                        <select name="environment" className="mn-input" defaultValue="DEV">
-                          <option value="DEV">DEV</option>
-                          <option value="QAS">QAS</option>
-                          <option value="PRD">PRD</option>
-                        </select>
-                      </label>
-                      <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
-                        <span style={{ color: "var(--mn-ink-500)" }}>Password</span>
-                        <input name="password" type="password" required className="mn-input" placeholder="••••••••" />
-                      </label>
-                    </div>
+
+                    {isRfcType(connectType) ? (
+                      <>
+                        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 12 }}>
+                          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                            <span style={{ color: "var(--mn-ink-500)" }}>Host</span>
+                            <input name="host" required className="mn-input" placeholder="sap.example.com" />
+                          </label>
+                          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                            <span style={{ color: "var(--mn-ink-500)" }}>Client</span>
+                            <input name="client" required className="mn-input" placeholder="100" />
+                          </label>
+                          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                            <span style={{ color: "var(--mn-ink-500)" }}>Sysnr</span>
+                            <input name="sysnr" required className="mn-input" placeholder="00" />
+                          </label>
+                        </div>
+                        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                          <span style={{ color: "var(--mn-ink-500)" }}>Password</span>
+                          <input name="password" type="password" required className="mn-input" placeholder="••••••••" />
+                        </label>
+                      </>
+                    ) : (
+                      <>
+                        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                          <span style={{ color: "var(--mn-ink-500)" }}>Base URL</span>
+                          <input name="base_url" type="url" required className="mn-input" placeholder="https://api.successfactors.eu" />
+                        </label>
+                        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                          <span style={{ color: "var(--mn-ink-500)" }}>Company ID (optional)</span>
+                          <input name="company_id" className="mn-input" placeholder="ACME_CORP" />
+                        </label>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                            <span style={{ color: "var(--mn-ink-500)" }}>Client ID</span>
+                            <input name="client_id" required className="mn-input" placeholder="OAuth client ID" />
+                          </label>
+                          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                            <span style={{ color: "var(--mn-ink-500)" }}>Client secret</span>
+                            <input name="client_secret" type="password" required className="mn-input" placeholder="••••••••" />
+                          </label>
+                        </div>
+                        {connectType === "ariba" && (
+                          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                            <span style={{ color: "var(--mn-ink-500)" }}>API key (optional)</span>
+                            <input name="api_key" className="mn-input" placeholder="Ariba API key" />
+                          </label>
+                        )}
+                      </>
+                    )}
+
+                    <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                      <span style={{ color: "var(--mn-ink-500)" }}>Environment</span>
+                      <select name="environment" className="mn-input" defaultValue="DEV">
+                        <option value="DEV">DEV</option>
+                        <option value="QAS">QAS</option>
+                        <option value="PRD">PRD</option>
+                      </select>
+                    </label>
                     <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
                       <span style={{ color: "var(--mn-ink-500)" }}>Description (optional)</span>
                       <input name="description" className="mn-input" placeholder="Notes about this connection" />
@@ -266,20 +342,35 @@ export default function SystemsPage() {
                       >
                         {s.environment}
                       </span>
-                      <span>{s.host}</span>
+                      <span>{s.host || s.base_url || "—"}</span>
                     </div>
                   </div>
                   <ArrowUpRight size={14} style={{ color: "var(--mn-ink-300)" }} />
                 </div>
                 <div className="mn-syscard-stats">
-                  <div className="stat">
-                    <span className="mn-eyebrow">Client</span>
-                    <span className="v mn-tabular">{s.client}</span>
-                  </div>
-                  <div className="stat">
-                    <span className="mn-eyebrow">Sysnr</span>
-                    <span className="v mn-tabular">{s.sysnr}</span>
-                  </div>
+                  {isRfcType(s.system_type) ? (
+                    <>
+                      <div className="stat">
+                        <span className="mn-eyebrow">Client</span>
+                        <span className="v mn-tabular">{s.client}</span>
+                      </div>
+                      <div className="stat">
+                        <span className="mn-eyebrow">Sysnr</span>
+                        <span className="v mn-tabular">{s.sysnr}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="stat">
+                        <span className="mn-eyebrow">Company</span>
+                        <span className="v mn-tabular">{s.company_id || "—"}</span>
+                      </div>
+                      <div className="stat">
+                        <span className="mn-eyebrow">Auth</span>
+                        <span className="v mn-tabular">{s.auth_type || "—"}</span>
+                      </div>
+                    </>
+                  )}
                   <div className="stat">
                     <span className="mn-eyebrow">Active</span>
                     <span className="v mn-tabular">{s.is_active ? "yes" : "no"}</span>
@@ -326,7 +417,11 @@ export default function SystemsPage() {
         <div style={{ marginTop: 22 }}>
           <SectionHeader
             title={active.name}
-            caption={`${active.environment} · ${active.host} · client ${active.client} · sysnr ${active.sysnr}`}
+            caption={
+              isRfcType(active.system_type)
+                ? `${active.environment} · ${active.host} · client ${active.client} · sysnr ${active.sysnr}`
+                : `${active.environment} · ${active.base_url} · ${active.auth_type ?? ""}`
+            }
             right={
               <a href="#" className="mn-link">
                 Open system <ArrowRight size={12} />

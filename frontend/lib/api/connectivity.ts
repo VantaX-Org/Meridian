@@ -13,26 +13,6 @@ export async function getSystems(): Promise<SAPSystemExtended[]> {
   return data;
 }
 
-export async function registerSystem(body: {
-  name: string;
-  system_type: string;
-  host?: string;
-  client?: string;
-  sysnr?: string;
-  base_url?: string;
-  company_id?: string;
-  auth_type?: string;
-  description?: string;
-  environment: string;
-  credentials: Record<string, string>;
-}): Promise<SAPSystemExtended> {
-  const { data } = await apiClient.post<SAPSystemExtended>(
-    "/api/v1/systems",
-    body
-  );
-  return data;
-}
-
 export async function testConnection(
   systemId: string
 ): Promise<{ status: string; message: string; latency_ms: number }> {

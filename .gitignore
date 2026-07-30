@@ -57,3 +57,8 @@ seed/
 
 # graphify knowledge-graph output (generated, not source)
 graphify-out/
+
+# SAP NW RFC SDK — SAP-licensed binary, customer-supplied at build time only
+vendor/nwrfcsdk/*
+!vendor/nwrfcsdk/.gitkeep
+!vendor/nwrfcsdk/README.md
