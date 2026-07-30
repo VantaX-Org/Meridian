@@ -85,6 +85,12 @@ def cmd_create(args):
         print(f"ERROR: Invalid role '{args.role}'. Valid: {', '.join(sorted(VALID_ROLES))}", file=sys.stderr)
         sys.exit(1)
 
+    # Emails are case-insensitive by convention everywhere else in the auth
+    # flow (login, forgot-password) — normalise on write so every row is
+    # consistently lowercase, and match case-insensitively on read as a
+    # backstop for any pre-existing mixed-case rows.
+    email = args.email.strip().lower()
+
     engine = get_engine()
     with engine.connect() as conn:
         ensure_tenant(conn)
@@ -92,16 +98,16 @@ def cmd_create(args):
 
         # Check if user already exists
         existing = conn.execute(
-            text("SELECT id, email FROM users WHERE email = :email AND tenant_id = :tid"),
-            {"email": args.email, "tid": DEV_TENANT_ID},
+            text("SELECT id, email FROM users WHERE LOWER(email) = LOWER(:email) AND tenant_id = :tid"),
+            {"email": email, "tid": DEV_TENANT_ID},
         ).fetchone()
         if existing:
-            print(f"ERROR: User '{args.email}' already exists (id: {existing[0]})", file=sys.stderr)
+            print(f"ERROR: User '{email}' already exists (id: {existing[0]})", file=sys.stderr)
             sys.exit(1)
 
         user_id = str(uuid.uuid4())
         pw_hash = hash_password(args.password)
-        name = args.name or args.email.split("@")[0]
+        name = args.name or email.split("@")[0]
 
         conn.execute(
             text("""
@@ -111,7 +117,7 @@ def cmd_create(args):
             {
                 "id": user_id,
                 "tid": DEV_TENANT_ID,
-                "email": args.email,
+                "email": email,
                 "name": name,
                 "role": args.role,
                 "pw": pw_hash,
@@ -119,7 +125,7 @@ def cmd_create(args):
             },
         )
         conn.commit()
-        print(f"User created: {args.email} (role: {args.role}, id: {user_id})")
+        print(f"User created: {email} (role: {args.role}, id: {user_id})")
 
 
 def cmd_list(args):
@@ -154,7 +160,7 @@ def cmd_reset_password(args):
     with engine.connect() as conn:
         conn.execute(text("SET app.tenant_id = :tid"), {"tid": str(DEV_TENANT_ID)})
         row = conn.execute(
-            text("SELECT id FROM users WHERE email = :email AND tenant_id = :tid"),
+            text("SELECT id FROM users WHERE LOWER(email) = LOWER(:email) AND tenant_id = :tid"),
             {"email": args.email, "tid": DEV_TENANT_ID},
         ).fetchone()
         if not row:
@@ -175,7 +181,7 @@ def cmd_deactivate(args):
     with engine.connect() as conn:
         conn.execute(text("SET app.tenant_id = :tid"), {"tid": str(DEV_TENANT_ID)})
         result = conn.execute(
-            text("UPDATE users SET is_active = false WHERE email = :email AND tenant_id = :tid RETURNING id"),
+            text("UPDATE users SET is_active = false WHERE LOWER(email) = LOWER(:email) AND tenant_id = :tid RETURNING id"),
             {"email": args.email, "tid": DEV_TENANT_ID},
         ).fetchone()
         if not result:

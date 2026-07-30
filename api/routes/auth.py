@@ -121,9 +121,9 @@ def login(body: LoginRequest, response: Response):
         row = conn.execute(
             text(
                 f"SELECT id, email, name, role, password_hash, is_active, {must_change_select} "
-                "FROM users WHERE email = :email AND tenant_id = :tid"
+                "FROM users WHERE LOWER(email) = LOWER(:email) AND tenant_id = :tid"
             ),
-            {"email": body.email, "tid": DEV_TENANT_ID},
+            {"email": (body.email or "").strip(), "tid": DEV_TENANT_ID},
         ).fetchone()
 
         if not row or not row[5]:  # not found or inactive

@@ -121,6 +121,19 @@ async def invite_user(
     if body.role not in VALID_ROLES:
         raise HTTPException(status_code=400, detail=f"Invalid role: {body.role}")
 
+    # Emails are case-insensitive by convention everywhere else in the auth
+    # flow (login, forgot-password) — normalise on write so every row is
+    # consistently lowercase, and reject a case-variant duplicate explicitly
+    # rather than letting a mismatched-case invite silently create a second
+    # account for the same address.
+    email = body.email.strip().lower()
+    existing = await db.execute(
+        text("SELECT id FROM users WHERE LOWER(email) = LOWER(:email) AND tenant_id = :tid"),
+        {"email": email, "tid": str(tenant.id)},
+    )
+    if existing.fetchone():
+        raise HTTPException(status_code=409, detail="A user with this email already exists")
+
     new_id = str(uuid.uuid4())
     await db.execute(
         text("""
@@ -130,8 +143,8 @@ async def invite_user(
         {
             "id": new_id,
             "tid": str(tenant.id),
-            "email": body.email,
-            "name": body.name or body.email.split("@")[0],
+            "email": email,
+            "name": body.name or email.split("@")[0],
             "role": body.role,
         },
     )
@@ -155,7 +168,7 @@ async def invite_user(
     except Exception as e:
         import logging
         logging.getLogger("meridian.users").warning(
-            f"Could not mint invite token for {body.email}: {e}"
+            f"Could not mint invite token for {email}: {e}"
         )
 
     # Trigger invitation email (async — does not block response)
@@ -163,8 +176,8 @@ async def invite_user(
         send_invitation_email.delay(
             user_id=new_id,
             tenant_id=str(tenant.id),
-            recipient_email=body.email,
-            recipient_name=body.name or body.email.split("@")[0],
+            recipient_email=email,
+            recipient_name=body.name or email.split("@")[0],
             role=body.role,
             invite_token=invite_token,
         )
