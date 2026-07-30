@@ -265,8 +265,8 @@ docker pull ghcr.io/vantax-org/meridian-ollama:latest
 
 **Solutions**:
 1. Double-check the licence key (correct format: `MRDX-XXXXXXXX-XXXXXXXX-XXXXXXXX`)
-2. Ensure your server has internet access to: `https://meridian-licence-worker.reshigan-085.workers.dev`
-3. Test connectivity: `curl https://meridian-licence-worker.reshigan-085.workers.dev/api/licence/heartbeat`
+2. Ensure your server has internet access to: `https://licence.meridian.vantax.co.za`
+3. Test connectivity: `curl https://licence.meridian.vantax.co.za/api/licence/heartbeat`
 4. Verify the key is active in your Meridian HQ account
 5. Contact support@vantax.co.za if the key is correct but validation fails
 

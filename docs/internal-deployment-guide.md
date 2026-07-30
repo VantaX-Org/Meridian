@@ -315,7 +315,7 @@ docker compose up -d
 **Online Mode:**
 ```bash
 # Test licence validation
-curl -X POST https://meridian-licence-worker.reshigan-085.workers.dev/api/licence/validate \
+curl -X POST https://licence.meridian.vantax.co.za/api/licence/validate \
   -H "Content-Type: application/json" \
   -d '{"licence_key":"MRDX-XXXX-XXXX-XXXX","machine_fingerprint":"test"}'
 ```

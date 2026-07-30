@@ -68,8 +68,11 @@ REGISTRY_URL="${MERIDIAN_REGISTRY_URL:-}"
 REGISTRY_USER="${MERIDIAN_REGISTRY_USER:-}"
 REGISTRY_PASS="${MERIDIAN_REGISTRY_PASS:-}"
 
-# Licence server
-LICENCE_SERVER_BASE="${MERIDIAN_LICENCE_SERVER_BASE:-https://meridian-licence-worker.reshigan-085.workers.dev/api/licence}"
+# Licence server — production endpoint. Override with --licence-server or
+# MERIDIAN_LICENCE_SERVER_BASE for a customer-hosted/self-hosted licence worker.
+# NB: do NOT point this at a *.workers.dev dev subdomain — those get torn down
+# and a 404 there trips the 2h degradation cutoff, 403-ing the whole API.
+LICENCE_SERVER_BASE="${MERIDIAN_LICENCE_SERVER_BASE:-https://licence.meridian.vantax.co.za/api/licence}"
 LICENCE_VALIDATE_URL="${LICENCE_SERVER_BASE}/validate"
 
 # Unattended mode

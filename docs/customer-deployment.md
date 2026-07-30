@@ -163,7 +163,7 @@ cat .env
 ```
 
 #### Cannot reach licence server
-- **Online mode**: Ensure outbound HTTPS to `meridian-licence-worker.reshigan-085.workers.dev`
+- **Online mode**: Ensure outbound HTTPS to `licence.meridian.vantax.co.za`
 - **Offline mode**: Use offline JWT token in `.env`
 
 #### Cannot pull images
@@ -268,7 +268,7 @@ Your licence includes:
 
 To check licence status:
 ```bash
-curl -X POST https://meridian-licence-worker.reshigan-085.workers.dev/api/licence/validate \
+curl -X POST https://licence.meridian.vantax.co.za/api/licence/validate \
   -H "Content-Type: application/json" \
   -d '{"licence_key":"YOUR-KEY","machine_fingerprint":"'$(hostname)'"}'
 ```
