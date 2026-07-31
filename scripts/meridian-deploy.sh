@@ -81,6 +81,11 @@ NON_INTERACTIVE="${MERIDIAN_NON_INTERACTIVE:-false}"
 MAX_RETRIES=3
 RETRY_DELAY=5
 
+# The only Tier 2 model confirmed published at ghcr.io/vantax-org/meridian-ollama.
+# Used both as the default when OLLAMA_MODEL is unset, and as the automatic
+# fallback when a customer-set OLLAMA_MODEL has no matching image.
+OLLAMA_FALLBACK_MODEL="qwen3.5:9b-instruct"
+
 print_usage() {
     cat <<USAGE
 Usage: sudo bash meridian-deploy.sh [flags]
@@ -448,7 +453,7 @@ case "${TIER:-}" in
         # the RESOLVED copy (never the template) to COMPOSE_FILES.
         _OLLAMA_OVERLAY="${REPO_ROOT}/docker/docker-compose.customer.ollama.yml"
         if [[ -f "$_OLLAMA_OVERLAY" ]]; then
-            _OLLAMA_MODEL_TAG=$(echo "${OLLAMA_MODEL:-qwen3.5:9b-instruct}" | tr ':' '-' | tr '.' '-')
+            _OLLAMA_MODEL_TAG=$(echo "${OLLAMA_MODEL:-$OLLAMA_FALLBACK_MODEL}" | tr ':' '-' | tr '.' '-')
             _OLLAMA_OVERLAY_RESOLVED="${REPO_ROOT}/docker/docker-compose.customer.ollama.resolved.yml"
             sed "s|{{MODEL_TAG}}|${_OLLAMA_MODEL_TAG}|g" "$_OLLAMA_OVERLAY" > "$_OLLAMA_OVERLAY_RESOLVED"
             COMPOSE_FILES+=(-f "$_OLLAMA_OVERLAY_RESOLVED")
@@ -663,9 +668,11 @@ provision_images_ghcr() {
     # Tier 2 pulls a per-model Ollama image from a separate, fixed repository
     # (ghcr.io/vantax-org/meridian-ollama) that only has pre-built tags for
     # specific models — not every OLLAMA_MODEL a customer might set actually
-    # has one. Without this check, a bad model name only surfaces after
+    # has one. Without this check, a bad model name only surfaced after
     # minutes of pulling everything else, as a "not found" on the very last
-    # image. Check it up front so that fails immediately and actionably.
+    # image. Check it up front — and rather than aborting the whole install
+    # over a bad model name, fall back to the one model confirmed published
+    # so the install still succeeds, just with a different (working) model.
     if [[ "${TIER:-}" == "2" && -n "${_OLLAMA_MODEL_TAG:-}" ]]; then
         _OLLAMA_IMAGE="${IMAGE_PREFIX}-ollama:${_OLLAMA_MODEL_TAG}"
         echo -n "  Checking Ollama model image exists: ${_OLLAMA_IMAGE} ..."
@@ -673,11 +680,26 @@ provision_images_ghcr() {
             echo " ✓"
         else
             echo " ✗"
-            error "Ollama model image not found: ${_OLLAMA_IMAGE}
-  OLLAMA_MODEL='${OLLAMA_MODEL:-}' has no matching pre-built image (or GHCR auth failed — check the login result above).
-  Known-good model: qwen3.5:9b-instruct
-  Fix: set OLLAMA_MODEL=qwen3.5:9b-instruct in .env and re-run,
-  or contact support@vantax.co.za to request a pre-built image for this model."
+            warn "OLLAMA_MODEL='${OLLAMA_MODEL:-}' has no matching pre-built image at ${_OLLAMA_IMAGE} (or GHCR auth failed — check the login result above)."
+            warn "Falling back to the confirmed-published model: ${OLLAMA_FALLBACK_MODEL}"
+            OLLAMA_MODEL="$OLLAMA_FALLBACK_MODEL"
+            _OLLAMA_MODEL_TAG=$(echo "$OLLAMA_MODEL" | tr ':' '-' | tr '.' '-')
+            _OLLAMA_IMAGE="${IMAGE_PREFIX}-ollama:${_OLLAMA_MODEL_TAG}"
+            # The overlay was already resolved once above with the bad tag
+            # baked in — regenerate it with the corrected one.
+            if [[ -n "${_OLLAMA_OVERLAY:-}" && -f "${_OLLAMA_OVERLAY}" ]]; then
+                sed "s|{{MODEL_TAG}}|${_OLLAMA_MODEL_TAG}|g" "$_OLLAMA_OVERLAY" > "$_OLLAMA_OVERLAY_RESOLVED"
+            fi
+            # Persist the correction so a human inspecting .env sees what's
+            # actually running, and a future re-run doesn't repeat this fallback.
+            sed -i "s|^OLLAMA_MODEL=.*|OLLAMA_MODEL=${OLLAMA_MODEL}|" "${REPO_ROOT}/.env" "${REPO_ROOT}/docker/.env" 2>/dev/null || true
+            echo -n "  Checking fallback image exists: ${_OLLAMA_IMAGE} ..."
+            if docker manifest inspect "$_OLLAMA_IMAGE" >/dev/null 2>&1; then
+                echo " ✓"
+            else
+                echo " ✗"
+                error "Fallback Ollama image also not found: ${_OLLAMA_IMAGE} — contact support@vantax.co.za"
+            fi
         fi
     fi
 
