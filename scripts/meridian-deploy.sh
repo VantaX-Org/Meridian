@@ -659,6 +659,28 @@ provision_images_ghcr() {
     else
         warn "No GHCR token present — attempting anonymous pull (private images will be denied)"
     fi
+
+    # Tier 2 pulls a per-model Ollama image from a separate, fixed repository
+    # (ghcr.io/vantax-org/meridian-ollama) that only has pre-built tags for
+    # specific models — not every OLLAMA_MODEL a customer might set actually
+    # has one. Without this check, a bad model name only surfaces after
+    # minutes of pulling everything else, as a "not found" on the very last
+    # image. Check it up front so that fails immediately and actionably.
+    if [[ "${TIER:-}" == "2" && -n "${_OLLAMA_MODEL_TAG:-}" ]]; then
+        _OLLAMA_IMAGE="${IMAGE_PREFIX}-ollama:${_OLLAMA_MODEL_TAG}"
+        echo -n "  Checking Ollama model image exists: ${_OLLAMA_IMAGE} ..."
+        if docker manifest inspect "$_OLLAMA_IMAGE" >/dev/null 2>&1; then
+            echo " ✓"
+        else
+            echo " ✗"
+            error "Ollama model image not found: ${_OLLAMA_IMAGE}
+  OLLAMA_MODEL='${OLLAMA_MODEL:-}' has no matching pre-built image (or GHCR auth failed — check the login result above).
+  Known-good model: qwen3.5:9b-instruct
+  Fix: set OLLAMA_MODEL=qwen3.5:9b-instruct in .env and re-run,
+  or contact support@vantax.co.za to request a pre-built image for this model."
+        fi
+    fi
+
     warn "Pulling images — this may take several minutes"
     if docker compose "${COMPOSE_FILES[@]}" pull; then
         log "All images pulled"
