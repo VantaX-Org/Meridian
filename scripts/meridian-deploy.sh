@@ -665,43 +665,26 @@ provision_images_ghcr() {
         warn "No GHCR token present — attempting anonymous pull (private images will be denied)"
     fi
 
-    # Tier 2 pulls a per-model Ollama image from a separate, fixed repository
-    # (ghcr.io/vantax-org/meridian-ollama) that only has pre-built tags for
-    # specific models — not every OLLAMA_MODEL a customer might set actually
-    # has one. Without this check, a bad model name only surfaced after
-    # minutes of pulling everything else, as a "not found" on the very last
-    # image. Check it up front — and rather than aborting the whole install
-    # over a bad model name, fall back to the one model confirmed published
-    # so the install still succeeds, just with a different (working) model.
-    if [[ "${TIER:-}" == "2" && -n "${_OLLAMA_MODEL_TAG:-}" ]]; then
-        _OLLAMA_IMAGE="${IMAGE_PREFIX}-ollama:${_OLLAMA_MODEL_TAG}"
-        echo -n "  Checking Ollama model image exists: ${_OLLAMA_IMAGE} ..."
-        if docker manifest inspect "$_OLLAMA_IMAGE" >/dev/null 2>&1; then
-            echo " ✓"
-        else
-            echo " ✗"
-            warn "OLLAMA_MODEL='${OLLAMA_MODEL:-}' has no matching pre-built image at ${_OLLAMA_IMAGE} (or GHCR auth failed — check the login result above)."
-            warn "Falling back to the confirmed-published model: ${OLLAMA_FALLBACK_MODEL}"
-            OLLAMA_MODEL="$OLLAMA_FALLBACK_MODEL"
-            _OLLAMA_MODEL_TAG=$(echo "$OLLAMA_MODEL" | tr ':' '-' | tr '.' '-')
-            _OLLAMA_IMAGE="${IMAGE_PREFIX}-ollama:${_OLLAMA_MODEL_TAG}"
-            # The overlay was already resolved once above with the bad tag
-            # baked in — regenerate it with the corrected one.
-            if [[ -n "${_OLLAMA_OVERLAY:-}" && -f "${_OLLAMA_OVERLAY}" ]]; then
-                sed "s|{{MODEL_TAG}}|${_OLLAMA_MODEL_TAG}|g" "$_OLLAMA_OVERLAY" > "$_OLLAMA_OVERLAY_RESOLVED"
-            fi
-            # Persist the correction so a human inspecting .env sees what's
-            # actually running, and a future re-run doesn't repeat this fallback.
-            sed -i "s|^OLLAMA_MODEL=.*|OLLAMA_MODEL=${OLLAMA_MODEL}|" "${REPO_ROOT}/.env" "${REPO_ROOT}/docker/.env" 2>/dev/null || true
-            echo -n "  Checking fallback image exists: ${_OLLAMA_IMAGE} ..."
-            if docker manifest inspect "$_OLLAMA_IMAGE" >/dev/null 2>&1; then
-                echo " ✓"
-            else
-                echo " ✗"
-                error "Fallback Ollama image also not found: ${_OLLAMA_IMAGE} — contact support@vantax.co.za"
-            fi
+    # ghcr.io/vantax-org/meridian-ollama only has a pre-built image for
+    # specific models — currently just OLLAMA_FALLBACK_MODEL. Resolve
+    # straight to that whenever OLLAMA_MODEL isn't already it, rather than
+    # checking the registry for a model that was never going to be there and
+    # logging a warning about the miss (a customer doesn't care about the
+    # specifics — they just want it to work). No network call for the
+    # rejected model at all; this is a plain local comparison.
+    if [[ "${TIER:-}" == "2" && "${OLLAMA_MODEL:-}" != "$OLLAMA_FALLBACK_MODEL" ]]; then
+        OLLAMA_MODEL="$OLLAMA_FALLBACK_MODEL"
+        _OLLAMA_MODEL_TAG=$(echo "$OLLAMA_MODEL" | tr ':' '-' | tr '.' '-')
+        # The overlay was already resolved once above with the original
+        # (possibly non-existent) tag baked in — regenerate it with this one.
+        if [[ -n "${_OLLAMA_OVERLAY:-}" && -f "${_OLLAMA_OVERLAY}" ]]; then
+            sed "s|{{MODEL_TAG}}|${_OLLAMA_MODEL_TAG}|g" "$_OLLAMA_OVERLAY" > "$_OLLAMA_OVERLAY_RESOLVED"
         fi
+        # Persist so a human inspecting .env sees what's actually running,
+        # and a future re-run doesn't need to resolve this again.
+        sed -i "s|^OLLAMA_MODEL=.*|OLLAMA_MODEL=${OLLAMA_MODEL}|" "${REPO_ROOT}/.env" "${REPO_ROOT}/docker/.env" 2>/dev/null || true
     fi
+    [[ "${TIER:-}" == "2" ]] && log "Ollama model: ${OLLAMA_MODEL}"
 
     warn "Pulling images — this may take several minutes"
     if docker compose "${COMPOSE_FILES[@]}" pull; then
