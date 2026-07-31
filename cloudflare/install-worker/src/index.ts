@@ -5,9 +5,11 @@
  *   curl -fsSL "https://get.meridian.vantax.co.za/install?key=MRDX-..." | sudo bash
  *
  * Routes:
- *   GET /install?key=<licence>[&tier=&domain=&admin_email=&admin_password=]
+ *   GET /install?key=<licence>[&tier=&domain=&admin_email=&admin_password=&api_key=&custom_base_url=]
  *       Validates the licence, then returns a bootstrap shell script with the
- *       GHCR token injected server-side. Key-gated.
+ *       GHCR token injected server-side. Key-gated. tier defaults to the
+ *       licence's own llm_config.tier when omitted, not always 0 — see the
+ *       tier-resolution comment in the /install handler.
  *   GET /files/<allowlisted-repo-path>
  *       Proxies a deploy file from the private repo via the GitHub Contents API
  *       (server-side REPO_TOKEN). Non-secret templates only.
@@ -50,23 +52,35 @@ function text(body: string, status = 200, contentType = "text/plain; charset=utf
   return new Response(body, { status, headers: { "content-type": contentType } });
 }
 
-async function validateLicence(key: string, env: Env): Promise<boolean> {
+interface LicenceManifest {
+  valid?: boolean;
+  llm_config?: { tier?: number | string; model?: string; notes?: string };
+}
+
+/** Returns the validated manifest, or null if the key is invalid/unreachable.
+ *  Callers use manifest.llm_config to default the install's LLM tier to
+ *  whatever this licence actually specifies, instead of always Tier 0. */
+async function validateLicence(key: string, env: Env): Promise<LicenceManifest | null> {
   try {
     const r = await fetch(env.LICENCE_VALIDATE_URL, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ licenceKey: key, machineFingerprint: "install-worker" }),
     });
-    if (r.status !== 200) return false;
-    const j = (await r.json()) as { valid?: boolean };
-    return j.valid === true;
+    if (r.status !== 200) return null;
+    const j = (await r.json()) as LicenceManifest;
+    return j.valid === true ? j : null;
   } catch {
-    return false;
+    return null;
   }
 }
 
 /** Build a pre-configured .env whose keys match meridian-deploy.sh's
- *  PRECONFIGURED path (it greps DATABASE_URL/DB_PASSWORD to detect it). */
+ *  PRECONFIGURED path (it greps DATABASE_URL/DB_PASSWORD to detect it).
+ *
+ *  licenceModel/apiKey/customBaseUrl come from the licence's llm_config
+ *  and/or explicit query params — see the tier-resolution comment in the
+ *  /install handler for how tier itself gets picked. */
 function buildEnv(
   key: string,
   tier: string,
@@ -74,16 +88,35 @@ function buildEnv(
   adminEmail: string,
   adminPassword: string,
   env: Env,
+  licenceModel: string,
+  apiKey: string,
+  customBaseUrl: string,
 ): string {
   const dbPass = hex(16);
   const appPass = hex(16);
   const minioPass = hex(16);
   const credKey = hex(32);
 
-  const llm =
-    tier === "2"
-      ? "LLM_PROVIDER=ollama\nOLLAMA_BASE_URL=http://ollama:11434\nOLLAMA_MODEL=qwen3.5:9b-instruct"
-      : "LLM_PROVIDER=none";
+  // qwen3.5:9b-instruct is confirmed published at
+  // ghcr.io/vantax-org/meridian-ollama — other model names may have no
+  // matching per-model image tag, so this stays the fallback default.
+  let llm: string;
+  switch (tier) {
+    case "1":
+      llm = `LLM_PROVIDER=anthropic\nANTHROPIC_API_KEY=${apiKey}\nANTHROPIC_MODEL=${licenceModel || "claude-sonnet-4-6"}`;
+      break;
+    case "1.5":
+      llm = `LLM_PROVIDER=ollama_cloud\nOLLAMA_BASE_URL=https://ollama.com\nOLLAMA_API_KEY=${apiKey}\nOLLAMA_MODEL=${licenceModel || "deepseek-v3.1:671b-cloud"}`;
+      break;
+    case "2":
+      llm = `LLM_PROVIDER=ollama\nOLLAMA_BASE_URL=http://ollama:11434\nOLLAMA_MODEL=${licenceModel || "qwen3.5:9b-instruct"}`;
+      break;
+    case "3":
+      llm = `LLM_PROVIDER=custom\nCUSTOM_LLM_BASE_URL=${customBaseUrl}\nCUSTOM_LLM_API_KEY=${apiKey || "not-required"}\nCUSTOM_LLM_MODEL=${licenceModel || "default"}`;
+      break;
+    default:
+      llm = "LLM_PROVIDER=none";
+  }
 
   // LICENCE_SERVER_BASE carries a `/api/licence` suffix (correct for this
   // worker's own LICENCE_VALIDATE_URL = LICENCE_SERVER_BASE + "/validate").
@@ -243,7 +276,9 @@ export default {
       return text(
         "Meridian installer.\n\n" +
           '  curl -fsSL "https://get.meridian.vantax.co.za/install?key=MRDX-XXXXXXXX-XXXXXXXX-XXXXXXXX" | sudo bash\n\n' +
-          "Optional query params: tier (0|2), domain (auto-detected from the caller's public IP if omitted), admin_email, admin_password.\n",
+          "Optional query params: tier (0|1|1.5|2|3, defaults to the licence's own llm_config.tier if omitted), " +
+            "domain (auto-detected from the caller's public IP if omitted), admin_email, admin_password, " +
+            "api_key (required for tier 1/1.5), custom_base_url (required for tier 3).\n",
       );
     }
 
@@ -257,11 +292,51 @@ export default {
       if (!LICENCE_KEY_RE.test(key)) {
         return text("# error: invalid licence key format (expected MRDX-XXXXXXXX-XXXXXXXX-XXXXXXXX)\n", 400, "text/x-shellscript");
       }
-      if (!(await validateLicence(key, env))) {
+      const manifest = await validateLicence(key, env);
+      if (!manifest) {
         return text("# error: licence validation failed — contact support@vantax.co.za\n", 403, "text/x-shellscript");
       }
 
-      const tier = (url.searchParams.get("tier") || "0").trim();
+      // Tier resolution: explicit ?tier= always wins; otherwise default to
+      // whatever this licence's llm_config actually specifies (set in the
+      // admin portal), falling back to 0 (no LLM) only if the licence has no
+      // llm_config at all. Previously this always defaulted to 0 regardless
+      // of the licence, so a licence provisioned for Tier 2 would silently
+      // install with no LLM unless the caller remembered to pass ?tier=2.
+      const licenceTier = manifest.llm_config?.tier;
+      const tier = (
+        url.searchParams.get("tier") ||
+        (licenceTier !== undefined && licenceTier !== null ? String(licenceTier) : "0")
+      ).trim();
+      const licenceModel = (manifest.llm_config?.model || "").trim();
+
+      // Tiers 1 (Anthropic), 1.5 (Ollama Cloud) and 3 (BYOLLM) need a
+      // provider credential/endpoint this worker cannot supply on its own.
+      // Rather than writing a silently-broken .env (the exact failure mode
+      // that motivated this feature — a licence defaulting to Tier 1 with
+      // no ANTHROPIC_API_KEY, discovered deep inside meridian-deploy.sh's
+      // pre-flight check), fail early with actionable next steps. Passing
+      // ?api_key=/&custom_base_url= proceeds anyway. Returned with status
+      // 200 so `curl -f` doesn't swallow the message before it's ever seen.
+      const apiKey = (url.searchParams.get("api_key") || "").trim();
+      const customBaseUrl = (url.searchParams.get("custom_base_url") || "").trim();
+      const missingApiKey = (tier === "1" || tier === "1.5") && !apiKey;
+      const missingBaseUrl = tier === "3" && !customBaseUrl;
+      if (missingApiKey || missingBaseUrl) {
+        const need = missingBaseUrl ? "a base URL (&custom_base_url=...)" : "an API key (&api_key=...)";
+        return text(
+          `echo "This licence defaults to LLM tier ${tier}, which needs ${need} this installer can't supply automatically."\n` +
+            `echo ""\n` +
+            `echo "Options:"\n` +
+            `echo "  1. Install without cloud LLM features:   ...&tier=0"\n` +
+            `echo "  2. Install with the bundled, self-hosted LLM (no key needed):   ...&tier=2"\n` +
+            `echo "  3. Supply it directly: add ${missingBaseUrl ? "&custom_base_url=https://..." : "&api_key=sk-..."} to this URL"\n` +
+            `exit 1\n`,
+          200,
+          "text/x-shellscript",
+        );
+      }
+
       // Auto-detect the caller's public IP when ?domain= isn't given, so the
       // install banner prints something the customer can actually browse to
       // instead of "localhost". Since the SERVER itself is the one calling
@@ -280,7 +355,7 @@ export default {
       const adminEmail = (url.searchParams.get("admin_email") || `admin@${domain}`).trim();
       const adminPassword = (url.searchParams.get("admin_password") || hex(12)).trim();
 
-      const envFile = buildEnv(key, tier, domain, adminEmail, adminPassword, env);
+      const envFile = buildEnv(key, tier, domain, adminEmail, adminPassword, env, licenceModel, apiKey, customBaseUrl);
       const script = buildBootstrap(url.origin, tier, envFile, adminEmail, adminPassword);
       return text(script, 200, "text/x-shellscript; charset=utf-8");
     }
