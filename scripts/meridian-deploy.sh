@@ -427,10 +427,31 @@ elif [[ "$LICENCE_MODE" == "airgap" ]]; then
 fi
 
 # =============================================================================
-# Compose profile selection
+# Compose file selection — merge in the Ollama overlay for Tier 2
 # =============================================================================
+# docker-compose.customer.ollama.yml defines the `ollama` service; it is NOT
+# part of docker-compose.customer.yml, so every `docker compose` call below
+# uses this array instead of a bare -f path, or Tier 2 would silently never
+# start (or pull) the bundled LLM container at all.
+COMPOSE_FILES=(-f "${REPO_ROOT}/docker/docker-compose.customer.yml")
 case "${TIER:-}" in
-    2)  export COMPOSE_PROFILES="llm-bundled" ;;
+    2)  export COMPOSE_PROFILES="llm-bundled"
+        # The overlay ships with an unresolved {{MODEL_TAG}} image-tag
+        # placeholder — create-customer-package.sh normally substitutes it at
+        # package-build time. meridian-deploy.sh can also run standalone
+        # (e.g. via the install-worker one-liner), so resolve it here too,
+        # using the same ":"/"." -> "-" transform the packager uses, and add
+        # the RESOLVED copy (never the template) to COMPOSE_FILES.
+        _OLLAMA_OVERLAY="${REPO_ROOT}/docker/docker-compose.customer.ollama.yml"
+        if [[ -f "$_OLLAMA_OVERLAY" ]]; then
+            _OLLAMA_MODEL_TAG=$(echo "${OLLAMA_MODEL:-qwen3.5:9b-instruct}" | tr ':' '-' | tr '.' '-')
+            _OLLAMA_OVERLAY_RESOLVED="${REPO_ROOT}/docker/docker-compose.customer.ollama.resolved.yml"
+            sed "s|{{MODEL_TAG}}|${_OLLAMA_MODEL_TAG}|g" "$_OLLAMA_OVERLAY" > "$_OLLAMA_OVERLAY_RESOLVED"
+            COMPOSE_FILES+=(-f "$_OLLAMA_OVERLAY_RESOLVED")
+        else
+            warn "Tier 2 selected but docker-compose.customer.ollama.yml is missing — the bundled Ollama container will not start."
+        fi
+        ;;
     *)  export COMPOSE_PROFILES="${COMPOSE_PROFILES:-}" ;;
 esac
 if [[ -n "${COMPOSE_PROFILES:-}" ]]; then
@@ -635,7 +656,7 @@ provision_images_ghcr() {
         warn "No GHCR token present — attempting anonymous pull (private images will be denied)"
     fi
     warn "Pulling images — this may take several minutes"
-    if docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" pull; then
+    if docker compose "${COMPOSE_FILES[@]}" pull; then
         log "All images pulled"
     else
         error "Image pull failed. For private images, ensure the deployment package embeds a valid GHCR token (MERIDIAN_GHCR_TOKEN)."
@@ -657,7 +678,7 @@ provision_images_registry() {
     fi
 
     warn "Pulling images — this may take several minutes"
-    docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" pull \
+    docker compose "${COMPOSE_FILES[@]}" pull \
         || error "Image pull from ${REGISTRY_URL} failed"
     log "All images pulled from ${REGISTRY_URL}"
 }
@@ -698,12 +719,12 @@ esac
 # Start services & run migrations
 # =============================================================================
 section "Starting database and Redis"
-docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" up -d db redis \
+docker compose "${COMPOSE_FILES[@]}" up -d db redis \
     || error "Failed to start db/redis"
 
 echo -n "  Waiting for Postgres"
 for i in $(seq 1 30); do
-    docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" exec -T db \
+    docker compose "${COMPOSE_FILES[@]}" exec -T db \
         pg_isready -U meridian -q 2>/dev/null && { echo " ✓"; break; }
     [[ $i -eq 30 ]] && { echo ""; error "Postgres failed to start after 60 seconds"; }
     echo -n "."; sleep 2
@@ -714,16 +735,16 @@ section "Running database migrations"
 # spins up a throwaway container that may have a different env and won't
 # share the same Docker network aliases reliably on first boot.
 # We bring the api up first (without the full stack) just to run migrations.
-docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" up -d api \
+docker compose "${COMPOSE_FILES[@]}" up -d api \
     || error "Failed to start api container for migrations"
 
 echo -n "  Waiting for api container to be healthy"
 for i in $(seq 1 30); do
-    _status=$(docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" \
+    _status=$(docker compose "${COMPOSE_FILES[@]}" \
         ps api --format json 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('Health',''))" 2>/dev/null || echo "")
     if [[ "$_status" == "healthy" || "$_status" == "" ]]; then
         # If no healthcheck defined, just check it's running
-        _running=$(docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" \
+        _running=$(docker compose "${COMPOSE_FILES[@]}" \
             ps api --format json 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('State',''))" 2>/dev/null || echo "")
         [[ "$_running" == "running" ]] && { echo " ✓"; break; }
     fi
@@ -732,13 +753,13 @@ for i in $(seq 1 30); do
     echo -n "."; sleep 2
 done
 
-docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" exec -T api \
+docker compose "${COMPOSE_FILES[@]}" exec -T api \
     bash -c "cd /app && alembic upgrade head" \
     || error "Migration failed — check logs: docker compose logs api"
 log "Migrations applied"
 
 # Verify tables were actually created
-_table_count=$(docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" \
+_table_count=$(docker compose "${COMPOSE_FILES[@]}" \
     exec -T db psql -U meridian -d meridian -tAc \
     "SELECT count(*) FROM information_schema.tables WHERE table_schema='public';" 2>/dev/null || echo "0")
 if [[ "${_table_count:-0}" -lt 1 ]]; then
@@ -755,7 +776,7 @@ log "Database verified: ${_table_count} tables created ✓"
 # it's never retried. Without this step no admin account is ever created —
 # ADMIN_EMAIL/ADMIN_PASSWORD would sit unused in .env and nothing could log in.
 section "Creating admin user"
-if docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" exec -T api \
+if docker compose "${COMPOSE_FILES[@]}" exec -T api \
     python scripts/manage_users.py create \
     --email "$ADMIN_EMAIL" --name "$ADMIN_NAME" --password "$ADMIN_PASSWORD" --role admin; then
     log "Admin user created: ${ADMIN_EMAIL}"
@@ -768,25 +789,45 @@ fi
 
 # Start the full stack
 section "Starting full stack"
-docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" up -d \
+docker compose "${COMPOSE_FILES[@]}" up -d \
     || error "Failed to bring up full stack"
 log "All containers started"
 
 # =============================================================================
-# Tier 2: pull Ollama model
+# Tier 2: ensure the Ollama model is present
 # =============================================================================
+# The per-model image (ghcr.io/vantax-org/meridian-ollama:<tag>) bakes the
+# model in at build time (see docker/Dockerfile.ollama) — but the ollama_data
+# volume mounts over that same path (/root/.ollama), and Docker only seeds a
+# brand-new volume from the image once. A volume left over from an earlier
+# install or a different model choice shadows the freshly-pulled image, so
+# the expected model can be silently missing even though the right image
+# was pulled. `ollama pull` here is a no-op if the model is already present,
+# and a real fix otherwise — this previously only waited for the server to
+# respond and never checked the model was actually there at all.
 if [[ "${TIER:-}" == "2" && -n "${OLLAMA_MODEL:-}" ]]; then
-    section "Pulling Ollama model"
+    section "Verifying Ollama model"
     echo -n "  Waiting for Ollama"
+    _OLLAMA_READY=false
     for i in $(seq 1 30); do
-        if docker compose -f "${REPO_ROOT}/docker/docker-compose.customer.yml" \
+        if docker compose "${COMPOSE_FILES[@]}" \
             exec -T ollama curl -sf http://localhost:11434/api/version >/dev/null 2>&1; then
             echo " ✓"
+            _OLLAMA_READY=true
             break
         fi
-        [[ $i -eq 30 ]] && { echo ""; warn "Ollama slow to start — model pull may fail"; }
+        [[ $i -eq 30 ]] && { echo ""; warn "Ollama slow to start — model check may fail"; }
         echo -n "."; sleep 2
     done
+
+    if [[ "$_OLLAMA_READY" == "true" ]]; then
+        echo "  Pulling ${OLLAMA_MODEL} (no-op if already present)..."
+        if docker compose "${COMPOSE_FILES[@]}" exec -T ollama ollama pull "${OLLAMA_MODEL}"; then
+            log "Model ready: ${OLLAMA_MODEL}"
+        else
+            warn "Could not pull ${OLLAMA_MODEL} — check manually: docker compose exec ollama ollama list"
+        fi
+    fi
 fi
 
 # =============================================================================
