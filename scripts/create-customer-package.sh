@@ -26,7 +26,7 @@
 #   --customer <name>         Customer slug (required)
 #   --licence-key <key>       Meridian licence key (required unless --offline)
 #   --version <tag>           Image version tag (default: latest)
-#   --model <ollama-model>    Local Ollama model for Tier 2 (default: qwen3.5:9b-instruct)
+#   --model <ollama-model>    Local Ollama model for Tier 2 (default: qwen3.5:9b)
 #   --cloud-model <name>      Ollama Cloud model for Tier 1.5 (default: deepseek-v3.1:671b-cloud)
 #   --domain <domain>         Customer server domain/IP
 #   --offline                 Use offline JWT licence mode
@@ -44,8 +44,11 @@ VERSION="latest"
 # --model is the local Ollama model used by Tier 2. Tier 1.5 (Ollama Cloud)
 # uses a different catalogue (cloud-hosted models only), so it has its own
 # --cloud-model knob with a cloud-appropriate default.
-MODEL="qwen3.5:9b-instruct"
-MODEL_TAG="qwen3-5-9b-instruct"
+# qwen3.5:9b is the real, pullable Ollama model — "qwen3.5:9b-instruct" (this
+# default's previous value) was never a real model; that suffix doesn't
+# exist for this family, so it failed at runtime regardless of the image.
+MODEL="qwen3.5:9b"
+MODEL_TAG="qwen3-5-9b"
 CLOUD_MODEL="deepseek-v3.1:671b-cloud"
 DOMAIN=""
 OFFLINE=false

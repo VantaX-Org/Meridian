@@ -72,7 +72,7 @@ SAP data, findings, and reports **never leave the customer boundary**.
 │  └─────────┘ └────────┘ └──────┘ └──────┘ └─────┘      │
 │  ┌──────────────┐ ┌────────────────────────────┐        │
 │  │ Next.js 15   │ │ Ollama (local LLM, Tier 2) │        │
-│  │ 30 pages     │ │ qwen3.5:9b-instruct        │        │
+│  │ 30 pages     │ │ qwen3.5:9b        │        │
 │  └──────────────┘ └────────────────────────────┘        │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -112,7 +112,7 @@ Access: Dashboard at `http://localhost:3000`, API at `http://localhost:8000`
 | Background jobs | Celery + Redis (12 scheduled tasks, all with timeouts) |
 | Database | PostgreSQL 16 + Alembic (33 migrations) + RLS |
 | Object storage | MinIO (S3-compatible) |
-| Local LLM | Ollama (qwen3.5:9b-instruct, request_timeout=120) |
+| Local LLM | Ollama (qwen3.5:9b, request_timeout=120) |
 | Frontend | Next.js 15, TypeScript, Tailwind v4, shadcn/ui (30 pages) |
 | SAP connectors | RFC, OData V2/V4, REST — 5 connector implementations |
 | Auth | Clerk or local JWT (air-gapped) |

@@ -97,9 +97,10 @@ function buildEnv(
   const minioPass = hex(16);
   const credKey = hex(32);
 
-  // qwen3.5:9b-instruct is confirmed published at
-  // ghcr.io/vantax-org/meridian-ollama — other model names may have no
-  // matching per-model image tag, so this stays the fallback default.
+  // qwen3.5:9b is the real, pullable model on Ollama's own registry — an
+  // earlier "qwen3.5:9b-instruct" default here was never a real model (that
+  // suffix doesn't exist for this family) and failed at runtime regardless
+  // of which image the ollama container was running.
   let llm: string;
   switch (tier) {
     case "1":
@@ -109,7 +110,7 @@ function buildEnv(
       llm = `LLM_PROVIDER=ollama_cloud\nOLLAMA_BASE_URL=https://ollama.com\nOLLAMA_API_KEY=${apiKey}\nOLLAMA_MODEL=${licenceModel || "deepseek-v3.1:671b-cloud"}`;
       break;
     case "2":
-      llm = `LLM_PROVIDER=ollama\nOLLAMA_BASE_URL=http://ollama:11434\nOLLAMA_MODEL=${licenceModel || "qwen3.5:9b-instruct"}`;
+      llm = `LLM_PROVIDER=ollama\nOLLAMA_BASE_URL=http://ollama:11434\nOLLAMA_MODEL=${licenceModel || "qwen3.5:9b"}`;
       break;
     case "3":
       llm = `LLM_PROVIDER=custom\nCUSTOM_LLM_BASE_URL=${customBaseUrl}\nCUSTOM_LLM_API_KEY=${apiKey || "not-required"}\nCUSTOM_LLM_MODEL=${licenceModel || "default"}`;

@@ -5,14 +5,25 @@
 
 FROM ollama/ollama:latest
 
-ARG MODEL_NAME=qwen3.5:9b-instruct
+# qwen3.5:9b-instruct was never a real Ollama model — the "-instruct" suffix
+# doesn't exist for this family. `ollama pull` failed on it every time this
+# was built, but the old `|| true` below swallowed that failure, so the
+# build reported success and published an image with zero model blobs
+# baked in (confirmed at runtime: "total blobs: 0"). qwen3.5:9b is the real,
+# pullable tag.
+ARG MODEL_NAME=qwen3.5:9b
 ENV MODEL_NAME=${MODEL_NAME}
 
-# Pull the model at build time so customers don't need internet access
+# Pull the model at build time so customers don't need internet access.
+# No `|| true` anywhere in this chain — if the server never comes up, the
+# pull fails, or the model isn't actually present afterward, the RUN
+# instruction exits non-zero and the build fails loudly instead of
+# publishing an empty image that looks fine until a customer tries to use it.
 RUN ollama serve & \
-    sleep 15 && \
-    ollama pull ${MODEL_NAME} && \
-    pkill ollama || true
+    for i in $(seq 1 30); do curl -sf http://localhost:11434/api/version >/dev/null 2>&1 && break; sleep 1; done && \
+    ollama pull "${MODEL_NAME}" && \
+    ollama list | grep -qF "${MODEL_NAME}" && \
+    pkill ollama
 
 EXPOSE 11434
 CMD ["serve"]

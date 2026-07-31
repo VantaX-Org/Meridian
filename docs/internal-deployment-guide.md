@@ -236,14 +236,14 @@ docker login ghcr.io
 docker pull ghcr.io/vantax-org/meridian-api:v1.2.0
 docker pull ghcr.io/vantax-org/meridian-frontend:v1.2.0
 docker pull ghcr.io/vantax-org/meridian-worker:v1.2.0
-docker pull ghcr.io/vantax-org/meridian-ollama:qwen3-5-9b-instruct  # Tier 2
+docker pull ghcr.io/vantax-org/meridian-ollama:qwen3-5-9b  # Tier 2
 
 # Export
 docker save \
   ghcr.io/vantax-org/meridian-api:v1.2.0 \
   ghcr.io/vantax-org/meridian-frontend:v1.2.0 \
   ghcr.io/vantax-org/meridian-worker:v1.2.0 \
-  ghcr.io/vantax-org/meridian-ollama:qwen3-5-9b-instruct \
+  ghcr.io/vantax-org/meridian-ollama:qwen3-5-9b \
   -o meridian-images-v1.2.0.tar
 
 # Compress

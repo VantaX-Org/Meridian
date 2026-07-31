@@ -131,7 +131,7 @@ AZURE_OPENAI_API_KEY=your-key-here
 ```bash
 LLM_PROVIDER=ollama
 OLLAMA_BASE_URL=http://llm:11434
-OLLAMA_MODEL=qwen3.5:9b-instruct
+OLLAMA_MODEL=qwen3.5:9b
 ```
 
 **Tier 3 — BYOLLM**:
@@ -200,14 +200,14 @@ For environments without internet access:
    docker pull ghcr.io/vantax-org/meridian-api:latest
    docker pull ghcr.io/vantax-org/meridian-frontend:latest
    docker pull ghcr.io/vantax-org/meridian-worker:latest
-   docker pull ghcr.io/vantax-org/meridian-ollama:qwen3-5-9b-instruct  # Tier 2 only
+   docker pull ghcr.io/vantax-org/meridian-ollama:qwen3-5-9b  # Tier 2 only
    
    # Export images
    docker save \
      ghcr.io/vantax-org/meridian-api:latest \
      ghcr.io/vantax-org/meridian-frontend:latest \
      ghcr.io/vantax-org/meridian-worker:latest \
-     ghcr.io/vantax-org/meridian-ollama:qwen3-5-9b-instruct \
+     ghcr.io/vantax-org/meridian-ollama:qwen3-5-9b \
      -o meridian-images.tar
    ```
 

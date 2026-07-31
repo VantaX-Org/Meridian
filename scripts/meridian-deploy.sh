@@ -84,7 +84,7 @@ RETRY_DELAY=5
 # The only Tier 2 model confirmed published at ghcr.io/vantax-org/meridian-ollama.
 # Used both as the default when OLLAMA_MODEL is unset, and as the automatic
 # fallback when a customer-set OLLAMA_MODEL has no matching image.
-OLLAMA_FALLBACK_MODEL="qwen3.5:9b-instruct"
+OLLAMA_FALLBACK_MODEL="qwen3.5:9b"
 
 print_usage() {
     cat <<USAGE
@@ -327,11 +327,12 @@ else
             ;;
         2)
             _LLM_PROVIDER="ollama"
-            # Default matches the only per-model image confirmed published at
-            # ghcr.io/vantax-org/meridian-ollama — llama3.2:3b-instruct-q4_K_M
-            # (this prompt's old default) has no matching image tag, so
-            # accepting it silently fails at `docker compose pull`.
-            ask OLLAMA_MODEL "Ollama model to pull" "qwen3.5:9b-instruct"
+            # qwen3.5:9b is the real, pullable model — llama3.2:3b-instruct-q4_K_M
+            # (an earlier default) and qwen3.5:9b-instruct (a later "fix" that
+            # was itself wrong — that suffix was never a real Ollama tag)
+            # both fail: no matching image, and no matching model on
+            # ollama.com's registry respectively.
+            ask OLLAMA_MODEL "Ollama model to pull" "qwen3.5:9b"
             [[ -n "$OLLAMA_MODEL" ]] || error "OLLAMA_MODEL is required for Tier 2"
             _LLM_ENV_LINES+=(
                 "LLM_PROVIDER=ollama"

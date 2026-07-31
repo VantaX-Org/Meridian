@@ -63,7 +63,7 @@ export GHCR_READ_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
 | `--licence-key <key>` | Yes* | — | Meridian licence key (*not required with `--offline`) |
 | `--tier <1\|2\|3>` | No | `1` | LLM tier |
 | `--version <tag>` | No | `latest` | Docker image version tag |
-| `--model <name>` | No | `qwen3.5:9b-instruct` | Ollama model (Tier 2 only) |
+| `--model <name>` | No | `qwen3.5:9b` | Ollama model (Tier 2 only) |
 | `--domain <host>` | No | — | Customer server domain/IP (pre-fills CORS) |
 | `--offline` | No | — | Use offline JWT licence mode |
 | `--offline-token <jwt>` | With `--offline` | — | Offline licence JWT from Meridian HQ |
@@ -91,7 +91,7 @@ GHCR_READ_TOKEN=ghp_xxx ./scripts/create-customer-package.sh \
   --licence-key MRDX-A1B2C3D4-E5F6A7B8-C9D0E1F2 \
   --tier 2 \
   --version v1.2.0 \
-  --model qwen3.5:9b-instruct \
+  --model qwen3.5:9b \
   --gpu \
   --air-gapped
 ```
@@ -253,7 +253,7 @@ docker compose restart api worker
 
 1. Export new images:
    ```bash
-   ./scripts/export-images.sh v1.3.0 --tier 2 --model qwen3-5-9b-instruct
+   ./scripts/export-images.sh v1.3.0 --tier 2 --model qwen3-5-9b
    ```
 
 2. Transfer `meridian-v1.3.0.tar.gz` to customer server.
@@ -311,7 +311,7 @@ To export images independently (not as part of packaging):
 
 ```bash
 ./scripts/export-images.sh v1.2.0
-./scripts/export-images.sh v1.2.0 --tier 2 --model qwen3-5-9b-instruct
+./scripts/export-images.sh v1.2.0 --tier 2 --model qwen3-5-9b
 ```
 
 Output: `meridian-v1.2.0.tar.gz`
