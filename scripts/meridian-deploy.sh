@@ -322,7 +322,11 @@ else
             ;;
         2)
             _LLM_PROVIDER="ollama"
-            ask OLLAMA_MODEL "Ollama model to pull" "llama3.2:3b-instruct-q4_K_M"
+            # Default matches the only per-model image confirmed published at
+            # ghcr.io/vantax-org/meridian-ollama — llama3.2:3b-instruct-q4_K_M
+            # (this prompt's old default) has no matching image tag, so
+            # accepting it silently fails at `docker compose pull`.
+            ask OLLAMA_MODEL "Ollama model to pull" "qwen3.5:9b-instruct"
             [[ -n "$OLLAMA_MODEL" ]] || error "OLLAMA_MODEL is required for Tier 2"
             _LLM_ENV_LINES+=(
                 "LLM_PROVIDER=ollama"
