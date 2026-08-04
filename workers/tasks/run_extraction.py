@@ -52,12 +52,14 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True,
                             data_df.to_parquet(parquet_buf, index=False)
                             parquet_bytes = parquet_buf.getvalue()
 
+                            path = None
                             try:
                                 from api.services.storage import upload_parquet
                                 path = f"staging/{tenant_id}/{version_id}/{module}.parquet"
                                 upload_parquet(path, parquet_bytes)
                             except Exception as e:
                                 logger.warning(f"MinIO upload failed: {e}")
+                                path = None
 
                             # Create analysis version
                             session.execute(
@@ -80,8 +82,13 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True,
                             session.commit()
 
                             # Enqueue check pipeline
-                            from workers.tasks.run_checks import run_checks
-                            run_checks.delay(tenant_id, version_id, [module])
+                            if path:
+                                from workers.tasks.run_checks import run_checks
+                                run_checks.delay(version_id, tenant_id, path)
+                            else:
+                                logger.warning(
+                                    f"Skipping run_checks for version={version_id}: parquet upload failed"
+                                )
 
                     elif sync_type == "config":
                         manager.sync_config(system_id, [module])

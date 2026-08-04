@@ -62,7 +62,7 @@ def daily_analysis():
                 # Get latest complete version
                 result = session.execute(
                     text("""
-                        SELECT id, run_at, dqs_summary
+                        SELECT id, run_at, dqs_summary, metadata->>'parquet_path' AS parquet_path
                         FROM analysis_versions
                         WHERE tenant_id = :tid AND status IN ('complete', 'agents_complete')
                         ORDER BY run_at DESC LIMIT 1
@@ -76,6 +76,10 @@ def daily_analysis():
 
                 version = dict(row._mapping)
                 version_id = str(version["id"])
+                parquet_path = version.get("parquet_path")
+                if not parquet_path:
+                    logger.warning(f"  tenant={tid}: latest version {version_id} has no parquet_path, skipping re-run")
+                    continue
                 today = datetime.now(SAST).date()
 
                 run_date = version["run_at"]
@@ -132,7 +136,7 @@ def daily_analysis():
 
                 # Enqueue run_checks
                 from workers.tasks.run_checks import run_checks
-                run_checks.delay(version_id, tid)
+                run_checks.delay(version_id, tid, parquet_path)
                 logger.info(f"  tenant={tid}: enqueued run_checks for version={version_id}")
 
                 # Insert dqs_history record from latest dqs_summary
