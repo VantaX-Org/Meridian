@@ -7,6 +7,7 @@ DELETE /match-rules/{id} — delete rule
 POST /match-rules/simulate — dry-run match engine against last sync batch
 """
 
+import asyncio
 import json
 import uuid
 from typing import Optional
@@ -326,37 +327,51 @@ async def simulate_match_rules(
     from sqlalchemy.orm import Session as SyncSession
     from api.services.match_engine import score_candidate_pair
 
-    sync_url = os.getenv("DATABASE_URL_SYNC", os.getenv("DATABASE_URL", ""))
-    sync_url = sync_url.replace("postgresql+asyncpg://", "postgresql://")
-    sync_engine = create_engine(sync_url)
+    def _simulate_sync() -> tuple[int, int, int]:
+        """Scores up to 100 candidate pairs synchronously — any field with
+        match_type "semantic" can call the LLM (bounded by safe_invoke's own
+        timeout, but still a blocking call). Runs on a worker thread via
+        asyncio.to_thread; this handler is `async def`, so calling this
+        directly would block FastAPI's entire event loop for the whole
+        loop's duration — every request, not just this one. Owns its own
+        engine end-to-end and disposes it here rather than leaking one per
+        request (create_engine was previously never disposed)."""
+        sync_url = os.getenv("DATABASE_URL_SYNC", os.getenv("DATABASE_URL", ""))
+        sync_url = sync_url.replace("postgresql+asyncpg://", "postgresql://")
+        sync_engine = create_engine(sync_url)
 
-    auto_merge = 0
-    auto_dismiss = 0
-    queue = 0
+        _auto_merge = 0
+        _auto_dismiss = 0
+        _queue = 0
+        try:
+            with SyncSession(sync_engine) as sync_session:
+                for key_a, key_b, match_fields in rows:
+                    candidate_a = match_fields.get("a", {}) if isinstance(match_fields, dict) else {}
+                    candidate_b = match_fields.get("b", {}) if isinstance(match_fields, dict) else {}
 
-    with SyncSession(sync_engine) as sync_session:
-        for key_a, key_b, match_fields in rows:
-            candidate_a = match_fields.get("a", {}) if isinstance(match_fields, dict) else {}
-            candidate_b = match_fields.get("b", {}) if isinstance(match_fields, dict) else {}
+                    result = score_candidate_pair(
+                        tenant_id=str(tenant.id),
+                        domain=body.domain,
+                        candidate_a=candidate_a,
+                        candidate_b=candidate_b,
+                        candidate_a_key=key_a,
+                        candidate_b_key=key_b,
+                        session=sync_session,
+                        dry_run=True,
+                    )
 
-            result = score_candidate_pair(
-                tenant_id=str(tenant.id),
-                domain=body.domain,
-                candidate_a=candidate_a,
-                candidate_b=candidate_b,
-                candidate_a_key=key_a,
-                candidate_b_key=key_b,
-                session=sync_session,
-                dry_run=True,
-            )
+                    action = result["auto_action"]
+                    if action == "merged":
+                        _auto_merge += 1
+                    elif action == "dismissed":
+                        _auto_dismiss += 1
+                    else:
+                        _queue += 1
+        finally:
+            sync_engine.dispose()
+        return _auto_merge, _auto_dismiss, _queue
 
-            action = result["auto_action"]
-            if action == "merged":
-                auto_merge += 1
-            elif action == "dismissed":
-                auto_dismiss += 1
-            else:
-                queue += 1
+    auto_merge, auto_dismiss, queue = await asyncio.to_thread(_simulate_sync)
 
     return SimulateResponse(
         total_pairs=len(rows),
