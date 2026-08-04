@@ -8,6 +8,7 @@ Rules (non-negotiable):
 - 4-eyes: requesting_user != approving_user
 """
 
+import asyncio
 import logging
 import os
 import re
@@ -322,23 +323,37 @@ async def approve_writeback(
                 user=os.getenv("SAP_RFC_USER", "RFC_USER"),
                 password=decrypt_password(tenant_id, sys_row[2]),
             )
-            try:
-                with get_connector() as conn:
-                    conn.connect(params)
-                    for fix in valid_fixes:
-                        try:
-                            conn.execute_bapi(BAPICall(
-                                bapi_name=bapi,
-                                params=fix.get("bapi_params", {}),
-                            ))
-                            applied += 1
-                        except SAPConnectorError as e:
-                            errors.append(f"BAPI call failed for {fix.get('field', '?')}: {str(e)}")
-            except SAPConnectorError as e:
-                if "pyrfc_not_installed" in str(e):
-                    errors.append("PyRFC not installed")
-                else:
-                    errors.append(f"RFC connection failed: {str(e)}")
+
+            def _apply_bapi_fixes() -> tuple[int, list[str]]:
+                """Synchronous PyRFC calls — connect + N BAPI executions.
+                Runs on a worker thread via asyncio.to_thread; this handler
+                is `async def`, so calling this directly would block
+                FastAPI's entire event loop for the whole RFC round-trip
+                (every request, not just this one) for however many fixes
+                there are."""
+                _applied = 0
+                _errors: list[str] = []
+                try:
+                    with get_connector() as conn:
+                        conn.connect(params)
+                        for fix in valid_fixes:
+                            try:
+                                conn.execute_bapi(BAPICall(
+                                    bapi_name=bapi,
+                                    params=fix.get("bapi_params", {}),
+                                ))
+                                _applied += 1
+                            except SAPConnectorError as e:
+                                _errors.append(f"BAPI call failed for {fix.get('field', '?')}: {str(e)}")
+                except SAPConnectorError as e:
+                    if "pyrfc_not_installed" in str(e):
+                        _errors.append("PyRFC not installed")
+                    else:
+                        _errors.append(f"RFC connection failed: {str(e)}")
+                return _applied, _errors
+
+            applied, bapi_errors = await asyncio.to_thread(_apply_bapi_fixes)
+            errors.extend(bapi_errors)
 
     # Update the log record
     await db.execute(

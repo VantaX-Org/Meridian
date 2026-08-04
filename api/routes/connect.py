@@ -4,6 +4,7 @@ Raw SAP data is NEVER persisted. Only findings are stored in Postgres.
 The SAP password is NEVER logged or stored.
 """
 
+import asyncio
 import io
 import logging
 import re
@@ -142,10 +143,17 @@ async def connect_sap(
     )
     validated_where = validate_rfc_where(body.where)
 
-    try:
+    def _extract_via_rfc():
+        """Synchronous PyRFC connect + RFC_READ_TABLE call. Runs on a worker
+        thread via asyncio.to_thread; this handler is `async def`, so calling
+        this directly would block FastAPI's entire event loop for the whole
+        RFC round-trip — every request, not just this one."""
         with get_connector() as conn:
             conn.connect(params)
-            df = conn.read_table(body.table, body.fields, validated_where)
+            return conn.read_table(body.table, body.fields, validated_where)
+
+    try:
+        df = await asyncio.to_thread(_extract_via_rfc)
     except SAPConnectorError as e:
         safe_msg = _mask_password(str(e), body.password)
         logger.error(f"SAP connector failed: {safe_msg}")
