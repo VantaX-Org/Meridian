@@ -89,11 +89,17 @@ export default function CleaningPage() {
   const total = data?.total ?? items.length;
 
   const summary = useMemo(() => {
-    const queued = items.length;
+    // total (the API's own COUNT(*), not capped by per_page) — not
+    // items.length, which is capped at the fetched page (per_page: 100,
+    // itself the API's max) and would silently disagree with the subhead
+    // above, which already correctly shows `total`. auto/review are a
+    // breakdown of the fetched page only — no backend aggregate exists yet
+    // to compute those two beyond the current page's 100-item cap.
+    const queued = total;
     const auto = items.filter((i) => statusToBucket(i.status) === "auto").length;
     const review = items.filter((i) => statusToBucket(i.status) === "review").length;
     return { queued, auto, review };
-  }, [items]);
+  }, [items, total]);
 
   if (isLoading) {
     return (
