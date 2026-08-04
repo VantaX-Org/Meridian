@@ -5,6 +5,7 @@ without restarting containers. Config is stored encrypted in the
 tenants.llm_config JSONB column and takes precedence over env vars.
 """
 
+import asyncio
 import json
 import logging
 from datetime import datetime, timezone
@@ -372,10 +373,19 @@ async def test_llm_connection_endpoint(
             azure_api_version=body.azure_api_version,
         )
 
-        content = safe_invoke(llm, [
-            {"role": "system", "content": "You are a test assistant."},
-            {"role": "user", "content": "Reply with only the word READY."},
-        ], timeout_seconds=30)
+        # safe_invoke blocks its calling thread for up to timeout_seconds. This
+        # handler is `async def`, so calling it directly would freeze FastAPI's
+        # entire event loop for that whole duration — every request, not just
+        # this one. Offload it to a worker thread.
+        content = await asyncio.to_thread(
+            safe_invoke,
+            llm,
+            [
+                {"role": "system", "content": "You are a test assistant."},
+                {"role": "user", "content": "Reply with only the word READY."},
+            ],
+            timeout_seconds=30,
+        )
 
         if content and "READY" in content.upper():
             return LLMTestResponse(

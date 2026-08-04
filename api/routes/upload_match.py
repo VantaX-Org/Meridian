@@ -1,5 +1,6 @@
 """Column matching endpoint — detects SAP module and maps uploaded columns to TABLE.FIELD."""
 
+import asyncio
 import logging
 
 from fastapi import APIRouter, Depends
@@ -51,7 +52,15 @@ async def match_columns(
         f"filename={body.filename} hint={body.module_hint}"
     )
 
-    result = detect_module_and_match(
+    # detect_module_and_match is synchronous and can call the LLM (safe_invoke,
+    # which itself blocks its calling thread for up to timeout_seconds per
+    # unmatched column — potentially minutes for a wide CSV). This handler is
+    # `async def`, so calling it directly would block FastAPI's entire event
+    # loop for that whole duration — not just this request, every request,
+    # including totally unrelated ones like login. Offload it to a worker
+    # thread so the event loop stays free.
+    result = await asyncio.to_thread(
+        detect_module_and_match,
         headers=body.headers,
         sample_rows=body.sample_rows,
         filename=body.filename,

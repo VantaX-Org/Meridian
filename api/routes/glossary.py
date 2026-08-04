@@ -9,6 +9,7 @@ Endpoints:
   POST  /glossary/batch-lookup     — batch field name lookup for integration points
 """
 
+import asyncio
 import logging
 import uuid
 from typing import Optional
@@ -351,7 +352,12 @@ async def ai_draft(
     from api.services.ai_glossary_enricher import enrich_term, RateLimitExceeded, LLMError
 
     try:
-        draft = enrich_term(
+        # enrich_term can call the LLM synchronously (safe_invoke, which blocks
+        # its calling thread for up to its timeout). This handler is `async def`,
+        # so calling it directly would freeze FastAPI's entire event loop for
+        # that whole duration — every request, not just this one. Offload it.
+        draft = await asyncio.to_thread(
+            enrich_term,
             tenant_id=tenant_id,
             technical_name=row[0],
             sap_table=row[1],
