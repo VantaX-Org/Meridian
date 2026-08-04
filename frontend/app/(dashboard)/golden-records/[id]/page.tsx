@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { toast } from "sonner";
 import {
   ArrowLeft,
   Crown,
@@ -383,10 +384,12 @@ export default function GoldenRecordDetailPage() {
       qc.invalidateQueries({ queryKey: ["master-record", recordId] });
       qc.invalidateQueries({ queryKey: ["master-records"] });
     },
+    onError: () => toast.error("Could not promote to golden — please try again"),
   });
 
   const writebackMutation = useMutation({
     mutationFn: () => writebackMasterRecord(recordId),
+    onError: () => toast.error("Could not check write-back status — please try again"),
   });
 
   if (isLoading) {

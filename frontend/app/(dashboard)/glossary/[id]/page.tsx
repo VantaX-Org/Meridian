@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   ArrowLeft, BookOpen, Lock, Sparkles, CheckCircle2, Clock,
   ChevronDown, ChevronUp, Save, RotateCcw,
@@ -87,11 +88,13 @@ export default function GlossaryDetailPage() {
       qc.invalidateQueries({ queryKey: ["glossary", id] });
       setEditDef(null);
     },
+    onError: () => toast.error("Could not save definition — please try again"),
   });
 
   const reviewMutation = useMutation({
     mutationFn: () => reviewGlossaryTerm(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["glossary", id] }),
+    onError: () => toast.error("Could not mark term as reviewed — please try again"),
   });
 
   const handleAIDraft = async () => {
