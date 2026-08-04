@@ -18,8 +18,17 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s
-    # Uncomment to enable NVIDIA GPU acceleration:
-    # deploy:
+    # Caps CPU-only inference at 3 of the host's cores so a generation can
+    # never starve the rest of the stack (api/nginx/healthchecks) — on a
+    # 4-core box, Ollama alone was observed pegging all cores during a single
+    # long generation, freezing even unrelated requests for its duration.
+    # Trade-off: individual LLM calls run proportionally slower. Raise or
+    # remove this if the host has more cores to spare.
+    deploy:
+      resources:
+        limits:
+          cpus: "3.0"
+    # Uncomment to enable NVIDIA GPU acceleration (merge into the deploy key above):
     #   resources:
     #     reservations:
     #       devices:
