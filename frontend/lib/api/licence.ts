@@ -33,10 +33,13 @@ const DEFAULT_MANIFEST: LicenceManifest = {
   valid: null,
   status: "checking",
   enabled_modules: ["*"],
+  // Must stay in sync with DEFAULT_MENU_ITEMS in
+  // cloudflare/licence-worker/src/index.ts and ALL_MENU_ITEMS in the admin
+  // portal's TenantDetailClient.tsx.
   enabled_menu_items: [
     "dashboard", "findings", "versions", "analytics", "import", "sync",
     "reports", "stewardship", "contracts", "ask_meridian", "export",
-    "user_management", "settings", "licence",
+    "user_management", "rules_engine", "settings", "field_mapping", "licence",
   ],
   features: {
     ask_meridian: true,

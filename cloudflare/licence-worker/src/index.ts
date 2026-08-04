@@ -559,10 +559,18 @@ function daysRemaining(expiryDate: string): number {
 
 // ─── Defaults ─────────────────────────────────────────────────────────────────
 
+// Must stay in sync with ALL_MENU_ITEMS in
+// cloudflare/portal/app/admin/tenants/[tenant_id]/TenantDetailClient.tsx and
+// the licenceKey values in frontend/app/(dashboard)/layout.tsx's nav config —
+// rules_engine and field_mapping were added to both of those but never
+// backfilled here, so every tenant created via the normal "New Tenant" flow
+// (which omits enabled_menu_items and falls back to this default) was
+// silently missing Settings > Rules Engine and Settings > Field Mapping
+// until an admin manually opened the tenant and toggled them on.
 const DEFAULT_MENU_ITEMS = [
   "dashboard", "findings", "versions", "analytics", "import", "sync",
   "reports", "stewardship", "contracts", "ask_meridian", "export",
-  "user_management", "settings", "licence",
+  "user_management", "rules_engine", "settings", "field_mapping", "licence",
 ];
 
 const DEFAULT_FEATURES: TenantFeatures = {
