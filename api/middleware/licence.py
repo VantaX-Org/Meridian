@@ -540,26 +540,18 @@ _LICENCE_EXEMPT_PREFIXES = (
 # All other routes are gated by enabled_modules / enabled_menu_items (frontend)
 # or RBAC (per-endpoint dependency) rather than the features dict.
 FEATURE_ROUTE_MAP: dict[str, str] = {
-    # Phase A-G routes (longer prefixes first for correct startswith matching)
+    # Longer prefixes first for correct startswith matching.
+    # cleaning/exceptions/analytics/contracts/notifications/systems/sync/
+    # master-records/stewardship/glossary/relationships/match-rules/mdm-metrics/ai
+    # used to map to feature keys ("cleaning", "mdm", "ai_features", ...) that
+    # were never part of TenantFeatures — no tenant, on any tier, could ever
+    # have them enabled, so those routes 402'd for every customer. They're
+    # gated by enabled_modules/enabled_menu_items (frontend) and RBAC
+    # (per-endpoint require_permission + tenant isolation) instead, per this
+    # map's own original intent.
     "/api/v1/cleaning/export": "export_reports",
-    "/api/v1/cleaning": "cleaning",
-    "/api/v1/exceptions": "exceptions",
-    "/api/v1/analytics": "analytics",
-    "/api/v1/contracts": "contracts",
-    "/api/v1/notifications": "notifications",
     "/api/v1/reports": "export_reports",
     "/api/v1/sync-trigger": "run_sync",
-    # Phase H-O MDM routes
-    "/api/v1/systems": "mdm",
-    "/api/v1/sync": "mdm",  # must be after /api/v1/sync-trigger
-    "/api/v1/master-records": "mdm",
-    "/api/v1/stewardship": "mdm",
-    "/api/v1/glossary": "mdm",
-    "/api/v1/relationships": "mdm",
-    "/api/v1/match-rules": "mdm",
-    "/api/v1/mdm-metrics": "mdm",
-    # AI features
-    "/api/v1/ai": "ai_features",
 }
 
 
