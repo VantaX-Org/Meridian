@@ -1,4 +1,13 @@
-"""Tests for licence feature gating — MDM and AI routes."""
+"""Tests for licence feature gating.
+
+FEATURE_ROUTE_MAP only gates routes on feature keys that actually exist in
+TenantFeatures (the licence-worker/admin-portal schema): export_reports and
+run_sync. MDM/cleaning/exceptions/analytics/contracts/notifications/ai_features
+were previously mapped to feature keys no tenant could ever have set true —
+every customer 402'd on those routes permanently. They're no longer gated
+here; enabled_modules/enabled_menu_items (frontend) and RBAC (per-endpoint
+require_permission + tenant isolation) protect them instead.
+"""
 
 import pytest
 
@@ -8,9 +17,30 @@ from api.middleware.licence import FEATURE_ROUTE_MAP, _check_feature_gate
 # ── FEATURE_ROUTE_MAP completeness ───────────────────────────────────────────
 
 
-def test_feature_route_map_has_mdm_routes():
-    """All Phase H-O MDM routes must be mapped to 'mdm' feature."""
-    mdm_routes = [
+def test_feature_route_map_only_has_real_feature_keys():
+    """Every mapped feature key must be a real TenantFeatures field."""
+    real_feature_keys = {"export_reports", "run_sync"}
+    for route, feature in FEATURE_ROUTE_MAP.items():
+        assert feature in real_feature_keys, (
+            f"{route} maps to '{feature}', which isn't a real TenantFeatures "
+            f"key — no tenant could ever satisfy this gate"
+        )
+
+
+def test_feature_route_map_existing_routes_unchanged():
+    """The only legitimate feature-gated routes."""
+    expected = {
+        "/api/v1/cleaning/export": "export_reports",
+        "/api/v1/reports": "export_reports",
+        "/api/v1/sync-trigger": "run_sync",
+    }
+    assert FEATURE_ROUTE_MAP == expected
+
+
+def test_feature_route_map_has_no_phantom_keys():
+    """mdm/cleaning/exceptions/analytics/contracts/notifications/ai_features
+    must never come back — no tenant record can ever satisfy them."""
+    phantom_routes = [
         "/api/v1/systems",
         "/api/v1/sync",
         "/api/v1/master-records",
@@ -19,60 +49,55 @@ def test_feature_route_map_has_mdm_routes():
         "/api/v1/relationships",
         "/api/v1/match-rules",
         "/api/v1/mdm-metrics",
+        "/api/v1/ai",
+        "/api/v1/cleaning",
+        "/api/v1/exceptions",
+        "/api/v1/analytics",
+        "/api/v1/contracts",
+        "/api/v1/notifications",
     ]
-    for route in mdm_routes:
-        assert route in FEATURE_ROUTE_MAP, f"{route} missing from FEATURE_ROUTE_MAP"
-        assert FEATURE_ROUTE_MAP[route] == "mdm"
-
-
-def test_feature_route_map_has_ai_route():
-    assert "/api/v1/ai" in FEATURE_ROUTE_MAP
-    assert FEATURE_ROUTE_MAP["/api/v1/ai"] == "ai_features"
-
-
-def test_feature_route_map_existing_routes_unchanged():
-    """Original A-G routes must still be present and correct."""
-    expected = {
-        "/api/v1/cleaning": "cleaning",
-        "/api/v1/exceptions": "exceptions",
-        "/api/v1/analytics": "analytics",
-        "/api/v1/contracts": "contracts",
-        "/api/v1/notifications": "notifications",
-    }
-    for route, feature in expected.items():
-        assert FEATURE_ROUTE_MAP.get(route) == feature
+    for route in phantom_routes:
+        assert route not in FEATURE_ROUTE_MAP, f"{route} should not be feature-gated"
 
 
 # ── _check_feature_gate unit tests ──────────────────────────────────────────
 
 
-def test_mdm_route_blocked_without_mdm_feature():
-    """Licence with ['cleaning'] only — MDM routes return 402."""
-    result = _check_feature_gate("/api/v1/master-records", ["cleaning"])
-    assert result is not None
-    assert result.status_code == 402
-    body = result.body.decode()
-    assert '"feature": "mdm"' in body or '"feature":"mdm"' in body
+def test_mdm_routes_never_blocked_by_feature_gate():
+    """MDM routes aren't feature-gated — RBAC/enabled_modules handle them."""
+    for route in ["/api/v1/master-records", "/api/v1/systems/1", "/api/v1/stewardship/queue"]:
+        assert _check_feature_gate(route, ["cleaning"]) is None
+        assert _check_feature_gate(route, []) is None
 
 
-def test_mdm_route_allowed_with_mdm_feature():
-    """Licence with ['mdm'] — GET /master-records not blocked."""
-    result = _check_feature_gate("/api/v1/master-records", ["mdm"])
+def test_ai_routes_never_blocked_by_feature_gate():
+    assert _check_feature_gate("/api/v1/ai/feedback", ["mdm"]) is None
+    assert _check_feature_gate("/api/v1/ai/feedback", []) is None
+
+
+def test_export_route_blocked_without_export_reports_feature():
+    """Licence without 'export_reports' — /reports and /cleaning/export 402."""
+    for route in ["/api/v1/reports", "/api/v1/cleaning/export"]:
+        result = _check_feature_gate(route, ["run_sync"])
+        assert result is not None
+        assert result.status_code == 402
+        body = result.body.decode()
+        assert '"feature": "export_reports"' in body or '"feature":"export_reports"' in body
+
+
+def test_export_route_allowed_with_export_reports_feature():
+    result = _check_feature_gate("/api/v1/reports", ["export_reports"])
     assert result is None
 
 
-def test_ai_route_blocked_with_mdm_only():
-    """Licence with ['mdm'] only — AI routes return 402."""
-    result = _check_feature_gate("/api/v1/ai/feedback", ["mdm"])
+def test_sync_trigger_blocked_without_run_sync_feature():
+    result = _check_feature_gate("/api/v1/sync-trigger", ["export_reports"])
     assert result is not None
     assert result.status_code == 402
-    body = result.body.decode()
-    assert '"feature": "ai_features"' in body or '"feature":"ai_features"' in body
 
 
-def test_ai_route_allowed_with_ai_features():
-    """Enterprise licence with ['mdm','ai_features'] — AI routes not blocked."""
-    result = _check_feature_gate("/api/v1/ai/feedback", ["mdm", "ai_features"])
+def test_sync_trigger_allowed_with_run_sync_feature():
+    result = _check_feature_gate("/api/v1/sync-trigger", ["run_sync"])
     assert result is None
 
 
@@ -80,17 +105,11 @@ def test_wildcard_bypasses_all_gates():
     """licensed_features=['*'] — all routes accessible (dev mode)."""
     assert _check_feature_gate("/api/v1/master-records", ["*"]) is None
     assert _check_feature_gate("/api/v1/ai/feedback", ["*"]) is None
-    assert _check_feature_gate("/api/v1/cleaning", ["*"]) is None
+    assert _check_feature_gate("/api/v1/reports", ["*"]) is None
 
 
-def test_stewardship_route_requires_mdm():
-    result = _check_feature_gate("/api/v1/stewardship/queue", ["cleaning", "exceptions"])
-    assert result is not None
-    assert result.status_code == 402
-
-
-def test_all_mdm_subroutes_gated():
-    """Subroutes of MDM paths must also be gated."""
+def test_all_mdm_subroutes_not_blocked():
+    """Subroutes of former MDM paths must not be feature-gated either."""
     subroutes = [
         "/api/v1/systems/1",
         "/api/v1/sync/start",
@@ -101,9 +120,7 @@ def test_all_mdm_subroutes_gated():
         "/api/v1/mdm-metrics/latest",
     ]
     for route in subroutes:
-        result = _check_feature_gate(route, ["cleaning"])
-        assert result is not None, f"{route} was not blocked"
-        assert result.status_code == 402
+        assert _check_feature_gate(route, ["cleaning"]) is None, f"{route} should not be blocked"
 
 
 def test_unregistered_route_not_blocked():
