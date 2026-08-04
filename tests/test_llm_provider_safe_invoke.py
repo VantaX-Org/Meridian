@@ -40,6 +40,20 @@ def test_safe_invoke_times_out_gracefully():
     assert out is None  # timeout → None, no exception
 
 
+def test_safe_invoke_returns_promptly_on_timeout_even_if_call_never_finishes():
+    """A hard timeout must let the caller return near timeout_seconds, not
+    block until the slow underlying call eventually finishes on its own —
+    ThreadPoolExecutor.__exit__ silently does the latter when used as a
+    context manager, since it unconditionally shutdown(wait=True)s even
+    while a TimeoutError is propagating out of the `with` block."""
+    llm = _FakeLLM(latency_s=5.0)
+    start = time.monotonic()
+    out = safe_invoke(llm, "hello", timeout_seconds=0.5)
+    elapsed = time.monotonic() - start
+    assert out is None
+    assert elapsed < 2.0, f"safe_invoke blocked for {elapsed:.2f}s waiting on a call it had already timed out on"
+
+
 def test_safe_invoke_swallows_exceptions():
     llm = _FakeLLM(fail=True)
     out = safe_invoke(llm, "hello", timeout_seconds=5)
@@ -55,6 +69,17 @@ def test_safe_invoke_batch_preserves_order():
 
 def test_safe_invoke_batch_empty_returns_empty():
     assert safe_invoke_batch(_FakeLLM(), []) == []
+
+
+def test_safe_invoke_batch_returns_promptly_on_timeout_even_if_calls_never_finish():
+    """Same hard-timeout guarantee as safe_invoke, for the batch path."""
+    llm = _FakeLLM(latency_s=5.0)
+    prompts = [f"p{i}" for i in range(4)]
+    start = time.monotonic()
+    results = safe_invoke_batch(llm, prompts, timeout_seconds=0.5, max_workers=4)
+    elapsed = time.monotonic() - start
+    assert results == [None, None, None, None]
+    assert elapsed < 2.0, f"safe_invoke_batch blocked for {elapsed:.2f}s waiting on calls it had already timed out on"
 
 
 # ── Tier 0 (LLM-less) deploy mode ───────────────────────────────────────────

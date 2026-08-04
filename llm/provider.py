@@ -340,12 +340,21 @@ def safe_invoke(llm, messages, *, timeout_seconds: int = 90, max_tokens: int | N
         response = llm.invoke(messages)
         return response.content
 
+    # Not a `with` block: ThreadPoolExecutor.__exit__ unconditionally calls
+    # shutdown(wait=True), which blocks until every submitted task finishes —
+    # including one that's already timed out via future.result(timeout=...).
+    # That silently turns this "hard timeout" into no timeout at all: the
+    # caller doesn't get None back until the slow/hung LLM call finishes on
+    # its own (which, on CPU-only local models, can be minutes past the
+    # caller's own deadline). Managing the executor manually and shutting it
+    # down with wait=False lets us return the moment the timeout fires; the
+    # orphaned call keeps running in its own thread but no longer blocks us.
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
     try:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-            future = executor.submit(_call)
-            result = future.result(timeout=timeout_seconds)
-            _record_llm_success()
-            return result
+        future = executor.submit(_call)
+        result = future.result(timeout=timeout_seconds)
+        _record_llm_success()
+        return result
     except concurrent.futures.TimeoutError:
         logger.warning(f"LLM call timed out after {timeout_seconds}s")
         _record_llm_failure()
@@ -354,6 +363,8 @@ def safe_invoke(llm, messages, *, timeout_seconds: int = 90, max_tokens: int | N
         logger.warning(f"LLM call failed: {e}")
         _record_llm_failure()
         return None
+    finally:
+        executor.shutdown(wait=False)
 
 
 def safe_invoke_batch(
@@ -399,7 +410,15 @@ def safe_invoke_batch(
             _record_llm_failure()
             return idx, None
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+    # Not a `with` block — see safe_invoke's comment. as_completed(timeout=...)
+    # raising TimeoutError only ends the *waiting*; fut.cancel() below is a
+    # no-op for tasks already running (Future.cancel() only succeeds before a
+    # task starts), so most in-flight calls are still running when we reach
+    # here. If this were a `with` block, __exit__'s shutdown(wait=True) would
+    # then block until every one of them finished anyway, on CPU-only local
+    # models potentially minutes past the caller's own deadline.
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers)
+    try:
         futures = {
             executor.submit(_call_one, (i, p)): i for i, p in enumerate(prompts)
         }
@@ -414,6 +433,8 @@ def safe_invoke_batch(
             )
             for fut in futures:
                 fut.cancel()
+    finally:
+        executor.shutdown(wait=False)
 
     return results
 
