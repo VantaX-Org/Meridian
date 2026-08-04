@@ -48,6 +48,17 @@ function hex(bytes: number): string {
   return Array.from(a, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+/** Single-quote a string for safe, content-independent embedding in a bash
+ *  script. Single-quoted bash strings disable all special-character
+ *  interpretation (including newlines, `"`, `` ` ``, `$`) except for the
+ *  quote character itself, so escaping just that one case covers the full
+ *  input space — unlike double-quoting, which admin_email/admin_password
+ *  (attacker-reachable via the /install query string, ultimately piped into
+ *  `sudo bash`) could break out of with a single literal `"`. */
+function shQuote(s: string): string {
+  return "'" + s.replace(/'/g, "'\\''") + "'";
+}
+
 function text(body: string, status = 200, contentType = "text/plain; charset=utf-8"): Response {
   return new Response(body, { status, headers: { "content-type": contentType } });
 }
@@ -191,19 +202,27 @@ sudo mkdir -p "$DIR/scripts" "$DIR/docker/nginx"
 
 # Pre-configured .env (licence + GHCR token + generated secrets) — written
 # locally, never printed. meridian-deploy.sh runs in PRECONFIGURED mode off it.
-sudo tee "$DIR/.env" >/dev/null <<'MERIDIAN_ENV'
-${envFile}MERIDIAN_ENV
+# Not a heredoc: envFile embeds domain/admin_email/admin_password/api_key/
+# custom_base_url, all reachable via the /install query string — a value
+# containing a line that happens to match a heredoc terminator would break
+# out of it early, turning the rest of that value into live bash. A single
+# quoted literal has no terminator to collide with.
+printf '%s' ${shQuote(envFile)} | sudo tee "$DIR/.env" >/dev/null
 sudo chmod 600 "$DIR/.env"
 
 # Ask for the real admin email + a chosen password. Reads from /dev/tty so
 # this still works when the script itself arrived via a pipe (curl | sudo
 # bash) — stdin is occupied by the script body, not the terminal. Falls back
 # to the generated defaults when no terminal is attached (e.g. unattended/CI).
-ADMIN_EMAIL="${adminEmail}"
-ADMIN_PASSWORD="${adminPassword}"
+# Single-quoted (shQuote), not double-quoted: these come straight from the
+# /install query string with no character restrictions, and this whole
+# script is piped into sudo bash — a literal double-quote in either value
+# used to close the quote early and run whatever followed as root.
+ADMIN_EMAIL=${shQuote(adminEmail)}
+ADMIN_PASSWORD=${shQuote(adminPassword)}
 if [ -r /dev/tty ]; then
   echo ""
-  read -rp "Admin email [${adminEmail}]: " _INPUT_EMAIL < /dev/tty || true
+  read -rp "Admin email [$ADMIN_EMAIL]: " _INPUT_EMAIL < /dev/tty || true
   [ -n "\${_INPUT_EMAIL:-}" ] && ADMIN_EMAIL="\$_INPUT_EMAIL"
   while true; do
     read -rsp "Admin password (min 12 chars, blank = keep generated): " _PW1 < /dev/tty || true
