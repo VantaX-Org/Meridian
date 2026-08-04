@@ -13,7 +13,13 @@ services:
       - meridian-net
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      # curl isn't actually in ollama/ollama:latest — confirmed at runtime
+      # ("executable file not found in $PATH"). The Dockerfile's own
+      # build-time curl usage doesn't prove otherwise: its retry loop's exit
+      # status comes from the last `sleep`, not from curl ever succeeding,
+      # so the build proceeds silently even with curl completely absent.
+      # `ollama list` uses the same binary that's already running as CMD.
+      test: ["CMD", "ollama", "list"]
       interval: 30s
       timeout: 10s
       retries: 5

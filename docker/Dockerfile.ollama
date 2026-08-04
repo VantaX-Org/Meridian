@@ -19,8 +19,14 @@ ENV MODEL_NAME=${MODEL_NAME}
 # pull fails, or the model isn't actually present afterward, the RUN
 # instruction exits non-zero and the build fails loudly instead of
 # publishing an empty image that looks fine until a customer tries to use it.
+# curl isn't in this base image — confirmed at runtime ("executable file
+# not found in $PATH"). It was never actually verified here either: the
+# `for` loop's exit status is whatever the LAST command run inside it
+# returned, which on a full 30-iteration timeout is `sleep 1` (always 0),
+# not curl's — so this proceeded silently even when curl failed every single
+# time. `ollama list` uses the same binary already running as the server.
 RUN ollama serve & \
-    for i in $(seq 1 30); do curl -sf http://localhost:11434/api/version >/dev/null 2>&1 && break; sleep 1; done && \
+    for i in $(seq 1 30); do ollama list >/dev/null 2>&1 && break; sleep 1; done && \
     ollama pull "${MODEL_NAME}" && \
     ollama list | grep -qF "${MODEL_NAME}" && \
     pkill ollama
