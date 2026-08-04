@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { PageHead, KPI } from "@/components/meridian/atoms";
 import { PlayTriangleIcon } from "@/components/meridian/icons";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,6 +11,7 @@ import {
   triggerModules,
   type ModuleStatus,
 } from "@/lib/api/sync-trigger";
+import { getSystems as getConnectedSystems } from "@/lib/api/connectivity";
 
 type RowStatus = "idle" | "queued" | "running" | "done";
 
@@ -39,6 +41,16 @@ export default function RunSyncPage() {
     queryFn: getModuleStatuses,
     refetchInterval: 6_000,
   });
+
+  // "Connected" here means actual registered SAP systems reporting healthy —
+  // not module categories (ECC/SuccessFactors/Warehouse are fixed at 3
+  // regardless of whether any real system is connected).
+  const { data: systems } = useQuery({
+    queryKey: ["connectivity.systems"],
+    queryFn: getConnectedSystems,
+    retry: false,
+  });
+  const connectedSystemsCount = (systems ?? []).filter((s) => s.health_status === "healthy").length;
 
   // Local override of statuses for instant feedback on trigger.
   // Reconciled from backend on every poll (backend wins).
@@ -96,7 +108,28 @@ export default function RunSyncPage() {
         return next;
       });
     },
-    onSuccess: () => {
+    onSuccess: ({ queued, skipped }) => {
+      // Skipped modules were optimistically marked "queued" in onMutate but
+      // the backend never actually enqueued them — revert so they don't show
+      // a spinner that never resolves (their backend status stays "idle").
+      if (skipped.length > 0) {
+        setLocalStatus((prev) => {
+          const next = { ...prev };
+          for (const id of skipped) delete next[id];
+          return next;
+        });
+      }
+      const labelOf = (id: string) => modules?.find((m) => m.module_id === id)?.label ?? id;
+      if (queued.length > 0) {
+        toast.success(`Queued ${queued.length} module${queued.length === 1 ? "" : "s"} for re-analysis`);
+      }
+      if (skipped.length > 0) {
+        toast.warning(
+          queued.length > 0
+            ? `Skipped ${skipped.length}: ${skipped.map(labelOf).join(", ")} — no prior import to re-run`
+            : `Nothing to run — ${skipped.map(labelOf).join(", ")} ${skipped.length === 1 ? "has" : "have"} no prior import. Import data for these modules first.`
+        );
+      }
       qc.invalidateQueries({ queryKey: ["sync-trigger.modules"] });
     },
   });
@@ -168,7 +201,7 @@ export default function RunSyncPage() {
         actions={
           <>
             <span className="mn-pill">
-              <span className="pdot" /> Connected · {groups.length} systems
+              <span className="pdot" /> Connected · {connectedSystemsCount} systems
             </span>
             <button type="button" className="mn-btn mn-btn-ghost" onClick={selectAll}>
               {allSelected ? "Clear selection" : "Select all"}
