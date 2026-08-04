@@ -11,7 +11,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.config import settings
 from api.deps import Tenant, get_db, get_tenant
 from api.services.rbac import require_permission
-from api.services.column_mapper import apply_column_mapping, get_required_fields, get_standard_fields
+from api.services.column_mapper import (
+    apply_column_mapping,
+    get_required_fields,
+    get_standard_fields,
+    load_column_map,
+)
 from api.services.rate_limiter import rate_limit
 from api.services.storage import upload_file as minio_upload
 from api.services.task_progress import (
@@ -121,6 +126,18 @@ async def upload_file(
         )
 
     # Step 5a: Apply custom AI-detected column mapping (if provided)
+    # column_mapping is client-supplied — track which current column names
+    # came from it (_client_renamed_columns) and which of those are actually
+    # corroborated by the server-controlled alias table (_corroborated_client_mapped,
+    # via _is_corroborated_sap_mapping). Step 5c uses this to decide which
+    # columns may skip formula-injection sanitisation: trusting the client's
+    # claimed target name alone would let an attacker rename any column
+    # (containing a formula-injection payload) to a real SAP field name —
+    # e.g. column_mapping={"EvilCol": "BUT000.PARTNER"} — to bypass
+    # sanitisation entirely, since the exemption check only looked at the
+    # (attacker-chosen) current name.
+    _client_renamed_columns: set[str] = set()
+    _corroborated_client_mapped: set[str] = set()
     if column_mapping:
         try:
             import json as _json
@@ -129,6 +146,10 @@ async def upload_file(
                 rename_map = {src: tgt for src, tgt in custom_map.items() if src in df.columns}
                 if rename_map:
                     df = df.rename(columns=rename_map)
+                    _client_renamed_columns = set(rename_map.values())
+                    for src, tgt in rename_map.items():
+                        if _is_corroborated_sap_mapping(src, tgt, module):
+                            _corroborated_client_mapped.add(tgt)
                     logger.info(f"Applied {len(rename_map)} custom column mappings")
         except (ValueError, TypeError) as e:
             logger.warning(f"Invalid column_mapping JSON: {e}")
@@ -139,13 +160,17 @@ async def upload_file(
     # Step 5c: Sanitise formula injection — AFTER column mapping, so that
     # SAP-mapped fields (phone numbers starting with '+', negative balances,
     # email addresses starting with '@') are not corrupted. Only unmapped
-    # customer-supplied string columns are sanitised.
+    # customer-supplied string columns are sanitised. A column only gets the
+    # exemption if it reached its current SAP-looking name via the raw file
+    # itself or Step 5b's server-controlled alias table — an uncorroborated
+    # client-supplied rename (see Step 5a) does not exempt it, regardless of
+    # what target name the client claims.
     _standard_sap_fields_for_sanitise = get_standard_fields(module)
     _known_short = {f.split(".")[-1] for f in _standard_sap_fields_for_sanitise if "." in f} | set(_standard_sap_fields_for_sanitise)
     mapped_columns = {
         col for col in df.columns
-        if col in _standard_sap_fields_for_sanitise
-        or (col.split(".")[-1] if "." in col else col) in _known_short
+        if (col in _standard_sap_fields_for_sanitise or (col.split(".")[-1] if "." in col else col) in _known_short)
+        and (col not in _client_renamed_columns or col in _corroborated_client_mapped)
     }
     df = _sanitise_formula_injection(df, mapped_columns)
 
@@ -266,6 +291,28 @@ async def upload_file(
 # Leading whitespace before a formula char still executes in Excel/Sheets
 # (they strip it), so match optional whitespace (\t \r \n space) first.
 _FORMULA_PREFIX = re.compile(r"^\s*[=+\-@]")
+
+
+def _is_corroborated_sap_mapping(src: str, tgt: str, module: str) -> bool:
+    """Verify a client-claimed src->tgt column rename against the
+    server-controlled alias table, rather than trusting the client's word for
+    it. Used to gate the formula-injection sanitisation exemption — see the
+    Step 5a/5c comments in upload_file. Returns True if `tgt` is `src`
+    itself, `src` is `tgt`'s short name (FIELD part of TABLE.FIELD), or
+    column_map.yaml already registers `src` as a known alias of `tgt`
+    (case-insensitive) for this module.
+    """
+    src_stripped = src.strip()
+    if src_stripped == tgt:
+        return True
+    short = tgt.split(".")[-1] if "." in tgt else tgt
+    if src_stripped == short:
+        return True
+    col_map = load_column_map(module)
+    if col_map.get(src_stripped) == tgt:
+        return True
+    src_lower = src_stripped.lower()
+    return any(canonical == tgt and alias.lower() == src_lower for alias, canonical in col_map.items())
 
 
 def _validate_magic_bytes(content: bytes, ext: str) -> None:

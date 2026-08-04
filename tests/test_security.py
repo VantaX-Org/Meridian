@@ -154,13 +154,38 @@ class TestMagicByteValidation:
 _FORMULA_PREFIX = re.compile(r"^[=+\-@]")
 
 
-def _sanitise_formula_injection(df: pd.DataFrame) -> pd.DataFrame:
-    """Local copy for testing without asyncpg."""
+def _sanitise_formula_injection(df: pd.DataFrame, mapped_columns: set[str] = frozenset()) -> pd.DataFrame:
+    """Local copy of api/routes/upload.py's _sanitise_formula_injection, for
+    testing without asyncpg. Keep in sync with the real function's signature —
+    it now takes mapped_columns (columns exempted from sanitisation)."""
     for col in df.select_dtypes(include="object").columns:
+        if col in mapped_columns:
+            continue
         mask = df[col].astype(str).str.match(_FORMULA_PREFIX)
         if mask.any():
             df.loc[mask, col] = "'" + df.loc[mask, col].astype(str)
     return df
+
+
+# _is_corroborated_sap_mapping is a thin wrapper — re-defined locally (upload.py
+# isn't importable here), but calling the REAL load_column_map, which has no
+# asyncpg dependency and returns real alias data.
+from api.services.column_mapper import load_column_map  # noqa: E402
+
+
+def _is_corroborated_sap_mapping(src: str, tgt: str, module: str) -> bool:
+    """Local copy of api/routes/upload.py's _is_corroborated_sap_mapping."""
+    src_stripped = src.strip()
+    if src_stripped == tgt:
+        return True
+    short = tgt.split(".")[-1] if "." in tgt else tgt
+    if src_stripped == short:
+        return True
+    col_map = load_column_map(module)
+    if col_map.get(src_stripped) == tgt:
+        return True
+    src_lower = src_stripped.lower()
+    return any(canonical == tgt and alias.lower() == src_lower for alias, canonical in col_map.items())
 
 
 class TestFormulaInjectionSanitisation:
@@ -193,6 +218,82 @@ class TestFormulaInjectionSanitisation:
         df = pd.DataFrame({"num": [-100, 200, -300]})
         result = _sanitise_formula_injection(df)
         assert list(result["num"]) == [-100, 200, -300]
+
+    def test_mapped_column_exempted(self):
+        """A genuinely SAP-mapped column (e.g. a phone number starting with
+        '+') is not corrupted by sanitisation."""
+        df = pd.DataFrame({"BUT000.TEL_NUMBER": ["+27821234567"]})
+        result = _sanitise_formula_injection(df, mapped_columns={"BUT000.TEL_NUMBER"})
+        assert result["BUT000.TEL_NUMBER"].iloc[0] == "+27821234567"
+
+    def test_unmapped_column_with_same_content_still_sanitised(self):
+        """Same leading '+' content, but NOT in mapped_columns — must still
+        be sanitised. This is the exemption's other half: it only protects
+        columns actually corroborated as SAP fields, not any column."""
+        df = pd.DataFrame({"custom_col": ["+27821234567"]})
+        result = _sanitise_formula_injection(df, mapped_columns=set())
+        assert result["custom_col"].iloc[0] == "'+27821234567"
+
+
+# ── Formula-injection sanitiser bypass via column_mapping ───────────────────
+# A previous version of upload_file computed the sanitisation exemption from
+# the CURRENT column name after applying the client-supplied column_mapping,
+# with no check on whether that rename was plausible. That let an attacker
+# rename any column (containing a formula-injection payload) to a real SAP
+# field name — e.g. column_mapping={"EvilCol": "BUT000.PARTNER"} — to bypass
+# sanitisation entirely, since "BUT000.PARTNER" looks like a legitimate
+# SAP-mapped column regardless of what it was actually named in the file.
+class TestCorroboratedSapMapping:
+    def test_exact_target_name_corroborated(self):
+        assert _is_corroborated_sap_mapping("BUT000.PARTNER", "BUT000.PARTNER", "business_partner") is True
+
+    def test_short_field_name_corroborated(self):
+        assert _is_corroborated_sap_mapping("PARTNER", "BUT000.PARTNER", "business_partner") is True
+
+    def test_known_alias_corroborated(self):
+        # "BP Number" -> "BUT000.PARTNER" is a real registered alias in
+        # column_map.yaml for business_partner.
+        assert _is_corroborated_sap_mapping("BP Number", "BUT000.PARTNER", "business_partner") is True
+
+    def test_known_alias_case_insensitive(self):
+        assert _is_corroborated_sap_mapping("bp number", "BUT000.PARTNER", "business_partner") is True
+
+    def test_arbitrary_column_name_not_corroborated(self):
+        """The exact attack: an attacker-chosen header with no relationship
+        to the claimed target must NOT be corroborated."""
+        assert _is_corroborated_sap_mapping("EvilCol", "BUT000.PARTNER", "business_partner") is False
+
+    def test_unrelated_english_word_not_corroborated(self):
+        assert _is_corroborated_sap_mapping("Notes", "BUT000.PARTNER", "business_partner") is False
+
+    def test_bypass_attempt_end_to_end_still_sanitised(self):
+        """Full attack scenario: attacker's malicious column gets renamed to
+        a real SAP field name via a client-supplied mapping that isn't
+        corroborated — the resulting column must still be sanitised."""
+        df = pd.DataFrame({"EvilCol": ["=cmd|'/c calc'!A1"]})
+        rename_map = {"EvilCol": "BUT000.PARTNER"}
+        df = df.rename(columns=rename_map)
+        corroborated = {
+            tgt for src, tgt in rename_map.items()
+            if _is_corroborated_sap_mapping(src, tgt, "business_partner")
+        }
+        assert corroborated == set()  # not corroborated -> no exemption
+        result = _sanitise_formula_injection(df, mapped_columns=corroborated)
+        assert result["BUT000.PARTNER"].iloc[0] == "'=cmd|'/c calc'!A1"
+
+    def test_legitimate_alias_mapping_end_to_end_exempted(self):
+        """Contrast case: a legitimate alias-corroborated mapping still gets
+        its exemption, so real phone-number-style data isn't corrupted."""
+        df = pd.DataFrame({"BP Number": ["+27821234567"]})
+        rename_map = {"BP Number": "BUT000.PARTNER"}
+        df = df.rename(columns=rename_map)
+        corroborated = {
+            tgt for src, tgt in rename_map.items()
+            if _is_corroborated_sap_mapping(src, tgt, "business_partner")
+        }
+        assert corroborated == {"BUT000.PARTNER"}
+        result = _sanitise_formula_injection(df, mapped_columns=corroborated)
+        assert result["BUT000.PARTNER"].iloc[0] == "+27821234567"
 
 
 # ── Global exception handler ─────────────────────────────────────────────────
