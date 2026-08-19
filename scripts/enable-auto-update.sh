@@ -71,6 +71,20 @@ else
     info "UPDATER_SHARED_SECRET written to .env"
 fi
 
+# Compose resolves env_file (and every other relative path) in
+# docker-compose.customer.yml against THAT FILE'S OWN directory, not
+# wherever you happen to invoke `docker compose` from — so if the compose
+# file lives in docker/, the .env it actually reads is docker/.env, not
+# this one. meridian-deploy.sh already keeps a synced copy there for exactly
+# this reason (see its own ".env copied to .../docker/.env" step); replicate
+# it here too, or api never sees UPDATER_SHARED_SECRET no matter how many
+# times you recreate it.
+_compose_dir="$(dirname "$COMPOSE_FILE")"
+if [[ "$_compose_dir" != "." ]]; then
+    cp .env "${_compose_dir}/.env"
+    info ".env synced to ${_compose_dir}/.env (docker compose reads it from there)"
+fi
+
 dc() { docker compose -f "$COMPOSE_FILE" -f "$UPDATER_OVERLAY" "$@"; }
 
 info "Starting the updater sidecar..."
