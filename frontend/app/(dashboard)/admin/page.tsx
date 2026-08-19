@@ -9,9 +9,78 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { deleteUser, getUsers, inviteUser, updateUser } from "@/lib/api/users";
 import { getAuditEntries } from "@/lib/api/audit";
 import { getLicenceManifest } from "@/lib/api/licence";
+import { getUpdateStatus } from "@/lib/api/system-update";
 import { downloadCsv } from "@/components/meridian/actions";
 import { relativeTime } from "@/lib/format";
+import { useAuth } from "@/context/auth-context";
+import { useUpdateModal } from "@/context/update-modal-context";
 import type { User, UserRole } from "@/types/api";
+
+/**
+ * Current running version + "check for updates" entry point, shown near
+ * the licence/tier card. Fetches `/api/v1/system/update-status`, which is
+ * admin-only (403 for everyone else) — hard-gated on the real
+ * `useAuth().user.role`, not the `use-role.ts` demo stub.
+ */
+function PlatformVersionCard() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const { open: openUpdateModal } = useUpdateModal();
+
+  const statusQ = useQuery({
+    queryKey: ["system-update-status"],
+    queryFn: getUpdateStatus,
+    enabled: isAdmin,
+    staleTime: 60_000,
+  });
+
+  if (!isAdmin) return null;
+
+  return (
+    <div className="mn-card mn-card-pad" style={{ marginTop: 18 }}>
+      <SectionHeader title="Platform version" caption="Current Meridian release for this deployment" />
+      {statusQ.isLoading ? (
+        <Skeleton className="h-16 rounded-[10px]" />
+      ) : statusQ.error || !statusQ.data ? (
+        <div style={{ color: "var(--mn-ink-400)", fontSize: 12.5 }}>
+          Could not reach <code>/api/v1/system/update-status</code>.
+        </div>
+      ) : (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 16,
+            flexWrap: "wrap",
+          }}
+        >
+          <div>
+            <div className="mn-eyebrow">Running version</div>
+            <div className="v mn-tabular">{statusQ.data.current_version}</div>
+          </div>
+
+          {statusQ.data.update_available && statusQ.data.updater_configured && (
+            <button type="button" className="mn-btn mn-btn-primary" onClick={openUpdateModal}>
+              View update ({statusQ.data.latest_version})
+            </button>
+          )}
+
+          {statusQ.data.update_available && !statusQ.data.updater_configured && (
+            <p style={{ fontSize: 12.5, color: "var(--mn-ink-500)", maxWidth: 340, margin: 0 }}>
+              Version {statusQ.data.latest_version} is available, but the auto-update sidecar
+              isn&apos;t configured on this deployment. Update manually or contact support.
+            </p>
+          )}
+
+          {!statusQ.data.update_available && (
+            <span style={{ fontSize: 12.5, color: "var(--mn-pos)" }}>Up to date</span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 type Tab = "users" | "roles" | "licence" | "audit";
 
@@ -551,46 +620,50 @@ export default function AdminPage() {
       )}
 
       {tab === "licence" && (
-        <div className="mn-row mn-row-12">
-          <div className="mn-col-5" style={{ gridColumn: "span 5" }}>
-            <div className="mn-card mn-card-pad">
-              <SectionHeader title="Licence" caption="Tier, seats, renewal" />
-              <div className="mn-licence">
-                <div className="mn-row" style={{ gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-                  <div><div className="mn-eyebrow">Tier</div><div className="v">{licence.tier ?? "—"}</div></div>
-                  <div><div className="mn-eyebrow">Seats</div><div className="v mn-tabular">{activeUsers} / {seatsMax || "∞"}</div></div>
-                  <div><div className="mn-eyebrow">Renews</div><div className="v mn-tabular">{licence.expiry_date ?? "—"}</div></div>
-                  <div>
-                    <div className="mn-eyebrow">Status</div>
-                    <div className="v">
-                      <StatusDot status={licence.valid ? "healthy" : licence.valid === false ? "down" : "scheduled"} />
+        <>
+          <div className="mn-row mn-row-12">
+            <div className="mn-col-5" style={{ gridColumn: "span 5" }}>
+              <div className="mn-card mn-card-pad">
+                <SectionHeader title="Licence" caption="Tier, seats, renewal" />
+                <div className="mn-licence">
+                  <div className="mn-row" style={{ gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                    <div><div className="mn-eyebrow">Tier</div><div className="v">{licence.tier ?? "—"}</div></div>
+                    <div><div className="mn-eyebrow">Seats</div><div className="v mn-tabular">{activeUsers} / {seatsMax || "∞"}</div></div>
+                    <div><div className="mn-eyebrow">Renews</div><div className="v mn-tabular">{licence.expiry_date ?? "—"}</div></div>
+                    <div>
+                      <div className="mn-eyebrow">Status</div>
+                      <div className="v">
+                        <StatusDot status={licence.valid ? "healthy" : licence.valid === false ? "down" : "scheduled"} />
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-          <div className="mn-col-7" style={{ gridColumn: "span 7" }}>
-            <div className="mn-card mn-card-pad">
-              <SectionHeader title="Modules" caption="Enabled on this licence" />
-              <div className="mn-modlist">
-                {(licence.enabled_menu_items ?? []).map((name) => (
-                  <div key={name} className="mn-modrow">
-                    <span style={{ fontWeight: 500, color: "var(--mn-ink-900)", textTransform: "capitalize" }}>
-                      {name.replace(/_/g, " ")}
-                    </span>
-                    <span className="mn-toggle on" aria-hidden>
-                      <span className="thumb" />
-                    </span>
-                  </div>
-                ))}
-                {(licence.enabled_menu_items ?? []).length === 0 && (
-                  <div style={{ color: "var(--mn-ink-400)", padding: 8 }}>No modules enabled.</div>
-                )}
+            <div className="mn-col-7" style={{ gridColumn: "span 7" }}>
+              <div className="mn-card mn-card-pad">
+                <SectionHeader title="Modules" caption="Enabled on this licence" />
+                <div className="mn-modlist">
+                  {(licence.enabled_menu_items ?? []).map((name) => (
+                    <div key={name} className="mn-modrow">
+                      <span style={{ fontWeight: 500, color: "var(--mn-ink-900)", textTransform: "capitalize" }}>
+                        {name.replace(/_/g, " ")}
+                      </span>
+                      <span className="mn-toggle on" aria-hidden>
+                        <span className="thumb" />
+                      </span>
+                    </div>
+                  ))}
+                  {(licence.enabled_menu_items ?? []).length === 0 && (
+                    <div style={{ color: "var(--mn-ink-400)", padding: 8 }}>No modules enabled.</div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
-        </div>
+
+          <PlatformVersionCard />
+        </>
       )}
 
       {tab === "audit" && (

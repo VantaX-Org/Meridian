@@ -72,6 +72,21 @@ CREATE TABLE IF NOT EXISTS licence_nodes (
     PRIMARY KEY (tenant_id, fingerprint)
 );
 
+-- Platform release metadata (singleton) — one global "latest version" row
+-- for the whole product, published from the HQ portal's Releases admin page
+-- and surfaced to every customer deployment via /api/licence/validate so it
+-- can prompt an admin to trigger a one-click update.
+CREATE TABLE IF NOT EXISTS platform_releases (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    latest_version TEXT NOT NULL DEFAULT '',
+    release_notes TEXT NOT NULL DEFAULT '',
+    released_at TEXT,
+    updated_at TEXT NOT NULL
+);
+
+INSERT OR IGNORE INTO platform_releases (id, latest_version, release_notes, updated_at)
+VALUES (1, '', '', datetime('now'));
+
 CREATE INDEX IF NOT EXISTS idx_licence_nodes_tenant ON licence_nodes(tenant_id, last_seen);
 CREATE INDEX IF NOT EXISTS idx_tenants_key_hash ON tenants(licence_key_hash);
 CREATE INDEX IF NOT EXISTS idx_rules_module ON rules(module);

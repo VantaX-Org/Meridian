@@ -27,6 +27,10 @@ export interface LicenceManifest {
   features: LicenceFeatures;
   llm_config?: LlmConfig;
   last_validated?: string;
+  /** Newest platform version known to the licence server, if any. */
+  latest_version?: string;
+  /** Release notes for `latest_version`, if any. */
+  release_notes?: string;
 }
 
 const DEFAULT_MANIFEST: LicenceManifest = {

@@ -4,9 +4,18 @@
 # scripts/update.sh
 #
 # Usage:
-#   sudo bash scripts/update.sh              # update to latest
-#   sudo bash scripts/update.sh --rollback   # roll back to previous
-#   sudo bash scripts/update.sh --no-verify  # skip the /health probe
+#   sudo bash scripts/update.sh                    # update to latest
+#   sudo bash scripts/update.sh --rollback         # roll back to previous
+#   sudo bash scripts/update.sh --no-verify        # skip the /health probe
+#   sudo bash scripts/update.sh --include-updater  # also upgrade the updater
+#                                                   # sidecar's own image, as
+#                                                   # the very last step,
+#                                                   # after the rest of the
+#                                                   # update has already
+#                                                   # verified healthy. Rare,
+#                                                   # operator-driven — never
+#                                                   # passed by the sidecar's
+#                                                   # own POST /update.
 # =========================================================
 set -euo pipefail
 
@@ -15,15 +24,56 @@ info()  { echo -e "${GREEN}[INFO]${NC}  $*"; }
 warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 error() { echo -e "${RED}[ERROR]${NC} $*"; exit 1; }
 
+# write_status <state> <message>
+# Lets the updater sidecar (updater/main.py) surface progress via GET
+# /status. A complete no-op unless MERIDIAN_UPDATE_STATUS_FILE is set, so a
+# human running this script directly (no sidecar, no env var) sees zero
+# behavior change. Writes atomically (tmp file + mv) since the sidecar reads
+# this file's contents directly for its API response — a torn write would
+# corrupt it. `state == "pulling"` always resets started_at to now: it's
+# structurally the first write of every run (see the main flow below), so
+# this is how a fresh run's timestamp is distinguished from a stale one left
+# over by a previous run.
+write_status() {
+    [[ -z "${MERIDIAN_UPDATE_STATUS_FILE:-}" ]] && return 0
+    local state="$1" message="$2"
+    python3 - "$MERIDIAN_UPDATE_STATUS_FILE" "$state" "$message" <<'PYEOF' 2>/dev/null || true
+import json
+import os
+import sys
+from datetime import datetime, timezone
+
+path, state, message = sys.argv[1], sys.argv[2], sys.argv[3]
+now = datetime.now(timezone.utc).isoformat()
+
+started_at = now
+if state != "pulling" and os.path.exists(path):
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            existing = json.load(f)
+        started_at = existing.get("started_at") or now
+    except Exception:
+        started_at = now
+
+data = {"state": state, "message": message, "started_at": started_at, "updated_at": now}
+tmp = f"{path}.tmp"
+with open(tmp, "w", encoding="utf-8") as f:
+    json.dump(data, f)
+os.replace(tmp, path)
+PYEOF
+}
+
 ACTION=update
 VERIFY=true
+INCLUDE_UPDATER=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --rollback)   ACTION=rollback; shift ;;
-        --no-verify)  VERIFY=false; shift ;;
-        -h|--help)    grep '^# ' "$0" | sed 's/^# //'; exit 0 ;;
-        *)            echo "Unknown flag: $1" >&2; exit 2 ;;
+        --rollback)         ACTION=rollback; shift ;;
+        --no-verify)        VERIFY=false; shift ;;
+        --include-updater)  INCLUDE_UPDATER=true; shift ;;
+        -h|--help)          grep '^# ' "$0" | sed 's/^# //'; exit 0 ;;
+        *)                  echo "Unknown flag: $1" >&2; exit 2 ;;
     esac
 done
 
@@ -37,6 +87,15 @@ else
 fi
 
 dc() { docker compose -f "$COMPOSE_FILE" "$@"; }
+
+# The `updater` service is defined only in the docker-compose.updater.yml
+# overlay, never in $COMPOSE_FILE itself — so it needs its own explicit -f
+# merge, used only by the --include-updater step at the very end. It is
+# deliberately NOT part of dc()/$COMPOSE_FILE: every other `dc ...` call in
+# this script (pulls, --force-recreate) must never be able to touch the
+# updater service, or it could kill the very process running this update.
+UPDATER_OVERLAY="docker/docker-compose.updater.yml"
+[[ -f "$UPDATER_OVERLAY" ]] || UPDATER_OVERLAY=""
 
 IMAGES=(
     "ghcr.io/vantax-org/meridian-api"
@@ -117,8 +176,10 @@ auto_rollback() {
     done
     dc up -d --force-recreate api worker frontend nginx 2>/dev/null || true
     if ! verify_health; then
+        write_status "failed" "Rollback also failed /health after: $1"
         error "Rollback also failed /health. Manual intervention required. Logs: docker compose logs api"
     fi
+    write_status "rolled_back" "Update rolled back to previous images after: $1"
     error "Update rolled back. Running on previous images. Check 'docker compose logs api' for why the new version failed."
 }
 
@@ -142,6 +203,7 @@ info "Updating Meridian to the latest released version..."
 
 snapshot_rollback_tags
 
+write_status "pulling" "Pulling latest images..."
 pull_images
 
 # Roll forward onto the new images BEFORE migrating: `dc exec` targets the
@@ -149,17 +211,20 @@ pull_images
 # `alembic upgrade head` execs into the OLD image and silently skips any
 # migrations shipped with this release.
 info "Restarting services on the new images..."
+write_status "restarting" "Restarting services on the new images..."
 dc up -d --force-recreate api worker frontend nginx 2>/dev/null || true
 
 info "Running database migrations..."
 if ! wait_for_api_container; then
     auto_rollback "New api container never became reachable."
 fi
+write_status "migrating" "Running database migrations..."
 if ! dc exec -T api bash -c "cd /app && alembic upgrade head"; then
     auto_rollback "Migration failed on the new image."
 fi
 
 if [[ "$VERIFY" == "true" ]]; then
+    write_status "verifying" "Verifying /health..."
     if ! verify_health; then
         auto_rollback "/health never turned green after 120s."
     fi
@@ -175,5 +240,21 @@ except Exception:
 " 2>/dev/null || echo "unknown")
 
 echo ""
+write_status "done" "Update complete. Running version: $VERSION"
 info "Update complete. Running version: $VERSION"
 info "To revert: sudo bash scripts/update.sh --rollback"
+
+if [[ "$INCLUDE_UPDATER" == "true" ]]; then
+    # Deliberately last, and only reached after verify_health has already
+    # passed above — i.e. the new stack is known-healthy — before we touch
+    # the updater sidecar's own image. Never add `updater` to the IMAGES
+    # array or any --force-recreate list above this line: recreating it
+    # mid-script would kill the very process running this update.
+    if [[ -z "$UPDATER_OVERLAY" ]]; then
+        warn "--include-updater requested but ${UPDATER_OVERLAY:-docker/docker-compose.updater.yml} was not found — skipping."
+    else
+        info "Pulling and recreating the updater sidecar (--include-updater)..."
+        docker compose -f "$COMPOSE_FILE" -f "$UPDATER_OVERLAY" pull updater \
+            && docker compose -f "$COMPOSE_FILE" -f "$UPDATER_OVERLAY" up -d --force-recreate updater
+    fi
+fi

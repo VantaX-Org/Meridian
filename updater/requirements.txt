@@ -1,0 +1,4 @@
+# Meridian self-update sidecar — kept minimal and dependency-light on purpose
+# (this container holds the Docker socket; smaller surface area is better).
+fastapi>=0.115.0
+uvicorn[standard]>=0.34.0

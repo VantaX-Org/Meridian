@@ -114,6 +114,14 @@ CREATE TABLE IF NOT EXISTS admin_audit (
     created_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS platform_releases (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    latest_version TEXT NOT NULL DEFAULT '',
+    release_notes TEXT NOT NULL DEFAULT '',
+    released_at TEXT,
+    updated_at TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_tenants_key_hash ON tenants(licence_key_hash);
 CREATE INDEX IF NOT EXISTS idx_admins_email ON admins(email);
 CREATE INDEX IF NOT EXISTS idx_admin_sessions_admin ON admin_sessions(admin_id);
@@ -145,5 +153,14 @@ beforeAll(async () => {
       "VALUES (?, ?, ?, ?, 'admin', 1)"
     )
     .bind("test-admin-id", TEST_ADMIN_EMAIL, hash, salt)
+    .run();
+
+  // Seed the platform_releases singleton row, mirroring migration
+  // 006_platform_releases.sql's INSERT OR IGNORE.
+  await db
+    .prepare(
+      "INSERT OR IGNORE INTO platform_releases (id, latest_version, release_notes, updated_at) " +
+      "VALUES (1, '', '', datetime('now'))"
+    )
     .run();
 });

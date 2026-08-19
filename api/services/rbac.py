@@ -38,6 +38,9 @@ PERMISSIONS: dict[str, set[str]] = {
         # the PERMISSIONS dict was never updated, so every role 403'd.
         # Sweep-added here.
         "mdm.read", "mdm.write",
+        # Platform self-update (check-for-update visibility + trigger).
+        # Admin only — it restarts the whole customer stack.
+        "manage_system",
     },
     "manager": {
         "view", "upload", "analyse", "approve", "apply", "export",

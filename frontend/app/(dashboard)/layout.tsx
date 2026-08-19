@@ -240,8 +240,11 @@ import {
 } from "@/components/meridian/nav-icons";
 import { useAuth } from "@/context/auth-context";
 import { ForcePasswordChange } from "@/components/force-password-change";
+import { UpdateAvailableModal } from "@/components/update-available-modal";
+import { UpdateModalProvider } from "@/context/update-modal-context";
 import { useRole } from "@/hooks/use-role";
 import { useLicence } from "@/hooks/use-licence";
+import { getUpdateStatus } from "@/lib/api/system-update";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Popover,
@@ -715,7 +718,12 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
   if (!user) return null;
-  return <>{children}</>;
+  return (
+    <UpdateModalProvider>
+      {children}
+      <UpdateAvailableModal />
+    </UpdateModalProvider>
+  );
 }
 
 /* ─── Main layout ─── */
@@ -761,6 +769,26 @@ export default function DashboardLayout({
     queryFn: async () => (await apiClient.get("/health")).data,
     staleTime: 60_000,
   });
+
+  // Sidebar footer version badge. `/system/update-status` is admin-only
+  // (403 for everyone else), so this is only enabled for admins — the
+  // shared ["system-update-status"] query key means it's the same
+  // in-flight/cached request the update-available modal and Admin page
+  // already use, not an extra network round trip on top of theirs. Other
+  // roles keep the static fallback below.
+  const { user: currentUser } = useAuth();
+  const { data: updateStatus } = useQuery({
+    queryKey: ["system-update-status"],
+    queryFn: getUpdateStatus,
+    enabled: currentUser?.role === "admin",
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
+  const versionLabel = updateStatus?.current_version
+    ? updateStatus.current_version.startsWith("v")
+      ? updateStatus.current_version
+      : `v${updateStatus.current_version}`
+    : "v4.2";
 
   const licence = health?.licence;
   const licenceDotColor =
@@ -834,7 +862,7 @@ export default function DashboardLayout({
                   data-sidebar-label
                   className="ml-auto font-mono text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--mn-ink-300)] px-1.5 py-0.5 border border-[var(--mn-line)] rounded"
                 >
-                  v4.2
+                  {versionLabel}
                 </span>
               </>
             )}

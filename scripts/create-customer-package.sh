@@ -144,6 +144,7 @@ echo "→ Generating .env..."
 DB_PASS=$(openssl rand -hex 16 2>/dev/null || head -c 32 /dev/urandom | base64 | tr -dc 'a-z0-9' | head -c 16)
 MINIO_PASS=$(openssl rand -hex 16 2>/dev/null || head -c 32 /dev/urandom | base64 | tr -dc 'a-z0-9' | head -c 16)
 CRED_KEY=$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 32)
+UPDATER_SECRET=$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 32)
 
 if [[ "$OFFLINE" == "true" ]]; then
   LICENCE_MODE="offline"
@@ -256,6 +257,9 @@ NEXT_PUBLIC_AUTH_MODE=local
 SAP_CONNECTOR=mock
 CREDENTIAL_MASTER_KEY=${CRED_KEY}
 
+# ── Updater sidecar (self-update — internal network only) ─
+UPDATER_SHARED_SECRET=${UPDATER_SECRET}
+
 # ── Network ──────────────────────────────────────────────
 MERIDIAN_CORS_ORIGINS=${CORS_ORIGINS}
 
@@ -281,6 +285,7 @@ chmod +x "${PKG_DIR}/scripts/meridian-deploy.sh"
 echo "→ Adding docker configuration files..."
 cp "${ROOT_DIR}/docker/docker-compose.customer.yml" "${PKG_DIR}/docker/docker-compose.customer.yml"
 cp "${ROOT_DIR}/docker/docker-compose.customer.ollama.yml" "${PKG_DIR}/docker/docker-compose.customer.ollama.yml"
+cp "${ROOT_DIR}/docker/docker-compose.updater.yml" "${PKG_DIR}/docker/docker-compose.updater.yml"
 cp "${ROOT_DIR}/docker/nginx/meridian.conf" "${PKG_DIR}/docker/nginx/meridian.conf"
 
 # ── Generate README ──────────────────────────────────────────────────────────

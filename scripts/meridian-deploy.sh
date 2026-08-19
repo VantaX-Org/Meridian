@@ -470,6 +470,16 @@ else
     log "Compose profiles: (none) — no bundled LLM container"
 fi
 
+# Self-update sidecar overlay — added unconditionally (independent of LLM
+# tier) so "Update Now" in the app works on every deployment. Holds the
+# Docker socket so api/worker never have to; see docker/Dockerfile.updater.
+_UPDATER_OVERLAY="${REPO_ROOT}/docker/docker-compose.updater.yml"
+if [[ -f "$_UPDATER_OVERLAY" ]]; then
+    COMPOSE_FILES+=(-f "$_UPDATER_OVERLAY")
+else
+    warn "docker-compose.updater.yml is missing — the self-update sidecar will not start."
+fi
+
 # =============================================================================
 # Deployment config
 # =============================================================================
@@ -526,6 +536,7 @@ if [[ "$PRECONFIGURED" != "true" ]]; then
     _MINIO_PASS=$(openssl rand -hex 16)
     _CRED_KEY=$(openssl rand -hex 32)
     _APP_PASS=$(openssl rand -hex 16)
+    _UPDATER_SECRET=$(openssl rand -hex 32)
 
     _LICENCE_KEY_LINE=""
     _LICENCE_TOKEN_LINE=""
@@ -577,6 +588,8 @@ if [[ "$PRECONFIGURED" != "true" ]]; then
         printf '\n# SAP\n'
         printf 'SAP_CONNECTOR=mock\n'
         printf 'CREDENTIAL_MASTER_KEY=%s\n' "$_CRED_KEY"
+        printf '\n# Updater sidecar (self-update — internal network only)\n'
+        printf 'UPDATER_SHARED_SECRET=%s\n' "$_UPDATER_SECRET"
     } > "${REPO_ROOT}/.env"
     chmod 600 "${REPO_ROOT}/.env"
     log ".env written (LLM_PROVIDER=${_LLM_PROVIDER}, DB/MinIO secrets generated)"

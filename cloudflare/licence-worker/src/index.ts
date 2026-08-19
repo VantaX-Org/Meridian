@@ -30,6 +30,8 @@
  *   PUT    /api/admin/rules/:id
  *   PATCH  /api/admin/rules/:id
  *   DELETE /api/admin/rules/:id
+ *   GET    /api/admin/release
+ *   PUT    /api/admin/release
  */
 
 // Task 09: PBKDF2 password hashing
@@ -1103,6 +1105,24 @@ async function handleValidate(request: Request, env: Env): Promise<Response> {
     })
   );
 
+  // Advisory platform-update signal — NOT part of the signed entitlement
+  // (see entitlementCanonical above). A missing table (e.g. this migration
+  // hasn't run yet in some environment) or any other D1 hiccup must never
+  // fail an otherwise-valid licence check, so this is best-effort only.
+  let latestVersion = "";
+  let releaseNotes = "";
+  try {
+    const releaseRow = await env.DB.prepare(
+      "SELECT latest_version, release_notes FROM platform_releases WHERE id = 1"
+    ).first<{ latest_version: string; release_notes: string }>();
+    if (releaseRow) {
+      latestVersion = releaseRow.latest_version || "";
+      releaseNotes = releaseRow.release_notes || "";
+    }
+  } catch (e) {
+    console.warn("platform release lookup failed (non-fatal):", e);
+  }
+
   return json({
     valid: true,
     tenant_id: row.id,
@@ -1122,6 +1142,9 @@ async function handleValidate(request: Request, env: Env): Promise<Response> {
     signed_at: signedAt,
     machine_fingerprint: fingerprint,
     signature_alg: "RS256-canonical-v1",
+    // Advisory only — outside the signed canonical, see comment above.
+    latest_version: latestVersion,
+    release_notes: releaseNotes,
   });
 }
 
@@ -1891,6 +1914,65 @@ async function handleDeleteLicenceKey(tenantId: string, request: Request, env: E
   return json({ deleted: true, tenant_id: tenantId });
 }
 
+// ─── Admin: Platform Release ─────────────────────────────────────────────────
+// Singleton row (id = 1) — one global "latest platform version" for the whole
+// product, not per-tenant. Published from the HQ portal and surfaced to every
+// customer deployment via handleValidate's response so it can prompt an admin
+// to trigger a one-click update.
+
+interface PlatformReleaseRow {
+  id: number;
+  latest_version: string;
+  release_notes: string;
+  released_at: string | null;
+  updated_at: string;
+}
+
+// Accepts an optional leading "v" but the stored value is always normalized
+// without one, since that's what the customer-side semver comparison expects.
+const VERSION_RE = /^v?(\d+\.\d+\.\d+)$/;
+
+async function handleGetRelease(request: Request, env: Env): Promise<Response> {
+  const authErr = await requireAdmin(request, env);
+  if (authErr) return authErr;
+
+  const row = await env.DB.prepare("SELECT * FROM platform_releases WHERE id = 1")
+    .first<PlatformReleaseRow>();
+  if (!row) return json({ error: "not_found" }, 404);
+  return json(row);
+}
+
+async function handleUpdateRelease(request: Request, env: Env): Promise<Response> {
+  const authErr = await requireAdmin(request, env);
+  if (authErr) return authErr;
+
+  const body = (await request.json()) as Partial<{
+    latest_version: string;
+    release_notes: string;
+  }>;
+
+  const rawVersion = (body.latest_version ?? "").trim();
+  const versionMatch = rawVersion.match(VERSION_RE);
+  if (!rawVersion || !versionMatch) {
+    return json(
+      { error: "bad_request", message: "latest_version is required and must look like MAJOR.MINOR.PATCH (optionally prefixed with 'v')" },
+      400
+    );
+  }
+  const latestVersion = versionMatch[1];
+  const releaseNotes = body.release_notes ?? "";
+
+  await env.DB.prepare(
+    "UPDATE platform_releases SET latest_version = ?, release_notes = ?, released_at = datetime('now'), updated_at = datetime('now') WHERE id = 1"
+  )
+    .bind(latestVersion, releaseNotes)
+    .run();
+
+  const updated = await env.DB.prepare("SELECT * FROM platform_releases WHERE id = 1")
+    .first<PlatformReleaseRow>();
+  return json(updated!);
+}
+
 // ─── Router ───────────────────────────────────────────────────────────────────
 
 // ─── Admin audit log ──────────────────────────────────────────────────────────
@@ -2235,6 +2317,12 @@ export default {
           else if (method === "PATCH") response = await handleUpdateRule(ruleId, request, env, true);
           else if (method === "DELETE") response = await handleDeleteRule(ruleId, request, env);
           else response = json({ error: "not_found" }, 404);
+
+        // ── Admin: platform release ─────────────────────────────────────────
+        } else if (path === "/api/admin/release" && method === "GET") {
+          response = await handleGetRelease(request, env);
+        } else if (path === "/api/admin/release" && method === "PUT") {
+          response = await handleUpdateRelease(request, env);
         } else {
           response = json({ error: "not_found" }, 404);
         }

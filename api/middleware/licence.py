@@ -253,6 +253,11 @@ def _update_manifest_cache(result: dict) -> None:
         "enabled_menu_items": result.get("enabled_menu_items", []),
         "features": features if isinstance(features, dict) else {},
         "llm_config": result.get("llm_config", {}),
+        # Advisory platform-update metadata — NOT part of the signed
+        # entitlement (see _entitlement_canonical), just passed through so
+        # /api/v1/system/update-status can compare it against APP_VERSION.
+        "latest_version": result.get("latest_version"),
+        "release_notes": result.get("release_notes"),
         "last_validated": (
             datetime.fromtimestamp(_last_checked_at, tz=timezone.utc).isoformat()
             if _last_checked_at

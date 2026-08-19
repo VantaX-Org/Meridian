@@ -69,6 +69,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
+# Baked at build time from the CI-computed release tag — never overridable via
+# .env, so it's a trustworthy source of "what version is this actually running"
+# for the self-update check (api/services/version.py).
+ARG MERIDIAN_VERSION=0.0.0-dev
+RUN echo "$MERIDIAN_VERSION" > /app/VERSION
+
 # Copy installed packages from builder
 COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin

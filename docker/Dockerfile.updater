@@ -1,0 +1,40 @@
+# =========================================================
+# Meridian Updater — self-update sidecar (IMAGE, not the daemon)
+#
+# Holds the Docker socket so `api`/`worker` never have to. Installs only the
+# Docker CLI + compose plugin — this container talks to the HOST's Docker
+# daemon via the mounted socket (/var/run/docker.sock), it does not run one
+# itself. No multi-stage IP-protection build: there is nothing proprietary
+# in this tiny service, unlike docker/Dockerfile.api.prod.
+# =========================================================
+FROM python:3.12-slim-bookworm
+
+# curl: healthcheck + Docker's apt-key bootstrap. ca-certificates/gnupg:
+# required to add Docker's apt repo over https.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    ca-certificates \
+    gnupg \
+    && install -m 0755 -d /etc/apt/keyrings \
+    && curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc \
+    && chmod a+r /etc/apt/keyrings/docker.asc \
+    && echo \
+    "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
+    > /etc/apt/sources.list.d/docker.list \
+    && apt-get update && apt-get install -y --no-install-recommends \
+    docker-ce-cli \
+    docker-compose-plugin \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY updater/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY updater/ .
+
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=10s \
+    CMD curl -sf http://localhost:8080/health || exit 1
+
+EXPOSE 8080
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]

@@ -328,6 +328,74 @@ describe("GET /api/admin/analytics", () => {
   });
 });
 
+// ─── Admin: Platform Release ─────────────────────────────────────────────────
+
+describe("Admin Platform Release", () => {
+  it("returns 401 without admin auth", async () => {
+    const resp = await callWorker("/api/admin/release");
+    expect(resp.status).toBe(401);
+  });
+
+  it("gets and updates the singleton release", async () => {
+    const getResp = await callWorker("/api/admin/release", { headers: (await adminHeaders()) });
+    expect(getResp.status).toBe(200);
+    const initial = (await getResp.json()) as { id: number; latest_version: string };
+    expect(initial.id).toBe(1);
+
+    const putResp = await callWorker("/api/admin/release", {
+      method: "PUT",
+      headers: (await adminHeaders()),
+      body: JSON.stringify({ latest_version: "v2.4.1", release_notes: "Bug fixes and performance improvements." }),
+    });
+    expect(putResp.status).toBe(200);
+    const updated = (await putResp.json()) as { latest_version: string; release_notes: string };
+    // Normalized to strip the leading "v" — matches the customer-side semver comparison.
+    expect(updated.latest_version).toBe("2.4.1");
+    expect(updated.release_notes).toBe("Bug fixes and performance improvements.");
+
+    const getResp2 = await callWorker("/api/admin/release", { headers: (await adminHeaders()) });
+    const persisted = (await getResp2.json()) as { latest_version: string };
+    expect(persisted.latest_version).toBe("2.4.1");
+  });
+
+  it("rejects a malformed version", async () => {
+    const resp = await callWorker("/api/admin/release", {
+      method: "PUT",
+      headers: (await adminHeaders()),
+      body: JSON.stringify({ latest_version: "not-a-version", release_notes: "" }),
+    });
+    expect(resp.status).toBe(400);
+  });
+
+  it("rejects an empty version", async () => {
+    const resp = await callWorker("/api/admin/release", {
+      method: "PUT",
+      headers: (await adminHeaders()),
+      body: JSON.stringify({ latest_version: "", release_notes: "" }),
+    });
+    expect(resp.status).toBe(400);
+  });
+
+  it("surfaces latest_version/release_notes in /api/licence/validate", async () => {
+    await callWorker("/api/admin/release", {
+      method: "PUT",
+      headers: (await adminHeaders()),
+      body: JSON.stringify({ latest_version: "3.1.0", release_notes: "Adds the update-notification feature." }),
+    });
+
+    const { licence_key } = await createTestTenant();
+    const resp = await callWorker("/api/licence/validate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ licenceKey: licence_key, machineFingerprint: "abc123" }),
+    });
+    expect(resp.status).toBe(200);
+    const data = (await resp.json()) as { latest_version: string; release_notes: string };
+    expect(data.latest_version).toBe("3.1.0");
+    expect(data.release_notes).toBe("Adds the update-notification feature.");
+  });
+});
+
 // ─── Manifest includes rules ──────────────────────────────────────────────────
 
 describe("Licence manifest includes rules from D1", () => {

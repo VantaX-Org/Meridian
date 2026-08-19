@@ -1,0 +1,52 @@
+# =========================================================
+# Meridian Platform — Self-Update Sidecar Overlay
+# Merge with docker-compose.customer.yml:
+#   docker compose -f docker-compose.customer.yml -f docker-compose.updater.yml up -d
+#
+# Holds the Docker socket so the "Update Now" button in the app can trigger
+# scripts/update.sh without giving api/worker (which handle tenant SAP data)
+# any host-level Docker control. Internal-network-only — never a published
+# port — and only the api container is meant to call it, authenticated with
+# UPDATER_SHARED_SECRET.
+#
+# NEVER add this service to scripts/update.sh's IMAGES array or any
+# --force-recreate service list: if it restarted itself mid-script, the
+# running update.sh process would be killed mid-flight, corrupting the
+# update. Its own image is upgraded only via the separate, rare,
+# operator-driven `sudo bash scripts/update.sh --include-updater`.
+# =========================================================
+
+services:
+  updater:
+    # No `build:` key, deliberately — matches every other service in
+    # docker-compose.customer.yml: customer hosts never fetch updater/
+    # source or docker/Dockerfile.updater (see scripts/install.sh), they
+    # only pull the prebuilt image. It's built and pushed by
+    # .github/workflows/build-and-deploy.yml (build-updater job), same as
+    # nginx. If you're building this locally for development, use
+    # `docker build -f docker/Dockerfile.updater -t ghcr.io/vantax-org/meridian-updater:latest .`
+    # from the repo root first.
+    image: ghcr.io/vantax-org/meridian-updater:latest
+    container_name: meridian-updater
+    environment:
+      UPDATER_SHARED_SECRET: ${UPDATER_SHARED_SECRET}
+      MERIDIAN_INSTALL_DIR: /opt/meridian
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Host-absolute-path bind, matching the real install directory 1:1 —
+      # `docker compose` resolves ITS OWN bind-mount paths against what the
+      # HOST daemon sees, not this container's filesystem. The updater's copy
+      # of the compose files must literally be the same files at the same
+      # path the host daemon already knows about.
+      - /opt/meridian:/opt/meridian
+    networks:
+      - meridian-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    # No ports: — matches the api service's own no-published-ports pattern.
+    # Reachable only over meridian-net, by container DNS name (http://updater:8080).

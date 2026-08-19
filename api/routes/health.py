@@ -5,6 +5,7 @@ from fastapi import APIRouter
 
 from api.config import settings
 from api.middleware.licence import get_cached_licence
+from api.services.version import APP_VERSION
 
 logger = logging.getLogger("meridian.health")
 
@@ -43,7 +44,7 @@ async def health() -> dict:
 
     return {
         "status": "ok",
-        "version": "1.0.0",
+        "version": APP_VERSION,
         "llm_provider": provider,
         "llm_source": llm_source,
         "llm_connected": llm_connected,

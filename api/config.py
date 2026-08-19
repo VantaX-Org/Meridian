@@ -52,6 +52,22 @@ class Settings(BaseSettings):
     licence_file_path: Optional[str] = None
     licence_secret: Optional[str] = None
 
+    # Updater sidecar (docker/docker-compose.updater.yml) — holds the Docker
+    # socket so the api container never needs it. Unset secret means this
+    # deployment hasn't onboarded the self-update feature yet (see
+    # scripts/enable-auto-update.sh); routes degrade to "updater_configured: false"
+    # rather than erroring.
+    updater_url: str = Field(
+        default="http://updater:8080",
+        validation_alias=AliasChoices("UPDATER_URL", "MERIDIAN_UPDATER_URL"),
+    )
+    updater_shared_secret: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "UPDATER_SHARED_SECRET", "MERIDIAN_UPDATER_SHARED_SECRET"
+        ),
+    )
+
     @field_validator("licence_server_url")
     @classmethod
     def _normalise_licence_server_url(cls, v: str) -> str:

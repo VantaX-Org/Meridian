@@ -961,6 +961,30 @@ class AuditLog(Base):
     )
 
 
+class SystemUpdateLog(Base):
+    """Audit trail for one-click platform self-update (api/routes/system_update.py).
+    Complements audit_log's generic "who clicked POST /trigger" row with the
+    async multi-phase outcome (done / failed / rolled_back)."""
+
+    __tablename__ = "system_update_log"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    triggered_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    triggered_by_email = Column(Text, nullable=True)
+    from_version = Column(Text, nullable=False)
+    to_version_requested = Column(Text, nullable=False)
+    to_version_actual = Column(Text, nullable=True)
+    status = Column(Text, nullable=False, server_default="started")
+    error_detail = Column(Text, nullable=True)
+    started_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    finished_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index("ix_system_update_log_tenant_started", "tenant_id", text("started_at DESC")),
+    )
+
+
 class LLMAuditLog(Base):
     __tablename__ = "llm_audit_log"
 

@@ -21,7 +21,10 @@ async def get_licence(request: Request):
     """Return the current licence manifest as cached from the last validation.
 
     Includes: valid, status, tier, expiry, days_remaining, enabled_modules,
-    enabled_menu_items, features, llm_config, last_validated.
+    enabled_menu_items, features, llm_config, last_validated, latest_version,
+    release_notes.
     Does NOT re-validate — uses the in-memory cache refreshed every 6 hours.
+    Platform-update UI should prefer GET /api/v1/system/update-status instead
+    (api/routes/system_update.py) — it does the version comparison server-side.
     """
     return get_cached_manifest()

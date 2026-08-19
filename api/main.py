@@ -50,6 +50,7 @@ from api.routes.process_mining import router as process_mining_router
 from api.routes.admin_doctor import router as admin_doctor_router
 from api.routes.audit import router as audit_router
 from api.routes.prom_metrics import router as prom_metrics_router
+from api.routes.system_update import router as system_update_router
 
 from api.utils.structured_logging import configure_logging
 
@@ -279,6 +280,7 @@ app.include_router(process_mining_router)
 app.include_router(admin_doctor_router)
 app.include_router(audit_router)
 app.include_router(prom_metrics_router)
+app.include_router(system_update_router)
 
 from api.routes.auth import router as auth_router
 app.include_router(auth_router)
