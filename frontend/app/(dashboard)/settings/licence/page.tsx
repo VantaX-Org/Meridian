@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { PageHead, KPI, SectionHeader, StatusDot } from "@/components/meridian/atoms";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getLicenceManifest } from "@/lib/api/licence";
+import { PlatformVersionCard } from "@/components/platform-version-card";
 
 export default function SettingsLicencePage() {
   const { data, isLoading, error } = useQuery({
@@ -145,6 +146,8 @@ export default function SettingsLicencePage() {
           </div>
         </div>
       </div>
+
+      <PlatformVersionCard />
     </>
   );
 }
