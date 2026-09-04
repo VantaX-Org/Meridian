@@ -138,7 +138,7 @@ class ConnectivityManager:
                 "host": system_row.host,
                 "client": system_row.client,
                 "sysnr": system_row.sysnr,
-                "user": os.getenv("SAP_RFC_USER", "RFC_USER"),
+                "user": system_row.username or os.getenv("SAP_RFC_USER", "RFC_USER"),
                 "password": decrypt_password(self.tenant_id, encrypted) if encrypted else "",
             })
 
@@ -159,7 +159,7 @@ class ConnectivityManager:
             encrypted = self._get_encrypted_password(str(system_row.id))
             if encrypted:
                 params["password"] = decrypt_password(self.tenant_id, encrypted)
-                params["username"] = os.getenv("SAP_RFC_USER", "")
+                params["username"] = system_row.username or ""
 
         return params
 

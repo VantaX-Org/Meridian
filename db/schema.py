@@ -623,6 +623,9 @@ class SAPSystem(Base):
     host = Column(Text, nullable=True)
     client = Column(Text, nullable=True)
     sysnr = Column(Text, nullable=True)
+    # RFC: per-system override of SAP_RFC_USER (falls back to the env var when
+    # unset). Cloud: the basic-auth username (e.g. SuccessFactors username@company_id).
+    username = Column(Text, nullable=True)
     description = Column(Text, nullable=True)
     environment = Column(Text, nullable=False, server_default="DEV")
     is_active = Column(Boolean, nullable=False, server_default="true")

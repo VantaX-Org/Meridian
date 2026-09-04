@@ -41,6 +41,9 @@ class RegisterSystemRequest(BaseModel):
     base_url: Optional[str] = None
     company_id: Optional[str] = None
     auth_type: Optional[str] = None
+    # RFC: overrides the global SAP_RFC_USER for this system if set. Cloud
+    # basic-auth: the actual username (e.g. SuccessFactors username@company_id).
+    username: Optional[str] = None
     # RFC: {"password": ...}. Cloud: {"client_id", "client_secret", "api_key", "password" (basic auth)}
     credentials: dict[str, str] = Field(default_factory=dict)
 
@@ -58,6 +61,7 @@ class SystemResponse(BaseModel):
     base_url: Optional[str] = None
     company_id: Optional[str] = None
     auth_type: Optional[str] = None
+    username: Optional[str] = None
     health_status: str = "unknown"
     health_message: Optional[str] = None
     last_health_check: Optional[str] = None
@@ -77,6 +81,7 @@ class UpdateSystemRequest(BaseModel):
     base_url: Optional[str] = None
     company_id: Optional[str] = None
     auth_type: Optional[str] = None
+    username: Optional[str] = None
     description: Optional[str] = None
     environment: Optional[str] = None
     is_active: Optional[bool] = None
@@ -154,14 +159,14 @@ async def register_system(
     result = await db.execute(
         text("""
             INSERT INTO sap_systems (
-                id, tenant_id, name, system_type, host, client, sysnr,
+                id, tenant_id, name, system_type, host, client, sysnr, username,
                 base_url, company_id, auth_type, description, environment
             )
             VALUES (
-                gen_random_uuid(), :tid, :name, :system_type, :host, :client, :sysnr,
+                gen_random_uuid(), :tid, :name, :system_type, :host, :client, :sysnr, :username,
                 :base_url, :company_id, :auth_type, :description, :environment
             )
-            RETURNING id, name, system_type, host, client, sysnr, base_url, company_id,
+            RETURNING id, name, system_type, host, client, sysnr, username, base_url, company_id,
                       auth_type, description, environment, is_active,
                       created_at::text, updated_at::text
         """),
@@ -172,6 +177,7 @@ async def register_system(
             "host": body.host,
             "client": body.client,
             "sysnr": body.sysnr,
+            "username": body.username,
             "base_url": body.base_url,
             "company_id": body.company_id,
             "auth_type": auth_type,
@@ -221,14 +227,15 @@ async def register_system(
         host=row[3],
         client=row[4],
         sysnr=row[5],
-        base_url=row[6],
-        company_id=row[7],
-        auth_type=row[8],
-        description=row[9],
-        environment=row[10],
-        is_active=row[11],
-        created_at=row[12],
-        updated_at=row[13],
+        username=row[6],
+        base_url=row[7],
+        company_id=row[8],
+        auth_type=row[9],
+        description=row[10],
+        environment=row[11],
+        is_active=row[12],
+        created_at=row[13],
+        updated_at=row[14],
     )
 
 
@@ -245,7 +252,7 @@ async def list_systems(
         text("""
             SELECT s.id, s.name, s.host, s.client, s.sysnr, s.description,
                    s.environment, s.is_active, s.created_at::text, s.updated_at::text,
-                   s.system_type, s.base_url, s.company_id, s.auth_type,
+                   s.system_type, s.base_url, s.company_id, s.auth_type, s.username,
                    s.health_status, s.health_message, s.last_health_check::text,
                    s.config_last_synced_at::text, s.config_sync_status,
                    (SELECT sr.started_at::text FROM sync_runs sr
@@ -269,10 +276,10 @@ async def list_systems(
             description=r[5], environment=r[6], is_active=r[7],
             created_at=r[8], updated_at=r[9],
             system_type=r[10] or "ecc", base_url=r[11], company_id=r[12],
-            auth_type=r[13], health_status=r[14] or "unknown",
-            health_message=r[15], last_health_check=r[16],
-            config_last_synced_at=r[17], config_sync_status=r[18],
-            last_sync_at=r[19], last_sync_status=r[20],
+            auth_type=r[13], username=r[14], health_status=r[15] or "unknown",
+            health_message=r[16], last_health_check=r[17],
+            config_last_synced_at=r[18], config_sync_status=r[19],
+            last_sync_at=r[20], last_sync_status=r[21],
         )
         for r in rows
     ]
@@ -313,6 +320,9 @@ async def update_system(
     if body.auth_type is not None:
         set_parts.append("auth_type = :auth_type")
         updates["auth_type"] = body.auth_type
+    if body.username is not None:
+        set_parts.append("username = :username")
+        updates["username"] = body.username
     if body.description is not None:
         set_parts.append("description = :description")
         updates["description"] = body.description
@@ -367,7 +377,7 @@ async def update_system(
 
     result = await db.execute(
         text("""
-            SELECT id, name, system_type, host, client, sysnr, base_url, company_id,
+            SELECT id, name, system_type, host, client, sysnr, username, base_url, company_id,
                    auth_type, description, environment, is_active,
                    created_at::text, updated_at::text
             FROM sap_systems WHERE id = :sid AND tenant_id = :tid
@@ -380,9 +390,9 @@ async def update_system(
 
     return SystemResponse(
         id=str(row[0]), name=row[1], system_type=row[2], host=row[3], client=row[4],
-        sysnr=row[5], base_url=row[6], company_id=row[7], auth_type=row[8],
-        description=row[9], environment=row[10], is_active=row[11],
-        created_at=row[12], updated_at=row[13],
+        sysnr=row[5], username=row[6], base_url=row[7], company_id=row[8], auth_type=row[9],
+        description=row[10], environment=row[11], is_active=row[12],
+        created_at=row[13], updated_at=row[14],
     )
 
 
@@ -412,73 +422,14 @@ async def delete_system(
     return {"status": "deleted"}
 
 
-@router.post("/systems/{system_id}/test", response_model=TestConnectionResponse)
-async def test_connection(
-    system_id: str,
-    db: AsyncSession = Depends(get_db),
-    tenant: Tenant = Depends(get_tenant),
-    role: str = Depends(require_permission("manage_rules")),
-):
-    """Test the connection to an SAP system, for any system_type. Admin and Steward only."""
-    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
-
-    # LEFT JOIN — cloud systems using pure OAuth client-credentials never get a
-    # system_credentials row, so an INNER JOIN here would 404 a system that exists.
-    result = await db.execute(
-        text("""
-            SELECT s.system_type, s.host, s.client, s.sysnr, s.base_url, s.company_id,
-                   s.auth_type, s.client_id_encrypted, s.client_secret_encrypted,
-                   s.api_key_encrypted, sc.encrypted_password
-            FROM sap_systems s
-            LEFT JOIN system_credentials sc ON sc.system_id = s.id
-            WHERE s.id = :sid AND s.tenant_id = :tid
-        """),
-        {"sid": system_id, "tid": str(tenant.id)},
-    )
-    row = result.fetchone()
-    if not row:
-        raise HTTPException(status_code=404, detail="System not found")
-
-    (system_type, host, client, sysnr, base_url, company_id, auth_type,
-     client_id_encrypted, client_secret_encrypted, api_key_encrypted, encrypted_password) = row
-
-    from api.services.credential_store import decrypt_password
+def _run_connection_test(system_type: str, params: dict, secrets_to_mask: list[str]) -> TestConnectionResponse:
+    """Connect + ping with the given params, masking any secret that leaks into an error message."""
     from sap.base import SAPConnectorError
-    import os
-
-    def safe_decrypt(value: Optional[str]) -> str:
-        return decrypt_password(str(tenant.id), value) if value else ""
-
-    try:
-        password = safe_decrypt(encrypted_password)
-        client_id = safe_decrypt(client_id_encrypted)
-        client_secret = safe_decrypt(client_secret_encrypted)
-        api_key = safe_decrypt(api_key_encrypted)
-    except Exception:
-        return TestConnectionResponse(connected=False, message="Failed to decrypt credentials")
-
-    rfc_user = os.getenv("SAP_RFC_USER", "RFC_USER")
-    params = {
-        "host": host,
-        "client": client,
-        "sysnr": sysnr,
-        "user": rfc_user,
-        "password": password,
-        "base_url": base_url,
-        "company_id": company_id,
-        "auth_type": auth_type,
-        "username": rfc_user if system_type in CLOUD_SYSTEM_TYPES else "",
-        "client_id": client_id,
-        "client_secret": client_secret,
-        "api_key": api_key,
-        "token_url": "",
-    }
-
-    secrets_to_mask = [s for s in (password, client_secret, api_key) if s]
 
     def mask(message: str) -> str:
         for secret in secrets_to_mask:
-            message = re.sub(re.escape(secret), "****", message)
+            if secret:
+                message = re.sub(re.escape(secret), "****", message)
         return message
 
     connector = None
@@ -495,7 +446,108 @@ async def test_connection(
     finally:
         if connector is not None:
             connector.close()
-        password = client_secret = api_key = ""  # clear from memory
+
+
+@router.post("/systems/test-connection", response_model=TestConnectionResponse)
+async def test_draft_connection(
+    body: RegisterSystemRequest,
+    role: str = Depends(require_permission("manage_rules")),
+):
+    """Test connection parameters before the system is registered (no system_id yet).
+
+    Used by the "Test connection" button in the Connect-system dialog, so a
+    bad host/client/user can be caught before saving anything.
+    """
+    if body.system_type not in RFC_SYSTEM_TYPES and body.system_type not in CLOUD_SYSTEM_TYPES:
+        raise HTTPException(status_code=400, detail=f"Unsupported system_type: {body.system_type}")
+
+    import os
+
+    password = body.credentials.get("password", "")
+    client_id = body.credentials.get("client_id", "")
+    client_secret = body.credentials.get("client_secret", "")
+    api_key = body.credentials.get("api_key", "")
+
+    rfc_user = body.username or os.getenv("SAP_RFC_USER", "RFC_USER")
+    params = {
+        "host": body.host,
+        "client": body.client,
+        "sysnr": body.sysnr,
+        "user": rfc_user,
+        "password": password,
+        "base_url": body.base_url,
+        "company_id": body.company_id,
+        "auth_type": body.auth_type,
+        "username": (body.username or "") if body.system_type in CLOUD_SYSTEM_TYPES else "",
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "api_key": api_key,
+        "token_url": "",
+    }
+    return _run_connection_test(body.system_type, params, [password, client_secret, api_key])
+
+
+@router.post("/systems/{system_id}/test", response_model=TestConnectionResponse)
+async def test_connection(
+    system_id: str,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    role: str = Depends(require_permission("manage_rules")),
+):
+    """Test the connection to an SAP system, for any system_type. Admin and Steward only."""
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
+
+    # LEFT JOIN — cloud systems using pure OAuth client-credentials never get a
+    # system_credentials row, so an INNER JOIN here would 404 a system that exists.
+    result = await db.execute(
+        text("""
+            SELECT s.system_type, s.host, s.client, s.sysnr, s.username, s.base_url, s.company_id,
+                   s.auth_type, s.client_id_encrypted, s.client_secret_encrypted,
+                   s.api_key_encrypted, sc.encrypted_password
+            FROM sap_systems s
+            LEFT JOIN system_credentials sc ON sc.system_id = s.id
+            WHERE s.id = :sid AND s.tenant_id = :tid
+        """),
+        {"sid": system_id, "tid": str(tenant.id)},
+    )
+    row = result.fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="System not found")
+
+    (system_type, host, client, sysnr, username, base_url, company_id, auth_type,
+     client_id_encrypted, client_secret_encrypted, api_key_encrypted, encrypted_password) = row
+
+    from api.services.credential_store import decrypt_password
+    import os
+
+    def safe_decrypt(value: Optional[str]) -> str:
+        return decrypt_password(str(tenant.id), value) if value else ""
+
+    try:
+        password = safe_decrypt(encrypted_password)
+        client_id = safe_decrypt(client_id_encrypted)
+        client_secret = safe_decrypt(client_secret_encrypted)
+        api_key = safe_decrypt(api_key_encrypted)
+    except Exception:
+        return TestConnectionResponse(connected=False, message="Failed to decrypt credentials")
+
+    rfc_user = username or os.getenv("SAP_RFC_USER", "RFC_USER")
+    params = {
+        "host": host,
+        "client": client,
+        "sysnr": sysnr,
+        "user": rfc_user,
+        "password": password,
+        "base_url": base_url,
+        "company_id": company_id,
+        "auth_type": auth_type,
+        "username": (username or "") if system_type in CLOUD_SYSTEM_TYPES else "",
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "api_key": api_key,
+        "token_url": "",
+    }
+    return _run_connection_test(system_type, params, [password, client_secret, api_key])
 
 
 @router.post("/systems/{system_id}/sync")

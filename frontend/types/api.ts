@@ -493,6 +493,7 @@ export interface SAPSystem {
   host: string | null;
   client: string | null;
   sysnr: string | null;
+  username: string | null;
   base_url: string | null;
   company_id: string | null;
   auth_type: AuthType | null;
@@ -863,6 +864,7 @@ export interface SAPSystemExtended {
   host: string | null;
   client: string | null;
   sysnr: string | null;
+  username: string | null;
   base_url: string | null;
   company_id: string | null;
   auth_type: AuthType | null;

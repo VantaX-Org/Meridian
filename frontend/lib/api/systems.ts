@@ -22,6 +22,8 @@ export async function registerSystem(body: {
   host?: string;
   client?: string;
   sysnr?: string;
+  // RFC: overrides the global SAP_RFC_USER if set. Cloud basic-auth: the username.
+  username?: string;
   // Cloud fields (s4hana_cloud, successfactors, concur, ariba)
   base_url?: string;
   company_id?: string;
@@ -40,6 +42,7 @@ export async function updateSystem(
     host?: string;
     client?: string;
     sysnr?: string;
+    username?: string;
     base_url?: string;
     company_id?: string;
     auth_type?: string;
@@ -65,6 +68,27 @@ export async function testConnection(
 ): Promise<TestConnectionResponse> {
   const { data } = await apiClient.post<TestConnectionResponse>(
     `/api/v1/systems/${systemId}/test`
+  );
+  return data;
+}
+
+// Tests connection parameters before the system is registered/saved.
+export async function testDraftConnection(body: {
+  name: string;
+  system_type: SystemType;
+  environment: string;
+  host?: string;
+  client?: string;
+  sysnr?: string;
+  username?: string;
+  base_url?: string;
+  company_id?: string;
+  auth_type?: string;
+  credentials: Record<string, string>;
+}): Promise<TestConnectionResponse> {
+  const { data } = await apiClient.post<TestConnectionResponse>(
+    "/api/v1/systems/test-connection",
+    body
   );
   return data;
 }

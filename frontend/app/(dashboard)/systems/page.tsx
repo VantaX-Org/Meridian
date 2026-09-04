@@ -1,18 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { PageHead, KPI, SectionHeader, StatusDot } from "@/components/meridian/atoms";
 import { ArrowRight, ArrowUpRight } from "@/components/meridian/icons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { getSystems, registerSystem, testConnection, triggerSync } from "@/lib/api/systems";
+import {
+  deleteSystem,
+  getSystems,
+  registerSystem,
+  testConnection,
+  testDraftConnection,
+  triggerSync,
+} from "@/lib/api/systems";
 import { relativeTime } from "@/lib/format";
 import type { SAPSystem, SystemType } from "@/types/api";
 
 const RFC_SYSTEM_TYPES: SystemType[] = ["ecc", "s4hana_onprem", "ewm"];
 const CLOUD_SYSTEM_TYPES: SystemType[] = ["s4hana_cloud", "successfactors", "concur", "ariba"];
+// concur/ariba are hardcoded to oauth2_client_credentials in
+// api/services/connectivity_manager.py's connector dispatch — only these two
+// actually honour a chosen auth_type, so only these two get the selector.
+const AUTH_SELECTABLE_TYPES: SystemType[] = ["successfactors", "s4hana_cloud"];
 const SYSTEM_TYPE_OPTIONS: { value: SystemType; label: string }[] = [
   { value: "ecc", label: "ECC" },
   { value: "s4hana_onprem", label: "S/4HANA On-Prem" },
@@ -25,6 +36,42 @@ const SYSTEM_TYPE_OPTIONS: { value: SystemType; label: string }[] = [
 
 function isRfcType(t: SystemType): boolean {
   return RFC_SYSTEM_TYPES.includes(t);
+}
+
+// Shared by the Connect dialog's submit handler and its "Test connection"
+// button, so both build the exact same request shape from the same form.
+function buildConnectBody(
+  fd: FormData,
+  connectType: SystemType,
+  connectAuthType: "oauth2_client_credentials" | "basic",
+) {
+  const isRfc = isRfcType(connectType);
+  const useBasic = !isRfc && AUTH_SELECTABLE_TYPES.includes(connectType) && connectAuthType === "basic";
+  const credentials: Record<string, string> = {};
+  if (isRfc || useBasic) {
+    credentials.password = String(fd.get("password") ?? "");
+  } else {
+    const clientId = String(fd.get("client_id") ?? "");
+    const clientSecret = String(fd.get("client_secret") ?? "");
+    const apiKey = String(fd.get("api_key") ?? "");
+    if (clientId) credentials.client_id = clientId;
+    if (clientSecret) credentials.client_secret = clientSecret;
+    if (apiKey) credentials.api_key = apiKey;
+  }
+  return {
+    name: String(fd.get("name") ?? ""),
+    system_type: connectType,
+    environment: String(fd.get("environment") ?? "DEV"),
+    description: String(fd.get("description") ?? "") || undefined,
+    host: isRfc ? String(fd.get("host") ?? "") : undefined,
+    client: isRfc ? String(fd.get("client") ?? "") : undefined,
+    sysnr: isRfc ? String(fd.get("sysnr") ?? "") : undefined,
+    username: isRfc || useBasic ? String(fd.get("username") ?? "") || undefined : undefined,
+    base_url: isRfc ? undefined : String(fd.get("base_url") ?? ""),
+    company_id: isRfc ? undefined : String(fd.get("company_id") ?? ""),
+    auth_type: useBasic ? "basic" : undefined,
+    credentials,
+  };
 }
 
 function envColor(env: SAPSystem["environment"]): string {
@@ -58,6 +105,10 @@ export default function SystemsPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [connectOpen, setConnectOpen] = useState(false);
   const [connectType, setConnectType] = useState<SystemType>("ecc");
+  const [connectAuthType, setConnectAuthType] = useState<"oauth2_client_credentials" | "basic">(
+    "oauth2_client_credentials",
+  );
+  const connectFormRef = useRef<HTMLFormElement>(null);
 
   const { data: systems, isLoading, error } = useQuery({
     queryKey: ["systems.list"],
@@ -97,9 +148,27 @@ export default function SystemsPage() {
       toast.success("System registered");
       setConnectOpen(false);
       setConnectType("ecc");
+      setConnectAuthType("oauth2_client_credentials");
       qc.invalidateQueries({ queryKey: ["systems.list"] });
     },
     onError: () => toast.error("Could not register system"),
+  });
+  const testDraft = useMutation({
+    mutationFn: testDraftConnection,
+    onSuccess: (d) => {
+      if (d.connected) toast.success(d.message || "Connection successful");
+      else toast.error(d.message || "Connection failed");
+    },
+    onError: () => toast.error("Could not test connection"),
+  });
+  const remove = useMutation({
+    mutationFn: deleteSystem,
+    onSuccess: () => {
+      toast.success("System deleted");
+      setActiveId(null);
+      qc.invalidateQueries({ queryKey: ["systems.list"] });
+    },
+    onError: () => toast.error("Could not delete system"),
   });
 
   if (isLoading) {
@@ -179,33 +248,11 @@ export default function SystemsPage() {
                   <DialogTitle>Connect SAP system</DialogTitle>
                 </DialogHeader>
                 <form
+                  ref={connectFormRef}
                   onSubmit={(e) => {
                     e.preventDefault();
                     const fd = new FormData(e.currentTarget);
-                    const isRfc = isRfcType(connectType);
-                    const credentials: Record<string, string> = {};
-                    if (isRfc) {
-                      credentials.password = String(fd.get("password") ?? "");
-                    } else {
-                      const clientId = String(fd.get("client_id") ?? "");
-                      const clientSecret = String(fd.get("client_secret") ?? "");
-                      const apiKey = String(fd.get("api_key") ?? "");
-                      if (clientId) credentials.client_id = clientId;
-                      if (clientSecret) credentials.client_secret = clientSecret;
-                      if (apiKey) credentials.api_key = apiKey;
-                    }
-                    register.mutate({
-                      name: String(fd.get("name") ?? ""),
-                      system_type: connectType,
-                      environment: String(fd.get("environment") ?? "DEV"),
-                      description: String(fd.get("description") ?? "") || undefined,
-                      host: isRfc ? String(fd.get("host") ?? "") : undefined,
-                      client: isRfc ? String(fd.get("client") ?? "") : undefined,
-                      sysnr: isRfc ? String(fd.get("sysnr") ?? "") : undefined,
-                      base_url: isRfc ? undefined : String(fd.get("base_url") ?? ""),
-                      company_id: isRfc ? undefined : String(fd.get("company_id") ?? ""),
-                      credentials,
-                    });
+                    register.mutate(buildConnectBody(fd, connectType, connectAuthType));
                   }}
                 >
                   <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 8 }}>
@@ -214,7 +261,10 @@ export default function SystemsPage() {
                       <select
                         className="mn-input"
                         value={connectType}
-                        onChange={(e) => setConnectType(e.target.value as SystemType)}
+                        onChange={(e) => {
+                          setConnectType(e.target.value as SystemType);
+                          setConnectAuthType("oauth2_client_credentials");
+                        }}
                       >
                         {SYSTEM_TYPE_OPTIONS.map((o) => (
                           <option key={o.value} value={o.value}>{o.label}</option>
@@ -243,6 +293,14 @@ export default function SystemsPage() {
                           </label>
                         </div>
                         <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                          <span style={{ color: "var(--mn-ink-500)" }}>Username (optional)</span>
+                          <input
+                            name="username"
+                            className="mn-input"
+                            placeholder="Falls back to SAP_RFC_USER if left blank"
+                          />
+                        </label>
+                        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
                           <span style={{ color: "var(--mn-ink-500)" }}>Password</span>
                           <input name="password" type="password" required className="mn-input" placeholder="••••••••" />
                         </label>
@@ -257,16 +315,44 @@ export default function SystemsPage() {
                           <span style={{ color: "var(--mn-ink-500)" }}>Company ID (optional)</span>
                           <input name="company_id" className="mn-input" placeholder="ACME_CORP" />
                         </label>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                        {AUTH_SELECTABLE_TYPES.includes(connectType) && (
                           <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
-                            <span style={{ color: "var(--mn-ink-500)" }}>Client ID</span>
-                            <input name="client_id" required className="mn-input" placeholder="OAuth client ID" />
+                            <span style={{ color: "var(--mn-ink-500)" }}>Auth method</span>
+                            <select
+                              className="mn-input"
+                              value={connectAuthType}
+                              onChange={(e) =>
+                                setConnectAuthType(e.target.value as "oauth2_client_credentials" | "basic")
+                              }
+                            >
+                              <option value="oauth2_client_credentials">OAuth2 (client credentials)</option>
+                              <option value="basic">Basic auth</option>
+                            </select>
                           </label>
-                          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
-                            <span style={{ color: "var(--mn-ink-500)" }}>Client secret</span>
-                            <input name="client_secret" type="password" required className="mn-input" placeholder="••••••••" />
-                          </label>
-                        </div>
+                        )}
+                        {AUTH_SELECTABLE_TYPES.includes(connectType) && connectAuthType === "basic" ? (
+                          <>
+                            <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                              <span style={{ color: "var(--mn-ink-500)" }}>Username</span>
+                              <input name="username" required className="mn-input" placeholder="SF username" />
+                            </label>
+                            <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                              <span style={{ color: "var(--mn-ink-500)" }}>Password</span>
+                              <input name="password" type="password" required className="mn-input" placeholder="••••••••" />
+                            </label>
+                          </>
+                        ) : (
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                            <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                              <span style={{ color: "var(--mn-ink-500)" }}>Client ID</span>
+                              <input name="client_id" required className="mn-input" placeholder="OAuth client ID" />
+                            </label>
+                            <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                              <span style={{ color: "var(--mn-ink-500)" }}>Client secret</span>
+                              <input name="client_secret" type="password" required className="mn-input" placeholder="••••••••" />
+                            </label>
+                          </div>
+                        )}
                         {connectType === "ariba" && (
                           <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
                             <span style={{ color: "var(--mn-ink-500)" }}>API key (optional)</span>
@@ -292,6 +378,18 @@ export default function SystemsPage() {
                   <DialogFooter>
                     <button type="button" className="mn-btn mn-btn-ghost" onClick={() => setConnectOpen(false)}>
                       Cancel
+                    </button>
+                    <button
+                      type="button"
+                      className="mn-btn mn-btn-ghost"
+                      disabled={testDraft.isPending}
+                      onClick={() => {
+                        if (!connectFormRef.current) return;
+                        const fd = new FormData(connectFormRef.current);
+                        testDraft.mutate(buildConnectBody(fd, connectType, connectAuthType));
+                      }}
+                    >
+                      {testDraft.isPending ? "Testing…" : "Test connection"}
                     </button>
                     <button type="submit" className="mn-btn mn-btn-primary" disabled={register.isPending}>
                       {register.isPending ? "Connecting…" : "Connect"}
@@ -462,6 +560,19 @@ export default function SystemsPage() {
                       disabled={sync.isPending}
                     >
                       {sync.isPending ? "Triggering…" : "Trigger sync"}
+                    </button>
+                    <button
+                      type="button"
+                      className="mn-btn mn-btn-ghost"
+                      style={{ color: "var(--mn-neg)" }}
+                      onClick={() => {
+                        if (window.confirm(`Delete "${active.name}"? This removes its credentials and sync profiles too.`)) {
+                          remove.mutate(active.id);
+                        }
+                      }}
+                      disabled={remove.isPending}
+                    >
+                      {remove.isPending ? "Deleting…" : "Delete"}
                     </button>
                   </div>
                 </div>
