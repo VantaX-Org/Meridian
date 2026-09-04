@@ -38,12 +38,15 @@ COPY agents/ agents/
 COPY checks/ checks/
 COPY templates/ templates/
 
-# Compile to .pyc and strip source
+# Compile to .pyc and strip source. __init__.py is NOT special-cased — see
+# Dockerfile.api.prod for why keeping-but-truncating it breaks packages whose
+# __init__.py carries real logic (sap/__init__.py's get_connector(), etc.):
+# Python prefers a present, even empty, .py over the sibling compiled .pyc.
+# db/migrations is excluded — Alembic needs real source there.
 RUN python -m compileall -b -f \
         api/ llm/ sap/ workers/ db/ agents/ checks/ \
-    && find . -name "*.py" ! -name "__init__.py" -delete && \
-    find . -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true && \
-    find . -name "__init__.py" -exec truncate -s 0 {} \;
+    && find . -path "./db/migrations" -prune -o -name "*.py" -type f -delete && \
+    find . -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
 
 # === PRODUCTION STAGE ===
 FROM python:3.12-slim-bookworm

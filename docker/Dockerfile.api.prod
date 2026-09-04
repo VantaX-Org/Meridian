@@ -46,13 +46,17 @@ RUN python -m compileall -b -f \
         api/ llm/ sap/ workers/ agents/ checks/ \
     && echo "Compilation complete"
 
-# Strip .py source files (keep __init__.py and db/migrations/*.py for Alembic)
-RUN find . -path "./db/migrations" -prune -o -name "*.py" ! -name "__init__.py" -type f -delete && \
+# Strip all .py source (db/migrations excluded — Alembic needs real source
+# there). __init__.py is NOT special-cased: it used to be kept-but-truncated
+# to an empty stub instead of deleted, which silently broke every package
+# whose __init__.py carries real logic (e.g. sap/__init__.py's get_connector()
+# dispatch) — Python's import system prefers a present, even empty, .py file
+# over the sibling compiled __init__.pyc sitting right next to it. Deleting it
+# outright removes the same docstring IP and lets the already-working
+# sourceless-import mechanism (proven by every other module here) load the
+# compiled bytecode instead.
+RUN find . -path "./db/migrations" -prune -o -name "*.py" -type f -delete && \
     find . -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
-
-# Reduce __init__.py to empty stubs (removes any IP in module docstrings)
-# But preserve db/migrations/__init__.py for Alembic
-RUN find . -path "./db/migrations" -prune -o -name "__init__.py" -type f -exec truncate -s 0 {} \;
 
 # === PRODUCTION STAGE ===
 FROM python:3.12-slim-bookworm
