@@ -6,7 +6,8 @@ import pandas as pd
 import yaml
 
 from checks.base import BaseCheck, CheckResult
-from checks.frames import TableFrames
+from checks.frames import TableFrames, tables_of
+from checks.population import exclude, exclusions, fields_for
 from checks.fix_generator import FixGenerator
 from checks.types.null_check import NullCheck
 from checks.types.regex_check import RegexCheck
@@ -17,6 +18,7 @@ from checks.types.freshness_check import FreshnessCheck
 from checks.types.format_check import FormatCheck
 from checks.types.field_status_check import FieldStatusCheck
 from checks.types.uniqueness_check import UniquenessCheck
+from checks.types.value_placement_check import ValuePlacementCheck
 
 logger = logging.getLogger("meridian.checks")
 
@@ -69,6 +71,7 @@ REGISTRY: dict[str, type[BaseCheck]] = {
     "format_check": FormatCheck,
     "field_status_check": FieldStatusCheck,
     "uniqueness_check": UniquenessCheck,
+    "value_placement_check": ValuePlacementCheck,
 }
 
 RULES_DIR = Path(__file__).parent / "rules"
@@ -122,7 +125,8 @@ def get_required_columns(module_name: str) -> set[str]:
     """Return every column referenced by the rules of a module (for column pruning)."""
     with open(_find_module_yaml(module_name), "r") as f:
         config = yaml.safe_load(f)
-    return {c for rule in config.get("rules", []) for c in rule_columns(rule)}
+    cols = {c for rule in config.get("rules", []) for c in rule_columns(rule)}
+    return cols | {f"{t}.{f}" for t in tables_of(cols) for f in fields_for(t)}
 
 
 def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[str]] | None = None
@@ -136,10 +140,23 @@ def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[st
         if built is None:
             return rule, None  # a table/field this rule needs is not in the extract
         frame, grain, key_cols = built
+        cols = rule_columns(rule)
+        excl = exclusions(rule, [grain] if grain else tables_of(cols), cols)
+        need = [x["field"] for x in excl if x["field"] not in frame.columns]
+        if need and grain:
+            try:  # parent-table flags (LFA1.LOEVM for an LFB1 rule) join at the same grain
+                wider = frames.frame_for(cols + need, grain=grain)
+                frame = wider[0] if wider is not None else frame
+            except ValueError:
+                pass
+        frame, excluded = exclude(frame, excl)
         scoped = apply_context(frame, rule.get("applies_when"))
         if len(scoped) == 0:
             return rule, None  # no records in the rule's population
-        return rule, check_cls(rule).run(scoped, key_cols=key_cols, grain=grain)
+        result = check_cls(rule).run(scoped, key_cols=key_cols, grain=grain)
+        if result is not None and excluded:
+            result.details["population_excluded"] = excluded
+        return rule, result
     except Exception as e:
         logger.error(f"Exception in check {rule.get('id')}: {e}", exc_info=True)
         return rule, check_cls(rule)._error(frames.flat if frames.flat is not None else pd.DataFrame(), str(e))

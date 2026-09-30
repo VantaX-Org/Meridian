@@ -42,8 +42,8 @@ def _read(client, bucket: str, name: str) -> bytes:
         resp.release_conn()
 
 
-def load_dataset(path: str, dictionary: Dictionary, modules: Optional[list[str]] = None
-                 ) -> tuple[TableFrames, Optional[pd.DataFrame], int, int]:
+def load_dataset(path: str, dictionary: Dictionary, modules: Optional[list[str]] = None,
+                 extra: Optional[set[str]] = None) -> tuple[TableFrames, Optional[pd.DataFrame], int, int]:
     """(frames, flat_df_or_None, row_count, column_count) for a dataset path."""
     client = _client()
     bucket = os.getenv("MINIO_BUCKET_UPLOADS", "meridian-uploads")
@@ -65,8 +65,11 @@ def load_dataset(path: str, dictionary: Dictionary, modules: Optional[list[str]]
         # table's DDIC key (needed to split the flat frame at its grain).
         try:
             from checks.runner import get_required_columns
+            from checks.value_placement import fields_for
             for mod in modules:
                 needed |= get_required_columns(mod)
+            needed |= set(extra or ())
+            needed |= {f"{t}.{f}" for t in tables_of(needed) for f in fields_for(t, dictionary)}
             needed |= {f"{t}.{k}" for t in tables_of(needed) for k in dictionary.keys(t)}
         except FileNotFoundError:
             needed = set()

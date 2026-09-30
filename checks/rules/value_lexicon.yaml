@@ -1,0 +1,23 @@
+# Words that stand in for data (whole value, case-insensitive) — checks/value_placement.py.
+# Tenants may extend these lists; keep entries whole-value and unambiguous.
+placeholders:
+  [n/a, na, n.a., n.a, "n a", none, "no name", "null", nil, unknown, unk, tba, tbc, tbd, "to be advised",
+   "to be confirmed", "not applicable", "not available", "not known", dummy, test, testing, "test test",
+   sample, default, blank, empty, missing, "no address", "no street", "no phone", "no email", "no tel", "?"]
+placeholder_emails:
+  ["noemail@", "no-email@", "no.email@", "noreply@", "no-reply@", "none@", "test@test", "a@a.", "x@x.",
+   "@example.com", "@example.org", "@test.com", "@email.com", "@mail.com", "@domain.com", "dummy@"]
+# a record declared dead in text (regex alternatives, case-insensitive, word-bounded)
+status_markers:
+  - "\\bdo\\s*n[o']?t\\s+use\\b"
+  - "\\bnot\\s+to\\s+be\\s+used\\b"
+  - "\\bnot\\s+in\\s+use\\b"
+  - "\\bno\\s+longer\\s+(?:used|in\\s+use|active)\\b"
+  - "\\bobsolete\\b"
+  - "\\bto\\s+be\\s+deleted\\b"
+  - "\\bdeleted\\b"
+  - "\\bduplicate\\b"
+  - "\\buse\\s+(?:vendor|supplier|customer|material|account|bp)\\s*(?:no\\.?|number|#)?\\s*\\d+"
+  - "\\binactive\\b"
+  - "\\barchived\\b"
+  - "^(?:zz|xx|\\*\\*)[\\s\\-_:]"

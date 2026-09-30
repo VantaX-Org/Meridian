@@ -130,6 +130,8 @@ def _window(template: str, scope: dict) -> str:
 
 def plan_modules(modules: list[str], dictionary: Dictionary, scope: Optional[dict] = None) -> dict[str, TablePlan]:
     """Tables/fields to extract so every rule of ``modules`` can be evaluated."""
+    from checks.population import fields_for
+    from checks.value_placement import fields_for as placement_fields
     from checks.runner import _find_module_yaml, rule_columns
 
     edges, _ = _graph()
@@ -178,6 +180,9 @@ def plan_modules(modules: list[str], dictionary: Dictionary, scope: Optional[dic
                 p.fields |= {c for c, _ in e.on} | {f for f, _ in e.filter + e.prefer}
             if e.parent == t:
                 p.fields |= {pf for _, pf in e.on}
+        p.fields |= fields_for(t)  # active-population flags (checks/population.py)
+        if p.purpose == "data":
+            p.fields |= placement_fields(t, dictionary)  # checks/value_placement.py
         p.fields = {f for f in p.fields if dictionary.field(t, f) is not None}
         w = _windows().get(t) or {}
         filters = [f"{f} = '{v or ' '}'" for e in edges if e.child == t for f, v in e.filter]

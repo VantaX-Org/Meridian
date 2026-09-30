@@ -4,6 +4,8 @@ import logging
 import os
 import traceback
 
+import yaml
+
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -59,6 +61,8 @@ def rule_set_fingerprint(modules: list[str], overrides: dict, generated: list[di
         except FileNotFoundError:
             h.update(m.encode())
     h.update(json.dumps(overrides, sort_keys=True).encode())
+    for f in ("checks/rules/value_lexicon.yaml", "sap/dictionaries/populations.yaml"):
+        h.update((Path(__file__).resolve().parents[2] / f).read_bytes())
     h.update(json.dumps(generated or [], sort_keys=True).encode())  # config-derived rules change with the config
     version_file = Path("/app/VERSION")
     if version_file.exists():
@@ -138,7 +142,13 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanaly
             session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
             # source system's own DDIC (live snapshot) over the SAP-standard bundle
             dictionary = dictionary_for(session, metadata.get("system_id"))
-        frames, df, row_count, col_count = load_dataset(parquet_path, dictionary, modules)
+            # rules generated from this system's own field-status customizing
+            from checks.field_status_rules import extra_fields, load_config
+            from sap.field_status_config import resolve_all
+            fs_resolutions = resolve_all(load_config(session, metadata.get("system_id")))
+        frames, df, row_count, col_count = load_dataset(
+            parquet_path, dictionary, modules,
+            extra={f"{t}.{f}" for t, fs in extra_fields(fs_resolutions).items() for f in fs})
 
         logger.info(f"Loaded DataFrame: {row_count} rows, {col_count} columns")
 
@@ -180,10 +190,7 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanaly
         with Session(engine) as session:
             session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
             rule_overrides = load_overrides(session)
-            # rules generated from this system's own field-status customizing
-            from checks.field_status_rules import generate, load_config
-            from sap.field_status_config import resolve_all
-            fs_resolutions = resolve_all(load_config(session, metadata.get("system_id")))
+            from checks.field_status_rules import generate
             fs_rules = generate(fs_resolutions, modules)
             session.execute(text("UPDATE analysis_versions SET metadata = COALESCE(metadata, '{}'::jsonb) "
                                  "|| jsonb_build_object('field_status', CAST(:fs AS jsonb)) WHERE id = :vid"),
@@ -193,6 +200,17 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanaly
                                  "rules": sum(1 for x in fs_rules if x["grain"] == r.segment.record_table)}
                                 for r in fs_resolutions])})
             session.commit()
+        # misplaced values, placeholders, swaps, dead-in-text records (checks/value_placement.py)
+        from checks import value_placement
+        from checks.runner import _find_module_yaml
+        vp_rules = []
+        for m in modules:
+            try:
+                static = yaml.safe_load(_find_module_yaml(m).read_text()).get("rules", [])
+            except FileNotFoundError:
+                continue
+            vp_rules += value_placement.generate(m, static, dictionary)
+        fs_rules = fs_rules + vp_rules
         module_count = max(len(modules), 1)
         for idx, module_name in enumerate(modules):
             logger.info(f"Running checks for module: {module_name}")
@@ -394,7 +412,8 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanaly
                     UPDATE analysis_versions
                     SET status = 'complete', dqs_summary = CAST(:summary AS jsonb),
                         metadata = COALESCE(metadata, '{}'::jsonb)
-                            || jsonb_build_object('rule_set', CAST(:rs AS text), 'analysed_at', CAST(:at AS text))
+                            || jsonb_build_object('rule_set', CAST(:rs AS text), 'analysed_at', CAST(:at AS text),
+                                                  'field_usage', CAST(:fu AS jsonb))
                             || jsonb_build_object('analyses', COALESCE(metadata->'analyses', '[]'::jsonb)
                                                               || jsonb_build_array(CAST(:an AS jsonb)))
                     WHERE id = :vid AND tenant_id = :tid
@@ -404,6 +423,12 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanaly
                     "tid": tenant_id,
                     "summary": json.dumps(dqs_summary),
                     "rs": analysis["rule_set"], "at": analysis["at"], "an": json.dumps(analysis),
+                    # a field systematically used for other data (>30 % of ≥20 values): one field-level
+                    # finding, not scored — the records are already flagged by its VP- rule
+                    "fu": json.dumps([{"field": r.field, "module": r.module, "share": round(r.affected_count / r.total_count, 3),
+                                       "detected": (r.details or {}).get("detected", {})}
+                                      for r in all_results if r.check_id.startswith("VP-") and r.total_count >= 20
+                                      and r.affected_count / r.total_count > 0.3]),
                 },
             )
             session.commit()

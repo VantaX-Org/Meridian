@@ -1,0 +1,259 @@
+"""Values stored in the wrong field — detected, never guessed.
+
+What a field *should* hold comes from its SAP data element (TELF1 → phone,
+AD_SMTPADR → e-mail, PSTLZ → postal code, …), not from its name. A value is
+flagged only when it is *positively* identified as another kind of data:
+structure for e-mail/URL, mod-97 checksum for IBAN, a real calendar date,
+explicit keywords for PO boxes, "c/o", "Attn", "Tel:". Each detector runs only
+on the field kinds where a hit cannot be legitimate (a 10-digit number is a
+phone in NAME2, never in a postal-code or bank-account field).
+
+Rule families (generated per module, for the tables its rules read):
+  VP-<T>-<F>       misplaced content          validity
+  PH-<T>-<F>       placeholder instead of data ("N/A", "TBA", 0000000000)  completeness
+  SW-<T>           postal code ↔ city swapped or merged                    accuracy
+  ST-<T>           record marked dead in text ("DO NOT USE") but not blocked  consistency
+Fields that already carry a format rule (regex/format/domain) in the module get
+no VP/PH rule: that rule already fails the record — one defect, one finding.
+"""
+
+from __future__ import annotations
+
+import re
+from functools import lru_cache
+from pathlib import Path
+
+import pandas as pd
+import yaml
+
+# ── what a field holds, by SAP data element ───────────────────────────────
+KIND_BY_DATA_ELEMENT: dict[str, str] = {
+    **{d: "name" for d in ("NAME1_GP", "NAME2_GP", "NAME3_GP", "NAME4_GP", "AD_NAME1", "AD_NAME2", "AD_NAME3",
+                           "AD_NAME4", "AD_NAMETXT", "BU_NAMEOR1", "BU_NAMEOR2", "BU_NAMEOR3", "BU_NAMEOR4",
+                           "BU_NAMEP_L", "BU_NAMEP_F", "BU_NAMEPL2", "BU_BIRTHNM", "BU_NAMEMID", "BU_NAMEGR1",
+                           "BU_NAMEGR2", "KOINH_FI", "EBPP_ACCNAME")},
+    **{d: "street" for d in ("STRAS_GP", "AD_STREET", "AD_STRSPP1", "AD_STRSPP2", "AD_STRSPP3", "AD_LCTN")},
+    **{d: "city" for d in ("ORT01_GP", "AD_CITY1", "PFORT_GP", "ORT01_ANLA")},
+    **{d: "district" for d in ("ORT02_GP", "AD_CITY2", "AD_CITY3")},
+    **{d: "postcode" for d in ("PSTLZ", "PSTL2", "AD_PSTCD1", "AD_PSTCD2", "AD_PSTCD3")},
+    **{d: "phone" for d in ("TELF1", "TELF2", "AD_TLNMBR1", "AD_TLNMBR", "AD_TELNRLG", "TLFNS")},
+    **{d: "fax" for d in ("TELFX", "AD_FXNMBR1", "AD_FXNMBR", "TLFXS")},
+    "AD_SMTPADR": "email",
+    "URL": "url",
+    **{d: "text" for d in ("MAKTX", "TXT20_SKAT", "TXT50_SKAT", "TXA50_ANLT", "KTX01")},
+    **{d: "sort" for d in ("SORTL", "AD_SORT1", "AD_SORT2", "BU_SORT1", "BU_SORT2")},
+    "BANKN": "bank_account",
+    **{d: "tax_number" for d in ("STCD1", "STCD2", "STCD3", "STCD4", "STCEG")},
+}
+
+# detectors allowed per field kind — where a hit is never legitimate
+FOREIGN: dict[str, tuple[str, ...]] = {
+    "name": ("email", "url", "iban", "phone_keyword", "phone", "po_box", "date", "care_of_primary", "attention"),
+    "street": ("email", "url", "iban", "phone_keyword", "phone", "po_box", "date"),
+    "city": ("email", "url", "phone_keyword", "phone", "po_box", "date"),
+    "district": ("email", "url", "phone_keyword", "phone", "date"),
+    "text": ("email", "url", "phone_keyword"),
+    "phone": ("email", "url"),
+    "fax": ("email", "url"),
+    "email": ("url_not_email", "phone"),
+    "url": ("email_not_url",),
+    "bank_account": ("iban",),
+}
+PLACEHOLDER_KINDS = ("name", "street", "city", "postcode", "phone", "fax", "email", "tax_number", "bank_account")
+DIGIT_KINDS = ("phone", "fax", "tax_number", "bank_account")  # where 0000000000 / 1234567890 is a placeholder
+
+TARGET = {  # where the value belongs (fix guidance)
+    "email": "the e-mail address (ADR6.SMTP_ADDR — address data, communication tab)",
+    "url_not_email": "the website/URL field (LFA1.LFURL / KNA1.KNURL, ADR12 in S/4HANA)",
+    "email_not_url": "the e-mail address (ADR6.SMTP_ADDR)",
+    "url": "the website/URL field (LFA1.LFURL / KNA1.KNURL, ADR12 in S/4HANA)",
+    "iban": "the IBAN on the bank details (TIBAN; XK02/FD02 → Payment transactions → IBAN)",
+    "phone": "the telephone field (TELF1 / ADR2)",
+    "phone_keyword": "the telephone/fax fields (TELF1/TELFX, ADR2/ADR3)",
+    "po_box": "the PO box fields (PFACH + PSTL2, ADRC.PO_BOX + POST_CODE2)",
+    "date": "a date field — a date is not a name, address or number",
+    "care_of_primary": "the c/o field (ADRC.NAME_CO) — NAME1 must be the party itself",
+    "attention": "a contact person (KNVK / BP relationship), not the name",
+}
+
+# ── detectors: vectorised over a Series of stripped, non-blank strings ────
+_EMAIL = re.compile(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(?:\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}")
+_URL = re.compile(r"(?i)\b(?:https?://|www\.)[^\s]+")
+_PHONE_KW = re.compile(r"(?i)\b(?:tel|telephone|phone|ph|cell|mobile|mob|fax)\b\.?\s*:?\s*\+?\(?\d[\d\s().\-]{5,}")
+_PHONE = re.compile(r"^(?:\+|00|0|\()[\d\s().\-]+$")
+_PO_BOX = re.compile(r"(?i)\b(?:p\.?\s?o\.?\s?box|post\s?box|postbus|postfach|private\s+bag|p\.?\s?o\.?\s+bag|"
+                     r"bo[iî]te\s+postale|apartado\s+postal|caixa\s+postal|casilla)\b")
+_CARE_OF = re.compile(r"(?i)^(?:c/o|c\.o\.|care\s+of)\b")
+_ATTN = re.compile(r"(?i)^(?:attn|attention|att)\b\.?:?\s")
+_DATE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})$|^(\d{2})[./](\d{2})[./](\d{4})$")
+_IBAN_TOKEN = re.compile(r"\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b")
+_POSTCODE_ONLY = re.compile(r"^(?=(?:\D*\d){3})[A-Z0-9][A-Z0-9 \-]{2,9}$", re.I)
+_CITY_WITH_CODE = re.compile(r"^\d{4,6}\s+\D{2,}|\D{2,}\s+\d{4,6}$")
+
+
+def _iban_ok(s: str) -> bool:
+    s = s.replace(" ", "").upper()
+    if not re.fullmatch(r"[A-Z]{2}\d{2}[A-Z0-9]{11,30}", s):
+        return False
+    n = "".join(str(int(c, 36)) for c in s[4:] + s[:4])
+    return int(n) % 97 == 1
+
+
+def _has_iban(v: str) -> bool:
+    compact = v.replace(" ", "").upper()
+    return _iban_ok(compact) or any(_iban_ok(t) for t in _IBAN_TOKEN.findall(v.upper()))
+
+
+def _real_date(v: str) -> bool:
+    m = _DATE.match(v)
+    if not m:
+        return False
+    y, mo, d = (m.group(1), m.group(2), m.group(3)) if m.group(1) else (m.group(6), m.group(5), m.group(4))
+    try:
+        pd.Timestamp(year=int(y), month=int(mo), day=int(d))
+    except ValueError:
+        # DD.MM vs MM/DD: accept the other reading only for "/" dates
+        try:
+            pd.Timestamp(year=int(y), month=int(d), day=int(mo))
+        except ValueError:
+            return False
+    return 1900 <= int(y) <= 2100
+
+
+def _digits(s: pd.Series) -> pd.Series:
+    return s.str.count(r"\d")
+
+
+DETECTORS = {
+    "email": lambda s: s.str.contains(_EMAIL),
+    "email_not_url": lambda s: s.str.contains(_EMAIL) & ~s.str.contains(_URL),
+    "url": lambda s: s.str.contains(_URL),
+    "url_not_email": lambda s: s.str.contains(_URL) & ~s.str.contains("@", regex=False),
+    "iban": lambda s: s.map(_has_iban).astype(bool),
+    "phone_keyword": lambda s: s.str.contains(_PHONE_KW),
+    "phone": lambda s: s.str.match(_PHONE) & _digits(s).between(9, 15),
+    "po_box": lambda s: s.str.contains(_PO_BOX),
+    "date": lambda s: s.map(_real_date).astype(bool),
+    "care_of_primary": lambda s: s.str.contains(_CARE_OF),
+    "attention": lambda s: s.str.contains(_ATTN),
+}
+
+
+@lru_cache(maxsize=1)
+def lexicon() -> dict:
+    return yaml.safe_load((Path(__file__).parent / "rules" / "value_lexicon.yaml").read_text())
+
+
+def _placeholder_re(kind: str) -> re.Pattern:
+    words = lexicon()["placeholders"]
+    alts = [re.escape(w) for w in words]
+    alts += [r"x{3,}", r"z{3,}", r"[-.?_*/#]+", r"(\S)\1{3,}"] if kind not in ("postcode",) else [r"[-.?_*/#]+", r"x{3,}"]
+    return re.compile(r"(?i)^(?:" + "|".join(alts) + r")$")
+
+
+def is_placeholder(s: pd.Series, kind: str) -> pd.Series:
+    s = s.astype(object)
+    hit = s.str.match(_placeholder_re(kind))
+    if kind == "email":
+        hit |= s.str.lower().str.contains("|".join(re.escape(e) for e in lexicon()["placeholder_emails"]))
+    if kind in DIGIT_KINDS:
+        d = s.str.replace(r"[\s().\-/+]", "", regex=True)
+        hit |= d.str.fullmatch(r"(\d)\1{5,}") | d.isin(("1234567890", "123456789", "12345678", "0123456789"))
+    if kind == "postcode":
+        hit &= ~s.str.fullmatch(r"\d+")  # every numeric postcode is plausible somewhere
+    return hit.fillna(False).astype(bool)
+
+
+def status_markers(s: pd.Series) -> pd.Series:
+    s = s.astype(object)
+    pat = re.compile(r"(?i)" + "|".join(lexicon()["status_markers"]))
+    return s.str.contains(pat).fillna(False).astype(bool)
+
+
+# ── generation ───────────────────────────────────────────────────────────
+_FORMAT_CLASSES = ("regex_check", "format_check", "domain_value_check")
+
+# the SAP flags that make "DO NOT USE" in a name consistent (the record is blocked)
+BLOCK_FIELDS = {
+    "LFA1": ("SPERR", "SPERM"), "KNA1": ("SPERR", "AUFSD", "CASSD"), "BUT000": ("XBLCK",),
+    "MARA": ("MSTAE",), "SKA1": ("XSPEB",), "ANLA": ("XSPEB",),
+}
+STATUS_TEXT = {  # table → where its name/description lives (attribute table joined 1:1)
+    "LFA1": ("LFA1", ("NAME1", "NAME2", "NAME3", "NAME4", "SORTL")),
+    "KNA1": ("KNA1", ("NAME1", "NAME2", "NAME3", "NAME4", "SORTL")),
+    "BUT000": ("BUT000", ("NAME_ORG1", "NAME_ORG2", "NAME_LAST", "BU_SORT1", "BU_SORT2")),
+    "MARA": ("MAKT", ("MAKTX",)),
+    "ANLA": ("ANLA", ("TXT50", "TXA50")),
+}
+SWAP_PAIRS = {"LFA1": ("PSTLZ", "ORT01"), "KNA1": ("PSTLZ", "ORT01"), "ADRC": ("POST_CODE1", "CITY1")}
+
+
+def kind_of(dictionary, table: str, field: str) -> str | None:
+    f = dictionary.field(table, field)
+    return KIND_BY_DATA_ELEMENT.get((f.data_element or "").upper()) if f is not None else None
+
+
+def fields_for(table: str, dictionary) -> set[str]:
+    """Fields of ``table`` these rules read (for extraction and column pruning)."""
+    t = dictionary.table(table)
+    if t is None:
+        return set()
+    out = {f.name for f in t.fields.values() if KIND_BY_DATA_ELEMENT.get((f.data_element or "").upper())}
+    out |= set(BLOCK_FIELDS.get(table, ()))
+    for grain, (text_table, fields) in STATUS_TEXT.items():
+        if text_table == table:
+            out |= set(fields)
+    return {f for f in out if dictionary.field(table, f) is not None}
+
+
+def generate(module: str, static_rules: list[dict], dictionary) -> list[dict]:
+    from checks.frames import tables_of
+    from checks.runner import rule_columns
+
+    cols = [c for r in static_rules for c in rule_columns(r)]
+    tables = tables_of(cols)
+    formatted = {r.get("field") for r in static_rules if r.get("check_class") in _FORMAT_CLASSES}
+    rules: list[dict] = []
+    base = {"module": module, "check_class": "value_placement_check", "rule_authority": "generated_value_placement"}
+    for t in tables:
+        tdef = dictionary.table(t)
+        if tdef is None:
+            continue
+        for f in tdef.fields.values():
+            col, kind = f"{t}.{f.name}", KIND_BY_DATA_ELEMENT.get((f.data_element or "").upper())
+            if not kind or col in formatted:
+                continue
+            label = f.description or f.name
+            if kind in FOREIGN:
+                rules.append({**base, "id": f"VP-{t}-{f.name}", "family": "misplaced", "field": col, "kind": kind,
+                              "severity": "medium", "dimension": "validity",
+                              "message": f"{label} ({col}) holds data that belongs in another field",
+                              "why_it_matters": "Data in the wrong field is invisible to every process that reads "
+                                                "the right one: dunning e-mails, payment files, tax reports and "
+                                                "duplicate checks miss it."})
+            if kind in PLACEHOLDER_KINDS:
+                rules.append({**base, "id": f"PH-{t}-{f.name}", "family": "placeholder", "field": col, "kind": kind,
+                              "severity": "medium", "dimension": "completeness",
+                              "message": f"{label} ({col}) holds a placeholder instead of real data",
+                              "why_it_matters": "Placeholders ('N/A', 'TBA', 0000000000) pass mandatory-field "
+                                                "checks but carry no information — the field is effectively empty."})
+        if t in SWAP_PAIRS and all(dictionary.field(t, x) for x in SWAP_PAIRS[t]):
+            pc, city = SWAP_PAIRS[t]
+            rules.append({**base, "id": f"SW-{t}-{pc}-{city}", "family": "swap", "field": f"{t}.{city}",
+                          "fields": [f"{t}.{pc}", f"{t}.{city}"], "severity": "medium", "dimension": "accuracy",
+                          "message": f"Postal code and city are swapped or merged ({t}.{pc} / {t}.{city})",
+                          "why_it_matters": "Address validation, tax jurisdiction and carrier routing read the "
+                                            "postal code field; a postal code inside the city is lost to them."})
+        if t in STATUS_TEXT:
+            text_table, text_fields = STATUS_TEXT[t]
+            texts = [f"{text_table}.{x}" for x in text_fields if dictionary.field(text_table, x)]
+            blocks = [f"{t}.{x}" for x in BLOCK_FIELDS.get(t, ()) if dictionary.field(t, x)]
+            if texts and blocks:
+                rules.append({**base, "id": f"ST-{t}", "family": "status_text", "field": texts[0],
+                              "fields": texts, "block_fields": blocks, "grain": t,
+                              "severity": "high", "dimension": "consistency",
+                              "message": f"{t} record is marked as not-to-be-used in its text, but is not blocked",
+                              "why_it_matters": "'DO NOT USE' in a name stops nobody: SAP only enforces the block "
+                                                "and deletion flags, so the record keeps receiving orders and "
+                                                "postings."})
+    return rules
