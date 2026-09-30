@@ -225,6 +225,19 @@ export function VersionsTab({ id, canAnalyse }: { id: string; canAnalyse: boolea
                   ))}
                 </details>
               )}
+              {v.extraction_complete === false && (
+                <div className="text-[12px] text-[var(--aurora-status-warning-500)]">extraction incomplete — see coverage</div>
+              )}
+              {Object.values(v.outliers ?? {}).some((o) => o.outliers > 0) && (
+                <details className="text-[12px]">
+                  <summary className="cursor-pointer text-[var(--aurora-fg-tertiary)]">
+                    peer outliers · {Object.values(v.outliers).reduce((n, o) => n + o.outliers, 0)} (not scored)
+                  </summary>
+                  {Object.entries(v.outliers).filter(([, o]) => o.outliers > 0).map(([id, o]) => (
+                    <div key={id}>{o.label}: <span className="aurora-number">{o.outliers}</span> of {o.checked}</div>
+                  ))}
+                </details>
+              )}
             </td>
             <td className={td}>
               {Object.entries(v.dqs).map(([o, d]) => (

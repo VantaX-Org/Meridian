@@ -222,6 +222,7 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanaly
             vp_rules += value_placement.generate(m, static, dictionary)
         fs_rules = fs_rules + vp_rules
         module_count = max(len(modules), 1)
+        outliers: dict[str, dict] = {}
         for idx, module_name in enumerate(modules):
             logger.info(f"Running checks for module: {module_name}")
             self.update_state(state='PROGRESS', meta={
@@ -243,6 +244,8 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanaly
             results = execute_checks(module_name, frames, tenant_id, reference_values=live_refs,
                                      overrides=rule_overrides, extra_rules=fs_rules)
             all_results.extend(results)
+            from checks.outliers import find as find_outliers
+            outliers.update(find_outliers(module_name, frames))  # reported, never scored
             # Post-module tick so users see movement between modules.
             rows_done_after = int(((idx + 1) / module_count) * row_count)
             update_task_progress(
@@ -423,7 +426,7 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanaly
                     SET status = 'complete', dqs_summary = CAST(:summary AS jsonb),
                         metadata = COALESCE(metadata, '{}'::jsonb)
                             || jsonb_build_object('rule_set', CAST(:rs AS text), 'analysed_at', CAST(:at AS text),
-                                                  'field_usage', CAST(:fu AS jsonb))
+                                                  'field_usage', CAST(:fu AS jsonb), 'outliers', CAST(:ol AS jsonb))
                             || jsonb_build_object('analyses', COALESCE(metadata->'analyses', '[]'::jsonb)
                                                               || jsonb_build_array(CAST(:an AS jsonb)))
                     WHERE id = :vid AND tenant_id = :tid
@@ -433,6 +436,7 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanaly
                     "tid": tenant_id,
                     "summary": json.dumps(dqs_summary),
                     "rs": analysis["rule_set"], "at": analysis["at"], "an": json.dumps(analysis),
+                    "ol": json.dumps(outliers),
                     # a field systematically used for other data (>30 % of ≥20 values): one field-level
                     # finding, not scored — the records are already flagged by its VP- rule
                     "fu": json.dumps([{"field": r.field, "module": r.module, "share": round(r.affected_count / r.total_count, 3),

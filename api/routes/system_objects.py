@@ -148,6 +148,8 @@ async def system_versions(system_id: uuid.UUID, limit: int = Query(50, le=200),
             "analysed_at": meta.get("analysed_at"), "rule_set": meta.get("rule_set"),
             "baseline": meta.get("baseline") is True,
             "extraction_complete": meta.get("extraction_complete"),
+            "outliers": {k: {"label": v.get("label"), "outliers": v.get("outliers", 0), "checked": v.get("checked", 0)}
+                         for k, v in (meta.get("outliers") or {}).items()},
             "analysable": bool(meta.get("dataset_path")) and r.status not in ("pending", "running"),
             "dqs": {m: (d or {}).get("composite_score") for m, d in dqs.items()},
             # rules generated from the system's field-status customizing, per segment

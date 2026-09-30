@@ -127,8 +127,10 @@ def test_module_run_includes_generated_rules():
 
 def test_sap_number_formats():
     from checks.base import sap_number
-    got = sap_number(pd.Series(["1234.50-", "1,234.50", "1.234,50", "12,5", "7", "", "x", "0.000"])).tolist()
+    got = sap_number(pd.Series(["1234.50-", "1,234.50", "1.234,50", "12,5", "7", "", "x", "0.000", "1.000",
+                                "1.234.567"])).tolist()
     assert got[:5] == [-1234.5, 1234.5, 1234.5, 12.5, 7.0] and pd.isna(got[5]) and pd.isna(got[6]) and got[7] == 0
+    assert got[8] == 1.0 and got[9] == 1234567  # RFC QUAN "1.000" is one, not a thousand
 
 
 def test_uploads_are_brought_to_internal_format():

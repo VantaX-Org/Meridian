@@ -100,7 +100,9 @@ def is_blank(series: pd.Series) -> pd.Series:
     return series.isna() | s.isna() | (s == "") | s.isin(("00000000", "000000"))
 
 
-_EU_NUMBER = r"^[+-]?\d{1,3}(?:\.\d{3})+(?:,\d+)?-?$|^[+-]?\d+,\d+-?$"
+# European only when unambiguous: a decimal comma, or several dot-grouped thousands.
+# A single dot is a decimal point — RFC writes QUAN "1.000" for 1.0.
+_EU_NUMBER = r"^[+-]?\d{1,3}(?:\.\d{3})+,\d+-?$|^[+-]?\d{1,3}(?:\.\d{3}){2,}-?$|^[+-]?\d+,\d+-?$"
 
 
 def sap_number(series: pd.Series) -> pd.Series:
