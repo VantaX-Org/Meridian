@@ -44,7 +44,7 @@ def _live_reference_values(engine, tenant_id: str, metadata: dict) -> dict[str, 
     return out
 
 
-def rule_set_fingerprint(modules: list[str], overrides: dict) -> str:
+def rule_set_fingerprint(modules: list[str], overrides: dict, generated: list[dict] | None = None) -> str:
     """Identifies the rules a run applied (YAML + governance + app version) — trend
     points produced by different rule sets are flagged as not comparable."""
     import hashlib
@@ -59,6 +59,7 @@ def rule_set_fingerprint(modules: list[str], overrides: dict) -> str:
         except FileNotFoundError:
             h.update(m.encode())
     h.update(json.dumps(overrides, sort_keys=True).encode())
+    h.update(json.dumps(generated or [], sort_keys=True).encode())  # config-derived rules change with the config
     version_file = Path("/app/VERSION")
     if version_file.exists():
         h.update(version_file.read_bytes())
@@ -179,6 +180,19 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanaly
         with Session(engine) as session:
             session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
             rule_overrides = load_overrides(session)
+            # rules generated from this system's own field-status customizing
+            from checks.field_status_rules import generate, load_config
+            from sap.field_status_config import resolve_all
+            fs_resolutions = resolve_all(load_config(session, metadata.get("system_id")))
+            fs_rules = generate(fs_resolutions, modules)
+            session.execute(text("UPDATE analysis_versions SET metadata = COALESCE(metadata, '{}'::jsonb) "
+                                 "|| jsonb_build_object('field_status', CAST(:fs AS jsonb)) WHERE id = :vid"),
+                            {"vid": version_id, "fs": json.dumps([
+                                {"segment": r.segment.id, "definition": r.fauna, "reason": r.reason,
+                                 "account_groups": len(r.groups),
+                                 "rules": sum(1 for x in fs_rules if x["grain"] == r.segment.record_table)}
+                                for r in fs_resolutions])})
+            session.commit()
         module_count = max(len(modules), 1)
         for idx, module_name in enumerate(modules):
             logger.info(f"Running checks for module: {module_name}")
@@ -199,7 +213,7 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanaly
                 total_rows=row_count,
             )
             results = execute_checks(module_name, frames, tenant_id, reference_values=live_refs,
-                                     overrides=rule_overrides)
+                                     overrides=rule_overrides, extra_rules=fs_rules)
             all_results.extend(results)
             # Post-module tick so users see movement between modules.
             rows_done_after = int(((idx + 1) / module_count) * row_count)
@@ -373,7 +387,7 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanaly
                 logger.error(f"record-level tracking failed for {version_id}: {e}", exc_info=True)
 
             # Step 10: Update version with DQS summary + which rule set produced it
-            analysis = {"at": datetime.now(timezone.utc).isoformat(), "rule_set": rule_set_fingerprint(modules, rule_overrides),
+            analysis = {"at": datetime.now(timezone.utc).isoformat(), "rule_set": rule_set_fingerprint(modules, rule_overrides, fs_rules),
                         "checks": len(all_results)}
             session.execute(
                 text("""

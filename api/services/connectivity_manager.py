@@ -213,6 +213,12 @@ class ConnectivityManager:
         try:
             if system_type in ABAP_SYSTEM_TYPES:
                 plans = plan_modules(modules, dictionary, scope)
+                # fields this system's field-status customizing controls (checks/field_status_rules.py)
+                from checks.field_status_rules import extra_fields, load_config
+                from sap.field_status_config import resolve_all
+                for t, fs in extra_fields(resolve_all(load_config(self.session, system_id))).items():
+                    if t in plans:
+                        plans[t].fields |= {f for f in fs if dictionary.field(t, f) is not None}
                 raw: dict[str, pd.DataFrame] = {}
                 for table in read_order(plans):
                     plan = plans[table]

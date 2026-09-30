@@ -15,6 +15,7 @@ from checks.types.cross_field_check import CrossFieldCheck
 from checks.types.referential_check import ReferentialCheck
 from checks.types.freshness_check import FreshnessCheck
 from checks.types.format_check import FormatCheck
+from checks.types.field_status_check import FieldStatusCheck
 from checks.types.uniqueness_check import UniquenessCheck
 
 logger = logging.getLogger("meridian.checks")
@@ -66,6 +67,7 @@ REGISTRY: dict[str, type[BaseCheck]] = {
     "referential_check": ReferentialCheck,
     "freshness_check": FreshnessCheck,
     "format_check": FormatCheck,
+    "field_status_check": FieldStatusCheck,
     "uniqueness_check": UniquenessCheck,
 }
 
@@ -123,12 +125,33 @@ def get_required_columns(module_name: str) -> set[str]:
     return {c for rule in config.get("rules", []) for c in rule_columns(rule)}
 
 
+def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[str]] | None = None
+             ) -> tuple[dict, CheckResult | None]:
+    """Evaluate one rule at its grain: (rule as evaluated, result or None when not applicable)."""
+    check_cls = REGISTRY[rule["check_class"]]
+    if rule.get("check_class") in ("referential_check", "domain_value_check"):
+        rule = _with_reference(rule, frames.dictionary, reference_values or {})
+    try:
+        built = frames.frame_for(rule_columns(rule), grain=rule.get("grain"))
+        if built is None:
+            return rule, None  # a table/field this rule needs is not in the extract
+        frame, grain, key_cols = built
+        scoped = apply_context(frame, rule.get("applies_when"))
+        if len(scoped) == 0:
+            return rule, None  # no records in the rule's population
+        return rule, check_cls(rule).run(scoped, key_cols=key_cols, grain=grain)
+    except Exception as e:
+        logger.error(f"Exception in check {rule.get('id')}: {e}", exc_info=True)
+        return rule, check_cls(rule)._error(frames.flat if frames.flat is not None else pd.DataFrame(), str(e))
+
+
 def run_checks(
     module_name: str,
     data: pd.DataFrame | TableFrames,
     tenant_id: str,
     reference_values: dict[str, set[str]] | None = None,
     overrides: dict[str, dict] | None = None,
+    extra_rules: list[dict] | None = None,
 ) -> list[CheckResult]:
     """Load a module's YAML rules and evaluate each at its correct record grain.
 
@@ -141,7 +164,9 @@ def run_checks(
     with open(_find_module_yaml(module_name), "r") as f:
         config = yaml.safe_load(f)
     from checks.overrides import apply
-    rules = apply(config.get("rules", []), overrides)  # HQ / tenant governance (checks/overrides.py)
+    # HQ / tenant governance (checks/overrides.py) applies to generated rules too
+    rules = apply(config.get("rules", []) + [r for r in (extra_rules or []) if r.get("module") == module_name],
+                  overrides)
     module = config.get("module", module_name)
     frames = data if isinstance(data, TableFrames) else TableFrames.from_flat(data, module=module)
     frames.module = module
@@ -165,23 +190,7 @@ def run_checks(
             result_rules.append(rule)
             continue
 
-        if rule.get("check_class") in ("referential_check", "domain_value_check"):
-            rule = _with_reference(rule, frames.dictionary, reference_values)
-
-        try:
-            built = frames.frame_for(rule_columns(rule), grain=rule.get("grain"))
-            if built is None:
-                skipped += 1  # a table/field this rule needs is not in the extract
-                continue
-            frame, grain, key_cols = built
-            scoped = apply_context(frame, rule.get("applies_when"))
-            if len(scoped) == 0:
-                skipped += 1  # no records in the rule's population
-                continue
-            result = check_cls(rule).run(scoped, key_cols=key_cols, grain=grain)
-        except Exception as e:
-            logger.error(f"Exception in check {rule.get('id')}: {e}", exc_info=True)
-            result = check_cls(rule)._error(frames.flat if frames.flat is not None else pd.DataFrame(), str(e))
+        rule, result = run_rule(rule, frames, reference_values)
         if result is None:
             skipped += 1
             continue

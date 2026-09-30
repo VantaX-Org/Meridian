@@ -101,7 +101,8 @@ def _discover_abap(session, tenant_id, system_id, snapshot_id, system_type, conn
 
     base = dictionary_for_system(system_type)
     plans = plan_modules(MODULES_BY_SYSTEM.get(system_type, []), base)
-    wanted = sorted(set(plans) | set(ORG_STRUCTURE))
+    from sap.field_status_config import CONFIG_TABLES as FIELD_STATUS
+    wanted = sorted(set(plans) | set(ORG_STRUCTURE) | set(FIELD_STATUS))
     snap = ddic_reader.snapshot(conn, wanted)
     counts = store_snapshot(session, tenant_id, system_id, snapshot_id, snap)
     info = snap["system_info"]
@@ -111,6 +112,9 @@ def _discover_abap(session, tenant_id, system_id, snapshot_id, system_type, conn
     live = base.overlay(snap["tables"], snap["domains"])
     config_tables = {t: sorted(p.fields | set(p.keys)) for t, p in plans.items() if p.purpose == "config"}
     config_tables.update(ORG_STRUCTURE)
+    # account-group field status + the field-selection definitions that give it meaning
+    for t, f in FIELD_STATUS.items():
+        config_tables[t] = sorted(set(config_tables.get(t, [])) | set(f))
     for table, fields in sorted(config_tables.items()):
         t = live.table(table)
         cols = [f for f in fields if t is None or f in t.fields]
