@@ -106,6 +106,13 @@ COPY scripts/manage_users.py /app/scripts/manage_users.py
 COPY docker/entrypoint.api.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
+# This release's deployment files. scripts/update.sh copies them onto the host
+# after pulling, so an update delivers its own compose/script changes — not
+# only new images. Plain config, no application source.
+COPY docker/docker-compose.customer.yml docker/docker-compose.updater.yml docker/Dockerfile.rfc /deploy/docker/
+COPY docker/nginx/meridian.conf docker/nginx/nginx.conf /deploy/docker/nginx/
+COPY scripts/update.sh scripts/build-rfc-overlay.sh scripts/preflight.sh scripts/backup.sh scripts/restore.sh /deploy/scripts/
+
 ENV PYTHONPATH=/app
 
 EXPOSE 8000

@@ -63,9 +63,11 @@ services:
       timeout: 10s
       retries: 5
       start_period: 60s
+    # Resolvers for SAP hosts + the licence server. Behind a corporate network set
+    # MERIDIAN_DNS_1/2 in .env to the internal DNS so SAP hostnames resolve.
     dns:
-      - 8.8.8.8
-      - 8.8.4.4
+      - ${MERIDIAN_DNS_1:-8.8.8.8}
+      - ${MERIDIAN_DNS_2:-8.8.4.4}
 
   worker:
     image: ghcr.io/vantax-org/meridian-worker:latest
@@ -86,9 +88,11 @@ services:
     networks:
       - meridian-net
     restart: unless-stopped
+    # Resolvers for SAP hosts + the licence server. Behind a corporate network set
+    # MERIDIAN_DNS_1/2 in .env to the internal DNS so SAP hostnames resolve.
     dns:
-      - 8.8.8.8
-      - 8.8.4.4
+      - ${MERIDIAN_DNS_1:-8.8.8.8}
+      - ${MERIDIAN_DNS_2:-8.8.4.4}
 
   beat:
     image: ghcr.io/vantax-org/meridian-worker:latest

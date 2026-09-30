@@ -63,6 +63,7 @@ os.replace(tmp, path)
 PYEOF
 }
 
+ORIGINAL_ARGS=("$@")
 ACTION=update
 VERIFY=true
 INCLUDE_UPDATER=false
@@ -86,7 +87,16 @@ else
     error "No docker-compose file found"
 fi
 
-dc() { docker compose -f "$COMPOSE_FILE" "$@"; }
+# SAP RFC overlay (scripts/build-rfc-overlay.sh) — present only on hosts that
+# built the NW RFC SDK into api/worker/beat. Rebuilt after every pull below.
+RFC_OVERLAY="$(dirname "$COMPOSE_FILE")/docker-compose.rfc.yml"
+dc() {
+    if [[ -f "$RFC_OVERLAY" ]]; then
+        docker compose -f "$COMPOSE_FILE" -f "$RFC_OVERLAY" "$@"
+    else
+        docker compose -f "$COMPOSE_FILE" "$@"
+    fi
+}
 
 # The `updater` service is defined only in the docker-compose.updater.yml
 # overlay, never in $COMPOSE_FILE itself — so it needs its own explicit -f
@@ -104,7 +114,19 @@ IMAGES=(
     "ghcr.io/vantax-org/meridian-nginx"
 )
 
+# Locally built RFC overlay images (scripts/build-rfc-overlay.sh) are
+# snapshotted/restored alongside the registry images.
+RFC_LOCAL_IMAGES=("meridian-api" "meridian-worker")
+retag_rfc() {  # retag_rfc <from-tag> <to-tag>
+    for img in "${RFC_LOCAL_IMAGES[@]}"; do
+        if docker image inspect "${img}:$1" >/dev/null 2>&1; then
+            docker tag "${img}:$1" "${img}:$2"
+        fi
+    done
+}
+
 snapshot_rollback_tags() {
+    retag_rfc rfc-local rfc-rollback
     info "Snapshotting current images as :rollback..."
     for img in "${IMAGES[@]}"; do
         if docker image inspect "${img}:latest" >/dev/null 2>&1; then
@@ -116,10 +138,83 @@ snapshot_rollback_tags() {
     done
 }
 
+# Custom-format dump of the whole database, taken before any migration runs.
+# Rolling images back cannot un-migrate a schema; this file can
+# (pg_restore --clean). Grants are kept so the app role still works after a restore.
+backup_database() {
+    mkdir -p backups
+    PRE_UPDATE_DUMP="backups/pre-update-$(date -u +%Y%m%dT%H%M%SZ).dump"
+    info "Backing up the database to ${PRE_UPDATE_DUMP}..."
+    if ! dc exec -T db pg_dump -U meridian --format=custom --no-owner meridian > "$PRE_UPDATE_DUMP" \
+            || [[ ! -s "$PRE_UPDATE_DUMP" ]]; then
+        rm -f "$PRE_UPDATE_DUMP"
+        error "Database backup failed — update aborted. Nothing was changed."
+    fi
+    info "Database backed up ($(du -h "$PRE_UPDATE_DUMP" | cut -f1))"
+}
+
+# Copy this release's deployment files (baked into the api image under /deploy)
+# onto the host. When update.sh itself changed, re-run the new version so the
+# rest of the update follows the new release's procedure.
+place() {  # place <src> <dest> <mode> — keeps a .bak of a locally changed file
+    if [[ -f "$2" ]] && ! cmp -s "$1" "$2"; then cp -p "$2" "$2.bak"; fi
+    install -D -m "$3" "$1" "$2"
+}
+
+sync_deployment_files() {
+    [[ -n "${MERIDIAN_UPDATE_REEXEC:-}" ]] && return 0
+    local stage cid compose_dir changed_self=false
+    stage=$(mktemp -d)
+    cid=$(docker create ghcr.io/vantax-org/meridian-api:latest) \
+        || { warn "Could not read deployment files from the new image — keeping current ones"; return 0; }
+    if ! docker cp "$cid:/deploy/." "$stage/" 2>/dev/null; then
+        docker rm "$cid" >/dev/null
+        warn "New image carries no deployment bundle — keeping current deployment files"
+        return 0
+    fi
+    docker rm "$cid" >/dev/null
+    compose_dir=$(dirname "$COMPOSE_FILE")
+    [[ "$COMPOSE_FILE" == *customer.yml ]] && place "$stage/docker/docker-compose.customer.yml" "$COMPOSE_FILE" 0644
+    place "$stage/docker/docker-compose.updater.yml" "$compose_dir/docker-compose.updater.yml" 0644
+    place "$stage/docker/Dockerfile.rfc" "$compose_dir/Dockerfile.rfc" 0644
+    place "$stage/docker/nginx/meridian.conf" "$compose_dir/nginx/meridian.conf" 0644
+    place "$stage/docker/nginx/nginx.conf" "$compose_dir/nginx/nginx.conf" 0644
+    for f in "$stage"/scripts/*.sh; do
+        name=$(basename "$f")
+        [[ "$name" == "update.sh" ]] && ! cmp -s "$f" scripts/update.sh && changed_self=true
+        place "$f" "scripts/$name" 0755
+    done
+    rm -rf "$stage"
+    info "Deployment files synced from the new release (changed local files kept as *.bak)"
+    if [[ "$changed_self" == "true" ]]; then
+        info "update.sh changed in this release — continuing with the new version"
+        exec env MERIDIAN_UPDATE_REEXEC=1 bash scripts/update.sh ${ORIGINAL_ARGS[@]+"${ORIGINAL_ARGS[@]}"}
+    fi
+}
+
+rebuild_rfc_overlay() {
+    [[ -f "$RFC_OVERLAY" ]] || return 0
+    info "Rebuilding the SAP RFC overlay on the new images..."
+    bash scripts/build-rfc-overlay.sh \
+        || error "RFC overlay rebuild failed — update aborted before any restart. Running stack is untouched."
+}
+
 pull_images() {
+    # Meridian images first, by name — independent of the (possibly outdated)
+    # compose file on this host, which is refreshed from the new image next.
     info "Pulling latest images..."
-    dc pull || error "Pull failed. Running stack is untouched. Check your network connection."
+    for img in "${IMAGES[@]}"; do
+        docker pull "${img}:latest" >/dev/null \
+            || error "Pull of ${img} failed. Running stack is untouched. Check network / docker login ghcr.io."
+    done
     info "Images pulled successfully"
+}
+
+pull_dependencies() {
+    # Postgres / Redis / MinIO as pinned by this release's compose file. A
+    # failure here never blocks the update: running containers keep their image.
+    docker compose -f "$COMPOSE_FILE" pull --ignore-pull-failures db redis minio >/dev/null 2>&1 \
+        || warn "Could not pull db/redis/minio images — the running ones are kept."
 }
 
 verify_health() {
@@ -153,8 +248,9 @@ rollback() {
     if [[ "$missing" -eq "${#IMAGES[@]}" ]]; then
         error "No :rollback tags found — nothing to roll back to."
     fi
+    retag_rfc rfc-rollback rfc-local
     info "Restarting services on rolled-back images..."
-    dc up -d --force-recreate api worker frontend nginx 2>/dev/null || true
+    dc up -d --force-recreate api worker beat frontend nginx 2>/dev/null || true
     if [[ "$VERIFY" == "true" ]]; then
         if ! verify_health; then
             error "Rollback completed but health check still failing — check: docker compose logs api"
@@ -174,12 +270,17 @@ auto_rollback() {
             docker tag "${img}:rollback" "${img}:latest"
         fi
     done
-    dc up -d --force-recreate api worker frontend nginx 2>/dev/null || true
+    retag_rfc rfc-rollback rfc-local
+    dc up -d --force-recreate api worker beat frontend nginx 2>/dev/null || true
     if ! verify_health; then
         write_status "failed" "Rollback also failed /health after: $1"
         error "Rollback also failed /health. Manual intervention required. Logs: docker compose logs api"
     fi
     write_status "rolled_back" "Update rolled back to previous images after: $1"
+    if [[ -n "${PRE_UPDATE_DUMP:-}" ]]; then
+        warn "If migrations had already run, restore the pre-update database with:"
+        warn "  docker compose -f $COMPOSE_FILE exec -T db pg_restore -U meridian -d meridian --clean --if-exists < $PRE_UPDATE_DUMP"
+    fi
     error "Update rolled back. Running on previous images. Check 'docker compose logs api' for why the new version failed."
 }
 
@@ -201,10 +302,18 @@ fi
 
 info "Updating Meridian to the latest released version..."
 
-snapshot_rollback_tags
+if [[ -z "${MERIDIAN_UPDATE_REEXEC:-}" ]]; then
+    snapshot_rollback_tags
+fi
 
 write_status "pulling" "Pulling latest images..."
 pull_images
+sync_deployment_files
+pull_dependencies
+rebuild_rfc_overlay
+
+write_status "backing_up" "Backing up the database..."
+backup_database
 
 # Roll forward onto the new images BEFORE migrating: `dc exec` targets the
 # live container, so the api container must already be the new image — or
@@ -212,7 +321,7 @@ pull_images
 # migrations shipped with this release.
 info "Restarting services on the new images..."
 write_status "restarting" "Restarting services on the new images..."
-dc up -d --force-recreate api worker frontend nginx 2>/dev/null || true
+dc up -d --force-recreate api worker beat frontend nginx 2>/dev/null || true
 
 info "Running database migrations..."
 if ! wait_for_api_container; then

@@ -66,7 +66,7 @@ DC="docker compose ${COMPOSE_ARGS[*]}"
 # ─── 1. Postgres dump (pg_dump custom format) ───────────────────────────────
 info "Dumping Postgres database..."
 DB_FILE="${BACKUP_DIR}/meridian.dump"
-if ! $DC exec -T db pg_dump -U meridian --format=custom --no-owner --no-privileges meridian > "$DB_FILE"; then
+if ! $DC exec -T db pg_dump -U meridian --format=custom --no-owner meridian > "$DB_FILE"; then
     fail "pg_dump failed"
 fi
 DB_SIZE=$(du -h "$DB_FILE" | cut -f1)
