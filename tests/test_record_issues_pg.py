@@ -305,3 +305,27 @@ def test_master_record_merge(app_engine):
         assert rec["200"].status == "superseded"
         kinds = sorted(c.execute(text("SELECT change_type FROM master_record_history")).scalars())
         assert kinds == ["merged", "superseded"]
+
+
+def test_hq_rule_governance_round_trip(app_engine, monkeypatch):
+    """Manifest sync lands in rules_hq_cache; load_overrides reads it (+ tenant toggle)."""
+    from sqlalchemy import text
+    from sqlalchemy.orm import Session
+
+    import workers.db as wdb
+    from api.deps import _DEV_TENANT
+    from api.middleware.licence import _do_sync_manifest
+    from checks.overrides import load_overrides
+
+    owner, app = app_engine
+    with owner.begin() as c:
+        c.execute(text("INSERT INTO tenants (id, name) VALUES (:t, 'Dev') ON CONFLICT DO NOTHING"),
+                  {"t": str(_DEV_TENANT.id)})
+    monkeypatch.setattr(wdb, "_engine", app)
+    _do_sync_manifest([{"id": "BP001", "enabled": False}, {"id": "BP002", "severity": "critical"}],
+                      [{"module": "business_partner", "standard_field": "BUT000.BU_TYPE", "customer_field": "ZTYPE"}])
+    with Session(app) as s:
+        s.execute(text("SET app.tenant_id = :t"), {"t": str(_DEV_TENANT.id)})
+        o = load_overrides(s)
+        assert o["BP001"]["enabled"] is False and o["BP002"]["severity"] == "critical"
+        assert s.execute(text("SELECT customer_field FROM field_mappings WHERE standard_field = 'BUT000.BU_TYPE'")).scalar() == "ZTYPE"

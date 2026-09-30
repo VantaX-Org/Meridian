@@ -148,6 +148,10 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
 
         all_results = []
         live_refs = _live_reference_values(engine, tenant_id, metadata)
+        from checks.overrides import load_overrides
+        with Session(engine) as session:
+            session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+            rule_overrides = load_overrides(session)
         module_count = max(len(modules), 1)
         for idx, module_name in enumerate(modules):
             logger.info(f"Running checks for module: {module_name}")
@@ -167,7 +171,8 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
                 rows_processed=rows_done_before,
                 total_rows=row_count,
             )
-            results = execute_checks(module_name, frames, tenant_id, reference_values=live_refs)
+            results = execute_checks(module_name, frames, tenant_id, reference_values=live_refs,
+                                     overrides=rule_overrides)
             all_results.extend(results)
             # Post-module tick so users see movement between modules.
             rows_done_after = int(((idx + 1) / module_count) * row_count)

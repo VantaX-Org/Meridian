@@ -42,6 +42,7 @@ services:
       # ── CORS (permissive — API port is internal-only) ─────
       - MERIDIAN_CORS_ORIGINS=*
       # ── Licence ─────────────────────────────────────────────
+      - MERIDIAN_ENV=${MERIDIAN_ENV:-development}   # only dev runs without a licence key
       - LICENCE_KEY=${LICENCE_KEY:-}
       - LICENCE_SERVER_URL=${LICENCE_SERVER_URL:-https://licence.meridian.vantax.co.za}
       - LICENCE_FILE=${LICENCE_FILE:-}

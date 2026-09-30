@@ -128,6 +128,7 @@ def run_checks(
     data: pd.DataFrame | TableFrames,
     tenant_id: str,
     reference_values: dict[str, set[str]] | None = None,
+    overrides: dict[str, dict] | None = None,
 ) -> list[CheckResult]:
     """Load a module's YAML rules and evaluate each at its correct record grain.
 
@@ -139,7 +140,8 @@ def run_checks(
     """
     with open(_find_module_yaml(module_name), "r") as f:
         config = yaml.safe_load(f)
-    rules = config.get("rules", [])
+    from checks.overrides import apply
+    rules = apply(config.get("rules", []), overrides)  # HQ / tenant governance (checks/overrides.py)
     module = config.get("module", module_name)
     frames = data if isinstance(data, TableFrames) else TableFrames.from_flat(data, module=module)
     frames.module = module
