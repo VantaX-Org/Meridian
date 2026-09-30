@@ -1,0 +1,317 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { Download, Play } from "lucide-react";
+import {
+  Banner,
+  Button,
+  Chip,
+  Field,
+  Input,
+  LineChart,
+  Panel,
+  Stack,
+  Text,
+  type ChipTone,
+} from "@/components/aurora";
+import {
+  analyseVersion,
+  getSystemObjects,
+  getSystemVersions,
+  getTrends,
+  startDownload,
+  type DownloadScope,
+  type ScopeKey,
+  type TrendFlag,
+} from "@/lib/api/system-objects";
+import { formatModuleName, relativeTime } from "@/lib/format";
+
+const th = "px-3 py-2 text-left font-medium text-[var(--aurora-fg-tertiary)]";
+const td = "px-3 py-1.5 border-t border-[var(--aurora-canvas-line)]";
+
+const SCOPE_LABEL: Record<ScopeKey, string> = {
+  company_codes: "Company codes",
+  plants: "Plants",
+  sales_orgs: "Sales organisations",
+  purchasing_orgs: "Purchasing organisations",
+};
+
+const FLAG_LABEL: Record<TrendFlag, string> = {
+  scope_changed: "different scope",
+  rules_changed: "different rule set",
+  volume_shift: "record count moved >20 %",
+};
+
+const STATUS_TONE: Record<string, ChipTone> = {
+  extracted: "info", pending: "info", running: "info", complete: "success", failed: "danger",
+};
+
+const list = (v: string) => v.split(/[\s,;]+/).map((x) => x.trim().toUpperCase()).filter(Boolean);
+const delta = (n: number | undefined, invert = false, digits = 1) => {
+  if (n === undefined || n === null) return <span className="text-[var(--aurora-fg-muted)]">—</span>;
+  const good = invert ? n < 0 : n > 0;
+  const tone = n === 0 ? "neutral" : good ? "success" : "danger";
+  return <Chip tone={tone}>{n > 0 ? "+" : ""}{Number(n).toFixed(digits)}</Chip>;
+};
+
+// ── choose objects → new version ─────────────────────────────────────────────
+
+export function ObjectsPanel({ id, onDownloaded }: { id: string; onDownloaded: () => void }) {
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery({ queryKey: ["system-objects", id], queryFn: () => getSystemObjects(id) });
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [scopeText, setScopeText] = useState<Partial<Record<ScopeKey, string>>>({});
+  const [dates, setDates] = useState<{ date_from?: string; date_to?: string }>({});
+  const [label, setLabel] = useState("");
+
+  const objects = data?.objects ?? [];
+  const chosen = objects.filter((o) => picked.has(o.object));
+  const filters = Array.from(new Set(chosen.flatMap((o) => o.scope_filters)));
+  const windowed = chosen.flatMap((o) => o.date_window);
+
+  const download = useMutation({
+    mutationFn: (analyse: boolean) => {
+      const scope: DownloadScope = { ...dates };
+      for (const k of filters) {
+        const v = list(scopeText[k] ?? "");
+        if (v.length) scope[k] = v;
+      }
+      return startDownload(id, { objects: Array.from(picked), scope, label: label || undefined, analyse });
+    },
+    onSuccess: (_, analyse) => {
+      toast.success(analyse ? "Download started — analysis follows automatically" : "Download started — a new version will appear under Versions");
+      setPicked(new Set());
+      qc.invalidateQueries({ queryKey: ["system-versions", id] });
+      onDownloaded();
+    },
+    onError: (e) => toast.error((e as Error).message || "Download refused"),
+  });
+
+  const toggle = (o: string) => setPicked((prev) => {
+    const next = new Set(prev);
+    if (next.has(o)) next.delete(o);
+    else next.add(o);
+    return next;
+  });
+
+  return (
+    <Panel title="Download objects into a new version">
+      {isLoading ? <Text tone="muted">Reading which objects this system offers…</Text> : (
+        <Stack gap={4}>
+          <table className="w-full text-[13px]">
+            <thead><tr>
+              <th className={th} /><th className={th}>Object</th><th className={th}>Tables</th>
+              <th className={th}>Last download</th><th className={`${th} text-right`}>Records</th>
+            </tr></thead>
+            <tbody>
+              {objects.map((o) => (
+                <tr key={o.object} className="cursor-pointer hover:bg-[var(--aurora-elev-2-bg)]" onClick={() => toggle(o.object)}>
+                  <td className={td}><input type="checkbox" checked={picked.has(o.object)} readOnly aria-label={`Select ${o.object}`} /></td>
+                  <td className={td}>{formatModuleName(o.object)}</td>
+                  <td className={`${td} font-mono`} title={o.tables.join(", ")}>
+                    {o.tables.slice(0, 5).join(", ")}{o.tables.length > 5 ? ` +${o.tables.length - 5}` : ""}
+                  </td>
+                  <td className={td}>{o.last_download ? relativeTime(o.last_download.at) : "never"}</td>
+                  <td className={`${td} text-right aurora-number`}>{o.last_download?.records?.toLocaleString() ?? "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {chosen.length > 0 && (
+            <Stack gap={3}>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {filters.map((k) => (
+                  <Field key={k} label={SCOPE_LABEL[k]} helper="Comma-separated; empty = all">
+                    {({ controlId }) => (
+                      <Input id={controlId} value={scopeText[k] ?? ""} placeholder="e.g. 1000, 2000"
+                        onChange={(e) => setScopeText({ ...scopeText, [k]: e.target.value })} />
+                    )}
+                  </Field>
+                ))}
+                {windowed.length > 0 && (
+                  <>
+                    <Field label="Documents from" helper={`Replaces the default window for ${windowed.join(", ")}`}>
+                      {({ controlId }) => <Input id={controlId} type="date" value={dates.date_from ?? ""}
+                        onChange={(e) => setDates({ ...dates, date_from: e.target.value || undefined })} />}
+                    </Field>
+                    <Field label="Documents to">
+                      {({ controlId }) => <Input id={controlId} type="date" value={dates.date_to ?? ""}
+                        onChange={(e) => setDates({ ...dates, date_to: e.target.value || undefined })} />}
+                    </Field>
+                  </>
+                )}
+                <Field label="Version label" helper="Optional, e.g. “Before vendor clean-up”">
+                  {({ controlId }) => <Input id={controlId} value={label} maxLength={120} onChange={(e) => setLabel(e.target.value)} />}
+                </Field>
+              </div>
+              <Text variant="text-small" tone="secondary">
+                Organisational filters restrict every table that carries the field (e.g. LFB1 by company code);
+                general data without it (e.g. LFA1) is read in full so no record loses its context.
+              </Text>
+              <Stack direction="row" gap={2}>
+                <Button variant="secondary" leadingIcon={<Download size={14} />} disabled={download.isPending}
+                  onClick={() => download.mutate(false)}>
+                  Download {chosen.length} object{chosen.length === 1 ? "" : "s"} to a new version
+                </Button>
+                <Button leadingIcon={<Play size={14} />} disabled={download.isPending} onClick={() => download.mutate(true)}>
+                  Download and analyse
+                </Button>
+              </Stack>
+            </Stack>
+          )}
+        </Stack>
+      )}
+    </Panel>
+  );
+}
+
+// ── versions of this system ──────────────────────────────────────────────────
+
+export function VersionsTab({ id, canAnalyse }: { id: string; canAnalyse: boolean }) {
+  const qc = useQueryClient();
+  const { data: versions = [] } = useQuery({
+    queryKey: ["system-versions", id],
+    queryFn: () => getSystemVersions(id),
+    refetchInterval: (q) => ((q.state.data ?? []).some((v) => ["pending", "running"].includes(v.status)) ? 4000 : false),
+  });
+  const analyse = useMutation({
+    mutationFn: analyseVersion,
+    onSuccess: () => { toast.success("Analysis started"); qc.invalidateQueries({ queryKey: ["system-versions", id] }); },
+    onError: (e) => toast.error((e as Error).message || "Analysis refused"),
+  });
+  if (!versions.length) return <Text tone="muted">No versions yet — choose objects above and download them.</Text>;
+  return (
+    <table className="w-full text-[13px]">
+      <thead><tr>
+        <th className={th}>Downloaded</th><th className={th}>Label</th><th className={th}>Objects · records</th>
+        <th className={th}>Scope</th><th className={th}>Status</th><th className={th}>DQS</th><th className={th} />
+      </tr></thead>
+      <tbody>
+        {versions.map((v) => (
+          <tr key={v.id}>
+            <td className={td}>{new Date(v.run_at).toLocaleString()}{v.baseline && <> <Chip tone="info">baseline</Chip></>}</td>
+            <td className={td}>{v.label ?? "—"}</td>
+            <td className={td}>
+              {v.objects.map((o) => (
+                <div key={o}>{formatModuleName(o)} <span className="aurora-number text-[var(--aurora-fg-tertiary)]">{v.records[o]?.toLocaleString() ?? ""}</span></div>
+              ))}
+            </td>
+            <td className={`${td} font-mono text-[12px]`}>
+              {Object.entries(v.scope).map(([k, val]) => `${k}: ${Array.isArray(val) ? val.join(",") : val}`).join(" · ") || "all"}
+            </td>
+            <td className={td}><Chip tone={STATUS_TONE[v.status] ?? "neutral"}>{v.status === "extracted" ? "downloaded, not analysed" : v.status}</Chip></td>
+            <td className={td}>
+              {Object.entries(v.dqs).map(([o, d]) => (
+                <div key={o} className="aurora-number">{d?.toFixed(1) ?? "—"}</div>
+              ))}
+            </td>
+            <td className={`${td} text-right`}>
+              <Stack direction="row" gap={2} justify="end">
+                {canAnalyse && v.analysable && (
+                  <Button size="sm" variant={v.status === "extracted" ? "primary" : "ghost"} disabled={analyse.isPending}
+                    onClick={() => analyse.mutate(v.id)}>
+                    {v.status === "extracted" ? "Run analysis" : "Re-analyse"}
+                  </Button>
+                )}
+                {Object.keys(v.dqs).length > 0 && (
+                  <Link className="text-[13px] underline" href={`/findings?version_id=${v.id}`}>Findings</Link>
+                )}
+              </Stack>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+// ── trends per object ────────────────────────────────────────────────────────
+
+export function TrendsTab({ id }: { id: string }) {
+  const { data: overview } = useQuery({ queryKey: ["trends", id], queryFn: () => getTrends(id) });
+  const [object, setObject] = useState<string | null>(null);
+  const active = object ?? overview?.summary[0]?.object ?? null;
+  const { data: detail } = useQuery({
+    queryKey: ["trends", id, active],
+    queryFn: () => getTrends(id, active as string),
+    enabled: Boolean(active),
+  });
+  const points = active ? detail?.series[active] ?? [] : [];
+
+  if (!overview?.summary.length) {
+    return <Text tone="muted">Trends appear once this system has at least one analysed version — each new download adds a point.</Text>;
+  }
+  return (
+    <Stack gap={5}>
+      <table className="w-full text-[13px]">
+        <thead><tr>
+          <th className={th}>Object</th><th className={`${th} text-right`}>DQS</th><th className={th}>vs previous</th>
+          <th className={th}>vs baseline</th><th className={`${th} text-right`}>Failing records</th><th className={th}>vs previous</th>
+          <th className={th}>Runs</th><th className={th} />
+        </tr></thead>
+        <tbody>
+          {overview.summary.map((s) => (
+            <tr key={s.object} onClick={() => setObject(s.object)}
+              className={`cursor-pointer hover:bg-[var(--aurora-elev-2-bg)] ${s.object === active ? "bg-[var(--aurora-accent-selected-bg)]" : ""}`}>
+              <td className={td}>{formatModuleName(s.object)}</td>
+              <td className={`${td} text-right aurora-number`}>{s.dqs?.toFixed(1) ?? "—"}</td>
+              <td className={td}>{delta(s.dqs_delta)}</td>
+              <td className={td}>{s.vs_baseline ? <>{delta(s.vs_baseline.dqs_delta)} <span className="text-[11px] text-[var(--aurora-fg-muted)]">{s.vs_baseline.pinned ? "pinned" : "first run"}</span></> : "—"}</td>
+              <td className={`${td} text-right aurora-number`}>{s.failing_records.toLocaleString()}</td>
+              <td className={td}>{delta(s.failing_records_delta, true, 0)}</td>
+              <td className={`${td} aurora-number`}>{s.points}</td>
+              <td className={td}>{!s.comparable && <Chip tone="warning">not like-for-like</Chip>}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {active && points.length > 0 && (
+        <Stack gap={3}>
+          <Text variant="text-lead">{formatModuleName(active)}</Text>
+          {points.some((p) => !p.comparable) && (
+            <Banner tone="warning" title="Some runs are not like-for-like">
+              A change there may come from what was downloaded or which rules ran, not from the data getting better or worse.
+            </Banner>
+          )}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <LineChart ariaLabel="DQS per run" height={220}
+              data={points.map((p) => ({ run: new Date(p.run_at).toLocaleDateString(), dqs: p.dqs ?? 0 }))}
+              xKey="run" series={[{ key: "dqs", label: "DQS" }]} yFormatter={(v) => v.toFixed(0)} />
+            <LineChart ariaLabel="Failing records per run" height={220}
+              data={points.map((p) => ({ run: new Date(p.run_at).toLocaleDateString(), failing: p.failing_records,
+                opened: p.issues_opened, resolved: p.issues_resolved }))}
+              xKey="run" series={[{ key: "failing", label: "Failing records" }, { key: "opened", label: "Newly failing" },
+                { key: "resolved", label: "Verified fixed" }]} />
+          </div>
+          <table className="w-full text-[13px]">
+            <thead><tr>
+              <th className={th}>Run</th><th className={`${th} text-right`}>Records</th><th className={`${th} text-right`}>DQS</th>
+              <th className={th}>Δ</th><th className={`${th} text-right`}>Failing</th><th className={`${th} text-right`}>New</th>
+              <th className={`${th} text-right`}>Fixed</th><th className={th}>Comparable</th><th className={th} />
+            </tr></thead>
+            <tbody>
+              {[...points].reverse().map((p) => (
+                <tr key={p.version_id}>
+                  <td className={td}>{new Date(p.run_at).toLocaleString()} {p.label && <span className="text-[var(--aurora-fg-tertiary)]">· {p.label}</span>}{p.baseline && <> <Chip tone="info">baseline</Chip></>}</td>
+                  <td className={`${td} text-right aurora-number`}>{p.records?.toLocaleString() ?? "—"}</td>
+                  <td className={`${td} text-right aurora-number`}>{p.dqs?.toFixed(1) ?? "—"}</td>
+                  <td className={td}>{delta(p.dqs_delta)}</td>
+                  <td className={`${td} text-right aurora-number`}>{p.failing_records.toLocaleString()}</td>
+                  <td className={`${td} text-right aurora-number`}>{p.issues_opened.toLocaleString()}</td>
+                  <td className={`${td} text-right aurora-number`}>{p.issues_resolved.toLocaleString()}</td>
+                  <td className={td}>{p.comparable ? "yes" : p.flags.map((f) => <Chip key={f} tone="warning">{FLAG_LABEL[f]}</Chip>)}</td>
+                  <td className={td}><Link className="underline" href={`/versions`}>Compare</Link></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Stack>
+      )}
+    </Stack>
+  );
+}

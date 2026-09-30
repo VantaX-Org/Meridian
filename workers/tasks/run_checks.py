@@ -1,5 +1,7 @@
 import json
+from datetime import datetime, timezone
 import logging
+import os
 import traceback
 
 from sqlalchemy import text
@@ -42,10 +44,35 @@ def _live_reference_values(engine, tenant_id: str, metadata: dict) -> dict[str, 
     return out
 
 
+def rule_set_fingerprint(modules: list[str], overrides: dict) -> str:
+    """Identifies the rules a run applied (YAML + governance + app version) — trend
+    points produced by different rule sets are flagged as not comparable."""
+    import hashlib
+    from pathlib import Path
+
+    from checks.runner import _find_module_yaml
+
+    h = hashlib.sha256()
+    for m in sorted(modules):
+        try:
+            h.update(Path(_find_module_yaml(m)).read_bytes())
+        except FileNotFoundError:
+            h.update(m.encode())
+    h.update(json.dumps(overrides, sort_keys=True).encode())
+    version_file = Path("/app/VERSION")
+    if version_file.exists():
+        h.update(version_file.read_bytes())
+    return h.hexdigest()[:16]
+
+
+# A full extract (e.g. a quarter of BSEG) needs far more than the old 5 minutes.
+_CHECKS_LIMIT = int(os.getenv("MERIDIAN_CHECKS_TIME_LIMIT", "1800"))
+
+
 @celery_app.task(bind=True, name="workers.tasks.run_checks.run_checks",
-                 soft_time_limit=300, time_limit=360)
-def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
-    """Execute the full check suite against a dataset."""
+                 soft_time_limit=_CHECKS_LIMIT, time_limit=_CHECKS_LIMIT + 60)
+def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanalyse: bool = False):
+    """Execute the full check suite against a dataset (``reanalyse``: again, on the same version)."""
     logger.info(f"run_checks started: version_id={version_id}, tenant_id={tenant_id}")
 
     engine = get_sync_engine()
@@ -60,7 +87,7 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
             {"vid": version_id, "tid": tenant_id},
         )
         row = result.fetchone()
-        if row and row[0] == "complete":
+        if row and row[0] == "complete" and not reanalyse:
             logger.info(f"Version {version_id} already complete, skipping")
             return {"version_id": version_id, "status": "complete"}
 
@@ -297,7 +324,12 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
                             CAST(:value_fix_map AS jsonb),
                             CAST(:record_fixes AS jsonb)
                         )
-                        ON CONFLICT (version_id, check_id, tenant_id) DO NOTHING
+                        ON CONFLICT (version_id, check_id, tenant_id) DO UPDATE SET
+                            module = EXCLUDED.module, severity = EXCLUDED.severity,
+                            dimension = EXCLUDED.dimension, affected_count = EXCLUDED.affected_count,
+                            total_count = EXCLUDED.total_count, pass_rate = EXCLUDED.pass_rate,
+                            details = EXCLUDED.details, rule_context = EXCLUDED.rule_context,
+                            value_fix_map = EXCLUDED.value_fix_map, record_fixes = EXCLUDED.record_fixes
                     """),
                     finding_rows,
                 )
@@ -320,6 +352,16 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
                 percent_complete=100,
             )
 
+            if reanalyse:
+                # checks that no longer run (disabled / removed) drop out of this version,
+                # unless an exception or write-back record still points at them
+                session.execute(text("""
+                    DELETE FROM findings f
+                     WHERE f.version_id = :vid AND NOT (f.check_id = ANY(:ids))
+                       AND NOT EXISTS (SELECT 1 FROM exceptions e WHERE e.linked_finding_id = f.id)
+                       AND NOT EXISTS (SELECT 1 FROM writeback_log w WHERE w.finding_id = f.id)
+                """), {"vid": version_id, "ids": [r.check_id for r in all_results]})
+
             # Step 9b: record-level findings + cross-run issue lifecycle
             # (savepoint: a failure here never loses the findings above).
             try:
@@ -330,17 +372,24 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
             except Exception as e:
                 logger.error(f"record-level tracking failed for {version_id}: {e}", exc_info=True)
 
-            # Step 10: Update version with DQS summary
+            # Step 10: Update version with DQS summary + which rule set produced it
+            analysis = {"at": datetime.now(timezone.utc).isoformat(), "rule_set": rule_set_fingerprint(modules, rule_overrides),
+                        "checks": len(all_results)}
             session.execute(
                 text("""
                     UPDATE analysis_versions
-                    SET status = 'complete', dqs_summary = CAST(:summary AS jsonb)
+                    SET status = 'complete', dqs_summary = CAST(:summary AS jsonb),
+                        metadata = COALESCE(metadata, '{}'::jsonb)
+                            || jsonb_build_object('rule_set', CAST(:rs AS text), 'analysed_at', CAST(:at AS text))
+                            || jsonb_build_object('analyses', COALESCE(metadata->'analyses', '[]'::jsonb)
+                                                              || jsonb_build_array(CAST(:an AS jsonb)))
                     WHERE id = :vid AND tenant_id = :tid
                 """),
                 {
                     "vid": version_id,
                     "tid": tenant_id,
                     "summary": json.dumps(dqs_summary),
+                    "rs": analysis["rule_set"], "at": analysis["at"], "an": json.dumps(analysis),
                 },
             )
             session.commit()

@@ -81,12 +81,25 @@ def track(session, tenant_id: str, version_id: str, scope: str, results, frames)
     _copy(session, "tmp_present", ("grain", "record_key"), present_keys(results, frames))
 
     p = {"tid": tenant_id, "vid": version_id, "scope": scope}
+    # re-analysis of a version replaces its failing records
+    session.execute(text("DELETE FROM finding_records WHERE version_id = :vid"), p)
     session.execute(text("""
         INSERT INTO finding_records (tenant_id, version_id, check_id, module, grain, record_key)
         SELECT CAST(:tid AS uuid), CAST(:vid AS uuid), check_id, module, NULLIF(grain, ''), record_key
         FROM tmp_finding_records
         ON CONFLICT DO NOTHING
     """), p)
+
+    # Only the newest run of this system drives the issue lifecycle — re-analysing
+    # an older version must not resolve or re-open anything.
+    newest = session.execute(text("""
+        SELECT id::text FROM analysis_versions
+         WHERE COALESCE(metadata->>'system_id', 'upload') = :scope AND status NOT IN ('failed', 'extracted')
+         ORDER BY run_at DESC LIMIT 1
+    """), p).scalar()
+    if newest and newest != str(version_id):
+        return {"failing_records": failing, "created": 0, "reopened": 0, "auto_resolved": 0,
+                "lifecycle": "skipped (not the newest run)"}
 
     reopened = session.execute(text("""
         WITH hit AS (
@@ -127,7 +140,8 @@ def track(session, tenant_id: str, version_id: str, scope: str, results, frames)
                SET status = 'resolved', resolution = 'verified_fixed', resolved_version = :vid,
                    resolved_at = now(), updated_at = now()
              WHERE ri.tenant_id = :tid AND ri.scope = :scope AND ri.status <> 'resolved'
-               AND ri.last_seen_version <> :vid
+               AND NOT EXISTS (SELECT 1 FROM finding_records fr WHERE fr.version_id = :vid
+                                  AND fr.check_id = ri.check_id AND fr.record_key = ri.record_key)
                AND ri.check_id IN (SELECT check_id FROM ran)
                AND EXISTS (SELECT 1 FROM tmp_present tp
                             WHERE tp.grain = COALESCE(ri.grain, '') AND tp.record_key = ri.record_key)

@@ -78,7 +78,57 @@ def render_where(template: str, today: Optional[date] = None) -> str:
     return re.sub(r"\{years_ago:(\d+)\}", lambda m: str(today.year - int(m.group(1))), out)
 
 
-def plan_modules(modules: list[str], dictionary: Dictionary) -> dict[str, TablePlan]:
+# Scope filters a download can carry → the SAP field they restrict. Applied to
+# every planned table that has the field; tables without it are read in full.
+SCOPE_FIELDS = {"company_codes": "BUKRS", "plants": "WERKS", "sales_orgs": "VKORG", "purchasing_orgs": "EKORG"}
+_SCOPE_VALUE = re.compile(r"^[A-Z0-9_]{1,10}$")
+_SCOPE_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def normalise_scope(scope: Optional[dict]) -> dict:
+    """Validated scope ({} = everything). Values go into RFC WHERE clauses, so
+    only organisational-unit codes and ISO dates are accepted."""
+    out: dict = {}
+    for key in SCOPE_FIELDS:
+        vals = sorted({str(v).strip().upper() for v in (scope or {}).get(key) or [] if str(v).strip()})
+        bad = [v for v in vals if not _SCOPE_VALUE.match(v)]
+        if bad:
+            raise ValueError(f"Invalid {key}: {', '.join(bad)}")
+        if vals:
+            out[key] = vals
+    for key in ("date_from", "date_to"):
+        v = (scope or {}).get(key)
+        if v:
+            if not _SCOPE_DATE.match(str(v)):
+                raise ValueError(f"{key} must be YYYY-MM-DD")
+            out[key] = str(v)
+    if out.get("date_from") and out.get("date_to") and out["date_from"] > out["date_to"]:
+        raise ValueError("date_from is after date_to")
+    return out
+
+
+def _scope_filters(table: str, dictionary: Dictionary, scope: dict) -> list[str]:
+    out = []
+    for key, field in SCOPE_FIELDS.items():
+        if scope.get(key) and dictionary.field(table, field) is not None:
+            out.append(f"{field} IN (" + ", ".join(f"'{v}'" for v in scope[key]) + ")")
+    return out
+
+
+def _window(template: str, scope: dict) -> str:
+    """The table's default window, or the download's date range on the same field."""
+    if not (scope.get("date_from") or scope.get("date_to")):
+        return render_where(template)
+    field = template.split()[0]
+    parts = []
+    if scope.get("date_from"):
+        parts.append(f"{field} >= '{scope['date_from'].replace('-', '')}'")
+    if scope.get("date_to"):
+        parts.append(f"{field} <= '{scope['date_to'].replace('-', '')}'")
+    return " AND ".join(parts)
+
+
+def plan_modules(modules: list[str], dictionary: Dictionary, scope: Optional[dict] = None) -> dict[str, TablePlan]:
     """Tables/fields to extract so every rule of ``modules`` can be evaluated."""
     from checks.runner import _find_module_yaml, rule_columns
 
@@ -132,7 +182,9 @@ def plan_modules(modules: list[str], dictionary: Dictionary) -> dict[str, TableP
         w = _windows().get(t) or {}
         filters = [f"{f} = '{v or ' '}'" for e in edges if e.child == t for f, v in e.filter]
         if w.get("where"):
-            filters.append(render_where(w["where"]))
+            filters.append(_window(w["where"], scope or {}))
+        if p.purpose == "data":
+            filters += _scope_filters(t, dictionary, scope or {})
         p.where = " AND ".join(filters) or None
         p.via = w.get("via") if w.get("via") in plans else None
     return plans

@@ -204,6 +204,27 @@ async def compare_records_list(
     return {"v1": str(vid1), "v2": str(vid2), "change": change, "record_keys": [r[0] for r in rows]}
 
 
+@router.post("/versions/{version_id}/analyse", status_code=202, dependencies=[Depends(require_permission("analyse"))])
+async def analyse_version(version_id: str, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+    """Run (or re-run, e.g. after a rule change) the analysis on a stored version's data."""
+    from workers.tasks.run_checks import run_checks
+
+    await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
+    vid = uuid.UUID(version_id)
+    row = (await db.execute(text("SELECT status, metadata->>'dataset_path' FROM analysis_versions WHERE id = :v"),
+                            {"v": vid})).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Version not found")
+    if not row[1]:
+        raise HTTPException(status_code=409, detail="This version has no stored dataset to analyse.")
+    if row[0] in ("pending", "running"):
+        raise HTTPException(status_code=409, detail="An analysis of this version is already running.")
+    await db.execute(text("UPDATE analysis_versions SET status = 'pending' WHERE id = :v"), {"v": vid})
+    await db.commit()
+    job = run_checks.delay(version_id, str(tenant.id), row[1], reanalyse=row[0] != "extracted")
+    return {"version_id": version_id, "task_id": job.id, "status": "pending"}
+
+
 @router.post("/versions/{version_id}/baseline", dependencies=[Depends(require_permission("analyse"))])
 async def pin_baseline(
     version_id: str,

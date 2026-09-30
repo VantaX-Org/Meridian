@@ -8,6 +8,7 @@ coverage (rows, window, truncation, failures) is stored on the version.
 """
 
 import io
+from datetime import datetime, timezone
 import json
 import logging
 import uuid
@@ -30,8 +31,14 @@ logger = logging.getLogger("meridian.workers.extraction")
     acks_late=True,
     reject_on_worker_lost=True,
 )
-def run_extraction(self, tenant_id, system_id, modules, include_config=True, sync_type="both"):
-    """Extract data for ``modules`` from ``system_id`` and enqueue the check pipeline."""
+def run_extraction(self, tenant_id, system_id, modules, include_config=True, sync_type="both",
+                   scope=None, analyse=True, label=None):
+    """Download ``modules`` (business objects) from ``system_id`` into a new version.
+
+    The version is stored as ``extracted`` with its objects, scope and per-object
+    record counts; analysis runs now when ``analyse`` else on request
+    (POST /api/v1/versions/{id}/analyse). Every download is a new version.
+    """
     engine = get_sync_engine()
     version_id = str(uuid.uuid4())
     try:
@@ -43,7 +50,7 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
             if sync_type == "config":
                 return manager.sync_config(system_id, modules)
 
-            frames, coverage = manager.extract(system_id, modules)
+            frames, coverage = manager.extract(system_id, modules, scope=scope)
             # refresh the live configuration the value rules compare against
             from workers.tasks.run_discovery import _store_config
             for c in coverage:
@@ -69,13 +76,19 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
                 # for data the checks cannot read.
                 upload_file(settings.minio_bucket_uploads, f"{prefix}{table}.parquet", buf.getvalue())
 
+            from checks.frames import _graph
+            anchors = _graph()[1]
+            object_rows = {m: len(data_tables[anchors[m]]) for m in modules if anchors.get(m) in data_tables}
             session.execute(
                 text("""
-                    INSERT INTO analysis_versions (id, tenant_id, status, metadata)
-                    VALUES (:vid, :tid, 'pending', CAST(:meta AS jsonb))
+                    INSERT INTO analysis_versions (id, tenant_id, status, label, metadata)
+                    VALUES (:vid, :tid, :st, :label, CAST(:meta AS jsonb))
                 """),
-                {"vid": version_id, "tid": tenant_id, "meta": json.dumps({
+                {"vid": version_id, "tid": tenant_id, "st": "pending" if analyse else "extracted",
+                 "label": label, "meta": json.dumps({
                     "modules": modules, "source": "extraction", "system_id": system_id,
+                    "scope": scope or {}, "downloaded_at": datetime.now(timezone.utc).isoformat(),
+                    "dataset_path": prefix, "object_rows": object_rows,
                     "coverage": coverage, "row_count": int(sum(len(d) for d in data_tables.values())),
                 })},
             )
@@ -85,9 +98,10 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
             _mark_modules(session, tenant_id, system_id, modules, "partial" if failed else "success",
                           int(sum(len(d) for d in data_tables.values())))
 
-        from workers.tasks.run_checks import run_checks
-        run_checks.delay(version_id, tenant_id, prefix)
-        logger.info(f"Extraction {version_id}: {len(data_tables)} tables, checks enqueued")
+        if analyse:
+            from workers.tasks.run_checks import run_checks
+            run_checks.delay(version_id, tenant_id, prefix)
+        logger.info(f"Extraction {version_id}: {len(data_tables)} tables, analysis {'enqueued' if analyse else 'on request'}")
         return {"status": "success", "version_id": version_id, "coverage": coverage}
 
     except SoftTimeLimitExceeded:

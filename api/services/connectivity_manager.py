@@ -184,7 +184,8 @@ class ConnectivityManager:
 
     # -- Extraction (rules-driven, per-table) -----------------------------------
 
-    def extract(self, system_id: str, modules: list[str], max_rows: int = 0) -> tuple[dict[str, pd.DataFrame], list[dict]]:
+    def extract(self, system_id: str, modules: list[str], max_rows: int = 0,
+                scope: Optional[dict] = None) -> tuple[dict[str, pd.DataFrame], list[dict]]:
         """Extract everything the rules of ``modules`` need from one system.
 
         Returns ``({TABLE: frame with TABLE.FIELD columns}, coverage)``. The
@@ -211,7 +212,7 @@ class ConnectivityManager:
                 params.pop(key, None)
         try:
             if system_type in ABAP_SYSTEM_TYPES:
-                plans = plan_modules(modules, dictionary)
+                plans = plan_modules(modules, dictionary, scope)
                 raw: dict[str, pd.DataFrame] = {}
                 for table in read_order(plans):
                     plan = plans[table]

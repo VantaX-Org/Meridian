@@ -329,3 +329,91 @@ def test_hq_rule_governance_round_trip(app_engine, monkeypatch):
         o = load_overrides(s)
         assert o["BP001"]["enabled"] is False and o["BP002"]["severity"] == "critical"
         assert s.execute(text("SELECT customer_field FROM field_mappings WHERE standard_field = 'BUT000.BU_TYPE'")).scalar() == "ZTYPE"
+
+
+def test_versions_and_trends_per_object(app_engine):
+    """Three analysed downloads of one system: deltas, comparability flags, baseline, re-analyse gate."""
+    import asyncio
+    from unittest.mock import patch
+
+    from fastapi import FastAPI
+    from httpx import ASGITransport, AsyncClient
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+    from api.deps import Tenant, get_db, get_tenant
+    from api.routes.system_objects import router as objects_router
+    from api.routes.versions import router as versions_router
+
+    owner, app_eng = app_engine
+    tid, sid = str(uuid.uuid4()), str(uuid.uuid4())
+    with owner.begin() as c:
+        c.execute(text("INSERT INTO tenants (id, name) VALUES (:a, 'T6')"), {"a": tid})
+    with app_eng.begin() as c:
+        c.execute(text("SET LOCAL app.tenant_id = :t"), {"t": tid})
+        c.execute(text("INSERT INTO sap_systems (id, tenant_id, name) VALUES (:s, :t, 'PRD')"), {"s": sid, "t": tid})
+        vids = []
+        for i, (dqs, rows, scope, rules, failing) in enumerate([
+            (80.0, 100, {}, "r1", ["1", "2", "3"]),
+            (86.0, 104, {}, "r1", ["2"]),
+            (90.0, 60, {"company_codes": ["1000"]}, "r2", []),
+        ]):
+            vid = str(uuid.uuid4())
+            vids.append(vid)
+            meta = {"system_id": sid, "modules": ["accounts_payable"], "object_rows": {"accounts_payable": rows},
+                    "scope": scope, "rule_set": rules, "dataset_path": f"staging/{vid}/",
+                    **({"baseline": True} if i == 0 else {})}
+            c.execute(text("INSERT INTO analysis_versions (id, tenant_id, status, run_at, metadata, dqs_summary) "
+                           "VALUES (:v, :t, 'complete', now() - make_interval(days => :d), CAST(:m AS jsonb), "
+                           "CAST(:q AS jsonb))"),
+                      {"v": vid, "t": tid, "d": 10 - i, "m": json.dumps(meta),
+                       "q": json.dumps({"accounts_payable": {"composite_score": dqs, "dimension_scores": {"completeness": dqs}}})})
+            for k in failing:
+                c.execute(text("INSERT INTO finding_records (tenant_id, version_id, check_id, module, record_key) "
+                               "VALUES (:t, :v, 'AP001', 'accounts_payable', :k)"), {"t": tid, "v": vid, "k": f"LIFNR={k}"})
+
+    aeng = create_async_engine(app_eng.url.set(drivername="postgresql+asyncpg"))
+    factory = async_sessionmaker(aeng, expire_on_commit=False)
+
+    async def _db():
+        async with factory() as s:
+            yield s
+
+    api = FastAPI()
+    api.include_router(objects_router)
+    api.include_router(versions_router)
+    api.dependency_overrides[get_db] = _db
+    api.dependency_overrides[get_tenant] = lambda: Tenant(uuid.UUID(tid), "T6", [])
+
+    async def scenario():
+        h = {"X-User-Role": "analyst"}
+        async with AsyncClient(transport=ASGITransport(app=api), base_url="http://t") as c:
+            vs = (await c.get(f"/api/v1/systems/{sid}/versions", headers=h)).json()["versions"]
+            assert [v["records"]["accounts_payable"] for v in vs] == [60, 104, 100]  # newest first
+            t = (await c.get(f"/api/v1/systems/{sid}/trends", headers=h, params={"object": "accounts_payable"})).json()
+            pts = t["series"]["accounts_payable"]
+            assert [p["failing_records"] for p in pts] == [3, 1, 0]
+            assert pts[1]["dqs_delta"] == 6.0 and pts[1]["failing_records_delta"] == -2 and pts[1]["comparable"]
+            assert set(pts[2]["flags"]) == {"scope_changed", "rules_changed", "volume_shift"}
+            s = t["summary"][0]
+            assert s["vs_baseline"] == {"version_id": vids[0], "pinned": True, "dqs_delta": 10.0,
+                                        "failing_records_delta": -3}
+            with patch("workers.tasks.run_checks.run_checks.delay") as delay:
+                delay.return_value.id = "job-1"
+                r = await c.post(f"/api/v1/versions/{vids[1]}/analyse", headers={"X-User-Role": "steward"})
+                assert r.status_code == 202
+                assert delay.call_args.kwargs["reanalyse"] is True
+                again = await c.post(f"/api/v1/versions/{vids[1]}/analyse", headers={"X-User-Role": "steward"})
+                assert again.status_code == 409  # already pending
+
+    async def main():
+        try:
+            await scenario()
+        finally:
+            await aeng.dispose()
+
+    os.environ["MERIDIAN_DEV_ROLE_HEADER"] = "1"
+    try:
+        asyncio.run(main())
+    finally:
+        os.environ.pop("MERIDIAN_DEV_ROLE_HEADER", None)

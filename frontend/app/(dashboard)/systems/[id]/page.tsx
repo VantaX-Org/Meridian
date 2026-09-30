@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, Play, RefreshCw, ScanSearch } from "lucide-react";
+import { ArrowLeft, RefreshCw, ScanSearch } from "lucide-react";
 import {
   Banner,
   Button,
@@ -23,7 +23,8 @@ import {
   type ChipTone,
 } from "@/components/aurora";
 import { PageHead } from "@/components/meridian/atoms";
-import { extractModules, getSystemModules, getSystems, testConnection } from "@/lib/api/connectivity";
+import { getSystems, testConnection } from "@/lib/api/connectivity";
+import { ObjectsPanel, TrendsTab, VersionsTab } from "./versions";
 import {
   discoverSystem,
   getDesign,
@@ -34,10 +35,10 @@ import {
   getDesignTable,
   getDesignTables,
 } from "@/lib/api/source-design";
-import { formatModuleName, relativeTime } from "@/lib/format";
+import { relativeTime } from "@/lib/format";
 import { useRole } from "@/hooks/use-role";
 
-type Tab = "tables" | "config" | "coverage" | "snapshots";
+type Tab = "versions" | "trends" | "tables" | "config" | "coverage" | "snapshots";
 const PAGE = 100;
 
 const STATUS_TONE: Record<string, ChipTone> = {
@@ -55,8 +56,7 @@ export default function SystemDesignPage() {
   const { id } = useParams<{ id: string }>();
   const qc = useQueryClient();
   const { can } = useRole();
-  const [tab, setTab] = useState<Tab>("tables");
-  const [modules, setModules] = useState<Set<string>>(new Set());
+  const [tab, setTab] = useState<Tab>("versions");
 
   const { data: systems = [] } = useQuery({ queryKey: ["systems"], queryFn: getSystems });
   const system = systems.find((s) => s.id === id);
@@ -65,7 +65,6 @@ export default function SystemDesignPage() {
     queryFn: () => getDesign(id),
     refetchInterval: (q) => (["queued", "running"].includes(q.state.data?.discovery_status ?? "") ? 3000 : false),
   });
-  const { data: sysModules = [] } = useQuery({ queryKey: ["system-modules", id], queryFn: () => getSystemModules(id) });
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["design", id] });
@@ -81,12 +80,6 @@ export default function SystemDesignPage() {
     onSuccess: () => { toast.success("Discovery started — reading the system's dictionary and configuration"); refresh(); },
     onError: (e) => toast.error((e as Error).message || "Could not start discovery"),
   });
-  const extract = useMutation({
-    mutationFn: () => extractModules(id, Array.from(modules), true, "full"),
-    onSuccess: () => toast.success("Extraction started — analysis runs automatically when it finishes"),
-    onError: (e) => toast.error((e as Error).message || "Could not start extraction"),
-  });
-
   const snap = design?.snapshot;
   const running = ["queued", "running"].includes(design?.discovery_status ?? "");
   const cov = snap?.coverage_summary ?? {};
@@ -144,49 +137,27 @@ export default function SystemDesignPage() {
         </Stack>
       )}
 
-      {can("trigger_sync") && sysModules.length > 0 && (
-        <Panel title="Extract & analyse">
-          <Stack gap={3}>
-            <Stack direction="row" gap={2} wrap>
-              {sysModules.map((m) => (
-                <Chip key={m.module} selected={modules.has(m.module)} onClick={() => setModules((prev) => {
-                  const next = new Set(prev);
-                  if (next.has(m.module)) next.delete(m.module);
-                  else next.add(m.module);
-                  return next;
-                })}>
-                  {formatModuleName(m.module)}
-                  {m.last_synced_at && <span className="opacity-70"> · {relativeTime(m.last_synced_at)}</span>}
-                </Chip>
-              ))}
-            </Stack>
-            <div>
-              <Button size="sm" leadingIcon={<Play size={14} />} disabled={modules.size === 0 || extract.isPending}
-                onClick={() => extract.mutate()}>
-                Extract {modules.size || ""} module{modules.size === 1 ? "" : "s"} and run checks
-              </Button>
-            </div>
-          </Stack>
-        </Panel>
-      )}
+      {can("trigger_sync") && <ObjectsPanel id={id} onDownloaded={() => setTab("versions")} />}
 
-      {snap && (
-        <Panel>
-          <Tabs<Tab> ariaLabel="System design" value={tab} onValueChange={setTab}
-            items={[
-              { id: "tables", label: "Data dictionary", count: snap.tables },
-              { id: "config", label: "Configuration", count: design?.configuration.length },
-              { id: "coverage", label: "Coverage" },
-              { id: "snapshots", label: "History" },
-            ]} />
-          <div className="mt-[var(--aurora-space-4)]">
-            {tab === "tables" && <TablesTab id={id} />}
-            {tab === "config" && design && <ConfigTab id={id} tables={design.configuration} />}
-            {tab === "coverage" && <CoverageTab id={id} />}
-            {tab === "snapshots" && <SnapshotsTab id={id} />}
-          </div>
-        </Panel>
-      )}
+      <Panel>
+        <Tabs<Tab> ariaLabel="System" value={tab} onValueChange={setTab}
+          items={[
+            { id: "versions", label: "Versions" },
+            { id: "trends", label: "Trends" },
+            { id: "tables", label: "Data dictionary", count: snap?.tables, disabled: !snap },
+            { id: "config", label: "Configuration", count: design?.configuration.length, disabled: !snap },
+            { id: "coverage", label: "Coverage", disabled: !snap },
+            { id: "snapshots", label: "History", disabled: !snap },
+          ]} />
+        <div className="mt-[var(--aurora-space-4)]">
+          {tab === "versions" && <VersionsTab id={id} canAnalyse={can("analyse")} />}
+          {tab === "trends" && <TrendsTab id={id} />}
+          {tab === "tables" && snap && <TablesTab id={id} />}
+          {tab === "config" && snap && design && <ConfigTab id={id} tables={design.configuration} />}
+          {tab === "coverage" && snap && <CoverageTab id={id} />}
+          {tab === "snapshots" && snap && <SnapshotsTab id={id} />}
+        </div>
+      </Panel>
     </div>
   );
 }
