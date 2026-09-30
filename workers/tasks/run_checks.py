@@ -125,6 +125,12 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
         tenant_weights = (tenant_row[0] if tenant_row else None) or {}
 
         from checks.frames import TableFrames
+        from api.services.source_design import dictionary_for
+
+        with Session(engine) as session:
+            session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+            # source system's own DDIC (live snapshot) over the SAP-standard bundle
+            dictionary = dictionary_for(session, metadata.get("system_id"))
 
         if parquet_path.endswith("/"):
             tables = {}
@@ -134,7 +140,7 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
                     tables[name[: -len(".parquet")]] = pd.read_parquet(io.BytesIO(_read(obj.object_name)))
             if not tables:
                 raise ValueError(f"No table parquet files under {parquet_path}")
-            frames = TableFrames(tables)
+            frames = TableFrames(tables, dictionary)
             df = None
             row_count = sum(len(t) for t in tables.values())
             col_count = sum(len(t.columns) for t in tables.values())
@@ -162,7 +168,7 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
             parquet_buf.seek(0)
             project = [c for c in all_cols if c in needed] if needed else None
             df = pd.read_parquet(parquet_buf, columns=project or None)
-            frames = TableFrames.from_flat(df)
+            frames = TableFrames.from_flat(df, dictionary)
             row_count = len(df)
             col_count = len(df.columns)
 
@@ -248,6 +254,31 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
                         )
         except Exception as e:
             logger.warning(f"Z-table check pass failed, continuing: {e}")
+
+        # Step 6d: DDIC conformance — every extracted field against the
+        # source system's own dictionary definition (type, length, case,
+        # fixed values, live check-table values).
+        try:
+            from checks.ddic_conformance import run_conformance
+            from checks.frames import tables_of
+            from checks.runner import get_required_columns
+            owner: dict[str, str] = {}
+            for m in modules:
+                try:
+                    for t in tables_of(get_required_columns(m)):
+                        owner.setdefault(t, m)
+                except FileNotFoundError:
+                    continue
+            table_frames = dict(frames.frames)
+            if frames.flat is not None:
+                for t in frames.unsplittable:
+                    table_frames[t] = frames.flat[[c for c in frames.flat.columns if c.startswith(t + ".")]]
+            for table, tdf in table_frames.items():
+                keys = [f"{table}.{k}" for k in dictionary.keys(table)]
+                all_results.extend(run_conformance(table, tdf, dictionary, owner.get(table, modules[0] if modules else ""),
+                                                   keys, live_refs))
+        except Exception as e:
+            logger.warning(f"DDIC conformance pass failed, continuing: {e}", exc_info=True)
 
         logger.info(f"Total check results: {len(all_results)}")
 

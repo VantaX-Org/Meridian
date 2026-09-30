@@ -83,6 +83,7 @@ class SPROReader:
         self,
         system_type: str,
         connection_params: dict[str, Any] | None = None,
+        snapshot_loader=None,
     ) -> None:
         """Initialise the SPRO reader.
 
@@ -95,6 +96,11 @@ class SPROReader:
         """
         self.system_type = system_type
         self.connection_params = connection_params
+        # Optional: table -> rows from the system's live configuration snapshot
+        # (config_snapshots, written by discovery/extraction). Read first.
+        self.snapshot_loader = snapshot_loader
+        # Provenance per module/table: live_snapshot | live | baseline | unavailable
+        self.sources: dict[str, dict[str, str]] = {}
 
         # Cache of already-read configuration — keyed by module name
         self._cache: dict[str, dict[str, pd.DataFrame]] = {}
@@ -127,21 +133,42 @@ class SPROReader:
                 f"Available modules: {', '.join(SPRO_REGISTRY.keys())}"
             )
 
-        if self.connection_params:
-            try:
-                result = self._read_from_sap(module, tables)
-                self._cache[module] = result
-                return result
-            except Exception as exc:
-                logger.warning(
-                    "Live SAP read failed for module '%s', falling back to baseline: %s",
-                    module,
-                    exc,
-                )
+        results: dict[str, pd.DataFrame] = {}
+        sources: dict[str, str] = {}
+        pending = list(tables)
 
-        result = self._read_from_baseline(module, tables)
-        self._cache[module] = result
-        return result
+        if self.snapshot_loader is not None:
+            still = []
+            for entry in pending:
+                rows = self.snapshot_loader(entry["table"])
+                if rows:
+                    results[entry["table"]] = pd.DataFrame(rows)
+                    sources[entry["table"]] = "live_snapshot"
+                else:
+                    still.append(entry)
+            pending = still
+
+        if self.connection_params and pending:
+            still = []
+            for entry in pending:
+                try:
+                    results[entry["table"]] = self._read_one(entry)
+                    sources[entry["table"]] = "live"
+                except Exception as exc:  # per table — one failure never hides the others
+                    logger.warning("Live read of %s failed for module %s: %s", entry["table"], module, exc)
+                    still.append(entry)
+            pending = still
+
+        if pending:
+            baseline = self._read_from_baseline(module, pending)
+            for entry in pending:
+                df = baseline.get(entry["table"], pd.DataFrame(columns=entry["fields"]))
+                results[entry["table"]] = df
+                sources[entry["table"]] = "baseline" if not df.empty else "unavailable"
+
+        self._cache[module] = results
+        self.sources[module] = sources
+        return results
 
     def get_valid_values(self, module: str, field: str) -> list[str]:
         """Return the list of valid values for *field* from cached config.
@@ -372,67 +399,26 @@ class SPROReader:
     # Private — live SAP read
     # ------------------------------------------------------------------
 
-    def _read_from_sap(
-        self,
-        module: str,
-        tables: list[SPROEntry],
-    ) -> dict[str, pd.DataFrame]:
-        """Read SPRO tables from a live SAP system.
-
-        Dispatches to the correct connector based on the ``read_method``
-        and ``connector`` fields in each registry entry.
-        """
-        results: dict[str, pd.DataFrame] = {}
-
-        for entry in tables:
-            table_name = entry["table"]
-            fields = entry["fields"]
-            read_method = entry.get("read_method", "rfc_read_table")
-            connector_type = entry.get("connector", "ecc")
-
-            try:
-                if read_method == "rfc_read_table":
-                    df = self._read_rfc(table_name, fields)
-                elif read_method == "odata_entity" and connector_type == "successfactors":
-                    df = self._read_successfactors(table_name, fields)
-                elif read_method == "rest_get" and connector_type == "concur":
-                    df = self._read_concur(table_name, fields)
-                elif read_method == "rest_get" and connector_type == "ariba":
-                    df = self._read_ariba(table_name, fields)
-                else:
-                    logger.warning(
-                        "Unknown read_method '%s' / connector '%s' for table '%s'. Skipping.",
-                        read_method,
-                        connector_type,
-                        table_name,
-                    )
-                    df = pd.DataFrame(columns=fields)
-
-                results[table_name] = df
-                logger.info(
-                    "Read %d rows from %s (module=%s, method=%s)",
-                    len(df),
-                    table_name,
-                    module,
-                    read_method,
-                )
-
-            except SAPConnectorError as exc:
-                logger.warning(
-                    "Failed to read table '%s' for module '%s': %s",
-                    table_name,
-                    module,
-                    exc,
-                )
-                results[table_name] = pd.DataFrame(columns=fields)
-
-        return results
+    def _read_one(self, entry: SPROEntry) -> pd.DataFrame:
+        """Read one SPRO table live; raises on any failure (caller falls back)."""
+        table_name, fields = entry["table"], entry["fields"]
+        read_method = entry.get("read_method", "rfc_read_table")
+        connector_type = entry.get("connector", "ecc")
+        if read_method == "rfc_read_table":
+            return self._read_rfc(table_name, fields)
+        if read_method == "odata_entity" and connector_type == "successfactors":
+            return self._read_successfactors(table_name, fields)
+        if read_method == "rest_get" and connector_type == "concur":
+            return self._read_concur(table_name, fields)
+        if read_method == "rest_get" and connector_type == "ariba":
+            return self._read_ariba(table_name, fields)
+        raise SAPConnectorError(f"No live reader for {read_method}/{connector_type} ({table_name})")
 
     def _read_rfc(self, table: str, fields: list[str]) -> pd.DataFrame:
         """Read a table via RFC_READ_TABLE using the pluggable SAP connector."""
         from sap import get_connector
 
-        params = SAPConnectionParams(**self.connection_params)  # type: ignore[arg-type]
+        params = SAPConnectionParams(**_only(self.connection_params, SAPConnectionParams))
         with get_connector() as conn:
             conn.connect(params)
             return conn.read_table(table, fields)
@@ -441,7 +427,7 @@ class SPROReader:
         """Read an OData entity from SuccessFactors."""
         from sap.successfactors import SuccessFactorsConnector
 
-        params = CloudConnectionParams(**self.connection_params)  # type: ignore[arg-type]
+        params = CloudConnectionParams(**_only(self.connection_params, CloudConnectionParams))
         with SuccessFactorsConnector() as sf:
             sf.connect(params)
             return sf.read_entity_set(entity, select=fields)
@@ -450,7 +436,7 @@ class SPROReader:
         """Read a REST endpoint from Concur."""
         from sap.concur import ConcurConnector
 
-        params = CloudConnectionParams(**self.connection_params)  # type: ignore[arg-type]
+        params = CloudConnectionParams(**_only(self.connection_params, CloudConnectionParams))
         with ConcurConnector() as concur:
             concur.connect(params)
             return concur.read_entity_set(endpoint, select=fields)
@@ -461,16 +447,9 @@ class SPROReader:
         Note: AribaConnector may not yet be implemented. Falls back to an
         empty DataFrame if the import fails.
         """
-        try:
-            from sap.ariba import AribaConnector  # type: ignore[import-untyped]
-        except ImportError:
-            logger.warning(
-                "AribaConnector not available. Returning empty DataFrame for '%s'.",
-                endpoint,
-            )
-            return pd.DataFrame(columns=fields)
+        from sap.ariba import AribaConnector
 
-        params = CloudConnectionParams(**self.connection_params)  # type: ignore[arg-type]
+        params = CloudConnectionParams(**_only(self.connection_params, CloudConnectionParams))
         with AribaConnector() as ariba:
             ariba.connect(params)
             return ariba.read_entity_set(endpoint, select=fields)
@@ -492,7 +471,8 @@ class SPROReader:
         from sap.baseline_config import BASELINE_CONFIG
 
         results: dict[str, pd.DataFrame] = {}
-        module_baseline = BASELINE_CONFIG.get(self.system_type, {}).get(module, {})
+        from api.services.connectivity_manager import baseline_key
+        module_baseline = BASELINE_CONFIG.get(baseline_key(self.system_type), {}).get(module, {})
 
         for entry in tables:
             table_name = entry["table"]
@@ -523,3 +503,10 @@ class SPROReader:
                 )
 
         return results
+
+
+def _only(params: dict, cls) -> dict:
+    """Keep the keys a connection-params dataclass accepts (drops system_type etc.)."""
+    import dataclasses
+    names = {f.name for f in dataclasses.fields(cls)}
+    return {k: v for k, v in (params or {}).items() if k in names}

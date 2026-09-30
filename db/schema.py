@@ -653,7 +653,13 @@ class SAPSystem(Base):
 
     # Config sync tracking
     config_last_synced_at = Column(DateTime(timezone=True), nullable=True)
-    config_sync_status = Column(Text, server_default="never")  # never, syncing, synced, failed
+    config_sync_status = Column(Text, server_default="never")  # never, syncing, synced, partial, failed
+    # Source-design discovery (migration 047)
+    discovery_status = Column(Text, nullable=True)  # running, complete, partial, failed
+    discovered_at = Column(DateTime(timezone=True), nullable=True)
+    sap_release = Column(Text, nullable=True)
+    sap_product = Column(Text, nullable=True)  # ecc6 | s4hana | successfactors | …
+    last_snapshot_id = Column(UUID(as_uuid=True), nullable=True)
 
     credentials = relationship("SystemCredential", back_populates="system", cascade="all, delete-orphan")
     sync_profiles = relationship("SyncProfile", back_populates="system", cascade="all, delete-orphan")
@@ -1358,6 +1364,56 @@ class ConfigSnapshot(Base):
         Index("ix_config_snapshots_tenant_system", "tenant_id", "system_id"),
         Index("ix_config_snapshots_module", "tenant_id", "module"),
     )
+
+
+class DdicSnapshot(Base):
+    """One discovery run of a connected system's data dictionary (migration 047)."""
+
+    __tablename__ = "ddic_snapshots"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    system_id = Column(UUID(as_uuid=True), ForeignKey("sap_systems.id", ondelete="CASCADE"), nullable=False)
+    status = Column(Text, nullable=False, server_default="running")
+    source = Column(Text, nullable=False)
+    system_info = Column(JSONB, nullable=True)
+    coverage = Column(JSONB, nullable=True)
+    table_count = Column(Integer, server_default="0")
+    customer_table_count = Column(Integer, server_default="0")
+    customer_field_count = Column(Integer, server_default="0")
+    error_detail = Column(Text, nullable=True)
+    task_id = Column(Text, nullable=True)
+    started_at = Column(DateTime(timezone=True), server_default=text("now()"))
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class DdicTable(Base):
+    __tablename__ = "ddic_tables"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    snapshot_id = Column(UUID(as_uuid=True), ForeignKey("ddic_snapshots.id", ondelete="CASCADE"), nullable=False)
+    table_name = Column(Text, nullable=False)
+    description = Column(Text, nullable=True)
+    category = Column(Text, nullable=True)
+    delivery_class = Column(Text, nullable=True)
+    customer_table = Column(Boolean, server_default="false")
+    field_count = Column(Integer, server_default="0")
+    definition = Column(JSONB, nullable=False)
+
+    __table_args__ = (UniqueConstraint("snapshot_id", "table_name", name="uq_ddic_tables_snapshot_table"),)
+
+
+class DdicDomain(Base):
+    __tablename__ = "ddic_domains"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    snapshot_id = Column(UUID(as_uuid=True), ForeignKey("ddic_snapshots.id", ondelete="CASCADE"), nullable=False)
+    domain = Column(Text, nullable=False)
+    fixed_values = Column(JSONB, nullable=False)
+
+    __table_args__ = (UniqueConstraint("snapshot_id", "domain", name="uq_ddic_domains_snapshot_domain"),)
 
 
 class SystemModuleMap(Base):

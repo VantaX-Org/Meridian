@@ -1,0 +1,148 @@
+{
+ "table": "TVLS",
+ "description": "Deliveries: Blocking Reasons/Criteria",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "LIFSP",
+   "key": true,
+   "data_element": "LIFSP",
+   "domain": "LIFSP",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Default delivery block",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "SPELF",
+   "key": false,
+   "data_element": "SPELF",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Block for Delivery",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "SPEKO",
+   "key": false,
+   "data_element": "SPEKO",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Picking Block",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "SPEWA",
+   "key": false,
+   "data_element": "SPEWA",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Goods Issue Block",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "SPEFT",
+   "key": false,
+   "data_element": "SPEFT",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Block Production",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "SPEBE",
+   "key": false,
+   "data_element": "SPEBE",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Confirmation Block",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "SPEAU",
+   "key": false,
+   "data_element": "SPEAU",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Sales order block",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "SPEDR",
+   "key": false,
+   "data_element": "SPEDR",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Printing block",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "SPEVI",
+   "key": false,
+   "data_element": "SPEVI",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Delivery due list block",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "MBDIF",
+   "key": false,
+   "data_element": "MBDIF",
+   "domain": "MBDIF",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Deferment Period for Material Provision in Days",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

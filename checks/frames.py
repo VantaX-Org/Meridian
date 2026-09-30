@@ -164,6 +164,23 @@ class TableFrames:
         self._cache[cache_key] = (frame, g, keys)
         return self._cache[cache_key]
 
+    def path_tables(self, columns: list[str], grain: str | None = None) -> Optional[set[str]]:
+        """Every table the engine joins to evaluate ``columns`` (grain + paths)."""
+        tables = tables_of(columns)
+        if not tables:
+            return None
+        g = grain or self._resolve_grain(tables)
+        out = {g}
+        for t in tables:
+            if t == g:
+                continue
+            path = self._path(g, t)
+            if path is None:
+                return None
+            for edge, direction in path:
+                out.add(edge.parent if direction == "up" else edge.child)
+        return out
+
     def _resolve_grain(self, tables: list[str]) -> str:
         edges, anchors = _graph()
         attr_parent = {}

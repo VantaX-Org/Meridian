@@ -254,7 +254,6 @@ AUTH_MODE=local
 NEXT_PUBLIC_AUTH_MODE=local
 
 # ── SAP Connection ────────────────────────────────────────
-SAP_CONNECTOR=mock
 CREDENTIAL_MASTER_KEY=${CRED_KEY}
 
 # ── Updater sidecar (self-update — internal network only) ─

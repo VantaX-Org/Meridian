@@ -219,6 +219,9 @@ async def register_system(
         )
 
     await db.commit()
+    # Learn the source system's design straight away (DDIC, Z-objects,
+    # configuration). A connection failure is recorded on the snapshot.
+    enqueue_discovery(str(tenant.id), system_id)
 
     return SystemResponse(
         id=system_id,
@@ -503,7 +506,7 @@ async def test_connection(
         text("""
             SELECT s.system_type, s.host, s.client, s.sysnr, s.username, s.base_url, s.company_id,
                    s.auth_type, s.client_id_encrypted, s.client_secret_encrypted,
-                   s.api_key_encrypted, sc.encrypted_password
+                   s.api_key_encrypted, sc.encrypted_password, s.token_url, s.discovery_status
             FROM sap_systems s
             LEFT JOIN system_credentials sc ON sc.system_id = s.id
             WHERE s.id = :sid AND s.tenant_id = :tid
@@ -515,7 +518,8 @@ async def test_connection(
         raise HTTPException(status_code=404, detail="System not found")
 
     (system_type, host, client, sysnr, username, base_url, company_id, auth_type,
-     client_id_encrypted, client_secret_encrypted, api_key_encrypted, encrypted_password) = row
+     client_id_encrypted, client_secret_encrypted, api_key_encrypted, encrypted_password,
+     token_url, discovery_status) = row
 
     from api.services.credential_store import decrypt_password
     import os
@@ -545,9 +549,22 @@ async def test_connection(
         "client_id": client_id,
         "client_secret": client_secret,
         "api_key": api_key,
-        "token_url": "",
+        "token_url": token_url or "",
     }
-    return _run_connection_test(system_type, params, [password, client_secret, api_key])
+    result = _run_connection_test(system_type, params, [password, client_secret, api_key])
+    if result.connected and not discovery_status:
+        enqueue_discovery(str(tenant.id), system_id)  # first successful connect → learn the design
+    return result
+
+
+def enqueue_discovery(tenant_id: str, system_id: str) -> Optional[str]:
+    """Queue source-design discovery; never fails the calling request."""
+    try:
+        from workers.tasks.run_discovery import discover_system
+        return discover_system.delay(tenant_id, system_id).id
+    except Exception as e:
+        logger.warning(f"could not enqueue discovery for {system_id}: {e}")
+        return None
 
 
 @router.post("/systems/{system_id}/sync")

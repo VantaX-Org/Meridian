@@ -1,0 +1,57 @@
+{
+ "table": "T411",
+ "description": "Task list usage",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "VERWE",
+   "key": true,
+   "data_element": "PLN_VERWE",
+   "domain": "PLN_VERWE",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Task list usage",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "DYNKRIT",
+   "key": false,
+   "data_element": "QDYNKRIT_D",
+   "domain": "QDYNKRIT",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Dynamic Modification Criterion",
+   "check_table": "TQ39"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "DYNKRIT",
+   "foreign_table": "TQ39",
+   "foreign_field": "DYNKRIT"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

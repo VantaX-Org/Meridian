@@ -1,0 +1,187 @@
+{
+ "table": "T090NA",
+ "description": "Depreciation Keys",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "AFAPL",
+   "key": true,
+   "data_element": "AFAPL",
+   "domain": "AFAPL",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Chart of depreciaton for asset valuation",
+   "check_table": "T096"
+  },
+  {
+   "pos": 3,
+   "name": "AFASL",
+   "key": true,
+   "data_element": "AFASL",
+   "domain": "AFASL",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Depreciation key",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "XAKTIV",
+   "key": false,
+   "data_element": "XAKTIV_RSL",
+   "domain": "XAKTIV_RSL",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Status of depreciation key",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "METHBT",
+   "key": false,
+   "data_element": "METHBT",
+   "domain": "METSL",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Maximum amount method",
+   "check_table": "T090NH_METH"
+  },
+  {
+   "pos": 6,
+   "name": "ANHWSL",
+   "key": false,
+   "data_element": "ANHWSL",
+   "domain": "ANHWSL",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Cutoff value key",
+   "check_table": "T091"
+  },
+  {
+   "pos": 7,
+   "name": "XNAAUS",
+   "key": false,
+   "data_element": "XNAAUS",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "No ord. depreciation with special depreciation",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "XZIAUS",
+   "key": false,
+   "data_element": "XZIAUS",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "No interest if there is no depreciation planned",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "XNAZUG",
+   "key": false,
+   "data_element": "XNAZUG_NEW",
+   "domain": "XFELD_DEFAULT_BUKRS",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Acquisition in year of capitalization only",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "XPERGJ",
+   "key": false,
+   "data_element": "XPERGJ",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Period control per fiscal year",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "PROZST",
+   "key": false,
+   "data_element": "PROZST",
+   "domain": "NUM1",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Number of places that the percentage rate is rounded to",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "XDAILY",
+   "key": false,
+   "data_element": "XDAILY",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Depreciation calculation to exact day",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "XRAFA",
+   "key": false,
+   "data_element": "XRAFA",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Do not reduce depreciation in shortened fiscal year",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "AFAPL",
+   "foreign_table": "T096",
+   "foreign_field": "AFAPL"
+  },
+  {
+   "field": "ANHWSL",
+   "foreign_table": "T091",
+   "foreign_field": "ANHWSL"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "METHBT",
+   "foreign_table": "T090NH_METH",
+   "foreign_field": "METHBT"
+  }
+ ]
+}

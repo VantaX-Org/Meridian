@@ -93,6 +93,7 @@ class Table:
     fields: dict[str, Field]
     keys: tuple[str, ...]            # business key, client field excluded
     category: str = "TRANSP"
+    delivery_class: Optional[str] = None  # A master/transaction data · C/G/E/S customizing
     foreign_keys: tuple[dict, ...] = ()
     obsolete_in: Optional[str] = None  # e.g. "s4hana" with a replacement note
     note: Optional[str] = None
@@ -121,6 +122,45 @@ class Dictionary:
     def keys(self, table: str) -> tuple[str, ...]:
         t = self.table(table)
         return t.keys if t else ()
+
+    def overlay(self, live_tables: dict[str, dict], live_domains: dict[str, dict] | None = None,
+                provenance: str = "live") -> "Dictionary":
+        """New dictionary where a connected system's own DDIC replaces the bundle.
+
+        ``live_tables``/``live_domains`` use the bundle JSON format
+        (sap/ddic_reader.py). Tables not read live keep their bundle definition.
+        """
+        live_domains = live_domains or {}
+        tables = dict(self.tables)
+        for name, raw in live_tables.items():
+            fk = {(k["field"], k["foreign_table"]): k["foreign_field"] for k in raw.get("foreign_keys", [])}
+            base = self.tables.get(name)
+            fields: dict[str, Field] = {}
+            for f in raw["fields"]:
+                dom = live_domains.get(f.get("domain") or "")
+                bundle_f = base.fields.get(f["name"]) if base else None
+                check_table = f.get("check_table")
+                check_table = None if check_table == "*" else check_table
+                fixed = tuple(FixedValue(v["low"], v.get("high"), v.get("text", ""))
+                              for v in (dom or {}).get("fixed_values", []))
+                if not fixed and bundle_f and f.get("has_fixed_values"):
+                    fixed = bundle_f.fixed_values  # live DD07L read failed — keep SAP standard
+                fields[f["name"]] = Field(
+                    table=name, name=f["name"], key=bool(f["key"]), type=f.get("type"),
+                    length=int(f.get("length") or 0), decimals=int(f.get("decimals") or 0),
+                    data_element=f.get("data_element"), domain=f.get("domain"),
+                    description=f.get("description", ""), check_table=check_table,
+                    check_field=fk.get((f["name"], check_table)) or (bundle_f.check_field if bundle_f else None),
+                    conversion_exit=f.get("conversion_exit"), lowercase=bool(f.get("lowercase")),
+                    fixed_values=fixed, provenance=provenance,
+                )
+            tables[name] = Table(
+                name=name, description=raw.get("description", ""), fields=fields,
+                keys=tuple(n for n, f in fields.items() if f.key and n not in _CLIENT_FIELDS),
+                category=raw.get("category") or "TRANSP", delivery_class=raw.get("delivery_class") or None,
+                foreign_keys=tuple(raw.get("foreign_keys", [])), provenance=provenance,
+            )
+        return Dictionary(release=self.release, tables=tables)
 
 
 # ── Loading ──────────────────────────────────────────────────────────────────
@@ -177,6 +217,7 @@ def _abap_table(path: Path, release_dir: str) -> Table:
         fields=fields,
         keys=keys,
         category=raw.get("category", "TRANSP"),
+        delivery_class=raw.get("delivery_class") or None,
         foreign_keys=tuple(raw.get("foreign_keys", [])),
     )
 

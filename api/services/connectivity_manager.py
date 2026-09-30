@@ -182,6 +182,134 @@ class ConnectivityManager:
         """Return the correct connector instance for a system type."""
         return connect_sap_system(system_type, params)
 
+    # -- Extraction (rules-driven, per-table) -----------------------------------
+
+    def extract(self, system_id: str, modules: list[str], max_rows: int = 0) -> tuple[dict[str, pd.DataFrame], list[dict]]:
+        """Extract everything the rules of ``modules`` need from one system.
+
+        Returns ``({TABLE: frame with TABLE.FIELD columns}, coverage)``. The
+        coverage list says, per table, whether it was read live, how many rows,
+        whether the transactional window truncated it, or why it failed —
+        nothing is silently skipped.
+        """
+        import os
+
+        from api.services.source_design import dictionary_for
+        from sap.extraction_plan import ABAP_SYSTEM_TYPES, plan_modules, read_order, via_filters
+
+        system_row = self._load_system(system_id)
+        system_type = system_row.system_type
+        params = self._build_connection_params(system_row)
+        max_rows = max_rows or int(os.getenv("MERIDIAN_EXTRACT_MAX_ROWS", "5000000"))
+        dictionary = dictionary_for(self.session, system_id, system_type)
+        frames: dict[str, pd.DataFrame] = {}
+        coverage: list[dict] = []
+        try:
+            connector = self._get_connector(system_type, params)
+        finally:
+            for key in ("password", "client_secret", "api_key"):
+                params.pop(key, None)
+        try:
+            if system_type in ABAP_SYSTEM_TYPES:
+                plans = plan_modules(modules, dictionary)
+                raw: dict[str, pd.DataFrame] = {}
+                for table in read_order(plans):
+                    plan = plans[table]
+                    t = dictionary.table(table)
+                    cols = [c for c in plan.columns() if t is not None and c in t.fields]
+                    if t is None or not cols:
+                        coverage.append({"table": table, "status": "not_in_system", "purpose": plan.purpose})
+                        continue
+                    try:
+                        if plan.via:
+                            wheres = via_filters(table, plan.via, raw.get(plan.via))
+                            parts = [connector.read_table_full(table, cols, list(t.keys),
+                                     where=" AND ".join(x for x in (w, plan.where) if x), max_rows=max_rows)
+                                     for w in wheres]
+                            df = pd.concat(parts, ignore_index=True) if parts else pd.DataFrame(columns=cols)
+                        else:
+                            df = connector.read_table_full(table, cols, list(t.keys), where=plan.where,
+                                                           max_rows=max_rows)
+                    except SAPConnectorError as e:
+                        coverage.append({"table": table, "status": "failed", "detail": str(e)[:300]})
+                        continue
+                    raw[table] = df
+                    frames[table] = df.rename(columns={c: f"{table}.{c}" for c in df.columns})
+                    coverage.append({"table": table, "status": "live", "rows": len(df), "purpose": plan.purpose,
+                                     "window": plan.where if plan.where and not plan.where.startswith(tuple(
+                                         f"{f} = " for f in ("DATBI", "BDATU", "INACT"))) else None,
+                                     "truncated": len(df) >= max_rows})
+            elif system_type == "successfactors":
+                frames, coverage = self._extract_successfactors(connector, modules, dictionary, system_id)
+            else:
+                coverage.append({"table": "*", "status": "no_rule_mapping",
+                                 "detail": f"{system_type} data has no rule pack mapped yet; use upload or "
+                                           f"the cross-system integration module"})
+        finally:
+            connector.close()
+        return frames, coverage
+
+    def _extract_successfactors(self, connector, modules, dictionary, system_id):
+        """Assemble SF canonical tables from their source entities (see canonical/successfactors.yaml)."""
+        from checks.frames import tables_of
+        from checks.runner import _find_module_yaml, rule_columns
+        from api.services.source_design import latest_snapshot_id, load_overlay
+        import yaml as _yaml
+
+        wanted: set[str] = set()
+        for m in modules:
+            try:
+                for r in _yaml.safe_load(_find_module_yaml(m).read_text()).get("rules", []):
+                    wanted |= set(tables_of(rule_columns(r)))
+            except FileNotFoundError:
+                continue
+        snap = latest_snapshot_id(self.session, system_id)
+        live = load_overlay(self.session, snap)[0] if snap else {}
+        frames, coverage = {}, []
+        for table in sorted(wanted):
+            t = dictionary.table(table)
+            if t is None or not t.provenance.startswith("canonical:successfactors"):
+                continue
+            unavailable = {f["name"] for f in (live.get(table) or {}).get("fields", []) if f.get("available") is False}
+            by_entity: dict[str, dict[str, list[str]]] = {}
+            for f in t.fields.values():
+                ent, _, prop = (f.source or "").partition(".")
+                prop = prop.split(" ")[0]
+                if not ent[:1].isupper() or not prop or "<" in ent or f.name in unavailable:
+                    continue
+                by_entity.setdefault(ent, {}).setdefault(prop, []).append(f.name)
+            if not by_entity:
+                coverage.append({"table": table, "status": "upload_required",
+                                 "detail": "source is not an SF OData entity (e.g. payroll export)"})
+                continue
+            merged = None
+            for ent, props in by_entity.items():
+                join = [p for p in ("userId", "personIdExternal") if p not in props]
+                try:
+                    df = connector.read_entity_set(ent, select=sorted(set(props) | set(join)))
+                except Exception as e:
+                    coverage.append({"table": f"{table}←{ent}", "status": "failed", "detail": str(e)[:300]})
+                    continue
+                out = pd.DataFrame(index=df.index)
+                for prop, names in props.items():
+                    for n in names:
+                        out[f"{table}.{n}"] = df.get(prop)
+                for j in ("userId", "personIdExternal"):
+                    if j in df.columns:
+                        out[f"__{j}"] = df[j]
+                if merged is None:
+                    merged = out
+                else:
+                    on = [c for c in ("__userId", "__personIdExternal") if c in merged.columns and c in out.columns]
+                    merged = merged.merge(out.drop_duplicates(subset=on) if on else out,
+                                          how="left", on=on) if on else merged
+            if merged is None:
+                continue
+            frames[table] = merged.drop(columns=[c for c in merged.columns if c.startswith("__")])
+            coverage.append({"table": table, "status": "live", "rows": len(merged),
+                             "entities": sorted(by_entity), "unavailable_fields": sorted(unavailable)})
+        return frames, coverage
+
     # -- Extraction ------------------------------------------------------------
 
     def extract_module(

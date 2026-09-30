@@ -1,0 +1,165 @@
+{
+ "table": "T415S",
+ "description": "BOM status",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "STLST",
+   "key": true,
+   "data_element": "STLST",
+   "domain": "STLST",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "BOM Statuses",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "KZBDP",
+   "key": false,
+   "data_element": "KZBDP",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: explosion in material requirements planning (MRP)",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "KZPAF",
+   "key": false,
+   "data_element": "KZPAF",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: released for planned orders",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "KZKLF",
+   "key": false,
+   "data_element": "KZKLF",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: released for costing",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "KZAPF",
+   "key": false,
+   "data_element": "KZAPF",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: released for work scheduling",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "KZAUF",
+   "key": false,
+   "data_element": "KZAUF",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: released for production orders",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "KZSME",
+   "key": false,
+   "data_element": "KZSME",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: collective issue allowed",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "KZRVA",
+   "key": false,
+   "data_element": "KZRVA",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: sales order explosion",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "KZAMS",
+   "key": false,
+   "data_element": "KZAMS",
+   "domain": "AUSSL",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "MRP exception message ID (T458A)",
+   "check_table": "T458A"
+  },
+  {
+   "pos": 11,
+   "name": "DLOCK",
+   "key": false,
+   "data_element": "DLOCK",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: distribution lock",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "AUPRF",
+   "key": false,
+   "data_element": "AUPRF",
+   "domain": "CHAR10",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Profile Name for ALE Change Authorization",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "KZAMS",
+   "foreign_table": "T458A",
+   "foreign_field": "AUSSL"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

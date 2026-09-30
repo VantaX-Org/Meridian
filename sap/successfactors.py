@@ -483,6 +483,12 @@ class SuccessFactorsConnector(CloudSAPConnector):
     # Module-level reading
     # ------------------------------------------------------------------
 
+    def metadata(self, entity: str | None = None) -> str:
+        """OData $metadata document (whole service, or one entity to keep it small)."""
+        self._ensure_connected()
+        path = f"/odata/v2/{entity}/$metadata" if entity else "/odata/v2/$metadata"
+        return self._request_with_retry("GET", path, params={}).text
+
     def read_module(self, module: str) -> pd.DataFrame:
         """Read all entity sets for a module and merge into one DataFrame.
 

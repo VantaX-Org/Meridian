@@ -1,0 +1,249 @@
+{
+ "table": "T163K",
+ "description": "Account Assignment Categories in Purchasing Document",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "KNTTP",
+   "key": true,
+   "data_element": "KNTTP",
+   "domain": "KNTTP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Account assignment category",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "KZVBR",
+   "key": false,
+   "data_element": "EKVBR",
+   "domain": "EKVBR",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Consumption posting (Purchasing)",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "KNTAE",
+   "key": false,
+   "data_element": "KNTAE",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Account assignment can be changed",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "REUPD",
+   "key": false,
+   "data_element": "REUPD",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Account assignment can be changed at time of invoice receipt",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "WEPOS",
+   "key": false,
+   "data_element": "WEPOS",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Goods Receipt Indicator",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "WEPOV",
+   "key": false,
+   "data_element": "WEPOV",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Goods receipt indicator binding",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "WEUNB",
+   "key": false,
+   "data_element": "WEUNB",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Goods Receipt, Non-Valuated",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "WEUNV",
+   "key": false,
+   "data_element": "WEUNV",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Good receipt non-valuated (binding)",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "REPOS",
+   "key": false,
+   "data_element": "REPOS",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Invoice receipt indicator",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "REPOV",
+   "key": false,
+   "data_element": "REPOV",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Invoice receipt indicator binding",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "KOMOK",
+   "key": false,
+   "data_element": "KOMOK",
+   "domain": "KOMOK",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Account Modification",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "KNTDY",
+   "key": false,
+   "data_element": "KNTDY",
+   "domain": "KNTDY",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Account assignment screen",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "SOBKZ",
+   "key": false,
+   "data_element": "SOBKZ",
+   "domain": "SOBKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Special Stock Indicator",
+   "check_table": "T148"
+  },
+  {
+   "pos": 15,
+   "name": "KONAB",
+   "key": false,
+   "data_element": "KONAB",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Derive preliminary account assignment from G/L account",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "TAXIK",
+   "key": false,
+   "data_element": "XFELD",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Checkbox",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "XBNSB",
+   "key": false,
+   "data_element": "XBNSB",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Debit delivery costs separately",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "VRTKZ",
+   "key": false,
+   "data_element": "MEVVR",
+   "domain": "VRTKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Default distribution indicator (multiple account assignment)",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "TWRKZ",
+   "key": false,
+   "data_element": "MEVTW",
+   "domain": "TWRKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Default partial invoice indicator (multiple account assgt.)",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "SOBKZ",
+   "foreign_table": "T148",
+   "foreign_field": "SOBKZ"
+  }
+ ]
+}

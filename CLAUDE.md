@@ -177,7 +177,7 @@ df = conn.read_entity_set("EmpEmployment", select=["userId", "startDate"])
 | Concur | `sap/concur.py` | REST v4 | OAuth 2.0 |
 | Ariba | `sap/ariba.py` | REST | OAuth 2.0 + API Key |
 
-Backends: `SAP_CONNECTOR=rfc|ctypes|odata|mock|successfactors|concur|ariba|s4hana_cloud`
+Connector is chosen by `sap_systems.system_type` (ABAP systems always use RFC via the SAP NW RFC SDK).
 
 ---
 

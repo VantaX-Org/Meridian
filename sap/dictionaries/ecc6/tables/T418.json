@@ -1,0 +1,172 @@
+{
+ "table": "T418",
+ "description": "Item Categories",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "POSTP",
+   "key": true,
+   "data_element": "POSTP",
+   "domain": "POSTP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Item category (bill of material)",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "MATIN",
+   "key": false,
+   "data_element": "MATIN",
+   "domain": "PLMIPU",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Material entry",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "KZBSF",
+   "key": false,
+   "data_element": "KZBSF",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Inventory management indicator",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "TXPOS",
+   "key": false,
+   "data_element": "TXPOS",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: text item",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "RTPOS",
+   "key": false,
+   "data_element": "RTPOS",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: variable-size item",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "KLPOS",
+   "key": false,
+   "data_element": "KLPOS",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: class item",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "BTPOS",
+   "key": false,
+   "data_element": "BTPOS",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: plant maintenance (PM) structure",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "DKPOS",
+   "key": false,
+   "data_element": "DKPOS",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: document item",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "MNGVZ",
+   "key": false,
+   "data_element": "MNGVZ",
+   "domain": "MNGVZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Quantity +/- sign",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "KZUPS",
+   "key": false,
+   "data_element": "KZUPS",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Subitems Supported",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "PSTRG",
+   "key": false,
+   "data_element": "PSTRG",
+   "domain": "PSTRG",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Control key for item detail screens",
+   "check_table": "*"
+  },
+  {
+   "pos": 13,
+   "name": "INPOS",
+   "key": false,
+   "data_element": "INPOS",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: intra material",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

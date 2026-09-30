@@ -1,0 +1,194 @@
+{
+ "table": "T163",
+ "description": "Item Categories in Purchasing Document",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "PSTYP",
+   "key": true,
+   "data_element": "PSTYP",
+   "domain": "PSTYP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Item category in purchasing document",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "MATNO",
+   "key": false,
+   "data_element": "MATNO",
+   "domain": "PLUMI",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Material number required",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "KNTZU",
+   "key": false,
+   "data_element": "KNTZU",
+   "domain": "PLUMI",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Account assignment required",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "BFKNZ",
+   "key": false,
+   "data_element": "EBFKZ",
+   "domain": "EBFKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Inventory management indicator for purchasing",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "WEPOS",
+   "key": false,
+   "data_element": "WEPOS",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Goods Receipt Indicator",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "WEPOV",
+   "key": false,
+   "data_element": "WEPOV",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Goods receipt indicator binding",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "WEUNB",
+   "key": false,
+   "data_element": "WEUNB",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Goods Receipt, Non-Valuated",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "WEUNV",
+   "key": false,
+   "data_element": "WEUNV",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Good receipt non-valuated (binding)",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "REPOS",
+   "key": false,
+   "data_element": "REPOS",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Invoice receipt indicator",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "REPOV",
+   "key": false,
+   "data_element": "REPOV",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Invoice receipt indicator binding",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "STAFO",
+   "key": false,
+   "data_element": "STAFO",
+   "domain": "STAFO",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Update group for statistics update",
+   "check_table": "TMCB"
+  },
+  {
+   "pos": 13,
+   "name": "J_1BITMTYP",
+   "key": false,
+   "data_element": "J_1BITMTYP",
+   "domain": "J_1BITMTYP",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Nota Fiscal Item Type",
+   "check_table": "J_1BITEMTYPES"
+  },
+  {
+   "pos": 14,
+   "name": "DIFF_INVOICE",
+   "key": false,
+   "data_element": "DIFF_INVOICE",
+   "domain": "DIFF_INVOICE",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Differential Invoicing",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "J_1BITMTYP",
+   "foreign_table": "J_1BITEMTYPES",
+   "foreign_field": "ITMTYP"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "STAFO",
+   "foreign_table": "TMCB",
+   "foreign_field": "STAFO"
+  }
+ ]
+}
