@@ -19,7 +19,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
-from api.services.rbac import dev_role_override, has_permission, require_permission
+from api.services.rbac import current_user_id, dev_role_override, has_permission, require_permission
 
 router = APIRouter(prefix="/api/v1", tags=["stewardship"])
 
@@ -490,8 +490,13 @@ async def _apply_source_action(
     elif item.item_type == "writeback_approval":
         if action == "approve":
             await db.execute(
-                text("UPDATE cleaning_queue SET status = 'applied', applied_at = now() WHERE id = :sid"),
-                {"sid": item.source_id},
+                # Same semantics as POST /cleaning/apply: the corrected value is
+                # accepted in Meridian (export/load file) with a 72h rollback
+                # window. No SAP write happens here.
+                text("UPDATE cleaning_queue SET status = 'applied', applied_at = now(), "
+                     "rollback_deadline = now() + interval '72 hours', "
+                     "approved_by = COALESCE(approved_by, CAST(:uid AS uuid)) WHERE id = :sid"),
+                {"sid": item.source_id, "uid": current_user_id()},
             )
         elif action == "reject":
             await db.execute(

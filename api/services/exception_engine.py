@@ -405,7 +405,7 @@ class ExceptionBillingCalculator:
             except ValueError:
                 return 1
         elif isinstance(sla_raw, datetime):
-            sla = sla if sla.tzinfo else sla.replace(tzinfo=timezone.utc)
+            sla = sla_raw if sla_raw.tzinfo else sla_raw.replace(tzinfo=timezone.utc)
         else:
             return 1
 

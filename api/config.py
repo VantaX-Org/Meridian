@@ -112,6 +112,10 @@ class Settings(BaseSettings):
     # Auth
     # Clerk removed - using local auth only
     auth_mode: str = "local"
+    # Live SAP write-back (BAPI execution) stays off until per-module BAPI
+    # parameter builders + commit/rollback are verified against the customer's
+    # release. With it off, fixes are delivered as export files (LSMW/BAPI).
+    live_writeback_enabled: bool = Field(default=False, validation_alias="MERIDIAN_LIVE_WRITEBACK_ENABLED")
 
     # SAP RFC sync
     credential_master_key: Optional[str] = None

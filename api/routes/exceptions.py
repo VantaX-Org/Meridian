@@ -190,9 +190,9 @@ async def list_exceptions(
 # ── 2. GET /api/v1/exceptions/{id} — detail with comments ───────────────────
 
 
-@router.get("/exceptions/{exception_id}")
+@router.get("/exceptions/{exception_id:uuid}")
 async def get_exception(
-    exception_id: str,
+    exception_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):

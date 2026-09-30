@@ -207,7 +207,7 @@ def weekly_cleaning_batch():
                 result = session.execute(
                     text("""
                         UPDATE cleaning_queue cq
-                        SET status = 'approved', approved_by = 'scheduler'
+                        SET status = 'approved', approved_by = NULL  -- NULL = automation (see cleaning_audit)
                         WHERE cq.tenant_id = :tid
                           AND cq.status = 'detected'
                           AND EXISTS (
@@ -240,20 +240,22 @@ def weekly_cleaning_batch():
                 auto_applied = len(result.fetchall())
                 logger.info(f"  tenant={tid}: auto-applied {auto_applied} standardisation items")
 
-                # 3. Materialise cleaning_metrics for the week
+                # 3. Materialise cleaning_metrics for the week — one row per
+                # object type actually present in the queue (not a fixed list).
                 today = datetime.now(SAST).date().isoformat()
-                for obj_type in ["customer", "vendor", "material", "equipment", "employee", "financial"]:
-                    counts = {}
-                    for st in ["detected", "recommended", "approved", "rejected", "applied", "verified", "rolled_back"]:
-                        cnt_result = session.execute(
-                            text("""
-                                SELECT COUNT(*) FROM cleaning_queue
-                                WHERE tenant_id = :tid AND object_type = :ot AND status = :st
-                            """),
-                            {"tid": tid, "ot": obj_type, "st": st},
-                        )
-                        counts[st] = cnt_result.scalar() or 0
-
+                statuses = ["detected", "recommended", "approved", "rejected", "applied", "verified", "rolled_back"]
+                per_type: dict[str, dict[str, int]] = {}
+                for ot, st, cnt in session.execute(
+                    text("""
+                        SELECT object_type, status, COUNT(*) FROM cleaning_queue
+                        WHERE tenant_id = :tid GROUP BY object_type, status
+                    """),
+                    {"tid": tid},
+                ).fetchall():
+                    per_type.setdefault(ot or "unknown", {s_: 0 for s_ in statuses})
+                    if st in statuses:
+                        per_type[ot or "unknown"][st] = cnt
+                for obj_type, counts in per_type.items():
                     session.execute(
                         text("""
                             INSERT INTO cleaning_metrics (id, tenant_id, period, period_type, object_type,
@@ -262,12 +264,13 @@ def weekly_cleaning_batch():
                             VALUES (gen_random_uuid(), :tid, :period, 'weekly', :ot,
                                 :detected, :recommended, :approved, :rejected, :applied, :verified,
                                 :rolled_back, :auto_approved, now())
-                            ON CONFLICT DO NOTHING
+                            ON CONFLICT (tenant_id, period, period_type, object_type) DO UPDATE SET
+                                detected = EXCLUDED.detected, recommended = EXCLUDED.recommended,
+                                approved = EXCLUDED.approved, rejected = EXCLUDED.rejected,
+                                applied = EXCLUDED.applied, verified = EXCLUDED.verified,
+                                rolled_back = EXCLUDED.rolled_back, auto_approved = EXCLUDED.auto_approved
                         """),
-                        {
-                            "tid": tid, "period": today, "ot": obj_type,
-                            **counts, "auto_approved": auto_approved,
-                        },
+                        {"tid": tid, "period": today, "ot": obj_type, **counts, "auto_approved": auto_approved},
                     )
 
                 # 4. Rollup steward_metrics for the week
@@ -276,7 +279,7 @@ def weekly_cleaning_batch():
                         INSERT INTO steward_metrics (id, tenant_id, user_id, period, period_type,
                             items_processed, items_approved, items_rejected, total_review_hours,
                             dqs_impact, created_at)
-                        SELECT gen_random_uuid(), :tid, COALESCE(approved_by, 'system'),
+                        SELECT gen_random_uuid(), :tid, approved_by,
                             :period, 'weekly',
                             COUNT(*),
                             COUNT(*) FILTER (WHERE status = 'approved' OR status = 'applied'),
@@ -284,8 +287,9 @@ def weekly_cleaning_batch():
                             0, 0, now()
                         FROM cleaning_queue
                         WHERE tenant_id = :tid
+                          AND approved_by IS NOT NULL
                           AND detected_at >= now() - interval '7 days'
-                        GROUP BY COALESCE(approved_by, 'system')
+                        GROUP BY approved_by
                         ON CONFLICT DO NOTHING
                     """),
                     {"tid": tid, "period": today},
@@ -695,13 +699,50 @@ def daily_digest():
             logger.error(f"  tenant={tid}: daily_digest failed: {e}", exc_info=True)
 
 
+@celery_app.task(name="workers.scheduler.escalate_exceptions",
+                 soft_time_limit=300, time_limit=360)
+def escalate_exceptions():
+    """Raise escalation_tier of open exceptions as their SLA deadline approaches.
+
+    Tier 1: >8h left · 2: 2–8h · 3: <2h · 4: SLA breached. Never downgrades.
+    """
+    from api.services.exception_engine import ExceptionBillingCalculator
+
+    calc = ExceptionBillingCalculator()
+    engine = get_sync_engine()
+    with Session(engine) as session:
+        tenants = _get_tenants(session)
+    raised = 0
+    for tenant in tenants:
+        tid = str(tenant["id"])
+        with Session(engine) as session:
+            _set_rls(session, tid)
+            rows = session.execute(
+                text("SELECT id, sla_deadline, escalation_tier FROM exceptions "
+                     "WHERE tenant_id = :tid AND status NOT IN ('resolved', 'closed') "
+                     "AND sla_deadline IS NOT NULL"),
+                {"tid": tid},
+            ).fetchall()
+            for eid, sla, tier in rows:
+                new_tier = calc.calculate_escalation({"sla_deadline": sla})
+                if new_tier > (tier or 1):
+                    session.execute(
+                        text("UPDATE exceptions SET escalation_tier = :t WHERE id = :id"),
+                        {"t": new_tier, "id": eid},
+                    )
+                    raised += 1
+            session.commit()
+    logger.info(f"escalate_exceptions: raised {raised} exception(s)")
+    return {"raised": raised}
+
+
 # ── Trigger 5: weekly_archive — 00:00 SAST Sunday ───────────────────────────
 
 
 @celery_app.task(name="workers.scheduler.weekly_archive",
                  soft_time_limit=1800, time_limit=1860)
 def weekly_archive():
-    """Archive old findings, prune Redis, escalate overdue exceptions."""
+    """Archive analysis versions past retention and prune Redis."""
     logger.info("Trigger 5: weekly_archive starting")
     engine = get_sync_engine()
 
@@ -714,56 +755,55 @@ def weekly_archive():
             with Session(engine) as session:
                 _set_rls(session, tid)
 
-                # 1. Load findings older than 90 days
-                result = session.execute(
+                # 1-3. Archive whole analysis versions past retention to MinIO
+                #      (one object per version — never overwritten), then delete
+                #      their findings. The latest complete version per tenant is
+                #      always kept so comparisons and reports stay valid.
+                retention_days = int(os.getenv("FINDINGS_RETENTION_DAYS", "365"))
+                versions = session.execute(
                     text("""
-                        SELECT id, version_id, module, check_id, severity, dimension,
-                               affected_count, total_count, pass_rate, details,
-                               remediation_text, created_at
-                        FROM findings
-                        WHERE tenant_id = :tid AND created_at < now() - interval '90 days'
+                        SELECT v.id FROM analysis_versions v
+                        WHERE v.tenant_id = :tid
+                          AND v.run_at < now() - make_interval(days => :days)
+                          AND v.id <> (SELECT id FROM analysis_versions
+                                        WHERE tenant_id = :tid AND status LIKE '%complete%'
+                                        ORDER BY run_at DESC LIMIT 1)
+                          AND EXISTS (SELECT 1 FROM findings f WHERE f.version_id = v.id)
+                          -- findings still referenced by exceptions / write-back audit stay live
+                          AND NOT EXISTS (SELECT 1 FROM findings f JOIN exceptions e ON e.linked_finding_id = f.id
+                                          WHERE f.version_id = v.id)
+                          AND NOT EXISTS (SELECT 1 FROM findings f JOIN writeback_log w ON w.finding_id = f.id
+                                          WHERE f.version_id = v.id)
                     """),
-                    {"tid": tid},
-                )
-                old_findings = [dict(r._mapping) for r in result.fetchall()]
-
-                if old_findings:
-                    # 2. Serialize to compressed JSON and store in MinIO
-                    now = datetime.now(SAST)
-                    archive_key = f"archive/{tid}/{now.strftime('%Y-%m')}.json.gz"
-
-                    # Serialize with date handling
-                    def _default(obj):
-                        if hasattr(obj, "isoformat"):
-                            return obj.isoformat()
-                        return str(obj)
-
-                    archive_json = json.dumps(old_findings, default=_default)
-                    compressed = gzip.compress(archive_json.encode())
-
-                    minio_ok = False
+                    {"tid": tid, "days": retention_days},
+                ).fetchall()
+                for (vid,) in versions:
+                    rows = [dict(r._mapping) for r in session.execute(
+                        text("SELECT * FROM findings WHERE tenant_id = :tid AND version_id = :vid"),
+                        {"tid": tid, "vid": vid},
+                    ).fetchall()]
+                    archive_key = f"archive/{tid}/findings/{vid}.json.gz"
+                    payload = gzip.compress(json.dumps(
+                        rows, default=lambda o: o.isoformat() if hasattr(o, "isoformat") else str(o)
+                    ).encode())
                     try:
-                        from api.services.storage import get_storage
-                        storage = get_storage()
-                        storage.put_object(archive_key, compressed)
-                        minio_ok = True
-                        logger.info(f"  tenant={tid}: archived {len(old_findings)} findings to {archive_key}")
+                        from api.config import settings
+                        from api.services.storage import upload_file
+                        upload_file(settings.minio_bucket_reports, archive_key, payload, "application/gzip")
                     except Exception as e:
-                        logger.error(f"  tenant={tid}: MinIO archive write failed: {e}")
-
-                    # 3. Delete only after confirming MinIO write succeeded
-                    if minio_ok:
-                        finding_ids = [str(f["id"]) for f in old_findings]
-                        # Delete in batches of 500
-                        for i in range(0, len(finding_ids), 500):
-                            batch = finding_ids[i:i + 500]
-                            placeholders = ",".join(f"'{fid}'" for fid in batch)
-                            session.execute(
-                                text(f"DELETE FROM findings WHERE tenant_id = :tid AND id IN ({placeholders})"),
-                                {"tid": tid},
-                            )
-                        session.commit()
-                        logger.info(f"  tenant={tid}: deleted {len(old_findings)} archived findings from Postgres")
+                        logger.error(f"  tenant={tid}: archive of version {vid} failed, keeping findings: {e}")
+                        continue
+                    session.execute(
+                        text("DELETE FROM findings WHERE tenant_id = :tid AND version_id = :vid"),
+                        {"tid": tid, "vid": vid},
+                    )
+                    session.execute(
+                        text("UPDATE analysis_versions SET metadata = COALESCE(metadata, '{}'::jsonb) "
+                             "|| jsonb_build_object('findings_archive', CAST(:key AS text)) WHERE id = :vid"),
+                        {"vid": vid, "key": archive_key},
+                    )
+                    session.commit()
+                    logger.info(f"  tenant={tid}: archived {len(rows)} findings of version {vid} → {archive_key}")
 
                 # 4. Prune Redis cache keys older than 7 days
                 try:
@@ -780,16 +820,6 @@ def weekly_archive():
                             break
                 except Exception as e:
                     logger.warning(f"  tenant={tid}: Redis prune failed: {e}")
-
-                # 5. Escalate overdue exceptions
-                try:
-                    from api.services.exception_engine import ExceptionEngine
-                    exc_engine = ExceptionEngine(session, tid)
-                    exc_engine.calculate_escalation()
-                    session.commit()
-                    logger.info(f"  tenant={tid}: exception escalation complete")
-                except Exception as e:
-                    logger.warning(f"  tenant={tid}: exception escalation failed: {e}")
 
         except Exception as e:
             logger.error(f"  tenant={tid}: weekly_archive failed: {e}", exc_info=True)
@@ -911,6 +941,10 @@ celery_app.conf.beat_schedule = {
     "licence-revalidation-every-6h": {
         "task": "revalidate_licence",
         "schedule": crontab(minute=0, hour="*/6"),  # Every 6 hours — keeps manifest fresh
+    },
+    "exception-escalation-every-30min": {
+        "task": "workers.scheduler.escalate_exceptions",
+        "schedule": crontab(minute="*/30"),
     },
     "health-check-every-30min": {
         "task": "workers.tasks.run_health_check.check_all_systems",
