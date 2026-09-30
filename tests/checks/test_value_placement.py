@@ -156,3 +156,17 @@ def test_fi_document_balance():
     # doc 1 balances, doc 2 is off by 1.00, doc 3 is a noted item (no posting)
     assert (r.total_count, r.affected_count) == (2, 1) and r.failing_record_keys == ["BUKRS=1000|BELNR=2|GJAHR=2026|BUZEI=001"]
     assert r.details["largest_imbalance"] == 1.0
+
+
+def test_upload_external_codes_become_internal_through_the_systems_tables():
+    from checks.frames import TableFrames
+    from sap.field_status_config import conversion_maps
+    maps = conversion_maps({
+        "T006A": [{"SPRAS": "E", "MSEHI": "ST", "MSEH3": "PC"}, {"SPRAS": "D", "MSEHI": "ST", "MSEH3": "ST"},
+                  {"SPRAS": "E", "MSEHI": "KG", "MSEH3": "KG"}],
+        "TAUUM": [{"SPRAS": "E", "AUART": "TA", "AUART_SPR": "OR"}],
+    })
+    assert maps == {"CUNIT": {"PC": "ST"}, "AUART": {"OR": "TA"}}
+    f = TableFrames.from_flat(pd.DataFrame({"MARA.MATNR": ["1", "2"], "MARA.MEINS": ["PC", "KG"],
+                                            "VBAK.VBELN": ["1", "2"], "VBAK.AUART": ["OR", "ZOR"]}), D, conversions=maps)
+    assert f.flat["MARA.MEINS"].tolist() == ["ST", "KG"] and f.flat["VBAK.AUART"].tolist() == ["TA", "ZOR"]

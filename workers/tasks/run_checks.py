@@ -144,7 +144,7 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanaly
             dictionary = dictionary_for(session, metadata.get("system_id"))
             # rules generated from this system's own field-status customizing
             from checks.field_status_rules import extra_fields, load_config, material_fields
-            from sap.field_status_config import resolve_all, resolve_material
+            from sap.field_status_config import conversion_maps, resolve_all, resolve_material
             fs_config = load_config(session, metadata.get("system_id"))
             fs_resolutions = resolve_all(fs_config)
             fs_material = resolve_material(fs_config, dictionary)
@@ -152,7 +152,8 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanaly
         for t, fs in material_fields(fs_material).items():
             fs_extra[t] = fs_extra.get(t, set()) | fs
         frames, df, row_count, col_count = load_dataset(
-            parquet_path, dictionary, modules, extra={f"{t}.{f}" for t, fs in fs_extra.items() for f in fs})
+            parquet_path, dictionary, modules, extra={f"{t}.{f}" for t, fs in fs_extra.items() for f in fs},
+            conversions=conversion_maps(fs_config))
 
         logger.info(f"Loaded DataFrame: {row_count} rows, {col_count} columns")
 

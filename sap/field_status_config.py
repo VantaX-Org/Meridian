@@ -64,7 +64,30 @@ CONFIG_TABLES = {
     "T130A": ["FLREF", "FAUSW"],        # field reference → status per group (position = group)
     "T134": ["MTART", "FLREF"],         # material type → field reference
     "T137": ["MBRSH", "FLREF"],         # industry sector → field reference
+    # conversion exits: external (language-dependent) → internal codes, for uploaded values
+    "T006A": ["SPRAS", "MSEHI", "MSEH3"],        # CUNIT: 'PC' (EN) / 'ST' (DE) → internal 'ST'
+    "TAUUM": ["SPRAS", "AUART", "AUART_SPR"],    # AUART: 'OR' (EN) → internal 'TA'
 }
+
+
+def conversion_maps(config: dict[str, list[dict]]) -> dict[str, dict[str, str]]:
+    """{conversion exit: {external: internal}} from this system's own tables. English
+    first; a code from another language is used only when it maps to one internal code."""
+    out: dict[str, dict[str, str]] = {}
+    for exit_, table, internal, external in (("CUNIT", "T006A", "MSEHI", "MSEH3"), ("AUART", "TAUUM", "AUART", "AUART_SPR")):
+        rows = config.get(table) or []
+        if not rows:
+            continue
+        internals = {str(r.get(internal) or "").strip() for r in rows} - {""}
+        english = {str(r.get(external) or "").strip(): str(r.get(internal) or "").strip()
+                   for r in rows if str(r.get("SPRAS") or "").strip() == "E"}
+        other: dict[str, set[str]] = {}
+        for r in rows:
+            other.setdefault(str(r.get(external) or "").strip(), set()).add(str(r.get(internal) or "").strip())
+        m = {ext: next(iter(ints)) for ext, ints in other.items() if len(ints) == 1}
+        m.update(english)
+        out[exit_] = {ext: i for ext, i in m.items() if ext and i and ext not in internals}  # internal codes stay as they are
+    return out
 
 # SAP's documented priority when several references set a material field: hide > display > required > optional
 _PRIORITY = {"-": 3, "*": 2, "+": 1, ".": 0}

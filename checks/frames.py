@@ -79,13 +79,24 @@ def tables_of(columns: list[str] | set[str]) -> list[str]:
     return list(dict.fromkeys(c.split(".", 1)[0] for c in columns if "." in c))
 
 
-def internal_format(df: pd.DataFrame, dictionary: Dictionary) -> pd.DataFrame:
+def internal_format(df: pd.DataFrame, dictionary: Dictionary,
+                    conversions: dict[str, dict[str, str]] | None = None) -> pd.DataFrame:
     """Uploaded values in SAP's internal format, as RFC delivers them: numeric
     values of ALPHA / MATN1 fields zero-padded (spreadsheets drop the zeros, so
-    '140000' would never match SKB1.SAKNR '0000140000')."""
+    '140000' would never match SKB1.SAKNR '0000140000'), and external codes of
+    CUNIT / AUART fields ('PC', 'OR') mapped to internal ones ('ST', 'TA') through
+    the system's own T006A / TAUUM (sap/field_status_config.conversion_maps)."""
     out = None
     for c in df.columns:
         f = dictionary.resolve(c) if "." in str(c) else None
+        if f is not None and (conversions or {}).get(f.conversion_exit or ""):
+            m = conversions[f.conversion_exit]
+            s = df[c].astype("string").str.strip()
+            hit = s.isin(m.keys()).fillna(False)
+            if hit.any():
+                out = df.copy() if out is None else out
+                out[c] = s.where(~hit, s.map(m))
+            continue
         if f is None or f.conversion_exit not in ("ALPHA", "MATN1") or not f.length:
             continue
         width = min(f.length, 18) if f.conversion_exit == "MATN1" else f.length  # MATN1: 18-digit internal form
@@ -115,10 +126,10 @@ class TableFrames:
 
     @classmethod
     def from_flat(cls, df: pd.DataFrame, dictionary: Dictionary | None = None,
-                  module: str | None = None) -> "TableFrames":
+                  module: str | None = None, conversions: dict[str, dict[str, str]] | None = None) -> "TableFrames":
         """Split a flat ``TABLE.FIELD`` frame into per-table frames by DDIC key."""
         d = dictionary or get_dictionary("s4hana")
-        df = internal_format(df, d)
+        df = internal_format(df, d, conversions)
         frames: dict[str, pd.DataFrame] = {}
         unsplittable: set[str] = set()
         for table in tables_of(df.columns):
