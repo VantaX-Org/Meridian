@@ -1,0 +1,93 @@
+# SAP S/4HANA standard dictionary = SAP ECC 6.0 standard DDIC + these deltas.
+#
+# Only differences documented in SAP's S/4HANA Simplification List are listed
+# here, each with the Simplification Item it comes from. Anything not listed is
+# identical to ECC 6.0. Loaded by sap/ddic.py:_apply_s4_delta — never copy an
+# ECC table into S/4 by hand.
+
+# Domain length changes — applied to every field that uses the domain.
+domain_length:
+  MATNR:
+    length: 40
+    item: "Material Number Field Length Extension (MATNR CHAR 18 → CHAR 40)"
+
+# Fields that exist on a different table in S/4HANA. The S/4 field inherits the
+# ECC field's full definition (type, length, domain, fixed values).
+fields_moved:
+  VBAK:
+    item: "SD Simplified Data Models — status fields moved from VBUK to VBAK"
+    fields:
+      GBSTK: VBUK.GBSTK
+      ABSTK: VBUK.ABSTK
+      LFSTK: VBUK.LFSTK
+      LFGSK: VBUK.LFGSK
+      FKSTK: VBUK.FKSTK
+      FKSAK: VBUK.FKSAK
+      CMGST: VBUK.CMGST
+      UVALL: VBUK.UVALL
+  VBAP:
+    item: "SD Simplified Data Models — status fields moved from VBUP to VBAP"
+    fields:
+      GBSTA: VBUP.GBSTA
+      ABSTA: VBUP.ABSTA
+      LFSTA: VBUP.LFSTA
+      LFGSA: VBUP.LFGSA
+      FKSTA: VBUP.FKSTA
+      FKSAA: VBUP.FKSAA
+      UVALL: VBUP.UVALL
+
+# Tables whose role is taken over by a new data model in S/4HANA. They may
+# still exist as compatibility views, but a migration must not load into them.
+obsolete_tables:
+  VBUK:
+    replaced_by: "VBAK / LIKP / VBRK status fields"
+    item: "SD Simplified Data Models"
+  VBUP:
+    replaced_by: "VBAP / LIPS status fields"
+    item: "SD Simplified Data Models"
+  KONV:
+    replaced_by: "PRCD_ELEMENTS"
+    item: "SD Simplified Data Models — pricing conditions"
+  MKPF:
+    replaced_by: "MATDOC"
+    item: "Data Model in Inventory Management (MM-IM)"
+  MSEG:
+    replaced_by: "MATDOC"
+    item: "Data Model in Inventory Management (MM-IM)"
+  KNKK:
+    replaced_by: "UKMBP_CMS_SGM (SAP Credit Management)"
+    item: "Credit Management — FI-AR-CR replaced by FIN-FSCM-CR"
+  BSIS:
+    replaced_by: "ACDOCA (compatibility view)"
+    item: "Data Model Changes in Financials — Universal Journal"
+  BSAS:
+    replaced_by: "ACDOCA (compatibility view)"
+    item: "Data Model Changes in Financials — Universal Journal"
+  BSIK:
+    replaced_by: "ACDOCA (compatibility view)"
+    item: "Data Model Changes in Financials — Universal Journal"
+  BSAK:
+    replaced_by: "ACDOCA (compatibility view)"
+    item: "Data Model Changes in Financials — Universal Journal"
+  BSID:
+    replaced_by: "ACDOCA (compatibility view)"
+    item: "Data Model Changes in Financials — Universal Journal"
+  BSAD:
+    replaced_by: "ACDOCA (compatibility view)"
+    item: "Data Model Changes in Financials — Universal Journal"
+  ANLC:
+    replaced_by: "ACDOCA / FAAT_DOC_IT (new Asset Accounting)"
+    item: "Asset Accounting — new data structures"
+  ANEP:
+    replaced_by: "ACDOCA / FAAT_DOC_IT (new Asset Accounting)"
+    item: "Asset Accounting — new data structures"
+
+# Master-data objects whose maintenance model changes. Used by the migration
+# analyser to require CVI business-partner targets for customers/vendors.
+object_model:
+  vendor:
+    item: "Business Partner Approach — customer/vendor master maintained only via BP (CVI)"
+    target_tables: [BUT000, BUT020, ADRC, BUT0BK, DFKKBPTAXNUM, BUT100, LFA1, LFB1, LFBK, LFM1, CVI_VEND_LINK]
+  customer:
+    item: "Business Partner Approach — customer/vendor master maintained only via BP (CVI)"
+    target_tables: [BUT000, BUT020, ADRC, BUT0BK, DFKKBPTAXNUM, BUT100, KNA1, KNB1, KNBK, KNVV, KNVP, CVI_CUST_LINK]

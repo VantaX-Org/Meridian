@@ -1,0 +1,32 @@
+{
+ "domain": "DLV_SPLIT_INITIATOR",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Last Save was not triggered by a Delivery Split"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Delivery Split was triggered by a Service Call"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Delivery Split was triggered by EWM"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Delivery Split was triggered by Dialog Transaction VLSP"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,37 @@
+{
+ "domain": "KZTLF",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Partial delivery allowed"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Create a delivery with qty greater than zero"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Create only one delivery (also with quantity = 0)"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Only complete delivery allowed"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "No limit to subsequent deliveries"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

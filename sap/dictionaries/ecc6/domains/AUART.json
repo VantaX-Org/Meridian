@@ -1,0 +1,11 @@
+{
+ "domain": "AUART",
+ "type": "CHAR",
+ "length": 4,
+ "decimals": 0,
+ "conversion_exit": "AUART",
+ "lowercase": false,
+ "value_table": "TVAK",
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

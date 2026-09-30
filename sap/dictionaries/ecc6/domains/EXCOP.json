@@ -1,0 +1,37 @@
+{
+ "domain": "EXCOP",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No check in export license area"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Check in dispatch area (within European Union)"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Check in export area (outside European Union)"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Check in dispatch and export area (incl. domestic market)"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Check in dispatch and export area (excl. domestic market)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

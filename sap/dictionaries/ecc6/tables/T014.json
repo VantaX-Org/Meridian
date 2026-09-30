@@ -1,0 +1,118 @@
+{
+ "table": "T014",
+ "description": "Credit control areas",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "KKBER",
+   "key": true,
+   "data_element": "KKBER",
+   "domain": "KKBER",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Credit control area",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "WAERS",
+   "key": false,
+   "data_element": "WAERS",
+   "domain": "WAERS",
+   "type": "CUKY",
+   "length": 5,
+   "decimals": 0,
+   "description": "Currency Key",
+   "check_table": "TCURC"
+  },
+  {
+   "pos": 4,
+   "name": "STAFO",
+   "key": false,
+   "data_element": "STAFO_CM",
+   "domain": "STAFO_CM",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Credit update for open order/delivery/billing document value",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "PERIV",
+   "key": false,
+   "data_element": "PERIV_CM",
+   "domain": "PERIV",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Fiscal year variant of credit control area",
+   "check_table": "T009"
+  },
+  {
+   "pos": 6,
+   "name": "CTLPC",
+   "key": false,
+   "data_element": "CTLPD_CM",
+   "domain": "CTLPC_CM",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Credit Management: Risk Category New Customer",
+   "check_table": "T691A"
+  },
+  {
+   "pos": 7,
+   "name": "KLIMK",
+   "key": false,
+   "data_element": "DKLIM_CM",
+   "domain": "WERT8",
+   "type": "CURR",
+   "length": 15,
+   "decimals": 2,
+   "description": "Credit limit (default setting, unless maintained by cust.)",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "SBGRP",
+   "key": false,
+   "data_element": "DSBGR_CM",
+   "domain": "SBGRP_CM",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Credit management representatives group for new customers",
+   "check_table": "T024B"
+  },
+  {
+   "pos": 9,
+   "name": "ALLCC",
+   "key": false,
+   "data_element": "ALLCC_CM",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Is posting possible for all company codes?",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": []
+}

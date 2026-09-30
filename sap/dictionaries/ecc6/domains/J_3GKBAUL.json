@@ -1,0 +1,32 @@
+{
+ "domain": "J_3GKBAUL",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "SAP standard"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Relevant to CEM with CEM posting rules"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Relevant to CEM with SAP standard posting rules"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Program-internal: CEM-relevant co. code to co. code (EDI)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

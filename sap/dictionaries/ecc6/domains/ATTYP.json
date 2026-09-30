@@ -1,0 +1,67 @@
+{
+ "domain": "ATTYP",
+ "type": "CHAR",
+ "length": 2,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Single material (industry)"
+  },
+  {
+   "low": "00",
+   "high": null,
+   "text": "Single material"
+  },
+  {
+   "low": "01",
+   "high": null,
+   "text": "Generic material"
+  },
+  {
+   "low": "02",
+   "high": null,
+   "text": "Variant"
+  },
+  {
+   "low": "10",
+   "high": null,
+   "text": "Sales set"
+  },
+  {
+   "low": "11",
+   "high": null,
+   "text": "Prepack"
+  },
+  {
+   "low": "12",
+   "high": null,
+   "text": "Display"
+  },
+  {
+   "low": "20",
+   "high": null,
+   "text": "Material group material"
+  },
+  {
+   "low": "21",
+   "high": null,
+   "text": "Hierarchy material"
+  },
+  {
+   "low": "22",
+   "high": null,
+   "text": "Group material"
+  },
+  {
+   "low": "30",
+   "high": null,
+   "text": "Material group reference material"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

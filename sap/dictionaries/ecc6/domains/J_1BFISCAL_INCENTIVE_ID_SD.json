@@ -1,0 +1,11 @@
+{
+ "domain": "J_1BFISCAL_INCENTIVE_ID_SD",
+ "type": "CHAR",
+ "length": 4,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": "J_1BTFISC_ID_SD",
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

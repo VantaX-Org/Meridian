@@ -1,0 +1,118 @@
+{
+ "table": "T028G",
+ "description": "Allocate External to Internal Transactions",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "VGTYP",
+   "key": true,
+   "data_element": "VGTYP_EB",
+   "domain": "VGTYP_EB",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Transaction type",
+   "check_table": "T028V"
+  },
+  {
+   "pos": 3,
+   "name": "VGEXT",
+   "key": true,
+   "data_element": "VGEXT_EB",
+   "domain": "VGEXT_EB",
+   "type": "CHAR",
+   "length": 27,
+   "decimals": 0,
+   "description": "External business transaction",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "VOZPM",
+   "key": true,
+   "data_element": "VOZPM_EB",
+   "domain": "VOZPM_EB",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "+/- sign of the incoming amount",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "VGINT",
+   "key": false,
+   "data_element": "VGINT_EB",
+   "domain": "VGINT_EB",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Posting rule",
+   "check_table": "T028D"
+  },
+  {
+   "pos": 6,
+   "name": "VGSAP",
+   "key": false,
+   "data_element": "VGSAP_EB",
+   "domain": "CHAR4",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "SAP bank transaction",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "PFORM",
+   "key": false,
+   "data_element": "PFORM_EB",
+   "domain": "PFORM",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Processing Type",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "INTAG",
+   "key": false,
+   "data_element": "INTAG_EB",
+   "domain": "INTAG_EB",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Interpretation algorithm",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "DADET",
+   "key": false,
+   "data_element": "DSART_DET",
+   "domain": "DSART",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Planning type, transaction",
+   "check_table": "*"
+  }
+ ],
+ "foreign_keys": []
+}

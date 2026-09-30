@@ -1,0 +1,11 @@
+{
+ "domain": "ABC_TEMPL",
+ "type": "CHAR",
+ "length": 10,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": "COTPL",
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

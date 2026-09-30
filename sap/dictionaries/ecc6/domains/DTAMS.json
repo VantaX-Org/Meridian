@@ -1,0 +1,27 @@
+{
+ "domain": "DTAMS",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "1",
+   "high": null,
+   "text": "Single data record not to be forwarded to the Bundesbank"
+  },
+  {
+   "low": "0",
+   "high": null,
+   "text": "Single data record can be forwarded to the Bundesbank"
+  },
+  {
+   "low": "",
+   "high": null,
+   "text": "Use house bank default value"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,118 @@
+{
+ "table": "GRACUSERROLE",
+ "description": "User Role Assignment Table",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "USERROLEID",
+   "key": true,
+   "data_element": "GRFN_GUID",
+   "domain": "GRFN_GUID",
+   "type": "CHAR",
+   "length": 32,
+   "decimals": 0,
+   "description": "UUID of the GRC object (char32)",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "CONNECTOR",
+   "key": false,
+   "data_element": "GRFN_CONNECTORID",
+   "domain": "RFCDEST",
+   "type": "CHAR",
+   "length": 32,
+   "decimals": 0,
+   "description": "Connector Id",
+   "check_table": "GRFNCCICONNECTOR"
+  },
+  {
+   "pos": 4,
+   "name": "USER_ID",
+   "key": false,
+   "data_element": "GRAC_USER",
+   "domain": "GRAC_USER",
+   "type": "CHAR",
+   "length": 50,
+   "decimals": 0,
+   "description": "User ID",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "ROLE_ID",
+   "key": false,
+   "data_element": "GRFN_GUID",
+   "domain": "GRFN_GUID",
+   "type": "CHAR",
+   "length": 32,
+   "decimals": 0,
+   "description": "UUID of the GRC object (char32)",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "BUS_ROLEID",
+   "key": false,
+   "data_element": "GRFN_GUID",
+   "domain": "GRFN_GUID",
+   "type": "CHAR",
+   "length": 32,
+   "decimals": 0,
+   "description": "UUID of the GRC object (char32)",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "VALID_FROM",
+   "key": false,
+   "data_element": "GRFN_TIMESTAMP",
+   "domain": "GRFN_TIMESTAMP",
+   "type": "DEC",
+   "length": 15,
+   "decimals": 0,
+   "description": "Time Stamp",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "VALID_TO",
+   "key": false,
+   "data_element": "GRFN_TIMESTAMP",
+   "domain": "GRFN_TIMESTAMP",
+   "type": "DEC",
+   "length": 15,
+   "decimals": 0,
+   "description": "Time Stamp",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "ENVIRONMENT",
+   "key": false,
+   "data_element": "GRAC_SYS_TYPE",
+   "domain": "GRAC_SYS_TYPE",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "System Environment",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": []
+}

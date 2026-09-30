@@ -1,0 +1,11 @@
+{
+ "domain": "MSR_RETURNS_REASON",
+ "type": "CHAR",
+ "length": 3,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": "MSR_C_RET_REASON",
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

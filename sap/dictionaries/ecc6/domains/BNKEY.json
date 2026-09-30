@@ -1,0 +1,32 @@
+{
+ "domain": "BNKEY",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "1",
+   "high": null,
+   "text": "Bank number"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Obsolete"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Assign internally"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Assign externally"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

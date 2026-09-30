@@ -1,0 +1,27 @@
+{
+ "domain": "GRAC_SYS_TYPE",
+ "type": "CHAR",
+ "length": 3,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "DEV",
+   "high": null,
+   "text": "Development"
+  },
+  {
+   "low": "PRD",
+   "high": null,
+   "text": "Production"
+  },
+  {
+   "low": "TST",
+   "high": null,
+   "text": "Test"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,42 @@
+{
+ "domain": "FAREG",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "1",
+   "high": null,
+   "text": "Milestone billing on a percentage basis"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Milestone billing on a value basis"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Closing invoice in milestone billing"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Down payment in milestone billing on percentage basis"
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "Down payment in milestone billing on a value basis"
+  },
+  {
+   "low": "6",
+   "high": null,
+   "text": "Periodic billing (rent)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,52 @@
+{
+ "domain": "CHNEU",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Automatic / manual without check"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Automatic / manual and check against external number range"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Automatic / manual and check in USER EXIT"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Automatic / no manual creation"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Manual without check"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Manual and check against external number range"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Manual and check in USER EXIT"
+  },
+  {
+   "low": "G",
+   "high": null,
+   "text": "No creation"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

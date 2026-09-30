@@ -1,0 +1,32 @@
+{
+ "domain": "DKWEG",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Never call up import data screens"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Call up import data screens for goods receipt only"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Call up import data screens for foreign trade only"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Call up import data screens for goods rcpt and foreign trade"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

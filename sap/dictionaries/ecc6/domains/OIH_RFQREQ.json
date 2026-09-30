@@ -1,0 +1,27 @@
+{
+ "domain": "OIH_RFQREQ",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "New defaulting at Purchase Order creation"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Requisition takes precedence over RFQ"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "RFQ takes precedence over Requisition"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,32 @@
+{
+ "domain": "ABWST",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "1",
+   "high": null,
+   "text": "Individual shipment using one mode of transport"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Individual shipment using several modes of transport"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Collective shipment using one mode of transport"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Collective shipment using several modes of transport"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

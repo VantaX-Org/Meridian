@@ -1,0 +1,32 @@
+{
+ "domain": "EXCLG",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Legal control log is not saved"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Saving log level 1 of legal control"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Saving log level 2 of legal control"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Saving log level 3 of legal control"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

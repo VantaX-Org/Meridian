@@ -1,0 +1,32 @@
+{
+ "domain": "HNWK2",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No ref. to add. contracts for partners authorized to release"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Add contracts for partners auth. to release in contract(hdr)"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Add contracts for auth. partners in customer hierarchy (hdr)"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Add according to A and B (header)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

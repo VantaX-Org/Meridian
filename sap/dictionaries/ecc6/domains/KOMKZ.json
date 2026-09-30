@@ -1,0 +1,47 @@
+{
+ "domain": "KOMKZ",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Picking is not carried out"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Picking is not carried out with WMS"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "WMS fixed bin picking"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Picking carried out via WMS transfer orders"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "LEAN WM in use"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Single-step procedure for multiple picking"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Two-step procedure for multiple picking"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

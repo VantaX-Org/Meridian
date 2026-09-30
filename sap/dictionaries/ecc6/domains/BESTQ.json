@@ -1,0 +1,32 @@
+{
+ "domain": "BESTQ",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Available Stock"
+  },
+  {
+   "low": "Q",
+   "high": null,
+   "text": "Stock in Quality Control"
+  },
+  {
+   "low": "R",
+   "high": null,
+   "text": "Returns Stock"
+  },
+  {
+   "low": "S",
+   "high": null,
+   "text": "Blocked Stock"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

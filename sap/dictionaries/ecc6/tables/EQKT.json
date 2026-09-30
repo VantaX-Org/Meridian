@@ -1,0 +1,94 @@
+{
+ "table": "EQKT",
+ "description": "Equipment Short Texts",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "EQUNR",
+   "key": true,
+   "data_element": "EQUNR",
+   "domain": "EQUNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Equipment Number",
+   "check_table": "EQUI"
+  },
+  {
+   "pos": 3,
+   "name": "SPRAS",
+   "key": true,
+   "data_element": "SPRAS",
+   "domain": "SPRAS",
+   "type": "LANG",
+   "length": 1,
+   "decimals": 0,
+   "description": "Language Key",
+   "check_table": "T002"
+  },
+  {
+   "pos": 4,
+   "name": "EQKTX",
+   "key": false,
+   "data_element": "KTX01",
+   "domain": "TEXT40",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Description of technical object",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "KZLTX",
+   "key": false,
+   "data_element": "KZLTA",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Long Text Indicator",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "TXASP",
+   "key": false,
+   "data_element": "KZMLA",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Primary language indicator for text segment",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "EQKTU",
+   "key": false,
+   "data_element": "EQKTU",
+   "domain": "CHAR40",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Equipment description in capital letters",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": []
+}

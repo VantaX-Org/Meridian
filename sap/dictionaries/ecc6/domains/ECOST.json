@@ -1,0 +1,27 @@
+{
+ "domain": "ECOST",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Schedule line for ALE not relevant"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Schedule line not yet confirmed by MM"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Schedule line confirmed by MM"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

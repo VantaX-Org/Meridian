@@ -1,0 +1,37 @@
+{
+ "domain": "ANEQS",
+ "type": "NUMC",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "0",
+   "high": null,
+   "text": "Asset is complete"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Asset is incomplete, but can be posted"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Asset is incomplete and cannot be posted (dep., retmt)"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Asset is incomplete (cst ctr, int.order, activ.type missing)"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Asset is incomplete (investment account assignment missing)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

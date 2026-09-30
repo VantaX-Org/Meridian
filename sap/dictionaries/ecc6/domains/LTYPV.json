@@ -1,0 +1,27 @@
+{
+ "domain": "LTYPV",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No ATP check"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Message appears when not completely available"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Do not substitute if not completely available"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

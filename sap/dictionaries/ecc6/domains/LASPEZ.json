@@ -1,0 +1,32 @@
+{
+ "domain": "LASPEZ",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "S",
+   "high": null,
+   "text": "Single byte"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Double byte"
+  },
+  {
+   "low": "M",
+   "high": null,
+   "text": "Single and double byte"
+  },
+  {
+   "low": "L",
+   "high": null,
+   "text": "Single byte / Inverse write direction"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,70 @@
+{
+ "table": "DFKKBPTAXNUM",
+ "description": "Tax Numbers for Business Partner",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "CLIENT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "PARTNER",
+   "key": true,
+   "data_element": "BU_PARTNER",
+   "domain": "BU_PARTNER",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Business Partner Number",
+   "check_table": "BUT000"
+  },
+  {
+   "pos": 3,
+   "name": "TAXTYPE",
+   "key": true,
+   "data_element": "BPTAXTYPE",
+   "domain": "BPTAXTYPE",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Tax Number Category",
+   "check_table": "TFKTAXNUMTYPE_C"
+  },
+  {
+   "pos": 4,
+   "name": "TAXNUM",
+   "key": false,
+   "data_element": "BPTAXNUM",
+   "domain": "BPTAXNUM",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "Business Partner Tax Number",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "TAXNUMXL",
+   "key": false,
+   "data_element": "BPTAXNUMXL",
+   "domain": "BPTAXNUMXL",
+   "type": "CHAR",
+   "length": 60,
+   "decimals": 0,
+   "description": "Business Partner Tax Number",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": []
+}

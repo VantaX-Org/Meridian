@@ -1,0 +1,11 @@
+{
+ "domain": "AD_SMTPADR",
+ "type": "CHAR",
+ "length": 241,
+ "decimals": 0,
+ "conversion_exit": "SXIDN",
+ "lowercase": true,
+ "value_table": null,
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

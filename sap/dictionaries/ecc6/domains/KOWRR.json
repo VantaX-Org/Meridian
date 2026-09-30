@@ -1,0 +1,27 @@
+{
+ "domain": "KOWRR",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "System will copy item to header totals"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "No cumulation - Values cannot be used statistically"
+  },
+  {
+   "low": "Y",
+   "high": null,
+   "text": "No cumulation - Values can be used statistically"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

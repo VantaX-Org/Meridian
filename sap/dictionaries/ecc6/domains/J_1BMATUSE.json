@@ -1,0 +1,32 @@
+{
+ "domain": "J_1BMATUSE",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "0",
+   "high": null,
+   "text": "Resale"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Industrialisation"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Consumption"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Asset"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

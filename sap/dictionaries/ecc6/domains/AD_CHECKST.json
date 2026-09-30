@@ -1,0 +1,27 @@
+{
+ "domain": "AD_CHECKST",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Not checked"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "checked against city index"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "differs from city index"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,11 @@
+{
+ "domain": "KOSCH",
+ "type": "CHAR",
+ "length": 18,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": "T190S",
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

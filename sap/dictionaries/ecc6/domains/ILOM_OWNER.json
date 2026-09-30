@@ -1,0 +1,52 @@
+{
+ "domain": "ILOM_OWNER",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Equipment, current time segment"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Equipment, historical time segment"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Functional Location"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Maintenance item without object reference"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Notification, current, without object reference"
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "Notification, historical"
+  },
+  {
+   "low": "6",
+   "high": null,
+   "text": "Order, current, without object reference"
+  },
+  {
+   "low": "7",
+   "high": null,
+   "text": "Order, historical"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

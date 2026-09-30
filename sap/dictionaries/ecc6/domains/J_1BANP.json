@@ -1,0 +1,11 @@
+{
+ "domain": "J_1BANP",
+ "type": "NUMC",
+ "length": 9,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": "J_1BTANP",
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

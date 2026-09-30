@@ -1,0 +1,22 @@
+{
+ "domain": "ANEQK",
+ "type": "NUMC",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "0",
+   "high": null,
+   "text": "Asset managed without history"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Asset managed with history"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

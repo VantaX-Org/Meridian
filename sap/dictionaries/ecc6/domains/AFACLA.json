@@ -1,0 +1,32 @@
+{
+ "domain": "AFACLA",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "0",
+   "high": null,
+   "text": "No assignment"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Straight-line depreciation"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Declining-balance depreciation"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Other depreciation"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

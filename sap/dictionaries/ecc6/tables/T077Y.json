@@ -1,0 +1,58 @@
+{
+ "table": "T077Y",
+ "description": "Account Group Names (Table T077K)",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "SPRAS",
+   "key": true,
+   "data_element": "SPRAS",
+   "domain": "SPRAS",
+   "type": "LANG",
+   "length": 1,
+   "decimals": 0,
+   "description": "Language Key",
+   "check_table": "T002"
+  },
+  {
+   "pos": 3,
+   "name": "KTOKK",
+   "key": true,
+   "data_element": "KTOKK",
+   "domain": "KTOKK",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Vendor account group",
+   "check_table": "T077K"
+  },
+  {
+   "pos": 4,
+   "name": "TXT30",
+   "key": false,
+   "data_element": "TXT30_077T",
+   "domain": "TEXT30",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Account Group Name",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": []
+}

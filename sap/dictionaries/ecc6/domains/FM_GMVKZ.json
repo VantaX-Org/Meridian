@@ -1,0 +1,27 @@
+{
+ "domain": "FM_GMVKZ",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Item not transferred to execution"
+  },
+  {
+   "low": "I",
+   "high": null,
+   "text": "Item for information transferred to execution"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Item must be executed"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

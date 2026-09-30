@@ -7,7 +7,6 @@ reflect the scoped population, not the full extract.
 Covers:
 - pandas path via checks.runner.apply_context
 - pandas + YAML-runner integration
-- polars path via _apply_context_lf (if polars installed)
 - engine parity
 """
 
@@ -117,7 +116,6 @@ def test_runner_respects_applies_when(tmp_path, monkeypatch):
         })
 
         # Force pandas engine so we exercise the runner path
-        monkeypatch.setenv("CHECK_ENGINE", "pandas")
         results = run_checks(fake_module, df, tenant_id="test")
 
         # Exactly one result for the one rule
@@ -137,75 +135,3 @@ def test_runner_respects_applies_when(tmp_path, monkeypatch):
 # Polars parity — both engines produce identical total_count / pass_rate
 # when applies_when is in effect.
 # ---------------------------------------------------------------------------
-
-from checks.polars_engine import POLARS_AVAILABLE
-
-
-@pytest.mark.skipif(not POLARS_AVAILABLE, reason="polars not installed")
-def test_polars_applies_when_parity():
-    """Both engines must agree on scoped total_count and pass_rate."""
-    from checks.polars_engine import run_checks_polars_df
-    from checks.types.null_check import NullCheck
-
-    df = pd.DataFrame({
-        "MARA.MATNR": [f"M{i:03d}" for i in range(100)],
-        "MARA.MTART": (["FERT"] * 25) + (["HALB"] * 25) + (["ROH"] * 25) + (["DIEN"] * 25),
-        # Null in 10 of 50 scoped records, 0 in others
-        "MARA.SERNR": (
-            (["SN"] * 20) + ([None] * 5)    # FERT: 5 nulls
-            + (["SN"] * 20) + ([None] * 5)  # HALB: 5 nulls
-            + (["SN"] * 50)                 # ROH + DIEN: fully populated
-        ),
-    })
-
-    rule = {
-        "id": "TAW002",
-        "module": "test",
-        "field": "MARA.SERNR",
-        "check_class": "null_check",
-        "severity": "high",
-        "dimension": "completeness",
-        "message": "SERNR required for serialized",
-        "threshold": 100.0,
-        "applies_when": {"MARA.MTART": ["FERT", "HALB"]},
-    }
-
-    # Pandas path
-    from checks.runner import apply_context
-    scoped_df = apply_context(df, rule["applies_when"])
-    pandas_result = NullCheck(rule).run(scoped_df)
-
-    # Polars path
-    polars_results = run_checks_polars_df(df, "test", [dict(rule)])
-    assert len(polars_results) == 1
-    polars_result = polars_results[0]
-
-    assert pandas_result.total_count == polars_result["total_count"] == 50
-    assert pandas_result.affected_count == polars_result["affected_count"] == 10
-    assert pandas_result.pass_rate == polars_result["pass_rate"] == 80.0
-
-
-@pytest.mark.skipif(not POLARS_AVAILABLE, reason="polars not installed")
-def test_polars_missing_context_field_skips():
-    """applies_when references a field not in the extract — rule is skipped."""
-    from checks.polars_engine import run_checks_polars_df
-
-    df = pd.DataFrame({
-        "MARA.MATNR": ["M001"],
-        "MARA.SERNR": ["SN-1"],
-        # MARA.MTART intentionally absent
-    })
-
-    rule = {
-        "id": "TAW003",
-        "module": "test",
-        "field": "MARA.SERNR",
-        "check_class": "null_check",
-        "severity": "high",
-        "dimension": "completeness",
-        "threshold": 100.0,
-        "applies_when": {"MARA.MTART": ["FERT"]},
-    }
-
-    results = run_checks_polars_df(df, "test", [dict(rule)])
-    assert results == [], "rule with missing applies_when field should be skipped entirely"

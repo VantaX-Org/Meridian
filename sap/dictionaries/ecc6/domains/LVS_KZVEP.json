@@ -1,0 +1,27 @@
+{
+ "domain": "LVS_KZVEP",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No packaging connection"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Packaging proposal for available packagings"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Packaging verified for delivery"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

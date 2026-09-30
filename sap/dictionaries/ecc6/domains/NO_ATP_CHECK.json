@@ -1,0 +1,32 @@
+{
+ "domain": "NO_ATP_CHECK",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Availability check and ATP according to Customizing"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "No availability check; no requirements"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Requirements but no availability check"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Availability check but no requirements"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

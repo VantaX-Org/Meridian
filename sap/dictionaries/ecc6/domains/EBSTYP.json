@@ -1,0 +1,32 @@
+{
+ "domain": "EBSTYP",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "Request for Quotation"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Purchase Order"
+  },
+  {
+   "low": "K",
+   "high": null,
+   "text": "Contract"
+  },
+  {
+   "low": "L",
+   "high": null,
+   "text": "Scheduling Agreement"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

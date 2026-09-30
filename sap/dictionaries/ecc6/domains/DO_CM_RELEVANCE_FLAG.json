@@ -1,0 +1,22 @@
+{
+ "domain": "DO_CM_RELEVANCE_FLAG",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": true,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Not relevant for Configuration Management"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Relevant for Configuration Management"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

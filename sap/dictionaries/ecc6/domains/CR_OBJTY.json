@@ -1,0 +1,32 @@
+{
+ "domain": "CR_OBJTY",
+ "type": "CHAR",
+ "length": 2,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "Work center"
+  },
+  {
+   "low": "AA",
+   "high": null,
+   "text": "Work center alias"
+  },
+  {
+   "low": "FH",
+   "high": null,
+   "text": "Production resources/tools"
+  },
+  {
+   "low": "H",
+   "high": null,
+   "text": "Hierarchy"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

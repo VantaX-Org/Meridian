@@ -1,0 +1,37 @@
+{
+ "domain": "GTS_SAKES",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Not Relevant"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Relevant"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Delivery is in Storage"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Storage is Completed"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Temporary Storage Was Completed Manually"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

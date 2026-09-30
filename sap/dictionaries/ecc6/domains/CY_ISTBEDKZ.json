@@ -1,0 +1,27 @@
+{
+ "domain": "CY_ISTBEDKZ",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No actual cap. reqs."
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Actual cap. req. from work center formula"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Actual cap. req. from activities"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

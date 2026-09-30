@@ -1,0 +1,11 @@
+{
+ "domain": "JV_NAME",
+ "type": "CHAR",
+ "length": 6,
+ "decimals": 0,
+ "conversion_exit": "ALPHA",
+ "lowercase": false,
+ "value_table": "T8JV",
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

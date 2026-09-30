@@ -1,0 +1,42 @@
+{
+ "domain": "AUREL",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Non-allocation-table-relevant"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Allocation-table-relevant: placement in storage"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Allocation-table-relevant: cross-docking"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Allocation-table-relevant: flow through"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Allocation-table-relevant: cross docking/flow through"
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "Alloc.-table-relevant: cross docking/placement in storage"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

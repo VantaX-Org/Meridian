@@ -1,0 +1,142 @@
+{
+ "table": "KNB5",
+ "description": "Customer master (dunning data)",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "KUNNR",
+   "key": true,
+   "data_element": "KUNNR",
+   "domain": "KUNNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Customer Number",
+   "check_table": "KNA1"
+  },
+  {
+   "pos": 3,
+   "name": "BUKRS",
+   "key": true,
+   "data_element": "BUKRS",
+   "domain": "BUKRS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Company Code",
+   "check_table": "KNB1"
+  },
+  {
+   "pos": 4,
+   "name": "MABER",
+   "key": true,
+   "data_element": "MABER",
+   "domain": "MABER",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Dunning Area",
+   "check_table": "T047M"
+  },
+  {
+   "pos": 5,
+   "name": "MAHNA",
+   "key": false,
+   "data_element": "MAHNA",
+   "domain": "MAHNA",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Dunning Procedure",
+   "check_table": "T047A"
+  },
+  {
+   "pos": 6,
+   "name": "MANSP",
+   "key": false,
+   "data_element": "MANSP",
+   "domain": "MANSP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Dunning block",
+   "check_table": "T040S"
+  },
+  {
+   "pos": 7,
+   "name": "MADAT",
+   "key": false,
+   "data_element": "MADAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date of Last Dunning Notice",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "MAHNS",
+   "key": false,
+   "data_element": "MAHNS_D",
+   "domain": "MAHNS",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Dunning Level",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "KNRMA",
+   "key": false,
+   "data_element": "KNRMA",
+   "domain": "KUNNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Account number of the dunning recipient",
+   "check_table": "KNA1"
+  },
+  {
+   "pos": 10,
+   "name": "GMVDT",
+   "key": false,
+   "data_element": "GMVDT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date of the legal dunning proceedings",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "BUSAB",
+   "key": false,
+   "data_element": "BUSAB_MA",
+   "domain": "BUSAB",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Dunning clerk",
+   "check_table": "T001S"
+  }
+ ],
+ "foreign_keys": []
+}

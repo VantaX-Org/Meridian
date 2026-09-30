@@ -1,0 +1,11 @@
+{
+ "domain": "AD_DELIVERY_SERVICE_TYPE",
+ "type": "CHAR",
+ "length": 4,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": "ADDRC_DELI_SERV",
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

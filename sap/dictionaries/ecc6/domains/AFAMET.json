@@ -1,0 +1,147 @@
+{
+ "domain": "AFAMET",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "D",
+   "high": null,
+   "text": "Percentage from the useful life"
+  },
+  {
+   "low": "G",
+   "high": null,
+   "text": "Total percentage in concessionary period"
+  },
+  {
+   "low": "P",
+   "high": null,
+   "text": "Stated percentage"
+  },
+  {
+   "low": "M",
+   "high": null,
+   "text": "Mean value from several areas"
+  },
+  {
+   "low": "S",
+   "high": null,
+   "text": "No. of units/Total no. of units"
+  },
+  {
+   "low": "T",
+   "high": null,
+   "text": "No. of units/remaining units"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Sum-of-the-years-digits method of depreciation"
+  },
+  {
+   "low": "U",
+   "high": null,
+   "text": "% from remaining life calc. from depr. conversion date"
+  },
+  {
+   "low": "L",
+   "high": null,
+   "text": "Deprec. acc. to the present val. portion of leasing install."
+  },
+  {
+   "low": "J",
+   "high": null,
+   "text": "Decl.-bal. (logarithmic) over total life for Japan"
+  },
+  {
+   "low": "K",
+   "high": null,
+   "text": "Decl.-bal. (logarithmic) over remaining life for Korea"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Declining multi-phase depreciation   CZ"
+  },
+  {
+   "low": "V",
+   "high": null,
+   "text": "Immediate depreciation"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Customer-specific method 1"
+  },
+  {
+   "low": "Y",
+   "high": null,
+   "text": "Customer-specific method 2"
+  },
+  {
+   "low": "Z",
+   "high": null,
+   "text": "Customer-specific method 3"
+  },
+  {
+   "low": "N",
+   "high": null,
+   "text": "No automatic calculation"
+  },
+  {
+   "low": "H",
+   "high": null,
+   "text": "Stated percentage, half-year depreciation for Japan"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Country-specific method"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Country-specific method"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Country-specific method"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Country-specific method"
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "Country-specific method"
+  },
+  {
+   "low": "6",
+   "high": null,
+   "text": "Country-specific method"
+  },
+  {
+   "low": "7",
+   "high": null,
+   "text": "Country-specific method"
+  },
+  {
+   "low": "8",
+   "high": null,
+   "text": "Country-specific method"
+  },
+  {
+   "low": "9",
+   "high": null,
+   "text": "Country-specific method"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

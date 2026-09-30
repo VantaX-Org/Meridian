@@ -1,0 +1,11 @@
+{
+ "domain": "GLE_MCA_MCAKEY",
+ "type": "CHAR",
+ "length": 5,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": "GLE_MCA_TMCAKEY",
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

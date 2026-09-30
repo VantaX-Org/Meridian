@@ -1,0 +1,62 @@
+{
+ "domain": "DOCSTAT_KK",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "Accounting Document Generated in FI"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Accounting Document Generated in FI-CA"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Billing Doc. Transferred to IS-U, Billing Request Generated"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Billing Doc. Transferred to IS-U, IS-U Billing Doc Generated"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Billing Doc. Transferred to IS-U, Billing Request Cancelled"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Transferral to Financial Accounting Not Neccessary"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "FI-CA-Inv.: Invoicing Order Created"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "FI-CA-Inv.: Invoicing Document Created"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "FI-CA-Inv.: Invoicing Order Cancelled"
+  },
+  {
+   "low": "G",
+   "high": null,
+   "text": "Billing Block IDoc Processing"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

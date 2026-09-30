@@ -1,0 +1,32 @@
+{
+ "domain": "AA_SCHROTT",
+ "type": "NUMC",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "0",
+   "high": null,
+   "text": "Consideration is controlled by cutoff value key"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Base value is reduced by the scrap value amount"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Base value is not reduced"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Cutoff value is ignored"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

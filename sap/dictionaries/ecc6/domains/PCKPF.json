@@ -1,0 +1,27 @@
+{
+ "domain": "PCKPF",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Can be packed"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Must be packed"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Cannot be packed"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

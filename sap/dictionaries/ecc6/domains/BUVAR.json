@@ -1,0 +1,27 @@
+{
+ "domain": "BUVAR",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Standard version"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "For Austria and Switzerland"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "For France and countries with withholding tax"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

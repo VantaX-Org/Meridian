@@ -1,0 +1,27 @@
+{
+ "domain": "MAABC",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "Very important material according to the ABC analysis"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Fairly important material according to the ABC analysis"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Less important material according to the ABC analysis"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

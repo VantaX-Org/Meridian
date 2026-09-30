@@ -1,0 +1,57 @@
+{
+ "domain": "M8VGA",
+ "type": "CHAR",
+ "length": 2,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "RP",
+   "high": null,
+   "text": "Invoice receipt"
+  },
+  {
+   "low": "KP",
+   "high": null,
+   "text": "Account maintenance"
+  },
+  {
+   "low": "PR",
+   "high": null,
+   "text": "Price change"
+  },
+  {
+   "low": "BL",
+   "high": null,
+   "text": "Material debit"
+  },
+  {
+   "low": "PF",
+   "high": null,
+   "text": "Std cost estim. release"
+  },
+  {
+   "low": "RD",
+   "high": null,
+   "text": "Logistics invoice"
+  },
+  {
+   "low": "ML",
+   "high": null,
+   "text": "Material ledger settlement"
+  },
+  {
+   "low": "MI",
+   "high": null,
+   "text": "Material ledger initialization"
+  },
+  {
+   "low": "RS",
+   "high": null,
+   "text": "Logistics invoice, cancel"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,62 @@
+{
+ "domain": "LEIN_STATU",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "in storage bin"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "For stock transfer"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "cont.stock addn"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "In Stck Rmvl"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "being created"
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "in post.change"
+  },
+  {
+   "low": "6",
+   "high": null,
+   "text": "will be deleted"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "to be picked  (internal only)"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "being created (internal only)"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "in posting change (internal)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

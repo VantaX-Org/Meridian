@@ -1,0 +1,118 @@
+{
+ "table": "T077S",
+ "description": "G/L account groups",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "KTOPL",
+   "key": true,
+   "data_element": "KTOPL",
+   "domain": "KTOPL",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Chart of Accounts",
+   "check_table": "T004"
+  },
+  {
+   "pos": 3,
+   "name": "KTOKS",
+   "key": true,
+   "data_element": "KTOKS",
+   "domain": "KTOKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "G/L Account Group",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "VONNR",
+   "key": false,
+   "data_element": "VONNR_077S",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Number of G/L account (lower area limit)",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 5,
+   "name": "BISNR",
+   "key": false,
+   "data_element": "BISNR_077S",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Number of G/L Account (Upper Area Limit)",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 6,
+   "name": "FAUSS",
+   "key": false,
+   "data_element": "FAUSS",
+   "domain": "FA040",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Field status definition for G/L accounts",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "LAYOUT_0",
+   "key": false,
+   "data_element": "TAB_LAYOUT_GL_0",
+   "domain": "TAB_LAYOUT",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "G/L account master record: Layout for \"Central Processing\"",
+   "check_table": "TAMLAY0"
+  },
+  {
+   "pos": 8,
+   "name": "LAYOUT_P",
+   "key": false,
+   "data_element": "TAB_LAYOUT_GL_P",
+   "domain": "TAB_LAYOUT",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "G/L master data: Layout for \"chart of accts processsing\"",
+   "check_table": "TAMLAY0"
+  },
+  {
+   "pos": 9,
+   "name": "LAYOUT_S",
+   "key": false,
+   "data_element": "TAB_LAYOUT_GL_S",
+   "domain": "TAB_LAYOUT",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "G/L master data: Layout for \"company code processing\"",
+   "check_table": "TAMLAY0"
+  }
+ ],
+ "foreign_keys": []
+}

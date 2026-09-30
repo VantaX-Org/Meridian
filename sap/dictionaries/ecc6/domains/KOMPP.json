@@ -1,0 +1,27 @@
+{
+ "domain": "KOMPP",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Do not form delivery groups"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Form delivery group with one delivery date"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Delivery group with correlated schedule lines"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

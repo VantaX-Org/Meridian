@@ -1,0 +1,42 @@
+{
+ "domain": "ABRAB",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No releases"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Requiremnts acc. to fore. release/Deliveriy acc. to validity"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Requirements and deliveries according to validity"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Requirements acc. to fore.dlv.sched/Deliveries acc. to JIT"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Requirements acc. to validity/Deliveries acc. to JIT"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "No JIT delivery schedule"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

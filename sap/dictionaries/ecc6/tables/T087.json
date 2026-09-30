@@ -1,0 +1,46 @@
+{
+ "table": "T087",
+ "description": "Evaluation groups",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "ORDNR",
+   "key": true,
+   "data_element": "ORDNR",
+   "domain": "ORDNR",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Evaluation group number",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "ORD4X",
+   "key": true,
+   "data_element": "ORD4X",
+   "domain": "ORD4X",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Evaluation groups 1 - 4",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": []
+}

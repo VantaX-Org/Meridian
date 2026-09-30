@@ -1,0 +1,47 @@
+{
+ "domain": "KZBEW",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Goods movement w/o reference"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Goods movement for purchase order"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Goods movement for production order"
+  },
+  {
+   "low": "L",
+   "high": null,
+   "text": "Goods movement for delivery note"
+  },
+  {
+   "low": "K",
+   "high": null,
+   "text": "Goods movement for kanban requirement (WM - internal only)"
+  },
+  {
+   "low": "O",
+   "high": null,
+   "text": "Subsequent adjustment of \"material-provided\" consumption"
+  },
+  {
+   "low": "W",
+   "high": null,
+   "text": "Subsequent adjustment of proportion/product unit material"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

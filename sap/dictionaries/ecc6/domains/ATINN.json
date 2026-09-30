@@ -1,0 +1,11 @@
+{
+ "domain": "ATINN",
+ "type": "NUMC",
+ "length": 10,
+ "decimals": 0,
+ "conversion_exit": "ATINN",
+ "lowercase": false,
+ "value_table": "CABN",
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

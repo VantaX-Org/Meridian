@@ -1,0 +1,34 @@
+{
+ "table": "TSPA",
+ "description": "Organizational Unit: Sales Divisions",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "SPART",
+   "key": true,
+   "data_element": "SPART",
+   "domain": "SPART",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Division",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": []
+}

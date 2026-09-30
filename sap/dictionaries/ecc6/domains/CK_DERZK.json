@@ -1,0 +1,37 @@
+{
+ "domain": "CK_DERZK",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Cost Material"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Cost Material; Issue Warning if Material Component"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Cost Material; Issue Error if Material Component"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Do Not Cost Material; Issue Warning if Material Component"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Do Not Cost Material; Issue Error if Material Component"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

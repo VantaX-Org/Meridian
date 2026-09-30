@@ -1,0 +1,52 @@
+{
+ "domain": "BSTAT",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "Clearing Document"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Reset clearing document"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Recurring entry document"
+  },
+  {
+   "low": "M",
+   "high": null,
+   "text": "Sample document"
+  },
+  {
+   "low": "S",
+   "high": null,
+   "text": "Noted items"
+  },
+  {
+   "low": "V",
+   "high": null,
+   "text": "Parked document"
+  },
+  {
+   "low": "W",
+   "high": null,
+   "text": "Parked document with change of document ID"
+  },
+  {
+   "low": "Z",
+   "high": null,
+   "text": "Parked document which was deleted"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

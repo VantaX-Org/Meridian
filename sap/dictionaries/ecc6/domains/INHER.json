@@ -1,0 +1,27 @@
+{
+ "domain": "INHER",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "R",
+   "high": null,
+   "text": "Data transfer from reference object"
+  },
+  {
+   "low": "H",
+   "high": null,
+   "text": "Data transfer from superior object"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Field maintained directly. No data transfer"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

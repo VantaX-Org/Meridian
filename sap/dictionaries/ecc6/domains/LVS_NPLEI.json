@@ -1,0 +1,22 @@
+{
+ "domain": "LVS_NPLEI",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Storage bin cannot be changed during confirmation"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Storage bin can be changed during confirmation"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

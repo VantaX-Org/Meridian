@@ -1,0 +1,32 @@
+{
+ "domain": "FM_SRTYPE",
+ "type": "CHAR",
+ "length": 2,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "01",
+   "high": null,
+   "text": "Dunning Charge"
+  },
+  {
+   "low": "02",
+   "high": null,
+   "text": "Dunning Interest"
+  },
+  {
+   "low": "03",
+   "high": null,
+   "text": "Deferral Interest"
+  },
+  {
+   "low": "04",
+   "high": null,
+   "text": "General Execution Costs"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

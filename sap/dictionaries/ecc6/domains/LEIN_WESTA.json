@@ -1,0 +1,22 @@
+{
+ "domain": "LEIN_WESTA",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Goods movement posting complete"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Goods movement posting still not complete"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

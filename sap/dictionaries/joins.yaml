@@ -1,0 +1,115 @@
+# SAP table relationships used by the check engine to evaluate each rule at
+# its correct record grain (checks/frames.py).
+#
+#   parent → child, joined on join: {child_field: parent_field}
+#   cardinality: "one"  — at most one child row per parent row (after filter /
+#                         prefer); the child is an *attribute* of the parent
+#                         and rules on it are evaluated at the parent's grain
+#                         (e.g. a vendor with no ADR6 e-mail row fails a
+#                         "vendor e-mail required" check).
+#                "many" — a real child entity with its own grain (LFB1 is one
+#                         row per vendor × company code).
+#   filter:  {FIELD: value} applied to the child before joining
+#            (current time segment, active status, default address).
+#   prefer:  {FIELD: value} rows sorted first before de-duplicating on the
+#            join keys (text tables: English description first).
+#
+# Every field named here must exist in sap/dictionaries (enforced by
+# tests/checks/test_joins_valid.py).
+
+edges:
+  # ── Vendor master ──────────────────────────────────────────────────────
+  - {parent: LFA1, child: LFB1,  join: {LIFNR: LIFNR}, cardinality: many}
+  - {parent: LFB1, child: LFB5,  join: {LIFNR: LIFNR, BUKRS: BUKRS}, cardinality: one}
+  - {parent: LFA1, child: LFBK,  join: {LIFNR: LIFNR}, cardinality: one}
+  - {parent: LFA1, child: LFM1,  join: {LIFNR: LIFNR}, cardinality: many}
+  - {parent: LFA1, child: ADRC,  join: {ADDRNUMBER: ADRNR}, cardinality: one}
+  - {parent: LFA1, child: ADR6,  join: {ADDRNUMBER: ADRNR}, cardinality: one, prefer: {FLGDEFAULT: "X"}}
+
+  # ── Customer master ────────────────────────────────────────────────────
+  - {parent: KNA1, child: KNB1,  join: {KUNNR: KUNNR}, cardinality: many}
+  - {parent: KNB1, child: KNB5,  join: {KUNNR: KUNNR, BUKRS: BUKRS}, cardinality: one}
+  - {parent: KNA1, child: KNKK,  join: {KUNNR: KUNNR}, cardinality: one}
+  - {parent: KNA1, child: KNVV,  join: {KUNNR: KUNNR}, cardinality: many}
+  - {parent: KNA1, child: KNBK,  join: {KUNNR: KUNNR}, cardinality: one}
+  - {parent: KNA1, child: ADRC,  join: {ADDRNUMBER: ADRNR}, cardinality: one}
+  - {parent: KNA1, child: ADR6,  join: {ADDRNUMBER: ADRNR}, cardinality: one, prefer: {FLGDEFAULT: "X"}}
+
+  # ── Business partner ───────────────────────────────────────────────────
+  - {parent: BUT000, child: BUT020, join: {PARTNER: PARTNER}, cardinality: one}
+  - {parent: BUT020, child: ADRC,   join: {ADDRNUMBER: ADDRNUMBER}, cardinality: one}
+  - {parent: BUT020, child: ADR6,   join: {ADDRNUMBER: ADDRNUMBER}, cardinality: one, prefer: {FLGDEFAULT: "X"}}
+  - {parent: BUT000, child: BUT100, join: {PARTNER: PARTNER}, cardinality: many}
+  - {parent: BUT000, child: BUT0BK, join: {PARTNER: PARTNER}, cardinality: one}
+  - {parent: BUT000, child: BUT0ID, join: {PARTNER: PARTNER}, cardinality: many}
+  - {parent: BUT000, child: DFKKBPTAXNUM, join: {PARTNER: PARTNER}, cardinality: many}
+
+  # ── Material master ────────────────────────────────────────────────────
+  - {parent: MARA, child: MAKT, join: {MATNR: MATNR}, cardinality: one, prefer: {SPRAS: "E"}}
+  - {parent: MARA, child: MARC, join: {MATNR: MATNR}, cardinality: many}
+  - {parent: MARC, child: MARD, join: {MATNR: MATNR, WERKS: WERKS}, cardinality: many}
+  - {parent: MARC, child: MBEW, join: {MATNR: MATNR, BWKEY: WERKS}, cardinality: one}
+  - {parent: MARA, child: MVKE, join: {MATNR: MATNR}, cardinality: many}
+  - {parent: MARA, child: MARM, join: {MATNR: MATNR}, cardinality: many}
+  - {parent: MARA, child: MLGN, join: {MATNR: MATNR}, cardinality: many}
+  - {parent: MLGN, child: MLGT, join: {MATNR: MATNR, LGNUM: LGNUM}, cardinality: many}
+  - {parent: MARA, child: MEAN, join: {MATNR: MATNR}, cardinality: many}
+
+  # ── Batches ────────────────────────────────────────────────────────────
+  - {parent: MCH1, child: MCHA, join: {MATNR: MATNR, CHARG: CHARG}, cardinality: many}
+  - {parent: MCHA, child: MCHB, join: {MATNR: MATNR, WERKS: WERKS, CHARG: CHARG}, cardinality: many}
+
+  # ── General ledger ─────────────────────────────────────────────────────
+  - {parent: SKA1, child: SKAT, join: {KTOPL: KTOPL, SAKNR: SAKNR}, cardinality: one, prefer: {SPRAS: "E"}}
+  - {parent: SKA1, child: SKB1, join: {SAKNR: SAKNR}, cardinality: many}
+
+  # ── Asset accounting ───────────────────────────────────────────────────
+  - {parent: ANLA, child: ANLB, join: {BUKRS: BUKRS, ANLN1: ANLN1, ANLN2: ANLN2}, cardinality: many}
+  - {parent: ANLA, child: ANLZ, join: {BUKRS: BUKRS, ANLN1: ANLN1, ANLN2: ANLN2}, cardinality: one, filter: {BDATU: "99991231"}}
+
+  # ── Purchasing ─────────────────────────────────────────────────────────
+  - {parent: EKKO, child: EKPO, join: {EBELN: EBELN}, cardinality: many}
+
+  # ── Sales (ECC status tables feed S/4 VBAK/VBAP status fields) ─────────
+  - {parent: VBAK, child: VBAP, join: {VBELN: VBELN}, cardinality: many}
+  - {parent: VBAK, child: VBUK, join: {VBELN: VBELN}, cardinality: one}
+  - {parent: VBAP, child: VBUP, join: {VBELN: VBELN, POSNR: POSNR}, cardinality: one}
+
+  # ── Plant maintenance ──────────────────────────────────────────────────
+  - {parent: EQUI, child: EQKT,  join: {EQUNR: EQUNR}, cardinality: one, prefer: {SPRAS: "E"}}
+  - {parent: EQUI, child: EQUZ,  join: {EQUNR: EQUNR}, cardinality: one, filter: {DATBI: "99991231"}}
+  - {parent: EQUZ, child: ILOA,  join: {ILOAN: ILOAN}, cardinality: one}
+  - {parent: EQUI, child: JEST,  join: {OBJNR: OBJNR}, cardinality: one, filter: {INACT: ""}, prefer: {}}
+  - {parent: EQUI, child: FLEET, join: {OBJNR: OBJNR}, cardinality: one}
+  - {parent: IFLOT, child: IFLOTX, join: {TPLNR: TPLNR}, cardinality: one, prefer: {SPRAS: "E"}}
+  - {parent: IFLOT, child: ILOA,  join: {ILOAN: ILOAN}, cardinality: one}
+
+  # ── Production planning ────────────────────────────────────────────────
+  - {parent: MAST, child: STKO, join: {STLNR: STLNR, STLAL: STLAL}, cardinality: one, filter: {STLTY: "M"}}
+  - {parent: STKO, child: STPO, join: {STLNR: STLNR}, cardinality: many, filter: {STLTY: "M"}}
+  - {parent: PLKO, child: PLPO, join: {PLNTY: PLNTY, PLNNR: PLNNR}, cardinality: many}
+
+  # ── Warehouse (classic WM) & transport ─────────────────────────────────
+  - {parent: LTAK, child: LTAP, join: {LGNUM: LGNUM, TANUM: TANUM}, cardinality: many}
+  - {parent: LAGP, child: LQUA, join: {LGNUM: LGNUM, LGTYP: LGTYP, LGPLA: LGPLA}, cardinality: many}
+  - {parent: VTTK, child: VTTP, join: {TKNUM: TKNUM}, cardinality: many}
+  - {parent: VTTK, child: TVRO, join: {ROUTE: ROUTE}, cardinality: one}
+
+# Default grain per module when a rule names only attribute tables.
+anchors:
+  accounts_payable: LFA1
+  accounts_receivable: KNA1
+  sd_customer_master: KNA1
+  business_partner: BUT000
+  material_master: MARA
+  mm_purchasing: EKKO
+  fi_gl: SKA1
+  asset_accounting: ANLA
+  plant_maintenance: EQUI
+  fleet_management: EQUI
+  production_planning: MAST
+  sd_sales_orders: VBAK
+  batch_management: MCH1
+  ewms_stock: LQUA
+  ewms_transfer_orders: LTAK
+  transport_management: VTTK

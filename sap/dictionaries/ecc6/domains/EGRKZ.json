@@ -1,0 +1,82 @@
+{
+ "domain": "EGRKZ",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Non-EU-Relevant"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Delivery of Goods Within the EU"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Services Within the EU"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Subcontracting Within the EU"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Output Tax for Services within the EU"
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "Reverse Charge EU: Service with Tax with Zero Balance"
+  },
+  {
+   "low": "6",
+   "high": null,
+   "text": "HU: Triangular Deal with Country Outside the EU"
+  },
+  {
+   "low": "7",
+   "high": null,
+   "text": "As for value '1', but tax balance zero"
+  },
+  {
+   "low": "8",
+   "high": null,
+   "text": "As for value '3', but tax balance zero"
+  },
+  {
+   "low": "9",
+   "high": null,
+   "text": "Acquisition Tax or General Tax with Zero Balance"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Reverse Charge with Tax with Zero Balance"
+  },
+  {
+   "low": "M",
+   "high": null,
+   "text": "Spain: EU Goods Delivery - After Tax-Exempt Import"
+  },
+  {
+   "low": "H",
+   "high": null,
+   "text": "EU Goods Delivery - After Tax-Exempt Import by Fiscal Agent"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Non-EU-Relevant, No Check on Input Tax Acct/Output Tax Acct"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

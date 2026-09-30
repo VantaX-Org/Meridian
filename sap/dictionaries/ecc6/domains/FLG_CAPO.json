@@ -1,0 +1,32 @@
+{
+ "domain": "FLG_CAPO",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "1",
+   "high": null,
+   "text": "Planned order"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Production order"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Recalculation"
+  },
+  {
+   "low": "9",
+   "high": null,
+   "text": "Always"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

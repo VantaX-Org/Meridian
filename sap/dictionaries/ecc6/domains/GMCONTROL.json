@@ -1,0 +1,32 @@
+{
+ "domain": "GMCONTROL",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": ""
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "First step in posting change/stock transfer"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Second step in posting change/stock transfer"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "No posting change/stock transfer"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

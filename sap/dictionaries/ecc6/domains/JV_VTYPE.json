@@ -1,0 +1,37 @@
+{
+ "domain": "JV_VTYPE",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "1",
+   "high": null,
+   "text": "Operated venture"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Non-operated venture"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Non-operated venture for on-billing"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Operated venture (with tax)"
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "Corporate venture"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

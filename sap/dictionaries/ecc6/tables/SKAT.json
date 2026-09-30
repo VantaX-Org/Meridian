@@ -1,0 +1,94 @@
+{
+ "table": "SKAT",
+ "description": "G/L Account Master Record (Chart of Accounts: Description)",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "SPRAS",
+   "key": true,
+   "data_element": "SPRAS",
+   "domain": "SPRAS",
+   "type": "LANG",
+   "length": 1,
+   "decimals": 0,
+   "description": "Language Key",
+   "check_table": "T002"
+  },
+  {
+   "pos": 3,
+   "name": "KTOPL",
+   "key": true,
+   "data_element": "KTOPL",
+   "domain": "KTOPL",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Chart of Accounts",
+   "check_table": "T004"
+  },
+  {
+   "pos": 4,
+   "name": "SAKNR",
+   "key": true,
+   "data_element": "SAKNR",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "G/L Account Number",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 5,
+   "name": "TXT20",
+   "key": false,
+   "data_element": "TXT20_SKAT",
+   "domain": "TEXT20",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "G/L account short text",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "TXT50",
+   "key": false,
+   "data_element": "TXT50_SKAT",
+   "domain": "TEXT50",
+   "type": "CHAR",
+   "length": 50,
+   "decimals": 0,
+   "description": "G/L Account Long Text",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "MCOD1",
+   "key": false,
+   "data_element": "MCDS1",
+   "domain": "CHAR25",
+   "type": "CHAR",
+   "length": 25,
+   "decimals": 0,
+   "description": "Search Term for Matchcode Search",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": []
+}

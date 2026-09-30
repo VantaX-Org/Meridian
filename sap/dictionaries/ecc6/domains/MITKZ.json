@@ -1,0 +1,32 @@
+{
+ "domain": "MITKZ",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "Assets"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Customers"
+  },
+  {
+   "low": "K",
+   "high": null,
+   "text": "Vendors"
+  },
+  {
+   "low": "V",
+   "high": null,
+   "text": "Contract accounts receivable"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

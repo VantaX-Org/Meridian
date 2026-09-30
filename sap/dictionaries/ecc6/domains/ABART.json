@@ -1,0 +1,52 @@
+{
+ "domain": "ABART",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Order"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Forecast dlv. sched."
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "JIT delivery schedule"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Issue for external agent (only in delivery)"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Returns for scheduling agreemnt w/ release (only in dlvy)"
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "Planning delivery schedule"
+  },
+  {
+   "low": "6",
+   "high": null,
+   "text": "Delivery order (only in the delivery)"
+  },
+  {
+   "low": "7",
+   "high": null,
+   "text": "Returns for delivery order (only in delivery)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

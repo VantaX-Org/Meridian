@@ -1,5 +1,4 @@
 import logging
-import os
 from dataclasses import asdict
 from pathlib import Path
 
@@ -7,6 +6,7 @@ import pandas as pd
 import yaml
 
 from checks.base import BaseCheck, CheckResult
+from checks.frames import TableFrames
 from checks.fix_generator import FixGenerator
 from checks.types.null_check import NullCheck
 from checks.types.regex_check import RegexCheck
@@ -17,27 +17,6 @@ from checks.types.freshness_check import FreshnessCheck
 from checks.types.format_check import FormatCheck
 
 logger = logging.getLogger("meridian.checks")
-
-# CHECK_ENGINE toggle: "pandas", "polars", or "auto" (default).
-# When "auto", the engine is chosen per-DataFrame by row count — pandas wins
-# at small scale (no setup overhead) and polars wins above the threshold.
-CHECK_ENGINE = os.getenv("CHECK_ENGINE", "auto").lower()
-
-# Row count at or above which "auto" mode switches to polars.
-# Tuned for 400k-row extracts: polars is ~4-8x faster on null/regex/domain
-# at that size, and the setup cost crosses over around 30-60k rows.
-CHECK_ENGINE_POLARS_THRESHOLD = int(os.getenv("CHECK_ENGINE_POLARS_THRESHOLD", "50000"))
-
-
-def _select_engine(row_count: int) -> str:
-    """Resolve the engine for a given DataFrame size.
-
-    `CHECK_ENGINE=pandas` or `=polars` forces that engine regardless of size.
-    `CHECK_ENGINE=auto` (default) picks polars when row_count >= threshold.
-    """
-    if CHECK_ENGINE in ("pandas", "polars"):
-        return CHECK_ENGINE
-    return "polars" if row_count >= CHECK_ENGINE_POLARS_THRESHOLD else "pandas"
 
 
 def apply_context(df: pd.DataFrame, applies_when: dict | None) -> pd.DataFrame:
@@ -61,8 +40,8 @@ def apply_context(df: pd.DataFrame, applies_when: dict | None) -> pd.DataFrame:
     for field, allowed in applies_when.items():
         if field not in df.columns:
             return df.iloc[:0]
-        allowed_strs = [str(v) for v in allowed]
-        mask &= df[field].astype(str).isin(allowed_strs)
+        allowed_strs = {str(v).strip() for v in allowed}
+        mask &= df[field].astype("string").str.strip().isin(allowed_strs).fillna(False)
     return df[mask]
 
 REGISTRY: dict[str, type[BaseCheck]] = {
@@ -91,145 +70,86 @@ def _find_module_yaml(module_name: str) -> Path:
     )
 
 
+def rule_columns(rule: dict) -> list[str]:
+    """Every ``TABLE.FIELD`` column a rule reads (field, fields, condition, applies_when)."""
+    check_cls = REGISTRY.get(rule.get("check_class", ""))
+    cols = check_cls(rule).columns() if check_cls else [rule["field"]] if rule.get("field") else []
+    return list(dict.fromkeys(cols + list((rule.get("applies_when") or {}).keys())))
+
+
 def get_required_columns(module_name: str) -> set[str]:
-    """Return every column name referenced by the rules of a module.
-
-    Used by run_checks to only load the parquet columns that will actually
-    be validated, which dramatically reduces memory and I/O for modules
-    with hundreds of columns but fewer checked fields.
-    """
-    yaml_path = _find_module_yaml(module_name)
-    with open(yaml_path, "r") as f:
+    """Return every column referenced by the rules of a module (for column pruning)."""
+    with open(_find_module_yaml(module_name), "r") as f:
         config = yaml.safe_load(f)
-    cols: set[str] = set()
-    for rule in config.get("rules", []):
-        field = rule.get("field")
-        if field:
-            cols.add(field)
-        for f in rule.get("fields", []) or []:
-            cols.add(f)
-    return cols
+    return {c for rule in config.get("rules", []) for c in rule_columns(rule)}
 
 
-def run_checks(module_name: str, df: pd.DataFrame, tenant_id: str) -> list[CheckResult]:
-    """Load YAML rules for a module and run all checks against the DataFrame.
+def run_checks(
+    module_name: str,
+    data: pd.DataFrame | TableFrames,
+    tenant_id: str,
+    reference_values: dict[str, set[str]] | None = None,
+) -> list[CheckResult]:
+    """Load a module's YAML rules and evaluate each at its correct record grain.
 
-    Engine is selected by _select_engine — pandas for small frames,
-    polars above CHECK_ENGINE_POLARS_THRESHOLD (default 50k rows). On large
-    extracts (400k+) polars is ~4-8x faster. Explicit CHECK_ENGINE env var
-    overrides the heuristic.
+    ``data`` is either per-table frames (live extraction) or a flat
+    ``TABLE.FIELD`` frame (upload), which is split by DDIC key where possible.
+    ``reference_values`` maps ``TABLE.FIELD`` of a configuration table (e.g.
+    ``T077Y.KTOKK``) to the values read live from the source system; referential
+    rules naming that ``reference_table`` use them instead of their SAP-standard list.
     """
-    yaml_path = _find_module_yaml(module_name)
-
-    with open(yaml_path, "r") as f:
+    with open(_find_module_yaml(module_name), "r") as f:
         config = yaml.safe_load(f)
-
     rules = config.get("rules", [])
     module = config.get("module", module_name)
-
-    engine = _select_engine(len(df))
-    logger.info(f"Module '{module}': {len(df):,} rows, engine={engine}")
-
-    # ---------- Polars fast path ----------
-    if engine == "polars":
-        try:
-            from checks.polars_engine import run_checks_polars_df
-
-            raw_results = run_checks_polars_df(df, module, rules)
-            return [
-                CheckResult(
-                    check_id=r.get("check_id", "UNKNOWN"),
-                    module=r.get("module", module),
-                    field=r.get("field", ""),
-                    severity=r.get("severity", "medium"),
-                    dimension=r.get("dimension", ""),
-                    passed=r.get("passed", False),
-                    affected_count=r.get("affected_count", 0),
-                    total_count=r.get("total_count", 0),
-                    pass_rate=r.get("pass_rate", 0.0),
-                    message=r.get("message", ""),
-                    details=r.get("details", {}),
-                    error=r.get("error"),
-                )
-                for r in raw_results
-            ]
-        except ImportError:
-            logger.warning("Polars not installed — falling back to pandas engine")
-        except Exception as e:
-            logger.error(f"Polars engine failed — falling back to pandas: {e}", exc_info=True)
-    # ---------- End Polars fast path ----------
+    frames = data if isinstance(data, TableFrames) else TableFrames.from_flat(data, module=module)
+    frames.module = module
+    reference_values = reference_values or {}
 
     results: list[CheckResult] = []
-    result_rules: list[dict] = []  # parallel list — the rule that produced each result
+    result_rules: list[dict] = []
     skipped = 0
 
     for rule in rules:
-        # Inject module name into each rule dict
         rule["module"] = module
-
-        check_class_name = rule.get("check_class", "")
-        check_cls = REGISTRY.get(check_class_name)
-
+        check_cls = REGISTRY.get(rule.get("check_class", ""))
         if check_cls is None:
-            logger.warning(f"Unknown check_class '{check_class_name}' in rule {rule.get('id')}")
-            results.append(
-                CheckResult(
-                    check_id=rule.get("id", "UNKNOWN"),
-                    module=module,
-                    field=rule.get("field", ""),
-                    severity=rule.get("severity", "medium"),
-                    dimension=rule.get("dimension", ""),
-                    passed=False,
-                    affected_count=0,
-                    total_count=len(df),
-                    pass_rate=0.0,
-                    message=rule.get("message", ""),
-                    details={},
-                    error=f"Unknown check_class: {check_class_name}",
-                )
-            )
+            results.append(CheckResult(
+                check_id=rule.get("id", "UNKNOWN"), module=module, field=rule.get("field", ""),
+                severity=rule.get("severity", "medium"), dimension=rule.get("dimension", ""),
+                passed=False, affected_count=0, total_count=0, pass_rate=0.0,
+                message=rule.get("message", ""), details={},
+                error=f"Unknown check_class: {rule.get('check_class')}",
+            ))
             result_rules.append(rule)
             continue
 
+        ref_key = f"{rule.get('reference_table')}.{rule.get('reference_field')}"
+        if rule.get("check_class") == "referential_check" and ref_key in reference_values:
+            rule = {**rule, "_live_reference": reference_values[ref_key]}
+
         try:
-            # Apply context predicate — rules with `applies_when` see only
-            # rows that match their preconditions. total_count on the result
-            # will reflect the scoped population, not the full extract.
-            scoped_df = apply_context(df, rule.get("applies_when"))
-            if len(scoped_df) == 0 and rule.get("applies_when"):
-                # No rows match this rule's context — skip without failing
-                skipped += 1
+            built = frames.frame_for(rule_columns(rule), grain=rule.get("grain"))
+            if built is None:
+                skipped += 1  # a table/field this rule needs is not in the extract
                 continue
-            check = check_cls(rule)
-            result = check.run(scoped_df)
-            if result is None:
-                # Field not in partial extract — skip silently
-                skipped += 1
+            frame, grain, key_cols = built
+            scoped = apply_context(frame, rule.get("applies_when"))
+            if len(scoped) == 0:
+                skipped += 1  # no records in the rule's population
                 continue
-            results.append(result)
-            result_rules.append(rule)
+            result = check_cls(rule).run(scoped, key_cols=key_cols, grain=grain)
         except Exception as e:
             logger.error(f"Exception in check {rule.get('id')}: {e}", exc_info=True)
-            results.append(
-                CheckResult(
-                    check_id=rule.get("id", "UNKNOWN"),
-                    module=module,
-                    field=rule.get("field", ""),
-                    severity=rule.get("severity", "medium"),
-                    dimension=rule.get("dimension", ""),
-                    passed=False,
-                    affected_count=0,
-                    total_count=len(df),
-                    pass_rate=0.0,
-                    message=rule.get("message", ""),
-                    details={},
-                    error=str(e),
-                )
-            )
-            result_rules.append(rule)
+            result = check_cls(rule)._error(frames.flat if frames.flat is not None else pd.DataFrame(), str(e))
+        if result is None:
+            skipped += 1
+            continue
+        results.append(result)
+        result_rules.append(rule)
 
     if skipped:
-        logger.info(f"Module '{module}': skipped {skipped} checks (fields not in extract)")
+        logger.info(f"Module '{module}': skipped {skipped} checks (tables/fields not in extract)")
     logger.info(f"Module '{module}': ran {len(results)} checks, {sum(1 for r in results if r.passed)} passed")
 
     # Enrich failing results with deterministic fix recommendations
@@ -267,7 +187,7 @@ def run_checks(module_name: str, df: pd.DataFrame, tenant_id: str) -> list[Check
             if samples:
                 table_name = rule["field"].split(".")[0] if "." in rule["field"] else None
                 check_field = rule["field"].split(".")[-1] if "." in rule["field"] else rule["field"]
-                id_field = result.details.get("id_field_used", df.columns[0])
+                id_field = result.details.get("id_field_used") or "record_key"
                 rf_list = fix_gen.build_record_fixes(
                     sample_failing_records=samples,
                     id_field=id_field,

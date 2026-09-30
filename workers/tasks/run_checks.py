@@ -31,6 +31,31 @@ def _get_minio_client():
     )
 
 
+def _live_reference_values(engine, tenant_id: str, metadata: dict) -> dict[str, set[str]]:
+    """``TABLE.FIELD`` → values from the source system's live config snapshots.
+
+    Only snapshots with ``source='live'`` count — the SAP-standard baseline is
+    already what the rule's own ``reference_values`` encode.
+    """
+    system_id = metadata.get("system_id")
+    if not system_id:
+        return {}
+    out: dict[str, set[str]] = {}
+    with Session(engine) as session:
+        session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        rows = session.execute(
+            text("SELECT config_table, config_data FROM config_snapshots "
+                 "WHERE system_id = :sid AND source = 'live'"),
+            {"sid": system_id},
+        ).fetchall()
+    for table, data in rows:
+        for rec in data or []:
+            for col, val in rec.items():
+                if val not in (None, ""):
+                    out.setdefault(f"{table}.{col}", set()).add(str(val).strip())
+    return out
+
+
 @celery_app.task(bind=True, name="workers.tasks.run_checks.run_checks",
                  soft_time_limit=300, time_limit=360)
 def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
@@ -71,81 +96,76 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
     )
 
     try:
-        # Step 3: Download parquet from MinIO
+        # Step 3: Load the dataset from MinIO.
+        #   * "<prefix>/"            → live-extraction bundle, one <TABLE>.parquet per SAP table
+        #   * "<path>.parquet"       → flat upload with TABLE.FIELD columns
         minio_client = _get_minio_client()
         import os
         bucket = os.getenv("MINIO_BUCKET_UPLOADS", "meridian-uploads")
-        response = minio_client.get_object(bucket, parquet_path)
-        parquet_bytes = response.read()
-        response.close()
-        response.release_conn()
 
-        # Step 4: Load into DataFrame — prune columns to only those referenced
-        # by any rule in the modules we're about to check. For large extracts
-        # (200+ columns) this can save 70-90% of memory and load time.
-        #
-        # We need to peek at the parquet schema first because we don't know
-        # the modules until we query analysis_versions metadata below, which
-        # itself happens after the engine reference is valid. So we load the
-        # column list once, then re-read with projection if we have modules.
-        parquet_buf = io.BytesIO(parquet_bytes)
+        def _read(obj_name: str) -> bytes:
+            resp = minio_client.get_object(bucket, obj_name)
+            try:
+                return resp.read()
+            finally:
+                resp.close()
+                resp.release_conn()
 
-        # Query modules first (same SELECT as Step 5 below, hoisted here)
         with Session(engine) as session:
             session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
-            result = session.execute(
+            meta_row = session.execute(
                 text("SELECT metadata FROM analysis_versions WHERE id = :vid"),
                 {"vid": version_id},
-            )
-            row = result.fetchone()
-            metadata = row[0] if row else {}
-            modules = metadata.get("modules", [])
+            ).fetchone()
+            tenant_row = session.execute(
+                text("SELECT dqs_weights FROM tenants WHERE id = :tid"), {"tid": str(tenant_id)},
+            ).fetchone()
+        metadata = (meta_row[0] if meta_row else None) or {}
+        modules = metadata.get("modules", [])
+        tenant_weights = (tenant_row[0] if tenant_row else None) or {}
 
-        needed_columns: set[str] = set()
-        try:
-            from checks.runner import get_required_columns
-            for mod in modules:
-                try:
-                    needed_columns.update(get_required_columns(mod))
-                except FileNotFoundError:
-                    # Unknown module — skip pruning, fall back to full load
-                    needed_columns = set()
-                    break
-        except Exception as e:
-            logger.warning(f"Column pruning unavailable, loading full parquet: {e}")
-            needed_columns = set()
+        from checks.frames import TableFrames
 
-        all_cols: set[str] | None = None
-        if needed_columns:
-            # Read only the parquet footer metadata to discover columns
-            # (no row data). Fall back silently if pyarrow isn't available.
-            try:
-                import pyarrow.parquet as pq
-                schema = pq.read_schema(parquet_buf)
-                parquet_buf.seek(0)
-                all_cols = set(schema.names)
-            except ImportError:
-                all_cols = None
-
-        if needed_columns and all_cols is not None:
-            project = [c for c in needed_columns if c in all_cols]
-            # Always keep likely identifier columns so sample_failing_records
-            # still has a usable id_field in the UI, even if no rule references it.
-            for id_candidate in all_cols:
-                if id_candidate in project:
-                    continue
-                up = str(id_candidate).upper()
-                if up.endswith(("LIFNR", "MATNR", "PARTNER", "KUNNR", "USERID")):
-                    project.append(id_candidate)
-            if project:
-                df = pd.read_parquet(parquet_buf, columns=project)
-            else:
-                df = pd.read_parquet(parquet_buf)
+        if parquet_path.endswith("/"):
+            tables = {}
+            for obj in minio_client.list_objects(bucket, prefix=parquet_path):
+                name = obj.object_name.rsplit("/", 1)[-1]
+                if name.endswith(".parquet"):
+                    tables[name[: -len(".parquet")]] = pd.read_parquet(io.BytesIO(_read(obj.object_name)))
+            if not tables:
+                raise ValueError(f"No table parquet files under {parquet_path}")
+            frames = TableFrames(tables)
+            df = None
+            row_count = sum(len(t) for t in tables.values())
+            col_count = sum(len(t.columns) for t in tables.values())
         else:
-            df = pd.read_parquet(parquet_buf)
+            # Column pruning: keep every column any rule reads plus each
+            # referenced table's DDIC key (needed to split the flat frame into
+            # per-table frames at their correct grain).
+            parquet_buf = io.BytesIO(_read(parquet_path))
+            needed: set[str] = set()
+            try:
+                from checks.runner import get_required_columns
+                from checks.frames import tables_of
+                from sap.ddic import get_dictionary
+                for mod in modules:
+                    needed |= get_required_columns(mod)
+                ddic = get_dictionary("s4hana")
+                needed |= {f"{t}.{k}" for t in tables_of(needed) for k in ddic.keys(t)}
+            except FileNotFoundError:
+                needed = set()
+            except Exception as e:
+                logger.warning(f"Column pruning unavailable, loading full parquet: {e}")
+                needed = set()
+            import pyarrow.parquet as pq
+            all_cols = set(pq.read_schema(parquet_buf).names)
+            parquet_buf.seek(0)
+            project = [c for c in all_cols if c in needed] if needed else None
+            df = pd.read_parquet(parquet_buf, columns=project or None)
+            frames = TableFrames.from_flat(df)
+            row_count = len(df)
+            col_count = len(df.columns)
 
-        row_count = len(df)
-        col_count = len(df.columns)
         logger.info(f"Loaded DataFrame: {row_count} rows, {col_count} columns")
 
         if row_count > 500_000:
@@ -165,11 +185,11 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
             total_rows=row_count,
         )
 
-        # Step 5: modules were loaded above as part of column pruning
         # Step 6: Run checks for each module
         from checks.runner import run_checks as execute_checks
 
         all_results = []
+        live_refs = _live_reference_values(engine, tenant_id, metadata)
         module_count = max(len(modules), 1)
         for idx, module_name in enumerate(modules):
             logger.info(f"Running checks for module: {module_name}")
@@ -189,7 +209,7 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
                 rows_processed=rows_done_before,
                 total_rows=row_count,
             )
-            results = execute_checks(module_name, df, tenant_id)
+            results = execute_checks(module_name, frames, tenant_id, reference_values=live_refs)
             all_results.extend(results)
             # Post-module tick so users see movement between modules.
             rows_done_after = int(((idx + 1) / module_count) * row_count)
@@ -219,6 +239,8 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
                         # None of the rule's sources are in this analysis —
                         # skip (nothing would match anyway).
                         continue
+                    if df is None:
+                        continue  # per-table bundle: cross-module rules need the pre-joined upload shape
                     res = run_cross_module_on_prejoined(rule, df)
                     if res is not None:
                         all_results.append(res)
@@ -240,7 +262,9 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
                     if check_cls is None:
                         continue
                     try:
-                        res = check_cls(rule).run(df)
+                        from checks.runner import rule_columns
+                        built = frames.frame_for(rule_columns(rule), grain=rule.get("grain"))
+                        res = check_cls(rule).run(built[0], key_cols=built[2], grain=built[1]) if built else None
                         if res is not None:
                             all_results.append(res)
                     except Exception as e:
@@ -266,7 +290,7 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
         # Step 7-8: Score all modules
         from api.services.scoring import score_all_modules
 
-        dqs_results = score_all_modules(all_results)
+        dqs_results = score_all_modules(all_results, tenant_weights)
         dqs_summary = {mod: result.model_dump() for mod, result in dqs_results.items()}
 
         # Step 9: Insert findings into Postgres via a single executemany call.

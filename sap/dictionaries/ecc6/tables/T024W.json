@@ -1,0 +1,46 @@
+{
+ "table": "T024W",
+ "description": "Valid Purchasing Organizations for Plant",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "WERKS",
+   "key": true,
+   "data_element": "WERKS_D",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Plant",
+   "check_table": "T001W"
+  },
+  {
+   "pos": 3,
+   "name": "EKORG",
+   "key": true,
+   "data_element": "EKORG",
+   "domain": "EKORG",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Purchasing organization",
+   "check_table": "T024E"
+  }
+ ],
+ "foreign_keys": []
+}

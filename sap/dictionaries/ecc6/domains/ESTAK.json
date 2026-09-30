@@ -1,0 +1,72 @@
+{
+ "domain": "ESTAK",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "RFQ with Quotation"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Purchase Order from Automatic Conversion of Requisitions"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Purchase Order from Goods Receipt"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Purchase Order from Data Transfer"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Purchase Order from Allocation Table"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Purchase Order from Kanban"
+  },
+  {
+   "low": "G",
+   "high": null,
+   "text": "Purchase Order from Store Order"
+  },
+  {
+   "low": "H",
+   "high": null,
+   "text": "Purchase Order from DRP"
+  },
+  {
+   "low": "I",
+   "high": null,
+   "text": "Purchase Order from BAPI"
+  },
+  {
+   "low": "J",
+   "high": null,
+   "text": "Purchase Order from ALE Scenario"
+  },
+  {
+   "low": "S",
+   "high": null,
+   "text": "Collective Purchase Order"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Purchase Order Created via Function Module"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

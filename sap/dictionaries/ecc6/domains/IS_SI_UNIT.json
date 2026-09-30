@@ -1,0 +1,37 @@
+{
+ "domain": "IS_SI_UNIT",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Not in SI/DB Unit"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "SI Unit set individually (old)"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "SI Unit set through (old)"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "DB Unit set individually (new)"
+  },
+  {
+   "low": "Y",
+   "high": null,
+   "text": "DB Unit set through (new)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

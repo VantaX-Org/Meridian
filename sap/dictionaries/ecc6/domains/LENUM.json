@@ -1,0 +1,11 @@
+{
+ "domain": "LENUM",
+ "type": "CHAR",
+ "length": 20,
+ "decimals": 0,
+ "conversion_exit": "LENUM",
+ "lowercase": false,
+ "value_table": "LEIN",
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

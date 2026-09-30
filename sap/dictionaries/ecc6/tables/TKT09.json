@@ -1,0 +1,70 @@
+{
+ "table": "TKT09",
+ "description": "Texts for versions in master table",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "LANGU",
+   "key": true,
+   "data_element": "SPRAS",
+   "domain": "SPRAS",
+   "type": "LANG",
+   "length": 1,
+   "decimals": 0,
+   "description": "Language Key",
+   "check_table": "T002"
+  },
+  {
+   "pos": 3,
+   "name": "KOKRS",
+   "key": true,
+   "data_element": "KOKRS",
+   "domain": "CACCD",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Controlling Area",
+   "check_table": "TKA01"
+  },
+  {
+   "pos": 4,
+   "name": "VERSN",
+   "key": true,
+   "data_element": "VERSN",
+   "domain": "COVERSI",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Version",
+   "check_table": "TKA09"
+  },
+  {
+   "pos": 5,
+   "name": "TXT",
+   "key": false,
+   "data_element": "VSTXT",
+   "domain": "TEXT30",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Version Text",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": []
+}

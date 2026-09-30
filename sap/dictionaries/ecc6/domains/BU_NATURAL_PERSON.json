@@ -1,0 +1,22 @@
+{
+ "domain": "BU_NATURAL_PERSON",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Business Person is a Legal Person or Organization"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Business Partner is a Natural Person"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

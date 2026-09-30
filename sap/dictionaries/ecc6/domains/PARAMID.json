@@ -1,0 +1,11 @@
+{
+ "domain": "PARAMID",
+ "type": "CHAR",
+ "length": 6,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": "TC20",
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

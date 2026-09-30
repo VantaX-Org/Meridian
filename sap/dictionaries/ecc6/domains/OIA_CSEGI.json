@@ -1,0 +1,47 @@
+{
+ "domain": "OIA_CSEGI",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "no creation QS, but update reference QS if exist"
+  },
+  {
+   "low": "0",
+   "high": null,
+   "text": "no create,only check vs exist.+related QS,useful in call-off"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "manually creation of Qty.schedule permitted"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "manually/autom. creation QS ONLY if exchange related (=def.)"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "manually/automatically creation QS for all documents"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "like 2,if differs (date+item qty.) autom.change all exist QS"
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "like 3,if differs (date+item qty.) autom.change all exist QS"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

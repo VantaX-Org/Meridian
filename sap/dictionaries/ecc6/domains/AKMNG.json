@@ -1,0 +1,52 @@
+{
+ "domain": "AKMNG",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Upward-compatible mode (do not use new)"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Quantity in alternative unit of measure (LFIMG)"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Quantity in base unit of measure (LGMNG)"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Both quantities packed"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Both quantities in float"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Exit, no processing via standard module"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Quantity in alternative unit of measure float LFIMG_FLO"
+  },
+  {
+   "low": "G",
+   "high": null,
+   "text": "Quantity in base unit of measure float LGMNG_FLO"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

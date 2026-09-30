@@ -1,0 +1,32 @@
+{
+ "domain": "LTAK_KR2SO",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No message to R/2"
+  },
+  {
+   "low": "V",
+   "high": null,
+   "text": "Source TO item transmitted to R/2"
+  },
+  {
+   "low": "N",
+   "high": null,
+   "text": "Dest. TO item transmitted to R/2"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Source diff. will be included in transm. of source item"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

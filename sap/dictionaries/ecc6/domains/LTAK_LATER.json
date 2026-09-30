@@ -1,0 +1,32 @@
+{
+ "domain": "LTAK_LATER",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Update at confirmation of each TO item"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Delayed update, as soon as a TO is completely confirmed"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Delyd updt, as soon as all TOs for del. completely confirmed"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Delayed update at each confirmation of a TO item"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

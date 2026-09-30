@@ -1,0 +1,77 @@
+{
+ "domain": "FKREL",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Not relevant for billing"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Delivery-related billing document"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Relevant for order-related billing - status acc.to order qty"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Relevant for ord.-related billing - status acc.to target qty"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Relevant for pro forma"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Order-related billing doc. - status according to invoice qty"
+  },
+  {
+   "low": "G",
+   "high": null,
+   "text": "Order-related billing of the delivery quantity"
+  },
+  {
+   "low": "H",
+   "high": null,
+   "text": "Delivery-related billing - no zero quantities"
+  },
+  {
+   "low": "I",
+   "high": null,
+   "text": "Order-relevant billing - billing plan"
+  },
+  {
+   "low": "J",
+   "high": null,
+   "text": "Relevant for deliveries across EU countries"
+  },
+  {
+   "low": "K",
+   "high": null,
+   "text": "Delivery-related invoices for partial quantity"
+  },
+  {
+   "low": "L",
+   "high": null,
+   "text": "Pro forma - no zero quantities"
+  },
+  {
+   "low": "M",
+   "high": null,
+   "text": "Delivery-related invoices-no zero qtys (incl main batch itm)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

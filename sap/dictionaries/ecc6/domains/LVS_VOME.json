@@ -1,0 +1,47 @@
+{
+ "domain": "LVS_VOME",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "Unit of issue"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Order unit"
+  },
+  {
+   "low": "K",
+   "high": null,
+   "text": "Base unit of measure if no other unit of measure specified"
+  },
+  {
+   "low": "L",
+   "high": null,
+   "text": "WM unit of measure"
+  },
+  {
+   "low": "M",
+   "high": null,
+   "text": "WM unit of measure also for other UoM in reference doc."
+  },
+  {
+   "low": "N",
+   "high": null,
+   "text": "Base unit of measure, even if another UoM in reference doc."
+  },
+  {
+   "low": "",
+   "high": null,
+   "text": "Base unit of measure"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,27 @@
+{
+ "domain": "DFPS_MCOND",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No Condition Management"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Condition Management Only"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Condition Management with Batch Number"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

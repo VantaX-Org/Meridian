@@ -1,0 +1,62 @@
+{
+ "domain": "ESTKZ",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "B",
+   "high": null,
+   "text": "Material requirements planning"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Direct procurement"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Production order"
+  },
+  {
+   "low": "G",
+   "high": null,
+   "text": "Store order"
+  },
+  {
+   "low": "R",
+   "high": null,
+   "text": "Realtime (manual)"
+  },
+  {
+   "low": "U",
+   "high": null,
+   "text": "Converted planned order"
+  },
+  {
+   "low": "V",
+   "high": null,
+   "text": "Sales and distribution document"
+  },
+  {
+   "low": "M",
+   "high": null,
+   "text": "Compression (monthly basis)"
+  },
+  {
+   "low": "Y",
+   "high": null,
+   "text": "Compression (annual basis)"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "SAP APO"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

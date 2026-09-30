@@ -1,0 +1,32 @@
+{
+ "domain": "DOM_VBTYP_EXT",
+ "type": "CHAR",
+ "length": 4,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": true,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "f001",
+   "high": null,
+   "text": "Period-End Invoice"
+  },
+  {
+   "low": "f002",
+   "high": null,
+   "text": "Period-End Credit Memo"
+  },
+  {
+   "low": "f003",
+   "high": null,
+   "text": "Period-End Invoice (Intercompany Billing)"
+  },
+  {
+   "low": "f004",
+   "high": null,
+   "text": "Period-End Credit Memo (Intercompany Billing)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

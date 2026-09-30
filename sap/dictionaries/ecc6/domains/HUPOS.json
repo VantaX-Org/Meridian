@@ -1,0 +1,32 @@
+{
+ "domain": "HUPOS",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Standard item (source/dest.storage location not HU-managed)"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Source stor.locat.not HU-managed. Dest.stor.locat.HU-managed"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Source stor.locat.HU-managed. Dest.stor.locat.not HU-managed"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Source and destination storage locations HU-managed"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

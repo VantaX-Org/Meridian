@@ -1,0 +1,11 @@
+{
+ "domain": "FE_IND",
+ "type": "CHAR",
+ "length": 4,
+ "decimals": 0,
+ "conversion_exit": "ALPHA",
+ "lowercase": false,
+ "value_table": "FERC_C7",
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

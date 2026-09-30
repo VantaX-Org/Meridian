@@ -1,0 +1,34 @@
+{
+ "table": "T142",
+ "description": "Storage Conditions for Materials",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "RAUBE",
+   "key": true,
+   "data_element": "RAUBE",
+   "domain": "RAUBE",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Storage conditions",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": []
+}
