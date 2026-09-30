@@ -103,6 +103,7 @@ async def list_findings(
         "findings": [
             {
                 "id": str(f.id),
+                "version_id": str(f.version_id),
                 "module": f.module,
                 "check_id": f.check_id,
                 "severity": f.severity,

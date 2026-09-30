@@ -45,6 +45,10 @@ export interface Version {
     row_count: number;
     columns?: string[];
     parquet_path?: string;
+    system_id?: string;
+    baseline?: boolean;
+    /** Records downloaded per object (system downloads). */
+    object_rows?: Record<string, number>;
   } | null;
 }
 
@@ -57,12 +61,24 @@ export interface ModuleDelta {
   dqs_change: number;
   v1_score: number;
   v2_score: number;
+  /** change is null when the dimension was not scored in one of the versions. */
+  dimensions: Record<string, { v1: number | null; v2: number | null; change: number | null }>;
+}
+
+/** A check that ran cleanly in both versions and failed in only one of them. */
+export interface CheckChange {
+  check_id: string;
+  module: string;
+  severity: string;
+  v1_affected: number;
+  v2_affected: number;
 }
 
 export interface VersionComparison {
   v1: Version;
   v2: Version;
   delta: Record<string, ModuleDelta>;
+  checks: { newly_failing: CheckChange[]; fixed: CheckChange[] };
 }
 
 /* ─── Finding ─── */
@@ -103,6 +119,7 @@ export interface RecordFixEntry {
 
 export interface Finding {
   id: string;
+  version_id: string;
   module: string;
   check_id: string;
   severity: Severity;

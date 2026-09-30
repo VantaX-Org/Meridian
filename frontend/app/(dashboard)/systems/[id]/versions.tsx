@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Download, Play } from "lucide-react";
@@ -48,6 +49,10 @@ const FLAG_LABEL: Record<TrendFlag, string> = {
 const STATUS_TONE: Record<string, ChipTone> = {
   extracted: "info", pending: "info", running: "info", complete: "success", failed: "danger",
 };
+
+/** Findings of one object in one version. */
+const findingsHref = (versionId: string, object: string) =>
+  `/findings?${new URLSearchParams({ version_id: versionId, module: object })}`;
 
 const list = (v: string) => v.split(/[\s,;]+/).map((x) => x.trim().toUpperCase()).filter(Boolean);
 const delta = (n: number | undefined, invert = false, digits = 1) => {
@@ -188,7 +193,8 @@ export function VersionsTab({ id, canAnalyse }: { id: string; canAnalyse: boolea
     <table className="w-full text-[13px]">
       <thead><tr>
         <th className={th}>Downloaded</th><th className={th}>Label</th><th className={th}>Objects · records</th>
-        <th className={th}>Scope</th><th className={th}>Status</th><th className={th}>DQS</th><th className={th} />
+        <th className={th}>Scope</th><th className={th}>Status</th><th className={th}>Analysed · rules</th>
+        <th className={th}>DQS per object</th><th className={th} />
       </tr></thead>
       <tbody>
         {versions.map((v) => (
@@ -205,8 +211,28 @@ export function VersionsTab({ id, canAnalyse }: { id: string; canAnalyse: boolea
             </td>
             <td className={td}><Chip tone={STATUS_TONE[v.status] ?? "neutral"}>{v.status === "extracted" ? "downloaded, not analysed" : v.status}</Chip></td>
             <td className={td}>
+              {v.analysed_at ? <div>{new Date(v.analysed_at).toLocaleString()}</div> : <span className="text-[var(--aurora-fg-muted)]">—</span>}
+              {v.rule_set && <div className="font-mono text-[11px] text-[var(--aurora-fg-tertiary)]" title={v.rule_set}>rules {v.rule_set.slice(0, 8)}</div>}
+              {v.field_status.length > 0 && (
+                <details className="text-[12px]">
+                  <summary className="cursor-pointer text-[var(--aurora-fg-tertiary)]">
+                    field status · {v.field_status.reduce((n, f) => n + f.rules, 0)} rules
+                  </summary>
+                  {v.field_status.map((f) => (
+                    <div key={f.segment} className="font-mono">
+                      {f.segment}: {f.definition ?? "—"} <span className="text-[var(--aurora-fg-tertiary)]">({f.reason ?? "no reason"}) · {f.rules}</span>
+                    </div>
+                  ))}
+                </details>
+              )}
+            </td>
+            <td className={td}>
               {Object.entries(v.dqs).map(([o, d]) => (
-                <div key={o} className="aurora-number">{d?.toFixed(1) ?? "—"}</div>
+                <div key={o}>
+                  <Link className="underline" href={findingsHref(v.id, o)}>
+                    {formatModuleName(o)} <span className="aurora-number">{d?.toFixed(1) ?? "—"}</span>
+                  </Link>
+                </div>
               ))}
             </td>
             <td className={`${td} text-right`}>
@@ -218,7 +244,10 @@ export function VersionsTab({ id, canAnalyse }: { id: string; canAnalyse: boolea
                   </Button>
                 )}
                 {Object.keys(v.dqs).length > 0 && (
-                  <Link className="text-[13px] underline" href={`/findings?version_id=${v.id}`}>Findings</Link>
+                  <>
+                    <Link className="text-[13px] underline" href={`/findings?version_id=${v.id}`}>Findings</Link>
+                    <Link className="text-[13px] underline" href={`/reports?version_id=${v.id}`}>Report</Link>
+                  </>
                 )}
               </Stack>
             </td>
@@ -232,6 +261,7 @@ export function VersionsTab({ id, canAnalyse }: { id: string; canAnalyse: boolea
 // ── trends per object ────────────────────────────────────────────────────────
 
 export function TrendsTab({ id }: { id: string }) {
+  const router = useRouter();
   const { data: overview } = useQuery({ queryKey: ["trends", id], queryFn: () => getTrends(id) });
   const [object, setObject] = useState<string | null>(null);
   const active = object ?? overview?.summary[0]?.object ?? null;
@@ -279,10 +309,12 @@ export function TrendsTab({ id }: { id: string }) {
             </Banner>
           )}
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <LineChart ariaLabel="DQS per run" height={220}
+            <LineChart ariaLabel="DQS per run — select a point for its findings" height={220}
               data={points.map((p) => ({ run: new Date(p.run_at).toLocaleDateString(), dqs: p.dqs ?? 0 }))}
-              xKey="run" series={[{ key: "dqs", label: "DQS" }]} yFormatter={(v) => v.toFixed(0)} />
-            <LineChart ariaLabel="Failing records per run" height={220}
+              xKey="run" series={[{ key: "dqs", label: "DQS" }]} yFormatter={(v) => v.toFixed(0)}
+              onPointClick={(i) => points[i] && router.push(findingsHref(points[i].version_id, active))} />
+            <LineChart ariaLabel="Failing records per run — select a point for its findings" height={220}
+              onPointClick={(i) => points[i] && router.push(findingsHref(points[i].version_id, active))}
               data={points.map((p) => ({ run: new Date(p.run_at).toLocaleDateString(), failing: p.failing_records,
                 opened: p.issues_opened, resolved: p.issues_resolved }))}
               xKey="run" series={[{ key: "failing", label: "Failing records" }, { key: "opened", label: "Newly failing" },
@@ -291,21 +323,34 @@ export function TrendsTab({ id }: { id: string }) {
           <table className="w-full text-[13px]">
             <thead><tr>
               <th className={th}>Run</th><th className={`${th} text-right`}>Records</th><th className={`${th} text-right`}>DQS</th>
-              <th className={th}>Δ</th><th className={`${th} text-right`}>Failing</th><th className={`${th} text-right`}>New</th>
+              <th className={th}>Δ</th><th className={th}>Dimensions</th><th className={`${th} text-right`}>Failing</th><th className={`${th} text-right`}>New</th>
               <th className={`${th} text-right`}>Fixed</th><th className={th}>Comparable</th><th className={th} />
             </tr></thead>
             <tbody>
-              {[...points].reverse().map((p) => (
+              {points.map((p, i) => ({ p, prev: points[i - 1] })).reverse().map(({ p, prev }) => (
                 <tr key={p.version_id}>
                   <td className={td}>{new Date(p.run_at).toLocaleString()} {p.label && <span className="text-[var(--aurora-fg-tertiary)]">· {p.label}</span>}{p.baseline && <> <Chip tone="info">baseline</Chip></>}</td>
                   <td className={`${td} text-right aurora-number`}>{p.records?.toLocaleString() ?? "—"}</td>
                   <td className={`${td} text-right aurora-number`}>{p.dqs?.toFixed(1) ?? "—"}</td>
                   <td className={td}>{delta(p.dqs_delta)}</td>
+                  <td className={`${td} font-mono text-[11px]`} title={Object.entries(p.dimensions).map(([k, v]) => `${k} ${v?.toFixed(1) ?? "—"}`).join(" · ")}>
+                    {Object.entries(p.dimensions).map(([k, v]) => `${k.slice(0, 4)} ${v?.toFixed(0) ?? "—"}`).join(" · ") || "—"}
+                  </td>
                   <td className={`${td} text-right aurora-number`}>{p.failing_records.toLocaleString()}</td>
                   <td className={`${td} text-right aurora-number`}>{p.issues_opened.toLocaleString()}</td>
                   <td className={`${td} text-right aurora-number`}>{p.issues_resolved.toLocaleString()}</td>
                   <td className={td}>{p.comparable ? "yes" : p.flags.map((f) => <Chip key={f} tone="warning">{FLAG_LABEL[f]}</Chip>)}</td>
-                  <td className={td}><Link className="underline" href={`/versions`}>Compare</Link></td>
+                  <td className={td}>
+                    <Stack direction="row" gap={2}>
+                      <Link className="underline" href={findingsHref(p.version_id, active)}>Findings</Link>
+                      {prev && (
+                        <Link className="underline" href={`/versions?${new URLSearchParams({
+                          v1: prev.version_id, v2: p.version_id, module: active, system_id: id })}`}>
+                          Compare
+                        </Link>
+                      )}
+                    </Stack>
+                  </td>
                 </tr>
               ))}
             </tbody>

@@ -45,6 +45,7 @@ async def list_versions(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     module: Optional[str] = Query(None),
+    system_id: Optional[str] = Query(None, description="Only versions downloaded from this system"),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
@@ -59,61 +60,81 @@ async def list_versions(
         stmt = stmt.where(
             AnalysisVersion.metadata_.op("->>")("modules").contains(module)
         )
+    if system_id:
+        stmt = stmt.where(AnalysisVersion.metadata_.op("->>")("system_id") == system_id)
     stmt = stmt.offset(offset).limit(limit)
     result = await db.execute(stmt)
     versions = result.scalars().all()
     return {"versions": [_version_to_response(v) for v in versions]}
 
 
+# a check changed state only when it ran cleanly in both versions
+_CHECK_CHANGES_SQL = """
+    SELECT f2.check_id, f2.module, f2.severity, f1.affected_count AS v1_affected, f2.affected_count AS v2_affected
+      FROM findings f1
+      JOIN findings f2 ON f2.check_id = f1.check_id AND f2.version_id = :v2
+     WHERE f1.version_id = :v1
+       AND f1.details->>'error' IS NULL AND f2.details->>'error' IS NULL
+       AND (f1.affected_count > 0) <> (f2.affected_count > 0)
+       AND (CAST(:module AS text) IS NULL OR f2.module = CAST(:module AS text))
+     ORDER BY CASE f2.severity WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
+              f2.check_id
+"""
+
+
 @router.get("/versions/compare")
 async def compare_versions(
     v1: str = Query(...),
     v2: str = Query(...),
+    module: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
-    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
-
-    vid1 = uuid.UUID(v1)
-    vid2 = uuid.UUID(v2)
-
-    r1 = await db.execute(
-        select(AnalysisVersion).where(
-            AnalysisVersion.id == vid1, AnalysisVersion.tenant_id == tenant.id
-        )
-    )
-    r2 = await db.execute(
-        select(AnalysisVersion).where(
-            AnalysisVersion.id == vid2, AnalysisVersion.tenant_id == tenant.id
-        )
-    )
-
-    ver1 = r1.scalar_one_or_none()
-    ver2 = r2.scalar_one_or_none()
-
+    """Per-object DQS and dimension deltas (v2 − v1), and the checks that started
+    or stopped failing between the two versions."""
+    await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
+    vid1, vid2 = await _resolve_pair(db, v1, v2)
+    found = {v.id: v for v in (await db.execute(
+        select(AnalysisVersion).where(AnalysisVersion.id.in_([vid1, vid2]),
+                                      AnalysisVersion.tenant_id == tenant.id))).scalars()}
+    ver1, ver2 = found.get(vid1), found.get(vid2)
     if not ver1 or not ver2:
         raise HTTPException(status_code=404, detail="One or both versions not found")
 
     summary1 = ver1.dqs_summary or {}
     summary2 = ver2.dqs_summary or {}
 
-    all_modules = set(list(summary1.keys()) + list(summary2.keys()))
     delta = {}
-    for mod in all_modules:
-        s1 = summary1.get(mod, {})
-        s2 = summary2.get(mod, {})
-        score1 = s1.get("composite_score", 0) if s1 else 0
-        score2 = s2.get("composite_score", 0) if s2 else 0
+    for mod in sorted(set(summary1) | set(summary2)):
+        if module and mod != module:
+            continue
+        s1, s2 = summary1.get(mod) or {}, summary2.get(mod) or {}
+        score1 = s1.get("composite_score", 0)
+        score2 = s2.get("composite_score", 0)
+        d1, d2 = s1.get("dimension_scores") or {}, s2.get("dimension_scores") or {}
         delta[mod] = {
             "dqs_change": round(score2 - score1, 2),
             "v1_score": score1,
             "v2_score": score2,
+            "dimensions": {
+                dim: {"v1": d1.get(dim), "v2": d2.get(dim),
+                      "change": None if d1.get(dim) is None or d2.get(dim) is None
+                      else round(d2[dim] - d1[dim], 2)}
+                for dim in sorted(set(d1) | set(d2))
+            },
         }
 
+    rows = (await db.execute(text(_CHECK_CHANGES_SQL), {"v1": vid1, "v2": vid2, "module": module})).fetchall()
+    changes = [{"check_id": r.check_id, "module": r.module, "severity": r.severity,
+                "v1_affected": r.v1_affected, "v2_affected": r.v2_affected} for r in rows]
     return {
         "v1": _version_to_response(ver1),
         "v2": _version_to_response(ver2),
         "delta": delta,
+        "checks": {
+            "newly_failing": [c for c in changes if c["v2_affected"] > 0],
+            "fixed": [c for c in changes if c["v1_affected"] > 0],
+        },
     }
 
 
@@ -131,8 +152,11 @@ async def _resolve_pair(db: AsyncSession, v1: Optional[str], v2: str) -> tuple[u
         raise HTTPException(status_code=404, detail="Version not found")
     if v1:
         vid1 = uuid.UUID(v1)
-        if await _scope_of(db, vid1) is None:
+        scope1 = await _scope_of(db, vid1)
+        if scope1 is None:
             raise HTTPException(status_code=404, detail="Version not found")
+        if "upload" not in (scope1, scope) and scope1 != scope:
+            raise HTTPException(status_code=400, detail="The versions belong to different systems.")
         return vid1, vid2
     row = (await db.execute(text("""
         SELECT id FROM analysis_versions
@@ -202,6 +226,31 @@ async def compare_records_list(
         "v1": vid1, "v2": vid2, "cid": check_id, "q": f"%{search}%" if search else None,
         "limit": limit, "offset": offset})
     return {"v1": str(vid1), "v2": str(vid2), "change": change, "record_keys": [r[0] for r in rows]}
+
+
+@router.get("/versions/{version_id}/findings/{check_id}/records")
+async def finding_records(
+    version_id: uuid.UUID,
+    check_id: str,
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """The SAP record keys this check found failing in this version (finding_records)."""
+    await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
+    if await _scope_of(db, version_id) is None:
+        raise HTTPException(status_code=404, detail="Version not found")
+    p = {"v": version_id, "cid": check_id}
+    total = (await db.execute(text("SELECT COUNT(*) FROM finding_records WHERE version_id = :v AND check_id = :cid"),
+                              p)).scalar()
+    rows = await db.execute(text("""
+        SELECT record_key, grain, module FROM finding_records
+         WHERE version_id = :v AND check_id = :cid
+         ORDER BY record_key LIMIT :limit OFFSET :offset
+    """), {**p, "limit": limit, "offset": offset})
+    return {"version_id": str(version_id), "check_id": check_id, "total": int(total or 0),
+            "records": [dict(r._mapping) for r in rows.fetchall()]}
 
 
 @router.post("/versions/{version_id}/analyse", status_code=202, dependencies=[Depends(require_permission("analyse"))])

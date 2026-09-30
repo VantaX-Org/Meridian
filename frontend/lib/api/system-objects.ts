@@ -34,6 +34,8 @@ export interface SystemVersion {
   baseline: boolean;
   analysable: boolean;
   dqs: Record<string, number | null>;
+  /** Rules generated from the system's field-status customizing, per segment. */
+  field_status: { segment: string; definition: string | null; reason: string | null; rules: number }[];
 }
 
 export type TrendFlag = "scope_changed" | "rules_changed" | "volume_shift";

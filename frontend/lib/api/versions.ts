@@ -5,6 +5,7 @@ export async function getVersions(params?: {
   limit?: number;
   offset?: number;
   module?: string;
+  system_id?: string;
 }): Promise<VersionList> {
   const { data } = await apiClient.get<VersionList>("/api/v1/versions", {
     params,
@@ -19,11 +20,12 @@ export async function getVersion(id: string): Promise<Version> {
 
 export async function compareVersions(
   v1: string,
-  v2: string
+  v2: string,
+  module?: string
 ): Promise<VersionComparison> {
   const { data } = await apiClient.get<VersionComparison>(
     "/api/v1/versions/compare",
-    { params: { v1, v2 } }
+    { params: { v1, v2, module } }
   );
   return data;
 }
@@ -51,9 +53,10 @@ export interface RecordDiffCheck {
 
 export async function compareRecords(
   v2: string,
-  v1?: string
+  v1?: string,
+  module?: string
 ): Promise<{ v1: string; v2: string; totals: { new: number; resolved: number; persisting: number }; checks: RecordDiffCheck[] }> {
-  const { data } = await apiClient.get("/api/v1/versions/compare/records", { params: { v1, v2 } });
+  const { data } = await apiClient.get("/api/v1/versions/compare/records", { params: { v1, v2, module } });
   return data;
 }
 
@@ -67,5 +70,23 @@ export async function compareRecordKeys(
 
 export async function pinBaseline(id: string, pinned = true): Promise<{ baseline: boolean }> {
   const { data } = await apiClient.post(`/api/v1/versions/${id}/baseline`, null, { params: { pinned } });
+  return data;
+}
+
+export interface FindingRecord {
+  /** SAP record key, e.g. "LIFNR=0000100001|BUKRS=1000". */
+  record_key: string;
+  grain: string | null;
+  module: string;
+}
+
+/** The records one check found failing in one version. */
+export async function getFindingRecords(
+  versionId: string,
+  checkId: string,
+  params: { limit?: number; offset?: number } = {}
+): Promise<{ version_id: string; check_id: string; total: number; records: FindingRecord[] }> {
+  const { data } = await apiClient.get(
+    `/api/v1/versions/${versionId}/findings/${encodeURIComponent(checkId)}/records`, { params });
   return data;
 }

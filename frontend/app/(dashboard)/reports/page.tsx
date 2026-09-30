@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { PageHead, KPI, ModChip } from "@/components/meridian/atoms";
 import { ArrowRight, MoreH, SparklesIcon } from "@/components/meridian/icons";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getVersions } from "@/lib/api/versions";
+import { getVersion, getVersions } from "@/lib/api/versions";
 import { getReportDownloadUrl, getReportJsonExportUrl } from "@/lib/api/reports";
 import { getConfigMatchesExportUrl } from "@/lib/api/config-matches";
 import { downloadAuthenticated } from "@/lib/api/download";
@@ -42,14 +43,34 @@ function isCompleteForExport(v: Version): boolean {
 }
 
 export default function ReportsPage() {
-  const [activeId, setActiveId] = useState<string | null>(null);
+  return (
+    <Suspense>
+      <ReportsList />
+    </Suspense>
+  );
+}
+
+/** ?version_id= preselects that version's report, even when it is older than the list. */
+function ReportsList() {
+  const linked = useSearchParams().get("version_id");
+  const [activeId, setActiveId] = useState<string | null>(linked);
+  const [now] = useState(() => Date.now());
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["reports.versions", { limit: 50 }],
     queryFn: () => getVersions({ limit: 50 }),
   });
+  const listed = Boolean(linked && data?.versions.some((v) => v.id === linked));
+  const { data: linkedVersion } = useQuery({
+    queryKey: ["version", linked],
+    queryFn: () => getVersion(linked as string),
+    enabled: Boolean(linked && data && !listed),
+  });
 
-  const versions: Version[] = useMemo(() => data?.versions ?? [], [data]);
+  const versions: Version[] = useMemo(
+    () => (linkedVersion && !listed ? [linkedVersion, ...(data?.versions ?? [])] : data?.versions ?? []),
+    [data, linkedVersion, listed],
+  );
   const exportable = useMemo(() => versions.filter(isCompleteForExport), [versions]);
   const active = exportable.find((v) => v.id === activeId) ?? exportable[0];
 
@@ -108,10 +129,10 @@ export default function ReportsPage() {
 
   const total = exportable.length;
   const last7 = exportable.filter(
-    (v) => Date.now() - new Date(v.run_at).getTime() < 7 * 86400 * 1000,
+    (v) => now - new Date(v.run_at).getTime() < 7 * 86400 * 1000,
   ).length;
   const last30 = exportable.filter(
-    (v) => Date.now() - new Date(v.run_at).getTime() < 30 * 86400 * 1000,
+    (v) => now - new Date(v.run_at).getTime() < 30 * 86400 * 1000,
   ).length;
 
   return (

@@ -131,6 +131,7 @@ export default function OverviewPage() {
   const userRole = getUserRole();
   const [range, setRange] = useState<(typeof RANGE_OPTIONS)[number]>("30d");
   const [moduleSearch, setModuleSearch] = useState("");
+  const [now] = useState(() => Date.now());
 
   const {
     data: versionData,
@@ -236,11 +237,10 @@ export default function OverviewPage() {
 
   // DQS trend — runs inside the selected range window, oldest → newest.
   const rangeCutoff = (() => {
-    const now = Date.now();
     if (range === "7d") return now - 7 * 86_400_000;
     if (range === "30d") return now - 30 * 86_400_000;
     if (range === "90d") return now - 90 * 86_400_000;
-    return new Date(new Date().getFullYear(), 0, 1).getTime(); // YTD
+    return new Date(new Date(now).getFullYear(), 0, 1).getTime(); // YTD
   })();
   const rangeVersions = completed.filter(
     (v) => new Date(v.run_at).getTime() >= rangeCutoff,
@@ -505,7 +505,11 @@ export default function OverviewPage() {
               {severityCounts.low} low.
             </div>
           </div>
-          <Link href="/findings?severity=critical" className="mn-btn mn-btn-ghost" style={{ background: "white" }}>
+          <Link
+            href={`/findings?${new URLSearchParams({ severity: "critical", module: topHot.name, version_id: topHot.versionId })}`}
+            className="mn-btn mn-btn-ghost"
+            style={{ background: "white" }}
+          >
             Triage criticals <ArrowRight size={13} />
           </Link>
         </div>
@@ -629,7 +633,7 @@ export default function OverviewPage() {
                 <tr key={m.name}>
                   <td style={{ paddingLeft: 20 }}>
                     <Link
-                      href={`/findings?module=${m.name}&version_id=${m.versionId}`}
+                      href={`/findings?${new URLSearchParams({ module: m.name, version_id: m.versionId })}`}
                       className="ico-cell"
                       style={{ color: "inherit" }}
                     >

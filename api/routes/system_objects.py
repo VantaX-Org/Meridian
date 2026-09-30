@@ -149,6 +149,10 @@ async def system_versions(system_id: uuid.UUID, limit: int = Query(50, le=200),
             "baseline": meta.get("baseline") is True,
             "analysable": bool(meta.get("dataset_path")) and r.status not in ("pending", "running"),
             "dqs": {m: (d or {}).get("composite_score") for m, d in dqs.items()},
+            # rules generated from the system's field-status customizing, per segment
+            "field_status": [{"segment": f.get("segment"), "definition": f.get("definition"),
+                              "reason": f.get("reason"), "rules": f.get("rules", 0)}
+                             for f in meta.get("field_status") or [] if isinstance(f, dict)],
         })
     return {"versions": out}
 

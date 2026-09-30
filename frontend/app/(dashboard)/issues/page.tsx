@@ -53,7 +53,7 @@ const RESOLUTION_LABEL: Record<string, string> = {
   false_positive: "false positive",
 };
 
-const FILTER_KEYS = ["status", "module", "check_id", "severity", "assigned_to", "scope", "search"] as const;
+const FILTER_KEYS = ["status", "module", "check_id", "severity", "assigned_to", "scope", "search", "version_id"] as const;
 
 const columns = (selected: Set<string>, toggle: (id: string) => void): ColumnDef<RecordIssue, unknown>[] => [
   {
@@ -198,6 +198,9 @@ function IssuesWorkList() {
             <Input placeholder="Record key (Enter)" aria-label="Search record key" defaultValue={filter.search}
               onKeyDown={(e) => e.key === "Enter" && set({ search: e.currentTarget.value || undefined })} />
             {filter.check_id && <Chip onDismiss={() => set({ check_id: undefined })}>check {filter.check_id}</Chip>}
+            {filter.version_id && (
+              <Chip onDismiss={() => set({ version_id: undefined })}>failing in version {filter.version_id.slice(0, 8)}</Chip>
+            )}
           </Stack>
 
           {ids.length > 0 && (
@@ -270,7 +273,7 @@ function IssueDrawer({ id, onClose, canComment }: { id: string | null; onClose: 
             <Text variant="text-small" tone="muted">
               {formatModuleName(i.module)}{i.grain ? ` · evaluated on ${i.grain}` : ""} · first seen {relativeTime(i.first_seen_at)} · last failing {relativeTime(i.last_seen_at)}
             </Text>
-            <Link className="text-[13px] underline" href={`/findings?check_id=${encodeURIComponent(i.check_id)}&version_id=${i.last_seen_version}`}>
+            <Link className="text-[13px] underline" href={`/findings?${new URLSearchParams({ check_id: i.check_id, version_id: i.last_seen_version, module: i.module })}`}>
               Open the finding
             </Link>
           </Stack>

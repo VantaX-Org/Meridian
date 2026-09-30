@@ -45,6 +45,8 @@ export interface IssueFilter {
   assigned_to?: string;
   scope?: string;
   search?: string;
+  /** Only records failing in this version. */
+  version_id?: string;
 }
 
 export async function getIssues(

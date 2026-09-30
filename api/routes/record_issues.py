@@ -35,7 +35,8 @@ class CommentBody(BaseModel):
     body: str = Field(min_length=1, max_length=4000)
 
 
-def _where(status, module, check_id, severity, assigned_to, scope, search, request) -> tuple[str, dict]:
+def _where(status, module, check_id, severity, assigned_to, scope, search, request,
+           version_id: Optional[uuid.UUID] = None) -> tuple[str, dict]:
     where, p = ["1=1"], {}
     for col, val in (("status", status), ("module", module), ("check_id", check_id),
                      ("severity", severity), ("scope", scope)):
@@ -50,6 +51,11 @@ def _where(status, module, check_id, severity, assigned_to, scope, search, reque
     if search:
         where.append("ri.record_key ILIKE :q")
         p["q"] = f"%{search}%"
+    if version_id:
+        # issues whose record failed this check in that version
+        where.append("EXISTS (SELECT 1 FROM finding_records fr WHERE fr.version_id = CAST(:version_id AS uuid) "
+                     "AND fr.check_id = ri.check_id AND fr.record_key = ri.record_key)")
+        p["version_id"] = str(version_id)
     return " AND ".join(where), p
 
 
@@ -85,6 +91,7 @@ async def list_issues(
     assigned_to: Optional[str] = Query(None, description="user id, 'me' or 'unassigned'"),
     scope: Optional[str] = None,
     search: Optional[str] = None,
+    version_id: Optional[uuid.UUID] = Query(None, description="Only records failing in this version"),
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
@@ -92,10 +99,10 @@ async def list_issues(
     _perm: str = Depends(require_permission("view")),
 ):
     await _rls(db, tenant)
-    where, p = _where(status, module, check_id, severity, assigned_to, scope, search, request)
+    where, p = _where(status, module, check_id, severity, assigned_to, scope, search, request, version_id)
     total = (await db.execute(text(f"SELECT COUNT(*) FROM record_issues ri WHERE {where}"), p)).scalar()
     # status counts ignore the status filter so the tabs always show every bucket
-    w2, p2 = _where(None, module, check_id, severity, assigned_to, scope, search, request)
+    w2, p2 = _where(None, module, check_id, severity, assigned_to, scope, search, request, version_id)
     counts = dict((await db.execute(text(f"SELECT ri.status, COUNT(*) FROM record_issues ri WHERE {w2} "
                                          f"GROUP BY ri.status"), p2)).fetchall())
     rows = await db.execute(text(f"{_SELECT} WHERE {where} {_ORDER} LIMIT :limit OFFSET :offset"),
@@ -114,6 +121,7 @@ async def export_issues(
     assigned_to: Optional[str] = None,
     scope: Optional[str] = None,
     search: Optional[str] = None,
+    version_id: Optional[uuid.UUID] = None,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     _perm: str = Depends(require_permission("export")),
@@ -122,7 +130,7 @@ async def export_issues(
     import pandas as pd
 
     await _rls(db, tenant)
-    where, p = _where(status, module, check_id, severity, assigned_to, scope, search, request)
+    where, p = _where(status, module, check_id, severity, assigned_to, scope, search, request, version_id)
     rows = (await db.execute(text(f"{_SELECT} WHERE {where} {_ORDER} LIMIT 1000000"), p)).fetchall()
     df = pd.DataFrame([_row(r) for r in rows])
     if format == "csv":
