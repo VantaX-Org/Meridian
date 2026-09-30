@@ -37,7 +37,7 @@ class InviteUserBody(BaseModel):
 # ── GET /api/v1/users ────────────────────────────────────────────────────────
 
 
-@router.get("/users")
+@router.get("/users", dependencies=[Depends(require_permission("manage_users"))])
 async def list_users(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),

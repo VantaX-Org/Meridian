@@ -6,6 +6,8 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+
+from api.services.rbac import require_permission
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -98,7 +100,7 @@ async def list_contracts(
 # ── 2. POST /api/v1/contracts — create draft contract ────────────────────────
 
 
-@router.post("/contracts", status_code=201)
+@router.post("/contracts", status_code=201, dependencies=[Depends(require_permission("manage_rules"))])
 async def create_contract(
     body: CreateContractBody,
     db: AsyncSession = Depends(get_db),
@@ -137,7 +139,7 @@ async def create_contract(
 # ── 3. PUT /api/v1/contracts/{id} — update draft contract ────────────────────
 
 
-@router.put("/contracts/{contract_id}")
+@router.put("/contracts/{contract_id}", dependencies=[Depends(require_permission("manage_rules"))])
 async def update_contract(
     contract_id: str,
     body: UpdateContractBody,
@@ -197,7 +199,7 @@ async def update_contract(
 # ── 4. PUT /api/v1/contracts/{id}/activate — activate contract ───────────────
 
 
-@router.put("/contracts/{contract_id}/activate")
+@router.put("/contracts/{contract_id}/activate", dependencies=[Depends(require_permission("manage_rules"))])
 async def activate_contract(
     contract_id: str,
     db: AsyncSession = Depends(get_db),

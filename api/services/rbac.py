@@ -10,9 +10,7 @@ Supports both the legacy 7-role system and the simplified 3-tier system:
   Legacy (backward compat):
     steward, analyst, approver, auditor, ai_reviewer — mapped to equivalent tiers
 
-Actions: view, upload, analyse, approve, apply, export, manage_users, manage_rules,
-         ai_feedback, review_ai_rules, trigger_ai, view_ai_confidence,
-         trigger_sync, manage_field_mappings
+Actions: see PERMISSIONS below — it is the single source of truth.
 """
 
 import os
@@ -25,46 +23,71 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import Tenant, get_db, get_tenant
 
 # ── Permission matrix ────────────────────────────────────────────────────────
+#
+# Single source of truth. /api/v1/auth/me returns permissions_for(role) so the
+# frontend never keeps its own copy.
+#
+#   admin        everything, incl. users, LLM, platform update, settings
+#   manager      runs the programme: systems, sync, analysis, approve/apply, assign
+#   steward      data owner: fix, clean, approve/apply, rules, assign
+#   analyst      upload + analyse + export, no approvals
+#   approver     four-eyes approver only
+#   auditor      read-only + audit log
+#   ai_reviewer  reviews AI proposals
+#   viewer       read-only
+
+_READ = {"view", "mdm.read", "view_ai_confidence"}
 
 PERMISSIONS: dict[str, set[str]] = {
-    # ── 3-tier roles (Phase 2+) ───────────────────────────────────────────
-    "admin": {
-        "view", "upload", "analyse", "approve", "apply", "export",
+    "admin": _READ | {
+        "upload", "analyse", "approve", "apply", "export", "assign",
         "manage_users", "manage_rules", "manage_field_mappings", "manage_llm",
-        "ai_feedback", "review_ai_rules", "trigger_ai", "view_ai_confidence",
-        "trigger_sync",
-        # mdm.* — mining pipeline endpoints. Admin gets both read and
-        # write. These were added to route guards in an earlier phase but
-        # the PERMISSIONS dict was never updated, so every role 403'd.
-        # Sweep-added here.
-        "mdm.read", "mdm.write",
-        # Platform self-update (check-for-update visibility + trigger).
-        # Admin only — it restarts the whole customer stack.
-        "manage_system",
+        "manage_system", "manage_systems", "manage_settings", "view_audit",
+        "ai_feedback", "review_ai_rules", "trigger_ai", "trigger_sync",
+        "mdm.write",
     },
-    "manager": {
-        "view", "upload", "analyse", "approve", "apply", "export",
-        "ai_feedback", "trigger_ai", "view_ai_confidence", "trigger_sync",
-        "mdm.read", "mdm.write",
+    "manager": _READ | {
+        "upload", "analyse", "approve", "apply", "export", "assign",
+        "manage_systems", "view_audit",
+        "ai_feedback", "trigger_ai", "trigger_sync", "mdm.write",
     },
-    "viewer": {"view", "mdm.read"},
-
-    # ── Legacy roles (backward compat) ────────────────────────────────────
-    "steward": {
-        "view", "upload", "analyse", "approve", "apply", "export", "manage_rules",
-        "ai_feedback", "review_ai_rules", "trigger_ai", "view_ai_confidence",
-        "trigger_sync",
-        "mdm.read", "mdm.write",
+    "steward": _READ | {
+        "upload", "analyse", "approve", "apply", "export", "assign",
+        "manage_rules", "ai_feedback", "review_ai_rules", "trigger_ai",
+        "trigger_sync", "mdm.write",
     },
-    "analyst": {
-        "view", "upload", "analyse", "export", "trigger_ai", "view_ai_confidence",
-        "trigger_sync",
-        "mdm.read",
-    },
-    "approver": {"view", "approve", "export", "mdm.read"},
-    "auditor": {"view", "export", "mdm.read"},
-    "ai_reviewer": {"view", "view_ai_confidence", "review_ai_rules", "ai_feedback", "mdm.read"},
+    "analyst": _READ | {"upload", "analyse", "export", "trigger_ai", "trigger_sync"},
+    "approver": _READ | {"approve", "export"},
+    "auditor": _READ | {"export", "view_audit"},
+    "ai_reviewer": _READ | {"review_ai_rules", "ai_feedback"},
+    "viewer": set(_READ),
 }
+
+
+def permissions_for(role: str) -> list[str]:
+    """Sorted permission list for a role (unknown role → none)."""
+    return sorted(PERMISSIONS.get(role, set()))
+
+
+def current_user_id(request: Optional[Request] = None) -> Optional[str]:
+    """Authenticated user's id (None if unauthenticated).
+
+    Reads ``request.state`` when given, else the request-scoped context var
+    set by LocalAuthMiddleware — so services can attribute actions without
+    threading ``request`` through every call.
+    """
+    uid = getattr(request.state, "local_user_id", None) if request is not None else None
+    if not uid:
+        from api.middleware.local_auth import get_current_user
+        uid = (get_current_user() or {}).get("id")
+    return str(uid) if uid else None
+
+
+def current_user_label() -> str:
+    """Email of the authenticated user for audit rows ('system' for background jobs)."""
+    from api.middleware.local_auth import get_current_user
+    return (get_current_user() or {}).get("email") or "system"
+
 
 # All valid role values accepted by the users table
 VALID_ROLES: set[str] = set(PERMISSIONS.keys())

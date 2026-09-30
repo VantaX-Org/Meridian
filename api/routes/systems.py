@@ -134,7 +134,7 @@ async def register_system(
     body: RegisterSystemRequest,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    role: str = Depends(require_permission("manage_rules")),
+    role: str = Depends(require_permission("manage_systems")),
 ):
     """Register a new SAP system. Admin and Steward only."""
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
@@ -291,7 +291,7 @@ async def update_system(
     body: UpdateSystemRequest,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    role: str = Depends(require_permission("manage_rules")),
+    role: str = Depends(require_permission("manage_systems")),
 ):
     """Update an SAP system. Admin and Steward only."""
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
@@ -401,7 +401,7 @@ async def delete_system(
     system_id: str,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    role: str = Depends(require_permission("manage_rules")),
+    role: str = Depends(require_permission("manage_systems")),
 ):
     """Delete an SAP system and its credentials. Admin and Steward only."""
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
@@ -451,7 +451,7 @@ def _run_connection_test(system_type: str, params: dict, secrets_to_mask: list[s
 @router.post("/systems/test-connection", response_model=TestConnectionResponse)
 async def test_draft_connection(
     body: RegisterSystemRequest,
-    role: str = Depends(require_permission("manage_rules")),
+    role: str = Depends(require_permission("manage_systems")),
 ):
     """Test connection parameters before the system is registered (no system_id yet).
 
@@ -492,7 +492,7 @@ async def test_connection(
     system_id: str,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    role: str = Depends(require_permission("manage_rules")),
+    role: str = Depends(require_permission("manage_systems")),
 ):
     """Test the connection to an SAP system, for any system_type. Admin and Steward only."""
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
@@ -555,7 +555,7 @@ async def trigger_sync(
     system_id: str,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    role: str = Depends(require_permission("manage_rules")),
+    role: str = Depends(require_permission("trigger_sync")),
 ):
     """Trigger a manual sync for all active profiles on this system."""
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
@@ -590,7 +590,7 @@ async def create_sync_profile(
     body: CreateSyncProfileRequest,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    role: str = Depends(require_permission("manage_rules")),
+    role: str = Depends(require_permission("manage_systems")),
 ):
     """Create a sync profile for an SAP system."""
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))

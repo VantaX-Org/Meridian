@@ -463,11 +463,6 @@ interface NavGroup {
   items: NavItem[];
 }
 
-// Roles permitted to review AI-proposed match rules — mirrors the
-// review_ai_rules permission in api/services/rbac.py (admin, steward,
-// ai_reviewer). Used to gate the Steward · AI Rules nav item.
-const ROLES_WITH_AI_RULES = ["admin", "steward", "ai_reviewer"];
-
 // Nav groups follow the Claude Design handoff (Aurora · Analyse · Report ·
 // Steward · Govern · Connect · Settings) and use the bespoke per-item icon
 // set from components/meridian/nav-icons.tsx.
@@ -478,18 +473,18 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/command-centre", label: "Command Centre", icon: LayoutDashIcon, licenceKey: "dashboard" },
       { href: "/workbench", label: "Workbench", icon: ClipboardIcon, licenceKey: "stewardship" },
       { href: "/process", label: "Process", icon: WorkflowIcon },
-      { href: "/admin", label: "Admin", icon: SettingsIcon },
+      { href: "/admin", label: "Admin", icon: SettingsIcon, permission: "manage_users" },
     ],
   },
   {
     group: "Analyse",
     items: [
       { href: "/", label: "Overview", icon: BarChartIcon, licenceKey: "dashboard" },
-      { href: "/upload", label: "Import", icon: UploadIcon, licenceKey: "import" },
+      { href: "/upload", label: "Import", icon: UploadIcon, licenceKey: "import", permission: "upload" },
       { href: "/findings", label: "Findings", icon: AlertIcon, licenceKey: "findings" },
       { href: "/analytics", label: "Analytics", icon: AnalyticsIcon, licenceKey: "analytics" },
       { href: "/mining", label: "Mining", icon: SparklesNavIcon },
-      { href: "/run-sync", label: "Run Sync", icon: PlayIcon, licenceKey: "sync" },
+      { href: "/run-sync", label: "Run Sync", icon: PlayIcon, licenceKey: "sync", permission: "trigger_sync" },
     ],
   },
   {
@@ -506,7 +501,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/ai/rules", label: "AI Rules", icon: SparklesNavIcon, permission: "review_ai_rules" },
       { href: "/exceptions", label: "Exceptions", icon: AlertIcon },
       { href: "/cleaning", label: "Cleaning", icon: Eraser },
-      { href: "/migration", label: "Migration", icon: ArrowLeftRight },
+      { href: "/migration", label: "Migration", icon: ArrowLeftRight, permission: "analyse" },
       { href: "/dedup", label: "Dedup", icon: GitCompareIcon },
     ],
   },
@@ -565,7 +560,7 @@ function SidebarNav({
   userRole: string;
   onNavClick?: () => void;
 }) {
-  const { can, role } = useRole();
+  const { can } = useRole();
   const { isMenuItemEnabled } = useLicence();
 
   return (
@@ -575,7 +570,6 @@ function SidebarNav({
           // Check licence: item must be enabled in manifest
           if (item.licenceKey && !isMenuItemEnabled(item.licenceKey)) return false;
           // Check permission: AI Rules is gated on review_ai_rules
-          if (item.permission === "review_ai_rules" && !ROLES_WITH_AI_RULES.includes(role)) return false;
           if (item.permission && !can(item.permission)) return false;
           return true;
         });

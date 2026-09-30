@@ -4,6 +4,8 @@ import asyncio
 import logging
 
 from fastapi import APIRouter, Depends
+
+from api.services.rbac import require_permission
 from pydantic import BaseModel
 
 from api.deps import Tenant, get_tenant
@@ -37,7 +39,7 @@ class MatchResponse(BaseModel):
     available_modules: list[dict[str, str]]
 
 
-@router.post("/upload/match", response_model=MatchResponse)
+@router.post("/upload/match", response_model=MatchResponse, dependencies=[Depends(require_permission("upload"))])
 async def match_columns(
     body: MatchRequest,
     tenant: Tenant = Depends(get_tenant),

@@ -57,17 +57,18 @@ function initials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-const INVITE_ROLES: UserRole[] = ["admin", "steward", "ai_reviewer", "approver", "analyst", "viewer", "auditor"];
+const INVITE_ROLES: UserRole[] = ["admin", "manager", "steward", "ai_reviewer", "approver", "analyst", "viewer", "auditor"];
 
 // Role capability reference — mirrors api/services/rbac.py. Rendered read-only
 // in the Roles tab so admins can see what each role can do, including which
 // roles may review (approve proposed rules) AI-proposed match rules.
 const ROLE_META: { role: string; label: string; desc: string; aiReview: boolean }[] = [
   { role: "admin", label: "Admin", desc: "Full access — manage users, rules, and approve proposed rules.", aiReview: true },
-  { role: "steward", label: "Steward", desc: "Clean and match data, and approve proposed rules.", aiReview: true },
+  { role: "manager", label: "Manager", desc: "Run the programme — connect systems, sync, analyse, approve, apply and assign work.", aiReview: false },
+  { role: "steward", label: "Steward", desc: "Own the data — fix, clean, approve/apply, maintain rules and assign work.", aiReview: true },
   { role: "ai_reviewer", label: "AI Reviewer", desc: "Review and approve proposed rules from steward corrections.", aiReview: true },
-  { role: "approver", label: "Approver", desc: "Approve golden records and stewardship changes.", aiReview: false },
-  { role: "analyst", label: "Analyst", desc: "Run analysis and view findings.", aiReview: false },
+  { role: "approver", label: "Approver", desc: "Four-eyes approval of cleaning, golden records and stewardship changes.", aiReview: false },
+  { role: "analyst", label: "Analyst", desc: "Upload, sync and run analysis; export results. No approvals.", aiReview: false },
   { role: "viewer", label: "Viewer", desc: "Read-only access to dashboards and findings.", aiReview: false },
   { role: "auditor", label: "Auditor", desc: "Read-only access including the audit log.", aiReview: false },
 ];

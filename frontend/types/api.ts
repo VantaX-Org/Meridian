@@ -460,6 +460,7 @@ export interface UnreadCountResponse {
 
 export type UserRole =
   | "admin"
+  | "manager"
   | "steward"
   | "analyst"
   | "approver"

@@ -4,6 +4,8 @@ import json
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
+
+from api.services.rbac import require_permission
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -49,7 +51,7 @@ class TenantSettingsResponse(BaseModel):
 
 # ─── GET /settings ──────────────────────────────────────────────────
 
-@router.get("", response_model=TenantSettingsResponse)
+@router.get("", response_model=TenantSettingsResponse, dependencies=[Depends(require_permission("view"))])
 async def get_settings(
     db: AsyncSession = Depends(get_db),
     tenant: TenantDep = Depends(get_tenant),
@@ -78,7 +80,7 @@ async def get_settings(
 
 # ─── PATCH /settings/dqs-weights ────────────────────────────────────
 
-@router.patch("/dqs-weights")
+@router.patch("/dqs-weights", dependencies=[Depends(require_permission("manage_settings"))])
 async def update_dqs_weights(
     weights: DimensionWeights,
     db: AsyncSession = Depends(get_db),
@@ -109,7 +111,7 @@ async def update_dqs_weights(
 
 # ─── PATCH /settings/alert-thresholds ───────────────────────────────
 
-@router.patch("/alert-thresholds")
+@router.patch("/alert-thresholds", dependencies=[Depends(require_permission("manage_settings"))])
 async def update_alert_thresholds(
     thresholds: AlertThresholds,
     db: AsyncSession = Depends(get_db),
@@ -126,7 +128,7 @@ async def update_alert_thresholds(
 
 # ─── POST /settings/notifications ───────────────────────────────────
 
-@router.post("/notifications")
+@router.post("/notifications", dependencies=[Depends(require_permission("manage_settings"))])
 async def save_notifications(
     config: NotificationConfig,
     db: AsyncSession = Depends(get_db),

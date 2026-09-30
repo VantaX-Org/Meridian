@@ -179,7 +179,7 @@ class RulePatch(BaseModel):
     enabled: Optional[bool] = None
 
 
-@router.patch("/rules/{rule_id}")
+@router.patch("/rules/{rule_id}", dependencies=[Depends(require_permission("manage_rules"))])
 async def patch_rule(
     rule_id: str,
     body: RulePatch,

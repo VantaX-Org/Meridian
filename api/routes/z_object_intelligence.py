@@ -9,6 +9,8 @@ import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+
+from api.services.rbac import require_permission
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
@@ -51,7 +53,7 @@ persistence = ZObjectPersistence()
 # 1. POST /detect — full Z analysis pipeline
 # ------------------------------------------------------------------
 
-@router.post("/detect", response_model=ZFullAnalysisResponse)
+@router.post("/detect", response_model=ZFullAnalysisResponse, dependencies=[Depends(require_permission("analyse"))])
 async def detect_z_objects(
     request: ZDetectRequest,
     db: AsyncSession = Depends(get_db),
@@ -138,7 +140,7 @@ async def get_registry_entry(
 # 4. PUT /registry/{z_id} — update registry entry
 # ------------------------------------------------------------------
 
-@router.put("/registry/{z_id}", response_model=ZRegistryEntryResponse)
+@router.put("/registry/{z_id}", response_model=ZRegistryEntryResponse, dependencies=[Depends(require_permission("manage_rules"))])
 async def update_registry_entry(
     z_id: str,
     request: ZRegistryUpdateRequest,
@@ -207,7 +209,7 @@ async def list_anomalies(
 # 7. POST /anomalies/{anomaly_id}/feedback — confirm/dismiss anomaly
 # ------------------------------------------------------------------
 
-@router.post("/anomalies/{anomaly_id}/feedback", response_model=ZAnomalyResponse)
+@router.post("/anomalies/{anomaly_id}/feedback", response_model=ZAnomalyResponse, dependencies=[Depends(require_permission("ai_feedback"))])
 async def submit_anomaly_feedback(
     anomaly_id: str,
     request: ZAnomalyFeedbackRequest,
@@ -342,7 +344,7 @@ async def list_rules(
 # 12. POST /rules — create custom Z rule
 # ------------------------------------------------------------------
 
-@router.post("/rules", response_model=dict)
+@router.post("/rules", response_model=dict, dependencies=[Depends(require_permission("manage_rules"))])
 async def create_custom_rule(
     request: ZCustomRuleRequest,
     db: AsyncSession = Depends(get_db),

@@ -67,8 +67,8 @@ def test_ai_rules_permission_gating():
     """AI Rules nav item is gated by review_ai_rules permission."""
     path = Path("frontend/app/(dashboard)/layout.tsx")
     content = path.read_text(encoding="utf-8")
-    assert "review_ai_rules" in content
-    assert "ROLES_WITH_AI_RULES" in content
+    assert 'permission: "review_ai_rules"' in content
+    assert "can(item.permission)" in content
 
 
 # ── O.2 AI Rules page ──────────────────────────────────────────────────────

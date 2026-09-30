@@ -4,6 +4,7 @@ Checks every /api/* request (except excluded paths) for a valid Bearer token
 signed with the tenant's jwt_secret.
 """
 
+import contextvars
 import logging
 
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -59,6 +60,15 @@ def _load_jwt_secret() -> str | None:
     return None
 
 
+# Authenticated user for the current request — lets services attribute
+# approvals/audit rows to the real user without threading `request` through.
+_current_user: contextvars.ContextVar[dict | None] = contextvars.ContextVar("current_user", default=None)
+
+
+def get_current_user() -> dict | None:
+    return _current_user.get()
+
+
 class LocalAuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         path = request.url.path
@@ -107,5 +117,6 @@ class LocalAuthMiddleware(BaseHTTPMiddleware):
         request.state.local_user_id = payload.get("sub")
         request.state.local_user_email = payload.get("email")
         request.state.local_user_role = payload.get("role")
+        _current_user.set({"id": payload.get("sub"), "email": payload.get("email")})
 
         return await call_next(request)

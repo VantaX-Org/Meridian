@@ -3,6 +3,8 @@ import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+
+from api.services.rbac import require_permission
 from pydantic import BaseModel
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -135,7 +137,7 @@ async def get_version(
     return _version_to_response(version)
 
 
-@router.patch("/versions/{version_id}")
+@router.patch("/versions/{version_id}", dependencies=[Depends(require_permission("analyse"))])
 async def patch_version(
     version_id: str,
     body: PatchVersionRequest,
