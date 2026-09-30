@@ -1,0 +1,256 @@
+# Meridian canonical views over SAP SuccessFactors (OData V2).
+#
+# Rules address SuccessFactors data as TABLE.FIELD (e.g. EMPEMPLOYMENT.USERID).
+# Each canonical table flattens one or more SF entities; every field names its
+# OData source as Entity.property. The SF connector selects exactly these
+# properties and renames them to the canonical names.
+#
+# verify: true  — property name is standard in SAP's EC OData reference but
+#                 was not confirmed against a live $metadata document; the SF
+#                 connector's $metadata check reports it if the tenant differs.
+# picklist:     — SF picklist id; domain rules prefer the tenant's live picklist
+#                 values (PickListValueV2) over the rule's baseline list.
+# Types: STRING, DATE, DATETIME, DECIMAL, INTEGER, BOOLEAN. length 0 = not fixed.
+
+system: successfactors
+tables:
+  EMPEMPLOYMENT:
+    description: Employment + current job information (EmpEmployment ⋈ EmpJob)
+    source: EmpEmployment, EmpJob (effective-dated, current record)
+    keys: [USERID]
+    fields:
+      USERID:          {source: EmpEmployment.userId, type: STRING, length: 100, description: User ID}
+      PERSON_ID:       {source: EmpEmployment.personIdExternal, type: STRING, length: 100, description: Person ID (external)}
+      START_DATE:      {source: EmpEmployment.startDate, type: DATE, description: Employment start date}
+      END_DATE:        {source: EmpEmployment.endDate, type: DATE, description: Employment end date}
+      CREATED_DATE:    {source: EmpEmployment.createdDateTime, type: DATETIME, description: Created on}
+      LAST_MODIFIED:   {source: EmpJob.lastModifiedDateTime, type: DATETIME, description: Job info last modified}
+      COMPANY:         {source: EmpJob.company, type: STRING, length: 128, check_table: FOCompany, description: Legal entity}
+      DIVISION:        {source: EmpJob.division, type: STRING, length: 128, check_table: FODivision, description: Division}
+      DEPARTMENT:      {source: EmpJob.department, type: STRING, length: 128, check_table: FODepartment, description: Department}
+      LOCATION:        {source: EmpJob.location, type: STRING, length: 128, check_table: FOLocation, description: Location}
+      COST_CENTER:     {source: EmpJob.costCenter, type: STRING, length: 128, check_table: FOCostCenter, description: Cost centre}
+      JOB_CODE:        {source: EmpJob.jobCode, type: STRING, length: 128, check_table: FOJobCode, description: Job classification}
+      JOB_TITLE:       {source: EmpJob.jobTitle, type: STRING, length: 256, description: Job title}
+      MANAGER_ID:      {source: EmpJob.managerId, type: STRING, length: 100, description: Manager user ID}
+      POSITION:        {source: EmpJob.position, type: STRING, length: 128, description: Position}
+      EMPLOYMENT_TYPE: {source: EmpJob.employmentType, type: STRING, length: 128, picklist: employmentType, description: Employment type}
+      EVENT_REASON:    {source: EmpJob.eventReason, type: STRING, length: 128, check_table: FOEventReason, description: Event reason}
+      STATUS:          {source: EmpJob.emplStatus, type: STRING, length: 128, picklist: employee-status, description: Employee status}
+
+  PERINFO:
+    description: Personal information (PerPersonal ⋈ PerPerson ⋈ primary PerNationalId)
+    source: PerPersonal, PerPerson, PerNationalId
+    keys: [PERSON_ID]
+    fields:
+      PERSON_ID:      {source: PerPersonal.personIdExternal, type: STRING, length: 100, description: Person ID}
+      FIRSTNAME:      {source: PerPersonal.firstName, type: STRING, length: 128, description: First name}
+      LASTNAME:       {source: PerPersonal.lastName, type: STRING, length: 128, description: Last name}
+      MIDDLENAME:     {source: PerPersonal.middleName, type: STRING, length: 128, description: Middle name}
+      PREFERRED_NAME: {source: PerPersonal.preferredName, type: STRING, length: 128, description: Preferred name}
+      SALUTATION:     {source: PerPersonal.salutation, type: STRING, length: 128, picklist: salutation, description: Salutation}
+      GENDER:         {source: PerPersonal.gender, type: STRING, length: 2, description: Gender}
+      MARITAL_STATUS: {source: PerPersonal.maritalStatus, type: STRING, length: 128, picklist: ecMaritalStatus, description: Marital status}
+      NATIONALITY:    {source: PerPersonal.nationality, type: STRING, length: 128, check_table: Country, description: Nationality}
+      DATE_OF_BIRTH:  {source: PerPerson.dateOfBirth, type: DATE, description: Date of birth}
+      NATIONAL_ID:    {source: PerNationalId.nationalId, type: STRING, length: 256, description: National ID (primary)}
+
+  PEREMAIL:
+    description: E-mail addresses
+    source: PerEmail
+    keys: [PERSON_ID, EMAIL_TYPE]
+    fields:
+      PERSON_ID:     {source: PerEmail.personIdExternal, type: STRING, length: 100}
+      EMAIL_TYPE:    {source: PerEmail.emailType, type: STRING, length: 128, picklist: ecEmailType, description: E-mail type}
+      EMAIL_ADDRESS: {source: PerEmail.emailAddress, type: STRING, length: 100, description: E-mail address}
+
+  PERPHONE:
+    description: Phone numbers
+    source: PerPhone
+    keys: [PERSON_ID, PHONE_TYPE]
+    fields:
+      PERSON_ID:    {source: PerPhone.personIdExternal, type: STRING, length: 100}
+      PHONE_TYPE:   {source: PerPhone.phoneType, type: STRING, length: 128, picklist: ecPhoneType, description: Phone type}
+      PHONE_NUMBER: {source: PerPhone.phoneNumber, type: STRING, length: 256, description: Phone number}
+
+  PERADDRESS:
+    description: Home address (default country format)
+    source: PerAddressDEFLT
+    keys: [PERSON_ID, ADDRESS_TYPE]
+    fields:
+      PERSON_ID:     {source: PerAddressDEFLT.personIdExternal, type: STRING, length: 100}
+      ADDRESS_TYPE:  {source: PerAddressDEFLT.addressType, type: STRING, length: 128, picklist: addressType}
+      ADDRESS_LINE1: {source: PerAddressDEFLT.address1, type: STRING, length: 256}
+      ADDRESS_LINE2: {source: PerAddressDEFLT.address2, type: STRING, length: 256}
+      CITY:          {source: PerAddressDEFLT.city, type: STRING, length: 256}
+      STATE:         {source: PerAddressDEFLT.state, type: STRING, length: 256}
+      ZIPCODE:       {source: PerAddressDEFLT.zipCode, type: STRING, length: 256}
+      COUNTRY:       {source: PerAddressDEFLT.country, type: STRING, length: 128, check_table: Country}
+
+  COMPINFO:
+    description: Compensation (EmpCompensation ⋈ recurring pay component ⋈ pay range)
+    source: EmpCompensation, EmpPayCompRecurring, FOPayRange
+    keys: [USERID, EFFECTIVE_DATE]
+    fields:
+      USERID:              {source: EmpCompensation.userId, type: STRING, length: 100}
+      EFFECTIVE_DATE:      {source: EmpCompensation.startDate, type: DATE}
+      EFFECTIVE_DATE_COMP: {source: EmpPayCompRecurring.startDate, type: DATE, description: Pay component effective date}
+      PAY_GRADE:           {source: EmpJob.payGrade, type: STRING, length: 128, check_table: FOPayGrade}
+      PAY_TYPE:            {source: EmpPayCompRecurring.payComponent, type: STRING, length: 32, check_table: FOPayComponent, description: Pay component}
+      SALARY:              {source: EmpPayCompRecurring.paycompvalue, type: DECIMAL, description: Pay component amount}
+      CURRENCY:            {source: EmpPayCompRecurring.currencyCode, type: STRING, length: 20, check_table: Currency}
+      COMP_FREQUENCY:      {source: EmpPayCompRecurring.frequency, type: STRING, length: 32, check_table: FOFrequency}
+      PAY_RANGE_MIN:       {source: FOPayRange.minimumPay, type: DECIMAL}
+      PAY_RANGE_MID:       {source: FOPayRange.midPoint, type: DECIMAL}
+      PAY_RANGE_MAX:       {source: FOPayRange.maximumPay, type: DECIMAL}
+      COMPA_RATIO:         {source: EmpCompensationCalculatedNavigation.compaRatio, type: DECIMAL, verify: true}
+
+  PAYRESULT:
+    description: Payroll results (Employee Central Payroll export / Payroll Control Center)
+    source: EC Payroll result export (not a standard SF OData entity)
+    keys: [USERID, PAY_PERIOD]
+    fields:
+      USERID:       {source: payroll_export.personnel_number, type: STRING, length: 100, verify: true}
+      USERID_PAY:   {source: payroll_export.personnel_number, type: STRING, length: 100, verify: true, description: Payee on the payroll result}
+      PAY_PERIOD:   {source: payroll_export.period, type: STRING, length: 6, verify: true}
+      PAY_DATE:     {source: payroll_export.pay_date, type: DATE, verify: true}
+      PAYROLL_AREA: {source: payroll_export.payroll_area, type: STRING, length: 2, verify: true}
+      COMPANY:      {source: payroll_export.company_code, type: STRING, length: 4, verify: true}
+      COST_CENTRE:  {source: payroll_export.cost_center, type: STRING, length: 10, verify: true}
+      GROSS_PAY:    {source: payroll_export.gross, type: DECIMAL, verify: true}
+      NET_PAY:      {source: payroll_export.net, type: DECIMAL, verify: true}
+      TAX_AMOUNT:   {source: payroll_export.tax, type: DECIMAL, verify: true}
+      DEDUCTIONS:   {source: payroll_export.deductions, type: DECIMAL, verify: true}
+      CURRENCY:     {source: payroll_export.currency, type: STRING, length: 5, verify: true}
+      DELTA_FLAG:   {source: payroll_export.delta_flag, type: STRING, length: 1, verify: true}
+
+  TIMESHEET:
+    description: Time recording (EmployeeTimeSheetEntry, EmployeeTime, TimeAccount)
+    source: EmployeeTimeSheet, EmployeeTimeSheetEntry, EmployeeTime, TimeAccount
+    keys: [USERID, DATE]
+    fields:
+      USERID:            {source: EmployeeTimeSheet.userId, type: STRING, length: 100}
+      DATE:              {source: EmployeeTimeSheetEntry.startDate, type: DATE}
+      HOURS:             {source: EmployeeTimeSheetEntry.quantityInHours, type: DECIMAL}
+      OVERTIME_HOURS:    {source: EmployeeTimeSheetEntry.quantityInHours (overtime recording type), type: DECIMAL, verify: true}
+      COST_CENTER:       {source: EmployeeTimeSheetEntry.costCenter, type: STRING, length: 128, verify: true}
+      APPROVAL_STATUS:   {source: EmployeeTimeSheet.approvalStatus, type: STRING, length: 32}
+      ABSENCE_TYPE:      {source: EmployeeTime.timeType, type: STRING, length: 128, check_table: TimeType}
+      TIME_ACCOUNT_TYPE: {source: TimeAccount.accountType, type: STRING, length: 128, check_table: TimeAccountType}
+      BALANCE:           {source: TimeAccountBalance.balance, type: DECIMAL, verify: true}
+
+  BENEFITENROLLMENT:
+    description: Benefit enrolments
+    source: BenefitEnrollment
+    keys: [USERID, PLAN_ID]
+    fields:
+      USERID:         {source: BenefitEnrollment.workerId, type: STRING, length: 100, verify: true}
+      PLAN_ID:        {source: BenefitEnrollment.benefit, type: STRING, length: 128, verify: true}
+      PLAN_TYPE:      {source: Benefit.benefitType, type: STRING, length: 128, verify: true}
+      COVERAGE_LEVEL: {source: BenefitEnrollment.coverage, type: STRING, length: 128, verify: true}
+      EFFECTIVE_DATE: {source: BenefitEnrollment.effectiveDate, type: DATE, verify: true}
+      ENROL_DATE:     {source: BenefitEnrollment.enrollmentDate, type: DATE, verify: true}
+      EMPLOYEE_COST:  {source: BenefitEnrollment.employeeContribution, type: DECIMAL, verify: true}
+      EMPLOYER_COST:  {source: BenefitEnrollment.employerContribution, type: DECIMAL, verify: true}
+      DEPENDENT_LINK: {source: BenefitEnrollment.dependents, type: STRING, verify: true}
+
+  GOALPLAN:
+    description: Performance goals (Goal_<planId>)
+    source: Goal_<planId>
+    keys: [GOAL_ID]
+    fields:
+      GOAL_ID:     {source: Goal.id, type: STRING, length: 38}
+      USERID:      {source: Goal.userId, type: STRING, length: 100}
+      GOAL_NAME:   {source: Goal.name, type: STRING, length: 4000}
+      GOAL_METRIC: {source: Goal.metric, type: STRING, length: 4000}
+      GOAL_STATUS: {source: Goal.state, type: STRING, length: 128, verify: true}
+      GOAL_WEIGHT: {source: Goal.weight, type: DECIMAL}
+      TARGET_DATE: {source: Goal.dueDate, type: DATE}
+
+  PMREVIEWRESULT:
+    description: Performance review forms
+    source: FormHeader, FormSummarySection
+    keys: [USERID, REVIEW_PERIOD]
+    fields:
+      USERID:         {source: FormHeader.formSubjectId, type: STRING, length: 100, verify: true}
+      REVIEW_PERIOD:  {source: FormHeader.formReviewStartDate, type: DATE, verify: true}
+      REVIEW_DATE:    {source: FormHeader.formLastModifiedDate, type: DATETIME, verify: true}
+      FORM_STATUS:    {source: FormHeader.formDataStatus, type: STRING, verify: true}
+      OVERALL_RATING: {source: FormSummarySection.overallFormRating, type: DECIMAL, verify: true}
+      MANAGER_RATING: {source: FormSummarySection.overallFormRating (manager step), type: DECIMAL, verify: true}
+      SELF_RATING:    {source: FormSummarySection.overallFormRating (self step), type: DECIMAL, verify: true}
+
+  SUCCESSIONCANDIDATE:
+    description: Succession nominations
+    source: NominationTarget / Successor
+    keys: [NOMINEE_ID, POSITION_ID]
+    fields:
+      NOMINEE_ID:     {source: Successor.userId, type: STRING, length: 100, verify: true}
+      POSITION_ID:    {source: NominationTarget.positionCode, type: STRING, length: 128, verify: true}
+      NOMINATED_DATE: {source: Successor.lastModifiedDateTime, type: DATETIME, verify: true}
+      READINESS:      {source: Successor.readiness, type: STRING, verify: true}
+      RANKING:        {source: Successor.rank, type: INTEGER, verify: true}
+      RISK_OF_LOSS:   {source: User.riskOfLoss, type: STRING, verify: true}
+      IMPACT_OF_LOSS: {source: User.impactOfLoss, type: STRING, verify: true}
+
+  JOBREQUISITION:
+    description: Job requisitions (Recruiting)
+    source: JobRequisition
+    keys: [JOB_REQ_ID]
+    fields:
+      JOB_REQ_ID:     {source: JobRequisition.jobReqId, type: INTEGER}
+      TITLE:          {source: JobRequisition.jobReqLocale.jobTitle, type: STRING, verify: true}
+      STATUS:         {source: JobRequisition.status, type: STRING, verify: true}
+      HIRING_MANAGER: {source: JobRequisition.hiringManager, type: STRING, verify: true}
+      RECRUITER:      {source: JobRequisition.recruiter, type: STRING, verify: true}
+      OPEN_DATE:      {source: JobRequisition.createdDateTime, type: DATETIME}
+      CLOSE_DATE:     {source: JobRequisition.closedDateTime, type: DATETIME, verify: true}
+
+  JOBAPPLICATION:
+    description: Job applications (Recruiting)
+    source: JobApplication
+    keys: [CANDIDATE_ID, JOB_REQ_ID]
+    fields:
+      CANDIDATE_ID:     {source: JobApplication.candidateId, type: INTEGER}
+      JOB_REQ_ID:       {source: JobApplication.jobReqId, type: INTEGER}
+      STATUS:           {source: JobApplication.status, type: STRING}
+      SOURCE:           {source: JobApplication.source, type: STRING, verify: true}
+      APPLICATION_DATE: {source: JobApplication.applicationDate, type: DATETIME, verify: true}
+      RATING:           {source: JobApplication.averageRating, type: DECIMAL, verify: true}
+
+  ONBOARDINGCANDIDATEINFO:
+    description: Onboarding processes (Onboarding 2.0)
+    source: ONB2Process
+    keys: [USERID]
+    fields:
+      USERID:          {source: ONB2Process.user, type: STRING, length: 100, verify: true}
+      HIRE_DATE:       {source: ONB2Process.hireDate, type: DATE, verify: true}
+      STATUS:          {source: ONB2Process.processStatus, type: STRING, verify: true}
+      DEPARTMENT:      {source: EmpJob.department, type: STRING, length: 128}
+      MANAGER_ID:      {source: EmpJob.managerId, type: STRING, length: 100}
+      TASK_COMPLETION: {source: ONB2Process.processTrigger, type: STRING, verify: true}
+
+  LEARNINGASSIGNMENT:
+    description: Learning assignments (SAP SuccessFactors Learning OData)
+    source: Learning assignments API
+    keys: [USERID, COURSE_ID]
+    fields:
+      USERID:        {source: learning.studentID, type: STRING, length: 90, verify: true}
+      COURSE_ID:     {source: learning.componentID, type: STRING, length: 90, verify: true}
+      COURSE_TITLE:  {source: learning.title, type: STRING, verify: true}
+      ASSIGNED_DATE: {source: learning.assignmentDate, type: DATETIME, verify: true}
+      DUE_DATE:      {source: learning.requiredDate, type: DATETIME, verify: true}
+      STATUS:        {source: learning.status, type: STRING, verify: true}
+      REQUIRED:      {source: learning.required, type: BOOLEAN, verify: true}
+
+  LEARNINGCOMPLETION:
+    description: Learning history / completions
+    source: Learning history API
+    keys: [USERID, COURSE_ID, COMPLETION_DATE]
+    fields:
+      USERID:          {source: learningHistory.studentID, type: STRING, length: 90, verify: true}
+      COURSE_ID:       {source: learningHistory.componentID, type: STRING, length: 90, verify: true}
+      COMPLETION_DATE: {source: learningHistory.completionDate, type: DATETIME, verify: true}
+      STATUS:          {source: learningHistory.completionStatusID, type: STRING, verify: true}
+      SCORE:           {source: learningHistory.score, type: DECIMAL, verify: true}
+      CREDIT_HOURS:    {source: learningHistory.creditHours, type: DECIMAL, verify: true}

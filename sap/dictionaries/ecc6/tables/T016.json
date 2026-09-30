@@ -30,5 +30,11 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
 }

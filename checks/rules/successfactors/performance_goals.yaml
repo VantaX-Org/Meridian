@@ -252,17 +252,18 @@ rules:
     & Goals module.
 - id: PERF015
   field: PMREVIEWRESULT.USERID
-  check_class: cross_field_check
-  fields: ['PMREVIEWRESULT.USERID']
-  condition: "~`PMREVIEWRESULT.USERID`.duplicated(keep=False)"
+  check_class: uniqueness_check
+  fields: [PMREVIEWRESULT.USERID, PMREVIEWRESULT.REVIEW_PERIOD]
   severity: high
   dimension: uniqueness
   message: Duplicate performance review records per employee per cycle — only one review should exist
-  why_it_matters: Duplicate reviews cause conflicting ratings, incorrect calibration results, and compensation decision errors.
+  why_it_matters: Duplicate reviews cause conflicting ratings, incorrect calibration results, and compensation decision
+    errors.
   rule_authority: best_practice
-  sap_impact: Calibration sessions show conflicting ratings. Compensation decisions reference the wrong review. Overall rating is ambiguous.
-  fix_map:
-    __blank__: "Identify duplicate review forms in Admin Center > Performance. Delete the incorrect form. Verify the correct form is routed in the current cycle."
+  sap_impact: Calibration sessions show conflicting ratings. Compensation decisions reference the wrong review.
+    Overall rating is ambiguous.
+  fix_map: {__blank__: Identify duplicate review forms in Admin Center > Performance. Delete the incorrect form.
+      Verify the correct form is routed in the current cycle.}
 
 - id: PERF016
   field: PMREVIEWRESULT.REVIEW_DATE

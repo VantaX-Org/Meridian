@@ -214,28 +214,21 @@ rules:
   - id: PAY010
     field: PAYRESULT.GROSS_PAY
     check_class: cross_field_check
-    fields: ["PAYRESULT.GROSS_PAY", "PAYRESULT.NET_PAY"]
-    condition: "`PAYRESULT.GROSS_PAY`.notna() & `PAYRESULT.NET_PAY`.notna() & (`PAYRESULT.GROSS_PAY` < `PAYRESULT.NET_PAY`)"
     severity: critical
     dimension: consistency
-    message: "Gross pay must be greater than or equal to net pay"
-    why_it_matters: >-
-      Net pay is derived from gross pay minus deductions (tax, social contributions,
-      benefits). If NET_PAY exceeds GROSS_PAY, it indicates a calculation error in
-      payroll processing — deductions have been applied as additions, or the gross
-      amount is understated.
+    message: Gross pay must be greater than or equal to net pay
+    why_it_matters: Net pay is derived from gross pay minus deductions (tax, social contributions, benefits). If NET_PAY
+      exceeds GROSS_PAY, it indicates a calculation error in payroll processing — deductions have been applied as
+      additions, or the gross amount is understated.
     rule_authority: best_practice
-    sap_impact: >-
-      Payroll calculation error. Employee is overpaid relative to gross earnings.
-      Tax withholding and deduction amounts are incorrect. GL postings out of balance.
-    fix_map:
-      __blank__: >-
-        Review the payroll calculation for this employee. Verify that deductions are
-        correctly applied and that gross pay includes all earnings components. Rerun
-        payroll via Payroll Control Center.
-    record_fix_template: >-
-      Payroll result {PAYRESULT.USERID}: NET_PAY exceeds GROSS_PAY. Review payroll
-      calculation via Payroll Control Center.
+    sap_impact: Payroll calculation error. Employee is overpaid relative to gross earnings. Tax withholding and deduction
+      amounts are incorrect. GL postings out of balance.
+    fix_map: {__blank__: Review the payroll calculation for this employee. Verify that deductions are correctly applied
+        and that gross pay includes all earnings components. Rerun payroll via Payroll Control Center.}
+    record_fix_template: 'Payroll result {PAYRESULT.USERID}: NET_PAY exceeds GROSS_PAY. Review payroll calculation
+      via Payroll Control Center.'
+    fail_when: '`PAYRESULT.GROSS_PAY` < `PAYRESULT.NET_PAY`'
+    require_populated: true
 
   - id: PAY011
     field: PAYRESULT.TAX_AMOUNT
@@ -349,17 +342,18 @@ rules:
 
   - id: PAY016
     field: PAYRESULT.USERID_PAY
-    check_class: cross_field_check
-    fields: ['PAYRESULT.USERID_PAY']
-    condition: "~`PAYRESULT.USERID_PAY`.duplicated(keep=False)"
+    check_class: uniqueness_check
+    fields: [PAYRESULT.USERID_PAY, PAYRESULT.PAY_PERIOD]
     severity: critical
     dimension: uniqueness
     message: Duplicate payroll result records per employee per period — indicates replication error
-    why_it_matters: Duplicate payroll results cause doubled payment amounts, incorrect tax withholding, and GL posting variances.
+    why_it_matters: Duplicate payroll results cause doubled payment amounts, incorrect tax withholding, and GL posting
+      variances.
     rule_authority: sap_hard_constraint
-    sap_impact: Employee is paid twice. Tax withholding is doubled. Payroll-to-FI posting is overstated. Payroll reconciliation fails.
-    fix_map:
-      __blank__: "Investigate the ECP replication log. Delete the duplicate payroll result via the Payroll Control Center. Re-run the replication for the affected period."
+    sap_impact: Employee is paid twice. Tax withholding is doubled. Payroll-to-FI posting is overstated. Payroll reconciliation
+      fails.
+    fix_map: {__blank__: Investigate the ECP replication log. Delete the duplicate payroll result via the Payroll
+        Control Center. Re-run the replication for the affected period.}
 
   - id: PAY017
     field: PAYRESULT.PAY_DATE

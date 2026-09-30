@@ -462,5 +462,71 @@
    "check_table": "*"
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "KOLIF",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "LIFNR",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "LMEIN",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "LTSNR",
+   "foreign_table": "WYT1",
+   "foreign_field": "LTSNR"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MATKL",
+   "foreign_table": "T023",
+   "foreign_field": "MATKL"
+  },
+  {
+   "field": "MATNR",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "MEINS",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "PUNEI",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "REGIO",
+   "foreign_table": "T005S",
+   "foreign_field": "BLAND"
+  },
+  {
+   "field": "RUECK",
+   "foreign_table": "TWRV",
+   "foreign_field": "RUECV"
+  },
+  {
+   "field": "URZLA",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "URZTP",
+   "foreign_table": "T069",
+   "foreign_field": "URZTP"
+  }
+ ]
 }

@@ -1686,5 +1686,106 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "/BEV1/RPFAR1",
+   "foreign_table": "KNA1",
+   "foreign_field": "KUNNR"
+  },
+  {
+   "field": "/BEV1/RPFAR2",
+   "foreign_table": "KNA1",
+   "foreign_field": "KUNNR"
+  },
+  {
+   "field": "ADD01",
+   "foreign_table": "VTADD01",
+   "foreign_field": "ADD_INFO"
+  },
+  {
+   "field": "ADD02",
+   "foreign_table": "VTADD02",
+   "foreign_field": "ADD_INFO"
+  },
+  {
+   "field": "ADD03",
+   "foreign_table": "VTADD03",
+   "foreign_field": "ADD_INFO"
+  },
+  {
+   "field": "ADD04",
+   "foreign_table": "VTADD04",
+   "foreign_field": "ADD_INFO"
+  },
+  {
+   "field": "KKALSM",
+   "foreign_table": "T683",
+   "foreign_field": "KALSM"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "PROLI",
+   "foreign_table": "TDGC5",
+   "foreign_field": "PROLI"
+  },
+  {
+   "field": "ROUTE",
+   "foreign_table": "TVRO",
+   "foreign_field": "ROUTE"
+  },
+  {
+   "field": "SDABW",
+   "foreign_table": "TVSAK",
+   "foreign_field": "SDABW"
+  },
+  {
+   "field": "SHTYP",
+   "foreign_table": "TVTK",
+   "foreign_field": "SHTYP"
+  },
+  {
+   "field": "TDLNR",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "TNDR_ACTC",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  },
+  {
+   "field": "TNDR_MAXC",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  },
+  {
+   "field": "TPLST",
+   "foreign_table": "TTDS",
+   "foreign_field": "TPLST"
+  },
+  {
+   "field": "VSANL",
+   "foreign_table": "T173",
+   "foreign_field": "VSART"
+  },
+  {
+   "field": "VSART",
+   "foreign_table": "T173",
+   "foreign_field": "VSART"
+  },
+  {
+   "field": "VSAVL",
+   "foreign_table": "T173",
+   "foreign_field": "VSART"
+  },
+  {
+   "field": "VSBED",
+   "foreign_table": "TVSB",
+   "foreign_field": "VSBED"
+  }
+ ]
 }

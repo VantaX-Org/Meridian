@@ -1,0 +1,27 @@
+{
+ "domain": "SHELL",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "When creating"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "When creating and changing"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Never"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

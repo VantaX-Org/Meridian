@@ -310,17 +310,18 @@ rules:
 
   - id: LMS013
     field: LEARNINGASSIGNMENT.USERID
-    check_class: cross_field_check
-    fields: ['LEARNINGASSIGNMENT.USERID']
-    condition: "~`LEARNINGASSIGNMENT.USERID`.duplicated(keep=False)"
+    check_class: uniqueness_check
+    fields: [LEARNINGASSIGNMENT.USERID, LEARNINGASSIGNMENT.COURSE_ID]
     severity: high
     dimension: uniqueness
     message: Duplicate learning assignment records per employee — same course assigned multiple times
-    why_it_matters: Duplicate assignments inflate compliance completion metrics and may cause learners to be re-enrolled in completed courses.
+    why_it_matters: Duplicate assignments inflate compliance completion metrics and may cause learners to be re-enrolled
+      in completed courses.
     rule_authority: best_practice
-    sap_impact: Compliance dashboards show incorrect completion rates. Learners receive duplicate notifications. Training cost reports are overstated.
-    fix_map:
-      __blank__: "Review duplicate assignments in Learning > Admin > Assignment Rules. Remove the duplicate assignment. Verify completion status on the surviving record."
+    sap_impact: Compliance dashboards show incorrect completion rates. Learners receive duplicate notifications. Training
+      cost reports are overstated.
+    fix_map: {__blank__: Review duplicate assignments in Learning > Admin > Assignment Rules. Remove the duplicate
+        assignment. Verify completion status on the surviving record.}
 
   - id: LMS014
     field: LEARNINGASSIGNMENT.DUE_DATE

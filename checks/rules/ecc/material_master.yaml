@@ -481,64 +481,43 @@ rules:
   record_fix_template: 'Material {MARA.MATNR}: XCHPF is ''{actual_value}''. Set to blank or ''X'' via MM02 (ECC) or Fiori
     F1602 (S/4HANA).'
 - id: MM023
-  field: MARA.DISMM
+  field: MARC.DISMM
   check_class: domain_value_check
-  allowed_values:
-  - PD
-  - VB
-  - VM
-  - VV
-  - ND
-  - R1
-  - M1
+  allowed_values: [PD, VB, VM, VV, ND, R1, M1]
   severity: high
   dimension: validity
-  message: MRP type at material level must be a valid SAP MRP type code
-  why_it_matters: 'MARA.DISMM is the MRP type at the material header level. It determines which MRP procedure is used: PD
-    (MRP), VB (manual reorder point), VM (automatic reorder point), VV (forecast-based), ND (no planning). In S/4HANA, MRP
-    Live (MD01N / Fiori F2886) requires valid types.'
+  message: MRP type (plant level) must exist in T438A
+  why_it_matters: 'MARC.DISMM is the MRP type at the material header level. It determines which MRP procedure is
+    used: PD (MRP), VB (manual reorder point), VM (automatic reorder point), VV (forecast-based), ND (no planning).
+    In S/4HANA, MRP Live (MD01N / Fiori F2886) requires valid types.'
   rule_authority: sap_hard_constraint
   sap_impact: MRP run (MD01/MD01N) skips materials with invalid types. Procurement proposals are not generated.
-  valid_values_with_labels:
-    PD: MRP - deterministic planning based on requirements
-    VB: Manual reorder point planning
-    VM: Automatic reorder point planning
-    VV: Forecast-based planning
-    ND: No planning - excluded from MRP
-    R1: Time-phased planning
-    M1: Master production scheduling
-  fix_map:
-    __other__: 'MRP type ''{invalid_value}'' is not valid. In ECC: correct via MM02 > MRP 1 view or configure via OPPR. In
-      S/4HANA: use Fiori F1602 or F2886.'
-  record_fix_template: 'Material {MARA.MATNR}: DISMM is ''{actual_value}''. Set a valid MRP type via MM02 > MRP 1 (ECC) or
-    Fiori F1602 (S/4HANA).'
+  valid_values_with_labels: {PD: MRP - deterministic planning based on requirements, VB: Manual reorder point planning,
+    VM: Automatic reorder point planning, VV: Forecast-based planning, ND: No planning - excluded from MRP, R1: Time-phased
+      planning, M1: Master production scheduling}
+  fix_map: {__other__: 'MRP type ''{invalid_value}'' is not valid. In ECC: correct via MM02 > MRP 1 view or configure
+      via OPPR. In S/4HANA: use Fiori F1602 or F2886.'}
+  record_fix_template: 'Material {MARA.MATNR}: DISMM is ''{actual_value}''. Set a valid MRP type via MM02 > MRP
+    1 (ECC) or Fiori F1602 (S/4HANA).'
 - id: MM024
-  field: MARA.SERLV
-  check_class: domain_value_check
-  allowed_values:
-  - ''
-  - '01'
-  - '02'
-  - '03'
+  field: MARC.SERNP
+  check_class: referential_check
   severity: medium
   dimension: validity
-  message: Serialisation level must be a valid SAP serial number profile code
-  why_it_matters: 'SERLV controls serial number assignment: blank (none), 01 (optional), 02 (obligatory), 03 (automatic).
-    Invalid values break serialisation in goods movements (MIGO) and service management (IW21) in both ECC and S/4HANA.'
+  message: Serial number profile must exist in T377P
+  why_it_matters: MARC.SERNP assigns the serial number profile (T377P) that controls serialisation in goods movements
+    (MIGO), deliveries and service orders. A profile that does not exist in the plant's configuration stops serial-number
+    processing.
   rule_authority: sap_hard_constraint
-  sap_impact: Goods movements fail if serialisation is required but invalid. Serial number tracking for warranty and service
-    management breaks.
-  valid_values_with_labels:
-    ? ''
-    : No serialisation
-    '01': Optional serial number
-    '02': Obligatory serial number
-    '03': Automatic serial number
-  fix_map:
-    __other__: 'Serialisation level ''{invalid_value}'' is not valid. In ECC: set via MM02 > General Plant Data/Storage. In
-      S/4HANA: use Fiori F1602.'
-  record_fix_template: 'Material {MARA.MATNR}: SERLV is ''{actual_value}''. Set to a valid serialisation level via MM02 (ECC)
-    or Fiori F1602 (S/4HANA).'
+  sap_impact: Goods movements fail if serialisation is required but invalid. Serial number tracking for warranty
+    and service management breaks.
+  valid_values_with_labels: {? '' : No serialisation, '01': Optional serial number, '02': Obligatory serial number,
+    '03': Automatic serial number}
+  fix_map: {__other__: 'Serialisation level ''{invalid_value}'' is not valid. In ECC: set via MM02 > General Plant
+      Data/Storage. In S/4HANA: use Fiori F1602.'}
+  record_fix_template: 'Material {MARA.MATNR}: SERLV is ''{actual_value}''. Set to a valid serialisation level via
+    MM02 (ECC) or Fiori F1602 (S/4HANA).'
+  reference_values: []
 - id: MM025
   field: MARC.WERKS
   check_class: null_check
@@ -845,85 +824,74 @@ rules:
 - id: MM041
   field: MARA.NTGEW
   check_class: cross_field_check
-  fields:
-  - MARA.NTGEW
-  - MARA.BRGEW
-  condition: '`MARA.NTGEW` <= `MARA.BRGEW`'
   severity: high
   dimension: consistency
   message: Net weight must not exceed gross weight
-  why_it_matters: Gross weight includes packaging, so net weight should always be less than or equal to gross weight. A net
-    weight exceeding gross weight indicates a data entry error that will cause incorrect shipping calculations in VL01N (ECC)
-    and Fiori F5765 (S/4HANA), and may trigger customs exceptions.
+  why_it_matters: Gross weight includes packaging, so net weight should always be less than or equal to gross weight.
+    A net weight exceeding gross weight indicates a data entry error that will cause incorrect shipping calculations
+    in VL01N (ECC) and Fiori F5765 (S/4HANA), and may trigger customs exceptions.
   rule_authority: sap_hard_constraint
-  sap_impact: Shipping weight calculations are incorrect. Customs declarations may be rejected. Transportation cost calculations
-    produce wrong results.
-  fix_map:
-    __other__: 'Net weight exceeds gross weight, which is physically impossible. In ECC: correct via MM02 > Basic Data 1.
-      In S/4HANA: use Fiori F1602. Verify both weights against product specifications.'
-  record_fix_template: 'Material {MARA.MATNR}: net weight ({MARA.NTGEW}) exceeds gross weight ({MARA.BRGEW}). Correct via
-    MM02 (ECC) or Fiori F1602 (S/4HANA).'
+  sap_impact: Shipping weight calculations are incorrect. Customs declarations may be rejected. Transportation cost
+    calculations produce wrong results.
+  fix_map: {__other__: 'Net weight exceeds gross weight, which is physically impossible. In ECC: correct via MM02
+      > Basic Data 1. In S/4HANA: use Fiori F1602. Verify both weights against product specifications.'}
+  record_fix_template: 'Material {MARA.MATNR}: net weight ({MARA.NTGEW}) exceeds gross weight ({MARA.BRGEW}). Correct
+    via MM02 (ECC) or Fiori F1602 (S/4HANA).'
+  fail_when: '`MARA.NTGEW` > `MARA.BRGEW`'
+  require_populated: true
 - id: MM042
   field: MARA.MHDHB
   check_class: cross_field_check
-  fields:
-  - MARA.MHDRZ
-  - MARA.MHDHB
-  condition: '`MARA.MHDRZ` <= `MARA.MHDHB`'
   severity: high
   dimension: consistency
   message: Minimum remaining shelf life must not exceed total shelf life
-  why_it_matters: MHDRZ (minimum remaining shelf life) is the minimum days before expiry that goods receipt will accept. MHDHB
-    is the total shelf life in days. If MHDRZ exceeds MHDHB, no goods receipt can ever be posted because the material always
-    appears expired. Affects MIGO in ECC and S/4HANA.
+  why_it_matters: MHDRZ (minimum remaining shelf life) is the minimum days before expiry that goods receipt will
+    accept. MHDHB is the total shelf life in days. If MHDRZ exceeds MHDHB, no goods receipt can ever be posted because
+    the material always appears expired. Affects MIGO in ECC and S/4HANA.
   rule_authority: sap_hard_constraint
-  sap_impact: Goods receipt (MIGO) rejects all incoming stock because minimum remaining shelf life can never be satisfied.
-    Material is effectively blocked.
-  fix_map:
-    __other__: 'Minimum remaining shelf life exceeds total shelf life. In ECC: correct via MM02 > General Plant Data/Storage.
-      In S/4HANA: use Fiori F1602.'
+  sap_impact: Goods receipt (MIGO) rejects all incoming stock because minimum remaining shelf life can never be
+    satisfied. Material is effectively blocked.
+  fix_map: {__other__: 'Minimum remaining shelf life exceeds total shelf life. In ECC: correct via MM02 > General
+      Plant Data/Storage. In S/4HANA: use Fiori F1602.'}
   record_fix_template: 'Material {MARA.MATNR}: minimum shelf life ({MARA.MHDRZ} days) exceeds total shelf life ({MARA.MHDHB}
     days). Correct via MM02 (ECC) or Fiori F1602 (S/4HANA).'
+  fail_when: '`MARA.MHDRZ` > `MARA.MHDHB`'
+  require_populated: true
 - id: MM043
   field: MBEW.STPRS
   check_class: cross_field_check
-  fields:
-  - MBEW.VPRSV
-  - MBEW.STPRS
-  condition: ~((`MBEW.VPRSV` == 'S') & (`MBEW.STPRS`.isna() | (`MBEW.STPRS` == 0)))
   severity: critical
   dimension: consistency
   message: Standard price must be populated and non-zero when price control is S
-  why_it_matters: When VPRSV is S (standard price), STPRS must contain a valid price. A zero or blank standard price means
-    all inventory movements post at zero value, creating massive financial discrepancies. In S/4HANA with mandatory material
-    ledger (MLAST always active), this error propagates into actual costing.
+  why_it_matters: When VPRSV is S (standard price), STPRS must contain a valid price. A zero or blank standard price
+    means all inventory movements post at zero value, creating massive financial discrepancies. In S/4HANA with
+    mandatory material ledger (MLAST always active), this error propagates into actual costing.
   rule_authority: sap_hard_constraint
-  sap_impact: All goods movements post at zero value. Financial statements show zero inventory value. Period-end closing (CKML/CKM3N)
-    errors.
-  fix_map:
-    __other__: 'Standard price is zero or missing but price control is S. In ECC: run cost estimate CK11N or set price via
-      MM02 > Accounting 1. In S/4HANA: use Fiori F1602 or cost estimate Fiori F4736.'
-  record_fix_template: 'Material {MARA.MATNR}: price control is S but STPRS is {actual_value}. Set a valid standard price
-    via MM02 (ECC) or Fiori F1602 (S/4HANA).'
+  sap_impact: All goods movements post at zero value. Financial statements show zero inventory value. Period-end
+    closing (CKML/CKM3N) errors.
+  fix_map: {__other__: 'Standard price is zero or missing but price control is S. In ECC: run cost estimate CK11N
+      or set price via MM02 > Accounting 1. In S/4HANA: use Fiori F1602 or cost estimate Fiori F4736.'}
+  record_fix_template: 'Material {MARA.MATNR}: price control is S but STPRS is {actual_value}. Set a valid standard
+    price via MM02 (ECC) or Fiori F1602 (S/4HANA).'
+  fail_when: (`MBEW.VPRSV` == 'S') & ~(`MBEW.STPRS` > 0)
 - id: MM044
   field: MARC.BSTMI
   check_class: cross_field_check
-  fields:
-  - MARC.BSTMI
-  - MARC.BSTMA
-  condition: '`MARC.BSTMI` <= `MARC.BSTMA`'
   severity: high
   dimension: consistency
   message: Minimum lot size must not exceed maximum lot size
-  why_it_matters: BSTMI (minimum lot size) and BSTMA (maximum lot size) define the quantity range for MRP procurement proposals.
-    If minimum exceeds maximum, MRP (MD01 in ECC, MD01N / Fiori F2886 in S/4HANA) cannot determine a valid order quantity,
-    leading to planning errors or infinite loops.
+  why_it_matters: BSTMI (minimum lot size) and BSTMA (maximum lot size) define the quantity range for MRP procurement
+    proposals. If minimum exceeds maximum, MRP (MD01 in ECC, MD01N / Fiori F2886 in S/4HANA) cannot determine a
+    valid order quantity, leading to planning errors or infinite loops.
   rule_authority: sap_hard_constraint
-  sap_impact: MRP generates invalid procurement quantities. Planned orders and purchase requisitions have incorrect quantities.
-  fix_map:
-    __other__: 'Minimum lot size exceeds maximum lot size. In ECC: correct via MM02 > MRP 1 view. In S/4HANA: use Fiori F1602.'
-  record_fix_template: 'Material {MARA.MATNR} plant {MARC.WERKS}: min lot ({MARC.BSTMI}) exceeds max lot ({MARC.BSTMA}). Correct
-    via MM02 (ECC) or Fiori F1602 (S/4HANA).'
+  sap_impact: MRP generates invalid procurement quantities. Planned orders and purchase requisitions have incorrect
+    quantities.
+  fix_map: {__other__: 'Minimum lot size exceeds maximum lot size. In ECC: correct via MM02 > MRP 1 view. In S/4HANA:
+      use Fiori F1602.'}
+  record_fix_template: 'Material {MARA.MATNR} plant {MARC.WERKS}: min lot ({MARC.BSTMI}) exceeds max lot ({MARC.BSTMA}).
+    Correct via MM02 (ECC) or Fiori F1602 (S/4HANA).'
+  fail_when: (`MARC.BSTMA` > 0) & (`MARC.BSTMI` > `MARC.BSTMA`)
+  require_populated: true
 - id: MM045
   field: MAKT.MAKTX
   check_class: null_check
@@ -1487,19 +1455,18 @@ rules:
   record_fix_template: 'Record is missing MARC.AWSLS. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
     Product Master Data).'
 - id: MM084
-  field: MARC.BERID
+  field: MDMA.BERID
   check_class: null_check
   severity: low
   dimension: completeness
-  message: MRP area is missing
-  why_it_matters: MRP area (MARC.BERID) is not maintained. This field supports downstream processes and reporting accuracy.
-    Missing data may result in incomplete records or processing gaps.
+  message: MRP area assignment missing (only relevant where MRP areas are active)
+  why_it_matters: MRP area (MDMA.BERID) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
   rule_authority: best_practice
   sap_impact: Missing MRP area may cause incomplete data in related transactions and reports.
-  fix_map:
-    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
-  record_fix_template: 'Record is missing MARC.BERID. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
-    Product Master Data).'
+  fix_map: {__blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'}
+  record_fix_template: 'Record is missing MDMA.BERID. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602
+    (Manage Product Master Data).'
 - id: MM085
   field: MARC.BSTFE
   check_class: null_check
@@ -1557,12 +1524,12 @@ rules:
   record_fix_template: 'Record is missing MARC.EISBE. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
     Product Master Data).'
 - id: MM089
-  field: MARC.EKALR
+  field: MBEW.EKALR
   check_class: domain_value_check
   severity: low
   dimension: validity
   message: Costing indicator has an invalid value
-  why_it_matters: Costing indicator (MARC.EKALR) must contain a valid value. Invalid values may cause errors in downstream
+  why_it_matters: Costing indicator (MBEW.EKALR) must contain a valid value. Invalid values may cause errors in downstream
     SAP processes and integrations.
   rule_authority: best_practice
   sap_impact: Invalid Costing indicator may cause transaction errors or incorrect processing.
@@ -1576,7 +1543,7 @@ rules:
   fix_map:
     __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
     __other__: 'Value {invalid_value} is not valid for Costing indicator. Allowed values: ['''', ''X''].'
-  record_fix_template: 'Record has invalid MARC.EKALR value ''{actual_value}''. In ECC: Set via MM02. In S/4HANA: Use MM02
+  record_fix_template: 'Record has invalid MBEW.EKALR value ''{actual_value}''. In ECC: Set via MM02. In S/4HANA: Use MM02
     or Fiori app F1602 (Manage Product Master Data).'
 - id: MM090
   field: MARC.FABKZ
@@ -1584,22 +1551,15 @@ rules:
   severity: low
   dimension: validity
   message: JIT indicator has an invalid value
-  why_it_matters: JIT indicator (MARC.FABKZ) must contain a valid value. Invalid values may cause errors in downstream SAP
-    processes and integrations.
+  why_it_matters: JIT indicator (MARC.FABKZ) must contain a valid value. Invalid values may cause errors in downstream
+    SAP processes and integrations.
   rule_authority: best_practice
   sap_impact: Invalid JIT indicator may cause transaction errors or incorrect processing.
-  allowed_values:
-  - ''
-  - X
-  valid_values_with_labels:
-    ? ''
-    : Not set
-    X: X
-  fix_map:
-    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
-    __other__: 'Value {invalid_value} is not valid for JIT indicator. Allowed values: ['''', ''X''].'
-  record_fix_template: 'Record has invalid MARC.FABKZ value ''{actual_value}''. In ECC: Set via MM02. In S/4HANA: Use MM02
-    or Fiori app F1602 (Manage Product Master Data).'
+  valid_values_with_labels: {? '' : Not set, X: X}
+  fix_map: {__blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).',
+    __other__: 'Value {invalid_value} is not valid for JIT indicator. Allowed values: ['''', ''X''].'}
+  record_fix_template: 'Record has invalid MARC.FABKZ value ''{actual_value}''. In ECC: Set via MM02. In S/4HANA:
+    Use MM02 or Fiori app F1602 (Manage Product Master Data).'
 - id: MM091
   field: MARC.FHORI
   check_class: null_check
@@ -1707,19 +1667,18 @@ rules:
   record_fix_template: 'Record is missing MARC.LGFSB. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
     Product Master Data).'
 - id: MM098
-  field: MARC.LGORT
+  field: MARC.LGFSB
   check_class: null_check
   severity: medium
   dimension: completeness
-  message: Storage location is missing
-  why_it_matters: Storage location (MARC.LGORT) is not maintained. This field supports downstream processes and reporting
-    accuracy. Missing data may result in incomplete records or processing gaps.
+  message: Default storage location for external procurement (MARC.LGFSB) is missing
+  why_it_matters: Storage location (MARC.LGFSB) is not maintained. This field supports downstream processes and
+    reporting accuracy. Missing data may result in incomplete records or processing gaps.
   rule_authority: best_practice
   sap_impact: Missing Storage location may cause incomplete data in related transactions and reports.
-  fix_map:
-    __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
-  record_fix_template: 'Record is missing MARC.LGORT. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
-    Product Master Data).'
+  fix_map: {__blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'}
+  record_fix_template: 'Record is missing MARC.LGFSB. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602
+    (Manage Product Master Data).'
 - id: MM099
   field: MARC.LGPRO
   check_class: null_check
@@ -2268,31 +2227,18 @@ rules:
     Product Master Data).'
 - id: MM138
   field: MARA.MATNR
-  check_class: cross_field_check
-  fields: ['MARA.MATNR']
-  condition: "~`MARA.MATNR`.duplicated(keep=False)"
+  check_class: uniqueness_check
+  fields: [MARA.MATNR]
   severity: critical
   dimension: uniqueness
   message: Duplicate material numbers detected — each material must be unique
-  why_it_matters: Duplicate materials cause fragmented stock, incorrect MRP planning, split purchase orders, and inventory valuation errors. MATNR must be unique across the client landscape.
+  why_it_matters: Duplicate materials cause fragmented stock, incorrect MRP planning, split purchase orders, and
+    inventory valuation errors. MATNR must be unique across the client landscape.
   rule_authority: sap_hard_constraint
-  sap_impact: Inventory is split across duplicate materials. MRP generates incorrect requirements. Purchasing creates POs against the wrong material. Stock valuation is fragmented.
-  fix_map:
-    __blank__: "Identify and consolidate duplicate materials. Use MMAM to change material type if needed. Merge stock via movement type 309. Update all dependent documents (BOM, source list, info records)."
-
-- id: MM139
-  field: MARA.BRGEW
-  check_class: cross_field_check
-  fields: ['MARA.BRGEW', 'MARA.NTGEW']
-  condition: "`MARA.BRGEW`.notna() & `MARA.NTGEW`.notna() & (`MARA.BRGEW` >= `MARA.NTGEW`)"
-  severity: medium
-  dimension: accuracy
-  message: Gross weight is less than net weight — physically impossible, indicates data entry error
-  why_it_matters: Gross weight must always be greater than or equal to net weight. When reversed, shipping weight calculations, freight cost determination, and customs declarations are incorrect.
-  rule_authority: sap_hard_constraint
-  sap_impact: Freight cost calculation is wrong. Shipping documents show incorrect weight. Customs declarations contain inaccurate data.
-  fix_map:
-    __blank__: "Correct weights via MM02 > General Data > Dimensions tab. Gross weight must >= net weight."
+  sap_impact: Inventory is split across duplicate materials. MRP generates incorrect requirements. Purchasing creates
+    POs against the wrong material. Stock valuation is fragmented.
+  fix_map: {__blank__: 'Identify and consolidate duplicate materials. Use MMAM to change material type if needed.
+      Merge stock via movement type 309. Update all dependent documents (BOM, source list, info records).'}
 
 - id: MM140
   field: MARA.MTART
@@ -2340,19 +2286,25 @@ rules:
   record_fix_template: "Material {MARA.MATNR}: base UoM '{actual_value}' is not in T006."
 
 - id: MM143
-  field: MARA.SERNR
+  field: MARC.SERNP
   check_class: null_check
   applies_when:
-    MARA.MTART: ["FERT", "HALB"]
+    MARA.MTART: [FERT, HALB]
   severity: high
   dimension: completeness
-  message: "Serial number SERNR is mandatory for finished and semi-finished materials"
-  why_it_matters: "Serialisation is a function of material type — FERT (finished) and HALB (semi-finished) are typically tracked individually for warranty, traceability and service history, while raw materials and services are not. An SAP extract with missing SERNR on a FERT material breaks WM batch/serial management and blocks service notifications (IW21). This rule applies ONLY to records whose MTART is in the serialised set; raw materials and services correctly have no SERNR."
+  message: Serial number profile (MARC.SERNP) missing for finished / semi-finished material
+  why_it_matters: Serialisation is a function of material type — FERT (finished) and HALB (semi-finished) are typically
+    tracked individually for warranty, traceability and service history, while raw materials and services are not.
+    An SAP extract with missing SERNR on a FERT material breaks WM batch/serial management and blocks service notifications
+    (IW21). This rule applies ONLY to records whose MTART is in the serialised set; raw materials and services correctly
+    have no SERNR.
   rule_authority: best_practice
-  sap_impact: "Serialised materials without SERNR cannot be tracked in WM, cannot produce serial-number histories, and block service notifications and warranty claims."
-  fix_map:
-    __blank__: "Populate serial number via MM02 > Serial number views, or via SAP Service for goods movement (IQ01)."
-  record_fix_template: "Material {MARA.MATNR} (type {MARA.MTART}): serial number is missing. Assign via MM02 or serial-number master (IQ01)."
+  sap_impact: Serialised materials without SERNR cannot be tracked in WM, cannot produce serial-number histories,
+    and block service notifications and warranty claims.
+  fix_map: {__blank__: 'Populate serial number via MM02 > Serial number views, or via SAP Service for goods movement
+      (IQ01).'}
+  record_fix_template: 'Material {MARA.MATNR} (type {MARA.MTART}): serial number is missing. Assign via MM02 or
+    serial-number master (IQ01).'
 
 - id: MM144
   field: MBEW.VPRSV

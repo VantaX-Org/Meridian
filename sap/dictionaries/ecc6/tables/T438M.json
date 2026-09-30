@@ -498,5 +498,66 @@
    "check_table": "T465"
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "AUAR2",
+   "foreign_table": "T003O",
+   "foreign_field": "AUART"
+  },
+  {
+   "field": "AUART",
+   "foreign_table": "T003O",
+   "foreign_field": "AUART"
+  },
+  {
+   "field": "BARTL",
+   "foreign_table": "T161",
+   "foreign_field": "BSART"
+  },
+  {
+   "field": "BARTU",
+   "foreign_table": "T161",
+   "foreign_field": "BSART"
+  },
+  {
+   "field": "BSART",
+   "foreign_table": "T161",
+   "foreign_field": "BSART"
+  },
+  {
+   "field": "EVAPR",
+   "foreign_table": "T465",
+   "foreign_field": "EVAPR"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MDACH",
+   "foreign_table": "T46AC",
+   "foreign_field": "MDACH"
+  },
+  {
+   "field": "PRASTA",
+   "foreign_table": "T459S",
+   "foreign_field": "PRASTA"
+  },
+  {
+   "field": "PRREG",
+   "foreign_table": "T441R",
+   "foreign_field": "PRREG"
+  },
+  {
+   "field": "STRGR",
+   "foreign_table": "T461P",
+   "foreign_field": "STRGR"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  }
+ ]
 }

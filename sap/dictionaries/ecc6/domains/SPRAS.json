@@ -1,0 +1,11 @@
+{
+ "domain": "SPRAS",
+ "type": "LANG",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": "ISOLA",
+ "lowercase": true,
+ "value_table": "T002",
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

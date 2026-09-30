@@ -1,0 +1,189 @@
+{
+ "table": "CDHDR",
+ "description": "Change document header",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDANT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "OBJECTCLAS",
+   "key": true,
+   "data_element": "CDOBJECTCL",
+   "domain": "OBJECTCL",
+   "type": "CHAR",
+   "length": 15,
+   "decimals": 0,
+   "description": "Object class",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "OBJECTID",
+   "key": true,
+   "data_element": "CDOBJECTV",
+   "domain": "CHAR90",
+   "type": "CHAR",
+   "length": 90,
+   "decimals": 0,
+   "description": "Object value",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "CHANGENR",
+   "key": true,
+   "data_element": "CDCHANGENR",
+   "domain": "CDCHANGENR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Document change number",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "USERNAME",
+   "key": false,
+   "data_element": "CDUSERNAME",
+   "domain": "CHAR12",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "User name of the person responsible in change document",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "UDATE",
+   "key": false,
+   "data_element": "CDDATUM",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Creation date of the change document",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "UTIME",
+   "key": false,
+   "data_element": "CDUZEIT",
+   "domain": "UZEIT",
+   "type": "TIMS",
+   "length": 6,
+   "decimals": 0,
+   "description": "Time changed",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "TCODE",
+   "key": false,
+   "data_element": "CDTCODE",
+   "domain": "TCODE",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "Transaction in which a change was made",
+   "check_table": "TSTC"
+  },
+  {
+   "pos": 9,
+   "name": "PLANCHNGNR",
+   "key": false,
+   "data_element": "PLANCHNGNR",
+   "domain": "PLANCHNGNR",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Planned change number",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "ACT_CHNGNO",
+   "key": false,
+   "data_element": "CD_CHNGNO",
+   "domain": "CDCHANGENR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Change number of the document created by this change",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "WAS_PLANND",
+   "key": false,
+   "data_element": "CD_PLANNED",
+   "domain": "XFLAG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Flag that changes were generated from planned changes",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "CHANGE_IND",
+   "key": false,
+   "data_element": "CDCHNGINDH",
+   "domain": "CDCHNGIND",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Application object change type (U, I, E, D)",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "LANGU",
+   "key": false,
+   "data_element": "LANGU",
+   "domain": "SPRAS",
+   "type": "LANG",
+   "length": 1,
+   "decimals": 0,
+   "description": "Language Key",
+   "check_table": "*"
+  },
+  {
+   "pos": 14,
+   "name": "VERSION",
+   "key": false,
+   "data_element": "CHAR3",
+   "domain": "CHAR3",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "3-Byte field",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDANT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "TCODE",
+   "foreign_table": "TSTC",
+   "foreign_field": "TCODE"
+  }
+ ]
+}

@@ -2322,5 +2322,241 @@
    "check_table": "*"
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "ANLN1",
+   "foreign_table": "ANLH",
+   "foreign_field": "ANLN1"
+  },
+  {
+   "field": "ANLN2",
+   "foreign_table": "ANLA",
+   "foreign_field": "ANLN2"
+  },
+  {
+   "field": "AUFNR",
+   "foreign_table": "AUFK",
+   "foreign_field": "AUFNR"
+  },
+  {
+   "field": "BEMOT",
+   "foreign_table": "TBMOT",
+   "foreign_field": "BEMOT"
+  },
+  {
+   "field": "BPRME",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "BUKRS",
+   "foreign_table": "T001",
+   "foreign_field": "BUKRS"
+  },
+  {
+   "field": "BWART",
+   "foreign_table": "T156",
+   "foreign_field": "BWART"
+  },
+  {
+   "field": "BWLVS",
+   "foreign_table": "T333",
+   "foreign_field": "BWLVS"
+  },
+  {
+   "field": "BWTAR",
+   "foreign_table": "T149D",
+   "foreign_field": "BWTAR"
+  },
+  {
+   "field": "CHARG",
+   "foreign_table": "MCHA",
+   "foreign_field": "CHARG"
+  },
+  {
+   "field": "EBELN",
+   "foreign_table": "EKKO",
+   "foreign_field": "EBELN"
+  },
+  {
+   "field": "EBELP",
+   "foreign_table": "EKPO",
+   "foreign_field": "EBELP"
+  },
+  {
+   "field": "ERFME",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "EVERE",
+   "foreign_table": "T027C",
+   "foreign_field": "EVERE"
+  },
+  {
+   "field": "EVERS",
+   "foreign_table": "T027A",
+   "foreign_field": "EVERS"
+  },
+  {
+   "field": "FIPOS",
+   "foreign_table": "FMFPO",
+   "foreign_field": "FIPOS"
+  },
+  {
+   "field": "GRUND",
+   "foreign_table": "T157D",
+   "foreign_field": "GRUND"
+  },
+  {
+   "field": "GSBER",
+   "foreign_table": "TGSB",
+   "foreign_field": "GSBER"
+  },
+  {
+   "field": "KDAUF",
+   "foreign_table": "VBUK",
+   "foreign_field": "VBELN"
+  },
+  {
+   "field": "KOKRS",
+   "foreign_table": "TKA01",
+   "foreign_field": "KOKRS"
+  },
+  {
+   "field": "KOSTL",
+   "foreign_table": "CSKS",
+   "foreign_field": "KOSTL"
+  },
+  {
+   "field": "KUNNR",
+   "foreign_table": "KNA1",
+   "foreign_field": "KUNNR"
+  },
+  {
+   "field": "LGNUM",
+   "foreign_table": "T300",
+   "foreign_field": "LGNUM"
+  },
+  {
+   "field": "LGORT",
+   "foreign_table": "T001L",
+   "foreign_field": "LGORT"
+  },
+  {
+   "field": "LGPLA",
+   "foreign_table": "LAGP",
+   "foreign_field": "LGPLA"
+  },
+  {
+   "field": "LGTYP",
+   "foreign_table": "T301",
+   "foreign_field": "LGTYP"
+  },
+  {
+   "field": "LIFNR",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "LSMEH",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "MATNR",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "MEINS",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "MWSKZ",
+   "foreign_table": "T007A",
+   "foreign_field": "MWSKZ"
+  },
+  {
+   "field": "NPLNR",
+   "foreign_table": "AUFK",
+   "foreign_field": "AUFNR"
+  },
+  {
+   "field": "PARBU",
+   "foreign_table": "T001",
+   "foreign_field": "BUKRS"
+  },
+  {
+   "field": "PARGB",
+   "foreign_table": "TGSB",
+   "foreign_field": "GSBER"
+  },
+  {
+   "field": "SAKTO",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "SOBKZ",
+   "foreign_table": "T148",
+   "foreign_field": "SOBKZ"
+  },
+  {
+   "field": "TBNUM",
+   "foreign_table": "LTBK",
+   "foreign_field": "TBNUM"
+  },
+  {
+   "field": "TXJCD",
+   "foreign_table": "TTXJ",
+   "foreign_field": "TXJCD"
+  },
+  {
+   "field": "UMBAR",
+   "foreign_table": "T149D",
+   "foreign_field": "BWTAR"
+  },
+  {
+   "field": "UMCHA",
+   "foreign_table": "MCHA",
+   "foreign_field": "CHARG"
+  },
+  {
+   "field": "UMLGO",
+   "foreign_table": "T001L",
+   "foreign_field": "LGORT"
+  },
+  {
+   "field": "UMMAT",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "UMSOK",
+   "foreign_table": "T148",
+   "foreign_field": "SOBKZ"
+  },
+  {
+   "field": "UMWRK",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  },
+  {
+   "field": "VPTNR",
+   "foreign_table": "KNA1",
+   "foreign_field": "KUNNR"
+  },
+  {
+   "field": "WAERS",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  }
+ ]
 }

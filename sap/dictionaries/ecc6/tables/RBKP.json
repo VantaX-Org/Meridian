@@ -906,5 +906,36 @@
    "check_table": "*"
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "BUKRS",
+   "foreign_table": "T001",
+   "foreign_field": "BUKRS"
+  },
+  {
+   "field": "LANDL",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "LIFNR",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "TCODE",
+   "foreign_table": "TSTC",
+   "foreign_field": "TCODE"
+  },
+  {
+   "field": "WAERS",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  }
+ ]
 }

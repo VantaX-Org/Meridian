@@ -601,84 +601,60 @@ rules:
       via FS00 / Fiori app F2735.
 
   - id: GL023
-    field: SKB1.ZUESSION
+    field: SKB1.ZUAWA
     check_class: null_check
     severity: low
     dimension: completeness
-    message: "Assignment field key is recommended for sort/filter in reports"
-    why_it_matters: >-
-      ZUESSION controls the default assignment field used for sorting and
-      filtering in GL line item reports (FBL3N). Without it, the sort key
-      defaults to a generic value, making it harder for accountants to find
-      specific items during reconciliation and review.
+    message: Sort key (SKB1.ZUAWA) missing — the line-item assignment field will not be filled
+    why_it_matters: ZUAWA controls the default assignment field used for sorting and filtering in GL line item reports
+      (FBL3N). Without it, the sort key defaults to a generic value, making it harder for accountants to find specific
+      items during reconciliation and review.
     rule_authority: best_practice
-    sap_impact: >-
-      GL line item reports (FBL3N) use default sort/assignment, reducing
-      the efficiency of account reconciliation and review.
-    fix_map:
-      __blank__: >-
-        In ECC: assign the sort key via T-code FS00 > Company Code Data >
-        Control Data. In S/4HANA: use Fiori app F2735.
-    record_fix_template: >-
-      GL Account {SKA1.SAKNR}: ZUESSION is {actual_value}. Assign the sort
-      key via FS00 / Fiori app F2735.
+    sap_impact: GL line item reports (FBL3N) use default sort/assignment, reducing the efficiency of account reconciliation
+      and review.
+    fix_map: {__blank__: 'In ECC: assign the sort key via T-code FS00 > Company Code Data > Control Data. In S/4HANA:
+        use Fiori app F2735.'}
+    record_fix_template: 'GL Account {SKA1.SAKNR}: ZUAWA is {actual_value}. Assign the sort key via FS00 / Fiori app
+      F2735.'
 
   - id: GL024
     field: SKA1.SAKNR
     check_class: cross_field_check
-    fields: ["SKA1.XBILK", "SKA1.GVTYP"]
-    condition: "`SKA1.XBILK` != 'X' & (`SKA1.GVTYP`.isna() | `SKA1.GVTYP` == '')"
     severity: critical
     dimension: consistency
-    message: "Account must be either balance sheet (XBILK=X) or have P&L type (GVTYP filled)"
-    why_it_matters: >-
-      Every GL account must be classified as either a balance sheet account
-      (XBILK = X) or a P&L account (GVTYP filled). If both are blank, the
-      account has no financial statement classification, which means it will
-      be excluded from the financial statement version (FSV) and year-end
-      closing processes. This is a fundamental data quality issue that affects
-      all financial reporting.
+    message: Account must be either balance sheet (XBILK=X) or have P&L type (GVTYP filled)
+    why_it_matters: Every GL account must be classified as either a balance sheet account (XBILK = X) or a P&L account
+      (GVTYP filled). If both are blank, the account has no financial statement classification, which means it will
+      be excluded from the financial statement version (FSV) and year-end closing processes. This is a fundamental
+      data quality issue that affects all financial reporting.
     rule_authority: sap_hard_constraint
-    sap_impact: >-
-      Account is excluded from financial statement versions (F.01). Year-end
-      closing (F.16) does not process the account. Balance carry-forward is
-      indeterminate. All financial reports are incomplete.
-    fix_map:
-      __other__: >-
-        Account is neither a balance sheet account nor a P&L account. In ECC:
-        set XBILK = X for balance sheet accounts or fill GVTYP for P&L accounts
-        via T-code FS00 > Type/Description tab. In S/4HANA: use Fiori app F2735.
-    record_fix_template: >-
-      GL Account {SKA1.SAKNR}: neither XBILK nor GVTYP is set. Classify as
-      balance sheet (XBILK=X) or P&L (set GVTYP) via FS00 / Fiori app F2735.
+    sap_impact: Account is excluded from financial statement versions (F.01). Year-end closing (F.16) does not process
+      the account. Balance carry-forward is indeterminate. All financial reports are incomplete.
+    fix_map: {__other__: 'Account is neither a balance sheet account nor a P&L account. In ECC: set XBILK = X for
+        balance sheet accounts or fill GVTYP for P&L accounts via T-code FS00 > Type/Description tab. In S/4HANA:
+        use Fiori app F2735.'}
+    record_fix_template: 'GL Account {SKA1.SAKNR}: neither XBILK nor GVTYP is set. Classify as balance sheet (XBILK=X)
+      or P&L (set GVTYP) via FS00 / Fiori app F2735.'
+    fail_when: '`SKA1.XBILK`.isna() & `SKA1.GVTYP`.isna()'
 
   - id: GL025
     field: SKA1.SAKNR
-    check_class: cross_field_check
-    fields: ["SKA1.SAKNR"]
-    condition: "~`SKA1.SAKNR`.duplicated(keep=False)"
+    check_class: uniqueness_check
+    fields: [SKA1.KTOPL, SKA1.SAKNR]
     severity: critical
     dimension: uniqueness
-    message: "Duplicate GL account numbers detected — each account must be unique"
-    why_it_matters: >-
-      Duplicate GL account numbers violate the primary key constraint in the
-      chart of accounts. The migration program will reject duplicates, and any
-      that slip through cause double-posting and incorrect balances. In ECC,
-      this typically indicates a data extraction or consolidation error.
+    message: Duplicate GL account numbers detected — each account must be unique
+    why_it_matters: Duplicate GL account numbers violate the primary key constraint in the chart of accounts. The
+      migration program will reject duplicates, and any that slip through cause double-posting and incorrect balances.
+      In ECC, this typically indicates a data extraction or consolidation error.
     rule_authority: sap_hard_constraint
-    sap_impact: >-
-      Migration fails on duplicate key insert. Post-migration, duplicate
-      accounts cause incorrect financial postings and balance discrepancies
-      across all company codes using this chart of accounts.
-    fix_map:
-      __other__: >-
-        Duplicate GL account number detected. Identify the canonical account
-        and merge or delete the duplicate. In ECC: review both records via
-        T-code FS00 and repost transactions if needed. In S/4HANA: use Fiori
-        app F2735 to review and correct.
-    record_fix_template: >-
-      GL Account {SKA1.SAKNR}: duplicate detected. Review and merge via
-      FS00 / Fiori app F2735. Repost any transactions from the duplicate account.
+    sap_impact: Migration fails on duplicate key insert. Post-migration, duplicate accounts cause incorrect financial
+      postings and balance discrepancies across all company codes using this chart of accounts.
+    fix_map: {__other__: 'Duplicate GL account number detected. Identify the canonical account and merge or delete
+        the duplicate. In ECC: review both records via T-code FS00 and repost transactions if needed. In S/4HANA:
+        use Fiori app F2735 to review and correct.'}
+    record_fix_template: 'GL Account {SKA1.SAKNR}: duplicate detected. Review and merge via FS00 / Fiori app F2735.
+      Repost any transactions from the duplicate account.'
 
   - id: GL026
     field: SKA1.ERDAT
@@ -686,7 +662,7 @@ rules:
     max_age_hours: 43800
     severity: low
     dimension: timeliness
-    message: GL account created 5+ years ago and may contain outdated configuration � review account determination and field status
+    message: GL account created 5+ years ago and may contain outdated configuration — review account determination and field status
     rule_authority: best_practice
     why_it_matters: "GL accounts created 5+ years ago may retain outdated field-status, tax, or open-item configuration that no longer matches current accounting policy."
     sap_impact: "Postings may apply wrong tax categories or field status; reconciliation accounts behave unexpectedly; reporting hierarchies misclassify the account."
@@ -695,7 +671,7 @@ rules:
     record_fix_template: "GL account {field} created {age_days} days ago. Verify field-status, tax category, and open-item settings in FS00; block if obsolete."
 
   - id: GL027
-    field: SKA1.TXT50
+    field: SKAT.TXT50
     check_class: regex_check
     pattern: '^[A-Za-z0-9 \-\/\(\)&,\.]+$'
     severity: medium
@@ -782,3 +758,19 @@ rules:
     record_fix_template: >-
       G/L Account {SKB1.SAKNR}: account currency WAERS is {actual_value}.
       Assign via FS00 / Fiori app F2735.
+  - id: XP2P003
+    field: BSEG.MWSKZ
+    check_class: cross_field_check
+    fail_when: (`BSEG.KOART` == 'S') & `SKB1.MWSKZ`.notna() & `SKB1.XMWNO`.isna() & `BSEG.MWSKZ`.isna()
+    severity: high
+    dimension: consistency
+    message: G/L line posted without a tax code on an account that requires one (SKB1.MWSKZ set, SKB1.XMWNO blank)
+    why_it_matters: An account with a tax category (SKB1.MWSKZ) and without 'posting without tax allowed' (SKB1.XMWNO)
+      requires a tax code on every line. SAP enforces this at posting, so such lines come from migrated or interface-loaded
+      documents and understate the VAT return.
+    rule_authority: sap_hard_constraint
+    sap_impact: VAT calculation missing; tax reporting incorrect; audit finding.
+    fix_map:
+      __blank__: Reverse the document (FB08) and re-post with the correct tax code, or correct the account's tax category
+        if it was set in error (FS00).
+    record_fix_template: 'Document {BSEG.BELNR}/{BSEG.GJAHR} line {BSEG.BUZEI}, account {BSEG.HKONT}: tax code missing.'

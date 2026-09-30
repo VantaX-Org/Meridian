@@ -1,0 +1,32 @@
+{
+ "domain": "SHKZG_VF",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Outbound Message Processing"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Outbound - document flow negative"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Returns - document flow negative"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Returns"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

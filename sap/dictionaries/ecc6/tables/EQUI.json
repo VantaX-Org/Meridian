@@ -954,5 +954,121 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "BEGRU",
+   "foreign_table": "T370B",
+   "foreign_field": "BEGRU"
+  },
+  {
+   "field": "CHARGE",
+   "foreign_table": "MCH1",
+   "foreign_field": "CHARG"
+  },
+  {
+   "field": "ELIEF",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "EQART",
+   "foreign_table": "T370K",
+   "foreign_field": "EQART"
+  },
+  {
+   "field": "EQASP",
+   "foreign_table": "T002",
+   "foreign_field": "SPRAS"
+  },
+  {
+   "field": "EQSNR",
+   "foreign_table": "EQSE",
+   "foreign_field": "EQSNR"
+  },
+  {
+   "field": "EQTYP",
+   "foreign_table": "T370T",
+   "foreign_field": "EQTYP"
+  },
+  {
+   "field": "EQUI_SNTYPE",
+   "foreign_table": "TQ80",
+   "foreign_field": "QMART"
+  },
+  {
+   "field": "EQUI_SRTYPE",
+   "foreign_table": "COCF_CU_SRTYPE",
+   "foreign_field": "SRTYPE"
+  },
+  {
+   "field": "GEWEI",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "HERLD",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "IMRC_POINT",
+   "foreign_table": "IMPTT",
+   "foreign_field": "POINT"
+  },
+  {
+   "field": "IUID_TYPE",
+   "foreign_table": "TIUID_TYPE",
+   "foreign_field": "IUID_TYPE"
+  },
+  {
+   "field": "KMATN",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "KUNDE",
+   "foreign_table": "KNA1",
+   "foreign_field": "KUNNR"
+  },
+  {
+   "field": "LAGER",
+   "foreign_table": "T001L",
+   "foreign_field": "LGORT"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MATNR",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "MGANR",
+   "foreign_table": "BGMK",
+   "foreign_field": "MGANR"
+  },
+  {
+   "field": "SPARTE",
+   "foreign_table": "TSPA",
+   "foreign_field": "SPART"
+  },
+  {
+   "field": "WAERS",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  },
+  {
+   "field": "WARPL",
+   "foreign_table": "MPLA",
+   "foreign_field": "WARPL"
+  },
+  {
+   "field": "WERK",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  }
+ ]
 }

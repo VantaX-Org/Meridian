@@ -1,0 +1,22 @@
+{
+ "domain": "SHKZG",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "H",
+   "high": null,
+   "text": "Credit"
+  },
+  {
+   "low": "S",
+   "high": null,
+   "text": "Debit"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -462,5 +462,36 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "BLKLS",
+   "foreign_table": "J_1ADOCCLS",
+   "foreign_field": "J_1ACOCCLS"
+  },
+  {
+   "field": "KURST",
+   "foreign_table": "TCURV",
+   "foreign_field": "KURST"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "RECIC",
+   "foreign_table": "T8JW",
+   "foreign_field": "RECID"
+  },
+  {
+   "field": "RECID",
+   "foreign_table": "T8JW",
+   "foreign_field": "RECID"
+  },
+  {
+   "field": "STBLA",
+   "foreign_table": "T003",
+   "foreign_field": "BLART"
+  }
+ ]
 }

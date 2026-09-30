@@ -222,5 +222,41 @@
    "check_table": "TFKB"
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "BILKT",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "FUNC_AREA",
+   "foreign_table": "TFKB",
+   "foreign_field": "FKBER"
+  },
+  {
+   "field": "KTOKS",
+   "foreign_table": "T077S",
+   "foreign_field": "KTOKS"
+  },
+  {
+   "field": "KTOPL",
+   "foreign_table": "T004",
+   "foreign_field": "KTOPL"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MUSTR",
+   "foreign_table": "SKM1",
+   "foreign_field": "MUSTR"
+  },
+  {
+   "field": "VBUND",
+   "foreign_table": "T880",
+   "foreign_field": "RCOMP"
+  }
+ ]
 }

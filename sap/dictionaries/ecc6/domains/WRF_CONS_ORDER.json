@@ -1,0 +1,27 @@
+{
+ "domain": "WRF_CONS_ORDER",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Unknown"
+  },
+  {
+   "low": "0",
+   "high": null,
+   "text": "Normal (Own Stock)"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Consignment"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

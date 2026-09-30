@@ -498,5 +498,61 @@
    "check_table": "*"
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "ANLN1",
+   "foreign_table": "ANLH",
+   "foreign_field": "ANLN1"
+  },
+  {
+   "field": "ANLN2",
+   "foreign_table": "ANLA",
+   "foreign_field": "ANLN2"
+  },
+  {
+   "field": "BUKRS",
+   "foreign_table": "T001",
+   "foreign_field": "BUKRS"
+  },
+  {
+   "field": "CAUFN",
+   "foreign_table": "AUFK",
+   "foreign_field": "AUFNR"
+  },
+  {
+   "field": "GSBER",
+   "foreign_table": "TGSB",
+   "foreign_field": "GSBER"
+  },
+  {
+   "field": "IAUFN",
+   "foreign_table": "AUFK",
+   "foreign_field": "AUFNR"
+  },
+  {
+   "field": "IPSNR",
+   "foreign_table": "PRPS",
+   "foreign_field": "PSPNR"
+  },
+  {
+   "field": "SEGMENT",
+   "foreign_table": "FAGL_SEGM",
+   "foreign_field": "SEGMENT"
+  },
+  {
+   "field": "STORT",
+   "foreign_table": "T499S",
+   "foreign_field": "STAND"
+  },
+  {
+   "field": "TXJCD",
+   "foreign_table": "TTXJ",
+   "foreign_field": "TXJCD"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  }
+ ]
 }

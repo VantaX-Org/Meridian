@@ -2622,5 +2622,401 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "/VSO/R_PKGRP",
+   "foreign_table": "/VSO/M_PKG",
+   "foreign_field": "PKGRP"
+  },
+  {
+   "field": "ABCIN",
+   "foreign_table": "T159C",
+   "foreign_field": "ABCIN"
+  },
+  {
+   "field": "AUFTL",
+   "foreign_table": "T439P",
+   "foreign_field": "AUFTL"
+  },
+  {
+   "field": "AUSME",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "AWSLS",
+   "foreign_table": "TKV01",
+   "foreign_field": "AWSLS"
+  },
+  {
+   "field": "BWSCL",
+   "foreign_table": "TMBW1",
+   "foreign_field": "BWSCL"
+  },
+  {
+   "field": "BWTTY",
+   "foreign_table": "T149C",
+   "foreign_field": "BWTTY"
+  },
+  {
+   "field": "CASNR",
+   "foreign_table": "T610C",
+   "foreign_field": "CASNR"
+  },
+  {
+   "field": "COMPL",
+   "foreign_table": "TCSCP_COMP_LVL",
+   "foreign_field": "COMP_LEVEL"
+  },
+  {
+   "field": "CONS_PROCG",
+   "foreign_table": "WRFT_CONS_PROCG",
+   "foreign_field": "WRF_CONS_PROCG"
+  },
+  {
+   "field": "CONVT",
+   "foreign_table": "TCSCP_CONV_TYPE",
+   "foreign_field": "CONV_TYPE"
+  },
+  {
+   "field": "DISGR",
+   "foreign_table": "T438M",
+   "foreign_field": "MTART"
+  },
+  {
+   "field": "DISLS",
+   "foreign_table": "T439A",
+   "foreign_field": "DISLS"
+  },
+  {
+   "field": "DISMM",
+   "foreign_table": "T438A",
+   "foreign_field": "DISMM"
+  },
+  {
+   "field": "DISPO",
+   "foreign_table": "T024D",
+   "foreign_field": "DISPO"
+  },
+  {
+   "field": "DISPR",
+   "foreign_table": "MDIP",
+   "foreign_field": "DISPR"
+  },
+  {
+   "field": "EKGRP",
+   "foreign_table": "T024",
+   "foreign_field": "EKGRP"
+  },
+  {
+   "field": "EPRIO",
+   "foreign_table": "T434G",
+   "foreign_field": "EPRIO"
+  },
+  {
+   "field": "EXPME",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "FEVOR",
+   "foreign_table": "T024F",
+   "foreign_field": "FEVOR"
+  },
+  {
+   "field": "FHORI",
+   "foreign_table": "T436A",
+   "foreign_field": "FHORI"
+  },
+  {
+   "field": "FPRFM",
+   "foreign_table": "TMFPF",
+   "foreign_field": "FPRFM"
+  },
+  {
+   "field": "FRTME",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "GPNUM",
+   "foreign_table": "T609G",
+   "foreign_field": "GPNUM"
+  },
+  {
+   "field": "HERKL",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "HERKR",
+   "foreign_table": "T005S",
+   "foreign_field": "BLAND"
+  },
+  {
+   "field": "IUID_TYPE",
+   "foreign_table": "TIUID_TYPE",
+   "foreign_field": "IUID_TYPE"
+  },
+  {
+   "field": "LADGR",
+   "foreign_table": "TLGR",
+   "foreign_field": "LADGR"
+  },
+  {
+   "field": "LAGPR",
+   "foreign_table": "T439L",
+   "foreign_field": "LAGPR"
+  },
+  {
+   "field": "LFRHY",
+   "foreign_table": "T439G",
+   "foreign_field": "MRPPP"
+  },
+  {
+   "field": "LGFSB",
+   "foreign_table": "T001L",
+   "foreign_field": "LGORT"
+  },
+  {
+   "field": "LGPRO",
+   "foreign_table": "T001L",
+   "foreign_field": "LGORT"
+  },
+  {
+   "field": "LOGGR",
+   "foreign_table": "TLOG",
+   "foreign_field": "LOGGR"
+  },
+  {
+   "field": "LZEIH",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "MAABC",
+   "foreign_table": "TMABC",
+   "foreign_field": "MAABC"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MATNR",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "MDACH",
+   "foreign_table": "T46AC",
+   "foreign_field": "MDACH"
+  },
+  {
+   "field": "MEGRU",
+   "foreign_table": "TWMEG",
+   "foreign_field": "MEGRU"
+  },
+  {
+   "field": "MFRGR",
+   "foreign_table": "TMFG",
+   "foreign_field": "MFRGR"
+  },
+  {
+   "field": "MMSTA",
+   "foreign_table": "T141",
+   "foreign_field": "MMSTA"
+  },
+  {
+   "field": "MOGRU",
+   "foreign_table": "T618G",
+   "foreign_field": "MOGRU"
+  },
+  {
+   "field": "MOWNR",
+   "foreign_table": "T618M",
+   "foreign_field": "MOWNR"
+  },
+  {
+   "field": "MRPPP",
+   "foreign_table": "T439G",
+   "foreign_field": "MRPPP"
+  },
+  {
+   "field": "MTVER",
+   "foreign_table": "TVFM",
+   "foreign_field": "MTVER"
+  },
+  {
+   "field": "MTVFP",
+   "foreign_table": "TMVF",
+   "foreign_field": "MTVFP"
+  },
+  {
+   "field": "NFMAT",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "OCMPF",
+   "foreign_table": "TCO48",
+   "foreign_field": "GPROFILE"
+  },
+  {
+   "field": "OTYPE",
+   "foreign_table": "T778O",
+   "foreign_field": "OTYPE"
+  },
+  {
+   "field": "PERIV",
+   "foreign_table": "T009",
+   "foreign_field": "PERIV"
+  },
+  {
+   "field": "PLNTY",
+   "foreign_table": "TCA01",
+   "foreign_field": "PLNTY"
+  },
+  {
+   "field": "PLVAR",
+   "foreign_table": "T778P",
+   "foreign_field": "PLVAR"
+  },
+  {
+   "field": "QMATA",
+   "foreign_table": "TQ01B",
+   "foreign_field": "QMATAUTH"
+  },
+  {
+   "field": "QSSYS",
+   "foreign_table": "TQ02",
+   "foreign_field": "QSSYS"
+  },
+  {
+   "field": "QZGTP",
+   "foreign_table": "TQ05",
+   "foreign_field": "ZGTYP"
+  },
+  {
+   "field": "RDPRF",
+   "foreign_table": "RDPR",
+   "foreign_field": "RDPRF"
+  },
+  {
+   "field": "REF_SCHEMA",
+   "foreign_table": "WRF_REF_RFS",
+   "foreign_field": "REF_SCHEMA"
+  },
+  {
+   "field": "RWPRO",
+   "foreign_table": "T438R",
+   "foreign_field": "RWPRO"
+  },
+  {
+   "field": "SERNP",
+   "foreign_table": "T377P",
+   "foreign_field": "SERAIL"
+  },
+  {
+   "field": "SERVG",
+   "foreign_table": "TWSG",
+   "foreign_field": "SERVG"
+  },
+  {
+   "field": "SFCPF",
+   "foreign_table": "TCO43",
+   "foreign_field": "CO_PRODPRF"
+  },
+  {
+   "field": "SFEPR",
+   "foreign_table": "T437S",
+   "foreign_field": "SFPRO"
+  },
+  {
+   "field": "SHPRO",
+   "foreign_table": "T438V",
+   "foreign_field": "SHPRO"
+  },
+  {
+   "field": "SOBSK",
+   "foreign_table": "T460A",
+   "foreign_field": "SOBSL"
+  },
+  {
+   "field": "SOBSL",
+   "foreign_table": "T460A",
+   "foreign_field": "SOBSL"
+  },
+  {
+   "field": "SSQSS",
+   "foreign_table": "TQ08",
+   "foreign_field": "QM_PUR"
+  },
+  {
+   "field": "STAWN",
+   "foreign_table": "T604",
+   "foreign_field": "STAWN"
+  },
+  {
+   "field": "STDPD",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "STEUC",
+   "foreign_table": "T604F",
+   "foreign_field": "STEUC"
+  },
+  {
+   "field": "STLAN",
+   "foreign_table": "T416",
+   "foreign_field": "STLAN"
+  },
+  {
+   "field": "STRGR",
+   "foreign_table": "T461P",
+   "foreign_field": "STRGR"
+  },
+  {
+   "field": "UCMAT",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "UMRSL",
+   "foreign_table": "OIB01",
+   "foreign_field": "UMRSL"
+  },
+  {
+   "field": "UOMGR",
+   "foreign_table": "OIB06",
+   "foreign_field": "UOMGR"
+  },
+  {
+   "field": "USEQU",
+   "foreign_table": "TMQ2",
+   "foreign_field": "USEQU"
+  },
+  {
+   "field": "VRBMT",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "VRBWK",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  },
+  {
+   "field": "VSPVB",
+   "foreign_table": "PVBE",
+   "foreign_field": "PRVBE"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  }
+ ]
 }

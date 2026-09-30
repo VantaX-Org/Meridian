@@ -546,5 +546,96 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "BERID",
+   "foreign_table": "MDLV",
+   "foreign_field": "BERID"
+  },
+  {
+   "field": "DISGR",
+   "foreign_table": "T438M",
+   "foreign_field": "MTART"
+  },
+  {
+   "field": "DISLS",
+   "foreign_table": "T439A",
+   "foreign_field": "DISLS"
+  },
+  {
+   "field": "DISMM",
+   "foreign_table": "T438A",
+   "foreign_field": "DISMM"
+  },
+  {
+   "field": "DISPO",
+   "foreign_table": "T024D",
+   "foreign_field": "DISPO"
+  },
+  {
+   "field": "DISPR",
+   "foreign_table": "MDIP",
+   "foreign_field": "DISPR"
+  },
+  {
+   "field": "LAGPR",
+   "foreign_table": "T439L",
+   "foreign_field": "LAGPR"
+  },
+  {
+   "field": "LFRHY",
+   "foreign_table": "T439G",
+   "foreign_field": "MRPPP"
+  },
+  {
+   "field": "LGFSB",
+   "foreign_table": "MDLG",
+   "foreign_field": "LGORT"
+  },
+  {
+   "field": "LGPRO",
+   "foreign_table": "MDLG",
+   "foreign_field": "LGORT"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MATNR",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "MRPPP",
+   "foreign_table": "T439G",
+   "foreign_field": "MRPPP"
+  },
+  {
+   "field": "RDPRF",
+   "foreign_table": "RDPR",
+   "foreign_field": "RDPRF"
+  },
+  {
+   "field": "RWPRO",
+   "foreign_table": "T438R",
+   "foreign_field": "RWPRO"
+  },
+  {
+   "field": "SHPRO",
+   "foreign_table": "T438V",
+   "foreign_field": "SHPRO"
+  },
+  {
+   "field": "SOBSL",
+   "foreign_table": "T460A",
+   "foreign_field": "SOBSL"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  }
+ ]
 }

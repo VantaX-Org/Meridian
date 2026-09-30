@@ -1,0 +1,87 @@
+{
+ "domain": "TRVOG",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "0",
+   "high": null,
+   "text": "Order"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Request for quotation"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Quotation"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Scheduling agreement"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Contract"
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "Item proposal"
+  },
+  {
+   "low": "6",
+   "high": null,
+   "text": "Delivery"
+  },
+  {
+   "low": "7",
+   "high": null,
+   "text": "Billing document"
+  },
+  {
+   "low": "8",
+   "high": null,
+   "text": "Proforma invoices"
+  },
+  {
+   "low": "9",
+   "high": null,
+   "text": "BusActiv"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Sales promotions"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Customer independent requirements"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Shipping notification"
+  },
+  {
+   "low": "G",
+   "high": null,
+   "text": "Rough Goods Receipt"
+  },
+  {
+   "low": "O",
+   "high": null,
+   "text": "Cost accounting: Variance calculation"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

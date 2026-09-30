@@ -3,7 +3,7 @@ target_state: ECC_AND_S4HANA
 rules:
 
   - id: XSYS001
-    field: MATNR
+    field: XSYS.MATNR
     check_class: null_check
     severity: critical
     dimension: completeness
@@ -27,7 +27,7 @@ rules:
       via MM02 (ECC) or Fiori app F0842 (S/4HANA).
 
   - id: XSYS002
-    field: MATNR
+    field: XSYS.MATNR
     check_class: regex_check
     pattern: "^[A-Z0-9\\-_/\\.]{1,40}$"
     severity: high
@@ -51,7 +51,7 @@ rules:
       MM02 (ECC) or Fiori app F0842 (S/4HANA).
 
   - id: XSYS003
-    field: LIFNR
+    field: XSYS.LIFNR
     check_class: null_check
     severity: critical
     dimension: completeness
@@ -73,7 +73,7 @@ rules:
       via XK02 (ECC) or BP transaction (S/4HANA).
 
   - id: XSYS004
-    field: KUNNR
+    field: XSYS.KUNNR
     check_class: null_check
     severity: high
     dimension: completeness
@@ -96,7 +96,7 @@ rules:
       via XD02 (ECC) or BP (S/4HANA).
 
   - id: XSYS005
-    field: BUKRS
+    field: XSYS.BUKRS
     check_class: null_check
     severity: critical
     dimension: completeness
@@ -119,7 +119,7 @@ rules:
       in all integrated systems via OX02 (ECC) or Fiori app F2709 (S/4HANA).
 
   - id: XSYS006
-    field: WERKS
+    field: XSYS.WERKS
     check_class: null_check
     severity: high
     dimension: completeness
@@ -141,7 +141,7 @@ rules:
       integrated systems via OX10 (ECC) or Fiori app F2699 (S/4HANA).
 
   - id: XSYS007
-    field: WAERS
+    field: XSYS.WAERS
     check_class: regex_check
     pattern: "^[A-Z]{3}$"
     severity: high
@@ -164,7 +164,7 @@ rules:
       OY01 (ECC) or Fiori app F3917 (S/4HANA).
 
   - id: XSYS008
-    field: KOSTL
+    field: XSYS.KOSTL
     check_class: null_check
     severity: high
     dimension: completeness
@@ -187,7 +187,7 @@ rules:
       all systems via KS01 (ECC) or Fiori app F0863 (S/4HANA).
 
   - id: XSYS009
-    field: PERNR
+    field: XSYS.PERNR
     check_class: null_check
     severity: critical
     dimension: completeness
@@ -210,7 +210,7 @@ rules:
       record via PA01 (ECC) or Fiori app F2380 (S/4HANA).
 
   - id: XSYS010
-    field: GJAHR
+    field: XSYS.GJAHR
     check_class: regex_check
     pattern: "^[0-9]{4}$"
     severity: high
@@ -234,7 +234,7 @@ rules:
       on the source document.
 
   - id: XSYS011
-    field: BELNR
+    field: XSYS.BELNR
     check_class: null_check
     severity: high
     dimension: completeness
@@ -257,51 +257,46 @@ rules:
       investigate the posting process.
 
   - id: XSYS012
-    field: BUDAT
-    fields: ["BUDAT", "BLDAT"]
+    field: XSYS.BUDAT
     check_class: cross_field_check
-    condition: "`BUDAT` > `BLDAT`"
     severity: medium
     dimension: consistency
-    message: "Posting date should not be before document date in cross-system transactions"
-    why_it_matters: >-
-      While SAP technically allows posting date (BUDAT) to differ from document date
-      (BLDAT), in cross-system integration a posting date significantly before the
-      document date can indicate a backdating issue or data synchronisation error.
-      This affects period assignment and financial reporting consistency across systems.
+    message: Posting date should not be before document date in cross-system transactions
+    why_it_matters: While SAP technically allows posting date (BUDAT) to differ from document date (BLDAT), in cross-system
+      integration a posting date significantly before the document date can indicate a backdating issue or data synchronisation
+      error. This affects period assignment and financial reporting consistency across systems.
     rule_authority: best_practice
-    sap_impact: >-
-      Period assignment may be inconsistent across systems. Financial reporting shows
-      the transaction in different periods depending on which date is used.
-    fix_map:
-      __blank__: >-
-        In ECC: verify dates via FB03 or the posting transaction. In S/4HANA: check
-        via Fiori app F0717 (Display Journal Entries).
-    record_fix_template: >-
-      Cross-system record: BUDAT ({actual_value}) is after BLDAT. Verify the dates
-      are correct via FB03 (ECC) or Fiori app F0717 (S/4HANA).
+    sap_impact: Period assignment may be inconsistent across systems. Financial reporting shows the transaction in
+      different periods depending on which date is used.
+    fix_map: {__blank__: 'In ECC: verify dates via FB03 or the posting transaction. In S/4HANA: check via Fiori app
+        F0717 (Display Journal Entries).'}
+    record_fix_template: 'Cross-system record: BUDAT ({actual_value}) is after BLDAT. Verify the dates are correct
+      via FB03 (ECC) or Fiori app F0717 (S/4HANA).'
+    fail_when: '`XSYS.BUDAT` < `XSYS.BLDAT`'
+    require_populated: true
 
   - id: XSYS013
-    field: MATNR_CROSS
-    check_class: cross_field_check
-    fields: ['MATNR_CROSS']
-    condition: "~`MATNR_CROSS`.duplicated(keep=False)"
+    field: XSYS.MATNR
+    check_class: uniqueness_check
+    fields: [XSYS.SOURCE_SYSTEM, XSYS.MATNR]
     severity: high
     dimension: uniqueness
     message: Duplicate cross-system material records detected — same material appears multiple times
-    why_it_matters: Duplicate cross-system records cause incorrect reconciliation between ECC/S4 and satellite systems. Each material should have one mapping record per target system.
+    why_it_matters: Duplicate cross-system records cause incorrect reconciliation between ECC/S4 and satellite systems.
+      Each material should have one mapping record per target system.
     rule_authority: best_practice
-    sap_impact: Cross-system reconciliation shows false differences. Material sync creates duplicates in target system. Stock reports disagree between systems.
-    fix_map:
-      __blank__: "De-duplicate the cross-system mapping extract. Verify the material number mapping table between source and target systems."
+    sap_impact: Cross-system reconciliation shows false differences. Material sync creates duplicates in target system.
+      Stock reports disagree between systems.
+    fix_map: {__blank__: De-duplicate the cross-system mapping extract. Verify the material number mapping table between
+        source and target systems.}
 
   - id: XSYS014
-    field: BUDAT
+    field: XSYS.BUDAT
     check_class: freshness_check
     max_age_hours: 2190
     severity: medium
     dimension: timeliness
-    message: Cross-system posting older than 3 months � verify integration is running and postings are being replicated
+    message: Cross-system posting older than 3 months — verify integration is running and postings are being replicated
     rule_authority: best_practice
     why_it_matters: "Cross-system postings older than 3 months with no newer activity suggest the integration between systems has stalled or a document is stuck in the queue."
     sap_impact: "Inventory and financial positions diverge between the connected systems; stuck IDocs or queue entries block downstream postings; reconciliation breaks."
@@ -310,12 +305,12 @@ rules:
     record_fix_template: "Cross-system posting {field} is {age_days} days old. Clear stuck queue/IDoc entries (SMQ2/BD87) and confirm the connector is running."
 
   - id: XSYS015
-    field: MATNR_CROSS
+    field: XSYS.MATNR
     check_class: regex_check
     pattern: '^[A-Z0-9\-]{1,40}$'
     severity: medium
     dimension: accuracy
-    message: Cross-system material number contains invalid characters � should be alphanumeric
+    message: Cross-system material number contains invalid characters — should be alphanumeric
     why_it_matters: Material numbers with special characters cause matching failures between systems, IDoc processing errors, and reconciliation breaks.
     rule_authority: best_practice
     sap_impact: IDoc mapping fails on special characters. Cross-system reconciliation cannot match. Material sync creates orphan records.

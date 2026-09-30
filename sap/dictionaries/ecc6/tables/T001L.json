@@ -270,5 +270,51 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "KUNNR",
+   "foreign_table": "KNA1",
+   "foreign_field": "KUNNR"
+  },
+  {
+   "field": "LIFNR",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MESBS",
+   "foreign_table": "MDG_BUS_SYS_TECH",
+   "foreign_field": "BUSINESS_SYSTEM"
+  },
+  {
+   "field": "SPART",
+   "foreign_table": "TSPA",
+   "foreign_field": "SPART"
+  },
+  {
+   "field": "VKORG",
+   "foreign_table": "TVKO",
+   "foreign_field": "VKORG"
+  },
+  {
+   "field": "VSTEL",
+   "foreign_table": "TVST",
+   "foreign_field": "VSTEL"
+  },
+  {
+   "field": "VTWEG",
+   "foreign_table": "TVTW",
+   "foreign_field": "VTWEG"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  }
+ ]
 }

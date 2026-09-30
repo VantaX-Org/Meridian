@@ -1194,5 +1194,121 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "ADDRORIGIN",
+   "foreign_table": "TSAD6",
+   "foreign_field": "ORIGIN"
+  },
+  {
+   "field": "ADDR_GROUP",
+   "foreign_table": "TSAD7",
+   "foreign_field": "ADDR_GROUP"
+  },
+  {
+   "field": "CITYH_CODE",
+   "foreign_table": "ADRCITY",
+   "foreign_field": "CITY_CODE"
+  },
+  {
+   "field": "CITYP_CODE",
+   "foreign_table": "ADRCITYPRT",
+   "foreign_field": "CITYP_CODE"
+  },
+  {
+   "field": "CITY_CODE",
+   "foreign_table": "ADRCITY",
+   "foreign_field": "CITY_CODE"
+  },
+  {
+   "field": "CITY_CODE2",
+   "foreign_table": "ADRCITY",
+   "foreign_field": "CITY_CODE"
+  },
+  {
+   "field": "CLIENT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "COUNTRY",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "DEFLT_COMM",
+   "foreign_table": "TSAC",
+   "foreign_field": "COMM_TYPE"
+  },
+  {
+   "field": "DELI_SERV_TYPE",
+   "foreign_table": "ADDRC_DELI_SERV",
+   "foreign_field": "DELI_SERV_TYPE"
+  },
+  {
+   "field": "DONT_USE_P",
+   "foreign_table": "TSAD12",
+   "foreign_field": "UNDELIVER"
+  },
+  {
+   "field": "DONT_USE_S",
+   "foreign_table": "TSAD12",
+   "foreign_field": "UNDELIVER"
+  },
+  {
+   "field": "LANGU",
+   "foreign_table": "T002",
+   "foreign_field": "SPRAS"
+  },
+  {
+   "field": "NATION",
+   "foreign_table": "TSADV",
+   "foreign_field": "NATION"
+  },
+  {
+   "field": "PO_BOX_CTY",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "PO_BOX_REG",
+   "foreign_table": "T005S",
+   "foreign_field": "BLAND"
+  },
+  {
+   "field": "REGIOGROUP",
+   "foreign_table": "ADRREGGRP",
+   "foreign_field": "REGIOGROUP"
+  },
+  {
+   "field": "REGION",
+   "foreign_table": "T005S",
+   "foreign_field": "BLAND"
+  },
+  {
+   "field": "STREETABBR",
+   "foreign_table": "ADRSTRTYPE",
+   "foreign_field": "STRTYPEAB"
+  },
+  {
+   "field": "STREETCODE",
+   "foreign_table": "ADRSTREET",
+   "foreign_field": "STRT_CODE"
+  },
+  {
+   "field": "TIME_ZONE",
+   "foreign_table": "TTZZ",
+   "foreign_field": "TZONE"
+  },
+  {
+   "field": "TITLE",
+   "foreign_table": "TSAD3",
+   "foreign_field": "TITLE"
+  },
+  {
+   "field": "TRANSPZONE",
+   "foreign_table": "TZONE",
+   "foreign_field": "ZONE1"
+  }
+ ]
 }

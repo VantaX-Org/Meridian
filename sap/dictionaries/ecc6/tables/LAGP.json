@@ -570,5 +570,46 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "BRAND",
+   "foreign_table": "T309",
+   "foreign_field": "BRAND"
+  },
+  {
+   "field": "GEWEI",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "KOBER",
+   "foreign_table": "T30A",
+   "foreign_field": "KOBER"
+  },
+  {
+   "field": "LGBER",
+   "foreign_table": "T302",
+   "foreign_field": "LGBER"
+  },
+  {
+   "field": "LGNUM",
+   "foreign_table": "T300",
+   "foreign_field": "LGNUM"
+  },
+  {
+   "field": "LGTYP",
+   "foreign_table": "T301",
+   "foreign_field": "LGTYP"
+  },
+  {
+   "field": "LPTYP",
+   "foreign_table": "T303",
+   "foreign_field": "LPTYP"
+  },
+  {
+   "field": "SPGRU",
+   "foreign_table": "T330",
+   "foreign_field": "SPGRU"
+  }
+ ]
 }

@@ -282,5 +282,36 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "APPLI_TAB",
+   "foreign_table": "TBZ0A",
+   "foreign_field": "APPLI"
+  },
+  {
+   "field": "CLIENT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "DFTYP",
+   "foreign_table": "TBZ0D",
+   "foreign_field": "DFTYP"
+  },
+  {
+   "field": "RLTP1",
+   "foreign_table": "TB003A",
+   "foreign_field": "ROLECATEGORY"
+  },
+  {
+   "field": "RLTP2",
+   "foreign_table": "TB003A",
+   "foreign_field": "ROLECATEGORY"
+  },
+  {
+   "field": "VARNR",
+   "foreign_table": "TBZ3N",
+   "foreign_field": "VARNR"
+  }
+ ]
 }

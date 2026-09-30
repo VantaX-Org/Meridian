@@ -1,0 +1,27 @@
+{
+ "domain": "SD_SEPA_FLAG",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No SEPA Relevance"
+  },
+  {
+   "low": "0",
+   "high": null,
+   "text": "SEPA Relevance - No Mandate Assigned"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "SEPA Relevance - Mandate Assigned"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

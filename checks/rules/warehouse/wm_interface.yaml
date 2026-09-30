@@ -283,17 +283,18 @@ rules:
 
   - id: WM013
     field: MLGN.LGNUM
-    check_class: cross_field_check
-    fields: ['MLGN.LGNUM']
-    condition: "~`MLGN.LGNUM`.duplicated(keep=False)"
+    check_class: uniqueness_check
+    fields: [MLGN.MATNR, MLGN.LGNUM]
     severity: high
     dimension: uniqueness
     message: Duplicate WM interface records detected — indicates data transfer duplication
-    why_it_matters: Duplicate WM interface records cause doubled stock movements, incorrect bin-level inventory, and WM-IM reconciliation breaks.
+    why_it_matters: Duplicate WM interface records cause doubled stock movements, incorrect bin-level inventory, and
+      WM-IM reconciliation breaks.
     rule_authority: best_practice
-    sap_impact: Stock is posted twice at bin level. WM-IM reconciliation shows differences. Transfer order confirmation is ambiguous.
-    fix_map:
-      __blank__: "De-duplicate the data extract. If genuine duplicates exist in the WM interface, run LX23 to reconcile WM and IM stock."
+    sap_impact: Stock is posted twice at bin level. WM-IM reconciliation shows differences. Transfer order confirmation
+      is ambiguous.
+    fix_map: {__blank__: 'De-duplicate the data extract. If genuine duplicates exist in the WM interface, run LX23
+        to reconcile WM and IM stock.'}
 
   - id: WM015
     field: MLGN.LGNUM

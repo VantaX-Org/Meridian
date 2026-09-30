@@ -318,5 +318,91 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "BEZME",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "BLOCK",
+   "foreign_table": "T338",
+   "foreign_field": "BLOCK"
+  },
+  {
+   "field": "BSSKZ",
+   "foreign_table": "T306",
+   "foreign_field": "BSSKZ"
+  },
+  {
+   "field": "LETY1",
+   "foreign_table": "T307",
+   "foreign_field": "LETYP"
+  },
+  {
+   "field": "LETY2",
+   "foreign_table": "T307",
+   "foreign_field": "LETYP"
+  },
+  {
+   "field": "LETY3",
+   "foreign_table": "T307",
+   "foreign_field": "LETYP"
+  },
+  {
+   "field": "LGBKZ",
+   "foreign_table": "T304",
+   "foreign_field": "LGBKZ"
+  },
+  {
+   "field": "LGNUM",
+   "foreign_table": "T300",
+   "foreign_field": "LGNUM"
+  },
+  {
+   "field": "LHME1",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "LHME2",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "LHME3",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "LTKZA",
+   "foreign_table": "T305",
+   "foreign_field": "LGTKZ"
+  },
+  {
+   "field": "LTKZE",
+   "foreign_table": "T305",
+   "foreign_field": "LGTKZ"
+  },
+  {
+   "field": "LVSME",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MATNR",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "PLKPT",
+   "foreign_table": "T301",
+   "foreign_field": "LGTYP"
+  }
+ ]
 }

@@ -124,8 +124,9 @@ def parse_table(name: str, page: str) -> dict:
     fk_block = page.split("Source Table", 1)[1] if "Source Table" in page else ""
     for row in re.findall(r"<tr>(.*?)</tr>", fk_block, re.S):
         cells = [_text(c) for c in re.findall(r"<td[^>]*>(.*?)</td>", row, re.S)]
-        if len(cells) >= 4 and cells[0].upper() == name.upper():
-            fks.append({"field": cells[1], "foreign_table": cells[2], "foreign_field": cells[3]})
+        # columns: # | source table | source column | foreign table | foreign column | …
+        if len(cells) >= 5 and cells[1].upper() == name.upper() and cells[2]:
+            fks.append({"field": cells[2], "foreign_table": cells[3], "foreign_field": cells[4]})
     return {
         "table": name,
         "description": _text(desc.group(1)) if desc else "",

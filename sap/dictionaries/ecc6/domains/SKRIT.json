@@ -1,0 +1,37 @@
+{
+ "domain": "SKRIT",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "By VSR sequence number"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "By EAN"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "By material number"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "By vendor material number"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "By material group"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -666,5 +666,106 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "ACTIVITY_PROFIL",
+   "foreign_table": "WRFT_ACT_PROF",
+   "foreign_field": "ACT_PROF"
+  },
+  {
+   "field": "BOPNR",
+   "foreign_table": "TWBO1",
+   "foreign_field": "BOPNR"
+  },
+  {
+   "field": "BSTAE",
+   "foreign_table": "T163L",
+   "foreign_field": "BSTAE"
+  },
+  {
+   "field": "EKGRP",
+   "foreign_table": "T024",
+   "foreign_field": "EKGRP"
+  },
+  {
+   "field": "EKORG",
+   "foreign_table": "T024E",
+   "foreign_field": "EKORG"
+  },
+  {
+   "field": "EXPVZ",
+   "foreign_table": "T618",
+   "foreign_field": "EXPVZ"
+  },
+  {
+   "field": "INCO1",
+   "foreign_table": "TINC",
+   "foreign_field": "INCO1"
+  },
+  {
+   "field": "KALSK",
+   "foreign_table": "TMKK",
+   "foreign_field": "KALSK"
+  },
+  {
+   "field": "LFRHY",
+   "foreign_table": "T439G",
+   "foreign_field": "MRPPP"
+  },
+  {
+   "field": "LIFNR",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "LIPRE",
+   "foreign_table": "TWYAZ",
+   "foreign_field": "LIPRE"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MEGRU",
+   "foreign_table": "TWMEG",
+   "foreign_field": "MEGRU"
+  },
+  {
+   "field": "MRPPP",
+   "foreign_table": "T439G",
+   "foreign_field": "MRPPP"
+  },
+  {
+   "field": "PAPRF",
+   "foreign_table": "TWVMO",
+   "foreign_field": "PAPRF"
+  },
+  {
+   "field": "RDPRF",
+   "foreign_table": "RDPR",
+   "foreign_field": "RDPRF"
+  },
+  {
+   "field": "TRANSPORT_CHAIN",
+   "foreign_table": "WRF_PSCD_TCHAINH",
+   "foreign_field": "TC_ID"
+  },
+  {
+   "field": "VSBED",
+   "foreign_table": "TVSB",
+   "foreign_field": "VSBED"
+  },
+  {
+   "field": "WAERS",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  },
+  {
+   "field": "ZOLLA",
+   "foreign_table": "T615",
+   "foreign_field": "ZOLLA"
+  }
+ ]
 }

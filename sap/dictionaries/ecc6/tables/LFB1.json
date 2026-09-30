@@ -858,5 +858,131 @@
    "check_table": "WRF_ASSIGN_GRP"
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "AKONT",
+   "foreign_table": "SKB1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "ASSIGN_TEST",
+   "foreign_table": "WRF_ASSIGN_GRP",
+   "foreign_field": "ASSIGN_GROUP"
+  },
+  {
+   "field": "BUKRS",
+   "foreign_table": "T001",
+   "foreign_field": "BUKRS"
+  },
+  {
+   "field": "BUSAB",
+   "foreign_table": "T001S",
+   "foreign_field": "BUSAB"
+  },
+  {
+   "field": "FDGRV",
+   "foreign_table": "T035",
+   "foreign_field": "GRUPP"
+  },
+  {
+   "field": "FRGRP",
+   "foreign_table": "VBWF08",
+   "foreign_field": "FRGRP"
+  },
+  {
+   "field": "GRICD",
+   "foreign_table": "J_1AGICD",
+   "foreign_field": "J_1AGICD"
+  },
+  {
+   "field": "GRIDT",
+   "foreign_table": "J_1ADTYP",
+   "foreign_field": "J_1ADTYP"
+  },
+  {
+   "field": "HBKID",
+   "foreign_table": "T012",
+   "foreign_field": "HBKID"
+  },
+  {
+   "field": "LIFNR",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "LNRZB",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "LNRZE",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MGRUP",
+   "foreign_table": "T047R",
+   "foreign_field": "MGRUP"
+  },
+  {
+   "field": "MINDK",
+   "foreign_table": "T059M",
+   "foreign_field": "MINDK"
+  },
+  {
+   "field": "QLAND",
+   "foreign_table": "T005Q",
+   "foreign_field": "QLAND"
+  },
+  {
+   "field": "QSREC",
+   "foreign_table": "T059A",
+   "foreign_field": "QSREC"
+  },
+  {
+   "field": "TOGRR",
+   "foreign_table": "T169L",
+   "foreign_field": "TOGRR"
+  },
+  {
+   "field": "TOGRU",
+   "foreign_table": "T043G",
+   "foreign_field": "TOGRU"
+  },
+  {
+   "field": "UZAWE",
+   "foreign_table": "T042F",
+   "foreign_field": "UZAWE"
+  },
+  {
+   "field": "VZSKZ",
+   "foreign_table": "T056",
+   "foreign_field": "VZSKZ"
+  },
+  {
+   "field": "XAUSZ",
+   "foreign_table": "T048K",
+   "foreign_field": "XAUSZ"
+  },
+  {
+   "field": "ZAHLS",
+   "foreign_table": "T008",
+   "foreign_field": "ZAHLS"
+  },
+  {
+   "field": "ZGRUP",
+   "foreign_table": "TZGR",
+   "foreign_field": "ZGRUP"
+  },
+  {
+   "field": "ZUAWA",
+   "foreign_table": "TZUN",
+   "foreign_field": "ZUAWA"
+  }
+ ]
 }

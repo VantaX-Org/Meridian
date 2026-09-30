@@ -286,17 +286,18 @@ rules:
 
   - id: TIME013
     field: TIMESHEET.USERID
-    check_class: cross_field_check
-    fields: ['TIMESHEET.USERID']
-    condition: "~`TIMESHEET.USERID`.duplicated(keep=False)"
+    check_class: uniqueness_check
+    fields: [TIMESHEET.USERID, TIMESHEET.DATE]
     severity: high
     dimension: uniqueness
     message: Duplicate time records per employee per period — indicates time recording error
-    why_it_matters: Duplicate time records cause doubled hours in payroll, incorrect overtime calculation, and leave balance errors.
+    why_it_matters: Duplicate time records cause doubled hours in payroll, incorrect overtime calculation, and leave
+      balance errors.
     rule_authority: best_practice
-    sap_impact: Payroll processes doubled hours. Overtime is overstated. Leave balances are incorrect. Cost centre allocations are wrong.
-    fix_map:
-      __blank__: "Review duplicate time records in Time Management > Admin. Delete the duplicate entry. Verify the correct time record feeds to payroll."
+    sap_impact: Payroll processes doubled hours. Overtime is overstated. Leave balances are incorrect. Cost centre
+      allocations are wrong.
+    fix_map: {__blank__: Review duplicate time records in Time Management > Admin. Delete the duplicate entry. Verify
+        the correct time record feeds to payroll.}
 
   - id: TIME014
     field: TIMESHEET.DATE

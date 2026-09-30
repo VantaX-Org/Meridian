@@ -270,5 +270,31 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "KTOKD",
+   "foreign_table": "T077D",
+   "foreign_field": "KTOKD"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "PARGE",
+   "foreign_table": "TVPG",
+   "foreign_field": "PARGR"
+  },
+  {
+   "field": "PARGT",
+   "foreign_table": "TVPG",
+   "foreign_field": "PARGR"
+  },
+  {
+   "field": "PARGW",
+   "foreign_table": "TVPG",
+   "foreign_field": "PARGR"
+  }
+ ]
 }

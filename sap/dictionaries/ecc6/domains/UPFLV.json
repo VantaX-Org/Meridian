@@ -1,0 +1,27 @@
+{
+ "domain": "UPFLV",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Do not create document flow records"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Create document flow records"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Create doc. flow records except for dely/goods issue/billdoc"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

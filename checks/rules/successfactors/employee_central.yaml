@@ -419,24 +419,21 @@ rules:
 - id: EC025
   field: EMPEMPLOYMENT.START_DATE
   check_class: cross_field_check
-  fields:
-  - EMPEMPLOYMENT.START_DATE
-  - EMPEMPLOYMENT.END_DATE
-  condition: '`EMPEMPLOYMENT.END_DATE`.notna() & (`EMPEMPLOYMENT.END_DATE` != '''') & (`EMPEMPLOYMENT.START_DATE` > `EMPEMPLOYMENT.END_DATE`)'
   severity: critical
   dimension: consistency
   message: Employment start date must not be after end date
-  why_it_matters: When an END_DATE is present, START_DATE must precede it. A start date after the end date indicates a data
-    entry error that will cause incorrect service length calculations, leave accrual miscalculations, and erroneous termination
-    processing.
+  why_it_matters: When an END_DATE is present, START_DATE must precede it. A start date after the end date indicates
+    a data entry error that will cause incorrect service length calculations, leave accrual miscalculations, and
+    erroneous termination processing.
   rule_authority: best_practice
   sap_impact: Service length calculation returns negative value. Leave accruals compute incorrectly. Payroll tenure-based
     rules produce errors.
-  fix_map:
-    __blank__: 'Review and correct the START_DATE and END_DATE via Admin Center > Employment Information. Ensure START_DATE
-      precedes END_DATE. Format: YYYY-MM-DD.'
-  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: START_DATE is after END_DATE. Correct dates via Admin Center > Employment
-    Information.'
+  fix_map: {__blank__: 'Review and correct the START_DATE and END_DATE via Admin Center > Employment Information.
+      Ensure START_DATE precedes END_DATE. Format: YYYY-MM-DD.'}
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: START_DATE is after END_DATE. Correct dates via Admin Center
+    > Employment Information.'
+  fail_when: '`EMPEMPLOYMENT.START_DATE` > `EMPEMPLOYMENT.END_DATE`'
+  require_populated: true
 - id: EC026
   field: EMPEMPLOYMENT.CREATED_DATE
   check_class: freshness_check
@@ -651,17 +648,18 @@ rules:
     > People Profile.
 - id: EC041
   field: EMPEMPLOYMENT.USERID
-  check_class: cross_field_check
-  fields: ['EMPEMPLOYMENT.USERID']
-  condition: "~`EMPEMPLOYMENT.USERID`.duplicated(keep=False)"
+  check_class: uniqueness_check
+  fields: [EMPEMPLOYMENT.USERID]
   severity: critical
   dimension: uniqueness
   message: Duplicate employee user IDs detected — each employee must have a unique USERID
-  why_it_matters: Duplicate USERIDs cause incorrect payroll processing, conflicting approval workflows, and ambiguous reporting. Each employee must have a single unique identifier across Employee Central.
+  why_it_matters: Duplicate USERIDs cause incorrect payroll processing, conflicting approval workflows, and ambiguous
+    reporting. Each employee must have a single unique identifier across Employee Central.
   rule_authority: sap_hard_constraint
-  sap_impact: Payroll processes the wrong employee. Approval workflows route to the wrong person. Headcount reports are overstated.
-  fix_map:
-    __blank__: "Identify duplicate USERIDs in Admin Center. Merge records using the Employee Data Import template with the correct surviving USERID. Archive duplicates."
+  sap_impact: Payroll processes the wrong employee. Approval workflows route to the wrong person. Headcount reports
+    are overstated.
+  fix_map: {__blank__: Identify duplicate USERIDs in Admin Center. Merge records using the Employee Data Import
+      template with the correct surviving USERID. Archive duplicates.}
 
 - id: EC042
   field: EMPEMPLOYMENT.COMPANY

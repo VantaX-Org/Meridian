@@ -150,5 +150,26 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "COUNTRY",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "PARTNER",
+   "foreign_table": "BUT000",
+   "foreign_field": "PARTNER"
+  },
+  {
+   "field": "REGION",
+   "foreign_table": "T005S",
+   "foreign_field": "BLAND"
+  },
+  {
+   "field": "TYPE",
+   "foreign_table": "TB039A",
+   "foreign_field": "TYPE"
+  }
+ ]
 }

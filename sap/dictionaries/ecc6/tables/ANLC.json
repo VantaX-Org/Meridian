@@ -930,5 +930,26 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "AFABE",
+   "foreign_table": "ANLB",
+   "foreign_field": "AFABE"
+  },
+  {
+   "field": "ANLN1",
+   "foreign_table": "ANLH",
+   "foreign_field": "ANLN1"
+  },
+  {
+   "field": "ANLN2",
+   "foreign_table": "ANLA",
+   "foreign_field": "ANLN2"
+  },
+  {
+   "field": "BUKRS",
+   "foreign_table": "T001",
+   "foreign_field": "BUKRS"
+  }
+ ]
 }

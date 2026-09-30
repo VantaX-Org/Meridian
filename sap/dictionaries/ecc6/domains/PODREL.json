@@ -1,0 +1,27 @@
+{
+ "domain": "PODREL",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Not POD relevant"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Always POD relevant"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Only POD relevant when there are differences"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

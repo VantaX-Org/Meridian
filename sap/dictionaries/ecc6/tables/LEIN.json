@@ -390,5 +390,46 @@
    "check_table": "*"
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "GEWEI",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "LETYP",
+   "foreign_table": "T307",
+   "foreign_field": "LETYP"
+  },
+  {
+   "field": "LGNUM",
+   "foreign_table": "T300",
+   "foreign_field": "LGNUM"
+  },
+  {
+   "field": "LGTYP",
+   "foreign_table": "T301",
+   "foreign_field": "LGTYP"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "REFNR",
+   "foreign_table": "T311",
+   "foreign_field": "REFNR"
+  },
+  {
+   "field": "SPGRU",
+   "foreign_table": "T330",
+   "foreign_field": "SPGRU"
+  },
+  {
+   "field": "UVTYP",
+   "foreign_table": "T301",
+   "foreign_field": "LGTYP"
+  }
+ ]
 }

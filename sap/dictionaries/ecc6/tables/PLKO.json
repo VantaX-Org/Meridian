@@ -942,5 +942,121 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "AENNR",
+   "foreign_table": "AENR",
+   "foreign_field": "AENNR"
+  },
+  {
+   "field": "ANLZU",
+   "foreign_table": "T357M",
+   "foreign_field": "ANLZU"
+  },
+  {
+   "field": "CCOAA",
+   "foreign_table": "TCC13",
+   "foreign_field": "CCOAA"
+  },
+  {
+   "field": "EXTNUM",
+   "foreign_table": "TQ12",
+   "foreign_field": "EXTNUM"
+  },
+  {
+   "field": "ISTRU",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "KOKRS",
+   "foreign_table": "TKA01",
+   "foreign_field": "KOKRS"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "NETID",
+   "foreign_table": "CRID",
+   "foreign_field": "OBJID"
+  },
+  {
+   "field": "PLNME",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "PLNTY",
+   "foreign_table": "TCA01",
+   "foreign_field": "PLNTY"
+  },
+  {
+   "field": "PROFIDNETZ",
+   "foreign_table": "TCA41",
+   "foreign_field": "PROFIDNETZ"
+  },
+  {
+   "field": "PSPNR",
+   "foreign_table": "PRPSS",
+   "foreign_field": "PSPNR"
+  },
+  {
+   "field": "QDYNHEAD",
+   "foreign_table": "TQ39A",
+   "foreign_field": "DYNLEVEL"
+  },
+  {
+   "field": "QDYNREGEL",
+   "foreign_table": "QDDR",
+   "foreign_field": "DYNREGEL"
+  },
+  {
+   "field": "QPRZIEHVER",
+   "foreign_table": "QPRVK",
+   "foreign_field": "PRZIEHVERF"
+  },
+  {
+   "field": "QVEWERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  },
+  {
+   "field": "SLWBEZ",
+   "foreign_table": "TQ79",
+   "foreign_field": "SLWBEZ"
+  },
+  {
+   "field": "STATU",
+   "foreign_table": "T412",
+   "foreign_field": "PLNST"
+  },
+  {
+   "field": "STRAT",
+   "foreign_table": "T351",
+   "foreign_field": "STRAT"
+  },
+  {
+   "field": "TXTSP",
+   "foreign_table": "T002",
+   "foreign_field": "SPRAS"
+  },
+  {
+   "field": "VAGRP",
+   "foreign_table": "T024A",
+   "foreign_field": "FEVOR"
+  },
+  {
+   "field": "VERWE",
+   "foreign_table": "T411",
+   "foreign_field": "VERWE"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  }
+ ]
 }

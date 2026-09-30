@@ -1,0 +1,27 @@
+{
+ "domain": "UMFNG",
+ "type": "CHAR",
+ "length": 20,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "UALL",
+   "high": null,
+   "text": "All items"
+  },
+  {
+   "low": "UHAU",
+   "high": null,
+   "text": "Main items"
+  },
+  {
+   "low": "UMAR",
+   "high": null,
+   "text": "Selected items"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

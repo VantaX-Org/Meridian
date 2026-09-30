@@ -1,0 +1,22 @@
+{
+ "domain": "PRATA",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Product does not have this attribute"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Product has this attribute"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

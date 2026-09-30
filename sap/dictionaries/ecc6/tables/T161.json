@@ -558,5 +558,51 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "AR_OBJECT",
+   "foreign_table": "TOADV",
+   "foreign_field": "AR_OBJECT"
+  },
+  {
+   "field": "BREFN",
+   "foreign_table": "T162",
+   "foreign_field": "FLREF"
+  },
+  {
+   "field": "HITYP",
+   "foreign_table": "TLHIT",
+   "foreign_field": "HITYP"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "PARGR",
+   "foreign_table": "TVPG",
+   "foreign_field": "PARGR"
+  },
+  {
+   "field": "RDP_PROFILE",
+   "foreign_table": "L2TC_RDP_PROFILE",
+   "foreign_field": "PROFILE"
+  },
+  {
+   "field": "REFBA",
+   "foreign_table": "T161",
+   "foreign_field": "BSART"
+  },
+  {
+   "field": "STAFO",
+   "foreign_table": "TMCB",
+   "foreign_field": "STAFO"
+  },
+  {
+   "field": "TOLSL",
+   "foreign_table": "TME_TOLS",
+   "foreign_field": "TOLSL"
+  }
+ ]
 }

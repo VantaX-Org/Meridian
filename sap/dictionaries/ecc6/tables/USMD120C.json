@@ -1,0 +1,281 @@
+{
+ "table": "USMD120C",
+ "description": "Change Request",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "USMD_CREQUEST",
+   "key": true,
+   "data_element": "USMD_CREQUEST",
+   "domain": "USMD_CREQUEST",
+   "type": "NUMC",
+   "length": 12,
+   "decimals": 0,
+   "description": "Change Request",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "USMD_CREQ_TYPE",
+   "key": false,
+   "data_element": "USMD_CREQUEST_TYPE",
+   "domain": "USMD_CREQUEST_TYPE",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Type of Change Request",
+   "check_table": "USMD110C"
+  },
+  {
+   "pos": 4,
+   "name": "USMD_EDITION",
+   "key": false,
+   "data_element": "USMD_EDITION",
+   "domain": "USMD_EDITION",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Edition",
+   "check_table": "USMD020C"
+  },
+  {
+   "pos": 5,
+   "name": "USMD_CREQ_STATUS",
+   "key": false,
+   "data_element": "USMD_CREQUEST_STATUS",
+   "domain": "USMD_CREQUEST_STATUS",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Status of Change Request",
+   "check_table": "*"
+  },
+  {
+   "pos": 6,
+   "name": "USMD_CREQ_TEXT",
+   "key": false,
+   "data_element": "USMD_TXTLG",
+   "domain": "TEXT60",
+   "type": "CHAR",
+   "length": 60,
+   "decimals": 0,
+   "description": "Description (long text)",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "USMD_CREATED_AT",
+   "key": false,
+   "data_element": "TIMESTAMP",
+   "domain": "TZNTSTMPS",
+   "type": "DEC",
+   "length": 15,
+   "decimals": 0,
+   "description": "UTC Time Stamp in Short Form (YYYYMMDDhhmmss)",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "USMD_CREATED_BY",
+   "key": false,
+   "data_element": "XUBNAME",
+   "domain": "XUBNAME",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "User Name in User Master Record",
+   "check_table": "*"
+  },
+  {
+   "pos": 9,
+   "name": "USMD_CHANGED_AT",
+   "key": false,
+   "data_element": "TIMESTAMP",
+   "domain": "TZNTSTMPS",
+   "type": "DEC",
+   "length": 15,
+   "decimals": 0,
+   "description": "UTC Time Stamp in Short Form (YYYYMMDDhhmmss)",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "USMD_CHANGED_BY",
+   "key": false,
+   "data_element": "XUBNAME",
+   "domain": "XUBNAME",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "User Name in User Master Record",
+   "check_table": "*"
+  },
+  {
+   "pos": 11,
+   "name": "USMD_RELEASED_AT",
+   "key": false,
+   "data_element": "TIMESTAMP",
+   "domain": "TZNTSTMPS",
+   "type": "DEC",
+   "length": 15,
+   "decimals": 0,
+   "description": "UTC Time Stamp in Short Form (YYYYMMDDhhmmss)",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "USMD_RELEASED_BY",
+   "key": false,
+   "data_element": "XUBNAME",
+   "domain": "XUBNAME",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "User Name in User Master Record",
+   "check_table": "*"
+  },
+  {
+   "pos": 13,
+   "name": "USMD_DATA_CHN_AT",
+   "key": false,
+   "data_element": "TIMESTAMP",
+   "domain": "TZNTSTMPS",
+   "type": "DEC",
+   "length": 15,
+   "decimals": 0,
+   "description": "UTC Time Stamp in Short Form (YYYYMMDDhhmmss)",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "USMD_DATA_ACTIVE",
+   "key": false,
+   "data_element": "USMD_DATA_ACTIVATED",
+   "domain": "USMD_FLG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Data of change request is already activated",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "USMD_DRAFT_STEP",
+   "key": false,
+   "data_element": "USMD_DRAFT_STEP",
+   "domain": null,
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Last Step Processed in Draft",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "USMD_PRIORITY",
+   "key": false,
+   "data_element": "USMD_PRIORITY",
+   "domain": "USMD_PRIORITY",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Priority",
+   "check_table": "USMD210C"
+  },
+  {
+   "pos": 17,
+   "name": "USMD_DUE_DATE",
+   "key": false,
+   "data_element": "USMD_DUE_DATE",
+   "domain": "USMD_DUE_DATE",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Due Date",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "USMD_REASON",
+   "key": false,
+   "data_element": "USMD_REASON",
+   "domain": "USMD_REASON",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Reason",
+   "check_table": "USMD211C"
+  },
+  {
+   "pos": 19,
+   "name": "USMD_REASON_REJ",
+   "key": false,
+   "data_element": "USMD_REASON_REJ",
+   "domain": "USMD_REASON_REJ",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Reason for Rejection",
+   "check_table": "USMD212C"
+  },
+  {
+   "pos": 20,
+   "name": "USMD_CREQUEST_RE",
+   "key": false,
+   "data_element": "USMD_CREQUEST",
+   "domain": "USMD_CREQUEST",
+   "type": "NUMC",
+   "length": 12,
+   "decimals": 0,
+   "description": "Change Request",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "USMD_CREQ_TYPE",
+   "foreign_table": "USMD110C",
+   "foreign_field": "USMD_CREQ_TYPE"
+  },
+  {
+   "field": "USMD_EDITION",
+   "foreign_table": "USMD020C",
+   "foreign_field": "USMD_EDITION"
+  },
+  {
+   "field": "USMD_PRIORITY",
+   "foreign_table": "USMD210C",
+   "foreign_field": "USMD_PRIORITY"
+  },
+  {
+   "field": "USMD_REASON",
+   "foreign_table": "USMD211C",
+   "foreign_field": "USMD_REASON"
+  },
+  {
+   "field": "USMD_REASON_REJ",
+   "foreign_table": "USMD212C",
+   "foreign_field": "USMD_REASON_REJ"
+  }
+ ]
+}

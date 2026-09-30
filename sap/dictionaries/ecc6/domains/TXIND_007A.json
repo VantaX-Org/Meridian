@@ -1,0 +1,32 @@
+{
+ "domain": "TXIND_007A",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "0",
+   "high": null,
+   "text": "Sales Tax (Customer Use Tax if needed)"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Consumer Use Tax"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Service Tax"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Lease Tax"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

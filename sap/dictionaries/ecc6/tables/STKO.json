@@ -342,5 +342,41 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "AENNR",
+   "foreign_table": "AENR",
+   "foreign_field": "AENNR"
+  },
+  {
+   "field": "BMEIN",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "LABOR",
+   "foreign_table": "T024L",
+   "foreign_field": "LABOR"
+  },
+  {
+   "field": "LTXSP",
+   "foreign_table": "T002",
+   "foreign_field": "SPRAS"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "STLST",
+   "foreign_table": "T415S",
+   "foreign_field": "STLST"
+  },
+  {
+   "field": "WRKAN",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  }
+ ]
 }

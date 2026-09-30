@@ -594,5 +594,66 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "AFABE",
+   "foreign_table": "T093",
+   "foreign_field": "AFABER"
+  },
+  {
+   "field": "AFASL",
+   "foreign_table": "T090NA",
+   "foreign_field": "AFASL"
+  },
+  {
+   "field": "ALIND",
+   "foreign_table": "T094A",
+   "foreign_field": "WBIND"
+  },
+  {
+   "field": "ANLGR",
+   "foreign_table": "ANLH",
+   "foreign_field": "ANLN1"
+  },
+  {
+   "field": "ANLGR2",
+   "foreign_table": "ANLA",
+   "foreign_field": "ANLN2"
+  },
+  {
+   "field": "ANLN1",
+   "foreign_table": "ANLH",
+   "foreign_field": "ANLN1"
+  },
+  {
+   "field": "ANLN2",
+   "foreign_table": "ANLA",
+   "foreign_field": "ANLN2"
+  },
+  {
+   "field": "BUKRS",
+   "foreign_table": "T001",
+   "foreign_field": "BUKRS"
+  },
+  {
+   "field": "FELEI",
+   "foreign_table": "T082A",
+   "foreign_field": "FELEI"
+  },
+  {
+   "field": "INVSL",
+   "foreign_table": "T085",
+   "foreign_field": "INVSL"
+  },
+  {
+   "field": "J_1AARVKEY",
+   "foreign_table": "J_1AAA2",
+   "foreign_field": "J_1AARVKEY"
+  },
+  {
+   "field": "WBIND",
+   "foreign_table": "T094A",
+   "foreign_field": "WBIND"
+  }
+ ]
 }

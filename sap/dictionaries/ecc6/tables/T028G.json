@@ -114,5 +114,21 @@
    "check_table": "*"
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "VGINT",
+   "foreign_table": "T028D",
+   "foreign_field": "VGINT"
+  },
+  {
+   "field": "VGTYP",
+   "foreign_table": "T028V",
+   "foreign_field": "VGTYP"
+  }
+ ]
 }

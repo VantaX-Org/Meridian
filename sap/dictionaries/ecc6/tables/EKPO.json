@@ -2346,5 +2346,126 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "ADRN2",
+   "foreign_table": "ADRC",
+   "foreign_field": "ADDRNUMBER"
+  },
+  {
+   "field": "ADRNR",
+   "foreign_table": "ADRC",
+   "foreign_field": "ADDRNUMBER"
+  },
+  {
+   "field": "ANFNR",
+   "foreign_table": "EKKO",
+   "foreign_field": "EBELN"
+  },
+  {
+   "field": "ANFPS",
+   "foreign_table": "EKPO",
+   "foreign_field": "EBELP"
+  },
+  {
+   "field": "BNFPO",
+   "foreign_table": "EBAN",
+   "foreign_field": "BNFPO"
+  },
+  {
+   "field": "BPRME",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "BUKRS",
+   "foreign_table": "T001",
+   "foreign_field": "BUKRS"
+  },
+  {
+   "field": "EBELN",
+   "foreign_table": "EKKO",
+   "foreign_field": "EBELN"
+  },
+  {
+   "field": "EMLIF",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "FIPOS",
+   "foreign_table": "FMFPO",
+   "foreign_field": "FIPOS"
+  },
+  {
+   "field": "GEWEI",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "KOLIF",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "KONNR",
+   "foreign_table": "EKKO",
+   "foreign_field": "EBELN"
+  },
+  {
+   "field": "KTPNR",
+   "foreign_table": "EKPO",
+   "foreign_field": "EBELP"
+  },
+  {
+   "field": "LMEIN",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MATKL",
+   "foreign_table": "T023",
+   "foreign_field": "MATKL"
+  },
+  {
+   "field": "MEINS",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "MFRNR",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "PUNEI",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "TXJCD",
+   "foreign_table": "TTXJ",
+   "foreign_field": "TXJCD"
+  },
+  {
+   "field": "UEBPO",
+   "foreign_table": "EKPO",
+   "foreign_field": "EBELP"
+  },
+  {
+   "field": "VOLEH",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  }
+ ]
 }

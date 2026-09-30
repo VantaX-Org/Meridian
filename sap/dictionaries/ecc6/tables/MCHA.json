@@ -438,5 +438,71 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "BWTAR",
+   "foreign_table": "MBEW",
+   "foreign_field": "BWTAR"
+  },
+  {
+   "field": "CHAME",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "CHARG",
+   "foreign_table": "MCH1",
+   "foreign_field": "CHARG"
+  },
+  {
+   "field": "HERKL",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "HERKR",
+   "foreign_table": "T005S",
+   "foreign_field": "BLAND"
+  },
+  {
+   "field": "LIFNR",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MATNR",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "MTVER",
+   "foreign_table": "TVFM",
+   "foreign_field": "MTVER"
+  },
+  {
+   "field": "VLCHA",
+   "foreign_table": "MCHA",
+   "foreign_field": "CHARG"
+  },
+  {
+   "field": "VLMAT",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "VLWRK",
+   "foreign_table": "MARC",
+   "foreign_field": "WERKS"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "MARC",
+   "foreign_field": "WERKS"
+  }
+ ]
 }

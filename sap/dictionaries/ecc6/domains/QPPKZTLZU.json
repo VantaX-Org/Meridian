@@ -1,0 +1,42 @@
+{
+ "domain": "QPPKZTLZU",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Partial lot assignment according to plant default values"
+  },
+  {
+   "low": "0",
+   "high": null,
+   "text": "Partial lots not supported"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Partial lot for each inspection point"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Partial lot and batch for each insp. point"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Partial lot for inspection points of 'last' inspection oper."
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Partial lot and batch for insp. points of 'last' operation"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -86,7 +86,7 @@ rules:
   record_fix_template: 'TO {LTAK.TANUM}: KQUIT is ''{actual_value}''. Set to blank (open) or X (confirmed) via LT12 (ECC)
     or /SCWM/PRDI (S/4HANA).'
 - id: EWTO005
-  field: LTAK.ERDAT
+  field: LTAK.BDATU
   check_class: null_check
   severity: high
   dimension: completeness
@@ -102,7 +102,7 @@ rules:
   record_fix_template: "TO {LTAK.TANUM}: ERDAT is {actual_value}. This is system-generated \u2014 investigate the data source\
     \ for corruption."
 - id: EWTO006
-  field: LTAK.ERNAM
+  field: LTAK.BNAME
   check_class: null_check
   severity: medium
   dimension: completeness
@@ -133,7 +133,7 @@ rules:
   record_fix_template: 'TO {LTAK.TANUM} item {LTAP.TAPOS}: MATNR is {actual_value}. Assign the correct material from the source
     document.'
 - id: EWTO008
-  field: LTAP.MENGE
+  field: LTAP.VSOLM
   check_class: null_check
   severity: critical
   dimension: completeness
@@ -242,35 +242,38 @@ rules:
   record_fix_template: 'TO {LTAK.TANUM} item {LTAP.TAPOS}: CHARG is {actual_value}. Assign the correct batch number via LT0A
     (ECC) or /SCWM/PRDO (S/4HANA).'
 - id: EWTO015
-  field: LTAK.STATUS
-  check_class: null_check
+  field: LTAK.KQUIT
+  check_class: domain_value_check
   severity: high
   dimension: completeness
-  message: Transfer order status is required for WM monitor and process tracking
-  why_it_matters: STATUS on the transfer order header tracks the processing state of the TO. Without it, the WM monitor cannot
-    display the correct state, aged TO reports are inaccurate, and warehouse supervisors cannot identify bottlenecks or stuck
-    movements.
+  valid_values_with_labels:
+    '': Open (not yet confirmed)
+    X: Confirmation complete
+  message: Transfer-order confirmation indicator must be blank (open) or X (confirmed)
+  why_it_matters: STATUS on the transfer order header tracks the processing state of the TO. Without it, the WM
+    monitor cannot display the correct state, aged TO reports are inaccurate, and warehouse supervisors cannot identify
+    bottlenecks or stuck movements.
   rule_authority: best_practice
-  sap_impact: WM monitor displays are incomplete. Aged TO reporting unreliable. Process bottleneck identification not possible
-    for this TO.
-  fix_map:
-    __blank__: 'In ECC: status is system-maintained during TO lifecycle (LT01 creation, LT12 confirmation). A blank value
-      indicates data corruption. In S/4HANA: check via /SCWM/MON.'
-  record_fix_template: "TO {LTAK.TANUM}: STATUS is {actual_value}. This is system-maintained \u2014 investigate the data source\
-    \ for corruption."
+  sap_impact: WM monitor displays are incomplete. Aged TO reporting unreliable. Process bottleneck identification
+    not possible for this TO.
+  fix_map: {__blank__: 'In ECC: status is system-maintained during TO lifecycle (LT01 creation, LT12 confirmation).
+      A blank value indicates data corruption. In S/4HANA: check via /SCWM/MON.'}
+  record_fix_template: 'TO {LTAK.TANUM}: STATUS is {actual_value}. This is system-maintained — investigate the data
+    source for corruption.'
+  allowed_values: ['', X]
 - id: EWTO016
-  field: LTAK.LGTYP
+  field: LTAP.VLTYP
   check_class: null_check
   severity: medium
   dimension: completeness
-  message: Storage type (TO header) is missing
-  why_it_matters: Storage type (TO header) (LTAK.LGTYP) is not maintained. This field supports downstream processes and reporting
-    accuracy. Missing data may result in incomplete records or processing gaps.
+  message: Source storage type missing on transfer-order item
+  why_it_matters: Storage type (TO header) (LTAP.VLTYP) is not maintained. This field supports downstream processes
+    and reporting accuracy. Missing data may result in incomplete records or processing gaps.
   rule_authority: best_practice
   sap_impact: Missing Storage type (TO header) may cause incomplete data in related transactions and reports.
-  fix_map:
-    __blank__: 'In ECC: Set via LT01/LT02. In S/4HANA: Use embedded EWM or /SCWM/ transactions.'
-  record_fix_template: 'Record is missing LTAK.LGTYP. In ECC: Set via LT01/LT02. In S/4HANA: Use embedded EWM or /SCWM/ transactions.'
+  fix_map: {__blank__: 'In ECC: Set via LT01/LT02. In S/4HANA: Use embedded EWM or /SCWM/ transactions.'}
+  record_fix_template: 'Record is missing LTAP.VLTYP. In ECC: Set via LT01/LT02. In S/4HANA: Use embedded EWM or
+    /SCWM/ transactions.'
 - id: EWTO017
   field: LTAP.TAPOS
   check_class: null_check
@@ -287,20 +290,21 @@ rules:
 
 - id: EWMS_TO018
   field: LTAK.TANUM
-  check_class: cross_field_check
-  fields: ['LTAK.TANUM']
-  condition: "~`LTAK.TANUM`.duplicated(keep=False)"
+  check_class: uniqueness_check
+  fields: [LTAK.LGNUM, LTAK.TANUM]
   severity: critical
   dimension: uniqueness
   message: Duplicate transfer order numbers detected — each TO must be unique
-  why_it_matters: Duplicate TO numbers indicate a data extract issue. Each warehouse task (TANUM) must be unique. Duplicates cause confirmation posting errors and stock movement ambiguity.
+  why_it_matters: Duplicate TO numbers indicate a data extract issue. Each warehouse task (TANUM) must be unique.
+    Duplicates cause confirmation posting errors and stock movement ambiguity.
   rule_authority: sap_hard_constraint
-  sap_impact: TO confirmation posts to wrong quant. Stock movements are doubled. Warehouse productivity metrics are inflated.
-  fix_map:
-    __blank__: "De-duplicate the data extract at TO header level. If genuine duplicates exist in eWMS, escalate to Basis — this indicates a number range collision."
+  sap_impact: TO confirmation posts to wrong quant. Stock movements are doubled. Warehouse productivity metrics
+    are inflated.
+  fix_map: {__blank__: 'De-duplicate the data extract at TO header level. If genuine duplicates exist in eWMS, escalate
+      to Basis — this indicates a number range collision.'}
 
 - id: EWMS_TO019
-  field: LTAK.ERDAT
+  field: LTAK.BDATU
   check_class: freshness_check
   max_age_hours: 720
   severity: high

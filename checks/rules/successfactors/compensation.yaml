@@ -264,52 +264,41 @@ rules:
   - id: COMP011
     field: COMPINFO.SALARY
     check_class: cross_field_check
-    fields: ["COMPINFO.SALARY", "COMPINFO.PAY_RANGE_MIN", "COMPINFO.PAY_RANGE_MAX"]
-    condition: "`COMPINFO.PAY_RANGE_MIN`.notna() & `COMPINFO.PAY_RANGE_MAX`.notna() & `COMPINFO.SALARY`.notna() & ((`COMPINFO.SALARY` < `COMPINFO.PAY_RANGE_MIN`) | (`COMPINFO.SALARY` > `COMPINFO.PAY_RANGE_MAX`))"
     severity: high
     dimension: consistency
-    message: "Salary falls outside the pay range for the assigned grade"
-    why_it_matters: >-
-      When SALARY is below PAY_RANGE_MIN or above PAY_RANGE_MAX, it indicates either
-      a data entry error or a compensation governance violation. Employees paid outside
-      their grade range create pay equity risk and may violate compensation policy.
+    message: Salary falls outside the pay range for the assigned grade
+    why_it_matters: When SALARY is below PAY_RANGE_MIN or above PAY_RANGE_MAX, it indicates either a data entry error
+      or a compensation governance violation. Employees paid outside their grade range create pay equity risk and
+      may violate compensation policy.
     rule_authority: best_practice
-    sap_impact: >-
-      Pay equity audit flags this employee. Compensation governance controls violated.
-      Compa-ratio calculation produces values outside expected 0.8-1.2 range.
-    fix_map:
-      __blank__: >-
-        Review the employee's salary against their pay grade range. Either adjust the
-        salary to fall within range or update the pay grade to match the current salary
-        level. Update via Admin Center > Compensation Import.
-    record_fix_template: >-
-      Employee {COMPINFO.USERID}: SALARY is outside pay range (min: {COMPINFO.PAY_RANGE_MIN},
-      max: {COMPINFO.PAY_RANGE_MAX}). Review via Admin Center > Compensation.
+    sap_impact: Pay equity audit flags this employee. Compensation governance controls violated. Compa-ratio calculation
+      produces values outside expected 0.8-1.2 range.
+    fix_map: {__blank__: Review the employee's salary against their pay grade range. Either adjust the salary to fall
+        within range or update the pay grade to match the current salary level. Update via Admin Center > Compensation
+        Import.}
+    record_fix_template: 'Employee {COMPINFO.USERID}: SALARY is outside pay range (min: {COMPINFO.PAY_RANGE_MIN},
+      max: {COMPINFO.PAY_RANGE_MAX}). Review via Admin Center > Compensation.'
+    fail_when: (`COMPINFO.SALARY` < `COMPINFO.PAY_RANGE_MIN`) | (`COMPINFO.SALARY` > `COMPINFO.PAY_RANGE_MAX`)
+    require_populated: true
 
   - id: COMP012
     field: COMPINFO.PAY_RANGE_MIN
     check_class: cross_field_check
-    fields: ["COMPINFO.PAY_RANGE_MIN", "COMPINFO.PAY_RANGE_MID", "COMPINFO.PAY_RANGE_MAX"]
-    condition: "`COMPINFO.PAY_RANGE_MIN`.notna() & `COMPINFO.PAY_RANGE_MID`.notna() & `COMPINFO.PAY_RANGE_MAX`.notna() & ((`COMPINFO.PAY_RANGE_MID` < `COMPINFO.PAY_RANGE_MIN`) | (`COMPINFO.PAY_RANGE_MID` > `COMPINFO.PAY_RANGE_MAX`))"
     severity: medium
     dimension: consistency
-    message: "Pay range midpoint must fall between minimum and maximum"
-    why_it_matters: >-
-      PAY_RANGE_MID should logically fall between PAY_RANGE_MIN and PAY_RANGE_MAX.
-      A midpoint outside the range indicates a configuration error in the pay grade
-      structure that will cause incorrect compa-ratio calculations for all employees
-      in that grade.
+    message: Pay range midpoint must fall between minimum and maximum
+    why_it_matters: PAY_RANGE_MID should logically fall between PAY_RANGE_MIN and PAY_RANGE_MAX. A midpoint outside
+      the range indicates a configuration error in the pay grade structure that will cause incorrect compa-ratio calculations
+      for all employees in that grade.
     rule_authority: best_practice
-    sap_impact: >-
-      Compa-ratio calculations produce incorrect results. Compensation planning
-      worksheets display misleading range penetration metrics.
-    fix_map:
-      __blank__: >-
-        Correct the pay range midpoint to fall between the minimum and maximum values.
-        Update the pay grade structure via Admin Center > Compensation Configuration.
-    record_fix_template: >-
-      Employee {COMPINFO.USERID}: PAY_RANGE_MID is outside the min-max range. Correct
-      via Admin Center > Compensation Configuration.
+    sap_impact: Compa-ratio calculations produce incorrect results. Compensation planning worksheets display misleading
+      range penetration metrics.
+    fix_map: {__blank__: Correct the pay range midpoint to fall between the minimum and maximum values. Update the
+        pay grade structure via Admin Center > Compensation Configuration.}
+    record_fix_template: 'Employee {COMPINFO.USERID}: PAY_RANGE_MID is outside the min-max range. Correct via Admin
+      Center > Compensation Configuration.'
+    fail_when: (`COMPINFO.PAY_RANGE_MID` < `COMPINFO.PAY_RANGE_MIN`) | (`COMPINFO.PAY_RANGE_MID` > `COMPINFO.PAY_RANGE_MAX`)
+    require_populated: true
 
   - id: COMP013
     field: COMPINFO.COMPA_RATIO
@@ -381,17 +370,18 @@ rules:
 
   - id: COMP016
     field: COMPINFO.USERID
-    check_class: cross_field_check
-    fields: ['COMPINFO.USERID']
-    condition: "~`COMPINFO.USERID`.duplicated(keep=False)"
+    check_class: uniqueness_check
+    fields: [COMPINFO.USERID, COMPINFO.EFFECTIVE_DATE]
     severity: critical
     dimension: uniqueness
     message: Duplicate compensation records per employee — each employee should have one active comp record
-    why_it_matters: Duplicate compensation records cause incorrect pay calculations, doubled bonus accruals, and compa-ratio calculation errors.
+    why_it_matters: Duplicate compensation records cause incorrect pay calculations, doubled bonus accruals, and compa-ratio
+      calculation errors.
     rule_authority: best_practice
-    sap_impact: Compensation statements show conflicting data. Budget forecasts are overstated. Payroll integration may pick the wrong record.
-    fix_map:
-      __blank__: "Review duplicate compensation records in Admin Center > Compensation Import. Archive or end-date the incorrect record."
+    sap_impact: Compensation statements show conflicting data. Budget forecasts are overstated. Payroll integration
+      may pick the wrong record.
+    fix_map: {__blank__: Review duplicate compensation records in Admin Center > Compensation Import. Archive or end-date
+        the incorrect record.}
 
   - id: COMP017
     field: COMPINFO.EFFECTIVE_DATE_COMP

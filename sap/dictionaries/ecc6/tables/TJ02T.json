@@ -54,5 +54,16 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "ISTAT",
+   "foreign_table": "TJ02",
+   "foreign_field": "ISTAT"
+  },
+  {
+   "field": "SPRAS",
+   "foreign_table": "T002",
+   "foreign_field": "SPRAS"
+  }
+ ]
 }

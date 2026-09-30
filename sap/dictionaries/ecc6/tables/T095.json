@@ -306,5 +306,126 @@
    "check_table": "SKA1"
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "AFABE",
+   "foreign_table": "T093",
+   "foreign_field": "AFABER"
+  },
+  {
+   "field": "KTANSG",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTANSW",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTANZA",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTANZG",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTAPFG",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTARIZ",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTAUFG",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTAUFW",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTCOAB",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTENAK",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTERLW",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTMAHK",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTMEHR",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTMIND",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTNAIB",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTOGR",
+   "foreign_table": "T095A",
+   "foreign_field": "KTOGR"
+  },
+  {
+   "field": "KTOPL",
+   "foreign_table": "T004",
+   "foreign_field": "KTOPL"
+  },
+  {
+   "field": "KTREST",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTRIZU",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTVBAB",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTVIZU",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTVZU",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
 }

@@ -1,0 +1,11 @@
+{
+ "domain": "WRF_FIBER_CODE",
+ "type": "CHAR",
+ "length": 3,
+ "decimals": 0,
+ "conversion_exit": "FIBER",
+ "lowercase": false,
+ "value_table": "WRF_FIBER_CODES",
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

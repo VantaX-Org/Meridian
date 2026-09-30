@@ -690,5 +690,56 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "LENUM",
+   "foreign_table": "LEIN",
+   "foreign_field": "LENUM"
+  },
+  {
+   "field": "LETYP",
+   "foreign_table": "T307",
+   "foreign_field": "LETYP"
+  },
+  {
+   "field": "LGNUM",
+   "foreign_table": "T300",
+   "foreign_field": "LGNUM"
+  },
+  {
+   "field": "LGORT",
+   "foreign_table": "T001L",
+   "foreign_field": "LGORT"
+  },
+  {
+   "field": "LGPLA",
+   "foreign_table": "LAGP",
+   "foreign_field": "LGPLA"
+  },
+  {
+   "field": "LGTYP",
+   "foreign_table": "T301",
+   "foreign_field": "LGTYP"
+  },
+  {
+   "field": "MATNR",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "SOBKZ",
+   "foreign_table": "T148",
+   "foreign_field": "SOBKZ"
+  },
+  {
+   "field": "SPGRU",
+   "foreign_table": "T330",
+   "foreign_field": "SPGRU"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  }
+ ]
 }

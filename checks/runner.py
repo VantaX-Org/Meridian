@@ -15,6 +15,7 @@ from checks.types.cross_field_check import CrossFieldCheck
 from checks.types.referential_check import ReferentialCheck
 from checks.types.freshness_check import FreshnessCheck
 from checks.types.format_check import FormatCheck
+from checks.types.uniqueness_check import UniquenessCheck
 
 logger = logging.getLogger("meridian.checks")
 
@@ -40,8 +41,21 @@ def apply_context(df: pd.DataFrame, applies_when: dict | None) -> pd.DataFrame:
     for field, allowed in applies_when.items():
         if field not in df.columns:
             return df.iloc[:0]
-        allowed_strs = {str(v).strip() for v in allowed}
-        mask &= df[field].astype("string").str.strip().isin(allowed_strs).fillna(False)
+        values = df[field].astype("string").str.strip()
+        if isinstance(allowed, dict):
+            # Operators: contains_any (multi-value code strings such as
+            # LFB1.ZWELS "CT"), not_in, populated, gt (numeric).
+            if "contains_any" in allowed:
+                chars = {str(v) for v in allowed["contains_any"]}
+                mask &= values.map(lambda v: isinstance(v, str) and any(c in v for c in chars)).astype(bool)
+            if "not_in" in allowed:
+                mask &= ~values.isin({str(v).strip() for v in allowed["not_in"]}).fillna(False)
+            if allowed.get("populated"):
+                mask &= values.fillna("").ne("") & ~values.isin(("00000000",)).fillna(False)
+            if "gt" in allowed:
+                mask &= pd.to_numeric(values, errors="coerce").gt(float(allowed["gt"])).fillna(False)
+        else:
+            mask &= values.isin({str(v).strip() for v in allowed}).fillna(False)
     return df[mask]
 
 REGISTRY: dict[str, type[BaseCheck]] = {
@@ -52,6 +66,7 @@ REGISTRY: dict[str, type[BaseCheck]] = {
     "referential_check": ReferentialCheck,
     "freshness_check": FreshnessCheck,
     "format_check": FormatCheck,
+    "uniqueness_check": UniquenessCheck,
 }
 
 RULES_DIR = Path(__file__).parent / "rules"
@@ -68,6 +83,30 @@ def _find_module_yaml(module_name: str) -> Path:
         f"No YAML rule file found for module '{module_name}' in {RULES_DIR}. "
         f"Searched categories: {CATEGORIES}"
     )
+
+
+def _with_reference(rule: dict, dictionary, reference_values: dict[str, set[str]]) -> dict:
+    """Attach the source system's live allowed values to a value-list rule.
+
+    Resolution: the rule's explicit ``reference_table.reference_field``, else
+    the field's DDIC check table (``T134.MTART`` for MARA.MTART), else the SF
+    picklist. When the source system's live configuration holds that table,
+    its values replace the rule's SAP-standard list — so a customer's own
+    Z material types / order types are valid, not findings.
+    """
+    field = dictionary.resolve(rule.get("field", "")) if rule.get("field") else None
+    if rule.get("reference_table") and rule.get("reference_field"):
+        key = f"{rule['reference_table']}.{rule['reference_field']}"
+    elif field is not None and field.picklist:
+        key = f"PICKLIST.{field.picklist}"
+    else:
+        key = field.check_ref if field is not None else None
+    out = {**rule, "_reference_key": key}
+    if field is not None and field.allowed_values():
+        out["_ddic_fixed"] = sorted(field.allowed_values())  # domain fixed values (DD07L)
+    if key and key in reference_values:
+        out["_live_reference"] = reference_values[key]
+    return out
 
 
 def rule_columns(rule: dict) -> list[str]:
@@ -124,9 +163,8 @@ def run_checks(
             result_rules.append(rule)
             continue
 
-        ref_key = f"{rule.get('reference_table')}.{rule.get('reference_field')}"
-        if rule.get("check_class") == "referential_check" and ref_key in reference_values:
-            rule = {**rule, "_live_reference": reference_values[ref_key]}
+        if rule.get("check_class") in ("referential_check", "domain_value_check"):
+            rule = _with_reference(rule, frames.dictionary, reference_values)
 
         try:
             built = frames.frame_for(rule_columns(rule), grain=rule.get("grain"))

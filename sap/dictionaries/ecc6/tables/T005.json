@@ -522,5 +522,26 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "ADDRS",
+   "foreign_table": "T005A",
+   "foreign_field": "ADDRS"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "NMFMT",
+   "foreign_table": "T005N",
+   "foreign_field": "NAMEFORMAT"
+  },
+  {
+   "field": "SPRAS",
+   "foreign_table": "T002",
+   "foreign_field": "SPRAS"
+  }
+ ]
 }

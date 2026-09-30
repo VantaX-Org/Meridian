@@ -1,0 +1,17 @@
+{
+ "domain": "PRZ34",
+ "type": "DEC",
+ "length": 7,
+ "decimals": 4,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "0",
+   "high": "100",
+   "text": ""
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

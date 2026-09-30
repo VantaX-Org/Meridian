@@ -282,5 +282,11 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "AUPRF",
+   "foreign_table": "TPRO",
+   "foreign_field": "AUPRF"
+  }
+ ]
 }

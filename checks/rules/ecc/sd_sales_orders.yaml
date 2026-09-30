@@ -474,25 +474,21 @@ rules:
     reason via VA02 or Fiori app F6588.'
 - id: SDSO025
   field: VBAK.ABSTK
-  fields:
-  - VBAK.ABSTK
-  - VBAP.ABGRU
   check_class: cross_field_check
-  condition: '`VBAK.ABSTK` != '''' and `VBAK.ABSTK`.notna() and (`VBAP.ABGRU`.isna() or `VBAP.ABGRU` == '''')'
   severity: high
   dimension: consistency
-  message: Order has rejection status but line items have no rejection reason
-  why_it_matters: When the overall rejection status (ABSTK) indicates the order is rejected but individual line items have
-    no rejection reason (ABGRU), there is an inconsistency. Every rejected order should have documented rejection reasons
-    at the item level for proper rejection analysis and audit compliance.
+  message: Order is fully rejected (VBAK.ABSTK = C) but the item has no reason for rejection
+  why_it_matters: When the overall rejection status (ABSTK) indicates the order is rejected but individual line
+    items have no rejection reason (ABGRU), there is an inconsistency. Every rejected order should have documented
+    rejection reasons at the item level for proper rejection analysis and audit compliance.
   rule_authority: best_practice
-  sap_impact: "Rejection analysis is inconsistent \u2014 header says rejected but items show no reason. VA05 rejection reports\
-    \ are incomplete. Lost-sales KPIs are unreliable."
-  fix_map:
-    __blank__: 'Order rejection status (ABSTK) is set but item rejection reason (ABGRU) is blank. In ECC: set the rejection
-      reason on each item via VA02 > Item > Reason for Rejection. In S/4HANA: use Fiori app F6588.'
-  record_fix_template: 'SO {VBAK.VBELN}: ABSTK is ''{actual_value}'' but ABGRU is blank. Set the rejection reason on each
-    item via VA02 or Fiori app F6588.'
+  sap_impact: Rejection analysis is inconsistent — header says rejected but items show no reason. VA05 rejection
+    reports are incomplete. Lost-sales KPIs are unreliable.
+  fix_map: {__blank__: 'Order rejection status (ABSTK) is set but item rejection reason (ABGRU) is blank. In ECC:
+      set the rejection reason on each item via VA02 > Item > Reason for Rejection. In S/4HANA: use Fiori app F6588.'}
+  record_fix_template: 'SO {VBAK.VBELN}: ABSTK is ''{actual_value}'' but ABGRU is blank. Set the rejection reason
+    on each item via VA02 or Fiori app F6588.'
+  fail_when: (`VBAK.ABSTK` == 'C') & `VBAP.ABGRU`.isna()
 - id: SDSO026
   field: VBAP.ROUTE
   check_class: null_check
@@ -598,42 +594,51 @@ rules:
     Order).'
 - id: SDSO033
   field: VBAK.VBELN
-  check_class: cross_field_check
-  fields: ['VBAK.VBELN']
-  condition: "~`VBAK.VBELN`.duplicated(keep=False)"
+  check_class: uniqueness_check
+  fields: [VBAK.VBELN]
   severity: critical
   dimension: uniqueness
   message: Duplicate sales order numbers detected — each sales order must be unique
-  why_it_matters: Duplicate sales order numbers indicate a data extract issue (e.g. header-item join). Each VBELN must be unique at header level. Duplicates distort order volume reports and revenue analytics.
+  why_it_matters: Duplicate sales order numbers indicate a data extract issue (e.g. header-item join). Each VBELN
+    must be unique at header level. Duplicates distort order volume reports and revenue analytics.
   rule_authority: sap_hard_constraint
-  sap_impact: Order volume and revenue reports are overstated. Delivery creation references ambiguous orders. Billing may process the same order twice.
-  fix_map:
-    __blank__: "This is typically a data extract issue — ensure the extract is at header level (VBAK) not header-item (VBAK+VBAP). If genuine duplicates exist, escalate to Basis."
+  sap_impact: Order volume and revenue reports are overstated. Delivery creation references ambiguous orders. Billing
+    may process the same order twice.
+  fix_map: {__blank__: 'This is typically a data extract issue — ensure the extract is at header level (VBAK) not
+      header-item (VBAK+VBAP). If genuine duplicates exist, escalate to Basis.'}
 
 - id: SDSO034
-  field: VBAK.ERDAT_SO
+  field: VBAK.ERDAT
   check_class: freshness_check
   max_age_hours: 8760
   severity: medium
   dimension: timeliness
-  message: Sales order older than 1 year — open orders older than 12 months should be reviewed for closure or rejection
+  message: Open sales order older than 1 year — review for closure or rejection
   rule_authority: best_practice
-  why_it_matters: "Sales orders open beyond 12 months usually represent stuck or abandoned demand that inflates the order backlog and misleads revenue forecasting."
-  sap_impact: "Backlog and forecast figures are overstated; ATP and MRP plan against demand that will not convert; incomplete orders block billing."
-  fix_map:
-    __blank__: "Review the order in VA02 / VA05: confirm whether it will still be delivered; complete the open items, reject the lines (reason for rejection), or close the order."
-  record_fix_template: "Sales order {field} dated {age_days} days ago. Confirm in VA02 whether still valid; reject lines or close if abandoned."
+  why_it_matters: Sales orders open beyond 12 months usually represent stuck or abandoned demand that inflates the
+    order backlog and misleads revenue forecasting.
+  sap_impact: Backlog and forecast figures are overstated; ATP and MRP plan against demand that will not convert;
+    incomplete orders block billing.
+  fix_map: {__blank__: 'Review the order in VA02 / VA05: confirm whether it will still be delivered; complete the
+      open items, reject the lines (reason for rejection), or close the order.'}
+  record_fix_template: Sales order {field} dated {age_days} days ago. Confirm in VA02 whether still valid; reject
+    lines or close if abandoned.
+  applies_when:
+    VBAK.GBSTK:
+      not_in: [C]
 
 - id: SDSO035
   field: VBAP.KWMENG
   check_class: cross_field_check
-  fields: ['VBAP.KWMENG']
-  condition: "`VBAP.KWMENG`.notna() & (`VBAP.KWMENG` > 0)"
   severity: high
   dimension: accuracy
   message: Sales order line has zero or negative order quantity — indicates configuration or entry error
-  why_it_matters: Zero or negative quantities on sales order lines cause delivery creation failures, incorrect revenue recognition, and pricing errors.
+  why_it_matters: Zero or negative quantities on sales order lines cause delivery creation failures, incorrect revenue
+    recognition, and pricing errors.
   rule_authority: best_practice
-  sap_impact: Delivery cannot be created for zero-quantity line. Revenue is not recognised. Pricing conditions produce zero or negative amounts.
-  fix_map:
-    __blank__: "Review the order line via VA02. If a returns order is intended, use the correct order type (RE). If data error, correct the quantity."
+  sap_impact: Delivery cannot be created for zero-quantity line. Revenue is not recognised. Pricing conditions produce
+    zero or negative amounts.
+  fix_map: {__blank__: 'Review the order line via VA02. If a returns order is intended, use the correct order type
+      (RE). If data error, correct the quantity.'}
+  fail_when: ~(`VBAP.KWMENG` > 0)
+  require_populated: true

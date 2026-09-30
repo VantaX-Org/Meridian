@@ -786,5 +786,46 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "AUSFB",
+   "foreign_table": "T339",
+   "foreign_field": "AUSFB"
+  },
+  {
+   "field": "BETYP",
+   "foreign_table": "T308",
+   "foreign_field": "BETYP"
+  },
+  {
+   "field": "BWART",
+   "foreign_table": "T156",
+   "foreign_field": "BWART"
+  },
+  {
+   "field": "BWLVS",
+   "foreign_table": "T333",
+   "foreign_field": "BWLVS"
+  },
+  {
+   "field": "DRUKZ",
+   "foreign_table": "T329F",
+   "foreign_field": "DRUKZ"
+  },
+  {
+   "field": "LGNUM",
+   "foreign_table": "T300",
+   "foreign_field": "LGNUM"
+  },
+  {
+   "field": "REFNR",
+   "foreign_table": "T311",
+   "foreign_field": "REFNR"
+  },
+  {
+   "field": "TRART",
+   "foreign_table": "T333A",
+   "foreign_field": "TRART"
+  }
+ ]
 }

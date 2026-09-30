@@ -1,0 +1,27 @@
+{
+ "domain": "TNDRRC",
+ "type": "CHAR",
+ "length": 2,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "SE",
+   "high": null,
+   "text": "Shortage of Equipment"
+  },
+  {
+   "low": "DL",
+   "high": null,
+   "text": "Delays"
+  },
+  {
+   "low": "",
+   "high": null,
+   "text": ""
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

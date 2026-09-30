@@ -152,7 +152,7 @@ rules:
       via VD02 / Fiori app F3893.
 
   - id: SDCM007
-    field: KNA1.SMTP_ADDR
+    field: ADR6.SMTP_ADDR
     check_class: null_check
     severity: medium
     dimension: completeness
@@ -548,91 +548,58 @@ rules:
   - id: SDCM022
     field: KNA1.KUNNR
     check_class: cross_field_check
-    fields: ["KNVV.INCO1", "KNVV.INCO2"]
-    condition: "((`KNVV.INCO1`.notna() & `KNVV.INCO1` != '') & (`KNVV.INCO2`.isna() | `KNVV.INCO2` == '')) | ((`KNVV.INCO2`.notna() & `KNVV.INCO2` != '') & (`KNVV.INCO1`.isna() | `KNVV.INCO1` == ''))"
     severity: high
     dimension: consistency
-    message: "Incoterms code and location must both be filled or both be blank"
-    why_it_matters: >-
-      INCO1 (incoterms code) and INCO2 (incoterms location) form a pair
-      that must be maintained together. An incoterms code without a location
-      is ambiguous (e.g., "FOB" without a port name), while a location
-      without a code is meaningless. Incomplete incoterms cause disputes
-      over delivery responsibility and may result in non-compliant export
-      documentation.
+    message: Incoterms code and location must both be filled or both be blank
+    why_it_matters: INCO1 (incoterms code) and INCO2 (incoterms location) form a pair that must be maintained together.
+      An incoterms code without a location is ambiguous (e.g., "FOB" without a port name), while a location without
+      a code is meaningless. Incomplete incoterms cause disputes over delivery responsibility and may result in non-compliant
+      export documentation.
     rule_authority: sap_hard_constraint
-    sap_impact: >-
-      Sales orders have incomplete shipping terms. Export documentation is
-      non-compliant. Freight cost allocation may be disputed. Incoterms
-      validation in VA01 may produce warnings or errors depending on
-      configuration.
-    fix_map:
-      __other__: >-
-        Incoterms code and location are not both filled. In ECC: set both
-        fields together via T-code VD02 > Sales Area Data > Shipping tab.
-        In S/4HANA: use Fiori app F3893. Both INCO1 and INCO2 must be
-        maintained as a pair.
-    record_fix_template: >-
-      Customer {KNA1.KUNNR}: INCO1 and INCO2 are inconsistent — one is
-      filled and the other is blank. Set both via VD02 / Fiori app F3893.
+    sap_impact: Sales orders have incomplete shipping terms. Export documentation is non-compliant. Freight cost allocation
+      may be disputed. Incoterms validation in VA01 may produce warnings or errors depending on configuration.
+    fix_map: {__other__: 'Incoterms code and location are not both filled. In ECC: set both fields together via T-code
+        VD02 > Sales Area Data > Shipping tab. In S/4HANA: use Fiori app F3893. Both INCO1 and INCO2 must be maintained
+        as a pair.'}
+    record_fix_template: 'Customer {KNA1.KUNNR}: INCO1 and INCO2 are inconsistent — one is filled and the other is
+      blank. Set both via VD02 / Fiori app F3893.'
+    fail_when: '`KNVV.INCO1`.notna() != `KNVV.INCO2`.notna()'
 
   - id: SDCM023
     field: KNA1.KUNNR
     check_class: cross_field_check
-    fields: ["KNVV.VKORG", "KNVV.VTWEG", "KNVV.SPART"]
-    condition: "(`KNVV.VKORG`.notna() & `KNVV.VKORG` != '') & ((`KNVV.VTWEG`.isna() | `KNVV.VTWEG` == '') | (`KNVV.SPART`.isna() | `KNVV.SPART` == ''))"
     severity: critical
     dimension: consistency
-    message: "Sales area triple must be complete — VKORG, VTWEG, and SPART all required"
-    why_it_matters: >-
-      The sales area is defined by three fields: sales organisation (VKORG),
-      distribution channel (VTWEG), and division (SPART). All three must be
-      populated for the sales area to be valid. A partial sales area renders
-      the customer unusable in all SD transactions and causes errors in
-      partner function determination and pricing.
+    message: Sales area triple must be complete — VKORG, VTWEG, and SPART all required
+    why_it_matters: 'The sales area is defined by three fields: sales organisation (VKORG), distribution channel (VTWEG),
+      and division (SPART). All three must be populated for the sales area to be valid. A partial sales area renders
+      the customer unusable in all SD transactions and causes errors in partner function determination and pricing.'
     rule_authority: sap_hard_constraint
-    sap_impact: >-
-      Customer cannot be used in VA01. Sales area validation fails. Pricing,
-      shipping, and billing determination all produce errors. The customer
-      is commercially inactive.
-    fix_map:
-      __other__: >-
-        Sales area is partially filled. In ECC: complete all three fields
-        (VKORG, VTWEG, SPART) via T-code VD02 > Sales Area Data tab. In
-        S/4HANA: use Fiori app F3893 and ensure the full sales area is
-        assigned.
-    record_fix_template: >-
-      Customer {KNA1.KUNNR}: sales area triple is incomplete. Complete all
-      three fields (VKORG, VTWEG, SPART) via VD02 / Fiori app F3893.
+    sap_impact: Customer cannot be used in VA01. Sales area validation fails. Pricing, shipping, and billing determination
+      all produce errors. The customer is commercially inactive.
+    fix_map: {__other__: 'Sales area is partially filled. In ECC: complete all three fields (VKORG, VTWEG, SPART)
+        via T-code VD02 > Sales Area Data tab. In S/4HANA: use Fiori app F3893 and ensure the full sales area is assigned.'}
+    record_fix_template: 'Customer {KNA1.KUNNR}: sales area triple is incomplete. Complete all three fields (VKORG,
+      VTWEG, SPART) via VD02 / Fiori app F3893.'
+    fail_when: '`KNVV.VKORG`.notna() & (`KNVV.VTWEG`.isna() | `KNVV.SPART`.isna())'
 
   - id: SDCM024
     field: KNA1.KUNNR
-    check_class: cross_field_check
-    fields: ["KNA1.KUNNR"]
-    condition: "~`KNA1.KUNNR`.duplicated(keep=False)"
+    check_class: uniqueness_check
+    fields: [KNA1.KUNNR]
     severity: critical
     dimension: uniqueness
-    message: "Duplicate SD customer numbers detected — each customer must be unique"
-    why_it_matters: >-
-      Duplicate customer numbers violate the primary key constraint. The
-      migration program will reject duplicates, and any that slip through
-      cause incorrect SD document assignment, double billing, and broken
-      customer reporting. This typically indicates a data extraction or
-      consolidation error.
+    message: Duplicate SD customer numbers detected — each customer must be unique
+    why_it_matters: Duplicate customer numbers violate the primary key constraint. The migration program will reject
+      duplicates, and any that slip through cause incorrect SD document assignment, double billing, and broken customer
+      reporting. This typically indicates a data extraction or consolidation error.
     rule_authority: sap_hard_constraint
-    sap_impact: >-
-      Migration fails on duplicate key insert. Post-migration, duplicate
-      customers cause double billing, incorrect delivery assignment, and
-      broken sales reporting.
-    fix_map:
-      __other__: >-
-        Duplicate SD customer number detected. Identify the canonical record
-        and merge or deactivate the duplicate. In ECC: review both records
-        via T-code VD03 and merge outstanding items. In S/4HANA: use Fiori
-        app F3893 and BP merge tools to consolidate.
-    record_fix_template: >-
-      Customer {KNA1.KUNNR}: duplicate detected. Review and merge via VD03 /
-      Fiori app F3893.
+    sap_impact: Migration fails on duplicate key insert. Post-migration, duplicate customers cause double billing,
+      incorrect delivery assignment, and broken sales reporting.
+    fix_map: {__other__: 'Duplicate SD customer number detected. Identify the canonical record and merge or deactivate
+        the duplicate. In ECC: review both records via T-code VD03 and merge outstanding items. In S/4HANA: use Fiori
+        app F3893 and BP merge tools to consolidate.'}
+    record_fix_template: 'Customer {KNA1.KUNNR}: duplicate detected. Review and merge via VD03 / Fiori app F3893.'
 
   - id: SDCM025
     field: KNVV.WAERS

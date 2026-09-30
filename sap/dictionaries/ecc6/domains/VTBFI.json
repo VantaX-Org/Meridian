@@ -1,0 +1,22 @@
+{
+ "domain": "VTBFI",
+ "type": "CHAR",
+ "length": 2,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Sales area of supplying plant (standard)"
+  },
+  {
+   "low": "01",
+   "high": null,
+   "text": "Search using supplying plant / customer (Table TVKWZ, KNVV)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

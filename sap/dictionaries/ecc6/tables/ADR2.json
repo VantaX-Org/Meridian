@@ -210,5 +210,26 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "ADDRNUMBER",
+   "foreign_table": "ADRC",
+   "foreign_field": "ADDRNUMBER"
+  },
+  {
+   "field": "CLIENT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "COUNTRY",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "PERSNUMBER",
+   "foreign_table": "ADRP",
+   "foreign_field": "PERSNUMBER"
+  }
+ ]
 }

@@ -462,5 +462,96 @@
    "check_table": "T8JPTS"
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "BFORMAT",
+   "foreign_table": "T8J0R",
+   "foreign_field": "BILLFORMAT"
+  },
+  {
+   "field": "BMETHOD",
+   "foreign_table": "T8J0C",
+   "foreign_field": "BMETHOD"
+  },
+  {
+   "field": "BUKRS",
+   "foreign_table": "T001",
+   "foreign_field": "BUKRS"
+  },
+  {
+   "field": "FUNDGROUP",
+   "foreign_table": "T8JM",
+   "foreign_field": "FUNDGROUP"
+  },
+  {
+   "field": "JOA",
+   "foreign_table": "T8JU",
+   "foreign_field": "JOA"
+  },
+  {
+   "field": "KOSTL",
+   "foreign_table": "CSKS",
+   "foreign_field": "KOSTL"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "NBFORMAT",
+   "foreign_table": "T8J3A",
+   "foreign_field": "NBFORM"
+  },
+  {
+   "field": "OPERATOR",
+   "foreign_table": "KNA1",
+   "foreign_field": "KUNNR"
+  },
+  {
+   "field": "OUTTAXCODE",
+   "foreign_table": "T007A",
+   "foreign_field": "MWSKZ"
+  },
+  {
+   "field": "PCOCOSTC",
+   "foreign_table": "CSKS",
+   "foreign_field": "KOSTL"
+  },
+  {
+   "field": "PCOORDNR",
+   "foreign_table": "AUFK",
+   "foreign_field": "AUFNR"
+  },
+  {
+   "field": "PCOPROJK",
+   "foreign_table": "PRPS",
+   "foreign_field": "PSPNR"
+  },
+  {
+   "field": "PSCHEM",
+   "foreign_table": "T8JPTS",
+   "foreign_field": "PSCHEM"
+  },
+  {
+   "field": "TAXCODE",
+   "foreign_table": "T007A",
+   "foreign_field": "MWSKZ"
+  },
+  {
+   "field": "TXJCD",
+   "foreign_table": "TTXJ",
+   "foreign_field": "TXJCD"
+  },
+  {
+   "field": "TXJCD2",
+   "foreign_table": "TTXJ",
+   "foreign_field": "TXJCD"
+  },
+  {
+   "field": "VCLASS",
+   "foreign_table": "T8JT",
+   "foreign_field": "VCLASS"
+  }
+ ]
 }

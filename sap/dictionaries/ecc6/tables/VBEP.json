@@ -738,5 +738,101 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "AUFNR",
+   "foreign_table": "AUFK",
+   "foreign_field": "AUFNR"
+  },
+  {
+   "field": "AULWE",
+   "foreign_table": "VALW",
+   "foreign_field": "AULWE"
+  },
+  {
+   "field": "BNFPO",
+   "foreign_table": "EBAN",
+   "foreign_field": "BNFPO"
+  },
+  {
+   "field": "BSART",
+   "foreign_table": "T161",
+   "foreign_field": "BSART"
+  },
+  {
+   "field": "BWART",
+   "foreign_table": "T156",
+   "foreign_field": "BWART"
+  },
+  {
+   "field": "ETART",
+   "foreign_table": "TVET",
+   "foreign_field": "ETART"
+  },
+  {
+   "field": "ETENE",
+   "foreign_table": "VBEP",
+   "foreign_field": "ETENR"
+  },
+  {
+   "field": "ETTYP",
+   "foreign_table": "TVEP",
+   "foreign_field": "ETTYP"
+  },
+  {
+   "field": "LIFSP",
+   "foreign_table": "TVLS",
+   "foreign_field": "LIFSP"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MEINS",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "PLNUM",
+   "foreign_table": "PLAF",
+   "foreign_field": "PLNUM"
+  },
+  {
+   "field": "POSNE",
+   "foreign_table": "VBUP",
+   "foreign_field": "POSNR"
+  },
+  {
+   "field": "POSNR",
+   "foreign_table": "VBUP",
+   "foreign_field": "POSNR"
+  },
+  {
+   "field": "ROMEI",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "SERNR",
+   "foreign_table": "SNUM",
+   "foreign_field": "SERNR"
+  },
+  {
+   "field": "VBELE",
+   "foreign_table": "VBUK",
+   "foreign_field": "VBELN"
+  },
+  {
+   "field": "VBELN",
+   "foreign_table": "VBUK",
+   "foreign_field": "VBELN"
+  },
+  {
+   "field": "VRKME",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  }
+ ]
 }

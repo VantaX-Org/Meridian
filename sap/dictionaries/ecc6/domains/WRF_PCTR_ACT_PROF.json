@@ -1,0 +1,11 @@
+{
+ "domain": "WRF_PCTR_ACT_PROF",
+ "type": "CHAR",
+ "length": 4,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": "WRFT_ACT_PROF",
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

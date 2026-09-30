@@ -1,0 +1,158 @@
+{
+ "table": "JCDS",
+ "description": "Change Documents for System/User Statuses (Table JEST)",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "OBJNR",
+   "key": true,
+   "data_element": "J_OBJNR",
+   "domain": "J_OBJNR",
+   "type": "CHAR",
+   "length": 22,
+   "decimals": 0,
+   "description": "Object number",
+   "check_table": "JEST"
+  },
+  {
+   "pos": 3,
+   "name": "STAT",
+   "key": true,
+   "data_element": "J_STATUS",
+   "domain": "J_STATUS",
+   "type": "CHAR",
+   "length": 5,
+   "decimals": 0,
+   "description": "Object status",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "CHGNR",
+   "key": true,
+   "data_element": "J_CHGNR",
+   "domain": "NUM3",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Change number",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "USNAM",
+   "key": false,
+   "data_element": "CDUSERNAME",
+   "domain": "CHAR12",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "User name of the person responsible in change document",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "UDATE",
+   "key": false,
+   "data_element": "CDDATUM",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Creation date of the change document",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "UTIME",
+   "key": false,
+   "data_element": "CDUZEIT",
+   "domain": "UZEIT",
+   "type": "TIMS",
+   "length": 6,
+   "decimals": 0,
+   "description": "Time changed",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "TCODE",
+   "key": false,
+   "data_element": "OLD_TCODE",
+   "domain": "OLD_TCODE",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Transaction code",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "CDTCODE",
+   "key": false,
+   "data_element": "CDTCODE",
+   "domain": "TCODE",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "Transaction in which a change was made",
+   "check_table": "TSTC"
+  },
+  {
+   "pos": 10,
+   "name": "INACT",
+   "key": false,
+   "data_element": "J_INACT",
+   "domain": "J_INACT",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Status Is Inactive",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "CHIND",
+   "key": false,
+   "data_element": "J_CHIND",
+   "domain": "J_CHIND",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Change Indicator",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "CDTCODE",
+   "foreign_table": "TSTC",
+   "foreign_field": "TCODE"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "OBJNR",
+   "foreign_table": "JEST",
+   "foreign_field": "OBJNR"
+  }
+ ]
+}

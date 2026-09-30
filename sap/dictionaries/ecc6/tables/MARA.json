@@ -2598,5 +2598,421 @@
    "check_table": "T6WFG"
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "/BEV1/LULDEGRP",
+   "foreign_table": "/BEV1/LUT906",
+   "foreign_field": "/BEV1/LULDEGRP"
+  },
+  {
+   "field": "/DSD/SL_TOLTYP",
+   "foreign_table": "/DSD/SL_TGTYP",
+   "foreign_field": "TOLTYP_ID"
+  },
+  {
+   "field": "/DSD/SV_CNT_GRP",
+   "foreign_table": "/DSD/SV_CNTGR",
+   "foreign_field": "COUNT_GROUP"
+  },
+  {
+   "field": "/DSD/VC_GROUP",
+   "foreign_table": "/DSD/VC_GRP",
+   "foreign_field": "GRP"
+  },
+  {
+   "field": "ADPROF",
+   "foreign_table": "TAPROF",
+   "foreign_field": "ADPROF"
+  },
+  {
+   "field": "ANP",
+   "foreign_table": "J_1BTANP",
+   "foreign_field": "J_1BANP"
+  },
+  {
+   "field": "BEHVO",
+   "foreign_table": "T144",
+   "foreign_field": "BEHVO"
+  },
+  {
+   "field": "BMATN",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "BRAND_ID",
+   "foreign_table": "WRF_BRANDS",
+   "foreign_field": "BRAND_ID"
+  },
+  {
+   "field": "BSTAT",
+   "foreign_table": "WRFMATBSTAT",
+   "foreign_field": "BSTAT"
+  },
+  {
+   "field": "BSTME",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "BWSCL",
+   "foreign_table": "TMBW1",
+   "foreign_field": "BWSCL"
+  },
+  {
+   "field": "BWVOR",
+   "foreign_table": "T6WP1",
+   "foreign_field": "BWVOR"
+  },
+  {
+   "field": "COMMODITY",
+   "foreign_table": "TBAC_PHYSCOMM",
+   "foreign_field": "COMMODITY"
+  },
+  {
+   "field": "COMPL",
+   "foreign_table": "TCSCP_COMP_LVL",
+   "foreign_field": "COMP_LEVEL"
+  },
+  {
+   "field": "CWQPROC",
+   "foreign_table": "TCWQPROC",
+   "foreign_field": "CWQPROC"
+  },
+  {
+   "field": "CWQTOLGR",
+   "foreign_table": "TCWQTOLGR",
+   "foreign_field": "CWQTOLGR"
+  },
+  {
+   "field": "DG_PACK_STATUS",
+   "foreign_table": "TDG101",
+   "foreign_field": "DG_PACK_STATUS"
+  },
+  {
+   "field": "EKWSL",
+   "foreign_table": "T405",
+   "foreign_field": "EKWSL"
+  },
+  {
+   "field": "ERGEI",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "ERVOE",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "ETIAG",
+   "foreign_table": "TWEA",
+   "foreign_field": "ARTGR"
+  },
+  {
+   "field": "ETIAR",
+   "foreign_table": "T6WP3",
+   "foreign_field": "ETIAR"
+  },
+  {
+   "field": "ETIFO",
+   "foreign_table": "T6WP4",
+   "foreign_field": "ETIFO"
+  },
+  {
+   "field": "EXTWG",
+   "foreign_table": "TWEW",
+   "foreign_field": "EXTWG"
+  },
+  {
+   "field": "FASHGRD",
+   "foreign_table": "T6WFG",
+   "foreign_field": "FASHGRD"
+  },
+  {
+   "field": "FIBER_CODE1",
+   "foreign_table": "WRF_FIBER_CODES",
+   "foreign_field": "FIBER_CODE"
+  },
+  {
+   "field": "FIBER_CODE2",
+   "foreign_table": "WRF_FIBER_CODES",
+   "foreign_field": "FIBER_CODE"
+  },
+  {
+   "field": "FIBER_CODE3",
+   "foreign_table": "WRF_FIBER_CODES",
+   "foreign_field": "FIBER_CODE"
+  },
+  {
+   "field": "FIBER_CODE4",
+   "foreign_table": "WRF_FIBER_CODES",
+   "foreign_field": "FIBER_CODE"
+  },
+  {
+   "field": "FIBER_CODE5",
+   "foreign_table": "WRF_FIBER_CODES",
+   "foreign_field": "FIBER_CODE"
+  },
+  {
+   "field": "GENNR",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "GEWEI",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "HERKL",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "HNDLCODE",
+   "foreign_table": "THNDLCD",
+   "foreign_field": "HNDLCODE"
+  },
+  {
+   "field": "HUTYP",
+   "foreign_table": "THUTYP",
+   "foreign_field": "HUTYP"
+  },
+  {
+   "field": "HUTYP_DFLT",
+   "foreign_table": "THUTYP",
+   "foreign_field": "HUTYP"
+  },
+  {
+   "field": "INHME",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "KOSCH",
+   "foreign_table": "T190S",
+   "foreign_field": "KOSCH"
+  },
+  {
+   "field": "KUNNR",
+   "foreign_table": "V_KNA1WETT",
+   "foreign_field": "KUNNR"
+  },
+  {
+   "field": "LABOR",
+   "foreign_table": "T024L",
+   "foreign_field": "LABOR"
+  },
+  {
+   "field": "LOGUNIT",
+   "foreign_table": "MARM",
+   "foreign_field": "MEINH"
+  },
+  {
+   "field": "MAGRV",
+   "foreign_table": "TVEGR",
+   "foreign_field": "MAGRV"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MATKL",
+   "foreign_table": "T023",
+   "foreign_field": "MATKL"
+  },
+  {
+   "field": "MAXDIM_UOM",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "MBRSH",
+   "foreign_table": "T137",
+   "foreign_field": "MBRSH"
+  },
+  {
+   "field": "MEABM",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "MEDIUM",
+   "foreign_table": "T372M",
+   "foreign_field": "MEDIU"
+  },
+  {
+   "field": "MEINS",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "MFRGR",
+   "foreign_table": "TMFG",
+   "foreign_field": "MFRGR"
+  },
+  {
+   "field": "MFRNR",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "MPROF",
+   "foreign_table": "TMPPF",
+   "foreign_field": "MPROF"
+  },
+  {
+   "field": "MSTAE",
+   "foreign_table": "T141",
+   "foreign_field": "MMSTA"
+  },
+  {
+   "field": "MSTAV",
+   "foreign_table": "TVMS",
+   "foreign_field": "VMSTA"
+  },
+  {
+   "field": "MTART",
+   "foreign_table": "T134",
+   "foreign_field": "MTART"
+  },
+  {
+   "field": "MTPOS_MARA",
+   "foreign_table": "TPTM",
+   "foreign_field": "MTPOS"
+  },
+  {
+   "field": "NUMTP",
+   "foreign_table": "TNTP",
+   "foreign_field": "NUMTP"
+  },
+  {
+   "field": "PACKCODE",
+   "foreign_table": "CCUNC121",
+   "foreign_field": "PACKCODE"
+  },
+  {
+   "field": "PLGTP",
+   "foreign_table": "TWPT",
+   "foreign_field": "PLGTP"
+  },
+  {
+   "field": "PMATA",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "PRDHA",
+   "foreign_table": "T179",
+   "foreign_field": "PRODH"
+  },
+  {
+   "field": "PROFL",
+   "foreign_table": "TDG41",
+   "foreign_field": "PROFL"
+  },
+  {
+   "field": "PS_SMARTFORM",
+   "foreign_table": "STXFADM",
+   "foreign_field": "FORMNAME"
+  },
+  {
+   "field": "QGRP",
+   "foreign_table": "TQGRP",
+   "foreign_field": "QGRP"
+  },
+  {
+   "field": "QQTIMEUOM",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "RAUBE",
+   "foreign_table": "T142",
+   "foreign_field": "RAUBE"
+  },
+  {
+   "field": "RBNRM",
+   "foreign_table": "T352B",
+   "foreign_field": "RBNR"
+  },
+  {
+   "field": "RMATP",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "SAISO",
+   "foreign_table": "T6WSP",
+   "foreign_field": "SAISO"
+  },
+  {
+   "field": "SAITY",
+   "foreign_table": "T6WSA",
+   "foreign_field": "SAITY"
+  },
+  {
+   "field": "SATNR",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "SERIAL",
+   "foreign_table": "TSERIAL",
+   "foreign_field": "SERIAL"
+  },
+  {
+   "field": "SPART",
+   "foreign_table": "TSPA",
+   "foreign_field": "SPART"
+  },
+  {
+   "field": "STOFF",
+   "foreign_table": "MGEF",
+   "foreign_field": "STOFF"
+  },
+  {
+   "field": "TAKLV",
+   "foreign_table": "TSKM",
+   "foreign_field": "TAXKM"
+  },
+  {
+   "field": "TEMPB",
+   "foreign_table": "T143",
+   "foreign_field": "TEMPB"
+  },
+  {
+   "field": "TRAGR",
+   "foreign_table": "TTGR",
+   "foreign_field": "TRAGR"
+  },
+  {
+   "field": "VHART",
+   "foreign_table": "TVTY",
+   "foreign_field": "TRATY"
+  },
+  {
+   "field": "VOLEH",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "WHMATGR",
+   "foreign_table": "TWHMATGR",
+   "foreign_field": "WHMATGR"
+  },
+  {
+   "field": "WHSTC",
+   "foreign_table": "TWHSTC",
+   "foreign_field": "WHSTC"
+  },
+  {
+   "field": "WRKST",
+   "foreign_table": "TWSPR",
+   "foreign_field": "WRKST"
+  }
+ ]
 }

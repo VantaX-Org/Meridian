@@ -1,0 +1,64 @@
+{
+ "table": "GRACSODRISKT",
+ "description": "SOD Risk Description",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "LANG",
+   "key": true,
+   "data_element": "LANGU",
+   "domain": "SPRAS",
+   "type": "LANG",
+   "length": 1,
+   "decimals": 0,
+   "description": "Language Key",
+   "check_table": "*"
+  },
+  {
+   "pos": 3,
+   "name": "RISKID",
+   "key": true,
+   "data_element": "GRAC_SODRISK_ID",
+   "domain": "GRAC_SODRISK_ID",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Access Risk ID",
+   "check_table": "GRACSODRISK"
+  },
+  {
+   "pos": 4,
+   "name": "DESCN",
+   "key": false,
+   "data_element": "GRAC_DESCN",
+   "domain": "GRAC_DESCN",
+   "type": "CHAR",
+   "length": 132,
+   "decimals": 0,
+   "description": "Description",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "RISKID",
+   "foreign_table": "GRACSODRISK",
+   "foreign_field": "RISKID"
+  }
+ ]
+}

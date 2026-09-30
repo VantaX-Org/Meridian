@@ -75,7 +75,7 @@ rules:
       (ECC) or Fiori app F3506 (S/4HANA).
 
   - id: BATCH004
-    field: MCH1.WERKS
+    field: MCHA.WERKS
     check_class: null_check
     severity: critical
     dimension: completeness
@@ -119,7 +119,7 @@ rules:
       the data source.
 
   - id: BATCH006
-    field: MCH7.VFDAT
+    field: MCH1.VFDAT
     check_class: null_check
     severity: critical
     dimension: completeness
@@ -141,7 +141,7 @@ rules:
       expiry date via MSC2N (ECC) or Fiori app F3506 (S/4HANA).
 
   - id: BATCH007
-    field: MCH7.HSDAT
+    field: MCH1.HSDAT
     check_class: null_check
     severity: high
     dimension: completeness
@@ -164,32 +164,26 @@ rules:
       via MSC2N (ECC) or Fiori app F3506 (S/4HANA).
 
   - id: BATCH008
-    field: MCH7.HSDAT
-    fields: ["MCH7.HSDAT", "MCH7.VFDAT"]
+    field: MCH1.HSDAT
     check_class: cross_field_check
-    condition: "`MCH7.HSDAT` > `MCH7.VFDAT`"
     severity: critical
     dimension: consistency
-    message: "Manufacturing date must be before expiry date — inverted dates indicate data error"
-    why_it_matters: >-
-      A manufacturing date (HSDAT) after the expiry date (VFDAT) is logically impossible
-      and indicates a data entry or migration error. This corrupts shelf life calculations,
-      causes FEFO to sort batches incorrectly, and may result in expired stock being picked
-      or valid stock being rejected.
+    message: Manufacturing date must be before expiry date — inverted dates indicate data error
+    why_it_matters: A manufacturing date (HSDAT) after the expiry date (VFDAT) is logically impossible and indicates
+      a data entry or migration error. This corrupts shelf life calculations, causes FEFO to sort batches incorrectly,
+      and may result in expired stock being picked or valid stock being rejected.
     rule_authority: sap_hard_constraint
-    sap_impact: >-
-      Shelf life calculation produces negative values. FEFO sorting is inverted for this
-      batch. Expired stock may be picked; valid stock may be blocked.
-    fix_map:
-      __blank__: >-
-        In ECC: correct the dates via MSC2N > Dates tab. Verify against the batch
-        certificate or production order. In S/4HANA: use Fiori app F3506.
-    record_fix_template: >-
-      Batch {MCH1.CHARG}: HSDAT ({actual_value}) is after VFDAT. Correct the dates
-      via MSC2N (ECC) or Fiori app F3506 (S/4HANA).
+    sap_impact: Shelf life calculation produces negative values. FEFO sorting is inverted for this batch. Expired
+      stock may be picked; valid stock may be blocked.
+    fix_map: {__blank__: 'In ECC: correct the dates via MSC2N > Dates tab. Verify against the batch certificate or
+        production order. In S/4HANA: use Fiori app F3506.'}
+    record_fix_template: 'Batch {MCH1.CHARG}: HSDAT ({actual_value}) is after VFDAT. Correct the dates via MSC2N (ECC)
+      or Fiori app F3506 (S/4HANA).'
+    fail_when: '`MCH1.HSDAT` > `MCH1.VFDAT`'
+    require_populated: true
 
   - id: BATCH009
-    field: MCH7.ZUESSION
+    field: MCH1.ZUSTD
     check_class: domain_value_check
     severity: high
     dimension: accuracy
@@ -199,7 +193,7 @@ rules:
       "": "Unrestricted — batch is available for all processes"
       X: "Restricted — batch is blocked from consumption"
     why_it_matters: >-
-      The batch restriction indicator (ZUESSION) controls whether the batch can be consumed
+      The batch restriction indicator (ZUAWA) controls whether the batch can be consumed
       in goods movements, production orders, and deliveries. An invalid value means the
       system cannot determine the batch's availability status, potentially allowing
       restricted batches to be consumed or blocking unrestricted batches.
@@ -213,11 +207,11 @@ rules:
         (unrestricted), X (restricted). In ECC: correct via MSC2N. In S/4HANA: use
         Fiori app F3506.
     record_fix_template: >-
-      Batch {MCH1.CHARG}: ZUESSION is '{actual_value}'. Set to blank (unrestricted)
+      Batch {MCH1.CHARG}: ZUAWA is '{actual_value}'. Set to blank (unrestricted)
       or X (restricted) via MSC2N (ECC) or Fiori app F3506 (S/4HANA).
 
   - id: BATCH010
-    field: MCH7.CLABS
+    field: MCHB.CLABS
     check_class: null_check
     severity: medium
     dimension: completeness
@@ -241,7 +235,7 @@ rules:
       Fiori app F0839 (S/4HANA) and correct with inventory adjustment if needed.
 
   - id: BATCH011
-    field: MCH7.CINSM
+    field: MCHB.CINSM
     check_class: null_check
     severity: medium
     dimension: completeness
@@ -264,7 +258,7 @@ rules:
       (ECC) or Fiori app F0839 (S/4HANA).
 
   - id: BATCH012
-    field: MCH7.CSPEM
+    field: MCHB.CSPEM
     check_class: null_check
     severity: medium
     dimension: completeness
@@ -311,30 +305,24 @@ rules:
       MM02 (ECC) or Fiori app F0842 (S/4HANA).
 
   - id: BATCH014
-    field: MCH1.VEESSION
+    field: MCH1.LAEDA
     check_class: null_check
-    severity: medium
+    severity: low
     dimension: completeness
-    message: "Batch version tracking supports regulatory compliance and change history"
-    why_it_matters: >-
-      The batch version field (VEESSION) tracks changes to the batch master record over
-      time. For regulated industries (pharma, food, chemicals), version tracking is
-      required to demonstrate that batch data has not been tampered with and to maintain
-      a complete change history for audit purposes.
+    message: Batch last-change date missing — change history cannot be traced
+    why_it_matters: The batch version field (LAEDA) tracks changes to the batch master record over time. For regulated
+      industries (pharma, food, chemicals), version tracking is required to demonstrate that batch data has not been
+      tampered with and to maintain a complete change history for audit purposes.
     rule_authority: best_practice
-    sap_impact: >-
-      Batch change history incomplete. Regulatory audit may flag missing version control.
-      Compliance gap for GxP-regulated industries.
-    fix_map:
-      __blank__: >-
-        In ECC: version tracking may be configured via batch management customising
-        (OMCE). In S/4HANA: verify the batch governance configuration in MDG.
-    record_fix_template: >-
-      Batch {MCH1.CHARG}: VEESSION is {actual_value}. Configure version tracking
-      via OMCE (ECC) or MDG batch governance (S/4HANA).
+    sap_impact: Batch change history incomplete. Regulatory audit may flag missing version control. Compliance gap
+      for GxP-regulated industries.
+    fix_map: {__blank__: 'In ECC: version tracking may be configured via batch management customising (OMCE). In S/4HANA:
+        verify the batch governance configuration in MDG.'}
+    record_fix_template: 'Batch {MCH1.CHARG}: LAEDA is {actual_value}. Configure version tracking via OMCE (ECC) or
+      MDG batch governance (S/4HANA).'
 
   - id: BATCH015
-    field: MCH7.VFDAT
+    field: MCH1.VFDAT
     check_class: freshness_check
     max_age_hours: 0
     severity: critical
@@ -359,14 +347,15 @@ rules:
 
   - id: BATCH016
     field: MCH1.CHARG
-    check_class: cross_field_check
-    fields: ['MCH1.CHARG']
-    condition: "~`MCH1.CHARG`.duplicated(keep=False)"
+    check_class: uniqueness_check
+    fields: [MCH1.MATNR, MCH1.CHARG]
     severity: critical
     dimension: uniqueness
     message: Duplicate batch numbers detected — each batch must be unique per material
-    why_it_matters: Duplicate batch numbers cause incorrect traceability, wrong shelf life determination, and FEFO sorting errors. Each batch must be uniquely identifiable.
+    why_it_matters: Duplicate batch numbers cause incorrect traceability, wrong shelf life determination, and FEFO
+      sorting errors. Each batch must be uniquely identifiable.
     rule_authority: sap_hard_constraint
-    sap_impact: Batch traceability is broken. FEFO picks wrong batch. Shelf life check fails. Recall cannot isolate affected batches.
-    fix_map:
-      __blank__: "Investigate duplicate batch numbers. If caused by extract join (MCH1+MCH7), de-duplicate at batch level. If genuine, escalate — SAP should prevent this via batch number assignment."
+    sap_impact: Batch traceability is broken. FEFO picks wrong batch. Shelf life check fails. Recall cannot isolate
+      affected batches.
+    fix_map: {__blank__: 'Investigate duplicate batch numbers. If caused by extract join (MCH1+MCH7), de-duplicate
+        at batch level. If genuine, escalate — SAP should prevent this via batch number assignment.'}

@@ -174,7 +174,7 @@ rules:
       via FD02 / Fiori app F3893.
 
   - id: AR008
-    field: KNA1.SMTP_ADDR
+    field: ADR6.SMTP_ADDR
     check_class: null_check
     severity: medium
     dimension: completeness
@@ -462,7 +462,7 @@ rules:
       reconciliation account via FD02 / Fiori app F3893.
 
   - id: AR019
-    field: KNB1.KLIMK
+    field: KNKK.KLIMK
     check_class: null_check
     severity: high
     dimension: completeness
@@ -489,7 +489,7 @@ rules:
       Assign a credit limit via FD32 / Fiori app F2712.
 
   - id: AR020
-    field: KNB1.MAHNS
+    field: KNB5.MAHNA
     check_class: null_check
     severity: high
     dimension: completeness
@@ -589,73 +589,57 @@ rules:
   - id: AR024
     field: KNA1.KUNNR
     check_class: cross_field_check
-    fields: ["KNB1.KLIMK", "KNB1.MAHNS"]
-    condition: "(`KNB1.KLIMK`.notna() & `KNB1.KLIMK` != '' & `KNB1.KLIMK` != 0) & (`KNB1.MAHNS`.isna() | `KNB1.MAHNS` == '')"
     severity: high
     dimension: consistency
-    message: "Customer with credit limit must have a dunning procedure assigned"
-    why_it_matters: >-
-      When a customer has a credit limit (KLIMK) set, it indicates that
-      credit risk is being managed. However, without a dunning procedure
-      (MAHNS), overdue invoices for this customer are never systematically
-      chased, undermining the purpose of the credit limit. Both fields
-      should be maintained together for effective credit management.
+    message: Customer with credit limit must have a dunning procedure assigned
+    why_it_matters: When a customer has a credit limit (KLIMK) set, it indicates that credit risk is being managed.
+      However, without a dunning procedure (MAHNS), overdue invoices for this customer are never systematically chased,
+      undermining the purpose of the credit limit. Both fields should be maintained together for effective credit
+      management.
     rule_authority: best_practice
-    sap_impact: >-
-      Credit limit is set but overdue invoices are not dunned. Credit
-      exposure may exceed the limit without any automated follow-up.
-      DSO increases for this customer.
-    fix_map:
-      __other__: >-
-        Customer has a credit limit but no dunning procedure. In ECC: assign
-        a dunning procedure via T-code FD02 > Company Code Data >
-        Correspondence tab. In S/4HANA: use Fiori app F3893.
-    record_fix_template: >-
-      Customer {KNA1.KUNNR}: credit limit is set but MAHNS is missing.
-      Assign a dunning procedure via FD02 / Fiori app F3893.
+    sap_impact: Credit limit is set but overdue invoices are not dunned. Credit exposure may exceed the limit without
+      any automated follow-up. DSO increases for this customer.
+    fix_map: {__other__: 'Customer has a credit limit but no dunning procedure. In ECC: assign a dunning procedure
+        via T-code FD02 > Company Code Data > Correspondence tab. In S/4HANA: use Fiori app F3893.'}
+    record_fix_template: 'Customer {KNA1.KUNNR}: credit limit is set but MAHNS is missing. Assign a dunning procedure
+      via FD02 / Fiori app F3893.'
+    fail_when: (`KNKK.KLIMK` > 0) & `KNB5.MAHNA`.isna()
 
   - id: AR025
     field: KNA1.KUNNR
-    check_class: cross_field_check
-    fields: ["KNA1.KUNNR"]
-    condition: "~`KNA1.KUNNR`.duplicated(keep=False)"
+    check_class: uniqueness_check
+    fields: [KNA1.KUNNR]
     severity: critical
     dimension: uniqueness
-    message: "Duplicate customer numbers detected — each customer must be unique"
-    why_it_matters: >-
-      Duplicate customer numbers violate the primary key constraint. The
-      migration program will reject duplicates, and any that slip through
-      cause incorrect AR postings, double billing, and broken customer
-      reporting. This typically indicates a data extraction or consolidation
-      error.
+    message: Duplicate customer numbers detected — each customer must be unique
+    why_it_matters: Duplicate customer numbers violate the primary key constraint. The migration program will reject
+      duplicates, and any that slip through cause incorrect AR postings, double billing, and broken customer reporting.
+      This typically indicates a data extraction or consolidation error.
     rule_authority: sap_hard_constraint
-    sap_impact: >-
-      Migration fails on duplicate key insert. Post-migration, duplicate
-      customers cause double billing, incorrect AR aging, and broken
-      customer reporting.
-    fix_map:
-      __other__: >-
-        Duplicate customer number detected. Identify the canonical record
-        and merge or deactivate the duplicate. In ECC: review both records
-        via T-code FD03 and merge outstanding items. In S/4HANA: use Fiori
-        app F3893 and BP merge tools to consolidate.
-    record_fix_template: >-
-      Customer {KNA1.KUNNR}: duplicate detected. Review and merge via FD03 /
-      Fiori app F3893.
+    sap_impact: Migration fails on duplicate key insert. Post-migration, duplicate customers cause double billing,
+      incorrect AR aging, and broken customer reporting.
+    fix_map: {__other__: 'Duplicate customer number detected. Identify the canonical record and merge or deactivate
+        the duplicate. In ECC: review both records via T-code FD03 and merge outstanding items. In S/4HANA: use Fiori
+        app F3893 and BP merge tools to consolidate.'}
+    record_fix_template: 'Customer {KNA1.KUNNR}: duplicate detected. Review and merge via FD03 / Fiori app F3893.'
 
   - id: AR026
-    field: KNA1.ERDAT_CUSTOMER
+    field: KNA1.ERDAT
     check_class: freshness_check
     max_age_hours: 17520
     severity: low
     dimension: timeliness
-    message: Customer master not updated in 2+ years — review if credit limits, payment terms, and addresses are still current
+    message: Customer created 2+ years ago — confirm credit limit, payment terms and address are still current
     rule_authority: best_practice
-    why_it_matters: "Customer master records unchanged for 2+ years may hold outdated credit limits, payment terms, or addresses, weakening credit control and dunning accuracy."
-    sap_impact: "Credit exposure is assessed on stale limits; invoices and dunning letters reach wrong addresses; collection effectiveness drops."
-    fix_map:
-      __blank__: "Review the customer in FD02 / XD02 (ECC) or Fiori Manage Business Partner (S/4HANA): reassess credit limit, payment terms, and address, then save to refresh the change date."
-    record_fix_template: "Customer {field} last changed {age_days} days ago. Reassess credit limit, terms, and address in FD02/XD02 or BP, then save."
+    why_it_matters: KNA1 stores the creation date (ERDAT) but no last-change date. Long-standing customers are the
+      most likely to carry outdated credit and address data; confirm against change documents (CDHDR object class
+      DEBI).
+    sap_impact: Credit exposure is assessed on stale limits; invoices and dunning letters reach wrong addresses; collection
+      effectiveness drops.
+    fix_map: {__blank__: 'Review the customer in FD02 / XD02 (ECC) or Fiori Manage Business Partner (S/4HANA): reassess
+        credit limit, payment terms, and address, then save to refresh the change date.'}
+    record_fix_template: Customer {field} last changed {age_days} days ago. Reassess credit limit, terms, and address
+      in FD02/XD02 or BP, then save.
 
   - id: AR027
     field: KNA1.STCEG

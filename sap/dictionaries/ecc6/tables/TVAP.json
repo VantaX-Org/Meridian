@@ -810,5 +810,111 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "FAKSP",
+   "foreign_table": "TVFS",
+   "foreign_field": "FAKSP"
+  },
+  {
+   "field": "FEHGR",
+   "foreign_table": "TVUV",
+   "foreign_field": "FEHGR"
+  },
+  {
+   "field": "FELDP",
+   "foreign_table": "TVHF",
+   "foreign_field": "FAWGR"
+  },
+  {
+   "field": "FFPRF",
+   "foreign_table": "AD01C_PROF",
+   "foreign_field": "PROFNR"
+  },
+  {
+   "field": "FPART",
+   "foreign_table": "TFPLA",
+   "foreign_field": "FPART"
+  },
+  {
+   "field": "KALSM",
+   "foreign_table": "T683",
+   "foreign_field": "KALSM"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "PARGR",
+   "foreign_table": "TVPG",
+   "foreign_field": "PARGR"
+  },
+  {
+   "field": "POSGR",
+   "foreign_table": "TVHB",
+   "foreign_field": "BIFGR"
+  },
+  {
+   "field": "PSGRP",
+   "foreign_table": "TC04",
+   "foreign_field": "CAPID"
+  },
+  {
+   "field": "PSTYV",
+   "foreign_table": "TVPT",
+   "foreign_field": "PSTYV"
+  },
+  {
+   "field": "SCHEME_RMA",
+   "foreign_table": "TVRMAS",
+   "foreign_field": "SCHEME"
+  },
+  {
+   "field": "SCHEME_VF",
+   "foreign_table": "TVVFS",
+   "foreign_field": "SCHEME"
+  },
+  {
+   "field": "SEGAL",
+   "foreign_table": "T609A",
+   "foreign_field": "SEGAL"
+  },
+  {
+   "field": "SOBKZ",
+   "foreign_table": "T148",
+   "foreign_field": "SOBKZ"
+  },
+  {
+   "field": "STGAP",
+   "foreign_table": "TVSF",
+   "foreign_field": "STGVB"
+  },
+  {
+   "field": "STRAT",
+   "foreign_table": "T476",
+   "foreign_field": "STRAT"
+  },
+  {
+   "field": "STSMA",
+   "foreign_table": "TJ20",
+   "foreign_field": "STSMA"
+  },
+  {
+   "field": "TXTGR",
+   "foreign_table": "TTXG",
+   "foreign_field": "TXTGR"
+  },
+  {
+   "field": "UVEIB",
+   "foreign_table": "T609B",
+   "foreign_field": "UVEIB"
+  },
+  {
+   "field": "WKMAT",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  }
+ ]
 }

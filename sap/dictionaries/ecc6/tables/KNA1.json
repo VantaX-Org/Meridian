@@ -2190,5 +2190,346 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "/VSO/R_DPOINT",
+   "foreign_table": "/VSO/R_DPOINT",
+   "foreign_field": "/VSO/R_DPOINT"
+  },
+  {
+   "field": "/VSO/R_MATPAL",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "/VSO/R_PAL_UL",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "ABRVW",
+   "foreign_table": "TVLV",
+   "foreign_field": "ABRVW"
+  },
+  {
+   "field": "ALC",
+   "foreign_table": "FMFGT_ALC",
+   "foreign_field": "ALC"
+  },
+  {
+   "field": "AUFSD",
+   "foreign_table": "TVAST",
+   "foreign_field": "AUFSP"
+  },
+  {
+   "field": "BRAN1",
+   "foreign_table": "TBRC",
+   "foreign_field": "BRACO"
+  },
+  {
+   "field": "BRAN2",
+   "foreign_table": "TBRC",
+   "foreign_field": "BRACO"
+  },
+  {
+   "field": "BRAN3",
+   "foreign_table": "TBRC",
+   "foreign_field": "BRACO"
+  },
+  {
+   "field": "BRAN4",
+   "foreign_table": "TBRC",
+   "foreign_field": "BRACO"
+  },
+  {
+   "field": "BRAN5",
+   "foreign_table": "TBRC",
+   "foreign_field": "BRACO"
+  },
+  {
+   "field": "BRSCH",
+   "foreign_table": "T016",
+   "foreign_field": "BRSCH"
+  },
+  {
+   "field": "CITYC",
+   "foreign_table": "T005G",
+   "foreign_field": "CITYC"
+  },
+  {
+   "field": "CNAE",
+   "foreign_table": "J_1BTCNAE",
+   "foreign_field": "J_1BCNAE"
+  },
+  {
+   "field": "COMSIZE",
+   "foreign_table": "J_1BTCOMSIZE",
+   "foreign_field": "J_1BCOMSIZE"
+  },
+  {
+   "field": "COUNC",
+   "foreign_table": "T005E",
+   "foreign_field": "COUNC"
+  },
+  {
+   "field": "DECREGPC",
+   "foreign_table": "J_1BTDECREGPC",
+   "foreign_field": "J_1BDECREGPC"
+  },
+  {
+   "field": "EKONT",
+   "foreign_table": "VBUK",
+   "foreign_field": "VBELN"
+  },
+  {
+   "field": "ETIKG",
+   "foreign_table": "TWEK",
+   "foreign_field": "KUNGR"
+  },
+  {
+   "field": "FAKSD",
+   "foreign_table": "TVFS",
+   "foreign_field": "FAKSP"
+  },
+  {
+   "field": "FISKN",
+   "foreign_table": "KNA1",
+   "foreign_field": "KUNNR"
+  },
+  {
+   "field": "FITYP",
+   "foreign_table": "J_1AFITP",
+   "foreign_field": "J_1AFITP"
+  },
+  {
+   "field": "GFORM",
+   "foreign_table": "TVGF",
+   "foreign_field": "GFORM"
+  },
+  {
+   "field": "ICMSTAXPAY",
+   "foreign_table": "J_1BTICMSTAXPAY",
+   "foreign_field": "J_1BICMSTAXPAY"
+  },
+  {
+   "field": "INDTYP",
+   "foreign_table": "J_1BTINDTYP",
+   "foreign_field": "J_1BINDTYP"
+  },
+  {
+   "field": "J_1KFTBUS",
+   "foreign_table": "BUSTYPE",
+   "foreign_field": "GESTYP"
+  },
+  {
+   "field": "J_1KFTIND",
+   "foreign_table": "INDUSTYPE",
+   "foreign_field": "INDTYPE"
+  },
+  {
+   "field": "KATR1",
+   "foreign_table": "TVK1",
+   "foreign_field": "KATR1"
+  },
+  {
+   "field": "KATR10",
+   "foreign_table": "TVK0",
+   "foreign_field": "KATR10"
+  },
+  {
+   "field": "KATR2",
+   "foreign_table": "TVK2",
+   "foreign_field": "KATR2"
+  },
+  {
+   "field": "KATR3",
+   "foreign_table": "TVK3",
+   "foreign_field": "KATR3"
+  },
+  {
+   "field": "KATR4",
+   "foreign_table": "TVK4",
+   "foreign_field": "KATR4"
+  },
+  {
+   "field": "KATR5",
+   "foreign_table": "TVK5",
+   "foreign_field": "KATR5"
+  },
+  {
+   "field": "KATR6",
+   "foreign_table": "TVK6",
+   "foreign_field": "KATR6"
+  },
+  {
+   "field": "KATR7",
+   "foreign_table": "TVK7",
+   "foreign_field": "KATR7"
+  },
+  {
+   "field": "KATR8",
+   "foreign_table": "TVK8",
+   "foreign_field": "KATR8"
+  },
+  {
+   "field": "KATR9",
+   "foreign_table": "TVK9",
+   "foreign_field": "KATR9"
+  },
+  {
+   "field": "KDKG1",
+   "foreign_table": "TVKGG",
+   "foreign_field": "KDKGR"
+  },
+  {
+   "field": "KDKG2",
+   "foreign_table": "TVKGG",
+   "foreign_field": "KDKGR"
+  },
+  {
+   "field": "KDKG3",
+   "foreign_table": "TVKGG",
+   "foreign_field": "KDKGR"
+  },
+  {
+   "field": "KDKG4",
+   "foreign_table": "TVKGG",
+   "foreign_field": "KDKGR"
+  },
+  {
+   "field": "KDKG5",
+   "foreign_table": "TVKGG",
+   "foreign_field": "KDKGR"
+  },
+  {
+   "field": "KNAZK",
+   "foreign_table": "TFACD",
+   "foreign_field": "IDENT"
+  },
+  {
+   "field": "KNRZA",
+   "foreign_table": "KNA1",
+   "foreign_field": "KUNNR"
+  },
+  {
+   "field": "KTOCD",
+   "foreign_table": "T077D",
+   "foreign_field": "KTOKD"
+  },
+  {
+   "field": "KTOKD",
+   "foreign_table": "T077D",
+   "foreign_field": "KTOKD"
+  },
+  {
+   "field": "KUKLA",
+   "foreign_table": "TKUKL",
+   "foreign_field": "KUKLA"
+  },
+  {
+   "field": "LAND1",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "LEGALNAT",
+   "foreign_table": "J_1BTLEGALNAT",
+   "foreign_field": "J_1BLEGALNAT"
+  },
+  {
+   "field": "LIFNR",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "LIFSD",
+   "foreign_table": "TVLS",
+   "foreign_field": "LIFSP"
+  },
+  {
+   "field": "LZONE",
+   "foreign_table": "TZONE",
+   "foreign_field": "ZONE1"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "NIELS",
+   "foreign_table": "TNLS",
+   "foreign_field": "NIELS"
+  },
+  {
+   "field": "PERIV",
+   "foreign_table": "T009",
+   "foreign_field": "PERIV"
+  },
+  {
+   "field": "PMT_OFFICE",
+   "foreign_table": "FMFGT_PO",
+   "foreign_field": "PMT_OFFICE"
+  },
+  {
+   "field": "PSOFG",
+   "foreign_table": "PSO19",
+   "foreign_field": "PSOFG"
+  },
+  {
+   "field": "REGIO",
+   "foreign_table": "T005S",
+   "foreign_field": "BLAND"
+  },
+  {
+   "field": "SPRAS",
+   "foreign_table": "T002",
+   "foreign_field": "SPRAS"
+  },
+  {
+   "field": "STCDT",
+   "foreign_table": "J_1ATODC",
+   "foreign_field": "J_1ATODC"
+  },
+  {
+   "field": "TDT",
+   "foreign_table": "J_1BTTDT",
+   "foreign_field": "J_1BTDT"
+  },
+  {
+   "field": "TXJCD",
+   "foreign_table": "TTXJ",
+   "foreign_field": "TXJCD"
+  },
+  {
+   "field": "TXLW1",
+   "foreign_table": "J_1BATL1",
+   "foreign_field": "TAXLAW"
+  },
+  {
+   "field": "TXLW2",
+   "foreign_table": "J_1BATL2",
+   "foreign_field": "TAXLAW"
+  },
+  {
+   "field": "UWAER",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  },
+  {
+   "field": "VBUND",
+   "foreign_table": "T880",
+   "foreign_field": "RCOMP"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  },
+  {
+   "field": "XSUBT",
+   "foreign_table": "J_1BTXSTG",
+   "foreign_field": "STGRP"
+  }
+ ]
 }

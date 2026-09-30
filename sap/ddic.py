@@ -62,15 +62,22 @@ class Field:
     domain: Optional[str] = None
     description: str = ""
     check_table: Optional[str] = None
+    check_field: Optional[str] = None    # column of check_table holding the allowed values
     conversion_exit: Optional[str] = None
     lowercase: bool = False
     fixed_values: tuple[FixedValue, ...] = ()
     source: Optional[str] = None     # canonical schemas: "Entity.property"
+    picklist: Optional[str] = None   # SuccessFactors picklist id (tenant-configurable values)
     provenance: str = "sap_standard"
 
     @property
     def qualified(self) -> str:
         return f"{self.table}.{self.name}"
+
+    @property
+    def check_ref(self) -> Optional[str]:
+        """``CHECKTABLE.FIELD`` whose values are the allowed values, if known."""
+        return f"{self.check_table}.{self.check_field}" if self.check_table and self.check_field else None
 
     def allowed_values(self) -> Optional[set[str]]:
         """Domain fixed values (single values only), or None if the domain is open."""
@@ -125,11 +132,25 @@ def _domain(release_dir: str, name: str) -> Optional[dict]:
     return json.loads(p.read_text()) if p.exists() else None
 
 
+@lru_cache(maxsize=1)
+def _check_overrides() -> dict[str, dict]:
+    p = _ROOT / "check_tables.yaml"
+    return yaml.safe_load(p.read_text()) or {} if p.exists() else {}
+
+
 def _abap_table(path: Path, release_dir: str) -> Table:
     raw = json.loads(path.read_text())
     fields: dict[str, Field] = {}
+    fk = {(k["field"], k["foreign_table"]): k["foreign_field"] for k in raw.get("foreign_keys", [])}
     for f in raw["fields"]:
         dom = _domain(release_dir, f["domain"]) if f.get("domain") else None
+        check_table = f.get("check_table") or (dom or {}).get("value_table")
+        check_field = fk.get((f["name"], check_table)) if check_table else None
+        override = _check_overrides().get(f"{raw['table']}.{f['name']}")
+        if override:
+            check_table, check_field = override["table"], override["field"]
+        elif check_table == "*":
+            check_table = None
         fields[f["name"]] = Field(
             table=raw["table"],
             name=f["name"],
@@ -140,7 +161,8 @@ def _abap_table(path: Path, release_dir: str) -> Table:
             data_element=f.get("data_element"),
             domain=f.get("domain"),
             description=f.get("description", ""),
-            check_table=f.get("check_table") or (dom or {}).get("value_table"),
+            check_table=check_table,
+            check_field=check_field,
             conversion_exit=(dom or {}).get("conversion_exit"),
             lowercase=bool((dom or {}).get("lowercase")),
             fixed_values=tuple(
@@ -174,6 +196,8 @@ def _canonical_tables() -> Iterable[Table]:
                     decimals=int(f.get("decimals", 0)),
                     description=f.get("description", ""),
                     check_table=f.get("check_table"),
+                    check_field=f.get("check_field") or ("externalCode" if f.get("check_table") else None),
+                    picklist=f.get("picklist"),
                     lowercase=bool(f.get("lowercase", True)),
                     fixed_values=tuple(FixedValue(str(v), None, "") for v in f.get("values", [])),
                     source=f.get("source"),
@@ -233,7 +257,7 @@ def get_dictionary(release: str = "ecc6") -> Dictionary:
     if release == "s4hana":
         tables = _apply_s4_delta(tables)
     for t in _canonical_tables():
-        tables.setdefault(t.name, t)
+        tables[t.name] = t  # an explicitly declared canonical view wins over a same-named ABAP object
     return Dictionary(release=release, tables=tables)
 
 

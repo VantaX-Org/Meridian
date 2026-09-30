@@ -1,0 +1,32 @@
+{
+ "domain": "VORZW",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "+",
+   "high": null,
+   "text": "Only Positive Values or Zero Allowed"
+  },
+  {
+   "low": "-",
+   "high": null,
+   "text": "Only Negative Values or Zero Allowed"
+  },
+  {
+   "low": "*",
+   "high": null,
+   "text": "All Values Allowed"
+  },
+  {
+   "low": "0",
+   "high": null,
+   "text": "No Values Allowed"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

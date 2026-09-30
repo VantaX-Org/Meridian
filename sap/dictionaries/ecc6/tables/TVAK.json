@@ -2022,5 +2022,346 @@
    "check_table": "TVFK"
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "ABGRU_IN",
+   "foreign_table": "TVAG",
+   "foreign_field": "ABGRU"
+  },
+  {
+   "field": "ABRVW",
+   "foreign_table": "TVLV",
+   "foreign_field": "ABRVW"
+  },
+  {
+   "field": "AD01AURET",
+   "foreign_table": "TVAK",
+   "foreign_field": "AUART"
+  },
+  {
+   "field": "AUARA",
+   "foreign_table": "TVAK",
+   "foreign_field": "AUART"
+  },
+  {
+   "field": "AUFAK",
+   "foreign_table": "TVAK",
+   "foreign_field": "AUART"
+  },
+  {
+   "field": "BABSS",
+   "foreign_table": "T691R",
+   "foreign_field": "BABSS"
+  },
+  {
+   "field": "BPROC",
+   "foreign_table": "TVBPROC",
+   "foreign_field": "BPROC"
+  },
+  {
+   "field": "CCPGR",
+   "foreign_table": "TVCAA",
+   "foreign_field": "CCPGA"
+  },
+  {
+   "field": "CMGRA",
+   "foreign_table": "T691D",
+   "foreign_field": "CRMGR_CM"
+  },
+  {
+   "field": "FAKSK",
+   "foreign_table": "TVFS",
+   "foreign_field": "FAKSP"
+  },
+  {
+   "field": "FAUPR",
+   "foreign_table": "TVFAP",
+   "foreign_field": "FAUPR"
+  },
+  {
+   "field": "FEHGR",
+   "foreign_table": "TVUV",
+   "foreign_field": "FEHGR"
+  },
+  {
+   "field": "FELDK",
+   "foreign_table": "TVHF",
+   "foreign_field": "FAWGR"
+  },
+  {
+   "field": "FKAIV",
+   "foreign_table": "TVFK",
+   "foreign_field": "FKART"
+  },
+  {
+   "field": "FKARA",
+   "foreign_table": "TVFK",
+   "foreign_field": "FKART"
+  },
+  {
+   "field": "FKART_MEV_POST",
+   "foreign_table": "TVFK",
+   "foreign_field": "FKART"
+  },
+  {
+   "field": "FKART_MEV_POST_IB",
+   "foreign_table": "TVFK",
+   "foreign_field": "FKART"
+  },
+  {
+   "field": "FKARV",
+   "foreign_table": "TVFK",
+   "foreign_field": "FKART"
+  },
+  {
+   "field": "FKTKT",
+   "foreign_table": "TVKK",
+   "foreign_field": "KTAAR"
+  },
+  {
+   "field": "FPART",
+   "foreign_table": "TFPLA",
+   "foreign_field": "FPART"
+  },
+  {
+   "field": "HITYP_PR",
+   "foreign_table": "THIT",
+   "foreign_field": "HITYP"
+  },
+  {
+   "field": "J_1BNFTYPE",
+   "foreign_table": "J_1BAA",
+   "foreign_field": "NFTYPE"
+  },
+  {
+   "field": "KALAU",
+   "foreign_table": "T683",
+   "foreign_field": "KALSM"
+  },
+  {
+   "field": "KALGT",
+   "foreign_table": "T683",
+   "foreign_field": "KALSM"
+  },
+  {
+   "field": "KALLI",
+   "foreign_table": "T683",
+   "foreign_field": "KALSM"
+  },
+  {
+   "field": "KALSM",
+   "foreign_table": "T683",
+   "foreign_field": "KALSM"
+  },
+  {
+   "field": "KALSU",
+   "foreign_table": "T683",
+   "foreign_field": "KALSM"
+  },
+  {
+   "field": "KALVG",
+   "foreign_table": "TVKV",
+   "foreign_field": "KALVG"
+  },
+  {
+   "field": "KAPPL",
+   "foreign_table": "T681A",
+   "foreign_field": "KAPPL"
+  },
+  {
+   "field": "KOPGR",
+   "foreign_table": "TVHB",
+   "foreign_field": "BIFGR"
+  },
+  {
+   "field": "KORLI",
+   "foreign_table": "TVLK",
+   "foreign_field": "LFART"
+  },
+  {
+   "field": "KSCHL_KO",
+   "foreign_table": "T685",
+   "foreign_field": "KSCHL"
+  },
+  {
+   "field": "KSKPF",
+   "foreign_table": "T683",
+   "foreign_field": "KALSM"
+  },
+  {
+   "field": "KSPOS",
+   "foreign_table": "T683",
+   "foreign_field": "KALSM"
+  },
+  {
+   "field": "LFARV",
+   "foreign_table": "TVLK",
+   "foreign_field": "LFART"
+  },
+  {
+   "field": "LIFSK",
+   "foreign_table": "TVLS",
+   "foreign_field": "LIFSP"
+  },
+  {
+   "field": "LIFSM",
+   "foreign_table": "TVLS",
+   "foreign_field": "LIFSP"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MSR_AUARA",
+   "foreign_table": "TVAK",
+   "foreign_field": "AUART"
+  },
+  {
+   "field": "MSR_BILLING_BLK",
+   "foreign_table": "TVFS",
+   "foreign_field": "FAKSP"
+  },
+  {
+   "field": "MSR_DELIVERY_BLK",
+   "foreign_table": "TVLS",
+   "foreign_field": "LIFSP"
+  },
+  {
+   "field": "MSR_LFART",
+   "foreign_table": "TVLK",
+   "foreign_field": "LFART"
+  },
+  {
+   "field": "MSR_SDF_AUART",
+   "foreign_table": "TVAK",
+   "foreign_field": "AUART"
+  },
+  {
+   "field": "OBJART_HIN",
+   "foreign_table": "TOADV",
+   "foreign_field": "AR_OBJECT"
+  },
+  {
+   "field": "OBJART_VER",
+   "foreign_table": "TOADV",
+   "foreign_field": "AR_OBJECT"
+  },
+  {
+   "field": "OICFKARTDI",
+   "foreign_table": "TVFK",
+   "foreign_field": "FKART"
+  },
+  {
+   "field": "OIPARVW1",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  },
+  {
+   "field": "OIPARVW2",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  },
+  {
+   "field": "OIPARVW3",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  },
+  {
+   "field": "OIPARVW4",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  },
+  {
+   "field": "OIPARVW5",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  },
+  {
+   "field": "OIPARVW6",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  },
+  {
+   "field": "OIPARVW7",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  },
+  {
+   "field": "OIPARVW8",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  },
+  {
+   "field": "OIPARVW9",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  },
+  {
+   "field": "OIPRTFNC",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  },
+  {
+   "field": "OIU_FKARA",
+   "foreign_table": "TVFK",
+   "foreign_field": "FKART"
+  },
+  {
+   "field": "PARGR",
+   "foreign_table": "TVPG",
+   "foreign_field": "PARGR"
+  },
+  {
+   "field": "PVBSM",
+   "foreign_table": "TPVV",
+   "foreign_field": "PVBSM"
+  },
+  {
+   "field": "RDP_PROFILE",
+   "foreign_table": "L2TC_RDP_PROFILE",
+   "foreign_field": "PROFILE"
+  },
+  {
+   "field": "RPART",
+   "foreign_table": "TFPLA",
+   "foreign_field": "FPART"
+  },
+  {
+   "field": "SCHEME_GRP",
+   "foreign_table": "TVGRPS",
+   "foreign_field": "SCHEME"
+  },
+  {
+   "field": "STGAK",
+   "foreign_table": "TVSF",
+   "foreign_field": "STGVB"
+  },
+  {
+   "field": "STSMA",
+   "foreign_table": "TJ20",
+   "foreign_field": "STSMA"
+  },
+  {
+   "field": "TXTGR",
+   "foreign_table": "TTXG",
+   "foreign_field": "TXTGR"
+  },
+  {
+   "field": "VARIANT",
+   "foreign_table": "SHDTVCIU",
+   "foreign_field": "TCVARIANT"
+  },
+  {
+   "field": "VPROF",
+   "foreign_table": "TVVD",
+   "foreign_field": "VPROF"
+  },
+  {
+   "field": "VSBED",
+   "foreign_table": "TVSB",
+   "foreign_field": "VSBED"
+  }
+ ]
 }

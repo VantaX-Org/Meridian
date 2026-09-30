@@ -90,5 +90,26 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "ADDRNUMBER",
+   "foreign_table": "BUT020",
+   "foreign_field": "ADDRNUMBER"
+  },
+  {
+   "field": "ADR_KIND",
+   "foreign_table": "TB009",
+   "foreign_field": "ADR_KIND"
+  },
+  {
+   "field": "CLIENT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "PARTNER",
+   "foreign_table": "BUT000",
+   "foreign_field": "PARTNER"
+  }
+ ]
 }

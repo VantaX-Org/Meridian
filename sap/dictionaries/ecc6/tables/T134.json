@@ -438,5 +438,36 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "CTYPE",
+   "foreign_table": "TCLA",
+   "foreign_field": "KLART"
+  },
+  {
+   "field": "FLREF",
+   "foreign_table": "T130A",
+   "foreign_field": "FLREF"
+  },
+  {
+   "field": "KKREF",
+   "foreign_table": "T025K",
+   "foreign_field": "KKREF"
+  },
+  {
+   "field": "MSTAE",
+   "foreign_table": "T141",
+   "foreign_field": "MMSTA"
+  },
+  {
+   "field": "VMTPO",
+   "foreign_table": "TPTM",
+   "foreign_field": "MTPOS"
+  },
+  {
+   "field": "VTYPE",
+   "foreign_table": "MGVTYPE",
+   "foreign_field": "VTYPE"
+  }
+ ]
 }

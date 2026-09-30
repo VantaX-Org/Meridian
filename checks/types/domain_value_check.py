@@ -15,8 +15,12 @@ class DomainValueCheck(BaseCheck):
 
     def evaluate(self, df: pd.DataFrame) -> Evaluation | None:
         field = self.rule["field"]
-        allowed = self.rule.get("allowed_values")
+        live = self.rule.get("_live_reference")
+        allowed = sorted(live) if live is not None else self.rule.get("allowed_values")
         fmt = self.rule.get("format")
+        from_ddic = allowed is None and not fmt and self.rule.get("_ddic_fixed") is not None
+        if from_ddic:
+            allowed = self.rule["_ddic_fixed"]
         populated = ~is_blank(df[field])
         values = df[field].astype("string").str.strip()
 
@@ -28,8 +32,12 @@ class DomainValueCheck(BaseCheck):
             failing = _parse_dates(df[field]).isna()
         else:
             return None  # no criterion configured — nothing to evaluate
-        return Evaluation(populated, failing.fillna(True),
-                          {"allowed_values": allowed, "format": fmt}, invalid_values_field=field)
+        return Evaluation(populated, failing.fillna(True), {
+            "allowed_values": allowed if live is None else f"{len(live)} values from live {self.rule.get('_reference_key')}",
+            "format": fmt,
+            "reference_source": "live_config" if live is not None else ("ddic_fixed_values" if from_ddic else "rule_baseline"),
+            "reference_table": self.rule.get("_reference_key"),
+        }, invalid_values_field=field)
 
 
 def _parse_dates(s: pd.Series) -> pd.Series:

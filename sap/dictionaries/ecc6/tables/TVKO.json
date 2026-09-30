@@ -342,5 +342,71 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "BSART",
+   "foreign_table": "T161",
+   "foreign_field": "BSART"
+  },
+  {
+   "field": "BUKRS",
+   "foreign_table": "T001",
+   "foreign_field": "BUKRS"
+  },
+  {
+   "field": "BWART",
+   "foreign_table": "T156",
+   "foreign_field": "BWART"
+  },
+  {
+   "field": "EKGRP",
+   "foreign_table": "T024",
+   "foreign_field": "EKGRP"
+  },
+  {
+   "field": "EKORG",
+   "foreign_table": "T024E",
+   "foreign_field": "EKORG"
+  },
+  {
+   "field": "KUNNR",
+   "foreign_table": "KNA1",
+   "foreign_field": "KUNNR"
+  },
+  {
+   "field": "LGORT",
+   "foreign_table": "T001L",
+   "foreign_field": "LGORT"
+  },
+  {
+   "field": "LIFNR",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "MWSKZ",
+   "foreign_table": "T007A",
+   "foreign_field": "MWSKZ"
+  },
+  {
+   "field": "VKOAU",
+   "foreign_table": "TVKO",
+   "foreign_field": "VKORG"
+  },
+  {
+   "field": "VKOKL",
+   "foreign_table": "TFACD",
+   "foreign_field": "IDENT"
+  },
+  {
+   "field": "WAERS",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  }
+ ]
 }

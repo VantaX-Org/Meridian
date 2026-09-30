@@ -990,5 +990,66 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "AUFNR",
+   "foreign_table": "AUFK",
+   "foreign_field": "AUFNR"
+  },
+  {
+   "field": "BEWAR",
+   "foreign_table": "T856",
+   "foreign_field": "TRTYP"
+  },
+  {
+   "field": "BLART",
+   "foreign_table": "T003",
+   "foreign_field": "BLART"
+  },
+  {
+   "field": "BSCHL",
+   "foreign_table": "TBSL",
+   "foreign_field": "BSCHL"
+  },
+  {
+   "field": "BUPLA",
+   "foreign_table": "J_1BBRANCH",
+   "foreign_field": "BRANCH"
+  },
+  {
+   "field": "GSBER",
+   "foreign_table": "TGSB",
+   "foreign_field": "GSBER"
+  },
+  {
+   "field": "MWSKZ",
+   "foreign_table": "T007A",
+   "foreign_field": "MWSKZ"
+  },
+  {
+   "field": "PROJK",
+   "foreign_table": "PRPS",
+   "foreign_field": "PSPNR"
+  },
+  {
+   "field": "PSWSL",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  },
+  {
+   "field": "VBUND",
+   "foreign_table": "T880",
+   "foreign_field": "RCOMP"
+  },
+  {
+   "field": "WAERS",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  }
+ ]
 }

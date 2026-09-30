@@ -3414,5 +3414,441 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "ABELN",
+   "foreign_table": "AUKO",
+   "foreign_field": "ABELN"
+  },
+  {
+   "field": "ABELP",
+   "foreign_table": "AUPO",
+   "foreign_field": "ABELP"
+  },
+  {
+   "field": "ABFOR",
+   "foreign_table": "T691K",
+   "foreign_field": "ABSFO"
+  },
+  {
+   "field": "ABRLI",
+   "foreign_table": "VBLB",
+   "foreign_field": "ABRLI"
+  },
+  {
+   "field": "ABRVW",
+   "foreign_table": "TVLV",
+   "foreign_field": "ABRVW"
+  },
+  {
+   "field": "ABTNR",
+   "foreign_table": "TSAB",
+   "foreign_field": "ABTNR"
+  },
+  {
+   "field": "AKTNR",
+   "foreign_table": "WAKH",
+   "foreign_field": "AKTNR"
+  },
+  {
+   "field": "AUFNR",
+   "foreign_table": "AUFK",
+   "foreign_field": "AUFNR"
+  },
+  {
+   "field": "BEDAR_LF",
+   "foreign_table": "T459K",
+   "foreign_field": "BEDAR"
+  },
+  {
+   "field": "BERID",
+   "foreign_table": "MDLV",
+   "foreign_field": "BERID"
+  },
+  {
+   "field": "BWART",
+   "foreign_table": "T156",
+   "foreign_field": "BWART"
+  },
+  {
+   "field": "BWLVS",
+   "foreign_table": "T333",
+   "foreign_field": "BWLVS"
+  },
+  {
+   "field": "BWTAR",
+   "foreign_table": "T149D",
+   "foreign_field": "BWTAR"
+  },
+  {
+   "field": "CHARG",
+   "foreign_table": "MCHA",
+   "foreign_field": "CHARG"
+  },
+  {
+   "field": "CLINT",
+   "foreign_table": "KLAH",
+   "foreign_field": "CLINT"
+  },
+  {
+   "field": "EMATN",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "FAKSP",
+   "foreign_table": "TVFS",
+   "foreign_field": "FAKSP"
+  },
+  {
+   "field": "GEWEI",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "GSBER",
+   "foreign_table": "TGSB",
+   "foreign_field": "GSBER"
+  },
+  {
+   "field": "J_1BCFOP",
+   "foreign_table": "J_1BAG",
+   "foreign_field": "CFOP"
+  },
+  {
+   "field": "J_1BTAXLW1",
+   "foreign_table": "J_1BATL1",
+   "foreign_field": "TAXLAW"
+  },
+  {
+   "field": "J_1BTAXLW2",
+   "foreign_table": "J_1BATL2",
+   "foreign_field": "TAXLAW"
+  },
+  {
+   "field": "J_1BTAXLW3",
+   "foreign_table": "J_1BATL3",
+   "foreign_field": "TAXLAW"
+  },
+  {
+   "field": "J_1BTAXLW4",
+   "foreign_table": "J_1BATL4A",
+   "foreign_field": "TAXLAW"
+  },
+  {
+   "field": "J_1BTAXLW5",
+   "foreign_table": "J_1BATL5",
+   "foreign_field": "TAXLAW"
+  },
+  {
+   "field": "J_1BTXSDC",
+   "foreign_table": "J_1BTXSDC",
+   "foreign_field": "TAXCODE"
+  },
+  {
+   "field": "KCGEWEI",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "KCVOLEH",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "KMEIN",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "KNTTP",
+   "foreign_table": "T163K",
+   "foreign_field": "KNTTP"
+  },
+  {
+   "field": "KOKRS",
+   "foreign_table": "TKA01",
+   "foreign_field": "KOKRS"
+  },
+  {
+   "field": "KOSTL",
+   "foreign_table": "CSKS",
+   "foreign_field": "KOSTL"
+  },
+  {
+   "field": "KVGR1",
+   "foreign_table": "TVV1",
+   "foreign_field": "KVGR1"
+  },
+  {
+   "field": "KVGR2",
+   "foreign_table": "TVV2",
+   "foreign_field": "KVGR2"
+  },
+  {
+   "field": "KVGR3",
+   "foreign_table": "TVV3",
+   "foreign_field": "KVGR3"
+  },
+  {
+   "field": "KVGR4",
+   "foreign_table": "TVV4",
+   "foreign_field": "KVGR4"
+  },
+  {
+   "field": "KVGR5",
+   "foreign_table": "TVV5",
+   "foreign_field": "KVGR5"
+  },
+  {
+   "field": "LADGR",
+   "foreign_table": "TLGR",
+   "foreign_field": "LADGR"
+  },
+  {
+   "field": "LGBZO",
+   "foreign_table": "T30C",
+   "foreign_field": "LGBZO"
+  },
+  {
+   "field": "LGNUM",
+   "foreign_table": "T300",
+   "foreign_field": "LGNUM"
+  },
+  {
+   "field": "LGORT",
+   "foreign_table": "T001L",
+   "foreign_field": "LGORT"
+  },
+  {
+   "field": "LGPLA",
+   "foreign_table": "LAGP",
+   "foreign_field": "LGPLA"
+  },
+  {
+   "field": "LGTYP",
+   "foreign_table": "T301",
+   "foreign_field": "LGTYP"
+  },
+  {
+   "field": "MAGRV",
+   "foreign_table": "TVEGR",
+   "foreign_field": "MAGRV"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MATKL",
+   "foreign_table": "T023",
+   "foreign_field": "MATKL"
+  },
+  {
+   "field": "MATNR",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "MATWA",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "MEINS",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "MFRGR",
+   "foreign_table": "TMFG",
+   "foreign_field": "MFRGR"
+  },
+  {
+   "field": "MTART",
+   "foreign_table": "T134",
+   "foreign_field": "MTART"
+  },
+  {
+   "field": "MTVFP",
+   "foreign_table": "TMVF",
+   "foreign_field": "MTVFP"
+  },
+  {
+   "field": "MVGR1",
+   "foreign_table": "TVM1",
+   "foreign_field": "MVGR1"
+  },
+  {
+   "field": "MVGR2",
+   "foreign_table": "TVM2",
+   "foreign_field": "MVGR2"
+  },
+  {
+   "field": "MVGR3",
+   "foreign_table": "TVM3",
+   "foreign_field": "MVGR3"
+  },
+  {
+   "field": "MVGR4",
+   "foreign_table": "TVM4",
+   "foreign_field": "MVGR4"
+  },
+  {
+   "field": "MVGR5",
+   "foreign_table": "TVM5",
+   "foreign_field": "MVGR5"
+  },
+  {
+   "field": "POSNR",
+   "foreign_table": "VBUP",
+   "foreign_field": "POSNR"
+  },
+  {
+   "field": "POSNV",
+   "foreign_table": "VBUP",
+   "foreign_field": "POSNR"
+  },
+  {
+   "field": "PRBME",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "PRODH",
+   "foreign_table": "T179",
+   "foreign_field": "PRODH"
+  },
+  {
+   "field": "PROFL",
+   "foreign_table": "TDG41",
+   "foreign_field": "PROFL"
+  },
+  {
+   "field": "PSTYV",
+   "foreign_table": "TVPT",
+   "foreign_field": "PSTYV"
+  },
+  {
+   "field": "QPLOS",
+   "foreign_table": "QALS",
+   "foreign_field": "PRUEFLOS"
+  },
+  {
+   "field": "RULES",
+   "foreign_table": "T434R",
+   "foreign_field": "RULES"
+  },
+  {
+   "field": "SERAIL",
+   "foreign_table": "T377P",
+   "foreign_field": "SERAIL"
+  },
+  {
+   "field": "SERNR",
+   "foreign_table": "SNUM",
+   "foreign_field": "SERNR"
+  },
+  {
+   "field": "SOBKZ",
+   "foreign_table": "T148",
+   "foreign_field": "SOBKZ"
+  },
+  {
+   "field": "SPART",
+   "foreign_table": "TSPA",
+   "foreign_field": "SPART"
+  },
+  {
+   "field": "TRAGR",
+   "foreign_table": "TTGR",
+   "foreign_field": "TRAGR"
+  },
+  {
+   "field": "UECHA",
+   "foreign_table": "LIPS",
+   "foreign_field": "POSNR"
+  },
+  {
+   "field": "UEPOS",
+   "foreign_table": "VBUP",
+   "foreign_field": "POSNR"
+  },
+  {
+   "field": "VBELN",
+   "foreign_table": "VBUK",
+   "foreign_field": "VBELN"
+  },
+  {
+   "field": "VBELV",
+   "foreign_table": "VBUK",
+   "foreign_field": "VBELN"
+  },
+  {
+   "field": "VGBEL",
+   "foreign_table": "VBUK",
+   "foreign_field": "VBELN"
+  },
+  {
+   "field": "VGPOS",
+   "foreign_table": "VBUP",
+   "foreign_field": "POSNR"
+  },
+  {
+   "field": "VGSYS",
+   "foreign_table": "TBDLS",
+   "foreign_field": "LOGSYS"
+  },
+  {
+   "field": "VKBUR",
+   "foreign_table": "TVBUR",
+   "foreign_field": "VKBUR"
+  },
+  {
+   "field": "VKGRP",
+   "foreign_table": "TVKGR",
+   "foreign_field": "VKGRP"
+  },
+  {
+   "field": "VOLEH",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "VPMAT",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "VPWRK",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  },
+  {
+   "field": "VRKME",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "VTWEG",
+   "foreign_table": "TVTW",
+   "foreign_field": "VTWEG"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  },
+  {
+   "field": "WKTNR",
+   "foreign_table": "VBUK",
+   "foreign_field": "VBELN"
+  },
+  {
+   "field": "WKTPS",
+   "foreign_table": "VBUP",
+   "foreign_field": "POSNR"
+  }
+ ]
 }

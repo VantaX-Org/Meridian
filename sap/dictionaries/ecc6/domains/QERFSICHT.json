@@ -1,0 +1,62 @@
+{
+ "domain": "QERFSICHT",
+ "type": "CHAR",
+ "length": 2,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Single values and summarized results (default view)"
+  },
+  {
+   "low": "01",
+   "high": null,
+   "text": "Old view: Measured values"
+  },
+  {
+   "low": "02",
+   "high": null,
+   "text": "Old view: Attribute codes"
+  },
+  {
+   "low": "03",
+   "high": null,
+   "text": "Old view: Nonconfoming units"
+  },
+  {
+   "low": "04",
+   "high": null,
+   "text": "Old view: Number of defects"
+  },
+  {
+   "low": "05",
+   "high": null,
+   "text": "Old view: Overview"
+  },
+  {
+   "low": "10",
+   "high": null,
+   "text": "Summarized results"
+  },
+  {
+   "low": "11",
+   "high": null,
+   "text": "Recording by units to be inspected"
+  },
+  {
+   "low": "77",
+   "high": null,
+   "text": "Old view: Type of first characteristic"
+  },
+  {
+   "low": "78",
+   "high": null,
+   "text": "Control indicators"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

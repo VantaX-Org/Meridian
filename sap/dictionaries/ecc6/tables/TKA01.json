@@ -426,5 +426,36 @@
    "check_table": "USR02"
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "LMONA",
+   "foreign_table": "T009",
+   "foreign_field": "PERIV"
+  },
+  {
+   "field": "LOGSYSTEM",
+   "foreign_table": "TBDLS",
+   "foreign_field": "LOGSYS"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "PCACUR",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  },
+  {
+   "field": "VNAME",
+   "foreign_table": "USR02",
+   "foreign_field": "BNAME"
+  },
+  {
+   "field": "WAERS",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  }
+ ]
 }

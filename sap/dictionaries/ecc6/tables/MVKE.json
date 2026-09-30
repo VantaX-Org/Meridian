@@ -822,5 +822,151 @@
    "check_table": "TWPT"
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "/BEV1/EMLGRP",
+   "foreign_table": "/BEV1/EMGRP",
+   "foreign_field": "LGGRP"
+  },
+  {
+   "field": "BONUS",
+   "foreign_table": "TVBO",
+   "foreign_field": "BONUS"
+  },
+  {
+   "field": "DWERK",
+   "foreign_table": "TVKWZ",
+   "foreign_field": "WERKS"
+  },
+  {
+   "field": "KONDM",
+   "foreign_table": "T178",
+   "foreign_field": "KONDM"
+  },
+  {
+   "field": "KTGRM",
+   "foreign_table": "TVKM",
+   "foreign_field": "KTGRM"
+  },
+  {
+   "field": "LSTFL",
+   "foreign_table": "TWLV",
+   "foreign_field": "LSTFL"
+  },
+  {
+   "field": "LSTVZ",
+   "foreign_table": "TWLV",
+   "foreign_field": "LSTFL"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MATNR",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "MEGRU",
+   "foreign_table": "TWMEG",
+   "foreign_field": "MEGRU"
+  },
+  {
+   "field": "MTPOS",
+   "foreign_table": "TPTM",
+   "foreign_field": "MTPOS"
+  },
+  {
+   "field": "MVGR1",
+   "foreign_table": "TVM1",
+   "foreign_field": "MVGR1"
+  },
+  {
+   "field": "MVGR2",
+   "foreign_table": "TVM2",
+   "foreign_field": "MVGR2"
+  },
+  {
+   "field": "MVGR3",
+   "foreign_table": "TVM3",
+   "foreign_field": "MVGR3"
+  },
+  {
+   "field": "MVGR4",
+   "foreign_table": "TVM4",
+   "foreign_field": "MVGR4"
+  },
+  {
+   "field": "MVGR5",
+   "foreign_table": "TVM5",
+   "foreign_field": "MVGR5"
+  },
+  {
+   "field": "PFLKS",
+   "foreign_table": "TWSP",
+   "foreign_field": "PFLKS"
+  },
+  {
+   "field": "PLGTP",
+   "foreign_table": "TWPT",
+   "foreign_field": "PLGTP"
+  },
+  {
+   "field": "PMATN",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "PRODH",
+   "foreign_table": "T179",
+   "foreign_field": "PRODH"
+  },
+  {
+   "field": "PROVG",
+   "foreign_table": "TVPR",
+   "foreign_field": "PROVG"
+  },
+  {
+   "field": "RDPRF",
+   "foreign_table": "RDPR",
+   "foreign_field": "RDPRF"
+  },
+  {
+   "field": "SCHME",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "SSTUF",
+   "foreign_table": "TWSS",
+   "foreign_field": "SSTUF"
+  },
+  {
+   "field": "VERSG",
+   "foreign_table": "TVSM",
+   "foreign_field": "STGMA"
+  },
+  {
+   "field": "VKORG",
+   "foreign_table": "TVKO",
+   "foreign_field": "VKORG"
+  },
+  {
+   "field": "VMSTA",
+   "foreign_table": "TVMS",
+   "foreign_field": "VMSTA"
+  },
+  {
+   "field": "VRKME",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "VTWEG",
+   "foreign_table": "TVTW",
+   "foreign_field": "VTWEG"
+  }
+ ]
 }

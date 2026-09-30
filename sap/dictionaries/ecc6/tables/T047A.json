@@ -174,5 +174,26 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "KALID",
+   "foreign_table": "THOCI",
+   "foreign_field": "IDENT"
+  },
+  {
+   "field": "MAHNR",
+   "foreign_table": "T047A",
+   "foreign_field": "MAHNA"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "VZSKZ",
+   "foreign_table": "T056",
+   "foreign_field": "VZSKZ"
+  }
+ ]
 }

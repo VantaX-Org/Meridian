@@ -1,0 +1,32 @@
+{
+ "domain": "QPPKTABS",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Quantity, valuation and confirmation (production)"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Quantity, valuation (production)"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Valuation"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Automatic valuation based on insp. point definition"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

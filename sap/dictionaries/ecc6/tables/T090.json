@@ -342,5 +342,36 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "PERBAB",
+   "foreign_table": "T090R",
+   "foreign_field": "PERBSL"
+  },
+  {
+   "field": "PERBNA",
+   "foreign_table": "T090R",
+   "foreign_field": "PERBSL"
+  },
+  {
+   "field": "PERBUM",
+   "foreign_table": "T090R",
+   "foreign_field": "PERBSL"
+  },
+  {
+   "field": "PERBZU",
+   "foreign_table": "T090R",
+   "foreign_field": "PERBSL"
+  },
+  {
+   "field": "UMAFSL",
+   "foreign_table": "T090",
+   "foreign_field": "AFARSL"
+  }
+ ]
 }

@@ -66,5 +66,21 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "CLIENT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "PARTNER",
+   "foreign_table": "BUT000",
+   "foreign_field": "PARTNER"
+  },
+  {
+   "field": "TAXTYPE",
+   "foreign_table": "TFKTAXNUMTYPE_C",
+   "foreign_field": "TAXTYPE"
+  }
+ ]
 }

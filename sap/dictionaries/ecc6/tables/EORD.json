@@ -318,5 +318,56 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "EBELN",
+   "foreign_table": "EKKO",
+   "foreign_field": "EBELN"
+  },
+  {
+   "field": "EBELP",
+   "foreign_table": "EKPO",
+   "foreign_field": "EBELP"
+  },
+  {
+   "field": "EKORG",
+   "foreign_table": "T024E",
+   "foreign_field": "EKORG"
+  },
+  {
+   "field": "EMATN",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "LIFNR",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "LOGSY",
+   "foreign_table": "TBDLS",
+   "foreign_field": "LOGSYS"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MATNR",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "MEINS",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  }
+ ]
 }

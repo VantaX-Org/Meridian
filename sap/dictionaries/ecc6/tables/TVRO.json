@@ -270,5 +270,46 @@
    "check_table": "*"
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "EXPVZ",
+   "foreign_table": "T618",
+   "foreign_field": "EXPVZ"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "SPFBK",
+   "foreign_table": "TFACD",
+   "foreign_field": "IDENT"
+  },
+  {
+   "field": "SPZST",
+   "foreign_table": "TTSTRSD",
+   "foreign_field": "TSTREAMID"
+  },
+  {
+   "field": "TDLNR",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "VSANL",
+   "foreign_table": "T173",
+   "foreign_field": "VSART"
+  },
+  {
+   "field": "VSART",
+   "foreign_table": "T173",
+   "foreign_field": "VSART"
+  },
+  {
+   "field": "VSAVL",
+   "foreign_table": "T173",
+   "foreign_field": "VSART"
+  }
+ ]
 }

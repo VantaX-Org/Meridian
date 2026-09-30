@@ -457,25 +457,22 @@ rules:
     app F2229.'
 - id: PUR025
   field: EKPO.WEPOS
-  fields:
-  - EKPO.WEPOS
-  - EKPO.WERKS
   check_class: cross_field_check
-  condition: '`EKPO.WEPOS` == ''X'' and (`EKPO.WERKS`.isna() or `EKPO.WERKS` == '''')'
   severity: high
   dimension: consistency
   message: PO line requires goods receipt but has no plant assigned
-  why_it_matters: "When the goods receipt indicator (WEPOS) is set to X, a plant (WERKS) must be specified to determine where\
-    \ goods are received. Without a plant, MIGO cannot post the goods receipt \u2014 the inventory location is unknown. This\
-    \ is a blocking inconsistency in the procure-to-pay process."
+  why_it_matters: When the goods receipt indicator (WEPOS) is set to X, a plant (WERKS) must be specified to determine
+    where goods are received. Without a plant, MIGO cannot post the goods receipt — the inventory location is unknown.
+    This is a blocking inconsistency in the procure-to-pay process.
   rule_authority: sap_hard_constraint
-  sap_impact: "MIGO cannot post goods receipt \u2014 no receiving plant specified. Inventory cannot be updated. The PO line\
-    \ is stuck \u2014 goods are expected but cannot be received."
-  fix_map:
-    __blank__: 'Goods receipt is required (WEPOS=X) but plant is missing. In ECC: assign the receiving plant via ME22N > Item
-      Detail > Delivery tab. In S/4HANA: use Fiori app F2229. The plant must be valid for the purchasing organisation.'
-  record_fix_template: 'PO {EKKO.EBELN} item {EKPO.EBELP}: WEPOS is ''X'' but WERKS is ''{actual_value}''. Assign the receiving
-    plant via ME22N or Fiori app F2229.'
+  sap_impact: MIGO cannot post goods receipt — no receiving plant specified. Inventory cannot be updated. The PO
+    line is stuck — goods are expected but cannot be received.
+  fix_map: {__blank__: 'Goods receipt is required (WEPOS=X) but plant is missing. In ECC: assign the receiving plant
+      via ME22N > Item Detail > Delivery tab. In S/4HANA: use Fiori app F2229. The plant must be valid for the purchasing
+      organisation.'}
+  record_fix_template: 'PO {EKKO.EBELN} item {EKPO.EBELP}: WEPOS is ''X'' but WERKS is ''{actual_value}''. Assign
+    the receiving plant via ME22N or Fiori app F2229.'
+  fail_when: (`EKPO.WEPOS` == 'X') & `EKPO.WERKS`.isna()
 - id: PUR026
   field: EKKO.ERNAM
   check_class: null_check
@@ -551,34 +548,21 @@ rules:
     __blank__: 'In ECC: Set via ME22N. In S/4HANA: Use Fiori app F2229 (Create Purchase Order).'
   record_fix_template: 'Record is missing EKKO.INCO2. In ECC: Set via ME22N. In S/4HANA: Use Fiori app F2229 (Create Purchase
     Order).'
-- id: PUR031
-  field: EKKO.PROCSTAT
+- id: PUR032
+  field: EKKO.FRGZU
   check_class: null_check
   severity: low
   dimension: completeness
-  message: Processing state is missing
-  why_it_matters: Processing state (EKKO.PROCSTAT) is not maintained. This field supports downstream processes and reporting
+  message: Release status missing on a purchase order subject to a release strategy
+  why_it_matters: Release value (EKKO.FRGZU) is not maintained. This field supports downstream processes and reporting
     accuracy. Missing data may result in incomplete records or processing gaps.
   rule_authority: best_practice
-  sap_impact: Missing Processing state may cause incomplete data in related transactions and reports.
-  fix_map:
-    __blank__: 'In ECC: Set via ME22N. In S/4HANA: Use Fiori app F2229 (Create Purchase Order).'
-  record_fix_template: 'Record is missing EKKO.PROCSTAT. In ECC: Set via ME22N. In S/4HANA: Use Fiori app F2229 (Create Purchase
-    Order).'
-- id: PUR032
-  field: EKKO.RLWRT
-  check_class: null_check
-  severity: low
-  dimension: completeness
-  message: Release value is missing
-  why_it_matters: Release value (EKKO.RLWRT) is not maintained. This field supports downstream processes and reporting accuracy.
-    Missing data may result in incomplete records or processing gaps.
-  rule_authority: best_practice
   sap_impact: Missing Release value may cause incomplete data in related transactions and reports.
-  fix_map:
-    __blank__: 'In ECC: Set via ME22N. In S/4HANA: Use Fiori app F2229 (Create Purchase Order).'
-  record_fix_template: 'Record is missing EKKO.RLWRT. In ECC: Set via ME22N. In S/4HANA: Use Fiori app F2229 (Create Purchase
-    Order).'
+  fix_map: {__blank__: 'In ECC: Set via ME22N. In S/4HANA: Use Fiori app F2229 (Create Purchase Order).'}
+  record_fix_template: 'Record is missing EKKO.FRGZU. In ECC: Set via ME22N. In S/4HANA: Use Fiori app F2229 (Create
+    Purchase Order).'
+  applies_when:
+    EKKO.FRGGR: {populated: true}
 - id: PUR033
   field: EKPO.ANFNR
   check_class: null_check
@@ -735,17 +719,19 @@ rules:
     Order).'
 - id: PUR042
   field: EKKO.EBELN
-  check_class: cross_field_check
-  fields: ['EKKO.EBELN']
-  condition: "~`EKKO.EBELN`.duplicated(keep=False)"
+  check_class: uniqueness_check
+  fields: [EKKO.EBELN]
   severity: critical
   dimension: uniqueness
   message: Duplicate purchase order numbers detected — each PO must be unique
-  why_it_matters: Duplicate PO numbers indicate a data extract or migration error. Each purchase order must have a unique EBELN. Duplicates cause goods receipt posting ambiguity and invoice verification failures.
+  why_it_matters: Duplicate PO numbers indicate a data extract or migration error. Each purchase order must have
+    a unique EBELN. Duplicates cause goods receipt posting ambiguity and invoice verification failures.
   rule_authority: sap_hard_constraint
-  sap_impact: MIGO cannot determine which PO to post against. Invoice verification (MIRO) matches to the wrong PO. Goods receipt history is ambiguous.
-  fix_map:
-    __blank__: "Investigate the source of duplicate PO numbers. This is typically a data extract issue (duplicate rows from joined tables). If genuine duplicates exist in SAP, escalate to Basis — this indicates a number range collision."
+  sap_impact: MIGO cannot determine which PO to post against. Invoice verification (MIRO) matches to the wrong PO.
+    Goods receipt history is ambiguous.
+  fix_map: {__blank__: 'Investigate the source of duplicate PO numbers. This is typically a data extract issue (duplicate
+      rows from joined tables). If genuine duplicates exist in SAP, escalate to Basis — this indicates a number
+      range collision.'}
 
 - id: PUR043
   field: EKKO.BEDAT
@@ -764,16 +750,18 @@ rules:
 - id: PUR044
   field: EKPO.NETPR
   check_class: cross_field_check
-  fields: ['EKPO.NETPR']
-  condition: "`EKPO.NETPR`.notna() & (`EKPO.NETPR` >= 0)"
   severity: high
   dimension: accuracy
   message: Purchase order line has negative net price — indicates pricing error or incorrect credit memo configuration
-  why_it_matters: Negative PO prices cause goods receipt valuation errors, invoice verification mismatches, and incorrect cost centre charges.
+  why_it_matters: Negative PO prices cause goods receipt valuation errors, invoice verification mismatches, and
+    incorrect cost centre charges.
   rule_authority: best_practice
-  sap_impact: GR posting creates negative stock value. Invoice verification shows price variance. Cost centre is credited instead of debited.
-  fix_map:
-    __blank__: "Review the PO line price via ME22N. If a credit memo is intended, use the correct document type (returns PO). If data error, correct the net price."
+  sap_impact: GR posting creates negative stock value. Invoice verification shows price variance. Cost centre is
+    credited instead of debited.
+  fix_map: {__blank__: 'Review the PO line price via ME22N. If a credit memo is intended, use the correct document
+      type (returns PO). If data error, correct the net price.'}
+  fail_when: '`EKPO.NETPR` < 0'
+  require_populated: true
 
 - id: PUR045
   field: EKKO.BSART
@@ -789,3 +777,39 @@ rules:
     __blank__: "BSART is mandatory at ME21N. Blank indicates document-header corruption."
     __other__: "Document type '{invalid_value}' not in T161. Reassign via ME22N (if document editable) or configure in SPRO > Materials Management > Purchasing > Purchase Order > Define Document Types."
   record_fix_template: "PO {EKKO.EBELN}: document type '{actual_value}' is not in T161."
+- id: XP2P001
+  field: EKKO.ZTERM
+  check_class: cross_field_check
+  fail_when: '`EKKO.ZTERM` != `LFM1.ZTERM`'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: PO payment terms differ from the vendor's purchasing-organisation payment terms (LFM1.ZTERM)
+  why_it_matters: SAP defaults EKKO.ZTERM from the vendor's purchasing data (LFM1) for the PO's purchasing organisation.
+    When they diverge the AP clerk sees different terms at invoice posting (MIRO) than on the PO and F110 may pay
+    in the wrong window — usually a PO copied from an old document after the vendor terms changed.
+  rule_authority: best_practice
+  sap_impact: Payment timing mis-scheduled; cash discount may be missed; ageing inconsistent with vendor statements.
+  fix_map:
+    __other__: Align the PO terms via ME22N, or — if the vendor terms are outdated — update LFM1 via XK02/MK02 (ECC)
+      or the BP purchasing role (S/4HANA).
+  record_fix_template: 'PO {EKKO.EBELN}: terms ''{EKKO.ZTERM}'' differ from vendor {EKKO.LIFNR} purchasing terms
+    ''{LFM1.ZTERM}''.'
+- id: XP2P002
+  field: EKKO.WAERS
+  check_class: cross_field_check
+  fail_when: '`EKKO.WAERS` != `LFM1.WAERS`'
+  require_populated: true
+  severity: low
+  dimension: consistency
+  message: PO currency differs from the vendor's order currency (LFM1.WAERS)
+  why_it_matters: LFM1.WAERS is the vendor's order currency for the purchasing organisation. A PO in another currency
+    is legitimate for multi-currency suppliers but is often a data-entry error that creates exchange-rate differences
+    at settlement.
+  rule_authority: best_practice
+  sap_impact: Exchange-rate gain/loss on settlement; reconciliation effort at month end.
+  fix_map:
+    __other__: Correct the PO currency via ME22N, or update the vendor order currency (LFM1) if the supplier genuinely
+      trades in this currency.
+  record_fix_template: 'PO {EKKO.EBELN}: currency ''{EKKO.WAERS}'' differs from vendor {EKKO.LIFNR} order currency
+    ''{LFM1.WAERS}''.'

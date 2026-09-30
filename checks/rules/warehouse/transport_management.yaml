@@ -182,29 +182,23 @@ rules:
       investigate the shipment processing history.
 
   - id: TM009
-    field: VTTK.DESSION
-    fields: ["VTTK.DESSION", "VTTK.DESSION_END"]
+    field: VTTK.DPTBG
     check_class: cross_field_check
-    condition: "`VTTK.DESSION` > `VTTK.DESSION_END`"
     severity: critical
     dimension: consistency
-    message: "Planned start date must be before planned end date"
-    why_it_matters: >-
-      A planned start date (DESSION) after the planned end date (DESSION_END) is logically
-      impossible and indicates a data entry error. This corrupts transport scheduling,
-      causes negative transit time calculations, and prevents the transportation planning
-      system from optimising vehicle and driver allocation.
+    message: Planned start date must be before planned end date
+    why_it_matters: A planned start date (DPTBG) after the planned end date (DPTEN) is logically impossible and indicates
+      a data entry error. This corrupts transport scheduling, causes negative transit time calculations, and prevents
+      the transportation planning system from optimising vehicle and driver allocation.
     rule_authority: sap_hard_constraint
-    sap_impact: >-
-      Transit time calculation produces negative values. Transport scheduling is invalid.
-      Vehicle and driver allocation cannot be planned.
-    fix_map:
-      __blank__: >-
-        In ECC: correct the dates via VT02N > Dates tab. In S/4HANA: use Fiori app
-        F1331 > Dates section.
-    record_fix_template: >-
-      Shipment {VTTK.TKNUM}: DESSION ({actual_value}) is after DESSION_END. Correct
-      the dates via VT02N (ECC) or Fiori app F1331 (S/4HANA).
+    sap_impact: Transit time calculation produces negative values. Transport scheduling is invalid. Vehicle and driver
+      allocation cannot be planned.
+    fix_map: {__blank__: 'In ECC: correct the dates via VT02N > Dates tab. In S/4HANA: use Fiori app F1331 > Dates
+        section.'}
+    record_fix_template: 'Shipment {VTTK.TKNUM}: DPTBG ({actual_value}) is after DPTEN. Correct the dates via VT02N
+      (ECC) or Fiori app F1331 (S/4HANA).'
+    fail_when: '`VTTK.DPTBG` > `VTTK.DPTEN`'
+    require_populated: true
 
   - id: TM010
     field: VTTP.VBELN
@@ -296,26 +290,21 @@ rules:
       via VT02N (ECC) or Fiori app F1331 (S/4HANA).
 
   - id: TM014
-    field: VTTK.DTESSION
+    field: TVRO.TRAZTD
     check_class: null_check
     severity: medium
     dimension: completeness
-    message: "Planned transit duration enables delivery promise calculation"
-    why_it_matters: >-
-      DTESSION (planned transit duration) is used to calculate expected delivery dates
-      from the shipment start date. Without it, delivery date promises cannot account
-      for transport time and customers receive inaccurate delivery commitments.
+    message: Transit duration missing on the shipment route (TVRO.TRAZTD)
+    why_it_matters: TRAZTD (planned transit duration) is used to calculate expected delivery dates from the shipment
+      start date. Without it, delivery date promises cannot account for transport time and customers receive inaccurate
+      delivery commitments.
     rule_authority: best_practice
-    sap_impact: >-
-      Delivery date calculation cannot include transport time. Customer delivery
-      promises are inaccurate. Available-to-promise (ATP) results unreliable.
-    fix_map:
-      __blank__: >-
-        In ECC: set transit duration via VT02N or configure via route maintenance (OVTC).
-        In S/4HANA: use Fiori app F1331 or route configuration.
-    record_fix_template: >-
-      Shipment {VTTK.TKNUM}: DTESSION is {actual_value}. Set the transit duration via
-      VT02N (ECC) or Fiori app F1331 (S/4HANA).
+    sap_impact: Delivery date calculation cannot include transport time. Customer delivery promises are inaccurate.
+      Available-to-promise (ATP) results unreliable.
+    fix_map: {__blank__: 'In ECC: set transit duration via VT02N or configure via route maintenance (OVTC). In S/4HANA:
+        use Fiori app F1331 or route configuration.'}
+    record_fix_template: 'Shipment {VTTK.TKNUM}: TRAZTD is {actual_value}. Set the transit duration via VT02N (ECC)
+      or Fiori app F1331 (S/4HANA).'
 
   - id: TM015
     field: VTTK.TDLNR
@@ -343,17 +332,17 @@ rules:
 
   - id: TM016
     field: VTTK.TKNUM
-    check_class: cross_field_check
-    fields: ['VTTK.TKNUM']
-    condition: "~`VTTK.TKNUM`.duplicated(keep=False)"
+    check_class: uniqueness_check
+    fields: [VTTK.TKNUM]
     severity: critical
     dimension: uniqueness
     message: Duplicate shipment numbers detected — each shipment must be unique
-    why_it_matters: Duplicate shipment numbers cause incorrect freight cost allocation, delivery tracking ambiguity, and carrier invoice matching failures.
+    why_it_matters: Duplicate shipment numbers cause incorrect freight cost allocation, delivery tracking ambiguity,
+      and carrier invoice matching failures.
     rule_authority: sap_hard_constraint
     sap_impact: Freight costs are doubled. Delivery tracking is ambiguous. Carrier invoice verification fails.
-    fix_map:
-      __blank__: "De-duplicate the data extract at shipment header level. If genuine duplicates exist, escalate to Basis."
+    fix_map: {__blank__: 'De-duplicate the data extract at shipment header level. If genuine duplicates exist, escalate
+        to Basis.'}
 
   - id: TM017
     field: VTTK.ERDAT

@@ -702,5 +702,106 @@
    "check_table": "TKKAA"
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "ABGSL",
+   "foreign_table": "TKKAA",
+   "foreign_field": "ABGSL"
+  },
+  {
+   "field": "ANLUE",
+   "foreign_table": "T087U",
+   "foreign_field": "ANLUE"
+  },
+  {
+   "field": "EIGKZ",
+   "foreign_table": "T097",
+   "foreign_field": "EIGKZ"
+  },
+  {
+   "field": "FEINS",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "FELEI",
+   "foreign_table": "T082A",
+   "foreign_field": "FELEI"
+  },
+  {
+   "field": "GDLGRP",
+   "foreign_table": "T087G",
+   "foreign_field": "GDLGRP"
+  },
+  {
+   "field": "GSBER",
+   "foreign_table": "TGSB",
+   "foreign_field": "GSBER"
+  },
+  {
+   "field": "IZWEK",
+   "foreign_table": "T087I",
+   "foreign_field": "IZWEK"
+  },
+  {
+   "field": "KTOGR",
+   "foreign_table": "T095A",
+   "foreign_field": "KTOGR"
+  },
+  {
+   "field": "LAND1",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "LEART",
+   "foreign_table": "T083L",
+   "foreign_field": "LEART"
+  },
+  {
+   "field": "LIFNR",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "MEINS",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "ORD41",
+   "foreign_table": "T087",
+   "foreign_field": "ORD4X"
+  },
+  {
+   "field": "ORD42",
+   "foreign_table": "T087",
+   "foreign_field": "ORD4X"
+  },
+  {
+   "field": "ORD43",
+   "foreign_table": "T087",
+   "foreign_field": "ORD4X"
+  },
+  {
+   "field": "ORD44",
+   "foreign_table": "T087",
+   "foreign_field": "ORD4X"
+  },
+  {
+   "field": "VMGLI",
+   "foreign_table": "T092",
+   "foreign_field": "VMGLI"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  },
+  {
+   "field": "ZUAWA",
+   "foreign_table": "TZUN",
+   "foreign_field": "ZUAWA"
+  }
+ ]
 }

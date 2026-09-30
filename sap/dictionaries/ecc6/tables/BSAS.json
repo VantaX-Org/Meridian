@@ -990,5 +990,11 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "PROJK",
+   "foreign_table": "PRPS",
+   "foreign_field": "PSPNR"
+  }
+ ]
 }

@@ -1,0 +1,42 @@
+{
+ "domain": "WEART",
+ "type": "CHAR",
+ "length": 2,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "01",
+   "high": null,
+   "text": "Spain: Letra di cambio"
+  },
+  {
+   "low": "02",
+   "high": null,
+   "text": "Spain: Recibo"
+  },
+  {
+   "low": "03",
+   "high": null,
+   "text": "Spain: Pagare"
+  },
+  {
+   "low": "11",
+   "high": null,
+   "text": "France: LCR papier"
+  },
+  {
+   "low": "12",
+   "high": null,
+   "text": "France: LCR magnetique"
+  },
+  {
+   "low": "13",
+   "high": null,
+   "text": "France: BOR"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

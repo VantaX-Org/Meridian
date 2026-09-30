@@ -1314,5 +1314,86 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "BKLAS",
+   "foreign_table": "T025",
+   "foreign_field": "BKLAS"
+  },
+  {
+   "field": "BWKEY",
+   "foreign_table": "T001K",
+   "foreign_field": "BWKEY"
+  },
+  {
+   "field": "BWTTY",
+   "foreign_table": "T149",
+   "foreign_field": "BWTTY"
+  },
+  {
+   "field": "BWVA1",
+   "foreign_table": "TCK05",
+   "foreign_field": "BWVAR"
+  },
+  {
+   "field": "BWVA2",
+   "foreign_table": "TCK05",
+   "foreign_field": "BWVAR"
+  },
+  {
+   "field": "BWVA3",
+   "foreign_table": "TCK05",
+   "foreign_field": "BWVAR"
+  },
+  {
+   "field": "EKLAS",
+   "foreign_table": "T025",
+   "foreign_field": "BKLAS"
+  },
+  {
+   "field": "HRKFT",
+   "foreign_table": "TKKH1",
+   "foreign_field": "HRKFT"
+  },
+  {
+   "field": "KOSGR",
+   "foreign_table": "TCK14",
+   "foreign_field": "KOSGR"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MATNR",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "MYPOL",
+   "foreign_table": "TPOOL",
+   "foreign_field": "MYPOOL"
+  },
+  {
+   "field": "OKLAS",
+   "foreign_table": "T025",
+   "foreign_field": "BKLAS"
+  },
+  {
+   "field": "QKLAS",
+   "foreign_table": "T025",
+   "foreign_field": "BKLAS"
+  },
+  {
+   "field": "VJBKL",
+   "foreign_table": "T025",
+   "foreign_field": "BKLAS"
+  },
+  {
+   "field": "VMBKL",
+   "foreign_table": "T025",
+   "foreign_field": "BKLAS"
+  }
+ ]
 }

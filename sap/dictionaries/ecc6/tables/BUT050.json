@@ -258,5 +258,21 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "CLIENT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "PARTNER1",
+   "foreign_table": "BUT000",
+   "foreign_field": "PARTNER"
+  },
+  {
+   "field": "PARTNER2",
+   "foreign_table": "BUT000",
+   "foreign_field": "PARTNER"
+  }
+ ]
 }

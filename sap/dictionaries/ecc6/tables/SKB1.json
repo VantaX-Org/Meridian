@@ -510,5 +510,91 @@
    "check_table": "GLE_MCA_TMCAKEY"
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "BUKRS",
+   "foreign_table": "T001",
+   "foreign_field": "BUKRS"
+  },
+  {
+   "field": "BUSAB",
+   "foreign_table": "T001S",
+   "foreign_field": "BUSAB"
+  },
+  {
+   "field": "FDGRV",
+   "foreign_table": "T035",
+   "foreign_field": "GRUPP"
+  },
+  {
+   "field": "FDLEV",
+   "foreign_table": "T036",
+   "foreign_field": "EBENE"
+  },
+  {
+   "field": "FSTAG",
+   "foreign_table": "T004F",
+   "foreign_field": "FSTAG"
+  },
+  {
+   "field": "HBKID",
+   "foreign_table": "T012",
+   "foreign_field": "HBKID"
+  },
+  {
+   "field": "HKTID",
+   "foreign_table": "T012K",
+   "foreign_field": "HKTID"
+  },
+  {
+   "field": "INFKY",
+   "foreign_table": "J_1AINFSKS",
+   "foreign_field": "J_1AIFSKS"
+  },
+  {
+   "field": "KDFSL",
+   "foreign_table": "T030S",
+   "foreign_field": "KDFSL"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MCAKEY",
+   "foreign_table": "GLE_MCA_TMCAKEY",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "RECID",
+   "foreign_table": "T8JJ",
+   "foreign_field": "RECID"
+  },
+  {
+   "field": "SAKNR",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "TOGRU",
+   "foreign_table": "T043S",
+   "foreign_field": "TOGRU"
+  },
+  {
+   "field": "VZSKZ",
+   "foreign_table": "T056",
+   "foreign_field": "VZSKZ"
+  },
+  {
+   "field": "WAERS",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  },
+  {
+   "field": "ZUAWA",
+   "foreign_table": "TZUN",
+   "foreign_field": "ZUAWA"
+  }
+ ]
 }

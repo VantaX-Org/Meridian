@@ -1,0 +1,32 @@
+{
+ "domain": "SPINF",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No update"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Update with or without plant"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Update with plant (if no plant ban)"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Update without plant (if no plant requirement)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -114,5 +114,16 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "CONNECTOR",
+   "foreign_table": "GRFNCCICONNECTOR",
+   "foreign_field": "CONNECTOR"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
 }

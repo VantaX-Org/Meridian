@@ -2178,5 +2178,161 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "ANFBU",
+   "foreign_table": "T001",
+   "foreign_field": "BUKRS"
+  },
+  {
+   "field": "AUFNR",
+   "foreign_table": "AUFK",
+   "foreign_field": "AUFNR"
+  },
+  {
+   "field": "BLART",
+   "foreign_table": "T003",
+   "foreign_field": "BLART"
+  },
+  {
+   "field": "BSCHL",
+   "foreign_table": "TBSL",
+   "foreign_field": "BSCHL"
+  },
+  {
+   "field": "BTYPE",
+   "foreign_table": "T8JA",
+   "foreign_field": "BILIND"
+  },
+  {
+   "field": "BUKRS",
+   "foreign_table": "LFB1",
+   "foreign_field": "BUKRS"
+  },
+  {
+   "field": "BUPLA",
+   "foreign_table": "J_1BBRANCH",
+   "foreign_field": "BRANCH"
+  },
+  {
+   "field": "EGBLD",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "EGLLD",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "EGRUP",
+   "foreign_table": "T8JF",
+   "foreign_field": "EGRUP"
+  },
+  {
+   "field": "GSBER",
+   "foreign_table": "TGSB",
+   "foreign_field": "GSBER"
+  },
+  {
+   "field": "HBKID",
+   "foreign_table": "T012",
+   "foreign_field": "HBKID"
+  },
+  {
+   "field": "LANDL",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "LIFNR",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "LNRAN",
+   "foreign_table": "ANEK",
+   "foreign_field": "LNRAN"
+  },
+  {
+   "field": "LZBKZ",
+   "foreign_table": "T015L",
+   "foreign_field": "LZBKZ"
+  },
+  {
+   "field": "MANSP",
+   "foreign_table": "T040S",
+   "foreign_field": "MANSP"
+  },
+  {
+   "field": "MSCHL",
+   "foreign_table": "T040",
+   "foreign_field": "MSCHL"
+  },
+  {
+   "field": "MWSKZ",
+   "foreign_table": "T007A",
+   "foreign_field": "MWSKZ"
+  },
+  {
+   "field": "PSWSL",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  },
+  {
+   "field": "PYCUR",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  },
+  {
+   "field": "QSSKZ",
+   "foreign_table": "T059Q",
+   "foreign_field": "QSSKZ"
+  },
+  {
+   "field": "RSTGR",
+   "foreign_table": "T053R",
+   "foreign_field": "RSTGR"
+  },
+  {
+   "field": "SECCO",
+   "foreign_table": "SECCODE",
+   "foreign_field": "SECCODE"
+  },
+  {
+   "field": "UMSKZ",
+   "foreign_table": "T074U",
+   "foreign_field": "UMSKZ"
+  },
+  {
+   "field": "UZAWE",
+   "foreign_table": "T042F",
+   "foreign_field": "UZAWE"
+  },
+  {
+   "field": "VBUND",
+   "foreign_table": "T880",
+   "foreign_field": "RCOMP"
+  },
+  {
+   "field": "VNAME",
+   "foreign_table": "T8JV",
+   "foreign_field": "VNAME"
+  },
+  {
+   "field": "WAERS",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  },
+  {
+   "field": "ZLSCH",
+   "foreign_table": "T042Z",
+   "foreign_field": "ZLSCH"
+  },
+  {
+   "field": "ZLSPR",
+   "foreign_table": "T008",
+   "foreign_field": "ZAHLS"
+  }
+ ]
 }

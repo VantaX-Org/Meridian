@@ -3,7 +3,7 @@ target_state: ECC_AND_S4HANA
 rules:
 
   - id: GRC001
-    field: GRACUSERROLE.USERID
+    field: GRACUSERROLE.USER_ID
     check_class: null_check
     severity: critical
     dimension: completeness
@@ -23,31 +23,25 @@ rules:
         update in GRC Access Control (NWBC > Access Management). In S/4HANA: use
         Fiori app F3873 (Manage Access Requests) or NWBC.
     record_fix_template: >-
-      Role assignment for {GRACUSERROLE.ROLENAME}: USERID is {actual_value}. Assign
+      Role assignment for {GRACROLE.ROLE_NAME}: USERID is {actual_value}. Assign
       the correct user via GRC Access Control.
 
   - id: GRC002
-    field: GRACUSERROLE.ROLENAME
+    field: GRACROLE.ROLE_NAME
     check_class: null_check
     severity: critical
     dimension: completeness
-    message: "Role name is mandatory — identifies what access is granted"
-    why_it_matters: >-
-      ROLENAME identifies which SAP role is assigned to the user. Without it, the system
-      knows a user has an assignment but not what access it grants. SoD analysis cannot
-      evaluate the risk, and the access review process cannot determine whether the
-      assignment is appropriate.
+    message: Role assignment references a role with no name (unknown role)
+    why_it_matters: ROLENAME identifies which SAP role is assigned to the user. Without it, the system knows a user
+      has an assignment but not what access it grants. SoD analysis cannot evaluate the risk, and the access review
+      process cannot determine whether the assignment is appropriate.
     rule_authority: sap_hard_constraint
-    sap_impact: >-
-      Access level unknown. SoD analysis incomplete — potential risks undetected.
-      Access certification cannot evaluate this assignment.
-    fix_map:
-      __blank__: >-
-        In ECC: identify the role from the access request via NWBC > Access Management.
-        In S/4HANA: use Fiori app F3873 or SU01 to verify user role assignments.
-    record_fix_template: >-
-      User {GRACUSERROLE.USERID}: ROLENAME is {actual_value}. Assign the correct
-      role via GRC Access Control.
+    sap_impact: Access level unknown. SoD analysis incomplete — potential risks undetected. Access certification cannot
+      evaluate this assignment.
+    fix_map: {__blank__: 'In ECC: identify the role from the access request via NWBC > Access Management. In S/4HANA:
+        use Fiori app F3873 or SU01 to verify user role assignments.'}
+    record_fix_template: 'User {GRACUSERROLE.USER_ID}: ROLENAME is {actual_value}. Assign the correct role via GRC
+      Access Control.'
 
   - id: GRC003
     field: GRACUSERROLE.VALID_FROM
@@ -69,7 +63,7 @@ rules:
         In ECC: set valid-from date via SU01 > Roles tab or GRC Access Control. In
         S/4HANA: use Fiori app F1603 (Maintain Business Users) or SU01.
     record_fix_template: >-
-      User {GRACUSERROLE.USERID} / Role {GRACUSERROLE.ROLENAME}: VALID_FROM is
+      User {GRACUSERROLE.USER_ID} / Role {GRACROLE.ROLE_NAME}: VALID_FROM is
       {actual_value}. Set the correct start date via SU01 or GRC Access Control.
 
   - id: GRC004
@@ -93,37 +87,31 @@ rules:
         In ECC: set expiry date via SU01 > Roles tab or GRC Access Control. In S/4HANA:
         use Fiori app F1603 or SU01.
     record_fix_template: >-
-      User {GRACUSERROLE.USERID} / Role {GRACUSERROLE.ROLENAME}: VALID_TO is
+      User {GRACUSERROLE.USER_ID} / Role {GRACROLE.ROLE_NAME}: VALID_TO is
       {actual_value}. Set an expiry date per access policy via SU01 or GRC.
 
   - id: GRC005
     field: GRACUSERROLE.VALID_FROM
-    fields: ["GRACUSERROLE.VALID_FROM", "GRACUSERROLE.VALID_TO"]
     check_class: cross_field_check
-    condition: "`GRACUSERROLE.VALID_FROM` > `GRACUSERROLE.VALID_TO`"
     severity: critical
     dimension: consistency
-    message: "Valid-from date must be before valid-to date — inverted dates mean access is never active"
-    why_it_matters: >-
-      If VALID_FROM is after VALID_TO, the role assignment has an impossible validity
-      period — it was never active. This either means the assignment was incorrectly
-      configured (a data entry error) or it represents a deprovisioning that was done
-      incorrectly. Either way, SoD analysis may incorrectly include or exclude this
+    message: Valid-from date must be before valid-to date — inverted dates mean access is never active
+    why_it_matters: If VALID_FROM is after VALID_TO, the role assignment has an impossible validity period — it was
+      never active. This either means the assignment was incorrectly configured (a data entry error) or it represents
+      a deprovisioning that was done incorrectly. Either way, SoD analysis may incorrectly include or exclude this
       assignment.
     rule_authority: sap_hard_constraint
-    sap_impact: >-
-      Role assignment validity period is logically impossible. SoD analysis may produce
-      incorrect results. Access review cannot determine if access was ever active.
-    fix_map:
-      __blank__: >-
-        In ECC: correct the dates via SU01 > Roles tab or GRC Access Control. In
-        S/4HANA: use Fiori app F1603 or SU01.
-    record_fix_template: >-
-      User {GRACUSERROLE.USERID} / Role {GRACUSERROLE.ROLENAME}: VALID_FROM
-      ({actual_value}) is after VALID_TO. Correct the dates via SU01 or GRC.
+    sap_impact: Role assignment validity period is logically impossible. SoD analysis may produce incorrect results.
+      Access review cannot determine if access was ever active.
+    fix_map: {__blank__: 'In ECC: correct the dates via SU01 > Roles tab or GRC Access Control. In S/4HANA: use Fiori
+        app F1603 or SU01.'}
+    record_fix_template: 'User {GRACUSERROLE.USER_ID} / Role {GRACROLE.ROLE_NAME}: VALID_FROM ({actual_value}) is
+      after VALID_TO. Correct the dates via SU01 or GRC.'
+    fail_when: '`GRACUSERROLE.VALID_FROM` > `GRACUSERROLE.VALID_TO`'
+    require_populated: true
 
   - id: GRC006
-    field: GRACRISK.RISK_ID
+    field: GRACSODRISK.RISKID
     check_class: null_check
     severity: critical
     dimension: completeness
@@ -146,36 +134,28 @@ rules:
       the data source for corruption.
 
   - id: GRC007
-    field: GRACRISK.RISK_LEVEL
-    check_class: domain_value_check
+    field: GRACSODRISK.RISKLEVEL
+    check_class: referential_check
     severity: high
     dimension: accuracy
-    message: "Risk level must be a valid GRC risk classification"
-    allowed_values: ["critical", "high", "medium", "low"]
-    valid_values_with_labels:
-      critical: "Critical — immediate action required, significant financial/compliance exposure"
-      high: "High — requires urgent remediation within defined SLA"
-      medium: "Medium — should be addressed in next review cycle"
-      low: "Low — acceptable risk, monitor in regular review"
-    why_it_matters: >-
-      The risk level classification drives the urgency and escalation of risk mitigation.
-      An invalid value means the risk cannot be properly prioritised — critical risks may
-      be overlooked while low risks consume remediation resources.
+    message: SoD risk level must exist in the GRC risk-level configuration
+    valid_values_with_labels: {critical: 'Critical — immediate action required, significant financial/compliance exposure',
+      high: High — requires urgent remediation within defined SLA, medium: Medium — should be addressed in next review
+        cycle, low: 'Low — acceptable risk, monitor in regular review'}
+    why_it_matters: The risk level classification drives the urgency and escalation of risk mitigation. An invalid
+      value means the risk cannot be properly prioritised — critical risks may be overlooked while low risks consume
+      remediation resources.
     rule_authority: sap_hard_constraint
-    sap_impact: >-
-      Risk prioritisation fails. Critical risks may not be escalated. Mitigation SLAs
-      not applied correctly. GRC dashboards and reports are unreliable.
-    fix_map:
-      __other__: >-
-        Risk level '{invalid_value}' is not a valid classification. Valid values are:
-        critical, high, medium, low. Review the risk assessment in GRC Risk Management
-        (NWBC or Fiori GRC apps).
-    record_fix_template: >-
-      Risk {GRACRISK.RISK_ID}: RISK_LEVEL is '{actual_value}'. Set to a valid level
-      via GRC Risk Management.
+    sap_impact: Risk prioritisation fails. Critical risks may not be escalated. Mitigation SLAs not applied correctly.
+      GRC dashboards and reports are unreliable.
+    fix_map: {__other__: 'Risk level ''{invalid_value}'' is not a valid classification. Valid values are: critical,
+        high, medium, low. Review the risk assessment in GRC Risk Management (NWBC or Fiori GRC apps).'}
+    record_fix_template: 'Risk {GRACSODRISK.RISKID}: RISK_LEVEL is ''{actual_value}''. Set to a valid level via GRC
+      Risk Management.'
+    reference_values: []
 
   - id: GRC008
-    field: GRACRISK.RISK_DESC
+    field: GRACSODRISKT.DESCN
     check_class: null_check
     severity: medium
     dimension: completeness
@@ -194,63 +174,49 @@ rules:
         In ECC/S/4HANA: enter risk description via GRC Risk Management (NWBC > Risk
         Management or Fiori GRC apps).
     record_fix_template: >-
-      Risk {GRACRISK.RISK_ID}: RISK_DESC is {actual_value}. Enter a meaningful
+      Risk {GRACSODRISK.RISKID}: RISK_DESC is {actual_value}. Enter a meaningful
       description via GRC Risk Management.
 
   - id: GRC009
-    field: GRACRISK.CONTROL_STATUS
+    field: GRACSODRISK.ACTIVE
     check_class: domain_value_check
     severity: high
     dimension: accuracy
-    message: "Control status must indicate whether mitigating controls are in place"
-    allowed_values: ["active", "inactive", "pending", "expired"]
-    valid_values_with_labels:
-      active: "Active — mitigating control is in place and effective"
-      inactive: "Inactive — control exists but is not currently operating"
-      pending: "Pending — control is designed but not yet implemented"
-      expired: "Expired — control has passed its review date and needs reassessment"
-    why_it_matters: >-
-      Control status indicates whether a mitigating control exists and is effective for a
-      given risk. An invalid value means the GRC system cannot determine the residual risk
-      level — it may show risks as mitigated when controls are not in place, creating a
-      false sense of security.
+    message: SoD risk active flag has an invalid value
+    allowed_values: ['', X]
+    valid_values_with_labels: {active: Active — mitigating control is in place and effective, inactive: Inactive —
+        control exists but is not currently operating, pending: Pending — control is designed but not yet implemented,
+      expired: Expired — control has passed its review date and needs reassessment}
+    why_it_matters: Control status indicates whether a mitigating control exists and is effective for a given risk.
+      An invalid value means the GRC system cannot determine the residual risk level — it may show risks as mitigated
+      when controls are not in place, creating a false sense of security.
     rule_authority: sap_hard_constraint
-    sap_impact: >-
-      Residual risk calculation incorrect. Mitigated risks shown as unmitigated or vice
-      versa. GRC dashboards misleading. Audit findings for control status accuracy.
-    fix_map:
-      __other__: >-
-        Control status '{invalid_value}' is not valid. Valid values are: active, inactive,
-        pending, expired. Review the control assessment in GRC Risk Management.
-    record_fix_template: >-
-      Risk {GRACRISK.RISK_ID}: CONTROL_STATUS is '{actual_value}'. Set to a valid status
-      via GRC Risk Management.
+    sap_impact: Residual risk calculation incorrect. Mitigated risks shown as unmitigated or vice versa. GRC dashboards
+      misleading. Audit findings for control status accuracy.
+    fix_map: {__other__: 'Control status ''{invalid_value}'' is not valid. Valid values are: active, inactive, pending,
+        expired. Review the control assessment in GRC Risk Management.'}
+    record_fix_template: 'Risk {GRACSODRISK.RISKID}: CONTROL_STATUS is ''{actual_value}''. Set to a valid status via
+      GRC Risk Management.'
 
   - id: GRC010
-    field: GRACRISK.CONTROL_ID
+    field: GRACSODRISK.RISKTYPE
     check_class: null_check
     severity: high
     dimension: completeness
-    message: "Control ID links the risk to its mitigating control — required when status is active"
-    why_it_matters: >-
-      CONTROL_ID links the risk to a specific mitigating control. When the control status
-      is active, a missing control ID means the risk claims to be mitigated but has no
-      traceable control. This is an audit finding — the control cannot be tested or
-      verified without an identifier.
+    message: SoD risk has no risk type (segregation of duties, critical action, critical permission)
+    why_it_matters: CONTROL_ID links the risk to a specific mitigating control. When the control status is active,
+      a missing control ID means the risk claims to be mitigated but has no traceable control. This is an audit finding
+      — the control cannot be tested or verified without an identifier.
     rule_authority: best_practice
-    sap_impact: >-
-      Risk claims mitigation but control is untraceable. Control testing cannot proceed.
-      Audit finding for unlinked mitigating controls.
-    fix_map:
-      __blank__: >-
-        In ECC/S/4HANA: link the mitigating control via GRC Risk Management. If no
-        control exists, set CONTROL_STATUS to 'inactive' or 'pending'.
-    record_fix_template: >-
-      Risk {GRACRISK.RISK_ID}: CONTROL_ID is {actual_value}. Link the mitigating
-      control via GRC Risk Management or update the control status.
+    sap_impact: Risk claims mitigation but control is untraceable. Control testing cannot proceed. Audit finding for
+      unlinked mitigating controls.
+    fix_map: {__blank__: 'In ECC/S/4HANA: link the mitigating control via GRC Risk Management. If no control exists,
+        set CONTROL_STATUS to ''inactive'' or ''pending''.'}
+    record_fix_template: 'Risk {GRACSODRISK.RISKID}: CONTROL_ID is {actual_value}. Link the mitigating control via
+      GRC Risk Management or update the control status.'
 
   - id: GRC011
-    field: GRACUSERROLE.ROLENAME
+    field: GRACROLE.ROLE_NAME
     check_class: regex_check
     pattern: "^[A-Z][A-Z0-9_:]{2,49}$"
     severity: medium
@@ -271,11 +237,11 @@ rules:
         rename via PFCG. In S/4HANA: use Fiori app F1603 or PFCG. Ensure the name
         follows the organisation's role naming standard.
     record_fix_template: >-
-      User {GRACUSERROLE.USERID}: ROLENAME '{actual_value}' does not follow naming
+      User {GRACUSERROLE.USER_ID}: ROLENAME '{actual_value}' does not follow naming
       convention. Rename via PFCG (ECC) or Fiori app F1603 (S/4HANA).
 
   - id: GRC012
-    field: GRACUSERROLE.USERID
+    field: GRACUSERROLE.USER_ID
     check_class: regex_check
     pattern: "^[A-Z0-9_\\-]{1,12}$"
     severity: medium
@@ -300,18 +266,19 @@ rules:
       SU01 (ECC) or Fiori app F1603 (S/4HANA).
 
   - id: GRC013
-    field: GRACUSERROLE.USERID
-    check_class: cross_field_check
-    fields: ['GRACUSERROLE.USERID']
-    condition: "~`GRACUSERROLE.USERID`.duplicated(keep=False)"
+    field: GRACUSERROLE.USER_ID
+    check_class: uniqueness_check
+    fields: [GRACUSERROLE.USER_ID, GRACUSERROLE.ROLE_ID, GRACUSERROLE.CONNECTOR, GRACUSERROLE.VALID_FROM]
     severity: high
     dimension: uniqueness
     message: Duplicate GRC user-role assignments detected — indicates access control inconsistency
-    why_it_matters: Duplicate role assignments cause SoD analysis to produce false positives or miss genuine conflicts. Each user-role combination must be unique.
+    why_it_matters: Duplicate role assignments cause SoD analysis to produce false positives or miss genuine conflicts.
+      Each user-role combination must be unique.
     rule_authority: best_practice
-    sap_impact: SoD matrix produces incorrect results. Audit reports flag phantom conflicts. Access risk quantification is unreliable.
-    fix_map:
-      __blank__: "Review duplicate role assignments in GRC Access Control. Remove the duplicate assignment. Re-run SoD analysis for affected users."
+    sap_impact: SoD matrix produces incorrect results. Audit reports flag phantom conflicts. Access risk quantification
+      is unreliable.
+    fix_map: {__blank__: Review duplicate role assignments in GRC Access Control. Remove the duplicate assignment.
+        Re-run SoD analysis for affected users.}
 
   - id: GRC014
     field: GRACUSERROLE.VALID_FROM
@@ -328,11 +295,11 @@ rules:
     record_fix_template: "Role assignment {field} is {age_days} days old. Recertify against the user's current role; revoke if not required and record the review."
 
   - id: GRC015
-    field: GRACRISK.RISK_LEVEL
+    field: GRACSODRISK.RISKLEVEL
     check_class: null_check
     severity: high
     dimension: completeness
-    message: "Risk level (GRACRISK.RISK_LEVEL) is mandatory"
+    message: "Risk level (GRACSODRISK.RISKLEVEL) is mandatory"
     why_it_matters: >-
       RISK_LEVEL classifies the severity of an access risk (e.g. Critical,
       High, Medium, Low) in SAP GRC Access Control. Without it, the risk cannot
@@ -348,5 +315,5 @@ rules:
         Access Risks). In S/4HANA use the Fiori-based GRC access-risk
         maintenance apps.
     record_fix_template: >-
-      Access risk {GRACRISK.RISK_ID}: RISK_LEVEL is {actual_value}. Assign the
+      Access risk {GRACSODRISK.RISKID}: RISK_LEVEL is {actual_value}. Assign the
       correct severity via GRC Access Control.

@@ -510,5 +510,56 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "ABWBER",
+   "foreign_table": "T093",
+   "foreign_field": "AFABER"
+  },
+  {
+   "field": "AFABE1",
+   "foreign_table": "T093",
+   "foreign_field": "AFABER"
+  },
+  {
+   "field": "AFABE2",
+   "foreign_table": "T093",
+   "foreign_field": "AFABER"
+  },
+  {
+   "field": "AFABE3",
+   "foreign_table": "T093",
+   "foreign_field": "AFABER"
+  },
+  {
+   "field": "AFABE4",
+   "foreign_table": "T093",
+   "foreign_field": "AFABER"
+  },
+  {
+   "field": "AFAPL",
+   "foreign_table": "T096",
+   "foreign_field": "AFAPL"
+  },
+  {
+   "field": "CORRBE",
+   "foreign_table": "T093",
+   "foreign_field": "AFABER"
+  },
+  {
+   "field": "GAFABER",
+   "foreign_table": "T093G",
+   "foreign_field": "GAFABER"
+  },
+  {
+   "field": "LDGRP_GL",
+   "foreign_table": "FAGL_TLDGRP",
+   "foreign_field": "LDGRP"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
 }

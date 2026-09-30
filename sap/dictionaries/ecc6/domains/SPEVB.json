@@ -1,0 +1,27 @@
+{
+ "domain": "SPEVB",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No block"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Only automatic creation allowed, e.g. for rebate processing"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "The sales document type is blocked"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

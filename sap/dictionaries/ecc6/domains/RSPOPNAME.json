@@ -1,0 +1,11 @@
+{
+ "domain": "RSPOPNAME",
+ "type": "CHAR",
+ "length": 4,
+ "decimals": 0,
+ "conversion_exit": "SPDEV",
+ "lowercase": true,
+ "value_table": "TSP03",
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

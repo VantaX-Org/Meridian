@@ -306,5 +306,56 @@
    "check_table": "J_1BATL5"
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "J_1BTAXLW1",
+   "foreign_table": "J_1BATL1",
+   "foreign_field": "TAXLAW"
+  },
+  {
+   "field": "J_1BTAXLW2",
+   "foreign_table": "J_1BATL2",
+   "foreign_field": "TAXLAW"
+  },
+  {
+   "field": "J_1BTAXLW4",
+   "foreign_table": "J_1BATL4A",
+   "foreign_field": "TAXLAW"
+  },
+  {
+   "field": "J_1BTAXLW5",
+   "foreign_table": "J_1BATL5",
+   "foreign_field": "TAXLAW"
+  },
+  {
+   "field": "KALSM",
+   "foreign_table": "T683",
+   "foreign_field": "KALSM"
+  },
+  {
+   "field": "LSTML",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "ZMWSK",
+   "foreign_table": "T007A",
+   "foreign_field": "MWSKZ"
+  },
+  {
+   "field": "ZMWSK_ESA",
+   "foreign_table": "T007A",
+   "foreign_field": "MWSKZ"
+  },
+  {
+   "field": "ZMWSK_ESE",
+   "foreign_table": "T007A",
+   "foreign_field": "MWSKZ"
+  }
+ ]
 }

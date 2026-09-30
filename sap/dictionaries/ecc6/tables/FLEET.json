@@ -666,5 +666,96 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "/DSD/RP_AHLAST_U",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "/DSD/RP_KAPUNIT",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "/VSO/M_VSO_FTYPE",
+   "foreign_table": "/VSO/B_FLEET",
+   "foreign_field": "VSO_FTYPE"
+  },
+  {
+   "field": "DIM_UNIT",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "ENGINE_TYPE",
+   "foreign_table": "T370ENG",
+   "foreign_field": "ENGINE_TYPE"
+  },
+  {
+   "field": "FLEET_CAT",
+   "foreign_table": "T370FLT",
+   "foreign_field": "FLEET_CAT"
+  },
+  {
+   "field": "FLEET_USE",
+   "foreign_table": "T370USG",
+   "foreign_field": "FLEET_USE"
+  },
+  {
+   "field": "FUEL_PRI",
+   "foreign_table": "T370FLD",
+   "foreign_field": "FLUID_TYPE"
+  },
+  {
+   "field": "FUEL_SEC",
+   "foreign_table": "T370FLD",
+   "foreign_field": "FLUID_TYPE"
+  },
+  {
+   "field": "LOAD_DIM_UNIT",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "OBJNR",
+   "foreign_table": "ONR00",
+   "foreign_field": "OBJNR"
+  },
+  {
+   "field": "OIL_TYPE",
+   "foreign_table": "T370FLD",
+   "foreign_field": "FLUID_TYPE"
+  },
+  {
+   "field": "PRI_CALC",
+   "foreign_table": "T370CLC",
+   "foreign_field": "CALC_KEY"
+  },
+  {
+   "field": "SPEED_UNIT",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "UNIT_CAP",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "UNIT_POWER",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "VOL_UNIT",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  }
+ ]
 }

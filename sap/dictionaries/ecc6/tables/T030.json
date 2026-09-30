@@ -102,5 +102,31 @@
    "check_table": "SKA1"
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "BKLAS",
+   "foreign_table": "T025",
+   "foreign_field": "BKLAS"
+  },
+  {
+   "field": "KONTH",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KONTS",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTOPL",
+   "foreign_table": "T004",
+   "foreign_field": "KTOPL"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
 }

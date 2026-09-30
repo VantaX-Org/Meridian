@@ -1,0 +1,37 @@
+{
+ "domain": "ROTATION_DATE",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "P",
+   "high": null,
+   "text": "Production Date"
+  },
+  {
+   "low": "O",
+   "high": null,
+   "text": "Expiration Date"
+  },
+  {
+   "low": "G",
+   "high": null,
+   "text": "Goods Receipt Date"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Expiration Date - Production Date"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Expiration Date - Goods Receipt Date"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

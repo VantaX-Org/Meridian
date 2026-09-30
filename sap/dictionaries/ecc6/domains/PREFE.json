@@ -1,0 +1,42 @@
+{
+ "domain": "PREFE",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "Not checked"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Checked - price influenced"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Generally allowed"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Generally not allowed"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Authorized for preference: set manually"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Not authorized for preference: component of mixed origins"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

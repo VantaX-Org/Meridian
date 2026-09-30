@@ -2154,5 +2154,301 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "ABSSC",
+   "foreign_table": "T691M",
+   "foreign_field": "ABSSC"
+  },
+  {
+   "field": "AKWAE",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  },
+  {
+   "field": "AULWE",
+   "foreign_table": "VALW",
+   "foreign_field": "AULWE"
+  },
+  {
+   "field": "BZIRK",
+   "foreign_table": "T171",
+   "foreign_field": "BZIRK"
+  },
+  {
+   "field": "CMWAE",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  },
+  {
+   "field": "COMMN",
+   "foreign_table": "TQCOM",
+   "foreign_field": "COMMN"
+  },
+  {
+   "field": "CTLPC",
+   "foreign_table": "T691A",
+   "foreign_field": "CTLPC"
+  },
+  {
+   "field": "EXNUM",
+   "foreign_table": "EIKP",
+   "foreign_field": "EXNUM"
+  },
+  {
+   "field": "FAKSK",
+   "foreign_table": "TVFS",
+   "foreign_field": "FAKSP"
+  },
+  {
+   "field": "FKAIV",
+   "foreign_table": "TVFK",
+   "foreign_field": "FKART"
+  },
+  {
+   "field": "FKARV",
+   "foreign_table": "TVFK",
+   "foreign_field": "FKART"
+  },
+  {
+   "field": "GEWEI",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "GRULG",
+   "foreign_table": "TVLG",
+   "foreign_field": "GRULG"
+  },
+  {
+   "field": "INCO1",
+   "foreign_table": "TINC",
+   "foreign_field": "INCO1"
+  },
+  {
+   "field": "KALSM",
+   "foreign_table": "T683",
+   "foreign_field": "KALSM"
+  },
+  {
+   "field": "KALSM_CH",
+   "foreign_table": "T683",
+   "foreign_field": "KALSM"
+  },
+  {
+   "field": "KALSP",
+   "foreign_table": "T683",
+   "foreign_field": "KALSM"
+  },
+  {
+   "field": "KDGRP",
+   "foreign_table": "T151",
+   "foreign_field": "KDGRP"
+  },
+  {
+   "field": "KKBER",
+   "foreign_table": "T014",
+   "foreign_field": "KKBER"
+  },
+  {
+   "field": "KNFAK",
+   "foreign_table": "TFACD",
+   "foreign_field": "IDENT"
+  },
+  {
+   "field": "KNKLI",
+   "foreign_table": "KNA1",
+   "foreign_field": "KUNNR"
+  },
+  {
+   "field": "KUNAG",
+   "foreign_table": "KNA1",
+   "foreign_field": "KUNNR"
+  },
+  {
+   "field": "KUNIV",
+   "foreign_table": "KNA1",
+   "foreign_field": "KUNNR"
+  },
+  {
+   "field": "KUNNR",
+   "foreign_table": "KNA1",
+   "foreign_field": "KUNNR"
+  },
+  {
+   "field": "LCNUM",
+   "foreign_table": "AKKP",
+   "foreign_field": "LCNUM"
+  },
+  {
+   "field": "LFART",
+   "foreign_table": "TVLK",
+   "foreign_field": "LFART"
+  },
+  {
+   "field": "LGBZO",
+   "foreign_table": "T30C",
+   "foreign_field": "LGBZO"
+  },
+  {
+   "field": "LGNUM",
+   "foreign_table": "T300",
+   "foreign_field": "LGNUM"
+  },
+  {
+   "field": "LGTOR",
+   "foreign_table": "T30B",
+   "foreign_field": "LGTOR"
+  },
+  {
+   "field": "LIFSK",
+   "foreign_table": "TVLS",
+   "foreign_field": "LIFSP"
+  },
+  {
+   "field": "LPRIO",
+   "foreign_table": "TPRIO",
+   "foreign_field": "LPRIO"
+  },
+  {
+   "field": "LSTEL",
+   "foreign_table": "TVLA",
+   "foreign_field": "LSTEL"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "PERFK",
+   "foreign_table": "TFACD",
+   "foreign_field": "IDENT"
+  },
+  {
+   "field": "PIOIV",
+   "foreign_table": "TFACD",
+   "foreign_field": "IDENT"
+  },
+  {
+   "field": "PROLI",
+   "foreign_table": "TDGC5",
+   "foreign_field": "PROLI"
+  },
+  {
+   "field": "ROUTA",
+   "foreign_table": "TVRO",
+   "foreign_field": "ROUTE"
+  },
+  {
+   "field": "ROUTE",
+   "foreign_table": "TVRO",
+   "foreign_field": "ROUTE"
+  },
+  {
+   "field": "SBGRP",
+   "foreign_table": "T024B",
+   "foreign_field": "SBGRP"
+  },
+  {
+   "field": "SDABW",
+   "foreign_table": "TVSAK",
+   "foreign_field": "SDABW"
+  },
+  {
+   "field": "SPAIV",
+   "foreign_table": "TSPA",
+   "foreign_field": "SPART"
+  },
+  {
+   "field": "STWAE",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  },
+  {
+   "field": "TERNR",
+   "foreign_table": "AUFK",
+   "foreign_field": "AUFNR"
+  },
+  {
+   "field": "TPSID",
+   "foreign_table": "TQCOM",
+   "foreign_field": "COMMN"
+  },
+  {
+   "field": "TRAGR",
+   "foreign_table": "TTGR",
+   "foreign_field": "TRAGR"
+  },
+  {
+   "field": "TRATY",
+   "foreign_table": "TVTY",
+   "foreign_field": "TRATY"
+  },
+  {
+   "field": "TRMTYP",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "TRSPG",
+   "foreign_table": "TTSG",
+   "foreign_field": "TRSPG"
+  },
+  {
+   "field": "VBELN",
+   "foreign_table": "VBUK",
+   "foreign_field": "VBELN"
+  },
+  {
+   "field": "VKBUR",
+   "foreign_table": "TVBUR",
+   "foreign_field": "VKBUR"
+  },
+  {
+   "field": "VKOIV",
+   "foreign_table": "TVKO",
+   "foreign_field": "VKORG"
+  },
+  {
+   "field": "VKORG",
+   "foreign_table": "TVKO",
+   "foreign_field": "VKORG"
+  },
+  {
+   "field": "VOLEH",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "VSART",
+   "foreign_table": "T173",
+   "foreign_field": "VSART"
+  },
+  {
+   "field": "VSBED",
+   "foreign_table": "TVSB",
+   "foreign_field": "VSBED"
+  },
+  {
+   "field": "VSTEL",
+   "foreign_table": "TVST",
+   "foreign_field": "VSTEL"
+  },
+  {
+   "field": "VTWIV",
+   "foreign_table": "TVTW",
+   "foreign_field": "VTWEG"
+  },
+  {
+   "field": "WAERK",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  }
+ ]
 }

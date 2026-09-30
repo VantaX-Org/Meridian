@@ -1,0 +1,82 @@
+{
+ "domain": "RFBSK",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Error in Accounting Interface"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Billing document blocked for forwarding to FI"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Posting document not created (account determ.error)"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Posting document has been created"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Billing document is not relevant for accounting"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Billing Document Canceled"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Posting document not created (pricing error)"
+  },
+  {
+   "low": "G",
+   "high": null,
+   "text": "Posting document not created (export data missing)"
+  },
+  {
+   "low": "H",
+   "high": null,
+   "text": "Posted via invoice list"
+  },
+  {
+   "low": "I",
+   "high": null,
+   "text": "Posted via invoice list (account determination error)"
+  },
+  {
+   "low": "K",
+   "high": null,
+   "text": "Accounting document not created (no authorization)"
+  },
+  {
+   "low": "L",
+   "high": null,
+   "text": "Billing doc. blocked for transfer to manager (only IS-OIL)"
+  },
+  {
+   "low": "M",
+   "high": null,
+   "text": "Analyst Approval refused (only IS-OIL)"
+  },
+  {
+   "low": "N",
+   "high": null,
+   "text": "No posting document due to fund management (only IS-PS)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

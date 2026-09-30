@@ -54,5 +54,16 @@
    "check_table": "LYLGR"
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "GLCGR",
+   "foreign_table": "LYLGR",
+   "foreign_field": "GLCGR"
+  },
+  {
+   "field": "LGNUM",
+   "foreign_table": "T300",
+   "foreign_field": "LGNUM"
+  }
+ ]
 }

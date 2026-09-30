@@ -2154,5 +2154,51 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "BTYPE",
+   "foreign_table": "T8JA",
+   "foreign_field": "BILIND"
+  },
+  {
+   "field": "BUKRS",
+   "foreign_table": "KNB1",
+   "foreign_field": "BUKRS"
+  },
+  {
+   "field": "CESSION_KZ",
+   "foreign_table": "TCESSION",
+   "foreign_field": "CESSION_KZ"
+  },
+  {
+   "field": "EGRUP",
+   "foreign_table": "T8JF",
+   "foreign_field": "EGRUP"
+  },
+  {
+   "field": "KKBER",
+   "foreign_table": "T014",
+   "foreign_field": "KKBER"
+  },
+  {
+   "field": "KUNNR",
+   "foreign_table": "KNA1",
+   "foreign_field": "KUNNR"
+  },
+  {
+   "field": "PSWSL",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  },
+  {
+   "field": "UZAWE",
+   "foreign_table": "T042F",
+   "foreign_field": "UZAWE"
+  },
+  {
+   "field": "VNAME",
+   "foreign_table": "T8JV",
+   "foreign_field": "VNAME"
+  }
+ ]
 }

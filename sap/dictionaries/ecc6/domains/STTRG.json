@@ -1,0 +1,52 @@
+{
+ "domain": "STTRG",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "0",
+   "high": null,
+   "text": "Planned"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Planning completed"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Check-in"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Loading start"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Loading end"
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "Shipment completion"
+  },
+  {
+   "low": "6",
+   "high": null,
+   "text": "Shipment start"
+  },
+  {
+   "low": "7",
+   "high": null,
+   "text": "Shipment end"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

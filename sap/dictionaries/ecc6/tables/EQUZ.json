@@ -558,5 +558,66 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "EQUNR",
+   "foreign_table": "EQUI",
+   "foreign_field": "EQUNR"
+  },
+  {
+   "field": "GEWRK",
+   "foreign_table": "CRID",
+   "foreign_field": "OBJID"
+  },
+  {
+   "field": "HEQUI",
+   "foreign_table": "EQUI",
+   "foreign_field": "EQUNR"
+  },
+  {
+   "field": "ILOAN",
+   "foreign_table": "ILOA",
+   "foreign_field": "ILOAN"
+  },
+  {
+   "field": "INGRP",
+   "foreign_table": "T024I",
+   "foreign_field": "INGRP"
+  },
+  {
+   "field": "IWERK",
+   "foreign_table": "T399I",
+   "foreign_field": "IWERK"
+  },
+  {
+   "field": "KUND1",
+   "foreign_table": "KNA1",
+   "foreign_field": "KUNNR"
+  },
+  {
+   "field": "KUND2",
+   "foreign_table": "KNA1",
+   "foreign_field": "KUNNR"
+  },
+  {
+   "field": "KUND3",
+   "foreign_table": "KNA1",
+   "foreign_field": "KUNNR"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "RBNR",
+   "foreign_table": "T352B",
+   "foreign_field": "RBNR"
+  },
+  {
+   "field": "SUBMT",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  }
+ ]
 }

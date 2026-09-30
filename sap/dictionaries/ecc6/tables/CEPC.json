@@ -582,5 +582,96 @@
    "check_table": "FAGL_SEGM"
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "BUKRS",
+   "foreign_table": "T001",
+   "foreign_field": "BUKRS"
+  },
+  {
+   "field": "ETYPE",
+   "foreign_table": "T8JE",
+   "foreign_field": "ETYPE"
+  },
+  {
+   "field": "KALSM",
+   "foreign_table": "T683",
+   "foreign_field": "KALSM"
+  },
+  {
+   "field": "KAPPL",
+   "foreign_table": "T681A",
+   "foreign_field": "KAPPL"
+  },
+  {
+   "field": "KOKRS",
+   "foreign_table": "TKA01",
+   "foreign_field": "KOKRS"
+  },
+  {
+   "field": "KVEWE",
+   "foreign_table": "T681V",
+   "foreign_field": "KVEWE"
+  },
+  {
+   "field": "LAND1",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "LOGSYSTEM",
+   "foreign_table": "TBDLS",
+   "foreign_field": "LOGSYS"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "PCA_TEMPLATE",
+   "foreign_table": "COTPL",
+   "foreign_field": "TEMPLATE"
+  },
+  {
+   "field": "RECID",
+   "foreign_table": "T8JJ",
+   "foreign_field": "RECID"
+  },
+  {
+   "field": "REGIO",
+   "foreign_table": "T005S",
+   "foreign_field": "BLAND"
+  },
+  {
+   "field": "SEGMENT",
+   "foreign_table": "FAGL_SEGM",
+   "foreign_field": "SEGMENT"
+  },
+  {
+   "field": "SPRAS",
+   "foreign_table": "T002",
+   "foreign_field": "SPRAS"
+  },
+  {
+   "field": "TXJCD",
+   "foreign_table": "TTXJ",
+   "foreign_field": "TXJCD"
+  },
+  {
+   "field": "VERAK_USER",
+   "foreign_table": "USR02",
+   "foreign_field": "BNAME"
+  },
+  {
+   "field": "VNAME",
+   "foreign_table": "T8JV",
+   "foreign_field": "VNAME"
+  },
+  {
+   "field": "WAERS",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  }
+ ]
 }

@@ -42,5 +42,11 @@
    "check_table": "T646R"
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "REGKZ",
+   "foreign_table": "T646R",
+   "foreign_field": "REGKZ"
+  }
+ ]
 }

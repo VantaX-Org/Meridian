@@ -1,0 +1,19 @@
+# Check tables for fields whose DDIC check table is generic ('*' — the value
+# check depends on another field, e.g. EKKO.BSART is checked against T161 per
+# document category). Everything else comes from the DDIC foreign keys.
+# field: {table: CHECK_TABLE, field: CHECK_TABLE_FIELD}
+EKKO.BSART: {table: T161, field: BSART}
+EKPO.PSTYP: {table: T163, field: PSTYP}
+EKPO.KNTTP: {table: T163K, field: KNTTP}
+BKPF.BLART: {table: T003, field: BLART}
+LFA1.KTOKK: {table: T077K, field: KTOKK}
+USMD1213.USMD_ENTITY: {table: USMD001C, field: USMD_ENTITY}
+USMD120C.USMD_CREQ_STATUS: {table: USMD130C, field: USMD_CREQ_STATUS}
+# Checked in the application (not DDIC) — payment terms / payment-method lists
+LFB1.ZTERM: {table: T052, field: ZTERM}
+KNB1.ZTERM: {table: T052, field: ZTERM}
+LFM1.ZTERM: {table: T052, field: ZTERM}
+KNVV.ZTERM: {table: T052, field: ZTERM}
+EKKO.ZTERM: {table: T052, field: ZTERM}
+LFB1.ZWELS: {table: T042Z, field: ZLSCH}
+KNB1.ZWELS: {table: T042Z, field: ZLSCH}

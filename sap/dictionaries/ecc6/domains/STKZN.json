@@ -1,0 +1,22 @@
+{
+ "domain": "STKZN",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "X",
+   "high": null,
+   "text": "Natural person"
+  },
+  {
+   "low": "",
+   "high": null,
+   "text": "Legal person"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

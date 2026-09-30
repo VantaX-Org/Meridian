@@ -62,6 +62,8 @@ edges:
   # ── General ledger ─────────────────────────────────────────────────────
   - {parent: SKA1, child: SKAT, join: {KTOPL: KTOPL, SAKNR: SAKNR}, cardinality: one, prefer: {SPRAS: "E"}}
   - {parent: SKA1, child: SKB1, join: {SAKNR: SAKNR}, cardinality: many}
+  - {parent: BKPF, child: BSEG, join: {BUKRS: BUKRS, BELNR: BELNR, GJAHR: GJAHR}, cardinality: many}
+  - {parent: SKB1, child: BSEG, join: {BUKRS: BUKRS, HKONT: SAKNR}, cardinality: many}
 
   # ── Asset accounting ───────────────────────────────────────────────────
   - {parent: ANLA, child: ANLB, join: {BUKRS: BUKRS, ANLN1: ANLN1, ANLN2: ANLN2}, cardinality: many}
@@ -69,6 +71,7 @@ edges:
 
   # ── Purchasing ─────────────────────────────────────────────────────────
   - {parent: EKKO, child: EKPO, join: {EBELN: EBELN}, cardinality: many}
+  - {parent: LFM1, child: EKKO, join: {LIFNR: LIFNR, EKORG: EKORG}, cardinality: many}
 
   # ── Sales (ECC status tables feed S/4 VBAK/VBAP status fields) ─────────
   - {parent: VBAK, child: VBAP, join: {VBELN: VBELN}, cardinality: many}
@@ -81,6 +84,7 @@ edges:
   - {parent: EQUZ, child: ILOA,  join: {ILOAN: ILOAN}, cardinality: one}
   - {parent: EQUI, child: JEST,  join: {OBJNR: OBJNR}, cardinality: one, filter: {INACT: ""}, prefer: {}}
   - {parent: EQUI, child: FLEET, join: {OBJNR: OBJNR}, cardinality: one}
+  - {parent: EQUI, child: FLEET_MASTER, join: {EQUNR: EQUNR}, cardinality: one}
   - {parent: IFLOT, child: IFLOTX, join: {TPLNR: TPLNR}, cardinality: one, prefer: {SPRAS: "E"}}
   - {parent: IFLOT, child: ILOA,  join: {ILOAN: ILOAN}, cardinality: one}
 
@@ -94,6 +98,28 @@ edges:
   - {parent: LAGP, child: LQUA, join: {LGNUM: LGNUM, LGTYP: LGTYP, LGPLA: LGPLA}, cardinality: many}
   - {parent: VTTK, child: VTTP, join: {TKNUM: TKNUM}, cardinality: many}
   - {parent: VTTK, child: TVRO, join: {ROUTE: ROUTE}, cardinality: one}
+
+  # ── GRC access control, MDG change requests, change documents ─────────
+  - {parent: GRACUSERROLE, child: GRACROLE, join: {ROLEID: ROLE_ID}, cardinality: one}
+  - {parent: GRACSODRISK, child: GRACSODRISKT, join: {RISKID: RISKID}, cardinality: one, prefer: {LANG: "E"}}
+  - {parent: USMD120C, child: USMD1213, join: {USMD_CREQUEST: USMD_CREQUEST}, cardinality: many}
+  - {parent: CDHDR, child: CDPOS, join: {OBJECTCLAS: OBJECTCLAS, OBJECTID: OBJECTID, CHANGENR: CHANGENR}, cardinality: many}
+
+  # ── SuccessFactors canonical views ─────────────────────────────────────
+  - {parent: PERINFO, child: EMPEMPLOYMENT, join: {PERSON_ID: PERSON_ID}, cardinality: many}
+  - {parent: PERINFO, child: PEREMAIL, join: {PERSON_ID: PERSON_ID}, cardinality: many}
+  - {parent: PERINFO, child: PERPHONE, join: {PERSON_ID: PERSON_ID}, cardinality: many}
+  - {parent: PERINFO, child: PERADDRESS, join: {PERSON_ID: PERSON_ID}, cardinality: many}
+  - {parent: EMPEMPLOYMENT, child: COMPINFO, join: {USERID: USERID}, cardinality: many}
+  - {parent: EMPEMPLOYMENT, child: TIMESHEET, join: {USERID: USERID}, cardinality: many}
+  - {parent: EMPEMPLOYMENT, child: BENEFITENROLLMENT, join: {USERID: USERID}, cardinality: many}
+  - {parent: EMPEMPLOYMENT, child: GOALPLAN, join: {USERID: USERID}, cardinality: many}
+  - {parent: EMPEMPLOYMENT, child: PMREVIEWRESULT, join: {USERID: USERID}, cardinality: many}
+  - {parent: EMPEMPLOYMENT, child: PAYRESULT, join: {USERID: USERID}, cardinality: many}
+  - {parent: EMPEMPLOYMENT, child: LEARNINGASSIGNMENT, join: {USERID: USERID}, cardinality: many}
+  - {parent: EMPEMPLOYMENT, child: LEARNINGCOMPLETION, join: {USERID: USERID}, cardinality: many}
+  - {parent: EMPEMPLOYMENT, child: ONBOARDINGCANDIDATEINFO, join: {USERID: USERID}, cardinality: one}
+  - {parent: JOBREQUISITION, child: JOBAPPLICATION, join: {JOB_REQ_ID: JOB_REQ_ID}, cardinality: many}
 
 # Default grain per module when a rule names only attribute tables.
 anchors:
@@ -113,3 +139,6 @@ anchors:
   ewms_stock: LQUA
   ewms_transfer_orders: LTAK
   transport_management: VTTK
+  grc_compliance: GRACUSERROLE
+  mdg_master_data: USMD120C
+  employee_central: EMPEMPLOYMENT

@@ -1638,5 +1638,136 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "ANLKL",
+   "foreign_table": "ANKA",
+   "foreign_field": "ANLKL"
+  },
+  {
+   "field": "ANLN1",
+   "foreign_table": "ANLH",
+   "foreign_field": "ANLN1"
+  },
+  {
+   "field": "ANLUE",
+   "foreign_table": "T087U",
+   "foreign_field": "ANLUE"
+  },
+  {
+   "field": "BUKRS",
+   "foreign_table": "T093C",
+   "foreign_field": "BUKRS"
+  },
+  {
+   "field": "EIGKZ",
+   "foreign_table": "T097",
+   "foreign_field": "EIGKZ"
+  },
+  {
+   "field": "FEINS",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "GDLGRP",
+   "foreign_table": "T087G",
+   "foreign_field": "GDLGRP"
+  },
+  {
+   "field": "GRUND",
+   "foreign_table": "T098",
+   "foreign_field": "GRUND"
+  },
+  {
+   "field": "IZWEK",
+   "foreign_table": "T087I",
+   "foreign_field": "IZWEK"
+  },
+  {
+   "field": "KTOGR",
+   "foreign_table": "T095A",
+   "foreign_field": "KTOGR"
+  },
+  {
+   "field": "LAND1",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "LEAFI",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "LEART",
+   "foreign_table": "T083L",
+   "foreign_field": "LEART"
+  },
+  {
+   "field": "LIFNR",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "MEINS",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "OBJNR",
+   "foreign_table": "ONR00",
+   "foreign_field": "OBJNR"
+  },
+  {
+   "field": "ORD41",
+   "foreign_table": "T087",
+   "foreign_field": "ORD4X"
+  },
+  {
+   "field": "ORD42",
+   "foreign_table": "T087",
+   "foreign_field": "ORD4X"
+  },
+  {
+   "field": "ORD43",
+   "foreign_table": "T087",
+   "foreign_field": "ORD4X"
+  },
+  {
+   "field": "ORD44",
+   "foreign_table": "T087",
+   "foreign_field": "ORD4X"
+  },
+  {
+   "field": "POSNR",
+   "foreign_table": "PRPS",
+   "foreign_field": "PSPNR"
+  },
+  {
+   "field": "SPRAS",
+   "foreign_table": "T002",
+   "foreign_field": "SPRAS"
+  },
+  {
+   "field": "UMWKZ",
+   "foreign_table": "T087K",
+   "foreign_field": "UMWKZ"
+  },
+  {
+   "field": "VBUND",
+   "foreign_table": "T880",
+   "foreign_field": "RCOMP"
+  },
+  {
+   "field": "VMGLI",
+   "foreign_table": "T092",
+   "foreign_field": "VMGLI"
+  },
+  {
+   "field": "ZUAWA",
+   "foreign_table": "TZUN",
+   "foreign_field": "ZUAWA"
+  }
+ ]
 }

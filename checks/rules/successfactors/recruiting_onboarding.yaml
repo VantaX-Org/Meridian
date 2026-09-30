@@ -180,24 +180,20 @@ rules:
 - id: REC010
   field: JOBREQUISITION.OPEN_DATE
   check_class: cross_field_check
-  fields:
-  - JOBREQUISITION.OPEN_DATE
-  - JOBREQUISITION.CLOSE_DATE
-  condition: '`JOBREQUISITION.CLOSE_DATE`.notna() & (`JOBREQUISITION.CLOSE_DATE` != '''') & (`JOBREQUISITION.OPEN_DATE` >
-    `JOBREQUISITION.CLOSE_DATE`)'
   severity: high
   dimension: consistency
   message: Requisition open date must not be after close date
-  why_it_matters: When a CLOSE_DATE is present, OPEN_DATE must precede it. A requisition that closes before it opens indicates
-    a data entry error that will produce negative time-to-fill values and corrupt recruiting analytics.
+  why_it_matters: When a CLOSE_DATE is present, OPEN_DATE must precede it. A requisition that closes before it opens
+    indicates a data entry error that will produce negative time-to-fill values and corrupt recruiting analytics.
   rule_authority: best_practice
-  sap_impact: Time-to-fill calculation returns negative value. Recruiting analytics dashboards show corrupted data for this
-    requisition.
-  fix_map:
-    __blank__: Review and correct the OPEN_DATE and CLOSE_DATE via Recruiting > Requisition Management. Ensure OPEN_DATE precedes
-      CLOSE_DATE.
-  record_fix_template: 'Requisition {JOBREQUISITION.TITLE}: OPEN_DATE is after CLOSE_DATE. Correct dates via Recruiting >
-    Requisition Management.'
+  sap_impact: Time-to-fill calculation returns negative value. Recruiting analytics dashboards show corrupted data
+    for this requisition.
+  fix_map: {__blank__: Review and correct the OPEN_DATE and CLOSE_DATE via Recruiting > Requisition Management.
+      Ensure OPEN_DATE precedes CLOSE_DATE.}
+  record_fix_template: 'Requisition {JOBREQUISITION.TITLE}: OPEN_DATE is after CLOSE_DATE. Correct dates via Recruiting
+    > Requisition Management.'
+  fail_when: '`JOBREQUISITION.OPEN_DATE` > `JOBREQUISITION.CLOSE_DATE`'
+  require_populated: true
 - id: REC011
   field: ONBOARDINGCANDIDATEINFO.USERID
   check_class: null_check
@@ -325,17 +321,18 @@ rules:
     > Recruiting or Onboarding module.
 - id: REC019
   field: JOBAPPLICATION.CANDIDATE_ID
-  check_class: cross_field_check
-  fields: ['JOBAPPLICATION.CANDIDATE_ID']
-  condition: "~`JOBAPPLICATION.CANDIDATE_ID`.duplicated(keep=False)"
+  check_class: uniqueness_check
+  fields: [JOBAPPLICATION.CANDIDATE_ID, JOBAPPLICATION.JOB_REQ_ID]
   severity: high
   dimension: uniqueness
   message: Duplicate candidate records detected — same candidate appears multiple times
-  why_it_matters: Duplicate candidates cause fragmented application history, incorrect offer management, and compliance reporting errors for EEO/diversity tracking.
+  why_it_matters: Duplicate candidates cause fragmented application history, incorrect offer management, and compliance
+    reporting errors for EEO/diversity tracking.
   rule_authority: best_practice
-  sap_impact: Application history is split. Offer letters may be sent to wrong record. EEO reporting undercounts unique applicants.
-  fix_map:
-    __blank__: "Merge duplicate candidates in Recruiting > Candidate Management > Merge Candidates. Preserve the record with the most complete application history."
+  sap_impact: Application history is split. Offer letters may be sent to wrong record. EEO reporting undercounts
+    unique applicants.
+  fix_map: {__blank__: Merge duplicate candidates in Recruiting > Candidate Management > Merge Candidates. Preserve
+      the record with the most complete application history.}
 
 - id: REC020
   field: JOBREQUISITION.OPEN_DATE

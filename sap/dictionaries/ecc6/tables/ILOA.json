@@ -582,5 +582,116 @@
    "check_table": "TVBVK"
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "ABCKZ",
+   "foreign_table": "T370C",
+   "foreign_field": "ABCKZ"
+  },
+  {
+   "field": "ADRNR",
+   "foreign_table": "ADRC",
+   "foreign_field": "ADDRNUMBER"
+  },
+  {
+   "field": "ANLNR",
+   "foreign_table": "ANLH",
+   "foreign_field": "ANLN1"
+  },
+  {
+   "field": "ANLUN",
+   "foreign_table": "ANLA",
+   "foreign_field": "ANLN2"
+  },
+  {
+   "field": "AUFNR",
+   "foreign_table": "AUFK",
+   "foreign_field": "AUFNR"
+  },
+  {
+   "field": "BEBER",
+   "foreign_table": "T357",
+   "foreign_field": "BEBER"
+  },
+  {
+   "field": "BUKRS",
+   "foreign_table": "T001",
+   "foreign_field": "BUKRS"
+  },
+  {
+   "field": "DAUFN",
+   "foreign_table": "AUFK",
+   "foreign_field": "AUFNR"
+  },
+  {
+   "field": "GSBER",
+   "foreign_table": "TGSB",
+   "foreign_field": "GSBER"
+  },
+  {
+   "field": "KOKRS",
+   "foreign_table": "TKA01",
+   "foreign_field": "KOKRS"
+  },
+  {
+   "field": "KOSTL",
+   "foreign_table": "CSKS",
+   "foreign_field": "KOSTL"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "PPSID",
+   "foreign_table": "CRID",
+   "foreign_field": "OBJID"
+  },
+  {
+   "field": "PROID",
+   "foreign_table": "PRPS",
+   "foreign_field": "PSPNR"
+  },
+  {
+   "field": "SPART",
+   "foreign_table": "TVTA",
+   "foreign_field": "SPART"
+  },
+  {
+   "field": "STORT",
+   "foreign_table": "T499S",
+   "foreign_field": "STAND"
+  },
+  {
+   "field": "SWERK",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  },
+  {
+   "field": "TPLNR",
+   "foreign_table": "IFLOT",
+   "foreign_field": "TPLNR"
+  },
+  {
+   "field": "VKBUR",
+   "foreign_table": "TVKBZ",
+   "foreign_field": "VKBUR"
+  },
+  {
+   "field": "VKGRP",
+   "foreign_table": "TVBVK",
+   "foreign_field": "VKGRP"
+  },
+  {
+   "field": "VKORG",
+   "foreign_table": "TVKO",
+   "foreign_field": "VKORG"
+  },
+  {
+   "field": "VTWEG",
+   "foreign_table": "TVKOV",
+   "foreign_field": "VTWEG"
+  }
+ ]
 }

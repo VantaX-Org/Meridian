@@ -1,0 +1,37 @@
+{
+ "domain": "UEVOR_VA",
+ "type": "CHAR",
+ "length": 20,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Remain on initial screen until a function is selected"
+  },
+  {
+   "low": "UER1",
+   "high": null,
+   "text": "Press ENTER to go to General Overview"
+  },
+  {
+   "low": "UER2",
+   "high": null,
+   "text": "Press ENTER to go to Items Overview"
+  },
+  {
+   "low": "UBST",
+   "high": null,
+   "text": "Press ENTER to go to Ordering Party Overview"
+  },
+  {
+   "low": "UKAU",
+   "high": null,
+   "text": "(from Version 4.0, no longer available, diverted to VER1)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

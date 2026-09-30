@@ -1926,5 +1926,111 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "ALTME",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "DLENR",
+   "foreign_table": "LEIN",
+   "foreign_field": "LENUM"
+  },
+  {
+   "field": "KZDIF",
+   "foreign_table": "T336",
+   "foreign_field": "KZDIF"
+  },
+  {
+   "field": "LDEST",
+   "foreign_table": "TSP03",
+   "foreign_field": "PADEST"
+  },
+  {
+   "field": "LETYP",
+   "foreign_table": "T307",
+   "foreign_field": "LETYP"
+  },
+  {
+   "field": "LGNUM",
+   "foreign_table": "T300",
+   "foreign_field": "LGNUM"
+  },
+  {
+   "field": "LGORT",
+   "foreign_table": "T001L",
+   "foreign_field": "LGORT"
+  },
+  {
+   "field": "MATNR",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "MEINS",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "NLBER",
+   "foreign_table": "T302",
+   "foreign_field": "LGBER"
+  },
+  {
+   "field": "NLENR",
+   "foreign_table": "LEIN",
+   "foreign_field": "LENUM"
+  },
+  {
+   "field": "NLTYP",
+   "foreign_table": "T301",
+   "foreign_field": "LGTYP"
+  },
+  {
+   "field": "RLBER",
+   "foreign_table": "T302",
+   "foreign_field": "LGBER"
+  },
+  {
+   "field": "RLTYP",
+   "foreign_table": "T301",
+   "foreign_field": "LGTYP"
+  },
+  {
+   "field": "SOBKZ",
+   "foreign_table": "T148",
+   "foreign_field": "SOBKZ"
+  },
+  {
+   "field": "VLBER",
+   "foreign_table": "T302",
+   "foreign_field": "LGBER"
+  },
+  {
+   "field": "VLENR",
+   "foreign_table": "LEIN",
+   "foreign_field": "LENUM"
+  },
+  {
+   "field": "VLTYP",
+   "foreign_table": "T301",
+   "foreign_field": "LGTYP"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  },
+  {
+   "field": "WIRME",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "ZEIEI",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  }
+ ]
 }

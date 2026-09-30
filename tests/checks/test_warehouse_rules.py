@@ -74,14 +74,14 @@ def test_runner_discovers_warehouse_modules():
     """The check runner should be able to load and execute warehouse module rules."""
     # Create a minimal DataFrame for ewms_stock
     df = pd.DataFrame({
-        "LGPLA.LGNUM": ["WH01", "", None, "WH01", "WH01"],
-        "LGPLA.LGTYP": ["001", "001", "001", "", "001"],
-        "LGPLA.LGPLA": ["BIN-001", "BIN-002", "BIN-003", "BIN-004", None],
+        "LAGP.LGNUM": ["WH01", "", None, "WH01", "WH01"],
+        "LAGP.LGTYP": ["001", "001", "001", "", "001"],
+        "LAGP.LGPLA": ["BIN-001", "BIN-002", "BIN-003", "BIN-004", None],
         "LQUA.MATNR": ["MAT001", "MAT002", None, "MAT004", "MAT005"],
         "LQUA.WERKS": ["1000", "1000", "1000", None, "1000"],
         "LQUA.BESTQ": ["", "Q", "X", "S", ""],
         "LQUA.CHARG": ["BATCH01", None, "BATCH03", "BATCH04", ""],
-        "LGPLA.LGBER": ["001", "", "001", "001", None],
+        "LAGP.LGBER": ["001", "", "001", "001", None],
     })
     results = run_checks("ewms_stock", df, "test-tenant")
 

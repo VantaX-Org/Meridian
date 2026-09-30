@@ -882,5 +882,116 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "ANFNR",
+   "foreign_table": "EKKO",
+   "foreign_field": "EBELN"
+  },
+  {
+   "field": "ANFPS",
+   "foreign_table": "EKPO",
+   "foreign_field": "EBELP"
+  },
+  {
+   "field": "BPRME",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "BSTAE",
+   "foreign_table": "T163L",
+   "foreign_field": "BSTAE"
+  },
+  {
+   "field": "BWTAR",
+   "foreign_table": "T149D",
+   "foreign_field": "BWTAR"
+  },
+  {
+   "field": "EBELN",
+   "foreign_table": "EKKO",
+   "foreign_field": "EBELN"
+  },
+  {
+   "field": "EBELP",
+   "foreign_table": "EKPO",
+   "foreign_field": "EBELP"
+  },
+  {
+   "field": "EKGRP",
+   "foreign_table": "T024",
+   "foreign_field": "EKGRP"
+  },
+  {
+   "field": "EKORG",
+   "foreign_table": "T024E",
+   "foreign_field": "EKORG"
+  },
+  {
+   "field": "EVERS",
+   "foreign_table": "T027A",
+   "foreign_field": "EVERS"
+  },
+  {
+   "field": "EXPRF",
+   "foreign_table": "T616",
+   "foreign_field": "EXPRF"
+  },
+  {
+   "field": "INCO1",
+   "foreign_table": "TINC",
+   "foreign_field": "INCO1"
+  },
+  {
+   "field": "INFNR",
+   "foreign_table": "EINA",
+   "foreign_field": "INFNR"
+  },
+  {
+   "field": "J_1BNBM",
+   "foreign_table": "T604F",
+   "foreign_field": "STEUC"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MEGRU",
+   "foreign_table": "TWMEG",
+   "foreign_field": "MEGRU"
+  },
+  {
+   "field": "MWSKZ",
+   "foreign_table": "T007A",
+   "foreign_field": "MWSKZ"
+  },
+  {
+   "field": "RDPRF",
+   "foreign_table": "RDPR",
+   "foreign_field": "RDPRF"
+  },
+  {
+   "field": "TRANSPORT_CHAIN",
+   "foreign_table": "WRF_PSCD_TCHAINH",
+   "foreign_field": "TC_ID"
+  },
+  {
+   "field": "VERID",
+   "foreign_table": "MKAL",
+   "foreign_field": "VERID"
+  },
+  {
+   "field": "WAERS",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  }
+ ]
 }

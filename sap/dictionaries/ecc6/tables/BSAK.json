@@ -2178,5 +2178,46 @@
    "check_table": null
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "BTYPE",
+   "foreign_table": "T8JA",
+   "foreign_field": "BILIND"
+  },
+  {
+   "field": "BUKRS",
+   "foreign_table": "LFB1",
+   "foreign_field": "BUKRS"
+  },
+  {
+   "field": "EGRUP",
+   "foreign_table": "T8JF",
+   "foreign_field": "EGRUP"
+  },
+  {
+   "field": "LIFNR",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "LNRAN",
+   "foreign_table": "ANEK",
+   "foreign_field": "LNRAN"
+  },
+  {
+   "field": "PSWSL",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  },
+  {
+   "field": "UZAWE",
+   "foreign_table": "T042F",
+   "foreign_field": "UZAWE"
+  },
+  {
+   "field": "VNAME",
+   "foreign_table": "T8JV",
+   "foreign_field": "VNAME"
+  }
+ ]
 }

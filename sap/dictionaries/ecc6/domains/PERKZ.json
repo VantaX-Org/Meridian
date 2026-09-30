@@ -1,0 +1,37 @@
+{
+ "domain": "PERKZ",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "P",
+   "high": null,
+   "text": "Period according to fiscal year variant"
+  },
+  {
+   "low": "M",
+   "high": null,
+   "text": "Monthly"
+  },
+  {
+   "low": "W",
+   "high": null,
+   "text": "Weekly"
+  },
+  {
+   "low": "T",
+   "high": null,
+   "text": "Daily"
+  },
+  {
+   "low": "",
+   "high": null,
+   "text": "Initial value"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

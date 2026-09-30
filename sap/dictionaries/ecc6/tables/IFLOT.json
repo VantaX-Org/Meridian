@@ -714,5 +714,101 @@
    "check_table": "TQ80"
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "BEGRU",
+   "foreign_table": "T370B",
+   "foreign_field": "BEGRU"
+  },
+  {
+   "field": "EQART",
+   "foreign_table": "T370K",
+   "foreign_field": "EQART"
+  },
+  {
+   "field": "FLTYP",
+   "foreign_table": "T370F",
+   "foreign_field": "FLTYP"
+  },
+  {
+   "field": "GEWEI",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "HERLD",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "IFLOT_SNTYPE",
+   "foreign_table": "TQ80",
+   "foreign_field": "QMART"
+  },
+  {
+   "field": "ILOAN",
+   "foreign_table": "ILOA",
+   "foreign_field": "ILOAN"
+  },
+  {
+   "field": "INGRP",
+   "foreign_table": "T024I",
+   "foreign_field": "INGRP"
+  },
+  {
+   "field": "IWERK",
+   "foreign_table": "T399I",
+   "foreign_field": "IWERK"
+  },
+  {
+   "field": "LGWID",
+   "foreign_table": "CRID",
+   "foreign_field": "OBJID"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MLANG",
+   "foreign_table": "T002",
+   "foreign_field": "SPRAS"
+  },
+  {
+   "field": "OBJNR",
+   "foreign_table": "ONR00",
+   "foreign_field": "OBJNR"
+  },
+  {
+   "field": "RBNR",
+   "foreign_table": "T352B",
+   "foreign_field": "RBNR"
+  },
+  {
+   "field": "SUBMT",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "TPLKZ",
+   "foreign_table": "T370S",
+   "foreign_field": "TPLKZ"
+  },
+  {
+   "field": "TPLMA",
+   "foreign_table": "IFLOT",
+   "foreign_field": "TPLNR"
+  },
+  {
+   "field": "TRPNR",
+   "foreign_table": "IRLOT",
+   "foreign_field": "TRPNR"
+  },
+  {
+   "field": "WAERS",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  }
+ ]
 }

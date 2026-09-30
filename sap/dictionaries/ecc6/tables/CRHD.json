@@ -1542,5 +1542,336 @@
    "check_table": "TQ80"
   }
  ],
- "foreign_keys": []
+ "foreign_keys": [
+  {
+   "field": "CPLGR",
+   "foreign_table": "T024C",
+   "foreign_field": "CPLGR"
+  },
+  {
+   "field": "FORT1",
+   "foreign_table": "TC25",
+   "foreign_field": "IDENT"
+  },
+  {
+   "field": "FORT2",
+   "foreign_table": "TC25",
+   "foreign_field": "IDENT"
+  },
+  {
+   "field": "FORT3",
+   "foreign_table": "TC25",
+   "foreign_field": "IDENT"
+  },
+  {
+   "field": "FORTN",
+   "foreign_table": "TC25",
+   "foreign_field": "IDENT"
+  },
+  {
+   "field": "HROID",
+   "foreign_table": "PLOGI",
+   "foreign_field": "OBJID"
+  },
+  {
+   "field": "HRPLVAR",
+   "foreign_table": "T778P",
+   "foreign_field": "PLVAR"
+  },
+  {
+   "field": "HRTYP",
+   "foreign_table": "T778O",
+   "foreign_field": "OTYPE"
+  },
+  {
+   "field": "KAPID",
+   "foreign_table": "KAKO",
+   "foreign_field": "KAPID"
+  },
+  {
+   "field": "KTSCH",
+   "foreign_table": "T435",
+   "foreign_field": "VLSCH"
+  },
+  {
+   "field": "LGORT_RES",
+   "foreign_table": "T001L",
+   "foreign_field": "LGORT"
+  },
+  {
+   "field": "LIFNR",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "LOGRP",
+   "foreign_table": "T421",
+   "foreign_field": "LOGRP"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MATYP",
+   "foreign_table": "TMATY",
+   "foreign_field": "MATYP"
+  },
+  {
+   "field": "OBJID",
+   "foreign_table": "CRID",
+   "foreign_field": "OBJID"
+  },
+  {
+   "field": "PAR01",
+   "foreign_table": "TC20",
+   "foreign_field": "PARID"
+  },
+  {
+   "field": "PAR02",
+   "foreign_table": "TC20",
+   "foreign_field": "PARID"
+  },
+  {
+   "field": "PAR03",
+   "foreign_table": "TC20",
+   "foreign_field": "PARID"
+  },
+  {
+   "field": "PAR04",
+   "foreign_table": "TC20",
+   "foreign_field": "PARID"
+  },
+  {
+   "field": "PAR05",
+   "foreign_table": "TC20",
+   "foreign_field": "PARID"
+  },
+  {
+   "field": "PAR06",
+   "foreign_table": "TC20",
+   "foreign_field": "PARID"
+  },
+  {
+   "field": "PARU1",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "PARU2",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "PARU3",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "PARU4",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "PARU5",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "PARU6",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "PDEST",
+   "foreign_table": "TSP03",
+   "foreign_field": "PADEST"
+  },
+  {
+   "field": "PLANV",
+   "foreign_table": "TC23",
+   "foreign_field": "PLANV"
+  },
+  {
+   "field": "PRVBE",
+   "foreign_table": "PVBE",
+   "foreign_field": "PRVBE"
+  },
+  {
+   "field": "QUALF",
+   "foreign_table": "T423",
+   "foreign_field": "QUALF"
+  },
+  {
+   "field": "RASCH",
+   "foreign_table": "T428",
+   "foreign_field": "RASCH"
+  },
+  {
+   "field": "RESGR",
+   "foreign_table": "TCYMI",
+   "foreign_field": "MATRIX_ID"
+  },
+  {
+   "field": "RUZUS",
+   "foreign_table": "TCERS",
+   "foreign_field": "RUZUS"
+  },
+  {
+   "field": "SLWID",
+   "foreign_table": "TCN00",
+   "foreign_field": "SLWID"
+  },
+  {
+   "field": "SNTYPE",
+   "foreign_table": "TQ80",
+   "foreign_field": "QMART"
+  },
+  {
+   "field": "SORTB",
+   "foreign_table": "TSRTB",
+   "foreign_field": "SORTB"
+  },
+  {
+   "field": "SRTYPE",
+   "foreign_table": "COCF_CU_SRTYPE",
+   "foreign_field": "SRTYPE"
+  },
+  {
+   "field": "STAND",
+   "foreign_table": "T499S",
+   "foreign_field": "STAND"
+  },
+  {
+   "field": "STEUS",
+   "foreign_table": "T430",
+   "foreign_field": "STEUS"
+  },
+  {
+   "field": "STEUS_C",
+   "foreign_table": "T430",
+   "foreign_field": "STEUS"
+  },
+  {
+   "field": "STEUS_I",
+   "foreign_table": "T430",
+   "foreign_field": "STEUS"
+  },
+  {
+   "field": "STEUS_N",
+   "foreign_table": "T430",
+   "foreign_field": "STEUS"
+  },
+  {
+   "field": "STEUS_Q",
+   "foreign_table": "T430",
+   "foreign_field": "STEUS"
+  },
+  {
+   "field": "SUBSYS",
+   "foreign_table": "QISUB",
+   "foreign_field": "SUBSYS"
+  },
+  {
+   "field": "VERAN",
+   "foreign_table": "TC24",
+   "foreign_field": "VERAN"
+  },
+  {
+   "field": "VERWE",
+   "foreign_table": "TC30",
+   "foreign_field": "VERWE"
+  },
+  {
+   "field": "VGARB",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "VGDIM",
+   "foreign_table": "T006D",
+   "foreign_field": "DIMID"
+  },
+  {
+   "field": "VGE01",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "VGE02",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "VGE03",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "VGE04",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "VGE05",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "VGE06",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "VGWTS",
+   "foreign_table": "TC21",
+   "foreign_field": "VGWTS"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  },
+  {
+   "field": "ZEIWM",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "ZEIWN",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "ZGR01",
+   "foreign_table": "TC31",
+   "foreign_field": "ID"
+  },
+  {
+   "field": "ZGR02",
+   "foreign_table": "TC31",
+   "foreign_field": "ID"
+  },
+  {
+   "field": "ZGR03",
+   "foreign_table": "TC31",
+   "foreign_field": "ID"
+  },
+  {
+   "field": "ZGR04",
+   "foreign_table": "TC31",
+   "foreign_field": "ID"
+  },
+  {
+   "field": "ZGR05",
+   "foreign_table": "TC31",
+   "foreign_field": "ID"
+  },
+  {
+   "field": "ZGR06",
+   "foreign_table": "TC31",
+   "foreign_field": "ID"
+  }
+ ]
 }

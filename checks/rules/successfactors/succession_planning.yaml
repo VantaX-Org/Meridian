@@ -267,14 +267,15 @@ rules:
 
   - id: SUC011
     field: SUCCESSIONCANDIDATE.NOMINEE_ID
-    check_class: cross_field_check
-    fields: ['SUCCESSIONCANDIDATE.NOMINEE_ID']
-    condition: "~`SUCCESSIONCANDIDATE.NOMINEE_ID`.duplicated(keep=False)"
+    check_class: uniqueness_check
+    fields: [SUCCESSIONCANDIDATE.NOMINEE_ID, SUCCESSIONCANDIDATE.POSITION_ID]
     severity: medium
     dimension: uniqueness
     message: Duplicate succession nominations detected — same nominee appears multiple times for same position
-    why_it_matters: Duplicate nominations inflate the succession bench strength and distort readiness reporting. Each nominee should appear once per position.
+    why_it_matters: Duplicate nominations inflate the succession bench strength and distort readiness reporting. Each
+      nominee should appear once per position.
     rule_authority: best_practice
-    sap_impact: Bench strength reports are overstated. Talent review calibration is skewed. Development plan resources are wasted on duplicates.
-    fix_map:
-      __blank__: "Review duplicate nominations in Succession > Talent Pool. Remove the duplicate entry and verify readiness rating on the surviving record."
+    sap_impact: Bench strength reports are overstated. Talent review calibration is skewed. Development plan resources
+      are wasted on duplicates.
+    fix_map: {__blank__: Review duplicate nominations in Succession > Talent Pool. Remove the duplicate entry and
+        verify readiness rating on the surviving record.}

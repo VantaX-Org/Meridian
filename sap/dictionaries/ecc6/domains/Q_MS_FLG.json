@@ -1,0 +1,22 @@
+{
+ "domain": "Q_MS_FLG",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Insp. Plan/Assignment for Dependent Char. Specifications"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Inspection Plan/Assignment for Multiple Specifications"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

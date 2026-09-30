@@ -1,0 +1,22 @@
+# Fleet attributes that SAP PM does not store as plain table fields.
+#
+# Standard fleet data (licence plate FLEET.LICENSE_NUM, VIN FLEET.FLEET_VIN,
+# manufacturer EQUI.HERST, model EQUI.TYPBZ, year EQUI.BAUJJ, object type
+# EQUI.EQART, cost centre ILOA.KOSTL, licence validity FLEET.EXPIRY_DATE) is
+# checked on the real tables. The fields below are derived by the extraction
+# from counters/maintenance plans, or are customer extensions — each names
+# where it comes from.
+system: fleet
+tables:
+  FLEET_MASTER:
+    description: Derived fleet readings and customer fleet extensions (per equipment)
+    source: IMPTT/IMRG measurement documents, MHIS maintenance-plan history, customer Z-fields
+    keys: [EQUNR]
+    fields:
+      EQUNR:             {source: EQUI.EQUNR, type: CHAR, length: 18, description: Equipment number}
+      CURRENT_KM:        {source: "IMRG.READG of the odometer measuring point (latest IDATE)", type: DEC, description: Current odometer reading}
+      SERVICE_KM:        {source: "MHIS counter reading of the next due maintenance call", type: DEC, description: Odometer at next service}
+      LAST_SERVICE_DATE: {source: "MHIS.LRMDT (last completed call)", type: DATS, length: 8, description: Last service date}
+      NEXT_SERVICE_DUE:  {source: "MHIS.NPLDA (next planned date)", type: DATS, length: 8, description: Next service due}
+      DRIVER_ID:         {source: "customer extension (e.g. EQUI Z-field or partner function)", type: CHAR, length: 12, description: Assigned driver}
+      INSURANCE_EXPIRY:  {source: "customer extension (insurance is not a standard PM field)", type: DATS, length: 8, description: Insurance expiry}

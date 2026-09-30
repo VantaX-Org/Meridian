@@ -1,0 +1,11 @@
+{
+ "domain": "VGEXT_EB",
+ "type": "CHAR",
+ "length": 27,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": "T028G",
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}
