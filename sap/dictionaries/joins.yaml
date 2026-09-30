@@ -48,7 +48,7 @@ edges:
   - {parent: MARA, child: MAKT, join: {MATNR: MATNR}, cardinality: one, prefer: {SPRAS: "E"}}
   - {parent: MARA, child: MARC, join: {MATNR: MATNR}, cardinality: many}
   - {parent: MARC, child: MARD, join: {MATNR: MATNR, WERKS: WERKS}, cardinality: many}
-  - {parent: MARC, child: MBEW, join: {MATNR: MATNR, BWKEY: WERKS}, cardinality: one}
+  - {parent: MARC, child: MBEW, join: {MATNR: MATNR, BWKEY: WERKS}, cardinality: one, prefer: {BWTAR: ""}}
   - {parent: MARA, child: MVKE, join: {MATNR: MATNR}, cardinality: many}
   - {parent: MARA, child: MARM, join: {MATNR: MATNR}, cardinality: many}
   - {parent: MARA, child: MLGN, join: {MATNR: MATNR}, cardinality: many}

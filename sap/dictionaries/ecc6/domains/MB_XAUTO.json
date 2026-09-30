@@ -1,0 +1,52 @@
+{
+ "domain": "MB_XAUTO",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No automatically created item"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "General automatically created item"
+  },
+  {
+   "low": "S",
+   "high": null,
+   "text": "Component of a structured material"
+  },
+  {
+   "low": "U",
+   "high": null,
+   "text": "Component of a structured material in stock transfer"
+  },
+  {
+   "low": "L",
+   "high": null,
+   "text": "Standard tied 'empties' material"
+  },
+  {
+   "low": "M",
+   "high": null,
+   "text": "Tied 'empties' in transfer (stocks on a material basis)"
+  },
+  {
+   "low": "W",
+   "high": null,
+   "text": "Tied 'empties' in transfer (stocks on a value basis)"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Tied 'empties' (full product managed on a value basis)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

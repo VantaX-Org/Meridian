@@ -1,0 +1,27 @@
+{
+ "domain": "XASSORTMENT",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "X",
+   "high": null,
+   "text": "Allowed Contract Type (Default)"
+  },
+  {
+   "low": "O",
+   "high": null,
+   "text": "Optional Contract Type"
+  },
+  {
+   "low": "",
+   "high": null,
+   "text": "Contract Type Not Allowed"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

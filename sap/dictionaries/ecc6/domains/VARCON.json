@@ -1,0 +1,11 @@
+{
+ "domain": "VARCON",
+ "type": "CHAR",
+ "length": 26,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": true,
+ "value_table": "TVARC",
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

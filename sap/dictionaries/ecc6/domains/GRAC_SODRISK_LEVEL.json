@@ -1,0 +1,11 @@
+{
+ "domain": "GRAC_SODRISK_LEVEL",
+ "type": "NUMC",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": "GRACRISKLEVEL",
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

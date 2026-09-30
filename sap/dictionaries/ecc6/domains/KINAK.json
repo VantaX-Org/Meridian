@@ -1,0 +1,52 @@
+{
+ "domain": "KINAK",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "Condition Exclusion Item"
+  },
+  {
+   "low": "K",
+   "high": null,
+   "text": "Inactive Due to Calculation Basis/Shipping Material Type"
+  },
+  {
+   "low": "L",
+   "high": null,
+   "text": "Condition Exclusion Header or Inactive at Header Level"
+  },
+  {
+   "low": "M",
+   "high": null,
+   "text": "Inactive Due to Manual Entry"
+  },
+  {
+   "low": "T",
+   "high": null,
+   "text": "Inactive at Header Level"
+  },
+  {
+   "low": "W",
+   "high": null,
+   "text": "Item Is Statistical"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Inactive Due to Formulas or Incorrect"
+  },
+  {
+   "low": "Y",
+   "high": null,
+   "text": "Inactive Because of Subsequent Price"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

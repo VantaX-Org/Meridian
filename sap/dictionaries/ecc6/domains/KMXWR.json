@@ -1,0 +1,22 @@
+{
+ "domain": "KMXWR",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "X",
+   "high": null,
+   "text": "Maximum value set: limit has been exceeded"
+  },
+  {
+   "low": "Y",
+   "high": null,
+   "text": "Maximum value set: limit has not yet been exceeded"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

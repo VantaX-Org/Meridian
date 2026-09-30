@@ -1,0 +1,52 @@
+{
+ "domain": "KSTEU",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "Adjust for quantity variance"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Free"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Changed manually"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Fixed"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Condition value and basis fixed"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Condition value fixed (billed items)"
+  },
+  {
+   "low": "G",
+   "high": null,
+   "text": "Condition basis fixed"
+  },
+  {
+   "low": "H",
+   "high": null,
+   "text": "Condition value fixed (cost price)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

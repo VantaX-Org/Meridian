@@ -1,0 +1,37 @@
+{
+ "domain": "CDCHNGIND",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "U",
+   "high": null,
+   "text": "Update"
+  },
+  {
+   "low": "I",
+   "high": null,
+   "text": "Insert"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Delete (Single Field Documentation)"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Delete"
+  },
+  {
+   "low": "J",
+   "high": null,
+   "text": "Insert (Single Field Documentation)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

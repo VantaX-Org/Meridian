@@ -1,0 +1,87 @@
+{
+ "domain": "KZBZG",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "B",
+   "high": null,
+   "text": "Value scale"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Quantity scale"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Gross weight scale"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Net weight scale"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Volume scale"
+  },
+  {
+   "low": "G",
+   "high": null,
+   "text": "Scale based on a formula"
+  },
+  {
+   "low": "L",
+   "high": null,
+   "text": "Point scale"
+  },
+  {
+   "low": "M",
+   "high": null,
+   "text": "Time period scale - Month"
+  },
+  {
+   "low": "N",
+   "high": null,
+   "text": "Time period scale - Years"
+  },
+  {
+   "low": "O",
+   "high": null,
+   "text": "Time period scale - Days"
+  },
+  {
+   "low": "P",
+   "high": null,
+   "text": "Time period scale - Week"
+  },
+  {
+   "low": "R",
+   "high": null,
+   "text": "Distance"
+  },
+  {
+   "low": "S",
+   "high": null,
+   "text": "Number of shipping units"
+  },
+  {
+   "low": "T",
+   "high": null,
+   "text": "reserved (IS-OIL, time prices)"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "reserved (IS-OIL, day prices)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

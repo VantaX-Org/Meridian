@@ -1,0 +1,32 @@
+{
+ "domain": "MDFLG",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Standard maintenance"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Matrix maintenance: 1-dimensional"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Matrix maintenance: 2-dimensional"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Matrix maintenance: 3-dimensional"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

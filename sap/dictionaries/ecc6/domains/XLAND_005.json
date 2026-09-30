@@ -1,0 +1,27 @@
+{
+ "domain": "XLAND_005",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Not relevant for IMG or country program"
+  },
+  {
+   "low": "I",
+   "high": null,
+   "text": "Only relevant for IMG"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Relevant for both IMG and country program"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

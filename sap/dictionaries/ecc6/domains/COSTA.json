@@ -1,0 +1,32 @@
+{
+ "domain": "COSTA",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Item not relevant for confirmation"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Item not yet confirmed by MM"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Item partially confirmed by MM"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "All schedule lines by MM confirmed"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

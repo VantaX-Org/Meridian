@@ -1,0 +1,37 @@
+{
+ "domain": "CMGST",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Credit check was not executed/Status not set"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Credit check was executed, document OK"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Credit check was executed, document not OK"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Credit check was executed, document not OK, partial release"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Document released by credit representative"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

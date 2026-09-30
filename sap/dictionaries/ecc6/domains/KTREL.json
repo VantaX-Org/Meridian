@@ -1,0 +1,22 @@
+{
+ "domain": "KTREL",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Relevant for account assignment"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Account assignment with accounting indicator"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

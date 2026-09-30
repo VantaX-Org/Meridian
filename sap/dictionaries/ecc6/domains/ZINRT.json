@@ -1,0 +1,72 @@
+{
+ "domain": "ZINRT",
+ "type": "NUMC",
+ "length": 2,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "01",
+   "high": null,
+   "text": "1 month"
+  },
+  {
+   "low": "02",
+   "high": null,
+   "text": "2 months"
+  },
+  {
+   "low": "03",
+   "high": null,
+   "text": "3 months"
+  },
+  {
+   "low": "04",
+   "high": null,
+   "text": "4 months"
+  },
+  {
+   "low": "05",
+   "high": null,
+   "text": "5 months"
+  },
+  {
+   "low": "06",
+   "high": null,
+   "text": "6 months"
+  },
+  {
+   "low": "07",
+   "high": null,
+   "text": "7 months"
+  },
+  {
+   "low": "08",
+   "high": null,
+   "text": "8 months"
+  },
+  {
+   "low": "09",
+   "high": null,
+   "text": "9 months"
+  },
+  {
+   "low": "10",
+   "high": null,
+   "text": "10 months"
+  },
+  {
+   "low": "11",
+   "high": null,
+   "text": "11 months"
+  },
+  {
+   "low": "12",
+   "high": null,
+   "text": "12 months"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}
