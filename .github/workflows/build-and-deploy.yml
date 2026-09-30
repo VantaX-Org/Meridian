@@ -20,7 +20,12 @@ env:
   IMAGE_PREFIX: ghcr.io/vantax-org/meridian
 
 jobs:
+  # Release gate: no image is published from a commit whose test suite fails.
+  tests:
+    uses: ./.github/workflows/unit-tests.yml
+
   build-and-push:
+    needs: tests
     runs-on: ubuntu-latest
     permissions:
       contents: write
