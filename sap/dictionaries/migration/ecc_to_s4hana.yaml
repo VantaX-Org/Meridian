@@ -1,0 +1,72 @@
+# Standard ECC → S/4HANA field mapping beyond identity.
+#
+# Identity is the default: a source TABLE.FIELD maps to the same TABLE.FIELD
+# when the S/4HANA dictionary has it (LFA1, KNA1, MARA … all still exist).
+# Listed here are the additional targets SAP's own conversion creates:
+#   * Customer/Vendor Integration (CVI) — every vendor and customer becomes a
+#     business partner (Business Partner Approach simplification item).
+#   * SD status fields moved from VBUK/VBUP into VBAK/VBAP.
+# value_map: true → the target value is customer-specific (e.g. account group
+# → BP grouping, defined in CVI customizing); every source value needs a
+# steward-maintained value mapping before the record can load.
+mappings:
+  # ── Vendor → Business Partner (CVI) ──────────────────────────────────
+  LFA1.LIFNR:  [{target: BUT000.PARTNER, note: "BP number = vendor number when CVI number ranges are aligned (same-number assignment)"}]
+  LFA1.KTOKK:  [{target: BUT000.BU_GROUP, value_map: true, note: "CVI: vendor account group ↔ BP grouping (V_TB001 / CVI_VEND_CT)"}]
+  LFA1.NAME1:  [{target: BUT000.NAME_ORG1}]
+  LFA1.NAME2:  [{target: BUT000.NAME_ORG2}]
+  LFA1.NAME3:  [{target: BUT000.NAME_ORG3}]
+  LFA1.NAME4:  [{target: BUT000.NAME_ORG4}]
+  LFA1.SORTL:  [{target: BUT000.BU_SORT1}]
+  LFA1.STRAS:  [{target: ADRC.STREET}]
+  LFA1.ORT01:  [{target: ADRC.CITY1}]
+  LFA1.PSTLZ:  [{target: ADRC.POST_CODE1}]
+  LFA1.LAND1:  [{target: ADRC.COUNTRY}]
+  LFA1.REGIO:  [{target: ADRC.REGION}]
+  LFA1.SPRAS:  [{target: ADRC.LANGU}]
+  LFA1.TELF1:  [{target: ADR2.TEL_NUMBER}]
+  LFA1.STCD1:  [{target: DFKKBPTAXNUM.TAXNUM, note: "tax number category per country (TFKTAXNUMTYPE)"}]
+  LFA1.STCEG:  [{target: DFKKBPTAXNUM.TAXNUM, note: "VAT registration number category <country>0"}]
+  LFBK.BANKS:  [{target: BUT0BK.BANKS}]
+  LFBK.BANKL:  [{target: BUT0BK.BANKL}]
+  LFBK.BANKN:  [{target: BUT0BK.BANKN}]
+  LFBK.KOINH:  [{target: BUT0BK.KOINH}]
+  LFBK.BKONT:  [{target: BUT0BK.BKONT}]
+
+  # ── Customer → Business Partner (CVI) ────────────────────────────────
+  KNA1.KUNNR:  [{target: BUT000.PARTNER, note: "BP number = customer number when CVI number ranges are aligned"}]
+  KNA1.KTOKD:  [{target: BUT000.BU_GROUP, value_map: true, note: "CVI: customer account group ↔ BP grouping (V_TB001 / CVI_CUST_CT)"}]
+  KNA1.NAME1:  [{target: BUT000.NAME_ORG1}]
+  KNA1.NAME2:  [{target: BUT000.NAME_ORG2}]
+  KNA1.SORTL:  [{target: BUT000.BU_SORT1}]
+  KNA1.STRAS:  [{target: ADRC.STREET}]
+  KNA1.ORT01:  [{target: ADRC.CITY1}]
+  KNA1.PSTLZ:  [{target: ADRC.POST_CODE1}]
+  KNA1.LAND1:  [{target: ADRC.COUNTRY}]
+  KNA1.REGIO:  [{target: ADRC.REGION}]
+  KNA1.SPRAS:  [{target: ADRC.LANGU}]
+  KNA1.TELF1:  [{target: ADR2.TEL_NUMBER}]
+  KNA1.STCD1:  [{target: DFKKBPTAXNUM.TAXNUM}]
+  KNA1.STCEG:  [{target: DFKKBPTAXNUM.TAXNUM}]
+  KNBK.BANKS:  [{target: BUT0BK.BANKS}]
+  KNBK.BANKL:  [{target: BUT0BK.BANKL}]
+  KNBK.BANKN:  [{target: BUT0BK.BANKN}]
+  KNBK.KOINH:  [{target: BUT0BK.KOINH}]
+
+  # ── SD status: VBUK/VBUP → VBAK/VBAP ────────────────────────────────
+  VBUK.GBSTK: [{target: VBAK.GBSTK}]
+  VBUK.ABSTK: [{target: VBAK.ABSTK}]
+  VBUK.LFSTK: [{target: VBAK.LFSTK}]
+  VBUK.LFGSK: [{target: VBAK.LFGSK}]
+  VBUK.FKSTK: [{target: VBAK.FKSTK}]
+  VBUK.FKSAK: [{target: VBAK.FKSAK}]
+  VBUK.CMGST: [{target: VBAK.CMGST}]
+  VBUP.GBSTA: [{target: VBAP.GBSTA}]
+  VBUP.ABSTA: [{target: VBAP.ABSTA}]
+  VBUP.LFSTA: [{target: VBAP.LFSTA}]
+  VBUP.LFGSA: [{target: VBAP.LFGSA}]
+  VBUP.FKSTA: [{target: VBAP.FKSTA}]
+  VBUP.FKSAA: [{target: VBAP.FKSAA}]
+
+# Source tables with no S/4HANA load target of their own (data moves elsewhere).
+no_direct_target: [VBUK, VBUP, KONV, MKPF, MSEG, BSIS, BSAS, BSIK, BSAK, BSID, BSAD, ANLC, ANEP, KNKK]

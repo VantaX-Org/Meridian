@@ -1,11 +1,11 @@
-"""Celery task: transfer-readiness gap analysis (source→destination).
+"""Celery task: transfer-readiness gap analysis (source → target).
 
-Deterministic, no LLM. Pulls cleaned source master data, connects to the *live*
-destination SAP system, gap-analyses source-vs-destination against the
-destination's own config, persists per-record gaps and a transfer verdict.
-
-source_to_source is a thin launcher — the existing 4-eyes writeback path owns
-its own gate, so this task only records the run.
+Deterministic, no LLM. Reads the source system's data from an analysis
+version (live extraction bundle or upload) at record grain, and gap-analyses
+every mapped field against the target: a connected target system's own live
+DDIC and configuration, or — before the target exists — the SAP S/4HANA
+standard dictionary (check-table values are then reported as unverified,
+never assumed). Persists per-record gaps and a transfer verdict per module.
 """
 
 import json
@@ -20,180 +20,185 @@ from workers.db import get_sync_engine
 
 logger = logging.getLogger("meridian.workers.migration")
 
+_INSERT = text("""
+    INSERT INTO migration_gap_findings
+        (id, tenant_id, run_id, module, object_type, record_key, dest_table, field, gap_type, severity,
+         detail, source_table, source_field, source_value, target_value, provenance, grounded,
+         domain_provenance, transfer_ready)
+    VALUES (gen_random_uuid(), :tid, :rid, :module, :object_type, :record_key, :dest_table, :field,
+            :gap_type, :severity, :detail, :source_table, :source_field, :source_value, :target_value,
+            :provenance, :grounded, :provenance, false)
+""")
 
-def _pull_source(session: Session, tenant_id: str, module: str):
-    """Return (keys, records) of cleaned source data for a module.
 
-    Golden master records first, else steward-approved cleaning-queue rows.
-    Both tables carry an explicit business key, so the export route can re-pull
-    and match the same keys without re-deriving them.
-    """
+def resolve_source_version(session, source_system_id, source_version_id):
+    """Explicit version, else the latest complete analysis of the source system."""
+    if source_version_id:
+        row = session.execute(text("SELECT id, metadata FROM analysis_versions WHERE id = :v"),
+                              {"v": source_version_id}).fetchone()
+    else:
+        row = session.execute(
+            text("SELECT id, metadata FROM analysis_versions WHERE metadata->>'system_id' = :sid "
+                 "AND status LIKE '%complete%' AND metadata ? 'dataset_path' ORDER BY run_at DESC LIMIT 1"),
+            {"sid": str(source_system_id)},
+        ).fetchone()
+    return (str(row[0]), row[1] or {}) if row else (None, {})
+
+
+def load_mappings(session, module: str, target_type: str):
+    from api.services.migration.engine import Mapping
+
     rows = session.execute(
-        text("""
-            SELECT sap_object_key, golden_fields FROM master_records
-            WHERE tenant_id = :tid AND domain = :m
-              AND status IN ('golden', 'pending_review')
-        """),
-        {"tid": tenant_id, "m": module},
+        text("SELECT source_field, dest_table, dest_field, value_map, origin, transform_note "
+             "FROM transfer_field_mappings WHERE module = :m AND dest_system_type = :t"),
+        {"m": module, "t": target_type},
     ).fetchall()
-    if rows:
-        return [r[0] for r in rows], [dict(r[1] or {}) for r in rows]
-
-    rows = session.execute(
-        text("""
-            SELECT record_key, record_data_after, record_data_before
-            FROM cleaning_queue
-            WHERE tenant_id = :tid AND object_type = :m AND status = 'approved'
-        """),
-        {"tid": tenant_id, "m": module},
-    ).fetchall()
-    keys, records = [], []
-    for r in rows:
-        data = dict(r[1] or r[2] or {})
-        data = {k: v for k, v in data.items() if k not in ("issue", "error")}
-        keys.append(r[0])
-        records.append(data)
-    return keys, records
+    return [Mapping(r[0], f"{r[1]}.{r[2]}" if r[1] and r[2] else None, bool(r[3]), r[4] or "steward", r[5])
+            for r in rows]
 
 
-@celery_app.task(
-    bind=True,
-    name="workers.tasks.run_migration.run_migration",
-    soft_time_limit=600,
-    time_limit=660,
-    acks_late=True,
-    reject_on_worker_lost=True,
-)
-def run_migration(self, tenant_id, run_id, mode, source_system_id, dest_system_id, modules):
+def save_seed(session, tenant_id, module, target_type, mappings) -> None:
+    for m in mappings:
+        t_table, _, t_field = (m.target or "").partition(".")
+        session.execute(
+            text("""
+                INSERT INTO transfer_field_mappings
+                    (id, tenant_id, module, source_field, dest_system_type, dest_table, dest_field,
+                     value_map, origin, transform_note, is_confirmed)
+                VALUES (gen_random_uuid(), :tid, :m, :sf, :t, :dt, :df, :vm, :origin, :note, false)
+                ON CONFLICT DO NOTHING
+            """),
+            {"tid": tenant_id, "m": module, "sf": m.source, "t": target_type, "dt": t_table or None,
+             "df": t_field or None, "vm": m.value_map, "origin": m.origin, "note": m.note},
+        )
+
+
+def load_value_maps(session, module: str) -> dict[str, dict[str, str]]:
+    out: dict[str, dict[str, str]] = {}
+    for tf, sv, tv in session.execute(
+        text("SELECT target_field, source_value, target_value FROM transfer_value_mappings WHERE module = :m"),
+        {"m": module},
+    ).fetchall():
+        out.setdefault(tf, {})[sv] = tv
+    return out
+
+
+def load_target_config(session, dest_system_id) -> dict[str, set[str]]:
+    if not dest_system_id:
+        return {}
+    out: dict[str, set[str]] = {}
+    for table, data in session.execute(
+        text("SELECT config_table, config_data FROM config_snapshots WHERE system_id = :sid AND source = 'live'"),
+        {"sid": str(dest_system_id)},
+    ).fetchall():
+        for rec in data or []:
+            for col, val in rec.items():
+                if val not in (None, ""):
+                    out.setdefault(f"{table}.{col}", set()).add(str(val).strip())
+    return out
+
+
+def module_source_tables(module: str, frames) -> list[str]:
+    from sap.extraction_plan import plan_modules
+
+    plans = plan_modules([module], frames.dictionary)
+    return [t for t, p in plans.items() if p.purpose == "data" and t in frames.frames]
+
+
+@celery_app.task(bind=True, name="workers.tasks.run_migration.run_migration",
+                 soft_time_limit=1800, time_limit=1860, acks_late=True, reject_on_worker_lost=True)
+def run_migration(self, tenant_id, run_id, mode, source_system_id, dest_system_id, modules,
+                  source_version_id=None, target_release="s4hana"):
     engine = get_sync_engine()
-    dest_params: dict = {}
+    with Session(engine) as session:
+        session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        session.execute(text("UPDATE migration_runs SET status = 'running', started_at = now() WHERE id = :rid"),
+                        {"rid": run_id})
+        session.commit()
+        try:
+            if mode == "source_to_source":
+                return _finish(session, run_id, "analysed", None, {})
 
-    try:
-        with Session(engine) as session:
-            session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+            from api.services.migration.engine import analyze, seed_mappings
+            from api.services.source_design import dictionary_for
+            from sap.ddic import get_dictionary
+            from workers.dataset import load_dataset
 
-            # Idempotent claim — only one worker advances a queued run.
-            claimed = session.execute(
-                text("UPDATE migration_runs SET status = 'running', task_id = :tid, "
-                     "started_at = now() WHERE id = :rid AND status = 'queued'"),
-                {"tid": self.request.id, "rid": run_id},
-            )
-            session.commit()
-            if claimed.rowcount == 0:
-                logger.info(f"Migration run {run_id} already claimed — skipping")
-                return
+            version_id, meta = resolve_source_version(session, source_system_id, source_version_id)
+            if not version_id or not meta.get("dataset_path"):
+                return _finish(session, run_id, "failed",
+                               "No analysed source dataset — run an extraction or upload for the source first.", {})
+            source_dict = dictionary_for(session, source_system_id or meta.get("system_id"))
+            frames, _, _, _ = load_dataset(meta["dataset_path"], source_dict, modules)
 
-            try:
-                if mode == "source_to_source":
-                    # Writeback owns its own 4-eyes gate; nothing to gap-analyse.
-                    session.execute(
-                        text("UPDATE migration_runs SET status = 'analysed', "
-                             "readiness_verdict = NULL, gap_summary = CAST(:s AS jsonb), "
-                             "completed_at = now() WHERE id = :rid"),
-                        {"s": json.dumps({"mode": "source_to_source",
-                                          "delegated_to": "writeback"}), "rid": run_id},
-                    )
+            if dest_system_id:
+                target_dict = dictionary_for(session, dest_system_id)
+                target_type = session.execute(text("SELECT system_type FROM sap_systems WHERE id = :s"),
+                                              {"s": dest_system_id}).scalar() or target_release
+            else:
+                target_dict = get_dictionary(target_release)
+                target_type = target_release
+            target_config = load_target_config(session, dest_system_id)
+
+            summary, all_gaps, records, blocked = {}, 0, 0, 0
+            verdicts, critical = [], 0
+            for module in modules:
+                tables = module_source_tables(module, frames)
+                mappings = load_mappings(session, module, target_type)
+                if not mappings:
+                    seed = seed_mappings({t: list(frames.frames[t].columns) for t in tables}, source_dict, target_dict)
+                    save_seed(session, tenant_id, module, target_type, seed)
                     session.commit()
-                    logger.info(f"Migration run {run_id} (source_to_source) recorded")
-                    return
-
-                from api.services.connectivity_manager import ConnectivityManager
-                from api.services.migration import (
-                    SourceTargetMap, TransferGapAnalyzer, aggregate_verdict,
-                )
-
-                manager = ConnectivityManager(session, tenant_id)
-                dest_row = manager._load_system(dest_system_id)
-                dest_params = manager._build_connection_params(dest_row)
-                dest_system_type = dest_params["system_type"]
-
-                map_rows = session.execute(
-                    text("SELECT module, source_field, dest_table, dest_field, transform_note "
-                         "FROM transfer_field_mappings WHERE tenant_id = :tid "
-                         "AND dest_system_type = :dst"),
-                    {"tid": tenant_id, "dst": dest_system_type},
-                ).fetchall()
-                field_map = SourceTargetMap([dict(r._mapping) for r in map_rows])
-
-                analyzer = TransferGapAnalyzer(dest_system_type, dest_params)
-
-                # Re-run safety: clear any prior findings for this run.
-                session.execute(
-                    text("DELETE FROM migration_gap_findings WHERE run_id = :rid"),
-                    {"rid": run_id},
-                )
+                    mappings = seed
+                gaps, res = analyze(module, frames, tables, mappings, target_dict, load_value_maps(session, module),
+                                    target_config, None, bool(dest_system_id))
+                rows = [{
+                    "tid": tenant_id, "rid": run_id, "module": g.module, "object_type": g.source_table,
+                    "record_key": g.record_key, "dest_table": g.target_table, "field": g.target_field,
+                    "gap_type": g.gap_type, "severity": g.severity, "detail": g.detail,
+                    "source_table": g.source_table, "source_field": g.source_field,
+                    "source_value": g.source_value, "target_value": g.target_value,
+                    "provenance": g.provenance, "grounded": g.grounded,
+                } for g in gaps]
+                for i in range(0, len(rows), 2000):
+                    session.execute(_INSERT, rows[i:i + 2000])
                 session.commit()
+                all_gaps += len(rows)
+                records += res.records
+                blocked += res.blocked_records
+                critical += sum(1 for g in gaps if g.severity == "critical")
+                verdicts.append(res.verdict)
+                summary[module] = {"records": res.records, "blocked_records": res.blocked_records,
+                                   "score": res.score, "verdict": res.verdict, "gaps": res.counts,
+                                   "source_tables": tables}
 
-                results = []
-                for module in modules:
-                    try:
-                        keys, records = _pull_source(session, tenant_id, module)
-                        if not records:
-                            logger.info(f"Migration {run_id}: no source records for {module}")
-                            continue
-                        result = analyzer.analyze(
-                            module, records, field_map, object_type=module, record_keys=keys,
-                        )
-                        results.append(result)
-                        for f in result.findings:
-                            session.execute(
-                                text("""
-                                    INSERT INTO migration_gap_findings
-                                        (id, tenant_id, run_id, module, object_type,
-                                         record_key, dest_table, field, gap_type, severity,
-                                         detail, status_source, domain_provenance, transfer_ready)
-                                    VALUES (gen_random_uuid(), :tid, :rid, :mod, :ot, :rk,
-                                            :dt, :fld, :gt, :sev, :detail, :ss, :dp, false)
-                                """),
-                                {
-                                    "tid": tenant_id, "rid": run_id, "mod": f.module,
-                                    "ot": f.object_type, "rk": f.record_key,
-                                    "dt": f.dest_table, "fld": f.dest_field,
-                                    "gt": f.gap_type.value, "sev": f.severity.value,
-                                    "detail": f.reason, "ss": f.status_source,
-                                    "dp": f.domain_provenance,
-                                },
-                            )
-                        session.commit()
-                    except SoftTimeLimitExceeded:
-                        raise
-                    except Exception as e:
-                        logger.error(f"Migration {run_id}: module {module} failed: {e}")
-                        session.rollback()
+            verdict = "no-go" if "no-go" in verdicts else ("conditional" if "conditional" in verdicts else "go")
+            score = round((records - blocked) / records * 100, 2) if records else 0.0
+            session.execute(
+                text("""
+                    UPDATE migration_runs SET readiness_verdict = :v, readiness_score = :s, critical_count = :c,
+                           records_total = :rt, records_blocked = :rb, source_version_id = :svid,
+                           target_release = :tr, target_connected = :tc
+                    WHERE id = :rid
+                """),
+                {"rid": run_id, "v": verdict, "s": score, "c": critical, "rt": records, "rb": blocked,
+                 "svid": version_id, "tr": None if dest_system_id else target_release, "tc": bool(dest_system_id)},
+            )
+            logger.info(f"migration {run_id}: {verdict} score={score} gaps={all_gaps}")
+            return _finish(session, run_id, "analysed", None, summary)
+        except SoftTimeLimitExceeded:
+            return _finish(session, run_id, "failed", "time limit reached", {})
+        except Exception as e:
+            logger.exception("migration analysis failed")
+            session.rollback()
+            return _finish(session, run_id, "failed", str(e)[:500], {})
 
-                verdict = aggregate_verdict(results)
-                summary = {
-                    "status": verdict.status, "score": verdict.score,
-                    "critical_count": verdict.critical_count,
-                    "blocking_count": verdict.blocking_count,
-                    "ungrounded_count": verdict.ungrounded_count,
-                    "by_module": verdict.by_module,
-                    "blockers": verdict.blockers, "conditions": verdict.conditions,
-                }
-                session.execute(
-                    text("UPDATE migration_runs SET status = 'analysed', "
-                         "readiness_verdict = :v, readiness_score = :sc, "
-                         "critical_count = :cc, gap_summary = CAST(:s AS jsonb), "
-                         "completed_at = now() WHERE id = :rid"),
-                    {"v": verdict.status, "sc": verdict.score, "cc": verdict.critical_count,
-                     "s": json.dumps(summary), "rid": run_id},
-                )
-                session.commit()
-                logger.info(f"Migration {run_id} analysed: {verdict.status} ({verdict.score})")
 
-            except SoftTimeLimitExceeded:
-                logger.error(f"Migration {run_id} timed out")
-                raise
-            except Exception as e:
-                logger.error(f"Migration {run_id} failed: {e}")
-                session.rollback()
-                session.execute(
-                    text("UPDATE migration_runs SET status = 'failed', "
-                         "error_detail = :err, completed_at = now() WHERE id = :rid"),
-                    {"err": str(e)[:200], "rid": run_id},
-                )
-                session.commit()
-    finally:
-        for key in ("password", "client_secret", "api_key", "client_id"):
-            if key in dest_params:
-                dest_params[key] = ""
+def _finish(session, run_id, status, error, summary) -> dict:
+    session.execute(
+        text("UPDATE migration_runs SET status = :st, error_detail = :err, gap_summary = CAST(:gs AS jsonb), "
+             "completed_at = now() WHERE id = :rid"),
+        {"rid": run_id, "st": status, "err": error, "gs": json.dumps(summary)},
+    )
+    session.commit()
+    return {"run_id": run_id, "status": status, "error": error}

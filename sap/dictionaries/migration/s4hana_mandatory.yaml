@@ -1,0 +1,19 @@
+# Fields SAP itself refuses to create a record without (application-enforced,
+# independent of field-status customizing). Everything else that is
+# "mandatory" in a given S/4HANA system comes from that system's field-status
+# configuration and is only checked when the target is connected.
+#
+# Checked when the target record is built from the same-named source table
+# (identity migration), plus the source tables listed under `via` (CVI builds
+# the business partner from the vendor/customer).
+BUT000.TYPE:     {reason: "Business partner category is required to create a BP (CVI derives it for vendors/customers)"}
+BUT000.BU_GROUP: {reason: "BP grouping is required — drives the BP number range and the CVI account group", via: [LFA1, KNA1]}
+LFB1.AKONT:      {reason: "Reconciliation account is required for supplier company-code data"}
+KNB1.AKONT:      {reason: "Reconciliation account is required for customer company-code data"}
+MARA.MTART:      {reason: "Material type is required to create a material"}
+MARA.MBRSH:      {reason: "Industry sector is required to create a material"}
+MARA.MEINS:      {reason: "Base unit of measure is required to create a material"}
+SKA1.KTOKS:      {reason: "G/L account group is required"}
+SKB1.WAERS:      {reason: "Account currency is required for G/L company-code data"}
+ANLA.ANLKL:      {reason: "Asset class is required to create an asset"}
+EQUI.EQTYP:      {reason: "Equipment category is required to create equipment"}

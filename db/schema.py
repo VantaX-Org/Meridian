@@ -719,8 +719,13 @@ class MigrationRun(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
     mode = Column(Text, nullable=False)  # source_to_source | source_to_destination
-    source_system_id = Column(UUID(as_uuid=True), ForeignKey("sap_systems.id"), nullable=False)
+    source_system_id = Column(UUID(as_uuid=True), ForeignKey("sap_systems.id"), nullable=True)
     dest_system_id = Column(UUID(as_uuid=True), ForeignKey("sap_systems.id"), nullable=True)
+    source_version_id = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id"), nullable=True)
+    target_release = Column(Text, nullable=True)  # s4hana (standard) when no target system is connected
+    target_connected = Column(Boolean, server_default="false")
+    records_total = Column(Integer, server_default="0")
+    records_blocked = Column(Integer, server_default="0")
     modules = Column(ARRAY(Text), server_default="{}")
     status = Column(Text, server_default="queued")  # queued|running|analysed|exported|failed
     readiness_verdict = Column(Text, nullable=True)  # go|conditional|no-go
@@ -758,6 +763,12 @@ class MigrationGapFinding(Base):
     status_source = Column(Text, nullable=True)
     domain_provenance = Column(Text, nullable=True)
     transfer_ready = Column(Boolean, server_default="false")
+    source_table = Column(Text, nullable=True)
+    source_field = Column(Text, nullable=True)
+    source_value = Column(Text, nullable=True)
+    target_value = Column(Text, nullable=True)
+    provenance = Column(Text, nullable=True)
+    grounded = Column(Boolean, server_default="true")
     created_at = Column(DateTime(timezone=True), server_default=text("now()"))
 
     __table_args__ = (
@@ -800,13 +811,37 @@ class TransferFieldMapping(Base):
     dest_field = Column(Text, nullable=True)  # NULL ⇒ explicitly unmapped/skipped
     transform_note = Column(Text, nullable=True)
     is_confirmed = Column(Boolean, server_default="false")
+    value_map = Column(Boolean, server_default="false")  # target value comes from transfer_value_mappings
+    origin = Column(Text, server_default="steward")      # identity | sap_standard | steward
     created_at = Column(DateTime(timezone=True), server_default=text("now()"))
     updated_at = Column(DateTime(timezone=True), nullable=True)
 
+    # unique (tenant, module, source_field, dest_system_type, dest_table, dest_field)
+    # NULLS NOT DISTINCT — created in migration 048 (one source field may feed
+    # several targets, e.g. LFA1.NAME1 → LFA1.NAME1 and BUT000.NAME_ORG1)
     __table_args__ = (
-        UniqueConstraint("tenant_id", "module", "source_field", "dest_system_type", name="uq_transfer_field_mappings"),
         Index("ix_transfer_field_mappings_tenant", "tenant_id"),
         Index("ix_transfer_field_mappings_lookup", "tenant_id", "module", "dest_system_type"),
+    )
+
+
+class TransferValueMapping(Base):
+    """Steward-maintained source → target value mapping (migration 048)."""
+
+    __tablename__ = "transfer_value_mappings"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    module = Column(Text, nullable=False)
+    target_field = Column(Text, nullable=False)
+    source_value = Column(Text, nullable=False)
+    target_value = Column(Text, nullable=False)
+    note = Column(Text, nullable=True)
+    updated_by = Column(UUID(as_uuid=True), nullable=True)
+    updated_at = Column(DateTime(timezone=True), server_default=text("now()"))
+
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "module", "target_field", "source_value", name="uq_transfer_value_mappings"),
     )
 
 

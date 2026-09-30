@@ -976,71 +976,114 @@ export type TransferVerdict = "go" | "conditional" | "no-go";
 export interface MigrationRun {
   id: string;
   mode: MigrationMode;
-  source_system_id: string;
+  source_system_id: string | null;
   dest_system_id: string | null;
+  source_version_id: string | null;
+  /** S/4HANA standard release analysed against when no target system is connected. */
+  target_release: string | null;
+  target_connected: boolean;
   modules: string[];
   status: MigrationStatus;
   readiness_verdict: TransferVerdict | null;
   readiness_score: number | null;
   critical_count: number;
+  records_total: number;
+  records_blocked: number;
+  error_detail: string | null;
   created_at: string;
   completed_at: string | null;
 }
 
+export type MigrationGapType =
+  | "unmapped_field"
+  | "target_field_missing"
+  | "obsolete_target"
+  | "target_config_unverified"
+  | "length_truncation"
+  | "precision_loss"
+  | "type_conversion"
+  | "case_change"
+  | "domain_value"
+  | "check_table_value"
+  | "value_unmapped"
+  | "target_mandatory"
+  | "key_missing"
+  | "key_collision"
+  | "target_key_exists";
+
 export interface MigrationModuleSummary {
-  score: number;
-  status: TransferVerdict;
-  critical: number;
-  high: number;
-  medium: number;
-  low: number;
-  blocking: number;
   records: number;
-  ready: number;
-  capped: boolean;
-  cap_reason: string | null;
+  blocked_records: number;
+  score: number;
+  verdict: TransferVerdict;
+  gaps: Partial<Record<MigrationGapType, number>>;
+  source_tables: string[];
 }
 
-export interface MigrationGapSummary {
-  status: TransferVerdict;
-  score: number;
-  critical_count: number;
-  blocking_count: number;
-  ungrounded_count: number;
-  by_module: Record<string, MigrationModuleSummary>;
-  blockers: string[];
-  conditions: string[];
-  mode?: string;
-  delegated_to?: string;
+export interface MigrationGapBreakdown {
+  module: string;
+  gap_type: MigrationGapType;
+  severity: Severity;
+  grounded: boolean;
+  n: number;
+  records: number;
+  fields: number;
+}
+
+export interface MigrationRunDetail {
+  run: MigrationRun & { gap_summary: Record<string, MigrationModuleSummary> | null };
+  gap_breakdown: MigrationGapBreakdown[];
+  /** Critical gaps affecting all records (target field missing/obsolete) — these block load-file export. */
+  structural_critical: number;
 }
 
 export interface MigrationGapFinding {
   module: string;
-  object_type: string | null;
+  source_table: string | null;
+  /** Composite source key, e.g. "LIFNR=0000100001|BUKRS=1000"; null for structural gaps. */
   record_key: string | null;
+  source_field: string | null;
+  source_value: string | null;
   dest_table: string | null;
-  field: string | null;
-  gap_type: "field_mapping" | "target_mandatory" | "value_domain" | "type_mismatch";
+  target_field: string | null;
+  target_value: string | null;
+  gap_type: MigrationGapType;
   severity: Severity;
   detail: string | null;
-  status_source: string | null;
-  domain_provenance: string | null;
+  provenance: string | null;
+  /** False when the target rule is SAP-standard only (no connected target to confirm). */
+  grounded: boolean;
 }
 
-export interface MigrationRunDetail {
-  run: MigrationRun & { gap_summary: MigrationGapSummary | null; error_detail: string | null };
-  findings_total: number;
-  findings: MigrationGapFinding[];
+export interface DdicFieldDef {
+  type: string | null;
+  length: number;
+  decimals: number;
+  check_table: string | null;
+  description: string;
 }
 
 export interface TransferFieldMapping {
   id: string;
   module: string;
+  /** TABLE.FIELD in the source. */
   source_field: string;
-  source_data_type: string | null;
   dest_system_type: string;
   dest_table: string | null;
   dest_field: string | null;
+  value_map: boolean;
+  origin: string;
   transform_note: string | null;
   is_confirmed: boolean;
+  source_def: DdicFieldDef | null;
+  target_def: DdicFieldDef | null;
+}
+
+export interface TransferValueMapping {
+  id: string;
+  target_field: string;
+  source_value: string;
+  target_value: string;
+  note: string | null;
+  updated_at: string;
 }

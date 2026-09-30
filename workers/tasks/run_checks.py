@@ -1,9 +1,7 @@
-import io
 import json
 import logging
 import traceback
 
-import pandas as pd
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -17,18 +15,6 @@ from workers.celery_app import celery_app
 from workers.db import get_sync_engine
 
 logger = logging.getLogger("meridian.worker")
-
-
-def _get_minio_client():
-    import os
-    from minio import Minio
-
-    return Minio(
-        endpoint=os.getenv("MINIO_ENDPOINT", "minio:9000"),
-        access_key=os.getenv("MINIO_ACCESS_KEY", "meridian"),
-        secret_key=os.getenv("MINIO_SECRET_KEY", ""),
-        secure=False,
-    )
 
 
 def _live_reference_values(engine, tenant_id: str, metadata: dict) -> dict[str, set[str]]:
@@ -96,21 +82,7 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
     )
 
     try:
-        # Step 3: Load the dataset from MinIO.
-        #   * "<prefix>/"            → live-extraction bundle, one <TABLE>.parquet per SAP table
-        #   * "<path>.parquet"       → flat upload with TABLE.FIELD columns
-        minio_client = _get_minio_client()
-        import os
-        bucket = os.getenv("MINIO_BUCKET_UPLOADS", "meridian-uploads")
-
-        def _read(obj_name: str) -> bytes:
-            resp = minio_client.get_object(bucket, obj_name)
-            try:
-                return resp.read()
-            finally:
-                resp.close()
-                resp.release_conn()
-
+        # Step 3: Load the dataset (extraction bundle or flat upload).
         with Session(engine) as session:
             session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
             meta_row = session.execute(
@@ -120,57 +92,25 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
             tenant_row = session.execute(
                 text("SELECT dqs_weights FROM tenants WHERE id = :tid"), {"tid": str(tenant_id)},
             ).fetchone()
+            # remember where the dataset lives (migration analysis re-reads it)
+            session.execute(
+                text("UPDATE analysis_versions SET metadata = COALESCE(metadata, '{}'::jsonb) "
+                     "|| jsonb_build_object('dataset_path', CAST(:p AS text)) WHERE id = :vid"),
+                {"vid": version_id, "p": parquet_path},
+            )
+            session.commit()
         metadata = (meta_row[0] if meta_row else None) or {}
         modules = metadata.get("modules", [])
         tenant_weights = (tenant_row[0] if tenant_row else None) or {}
 
-        from checks.frames import TableFrames
         from api.services.source_design import dictionary_for
+        from workers.dataset import load_dataset
 
         with Session(engine) as session:
             session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
             # source system's own DDIC (live snapshot) over the SAP-standard bundle
             dictionary = dictionary_for(session, metadata.get("system_id"))
-
-        if parquet_path.endswith("/"):
-            tables = {}
-            for obj in minio_client.list_objects(bucket, prefix=parquet_path):
-                name = obj.object_name.rsplit("/", 1)[-1]
-                if name.endswith(".parquet"):
-                    tables[name[: -len(".parquet")]] = pd.read_parquet(io.BytesIO(_read(obj.object_name)))
-            if not tables:
-                raise ValueError(f"No table parquet files under {parquet_path}")
-            frames = TableFrames(tables, dictionary)
-            df = None
-            row_count = sum(len(t) for t in tables.values())
-            col_count = sum(len(t.columns) for t in tables.values())
-        else:
-            # Column pruning: keep every column any rule reads plus each
-            # referenced table's DDIC key (needed to split the flat frame into
-            # per-table frames at their correct grain).
-            parquet_buf = io.BytesIO(_read(parquet_path))
-            needed: set[str] = set()
-            try:
-                from checks.runner import get_required_columns
-                from checks.frames import tables_of
-                from sap.ddic import get_dictionary
-                for mod in modules:
-                    needed |= get_required_columns(mod)
-                ddic = get_dictionary("s4hana")
-                needed |= {f"{t}.{k}" for t in tables_of(needed) for k in ddic.keys(t)}
-            except FileNotFoundError:
-                needed = set()
-            except Exception as e:
-                logger.warning(f"Column pruning unavailable, loading full parquet: {e}")
-                needed = set()
-            import pyarrow.parquet as pq
-            all_cols = set(pq.read_schema(parquet_buf).names)
-            parquet_buf.seek(0)
-            project = [c for c in all_cols if c in needed] if needed else None
-            df = pd.read_parquet(parquet_buf, columns=project or None)
-            frames = TableFrames.from_flat(df, dictionary)
-            row_count = len(df)
-            col_count = len(df.columns)
+        frames, df, row_count, col_count = load_dataset(parquet_path, dictionary, modules)
 
         logger.info(f"Loaded DataFrame: {row_count} rows, {col_count} columns")
 
