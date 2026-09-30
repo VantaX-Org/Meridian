@@ -637,3 +637,27 @@ rules:
       __blank__: Reverse the document (FB08) and re-post with the correct tax code, or correct the account's tax category
         if it was set in error (FS00).
     record_fix_template: 'Document {BSEG.BELNR}/{BSEG.GJAHR} line {BSEG.BUZEI}, account {BSEG.HKONT}: tax code missing.'
+
+  - id: XFI001
+    field: BSEG.DMBTR
+    check_class: balance_check
+    grain: BSEG
+    group_by: [BSEG.BUKRS, BSEG.BELNR, BSEG.GJAHR]
+    amount: BSEG.DMBTR
+    sign_field: BSEG.SHKZG
+    debit_value: S
+    applies_when:
+      BKPF.BSTAT: {not_in: [D, M, S, V, W, Z]}   # noted items, samples, recurring originals, parked: no posting
+    severity: critical
+    dimension: accuracy
+    message: Posted FI document does not balance in company-code currency (debits ≠ credits)
+    why_it_matters: >-
+      SAP only posts a document whose line items net to zero. A posted document that does not balance
+      means line items are missing from the extract or were changed outside the posting logic (direct
+      table updates, a broken interface, an incomplete archive/reload) — the ledger no longer adds up.
+    rule_authority: sap_hard_constraint
+    sap_impact: Trial balance and financial statements do not reconcile; the imbalance is invisible in FAGLB03 totals.
+    fix_map:
+      __other__: Compare the document in FB03 with the extract; if the lines differ, re-extract. If FB03 shows the
+        imbalance too, raise it with SAP support (the ledger was changed outside the posting logic).
+    record_fix_template: 'Document {BSEG.BELNR}/{BSEG.GJAHR} (company code {BSEG.BUKRS}) does not balance.'

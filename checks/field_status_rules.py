@@ -59,6 +59,39 @@ def generate(resolutions: list[Resolution], modules: list[str]) -> list[dict]:
     return rules
 
 
+def generate_material(material: dict[str, dict[str, str]], modules: list[str]) -> list[dict]:
+    """Rules from the material master field selection (sap/field_status_config.resolve_material)."""
+    if "material_master" not in modules:
+        return []
+    rules = []
+    for col, by_group in sorted(material.items()):
+        for st in ("required", "suppressed"):
+            groups = sorted(g for g, s in by_group.items() if s == st)
+            if not groups:
+                continue
+            label = ", ".join(g.replace("|", "/") for g in groups[:6]) + (" …" if len(groups) > 6 else "")
+            rules.append({
+                "id": f"FS-{col.replace('.', '-')}-{'REQ' if st == 'required' else 'SUP'}",
+                "module": "material_master", "check_class": "field_status_check", "field": col,
+                "group_field": ["MARA.MTART", "MARA.MBRSH"], "groups": groups, "kind": st, "grain": "MARA",
+                "severity": "high" if st == "required" else "low",
+                "dimension": "completeness" if st == "required" else "consistency",
+                "config_table": "T130A/T130F", "fauna": "material field selection",
+                "message": (f"{col} is required for material type / industry sector {label} by this system's "
+                            f"material master field selection") if st == "required" else
+                           (f"{col} is populated although material type / industry sector {label} hide it"),
+            })
+    return rules
+
+
+def material_fields(material: dict[str, dict[str, str]]) -> dict[str, set[str]]:
+    out: dict[str, set[str]] = {"MARA": {"MTART", "MBRSH"}} if material else {}
+    for col in material:
+        t, f = col.split(".", 1)
+        out.setdefault(t, set()).add(f)
+    return out
+
+
 def extra_fields(resolutions: list[Resolution]) -> dict[str, set[str]]:
     """Fields the extraction must read so the generated rules can be evaluated."""
     out: dict[str, set[str]] = {}

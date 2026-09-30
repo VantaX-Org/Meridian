@@ -74,3 +74,33 @@ def test_extraction_reads_controlled_fields_and_group_source():
 
 def test_no_customizing_no_rules():
     assert resolve_all({}) == [] and resolve_all({"T077K": CONFIG["T077K"]}) == []
+
+
+def test_material_field_selection_by_type_and_industry_sector():
+    from checks.field_status_rules import generate_material
+    from sap.field_status_config import resolve_material
+    fausw = lambda **pos: "".join(pos.get(f"g{i}", ".") for i in range(1, 129))  # noqa: E731
+    config = {
+        "T130F": [{"FNAME": "MARA-BRGEW", "FGRUP": "005"}, {"FNAME": "MARA-EAN11", "FGRUP": "007"},
+                  {"FNAME": "MARA-MATNR", "FGRUP": "001"}, {"FNAME": "RM03M-XYZ", "FGRUP": "009"}],
+        "T130A": [{"FLREF": "FERT", "FAUSW": fausw(g5="+", g7="+")}, {"FLREF": "ROH", "FAUSW": fausw(g5="-")},
+                  {"FLREF": "M", "FAUSW": fausw(g7="-")}, {"FLREF": "A", "FAUSW": fausw()}],
+        "T134": [{"MTART": "FERT", "FLREF": "FERT"}, {"MTART": "ROH", "FLREF": "ROH"}],
+        "T137": [{"MBRSH": "M", "FLREF": "M"}, {"MBRSH": "A", "FLREF": "A"}],
+    }
+    mat = resolve_material(config, D)
+    # hide beats required: EAN required by FERT but hidden by industry sector M
+    assert mat["MARA.EAN11"] == {"FERT|A": "required", "FERT|M": "suppressed", "ROH|M": "suppressed"}
+    assert mat["MARA.BRGEW"]["FERT|M"] == "required" and mat["MARA.BRGEW"]["ROH|A"] == "suppressed"
+    assert "MARA.MATNR" not in mat  # key fields are never generated
+    rules = {r["id"]: r for r in generate_material(mat, ["material_master"])}
+    mara = pd.DataFrame({"MARA.MATNR": ["1", "2", "3"], "MARA.MTART": ["FERT", "FERT", "ROH"],
+                         "MARA.MBRSH": ["A", "M", "A"], "MARA.BRGEW": ["", "5", "2"], "MARA.EAN11": ["", "", ""]})
+    f = TableFrames({"MARA": mara}, D, module="material_master")
+    _, req = run_rule(rules["FS-MARA-BRGEW-REQ"], f)
+    assert req.failing_record_keys == ["MATNR=1"] and req.total_count == 2
+    _, sup = run_rule(rules["FS-MARA-BRGEW-SUP"], f)
+    assert sup.failing_record_keys == ["MATNR=3"]
+    _, ean = run_rule(rules["FS-MARA-EAN11-REQ"], f)
+    assert ean.failing_record_keys == ["MATNR=1"] and ean.total_count == 1  # FERT|M is hidden, not required
+    assert resolve_material({"T130F": config["T130F"]}, D) == {}  # nothing without the whole customizing

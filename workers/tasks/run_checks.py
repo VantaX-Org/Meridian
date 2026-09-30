@@ -143,12 +143,16 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanaly
             # source system's own DDIC (live snapshot) over the SAP-standard bundle
             dictionary = dictionary_for(session, metadata.get("system_id"))
             # rules generated from this system's own field-status customizing
-            from checks.field_status_rules import extra_fields, load_config
-            from sap.field_status_config import resolve_all
-            fs_resolutions = resolve_all(load_config(session, metadata.get("system_id")))
+            from checks.field_status_rules import extra_fields, load_config, material_fields
+            from sap.field_status_config import resolve_all, resolve_material
+            fs_config = load_config(session, metadata.get("system_id"))
+            fs_resolutions = resolve_all(fs_config)
+            fs_material = resolve_material(fs_config, dictionary)
+        fs_extra = {**extra_fields(fs_resolutions)}
+        for t, fs in material_fields(fs_material).items():
+            fs_extra[t] = fs_extra.get(t, set()) | fs
         frames, df, row_count, col_count = load_dataset(
-            parquet_path, dictionary, modules,
-            extra={f"{t}.{f}" for t, fs in extra_fields(fs_resolutions).items() for f in fs})
+            parquet_path, dictionary, modules, extra={f"{t}.{f}" for t, fs in fs_extra.items() for f in fs})
 
         logger.info(f"Loaded DataFrame: {row_count} rows, {col_count} columns")
 
@@ -190,16 +194,22 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanaly
         with Session(engine) as session:
             session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
             rule_overrides = load_overrides(session)
-            from checks.field_status_rules import generate
+            from checks.field_status_rules import generate, generate_material
             fs_rules = generate(fs_resolutions, modules)
+            material_rules = generate_material(fs_material, modules)
             session.execute(text("UPDATE analysis_versions SET metadata = COALESCE(metadata, '{}'::jsonb) "
                                  "|| jsonb_build_object('field_status', CAST(:fs AS jsonb)) WHERE id = :vid"),
                             {"vid": version_id, "fs": json.dumps([
                                 {"segment": r.segment.id, "definition": r.fauna, "reason": r.reason,
                                  "account_groups": len(r.groups),
                                  "rules": sum(1 for x in fs_rules if x["grain"] == r.segment.record_table)}
-                                for r in fs_resolutions])})
+                                for r in fs_resolutions] + ([
+                                {"segment": "material_master", "definition": "T130A/T130F",
+                                 "reason": "" if fs_material else "material field selection not read from the system",
+                                 "account_groups": len({g for v in fs_material.values() for g in v}),
+                                 "rules": len(material_rules)}] if "material_master" in modules else []))})
             session.commit()
+            fs_rules = fs_rules + material_rules
         # misplaced values, placeholders, swaps, dead-in-text records (checks/value_placement.py)
         from checks import value_placement
         from checks.runner import _find_module_yaml

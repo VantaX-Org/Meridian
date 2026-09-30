@@ -138,3 +138,19 @@ def test_uploads_are_brought_to_internal_format():
     assert f.frames["LFB1"]["LFB1.AKONT"].iloc[0] == "0000140000"
     assert f.frames["LFB1"]["LFB1.LIFNR"].iloc[0] == "0000100001"
     assert f.flat["MARA.MATNR"].iloc[0] == "000000000000004711" and f.flat["LFA1.LIFNR"].iloc[0] == "ABC"
+
+
+def test_fi_document_balance():
+    import yaml
+    from checks.runner import _find_module_yaml
+    rule = next(r for r in yaml.safe_load(_find_module_yaml("fi_gl").read_text())["rules"] if r["id"] == "XFI001")
+    bkpf = pd.DataFrame({"BKPF.BUKRS": ["1000"] * 3, "BKPF.BELNR": ["1", "2", "3"], "BKPF.GJAHR": ["2026"] * 3,
+                         "BKPF.BSTAT": ["", "", "S"]})
+    bseg = pd.DataFrame({"BSEG.BUKRS": ["1000"] * 5, "BSEG.BELNR": ["1", "1", "2", "2", "3"], "BSEG.GJAHR": ["2026"] * 5,
+                         "BSEG.BUZEI": ["001", "002", "001", "002", "001"],
+                         "BSEG.DMBTR": ["1234.50", "1234.50", "100.00", "99.00", "50.00"],
+                         "BSEG.SHKZG": ["S", "H", "S", "H", "S"]})
+    _, r = run_rule({**rule, "module": "fi_gl"}, TableFrames({"BKPF": bkpf, "BSEG": bseg}, D, module="fi_gl"))
+    # doc 1 balances, doc 2 is off by 1.00, doc 3 is a noted item (no posting)
+    assert (r.total_count, r.affected_count) == (2, 1) and r.failing_record_keys == ["BUKRS=1000|BELNR=2|GJAHR=2026|BUZEI=001"]
+    assert r.details["largest_imbalance"] == 1.0

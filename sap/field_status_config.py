@@ -59,7 +59,43 @@ CONFIG_TABLES = {
     "T077D": ["KTOKD", "FAUSA", "FAUS1", "FAUS2", "FAUSF", "FAUSG", "FAUSV", "FAUSU"],
     "TMODO": ["FAUNA", "MODIF", "GGRUP"],
     "TMODU": ["FAUNA", "MODIF", "TABNM", "FELDN", "KOART"],
+    # material master field selection
+    "T130F": ["FNAME", "FGRUP"],        # field (TABLE-FIELD) → field selection group
+    "T130A": ["FLREF", "FAUSW"],        # field reference → status per group (position = group)
+    "T134": ["MTART", "FLREF"],         # material type → field reference
+    "T137": ["MBRSH", "FLREF"],         # industry sector → field reference
 }
+
+# SAP's documented priority when several references set a material field: hide > display > required > optional
+_PRIORITY = {"-": 3, "*": 2, "+": 1, ".": 0}
+MATERIAL_TABLES = ("MARA", "MAKT")  # client-level data, controlled by material type and industry sector
+
+
+def resolve_material(config: dict[str, list[dict]], dictionary) -> dict[str, dict[str, str]]:
+    """{TABLE.FIELD: {"MTART|MBRSH": "required" | "suppressed"}} from this system's
+    material field selection. Empty unless all four tables were read."""
+    if not all(config.get(t) for t in ("T130F", "T130A", "T134", "T137")):
+        return {}
+    strings = {str(r["FLREF"]).strip(): str(r.get("FAUSW") or "") for r in config["T130A"]}
+    mtart = {str(r["MTART"]).strip(): strings.get(str(r.get("FLREF") or "").strip()) for r in config["T134"]}
+    mbrsh = {str(r["MBRSH"]).strip(): strings.get(str(r.get("FLREF") or "").strip()) for r in config["T137"]}
+    out: dict[str, dict[str, str]] = {}
+    for r in config["T130F"]:
+        table, _, name = str(r.get("FNAME", "")).strip().partition("-")
+        group = str(r.get("FGRUP") or "").strip()
+        f = dictionary.field(table, name) if table in MATERIAL_TABLES else None
+        if f is None or f.key or not group.isdigit() or int(group) < 1:
+            continue
+        pos = int(group) - 1
+        for mt, s1 in mtart.items():
+            for mb, s2 in mbrsh.items():
+                chars = [s[pos] for s in (s1, s2) if s and pos < len(s) and s[pos] in _PRIORITY]
+                if not chars:
+                    continue
+                st = STATUS[max(chars, key=_PRIORITY.get)]
+                if st in ("required", "suppressed"):
+                    out.setdefault(f"{table}.{name}", {})[f"{mt}|{mb}"] = st
+    return out
 _SEGMENT_LEN = 40  # every FAUS* column is CHAR 40
 
 

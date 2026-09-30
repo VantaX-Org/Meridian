@@ -112,6 +112,8 @@ def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
     numbers = re.findall(r"(?<![\w.`])(-?\d+(?:\.\d+)?)(?![\w`])", expr)
     out = {}
     for c in cols:
+        if c in (rule.get("group_by") or []):
+            continue  # a group key (document number): each generated record is its own group
         vals: list[str] = []
         if c == rule.get("field") and expr and f"`{c}`" not in expr and not (rule.get("applies_when") or {}).get(c):
             continue  # a cross-field rule's anchor: keep the record id

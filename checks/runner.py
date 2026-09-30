@@ -19,6 +19,7 @@ from checks.types.format_check import FormatCheck
 from checks.types.field_status_check import FieldStatusCheck
 from checks.types.uniqueness_check import UniquenessCheck
 from checks.types.value_placement_check import ValuePlacementCheck
+from checks.types.balance_check import BalanceCheck
 
 logger = logging.getLogger("meridian.checks")
 
@@ -72,6 +73,7 @@ REGISTRY: dict[str, type[BaseCheck]] = {
     "field_status_check": FieldStatusCheck,
     "uniqueness_check": UniquenessCheck,
     "value_placement_check": ValuePlacementCheck,
+    "balance_check": BalanceCheck,
 }
 
 RULES_DIR = Path(__file__).parent / "rules"
