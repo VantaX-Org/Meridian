@@ -1,5 +1,6 @@
 "use client";
 
+import { GettingStarted } from "@/components/getting-started";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -215,7 +216,8 @@ export default function OverviewPage() {
 
   if (!latestComplete || Object.keys(mergedDqs).length === 0) {
     return (
-      <div className="py-20">
+      <div className="py-8">
+        <GettingStarted hasAnalysis={false} />
         <EmptyState
           illustration="data"
           title="No analysis data yet"
@@ -333,6 +335,7 @@ export default function OverviewPage() {
 
   return (
     <div style={{ minHeight: "100%" }}>
+      <GettingStarted hasAnalysis />
       <PageHead
         title="Overview"
         route="Analyse · /"

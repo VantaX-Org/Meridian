@@ -521,7 +521,7 @@ export default function SystemsPage() {
                 : `${active.environment} · ${active.base_url} · ${active.auth_type ?? ""}`
             }
             right={
-              <a href="#" className="mn-link">
+              <a href={`/systems/${active.id}`} className="mn-link">
                 Open system <ArrowRight size={12} />
               </a>
             }

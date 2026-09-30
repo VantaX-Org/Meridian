@@ -12,6 +12,8 @@ import {
   DataTable,
   Input,
   KpiRail,
+  Pager,
+  Panel,
   Select,
   Stack,
   Stat,
@@ -86,18 +88,6 @@ const GAP_LABEL: Record<string, string> = {
   key_collision: "Key collides after conversion",
   target_key_exists: "Key already exists in target",
 };
-
-function Panel({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
-  return (
-    <section className="rounded-lg border border-[var(--aurora-canvas-line)] bg-[var(--aurora-elev-1-bg)] p-[var(--aurora-space-5)] shadow-[var(--aurora-elev-1-shadow)]">
-      <Stack direction="row" justify="between" align="center" className="mb-[var(--aurora-space-4)]">
-        <Text variant="text-lead">{title}</Text>
-        {action}
-      </Stack>
-      {children}
-    </section>
-  );
-}
 
 function defLabel(d: DdicFieldDef | null): string {
   if (!d) return "not in dictionary";
@@ -451,17 +441,9 @@ function GapExplorer({ run, canExport }: { run: MigrationRunDetail; canExport: b
         getRowId={(r, i) => `${offset + i}`}
         maxHeight={480}
         ariaLabel="Migration gaps"
-        empty={<Text tone="muted">{isFetching ? "Loading…" : "No gaps match these filters."}</Text>}
+        empty={<Text tone="muted">{isFetching ? "Fetching gaps…" : "No gaps match these filters."}</Text>}
       />
-      <Stack direction="row" justify="between" align="center">
-        <Text variant="text-small" tone="secondary" numeric>
-          {total === 0 ? "0" : `${offset + 1}–${Math.min(offset + PAGE, total)}`} of {total.toLocaleString()} gaps
-        </Text>
-        <Stack direction="row" gap={2}>
-          <Button size="sm" variant="ghost" disabled={offset === 0} onClick={() => setOffset(offset - PAGE)}>Previous</Button>
-          <Button size="sm" variant="ghost" disabled={offset + PAGE >= total} onClick={() => setOffset(offset + PAGE)}>Next</Button>
-        </Stack>
-      </Stack>
+      <Pager offset={offset} total={total} pageSize={PAGE} onChange={setOffset} noun="gaps" />
     </Stack>
   );
 }

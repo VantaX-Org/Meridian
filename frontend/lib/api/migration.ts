@@ -1,5 +1,5 @@
 import apiClient from "./client";
-import type { AxiosResponse } from "axios";
+import { downloadBlob } from "./download";
 import type {
   MigrationGapFinding,
   MigrationMode,
@@ -135,49 +135,12 @@ export async function deleteValueMap(entryId: string): Promise<void> {
   await apiClient.delete(`/api/v1/migration/value-map/${entryId}`);
 }
 
-// Axios wraps a streamed error body as a Blob — unwrap it so the gate's 409
-// reason surfaces instead of a generic "Request failed".
-async function readBlobError(blob: Blob): Promise<string | null> {
-  try {
-    const text = await blob.text();
-    return (JSON.parse(text) as { detail?: string }).detail ?? null;
-  } catch {
-    return null;
-  }
-}
-
-async function download(url: string, params: object, fallbackName: string): Promise<void> {
-  let response: AxiosResponse<Blob>;
-  try {
-    response = await apiClient.get<Blob>(url, { responseType: "blob", params });
-  } catch (err: unknown) {
-    const data = (err as { response?: { data?: unknown } }).response?.data;
-    if (data instanceof Blob) {
-      const detail = await readBlobError(data);
-      if (detail) throw new Error(detail);
-    }
-    throw err;
-  }
-
-  const disposition = response.headers["content-disposition"] ?? "";
-  const filename =
-    disposition.match(/filename=(.+)/)?.[1] ?? fallbackName;
-  const href = window.URL.createObjectURL(new Blob([response.data]));
-  const a = document.createElement("a");
-  a.href = href;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  window.URL.revokeObjectURL(href);
-}
-
 /** Target load files for transfer-ready records (blocked records are excluded). */
 export function downloadMigrationExport(runId: string, format: ExportFormat): Promise<void> {
-  return download(`/api/v1/migration/export/${runId}/${format}`, {}, `migration_${runId}.${format === "csv" ? "zip" : "xlsx"}`);
+  return downloadBlob(`/api/v1/migration/export/${runId}/${format}`, {}, `migration_${runId}.${format === "csv" ? "zip" : "xlsx"}`);
 }
 
 /** The run's gap list (remediation work list). */
 export function downloadMigrationGaps(runId: string, format: ExportFormat, filter: GapFilter = {}): Promise<void> {
-  return download(`/api/v1/migration/runs/${runId}/findings/export`, { format, ...filter }, `migration_gaps_${runId}.${format}`);
+  return downloadBlob(`/api/v1/migration/runs/${runId}/findings/export`, { format, ...filter }, `migration_gaps_${runId}.${format}`);
 }

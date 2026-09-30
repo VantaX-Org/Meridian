@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
 from sqlalchemy import text
 
-from api.services.rbac import permissions_for
+from api.services.rbac import PERMISSIONS, permissions_for, require_permission
 from api.deps import get_sync_engine_or_create
 from api.services.local_auth import (
     create_access_token,
@@ -190,6 +190,12 @@ def login(body: LoginRequest, response: Response):
                               permissions=permissions_for(row[3])),
             must_change_password=must_change,
         )
+
+
+@router.get("/roles", dependencies=[Depends(require_permission("view"))])
+async def role_matrix() -> dict[str, list[str]]:
+    """The permission matrix itself (api/services/rbac.py) — the UI never keeps a copy."""
+    return {role: permissions_for(role) for role in PERMISSIONS}
 
 
 @router.get("/me", response_model=MeResponse)

@@ -879,6 +879,12 @@ export interface SAPSystemExtended {
   config_sync_status: string | null;
   created_at: string;
   updated_at: string;
+  last_sync_at: string | null;
+  last_sync_status: string | null;
+  discovery_status: string | null;
+  discovered_at: string | null;
+  sap_release: string | null;
+  last_analysis_at: string | null;
 }
 
 export interface SystemModule {

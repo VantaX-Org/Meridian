@@ -5,7 +5,11 @@ import { useQuery } from "@tanstack/react-query";
 import { PageHead, SectionHeader } from "@/components/meridian/atoms";
 import { Sparkline } from "@/components/meridian/charts";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getVersions } from "@/lib/api/versions";
+import { compareRecordKeys, compareRecords, getVersions, pinBaseline, type RecordDiffCheck } from "@/lib/api/versions";
+import Link from "next/link";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { Banner, Button, Chip, Panel, Stack, Stat, KpiRail, Text } from "@/components/aurora";
 import { SearchField, matchesSearch } from "@/components/meridian/controls";
 import type { DQSSummary, Version } from "@/types/api";
 
@@ -167,6 +171,13 @@ export default function VersionsPage() {
           </p>
         )}
       </div>
+
+      {a && b && (
+        <RecordCompare
+          older={new Date(a.run_at) <= new Date(b.run_at) ? a : b}
+          newer={new Date(a.run_at) <= new Date(b.run_at) ? b : a}
+        />
+      )}
 
       {trend.length >= 2 && (
         <div className="mn-card mn-card-pad" style={{ marginBottom: 18 }}>
@@ -361,6 +372,93 @@ function CompareDelta({ a, b }: { a: Version; b: Version }) {
           </span>
         </div>
       </div>
+    </div>
+  );
+}
+
+type Change = "new" | "resolved" | "persisting";
+
+/** Record-level delta: which SAP records started failing, stopped failing, or still fail. */
+function RecordCompare({ older, newer }: { older: Version; newer: Version }) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState<{ check: string; change: Change } | null>(null);
+  const { data, error } = useQuery({
+    queryKey: ["compare.records", older.id, newer.id],
+    queryFn: () => compareRecords(newer.id, older.id),
+  });
+  const { data: keys } = useQuery({
+    queryKey: ["compare.keys", older.id, newer.id, open],
+    queryFn: () => compareRecordKeys(open!.check, { v1: older.id, v2: newer.id, change: open!.change, limit: 200 }),
+    enabled: Boolean(open),
+  });
+  const pin = useMutation({
+    mutationFn: () => pinBaseline(older.id),
+    onSuccess: () => { toast.success("Pinned as baseline — later runs of this system compare against it by default"); qc.invalidateQueries({ queryKey: ["versions.list"] }); },
+    onError: (e) => toast.error((e as Error).message || "Could not pin the baseline"),
+  });
+  const isBaseline = (older.metadata as Record<string, unknown> | null)?.baseline === true;
+  const cell = (c: RecordDiffCheck, change: Change, tone: "danger" | "success" | "warning") =>
+    c[change] ? (
+      <button type="button" onClick={() => setOpen({ check: c.check_id, change })}>
+        <Chip tone={tone} selected={open?.check === c.check_id && open.change === change}>{c[change].toLocaleString()}</Chip>
+      </button>
+    ) : <span className="text-[var(--aurora-fg-muted)]">0</span>;
+
+  return (
+    <div data-theme="light" style={{ marginBottom: 18 }}>
+      <Panel title="Record-level change"
+        action={isBaseline ? <Chip tone="info">baseline</Chip> : (
+          <Button size="sm" variant="secondary" disabled={pin.isPending} onClick={() => pin.mutate()}>Pin older run as baseline</Button>
+        )}>
+        {error ? <Banner tone="danger">{(error as Error).message}</Banner> : !data ? <Text tone="muted">Comparing failing records…</Text> : (
+          <Stack gap={4}>
+            <KpiRail>
+              <Stat label="Newly failing records" value={data.totals.new.toLocaleString()} tone={data.totals.new ? "danger" : "neutral"} />
+              <Stat label="No longer failing" value={data.totals.resolved.toLocaleString()} tone={data.totals.resolved ? "success" : "neutral"} />
+              <Stat label="Still failing" value={data.totals.persisting.toLocaleString()} tone={data.totals.persisting ? "warning" : "neutral"} />
+            </KpiRail>
+            <Text variant="text-small" tone="secondary">
+              Checks marked &ldquo;not comparable&rdquo; did not run cleanly in both runs (skipped, errored, or more than
+              100,000 failing keys) — their counts are shown but excluded from the totals.
+            </Text>
+            <div className="max-h-[420px] overflow-auto">
+              <table className="w-full text-[13px]">
+                <thead className="sticky top-0 bg-[var(--aurora-elev-1-bg)] text-left text-[var(--aurora-fg-tertiary)]">
+                  <tr><th className="py-1.5">Check</th><th>Module</th><th>Severity</th>
+                    <th className="text-right">New</th><th className="text-right">Resolved</th><th className="text-right">Persisting</th><th /></tr>
+                </thead>
+                <tbody>
+                  {data.checks.filter((c) => c.new || c.resolved || c.persisting).map((c) => (
+                    <tr key={c.check_id} className="border-t border-[var(--aurora-canvas-line)]">
+                      <td className="py-1.5 font-mono">{c.check_id}</td>
+                      <td>{c.module}</td>
+                      <td>{c.severity}</td>
+                      <td className="text-right">{cell(c, "new", "danger")}</td>
+                      <td className="text-right">{cell(c, "resolved", "success")}</td>
+                      <td className="text-right">{cell(c, "persisting", "warning")}</td>
+                      <td className="pl-2">{!c.comparable && <Chip>not comparable</Chip>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {open && keys && (
+              <Stack gap={2}>
+                <Stack direction="row" justify="between" align="center">
+                  <Text className="font-semibold">{open.change} records · <span className="font-mono">{open.check}</span></Text>
+                  <Link className="text-[13px] underline" href={`/issues?check_id=${encodeURIComponent(open.check)}&status=${open.change === "resolved" ? "resolved" : "open"}`}>
+                    Open in Issues
+                  </Link>
+                </Stack>
+                <Stack direction="row" gap={1} wrap>
+                  {keys.record_keys.map((k) => <Chip key={k}><span className="font-mono">{k}</span></Chip>)}
+                </Stack>
+                {keys.record_keys.length === 200 && <Text variant="text-small" tone="muted">First 200 shown — the Issues work list has all of them.</Text>}
+              </Stack>
+            )}
+          </Stack>
+        )}
+      </Panel>
     </div>
   );
 }

@@ -146,18 +146,21 @@ export default function FindingsPage() {
   // the URL on mount — mirrors the window.location pattern used elsewhere and
   // avoids the useSearchParams Suspense requirement.
   const [versionId, setVersionId] = useState<string | null>(null);
+  const [checkId, setCheckId] = useState<string | null>(null);
   useEffect(() => {
-    const v = new URLSearchParams(window.location.search).get("version_id");
-    if (v) setVersionId(v);
+    const q = new URLSearchParams(window.location.search);
+    if (q.get("version_id")) setVersionId(q.get("version_id"));
+    if (q.get("check_id")) setCheckId(q.get("check_id"));
   }, []);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["findings.list", { sev: sevFilter, module: moduleFilter, version: versionId }],
+    queryKey: ["findings.list", { sev: sevFilter, module: moduleFilter, version: versionId, check: checkId }],
     queryFn: () => getFindings({
       limit: 200,
       severity: sevFilter ?? undefined,
       module: moduleFilter ?? undefined,
       version_id: versionId ?? undefined,
+      check_id: checkId ?? undefined,
     }),
   });
 
@@ -448,6 +451,15 @@ export default function FindingsPage() {
                   </div>
                 )}
                 <div className="mn-detail-actions">
+                  {selected.affected_count > 0 && (
+                    <Link
+                      className="mn-btn mn-btn-primary"
+                      style={{ flex: 1, justifyContent: "center" }}
+                      href={`/issues?check_id=${encodeURIComponent(selected.check_id)}&status=open`}
+                    >
+                      Failing records
+                    </Link>
+                  )}
                   <button
                     type="button"
                     className="mn-btn mn-btn-ghost"

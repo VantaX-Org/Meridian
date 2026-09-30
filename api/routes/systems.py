@@ -71,6 +71,10 @@ class SystemResponse(BaseModel):
     updated_at: str
     last_sync_at: Optional[str] = None
     last_sync_status: Optional[str] = None
+    discovery_status: Optional[str] = None
+    discovered_at: Optional[str] = None
+    sap_release: Optional[str] = None
+    last_analysis_at: Optional[str] = None
 
 
 class UpdateSystemRequest(BaseModel):
@@ -265,7 +269,10 @@ async def list_systems(
                    (SELECT sr.status FROM sync_runs sr
                     JOIN sync_profiles sp ON sr.profile_id = sp.id
                     WHERE sp.system_id = s.id
-                    ORDER BY sr.started_at DESC LIMIT 1) as last_sync_status
+                    ORDER BY sr.started_at DESC LIMIT 1) as last_sync_status,
+                   s.discovery_status, s.discovered_at::text, s.sap_release,
+                   (SELECT max(v.run_at)::text FROM analysis_versions v
+                    WHERE v.metadata->>'system_id' = s.id::text AND v.status = 'complete') AS last_analysis_at
             FROM sap_systems s
             WHERE s.tenant_id = :tid
             ORDER BY s.created_at DESC
@@ -283,6 +290,7 @@ async def list_systems(
             health_message=r[16], last_health_check=r[17],
             config_last_synced_at=r[18], config_sync_status=r[19],
             last_sync_at=r[20], last_sync_status=r[21],
+            discovery_status=r[22], discovered_at=r[23], sap_release=r[24], last_analysis_at=r[25],
         )
         for r in rows
     ]

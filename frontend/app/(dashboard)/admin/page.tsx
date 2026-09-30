@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { deleteUser, getUsers, inviteUser, updateUser } from "@/lib/api/users";
 import { getAuditEntries } from "@/lib/api/audit";
 import { getLicenceManifest } from "@/lib/api/licence";
+import { getRoleMatrix } from "@/lib/api/auth";
 import { downloadCsv } from "@/components/meridian/actions";
 import { relativeTime } from "@/lib/format";
 import { PlatformVersionCard } from "@/components/platform-version-card";
@@ -59,18 +60,17 @@ function initials(name: string): string {
 
 const INVITE_ROLES: UserRole[] = ["admin", "manager", "steward", "ai_reviewer", "approver", "analyst", "viewer", "auditor"];
 
-// Role capability reference — mirrors api/services/rbac.py. Rendered read-only
-// in the Roles tab so admins can see what each role can do, including which
-// roles may review (approve proposed rules) AI-proposed match rules.
-const ROLE_META: { role: string; label: string; desc: string; aiReview: boolean }[] = [
-  { role: "admin", label: "Admin", desc: "Full access — manage users, rules, and approve proposed rules.", aiReview: true },
-  { role: "manager", label: "Manager", desc: "Run the programme — connect systems, sync, analyse, approve, apply and assign work.", aiReview: false },
-  { role: "steward", label: "Steward", desc: "Own the data — fix, clean, approve/apply, maintain rules and assign work.", aiReview: true },
-  { role: "ai_reviewer", label: "AI Reviewer", desc: "Review and approve proposed rules from steward corrections.", aiReview: true },
-  { role: "approver", label: "Approver", desc: "Four-eyes approval of cleaning, golden records and stewardship changes.", aiReview: false },
-  { role: "analyst", label: "Analyst", desc: "Upload, sync and run analysis; export results. No approvals.", aiReview: false },
-  { role: "viewer", label: "Viewer", desc: "Read-only access to dashboards and findings.", aiReview: false },
-  { role: "auditor", label: "Auditor", desc: "Read-only access including the audit log.", aiReview: false },
+// Role descriptions for the Roles tab; the permission columns come from the
+// server's matrix (GET /api/v1/auth/roles), never a copy kept here.
+const ROLE_META: { role: string; label: string; desc: string }[] = [
+  { role: "admin", label: "Admin", desc: "Full access — manage users, rules, and approve proposed rules." },
+  { role: "manager", label: "Manager", desc: "Run the programme — connect systems, sync, analyse, approve, apply and assign work." },
+  { role: "steward", label: "Steward", desc: "Own the data — fix, clean, approve/apply, maintain rules and assign work." },
+  { role: "ai_reviewer", label: "AI Reviewer", desc: "Review and approve proposed rules from steward corrections." },
+  { role: "approver", label: "Approver", desc: "Four-eyes approval of cleaning, golden records and stewardship changes." },
+  { role: "analyst", label: "Analyst", desc: "Upload, sync and run analysis; export results. No approvals." },
+  { role: "viewer", label: "Viewer", desc: "Read-only access to dashboards and findings." },
+  { role: "auditor", label: "Auditor", desc: "Read-only access including the audit log." },
 ];
 
 export default function AdminPage() {
@@ -78,6 +78,8 @@ export default function AdminPage() {
   const [tab, setTab] = useState<Tab>("users");
   const [inviteOpen, setInviteOpen] = useState(false);
 
+  const { data: matrix } = useQuery({ queryKey: ["auth.roles"], queryFn: getRoleMatrix, enabled: tab === "roles" });
+  const actions = useMemo(() => Array.from(new Set(Object.values(matrix ?? {}).flat())).sort(), [matrix]);
   const usersQ = useQuery({
     queryKey: ["users.list"],
     queryFn: getUsers,
@@ -491,7 +493,9 @@ export default function AdminPage() {
                 <tr>
                   <th style={{ paddingLeft: 20 }}>Role</th>
                   <th>Description</th>
-                  <th style={{ width: 120, textAlign: "center" }}>AI Review</th>
+                  {actions.map((a) => (
+                    <th key={a} style={{ textAlign: "center", whiteSpace: "nowrap", fontSize: 11 }}>{a.replace(/_/g, " ")}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -500,10 +504,15 @@ export default function AdminPage() {
                     <td style={{ paddingLeft: 20 }} title={m.desc}>
                       <RoleChip role={m.role} />
                     </td>
-                    <td style={{ color: "var(--mn-ink-500)", fontSize: 12.5 }}>{m.desc}</td>
-                    <td style={{ textAlign: "center", color: m.aiReview ? "var(--mn-pos)" : "var(--mn-ink-300)" }}>
-                      {m.aiReview ? "✓" : "—"}
-                    </td>
+                    <td style={{ color: "var(--mn-ink-500)", fontSize: 12.5, minWidth: 260 }}>{m.desc}</td>
+                    {actions.map((a) => {
+                      const ok = matrix?.[m.role]?.includes(a);
+                      return (
+                        <td key={a} style={{ textAlign: "center", color: ok ? "var(--mn-pos)" : "var(--mn-ink-300)" }}>
+                          {ok ? "✓" : "—"}
+                        </td>
+                      );
+                    })}
                   </tr>
                 ))}
               </tbody>
