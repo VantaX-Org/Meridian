@@ -50,46 +50,42 @@ rules:
   - id: TM003
     field: VTTK.VSART
     check_class: null_check
-    severity: critical
+    severity: medium
     dimension: completeness
-    message: "Shipment type determines carrier selection and transport mode — mandatory"
-    why_it_matters: >-
-      VSART (shipment type) determines the transport mode (road, rail, sea, air), carrier
-      selection rules, and freight cost calculation method. Without it, the system cannot
-      determine how goods are transported, which carrier to use, or how to calculate freight.
+    message: Shipping type (mode of transport) should be maintained on the shipment
+    why_it_matters: VSART (shipment type) determines the transport mode (road, rail, sea, air), carrier selection rules, and
+      freight cost calculation method. Without it, the system cannot determine how goods are transported, which carrier to use,
+      or how to calculate freight.
     rule_authority: sap_hard_constraint
-    sap_impact: >-
-      Carrier selection fails. Freight cost calculation impossible. Transport mode
-      undetermined — routing and scheduling cannot proceed.
+    sap_impact: Carrier selection fails. Freight cost calculation impossible. Transport mode undetermined — routing and scheduling
+      cannot proceed.
     fix_map:
-      __blank__: >-
-        In ECC: set shipment type via VT02N (e.g. 0001 for road, 0002 for rail). In
-        S/4HANA: use Fiori app F1331 or VT02N.
-    record_fix_template: >-
-      Shipment {VTTK.TKNUM}: VSART is {actual_value}. Set the correct shipment type
-      via VT02N (ECC) or Fiori app F1331 (S/4HANA).
+      __blank__: 'In ECC: set shipment type via VT02N (e.g. 0001 for road, 0002 for rail). In S/4HANA: use Fiori app F1331 or
+        VT02N.'
+    record_fix_template: 'Shipment {VTTK.TKNUM}: VSART is {actual_value}. Set the correct shipment type via VT02N (ECC) or Fiori
+      app F1331 (S/4HANA).'
 
   - id: TM004
     field: VTTK.TDLNR
     check_class: null_check
     severity: high
     dimension: completeness
-    message: "Forwarding agent required for carrier integration and freight settlement"
-    why_it_matters: >-
-      TDLNR identifies the forwarding agent (carrier/3PL). Without it, the system cannot
-      route the shipment to a carrier for execution, cannot calculate carrier-specific
-      freight rates, and freight settlement has no vendor to post costs against.
+    message: Forwarding agent required for carrier integration and freight settlement
+    why_it_matters: TDLNR identifies the forwarding agent (carrier/3PL). Without it, the system cannot route the shipment to
+      a carrier for execution, cannot calculate carrier-specific freight rates, and freight settlement has no vendor to post
+      costs against.
     rule_authority: best_practice
-    sap_impact: >-
-      Carrier assignment missing. Freight settlement cannot post to a vendor. 3PL
-      integration (EDI/API) has no recipient. Shipment cannot be tendered.
+    sap_impact: Carrier assignment missing. Freight settlement cannot post to a vendor. 3PL integration (EDI/API) has no recipient.
+      Shipment cannot be tendered.
     fix_map:
-      __blank__: >-
-        In ECC: assign forwarding agent via VT02N. The vendor must exist with the
-        forwarding agent account group. In S/4HANA: use Fiori app F1331 or VT02N.
-    record_fix_template: >-
-      Shipment {VTTK.TKNUM}: TDLNR is {actual_value}. Assign the forwarding agent
-      vendor via VT02N (ECC) or Fiori app F1331 (S/4HANA).
+      __blank__: 'In ECC: assign forwarding agent via VT02N. The vendor must exist with the forwarding agent account group.
+        In S/4HANA: use Fiori app F1331 or VT02N.'
+    record_fix_template: 'Shipment {VTTK.TKNUM}: TDLNR is {actual_value}. Assign the forwarding agent vendor via VT02N (ECC)
+      or Fiori app F1331 (S/4HANA).'
+    applies_when:
+      VTTK.STTRG:
+        not_in:
+        - '0'
 
   - id: TM005
     field: VTTK.ROUTE
@@ -250,44 +246,40 @@ rules:
     check_class: null_check
     severity: medium
     dimension: completeness
-    message: "Actual start date tracks when transport actually began"
-    why_it_matters: >-
-      DATBG records the actual departure date/time. Comparing this with the planned date
-      gives transport punctuality KPIs. Missing actual dates make it impossible to measure
-      on-time departure performance and calculate actual transit times.
+    message: Actual start date tracks when transport actually began
+    why_it_matters: DATBG records the actual departure date/time. Comparing this with the planned date gives transport punctuality
+      KPIs. Missing actual dates make it impossible to measure on-time departure performance and calculate actual transit times.
     rule_authority: best_practice
-    sap_impact: >-
-      Transport punctuality KPIs unavailable. Actual transit time cannot be calculated.
-      Carrier performance measurement incomplete.
+    sap_impact: Transport punctuality KPIs unavailable. Actual transit time cannot be calculated. Carrier performance measurement
+      incomplete.
     fix_map:
-      __blank__: >-
-        In ECC: enter actual departure via VT02N > Dates tab or use the shipment
-        completion transaction. In S/4HANA: use Fiori app F1331 > Dates section.
-    record_fix_template: >-
-      Shipment {VTTK.TKNUM}: DATBG is {actual_value}. Enter the actual departure date
-      via VT02N (ECC) or Fiori app F1331 (S/4HANA).
+      __blank__: 'In ECC: enter actual departure via VT02N > Dates tab or use the shipment completion transaction. In S/4HANA:
+        use Fiori app F1331 > Dates section.'
+    record_fix_template: 'Shipment {VTTK.TKNUM}: DATBG is {actual_value}. Enter the actual departure date via VT02N (ECC) or
+      Fiori app F1331 (S/4HANA).'
+    applies_when:
+      VTTK.STTRG:
+      - '6'
+      - '7'
 
   - id: TM013
     field: VTTK.DATEN
     check_class: null_check
     severity: medium
     dimension: completeness
-    message: "Actual end date required for transit time measurement and carrier SLA tracking"
-    why_it_matters: >-
-      DATEN records the actual arrival date/time. Together with DATBG, it enables
-      actual transit time calculation and carrier SLA compliance measurement. Missing
-      arrival dates break the complete transport lifecycle tracking.
+    message: Actual end date required for transit time measurement and carrier SLA tracking
+    why_it_matters: DATEN records the actual arrival date/time. Together with DATBG, it enables actual transit time calculation
+      and carrier SLA compliance measurement. Missing arrival dates break the complete transport lifecycle tracking.
     rule_authority: best_practice
-    sap_impact: >-
-      Actual transit time cannot be calculated. Carrier SLA compliance cannot be
-      measured. Transport completion reporting incomplete.
+    sap_impact: Actual transit time cannot be calculated. Carrier SLA compliance cannot be measured. Transport completion reporting
+      incomplete.
     fix_map:
-      __blank__: >-
-        In ECC: enter actual arrival via VT02N > Dates tab. In S/4HANA: use Fiori app
-        F1331 > Dates section.
-    record_fix_template: >-
-      Shipment {VTTK.TKNUM}: DATEN is {actual_value}. Enter the actual arrival date
-      via VT02N (ECC) or Fiori app F1331 (S/4HANA).
+      __blank__: 'In ECC: enter actual arrival via VT02N > Dates tab. In S/4HANA: use Fiori app F1331 > Dates section.'
+    record_fix_template: 'Shipment {VTTK.TKNUM}: DATEN is {actual_value}. Enter the actual arrival date via VT02N (ECC) or Fiori
+      app F1331 (S/4HANA).'
+    applies_when:
+      VTTK.STTRG:
+      - '7'
 
   - id: TM014
     field: TVRO.TRAZTD
@@ -295,54 +287,21 @@ rules:
     severity: medium
     dimension: completeness
     message: Transit duration missing on the shipment route (TVRO.TRAZTD)
-    why_it_matters: TRAZTD (planned transit duration) is used to calculate expected delivery dates from the shipment
-      start date. Without it, delivery date promises cannot account for transport time and customers receive inaccurate
-      delivery commitments.
+    why_it_matters: TRAZTD (planned transit duration) is used to calculate expected delivery dates from the shipment start date.
+      Without it, delivery date promises cannot account for transport time and customers receive inaccurate delivery commitments.
     rule_authority: best_practice
-    sap_impact: Delivery date calculation cannot include transport time. Customer delivery promises are inaccurate.
-      Available-to-promise (ATP) results unreliable.
-    fix_map: {__blank__: 'In ECC: set transit duration via VT02N or configure via route maintenance (OVTC). In S/4HANA:
-        use Fiori app F1331 or route configuration.'}
-    record_fix_template: 'Shipment {VTTK.TKNUM}: TRAZTD is {actual_value}. Set the transit duration via VT02N (ECC)
-      or Fiori app F1331 (S/4HANA).'
-
-  - id: TM015
-    field: VTTK.TDLNR
-    check_class: regex_check
-    pattern: "^[0-9]{1,10}$"
-    severity: high
-    dimension: validity
-    message: "Forwarding agent must be a valid SAP vendor number (numeric, max 10 digits)"
-    why_it_matters: >-
-      The forwarding agent (TDLNR) must be a valid SAP vendor number. Non-numeric values
-      or values exceeding 10 digits will not match any vendor master record, causing
-      freight settlement posting failures and carrier integration errors.
-    rule_authority: sap_hard_constraint
-    sap_impact: >-
-      Vendor master lookup fails. Freight settlement cannot post to this vendor.
-      Carrier EDI/API integration rejects the invalid vendor number.
+    sap_impact: Delivery date calculation cannot include transport time. Customer delivery promises are inaccurate. Available-to-promise
+      (ATP) results unreliable.
     fix_map:
-      __other__: >-
-        Forwarding agent '{invalid_value}' is not a valid vendor number format. In ECC:
-        verify the vendor via XK03 and correct the shipment via VT02N. In S/4HANA: check
-        via Fiori app F0843 (Display Supplier) and correct via F1331.
-    record_fix_template: >-
-      Shipment {VTTK.TKNUM}: TDLNR '{actual_value}' is not a valid vendor number.
-      Verify via XK03 (ECC) or Fiori app F0843 (S/4HANA) and correct.
+      __blank__: 'In ECC: set transit duration via VT02N or configure via route maintenance (OVTC). In S/4HANA: use Fiori app
+        F1331 or route configuration.'
+    record_fix_template: 'Shipment {VTTK.TKNUM}: TRAZTD is {actual_value}. Set the transit duration via VT02N (ECC) or Fiori
+      app F1331 (S/4HANA).'
+    applies_when:
+      VTTK.ROUTE:
+        populated: true
 
-  - id: TM016
-    field: VTTK.TKNUM
-    check_class: uniqueness_check
-    fields: [VTTK.TKNUM]
-    severity: critical
-    dimension: uniqueness
-    message: Duplicate shipment numbers detected — each shipment must be unique
-    why_it_matters: Duplicate shipment numbers cause incorrect freight cost allocation, delivery tracking ambiguity,
-      and carrier invoice matching failures.
-    rule_authority: sap_hard_constraint
-    sap_impact: Freight costs are doubled. Delivery tracking is ambiguous. Carrier invoice verification fails.
-    fix_map: {__blank__: 'De-duplicate the data extract at shipment header level. If genuine duplicates exist, escalate
-        to Basis.'}
+
 
   - id: TM017
     field: VTTK.ERDAT
@@ -352,11 +311,19 @@ rules:
     dimension: timeliness
     message: Shipment created 3+ months ago — long-open shipments should be reviewed for completion or cancellation
     rule_authority: best_practice
-    why_it_matters: "Shipments open 3+ months are usually completed-but-not-closed or abandoned, distorting freight cost accruals and on-time-delivery metrics."
-    sap_impact: "Freight accruals and settlement are overstated or stuck; transportation KPIs are skewed; carrier invoices cannot be matched and cleared."
+    why_it_matters: Shipments open 3+ months are usually completed-but-not-closed or abandoned, distorting freight cost accruals
+      and on-time-delivery metrics.
+    sap_impact: Freight accruals and settlement are overstated or stuck; transportation KPIs are skewed; carrier invoices cannot
+      be matched and cleared.
     fix_map:
-      __blank__: "Review the shipment in the TM document: confirm execution status, complete the outstanding events and freight settlement, or cancel if the shipment did not occur."
-    record_fix_template: "Shipment {field} open {age_days} days. Complete outstanding events and freight settlement, or cancel if it did not occur."
+      __blank__: 'Review the shipment in the TM document: confirm execution status, complete the outstanding events and freight
+        settlement, or cancel if the shipment did not occur.'
+    record_fix_template: Shipment {field} open {age_days} days. Complete outstanding events and freight settlement, or cancel
+      if it did not occur.
+    applies_when:
+      VTTK.STTRG:
+        not_in:
+        - '7'
 
   - id: TM018
     field: VTTK.TDLNR

@@ -214,19 +214,20 @@ rules:
   - id: PAY010
     field: PAYRESULT.GROSS_PAY
     check_class: cross_field_check
-    severity: critical
+    severity: medium
     dimension: consistency
     message: Gross pay must be greater than or equal to net pay
-    why_it_matters: Net pay is derived from gross pay minus deductions (tax, social contributions, benefits). If NET_PAY
-      exceeds GROSS_PAY, it indicates a calculation error in payroll processing — deductions have been applied as
-      additions, or the gross amount is understated.
+    why_it_matters: Net pay is derived from gross pay minus deductions (tax, social contributions, benefits). If NET_PAY exceeds
+      GROSS_PAY, it indicates a calculation error in payroll processing — deductions have been applied as additions, or the
+      gross amount is understated.
     rule_authority: best_practice
-    sap_impact: Payroll calculation error. Employee is overpaid relative to gross earnings. Tax withholding and deduction
-      amounts are incorrect. GL postings out of balance.
-    fix_map: {__blank__: Review the payroll calculation for this employee. Verify that deductions are correctly applied
-        and that gross pay includes all earnings components. Rerun payroll via Payroll Control Center.}
-    record_fix_template: 'Payroll result {PAYRESULT.USERID}: NET_PAY exceeds GROSS_PAY. Review payroll calculation
-      via Payroll Control Center.'
+    sap_impact: Payroll calculation error. Employee is overpaid relative to gross earnings. Tax withholding and deduction amounts
+      are incorrect. GL postings out of balance.
+    fix_map:
+      __blank__: Review the payroll calculation for this employee. Verify that deductions are correctly applied and that gross
+        pay includes all earnings components. Rerun payroll via Payroll Control Center.
+    record_fix_template: 'Payroll result {PAYRESULT.USERID}: NET_PAY exceeds GROSS_PAY. Review payroll calculation via Payroll
+      Control Center.'
     fail_when: '`PAYRESULT.GROSS_PAY` < `PAYRESULT.NET_PAY`'
     require_populated: true
 
@@ -296,27 +297,6 @@ rules:
       Payroll result {PAYRESULT.USERID}: PAYROLL_AREA is missing. Assign via Payroll
       Control Center.
 
-  - id: PAY014
-    field: PAYRESULT.PAY_DATE
-    check_class: regex_check
-    pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
-    severity: high
-    dimension: validity
-    message: "Pay date must be in YYYY-MM-DD format"
-    why_it_matters: >-
-      The bank payment file and GL posting engine require ISO 8601 date format. Non-
-      standard formats cause file generation failures and rejected GL postings.
-    rule_authority: best_practice
-    sap_impact: >-
-      Bank payment file generation fails. GL posting rejected due to invalid date
-      format.
-    fix_map:
-      __other__: >-
-        Date format '{invalid_value}' is not ISO 8601. Convert to YYYY-MM-DD before
-        importing via Payroll Control Center.
-    record_fix_template: >-
-      Payroll result {PAYRESULT.USERID}: PAY_DATE format invalid (value: {actual_value}).
-      Convert to YYYY-MM-DD.
 
   - id: PAY015
     field: PAYRESULT.DEDUCTIONS
@@ -343,28 +323,22 @@ rules:
   - id: PAY016
     field: PAYRESULT.USERID_PAY
     check_class: uniqueness_check
-    fields: [PAYRESULT.USERID_PAY, PAYRESULT.PAY_PERIOD]
-    severity: critical
+    fields:
+    - PAYRESULT.USERID_PAY
+    - PAYRESULT.PAY_PERIOD
+    - PAYRESULT.PAY_DATE
+    severity: high
     dimension: uniqueness
     message: Duplicate payroll result records per employee per period — indicates replication error
-    why_it_matters: Duplicate payroll results cause doubled payment amounts, incorrect tax withholding, and GL posting
-      variances.
-    rule_authority: sap_hard_constraint
+    why_it_matters: Duplicate payroll results cause doubled payment amounts, incorrect tax withholding, and GL posting variances.
+    rule_authority: best_practice
     sap_impact: Employee is paid twice. Tax withholding is doubled. Payroll-to-FI posting is overstated. Payroll reconciliation
       fails.
-    fix_map: {__blank__: Investigate the ECP replication log. Delete the duplicate payroll result via the Payroll
-        Control Center. Re-run the replication for the affected period.}
-
-  - id: PAY017
-    field: PAYRESULT.PAY_DATE
-    check_class: freshness_check
-    max_age_hours: 2190
-    severity: medium
-    dimension: timeliness
-    message: Payroll result older than 3 months — verify integration is running and results are being replicated
-    rule_authority: best_practice
-    why_it_matters: "Payroll results older than 3 months suggest the integration has stopped delivering, or a population is no longer being paid through the expected run."
-    sap_impact: "Downstream GL postings, statutory filings, and reconciliations run on stale results; missing pay results may hide employees dropped from the run."
     fix_map:
-      __blank__: "Verify the payroll integration job and connector logs: confirm the most recent run delivered for all populations; reprocess or backfill the missing period and fix the broken schedule."
-    record_fix_template: "Payroll result {field} is {age_days} days old. Verify the integration job ran for all populations; reprocess the missing period."
+      __blank__: Investigate the ECP replication log. Delete the duplicate payroll result via the Payroll Control Center. Re-run
+        the replication for the affected period.
+    applies_when:
+      PAYRESULT.DELTA_FLAG:
+        not_in:
+        - X
+

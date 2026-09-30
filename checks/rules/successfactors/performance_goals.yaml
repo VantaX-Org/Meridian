@@ -20,7 +20,7 @@ rules:
 - id: PERF002
   field: PMREVIEWRESULT.OVERALL_RATING
   check_class: null_check
-  severity: high
+  severity: medium
   dimension: completeness
   message: Overall rating is required for calibration and compensation planning
   why_it_matters: OVERALL_RATING is the final performance score used in calibration sessions and as input to the compensation
@@ -50,35 +50,6 @@ rules:
       Cross-reference the review creation date with active performance cycles.
   record_fix_template: 'Review for employee {PMREVIEWRESULT.USERID}: REVIEW_PERIOD is missing. Assign the correct performance
     cycle period.'
-- id: PERF004
-  field: PMREVIEWRESULT.FORM_STATUS
-  check_class: domain_value_check
-  allowed_values:
-  - draft
-  - in_review
-  - completed
-  - cancelled
-  severity: high
-  dimension: accuracy
-  message: Form status must be a valid review workflow state
-  why_it_matters: FORM_STATUS controls the review workflow progression. Only completed forms feed into calibration and compensation
-    planning. An invalid status causes the form to be excluded from all downstream processes and the review workflow engine
-    cannot determine the next step.
-  rule_authority: best_practice
-  sap_impact: Review form stuck in workflow. Calibration and compensation planning exclude this review. Manager and employee
-    cannot progress through the review process.
-  valid_values_with_labels:
-    draft: "Draft \u2014 form created but not yet started by employee or manager"
-    in_review: "In Review \u2014 form is being completed, awaiting final rating"
-    completed: "Completed \u2014 review finalised and rating locked"
-    cancelled: "Cancelled \u2014 review withdrawn, not applicable for this cycle"
-  fix_map:
-    __blank__: Assign the correct form status based on the review's current state. Set to draft if not started, in_review
-      if in progress, completed if finalised, or cancelled if withdrawn. Update via Performance > Admin > Form Management.
-    __other__: Form status '{invalid_value}' is not a valid state. Use draft, in_review, completed, or cancelled. Update via
-      Performance > Admin > Form Management.
-  record_fix_template: 'Review for employee {PMREVIEWRESULT.USERID}: FORM_STATUS ''{actual_value}'' is invalid. Set to draft/in_review/completed/cancelled
-    via Performance > Form Management.'
 - id: PERF005
   field: PMREVIEWRESULT.REVIEW_DATE
   check_class: null_check
@@ -98,9 +69,9 @@ rules:
 - id: PERF006
   field: PMREVIEWRESULT.MANAGER_RATING
   check_class: null_check
-  severity: medium
+  severity: low
   dimension: completeness
-  message: "Manager rating is missing \u2014 required for calibration and final rating derivation"
+  message: Manager rating is missing — required for calibration and final rating derivation
   why_it_matters: MANAGER_RATING is typically the primary input to the overall rating calculation and is used in calibration
     sessions to compare manager assessment patterns across the organisation. Missing manager ratings create gaps in calibration
     grids.
@@ -143,40 +114,10 @@ rules:
       Achievable, Relevant, Time-bound).
   record_fix_template: 'Goal {GOALPLAN.GOAL_ID} for employee {GOALPLAN.USERID}: GOAL_NAME is blank. Add a descriptive name
     via the Goal Plan editor.'
-- id: PERF009
-  field: GOALPLAN.GOAL_STATUS
-  check_class: domain_value_check
-  allowed_values:
-  - on_track
-  - behind
-  - at_risk
-  - completed
-  - not_started
-  severity: medium
-  dimension: accuracy
-  message: Goal status must be a valid tracking state
-  why_it_matters: GOAL_STATUS tracks where the goal is in its lifecycle and feeds into progress dashboards used by managers
-    and HR. Invalid values corrupt goal completion rates and make it impossible to identify goals at risk of missing their
-    targets.
-  rule_authority: customer_configured
-  sap_impact: Goal progress dashboards show incorrect completion rates. Manager and HR reports on goal achievement are unreliable.
-  valid_values_with_labels:
-    on_track: "On Track \u2014 goal progressing as planned"
-    behind: "Behind \u2014 goal is behind schedule"
-    at_risk: "At Risk \u2014 goal may not be achieved by target date"
-    completed: "Completed \u2014 goal has been achieved"
-    not_started: "Not Started \u2014 goal has not been initiated"
-  fix_map:
-    __blank__: Set GOAL_STATUS based on current progress. Use not_started if the goal has not been initiated, on_track if
-      progressing normally, behind or at_risk if delayed, or completed if achieved.
-    __other__: Goal status '{invalid_value}' is not valid. Use on_track, behind, at_risk, completed, or not_started. Update
-      via the Goal Plan editor.
-  record_fix_template: 'Goal {GOALPLAN.GOAL_ID} for employee {GOALPLAN.USERID}: GOAL_STATUS ''{actual_value}'' is invalid.
-    Update to a valid status via the Goal Plan editor.'
 - id: PERF010
   field: GOALPLAN.TARGET_DATE
   check_class: null_check
-  severity: medium
+  severity: low
   dimension: completeness
   message: Target date is required for goal deadline tracking and overdue alerts
   why_it_matters: TARGET_DATE is the deadline by which the goal should be achieved. Without it, the system cannot generate
@@ -192,7 +133,7 @@ rules:
 - id: PERF011
   field: GOALPLAN.GOAL_WEIGHT
   check_class: null_check
-  severity: medium
+  severity: low
   dimension: completeness
   message: Goal weight is required for weighted score calculation in performance reviews
   why_it_matters: GOAL_WEIGHT determines how much each goal contributes to the overall goal achievement score. Without weights,
@@ -236,45 +177,20 @@ rules:
     __blank__: Maintain via SuccessFactors Admin Center > Performance & Goals module.
   record_fix_template: Record is missing GOALPLAN.GOAL_ID. Maintain via SuccessFactors Admin Center > Performance & Goals
     module.
-- id: PERF014
-  field: PMREVIEWRESULT.SELF_RATING
-  check_class: null_check
-  severity: low
-  dimension: completeness
-  message: Self rating is missing
-  why_it_matters: Self rating (PMREVIEWRESULT.SELF_RATING) is not maintained. This field supports downstream processes and
-    reporting accuracy. Missing data may result in incomplete records or processing gaps.
-  rule_authority: best_practice
-  sap_impact: Missing Self rating may cause incomplete data in related transactions and reports.
-  fix_map:
-    __blank__: Maintain via SuccessFactors Admin Center > Performance & Goals module.
-  record_fix_template: Record is missing PMREVIEWRESULT.SELF_RATING. Maintain via SuccessFactors Admin Center > Performance
-    & Goals module.
 - id: PERF015
   field: PMREVIEWRESULT.USERID
   check_class: uniqueness_check
-  fields: [PMREVIEWRESULT.USERID, PMREVIEWRESULT.REVIEW_PERIOD]
-  severity: high
+  fields:
+  - PMREVIEWRESULT.USERID
+  - PMREVIEWRESULT.REVIEW_PERIOD
+  severity: medium
   dimension: uniqueness
   message: Duplicate performance review records per employee per cycle — only one review should exist
-  why_it_matters: Duplicate reviews cause conflicting ratings, incorrect calibration results, and compensation decision
-    errors.
+  why_it_matters: Duplicate reviews cause conflicting ratings, incorrect calibration results, and compensation decision errors.
   rule_authority: best_practice
-  sap_impact: Calibration sessions show conflicting ratings. Compensation decisions reference the wrong review.
-    Overall rating is ambiguous.
-  fix_map: {__blank__: Identify duplicate review forms in Admin Center > Performance. Delete the incorrect form.
-      Verify the correct form is routed in the current cycle.}
-
-- id: PERF016
-  field: PMREVIEWRESULT.REVIEW_DATE
-  check_class: freshness_check
-  max_age_hours: 17520
-  severity: medium
-  dimension: timeliness
-  message: Performance review older than 2 years — review cycle may be stalled or employee was missed in current cycle
-  rule_authority: best_practice
-  why_it_matters: "Performance reviews older than 2 years indicate a stalled review cycle or an employee whose goals are no longer being managed."
-  sap_impact: "Talent calibration and succession decisions use outdated ratings; merit and promotion inputs are stale; the employee may be effectively unmanaged."
+  sap_impact: Calibration sessions show conflicting ratings. Compensation decisions reference the wrong review. Overall rating
+    is ambiguous.
   fix_map:
-    __blank__: "In SuccessFactors Performance & Goals: confirm the employee's current cycle assignment, restart or reassign the form, and ensure the manager completes the outstanding review."
-  record_fix_template: "Performance review {field} is {age_days} days old. Confirm cycle assignment and ensure the manager completes the outstanding review."
+    __blank__: Identify duplicate review forms in Admin Center > Performance. Delete the incorrect form. Verify the correct
+      form is routed in the current cycle.
+

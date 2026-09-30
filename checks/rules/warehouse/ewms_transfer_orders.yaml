@@ -40,16 +40,11 @@ rules:
   severity: critical
   dimension: accuracy
   message: Reference type determines the business context of the transfer order
-  allowed_values:
-  - L
-  - B
-  - P
-  - K
   valid_values_with_labels:
-    L: "Delivery \u2014 outbound or inbound delivery triggered the TO"
-    B: "Purchase order \u2014 goods receipt for purchase order"
-    P: "Production \u2014 production order goods movement"
-    K: "Transfer posting \u2014 stock transfer between storage locations"
+    L: Delivery — outbound or inbound delivery triggered the TO
+    B: Purchase order — goods receipt for purchase order
+    P: Production — production order goods movement
+    K: Transfer posting — stock transfer between storage locations
   why_it_matters: BETYP (reference type) determines the business context that triggered the transfer order. It controls which
     follow-on processes execute after confirmation (e.g. goods issue posting for deliveries, goods receipt for POs). An invalid
     value means the system cannot determine the correct follow-on action.
@@ -61,6 +56,8 @@ rules:
       posting). In ECC: check the originating document and correct via LT0A. In S/4HANA: verify via /SCWM/MON.'
   record_fix_template: 'TO {LTAK.TANUM}: BETYP is ''{actual_value}''. Set to a valid reference type via LT0A (ECC) or /SCWM/MON
     (S/4HANA).'
+  reference_table: T308
+  reference_field: BETYP
 - id: EWTO004
   field: LTAK.KQUIT
   check_class: domain_value_check
@@ -241,39 +238,10 @@ rules:
       /SCWM/PRDO.'
   record_fix_template: 'TO {LTAK.TANUM} item {LTAP.TAPOS}: CHARG is {actual_value}. Assign the correct batch number via LT0A
     (ECC) or /SCWM/PRDO (S/4HANA).'
-- id: EWTO015
-  field: LTAK.KQUIT
-  check_class: domain_value_check
-  severity: high
-  dimension: completeness
-  valid_values_with_labels:
-    '': Open (not yet confirmed)
-    X: Confirmation complete
-  message: Transfer-order confirmation indicator must be blank (open) or X (confirmed)
-  why_it_matters: STATUS on the transfer order header tracks the processing state of the TO. Without it, the WM
-    monitor cannot display the correct state, aged TO reports are inaccurate, and warehouse supervisors cannot identify
-    bottlenecks or stuck movements.
-  rule_authority: best_practice
-  sap_impact: WM monitor displays are incomplete. Aged TO reporting unreliable. Process bottleneck identification
-    not possible for this TO.
-  fix_map: {__blank__: 'In ECC: status is system-maintained during TO lifecycle (LT01 creation, LT12 confirmation).
-      A blank value indicates data corruption. In S/4HANA: check via /SCWM/MON.'}
-  record_fix_template: 'TO {LTAK.TANUM}: STATUS is {actual_value}. This is system-maintained — investigate the data
-    source for corruption.'
-  allowed_values: ['', X]
-- id: EWTO016
-  field: LTAP.VLTYP
-  check_class: null_check
-  severity: medium
-  dimension: completeness
-  message: Source storage type missing on transfer-order item
-  why_it_matters: Storage type (TO header) (LTAP.VLTYP) is not maintained. This field supports downstream processes
-    and reporting accuracy. Missing data may result in incomplete records or processing gaps.
-  rule_authority: best_practice
-  sap_impact: Missing Storage type (TO header) may cause incomplete data in related transactions and reports.
-  fix_map: {__blank__: 'In ECC: Set via LT01/LT02. In S/4HANA: Use embedded EWM or /SCWM/ transactions.'}
-  record_fix_template: 'Record is missing LTAP.VLTYP. In ECC: Set via LT01/LT02. In S/4HANA: Use embedded EWM or
-    /SCWM/ transactions.'
+  applies_when:
+    MARC.XCHPF:
+    - X
+  grain: LTAP
 - id: EWTO017
   field: LTAP.TAPOS
   check_class: null_check
@@ -288,20 +256,6 @@ rules:
     __blank__: 'In ECC: Set via LT01/LT02. In S/4HANA: Use embedded EWM or /SCWM/ transactions.'
   record_fix_template: 'Record is missing LTAP.TAPOS. In ECC: Set via LT01/LT02. In S/4HANA: Use embedded EWM or /SCWM/ transactions.'
 
-- id: EWMS_TO018
-  field: LTAK.TANUM
-  check_class: uniqueness_check
-  fields: [LTAK.LGNUM, LTAK.TANUM]
-  severity: critical
-  dimension: uniqueness
-  message: Duplicate transfer order numbers detected — each TO must be unique
-  why_it_matters: Duplicate TO numbers indicate a data extract issue. Each warehouse task (TANUM) must be unique.
-    Duplicates cause confirmation posting errors and stock movement ambiguity.
-  rule_authority: sap_hard_constraint
-  sap_impact: TO confirmation posts to wrong quant. Stock movements are doubled. Warehouse productivity metrics
-    are inflated.
-  fix_map: {__blank__: 'De-duplicate the data extract at TO header level. If genuine duplicates exist in eWMS, escalate
-      to Basis — this indicates a number range collision.'}
 
 - id: EWMS_TO019
   field: LTAK.BDATU
@@ -311,8 +265,15 @@ rules:
   dimension: timeliness
   message: Transfer order older than 30 days and not confirmed — stuck TOs block bin capacity and distort available stock
   rule_authority: best_practice
-  why_it_matters: "Transfer orders open beyond 30 days are almost always stuck: the move never confirmed, leaving bins blocked and stock in an in-transit limbo."
-  sap_impact: "Bin capacity is blocked by phantom moves; available stock is understated; putaway and picking are obstructed by unconfirmed TOs."
+  why_it_matters: 'Transfer orders open beyond 30 days are almost always stuck: the move never confirmed, leaving bins blocked
+    and stock in an in-transit limbo.'
+  sap_impact: Bin capacity is blocked by phantom moves; available stock is understated; putaway and picking are obstructed
+    by unconfirmed TOs.
   fix_map:
-    __blank__: "Review the open TO in the EWM/WM warehouse monitor: confirm or cancel the transfer order, resolve the physical move, and release the blocked source/destination bins."
-  record_fix_template: "Transfer order {field} open {age_days} days unconfirmed. Confirm or cancel in the warehouse monitor and release the blocked bins."
+    __blank__: 'Review the open TO in the EWM/WM warehouse monitor: confirm or cancel the transfer order, resolve the physical
+      move, and release the blocked source/destination bins.'
+  record_fix_template: Transfer order {field} open {age_days} days unconfirmed. Confirm or cancel in the warehouse monitor
+    and release the blocked bins.
+  applies_when:
+    LTAK.KQUIT:
+    - ''

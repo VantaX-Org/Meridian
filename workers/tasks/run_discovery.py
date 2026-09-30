@@ -180,18 +180,26 @@ def _discover_successfactors(session, tenant_id, system_id, snapshot_id, conn) -
         tables[name] = {"table": name, "description": t.description, "category": "VIEW", "fields": fields}
 
     picklists = sorted({f.picklist for t in canon.values() for f in t.fields.values() if f.picklist})
-    rows = []
+    rows, options = [], []
     for pl in picklists:
         try:
-            df = conn.read_entity_set("PickListValueV2", select=["PickListV2_id", "externalCode", "status"],
-                                      filter_expr=f"PickListV2_id eq '{pl}'")
-            rows += [{pl: r["externalCode"]} for r in df.to_dict(orient="records")
-                     if str(r.get("status", "A")).upper() in ("A", "ACTIVE")]
+            try:  # optionId: what legacy-picklist fields (EmpJob.emplStatus, …) return instead of the code
+                df = conn.read_entity_set("PickListValueV2", select=["PickListV2_id", "externalCode", "status", "optionId"],
+                                          filter_expr=f"PickListV2_id eq '{pl}'")
+            except Exception:
+                df = conn.read_entity_set("PickListValueV2", select=["PickListV2_id", "externalCode", "status"],
+                                          filter_expr=f"PickListV2_id eq '{pl}'")
+            recs = df.to_dict(orient="records")
+            rows += [{pl: r["externalCode"]} for r in recs if str(r.get("status", "A")).upper() in ("A", "ACTIVE")]
+            options += [{"picklist": pl, "optionId": str(r["optionId"]), "externalCode": r["externalCode"]}
+                        for r in recs if r.get("optionId") not in (None, "")]
             coverage.append({"table": f"PICKLIST.{pl}", "status": "live", "rows": len(df)})
         except Exception as e:
             coverage.append({"table": f"PICKLIST.{pl}", "status": "failed", "detail": str(e)[:200]})
     if rows:
         _store_config(session, tenant_id, system_id, "*", "PICKLIST", rows)
+    if options:
+        _store_config(session, tenant_id, system_id, "*", "PICKLIST_OPTION", options)
     counts = store_snapshot(session, tenant_id, system_id, snapshot_id, {"tables": tables, "domains": {}})
     failed = [c for c in coverage if c["status"] == "failed"]
     return {"status": "partial" if failed else "complete", "system_info": {"product": "successfactors"},

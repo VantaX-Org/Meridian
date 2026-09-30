@@ -56,6 +56,7 @@ edges:
   - {parent: MARA, child: MEAN, join: {MATNR: MATNR}, cardinality: many}
 
   # ── Batches ────────────────────────────────────────────────────────────
+  - {parent: MARA, child: MCH1, join: {MATNR: MATNR}, cardinality: many}
   - {parent: MCH1, child: MCHA, join: {MATNR: MATNR, CHARG: CHARG}, cardinality: many}
   - {parent: MCHA, child: MCHB, join: {MATNR: MATNR, WERKS: WERKS, CHARG: CHARG}, cardinality: many}
 
@@ -96,6 +97,9 @@ edges:
   # ── Warehouse (classic WM) & transport ─────────────────────────────────
   - {parent: LTAK, child: LTAP, join: {LGNUM: LGNUM, TANUM: TANUM}, cardinality: many}
   - {parent: LAGP, child: LQUA, join: {LGNUM: LGNUM, LGTYP: LGTYP, LGPLA: LGPLA}, cardinality: many}
+  # material/plant settings of stock and TO items (batch management, …)
+  - {parent: MARC, child: LQUA, join: {MATNR: MATNR, WERKS: WERKS}, cardinality: many}
+  - {parent: MARC, child: LTAP, join: {MATNR: MATNR, WERKS: WERKS}, cardinality: many}
   - {parent: VTTK, child: VTTP, join: {TKNUM: TKNUM}, cardinality: many}
   - {parent: VTTK, child: TVRO, join: {ROUTE: ROUTE}, cardinality: one}
 

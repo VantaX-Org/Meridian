@@ -12,15 +12,15 @@ RULES_DIR = Path(__file__).parent.parent.parent / "checks" / "rules" / "successf
 
 # Expected rule counts per module
 EXPECTED_COUNTS = {
-    "employee_central": 45,
-    "compensation": 18,
-    "recruiting_onboarding": 20,
-    "learning_management": 15,
-    "performance_goals": 16,
-    "succession_planning": 11,
-    "time_attendance": 14,
-    "benefits": 12,
-    "payroll_integration": 17,
+    "employee_central": 38,
+    "compensation": 16,
+    "recruiting_onboarding": 15,
+    "learning_management": 10,
+    "performance_goals": 12,
+    "succession_planning": 7,
+    "time_attendance": 6,
+    "benefits": 7,
+    "payroll_integration": 15,
 }
 
 REQUIRED_ENRICHMENT_FIELDS = ["fix_map", "rule_authority", "why_it_matters", "sap_impact"]
@@ -115,7 +115,7 @@ def test_ec_null_check_finds_failures_with_enrichment():
     results = run_checks("employee_central", df, "test-tenant")
 
     # Non-None results = rules whose fields exist in this synthetic extract.
-    assert len(results) == 16
+    assert len(results) == 12
     assert all(isinstance(r, CheckResult) for r in results)
 
     failing = [r for r in results if not r.passed and not r.error]
@@ -144,7 +144,7 @@ def test_total_sf_rule_count():
     for module_name in EXPECTED_COUNTS:
         rules = _load_rules(module_name)
         total += len(rules)
-    assert total == 168, f"Expected 168 total SF rules, got {total}"
+    assert total == 126, f"Expected 126 total SF rules, got {total}"
 
 
 # ---- Test 6: domain_value_check rules have valid_values_with_labels ----

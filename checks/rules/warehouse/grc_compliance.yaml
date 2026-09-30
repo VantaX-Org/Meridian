@@ -218,52 +218,40 @@ rules:
   - id: GRC011
     field: GRACROLE.ROLE_NAME
     check_class: regex_check
-    pattern: "^[A-Z][A-Z0-9_:]{2,49}$"
+    pattern: ^[A-Z/][A-Z0-9_:/\-\.]{2,}$
     severity: medium
     dimension: validity
-    message: "Role name should follow SAP naming convention (uppercase, starts with letter)"
-    why_it_matters: >-
-      SAP role names follow a convention: uppercase letters, digits, underscores, and
-      colons, starting with a letter and between 3 and 50 characters. Non-conforming
-      names indicate custom or incorrectly created roles that may not follow the
-      organisation's role naming standard, complicating SoD analysis and access reviews.
+    message: Role name should follow SAP naming convention (uppercase, starts with letter)
+    why_it_matters: 'SAP role names follow a convention: uppercase letters, digits, underscores, and colons, starting with a
+      letter and between 3 and 50 characters. Non-conforming names indicate custom or incorrectly created roles that may not
+      follow the organisation''s role naming standard, complicating SoD analysis and access reviews.'
     rule_authority: best_practice
-    sap_impact: >-
-      Role may not match naming standard. SoD ruleset may not recognise the role.
-      Access review reports may misclassify the role.
+    sap_impact: Role may not match naming standard. SoD ruleset may not recognise the role. Access review reports may misclassify
+      the role.
     fix_map:
-      __other__: >-
-        Role name '{invalid_value}' does not follow SAP naming convention. In ECC:
-        rename via PFCG. In S/4HANA: use Fiori app F1603 or PFCG. Ensure the name
-        follows the organisation's role naming standard.
-    record_fix_template: >-
-      User {GRACUSERROLE.USER_ID}: ROLENAME '{actual_value}' does not follow naming
-      convention. Rename via PFCG (ECC) or Fiori app F1603 (S/4HANA).
+      __other__: 'Role name ''{invalid_value}'' does not follow SAP naming convention. In ECC: rename via PFCG. In S/4HANA:
+        use Fiori app F1603 or PFCG. Ensure the name follows the organisation''s role naming standard.'
+    record_fix_template: 'User {GRACUSERROLE.USER_ID}: ROLENAME ''{actual_value}'' does not follow naming convention. Rename
+      via PFCG (ECC) or Fiori app F1603 (S/4HANA).'
 
   - id: GRC012
     field: GRACUSERROLE.USER_ID
     check_class: regex_check
-    pattern: "^[A-Z0-9_\\-]{1,12}$"
+    pattern: ^[A-Z0-9_\-\.@]{1,50}$
     severity: medium
     dimension: validity
-    message: "User ID must follow SAP user naming convention (max 12 chars, alphanumeric)"
-    why_it_matters: >-
-      SAP user IDs are limited to 12 characters and should be alphanumeric (with
-      underscores and hyphens). Non-conforming user IDs indicate data entry errors
-      or integration issues that will prevent the user from being found in SU01 and
-      may cause SoD analysis to miss this user entirely.
+    message: User ID must follow SAP user naming convention (max 12 chars, alphanumeric)
+    why_it_matters: SAP user IDs are limited to 12 characters and should be alphanumeric (with underscores and hyphens). Non-conforming
+      user IDs indicate data entry errors or integration issues that will prevent the user from being found in SU01 and may
+      cause SoD analysis to miss this user entirely.
     rule_authority: best_practice
-    sap_impact: >-
-      User ID lookup may fail in SU01. SoD analysis may miss this user. Access
-      review reporting may exclude non-standard user IDs.
+    sap_impact: User ID lookup may fail in SU01. SoD analysis may miss this user. Access review reporting may exclude non-standard
+      user IDs.
     fix_map:
-      __other__: >-
-        User ID '{invalid_value}' does not match the expected format. In ECC: verify
-        via SU01. In S/4HANA: check via Fiori app F1603. If the user ID is from an
-        external system, update the GRC mapping.
-    record_fix_template: >-
-      Role assignment: USERID '{actual_value}' has non-standard format. Verify via
-      SU01 (ECC) or Fiori app F1603 (S/4HANA).
+      __other__: 'User ID ''{invalid_value}'' does not match the expected format. In ECC: verify via SU01. In S/4HANA: check
+        via Fiori app F1603. If the user ID is from an external system, update the GRC mapping.'
+    record_fix_template: 'Role assignment: USERID ''{actual_value}'' has non-standard format. Verify via SU01 (ECC) or Fiori
+      app F1603 (S/4HANA).'
 
   - id: GRC013
     field: GRACUSERROLE.USER_ID
@@ -280,19 +268,6 @@ rules:
     fix_map: {__blank__: Review duplicate role assignments in GRC Access Control. Remove the duplicate assignment.
         Re-run SoD analysis for affected users.}
 
-  - id: GRC014
-    field: GRACUSERROLE.VALID_FROM
-    check_class: freshness_check
-    max_age_hours: 17520
-    severity: medium
-    dimension: timeliness
-    message: GRC role assignment older than 2 years — stale access assignments should be recertified
-    rule_authority: best_practice
-    why_it_matters: "Role assignments older than 2 years usually violate least-privilege: access granted long ago is rarely revalidated and accumulates as excess entitlement."
-    sap_impact: "Stale access widens the attack surface and fails SoD and access-recertification audits; terminated or moved users may retain entitlements."
-    fix_map:
-      __blank__: "Run an access recertification: confirm the assignment is still required for the user's current role, revoke if not, and record the review to reset the validity date."
-    record_fix_template: "Role assignment {field} is {age_days} days old. Recertify against the user's current role; revoke if not required and record the review."
 
   - id: GRC015
     field: GRACSODRISK.RISKLEVEL

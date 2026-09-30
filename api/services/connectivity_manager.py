@@ -273,6 +273,13 @@ class ConnectivityManager:
         snap = latest_snapshot_id(self.session, system_id)
         live = load_overlay(self.session, snap)[0] if snap else {}
         frames, coverage = {}, []
+        options: dict[str, dict[str, str]] = {}
+        if self.session is not None and system_id:
+            from sqlalchemy import text as _text
+            row = self.session.execute(_text("SELECT config_data FROM config_snapshots WHERE system_id = :s "
+                                             "AND config_table = 'PICKLIST_OPTION'"), {"s": str(system_id)}).first()
+            for o in (row[0] if row else None) or []:
+                options.setdefault(o["picklist"], {})[str(o["optionId"])] = o["externalCode"]
         for table in sorted(wanted):
             t = dictionary.table(table)
             if t is None or not t.provenance.startswith("canonical:successfactors"):
@@ -312,7 +319,13 @@ class ConnectivityManager:
                                           how="left", on=on) if on else merged
             if merged is None:
                 continue
-            frames[table] = merged.drop(columns=[c for c in merged.columns if c.startswith("__")])
+            merged = merged.drop(columns=[c for c in merged.columns if c.startswith("__")])
+            # legacy-picklist fields return the option id; rules and picklists speak external codes
+            for f in t.fields.values():
+                col, opts = f"{table}.{f.name}", options.get(f.picklist or "")
+                if opts and col in merged.columns:
+                    merged[col] = merged[col].map(lambda v: opts.get(str(v).strip(), v) if v is not None else v)
+            frames[table] = merged
             coverage.append({"table": table, "status": "live", "rows": len(merged),
                              "entities": sorted(by_entity), "unavailable_fields": sorted(unavailable)})
         return frames, coverage

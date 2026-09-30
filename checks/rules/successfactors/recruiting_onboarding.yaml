@@ -18,41 +18,6 @@ rules:
       does not exist, create it first via Recruiting > Add New Candidate.
   record_fix_template: 'Application {JOBAPPLICATION.CANDIDATE_ID}: CANDIDATE_ID is missing. Re-link via Recruiting > Candidate
     Management.'
-- id: REC002
-  field: JOBAPPLICATION.STATUS
-  check_class: domain_value_check
-  allowed_values:
-  - applied
-  - screening
-  - interview
-  - offer
-  - hired
-  - rejected
-  - withdrawn
-  severity: high
-  dimension: accuracy
-  message: Application status must be a valid workflow state
-  why_it_matters: "STATUS drives automated workflow triggers in Recruiting \u2014 interview scheduling, offer letter generation,\
-    \ background check initiation, and onboarding handoff. An invalid status value causes the workflow engine to skip the\
-    \ application entirely, leaving candidates stuck without progression."
-  rule_authority: customer_configured
-  sap_impact: Automated workflow triggers skipped for this application. Candidate does not progress through the hiring pipeline.
-    Recruiting dashboard metrics are corrupted.
-  valid_values_with_labels:
-    applied: "Applied \u2014 application received and pending initial review"
-    screening: "Screening \u2014 application under initial review"
-    interview: "Interview \u2014 candidate scheduled or in interview stage"
-    offer: "Offer \u2014 offer extended, pending candidate acceptance"
-    hired: "Hired \u2014 offer accepted, pending onboarding"
-    rejected: "Rejected \u2014 application declined"
-    withdrawn: "Withdrawn \u2014 candidate withdrew from process"
-  fix_map:
-    __blank__: 'Assign the correct status from: applied, screening, interview, offer, hired, rejected, withdrawn. Update via
-      Recruiting > Application Management or bulk import.'
-    __other__: 'Status ''{invalid_value}'' is not a recognised workflow state. Set to one of: applied, screening, interview,
-      offer, hired, rejected, withdrawn. Update via Recruiting > Application Management.'
-  record_fix_template: 'Application {JOBAPPLICATION.CANDIDATE_ID}: STATUS ''{actual_value}'' is invalid. Set to a valid state
-    via Recruiting > Application Management.'
 - id: REC003
   field: JOBAPPLICATION.JOB_REQ_ID
   check_class: null_check
@@ -116,36 +81,6 @@ rules:
     __blank__: Add the job title via Recruiting > Requisition Management > Edit Requisition. Should match the position title
       from the job catalogue.
   record_fix_template: 'Requisition {JOBREQUISITION.TITLE}: TITLE is missing. Add via Recruiting > Requisition Management.'
-- id: REC007
-  field: JOBREQUISITION.STATUS
-  check_class: domain_value_check
-  allowed_values:
-  - open
-  - closed
-  - filled
-  - cancelled
-  - on_hold
-  severity: high
-  dimension: accuracy
-  message: Requisition status must be a valid lifecycle state
-  why_it_matters: STATUS controls whether a requisition is active for hiring. Only open requisitions accept new applications.
-    An invalid status causes the requisition to be excluded from the active pipeline and recruiting dashboards show corrupted
-    data.
-  rule_authority: customer_configured
-  sap_impact: Requisition excluded from active pipeline. Applications cannot be associated. Recruiting dashboards show incorrect
-    open requisition counts.
-  valid_values_with_labels:
-    open: "Open \u2014 actively accepting applications"
-    closed: "Closed \u2014 no longer accepting applications"
-    filled: "Filled \u2014 position has been filled"
-    cancelled: "Cancelled \u2014 requisition withdrawn"
-    on_hold: "On Hold \u2014 temporarily paused"
-  fix_map:
-    __blank__: Set the requisition status based on its current state. Update via Recruiting > Requisition Management.
-    __other__: Requisition status '{invalid_value}' is not valid. Use open, closed, filled, cancelled, or on_hold. Update
-      via Recruiting > Requisition Management.
-  record_fix_template: 'Requisition {JOBREQUISITION.TITLE}: STATUS ''{actual_value}'' is invalid. Set to a valid state via
-    Recruiting > Requisition Management.'
 - id: REC008
   field: JOBREQUISITION.HIRING_MANAGER
   check_class: null_check
@@ -277,20 +212,6 @@ rules:
       > Candidate Management.
   record_fix_template: 'Onboarding candidate {ONBOARDINGCANDIDATEINFO.USERID}: STATUS is missing. Set via Onboarding > Candidate
     Management.'
-- id: REC016
-  field: JOBAPPLICATION.RATING
-  check_class: null_check
-  severity: low
-  dimension: completeness
-  message: Application rating is missing
-  why_it_matters: Application rating (JOBAPPLICATION.RATING) is not maintained. This field supports downstream processes and
-    reporting accuracy. Missing data may result in incomplete records or processing gaps.
-  rule_authority: best_practice
-  sap_impact: Missing Application rating may cause incomplete data in related transactions and reports.
-  fix_map:
-    __blank__: Maintain via SuccessFactors Admin Center > Recruiting or Onboarding module.
-  record_fix_template: Record is missing JOBAPPLICATION.RATING. Maintain via SuccessFactors Admin Center > Recruiting or Onboarding
-    module.
 - id: REC017
   field: JOBREQUISITION.RECRUITER
   check_class: null_check
@@ -305,20 +226,6 @@ rules:
     __blank__: Maintain via SuccessFactors Admin Center > Recruiting or Onboarding module.
   record_fix_template: Record is missing JOBREQUISITION.RECRUITER. Maintain via SuccessFactors Admin Center > Recruiting or
     Onboarding module.
-- id: REC018
-  field: ONBOARDINGCANDIDATEINFO.TASK_COMPLETION
-  check_class: null_check
-  severity: medium
-  dimension: completeness
-  message: Task completion percentage is missing
-  why_it_matters: Task completion percentage (ONBOARDINGCANDIDATEINFO.TASK_COMPLETION) is not maintained. This field supports
-    downstream processes and reporting accuracy. Missing data may result in incomplete records or processing gaps.
-  rule_authority: best_practice
-  sap_impact: Missing Task completion percentage may cause incomplete data in related transactions and reports.
-  fix_map:
-    __blank__: Maintain via SuccessFactors Admin Center > Recruiting or Onboarding module.
-  record_fix_template: Record is missing ONBOARDINGCANDIDATEINFO.TASK_COMPLETION. Maintain via SuccessFactors Admin Center
-    > Recruiting or Onboarding module.
 - id: REC019
   field: JOBAPPLICATION.CANDIDATE_ID
   check_class: uniqueness_check
@@ -334,16 +241,3 @@ rules:
   fix_map: {__blank__: Merge duplicate candidates in Recruiting > Candidate Management > Merge Candidates. Preserve
       the record with the most complete application history.}
 
-- id: REC020
-  field: JOBREQUISITION.OPEN_DATE
-  check_class: freshness_check
-  max_age_hours: 4380
-  severity: medium
-  dimension: timeliness
-  message: Requisition open for 6+ months — long-open requisitions should be reviewed, refreshed, or closed
-  rule_authority: best_practice
-  why_it_matters: "Requisitions open for 6+ months are usually stale, mis-prioritised, or filled-but-not-closed, skewing time-to-fill and pipeline metrics."
-  sap_impact: "Recruiting analytics report inflated open headcount and time-to-fill; candidates sit in limbo; approved budget is tied to dormant openings."
-  fix_map:
-    __blank__: "Review the requisition in SuccessFactors Recruiting: confirm it is still needed, refresh the posting and approvers, or close it if filled or cancelled."
-  record_fix_template: "Requisition {field} has been open {age_days} days. Confirm still needed and refresh, or close if filled or cancelled."

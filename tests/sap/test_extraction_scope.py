@@ -30,3 +30,10 @@ def test_no_scope_keeps_default_windows():
 def test_invalid_scope_rejected(bad):
     with pytest.raises(ValueError):
         normalise_scope(bad)
+
+
+def test_odata_v2_dates_become_iso():
+    from sap.successfactors import odata_date
+    assert odata_date("/Date(1704067200000)/") == "2024-01-01"
+    assert odata_date("/Date(1704110400000+0000)/") == "2024-01-01T12:00:00"
+    assert odata_date("2024-01-01") == "2024-01-01"
