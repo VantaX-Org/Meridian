@@ -42,7 +42,7 @@ jobs:
 
     env:
       MERIDIAN_TEST_DB_URL: postgresql://meridian_test:meridian_test@localhost:5432/meridian_test
-      DATABASE_URL: postgresql://meridian_test:meridian_test@localhost:5432/meridian_test
+      DATABASE_URL: postgresql+asyncpg://meridian_test:meridian_test@localhost:5432/meridian_test
       DATABASE_URL_SYNC: postgresql://meridian_test:meridian_test@localhost:5432/meridian_test
       # Alembic env.py reads these; give it what it needs to connect.
       PYTHONUNBUFFERED: "1"
