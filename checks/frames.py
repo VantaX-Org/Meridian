@@ -79,6 +79,24 @@ def tables_of(columns: list[str] | set[str]) -> list[str]:
     return list(dict.fromkeys(c.split(".", 1)[0] for c in columns if "." in c))
 
 
+def internal_format(df: pd.DataFrame, dictionary: Dictionary) -> pd.DataFrame:
+    """Uploaded values in SAP's internal format, as RFC delivers them: numeric
+    values of ALPHA / MATN1 fields zero-padded (spreadsheets drop the zeros, so
+    '140000' would never match SKB1.SAKNR '0000140000')."""
+    out = None
+    for c in df.columns:
+        f = dictionary.resolve(c) if "." in str(c) else None
+        if f is None or f.conversion_exit not in ("ALPHA", "MATN1") or not f.length:
+            continue
+        width = min(f.length, 18) if f.conversion_exit == "MATN1" else f.length  # MATN1: 18-digit internal form
+        s = df[c].astype("string").str.strip()
+        digits = s.str.fullmatch(r"\d+", na=False) & (s.str.len() < width)
+        if digits.any():
+            out = df.copy() if out is None else out
+            out[c] = s.where(~digits, s.str.zfill(width))
+    return df if out is None else out
+
+
 class TableFrames:
     """One DataFrame per SAP table plus the original flat frame (if any)."""
 
@@ -100,6 +118,7 @@ class TableFrames:
                   module: str | None = None) -> "TableFrames":
         """Split a flat ``TABLE.FIELD`` frame into per-table frames by DDIC key."""
         d = dictionary or get_dictionary("s4hana")
+        df = internal_format(df, d)
         frames: dict[str, pd.DataFrame] = {}
         unsplittable: set[str] = set()
         for table in tables_of(df.columns):

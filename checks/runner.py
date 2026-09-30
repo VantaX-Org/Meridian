@@ -5,7 +5,7 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
-from checks.base import BaseCheck, CheckResult
+from checks.base import BaseCheck, CheckResult, sap_number
 from checks.frames import TableFrames, tables_of
 from checks.population import exclude, exclusions, fields_for
 from checks.fix_generator import FixGenerator
@@ -56,7 +56,7 @@ def apply_context(df: pd.DataFrame, applies_when: dict | None) -> pd.DataFrame:
             if allowed.get("populated"):
                 mask &= values.fillna("").ne("") & ~values.isin(("00000000",)).fillna(False)
             if "gt" in allowed:
-                mask &= pd.to_numeric(values, errors="coerce").gt(float(allowed["gt"])).fillna(False)
+                mask &= sap_number(values).gt(float(allowed["gt"])).fillna(False)
         else:
             mask &= values.isin({str(v).strip() for v in allowed}).fillna(False)
     return df[mask]

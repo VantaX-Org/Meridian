@@ -123,3 +123,18 @@ def test_module_run_includes_generated_rules():
     extra = g("accounts_payable", static, D)
     ids = {r.check_id for r in run_checks("accounts_payable", _frames(), "t", extra_rules=extra)}
     assert {"ST-LFA1", "SW-LFA1-PSTLZ-ORT01"} <= ids
+
+
+def test_sap_number_formats():
+    from checks.base import sap_number
+    got = sap_number(pd.Series(["1234.50-", "1,234.50", "1.234,50", "12,5", "7", "", "x", "0.000"])).tolist()
+    assert got[:5] == [-1234.5, 1234.5, 1234.5, 12.5, 7.0] and pd.isna(got[5]) and pd.isna(got[6]) and got[7] == 0
+
+
+def test_uploads_are_brought_to_internal_format():
+    from checks.frames import TableFrames
+    f = TableFrames.from_flat(pd.DataFrame({"LFB1.LIFNR": ["100001"], "LFB1.BUKRS": ["1000"], "LFB1.AKONT": ["140000"],
+                                            "MARA.MATNR": ["4711"], "LFA1.LIFNR": ["ABC"]}), D)
+    assert f.frames["LFB1"]["LFB1.AKONT"].iloc[0] == "0000140000"
+    assert f.frames["LFB1"]["LFB1.LIFNR"].iloc[0] == "0000100001"
+    assert f.flat["MARA.MATNR"].iloc[0] == "000000000000004711" and f.flat["LFA1.LIFNR"].iloc[0] == "ABC"
