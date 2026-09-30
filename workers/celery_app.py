@@ -45,6 +45,10 @@ import workers.tasks.ai_enrich_report  # noqa: F401
 import workers.tasks.mining.orchestrator  # noqa: F401 — registers dedup/anomaly/relationship + mining
 import workers.tasks.build_golden_records  # noqa: F401
 import workers.tasks.run_migration  # noqa: F401 — source→source/dest migration
+import workers.tasks.run_extraction  # noqa: F401 — live SAP extraction → checks
+import workers.tasks.run_config_sync  # noqa: F401 — SPRO/FO config sync
+import workers.tasks.run_health_check  # noqa: F401 — scheduled connection health
+import workers.tasks.revalidate_licence  # noqa: F401
 import workers.scheduler  # noqa: F401, E402 — registers beat schedule
 
 

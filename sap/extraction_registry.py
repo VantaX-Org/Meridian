@@ -891,6 +891,7 @@ SYSTEM_EXTRACTIONS: dict[str, dict[str, list[ExtractionTarget]]] = {
     "concur": CONCUR_EXTRACTIONS,
     "ariba": ARIBA_EXTRACTIONS,
     "ewms": EWMS_EXTRACTIONS,
+    "ewm": EWMS_EXTRACTIONS,  # sap_systems.system_type spelling
 }
 
 

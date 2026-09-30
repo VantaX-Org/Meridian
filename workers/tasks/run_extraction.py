@@ -52,14 +52,12 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True,
                             data_df.to_parquet(parquet_buf, index=False)
                             parquet_bytes = parquet_buf.getvalue()
 
-                            path = None
-                            try:
-                                from api.services.storage import upload_parquet
-                                path = f"staging/{tenant_id}/{version_id}/{module}.parquet"
-                                upload_parquet(path, parquet_bytes)
-                            except Exception as e:
-                                logger.warning(f"MinIO upload failed: {e}")
-                                path = None
+                            from api.config import settings
+                            from api.services.storage import upload_file
+                            path = f"staging/{tenant_id}/{version_id}/{module}.parquet"
+                            # Upload failure must fail the module — never report
+                            # success for an extract whose checks cannot run.
+                            upload_file(settings.minio_bucket_uploads, path, parquet_bytes)
 
                             # Create analysis version
                             session.execute(
@@ -81,14 +79,8 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True,
                             )
                             session.commit()
 
-                            # Enqueue check pipeline
-                            if path:
-                                from workers.tasks.run_checks import run_checks
-                                run_checks.delay(version_id, tenant_id, path)
-                            else:
-                                logger.warning(
-                                    f"Skipping run_checks for version={version_id}: parquet upload failed"
-                                )
+                            from workers.tasks.run_checks import run_checks
+                            run_checks.delay(version_id, tenant_id, path)
 
                     elif sync_type == "config":
                         manager.sync_config(system_id, [module])

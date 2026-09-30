@@ -195,8 +195,8 @@ def run_cleaning(self, version_id: str, tenant_id: str, object_type: str, parque
 
         # Populate stewardship queue so stewards see items immediately
         try:
-            from workers.tasks.populate_stewardship_queue import populate_stewardship_queue
-            populate_stewardship_queue.delay(tenant_id)
+            from workers.tasks.populate_stewardship_queue import populate_queue
+            populate_queue.delay()
             logger.info(f"Enqueued populate_stewardship_queue for tenant_id={tenant_id}")
         except Exception as e:
             logger.warning(f"Failed to enqueue populate_stewardship_queue (non-fatal): {e}")

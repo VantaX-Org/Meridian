@@ -34,6 +34,11 @@ RFC_SYSTEM_TYPES = ("ecc", "s4hana_onprem", "ewm")
 CLOUD_SYSTEM_TYPES = ("successfactors", "concur", "ariba", "s4hana_cloud")
 
 
+def baseline_key(system_type: str) -> str:
+    """Map a sap_systems.system_type to its BASELINE_CONFIG / registry key."""
+    return {"s4hana_onprem": "ecc", "ewm": "ewms"}.get(system_type, system_type)
+
+
 def connect_sap_system(system_type: str, params: dict):
     """Build and connect the correct SAP connector for a system_type.
 
@@ -284,11 +289,20 @@ class ConnectivityManager:
     # -- Config Sync -----------------------------------------------------------
 
     def sync_config(self, system_id: str, modules: list[str]) -> dict:
-        """Sync SPRO/FO config for specified modules."""
+        """Sync SPRO/FO config for specified modules.
+
+        Live rows always win. A failed or empty live read never overwrites a
+        previous live snapshot; the SAP-standard baseline is only stored when
+        no snapshot exists yet, and it is labelled ``baseline``. The system's
+        ``config_sync_status`` reports what actually happened:
+        ``synced`` (all live) · ``partial`` (some baseline) · ``failed``.
+        """
         system_row = self._load_system(system_id)
         params = self._build_connection_params(system_row)
         system_type = params["system_type"]
         results = {}
+        live = baseline = 0
+        connection_failed = False
 
         for module in modules:
             targets = get_extraction_targets(system_type, module, include_config=True)
@@ -304,35 +318,40 @@ class ConnectivityManager:
                             if not df.empty:
                                 self._store_config_snapshot(system_id, module, target.source, df, "live")
                                 module_result["tables_synced"] += 1
-                            else:
-                                self._store_baseline_snapshot(system_id, module, target.source)
-                                module_result["tables_baseline"] += 1
+                                continue
+                            module_result["errors"].append(f"{target.source}: live read returned no rows")
                         except Exception as e:
                             logger.warning(f"Config read failed for {target.source}: {e}")
-                            self._store_baseline_snapshot(system_id, module, target.source)
-                            module_result["tables_baseline"] += 1
                             module_result["errors"].append(f"{target.source}: {str(e)[:100]}")
+                        if self._store_baseline_snapshot(system_id, module, target.source, system_type):
+                            module_result["tables_baseline"] += 1
                 finally:
                     connector.close()
             except Exception as e:
                 logger.error(f"Config sync connection failed: {e}")
+                connection_failed = True
+                module_result["errors"].append(f"connection: {str(e)[:200]}")
                 for target in config_targets:
-                    self._store_baseline_snapshot(system_id, module, target.source)
-                    module_result["tables_baseline"] += 1
-            finally:
-                for key in ("password", "client_secret", "api_key"):
-                    if key in params:
-                        params[key] = ""
+                    if self._store_baseline_snapshot(system_id, module, target.source, system_type):
+                        module_result["tables_baseline"] += 1
 
+            live += module_result["tables_synced"]
+            baseline += len(config_targets) - module_result["tables_synced"]
             results[module] = module_result
 
+        if connection_failed and live == 0:
+            status = "failed"
+        elif baseline or connection_failed:
+            status = "partial"
+        else:
+            status = "synced"
         self.session.execute(
             text("UPDATE sap_systems SET config_last_synced_at = now(), "
-                 "config_sync_status = 'synced' WHERE id = :sid"),
-            {"sid": system_id},
+                 "config_sync_status = :st WHERE id = :sid"),
+            {"sid": system_id, "st": status},
         )
         self.session.commit()
-        return results
+        return {"status": status, "modules": results}
 
     def _store_config_snapshots(self, system_id: str, module: str,
                                 config_frames: dict[str, pd.DataFrame]):
@@ -360,31 +379,31 @@ class ConnectivityManager:
         )
         self.session.commit()
 
-    def _store_baseline_snapshot(self, system_id: str, module: str, table_name: str):
+    def _store_baseline_snapshot(self, system_id: str, module: str, table_name: str,
+                                 system_type: str) -> bool:
+        """Store the SAP-standard baseline for this system type if no snapshot exists.
+
+        Returns True when a baseline row is (or already was) the stored value.
+        """
         from sap.baseline_config import BASELINE_CONFIG
-        for modules_map in BASELINE_CONFIG.values():
-            module_config = modules_map.get(module, {})
-            if table_name in module_config:
-                data = module_config[table_name]
-                self.session.execute(
-                    text("""
-                        INSERT INTO config_snapshots
-                            (id, tenant_id, system_id, module, config_table,
-                             config_data, record_count, source, synced_at)
-                        VALUES
-                            (gen_random_uuid(), :tid, :sid, :mod, :tbl,
-                             CAST(:data AS jsonb), :cnt, 'baseline', now())
-                        ON CONFLICT (tenant_id, system_id, module, config_table)
-                        DO UPDATE SET config_data = CAST(:data AS jsonb),
-                                      record_count = :cnt, source = 'baseline',
-                                      synced_at = now()
-                    """),
-                    {"tid": self.tenant_id, "sid": system_id, "mod": module,
-                     "tbl": table_name, "data": json.dumps(data),
-                     "cnt": len(data)},
-                )
-                self.session.commit()
-                return
+        data = BASELINE_CONFIG.get(baseline_key(system_type), {}).get(module, {}).get(table_name)
+        if data is None:
+            return False
+        self.session.execute(
+            text("""
+                INSERT INTO config_snapshots
+                    (id, tenant_id, system_id, module, config_table,
+                     config_data, record_count, source, synced_at)
+                VALUES
+                    (gen_random_uuid(), :tid, :sid, :mod, :tbl,
+                     CAST(:data AS jsonb), :cnt, 'baseline', now())
+                ON CONFLICT (tenant_id, system_id, module, config_table) DO NOTHING
+            """),
+            {"tid": self.tenant_id, "sid": system_id, "mod": module,
+             "tbl": table_name, "data": json.dumps(data), "cnt": len(data)},
+        )
+        self.session.commit()
+        return True
 
     # -- Health Check ----------------------------------------------------------
 
