@@ -220,6 +220,9 @@ class ConnectivityManager:
                     if t in plans:
                         plans[t].fields |= {f for f in fs if dictionary.field(t, f) is not None}
                 raw: dict[str, pd.DataFrame] = {}
+                # reconciliation: an unfiltered read must return exactly SAP's own row count
+                counts = connector.count_rows([t for t, p in plans.items() if not p.where and not p.via]) \
+                    if hasattr(connector, "count_rows") else {}
                 for table in read_order(plans):
                     plan = plans[table]
                     t = dictionary.table(table)
@@ -240,12 +243,24 @@ class ConnectivityManager:
                     except SAPConnectorError as e:
                         coverage.append({"table": table, "status": "failed", "detail": str(e)[:300]})
                         continue
+                    # RFC_READ_TABLE pages without a sort order: pages can overlap. Repeated
+                    # rows are dropped; a key that still repeats means the read is inconsistent.
+                    df = df.drop_duplicates()
+                    keys = [k for k in t.keys if k in df.columns]
+                    dup_keys = int(df.duplicated(subset=keys).sum()) if keys else 0
                     raw[table] = df
                     frames[table] = df.rename(columns={c: f"{table}.{c}" for c in df.columns})
-                    coverage.append({"table": table, "status": "live", "rows": len(df), "purpose": plan.purpose,
-                                     "window": plan.where if plan.where and not plan.where.startswith(tuple(
-                                         f"{f} = " for f in ("DATBI", "BDATU", "INACT"))) else None,
-                                     "truncated": len(df) >= max_rows})
+                    entry = {"table": table, "status": "live", "rows": len(df), "purpose": plan.purpose,
+                             "window": plan.where if plan.where and not plan.where.startswith(tuple(
+                                 f"{f} = " for f in ("DATBI", "BDATU", "INACT"))) else None,
+                             "truncated": len(df) >= max_rows}
+                    if table in counts:
+                        entry["source_rows"] = counts[table]
+                    entry["complete"] = not entry["truncated"] and not dup_keys and \
+                        (table not in counts or counts[table] == len(df))
+                    if dup_keys:
+                        entry["duplicate_keys"] = dup_keys
+                    coverage.append(entry)
             elif system_type == "successfactors":
                 frames, coverage = self._extract_successfactors(connector, modules, dictionary, system_id)
             else:

@@ -24,6 +24,7 @@ class FakeConnection:
         self.tables = tables
         self.dictionary = get_dictionary(release)
         self.calls: list[tuple[str, dict]] = []
+        self.extra_rows: dict[str, int] = {}  # rows SAP counts but the read does not return
 
     def close(self):
         pass
@@ -32,6 +33,9 @@ class FakeConnection:
         self.calls.append((fm, p))
         if fm == "RFC_READ_TABLE":
             return self._read(**p)
+        if fm == "EM_GET_NUMBER_OF_ENTRIES":
+            return {"IT_TABLES": [{"TABNAME": x["TABNAME"], "TABROWS": len(self.tables.get(x["TABNAME"], []))
+                                   + self.extra_rows.get(x["TABNAME"], 0)} for x in p["IT_TABLES"]]}
         if fm == "RFC_SYSTEM_INFO":
             return {"RFCSI_EXPORT": {"RFCSAPRL": "750", "RFCSYSID": "KPR", "RFCHOST": "sapkpr", "RFCDBSYS": "ORACLE"}}
         if fm == "DDIF_FIELDINFO_GET":

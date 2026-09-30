@@ -147,6 +147,7 @@ async def system_versions(system_id: uuid.UUID, limit: int = Query(50, le=200),
             "records": meta.get("object_rows") or meta.get("module_rows") or {},
             "analysed_at": meta.get("analysed_at"), "rule_set": meta.get("rule_set"),
             "baseline": meta.get("baseline") is True,
+            "extraction_complete": meta.get("extraction_complete"),
             "analysable": bool(meta.get("dataset_path")) and r.status not in ("pending", "running"),
             "dqs": {m: (d or {}).get("composite_score") for m, d in dqs.items()},
             # rules generated from the system's field-status customizing, per segment
@@ -209,6 +210,8 @@ async def trends(system_id: uuid.UUID, object: Optional[str] = None,
                     flags.append("scope_changed")
                 if prev["rule_set"] and point["rule_set"] and prev["rule_set"] != point["rule_set"]:
                     flags.append("rules_changed")
+                if meta.get("extraction_complete") is False:
+                    flags.append("incomplete_extract")
                 if prev["records"] and point["records"] is not None and \
                         abs(point["records"] - prev["records"]) / prev["records"] > VOLUME_SHIFT:
                     flags.append("volume_shift")

@@ -162,6 +162,18 @@ class RFCConnector(SAPConnector):
                 break
         return pd.concat(pages, ignore_index=True) if pages else pd.DataFrame(columns=fields)
 
+    def count_rows(self, tables: list[str]) -> dict[str, int]:
+        """SAP's own row count per table (EM_GET_NUMBER_OF_ENTRIES, client-specific
+        COUNT(*)) — the reference an unfiltered extraction must match. {} when the
+        function is not available to this user."""
+        if self._conn is None or not tables:
+            return {}
+        try:
+            r = self._conn.call("EM_GET_NUMBER_OF_ENTRIES", IT_TABLES=[{"TABNAME": t} for t in tables])
+        except Exception:
+            return {}
+        return {str(x.get("TABNAME", "")).strip(): int(x.get("TABROWS") or 0) for x in r.get("IT_TABLES", [])}
+
     def execute_bapi(self, call: BAPICall) -> dict:
         if self._conn is None:
             raise SAPConnectorError("execute_bapi called before connect()")
