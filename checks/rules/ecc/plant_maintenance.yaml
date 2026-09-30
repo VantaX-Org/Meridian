@@ -21,7 +21,7 @@ rules:
 - id: PM002
   field: EQUI.EQUNR
   check_class: regex_check
-  pattern: ^[A-Z0-9\-]{1,18}$
+  pattern: ^[A-Z0-9\-_/\.]{1,18}$
   severity: high
   dimension: validity
   message: Equipment number must be alphanumeric with hyphens, up to 18 characters
@@ -73,9 +73,9 @@ rules:
 - id: PM005
   field: ILOA.SWERK
   check_class: null_check
-  severity: critical
+  severity: high
   dimension: completeness
-  message: "Maintenance plant is mandatory \u2014 required for work order routing and parts sourcing"
+  message: Maintenance plant is mandatory — required for work order routing and parts sourcing
   why_it_matters: SWERK (maintenance plant) determines where maintenance activities are planned and executed. It controls
     which maintenance work centres are available, where spare parts are sourced from, and which plant's cost centre absorbs
     maintenance costs.
@@ -189,23 +189,6 @@ rules:
       IE02 > General tab > Acquisition Value. In S/4HANA: use Fiori app F4283.'
   record_fix_template: 'Equipment {EQUI.EQUNR}: ANSWT is {actual_value}. Set the acquisition value via IE02 (ECC) or Fiori
     app F4283 (S/4HANA).'
-- id: PM012
-  field: EQUI.BRGEW
-  check_class: null_check
-  severity: low
-  dimension: completeness
-  message: "Weight missing \u2014 affects transport planning for mobile equipment"
-  why_it_matters: BRGEW (gross weight) is used for transport planning when equipment needs to be moved, and for structural
-    load calculations in plant engineering. While not critical for all equipment types, it is important for heavy machinery
-    and mobile assets.
-  rule_authority: best_practice
-  sap_impact: Transport planning for equipment relocation cannot consider weight constraints. Plant engineering structural
-    load reports are incomplete.
-  fix_map:
-    __blank__: 'Weight is empty. In ECC: obtain from the equipment nameplate or manufacturer documentation and set via IE02
-      > General tab > Weight. In S/4HANA: use Fiori app F4283.'
-  record_fix_template: 'Equipment {EQUI.EQUNR}: BRGEW is {actual_value}. Set the weight via IE02 (ECC) or Fiori app F4283
-    (S/4HANA).'
 - id: PM013
   field: EQUI.HERST
   check_class: null_check
@@ -277,9 +260,9 @@ rules:
 - id: PM017
   field: EQUZ.TIDNR
   check_class: null_check
-  severity: medium
+  severity: low
   dimension: completeness
-  message: "Technical identification number missing \u2014 external reference for equipment"
+  message: Technical identification number missing — external reference for equipment
   why_it_matters: TIDNR (technical identification number) is an additional identifier used to cross-reference equipment with
     external systems, P&ID drawings, or regulatory registrations. Without it, cross-referencing between SAP and engineering
     documentation is not possible.
@@ -291,25 +274,6 @@ rules:
       use Fiori app F4283. Use the P&ID tag number or regulatory registration number.'
   record_fix_template: 'Equipment {EQUI.EQUNR}: TIDNR is {actual_value}. Assign the technical ID via IE02 (ECC) or Fiori app
     F4283 (S/4HANA).'
-- id: PM018
-  field: EQUZ.TIDNR
-  check_class: cross_field_check
-  severity: high
-  dimension: consistency
-  message: Equipment has a technical identification number but no planning plant
-  why_it_matters: When equipment has a technical identification number (TIDNR) — indicating it is referenced in
-    engineering documentation or a functional location context — it should also have a planning plant (IWERK) to
-    ensure it is included in maintenance planning. Equipment with external references but no planning context falls
-    through the cracks in preventive maintenance.
-  rule_authority: best_practice
-  sap_impact: Equipment is referenced in engineering docs (via TIDNR) but excluded from maintenance planning. Preventive
-    maintenance schedules do not include it. There is a disconnect between engineering and maintenance.
-  fix_map: {__blank__: 'Equipment has a technical ID (TIDNR) but no planning plant (IWERK). In ECC: assign the planning
-      plant via IE02 > Organisation tab. In S/4HANA: use Fiori app F4283. The planning plant is usually the same
-      as the maintenance plant.'}
-  record_fix_template: 'Equipment {EQUI.EQUNR}: TIDNR is set but IWERK is ''{actual_value}''. Assign the planning
-    plant via IE02 or Fiori app F4283.'
-  fail_when: '`EQUZ.TIDNR`.notna() & `EQUZ.IWERK`.isna()'
 - id: PM019
   field: ILOA.BUKRS
   check_class: null_check
@@ -433,36 +397,6 @@ rules:
       Location).'
   record_fix_template: 'Record is missing EQUI.HERLD. In ECC: Set via IE02/IL02. In S/4HANA: Use Fiori app F4283 (Manage Equipment)
     or F4284 (Manage Functional Location).'
-- id: PM027
-  field: EQUI.MATNR
-  check_class: null_check
-  severity: medium
-  dimension: completeness
-  message: Material (equipment) is missing
-  why_it_matters: Material (equipment) (EQUI.MATNR) is not maintained. This field supports downstream processes and reporting
-    accuracy. Missing data may result in incomplete records or processing gaps.
-  rule_authority: best_practice
-  sap_impact: Missing Material (equipment) may cause incomplete data in related transactions and reports.
-  fix_map:
-    __blank__: 'In ECC: Set via IE02/IL02. In S/4HANA: Use Fiori app F4283 (Manage Equipment) or F4284 (Manage Functional
-      Location).'
-  record_fix_template: 'Record is missing EQUI.MATNR. In ECC: Set via IE02/IL02. In S/4HANA: Use Fiori app F4283 (Manage Equipment)
-    or F4284 (Manage Functional Location).'
-- id: PM028
-  field: EQUI.SERNR
-  check_class: null_check
-  severity: medium
-  dimension: completeness
-  message: Serial number (equipment) is missing
-  why_it_matters: Serial number (equipment) (EQUI.SERNR) is not maintained. This field supports downstream processes and reporting
-    accuracy. Missing data may result in incomplete records or processing gaps.
-  rule_authority: best_practice
-  sap_impact: Missing Serial number (equipment) may cause incomplete data in related transactions and reports.
-  fix_map:
-    __blank__: 'In ECC: Set via IE02/IL02. In S/4HANA: Use Fiori app F4283 (Manage Equipment) or F4284 (Manage Functional
-      Location).'
-  record_fix_template: 'Record is missing EQUI.SERNR. In ECC: Set via IE02/IL02. In S/4HANA: Use Fiori app F4283 (Manage Equipment)
-    or F4284 (Manage Functional Location).'
 - id: PM029
   field: IFLOT.FLTYP
   check_class: null_check
@@ -538,19 +472,6 @@ rules:
   fix_map: {__blank__: Identify and merge duplicate equipment via IE02 or archive duplicates via OIEA. Reassign
       maintenance orders and notifications to the surviving record.}
 
-- id: PM034
-  field: EQUI.ERDAT
-  check_class: freshness_check
-  max_age_hours: 87600
-  severity: low
-  dimension: timeliness
-  message: Equipment master created 10+ years ago — review if technical data, warranty, and maintenance plan are still current
-  rule_authority: best_practice
-  why_it_matters: "Equipment master records created 10+ years ago often carry outdated technical data, warranty status, or location assignments that misroute maintenance planning."
-  sap_impact: "Maintenance plans and orders reference wrong technical objects; warranty claims are missed; functional-location structure drifts from reality."
-  fix_map:
-    __blank__: "Review the equipment in IE02: verify technical data, warranty dates, functional location, and status; deactivate via IE02 if scrapped or replaced."
-  record_fix_template: "Equipment {field} created {age_days} days ago. Verify technical data, warranty, and functional location in IE02; deactivate if scrapped."
 
 - id: PM035
   field: EQUI.BAUJJ

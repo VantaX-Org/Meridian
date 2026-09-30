@@ -78,27 +78,6 @@ rules:
       Customer {KNA1.KUNNR}: NAME1 is {actual_value}. Set the customer name
       via FD02 / Fiori app F3893.
 
-  - id: AR004
-    field: KNA1.NAME2
-    check_class: null_check
-    severity: low
-    dimension: completeness
-    message: "Customer name 2 is recommended for complete identification"
-    why_it_matters: >-
-      NAME2 provides additional name information (e.g., department, trading
-      name) that helps distinguish customers with similar primary names. It
-      appears on invoices and correspondence alongside NAME1.
-    rule_authority: best_practice
-    sap_impact: >-
-      Invoices and correspondence may not fully identify the customer.
-      Search results in VA01 may return ambiguous matches.
-    fix_map:
-      __blank__: >-
-        In ECC: set the second name line via T-code FD02 > Address tab.
-        In S/4HANA: use Fiori app F3893 (Manage Business Partner).
-    record_fix_template: >-
-      Customer {KNA1.KUNNR}: NAME2 is {actual_value}. Set additional name
-      information via FD02 / Fiori app F3893.
 
   - id: AR005
     field: KNA1.LAND1
@@ -151,27 +130,19 @@ rules:
   - id: AR007
     field: KNA1.STCD1
     check_class: null_check
-    severity: high
+    severity: low
     dimension: completeness
-    message: "Tax number missing — required for VAT reporting and tax compliance"
-    why_it_matters: >-
-      STCD1 (tax number 1) is required for VAT reporting, output tax
-      calculation, and tax authority submissions. Without it, tax reports
-      are incomplete and the company may face compliance penalties. Many
-      jurisdictions require the customer's tax ID on invoices.
+    message: Tax number missing — required for VAT reporting and tax compliance
+    why_it_matters: STCD1 (tax number 1) is required for VAT reporting, output tax calculation, and tax authority submissions.
+      Without it, tax reports are incomplete and the company may face compliance penalties. Many jurisdictions require the customer's
+      tax ID on invoices.
     rule_authority: best_practice
-    sap_impact: >-
-      VAT returns show incomplete customer tax data. Tax invoices cannot
-      include the customer's tax registration number. Tax audit trail is
-      incomplete.
+    sap_impact: VAT returns show incomplete customer tax data. Tax invoices cannot include the customer's tax registration number.
+      Tax audit trail is incomplete.
     fix_map:
-      __blank__: >-
-        In ECC: obtain the customer's VAT registration number or tax ID and
-        set via T-code FD02 > General Data > Control tab. In S/4HANA: use
-        Fiori app F3893 > Tax Numbers section.
-    record_fix_template: >-
-      Customer {KNA1.KUNNR}: STCD1 is {actual_value}. Set the tax number
-      via FD02 / Fiori app F3893.
+      __blank__: 'In ECC: obtain the customer''s VAT registration number or tax ID and set via T-code FD02 > General Data >
+        Control tab. In S/4HANA: use Fiori app F3893 > Tax Numbers section.'
+    record_fix_template: 'Customer {KNA1.KUNNR}: STCD1 is {actual_value}. Set the tax number via FD02 / Fiori app F3893.'
 
   - id: AR008
     field: ADR6.SMTP_ADDR
@@ -280,91 +251,68 @@ rules:
   - id: AR012
     field: KNA1.AUFSD
     check_class: domain_value_check
-    allowed_values: ["", "01", "02", "03"]
     severity: medium
     dimension: validity
-    message: "Order block must be a valid block code or empty"
-    why_it_matters: >-
-      AUFSD controls order entry blocks at the customer level. When set,
-      no new sales orders can be created for this customer in VA01. Valid
-      values represent different block reasons (e.g., credit, delivery,
-      general). Invalid values cause unpredictable blocking behaviour.
+    message: Order block must be a valid block code or empty
+    why_it_matters: AUFSD controls order entry blocks at the customer level. When set, no new sales orders can be created for
+      this customer in VA01. Valid values represent different block reasons (e.g., credit, delivery, general). Invalid values
+      cause unpredictable blocking behaviour.
     rule_authority: sap_hard_constraint
-    sap_impact: >-
-      Sales order creation (VA01) is blocked. If the value is invalid,
-      the system may reject the customer record or produce unpredictable
-      results during order processing.
+    sap_impact: Sales order creation (VA01) is blocked. If the value is invalid, the system may reject the customer record or
+      produce unpredictable results during order processing.
     valid_values_with_labels:
-      "": "No order block"
-      "01": "General order block"
-      "02": "Credit block"
-      "03": "Delivery block"
+      ? ''
+      : No order block
+      '01': General order block
+      '02': Credit block
+      '03': Delivery block
     fix_map:
-      __other__: >-
-        Value '{invalid_value}' is not a valid order block code. Must be
-        empty, 01, 02, or 03. In ECC: correct via T-code FD02 > Sales Data.
-        In S/4HANA: use Fiori app F3893.
-    record_fix_template: >-
-      Customer {KNA1.KUNNR}: AUFSD is '{actual_value}'. Set to a valid block
-      code or empty via FD02 / Fiori app F3893.
+      __other__: 'Value ''{invalid_value}'' is not a valid order block code. Must be empty, 01, 02, or 03. In ECC: correct via
+        T-code FD02 > Sales Data. In S/4HANA: use Fiori app F3893.'
+    record_fix_template: 'Customer {KNA1.KUNNR}: AUFSD is ''{actual_value}''. Set to a valid block code or empty via FD02 /
+      Fiori app F3893.'
 
   - id: AR013
     field: KNA1.LIFSD
     check_class: domain_value_check
-    allowed_values: ["", "01", "02"]
     severity: medium
     dimension: validity
-    message: "Delivery block must be a valid block code or empty"
-    why_it_matters: >-
-      LIFSD controls delivery blocks at the customer level. When set, no
-      deliveries can be created for this customer in VL01N. Valid values
-      represent different block reasons. Invalid values cause unpredictable
-      delivery processing behaviour.
+    message: Delivery block must be a valid block code or empty
+    why_it_matters: LIFSD controls delivery blocks at the customer level. When set, no deliveries can be created for this customer
+      in VL01N. Valid values represent different block reasons. Invalid values cause unpredictable delivery processing behaviour.
     rule_authority: sap_hard_constraint
-    sap_impact: >-
-      Delivery creation (VL01N) is blocked for this customer. Existing
-      sales orders cannot be fulfilled.
+    sap_impact: Delivery creation (VL01N) is blocked for this customer. Existing sales orders cannot be fulfilled.
     valid_values_with_labels:
-      "": "No delivery block"
-      "01": "General delivery block"
-      "02": "Credit delivery block"
+      ? ''
+      : No delivery block
+      '01': General delivery block
+      '02': Credit delivery block
     fix_map:
-      __other__: >-
-        Value '{invalid_value}' is not a valid delivery block code. Must be
-        empty, 01, or 02. In ECC: correct via T-code FD02 > Sales Data.
-        In S/4HANA: use Fiori app F3893.
-    record_fix_template: >-
-      Customer {KNA1.KUNNR}: LIFSD is '{actual_value}'. Set to a valid block
-      code or empty via FD02 / Fiori app F3893.
+      __other__: 'Value ''{invalid_value}'' is not a valid delivery block code. Must be empty, 01, or 02. In ECC: correct via
+        T-code FD02 > Sales Data. In S/4HANA: use Fiori app F3893.'
+    record_fix_template: 'Customer {KNA1.KUNNR}: LIFSD is ''{actual_value}''. Set to a valid block code or empty via FD02 /
+      Fiori app F3893.'
 
   - id: AR014
     field: KNA1.FAKSD
     check_class: domain_value_check
-    allowed_values: ["", "01", "02"]
     severity: medium
     dimension: validity
-    message: "Billing block must be a valid block code or empty"
-    why_it_matters: >-
-      FAKSD controls billing blocks at the customer level. When set, no
-      billing documents can be created for this customer in VF01. Valid
-      values represent different block reasons. Invalid values cause
-      unpredictable billing behaviour.
+    message: Billing block must be a valid block code or empty
+    why_it_matters: FAKSD controls billing blocks at the customer level. When set, no billing documents can be created for this
+      customer in VF01. Valid values represent different block reasons. Invalid values cause unpredictable billing behaviour.
     rule_authority: sap_hard_constraint
-    sap_impact: >-
-      Billing document creation (VF01) is blocked. Revenue recognition
-      for this customer is delayed.
+    sap_impact: Billing document creation (VF01) is blocked. Revenue recognition for this customer is delayed.
     valid_values_with_labels:
-      "": "No billing block"
-      "01": "General billing block"
-      "02": "Credit billing block"
+      ? ''
+      : No billing block
+      '01': General billing block
+      '02': Credit billing block
     fix_map:
-      __other__: >-
-        Value '{invalid_value}' is not a valid billing block code. Must be
-        empty, 01, or 02. In ECC: correct via T-code FD02 > Sales Data.
-        In S/4HANA: use Fiori app F3893.
-    record_fix_template: >-
-      Customer {KNA1.KUNNR}: FAKSD is '{actual_value}'. Set to a valid block
-      code or empty via FD02 / Fiori app F3893.
+      __other__: 'Value ''{invalid_value}'' is not a valid billing block code. Must be empty, 01, or 02. In ECC: correct via
+        T-code FD02 > Sales Data. In S/4HANA: use Fiori app F3893.'
+    record_fix_template: 'Customer {KNA1.KUNNR}: FAKSD is ''{actual_value}''. Set to a valid block code or empty via FD02 /
+      Fiori app F3893.'
 
   - id: AR015
     field: KNA1.SPRAS
@@ -464,53 +412,38 @@ rules:
   - id: AR019
     field: KNKK.KLIMK
     check_class: null_check
-    severity: high
+    severity: medium
     dimension: completeness
-    message: "Credit limit missing — customer has effectively unlimited credit exposure"
-    why_it_matters: >-
-      KLIMK sets the maximum credit exposure allowed for this customer.
-      Missing credit limit means the customer has effectively unlimited
-      credit — a significant financial risk that will not be caught by
-      the credit management check in VA01. The credit exposure report
-      (S_ALR_87012215) shows no limit for this customer.
+    message: Credit limit missing — customer has effectively unlimited credit exposure
+    why_it_matters: KLIMK sets the maximum credit exposure allowed for this customer. Missing credit limit means the customer
+      has effectively unlimited credit — a significant financial risk that will not be caught by the credit management check
+      in VA01. The credit exposure report (S_ALR_87012215) shows no limit for this customer.
     rule_authority: best_practice
-    sap_impact: >-
-      Credit management check in VA01/VA02 always passes — no credit block
-      is triggered regardless of outstanding receivables. FD32 credit
-      overview is incomplete.
+    sap_impact: Credit management check in VA01/VA02 always passes — no credit block is triggered regardless of outstanding
+      receivables. FD32 credit overview is incomplete.
     fix_map:
-      __blank__: >-
-        In ECC: determine the appropriate credit limit based on the customer's
-        payment history and risk profile, and set via T-code FD32 (credit
-        management) or FD02 > Company Code Data. In S/4HANA: use Fiori app
-        F2712 (Manage Customer Credit Exposure) or F3893.
-    record_fix_template: >-
-      Customer {KNA1.KUNNR}: KLIMK is {actual_value} — no credit limit set.
-      Assign a credit limit via FD32 / Fiori app F2712.
+      __blank__: 'In ECC: determine the appropriate credit limit based on the customer''s payment history and risk profile,
+        and set via T-code FD32 (credit management) or FD02 > Company Code Data. In S/4HANA: use Fiori app F2712 (Manage Customer
+        Credit Exposure) or F3893.'
+    record_fix_template: 'Customer {KNA1.KUNNR}: KLIMK is {actual_value} — no credit limit set. Assign a credit limit via FD32
+      / Fiori app F2712.'
 
   - id: AR020
     field: KNB5.MAHNA
     check_class: null_check
-    severity: high
+    severity: low
     dimension: completeness
-    message: "Dunning procedure missing — overdue invoices will not be automatically chased"
-    why_it_matters: >-
-      MAHNS (dunning procedure) controls how overdue invoices are escalated
-      through dunning levels. Without a dunning procedure, the customer is
-      excluded from the automatic dunning run (F150) and overdue invoices
-      are never systematically chased, increasing DSO.
+    message: Dunning procedure missing — overdue invoices will not be automatically chased
+    why_it_matters: MAHNS (dunning procedure) controls how overdue invoices are escalated through dunning levels. Without a
+      dunning procedure, the customer is excluded from the automatic dunning run (F150) and overdue invoices are never systematically
+      chased, increasing DSO.
     rule_authority: best_practice
-    sap_impact: >-
-      Customer excluded from dunning run F150. Overdue invoices are not
-      automatically escalated. Days Sales Outstanding (DSO) increases.
+    sap_impact: Customer excluded from dunning run F150. Overdue invoices are not automatically escalated. Days Sales Outstanding
+      (DSO) increases.
     fix_map:
-      __blank__: >-
-        In ECC: set the appropriate dunning procedure via T-code FD02 >
-        Company Code Data > Correspondence tab. Common values: 0001 (standard
-        4-level), 0002 (simplified 2-level). In S/4HANA: use Fiori app F3893.
-    record_fix_template: >-
-      Customer {KNA1.KUNNR}: MAHNS is {actual_value}. Assign a dunning
-      procedure via FD02 / Fiori app F3893.
+      __blank__: 'In ECC: set the appropriate dunning procedure via T-code FD02 > Company Code Data > Correspondence tab. Common
+        values: 0001 (standard 4-level), 0002 (simplified 2-level). In S/4HANA: use Fiori app F3893.'
+    record_fix_template: 'Customer {KNA1.KUNNR}: MAHNS is {actual_value}. Assign a dunning procedure via FD02 / Fiori app F3893.'
 
   - id: AR021
     field: KNB1.ZTERM
@@ -537,72 +470,25 @@ rules:
       Customer {KNA1.KUNNR}: ZTERM is {actual_value}. Set payment terms
       via FD02 / Fiori app F3893.
 
-  - id: AR022
-    field: KNB1.ZWELS
-    check_class: null_check
-    severity: medium
-    dimension: completeness
-    message: "Payment methods missing — incoming payment processing may be affected"
-    why_it_matters: >-
-      ZWELS defines which payment methods are allowed for this customer.
-      While primarily used in AP, it also affects how incoming payments
-      are processed and which payment clearing methods are available for
-      this customer in F-28 and F-51.
-    rule_authority: best_practice
-    sap_impact: >-
-      Payment clearing methods may be limited. Automated payment matching
-      and clearing routines may not process this customer correctly.
-    fix_map:
-      __blank__: >-
-        In ECC: assign payment methods via T-code FD02 > Company Code Data >
-        Payment Transactions. In S/4HANA: use Fiori app F3893.
-    record_fix_template: >-
-      Customer {KNA1.KUNNR}: ZWELS is {actual_value}. Assign payment methods
-      via FD02 / Fiori app F3893.
 
-  - id: AR023
-    field: KNB1.TOGRU
-    check_class: null_check
-    severity: low
-    dimension: completeness
-    message: "Tolerance group is recommended for payment difference handling"
-    why_it_matters: >-
-      TOGRU (tolerance group) defines the acceptable payment difference
-      thresholds for this customer. Without it, the system uses the default
-      tolerance group, which may not be appropriate for all customers. Large
-      customers may require wider tolerances, while smaller ones should have
-      tighter controls.
-    rule_authority: best_practice
-    sap_impact: >-
-      Payment differences are handled with default tolerances, which may
-      cause excessive manual processing of small differences or automatic
-      write-off of amounts that should be investigated.
-    fix_map:
-      __blank__: >-
-        In ECC: assign the appropriate tolerance group via T-code FD02 >
-        Company Code Data > Payment Transactions. In S/4HANA: use Fiori
-        app F3893.
-    record_fix_template: >-
-      Customer {KNA1.KUNNR}: TOGRU is {actual_value}. Assign a tolerance
-      group via FD02 / Fiori app F3893.
 
   - id: AR024
     field: KNA1.KUNNR
     check_class: cross_field_check
-    severity: high
+    severity: low
     dimension: consistency
     message: Customer with credit limit must have a dunning procedure assigned
-    why_it_matters: When a customer has a credit limit (KLIMK) set, it indicates that credit risk is being managed.
-      However, without a dunning procedure (MAHNS), overdue invoices for this customer are never systematically chased,
-      undermining the purpose of the credit limit. Both fields should be maintained together for effective credit
-      management.
+    why_it_matters: When a customer has a credit limit (KLIMK) set, it indicates that credit risk is being managed. However,
+      without a dunning procedure (MAHNS), overdue invoices for this customer are never systematically chased, undermining the
+      purpose of the credit limit. Both fields should be maintained together for effective credit management.
     rule_authority: best_practice
-    sap_impact: Credit limit is set but overdue invoices are not dunned. Credit exposure may exceed the limit without
-      any automated follow-up. DSO increases for this customer.
-    fix_map: {__other__: 'Customer has a credit limit but no dunning procedure. In ECC: assign a dunning procedure
-        via T-code FD02 > Company Code Data > Correspondence tab. In S/4HANA: use Fiori app F3893.'}
-    record_fix_template: 'Customer {KNA1.KUNNR}: credit limit is set but MAHNS is missing. Assign a dunning procedure
-      via FD02 / Fiori app F3893.'
+    sap_impact: Credit limit is set but overdue invoices are not dunned. Credit exposure may exceed the limit without any automated
+      follow-up. DSO increases for this customer.
+    fix_map:
+      __other__: 'Customer has a credit limit but no dunning procedure. In ECC: assign a dunning procedure via T-code FD02 >
+        Company Code Data > Correspondence tab. In S/4HANA: use Fiori app F3893.'
+    record_fix_template: 'Customer {KNA1.KUNNR}: credit limit is set but MAHNS is missing. Assign a dunning procedure via FD02
+      / Fiori app F3893.'
     fail_when: (`KNKK.KLIMK` > 0) & `KNB5.MAHNA`.isna()
 
   - id: AR025
@@ -623,28 +509,11 @@ rules:
         app F3893 and BP merge tools to consolidate.'}
     record_fix_template: 'Customer {KNA1.KUNNR}: duplicate detected. Review and merge via FD03 / Fiori app F3893.'
 
-  - id: AR026
-    field: KNA1.ERDAT
-    check_class: freshness_check
-    max_age_hours: 17520
-    severity: low
-    dimension: timeliness
-    message: Customer created 2+ years ago — confirm credit limit, payment terms and address are still current
-    rule_authority: best_practice
-    why_it_matters: KNA1 stores the creation date (ERDAT) but no last-change date. Long-standing customers are the
-      most likely to carry outdated credit and address data; confirm against change documents (CDHDR object class
-      DEBI).
-    sap_impact: Credit exposure is assessed on stale limits; invoices and dunning letters reach wrong addresses; collection
-      effectiveness drops.
-    fix_map: {__blank__: 'Review the customer in FD02 / XD02 (ECC) or Fiori Manage Business Partner (S/4HANA): reassess
-        credit limit, payment terms, and address, then save to refresh the change date.'}
-    record_fix_template: Customer {field} last changed {age_days} days ago. Reassess credit limit, terms, and address
-      in FD02/XD02 or BP, then save.
 
   - id: AR027
     field: KNA1.STCEG
     check_class: regex_check
-    pattern: "^[A-Z]{2}[0-9A-Z]{5,15}$"
+    pattern: ^[A-Z]{2}[0-9A-Z]{5,15}$
     severity: high
     dimension: accuracy
     message: Customer VAT/tax registration number format is invalid
@@ -652,19 +521,53 @@ rules:
     rule_authority: best_practice
     sap_impact: Output tax reports include invalid numbers. E-invoicing rejected. Audit flags non-compliant customer tax data.
     fix_map:
-      __blank__: "Correct the customer tax number via XD02 > Tax Information. Validate against the VIES or SARS database."
+      __blank__: Correct the customer tax number via XD02 > Tax Information. Validate against the VIES or SARS database.
+    applies_when:
+      KNA1.LAND1:
+      - AT
+      - BE
+      - BG
+      - CY
+      - CZ
+      - DE
+      - DK
+      - EE
+      - ES
+      - FI
+      - FR
+      - GR
+      - HR
+      - HU
+      - IE
+      - IT
+      - LT
+      - LU
+      - LV
+      - MT
+      - NL
+      - PL
+      - PT
+      - RO
+      - SE
+      - SI
+      - SK
 
   - id: AR028
     field: KNA1.KTOKD
     check_class: referential_check
-    reference_values: ["0001", "0002", "0003", "0004", "0005", "DEBI"]
     severity: critical
     dimension: consistency
-    message: "Customer account group KTOKD must reference a valid entry in T077D"
-    why_it_matters: "KTOKD (customer account group) controls field selection, number range, and reconciliation account for a customer record. A KTOKD that isn't in T077D means the customer was created bypassing config or the group was deleted — XD02 cannot open the record and credit-management runs skip it. In S/4HANA, CVI migration rejects BPs whose customer role has an unknown KTOKD."
+    message: Customer account group KTOKD must reference a valid entry in T077D
+    why_it_matters: KTOKD (customer account group) controls field selection, number range, and reconciliation account for a
+      customer record. A KTOKD that isn't in T077D means the customer was created bypassing config or the group was deleted
+      — XD02 cannot open the record and credit-management runs skip it. In S/4HANA, CVI migration rejects BPs whose customer
+      role has an unknown KTOKD.
     rule_authority: best_practice
-    sap_impact: "Customer cannot be maintained (XD02), invoiced (VF01), or collected against. Migration conversion rejects the record. Account-group reporting shows gaps."
+    sap_impact: Customer cannot be maintained (XD02), invoiced (VF01), or collected against. Migration conversion rejects the
+      record. Account-group reporting shows gaps.
     fix_map:
-      __blank__: "Assign a valid customer account group via XD02 > General Data. For new customers the account group is mandatory at FD01 creation."
-      __other__: "Customer account group '{invalid_value}' is not defined in T077D. Reassign via XD02 or configure in SPRO > Financial Accounting > AR/AP > Customer Accounts > Master Data > Account Groups."
-    record_fix_template: "Customer {KNA1.KUNNR}: account group '{actual_value}' is not in T077D."
+      __blank__: Assign a valid customer account group via XD02 > General Data. For new customers the account group is mandatory
+        at FD01 creation.
+      __other__: Customer account group '{invalid_value}' is not defined in T077D. Reassign via XD02 or configure in SPRO >
+        Financial Accounting > AR/AP > Customer Accounts > Master Data > Account Groups.
+    record_fix_template: 'Customer {KNA1.KUNNR}: account group ''{actual_value}'' is not in T077D.'

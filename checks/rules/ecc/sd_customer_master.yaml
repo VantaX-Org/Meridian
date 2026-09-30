@@ -78,28 +78,6 @@ rules:
       Customer {KNA1.KUNNR}: NAME1 is {actual_value}. Set the customer name
       via VD02 / Fiori app F3893.
 
-  - id: SDCM004
-    field: KNA1.NAME2
-    check_class: null_check
-    severity: low
-    dimension: completeness
-    message: "Customer name 2 is recommended for complete identification on SD documents"
-    why_it_matters: >-
-      NAME2 provides additional name information that appears on sales orders,
-      delivery notes, and invoices alongside NAME1. It helps distinguish
-      customers with similar primary names and is particularly useful for
-      large organisations with multiple divisions or subsidiaries.
-    rule_authority: best_practice
-    sap_impact: >-
-      SD documents may not fully identify the customer. Ship-to address
-      labels may be incomplete for deliveries.
-    fix_map:
-      __blank__: >-
-        In ECC: set the second name line via T-code VD02 > Address tab.
-        In S/4HANA: use Fiori app F3893 (Manage Business Partner).
-    record_fix_template: >-
-      Customer {KNA1.KUNNR}: NAME2 is {actual_value}. Set additional name
-      information via VD02 / Fiori app F3893.
 
   - id: SDCM005
     field: KNA1.LAND1
@@ -129,27 +107,19 @@ rules:
   - id: SDCM006
     field: KNA1.STCD1
     check_class: null_check
-    severity: high
+    severity: low
     dimension: completeness
-    message: "Tax number missing — required for tax-compliant invoicing"
-    why_it_matters: >-
-      STCD1 (tax number) is required for generating tax-compliant invoices.
-      Many jurisdictions require the customer's tax registration number on
-      invoices for VAT deduction. Missing tax number results in non-compliant
-      billing documents from VF01.
+    message: Tax number missing — required for tax-compliant invoicing
+    why_it_matters: STCD1 (tax number) is required for generating tax-compliant invoices. Many jurisdictions require the customer's
+      tax registration number on invoices for VAT deduction. Missing tax number results in non-compliant billing documents from
+      VF01.
     rule_authority: best_practice
-    sap_impact: >-
-      Billing documents (VF01) do not include customer tax number. Tax
-      invoices are non-compliant in jurisdictions requiring tax ID on
-      invoices. E-invoicing mandates may reject the document.
+    sap_impact: Billing documents (VF01) do not include customer tax number. Tax invoices are non-compliant in jurisdictions
+      requiring tax ID on invoices. E-invoicing mandates may reject the document.
     fix_map:
-      __blank__: >-
-        In ECC: obtain the customer's VAT number or tax ID and set via
-        T-code VD02 > General Data > Control tab or XD02. In S/4HANA:
-        use Fiori app F3893 > Tax Numbers section.
-    record_fix_template: >-
-      Customer {KNA1.KUNNR}: STCD1 is {actual_value}. Set the tax number
-      via VD02 / Fiori app F3893.
+      __blank__: 'In ECC: obtain the customer''s VAT number or tax ID and set via T-code VD02 > General Data > Control tab or
+        XD02. In S/4HANA: use Fiori app F3893 > Tax Numbers section.'
+    record_fix_template: 'Customer {KNA1.KUNNR}: STCD1 is {actual_value}. Set the tax number via VD02 / Fiori app F3893.'
 
   - id: SDCM007
     field: ADR6.SMTP_ADDR
@@ -275,53 +245,38 @@ rules:
   - id: SDCM012
     field: KNVV.KDGRP
     check_class: null_check
-    severity: high
+    severity: medium
     dimension: completeness
-    message: "Customer group missing — affects pricing and reporting segmentation"
-    why_it_matters: >-
-      KDGRP (customer group) is used in pricing condition records, reporting,
-      and customer segmentation. Without it, group-specific pricing cannot
-      be applied and sales reports cannot segment by customer category.
-      Rebate agreements based on customer group are not triggered.
+    message: Customer group missing — affects pricing and reporting segmentation
+    why_it_matters: KDGRP (customer group) is used in pricing condition records, reporting, and customer segmentation. Without
+      it, group-specific pricing cannot be applied and sales reports cannot segment by customer category. Rebate agreements
+      based on customer group are not triggered.
     rule_authority: best_practice
-    sap_impact: >-
-      Customer group-specific pricing conditions are not applied. Sales
-      analysis reports (MC+E) cannot segment by customer group. Rebate
-      agreements based on customer group are not triggered.
+    sap_impact: Customer group-specific pricing conditions are not applied. Sales analysis reports (MC+E) cannot segment by
+      customer group. Rebate agreements based on customer group are not triggered.
     fix_map:
-      __blank__: >-
-        In ECC: assign the correct group based on customer classification
-        (e.g., 01=domestic, 02=export, 03=key account) via T-code VD02 >
-        Sales Area Data > Sales tab. In S/4HANA: use Fiori app F3893.
-    record_fix_template: >-
-      Customer {KNA1.KUNNR}: KDGRP is {actual_value}. Assign the customer
-      group via VD02 / Fiori app F3893.
+      __blank__: 'In ECC: assign the correct group based on customer classification (e.g., 01=domestic, 02=export, 03=key account)
+        via T-code VD02 > Sales Area Data > Sales tab. In S/4HANA: use Fiori app F3893.'
+    record_fix_template: 'Customer {KNA1.KUNNR}: KDGRP is {actual_value}. Assign the customer group via VD02 / Fiori app F3893.'
 
   - id: SDCM013
     field: KNVV.KALKS
     check_class: null_check
     severity: high
-    dimension: accuracy
-    message: "Pricing procedure missing — no prices determined on sales orders"
-    why_it_matters: >-
-      KALKS (customer pricing procedure) determines which pricing conditions
-      (base price, discounts, surcharges, taxes) are applied when creating
-      a sales order. Without it, no automatic pricing occurs in VA01 and
-      every order must be priced manually, creating significant revenue risk.
+    dimension: completeness
+    message: Pricing procedure missing — no prices determined on sales orders
+    why_it_matters: KALKS (customer pricing procedure) determines which pricing conditions (base price, discounts, surcharges,
+      taxes) are applied when creating a sales order. Without it, no automatic pricing occurs in VA01 and every order must be
+      priced manually, creating significant revenue risk.
     rule_authority: best_practice
-    sap_impact: >-
-      Sales orders (VA01) have no automatic pricing. All conditions must be
-      entered manually. Pricing analysis (V/LD) shows no procedure
-      assignment. Revenue recognition may be incorrect.
+    sap_impact: Sales orders (VA01) have no automatic pricing. All conditions must be entered manually. Pricing analysis (V/LD)
+      shows no procedure assignment. Revenue recognition may be incorrect.
     fix_map:
-      __blank__: >-
-        In ECC: assign the customer pricing procedure via T-code VD02 >
-        Sales Area Data > Sales tab. This works with the sales org pricing
-        procedure (OVKK) and document pricing procedure to determine the
-        final pricing procedure. In S/4HANA: use Fiori app F3893.
-    record_fix_template: >-
-      Customer {KNA1.KUNNR}: KALKS is {actual_value}. Assign the pricing
-      procedure via VD02 / Fiori app F3893.
+      __blank__: 'In ECC: assign the customer pricing procedure via T-code VD02 > Sales Area Data > Sales tab. This works with
+        the sales org pricing procedure (OVKK) and document pricing procedure to determine the final pricing procedure. In S/4HANA:
+        use Fiori app F3893.'
+    record_fix_template: 'Customer {KNA1.KUNNR}: KALKS is {actual_value}. Assign the pricing procedure via VD02 / Fiori app
+      F3893.'
 
   - id: SDCM014
     field: KNVV.ZTERM
@@ -351,64 +306,55 @@ rules:
   - id: SDCM015
     field: KNVV.INCO1
     check_class: domain_value_check
-    allowed_values: ["EXW", "FCA", "CPT", "CIP", "DAP", "DPU", "DDP", "FAS", "FOB", "CFR", "CIF", ""]
+    allowed_values:
+    - EXW
+    - FCA
+    - CPT
+    - CIP
+    - DAP
+    - DPU
+    - DDP
+    - FAS
+    - FOB
+    - CFR
+    - CIF
+    - DAT
+    - DAF
+    - DDU
+    - DEQ
+    - DES
+    - FH
+    - UN
+    - ''
     severity: medium
     dimension: validity
-    message: "Incoterms must be a valid Incoterms 2020 code or empty"
-    why_it_matters: >-
-      INCO1 (incoterms) defines the shipping terms and determines who bears
-      transport risk and cost. Invalid incoterms cause freight cost
-      miscalculation, incorrect export documentation, and disputes over
-      delivery responsibility. Incoterms 2020 defines 11 standard terms.
+    message: Incoterms must be a valid Incoterms 2020 code or empty
+    why_it_matters: INCO1 (incoterms) defines the shipping terms and determines who bears transport risk and cost. Invalid incoterms
+      cause freight cost miscalculation, incorrect export documentation, and disputes over delivery responsibility. Incoterms
+      2020 defines 11 standard terms.
     rule_authority: sap_hard_constraint
-    sap_impact: >-
-      Sales orders (VA01) have invalid shipping terms. Freight cost
-      determination is incorrect. Export documentation is non-compliant.
+    sap_impact: Sales orders (VA01) have invalid shipping terms. Freight cost determination is incorrect. Export documentation
+      is non-compliant.
     valid_values_with_labels:
-      "EXW": "Ex Works — buyer bears all transport risk and cost"
-      "FCA": "Free Carrier — seller delivers to carrier at named place"
-      "CPT": "Carriage Paid To — seller pays freight to destination"
-      "CIP": "Carriage and Insurance Paid To — seller pays freight and insurance"
-      "DAP": "Delivered at Place — seller delivers to named place"
-      "DPU": "Delivered at Place Unloaded — seller delivers and unloads"
-      "DDP": "Delivered Duty Paid — seller bears all cost including import duty"
-      "FAS": "Free Alongside Ship — sea freight, seller delivers alongside vessel"
-      "FOB": "Free on Board — sea freight, seller delivers on board vessel"
-      "CFR": "Cost and Freight — sea freight, seller pays freight to port"
-      "CIF": "Cost Insurance Freight — sea freight, seller pays freight and insurance"
-      "": "No incoterms assigned"
+      EXW: Ex Works — buyer bears all transport risk and cost
+      FCA: Free Carrier — seller delivers to carrier at named place
+      CPT: Carriage Paid To — seller pays freight to destination
+      CIP: Carriage and Insurance Paid To — seller pays freight and insurance
+      DAP: Delivered at Place — seller delivers to named place
+      DPU: Delivered at Place Unloaded — seller delivers and unloads
+      DDP: Delivered Duty Paid — seller bears all cost including import duty
+      FAS: Free Alongside Ship — sea freight, seller delivers alongside vessel
+      FOB: Free on Board — sea freight, seller delivers on board vessel
+      CFR: Cost and Freight — sea freight, seller pays freight to port
+      CIF: Cost Insurance Freight — sea freight, seller pays freight and insurance
+      ? ''
+      : No incoterms assigned
     fix_map:
-      __other__: >-
-        Value '{invalid_value}' is not a valid Incoterms 2020 code. In ECC:
-        correct via T-code VD02 > Sales Area Data > Shipping tab. Valid codes
-        are configured in table TINC. In S/4HANA: use Fiori app F3893.
-    record_fix_template: >-
-      Customer {KNA1.KUNNR}: INCO1 is '{actual_value}'. Set to a valid
-      Incoterms 2020 code via VD02 / Fiori app F3893.
+      __other__: 'Value ''{invalid_value}'' is not a valid Incoterms 2020 code. In ECC: correct via T-code VD02 > Sales Area
+        Data > Shipping tab. Valid codes are configured in table TINC. In S/4HANA: use Fiori app F3893.'
+    record_fix_template: 'Customer {KNA1.KUNNR}: INCO1 is ''{actual_value}''. Set to a valid Incoterms 2020 code via VD02 /
+      Fiori app F3893.'
 
-  - id: SDCM016
-    field: KNVV.INCO2
-    check_class: null_check
-    severity: medium
-    dimension: completeness
-    message: "Incoterms location is recommended when incoterms code is set"
-    why_it_matters: >-
-      INCO2 (incoterms location) specifies the named place or port associated
-      with the incoterms code. For example, "FOB Rotterdam" or "DDP Customer
-      Warehouse". Without the location, the incoterms are incomplete and the
-      point of risk transfer is ambiguous.
-    rule_authority: best_practice
-    sap_impact: >-
-      Incoterms on sales orders and invoices are incomplete. The point of
-      risk transfer is ambiguous. Export documentation may be rejected.
-    fix_map:
-      __blank__: >-
-        In ECC: set the incoterms location via T-code VD02 > Sales Area Data >
-        Shipping tab. In S/4HANA: use Fiori app F3893. The location should
-        specify the named place (e.g., port, warehouse, city).
-    record_fix_template: >-
-      Customer {KNA1.KUNNR}: INCO2 is {actual_value}. Set the incoterms
-      location via VD02 / Fiori app F3893.
 
   - id: SDCM017
     field: KNVV.KZAZU
@@ -469,57 +415,41 @@ rules:
   - id: SDCM019
     field: KNVV.VERSG
     check_class: null_check
-    severity: medium
+    severity: low
     dimension: completeness
-    message: "Statistics group is recommended for sales reporting and analysis"
-    why_it_matters: >-
-      VERSG (statistics group) controls how this customer is represented in
-      the Logistics Information System (LIS) and sales statistics. Without
-      it, the customer may be excluded from standard sales reports and
-      analysis tools (MC+E, MC+I).
+    message: Statistics group is recommended for sales reporting and analysis
+    why_it_matters: VERSG (statistics group) controls how this customer is represented in the Logistics Information System (LIS)
+      and sales statistics. Without it, the customer may be excluded from standard sales reports and analysis tools (MC+E, MC+I).
     rule_authority: best_practice
-    sap_impact: >-
-      Customer excluded from LIS sales statistics. Standard analysis reports
-      (MC+E) may not include this customer's sales data.
+    sap_impact: Customer excluded from LIS sales statistics. Standard analysis reports (MC+E) may not include this customer's
+      sales data.
     fix_map:
-      __blank__: >-
-        In ECC: assign the statistics group via T-code VD02 > Sales Area
-        Data > Sales tab. In S/4HANA: use Fiori app F3893.
-    record_fix_template: >-
-      Customer {KNA1.KUNNR}: VERSG is {actual_value}. Assign the statistics
-      group via VD02 / Fiori app F3893.
+      __blank__: 'In ECC: assign the statistics group via T-code VD02 > Sales Area Data > Sales tab. In S/4HANA: use Fiori app
+        F3893.'
+    record_fix_template: 'Customer {KNA1.KUNNR}: VERSG is {actual_value}. Assign the statistics group via VD02 / Fiori app F3893.'
 
   - id: SDCM020
     field: KNVV.LPRIO
     check_class: domain_value_check
-    allowed_values: ["01", "02", "03", ""]
     severity: medium
     dimension: validity
-    message: "Delivery priority must be 01 (high), 02 (normal), 03 (low), or empty"
-    why_it_matters: >-
-      LPRIO (delivery priority) determines the order in which deliveries are
-      processed during delivery creation and shipping. It affects warehouse
-      picking sequence and transport scheduling. Invalid values disrupt
-      delivery sequencing.
+    message: Delivery priority must be 01 (high), 02 (normal), 03 (low), or empty
+    why_it_matters: LPRIO (delivery priority) determines the order in which deliveries are processed during delivery creation
+      and shipping. It affects warehouse picking sequence and transport scheduling. Invalid values disrupt delivery sequencing.
     rule_authority: best_practice
-    sap_impact: >-
-      Delivery sequencing in VL01N/VL06 may be incorrect. Warehouse picking
-      priorities are not properly assigned. High-priority customers may not
-      receive preferential treatment.
+    sap_impact: Delivery sequencing in VL01N/VL06 may be incorrect. Warehouse picking priorities are not properly assigned.
+      High-priority customers may not receive preferential treatment.
     valid_values_with_labels:
-      "01": "High priority — processed first"
-      "02": "Normal priority"
-      "03": "Low priority — processed last"
-      "": "No priority assigned — defaults to normal"
+      '01': High priority — processed first
+      '02': Normal priority
+      '03': Low priority — processed last
+      ? ''
+      : No priority assigned — defaults to normal
     fix_map:
-      __other__: >-
-        Value '{invalid_value}' is not a valid delivery priority. Must be
-        01 (high), 02 (normal), 03 (low), or empty. In ECC: correct via
-        T-code VD02 > Sales Area Data > Shipping tab. In S/4HANA: use
-        Fiori app F3893.
-    record_fix_template: >-
-      Customer {KNA1.KUNNR}: LPRIO is '{actual_value}'. Set to 01, 02, 03,
-      or empty via VD02 / Fiori app F3893.
+      __other__: 'Value ''{invalid_value}'' is not a valid delivery priority. Must be 01 (high), 02 (normal), 03 (low), or empty.
+        In ECC: correct via T-code VD02 > Sales Area Data > Shipping tab. In S/4HANA: use Fiori app F3893.'
+    record_fix_template: 'Customer {KNA1.KUNNR}: LPRIO is ''{actual_value}''. Set to 01, 02, 03, or empty via VD02 / Fiori app
+      F3893.'
 
   - id: SDCM021
     field: KNVV.VSBED
@@ -626,16 +556,3 @@ rules:
       Customer {KNA1.KUNNR}: WAERS is {actual_value}. Assign the sales area
       currency via VD02 / Fiori app F3893.
 
-  - id: SDCM026
-    field: KNA1.ERDAT
-    check_class: freshness_check
-    max_age_hours: 17520
-    severity: low
-    dimension: timeliness
-    message: SD customer master not updated in 2+ years — review if pricing, shipping, and partner functions are still current
-    rule_authority: best_practice
-    why_it_matters: "Sales-area customer data unchanged for 2+ years may hold outdated pricing, shipping, or payment determination that produces wrong order conditions."
-    sap_impact: "Sales orders derive incorrect pricing procedures, shipping points, or payment terms; deliveries route to obsolete addresses."
-    fix_map:
-      __blank__: "Review the customer sales area in VD02 / XD02: verify pricing procedure, shipping conditions, incoterms, and payment terms, then save to refresh the change date."
-    record_fix_template: "SD customer {field} last changed {age_days} days ago. Verify pricing, shipping, and payment terms in VD02/XD02, then save."

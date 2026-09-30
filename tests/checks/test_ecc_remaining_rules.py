@@ -12,14 +12,14 @@ RULES_DIR = Path(__file__).parent.parent.parent / "checks" / "rules" / "ecc"
 
 # Expected rule counts per module
 EXPECTED_COUNTS = {
-    "accounts_payable": 39,
-    "accounts_receivable": 28,
-    "asset_accounting": 32,
-    "mm_purchasing": 46,  # PUR031 removed (no ECC field); XP2P001-002 moved in from cross_module
-    "sd_customer_master": 26,
-    "sd_sales_orders": 35,
-    "production_planning": 29,
-    "plant_maintenance": 35,
+    "accounts_payable": 30,
+    "accounts_receivable": 24,
+    "asset_accounting": 21,
+    "mm_purchasing": 40,  # PUR031 removed (no ECC field); XP2P001-002 moved in from cross_module
+    "sd_customer_master": 23,
+    "sd_sales_orders": 32,
+    "production_planning": 23,
+    "plant_maintenance": 30,
 }
 
 REQUIRED_ENRICHMENT_FIELDS = ["fix_map", "rule_authority", "why_it_matters", "sap_impact"]
@@ -106,7 +106,7 @@ def test_ap_checks_run_with_enrichment():
     results = run_checks("accounts_payable", df, "test-tenant")
 
     # Non-None results = rules whose fields exist in this synthetic extract.
-    assert len(results) == 10
+    assert len(results) == 8
     assert all(isinstance(r, CheckResult) for r in results)
 
     failing = [r for r in results if not r.passed and not r.error]
@@ -135,7 +135,7 @@ def test_total_new_ecc_rule_count():
     for module_name in EXPECTED_COUNTS:
         rules = _load_rules(module_name)
         total += len(rules)
-    assert total == 270, f"Expected 270 total ECC rules, got {total}"
+    assert total == 223, f"Expected 223 total ECC rules, got {total}"
 
 
 # ---- Test 6: domain_value_check rules have valid_values_with_labels ----

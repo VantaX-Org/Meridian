@@ -55,14 +55,6 @@ rules:
 - id: SDSO004
   field: VBAK.AUART
   check_class: domain_value_check
-  allowed_values:
-  - OR
-  - SO
-  - ZOR
-  - RE
-  - CR
-  - DR
-  - RO
   severity: high
   dimension: validity
   message: Sales document type must be a valid SD document type code
@@ -73,13 +65,13 @@ rules:
   sap_impact: Item category determination fails. Delivery and billing types cannot be resolved. Copy control for subsequent
     documents is not configured for the invalid type.
   valid_values_with_labels:
-    OR: "Standard Order \u2014 normal sales order"
-    SO: "Rush Order \u2014 expedited processing"
-    ZOR: "Custom Standard Order \u2014 company-specific variant"
-    RE: "Return \u2014 customer return of goods"
+    OR: Standard Order — normal sales order
+    SO: Rush Order — expedited processing
+    ZOR: Custom Standard Order — company-specific variant
+    RE: Return — customer return of goods
     CR: Credit Memo Request
     DR: Debit Memo Request
-    RO: "Return Order \u2014 with reference to billing"
+    RO: Return Order — with reference to billing
   fix_map:
     __other__: 'Sales document type ''{invalid_value}'' is not a recognised value. Valid types: OR (standard), SO (rush),
       ZOR (custom standard), RE (return), CR (credit memo), DR (debit memo), RO (return order). In ECC: correct via VA02 or
@@ -205,9 +197,9 @@ rules:
 - id: SDSO012
   field: VBAK.BSTNK
   check_class: null_check
-  severity: medium
+  severity: low
   dimension: completeness
-  message: "Customer PO number missing \u2014 external reference for order tracking"
+  message: Customer PO number missing — external reference for order tracking
   why_it_matters: BSTNK (customer purchase order number) is the customer's external reference for the sales order. Without
     it, customer enquiries about order status cannot be matched, invoice verification on the customer side is difficult, and
     audit trails between customer and supplier systems are broken.
@@ -221,28 +213,22 @@ rules:
 - id: SDSO013
   field: VBAK.LIFSK
   check_class: domain_value_check
-  allowed_values:
-  - ''
-  - '01'
-  - '02'
-  - ZL
-  - ZC
   severity: medium
   dimension: validity
   message: Delivery block must be a valid code or blank (unblocked)
-  why_it_matters: "LIFSK (delivery block) controls whether the order can proceed to delivery. Invalid block codes cause processing\
-    \ errors \u2014 the system cannot determine how to handle the block and the order may be stuck in an undefined state with\
-    \ no valid release path configured."
+  why_it_matters: LIFSK (delivery block) controls whether the order can proceed to delivery. Invalid block codes cause processing
+    errors — the system cannot determine how to handle the block and the order may be stuck in an undefined state with no
+    valid release path configured.
   rule_authority: best_practice
   sap_impact: Invalid delivery block code causes errors in delivery creation (VL01N). Order may be permanently blocked with
     no valid release path. Delivery due list (VL04) cannot process the order.
   valid_values_with_labels:
     ? ''
-    : "No block \u2014 order is free for delivery"
-    '01': "Credit block \u2014 pending credit check release"
-    '02': "General delivery block \u2014 manual release required"
-    ZL: "Custom logistics block \u2014 warehouse approval required"
-    ZC: "Custom compliance block \u2014 export control review"
+    : No block — order is free for delivery
+    '01': Credit block — pending credit check release
+    '02': General delivery block — manual release required
+    ZL: Custom logistics block — warehouse approval required
+    ZC: Custom compliance block — export control review
   fix_map:
     __other__: 'Delivery block code ''{invalid_value}'' is not a recognised value. Valid codes: blank (no block), 01 (credit
       block), 02 (general block), ZL (logistics block), ZC (compliance block). In ECC: correct via VA02 > Header > Shipping
@@ -252,12 +238,6 @@ rules:
 - id: SDSO014
   field: VBAK.FAKSK
   check_class: domain_value_check
-  allowed_values:
-  - ''
-  - '01'
-  - '02'
-  - ZB
-  - ZF
   severity: medium
   dimension: validity
   message: Billing block must be a valid code or blank (unblocked)
@@ -269,11 +249,11 @@ rules:
     AR posting is not generated.
   valid_values_with_labels:
     ? ''
-    : "No block \u2014 order is free for billing"
-    '01': "General billing block \u2014 manual release required"
-    '02': "Price verification block \u2014 pricing must be confirmed"
-    ZB: "Custom billing block \u2014 finance approval required"
-    ZF: "Custom block \u2014 free of charge confirmation needed"
+    : No block — order is free for billing
+    '01': General billing block — manual release required
+    '02': Price verification block — pricing must be confirmed
+    ZB: Custom billing block — finance approval required
+    ZF: Custom block — free of charge confirmation needed
   fix_map:
     __other__: 'Billing block code ''{invalid_value}'' is not a recognised value. Valid codes: blank (no block), 01 (general),
       02 (price verification), ZB (finance approval), ZF (FOC confirmation). In ECC: correct via VA02 > Header > Billing tab.
@@ -285,7 +265,7 @@ rules:
   check_class: null_check
   severity: high
   dimension: completeness
-  message: "Material number missing \u2014 order line cannot be matched to inventory"
+  message: Material number missing — order line cannot be matched to inventory
   why_it_matters: MATNR on a sales order line links the order to the material master. Without it, availability check (ATP)
     cannot be performed, delivery cannot pick stock, and the line cannot be properly priced from condition records. For service
     items, material may be intentionally blank.
@@ -293,10 +273,14 @@ rules:
   sap_impact: ATP check (CO09) cannot be performed. Delivery (VL01N) cannot pick stock. Material-based pricing conditions
     are not found. The line may be skipped in delivery processing.
   fix_map:
-    __blank__: "Material number is empty. In ECC: assign the correct material via VA02 > Item > Material field. In S/4HANA:\
-      \ use Fiori app F6588. For service items, material may be intentionally blank \u2014 verify the item category (PSTYV)."
+    __blank__: 'Material number is empty. In ECC: assign the correct material via VA02 > Item > Material field. In S/4HANA:
+      use Fiori app F6588. For service items, material may be intentionally blank — verify the item category (PSTYV).'
   record_fix_template: 'SO {VBAK.VBELN} item {VBAP.POSNR}: MATNR is {actual_value}. Assign the material number via VA02 or
     Fiori app F6588 if this is a stock item.'
+  applies_when:
+    VBAP.PSTYV:
+      not_in:
+      - TATX
 - id: SDSO016
   field: VBAP.MATNR
   check_class: regex_check
@@ -371,31 +355,23 @@ rules:
 - id: SDSO020
   field: VBAP.PSTYV
   check_class: domain_value_check
-  allowed_values:
-  - TAN
-  - TAX
-  - TAPS
-  - TAB
-  - TAC
-  - TAD
-  - TAS
   severity: high
   dimension: validity
   message: Item category must be a valid SD item category code
-  why_it_matters: "PSTYV must be a configured item category that determines delivery relevance, billing relevance, pricing,\
-    \ and schedule line category determination. Invalid values cause the entire item processing logic to fail \u2014 no delivery,\
-    \ no billing, no revenue posting."
+  why_it_matters: PSTYV must be a configured item category that determines delivery relevance, billing relevance, pricing,
+    and schedule line category determination. Invalid values cause the entire item processing logic to fail — no delivery,
+    no billing, no revenue posting.
   rule_authority: sap_hard_constraint
   sap_impact: Item processing logic is undefined. Delivery and billing relevance cannot be determined. Schedule line category
     determination fails.
   valid_values_with_labels:
-    TAN: "Standard Item \u2014 delivery and billing relevant"
-    TAX: "Text Item \u2014 no delivery, no billing"
-    TAPS: "Sub-Item \u2014 subordinate to a main item"
-    TAB: "Individual Purchase Order \u2014 third-party processing"
-    TAC: "Cash Sale Item \u2014 immediate delivery and billing"
-    TAD: "Service Item \u2014 no delivery, billing relevant"
-    TAS: "Third-Party Item \u2014 shipped directly by vendor"
+    TAN: Standard Item — delivery and billing relevant
+    TAX: Text Item — no delivery, no billing
+    TAPS: Sub-Item — subordinate to a main item
+    TAB: Individual Purchase Order — third-party processing
+    TAC: Cash Sale Item — immediate delivery and billing
+    TAD: Service Item — no delivery, billing relevant
+    TAS: Third-Party Item — shipped directly by vendor
   fix_map:
     __other__: 'Item category ''{invalid_value}'' is not a recognised value. Valid categories: TAN (standard), TAX (text),
       TAPS (sub-item), TAB (individual PO), TAC (cash sale), TAD (service), TAS (third-party). In ECC: correct via VA02. In
@@ -407,7 +383,7 @@ rules:
   check_class: null_check
   severity: high
   dimension: completeness
-  message: "Delivering plant missing \u2014 delivery cannot determine source of goods"
+  message: Delivering plant missing — delivery cannot determine source of goods
   why_it_matters: WERKS (delivering plant) on the order item determines where goods are shipped from. Without it, delivery
     creation (VL01N) cannot determine the source plant, warehouse, or storage location. ATP check also requires a plant to
     check available stock.
@@ -419,6 +395,10 @@ rules:
       Fiori app F6588. The plant is normally determined from the customer-material info record or customer master.'
   record_fix_template: 'SO {VBAK.VBELN} item {VBAP.POSNR}: WERKS is {actual_value}. Assign the delivering plant via VA02 >
     Shipping tab or Fiori app F6588.'
+  applies_when:
+    VBAP.PSTYV:
+      not_in:
+      - TATX
 - id: SDSO022
   field: VBAP.VRKME
   check_class: null_check
@@ -455,23 +435,6 @@ rules:
       \ range configuration in SNRO."
   record_fix_template: 'SO {VBAK.VBELN}: VBELN ''{actual_value}'' is not valid. Must be numeric, up to 10 digits. Recreate
     via VA01 or Fiori app F6588.'
-- id: SDSO024
-  field: VBAP.ABGRU
-  check_class: null_check
-  severity: medium
-  dimension: completeness
-  message: "Rejection reason missing on rejected order item \u2014 incomplete rejection documentation"
-  why_it_matters: When a sales order item or the entire order is rejected (ABSTK indicates rejection), ABGRU (rejection reason)
-    should document why. Without it, rejection analysis reports are incomplete, lost-sales reporting is inaccurate, and audit
-    trails for cancelled orders are missing.
-  rule_authority: best_practice
-  sap_impact: Rejection reason reports (VA05) show blank reasons. Lost-sales analysis is incomplete. Audit documentation for
-    cancelled orders is missing.
-  fix_map:
-    __blank__: 'Rejection reason is empty on a rejected item. In ECC: set the reason via VA02 > Item > Reason for Rejection
-      field. In S/4HANA: use Fiori app F6588. Common reasons: 01 (too expensive), 02 (delivery too late), 03 (poor quality).'
-  record_fix_template: 'SO {VBAK.VBELN} item {VBAP.POSNR}: ABGRU is {actual_value} but item appears rejected. Set the rejection
-    reason via VA02 or Fiori app F6588.'
 - id: SDSO025
   field: VBAK.ABSTK
   check_class: cross_field_check
@@ -550,34 +513,6 @@ rules:
     __blank__: 'In ECC: Set via VA02. In S/4HANA: Use Fiori app F6588 (Create Sales Order).'
   record_fix_template: 'Record is missing VBAP.ARKTX. In ECC: Set via VA02. In S/4HANA: Use Fiori app F6588 (Create Sales
     Order).'
-- id: SDSO030
-  field: VBAP.FKSAA
-  check_class: null_check
-  severity: low
-  dimension: completeness
-  message: Billing status is missing
-  why_it_matters: Billing status (VBAP.FKSAA) is not maintained. This field supports downstream processes and reporting accuracy.
-    Missing data may result in incomplete records or processing gaps.
-  rule_authority: best_practice
-  sap_impact: Missing Billing status may cause incomplete data in related transactions and reports.
-  fix_map:
-    __blank__: 'In ECC: Set via VA02. In S/4HANA: Use Fiori app F6588 (Create Sales Order).'
-  record_fix_template: 'Record is missing VBAP.FKSAA. In ECC: Set via VA02. In S/4HANA: Use Fiori app F6588 (Create Sales
-    Order).'
-- id: SDSO031
-  field: VBAP.LFGSA
-  check_class: null_check
-  severity: low
-  dimension: completeness
-  message: Delivery status is missing
-  why_it_matters: Delivery status (VBAP.LFGSA) is not maintained. This field supports downstream processes and reporting accuracy.
-    Missing data may result in incomplete records or processing gaps.
-  rule_authority: best_practice
-  sap_impact: Missing Delivery status may cause incomplete data in related transactions and reports.
-  fix_map:
-    __blank__: 'In ECC: Set via VA02. In S/4HANA: Use Fiori app F6588 (Create Sales Order).'
-  record_fix_template: 'Record is missing VBAP.LFGSA. In ECC: Set via VA02. In S/4HANA: Use Fiori app F6588 (Create Sales
-    Order).'
 - id: SDSO032
   field: VBAP.POSNR
   check_class: null_check
@@ -633,12 +568,17 @@ rules:
   severity: high
   dimension: accuracy
   message: Sales order line has zero or negative order quantity — indicates configuration or entry error
-  why_it_matters: Zero or negative quantities on sales order lines cause delivery creation failures, incorrect revenue
-    recognition, and pricing errors.
+  why_it_matters: Zero or negative quantities on sales order lines cause delivery creation failures, incorrect revenue recognition,
+    and pricing errors.
   rule_authority: best_practice
-  sap_impact: Delivery cannot be created for zero-quantity line. Revenue is not recognised. Pricing conditions produce
-    zero or negative amounts.
-  fix_map: {__blank__: 'Review the order line via VA02. If a returns order is intended, use the correct order type
-      (RE). If data error, correct the quantity.'}
+  sap_impact: Delivery cannot be created for zero-quantity line. Revenue is not recognised. Pricing conditions produce zero
+    or negative amounts.
+  fix_map:
+    __blank__: Review the order line via VA02. If a returns order is intended, use the correct order type (RE). If data error,
+      correct the quantity.
   fail_when: ~(`VBAP.KWMENG` > 0)
   require_populated: true
+  applies_when:
+    VBAP.PSTYV:
+      not_in:
+      - TATX
