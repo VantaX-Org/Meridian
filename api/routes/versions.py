@@ -117,6 +117,117 @@ async def compare_versions(
     }
 
 
+async def _scope_of(db: AsyncSession, vid: uuid.UUID) -> Optional[str]:
+    row = (await db.execute(text("SELECT COALESCE(metadata->>'system_id', 'upload') FROM analysis_versions "
+                                 "WHERE id = :v"), {"v": vid})).fetchone()
+    return row[0] if row else None
+
+
+async def _resolve_pair(db: AsyncSession, v1: Optional[str], v2: str) -> tuple[uuid.UUID, uuid.UUID]:
+    """v1 defaults to the pinned baseline of v2's lineage, else the previous complete run."""
+    vid2 = uuid.UUID(v2)
+    scope = await _scope_of(db, vid2)
+    if scope is None:
+        raise HTTPException(status_code=404, detail="Version not found")
+    if v1:
+        vid1 = uuid.UUID(v1)
+        if await _scope_of(db, vid1) is None:
+            raise HTTPException(status_code=404, detail="Version not found")
+        return vid1, vid2
+    row = (await db.execute(text("""
+        SELECT id FROM analysis_versions
+         WHERE COALESCE(metadata->>'system_id', 'upload') = :scope AND id <> :v2 AND status = 'complete'
+           AND run_at <= (SELECT run_at FROM analysis_versions WHERE id = :v2)
+         ORDER BY (metadata->>'baseline') = 'true' DESC NULLS LAST, run_at DESC LIMIT 1
+    """), {"scope": scope, "v2": vid2})).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="No earlier run of this system to compare with.")
+    return row[0], vid2
+
+
+@router.get("/versions/compare/records")
+async def compare_records(
+    v2: str = Query(...),
+    v1: Optional[str] = Query(None, description="Default: pinned baseline, else the previous run"),
+    module: Optional[str] = Query(None),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Per check: records newly failing, no longer failing, and still failing between two runs.
+
+    ``comparable`` is false when the check did not run cleanly in both runs
+    (skipped / errored) or a key list was truncated — those deltas are not
+    conclusions about the data.
+    """
+    from api.services.record_issues import DIFF_SQL
+
+    await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
+    vid1, vid2 = await _resolve_pair(db, v1, v2)
+    rows = (await db.execute(text(DIFF_SQL), {"v1": vid1, "v2": vid2})).fetchall()
+    checks = []
+    for r in rows:
+        if module and r.module != module:
+            continue
+        checks.append({
+            "check_id": r.check_id, "module": r.module, "severity": r.severity,
+            "new": r.new, "resolved": r.resolved, "persisting": r.persisting,
+            "comparable": bool(r.ran_v1 and r.ran_v2 and not r.truncated),
+        })
+    checks.sort(key=lambda c: (-c["new"], -c["persisting"], c["check_id"]))
+    comparable = [c for c in checks if c["comparable"]]
+    return {
+        "v1": str(vid1), "v2": str(vid2),
+        "totals": {k: sum(c[k] for c in comparable) for k in ("new", "resolved", "persisting")},
+        "checks": checks,
+    }
+
+
+@router.get("/versions/compare/records/{check_id}")
+async def compare_records_list(
+    check_id: str,
+    v2: str = Query(...),
+    v1: Optional[str] = Query(None),
+    change: str = Query("new", pattern="^(new|resolved|persisting)$"),
+    search: Optional[str] = Query(None),
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    from api.services.record_issues import diff_records_sql
+
+    await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
+    vid1, vid2 = await _resolve_pair(db, v1, v2)
+    rows = await db.execute(text(diff_records_sql(change)), {
+        "v1": vid1, "v2": vid2, "cid": check_id, "q": f"%{search}%" if search else None,
+        "limit": limit, "offset": offset})
+    return {"v1": str(vid1), "v2": str(vid2), "change": change, "record_keys": [r[0] for r in rows]}
+
+
+@router.post("/versions/{version_id}/baseline", dependencies=[Depends(require_permission("analyse"))])
+async def pin_baseline(
+    version_id: str,
+    pinned: bool = Query(True),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Pin (or unpin) a run as the comparison baseline for its system; one baseline per system."""
+    await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
+    vid = uuid.UUID(version_id)
+    scope = await _scope_of(db, vid)
+    if scope is None:
+        raise HTTPException(status_code=404, detail="Version not found")
+    await db.execute(text("""
+        UPDATE analysis_versions SET metadata = COALESCE(metadata, '{}'::jsonb) - 'baseline'
+         WHERE COALESCE(metadata->>'system_id', 'upload') = :scope AND metadata ? 'baseline'
+    """), {"scope": scope})
+    if pinned:
+        await db.execute(text("UPDATE analysis_versions SET metadata = COALESCE(metadata, '{}'::jsonb) "
+                              "|| '{\"baseline\": true}'::jsonb WHERE id = :v"), {"v": vid})
+    await db.commit()
+    return {"version_id": version_id, "baseline": pinned, "scope": scope}
+
+
 @router.get("/versions/{version_id}")
 async def get_version(
     version_id: str,

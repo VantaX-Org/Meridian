@@ -114,6 +114,18 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
 
         logger.info(f"Loaded DataFrame: {row_count} rows, {col_count} columns")
 
+        # Records per module = rows of the module's anchor table (flat upload: all rows).
+        from checks.frames import _graph
+        anchors = _graph()[1]
+        module_rows = {m: (len(frames.frames[anchors[m]]) if anchors.get(m) in frames.frames else row_count)
+                       for m in modules}
+        with Session(engine) as session:
+            session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+            session.execute(text("UPDATE analysis_versions SET metadata = COALESCE(metadata, '{}'::jsonb) "
+                                 "|| jsonb_build_object('module_rows', CAST(:mr AS jsonb)) WHERE id = :vid"),
+                            {"mr": json.dumps(module_rows), "vid": version_id})
+            session.commit()
+
         if row_count > 500_000:
             logger.warning(f"Large dataset detected ({row_count} rows). Analysis may take several minutes.")
 
@@ -256,7 +268,8 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
                     "affected_count": check_result.affected_count,
                     "total_count": check_result.total_count,
                     "pass_rate": check_result.pass_rate,
-                    "details": json.dumps(check_result.details) if check_result.details else "{}",
+                    "details": json.dumps({**(check_result.details or {}),
+                                           **({"error": check_result.error} if check_result.error else {})}),
                     "rule_context": json.dumps(check_result.rule_context) if check_result.rule_context else "{}",
                     "value_fix_map": json.dumps(check_result.value_fix_map) if check_result.value_fix_map else "{}",
                     "record_fixes": json.dumps(check_result.record_fixes) if check_result.record_fixes else "[]",
@@ -301,6 +314,16 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
                 total_rows=row_count,
                 percent_complete=100,
             )
+
+            # Step 9b: record-level findings + cross-run issue lifecycle
+            # (savepoint: a failure here never loses the findings above).
+            try:
+                from api.services.record_issues import scope_of, track
+                with session.begin_nested():
+                    stats = track(session, str(tenant_id), str(version_id), scope_of(metadata), all_results, frames)
+                logger.info(f"record issues for {version_id}: {stats}")
+            except Exception as e:
+                logger.error(f"record-level tracking failed for {version_id}: {e}", exc_info=True)
 
             # Step 10: Update version with DQS summary
             session.execute(
@@ -449,6 +472,13 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
             logger.info(f"Enqueued run_cleaning for version_id={version_id}, modules={modules}")
         except Exception as e:
             logger.warning(f"Failed to enqueue run_cleaning (non-fatal): {e}")
+
+        # Data contracts (quality / volume / schema) against this run
+        try:
+            from workers.tasks.evaluate_contracts import evaluate_contracts
+            evaluate_contracts.delay(version_id, tenant_id)
+        except Exception as e:
+            logger.warning(f"Failed to enqueue evaluate_contracts (non-fatal): {e}")
 
         # Enqueue exception scan (non-blocking — failure is non-fatal)
         try:

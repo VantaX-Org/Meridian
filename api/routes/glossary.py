@@ -463,7 +463,7 @@ async def update_glossary_term(
 
     if body.approved_values is not None:
         import json
-        updates.append("approved_values = :approved_values::jsonb")
+        updates.append("approved_values = CAST(:approved_values AS jsonb)")
         params["approved_values"] = json.dumps(body.approved_values)
         changes.append({
             "field_changed": "approved_values",

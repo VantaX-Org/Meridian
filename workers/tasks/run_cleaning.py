@@ -66,16 +66,12 @@ def run_cleaning(self, version_id: str, tenant_id: str, object_type: str, parque
                     for row in result.fetchall():
                         golden_map[row[0]] = {'id': str(row[1]), 'golden_fields': row[2] or {}}
 
-            # Enrich each candidate with golden record data
+            # Link each candidate to its golden record (candidates are record-level,
+            # so there is no single field value to carry)
             for c in candidates:
                 gr = golden_map.get(c['record_key'])
-                if gr:
-                    c['golden_record_id'] = gr['id']
-                    field_name = c.get('field_name') or c.get('check_id', '')
-                    c['golden_field_value'] = gr['golden_fields'].get(field_name)
-                else:
-                    c['golden_record_id'] = None
-                    c['golden_field_value'] = None
+                c['golden_record_id'] = gr['id'] if gr else None
+                c['golden_field_value'] = None
 
             # Idempotency: a re-run of checks re-enqueues run_cleaning for the same
             # version+object_type. Clear prior auto-detected rows first so we don't

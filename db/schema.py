@@ -241,6 +241,8 @@ class CleaningQueue(Base):
     rollback_deadline = Column(DateTime(timezone=True), nullable=True)
     batch_id = Column(UUID(as_uuid=True), nullable=True)
     version_id = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id"), nullable=True)
+    golden_record_id = Column(UUID(as_uuid=True), nullable=True)  # migration 020
+    golden_field_value = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
 
     __table_args__ = (
@@ -823,6 +825,69 @@ class TransferFieldMapping(Base):
         Index("ix_transfer_field_mappings_tenant", "tenant_id"),
         Index("ix_transfer_field_mappings_lookup", "tenant_id", "module", "dest_system_type"),
     )
+
+
+class FindingRecord(Base):
+    """Every failing record key per (version, check) — see migration 049."""
+    __tablename__ = "finding_records"
+
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    version_id = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id", ondelete="CASCADE"), primary_key=True)
+    check_id = Column(Text, primary_key=True)
+    module = Column(Text, nullable=False)
+    grain = Column(Text, nullable=True)
+    record_key = Column(Text, primary_key=True)
+
+    __table_args__ = (Index("ix_finding_records_tenant_record", "tenant_id", "record_key"),)
+
+
+class RecordIssue(Base):
+    """One failing (scope, check, record) tracked across runs."""
+    __tablename__ = "record_issues"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    scope = Column(Text, nullable=False)  # source system id, or 'upload'
+    module = Column(Text, nullable=False)
+    check_id = Column(Text, nullable=False)
+    record_key = Column(Text, nullable=False)
+    grain = Column(Text, nullable=True)
+    severity = Column(Text, nullable=False)
+    status = Column(Text, nullable=False, server_default="open")  # open|in_progress|accepted|resolved
+    resolution = Column(Text, nullable=True)  # verified_fixed|accepted_risk|false_positive
+    assigned_to = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    first_seen_version = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id"), nullable=False)
+    last_seen_version = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id"), nullable=False)
+    resolved_version = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id"), nullable=True)
+    first_seen_at = Column(DateTime(timezone=True), server_default=text("now()"))
+    last_seen_at = Column(DateTime(timezone=True), server_default=text("now()"))
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
+    reopened_count = Column(Integer, nullable=False, server_default="0")
+    updated_at = Column(DateTime(timezone=True), server_default=text("now()"))
+
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "scope", "check_id", "record_key", name="uq_record_issues"),
+        Index("ix_record_issues_queue", "tenant_id", "status", "module", "severity"),
+        Index("ix_record_issues_assignee", "tenant_id", "assigned_to", "status"),
+    )
+
+
+class RecordIssueEvent(Base):
+    __tablename__ = "record_issue_events"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    issue_id = Column(UUID(as_uuid=True), ForeignKey("record_issues.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), nullable=True)
+    user_label = Column(Text, nullable=True)
+    action = Column(Text, nullable=False)  # status|assign|comment|auto_resolved|reopened
+    from_value = Column(Text, nullable=True)
+    to_value = Column(Text, nullable=True)
+    note = Column(Text, nullable=True)
+    version_id = Column(UUID(as_uuid=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
+
+    __table_args__ = (Index("ix_record_issue_events_issue", "issue_id", "created_at"),)
 
 
 class TransferValueMapping(Base):

@@ -596,8 +596,8 @@ class ZObjectPersistence:
             await db.execute(
                 text(
                     "UPDATE z_object_registry "
-                    "SET rules_applied = rules_applied || :rule_id::jsonb "
-                    "WHERE id = :zoid AND NOT (rules_applied @> :rule_id::jsonb)"
+                    "SET rules_applied = rules_applied || CAST(:rule_id AS jsonb) "
+                    "WHERE id = :zoid AND NOT (rules_applied @> CAST(:rule_id AS jsonb))"
                 ),
                 {"rule_id": json.dumps([f.rule_id]), "zoid": z_oid},
             )

@@ -89,7 +89,7 @@ def rule_proposal_task(self, tenant_id: str, domain: str) -> dict:
                     "INSERT INTO ai_proposed_rules "
                     "(id, tenant_id, domain, proposed_rule, rationale, "
                     " supporting_correction_count, status) "
-                    "VALUES (:id, :tid, :domain, :rule::jsonb, :rationale, :count, 'pending')"
+                    "VALUES (:id, :tid, :domain, CAST(:rule AS jsonb), :rationale, :count, 'pending')"
                 ),
                 {
                     "id": proposal_id,

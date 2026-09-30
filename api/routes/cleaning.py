@@ -553,6 +553,8 @@ async def export_cleaning_data(
             continue
         after = row.get("record_data_after") or row.get("record_data_before") or {}
         record = {k: v for k, v in after.items() if k not in ("issue", "error")}
+        if export_format in ("csv", "xlsx"):  # review formats carry the SAP record key; load formats stay pure
+            record = {"RECORD_KEY": row.get("record_key"), **record}
         records_by_type.setdefault(row_object_type, []).append(record)
 
     if not records_by_type:
@@ -803,6 +805,18 @@ async def dedup_merge(
         raise HTTPException(status_code=404, detail="Candidate not found")
 
     row = _row_to_dict(candidate)
+    keys = {row.get("record_key_a"), row.get("record_key_b")}
+    if body.survivor_key not in keys:
+        raise HTTPException(status_code=400, detail="survivor_key must be one of the candidate's two records.")
+    if row.get("status") == "merged":
+        raise HTTPException(status_code=409, detail="Candidate already merged.")
+
+    # Consolidate the master records when both exist (golden-record fusion);
+    # otherwise the decision is recorded and applied when golden records are built.
+    from api.services.mdm_merge import merge_master_records
+    merged_key = (keys - {body.survivor_key}).pop()
+    consolidation = await merge_master_records(db, str(tenant.id), row.get("object_type", ""), body.survivor_key,
+                                               merged_key, current_user_id(), body.field_overrides)
 
     now = datetime.now(timezone.utc)
     await db.execute(
@@ -838,4 +852,5 @@ async def dedup_merge(
         "status": "merged",
         "survivor_key": body.survivor_key,
         "merged_at": now.isoformat(),
+        "consolidated": consolidation,
     }

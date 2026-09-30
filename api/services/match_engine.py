@@ -243,7 +243,7 @@ def _persist_score(
             "(id, tenant_id, candidate_a_key, candidate_b_key, domain, "
             " total_score, field_scores, ai_semantic_score, auto_action) "
             "VALUES (:id, :tid, :a_key, :b_key, :domain, "
-            " :total, :fs::jsonb, :ai_score, :action)"
+            " :total, CAST(:fs AS jsonb), :ai_score, :action)"
         ),
         {
             "id": score_id,

@@ -268,7 +268,7 @@ async def process_sync_batch(
                         overall_confidence, status, created_at, updated_at
                     ) VALUES (
                         :id, :tid, :domain, :key,
-                        :golden_fields::jsonb, :source_contributions::jsonb,
+                        CAST(:golden_fields AS jsonb), CAST(:source_contributions AS jsonb),
                         :confidence, :status, :now, :now
                     )
                 """),
@@ -293,7 +293,7 @@ async def process_sync_batch(
                         change_type, new_fields, ai_was_involved
                     ) VALUES (
                         gen_random_uuid(), :tid, :rid, :now,
-                        'created', :new_fields::jsonb, :ai
+                        'created', CAST(:new_fields AS jsonb), :ai
                     )
                 """),
                 {
@@ -309,8 +309,8 @@ async def process_sync_batch(
             await db.execute(
                 text("""
                     UPDATE master_records
-                    SET golden_fields = :golden_fields::jsonb,
-                        source_contributions = :source_contributions::jsonb,
+                    SET golden_fields = CAST(:golden_fields AS jsonb),
+                        source_contributions = CAST(:source_contributions AS jsonb),
                         overall_confidence = :confidence,
                         status = CASE
                             WHEN status = 'golden' THEN 'golden'
@@ -339,7 +339,7 @@ async def process_sync_batch(
                         change_type, previous_fields, new_fields, ai_was_involved
                     ) VALUES (
                         gen_random_uuid(), :tid, :rid, :now,
-                        'updated', :prev_fields::jsonb, :new_fields::jsonb, :ai
+                        'updated', CAST(:prev_fields AS jsonb), CAST(:new_fields AS jsonb), :ai
                     )
                 """),
                 {

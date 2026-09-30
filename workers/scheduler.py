@@ -448,8 +448,8 @@ def monthly_report():
                         ), 0) as total_mitigated
                         FROM impact_records
                         WHERE tenant_id = :tid
-                          AND created_at >= date_trunc('month', :prev_date::date)
-                          AND created_at < date_trunc('month', :curr_date::date)
+                          AND created_at >= date_trunc('month', CAST(:prev_date AS date))
+                          AND created_at < date_trunc('month', CAST(:curr_date AS date))
                     """),
                     {"tid": tid, "prev_date": prev_month.isoformat(), "curr_date": now.isoformat()},
                 )
@@ -699,6 +699,23 @@ def daily_digest():
             logger.error(f"  tenant={tid}: daily_digest failed: {e}", exc_info=True)
 
 
+@celery_app.task(name="workers.scheduler.contract_freshness",
+                 soft_time_limit=300, time_limit=360)
+def contract_freshness():
+    """Hourly: data contracts whose newest analysis is older than max_age_hours."""
+    from api.services.contract_compliance import evaluate_freshness
+
+    engine = get_sync_engine()
+    with Session(engine) as session:
+        tenants = _get_tenants(session)
+    for tenant in tenants:
+        tid = str(tenant["id"])
+        with Session(engine) as session:
+            _set_rls(session, tid)
+            evaluate_freshness(session, tid)
+            session.commit()
+
+
 @celery_app.task(name="workers.scheduler.escalate_exceptions",
                  soft_time_limit=300, time_limit=360)
 def escalate_exceptions():
@@ -782,6 +799,14 @@ def weekly_archive():
                         text("SELECT * FROM findings WHERE tenant_id = :tid AND version_id = :vid"),
                         {"tid": tid, "vid": vid},
                     ).fetchall()]
+                    keys: dict[str, list[str]] = {}
+                    for cid, rk in session.execute(
+                        text("SELECT check_id, record_key FROM finding_records WHERE version_id = :vid"),
+                        {"vid": vid},
+                    ).fetchall():
+                        keys.setdefault(cid, []).append(rk)
+                    for r in rows:
+                        r["failing_record_keys"] = keys.get(r["check_id"], [])
                     archive_key = f"archive/{tid}/findings/{vid}.json.gz"
                     payload = gzip.compress(json.dumps(
                         rows, default=lambda o: o.isoformat() if hasattr(o, "isoformat") else str(o)
@@ -797,6 +822,7 @@ def weekly_archive():
                         text("DELETE FROM findings WHERE tenant_id = :tid AND version_id = :vid"),
                         {"tid": tid, "vid": vid},
                     )
+                    session.execute(text("DELETE FROM finding_records WHERE version_id = :vid"), {"vid": vid})
                     session.execute(
                         text("UPDATE analysis_versions SET metadata = COALESCE(metadata, '{}'::jsonb) "
                              "|| jsonb_build_object('findings_archive', CAST(:key AS text)) WHERE id = :vid"),
@@ -941,6 +967,10 @@ celery_app.conf.beat_schedule = {
     "licence-revalidation-every-6h": {
         "task": "revalidate_licence",
         "schedule": crontab(minute=0, hour="*/6"),  # Every 6 hours — keeps manifest fresh
+    },
+    "contract-freshness-hourly": {
+        "task": "workers.scheduler.contract_freshness",
+        "schedule": crontab(minute=7),
     },
     "exception-escalation-every-30min": {
         "task": "workers.scheduler.escalate_exceptions",
