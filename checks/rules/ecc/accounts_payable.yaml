@@ -569,3 +569,23 @@ rules:
       method to non-electronic (e.g. ZLSCH=C for check) via the same screen.'}
   record_fix_template: 'Vendor {LFA1.LIFNR} (payment method {LFB1.ZWELS}): bank account BANKN is missing. Add via
     XK02 > Bank Details.'
+
+- id: XREC001
+  field: LFB1.AKONT
+  check_class: cross_field_check
+  grain: LFB1
+  fail_when: "`SKB1.MITKZ`.isna() | (`SKB1.MITKZ` != 'K')"
+  applies_when:
+    LFB1.AKONT: {populated: true}
+  severity: critical
+  dimension: consistency
+  message: Reconciliation account is not a vendor reconciliation account in this company code
+  why_it_matters: Every posting to the vendor is mirrored to LFB1.AKONT in the general ledger. SAP checks the
+    account type on entry, but loaded or migrated records can point to an account that is missing in the company
+    code or is not a vendor reconciliation account (SKB1.MITKZ = 'K'), so the sub-ledger no longer reconciles.
+  rule_authority: sap_hard_constraint
+  sap_impact: Postings fail or land on the wrong G/L account; the vendor sub-ledger does not reconcile to the G/L.
+  fix_map:
+    __other__: Set a valid vendor reconciliation account (XK02, company code data; BP in S/4HANA), or correct the
+      account's 'reconciliation account for account type' in FS00.
+  record_fix_template: 'Vendor company-code record {LFB1.BUKRS}: reconciliation account {LFB1.AKONT} is not a vendor reconciliation account.'

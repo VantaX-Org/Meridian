@@ -726,3 +726,41 @@ rules:
       trades in this currency.
   record_fix_template: 'PO {EKKO.EBELN}: currency ''{EKKO.WAERS}'' differs from vendor {EKKO.LIFNR} order currency
     ''{LFM1.WAERS}''.'
+- id: XP2P005
+  field: EKPO.EBELP
+  check_class: cross_field_check
+  grain: EKPO
+  fail_when: (`LFA1.LOEVM` == 'X') | (`LFA1.SPERM` == 'X')
+  applies_when:
+    EKPO.ELIKZ: {not_in: [X]}
+  severity: high
+  dimension: consistency
+  message: Open PO item for a vendor flagged for deletion or blocked for purchasing
+  why_it_matters: Deletion flags and purchasing blocks stop new documents, not open ones. Goods receipts and invoices
+    keep arriving against the open item, so a vendor the business has retired still receives orders and payments.
+  rule_authority: best_practice
+  sap_impact: GR/IR and payments continue for a retired or blocked supplier; the vendor cannot be archived while
+    open items exist.
+  fix_map:
+    __other__: Close the item (set 'delivery completed' in ME22N) or reassign it to the successor vendor; if the
+      vendor is still active, remove the deletion flag/purchasing block (XK05/XK06, BP in S/4HANA).
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: vendor {EKKO.LIFNR} is flagged for deletion or purchasing-blocked.'
+- id: XP2P006
+  field: EKPO.MATNR
+  check_class: cross_field_check
+  grain: EKPO
+  fail_when: (`MARA.LVORM` == 'X') | (`MARC.LVORM` == 'X')
+  applies_when:
+    EKPO.ELIKZ: {not_in: [X]}
+    EKPO.MATNR: {populated: true}
+  severity: high
+  dimension: consistency
+  message: Open PO item for a material flagged for deletion (client or plant level)
+  why_it_matters: A material flagged for deletion is on its way to archiving, yet this open item will still post
+    goods receipts, stock and valuation against it.
+  rule_authority: best_practice
+  sap_impact: Stock and value post to a material queued for archiving; the material cannot be archived while the
+    item is open.
+  fix_map:
+    __other__: Close or delete the PO item (ME22N), or remove the deletion flag (MM06) if the material is still needed.
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: material {EKPO.MATNR} is flagged for deletion.'

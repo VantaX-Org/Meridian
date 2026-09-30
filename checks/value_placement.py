@@ -13,6 +13,9 @@ Rule families (generated per module, for the tables its rules read):
   PH-<T>-<F>       placeholder instead of data ("N/A", "TBA", 0000000000)  completeness
   SW-<T>           postal code ↔ city swapped or merged                    accuracy
   ST-<T>           record marked dead in text ("DO NOT USE") but not blocked  consistency
+  DT-<T>-<F>       creation/change date before 1970 or in the future           validity
+  DO-<T>           changed before it was created                              consistency
+(dates are typed by data element too: EKKO.AEDAT is ERDAT — a creation date)
 Fields that already carry a format rule (regex/format/domain) in the module get
 no VP/PH rule: that rule already fails the record — one defect, one finding.
 """
@@ -185,6 +188,8 @@ STATUS_TEXT = {  # table → where its name/description lives (attribute table j
     "MARA": ("MAKT", ("MAKTX",)),
     "ANLA": ("ANLA", ("TXT50", "TXA50")),
 }
+CREATED_DE = {"ERDAT", "ERDAT_RF", "ERSDA", "ANDAT", "BU_CRDAT", "ICRDT", "LTAK_BDATU"}
+CHANGED_DE = {"AEDAT", "LAEDA", "AEDTM", "AEDAT_ANLA", "BU_CHDAT", "IUPDT", "LAGP_LAEDT"}
 SWAP_PAIRS = {"LFA1": ("PSTLZ", "ORT01"), "KNA1": ("PSTLZ", "ORT01"), "ADRC": ("POST_CODE1", "CITY1")}
 
 
@@ -198,7 +203,8 @@ def fields_for(table: str, dictionary) -> set[str]:
     t = dictionary.table(table)
     if t is None:
         return set()
-    out = {f.name for f in t.fields.values() if KIND_BY_DATA_ELEMENT.get((f.data_element or "").upper())}
+    out = {f.name for f in t.fields.values()
+           if KIND_BY_DATA_ELEMENT.get((f.data_element or "").upper()) or (f.data_element or "").upper() in CREATED_DE | CHANGED_DE}
     out |= set(BLOCK_FIELDS.get(table, ()))
     for grain, (text_table, fields) in STATUS_TEXT.items():
         if text_table == table:
@@ -237,6 +243,22 @@ def generate(module: str, static_rules: list[dict], dictionary) -> list[dict]:
                               "message": f"{label} ({col}) holds a placeholder instead of real data",
                               "why_it_matters": "Placeholders ('N/A', 'TBA', 0000000000) pass mandatory-field "
                                                 "checks but carry no information — the field is effectively empty."})
+        created = [f"{t}.{f.name}" for f in tdef.fields.values() if (f.data_element or "").upper() in CREATED_DE]
+        changed = [f"{t}.{f.name}" for f in tdef.fields.values() if (f.data_element or "").upper() in CHANGED_DE]
+        for col in created + changed:
+            rules.append({**base, "id": f"DT-{t}-{col.split('.')[1]}", "family": "date_range", "field": col,
+                          "severity": "medium", "dimension": "validity",
+                          "message": f"{col} is before 1970 or in the future",
+                          "why_it_matters": "A record cannot be created or changed in the future or before the "
+                                            "system existed: the date was loaded wrongly, and every age, aging and "
+                                            "audit report built on it is wrong."})
+        if created and changed:
+            rules.append({**base, "id": f"DO-{t}", "family": "change_before_create", "field": changed[0],
+                          "fields": [created[0], changed[0]], "severity": "low", "dimension": "consistency",
+                          "message": f"{t} record was last changed before it was created ({changed[0]} < {created[0]})",
+                          "why_it_matters": "A change date before the creation date means one of them was loaded "
+                                            "or migrated wrongly; change-history and audit reporting cannot be "
+                                            "trusted for this record."})
         if t in SWAP_PAIRS and all(dictionary.field(t, x) for x in SWAP_PAIRS[t]):
             pc, city = SWAP_PAIRS[t]
             rules.append({**base, "id": f"SW-{t}-{pc}-{city}", "family": "swap", "field": f"{t}.{city}",

@@ -3,7 +3,8 @@ postal-code/city swaps, and records declared dead only in text."""
 
 import pandas as pd
 
-from checks.base import BaseCheck, Evaluation
+from checks.base import BaseCheck, Evaluation, is_blank
+from checks.types.domain_value_check import _parse_dates
 from checks.value_placement import (_CITY_WITH_CODE, _POSTCODE_ONLY, DETECTORS, FOREIGN, TARGET, is_placeholder,
                                     status_markers)
 
@@ -58,4 +59,14 @@ class ValuePlacementCheck(BaseCheck):
                 blocked |= _text(df, c).ne("")
             return Evaluation(pd.Series(True, index=df.index), marked & ~blocked,
                               {"marked_in_text": int(marked.sum()), "marked_and_blocked": int((marked & blocked).sum())})
+        if family == "date_range":
+            d = _parse_dates(df[self.rule["field"]])
+            populated = ~is_blank(df[self.rule["field"]])
+            today = pd.Timestamp.now(tz="UTC").tz_localize(None).normalize() + pd.Timedelta(days=1)
+            return Evaluation(populated & d.notna(), (d < pd.Timestamp("1970-01-01")) | (d > today),
+                              invalid_values_field=self.rule["field"])
+        if family == "change_before_create":
+            created, changed = (_parse_dates(df[c]) for c in self.rule["fields"])
+            both = created.notna() & changed.notna()
+            return Evaluation(both, changed < created)
         return None

@@ -72,10 +72,19 @@ edges:
 
   # ── Purchasing ─────────────────────────────────────────────────────────
   - {parent: EKKO, child: EKPO, join: {EBELN: EBELN}, cardinality: many}
+  # master data behind documents (cross-object consistency: open items on dead masters)
+  - {parent: LFA1, child: EKKO, join: {LIFNR: LIFNR}, cardinality: many}
+  - {parent: MARA, child: EKPO, join: {MATNR: MATNR}, cardinality: many}
+  - {parent: MARC, child: EKPO, join: {MATNR: MATNR, WERKS: WERKS}, cardinality: many}
   - {parent: LFM1, child: EKKO, join: {LIFNR: LIFNR, EKORG: EKORG}, cardinality: many}
 
   # ── Sales (ECC status tables feed S/4 VBAK/VBAP status fields) ─────────
   - {parent: VBAK, child: VBAP, join: {VBELN: VBELN}, cardinality: many}
+  - {parent: KNA1, child: VBAK, join: {KUNNR: KUNNR}, cardinality: many}
+  - {parent: MARA, child: VBAP, join: {MATNR: MATNR}, cardinality: many}
+  # reconciliation account of a vendor / customer company-code record
+  - {parent: SKB1, child: LFB1, join: {BUKRS: BUKRS, AKONT: SAKNR}, cardinality: many}
+  - {parent: SKB1, child: KNB1, join: {BUKRS: BUKRS, AKONT: SAKNR}, cardinality: many}
   - {parent: VBAK, child: VBUK, join: {VBELN: VBELN}, cardinality: one}
   - {parent: VBAP, child: VBUP, join: {VBELN: VBELN, POSNR: POSNR}, cardinality: one}
 

@@ -571,3 +571,23 @@ rules:
       __other__: Customer account group '{invalid_value}' is not defined in T077D. Reassign via XD02 or configure in SPRO >
         Financial Accounting > AR/AP > Customer Accounts > Master Data > Account Groups.
     record_fix_template: 'Customer {KNA1.KUNNR}: account group ''{actual_value}'' is not in T077D.'
+
+  - id: XREC002
+    field: KNB1.AKONT
+    check_class: cross_field_check
+    grain: KNB1
+    fail_when: "`SKB1.MITKZ`.isna() | (`SKB1.MITKZ` != 'D')"
+    applies_when:
+      KNB1.AKONT: {populated: true}
+    severity: critical
+    dimension: consistency
+    message: Reconciliation account is not a customer reconciliation account in this company code
+    why_it_matters: Every posting to the customer is mirrored to KNB1.AKONT in the general ledger. SAP checks the
+      account type on entry, but loaded or migrated records can point to an account that is missing in the company
+      code or is not a customer reconciliation account (SKB1.MITKZ = 'D'), so the sub-ledger no longer reconciles.
+    rule_authority: sap_hard_constraint
+    sap_impact: Postings fail or land on the wrong G/L account; the customer sub-ledger does not reconcile to the G/L.
+    fix_map:
+      __other__: Set a valid customer reconciliation account (XD02, company code data; BP in S/4HANA), or correct the
+        account's 'reconciliation account for account type' in FS00.
+    record_fix_template: 'Customer company-code record {KNB1.BUKRS}: reconciliation account {KNB1.AKONT} is not a customer reconciliation account.'
