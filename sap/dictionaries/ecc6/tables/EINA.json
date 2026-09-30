@@ -1,0 +1,532 @@
+{
+ "table": "EINA",
+ "description": "Purchasing Info Record: General Data",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "INFNR",
+   "key": true,
+   "data_element": "INFNR",
+   "domain": "INFNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Number of purchasing info record",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "MATNR",
+   "key": false,
+   "data_element": "MATNR",
+   "domain": "MATNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Material Number",
+   "check_table": "MARA"
+  },
+  {
+   "pos": 4,
+   "name": "MATKL",
+   "key": false,
+   "data_element": "MATKL",
+   "domain": "MATKL",
+   "type": "CHAR",
+   "length": 9,
+   "decimals": 0,
+   "description": "Material Group",
+   "check_table": "T023"
+  },
+  {
+   "pos": 5,
+   "name": "LIFNR",
+   "key": false,
+   "data_element": "ELIFN",
+   "domain": "LIFNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Vendor's account number",
+   "check_table": "LFA1"
+  },
+  {
+   "pos": 6,
+   "name": "LOEKZ",
+   "key": false,
+   "data_element": "ILOEA",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Purchasing info: General data flagged for deletion",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "ERDAT",
+   "key": false,
+   "data_element": "ERDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date on which the record was created",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "ERNAM",
+   "key": false,
+   "data_element": "ERNAM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of Person who Created the Object",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "TXZ01",
+   "key": false,
+   "data_element": "EINATX",
+   "domain": "TEXT40",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Short Text for Purchasing Info Record",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "SORTL",
+   "key": false,
+   "data_element": "SORTI",
+   "domain": "CHAR10",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Sort Term for Non-Stock Info Records",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "MEINS",
+   "key": false,
+   "data_element": "BSTME",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Order unit",
+   "check_table": "T006"
+  },
+  {
+   "pos": 12,
+   "name": "UMREZ",
+   "key": false,
+   "data_element": "UMBSZ",
+   "domain": "UMBSZ",
+   "type": "DEC",
+   "length": 5,
+   "decimals": 0,
+   "description": "Numerator for Conversion of Order Unit to Base Unit",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "UMREN",
+   "key": false,
+   "data_element": "UMBSN",
+   "domain": "UMBSN",
+   "type": "DEC",
+   "length": 5,
+   "decimals": 0,
+   "description": "Denominator for Conversion of Order Unit to Base Unit",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "IDNLF",
+   "key": false,
+   "data_element": "IDNLF",
+   "domain": "IDNEX",
+   "type": "CHAR",
+   "length": 35,
+   "decimals": 0,
+   "description": "Material Number Used by Vendor",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "VERKF",
+   "key": false,
+   "data_element": "VERKF",
+   "domain": "TEXT30",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Salesperson Responsible in the Event of Queries",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "TELF1",
+   "key": false,
+   "data_element": "TELF0",
+   "domain": "TEXT16",
+   "type": "CHAR",
+   "length": 16,
+   "decimals": 0,
+   "description": "Vendor's Telephone Number",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "MAHN1",
+   "key": false,
+   "data_element": "MAHN1",
+   "domain": "MAHNT",
+   "type": "DEC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Number of Days for First Reminder/Expediter",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "MAHN2",
+   "key": false,
+   "data_element": "MAHN2",
+   "domain": "MAHNT",
+   "type": "DEC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Number of Days for Second Reminder/Expediter",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "MAHN3",
+   "key": false,
+   "data_element": "MAHN3",
+   "domain": "MAHNT",
+   "type": "DEC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Number of Days for Third Reminder/Expediter",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "URZNR",
+   "key": false,
+   "data_element": "URZNR",
+   "domain": "URZNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Certificate Number",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "URZDT",
+   "key": false,
+   "data_element": "URZDT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Certificate of Origin Valid Until",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "URZLA",
+   "key": false,
+   "data_element": "ULAND",
+   "domain": "LAND1",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Country of Issue of Certificate of Origin",
+   "check_table": "T005"
+  },
+  {
+   "pos": 23,
+   "name": "URZTP",
+   "key": false,
+   "data_element": "URZTP",
+   "domain": "URZTP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Certificate Category",
+   "check_table": "T069"
+  },
+  {
+   "pos": 24,
+   "name": "URZZT",
+   "key": false,
+   "data_element": "URZZT",
+   "domain": "URZZT",
+   "type": "CHAR",
+   "length": 16,
+   "decimals": 0,
+   "description": "Number",
+   "check_table": null
+  },
+  {
+   "pos": 25,
+   "name": "LMEIN",
+   "key": false,
+   "data_element": "MEINS",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Base Unit of Measure",
+   "check_table": "T006"
+  },
+  {
+   "pos": 26,
+   "name": "REGIO",
+   "key": false,
+   "data_element": "REGIO",
+   "domain": "REGIO",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Region (State, Province, County)",
+   "check_table": "T005S"
+  },
+  {
+   "pos": 27,
+   "name": "VABME",
+   "key": false,
+   "data_element": "VABME",
+   "domain": "VABME",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Variable Purchase Order Unit Active",
+   "check_table": null
+  },
+  {
+   "pos": 28,
+   "name": "LTSNR",
+   "key": false,
+   "data_element": "LTSNR",
+   "domain": "LTSNR",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Vendor Subrange",
+   "check_table": "WYT1"
+  },
+  {
+   "pos": 29,
+   "name": "LTSSF",
+   "key": false,
+   "data_element": "LTSSF",
+   "domain": "NUMC5",
+   "type": "NUMC",
+   "length": 5,
+   "decimals": 0,
+   "description": "Sort Sequence Number",
+   "check_table": null
+  },
+  {
+   "pos": 30,
+   "name": "WGLIF",
+   "key": false,
+   "data_element": "WGLIF",
+   "domain": "CHAR18",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Vendor Material Group",
+   "check_table": null
+  },
+  {
+   "pos": 31,
+   "name": "RUECK",
+   "key": false,
+   "data_element": "W_RUECKNV",
+   "domain": "W_RUECKNV",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Return Agreement",
+   "check_table": "TWRV"
+  },
+  {
+   "pos": 32,
+   "name": "LIFAB",
+   "key": false,
+   "data_element": "LIFAB",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Available (Deliverable) From",
+   "check_table": null
+  },
+  {
+   "pos": 33,
+   "name": "LIFBI",
+   "key": false,
+   "data_element": "LIFBI",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Available (Deliverable) Until",
+   "check_table": null
+  },
+  {
+   "pos": 34,
+   "name": "KOLIF",
+   "key": false,
+   "data_element": "KOLIF",
+   "domain": "LIFNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Prior Vendor",
+   "check_table": "LFA1"
+  },
+  {
+   "pos": 35,
+   "name": "ANZPU",
+   "key": false,
+   "data_element": "ANZPU",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Number of Points",
+   "check_table": null
+  },
+  {
+   "pos": 36,
+   "name": "PUNEI",
+   "key": false,
+   "data_element": "PUNEI",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Points unit",
+   "check_table": "T006"
+  },
+  {
+   "pos": 37,
+   "name": "RELIF",
+   "key": false,
+   "data_element": "RELIF",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Regular Vendor",
+   "check_table": null
+  },
+  {
+   "pos": 38,
+   "name": "MFRNR",
+   "key": false,
+   "data_element": "MFRNR1",
+   "domain": "LIFNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Manufacturer",
+   "check_table": "*"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "KOLIF",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "LIFNR",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "LMEIN",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "LTSNR",
+   "foreign_table": "WYT1",
+   "foreign_field": "LTSNR"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MATKL",
+   "foreign_table": "T023",
+   "foreign_field": "MATKL"
+  },
+  {
+   "field": "MATNR",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "MEINS",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "PUNEI",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "REGIO",
+   "foreign_table": "T005S",
+   "foreign_field": "BLAND"
+  },
+  {
+   "field": "RUECK",
+   "foreign_table": "TWRV",
+   "foreign_field": "RUECV"
+  },
+  {
+   "field": "URZLA",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "URZTP",
+   "foreign_table": "T069",
+   "foreign_field": "URZTP"
+  }
+ ]
+}

@@ -1,0 +1,32 @@
+{
+ "domain": "LTAK_HRSTS",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Not relevant for HR"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "HR relevant; do not yet transfer to HR"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "HR relevant; transfer to HR"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Error in HR data"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

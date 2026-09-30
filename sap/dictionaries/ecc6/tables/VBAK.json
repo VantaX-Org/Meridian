@@ -1,0 +1,1819 @@
+{
+ "table": "VBAK",
+ "description": "Sales Document: Header Data",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "VBELN",
+   "key": true,
+   "data_element": "VBELN_VA",
+   "domain": "VBELN",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Sales Document",
+   "check_table": "VBUK"
+  },
+  {
+   "pos": 3,
+   "name": "ERDAT",
+   "key": false,
+   "data_element": "ERDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date on which the record was created",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "ERZET",
+   "key": false,
+   "data_element": "ERZET",
+   "domain": "UZEIT",
+   "type": "TIMS",
+   "length": 6,
+   "decimals": 0,
+   "description": "Entry time",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "ERNAM",
+   "key": false,
+   "data_element": "ERNAM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of Person who Created the Object",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "ANGDT",
+   "key": false,
+   "data_element": "ANGDT_V",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Quotation/Inquiry is valid from",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "BNDDT",
+   "key": false,
+   "data_element": "BNDDT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date until which bid/quotation is binding (valid-to date)",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "AUDAT",
+   "key": false,
+   "data_element": "AUDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Document Date (Date Received/Sent)",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "VBTYP",
+   "key": false,
+   "data_element": "VBTYP",
+   "domain": "VBTYP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "SD document category",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "TRVOG",
+   "key": false,
+   "data_element": "TRVOG",
+   "domain": "TRVOG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Transaction group",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "AUART",
+   "key": false,
+   "data_element": "AUART",
+   "domain": "AUART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Sales Document Type",
+   "check_table": "TVAK"
+  },
+  {
+   "pos": 12,
+   "name": "AUGRU",
+   "key": false,
+   "data_element": "AUGRU",
+   "domain": "AUGRU",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Order reason (reason for the business transaction)",
+   "check_table": "TVAU"
+  },
+  {
+   "pos": 13,
+   "name": "GWLDT",
+   "key": false,
+   "data_element": "GWLDT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Guarantee date",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "SUBMI",
+   "key": false,
+   "data_element": "SUBMI_SD",
+   "domain": "CHAR10",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Collective number (SD)",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "LIFSK",
+   "key": false,
+   "data_element": "LIFSK",
+   "domain": "LIFSP",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Delivery block (document header)",
+   "check_table": "TVLS"
+  },
+  {
+   "pos": 16,
+   "name": "FAKSK",
+   "key": false,
+   "data_element": "FAKSK",
+   "domain": "FAKSP",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Billing block in SD document",
+   "check_table": "TVFS"
+  },
+  {
+   "pos": 17,
+   "name": "NETWR",
+   "key": false,
+   "data_element": "NETWR_AK",
+   "domain": "WERTV8",
+   "type": "CURR",
+   "length": 15,
+   "decimals": 2,
+   "description": "Net Value of the Sales Order in Document Currency",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "WAERK",
+   "key": false,
+   "data_element": "WAERK",
+   "domain": "WAERS",
+   "type": "CUKY",
+   "length": 5,
+   "decimals": 0,
+   "description": "SD document currency",
+   "check_table": "TCURC"
+  },
+  {
+   "pos": 19,
+   "name": "VKORG",
+   "key": false,
+   "data_element": "VKORG",
+   "domain": "VKORG",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Sales Organization",
+   "check_table": "TVKO"
+  },
+  {
+   "pos": 20,
+   "name": "VTWEG",
+   "key": false,
+   "data_element": "VTWEG",
+   "domain": "VTWEG",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Distribution Channel",
+   "check_table": "TVKOV"
+  },
+  {
+   "pos": 21,
+   "name": "SPART",
+   "key": false,
+   "data_element": "SPART",
+   "domain": "SPART",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Division",
+   "check_table": "TVTA"
+  },
+  {
+   "pos": 22,
+   "name": "VKGRP",
+   "key": false,
+   "data_element": "VKGRP",
+   "domain": "VKGRP",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Sales group",
+   "check_table": "TVBVK"
+  },
+  {
+   "pos": 23,
+   "name": "VKBUR",
+   "key": false,
+   "data_element": "VKBUR",
+   "domain": "VKBUR",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Sales office",
+   "check_table": "TVKBZ"
+  },
+  {
+   "pos": 24,
+   "name": "GSBER",
+   "key": false,
+   "data_element": "GSBER",
+   "domain": "GSBER",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Business Area",
+   "check_table": "TGSB"
+  },
+  {
+   "pos": 25,
+   "name": "GSKST",
+   "key": false,
+   "data_element": "GSKST",
+   "domain": "GSBER",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Business area from cost center",
+   "check_table": "TGSB"
+  },
+  {
+   "pos": 26,
+   "name": "GUEBG",
+   "key": false,
+   "data_element": "GUEBG",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Valid-from date (outline agreements, product proposals)",
+   "check_table": null
+  },
+  {
+   "pos": 27,
+   "name": "GUEEN",
+   "key": false,
+   "data_element": "GUEEN",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Valid-to date (outline agreements, product proposals)",
+   "check_table": null
+  },
+  {
+   "pos": 28,
+   "name": "KNUMV",
+   "key": false,
+   "data_element": "KNUMV",
+   "domain": "KNUMV",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Number of the document condition",
+   "check_table": null
+  },
+  {
+   "pos": 29,
+   "name": "VDATU",
+   "key": false,
+   "data_element": "EDATU_VBAK",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Requested delivery date",
+   "check_table": null
+  },
+  {
+   "pos": 30,
+   "name": "VPRGR",
+   "key": false,
+   "data_element": "PRGRS_VBAK",
+   "domain": "PRGRS",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Proposed Period for Date",
+   "check_table": null
+  },
+  {
+   "pos": 31,
+   "name": "AUTLF",
+   "key": false,
+   "data_element": "AUTLF",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Complete delivery defined for each sales order?",
+   "check_table": null
+  },
+  {
+   "pos": 32,
+   "name": "VBKLA",
+   "key": false,
+   "data_element": "VBKLA",
+   "domain": "CHAR9",
+   "type": "CHAR",
+   "length": 9,
+   "decimals": 0,
+   "description": "unused (sales doocument class)",
+   "check_table": null
+  },
+  {
+   "pos": 33,
+   "name": "VBKLT",
+   "key": false,
+   "data_element": "VBKLT",
+   "domain": "VBKLT",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "SD document indicator",
+   "check_table": null
+  },
+  {
+   "pos": 34,
+   "name": "KALSM",
+   "key": false,
+   "data_element": "KALSMASD",
+   "domain": "KALSM",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Sales and Distribution: Pricing Procedure in Pricing",
+   "check_table": "T683"
+  },
+  {
+   "pos": 35,
+   "name": "VSBED",
+   "key": false,
+   "data_element": "VSBED",
+   "domain": "VSBED",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Shipping conditions",
+   "check_table": "TVSB"
+  },
+  {
+   "pos": 36,
+   "name": "FKARA",
+   "key": false,
+   "data_element": "FKARA",
+   "domain": "FKART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Proposed billing type for an order-related billing document",
+   "check_table": "TVFK"
+  },
+  {
+   "pos": 37,
+   "name": "AWAHR",
+   "key": false,
+   "data_element": "AWAHR_AK",
+   "domain": "AWAHR",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Sales Probability",
+   "check_table": null
+  },
+  {
+   "pos": 38,
+   "name": "KTEXT",
+   "key": false,
+   "data_element": "KTEXT_V",
+   "domain": "TEXT40",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Search term for product proposal",
+   "check_table": null
+  },
+  {
+   "pos": 39,
+   "name": "BSTNK",
+   "key": false,
+   "data_element": "BSTNK",
+   "domain": "BSTNK",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "Customer purchase order number",
+   "check_table": null
+  },
+  {
+   "pos": 40,
+   "name": "BSARK",
+   "key": false,
+   "data_element": "BSARK",
+   "domain": "BSARK",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Customer Order Type",
+   "check_table": "T176"
+  },
+  {
+   "pos": 41,
+   "name": "BSTDK",
+   "key": false,
+   "data_element": "BSTDK",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Customer purchase order date",
+   "check_table": null
+  },
+  {
+   "pos": 42,
+   "name": "BSTZD",
+   "key": false,
+   "data_element": "BSTZD",
+   "domain": "BSTZD",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Customer purchase order number supplement",
+   "check_table": null
+  },
+  {
+   "pos": 43,
+   "name": "IHREZ",
+   "key": false,
+   "data_element": "IHREZ",
+   "domain": "TEXT12",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Your Reference",
+   "check_table": null
+  },
+  {
+   "pos": 44,
+   "name": "BNAME",
+   "key": false,
+   "data_element": "BNAME_V",
+   "domain": "NAME",
+   "type": "CHAR",
+   "length": 35,
+   "decimals": 0,
+   "description": "Name of orderer",
+   "check_table": null
+  },
+  {
+   "pos": 45,
+   "name": "TELF1",
+   "key": false,
+   "data_element": "TELF1_VP",
+   "domain": "TELF1",
+   "type": "CHAR",
+   "length": 16,
+   "decimals": 0,
+   "description": "Telephone Number",
+   "check_table": null
+  },
+  {
+   "pos": 46,
+   "name": "MAHZA",
+   "key": false,
+   "data_element": "MAHZA",
+   "domain": "PACK2",
+   "type": "DEC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Number of reminder notices, reminders for delivery purchase",
+   "check_table": null
+  },
+  {
+   "pos": 47,
+   "name": "MAHDT",
+   "key": false,
+   "data_element": "MAHDT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Last Delivery Reminder Notice",
+   "check_table": null
+  },
+  {
+   "pos": 48,
+   "name": "KUNNR",
+   "key": false,
+   "data_element": "KUNAG",
+   "domain": "KUNNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Sold-to party",
+   "check_table": "KNA1"
+  },
+  {
+   "pos": 49,
+   "name": "KOSTL",
+   "key": false,
+   "data_element": "KOSTL",
+   "domain": "KOSTL",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Cost Center",
+   "check_table": "*"
+  },
+  {
+   "pos": 50,
+   "name": "STAFO",
+   "key": false,
+   "data_element": "STAFO",
+   "domain": "STAFO",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Update group for statistics update",
+   "check_table": "*"
+  },
+  {
+   "pos": 51,
+   "name": "STWAE",
+   "key": false,
+   "data_element": "STWAE",
+   "domain": "WAERS",
+   "type": "CUKY",
+   "length": 5,
+   "decimals": 0,
+   "description": "Statistics currency",
+   "check_table": "TCURC"
+  },
+  {
+   "pos": 52,
+   "name": "AEDAT",
+   "key": false,
+   "data_element": "AEDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Last Changed On",
+   "check_table": null
+  },
+  {
+   "pos": 53,
+   "name": "KVGR1",
+   "key": false,
+   "data_element": "KVGR1",
+   "domain": "KVGR1",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Customer group 1",
+   "check_table": "TVV1"
+  },
+  {
+   "pos": 54,
+   "name": "KVGR2",
+   "key": false,
+   "data_element": "KVGR2",
+   "domain": "KVGR2",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Customer group 2",
+   "check_table": "TVV2"
+  },
+  {
+   "pos": 55,
+   "name": "KVGR3",
+   "key": false,
+   "data_element": "KVGR3",
+   "domain": "KVGR3",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Customer group 3",
+   "check_table": "TVV3"
+  },
+  {
+   "pos": 56,
+   "name": "KVGR4",
+   "key": false,
+   "data_element": "KVGR4",
+   "domain": "KVGR4",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Customer group 4",
+   "check_table": "TVV4"
+  },
+  {
+   "pos": 57,
+   "name": "KVGR5",
+   "key": false,
+   "data_element": "KVGR5",
+   "domain": "KVGR5",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Customer group 5",
+   "check_table": "TVV5"
+  },
+  {
+   "pos": 58,
+   "name": "KNUMA",
+   "key": false,
+   "data_element": "KNUMA",
+   "domain": "KNUMA",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Agreement (various conditions grouped together)",
+   "check_table": "KONA"
+  },
+  {
+   "pos": 59,
+   "name": "KOKRS",
+   "key": false,
+   "data_element": "KOKRS",
+   "domain": "CACCD",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Controlling Area",
+   "check_table": "TKA01"
+  },
+  {
+   "pos": 60,
+   "name": "PS_PSP_PNR",
+   "key": false,
+   "data_element": "PS_PSP_PNR",
+   "domain": "PS_POSNR",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Work Breakdown Structure Element (WBS Element)",
+   "check_table": "PRPS"
+  },
+  {
+   "pos": 61,
+   "name": "KURST",
+   "key": false,
+   "data_element": "KURST",
+   "domain": "KURST",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Exchange Rate Type",
+   "check_table": "TCURV"
+  },
+  {
+   "pos": 62,
+   "name": "KKBER",
+   "key": false,
+   "data_element": "KKBER",
+   "domain": "KKBER",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Credit control area",
+   "check_table": "T014"
+  },
+  {
+   "pos": 63,
+   "name": "KNKLI",
+   "key": false,
+   "data_element": "KNKLI",
+   "domain": "KUNNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Customer's account number with credit limit reference",
+   "check_table": "KNA1"
+  },
+  {
+   "pos": 64,
+   "name": "GRUPP",
+   "key": false,
+   "data_element": "GRUPP_CM",
+   "domain": "GRUPP_CM",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Customer credit group",
+   "check_table": "*"
+  },
+  {
+   "pos": 65,
+   "name": "SBGRP",
+   "key": false,
+   "data_element": "SBGRP_CM",
+   "domain": "SBGRP_CM",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Credit Representative Group for Credit Management",
+   "check_table": "T024B"
+  },
+  {
+   "pos": 66,
+   "name": "CTLPC",
+   "key": false,
+   "data_element": "CTLPC_CM",
+   "domain": "CTLPC_CM",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Credit management: Risk category",
+   "check_table": "T691A"
+  },
+  {
+   "pos": 67,
+   "name": "CMWAE",
+   "key": false,
+   "data_element": "WAERS_CM",
+   "domain": "WAERS",
+   "type": "CUKY",
+   "length": 5,
+   "decimals": 0,
+   "description": "Currency key of credit control area",
+   "check_table": "TCURC"
+  },
+  {
+   "pos": 68,
+   "name": "CMFRE",
+   "key": false,
+   "data_element": "CMFRE",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Release date of the document determined by credit management",
+   "check_table": null
+  },
+  {
+   "pos": 69,
+   "name": "CMNUP",
+   "key": false,
+   "data_element": "CMNUP",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date of next credit check of document",
+   "check_table": null
+  },
+  {
+   "pos": 70,
+   "name": "CMNGV",
+   "key": false,
+   "data_element": "CMNGV",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Next date",
+   "check_table": null
+  },
+  {
+   "pos": 71,
+   "name": "AMTBL",
+   "key": false,
+   "data_element": "AMTBL_CM",
+   "domain": "WERTV8",
+   "type": "CURR",
+   "length": 15,
+   "decimals": 2,
+   "description": "Released credit value of the document",
+   "check_table": null
+  },
+  {
+   "pos": 72,
+   "name": "HITYP_PR",
+   "key": false,
+   "data_element": "HITYP_PR",
+   "domain": "HITYP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Hierarchy type for pricing",
+   "check_table": "THIT"
+  },
+  {
+   "pos": 73,
+   "name": "ABRVW",
+   "key": false,
+   "data_element": "ABRVW",
+   "domain": "ABRVW",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Usage Indicator",
+   "check_table": "TVLV"
+  },
+  {
+   "pos": 74,
+   "name": "ABDIS",
+   "key": false,
+   "data_element": "ABDIS",
+   "domain": "ABRAB",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "MRP for Release Types",
+   "check_table": null
+  },
+  {
+   "pos": 75,
+   "name": "VGBEL",
+   "key": false,
+   "data_element": "VGBEL",
+   "domain": "VBELN",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Document number of the reference document",
+   "check_table": "VBUK"
+  },
+  {
+   "pos": 76,
+   "name": "OBJNR",
+   "key": false,
+   "data_element": "OBJKO",
+   "domain": "J_OBJNR",
+   "type": "CHAR",
+   "length": 22,
+   "decimals": 0,
+   "description": "Object number at header level",
+   "check_table": "ONR00"
+  },
+  {
+   "pos": 77,
+   "name": "BUKRS_VF",
+   "key": false,
+   "data_element": "BUKRS_VF",
+   "domain": "BUKRS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Company code to be billed",
+   "check_table": "T001"
+  },
+  {
+   "pos": 78,
+   "name": "TAXK1",
+   "key": false,
+   "data_element": "TAXK1_AK",
+   "domain": "TAXKD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Alternative tax classification",
+   "check_table": "*"
+  },
+  {
+   "pos": 79,
+   "name": "TAXK2",
+   "key": false,
+   "data_element": "TAXK2",
+   "domain": "TAXKD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Tax classification 2 for customer",
+   "check_table": "*"
+  },
+  {
+   "pos": 80,
+   "name": "TAXK3",
+   "key": false,
+   "data_element": "TAXK3",
+   "domain": "TAXKD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Tax classification 3 for customer",
+   "check_table": "*"
+  },
+  {
+   "pos": 81,
+   "name": "TAXK4",
+   "key": false,
+   "data_element": "TAXK4",
+   "domain": "TAXKD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Tax classification 4 for customer",
+   "check_table": "*"
+  },
+  {
+   "pos": 82,
+   "name": "TAXK5",
+   "key": false,
+   "data_element": "TAXK5",
+   "domain": "TAXKD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Tax classification 5 for customer",
+   "check_table": "*"
+  },
+  {
+   "pos": 83,
+   "name": "TAXK6",
+   "key": false,
+   "data_element": "TAXK6",
+   "domain": "TAXKD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Tax classification 6 for customer",
+   "check_table": "*"
+  },
+  {
+   "pos": 84,
+   "name": "TAXK7",
+   "key": false,
+   "data_element": "TAXK7",
+   "domain": "TAXKD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Tax classification 7 for customer",
+   "check_table": "*"
+  },
+  {
+   "pos": 85,
+   "name": "TAXK8",
+   "key": false,
+   "data_element": "TAXK8",
+   "domain": "TAXKD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Tax classification 8 for customer",
+   "check_table": "*"
+  },
+  {
+   "pos": 86,
+   "name": "TAXK9",
+   "key": false,
+   "data_element": "TAXK9",
+   "domain": "TAXKD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Tax classification 9 for customer",
+   "check_table": "*"
+  },
+  {
+   "pos": 87,
+   "name": "XBLNR",
+   "key": false,
+   "data_element": "XBLNR_V1",
+   "domain": "XBLNR1",
+   "type": "CHAR",
+   "length": 16,
+   "decimals": 0,
+   "description": "Reference Document Number",
+   "check_table": null
+  },
+  {
+   "pos": 88,
+   "name": "ZUONR",
+   "key": false,
+   "data_element": "ORDNR_V",
+   "domain": "ZUONR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Assignment Number",
+   "check_table": null
+  },
+  {
+   "pos": 89,
+   "name": "VGTYP",
+   "key": false,
+   "data_element": "VBTYP_V",
+   "domain": "VBTYP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Document category of preceding SD document",
+   "check_table": null
+  },
+  {
+   "pos": 90,
+   "name": "KALSM_CH",
+   "key": false,
+   "data_element": "KALSMA_CH",
+   "domain": "KALSM",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Search procedure for batch determination",
+   "check_table": "T683"
+  },
+  {
+   "pos": 91,
+   "name": "AGRZR",
+   "key": false,
+   "data_element": "AGRZR",
+   "domain": "NUM2",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Accrual period for order-related billing docs.to be accrued",
+   "check_table": null
+  },
+  {
+   "pos": 92,
+   "name": "AUFNR",
+   "key": false,
+   "data_element": "AUFNR",
+   "domain": "AUFNR",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Order Number",
+   "check_table": "AUFK"
+  },
+  {
+   "pos": 93,
+   "name": "QMNUM",
+   "key": false,
+   "data_element": "QMNUM",
+   "domain": "QMNUM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Message Number",
+   "check_table": "QMEL"
+  },
+  {
+   "pos": 94,
+   "name": "VBELN_GRP",
+   "key": false,
+   "data_element": "VBELN_GRP",
+   "domain": "VBELN",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Group Master Contract",
+   "check_table": "*"
+  },
+  {
+   "pos": 95,
+   "name": "SCHEME_GRP",
+   "key": false,
+   "data_element": "SCHEME_GRP",
+   "domain": "SCHEME_GRP",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Referencing requirement: Procedure",
+   "check_table": "TVGRPS"
+  },
+  {
+   "pos": 96,
+   "name": "ABRUF_PART",
+   "key": false,
+   "data_element": "ABRUF_PART",
+   "domain": "ABRUF_PART",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Check partner authorizations",
+   "check_table": null
+  },
+  {
+   "pos": 97,
+   "name": "ABHOD",
+   "key": false,
+   "data_element": "ABHOD",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Pick up date",
+   "check_table": null
+  },
+  {
+   "pos": 98,
+   "name": "ABHOV",
+   "key": false,
+   "data_element": "ABHOZ",
+   "domain": "UZEIT",
+   "type": "TIMS",
+   "length": 6,
+   "decimals": 0,
+   "description": "Pick up time",
+   "check_table": null
+  },
+  {
+   "pos": 99,
+   "name": "ABHOB",
+   "key": false,
+   "data_element": "ABHOZ",
+   "domain": "UZEIT",
+   "type": "TIMS",
+   "length": 6,
+   "decimals": 0,
+   "description": "Pick up time",
+   "check_table": null
+  },
+  {
+   "pos": 100,
+   "name": "RPLNR",
+   "key": false,
+   "data_element": "RPLNR",
+   "domain": "FPLNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Installment Plan Number",
+   "check_table": "FPLA"
+  },
+  {
+   "pos": 101,
+   "name": "VZEIT",
+   "key": false,
+   "data_element": "EZEIT_VBAK",
+   "domain": "TIME_SAORG",
+   "type": "TIMS",
+   "length": 6,
+   "decimals": 0,
+   "description": "Proposed schedule line time (local with ref. to sales org.)",
+   "check_table": null
+  },
+  {
+   "pos": 102,
+   "name": "STCEG_L",
+   "key": false,
+   "data_element": "LAND1TX",
+   "domain": "LAND1",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Tax Destination Country",
+   "check_table": "T005"
+  },
+  {
+   "pos": 103,
+   "name": "LANDTX",
+   "key": false,
+   "data_element": "LANDTX",
+   "domain": "LAND1",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Tax Departure Country",
+   "check_table": "T005"
+  },
+  {
+   "pos": 104,
+   "name": "XEGDR",
+   "key": false,
+   "data_element": "XEGDR",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Triangular deal within the EU ?",
+   "check_table": null
+  },
+  {
+   "pos": 105,
+   "name": "ENQUEUE_GRP",
+   "key": false,
+   "data_element": "ENQUEUE_GRP",
+   "domain": "ENQUEUE_GRP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Block master contr. until all lower level contracts updated",
+   "check_table": null
+  },
+  {
+   "pos": 106,
+   "name": "DAT_FZAU",
+   "key": false,
+   "data_element": "DAT_FZAU",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Cml delivery order qty date",
+   "check_table": null
+  },
+  {
+   "pos": 107,
+   "name": "FMBDAT",
+   "key": false,
+   "data_element": "MBDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Material Staging/Availability Date",
+   "check_table": null
+  },
+  {
+   "pos": 108,
+   "name": "VSNMR_V",
+   "key": false,
+   "data_element": "VSNMR_V",
+   "domain": "VSNMR",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Sales document version number",
+   "check_table": null
+  },
+  {
+   "pos": 109,
+   "name": "HANDLE",
+   "key": false,
+   "data_element": "TSEGGUID_VBAK",
+   "domain": "SYSUUID_22",
+   "type": "CHAR",
+   "length": 22,
+   "decimals": 0,
+   "description": "International unique key for VBAK-VBELN",
+   "check_table": null
+  },
+  {
+   "pos": 110,
+   "name": "PROLI",
+   "key": false,
+   "data_element": "ADGE_PROLI",
+   "domain": "ADGD_PROLI",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Dangerous Goods Management Profile in SD Documents",
+   "check_table": "TDGC5"
+  },
+  {
+   "pos": 111,
+   "name": "CONT_DG",
+   "key": false,
+   "data_element": "ADGE_NCDG",
+   "domain": "X",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Document contains dangerous goods",
+   "check_table": null
+  },
+  {
+   "pos": 112,
+   "name": "CRM_GUID",
+   "key": false,
+   "data_element": "CHAR70",
+   "domain": "CHAR70",
+   "type": "CHAR",
+   "length": 70,
+   "decimals": 0,
+   "description": "Character field, length 70",
+   "check_table": null
+  },
+  {
+   "pos": 113,
+   "name": "UPD_TMSTMP",
+   "key": false,
+   "data_element": "TIMESTAMPL",
+   "domain": "TZNTSTMPL",
+   "type": "DEC",
+   "length": 21,
+   "decimals": 7,
+   "description": "UTC Time Stamp in Long Form (YYYYMMDDhhmmssmmmuuun)",
+   "check_table": null
+  },
+  {
+   "pos": 114,
+   "name": "MSR_ID",
+   "key": false,
+   "data_element": "MSR_PROCESS_ID",
+   "domain": "MSR_PROCESS_ID",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Process Identification Number",
+   "check_table": null
+  },
+  {
+   "pos": 115,
+   "name": "TM_CTRL_KEY",
+   "key": false,
+   "data_element": "TM_CTRL_KEY",
+   "domain": null,
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Control Key for Document Transfer to TM",
+   "check_table": null
+  },
+  {
+   "pos": 117,
+   "name": "HANDOVERLOC",
+   "key": false,
+   "data_element": "HANDOVER_LOC",
+   "domain": "HANDOVER_LOC",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Location for a physical handover of goods",
+   "check_table": null
+  },
+  {
+   "pos": 119,
+   "name": "PSM_BUDAT",
+   "key": false,
+   "data_element": "PSM_BUDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Posting Date in the Document",
+   "check_table": null
+  },
+  {
+   "pos": 121,
+   "name": "SWENR",
+   "key": false,
+   "data_element": "HB_SWENR",
+   "domain": "SWENR",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Business  Entity Number",
+   "check_table": "VIOB01"
+  },
+  {
+   "pos": 122,
+   "name": "SMENR",
+   "key": false,
+   "data_element": "HB_SMENR",
+   "domain": "SMENR",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Number of Sales Unit",
+   "check_table": "VIMI01"
+  },
+  {
+   "pos": 123,
+   "name": "PHASE",
+   "key": false,
+   "data_element": "HB_SPHSE",
+   "domain": "HBS_PHASE",
+   "type": "CHAR",
+   "length": 11,
+   "decimals": 0,
+   "description": "Sales Phase",
+   "check_table": "HBSSPH"
+  },
+  {
+   "pos": 124,
+   "name": "MTLAUR",
+   "key": false,
+   "data_element": "HB_MTLAUR",
+   "domain": "HBS_MTLAUR",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Marker for Low Income Housing",
+   "check_table": "CHBSNCM"
+  },
+  {
+   "pos": 125,
+   "name": "STAGE",
+   "key": false,
+   "data_element": "HB_STAGE",
+   "domain": "INT4",
+   "type": "INT4",
+   "length": 10,
+   "decimals": 0,
+   "description": "Construction Stage",
+   "check_table": null
+  },
+  {
+   "pos": 126,
+   "name": "HB_CONT_REASON",
+   "key": false,
+   "data_element": "HB_CONT",
+   "domain": "CHAR2",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Contingency  data",
+   "check_table": "HBSCREASON"
+  },
+  {
+   "pos": 127,
+   "name": "HB_EXPDATE",
+   "key": false,
+   "data_element": "HB_EXP",
+   "domain": "DATS",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Expiration date",
+   "check_table": null
+  },
+  {
+   "pos": 128,
+   "name": "HB_RESDATE",
+   "key": false,
+   "data_element": "HB_RES",
+   "domain": "DATS",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Resolution date",
+   "check_table": null
+  },
+  {
+   "pos": 130,
+   "name": "LOGSYSB",
+   "key": false,
+   "data_element": "LOGSYSB",
+   "domain": "LOGSYS",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Logical system with which document was created",
+   "check_table": "*"
+  },
+  {
+   "pos": 132,
+   "name": "KALCD",
+   "key": false,
+   "data_element": "KALCD",
+   "domain": "KALSM",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Procedure for Campaign Determination",
+   "check_table": "*"
+  },
+  {
+   "pos": 133,
+   "name": "MULTI",
+   "key": false,
+   "data_element": "CMPC_MULT_CAMPAIGN",
+   "domain": "CMPGN_MULT_CAMPAIGN",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Multiple Campaigns/Trade Promotions Active Indicator",
+   "check_table": null
+  },
+  {
+   "pos": 135,
+   "name": "SPPAYM",
+   "key": false,
+   "data_element": "SPPAYM",
+   "domain": "SPPAYM",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Payment Form for Special Payment Method",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "ABRVW",
+   "foreign_table": "TVLV",
+   "foreign_field": "ABRVW"
+  },
+  {
+   "field": "AUART",
+   "foreign_table": "TVAK",
+   "foreign_field": "AUART"
+  },
+  {
+   "field": "AUFNR",
+   "foreign_table": "AUFK",
+   "foreign_field": "AUFNR"
+  },
+  {
+   "field": "AUGRU",
+   "foreign_table": "TVAU",
+   "foreign_field": "AUGRU"
+  },
+  {
+   "field": "BSARK",
+   "foreign_table": "T176",
+   "foreign_field": "BSARK"
+  },
+  {
+   "field": "BUKRS_VF",
+   "foreign_table": "T001",
+   "foreign_field": "BUKRS"
+  },
+  {
+   "field": "CMWAE",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  },
+  {
+   "field": "CTLPC",
+   "foreign_table": "T691A",
+   "foreign_field": "CTLPC"
+  },
+  {
+   "field": "FAKSK",
+   "foreign_table": "TVFS",
+   "foreign_field": "FAKSP"
+  },
+  {
+   "field": "FKARA",
+   "foreign_table": "TVFK",
+   "foreign_field": "FKART"
+  },
+  {
+   "field": "GSBER",
+   "foreign_table": "TGSB",
+   "foreign_field": "GSBER"
+  },
+  {
+   "field": "GSKST",
+   "foreign_table": "TGSB",
+   "foreign_field": "GSBER"
+  },
+  {
+   "field": "HB_CONT_REASON",
+   "foreign_table": "HBSCREASON",
+   "foreign_field": "HB_CONT"
+  },
+  {
+   "field": "HITYP_PR",
+   "foreign_table": "THIT",
+   "foreign_field": "HITYP"
+  },
+  {
+   "field": "KALSM",
+   "foreign_table": "T683",
+   "foreign_field": "KALSM"
+  },
+  {
+   "field": "KALSM_CH",
+   "foreign_table": "T683",
+   "foreign_field": "KALSM"
+  },
+  {
+   "field": "KKBER",
+   "foreign_table": "T014",
+   "foreign_field": "KKBER"
+  },
+  {
+   "field": "KNKLI",
+   "foreign_table": "KNA1",
+   "foreign_field": "KUNNR"
+  },
+  {
+   "field": "KNUMA",
+   "foreign_table": "KONA",
+   "foreign_field": "KNUMA"
+  },
+  {
+   "field": "KOKRS",
+   "foreign_table": "TKA01",
+   "foreign_field": "KOKRS"
+  },
+  {
+   "field": "KUNNR",
+   "foreign_table": "KNA1",
+   "foreign_field": "KUNNR"
+  },
+  {
+   "field": "KURST",
+   "foreign_table": "TCURV",
+   "foreign_field": "KURST"
+  },
+  {
+   "field": "KVGR1",
+   "foreign_table": "TVV1",
+   "foreign_field": "KVGR1"
+  },
+  {
+   "field": "KVGR2",
+   "foreign_table": "TVV2",
+   "foreign_field": "KVGR2"
+  },
+  {
+   "field": "KVGR3",
+   "foreign_table": "TVV3",
+   "foreign_field": "KVGR3"
+  },
+  {
+   "field": "KVGR4",
+   "foreign_table": "TVV4",
+   "foreign_field": "KVGR4"
+  },
+  {
+   "field": "KVGR5",
+   "foreign_table": "TVV5",
+   "foreign_field": "KVGR5"
+  },
+  {
+   "field": "LANDTX",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "LIFSK",
+   "foreign_table": "TVLS",
+   "foreign_field": "LIFSP"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MTLAUR",
+   "foreign_table": "CHBSNCM",
+   "foreign_field": "INCOME"
+  },
+  {
+   "field": "OBJNR",
+   "foreign_table": "ONR00",
+   "foreign_field": "OBJNR"
+  },
+  {
+   "field": "PHASE",
+   "foreign_table": "HBSSPH",
+   "foreign_field": "PHASE"
+  },
+  {
+   "field": "PROLI",
+   "foreign_table": "TDGC5",
+   "foreign_field": "PROLI"
+  },
+  {
+   "field": "PS_PSP_PNR",
+   "foreign_table": "PRPS",
+   "foreign_field": "PSPNR"
+  },
+  {
+   "field": "QMNUM",
+   "foreign_table": "QMEL",
+   "foreign_field": "QMNUM"
+  },
+  {
+   "field": "RPLNR",
+   "foreign_table": "FPLA",
+   "foreign_field": "FPLNR"
+  },
+  {
+   "field": "SBGRP",
+   "foreign_table": "T024B",
+   "foreign_field": "SBGRP"
+  },
+  {
+   "field": "SCHEME_GRP",
+   "foreign_table": "TVGRPS",
+   "foreign_field": "SCHEME"
+  },
+  {
+   "field": "SMENR",
+   "foreign_table": "VIMI01",
+   "foreign_field": "SMENR"
+  },
+  {
+   "field": "SPART",
+   "foreign_table": "TVTA",
+   "foreign_field": "SPART"
+  },
+  {
+   "field": "STCEG_L",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "STWAE",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  },
+  {
+   "field": "SWENR",
+   "foreign_table": "VIOB01",
+   "foreign_field": "SWENR"
+  },
+  {
+   "field": "VBELN",
+   "foreign_table": "VBUK",
+   "foreign_field": "VBELN"
+  },
+  {
+   "field": "VGBEL",
+   "foreign_table": "VBUK",
+   "foreign_field": "VBELN"
+  },
+  {
+   "field": "VKBUR",
+   "foreign_table": "TVKBZ",
+   "foreign_field": "VKBUR"
+  },
+  {
+   "field": "VKGRP",
+   "foreign_table": "TVBVK",
+   "foreign_field": "VKGRP"
+  },
+  {
+   "field": "VKORG",
+   "foreign_table": "TVKO",
+   "foreign_field": "VKORG"
+  },
+  {
+   "field": "VSBED",
+   "foreign_table": "TVSB",
+   "foreign_field": "VSBED"
+  },
+  {
+   "field": "VTWEG",
+   "foreign_table": "TVKOV",
+   "foreign_field": "VTWEG"
+  },
+  {
+   "field": "WAERK",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  }
+ ]
+}

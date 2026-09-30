@@ -1,0 +1,32 @@
+{
+ "domain": "IMPDATEN",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Call up import data screens in the case of EU import only"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Call up import data screens for every import"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Never call up import data screens"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Always call up import data screen"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

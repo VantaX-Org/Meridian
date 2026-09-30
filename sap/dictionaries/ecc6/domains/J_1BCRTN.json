@@ -1,0 +1,27 @@
+{
+ "domain": "J_1BCRTN",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "1",
+   "high": null,
+   "text": "Simples Nacional"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Simples Nacional # excesso de sublimite da receita bruta"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Regime Normal (não simples)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

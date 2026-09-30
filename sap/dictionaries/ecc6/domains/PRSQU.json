@@ -1,0 +1,52 @@
+{
+ "domain": "PRSQU",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Order"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Purchase Order"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Purchase order/delivery"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Not used"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Delivery"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Delivery/order"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Shipment Costs"
+  },
+  {
+   "low": "G",
+   "high": null,
+   "text": "external"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

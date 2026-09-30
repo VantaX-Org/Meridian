@@ -1,0 +1,37 @@
+{
+ "domain": "EBPP_BVSTATUS",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Can be Displayed/Used in Biller Direct, Used in Standard"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Can be Displayed/Used in Biller Direct, Not Used in Standard"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Can be Changed/Used in Biller Direct, Used in Standard"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Can be Changed/Used in Biller Direct, Not Used in Standard"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Can Only be Used in Standard"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

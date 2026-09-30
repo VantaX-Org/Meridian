@@ -60,6 +60,8 @@ export interface LineChartProps<
   className?: string;
   yFormatter?: (value: number) => string;
   ariaLabel?: string;
+  /** Called with the index into `data` of the clicked x position. */
+  onPointClick?: (index: number) => void;
 }
 
 /**
@@ -98,6 +100,7 @@ export function LineChart<
   className,
   yFormatter,
   ariaLabel,
+  onPointClick,
 }: LineChartProps<TDatum>) {
   const hostRef = useRef<HTMLDivElement>(null);
   const t = useTokens(hostRef);
@@ -105,12 +108,19 @@ export function LineChart<
     <div
       ref={hostRef}
       className={clsx("aurora-chart", className)}
-      style={{ width: "100%", height }}
+      style={{ width: "100%", height, cursor: onPointClick ? "pointer" : undefined }}
       role="img"
       aria-label={ariaLabel}
     >
       <ResponsiveContainer>
-        <RcLineChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+        <RcLineChart
+          data={data}
+          margin={{ top: 8, right: 12, left: 0, bottom: 0 }}
+          onClick={onPointClick ? (state) => {
+            const i = state.activeTooltipIndex == null ? NaN : Number(state.activeTooltipIndex);
+            if (Number.isInteger(i)) onPointClick(i);
+          } : undefined}
+        >
           <CartesianGrid stroke={t.gridInk} vertical={false} strokeDasharray="2 4" />
           <XAxis
             dataKey={xKey as string}

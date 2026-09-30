@@ -44,7 +44,9 @@ async def get_business_process(
     # Load SPRO config (baseline fallback)
     from api.services.spro_reader import SPROReader
 
-    reader = SPROReader("ecc", None)
+    from api.services.source_design import live_config_for_version
+    system_type, live_cfg = await live_config_for_version(db, version_id)
+    reader = SPROReader(system_type, None, snapshot_loader=live_cfg.get)
     spro_config_dfs = reader.read_config(module)
     spro_config = {
         t: df.to_dict(orient="records") if not df.empty else []

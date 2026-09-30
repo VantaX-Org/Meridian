@@ -1,0 +1,223 @@
+{
+ "table": "T042",
+ "description": "Parameters for payment transactions",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "BUKRS",
+   "key": true,
+   "data_element": "BUKRS",
+   "domain": "BUKRS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Company Code",
+   "check_table": "T001"
+  },
+  {
+   "pos": 3,
+   "name": "ZBUKR",
+   "key": false,
+   "data_element": "DZBUKR",
+   "domain": "BUKRS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Paying company code",
+   "check_table": "T001"
+  },
+  {
+   "pos": 4,
+   "name": "ULSK1",
+   "key": false,
+   "data_element": "ULSK1",
+   "domain": "CHAR10",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Special G/L Transactions to be Paid (Vendor)",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "ULSK2",
+   "key": false,
+   "data_element": "ULSK2",
+   "domain": "CHAR10",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Special G/L Transactions for Exception List (Vendor)",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "ULSD1",
+   "key": false,
+   "data_element": "ULSD1",
+   "domain": "CHAR10",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Special G/L Transactions to be Paid (customer)",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "ULSD2",
+   "key": false,
+   "data_element": "ULSD2",
+   "domain": "CHAR10",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Special G/L Transactions for Exception List (Customer)",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "XKDFB",
+   "key": false,
+   "data_element": "XKDFB",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Are the Exchange Rate Differences to be Posted?",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "XGBTR",
+   "key": false,
+   "data_element": "XGBTR",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Separate Payments for each Business Area?",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "TOLTG",
+   "key": false,
+   "data_element": "TOLTG_042",
+   "domain": "NUM02",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Tolerance Days for Payables",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "SKTUG",
+   "key": false,
+   "data_element": "SKTUG_042",
+   "domain": "PRZ21",
+   "type": "DEC",
+   "length": 3,
+   "decimals": 1,
+   "description": "Minimum Percentage Rate for Payments with Cash Discount",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "XSKR1",
+   "key": false,
+   "data_element": "XSKR1",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Vendor Payments Always with Maximum Cash Discount",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "ABSBU",
+   "key": false,
+   "data_element": "ABSBU",
+   "domain": "BUKRS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Sending company code",
+   "check_table": "T001"
+  },
+  {
+   "pos": 14,
+   "name": "XUZAW",
+   "key": false,
+   "data_element": "XUZAW",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Usage of Payment Method Supplements",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "XBPTR",
+   "key": false,
+   "data_element": "XBPTR",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Separate Payments per Business Place?",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "XRGUH",
+   "key": false,
+   "data_element": "XBSEC_042Z",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Transfer Bank Details to BSEC",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "ABSBU",
+   "foreign_table": "T001",
+   "foreign_field": "BUKRS"
+  },
+  {
+   "field": "BUKRS",
+   "foreign_table": "T001",
+   "foreign_field": "BUKRS"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "ZBUKR",
+   "foreign_table": "T001",
+   "foreign_field": "BUKRS"
+  }
+ ]
+}

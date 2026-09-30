@@ -19,7 +19,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
-from api.services.rbac import dev_role_override, has_permission, require_permission
+from api.services.rbac import current_user_id, dev_role_override, has_permission, require_permission
 
 router = APIRouter(prefix="/api/v1", tags=["stewardship"])
 
@@ -490,8 +490,13 @@ async def _apply_source_action(
     elif item.item_type == "writeback_approval":
         if action == "approve":
             await db.execute(
-                text("UPDATE cleaning_queue SET status = 'applied', applied_at = now() WHERE id = :sid"),
-                {"sid": item.source_id},
+                # Same semantics as POST /cleaning/apply: the corrected value is
+                # accepted in Meridian (export/load file) with a 72h rollback
+                # window. No SAP write happens here.
+                text("UPDATE cleaning_queue SET status = 'applied', applied_at = now(), "
+                     "rollback_deadline = now() + interval '72 hours', "
+                     "approved_by = COALESCE(approved_by, CAST(:uid AS uuid)) WHERE id = :sid"),
+                {"sid": item.source_id, "uid": current_user_id()},
             )
         elif action == "reject":
             await db.execute(
@@ -512,13 +517,11 @@ async def _execute_merge(
 ) -> None:
     """Approve a merge_decision — consolidate the two matched master records.
 
-    The survivor is the higher-confidence master record; the other is marked
-    ``superseded`` with a master_record_history entry. If golden records don't
-    yet exist for the matched keys the match is still marked reviewed so the
-    queue item resolves cleanly.
+    The survivor is the higher-confidence master record; its blanks are filled
+    from the other, which is marked ``superseded`` (api/services/mdm_merge.py).
+    If golden records don't yet exist for the matched keys the match is still
+    marked reviewed so the queue item resolves cleanly.
     """
-    import json
-
     ms = (
         await db.execute(
             text(
@@ -530,49 +533,16 @@ async def _execute_merge(
     ).fetchone()
 
     if ms is not None:
-        a_key, b_key, domain = ms[0], ms[1], ms[2]
-        recs = (
-            await db.execute(
-                text(
-                    "SELECT id, sap_object_key, overall_confidence "
-                    "FROM master_records "
-                    "WHERE tenant_id = :tid AND domain = :domain "
-                    "  AND sap_object_key IN (:a, :b) AND status <> 'superseded'"
-                ),
-                {"tid": item.tenant_id, "domain": domain, "a": a_key, "b": b_key},
-            )
-        ).fetchall()
+        from api.services.mdm_merge import merge_master_records
 
-        if len(recs) == 2:
-            survivor, loser = sorted(recs, key=lambda r: (r[2] or 0.0), reverse=True)
-            await db.execute(
-                text(
-                    "UPDATE master_records SET status = 'superseded', "
-                    "updated_at = now() WHERE id = :lid AND tenant_id = :tid"
-                ),
-                {"lid": loser[0], "tid": item.tenant_id},
-            )
-            await db.execute(
-                text(
-                    "INSERT INTO master_record_history "
-                    "(id, tenant_id, master_record_id, action, changed_by, "
-                    " changed_at, details) "
-                    "VALUES (gen_random_uuid(), :tid, :mid, "
-                    " 'merged_via_workbench', :uid, now(), CAST(:details AS jsonb))"
-                ),
-                {
-                    "tid": item.tenant_id,
-                    "mid": loser[0],
-                    "uid": user_id,
-                    "details": json.dumps(
-                        {
-                            "merged_into": str(survivor[1]),
-                            "match_score_id": str(item.source_id),
-                            "notes": notes or "",
-                        }
-                    ),
-                },
-            )
+        a_key, b_key, domain = ms[0], ms[1], ms[2]
+        conf = dict((await db.execute(
+            text("SELECT sap_object_key, overall_confidence FROM master_records WHERE tenant_id = :tid "
+                 "AND domain = :d AND sap_object_key IN (:a, :b) AND status <> 'superseded'"),
+            {"tid": item.tenant_id, "d": domain, "a": a_key, "b": b_key})).fetchall())
+        if len(conf) == 2:
+            survivor, merged = sorted((a_key, b_key), key=lambda k: conf[k] or 0.0, reverse=True)
+            await merge_master_records(db, item.tenant_id, domain, survivor, merged, user_id)
 
     # Mark the match reviewed + merged so the queue item resolves.
     await db.execute(

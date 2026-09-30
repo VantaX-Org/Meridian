@@ -1,0 +1,117 @@
+{
+ "table": "T377P",
+ "description": "Serial Number Management Profiles",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "SERAIL",
+   "key": true,
+   "data_element": "SERAIL",
+   "domain": "SERAIL",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Serial Number Profile",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "SERSCHA",
+   "key": false,
+   "data_element": "SERSCHA",
+   "domain": "CHAR18",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Serial Number Template",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "SEREX",
+   "key": false,
+   "data_element": "SEREX",
+   "domain": "X",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Serial Number Existence Requirement",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "EQTYP",
+   "key": false,
+   "data_element": "EQTYP",
+   "domain": "EQTYP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Equipment Category",
+   "check_table": "T370T"
+  },
+  {
+   "pos": 6,
+   "name": "BSTVP",
+   "key": false,
+   "data_element": "BSTVP",
+   "domain": "BSTVP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Stock Check for Serial Numbers",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "IUID_COMPATIBLE",
+   "key": false,
+   "data_element": "IUID_COMPATIBLE",
+   "domain": "UID_COMPATIBLE",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Serial Number Profile Compatible with IUID",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "UID_USED",
+   "key": false,
+   "data_element": "UID_DISPLAY",
+   "domain": "UID_USED",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Displaying UII",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "EQTYP",
+   "foreign_table": "T370T",
+   "foreign_field": "EQTYP"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

@@ -20,7 +20,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
-from api.services.rbac import require_permission, _get_user_role
+from api.services.rbac import current_user_label, require_permission, _get_user_role
 
 router = APIRouter(prefix="/api/v1", tags=["glossary"])
 logger = logging.getLogger("meridian.glossary")
@@ -407,7 +407,7 @@ async def update_glossary_term(
         raise HTTPException(status_code=404, detail="Glossary term not found")
 
     # Resolve user identity for change log
-    user_header = request.headers.get("x-user-id", "unknown")
+    user_header = current_user_label()
     changed_by = user_header
 
     # Build SET clauses and track changes
@@ -463,7 +463,7 @@ async def update_glossary_term(
 
     if body.approved_values is not None:
         import json
-        updates.append("approved_values = :approved_values::jsonb")
+        updates.append("approved_values = CAST(:approved_values AS jsonb)")
         params["approved_values"] = json.dumps(body.approved_values)
         changes.append({
             "field_changed": "approved_values",
@@ -537,7 +537,7 @@ async def review_glossary_term(
     if not row:
         raise HTTPException(status_code=404, detail="Glossary term not found")
 
-    user_header = request.headers.get("x-user-id", "unknown")
+    user_header = current_user_label()
 
     # Update last_reviewed_at
     await db.execute(

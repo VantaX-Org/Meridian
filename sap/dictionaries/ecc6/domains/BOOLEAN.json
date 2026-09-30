@@ -1,0 +1,27 @@
+{
+ "domain": "BOOLEAN",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "X",
+   "high": null,
+   "text": "true"
+  },
+  {
+   "low": "-",
+   "high": null,
+   "text": "false"
+  },
+  {
+   "low": "",
+   "high": null,
+   "text": "unknown"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

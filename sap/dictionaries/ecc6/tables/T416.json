@@ -1,0 +1,124 @@
+{
+ "table": "T416",
+ "description": "BOM Usage - Item Statuses",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "STLAN",
+   "key": true,
+   "data_element": "STLAN",
+   "domain": "STLAN",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "BOM Usage",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "PMPFE",
+   "key": false,
+   "data_element": "PMPFE",
+   "domain": "PLMIPU",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: item relevant to production",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "PMPKO",
+   "key": false,
+   "data_element": "PMPKO",
+   "domain": "PLMIPU",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: item relevant to engineering",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "PMPKA",
+   "key": false,
+   "data_element": "PMPKA",
+   "domain": "PLMIPU",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: item relevant to costing",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "PMPRV",
+   "key": false,
+   "data_element": "PMPRV",
+   "domain": "PLMIPU",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: item relevant to sales & distribution (SD)",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "PMPVS",
+   "key": false,
+   "data_element": "PMPVS",
+   "domain": "PLMIPU",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: item relevant to high-level configuration",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "PMPIN",
+   "key": false,
+   "data_element": "PMPIN",
+   "domain": "PLMIPU",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: item relevant to plant maintenance",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "PMPER",
+   "key": false,
+   "data_element": "PMPER",
+   "domain": "PLMIPU",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: spare part",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

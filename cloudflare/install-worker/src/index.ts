@@ -179,7 +179,6 @@ function buildEnv(
     "AUTH_MODE=local",
     "NEXT_PUBLIC_AUTH_MODE=local",
     "",
-    "SAP_CONNECTOR=mock",
     `CREDENTIAL_MASTER_KEY=${credKey}`,
     "",
   ].join("\n");

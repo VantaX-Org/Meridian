@@ -1,0 +1,27 @@
+{
+ "domain": "LTAP_POSTY",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Normal TO item"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Item with TR character"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "New item added during confirmation"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

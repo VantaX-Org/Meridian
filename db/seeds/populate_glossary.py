@@ -160,7 +160,7 @@ def main():
                     VALUES
                       (:tenant_id, :domain, :sap_table, :sap_field, :technical_name,
                        :business_name, :why_it_matters, :sap_impact,
-                       :approved_values::jsonb, :mandatory_for_s4hana, :rule_authority,
+                       CAST(:approved_values AS jsonb), :mandatory_for_s4hana, :rule_authority,
                        'active', false)
                     ON CONFLICT (tenant_id, sap_table, sap_field) DO NOTHING
                     RETURNING id

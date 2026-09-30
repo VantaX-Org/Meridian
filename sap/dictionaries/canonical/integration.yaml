@@ -1,0 +1,27 @@
+# Cross-system reconciliation extract (module cross_system_integration).
+#
+# One row per object instance per system, produced by comparing the same key
+# across connected systems (ECC ↔ S/4 ↔ EWM ↔ SuccessFactors ↔ MDG). Field
+# types follow the SAP data elements of the same name.
+system: integration
+tables:
+  XSYS:
+    description: Cross-system key reconciliation (one row per object per system)
+    source: Meridian cross-system extract
+    keys: [SOURCE_SYSTEM, OBJECT_TYPE, OBJECT_KEY]
+    fields:
+      SOURCE_SYSTEM: {type: CHAR, length: 36, description: Meridian system id the row was read from}
+      OBJECT_TYPE:   {type: CHAR, length: 30, description: Object type (MATERIAL, VENDOR, CUSTOMER, …)}
+      OBJECT_KEY:    {type: CHAR, length: 70, description: Object key in that system}
+      MATNR:         {type: CHAR, length: 40, description: Material number (MATNR)}
+      LIFNR:         {type: CHAR, length: 10, description: Vendor (LIFNR)}
+      KUNNR:         {type: CHAR, length: 10, description: Customer (KUNNR)}
+      BUKRS:         {type: CHAR, length: 4, description: Company code (BUKRS)}
+      WERKS:         {type: CHAR, length: 4, description: Plant (WERKS)}
+      WAERS:         {type: CUKY, length: 5, description: Currency (WAERS)}
+      KOSTL:         {type: CHAR, length: 10, description: Cost centre (KOSTL)}
+      PERNR:         {type: NUMC, length: 8, description: Personnel number (PERNR)}
+      GJAHR:         {type: NUMC, length: 4, description: Fiscal year (GJAHR)}
+      BELNR:         {type: CHAR, length: 10, description: Accounting document (BELNR)}
+      BUDAT:         {type: DATS, length: 8, description: Posting date (BUDAT)}
+      BLDAT:         {type: DATS, length: 8, description: Document date (BLDAT)}

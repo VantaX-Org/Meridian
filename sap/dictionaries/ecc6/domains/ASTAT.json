@@ -1,0 +1,37 @@
+{
+ "domain": "ASTAT",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No Quotation Exists/Not Created via Sales"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Quotation Exists in Case of RFQ Item"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Created via Production Order"
+  },
+  {
+   "low": "V",
+   "high": null,
+   "text": "Created via Sales document"
+  },
+  {
+   "low": "W",
+   "high": null,
+   "text": "Created via Allocation Table"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

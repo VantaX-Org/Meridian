@@ -1,13 +1,27 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
+import { isAxiosError } from "axios";
 import { PageHead, SectionHeader } from "@/components/meridian/atoms";
 import { Sparkline } from "@/components/meridian/charts";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getVersions } from "@/lib/api/versions";
+import {
+  compareRecordKeys,
+  compareRecords,
+  compareVersions,
+  getVersions,
+  pinBaseline,
+  type RecordDiffCheck,
+} from "@/lib/api/versions";
+import Link from "next/link";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { Banner, Button, Chip, Panel, Select, Stack, Stat, KpiRail, Text, type ChipTone } from "@/components/aurora";
 import { SearchField, matchesSearch } from "@/components/meridian/controls";
-import type { DQSSummary, Version } from "@/types/api";
+import { formatModuleName } from "@/lib/format";
+import type { CheckChange, DQSSummary, Version, VersionComparison } from "@/types/api";
 
 type DisplayStatus = "complete" | "failed" | "running" | "scheduled";
 
@@ -44,6 +58,20 @@ function sumCounts(
   return Object.values(summary).reduce((a, m) => a + ((m[key] as number | undefined) ?? 0), 0);
 }
 
+/** Only the chosen object's summary when one is chosen. */
+function scoped(summary: Record<string, DQSSummary> | null, module?: string): Record<string, DQSSummary> | null {
+  if (!summary || !module) return summary;
+  return summary[module] ? { [module]: summary[module] } : {};
+}
+
+/** The API's own refusal reason (e.g. versions of different systems), else the transport error. */
+function errorText(e: unknown): string {
+  if (isAxiosError<{ detail?: unknown }>(e) && typeof e.response?.data?.detail === "string") return e.response.data.detail;
+  return (e as Error).message;
+}
+
+const findingsHref = (p: Record<string, string>) => `/findings?${new URLSearchParams(p)}`;
+
 function StatusBadge({ status }: { status: DisplayStatus }) {
   const m = STATUS_MAP[status];
   return (
@@ -77,11 +105,25 @@ function formatDuration(start: string, end?: string | null): string {
 }
 
 export default function VersionsPage() {
-  const [selected, setSelected] = useState<string[]>([]);
+  return (
+    <Suspense>
+      <VersionsWorkspace />
+    </Suspense>
+  );
+}
+
+/** The pair being compared, the object and the system live in the URL (?v1=&v2=&module=&system_id=). */
+function VersionsWorkspace() {
+  const params = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const systemId = params.get("system_id") ?? undefined;
+  const object = params.get("module") ?? undefined;
+  const urlPair = [params.get("v1"), params.get("v2")].filter((x): x is string => Boolean(x));
   const [search, setSearch] = useState("");
   const { data, isLoading, error } = useQuery({
-    queryKey: ["versions.list", { limit: 100 }],
-    queryFn: () => getVersions({ limit: 100 }),
+    queryKey: ["versions.list", { limit: 100, system_id: systemId }],
+    queryFn: () => getVersions({ limit: 100, system_id: systemId }),
   });
 
   const versions = useMemo(() => data?.versions ?? [], [data]);
@@ -92,26 +134,45 @@ export default function VersionsPage() {
         .slice(0, 20)
         .slice()
         .reverse()
-        .map((v) => averageDqs(v.dqs_summary))
+        .map((v) => averageDqs(scoped(v.dqs_summary, object)))
         .filter((n): n is number => n !== null),
-    [completed],
+    [completed, object],
   );
 
-  // Seed comparison with two most recent completed versions.
-  const compareDefaults = useMemo(() => completed.slice(0, 2).map((v) => v.id), [completed]);
-  const effSelected = selected.length > 0 ? selected : compareDefaults;
-
-  const a = versions.find((v) => v.id === effSelected[0]);
-  const b = versions.find((v) => v.id === effSelected[1]);
-
-  const toggle = (id: string) => {
-    setSelected((prev) => {
-      const base = prev.length > 0 ? prev : compareDefaults;
-      if (base.includes(id)) return base.filter((x) => x !== id);
-      if (base.length >= 2) return [base[1], id];
-      return [...base, id];
-    });
+  const replace = (patch: Record<string, string | undefined>) => {
+    const q = new URLSearchParams(params.toString());
+    for (const [k, v] of Object.entries(patch)) {
+      if (v) q.set(k, v);
+      else q.delete(k);
+    }
+    router.replace(`${pathname}?${q}`, { scroll: false });
   };
+  const byId = (id: string) => versions.find((v) => v.id === id);
+  /** Older run first, when both runs are in the list. */
+  const ordered = (ids: string[]) => {
+    const [x, y] = ids.map(byId);
+    return x && y && new Date(x.run_at) > new Date(y.run_at) ? [ids[1], ids[0]] : ids;
+  };
+
+  // Seed comparison with the two most recent completed versions (older first).
+  const pair = urlPair.length > 0 ? urlPair : completed.slice(0, 2).map((v) => v.id).reverse();
+  const toggle = (id: string) => {
+    const next = pair.includes(id) ? pair.filter((x) => x !== id) : pair.length >= 2 ? [pair[1], id] : [...pair, id];
+    const [v1, v2] = ordered(next);
+    replace({ v1, v2 });
+  };
+
+  const [id1, id2] = pair.length === 2 ? ordered(pair) : [];
+  const cmp = useQuery({
+    queryKey: ["versions.compare", id1, id2, object],
+    queryFn: () => compareVersions(id1 as string, id2 as string, object),
+    enabled: Boolean(id1 && id2),
+  });
+  const a = (id1 ? byId(id1) : undefined) ?? cmp.data?.v1;
+  const b = (id2 ? byId(id2) : undefined) ?? cmp.data?.v2;
+  const objects = Array.from(new Set([
+    ...Object.keys(a?.dqs_summary ?? {}), ...Object.keys(b?.dqs_summary ?? {}), ...(object ? [object] : []),
+  ])).sort();
 
   if (isLoading) {
     return (
@@ -147,31 +208,48 @@ export default function VersionsPage() {
           </>
         }
         actions={
-          <SearchField value={search} onChange={setSearch} placeholder="Filter runs…" />
+          <>
+            {systemId && (
+              <span data-theme="light">
+                <Chip onDismiss={() => replace({ system_id: undefined })}>system · {systemId.slice(0, 8)}</Chip>
+              </span>
+            )}
+            <SearchField value={search} onChange={setSearch} placeholder="Filter runs…" />
+          </>
         }
       />
 
       <div className="mn-card mn-card-pad" style={{ marginBottom: 18 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <span className="mn-eyebrow">Compare runs · {effSelected.length} selected</span>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <span className="mn-eyebrow">Compare runs · {pair.length} selected</span>
+          <span data-theme="light">
+            <Select aria-label="Object" value={object ?? ""} onValueChange={(v) => replace({ module: v || undefined })}
+              options={[{ value: "", label: "All objects" }, ...objects.map((o) => ({ value: o, label: formatModuleName(o) }))]} />
+          </span>
         </div>
         {a && b ? (
           <div className="mn-compare">
-            <CompareSide v={a} />
-            <CompareDelta a={a} b={b} />
-            <CompareSide v={b} />
+            <CompareSide v={a} module={object} />
+            <CompareDelta older={a} newer={b} module={object} />
+            <CompareSide v={b} module={object} />
           </div>
         ) : (
           <p style={{ color: "var(--mn-ink-500)", marginTop: 12 }}>
-            Tick two completed runs below to compare.
+            {cmp.error ? errorText(cmp.error) : "Tick two completed runs below to compare."}
           </p>
         )}
       </div>
 
+      {a && b && (
+        <ObjectCompare data={cmp.data} error={cmp.error} olderId={a.id} newerId={b.id} />
+      )}
+
+      {a && b && <RecordCompare older={a} newer={b} module={object} />}
+
       {trend.length >= 2 && (
         <div className="mn-card mn-card-pad" style={{ marginBottom: 18 }}>
           <SectionHeader
-            title="DQS across runs"
+            title={object ? `${formatModuleName(object)} DQS across runs` : "DQS across runs"}
             caption={`Last ${trend.length} completed runs · mean ${(trend.reduce((x, y) => x + y, 0) / trend.length).toFixed(1)}`}
           />
           <div style={{ marginTop: 8 }}>
@@ -200,19 +278,19 @@ export default function VersionsPage() {
                 <th className="right">DQS</th>
                 <th className="right">Critical</th>
                 <th className="right">High</th>
-                <th className="right">Records</th>
+                <th className="right">Checks</th>
                 <th>Duration</th>
                 <th>Modules</th>
               </tr>
             </thead>
             <tbody>
               {versions.filter((v) => matchesSearch(v, search)).map((v) => {
-                const inComparison = effSelected.includes(v.id);
+                const inComparison = pair.includes(v.id);
                 const status = mapStatus(v.status);
                 const dqs = averageDqs(v.dqs_summary);
                 const critical = sumCounts(v.dqs_summary, "critical_count");
                 const high = sumCounts(v.dqs_summary, "high_count");
-                const records = sumCounts(v.dqs_summary, "total_checks");
+                const checks = sumCounts(v.dqs_summary, "total_checks");
                 const dur = formatDuration(v.run_at);
                 const modules = v.metadata?.modules ?? [];
                 return (
@@ -262,7 +340,7 @@ export default function VersionsPage() {
                     <td className="right mn-tabular" style={{ color: high > 0 ? "var(--mn-warn)" : "var(--mn-ink-300)" }}>
                       {high}
                     </td>
-                    <td className="right mn-tabular">{records.toLocaleString()}</td>
+                    <td className="right mn-tabular">{checks.toLocaleString()}</td>
                     <td className="mn-tabular" style={{ font: "500 11.5px/1 'JetBrains Mono', monospace", color: "var(--mn-ink-500)" }}>
                       {dur}
                     </td>
@@ -292,10 +370,11 @@ export default function VersionsPage() {
   );
 }
 
-function CompareSide({ v }: { v: Version }) {
-  const dqs = averageDqs(v.dqs_summary);
-  const critical = sumCounts(v.dqs_summary, "critical_count");
-  const records = sumCounts(v.dqs_summary, "total_checks");
+function CompareSide({ v, module }: { v: Version; module?: string }) {
+  const summary = scoped(v.dqs_summary, module);
+  const dqs = averageDqs(summary);
+  const critical = sumCounts(summary, "critical_count");
+  const checks = sumCounts(summary, "total_checks");
   return (
     <div className="mn-compare-side">
       <div className="mn-compare-head">
@@ -308,22 +387,25 @@ function CompareSide({ v }: { v: Version }) {
       <div className="mn-compare-date">{new Date(v.run_at).toLocaleString()}</div>
       <div className="mn-compare-stats">
         <div><span className="mn-eyebrow">DQS</span><span className="v mn-tabular">{dqs?.toFixed(1) ?? "—"}</span></div>
-        <div><span className="mn-eyebrow">Records</span><span className="v mn-tabular">{records.toLocaleString()}</span></div>
+        <div><span className="mn-eyebrow">Checks</span><span className="v mn-tabular">{checks.toLocaleString()}</span></div>
         <div><span className="mn-eyebrow">Critical</span><span className="v mn-tabular" style={{ color: "var(--mn-neg)" }}>{critical}</span></div>
-        <div><span className="mn-eyebrow">Modules</span><span className="v mn-tabular">{Object.keys(v.dqs_summary ?? {}).length}</span></div>
+        <div><span className="mn-eyebrow">Modules</span><span className="v mn-tabular">{Object.keys(summary ?? {}).length}</span></div>
       </div>
     </div>
   );
 }
 
-function CompareDelta({ a, b }: { a: Version; b: Version }) {
-  const da = averageDqs(a.dqs_summary) ?? 0;
-  const db = averageDqs(b.dqs_summary) ?? 0;
+/** Newer minus older. */
+function CompareDelta({ older, newer, module }: { older: Version; newer: Version; module?: string }) {
+  const sa = scoped(newer.dqs_summary, module);
+  const sb = scoped(older.dqs_summary, module);
+  const da = averageDqs(sa) ?? 0;
+  const db = averageDqs(sb) ?? 0;
   const delta = +(da - db).toFixed(1);
-  const cra = sumCounts(a.dqs_summary, "critical_count");
-  const crb = sumCounts(b.dqs_summary, "critical_count");
-  const ha = sumCounts(a.dqs_summary, "high_count");
-  const hb = sumCounts(b.dqs_summary, "high_count");
+  const cra = sumCounts(sa, "critical_count");
+  const crb = sumCounts(sb, "critical_count");
+  const ha = sumCounts(sa, "high_count");
+  const hb = sumCounts(sb, "high_count");
   return (
     <div className="mn-compare-arrow">
       <div className="mn-compare-delta-wrap">
@@ -361,6 +443,176 @@ function CompareDelta({ a, b }: { a: Version; b: Version }) {
           </span>
         </div>
       </div>
+    </div>
+  );
+}
+
+const deltaTone = (n: number | null): ChipTone => (n === null || n === 0 ? "neutral" : n > 0 ? "success" : "danger");
+const signed = (n: number | null) => (n === null ? "—" : `${n > 0 ? "+" : ""}${n.toFixed(1)}`);
+
+/** Per-object DQS and dimension deltas, and the checks that started or stopped failing. */
+function ObjectCompare({
+  data,
+  error,
+  olderId,
+  newerId,
+}: {
+  data: VersionComparison | undefined;
+  error: unknown;
+  olderId: string;
+  newerId: string;
+}) {
+  const dims = Array.from(new Set(Object.values(data?.delta ?? {}).flatMap((d) => Object.keys(d.dimensions ?? {})))).sort();
+  const checkList = (title: string, items: CheckChange[], versionId: string, tone: ChipTone) => (
+    <Stack gap={2}>
+      <Text className="font-semibold">{title} <Chip tone={items.length ? tone : "neutral"}>{items.length}</Chip></Text>
+      {items.length === 0 ? <Text variant="text-small" tone="muted">None.</Text> : (
+        <Stack gap={1}>
+          {items.map((c) => (
+            <Link key={c.check_id} className="text-[13px] underline"
+              href={findingsHref({ version_id: versionId, module: c.module, check_id: c.check_id })}>
+              <span className="font-mono">{c.check_id}</span> · {formatModuleName(c.module)} · {c.severity} ·{" "}
+              {(c.v2_affected || c.v1_affected).toLocaleString()} records
+            </Link>
+          ))}
+        </Stack>
+      )}
+    </Stack>
+  );
+  return (
+    <div data-theme="light" style={{ marginBottom: 18 }}>
+      <Panel title="Object scores">
+        {error ? <Banner tone="danger">{errorText(error)}</Banner> : !data ? <Text tone="muted">Comparing scores…</Text> : (
+          <Stack gap={5}>
+            <div className="overflow-auto">
+              <table className="w-full text-[13px]">
+                <thead className="text-left text-[var(--aurora-fg-tertiary)]">
+                  <tr>
+                    <th className="py-1.5">Object</th><th className="text-right">Older</th><th className="text-right">Newer</th>
+                    <th className="text-right">Δ DQS</th>
+                    {dims.map((d) => <th key={d} className="text-right capitalize">Δ {d}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(data.delta).map(([m, d]) => (
+                    <tr key={m} className="border-t border-[var(--aurora-canvas-line)]">
+                      <td className="py-1.5">
+                        <Link className="underline" href={findingsHref({ version_id: newerId, module: m })}>{formatModuleName(m)}</Link>
+                      </td>
+                      <td className="text-right aurora-number">{d.v1_score.toFixed(1)}</td>
+                      <td className="text-right aurora-number">{d.v2_score.toFixed(1)}</td>
+                      <td className="text-right"><Chip tone={deltaTone(d.dqs_change)}>{signed(d.dqs_change)}</Chip></td>
+                      {dims.map((k) => {
+                        const c = d.dimensions?.[k]?.change ?? null;
+                        return <td key={k} className="text-right"><Chip tone={deltaTone(c)}>{signed(c)}</Chip></td>;
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {checkList("Newly failing checks", data.checks.newly_failing, newerId, "danger")}
+              {checkList("Fixed checks", data.checks.fixed, olderId, "success")}
+            </div>
+            <Text variant="text-small" tone="secondary">
+              A check counts only when it ran cleanly in both runs; a check that errored or was not run in either is left out.
+            </Text>
+          </Stack>
+        )}
+      </Panel>
+    </div>
+  );
+}
+
+type Change = "new" | "resolved" | "persisting";
+
+/** Record-level delta: which SAP records started failing, stopped failing, or still fail. */
+function RecordCompare({ older, newer, module }: { older: Version; newer: Version; module?: string }) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState<{ check: string; change: Change; module: string } | null>(null);
+  const { data, error } = useQuery({
+    queryKey: ["compare.records", older.id, newer.id, module],
+    queryFn: () => compareRecords(newer.id, older.id, module),
+  });
+  const { data: keys } = useQuery({
+    queryKey: ["compare.keys", older.id, newer.id, open],
+    queryFn: () => compareRecordKeys(open!.check, { v1: older.id, v2: newer.id, change: open!.change, limit: 200 }),
+    enabled: Boolean(open),
+  });
+  const pin = useMutation({
+    mutationFn: () => pinBaseline(older.id),
+    onSuccess: () => { toast.success("Pinned as baseline — later runs of this system compare against it by default"); qc.invalidateQueries({ queryKey: ["versions.list"] }); },
+    onError: (e) => toast.error((e as Error).message || "Could not pin the baseline"),
+  });
+  const isBaseline = older.metadata?.baseline === true;
+  const cell = (c: RecordDiffCheck, change: Change, tone: "danger" | "success" | "warning") =>
+    c[change] ? (
+      <button type="button" onClick={() => setOpen({ check: c.check_id, change, module: c.module })}>
+        <Chip tone={tone} selected={open?.check === c.check_id && open.change === change}>{c[change].toLocaleString()}</Chip>
+      </button>
+    ) : <span className="text-[var(--aurora-fg-muted)]">0</span>;
+
+  return (
+    <div data-theme="light" style={{ marginBottom: 18 }}>
+      <Panel title="Record-level change"
+        action={isBaseline ? <Chip tone="info">baseline</Chip> : (
+          <Button size="sm" variant="secondary" disabled={pin.isPending} onClick={() => pin.mutate()}>Pin older run as baseline</Button>
+        )}>
+        {error ? <Banner tone="danger">{errorText(error)}</Banner> : !data ? <Text tone="muted">Comparing failing records…</Text> : (
+          <Stack gap={4}>
+            <KpiRail>
+              <Stat label="Newly failing records" value={data.totals.new.toLocaleString()} tone={data.totals.new ? "danger" : "neutral"} />
+              <Stat label="No longer failing" value={data.totals.resolved.toLocaleString()} tone={data.totals.resolved ? "success" : "neutral"} />
+              <Stat label="Still failing" value={data.totals.persisting.toLocaleString()} tone={data.totals.persisting ? "warning" : "neutral"} />
+            </KpiRail>
+            <Text variant="text-small" tone="secondary">
+              Checks marked &ldquo;not comparable&rdquo; did not run cleanly in both runs (skipped, errored, or more than
+              100,000 failing keys) — their counts are shown but excluded from the totals.
+            </Text>
+            <div className="max-h-[420px] overflow-auto">
+              <table className="w-full text-[13px]">
+                <thead className="sticky top-0 bg-[var(--aurora-elev-1-bg)] text-left text-[var(--aurora-fg-tertiary)]">
+                  <tr><th className="py-1.5">Check</th><th>Module</th><th>Severity</th>
+                    <th className="text-right">New</th><th className="text-right">Resolved</th><th className="text-right">Persisting</th><th /></tr>
+                </thead>
+                <tbody>
+                  {data.checks.filter((c) => c.new || c.resolved || c.persisting).map((c) => (
+                    <tr key={c.check_id} className="border-t border-[var(--aurora-canvas-line)]">
+                      <td className="py-1.5 font-mono">{c.check_id}</td>
+                      <td>{c.module}</td>
+                      <td>{c.severity}</td>
+                      <td className="text-right">{cell(c, "new", "danger")}</td>
+                      <td className="text-right">{cell(c, "resolved", "success")}</td>
+                      <td className="text-right">{cell(c, "persisting", "warning")}</td>
+                      <td className="pl-2">{!c.comparable && <Chip>not comparable</Chip>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {open && keys && (
+              <Stack gap={2}>
+                <Stack direction="row" justify="between" align="center">
+                  <Text className="font-semibold">{open.change} records · <span className="font-mono">{open.check}</span></Text>
+                  <Link className="text-[13px] underline" href={`/issues?${new URLSearchParams({
+                    check_id: open.check, module: open.module,
+                    status: open.change === "resolved" ? "resolved" : "open",
+                    // resolved records failed in the older run; new and persisting ones fail in the newer
+                    version_id: open.change === "resolved" ? older.id : newer.id,
+                  })}`}>
+                    Open in Issues
+                  </Link>
+                </Stack>
+                <Stack direction="row" gap={1} wrap>
+                  {keys.record_keys.map((k) => <Chip key={k}><span className="font-mono">{k}</span></Chip>)}
+                </Stack>
+                {keys.record_keys.length === 200 && <Text variant="text-small" tone="muted">First 200 shown — the Issues work list has all of them.</Text>}
+              </Stack>
+            )}
+          </Stack>
+        )}
+      </Panel>
     </div>
   );
 }

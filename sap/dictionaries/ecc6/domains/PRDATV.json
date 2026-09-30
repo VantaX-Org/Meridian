@@ -1,0 +1,32 @@
+{
+ "domain": "PRDATV",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Proposal based on today's date"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Proposal based on requested dlv.date (header)"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Proposal based on valid-from date (header)"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Proposal based on contract start (header/item)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

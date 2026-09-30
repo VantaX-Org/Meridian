@@ -1,0 +1,47 @@
+{
+ "domain": "STLTY",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "D",
+   "high": null,
+   "text": "Document Structure"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Equipment Bill of Material"
+  },
+  {
+   "low": "K",
+   "high": null,
+   "text": "Order BOM"
+  },
+  {
+   "low": "M",
+   "high": null,
+   "text": "Material BOM"
+  },
+  {
+   "low": "S",
+   "high": null,
+   "text": "Standard BOM"
+  },
+  {
+   "low": "T",
+   "high": null,
+   "text": "Functional Location BOM"
+  },
+  {
+   "low": "P",
+   "high": null,
+   "text": "WBS BOM"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

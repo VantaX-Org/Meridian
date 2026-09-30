@@ -1,0 +1,177 @@
+{
+ "table": "T023",
+ "description": "Material Groups",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "MATKL",
+   "key": true,
+   "data_element": "MATKL",
+   "domain": "MATKL",
+   "type": "CHAR",
+   "length": 9,
+   "decimals": 0,
+   "description": "Material Group",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "SPART",
+   "key": false,
+   "data_element": "SPART",
+   "domain": "SPART",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Division",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "LREF3",
+   "key": false,
+   "data_element": "LREF3",
+   "domain": "LREF3",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Material group-related supply relat. between plants /DEACT.",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "WWGDA",
+   "key": false,
+   "data_element": "WWGDA",
+   "domain": "MATNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Material group reference material",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "WWGPA",
+   "key": false,
+   "data_element": "WWGPA",
+   "domain": "MATNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Material group material",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "ABTNR",
+   "key": false,
+   "data_element": "ABTNR",
+   "domain": "ABTNR",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Department number",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "BEGRU",
+   "key": false,
+   "data_element": "BEGRU",
+   "domain": "BEGRU",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Authorization Group",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "GEWEI",
+   "key": false,
+   "data_element": "GEWEI_V",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Default unit of weight in the material master",
+   "check_table": "T006"
+  },
+  {
+   "pos": 10,
+   "name": "J_1BNBM",
+   "key": false,
+   "data_element": "J_1BNBMCO1",
+   "domain": "STEUC",
+   "type": "CHAR",
+   "length": 16,
+   "decimals": 0,
+   "description": "Brazilian NCM Code",
+   "check_table": "*"
+  },
+  {
+   "pos": 11,
+   "name": "BKLAS",
+   "key": false,
+   "data_element": "BKLAS",
+   "domain": "BKLAS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Valuation Class",
+   "check_table": "*"
+  },
+  {
+   "pos": 12,
+   "name": "EKWSL",
+   "key": false,
+   "data_element": "EKWSL",
+   "domain": "EKWSL",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Purchasing Value Key",
+   "check_table": "*"
+  },
+  {
+   "pos": 13,
+   "name": "ANLKL",
+   "key": false,
+   "data_element": "MEVAK",
+   "domain": "ANLKL",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Default: Asset Class for Creation of Asset",
+   "check_table": "*"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "GEWEI",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

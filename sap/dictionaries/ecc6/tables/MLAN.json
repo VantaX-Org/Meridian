@@ -1,0 +1,187 @@
+{
+ "table": "MLAN",
+ "description": "Tax Classification for Material",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "MATNR",
+   "key": true,
+   "data_element": "MATNR",
+   "domain": "MATNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Material Number",
+   "check_table": "MARA"
+  },
+  {
+   "pos": 3,
+   "name": "ALAND",
+   "key": true,
+   "data_element": "ALAND",
+   "domain": "LAND1",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Departure country (country from which the goods are sent)",
+   "check_table": "T005"
+  },
+  {
+   "pos": 4,
+   "name": "TAXM1",
+   "key": false,
+   "data_element": "TAKLM",
+   "domain": "TAXKM",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Tax Classification of Material",
+   "check_table": "*"
+  },
+  {
+   "pos": 5,
+   "name": "TAXM2",
+   "key": false,
+   "data_element": "TAKLM",
+   "domain": "TAXKM",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Tax Classification of Material",
+   "check_table": "*"
+  },
+  {
+   "pos": 6,
+   "name": "TAXM3",
+   "key": false,
+   "data_element": "TAKLM",
+   "domain": "TAXKM",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Tax Classification of Material",
+   "check_table": "*"
+  },
+  {
+   "pos": 7,
+   "name": "TAXM4",
+   "key": false,
+   "data_element": "TAKLM",
+   "domain": "TAXKM",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Tax Classification of Material",
+   "check_table": "*"
+  },
+  {
+   "pos": 8,
+   "name": "TAXM5",
+   "key": false,
+   "data_element": "TAKLM",
+   "domain": "TAXKM",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Tax Classification of Material",
+   "check_table": "*"
+  },
+  {
+   "pos": 9,
+   "name": "TAXM6",
+   "key": false,
+   "data_element": "TAKLM",
+   "domain": "TAXKM",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Tax Classification of Material",
+   "check_table": "*"
+  },
+  {
+   "pos": 10,
+   "name": "TAXM7",
+   "key": false,
+   "data_element": "TAKLM",
+   "domain": "TAXKM",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Tax Classification of Material",
+   "check_table": "*"
+  },
+  {
+   "pos": 11,
+   "name": "TAXM8",
+   "key": false,
+   "data_element": "TAKLM",
+   "domain": "TAXKM",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Tax Classification of Material",
+   "check_table": "*"
+  },
+  {
+   "pos": 12,
+   "name": "TAXM9",
+   "key": false,
+   "data_element": "TAKLM",
+   "domain": "TAXKM",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Tax Classification of Material",
+   "check_table": "*"
+  },
+  {
+   "pos": 13,
+   "name": "TAXIM",
+   "key": false,
+   "data_element": "TAXIM1",
+   "domain": "TAXIM1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Tax indicator for material (Purchasing)",
+   "check_table": "TMKM1"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "ALAND",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MATNR",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "TAXIM",
+   "foreign_table": "TMKM1",
+   "foreign_field": "TAXIM"
+  }
+ ]
+}

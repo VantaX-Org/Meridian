@@ -1,0 +1,22 @@
+{
+ "domain": "KZAUS",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "1",
+   "high": null,
+   "text": "Single/parallel discontinued part/material"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Dependent parallel discontinued part/material"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

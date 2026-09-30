@@ -62,8 +62,8 @@ def test_discover_common_ztable_rules():
     """The shipped common.yaml must load."""
     rules = discover_ztable_rules()
     ids = {r.get("id") for r in rules}
-    assert "ZT001" in ids  # MARA.ZZ_REACH_COMPLIANT
-    assert "ZT002" in ids  # LFA1.ZZ_SUPPLIER_RISK_SCORE
+    # ZZ_ field meanings are customer-defined: the common pack ships only
+    # rules that hold whatever the customisation (a Z-table's own key)
     assert "ZT003" in ids  # ZPARTNER_EXT.ZPARTNER_ID
     # Every rule is stamped customer-namespace
     assert all(r.get("namespace") == "customer" for r in rules)
@@ -133,8 +133,9 @@ def test_ztable_rule_executes_against_df():
         "MARA.ZZ_REACH_COMPLIANT": ["X", "X", "", "INVALID"],
     })
 
-    rules = discover_ztable_rules()
-    rule = next(r for r in rules if r["id"] == "ZT001")
+    # a tenant rule (checks/rules/ztables/tenant/<tenant>.yaml) on its own ZZ_ field
+    rule = {"id": "ZT-T1", "field": "MARA.ZZ_REACH_COMPLIANT", "check_class": "domain_value_check",
+            "allowed_values": ["", "X"], "severity": "medium", "dimension": "validity", "namespace": "customer"}
 
     result = DomainValueCheck(rule).run(df)
     assert result is not None

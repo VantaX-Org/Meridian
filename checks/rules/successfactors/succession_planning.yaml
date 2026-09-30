@@ -49,62 +49,24 @@ rules:
       Succession candidate {SUCCESSIONCANDIDATE.NOMINEE_ID}: POSITION_ID is missing.
       Assign the target position via the succession planning module.
 
-  - id: SUC003
-    field: SUCCESSIONCANDIDATE.READINESS
-    check_class: domain_value_check
-    allowed_values: ["ready_now", "ready_1_year", "ready_2_years", "not_ready"]
-    severity: high
-    dimension: accuracy
-    message: "Readiness assessment must be a valid category"
-    why_it_matters: >-
-      READINESS drives development plan assignment and bench strength reporting across
-      the organization. Invalid values cause talent review dashboards to show incorrect
-      readiness distribution, leading to flawed workforce planning decisions and
-      misallocated development budgets.
-    rule_authority: customer_configured
-    sap_impact: >-
-      Talent review dashboards show incorrect readiness distribution. Development plan
-      auto-assignment rules fail to trigger for this candidate.
-    valid_values_with_labels:
-      "ready_now": "Ready Now — candidate can assume the target role immediately"
-      "ready_1_year": "Ready in 1 Year — needs targeted development before assuming the role"
-      "ready_2_years": "Ready in 2 Years — longer-term successor requiring significant development"
-      "not_ready": "Not Ready — candidate has potential but requires structured development plan"
-    fix_map:
-      __blank__: >-
-        Assess the nominee's readiness based on their current competency profile and
-        career development plan. Set to the appropriate readiness level via the
-        succession planning module.
-      __other__: >-
-        Readiness '{invalid_value}' is not valid. Use ready_now, ready_1_year,
-        ready_2_years, or not_ready. Update via the succession planning module.
-    record_fix_template: >-
-      Succession candidate {SUCCESSIONCANDIDATE.NOMINEE_ID} for position
-      {SUCCESSIONCANDIDATE.POSITION_ID}: READINESS '{actual_value}' is invalid. Update
-      to a valid readiness level.
 
   - id: SUC004
     field: SUCCESSIONCANDIDATE.RANKING
     check_class: null_check
-    severity: medium
+    severity: low
     dimension: completeness
-    message: "Ranking is required to prioritise candidates for the same position"
-    why_it_matters: >-
-      RANKING determines the order of preference among multiple nominees for the same
-      position. Without it, the succession chart cannot indicate which candidate is the
-      primary successor versus a backup, which is critical information for emergency
-      succession scenarios.
+    message: Ranking is required to prioritise candidates for the same position
+    why_it_matters: RANKING determines the order of preference among multiple nominees for the same position. Without it, the
+      succession chart cannot indicate which candidate is the primary successor versus a backup, which is critical information
+      for emergency succession scenarios.
     rule_authority: best_practice
-    sap_impact: >-
-      Succession chart shows unranked candidates. Priority order unknown for emergency
-      succession. Talent review discussions lack prioritisation data.
+    sap_impact: Succession chart shows unranked candidates. Priority order unknown for emergency succession. Talent review discussions
+      lack prioritisation data.
     fix_map:
-      __blank__: >-
-        Assign a ranking (1 = primary successor, 2 = secondary, etc.) via the
-        succession planning module. Rankings should be unique per position.
-    record_fix_template: >-
-      Succession candidate {SUCCESSIONCANDIDATE.NOMINEE_ID} for position
-      {SUCCESSIONCANDIDATE.POSITION_ID}: RANKING is missing. Assign a priority ranking.
+      __blank__: Assign a ranking (1 = primary successor, 2 = secondary, etc.) via the succession planning module. Rankings
+        should be unique per position.
+    record_fix_template: 'Succession candidate {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}:
+      RANKING is missing. Assign a priority ranking.'
 
   - id: SUC005
     field: SUCCESSIONCANDIDATE.NOMINATED_DATE
@@ -130,69 +92,7 @@ rules:
       {SUCCESSIONCANDIDATE.POSITION_ID}: NOMINATED_DATE is missing. Set via succession
       planning module. Format: YYYY-MM-DD.
 
-  - id: SUC006
-    field: SUCCESSIONCANDIDATE.RISK_OF_LOSS
-    check_class: domain_value_check
-    allowed_values: ["high", "medium", "low"]
-    severity: medium
-    dimension: accuracy
-    message: "Risk of loss must be high, medium, or low"
-    why_it_matters: >-
-      RISK_OF_LOSS indicates the likelihood that the nominee will leave the organisation.
-      This is a critical data point for succession planning — a ready-now successor with
-      high risk of loss requires immediate retention action. Invalid values corrupt the
-      risk heatmap used in talent review sessions.
-    rule_authority: customer_configured
-    sap_impact: >-
-      Talent review risk heatmap shows incorrect data. Retention action plans cannot be
-      prioritised. High-risk successors may not receive retention interventions.
-    valid_values_with_labels:
-      "high": "High — significant risk of departure within 12 months"
-      "medium": "Medium — moderate risk, some retention concerns"
-      "low": "Low — stable, unlikely to leave in near term"
-    fix_map:
-      __blank__: >-
-        Assess the nominee's flight risk based on engagement survey data, market
-        conditions, and manager input. Set to high, medium, or low via the succession
-        planning module.
-      __other__: >-
-        Risk of loss '{invalid_value}' is not valid. Use high, medium, or low. Update
-        via the succession planning module.
-    record_fix_template: >-
-      Succession candidate {SUCCESSIONCANDIDATE.NOMINEE_ID}: RISK_OF_LOSS
-      '{actual_value}' is invalid. Set to high/medium/low.
 
-  - id: SUC007
-    field: SUCCESSIONCANDIDATE.IMPACT_OF_LOSS
-    check_class: domain_value_check
-    allowed_values: ["high", "medium", "low"]
-    severity: medium
-    dimension: accuracy
-    message: "Impact of loss must be high, medium, or low"
-    why_it_matters: >-
-      IMPACT_OF_LOSS measures the organisational impact if the nominee were to leave.
-      Combined with risk of loss, it forms the retention risk matrix used in talent
-      review sessions. Invalid values corrupt the matrix and may cause incorrect
-      prioritisation of retention efforts.
-    rule_authority: customer_configured
-    sap_impact: >-
-      Retention risk matrix shows incorrect data. Talent review sessions lack accurate
-      impact assessment. Retention budget allocation is uninformed.
-    valid_values_with_labels:
-      "high": "High — critical role, very difficult to replace"
-      "medium": "Medium — important role, replacement would take significant effort"
-      "low": "Low — role can be filled relatively quickly"
-    fix_map:
-      __blank__: >-
-        Assess the organisational impact if this nominee were to leave. Consider role
-        criticality, knowledge concentration, and replacement difficulty. Set to high,
-        medium, or low via the succession planning module.
-      __other__: >-
-        Impact of loss '{invalid_value}' is not valid. Use high, medium, or low. Update
-        via the succession planning module.
-    record_fix_template: >-
-      Succession candidate {SUCCESSIONCANDIDATE.NOMINEE_ID}: IMPACT_OF_LOSS
-      '{actual_value}' is invalid. Set to high/medium/low.
 
   - id: SUC008
     field: SUCCESSIONCANDIDATE.NOMINEE_ID
@@ -217,28 +117,6 @@ rules:
       Succession candidate {SUCCESSIONCANDIDATE.NOMINEE_ID}: NOMINEE_ID format invalid
       (value: {actual_value}). Correct to match Employee Central USERID format.
 
-  - id: SUC009
-    field: SUCCESSIONCANDIDATE.NOMINATED_DATE
-    check_class: regex_check
-    pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
-    severity: medium
-    dimension: validity
-    message: "Nomination date must be in YYYY-MM-DD format"
-    why_it_matters: >-
-      ISO 8601 date format is required for succession planning dates to enable correct
-      chronological sorting and freshness calculations. Non-standard formats cause
-      import errors and prevent stale nomination detection.
-    rule_authority: best_practice
-    sap_impact: >-
-      Succession plan import fails. Nomination freshness cannot be calculated.
-      Date-based reporting shows errors.
-    fix_map:
-      __other__: >-
-        Date format '{invalid_value}' is not ISO 8601. Convert to YYYY-MM-DD before
-        importing via the succession planning module.
-    record_fix_template: >-
-      Succession candidate {SUCCESSIONCANDIDATE.NOMINEE_ID}: NOMINATED_DATE format
-      invalid (value: {actual_value}). Convert to YYYY-MM-DD.
 
   - id: SUC010
     field: SUCCESSIONCANDIDATE.NOMINATED_DATE
@@ -267,14 +145,15 @@ rules:
 
   - id: SUC011
     field: SUCCESSIONCANDIDATE.NOMINEE_ID
-    check_class: cross_field_check
-    fields: ['SUCCESSIONCANDIDATE.NOMINEE_ID']
-    condition: "~`SUCCESSIONCANDIDATE.NOMINEE_ID`.duplicated(keep=False)"
+    check_class: uniqueness_check
+    fields: [SUCCESSIONCANDIDATE.NOMINEE_ID, SUCCESSIONCANDIDATE.POSITION_ID]
     severity: medium
     dimension: uniqueness
     message: Duplicate succession nominations detected — same nominee appears multiple times for same position
-    why_it_matters: Duplicate nominations inflate the succession bench strength and distort readiness reporting. Each nominee should appear once per position.
+    why_it_matters: Duplicate nominations inflate the succession bench strength and distort readiness reporting. Each
+      nominee should appear once per position.
     rule_authority: best_practice
-    sap_impact: Bench strength reports are overstated. Talent review calibration is skewed. Development plan resources are wasted on duplicates.
-    fix_map:
-      __blank__: "Review duplicate nominations in Succession > Talent Pool. Remove the duplicate entry and verify readiness rating on the surviving record."
+    sap_impact: Bench strength reports are overstated. Talent review calibration is skewed. Development plan resources
+      are wasted on duplicates.
+    fix_map: {__blank__: Review duplicate nominations in Succession > Talent Pool. Remove the duplicate entry and
+        verify readiness rating on the surviving record.}

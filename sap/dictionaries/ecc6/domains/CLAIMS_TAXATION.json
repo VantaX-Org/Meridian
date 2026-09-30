@@ -1,0 +1,32 @@
+{
+ "domain": "CLAIMS_TAXATION",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Standard Output Tax"
+  },
+  {
+   "low": "0",
+   "high": null,
+   "text": "No Tax Calculation"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Input Tax Processing"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Claims with Output Tax and Reference to Prepayments"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,27 @@
+{
+ "domain": "KKOWK",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Conditions allowed with and without plant"
+  },
+  {
+   "low": "+",
+   "high": null,
+   "text": "Only plant-related conditions allowed"
+  },
+  {
+   "low": "-",
+   "high": null,
+   "text": "No plant-related conditions allowed"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

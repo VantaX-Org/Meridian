@@ -45,3 +45,6 @@ export type { AvatarProps, AvatarSize } from "./avatar";
 
 export { Banner } from "./banner";
 export type { BannerProps, BannerTone } from "./banner";
+
+export { Panel } from "./panel";
+export type { PanelProps } from "./panel";

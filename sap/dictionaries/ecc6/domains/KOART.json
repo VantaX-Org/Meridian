@@ -1,0 +1,37 @@
+{
+ "domain": "KOART",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "Assets"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Customers"
+  },
+  {
+   "low": "K",
+   "high": null,
+   "text": "Vendors"
+  },
+  {
+   "low": "M",
+   "high": null,
+   "text": "Material"
+  },
+  {
+   "low": "S",
+   "high": null,
+   "text": "G/L accounts"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

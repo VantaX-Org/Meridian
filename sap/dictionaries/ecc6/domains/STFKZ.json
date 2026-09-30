@@ -1,0 +1,37 @@
+{
+ "domain": "STFKZ",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "can be maintained in condition record"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Base-scale"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "To-scale"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "not used"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Graduated-to interval scale"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

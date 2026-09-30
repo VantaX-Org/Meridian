@@ -1,0 +1,47 @@
+{
+ "domain": "RR_REVEVTYP_CUST",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Not Event-Related"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Incoming Invoice"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Acceptance Date"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Customer-Specific Event: X"
+  },
+  {
+   "low": "Y",
+   "high": null,
+   "text": "Customer-Specific Event: Y"
+  },
+  {
+   "low": "Z",
+   "high": null,
+   "text": "Customer-Specific Event: Z"
+  },
+  {
+   "low": "N",
+   "high": null,
+   "text": "Not POD-Relevant"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

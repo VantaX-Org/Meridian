@@ -1,0 +1,32 @@
+{
+ "domain": "PRENE",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "Not checked"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Checked: OK"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Checked: long-term declaration exists"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Checked: Not OK"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,247 @@
+{
+ "domain": "KNTYP",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": true,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "$",
+   "high": null,
+   "text": "TaxJurCode trigger  (without license check KNVL)"
+  },
+  {
+   "low": "+",
+   "high": null,
+   "text": "Tax exemption license via conditions"
+  },
+  {
+   "low": "-",
+   "high": null,
+   "text": "Reserved (IS-OIL)"
+  },
+  {
+   "low": "0",
+   "high": null,
+   "text": "Reserved (IS-OIL)"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Tax JurDic level 1 (with license check KNVL)"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Tax JurDic level 2"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Tax JurDic level 3"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Tax JurDic level 4"
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "Customer Reserve 5"
+  },
+  {
+   "low": "6",
+   "high": null,
+   "text": "Customer Reserve 6"
+  },
+  {
+   "low": "7",
+   "high": null,
+   "text": "Customer Reserve 7"
+  },
+  {
+   "low": "8",
+   "high": null,
+   "text": "Customer Reserve 8"
+  },
+  {
+   "low": "9",
+   "high": null,
+   "text": "Customer Reserve 9"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Packaging"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Delivery costs"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Insurance"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Tax"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Cash discount"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Freight"
+  },
+  {
+   "low": "G",
+   "high": null,
+   "text": "Cost"
+  },
+  {
+   "low": "H",
+   "high": null,
+   "text": "Basic price"
+  },
+  {
+   "low": "I",
+   "high": null,
+   "text": "Price for intercompany billing"
+  },
+  {
+   "low": "J",
+   "high": null,
+   "text": "Customer expected price / customer value (excl.tax)"
+  },
+  {
+   "low": "K",
+   "high": null,
+   "text": "Base amount excluding tax"
+  },
+  {
+   "low": "L",
+   "high": null,
+   "text": "Generally new when copying"
+  },
+  {
+   "low": "M",
+   "high": null,
+   "text": "Sales tax w/license-checking (VAT)"
+  },
+  {
+   "low": "N",
+   "high": null,
+   "text": "Sales tax not deductible (VAT)"
+  },
+  {
+   "low": "O",
+   "high": null,
+   "text": "Variants"
+  },
+  {
+   "low": "P",
+   "high": null,
+   "text": "Base amount including tax"
+  },
+  {
+   "low": "Q",
+   "high": null,
+   "text": "Costing"
+  },
+  {
+   "low": "R",
+   "high": null,
+   "text": "Invoice list condition"
+  },
+  {
+   "low": "S",
+   "high": null,
+   "text": "Standard cost"
+  },
+  {
+   "low": "T",
+   "high": null,
+   "text": "Moving cost"
+  },
+  {
+   "low": "U",
+   "high": null,
+   "text": "Discount/surcharge for precious metals"
+  },
+  {
+   "low": "V",
+   "high": null,
+   "text": "Price component"
+  },
+  {
+   "low": "W",
+   "high": null,
+   "text": "Expected sales price (including tax)"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Customer Reserve X"
+  },
+  {
+   "low": "Y",
+   "high": null,
+   "text": "Customer Reserve Y"
+  },
+  {
+   "low": "Z",
+   "high": null,
+   "text": "Customer Reserve Z"
+  },
+  {
+   "low": "a",
+   "high": null,
+   "text": "Reserved (fixed extra pay)"
+  },
+  {
+   "low": "b",
+   "high": null,
+   "text": "Transfer price for group valuation for reporting purposes"
+  },
+  {
+   "low": "c",
+   "high": null,
+   "text": "Transfer price for profit centers"
+  },
+  {
+   "low": "d",
+   "high": null,
+   "text": "Confirmed purchase net price/value"
+  },
+  {
+   "low": "e",
+   "high": null,
+   "text": "Down payment request/down payment clearing"
+  },
+  {
+   "low": "f",
+   "high": null,
+   "text": "Free goods - inclusive"
+  },
+  {
+   "low": "g",
+   "high": null,
+   "text": "Payment"
+  },
+  {
+   "low": "h",
+   "high": null,
+   "text": "Profit Center Cost"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

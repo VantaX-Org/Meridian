@@ -1,0 +1,2367 @@
+{
+ "table": "TVAK",
+ "description": "Sales Document Types",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "AUART",
+   "key": true,
+   "data_element": "AUART",
+   "domain": "AUART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Sales Document Type",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "KOPGR",
+   "key": false,
+   "data_element": "BIFGR",
+   "domain": "BIFGR",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Screen sequence group for document header & item",
+   "check_table": "TVHB"
+  },
+  {
+   "pos": 4,
+   "name": "LFARV",
+   "key": false,
+   "data_element": "LFARV",
+   "domain": "LFART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Default delivery type",
+   "check_table": "TVLK"
+  },
+  {
+   "pos": 5,
+   "name": "FKARV",
+   "key": false,
+   "data_element": "FKARV",
+   "domain": "FKART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Proposed billing type for a delivery-related billing doc.",
+   "check_table": "TVFK"
+  },
+  {
+   "pos": 6,
+   "name": "FKARA",
+   "key": false,
+   "data_element": "FKARA",
+   "domain": "FKART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Proposed billing type for an order-related billing document",
+   "check_table": "TVFK"
+  },
+  {
+   "pos": 7,
+   "name": "NUMKI",
+   "key": false,
+   "data_element": "NUMKI",
+   "domain": "NUMKR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Number range in the case of internal number assignment",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "NUMKE",
+   "key": false,
+   "data_element": "NUMKE",
+   "domain": "NUMKR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Number range in the case of external number assignment",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "INCPO",
+   "key": false,
+   "data_element": "INCPO",
+   "domain": "NUM6",
+   "type": "NUMC",
+   "length": 6,
+   "decimals": 0,
+   "description": "Increment of item number in the SD document",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "UEVOR",
+   "key": false,
+   "data_element": "UEVOR_VA",
+   "domain": "UEVOR_VA",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "F-code default for overview screen",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "AUGRP",
+   "key": false,
+   "data_element": "CHAR2",
+   "domain": "CHAR2",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Version Number Component",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "UMFNG",
+   "key": false,
+   "data_element": "UMFNG",
+   "domain": "UMFNG",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "Display criteria",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "DABAR",
+   "key": false,
+   "data_element": "DABAR",
+   "domain": "ABART",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Default Release Type",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "PARGR",
+   "key": false,
+   "data_element": "PARGR",
+   "domain": "PARGR",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Partner Determination Procedure",
+   "check_table": "TVPG"
+  },
+  {
+   "pos": 15,
+   "name": "FAKSK",
+   "key": false,
+   "data_element": "FAKSP",
+   "domain": "FAKSP",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Lock",
+   "check_table": "TVFS"
+  },
+  {
+   "pos": 16,
+   "name": "LIFSK",
+   "key": false,
+   "data_element": "LIFSK",
+   "domain": "LIFSP",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Delivery block (document header)",
+   "check_table": "TVLS"
+  },
+  {
+   "pos": 17,
+   "name": "TRVOG",
+   "key": false,
+   "data_element": "TRVOG_VA",
+   "domain": "TRVOG_VA",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Transaction group",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "SPAPO",
+   "key": false,
+   "data_element": "SPAPO",
+   "domain": "SPAPO",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Division in Sales Order Item comes from the Material",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "SPAPR",
+   "key": false,
+   "data_element": "SPAPR",
+   "domain": "SPAPR",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Check Division",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "VSTRM",
+   "key": false,
+   "data_element": "VSTRM",
+   "domain": "VSTRM",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Activate delivery scheduling",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "TRTRM",
+   "key": false,
+   "data_element": "TRTRM",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Activate transportation scheduling",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "TXN08",
+   "key": false,
+   "data_element": "TXN08",
+   "domain": "TXN08",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Number of the standard text",
+   "check_table": null
+  },
+  {
+   "pos": 23,
+   "name": "DIAFE",
+   "key": false,
+   "data_element": "DIAUV",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Dialog message for incompletion",
+   "check_table": null
+  },
+  {
+   "pos": 24,
+   "name": "FELDK",
+   "key": false,
+   "data_element": "FELDK",
+   "domain": "FAWGR",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Field Selection Group for Document Header",
+   "check_table": "TVHF"
+  },
+  {
+   "pos": 25,
+   "name": "DATVO",
+   "key": false,
+   "data_element": "DATVO_VAK",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Propose Current Date as Requested Delivery Date",
+   "check_table": null
+  },
+  {
+   "pos": 26,
+   "name": "AWAHR",
+   "key": false,
+   "data_element": "AWAHR_AK",
+   "domain": "AWAHR",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Sales Probability",
+   "check_table": null
+  },
+  {
+   "pos": 27,
+   "name": "VBTYP",
+   "key": false,
+   "data_element": "VBTYP",
+   "domain": "VBTYP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "SD document category",
+   "check_table": null
+  },
+  {
+   "pos": 28,
+   "name": "VSBED",
+   "key": false,
+   "data_element": "VSBED_VAK",
+   "domain": "VSBED",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Shipping conditions",
+   "check_table": "TVSB"
+  },
+  {
+   "pos": 29,
+   "name": "BEZOB",
+   "key": false,
+   "data_element": "BEZOB",
+   "domain": "BEZOB",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Reference is Mandatory",
+   "check_table": null
+  },
+  {
+   "pos": 30,
+   "name": "TXTGR",
+   "key": false,
+   "data_element": "TXTGR",
+   "domain": "TXTGR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Text Determination Procedure",
+   "check_table": "TTXG"
+  },
+  {
+   "pos": 31,
+   "name": "KALVG",
+   "key": false,
+   "data_element": "KALVG",
+   "domain": "KALVG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Document schema for determining calculation schema",
+   "check_table": "TVKV"
+  },
+  {
+   "pos": 32,
+   "name": "ERNAM",
+   "key": false,
+   "data_element": "ERNAM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of Person who Created the Object",
+   "check_table": null
+  },
+  {
+   "pos": 33,
+   "name": "FEHGR",
+   "key": false,
+   "data_element": "FEHGR",
+   "domain": "FEHGR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Incompletion procedure for sales document",
+   "check_table": "TVUV"
+  },
+  {
+   "pos": 34,
+   "name": "INFLS",
+   "key": false,
+   "data_element": "INFLS",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Read customer-material info record ?",
+   "check_table": null
+  },
+  {
+   "pos": 35,
+   "name": "KUNN0",
+   "key": false,
+   "data_element": "KUNN0",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Customer number ZERO (0) allowed",
+   "check_table": null
+  },
+  {
+   "pos": 36,
+   "name": "KLIMP",
+   "key": false,
+   "data_element": "KLIMP",
+   "domain": "KLIMP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Check credit limit",
+   "check_table": null
+  },
+  {
+   "pos": 37,
+   "name": "KALSM",
+   "key": false,
+   "data_element": "KALSMB",
+   "domain": "KALSM",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Output determination procedure",
+   "check_table": "T683"
+  },
+  {
+   "pos": 38,
+   "name": "KAPPL",
+   "key": false,
+   "data_element": "NA_KAPPL",
+   "domain": "KAPPL",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Application for output conditions",
+   "check_table": "T681A"
+  },
+  {
+   "pos": 39,
+   "name": "KSCHL",
+   "key": false,
+   "data_element": "NA_KSCHL",
+   "domain": "KSCHL",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Output Type",
+   "check_table": "*"
+  },
+  {
+   "pos": 40,
+   "name": "SPERR",
+   "key": false,
+   "data_element": "SPEVB",
+   "domain": "SPEVB",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Sales document block",
+   "check_table": null
+  },
+  {
+   "pos": 41,
+   "name": "STGAK",
+   "key": false,
+   "data_element": "STGAK",
+   "domain": "STGVB",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Statistics group for sales document type",
+   "check_table": "TVSF"
+  },
+  {
+   "pos": 42,
+   "name": "KALSU",
+   "key": false,
+   "data_element": "KALSU",
+   "domain": "KALSM",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Procedure for material determination",
+   "check_table": "T683"
+  },
+  {
+   "pos": 43,
+   "name": "KALLI",
+   "key": false,
+   "data_element": "KALLI",
+   "domain": "KALSM",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Procedure for material listing",
+   "check_table": "T683"
+  },
+  {
+   "pos": 44,
+   "name": "KALAU",
+   "key": false,
+   "data_element": "KALAU",
+   "domain": "KALSM",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Procedure for material exclusion",
+   "check_table": "T683"
+  },
+  {
+   "pos": 45,
+   "name": "FKAIV",
+   "key": false,
+   "data_element": "FKAIV",
+   "domain": "FKART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Billing type for intercompany billing",
+   "check_table": "TVFK"
+  },
+  {
+   "pos": 46,
+   "name": "CMGRA",
+   "key": false,
+   "data_element": "CMGRA",
+   "domain": "CRMGR_CM",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Credit Group for Sales Order",
+   "check_table": "T691D"
+  },
+  {
+   "pos": 47,
+   "name": "OBJART_HIN",
+   "key": false,
+   "data_element": "SDOBJARTH",
+   "domain": "SADC10_DV",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Archiving document type when you create a document",
+   "check_table": "TOADV"
+  },
+  {
+   "pos": 48,
+   "name": "OBJART_VER",
+   "key": false,
+   "data_element": "SDOBJARTV",
+   "domain": "SADC10_DV",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Archiving document type used when you change a document",
+   "check_table": "TOADV"
+  },
+  {
+   "pos": 49,
+   "name": "HITYP_PR",
+   "key": false,
+   "data_element": "HITYP_PR",
+   "domain": "HITYP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Hierarchy type for pricing",
+   "check_table": "THIT"
+  },
+  {
+   "pos": 50,
+   "name": "ABRVW",
+   "key": false,
+   "data_element": "ABRVW",
+   "domain": "ABRVW",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Usage Indicator",
+   "check_table": "TVLV"
+  },
+  {
+   "pos": 51,
+   "name": "ABDIS",
+   "key": false,
+   "data_element": "ABDIS",
+   "domain": "ABRAB",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "MRP for Release Types",
+   "check_table": null
+  },
+  {
+   "pos": 52,
+   "name": "KPRGBZ",
+   "key": false,
+   "data_element": "PRGRS",
+   "domain": "PRGRS",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Date type (day, week, month, interval)",
+   "check_table": null
+  },
+  {
+   "pos": 53,
+   "name": "PRDATV",
+   "key": false,
+   "data_element": "PRDATV",
+   "domain": "PRDATV",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Proposed pricing date based on the requested dlv.date",
+   "check_table": null
+  },
+  {
+   "pos": 54,
+   "name": "VLAUF",
+   "key": false,
+   "data_element": "VLAUF",
+   "domain": "DEC2",
+   "type": "DEC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Lead time in days",
+   "check_table": null
+  },
+  {
+   "pos": 55,
+   "name": "GUEBGV",
+   "key": false,
+   "data_element": "GUEBGV",
+   "domain": "GUEBGV",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Proposed valid-from date",
+   "check_table": null
+  },
+  {
+   "pos": 56,
+   "name": "VTERL",
+   "key": false,
+   "data_element": "VTERL",
+   "domain": "VCOPY",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Contract data allowed for sales document type",
+   "check_table": null
+  },
+  {
+   "pos": 57,
+   "name": "HNWAG",
+   "key": false,
+   "data_element": "HNWAG",
+   "domain": "HNWAG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "On/off switch for messages about quotations",
+   "check_table": null
+  },
+  {
+   "pos": 58,
+   "name": "HNWKM",
+   "key": false,
+   "data_element": "HNWKM",
+   "domain": "HNWKM",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "On/off switch for messages about outline agreements",
+   "check_table": null
+  },
+  {
+   "pos": 59,
+   "name": "STSMA",
+   "key": false,
+   "data_element": "J_STSMA",
+   "domain": "J_STSMA",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Status Profile",
+   "check_table": "TJ20"
+  },
+  {
+   "pos": 60,
+   "name": "LISOF",
+   "key": false,
+   "data_element": "LISOF",
+   "domain": "LISOF",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Create delivery immediately",
+   "check_table": null
+  },
+  {
+   "pos": 61,
+   "name": "AUARA",
+   "key": false,
+   "data_element": "AUARA",
+   "domain": "AUART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Proposal for order type for the subsequent function",
+   "check_table": "TVAK"
+  },
+  {
+   "pos": 62,
+   "name": "KORLI",
+   "key": false,
+   "data_element": "KORLI",
+   "domain": "LFART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Delivery type for correction deliveries",
+   "check_table": "TVLK"
+  },
+  {
+   "pos": 63,
+   "name": "VPROF",
+   "key": false,
+   "data_element": "VPROF",
+   "domain": "VPROF",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Profile with default values for contract data",
+   "check_table": "TVVD"
+  },
+  {
+   "pos": 64,
+   "name": "AUFAK",
+   "key": false,
+   "data_element": "AUFAK",
+   "domain": "AUART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Order Type for Billing Request",
+   "check_table": "TVAK"
+  },
+  {
+   "pos": 65,
+   "name": "DIAPA",
+   "key": false,
+   "data_element": "DIAPA",
+   "domain": "DIAPA",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Dialog message for product attribute",
+   "check_table": null
+  },
+  {
+   "pos": 66,
+   "name": "FPART",
+   "key": false,
+   "data_element": "FPART",
+   "domain": "FPART",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Billing plan/invoice plan type",
+   "check_table": "TFPLA"
+  },
+  {
+   "pos": 67,
+   "name": "KSCHL_KO",
+   "key": false,
+   "data_element": "KSCHL_KO",
+   "domain": "KSCHL",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Condition type for copying costs from line items",
+   "check_table": "T685"
+  },
+  {
+   "pos": 68,
+   "name": "EXCOK",
+   "key": false,
+   "data_element": "EXCOK",
+   "domain": "EXCOK",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Carry out legal control for sales document type",
+   "check_table": null
+  },
+  {
+   "pos": 69,
+   "name": "EXMOD",
+   "key": false,
+   "data_element": "EXMOD",
+   "domain": "EXMOD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Time interval for legal control",
+   "check_table": null
+  },
+  {
+   "pos": 70,
+   "name": "KSKPF",
+   "key": false,
+   "data_element": "KSKPF",
+   "domain": "KALSM",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Pricing procedure for contract conditions at header level",
+   "check_table": "T683"
+  },
+  {
+   "pos": 71,
+   "name": "KSPOS",
+   "key": false,
+   "data_element": "KSPOS",
+   "domain": "KALSM",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Pricing procedure for contract conditions at item level",
+   "check_table": "T683"
+  },
+  {
+   "pos": 72,
+   "name": "LIFSM",
+   "key": false,
+   "data_element": "LIFSM",
+   "domain": "LIFSP",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Delivery block",
+   "check_table": "TVLS"
+  },
+  {
+   "pos": 73,
+   "name": "FKTKT",
+   "key": false,
+   "data_element": "FKTKT",
+   "domain": "KTAAR",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Activity Type for Follow-Up Processing",
+   "check_table": "TVKK"
+  },
+  {
+   "pos": 74,
+   "name": "EXDIA",
+   "key": false,
+   "data_element": "EXDIA",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Automatic dialog in document for legal control",
+   "check_table": null
+  },
+  {
+   "pos": 75,
+   "name": "ABGRU_IN",
+   "key": false,
+   "data_element": "ABGRU_IN",
+   "domain": "ABGRU_VA",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Reason for rejection, internally assigned by system",
+   "check_table": "TVAG"
+  },
+  {
+   "pos": 76,
+   "name": "PRBST",
+   "key": false,
+   "data_element": "PRBST",
+   "domain": "PRBST",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Check purchase order number",
+   "check_table": null
+  },
+  {
+   "pos": 77,
+   "name": "SCHEME_GRP",
+   "key": false,
+   "data_element": "SCHEME_GRP",
+   "domain": "SCHEME_GRP",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Referencing requirement: Procedure",
+   "check_table": "TVGRPS"
+  },
+  {
+   "pos": 78,
+   "name": "HNWGK",
+   "key": false,
+   "data_element": "HNWGK",
+   "domain": "HNWGK",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "On/off switch for master contract messages",
+   "check_table": null
+  },
+  {
+   "pos": 79,
+   "name": "PUSH_GRP",
+   "key": false,
+   "data_element": "PUSH_GRP",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Update lower level contract - on/off",
+   "check_table": null
+  },
+  {
+   "pos": 80,
+   "name": "ABRUF_PART",
+   "key": false,
+   "data_element": "ABRUF_PART",
+   "domain": "ABRUF_PART",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Check partner authorizations",
+   "check_table": null
+  },
+  {
+   "pos": 81,
+   "name": "RPART",
+   "key": false,
+   "data_element": "RPART",
+   "domain": "FPART",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Payment card plan type",
+   "check_table": "TFPLA"
+  },
+  {
+   "pos": 82,
+   "name": "AKTFI",
+   "key": false,
+   "data_element": "AKTFI",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Promo determination",
+   "check_table": null
+  },
+  {
+   "pos": 83,
+   "name": "VBKLT",
+   "key": false,
+   "data_element": "VBKLT_VA",
+   "domain": "VBKLT_VA",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Sales document indicator (for display in TVAK only)",
+   "check_table": null
+  },
+  {
+   "pos": 84,
+   "name": "J_1BNFTYPE",
+   "key": false,
+   "data_element": "J_1BNFTYPE",
+   "domain": "J_1BNFTYPE",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Nota Fiscal Type",
+   "check_table": "J_1BAA"
+  },
+  {
+   "pos": 85,
+   "name": "INCUP",
+   "key": false,
+   "data_element": "INCUP",
+   "domain": "NUM6",
+   "type": "NUMC",
+   "length": 6,
+   "decimals": 0,
+   "description": "Increment of sub-item number in sales document",
+   "check_table": null
+  },
+  {
+   "pos": 86,
+   "name": "BABSS",
+   "key": false,
+   "data_element": "BABSSCH_CM",
+   "domain": "BABSSCH_CM",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Document payment guarantee procedure",
+   "check_table": "T691R"
+  },
+  {
+   "pos": 87,
+   "name": "EMPFI",
+   "key": false,
+   "data_element": "EMPFI",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Receiving point determination",
+   "check_table": null
+  },
+  {
+   "pos": 88,
+   "name": "DELCF",
+   "key": false,
+   "data_element": "DELCF",
+   "domain": "DELCF",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Commitment dates switch for calculation rule",
+   "check_table": null
+  },
+  {
+   "pos": 89,
+   "name": "CCPGR",
+   "key": false,
+   "data_element": "CCPGA",
+   "domain": "CCPGA",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Payment cards: Checking group - Sales document",
+   "check_table": "TVCAA"
+  },
+  {
+   "pos": 90,
+   "name": "EXCBC",
+   "key": false,
+   "data_element": "EXCBC",
+   "domain": "DIAEX",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Boycott list check of standard partners f.Foreign Trade - On",
+   "check_table": null
+  },
+  {
+   "pos": 91,
+   "name": "EXCEM",
+   "key": false,
+   "data_element": "EXCEM",
+   "domain": "DIAEX",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Embargo check of standard partners for Foreign Trade - On",
+   "check_table": null
+  },
+  {
+   "pos": 92,
+   "name": "EXCLG",
+   "key": false,
+   "data_element": "EXCLG",
+   "domain": "EXCLG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Save legal control log",
+   "check_table": null
+  },
+  {
+   "pos": 93,
+   "name": "HNWK2",
+   "key": false,
+   "data_element": "HNWK2",
+   "domain": "HNWK2",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Add ref. to all contracts partner is authorized to release",
+   "check_table": null
+  },
+  {
+   "pos": 94,
+   "name": "EXTNR_RMA",
+   "key": false,
+   "data_element": "RMA_EXTNR",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Use document number to enter external PO number",
+   "check_table": null
+  },
+  {
+   "pos": 95,
+   "name": "TDID",
+   "key": false,
+   "data_element": "TDID",
+   "domain": "TDID",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Text ID",
+   "check_table": "*"
+  },
+  {
+   "pos": 96,
+   "name": "AAUART1",
+   "key": false,
+   "data_element": "AAUART",
+   "domain": "AUART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Alternative sales document type",
+   "check_table": "*"
+  },
+  {
+   "pos": 97,
+   "name": "AAUART2",
+   "key": false,
+   "data_element": "AAUART",
+   "domain": "AUART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Alternative sales document type",
+   "check_table": "*"
+  },
+  {
+   "pos": 98,
+   "name": "RFPA_SW",
+   "key": false,
+   "data_element": "RFPA_SW",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Route schedule switch for order types",
+   "check_table": null
+  },
+  {
+   "pos": 99,
+   "name": "VARIANT",
+   "key": false,
+   "data_element": "TCVARIANT",
+   "domain": "UTCVARIANT",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Transaction variant",
+   "check_table": "SHDTVCIU"
+  },
+  {
+   "pos": 100,
+   "name": "ATPGM",
+   "key": false,
+   "data_element": "ATPGM",
+   "domain": "ATPGM",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Type of group calls for the availability check",
+   "check_table": null
+  },
+  {
+   "pos": 101,
+   "name": "VERLI",
+   "key": false,
+   "data_element": "VERLI",
+   "domain": "VERLI",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Procedure for material listing",
+   "check_table": null
+  },
+  {
+   "pos": 102,
+   "name": "TENUR",
+   "key": false,
+   "data_element": "TENUR",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Carry out backwards delivery scheduling only",
+   "check_table": null
+  },
+  {
+   "pos": 103,
+   "name": "J_1AFCTYPE",
+   "key": false,
+   "data_element": "J_1AFCTYP",
+   "domain": "J_1AFCTYP",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Category of Credit Memo Billing Document",
+   "check_table": null
+  },
+  {
+   "pos": 104,
+   "name": "FAUPR",
+   "key": false,
+   "data_element": "FAUPR",
+   "domain": "FAUPR",
+   "type": "CHAR",
+   "length": 14,
+   "decimals": 0,
+   "description": "Shipment Cost Information Profile",
+   "check_table": "TVFAP"
+  },
+  {
+   "pos": 105,
+   "name": "PVBSM",
+   "key": false,
+   "data_element": "PVBSM",
+   "domain": "PVBSM",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Document procedure for determining product proposal proced.",
+   "check_table": "TPVV"
+  },
+  {
+   "pos": 106,
+   "name": "BPROC",
+   "key": false,
+   "data_element": "BPROC",
+   "domain": "BPROC",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "ATP: Business Transaction for RBA",
+   "check_table": "TVBPROC"
+  },
+  {
+   "pos": 107,
+   "name": "ERMAT",
+   "key": false,
+   "data_element": "ERMAT",
+   "domain": "ERMAT",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Material entry control",
+   "check_table": null
+  },
+  {
+   "pos": 108,
+   "name": "BSTVO",
+   "key": false,
+   "data_element": "BSTVO",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Propose current date as purchase order date",
+   "check_table": null
+  },
+  {
+   "pos": 109,
+   "name": "EXTCONT",
+   "key": false,
+   "data_element": "/CBAD/EXTCONT",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Advanced Order Processing and Billing",
+   "check_table": null
+  },
+  {
+   "pos": 110,
+   "name": "KSCHL_BUDGET",
+   "key": false,
+   "data_element": "/CBAD/KSCHL_BUDGET",
+   "domain": "KSCHL",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Condition Budget",
+   "check_table": "*"
+  },
+  {
+   "pos": 111,
+   "name": "KSCHL_CAPS",
+   "key": false,
+   "data_element": "/CBAD/KSCHL_CAPS",
+   "domain": "KSCHL",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Condition Caps",
+   "check_table": "*"
+  },
+  {
+   "pos": 112,
+   "name": "MSR_ACTIVE",
+   "key": false,
+   "data_element": "MSR_ACTIVE",
+   "domain": "MSR_ACTIVE",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Advanced Returns Management Active",
+   "check_table": null
+  },
+  {
+   "pos": 113,
+   "name": "MSR_NEXT_NUMBER",
+   "key": false,
+   "data_element": "MSR_GET_NEXT_NUMBER",
+   "domain": "MSR_GET_NEXT_NUMBER",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Determination of Returns Order Number",
+   "check_table": null
+  },
+  {
+   "pos": 114,
+   "name": "MSR_AUARA",
+   "key": false,
+   "data_element": "MSR_AUARA",
+   "domain": "AUART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Default Credit Memo Request Order Type",
+   "check_table": "TVAK"
+  },
+  {
+   "pos": 115,
+   "name": "MSR_BILLING_BLK",
+   "key": false,
+   "data_element": "MSR_BILLING_BLOCK",
+   "domain": "FAKSP",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Billing Block",
+   "check_table": "TVFS"
+  },
+  {
+   "pos": 116,
+   "name": "MSR_CM_IMMEDIATE",
+   "key": false,
+   "data_element": "MSR_CM_IMMEDIATELY",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Create Credit Memo Automatically",
+   "check_table": null
+  },
+  {
+   "pos": 117,
+   "name": "MSR_LFART",
+   "key": false,
+   "data_element": "MSR_LFART",
+   "domain": "LFART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Default Delivery Type for Send Back to Customer",
+   "check_table": "TVLK"
+  },
+  {
+   "pos": 118,
+   "name": "FCS_ACTIVE",
+   "key": false,
+   "data_element": "FCS_ACTIVE",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Full Text Search for Sold-To Party Active",
+   "check_table": null
+  },
+  {
+   "pos": 119,
+   "name": "MSR_DELIVERY_BLK",
+   "key": false,
+   "data_element": "MSR_DELIVERY_BLOCK",
+   "domain": "LIFSP",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Delivery Block",
+   "check_table": "TVLS"
+  },
+  {
+   "pos": 120,
+   "name": "MSR_SDF_AUART",
+   "key": false,
+   "data_element": "MSR_REPLACEMENT_AUART",
+   "domain": "AUART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Sales Document Type for Subsequent Delivery Free of Charge",
+   "check_table": "TVAK"
+  },
+  {
+   "pos": 121,
+   "name": "RDP_PROFILE",
+   "key": false,
+   "data_element": "LOGTRM_RDP_PROFILE",
+   "domain": "LOGTRM_RDP_PROFILE",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Risk Distribution Plan Profile",
+   "check_table": "L2TC_RDP_PROFILE"
+  },
+  {
+   "pos": 122,
+   "name": "FKART_MEV_POST",
+   "key": false,
+   "data_element": "FKART_MEV_POST",
+   "domain": "FKART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Billing Type for Period-End Posting",
+   "check_table": "TVFK"
+  },
+  {
+   "pos": 123,
+   "name": "FKART_MEV_POST_IB",
+   "key": false,
+   "data_element": "FKART_MEV_POST_IB",
+   "domain": "FKART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Billing Type for Period-End Posting (ICB)",
+   "check_table": "TVFK"
+  },
+  {
+   "pos": 125,
+   "name": "VCLASSIFIC",
+   "key": false,
+   "data_element": "/SAPHT/SW_CONTRCLASS",
+   "domain": "/SAPHT/SW_CONTRCLASS",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Contract classification SD customizing",
+   "check_table": null
+  },
+  {
+   "pos": 126,
+   "name": "KALPG",
+   "key": false,
+   "data_element": "/SAPHT/SW_KALPG",
+   "domain": "KALSM",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Product List eligibility: Procedure for product lists",
+   "check_table": "*"
+  },
+  {
+   "pos": 127,
+   "name": "KALVL",
+   "key": false,
+   "data_element": "/SAPHT/SW_KALVL",
+   "domain": "KALSM",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Procedure for material listing",
+   "check_table": "*"
+  },
+  {
+   "pos": 130,
+   "name": "/SAPMP/PDACT",
+   "key": false,
+   "data_element": "/SAPMP/PDACT",
+   "domain": "/SAPMP/PDACT",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Activate Inheritance",
+   "check_table": null
+  },
+  {
+   "pos": 131,
+   "name": "/SAPMP/PPROT",
+   "key": false,
+   "data_element": "/SAPMP/PPROT",
+   "domain": "/SAPMP/PPROT",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Log of Inheritance",
+   "check_table": null
+  },
+  {
+   "pos": 132,
+   "name": "/SAPMP/PUSER",
+   "key": false,
+   "data_element": "/SAPMP/PUSER",
+   "domain": "/SAPMP/PUSER",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Inheritance: Overwrite User Values",
+   "check_table": null
+  },
+  {
+   "pos": 133,
+   "name": "/SAPMP/PAUSW",
+   "key": false,
+   "data_element": "/SAPMP/PAUSW",
+   "domain": "/SAPMP/PAUSW",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Inheritance of Characteristics Selection List",
+   "check_table": null
+  },
+  {
+   "pos": 134,
+   "name": "/SAPMP/GAUF",
+   "key": false,
+   "data_element": "/SAPMP/GAUF",
+   "domain": "/SAPMP/GAUF",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Global/Local Group May Be Undone",
+   "check_table": null
+  },
+  {
+   "pos": 136,
+   "name": "AD01AURET",
+   "key": false,
+   "data_element": "AD01AURET",
+   "domain": "AUART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Order type billing request for retroactive billing",
+   "check_table": "TVAK"
+  },
+  {
+   "pos": 138,
+   "name": "AD04NUMFLG",
+   "key": false,
+   "data_element": "AD04NUMFLG",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Document type relevant for numbering",
+   "check_table": null
+  },
+  {
+   "pos": 140,
+   "name": "KALGT",
+   "key": false,
+   "data_element": "KALGT",
+   "domain": "KALSM",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Procedure for GTIN Mapping",
+   "check_table": "T683"
+  },
+  {
+   "pos": 142,
+   "name": "UNITSALE",
+   "key": false,
+   "data_element": "HB_UNTSALE",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Unit Sales",
+   "check_table": null
+  },
+  {
+   "pos": 143,
+   "name": "CPFREE",
+   "key": false,
+   "data_element": "HB_CPFREE",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Suppress Copy Control",
+   "check_table": null
+  },
+  {
+   "pos": 144,
+   "name": "NO_BUTTON",
+   "key": false,
+   "data_element": "NO_BUTTON",
+   "domain": "NO_BUTTON",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Number of Generate Button in Browser",
+   "check_table": null
+  },
+  {
+   "pos": 146,
+   "name": "XZEROORDER",
+   "key": false,
+   "data_element": "ISM_ZEROORDER",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "IS-M: Generate Order with Quantity 0",
+   "check_table": null
+  },
+  {
+   "pos": 147,
+   "name": "XASSORTMENT",
+   "key": false,
+   "data_element": "XASSORTMENT",
+   "domain": "XASSORTMENT",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "IS-M: Allowed Contract Type for Assortments (Retail)",
+   "check_table": null
+  },
+  {
+   "pos": 148,
+   "name": "ISM_CONTRACT",
+   "key": false,
+   "data_element": "ISM_CONTRACT",
+   "domain": "ISM_CONTRACT",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "IS-M: Contract Usage",
+   "check_table": null
+  },
+  {
+   "pos": 149,
+   "name": "ISM_WERKSDET",
+   "key": false,
+   "data_element": "ISM_WERKSDET",
+   "domain": "ISM_WERKSDET",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Plant Determination Type in Order",
+   "check_table": null
+  },
+  {
+   "pos": 152,
+   "name": "J_3GKBAUL",
+   "key": false,
+   "data_element": "J_3GKBAUL",
+   "domain": "J_3GKBAUL",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "ETM-Relevant Indicator",
+   "check_table": null
+  },
+  {
+   "pos": 155,
+   "name": "MILL_SE_ATNAM",
+   "key": false,
+   "data_element": "MILL_SE_ATNAM1",
+   "domain": "ATNAM",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Characteristic name",
+   "check_table": null
+  },
+  {
+   "pos": 157,
+   "name": "OIPIPEVAL",
+   "key": false,
+   "data_element": "OID_PIPEV",
+   "domain": "X",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Validation indicator for pipeline fields (X=ON, blank=OFF)",
+   "check_table": null
+  },
+  {
+   "pos": 158,
+   "name": "OIISOILPD",
+   "key": false,
+   "data_element": "OID_BYPASS",
+   "domain": "OI0_SELKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "IS-Oil plant determination indicator:  x=yes   blank=no",
+   "check_table": null
+  },
+  {
+   "pos": 159,
+   "name": "OICSEGI",
+   "key": false,
+   "data_element": "OIA_CSEGI",
+   "domain": "OIA_CSEGI",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Quantity schedule creation permitted",
+   "check_table": null
+  },
+  {
+   "pos": 160,
+   "name": "OIMSG_PRD",
+   "key": false,
+   "data_element": "OIDMSG_PRD",
+   "domain": "OIDMSG_PRD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Message type for product with contract restrictions",
+   "check_table": null
+  },
+  {
+   "pos": 161,
+   "name": "OIMSG_SHP",
+   "key": false,
+   "data_element": "OIDMSG_SHP",
+   "domain": "OIDMSG_PRD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Message type for contract restrictions ship-to party",
+   "check_table": null
+  },
+  {
+   "pos": 162,
+   "name": "OIMSG_QTY",
+   "key": false,
+   "data_element": "OIDMSG_QTY",
+   "domain": "OIDMSG_PRD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Message type for contract restrictions quantity",
+   "check_table": null
+  },
+  {
+   "pos": 163,
+   "name": "OIMSG_TRM",
+   "key": false,
+   "data_element": "OIDMSG_TRM",
+   "domain": "OIDMSG_PRD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Message type for contract restrictions payment terms",
+   "check_table": null
+  },
+  {
+   "pos": 164,
+   "name": "OIMSG_DAT",
+   "key": false,
+   "data_element": "OIDMSG_DAT",
+   "domain": "OIDMSG_PRD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Message type for contract restrictions validity period",
+   "check_table": null
+  },
+  {
+   "pos": 165,
+   "name": "OIMSG_UOM",
+   "key": false,
+   "data_element": "OIDMSG_UOM",
+   "domain": "OIDMSG_PRD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Message type for contract restrictions unit of measure",
+   "check_table": null
+  },
+  {
+   "pos": 166,
+   "name": "OIPRTFNC",
+   "key": false,
+   "data_element": "OID_PTRFNC",
+   "domain": "PARVW",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Partner function",
+   "check_table": "TPAR"
+  },
+  {
+   "pos": 167,
+   "name": "OIFCONTI",
+   "key": false,
+   "data_element": "OIF_CONTI",
+   "domain": "OIF_CONTI",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "IS-Oil MRN indicator for additional contract data",
+   "check_table": null
+  },
+  {
+   "pos": 168,
+   "name": "OICFKARTDI",
+   "key": false,
+   "data_element": "OICFKARTDI",
+   "domain": "FKART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Differential invoice billing type proposal",
+   "check_table": "TVFK"
+  },
+  {
+   "pos": 169,
+   "name": "OIPARVW1",
+   "key": false,
+   "data_element": "PARVW",
+   "domain": "PARVW",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Partner Role",
+   "check_table": "TPAR"
+  },
+  {
+   "pos": 170,
+   "name": "OIPARVW2",
+   "key": false,
+   "data_element": "PARVW",
+   "domain": "PARVW",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Partner Role",
+   "check_table": "TPAR"
+  },
+  {
+   "pos": 171,
+   "name": "OIPARVW3",
+   "key": false,
+   "data_element": "PARVW",
+   "domain": "PARVW",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Partner Role",
+   "check_table": "TPAR"
+  },
+  {
+   "pos": 172,
+   "name": "OIPARVW4",
+   "key": false,
+   "data_element": "PARVW",
+   "domain": "PARVW",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Partner Role",
+   "check_table": "TPAR"
+  },
+  {
+   "pos": 173,
+   "name": "OIPARVW5",
+   "key": false,
+   "data_element": "PARVW",
+   "domain": "PARVW",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Partner Role",
+   "check_table": "TPAR"
+  },
+  {
+   "pos": 174,
+   "name": "OIPARVW6",
+   "key": false,
+   "data_element": "PARVW",
+   "domain": "PARVW",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Partner Role",
+   "check_table": "TPAR"
+  },
+  {
+   "pos": 175,
+   "name": "OIPARVW7",
+   "key": false,
+   "data_element": "PARVW",
+   "domain": "PARVW",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Partner Role",
+   "check_table": "TPAR"
+  },
+  {
+   "pos": 176,
+   "name": "OIPARVW8",
+   "key": false,
+   "data_element": "PARVW",
+   "domain": "PARVW",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Partner Role",
+   "check_table": "TPAR"
+  },
+  {
+   "pos": 177,
+   "name": "OIPARVW9",
+   "key": false,
+   "data_element": "PARVW",
+   "domain": "PARVW",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Partner Role",
+   "check_table": "TPAR"
+  },
+  {
+   "pos": 178,
+   "name": "OISUBHEAD",
+   "key": false,
+   "data_element": "OID_SSCRHD",
+   "domain": "DYNNR",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Subscreen number (header)",
+   "check_table": null
+  },
+  {
+   "pos": 179,
+   "name": "OISUBITEM",
+   "key": false,
+   "data_element": "OID_SSCRIT",
+   "domain": "DYNNR",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Subscreen number (item level)",
+   "check_table": null
+  },
+  {
+   "pos": 180,
+   "name": "OIUSEREXIT",
+   "key": false,
+   "data_element": "GRPNO",
+   "domain": "GRPNO",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Number of the routine used for copying",
+   "check_table": "*"
+  },
+  {
+   "pos": 182,
+   "name": "OIU_FKARA",
+   "key": false,
+   "data_element": "OIU_FKARA",
+   "domain": "FKART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "PRA Order related billing type",
+   "check_table": "TVFK"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "ABGRU_IN",
+   "foreign_table": "TVAG",
+   "foreign_field": "ABGRU"
+  },
+  {
+   "field": "ABRVW",
+   "foreign_table": "TVLV",
+   "foreign_field": "ABRVW"
+  },
+  {
+   "field": "AD01AURET",
+   "foreign_table": "TVAK",
+   "foreign_field": "AUART"
+  },
+  {
+   "field": "AUARA",
+   "foreign_table": "TVAK",
+   "foreign_field": "AUART"
+  },
+  {
+   "field": "AUFAK",
+   "foreign_table": "TVAK",
+   "foreign_field": "AUART"
+  },
+  {
+   "field": "BABSS",
+   "foreign_table": "T691R",
+   "foreign_field": "BABSS"
+  },
+  {
+   "field": "BPROC",
+   "foreign_table": "TVBPROC",
+   "foreign_field": "BPROC"
+  },
+  {
+   "field": "CCPGR",
+   "foreign_table": "TVCAA",
+   "foreign_field": "CCPGA"
+  },
+  {
+   "field": "CMGRA",
+   "foreign_table": "T691D",
+   "foreign_field": "CRMGR_CM"
+  },
+  {
+   "field": "FAKSK",
+   "foreign_table": "TVFS",
+   "foreign_field": "FAKSP"
+  },
+  {
+   "field": "FAUPR",
+   "foreign_table": "TVFAP",
+   "foreign_field": "FAUPR"
+  },
+  {
+   "field": "FEHGR",
+   "foreign_table": "TVUV",
+   "foreign_field": "FEHGR"
+  },
+  {
+   "field": "FELDK",
+   "foreign_table": "TVHF",
+   "foreign_field": "FAWGR"
+  },
+  {
+   "field": "FKAIV",
+   "foreign_table": "TVFK",
+   "foreign_field": "FKART"
+  },
+  {
+   "field": "FKARA",
+   "foreign_table": "TVFK",
+   "foreign_field": "FKART"
+  },
+  {
+   "field": "FKART_MEV_POST",
+   "foreign_table": "TVFK",
+   "foreign_field": "FKART"
+  },
+  {
+   "field": "FKART_MEV_POST_IB",
+   "foreign_table": "TVFK",
+   "foreign_field": "FKART"
+  },
+  {
+   "field": "FKARV",
+   "foreign_table": "TVFK",
+   "foreign_field": "FKART"
+  },
+  {
+   "field": "FKTKT",
+   "foreign_table": "TVKK",
+   "foreign_field": "KTAAR"
+  },
+  {
+   "field": "FPART",
+   "foreign_table": "TFPLA",
+   "foreign_field": "FPART"
+  },
+  {
+   "field": "HITYP_PR",
+   "foreign_table": "THIT",
+   "foreign_field": "HITYP"
+  },
+  {
+   "field": "J_1BNFTYPE",
+   "foreign_table": "J_1BAA",
+   "foreign_field": "NFTYPE"
+  },
+  {
+   "field": "KALAU",
+   "foreign_table": "T683",
+   "foreign_field": "KALSM"
+  },
+  {
+   "field": "KALGT",
+   "foreign_table": "T683",
+   "foreign_field": "KALSM"
+  },
+  {
+   "field": "KALLI",
+   "foreign_table": "T683",
+   "foreign_field": "KALSM"
+  },
+  {
+   "field": "KALSM",
+   "foreign_table": "T683",
+   "foreign_field": "KALSM"
+  },
+  {
+   "field": "KALSU",
+   "foreign_table": "T683",
+   "foreign_field": "KALSM"
+  },
+  {
+   "field": "KALVG",
+   "foreign_table": "TVKV",
+   "foreign_field": "KALVG"
+  },
+  {
+   "field": "KAPPL",
+   "foreign_table": "T681A",
+   "foreign_field": "KAPPL"
+  },
+  {
+   "field": "KOPGR",
+   "foreign_table": "TVHB",
+   "foreign_field": "BIFGR"
+  },
+  {
+   "field": "KORLI",
+   "foreign_table": "TVLK",
+   "foreign_field": "LFART"
+  },
+  {
+   "field": "KSCHL_KO",
+   "foreign_table": "T685",
+   "foreign_field": "KSCHL"
+  },
+  {
+   "field": "KSKPF",
+   "foreign_table": "T683",
+   "foreign_field": "KALSM"
+  },
+  {
+   "field": "KSPOS",
+   "foreign_table": "T683",
+   "foreign_field": "KALSM"
+  },
+  {
+   "field": "LFARV",
+   "foreign_table": "TVLK",
+   "foreign_field": "LFART"
+  },
+  {
+   "field": "LIFSK",
+   "foreign_table": "TVLS",
+   "foreign_field": "LIFSP"
+  },
+  {
+   "field": "LIFSM",
+   "foreign_table": "TVLS",
+   "foreign_field": "LIFSP"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MSR_AUARA",
+   "foreign_table": "TVAK",
+   "foreign_field": "AUART"
+  },
+  {
+   "field": "MSR_BILLING_BLK",
+   "foreign_table": "TVFS",
+   "foreign_field": "FAKSP"
+  },
+  {
+   "field": "MSR_DELIVERY_BLK",
+   "foreign_table": "TVLS",
+   "foreign_field": "LIFSP"
+  },
+  {
+   "field": "MSR_LFART",
+   "foreign_table": "TVLK",
+   "foreign_field": "LFART"
+  },
+  {
+   "field": "MSR_SDF_AUART",
+   "foreign_table": "TVAK",
+   "foreign_field": "AUART"
+  },
+  {
+   "field": "OBJART_HIN",
+   "foreign_table": "TOADV",
+   "foreign_field": "AR_OBJECT"
+  },
+  {
+   "field": "OBJART_VER",
+   "foreign_table": "TOADV",
+   "foreign_field": "AR_OBJECT"
+  },
+  {
+   "field": "OICFKARTDI",
+   "foreign_table": "TVFK",
+   "foreign_field": "FKART"
+  },
+  {
+   "field": "OIPARVW1",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  },
+  {
+   "field": "OIPARVW2",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  },
+  {
+   "field": "OIPARVW3",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  },
+  {
+   "field": "OIPARVW4",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  },
+  {
+   "field": "OIPARVW5",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  },
+  {
+   "field": "OIPARVW6",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  },
+  {
+   "field": "OIPARVW7",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  },
+  {
+   "field": "OIPARVW8",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  },
+  {
+   "field": "OIPARVW9",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  },
+  {
+   "field": "OIPRTFNC",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  },
+  {
+   "field": "OIU_FKARA",
+   "foreign_table": "TVFK",
+   "foreign_field": "FKART"
+  },
+  {
+   "field": "PARGR",
+   "foreign_table": "TVPG",
+   "foreign_field": "PARGR"
+  },
+  {
+   "field": "PVBSM",
+   "foreign_table": "TPVV",
+   "foreign_field": "PVBSM"
+  },
+  {
+   "field": "RDP_PROFILE",
+   "foreign_table": "L2TC_RDP_PROFILE",
+   "foreign_field": "PROFILE"
+  },
+  {
+   "field": "RPART",
+   "foreign_table": "TFPLA",
+   "foreign_field": "FPART"
+  },
+  {
+   "field": "SCHEME_GRP",
+   "foreign_table": "TVGRPS",
+   "foreign_field": "SCHEME"
+  },
+  {
+   "field": "STGAK",
+   "foreign_table": "TVSF",
+   "foreign_field": "STGVB"
+  },
+  {
+   "field": "STSMA",
+   "foreign_table": "TJ20",
+   "foreign_field": "STSMA"
+  },
+  {
+   "field": "TXTGR",
+   "foreign_table": "TTXG",
+   "foreign_field": "TXTGR"
+  },
+  {
+   "field": "VARIANT",
+   "foreign_table": "SHDTVCIU",
+   "foreign_field": "TCVARIANT"
+  },
+  {
+   "field": "VPROF",
+   "foreign_table": "TVVD",
+   "foreign_field": "VPROF"
+  },
+  {
+   "field": "VSBED",
+   "foreign_table": "TVSB",
+   "foreign_field": "VSBED"
+  }
+ ]
+}

@@ -1,0 +1,22 @@
+{
+ "domain": "SEPA_PAY_TYPE",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "1",
+   "high": null,
+   "text": "One-Time Mandate"
+  },
+  {
+   "low": "N",
+   "high": null,
+   "text": "Recurring Use Mandate"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,136 @@
+{
+ "table": "GRACSODRISK",
+ "description": "SOD Risk",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "RISKID",
+   "key": true,
+   "data_element": "GRAC_SODRISK_ID",
+   "domain": "GRAC_SODRISK_ID",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Access Risk ID",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "RISKLEVEL",
+   "key": false,
+   "data_element": "GRAC_SODRISK_LEVEL",
+   "domain": "GRAC_SODRISK_LEVEL",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "SOD Risk Level",
+   "check_table": "GRACRISKLEVEL"
+  },
+  {
+   "pos": 4,
+   "name": "ACTIVE",
+   "key": false,
+   "data_element": "GRAC_ACTIVE",
+   "domain": "GRAC_ACTIVE",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Active indicator",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "BZPRCID",
+   "key": false,
+   "data_element": "GRAC_BPROC",
+   "domain": "GRACBPROC",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Business Process",
+   "check_table": "*"
+  },
+  {
+   "pos": 6,
+   "name": "UPDUSER",
+   "key": false,
+   "data_element": "GRAC_UPDATED_BY",
+   "domain": "XUBNAME",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Field Last Updated by Username",
+   "check_table": "*"
+  },
+  {
+   "pos": 7,
+   "name": "UPDTIME",
+   "key": false,
+   "data_element": "GRAC_UPDATED_ON",
+   "domain": "GRACTZNTSTMPS",
+   "type": "DEC",
+   "length": 15,
+   "decimals": 0,
+   "description": "Timestamp when the Field was Last Updated",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "ACTGEN",
+   "key": false,
+   "data_element": "GRAC_BOOLEAN",
+   "domain": "GRFN_BOOLEAN",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Boolean",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "PRMGEN",
+   "key": false,
+   "data_element": "GRAC_BOOLEAN",
+   "domain": "GRFN_BOOLEAN",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Boolean",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "RISKTYPE",
+   "key": false,
+   "data_element": "GRAC_SODRISK_TYPE",
+   "domain": "GRAC_SODRISK_TYPE",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Access Risk Type",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "RISKLEVEL",
+   "foreign_table": "GRACRISKLEVEL",
+   "foreign_field": "RISKLEVEL"
+  }
+ ]
+}

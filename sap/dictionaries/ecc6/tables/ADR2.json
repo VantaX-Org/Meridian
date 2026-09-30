@@ -1,0 +1,235 @@
+{
+ "table": "ADR2",
+ "description": "Telephone Numbers (Business Address Services)",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "CLIENT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "ADDRNUMBER",
+   "key": true,
+   "data_element": "AD_ADDRNUM",
+   "domain": "AD_ADDRNUM",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Address number",
+   "check_table": "ADRC"
+  },
+  {
+   "pos": 3,
+   "name": "PERSNUMBER",
+   "key": true,
+   "data_element": "AD_PERSNUM",
+   "domain": "AD_PERSNUM",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Person number",
+   "check_table": "ADRP"
+  },
+  {
+   "pos": 4,
+   "name": "DATE_FROM",
+   "key": true,
+   "data_element": "AD_DATE_FR",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Valid-from date - in current Release only 00010101 possible",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "CONSNUMBER",
+   "key": true,
+   "data_element": "AD_CONSNUM",
+   "domain": "NUMC3",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Sequence Number",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "COUNTRY",
+   "key": false,
+   "data_element": "AD_COMCTRY",
+   "domain": "LAND1",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Country for telephone/fax number",
+   "check_table": "T005"
+  },
+  {
+   "pos": 7,
+   "name": "FLGDEFAULT",
+   "key": false,
+   "data_element": "AD_FLGDFNR",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Standard Sender Address in this Communication Type",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "FLG_NOUSE",
+   "key": false,
+   "data_element": "AD_FLNOUSE",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Flag: This Communication Number is Not Used",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "HOME_FLAG",
+   "key": false,
+   "data_element": "AD_FLGHOME",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Recipient address in this communication type (mail sys.grp)",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "TEL_NUMBER",
+   "key": false,
+   "data_element": "AD_TLNMBR",
+   "domain": "CHAR30",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Telephone no.: dialling code+number",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "TEL_EXTENS",
+   "key": false,
+   "data_element": "AD_TLXTNS",
+   "domain": "CHAR10",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Telephone no.: Extension",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "TELNR_LONG",
+   "key": false,
+   "data_element": "AD_TELNRLG",
+   "domain": "CHAR30",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Complete number: dialling code+number+extension",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "TELNR_CALL",
+   "key": false,
+   "data_element": "AD_TELNRCL",
+   "domain": "CHAR30",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Telephone number for determining caller",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "DFT_RECEIV",
+   "key": false,
+   "data_element": "AD_FLGSMS",
+   "domain": "AD_FLGSMS",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Telephone is SMS-Enabled",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "R3_USER",
+   "key": false,
+   "data_element": "AD_FLGMOB",
+   "domain": "AD_FLGMOB",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Telephone is a Mobile Telephone",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "VALID_FROM",
+   "key": false,
+   "data_element": "AD_VALFROM",
+   "domain": "TIMESTMP",
+   "type": "CHAR",
+   "length": 14,
+   "decimals": 0,
+   "description": "Communication Data: Valid From (YYYYMMDDHHMMSS)",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "VALID_TO",
+   "key": false,
+   "data_element": "AD_VALTO",
+   "domain": "TIMESTAMP",
+   "type": "CHAR",
+   "length": 14,
+   "decimals": 0,
+   "description": "Communication Data: Valid To (YYYYMMDDHHMMSS)",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "ADDRNUMBER",
+   "foreign_table": "ADRC",
+   "foreign_field": "ADDRNUMBER"
+  },
+  {
+   "field": "CLIENT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "COUNTRY",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "PERSNUMBER",
+   "foreign_table": "ADRP",
+   "foreign_field": "PERSNUMBER"
+  }
+ ]
+}

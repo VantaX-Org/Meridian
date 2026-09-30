@@ -1,0 +1,317 @@
+{
+ "table": "TBZ9",
+ "description": "BP relationship categories",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "CLIENT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "RELTYP",
+   "key": true,
+   "data_element": "BU_RELTYP",
+   "domain": "BU_RELTYP",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Business Partner Relationship Category",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "XRF",
+   "key": true,
+   "data_element": "BU_XRF",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Business partner role definition instead of BP relationship",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "RLTP1",
+   "key": false,
+   "data_element": "BU_PARTNERROLECAT",
+   "domain": "BU_ROLECAT",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "BP Role Category",
+   "check_table": "TB003A"
+  },
+  {
+   "pos": 5,
+   "name": "RLTP2",
+   "key": false,
+   "data_element": "BU_PARTNERROLECAT",
+   "domain": "BU_ROLECAT",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "BP Role Category",
+   "check_table": "TB003A"
+  },
+  {
+   "pos": 7,
+   "name": "DFTYP",
+   "key": false,
+   "data_element": "BU_DFTYP",
+   "domain": "BU_DFTYP",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Differentiation Type",
+   "check_table": "TBZ0D"
+  },
+  {
+   "pos": 8,
+   "name": "APPLI_TAB",
+   "key": false,
+   "data_element": "BU_APPLTAB",
+   "domain": "BU_APPLI",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Data management application",
+   "check_table": "TBZ0A"
+  },
+  {
+   "pos": 9,
+   "name": "VARNR",
+   "key": false,
+   "data_element": "BU_VARNR",
+   "domain": "BU_VARNR",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "BDT: Screen sequence",
+   "check_table": "TBZ3N"
+  },
+  {
+   "pos": 10,
+   "name": "XDIRECTION",
+   "key": false,
+   "data_element": "BU_XDIRECT",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "One-Way Business Partner Relationship Category",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "TIMDP",
+   "key": false,
+   "data_element": "BU_TIMDEP",
+   "domain": "BU_TIMDEP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Time Constraint",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "CARDI",
+   "key": false,
+   "data_element": "BU_CARDIN",
+   "domain": "BU_CARDIN",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Number of relationships/role definitions in each set",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "CARDI_P1",
+   "key": false,
+   "data_element": "BU_CARDIN_P1",
+   "domain": "BU_CARDIN",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Cardinality from view of business partner 1",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "CARDI_P2",
+   "key": false,
+   "data_element": "BU_CARDIN_P2",
+   "domain": "BU_CARDIN",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Cardinality from view of business partner 2",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "XORGA_P1",
+   "key": false,
+   "data_element": "BU_XORGA_R",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "'Organization' partner cat. relev. for relationship/role def",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "XPERS_P1",
+   "key": false,
+   "data_element": "BU_XPERS_R",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "'Person' partner category rel. for relationship/role def.",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "XGROU_P1",
+   "key": false,
+   "data_element": "BU_XGROU_R",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "'Group' partner category relevant for relationship/role def.",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "XORGA_P2",
+   "key": false,
+   "data_element": "BU_XORGA_R",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "'Organization' partner cat. relev. for relationship/role def",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "XPERS_P2",
+   "key": false,
+   "data_element": "BU_XPERS_R",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "'Person' partner category rel. for relationship/role def.",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "XGROU_P2",
+   "key": false,
+   "data_element": "BU_XGROU_R",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "'Group' partner category relevant for relationship/role def.",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "XDFREL",
+   "key": false,
+   "data_element": "BU_DFREL",
+   "domain": "BU_DFREL",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Standard Relationship Indicator Maintenance",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "XDFREL2",
+   "key": false,
+   "data_element": "BU_DFREL",
+   "domain": "BU_DFREL",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Standard Relationship Indicator Maintenance",
+   "check_table": null
+  },
+  {
+   "pos": 23,
+   "name": "PROTECT",
+   "key": false,
+   "data_element": "BU_PROTECT",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "BP: 'Protect Data' Indicator",
+   "check_table": null
+  },
+  {
+   "pos": 24,
+   "name": "OWNER_BO",
+   "key": false,
+   "data_element": "BU_SESF_BUSINESS_OBJECT",
+   "domain": null,
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "ESF: Name of a Business Object",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "APPLI_TAB",
+   "foreign_table": "TBZ0A",
+   "foreign_field": "APPLI"
+  },
+  {
+   "field": "CLIENT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "DFTYP",
+   "foreign_table": "TBZ0D",
+   "foreign_field": "DFTYP"
+  },
+  {
+   "field": "RLTP1",
+   "foreign_table": "TB003A",
+   "foreign_field": "ROLECATEGORY"
+  },
+  {
+   "field": "RLTP2",
+   "foreign_table": "TB003A",
+   "foreign_field": "ROLECATEGORY"
+  },
+  {
+   "field": "VARNR",
+   "foreign_table": "TBZ3N",
+   "foreign_field": "VARNR"
+  }
+ ]
+}

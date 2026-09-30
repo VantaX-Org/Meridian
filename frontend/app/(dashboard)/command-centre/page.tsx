@@ -43,9 +43,14 @@ function jobProgress(r: SyncRun, avgDurationMs: number | null): number | null {
 export default function CommandCentrePage() {
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => {
-    setNow(new Date());
-    const id = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(id);
+    // client-only clock (null during SSR); first tick right after mount
+    const tick = () => setNow(new Date());
+    const first = setTimeout(tick, 0);
+    const id = setInterval(tick, 1000);
+    return () => {
+      clearTimeout(first);
+      clearInterval(id);
+    };
   }, []);
 
   const mdmQ = useQuery({
@@ -148,7 +153,7 @@ export default function CommandCentrePage() {
   // a tenant with more than 200 open items could still undercount this
   // specific figure. decisions24h (the "Open queue" KPI) uses the list
   // response's own `total`, so it doesn't share that limitation.
-  const slaAtRisk = stewardQ.data?.items.filter((t) => t.sla_hours !== null && t.due_at && new Date(t.due_at).getTime() - Date.now() < t.sla_hours * 0.5 * 3600 * 1000).length ?? 0;
+  const slaAtRisk = stewardQ.data?.items.filter((t) => t.sla_hours !== null && t.due_at && new Date(t.due_at).getTime() - (now?.getTime() ?? 0) < t.sla_hours * 0.5 * 3600 * 1000).length ?? 0;
   const decisions24h = stewardQ.data?.total ?? 0;
   const clock = now ? now.toLocaleTimeString() : "—:—:—";
 
@@ -314,9 +319,12 @@ export default function CommandCentrePage() {
                 >
                   <SevTag sev={f.severity === "critical" ? "critical" : f.severity === "high" ? "high" : f.severity === "medium" ? "medium" : "low"} />
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 500, color: "var(--mn-ink-900)", fontSize: 13 }}>
+                    <Link
+                      href={`/findings?${new URLSearchParams({ version_id: f.version_id, module: f.module, check_id: f.check_id })}`}
+                      style={{ display: "block", fontWeight: 500, color: "var(--mn-ink-900)", fontSize: 13 }}
+                    >
                       {f.details?.message ?? f.check_id}
-                    </div>
+                    </Link>
                     <div
                       style={{
                         font: "500 11px/1 'JetBrains Mono', monospace",

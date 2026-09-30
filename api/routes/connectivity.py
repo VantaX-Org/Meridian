@@ -3,6 +3,8 @@
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+
+from api.services.rbac import require_permission
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -73,7 +75,7 @@ async def list_system_modules(
     ]
 
 
-@router.post("/extract")
+@router.post("/extract", dependencies=[Depends(require_permission("trigger_sync"))])
 async def extract_modules(
     body: ExtractModuleRequest,
     request: Request,
@@ -93,7 +95,7 @@ async def extract_modules(
     return {"job_id": job.id, "status": "queued", "modules": body.modules}
 
 
-@router.post("/config-sync")
+@router.post("/config-sync", dependencies=[Depends(require_permission("trigger_sync"))])
 async def sync_config(
     body: ConfigSyncRequest,
     request: Request,
@@ -110,7 +112,7 @@ async def sync_config(
     return {"job_id": job.id, "status": "queued"}
 
 
-@router.post("/health-check/{system_id}")
+@router.post("/health-check/{system_id}", dependencies=[Depends(require_permission("trigger_sync"))])
 async def health_check(
     system_id: str,
     db: AsyncSession = Depends(get_db),

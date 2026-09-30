@@ -257,6 +257,17 @@ async def approve_writeback(
     if record[2]:  # approved_by already set
         raise HTTPException(status_code=409, detail="Write-back already approved")
 
+    if record[5]:  # dry_run — a validation-only request can never be executed
+        raise HTTPException(status_code=409, detail="This was a dry-run request; submit a new write-back to execute")
+
+    from api.config import settings
+    if not settings.live_writeback_enabled:
+        raise HTTPException(
+            status_code=409,
+            detail="Live SAP write-back is disabled on this deployment. Export the fixes "
+                   "(LSMW / BAPI file) from the finding or cleaning queue and load them in SAP.",
+        )
+
     # 4-eyes: approving user must differ from requesting user
     approving_user = _require_user(request)
     if approving_user == record[1]:

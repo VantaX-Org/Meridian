@@ -1,0 +1,32 @@
+{
+ "domain": "TXREL_007A",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Is relevant to tax; external system decides"
+  },
+  {
+   "low": "0",
+   "high": null,
+   "text": "Is relevant to tax; external system decides"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Is always relevant to tax; external system is not used"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Is not relevant to tax; external system is not used"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

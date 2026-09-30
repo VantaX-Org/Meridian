@@ -1,0 +1,47 @@
+{
+ "domain": "WMAK",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "General material type"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Material type for value-only materials"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Material type for empties"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Material type for catalog variants"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Material type for perishables"
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "Material type for additionals"
+  },
+  {
+   "low": "6",
+   "high": null,
+   "text": "Material type for coupons"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

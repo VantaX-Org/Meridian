@@ -1,0 +1,27 @@
+{
+ "domain": "LVS_2SKTAART",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Direct picking"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Removal of cumulative quantities"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Splitting of cumulative quantities"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

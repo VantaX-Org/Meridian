@@ -1,0 +1,27 @@
+{
+ "domain": "KZBWS",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No stock valuation"
+  },
+  {
+   "low": "M",
+   "high": null,
+   "text": "Separate valuation with ref. to sales document/project"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Valuation without reference to sales document"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

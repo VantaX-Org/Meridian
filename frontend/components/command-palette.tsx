@@ -49,7 +49,8 @@ const PAGES: ReadonlyArray<{ group: string; items: NavOption[] }> = [
     group: "Analyse",
     items: [
       { href: "/", label: "Dashboard", icon: LayoutDashboard, keywords: "overview home dqs", shortcut: "⌘1" },
-      { href: "/findings", label: "Findings", icon: AlertTriangle, keywords: "issues critical severity" },
+      { href: "/findings", label: "Findings", icon: AlertTriangle, keywords: "checks critical severity" },
+      { href: "/issues", label: "Issues", icon: AlertTriangle, keywords: "records work list assign failing" },
       { href: "/analytics", label: "Analytics", icon: BarChart3, keywords: "charts metrics" },
       { href: "/mining", label: "Mining", icon: Sparkles, keywords: "patterns clustering" },
       { href: "/run-sync", label: "Run Sync", icon: Play, keywords: "trigger sync module" },

@@ -27,6 +27,18 @@ class DQSResult(BaseModel):
     passing_checks: int
     capped: bool
     cap_reason: Optional[str] = None
+    errored_checks: int = 0          # checks that could not be evaluated — excluded from the score
+    weights: dict = {}               # effective (normalised) weights over measured dimensions
+
+
+def effective_weights(tenant_weights: dict | None) -> dict:
+    """Tenant DQS weights (only the six dimension keys), normalised to sum 1."""
+    w = {**DEFAULT_WEIGHTS}
+    for dim, val in (tenant_weights or {}).items():
+        if dim in DEFAULT_WEIGHTS and isinstance(val, (int, float)) and val >= 0:
+            w[dim] = float(val)
+    total = sum(w.values())
+    return {d: v / total for d, v in w.items()} if total > 0 else dict(DEFAULT_WEIGHTS)
 
 
 def score_module(findings: list[CheckResult], tenant_config: dict) -> DQSResult:
@@ -47,7 +59,9 @@ def score_module(findings: list[CheckResult], tenant_config: dict) -> DQSResult:
         )
 
     module = findings[0].module
-    weights = {**DEFAULT_WEIGHTS, **(tenant_config or {})}
+    weights = effective_weights(tenant_config)
+    errored = [f for f in findings if f.error]
+    findings = [f for f in findings if not f.error]
 
     # Count severities (treat "warning" as low)
     severity_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
@@ -78,14 +92,15 @@ def score_module(findings: list[CheckResult], tenant_config: dict) -> DQSResult:
             else:
                 dimension_scores[dim] = sum(f.pass_rate for f in dim_list) / len(dim_list)
         else:
-            # No checks for this dimension — neutral 100, but coverage=0 above
-            # makes the absence of evidence explicit rather than a fabricated pass.
+            # No checks for this dimension — shown as 100 with coverage 0, but
+            # excluded from the composite: absence of evidence is not a pass.
             dimension_scores[dim] = 100.0
 
-    # Weighted composite score
-    composite = sum(
-        dimension_scores.get(dim, 100.0) * weights.get(dim, 0)
-        for dim in DEFAULT_WEIGHTS
+    # Weighted composite over the dimensions actually measured
+    measured = {d: w for d, w in weights.items() if dimension_coverage.get(d)}
+    total_w = sum(measured.values())
+    composite = (
+        sum(dimension_scores[d] * w for d, w in measured.items()) / total_w if total_w else 100.0
     )
 
     # Apply Critical severity caps
@@ -118,13 +133,15 @@ def score_module(findings: list[CheckResult], tenant_config: dict) -> DQSResult:
         passing_checks=passing_checks,
         capped=capped,
         cap_reason=cap_reason,
+        errored_checks=len(errored),
+        weights={d: round(w / total_w, 4) for d, w in measured.items()} if total_w else {},
     )
 
 
-def score_all_modules(all_results: list[CheckResult]) -> dict[str, DQSResult]:
-    """Group results by module and score each one."""
+def score_all_modules(all_results: list[CheckResult], tenant_weights: dict | None = None) -> dict[str, DQSResult]:
+    """Group results by module and score each one with the tenant's DQS weights."""
     by_module: dict[str, list[CheckResult]] = {}
     for r in all_results:
         by_module.setdefault(r.module, []).append(r)
 
-    return {module: score_module(findings, {}) for module, findings in by_module.items()}
+    return {module: score_module(findings, tenant_weights or {}) for module, findings in by_module.items()}

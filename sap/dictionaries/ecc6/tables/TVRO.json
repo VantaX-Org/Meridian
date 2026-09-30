@@ -1,0 +1,315 @@
+{
+ "table": "TVRO",
+ "description": "Routes",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "ROUTE",
+   "key": true,
+   "data_element": "ROUTE",
+   "domain": "ROUTE",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Route",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "TRAZT",
+   "key": false,
+   "data_element": "TRAZT",
+   "domain": "DIFZT",
+   "type": "DEC",
+   "length": 5,
+   "decimals": 2,
+   "description": "Outdated: Transit Time from GI to Ship-to Party (in Days)",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "TRAZTD",
+   "key": false,
+   "data_element": "TRAZTD",
+   "domain": "TSTRDURAG",
+   "type": "DEC",
+   "length": 11,
+   "decimals": 0,
+   "description": "Transit duration in calendar days",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "TDVZT",
+   "key": false,
+   "data_element": "TDVZT",
+   "domain": "DIFZT",
+   "type": "DEC",
+   "length": 5,
+   "decimals": 2,
+   "description": "Outdated: Transportation-Planning Lead Time (in Days)",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "TDVZTD",
+   "key": false,
+   "data_element": "TDVZTD",
+   "domain": "TSTRDURAG",
+   "type": "DEC",
+   "length": 11,
+   "decimals": 0,
+   "description": "Transportation lead time in calendar days",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "TDVZND",
+   "key": false,
+   "data_element": "TDVZND",
+   "domain": "TSTRDURAN",
+   "type": "DEC",
+   "length": 11,
+   "decimals": 0,
+   "description": "Transportation lead time in hours/minutes work time",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "SPFBK",
+   "key": false,
+   "data_element": "FABKL",
+   "domain": "WFCID",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Factory calendar key",
+   "check_table": "TFACD"
+  },
+  {
+   "pos": 9,
+   "name": "EXPVZ",
+   "key": false,
+   "data_element": "EXPVZ",
+   "domain": "EXPVZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Mode of Transport for Foreign Trade",
+   "check_table": "T618"
+  },
+  {
+   "pos": 10,
+   "name": "TDIIX",
+   "key": false,
+   "data_element": "TDIIX",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Relevance for transportation ID",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "SPZST",
+   "key": false,
+   "data_element": "TSTRIDSD",
+   "domain": "TSTRID",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Working time from sales view",
+   "check_table": "TTSTRSD"
+  },
+  {
+   "pos": 12,
+   "name": "FAHZTD",
+   "key": false,
+   "data_element": "FAHZTD",
+   "domain": "TSTRDURAN",
+   "type": "DEC",
+   "length": 11,
+   "decimals": 0,
+   "description": "Travel duration as actual time (hours/minutes)",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "DISTZ",
+   "key": false,
+   "data_element": "DISTZ",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Distance",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "MEDST",
+   "key": false,
+   "data_element": "MEDST",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit of measure for distance",
+   "check_table": "*"
+  },
+  {
+   "pos": 15,
+   "name": "VSART",
+   "key": false,
+   "data_element": "VERSART",
+   "domain": "VERSART",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Shipping type",
+   "check_table": "T173"
+  },
+  {
+   "pos": 16,
+   "name": "VSAVL",
+   "key": false,
+   "data_element": "VERSARTVL",
+   "domain": "VERSART",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Shipping type of preliminary leg",
+   "check_table": "T173"
+  },
+  {
+   "pos": 17,
+   "name": "VSANL",
+   "key": false,
+   "data_element": "VERSARTNL",
+   "domain": "VERSART",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Shipping type of subsequent leg",
+   "check_table": "T173"
+  },
+  {
+   "pos": 18,
+   "name": "TDLNR",
+   "key": false,
+   "data_element": "TDLNR",
+   "domain": "LIFNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Number of forwarding agent",
+   "check_table": "LFA1"
+  },
+  {
+   "pos": 19,
+   "name": "ROUTID",
+   "key": false,
+   "data_element": "ROUTID",
+   "domain": "CHAR100",
+   "type": "CHAR",
+   "length": 100,
+   "decimals": 0,
+   "description": "Route identification",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "TCTAB",
+   "key": false,
+   "data_element": "ADGE_TCTAB",
+   "domain": "X",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Take Table for Transit Countries into Account",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "ALLOWED_TWGT",
+   "key": false,
+   "data_element": "ALLOWED_TWGT",
+   "domain": "MENG12_0",
+   "type": "QUAN",
+   "length": 8,
+   "decimals": 0,
+   "description": "Allowed total weight of shipment",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "ALLOWED_UOM",
+   "key": false,
+   "data_element": "ALLOWED_UOM",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit of Measurement for Allowed Total Weight of Shipment",
+   "check_table": "*"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "EXPVZ",
+   "foreign_table": "T618",
+   "foreign_field": "EXPVZ"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "SPFBK",
+   "foreign_table": "TFACD",
+   "foreign_field": "IDENT"
+  },
+  {
+   "field": "SPZST",
+   "foreign_table": "TTSTRSD",
+   "foreign_field": "TSTREAMID"
+  },
+  {
+   "field": "TDLNR",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "VSANL",
+   "foreign_table": "T173",
+   "foreign_field": "VSART"
+  },
+  {
+   "field": "VSART",
+   "foreign_table": "T173",
+   "foreign_field": "VSART"
+  },
+  {
+   "field": "VSAVL",
+   "foreign_table": "T173",
+   "foreign_field": "VSART"
+  }
+ ]
+}

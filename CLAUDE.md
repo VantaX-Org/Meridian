@@ -90,8 +90,8 @@ meridian/
 │   └── state.py                     ← AgentState TypedDict
 │
 ├── checks/                          ← deterministic check engine + YAML rules
-│   ├── runner.py                    ← auto-selects pandas or Polars by row count (CHECK_ENGINE=auto, threshold 50k)
-│   ├── polars_engine.py             ← high-performance Polars check engine (zero-serialization pandas entry point)
+│   ├── runner.py                    ← loads YAML rules, evaluates each at its record grain
+│   ├── frames.py                    ← per-table frames + grain resolution over sap/dictionaries/joins.yaml
 │   └── types/                       ← null, regex, domain, cross_field, freshness checks
 │
 ├── sap/                             ← multi-system SAP connector layer
@@ -177,7 +177,7 @@ df = conn.read_entity_set("EmpEmployment", select=["userId", "startDate"])
 | Concur | `sap/concur.py` | REST v4 | OAuth 2.0 |
 | Ariba | `sap/ariba.py` | REST | OAuth 2.0 + API Key |
 
-Backends: `SAP_CONNECTOR=rfc|ctypes|odata|mock|successfactors|concur|ariba|s4hana_cloud`
+Connector is chosen by `sap_systems.system_type` (ABAP systems always use RFC via the SAP NW RFC SDK).
 
 ---
 

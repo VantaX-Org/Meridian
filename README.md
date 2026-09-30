@@ -9,7 +9,7 @@ SAP data, findings, and reports **never leave the customer boundary**.
 ### Data Quality Engine
 - **254+ deterministic validation rules** across ECC, SuccessFactors, and Warehouse modules
 - **Record-level DQS scoring** — DAMA DMBOK composite with 6 dimensions (completeness, accuracy, consistency, timeliness, uniqueness, validity)
-- **Optional Polars engine** — 10-100x faster check execution via `CHECK_ENGINE=polars`
+- **Grain-correct check engine** — every rule evaluated at its SAP record grain (DDIC keys + join graph), exact counts, full failing-record keys
 - **LangGraph AI agents** — 6-node pipeline: analyst, config matching, config impact, remediation, readiness, report
 - **PDF executive reports** — branded DQS heatmap, findings, remediation, MDM health
 

@@ -1,0 +1,32 @@
+{
+ "domain": "VERLI",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Determined by first listing"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Determined by last listing"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "At least one listing must be relevant"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "All listings must be relevant"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

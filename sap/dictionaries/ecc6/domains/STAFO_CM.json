@@ -1,0 +1,32 @@
+{
+ "domain": "STAFO_CM",
+ "type": "CHAR",
+ "length": 6,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No update from SD documents"
+  },
+  {
+   "low": "000012",
+   "high": null,
+   "text": "Open order value on time axis, delivery and bill.doct value"
+  },
+  {
+   "low": "000015",
+   "high": null,
+   "text": "Open delivery and billing document value"
+  },
+  {
+   "low": "000018",
+   "high": null,
+   "text": "Open delivery value for sales order, open billing doct value"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

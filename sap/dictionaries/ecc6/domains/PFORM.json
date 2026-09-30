@@ -1,0 +1,97 @@
+{
+ "domain": "PFORM",
+ "type": "NUMC",
+ "length": 2,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "00",
+   "high": null,
+   "text": "Dummy entry - not assignable"
+  },
+  {
+   "low": "01",
+   "high": null,
+   "text": "Clearing with check"
+  },
+  {
+   "low": "02",
+   "high": null,
+   "text": "Closing Balance"
+  },
+  {
+   "low": "03",
+   "high": null,
+   "text": "Opening Balance"
+  },
+  {
+   "low": "04",
+   "high": null,
+   "text": "Clearing with allocation no."
+  },
+  {
+   "low": "05",
+   "high": null,
+   "text": "Bank transfer BACS/ bk collection BACS/ customer cash inflow"
+  },
+  {
+   "low": "06",
+   "high": null,
+   "text": "Bank charges / interest / dividends"
+  },
+  {
+   "low": "07",
+   "high": null,
+   "text": "Total cash outflow per file"
+  },
+  {
+   "low": "08",
+   "high": null,
+   "text": "Total cash inflow per file"
+  },
+  {
+   "low": "09",
+   "high": null,
+   "text": "Refused transfer/ bank collection"
+  },
+  {
+   "low": "11",
+   "high": null,
+   "text": "Brazil: Enter document with Brazilian data"
+  },
+  {
+   "low": "12",
+   "high": null,
+   "text": "Clearing the payment advice completes posting"
+  },
+  {
+   "low": "20",
+   "high": null,
+   "text": "BAI: Total Balance"
+  },
+  {
+   "low": "21",
+   "high": null,
+   "text": "BAI: Early Balance"
+  },
+  {
+   "low": "22",
+   "high": null,
+   "text": "BAI: Later Balance"
+  },
+  {
+   "low": "23",
+   "high": null,
+   "text": "BAI: Adjustment Balance"
+  },
+  {
+   "low": "24",
+   "high": null,
+   "text": "BAI: Other Balance"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,37 @@
+{
+ "domain": "BU_TIMDEP",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No time constraint"
+  },
+  {
+   "low": "0",
+   "high": null,
+   "text": "No time constraint"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Record must have no gaps, no overlap"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Record may have gaps but no overlap"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Record exists at least once from minimum to maximum"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

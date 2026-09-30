@@ -1,0 +1,175 @@
+{
+ "table": "BUT0ID",
+ "description": "BP: ID Numbers",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "CLIENT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "PARTNER",
+   "key": true,
+   "data_element": "BU_PARTNER",
+   "domain": "BU_PARTNER",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Business Partner Number",
+   "check_table": "BUT000"
+  },
+  {
+   "pos": 3,
+   "name": "TYPE",
+   "key": true,
+   "data_element": "BU_ID_TYPE",
+   "domain": "BU_ID_TYPE",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Identification Type",
+   "check_table": "TB039A"
+  },
+  {
+   "pos": 4,
+   "name": "IDNUMBER",
+   "key": true,
+   "data_element": "BU_ID_NUMBER",
+   "domain": "CHAR60",
+   "type": "CHAR",
+   "length": 60,
+   "decimals": 0,
+   "description": "Identification Number",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "INSTITUTE",
+   "key": false,
+   "data_element": "BU_ID_INSTITUTE",
+   "domain": "TEXT40",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Responsible Institution for ID Number",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "ENTRY_DATE",
+   "key": false,
+   "data_element": "BU_ID_ENTRY_DATE",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date of Entry for ID Number",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "VALID_DATE_FROM",
+   "key": false,
+   "data_element": "BU_ID_VALID_DATE_FROM",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Validity Start for ID Number",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "VALID_DATE_TO",
+   "key": false,
+   "data_element": "BU_ID_VALID_DATE_TO",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Validity End for ID Number",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "COUNTRY",
+   "key": false,
+   "data_element": "BU_IDCOUNTRY",
+   "domain": "LAND1",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Country in Which ID Number is Valid or Was Assigned",
+   "check_table": "T005"
+  },
+  {
+   "pos": 12,
+   "name": "REGION",
+   "key": false,
+   "data_element": "REGIO",
+   "domain": "REGIO",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Region (State, Province, County)",
+   "check_table": "T005S"
+  },
+  {
+   "pos": 14,
+   "name": "IDNUMBER_GUID",
+   "key": false,
+   "data_element": "BU_ID_GUID",
+   "domain": "SYSUUID",
+   "type": "RAW",
+   "length": 16,
+   "decimals": 0,
+   "description": "GUID of a Business Partner Identification Number",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "BP_EEW_BUT0ID",
+   "key": false,
+   "data_element": "DUMMY",
+   "domain": "DUMMY",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Dummy function in length 1",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "COUNTRY",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "PARTNER",
+   "foreign_table": "BUT000",
+   "foreign_field": "PARTNER"
+  },
+  {
+   "field": "REGION",
+   "foreign_table": "T005S",
+   "foreign_field": "BLAND"
+  },
+  {
+   "field": "TYPE",
+   "foreign_table": "TB039A",
+   "foreign_field": "TYPE"
+  }
+ ]
+}

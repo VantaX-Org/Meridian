@@ -1,0 +1,42 @@
+{
+ "domain": "BANST",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "N",
+   "high": null,
+   "text": "Not edited"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "PO created"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "RFQ created"
+  },
+  {
+   "low": "K",
+   "high": null,
+   "text": "Contract created"
+  },
+  {
+   "low": "L",
+   "high": null,
+   "text": "Scheduling agreement created"
+  },
+  {
+   "low": "S",
+   "high": null,
+   "text": "Service entry sheet created"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

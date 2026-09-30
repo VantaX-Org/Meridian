@@ -1,0 +1,47 @@
+{
+ "domain": "POSTING_CHANGE",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Normal GI for Outbound Delivery, GR for Inbound Delivery"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Posting Change/Stock Transfer 2-Step, GR from StockinTransit"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Posting Change/Stock Transfer 2-Step, GI into StockinTransit"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Posting Change/Stock Transfer 1-Step"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Posting Change/Stock Transfer 2-Step CC GR"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Posting Change/Stock Transfer 2-Step CC GI"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Posting Change/Stock Transfer 1-Step CC"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

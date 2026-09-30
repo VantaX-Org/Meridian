@@ -1,0 +1,194 @@
+{
+ "table": "LFBK",
+ "description": "Vendor Master (Bank Details)",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "LIFNR",
+   "key": true,
+   "data_element": "LIFNR",
+   "domain": "LIFNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Account Number of Vendor or Creditor",
+   "check_table": "LFA1"
+  },
+  {
+   "pos": 3,
+   "name": "BANKS",
+   "key": true,
+   "data_element": "BANKS",
+   "domain": "LAND1",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Bank country key",
+   "check_table": "T005"
+  },
+  {
+   "pos": 4,
+   "name": "BANKL",
+   "key": true,
+   "data_element": "BANKK",
+   "domain": "BANKK",
+   "type": "CHAR",
+   "length": 15,
+   "decimals": 0,
+   "description": "Bank Keys",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "BANKN",
+   "key": true,
+   "data_element": "BANKN",
+   "domain": "BANKN",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Bank account number",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "BKONT",
+   "key": false,
+   "data_element": "BKONT",
+   "domain": "BKONT",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Bank Control Key",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "BVTYP",
+   "key": false,
+   "data_element": "BVTYP",
+   "domain": "BVTYP",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Partner bank type",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "XEZER",
+   "key": false,
+   "data_element": "XEZER",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Is there collection authorization ?",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "BKREF",
+   "key": false,
+   "data_element": "BKREF",
+   "domain": "CHAR20",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "Reference specifications for bank details",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "KOINH",
+   "key": false,
+   "data_element": "KOINH_FI",
+   "domain": "KOINH",
+   "type": "CHAR",
+   "length": 60,
+   "decimals": 0,
+   "description": "Account Holder Name",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "EBPP_ACCNAME",
+   "key": false,
+   "data_element": "EBPP_ACCNAME",
+   "domain": "EBPP_ACCNAME",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "User-Defined Name of Bank Details",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "EBPP_BVSTATUS",
+   "key": false,
+   "data_element": "EBPP_BVSTATUS",
+   "domain": "EBPP_BVSTATUS",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Status of Bank Details in Biller Direct",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "KOVON",
+   "key": false,
+   "data_element": "KOVON",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Bank Details Valid From",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "KOBIS",
+   "key": false,
+   "data_element": "KOBIS",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Bank details valid to",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "BANKS",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "LIFNR",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

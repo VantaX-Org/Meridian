@@ -23,7 +23,9 @@ Usage:
 from __future__ import annotations
 
 import logging
+import re
 import time
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 import httpx
@@ -274,6 +276,18 @@ _RATE_LIMIT_BACKOFF_SECONDS = 2.0
 _MAX_RETRIES = 3
 
 
+_ODATA_DATE = re.compile(r"^/Date\((-?\d+)([+-]\d{4})?\)/$")
+
+
+def odata_date(v: str) -> str:
+    """``/Date(1704067200000)/`` → ``2024-01-01``; with a time of day → ISO timestamp (UTC)."""
+    m = _ODATA_DATE.match(v)
+    if not m:
+        return v
+    ts = datetime.fromtimestamp(int(m.group(1)) / 1000, tz=timezone.utc)
+    return ts.strftime("%Y-%m-%d") if ts.hour == ts.minute == ts.second == 0 else ts.strftime("%Y-%m-%dT%H:%M:%S")
+
+
 class SuccessFactorsConnector(CloudSAPConnector):
     """SAP SuccessFactors OData V2 connector.
 
@@ -454,9 +468,12 @@ class SuccessFactorsConnector(CloudSAPConnector):
             if not results:
                 break
 
-            # Strip OData metadata from each record
+            # Strip OData metadata; OData V2 dates arrive as /Date(ms)/ — make them ISO
             for rec in results:
                 rec.pop("__metadata", None)
+                for k, v in rec.items():
+                    if isinstance(v, str) and v.startswith("/Date("):
+                        rec[k] = odata_date(v)
 
             rows_to_take = min(len(results), int(remaining))
             all_records.extend(results[:rows_to_take])
@@ -482,6 +499,12 @@ class SuccessFactorsConnector(CloudSAPConnector):
     # ------------------------------------------------------------------
     # Module-level reading
     # ------------------------------------------------------------------
+
+    def metadata(self, entity: str | None = None) -> str:
+        """OData $metadata document (whole service, or one entity to keep it small)."""
+        self._ensure_connected()
+        path = f"/odata/v2/{entity}/$metadata" if entity else "/odata/v2/$metadata"
+        return self._request_with_retry("GET", path, params={}).text
 
     def read_module(self, module: str) -> pd.DataFrame:
         """Read all entity sets for a module and merge into one DataFrame.

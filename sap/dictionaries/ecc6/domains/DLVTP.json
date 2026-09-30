@@ -1,0 +1,42 @@
+{
+ "domain": "DLVTP",
+ "type": "CHAR",
+ "length": 2,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "ID",
+   "high": null,
+   "text": "Delivery Category for Inbound Deliveries"
+  },
+  {
+   "low": "OD",
+   "high": null,
+   "text": "Delivery Category for Outbound Deliveries"
+  },
+  {
+   "low": "TP",
+   "high": null,
+   "text": "Delivery Category for Stock Transfer Delivs/Posting Changes"
+  },
+  {
+   "low": "RL",
+   "high": null,
+   "text": "Delivery Category for Return Delivery to Vendor"
+  },
+  {
+   "low": "LB",
+   "high": null,
+   "text": "Delivery Category for Subcontracting"
+  },
+  {
+   "low": "RK",
+   "high": null,
+   "text": "Delivery Category for Customer Returns"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

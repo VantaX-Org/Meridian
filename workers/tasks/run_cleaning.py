@@ -19,17 +19,6 @@ from workers.db import get_sync_engine
 logger = logging.getLogger("meridian.worker.cleaning")
 
 
-def _get_minio_client():
-    import os
-    from minio import Minio
-    return Minio(
-        endpoint=os.getenv("MINIO_ENDPOINT", "minio:9000"),
-        access_key=os.getenv("MINIO_ACCESS_KEY", "meridian"),
-        secret_key=os.getenv("MINIO_SECRET_KEY", ""),
-        secure=False,
-    )
-
-
 @celery_app.task(bind=True, name="workers.tasks.run_cleaning.run_cleaning",
                  soft_time_limit=300, time_limit=360)
 def run_cleaning(self, version_id: str, tenant_id: str, object_type: str, parquet_path: str):
@@ -37,16 +26,9 @@ def run_cleaning(self, version_id: str, tenant_id: str, object_type: str, parque
     logger.info(f"run_cleaning started: version_id={version_id}, object_type={object_type}")
 
     try:
-        # Load parquet from MinIO
-        import os
-        minio_client = _get_minio_client()
-        bucket = os.getenv("MINIO_BUCKET_UPLOADS", "meridian-uploads")
-        response = minio_client.get_object(bucket, parquet_path)
-        parquet_bytes = response.read()
-        response.close()
-        response.release_conn()
-
-        df = pd.read_parquet(io.BytesIO(parquet_bytes))
+        # Load the module's records (flat upload or extraction bundle)
+        from workers.dataset import load_module_frame
+        df = load_module_frame(parquet_path, object_type)
         logger.info(f"Loaded DataFrame for cleaning: {len(df)} rows")
 
         # Run cleaning detection
@@ -84,16 +66,12 @@ def run_cleaning(self, version_id: str, tenant_id: str, object_type: str, parque
                     for row in result.fetchall():
                         golden_map[row[0]] = {'id': str(row[1]), 'golden_fields': row[2] or {}}
 
-            # Enrich each candidate with golden record data
+            # Link each candidate to its golden record (candidates are record-level,
+            # so there is no single field value to carry)
             for c in candidates:
                 gr = golden_map.get(c['record_key'])
-                if gr:
-                    c['golden_record_id'] = gr['id']
-                    field_name = c.get('field_name') or c.get('check_id', '')
-                    c['golden_field_value'] = gr['golden_fields'].get(field_name)
-                else:
-                    c['golden_record_id'] = None
-                    c['golden_field_value'] = None
+                c['golden_record_id'] = gr['id'] if gr else None
+                c['golden_field_value'] = None
 
             # Idempotency: a re-run of checks re-enqueues run_cleaning for the same
             # version+object_type. Clear prior auto-detected rows first so we don't
@@ -195,8 +173,8 @@ def run_cleaning(self, version_id: str, tenant_id: str, object_type: str, parque
 
         # Populate stewardship queue so stewards see items immediately
         try:
-            from workers.tasks.populate_stewardship_queue import populate_stewardship_queue
-            populate_stewardship_queue.delay(tenant_id)
+            from workers.tasks.populate_stewardship_queue import populate_queue
+            populate_queue.delay()
             logger.info(f"Enqueued populate_stewardship_queue for tenant_id={tenant_id}")
         except Exception as e:
             logger.warning(f"Failed to enqueue populate_stewardship_queue (non-fatal): {e}")

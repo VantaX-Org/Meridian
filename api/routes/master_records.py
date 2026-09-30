@@ -302,7 +302,7 @@ async def promote_master_record(
                 ai_was_involved, ai_recommendation_accepted
             ) VALUES (
                 gen_random_uuid(), :tid, :rid, :now, :user_id,
-                'promoted', :prev::jsonb, :new::jsonb,
+                'promoted', CAST(:prev AS jsonb), CAST(:new AS jsonb),
                 :ai, :ai_accepted
             )
         """),

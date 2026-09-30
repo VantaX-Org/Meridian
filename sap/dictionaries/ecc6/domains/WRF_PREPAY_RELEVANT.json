@@ -1,0 +1,32 @@
+{
+ "domain": "WRF_PREPAY_RELEVANT",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Prepayment Not Allowed"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Prepayment Requested"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Prepayment Not Requested Before GR Effected"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Prepayment Possible, but Not Planned"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

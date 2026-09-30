@@ -1,0 +1,37 @@
+{
+ "domain": "MILL_BATCH_SEL_FLG",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Batch Selection Criteria from Configuration, Not Changeable"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Batch Selection Criteria Calculated, Changeable"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Batch Selection Criteria Calculated, Not Changeable"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "BatchSelCrit from SalesOrd Defaults in Delivery from Config."
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Batch Sel.Crit.from Sales Ord., No Defaults in Delivery"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

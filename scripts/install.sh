@@ -66,6 +66,11 @@ fetch "docker/nginx/nginx.conf"            "${INSTALL_DIR}/docker/nginx/nginx.co
 fetch ".env.example"                       "${INSTALL_DIR}/.env.example"
 fetch "scripts/meridian-deploy.sh"         "${INSTALL_DIR}/scripts/meridian-deploy.sh"
 fetch "scripts/update.sh"                  "${INSTALL_DIR}/scripts/update.sh"
+fetch "scripts/preflight.sh"               "${INSTALL_DIR}/scripts/preflight.sh"
+fetch "scripts/build-rfc-overlay.sh"       "${INSTALL_DIR}/scripts/build-rfc-overlay.sh"
+fetch "scripts/backup.sh"                  "${INSTALL_DIR}/scripts/backup.sh"
+fetch "scripts/restore.sh"                 "${INSTALL_DIR}/scripts/restore.sh"
+fetch "docker/Dockerfile.rfc"              "${INSTALL_DIR}/docker/Dockerfile.rfc"
 
 echo "→ Authenticating to ghcr.io"
 echo "${GH_TOKEN}" | docker login ghcr.io -u "${GH_USER}" --password-stdin \

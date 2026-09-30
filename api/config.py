@@ -31,9 +31,7 @@ class Settings(BaseSettings):
     # Licence
     # `.env.example` documents these as MERIDIAN_LICENCE_* — accept both the
     # MERIDIAN_-prefixed names and the bare names so a standard customer .env
-    # works without a workaround. licence_service.py already reads the
-    # MERIDIAN_-prefixed names; this keeps config.py — and the licence
-    # middleware that depends on it — consistent with that.
+    # works without a workaround.
     licence_key: Optional[str] = Field(
         default=None,
         validation_alias=AliasChoices("LICENCE_KEY", "MERIDIAN_LICENCE_KEY"),
@@ -48,6 +46,8 @@ class Settings(BaseSettings):
         default="online",
         validation_alias=AliasChoices("LICENCE_MODE", "MERIDIAN_LICENCE_MODE"),
     )
+    # Only a development deployment may run without a licence key.
+    env: str = Field(default="production", validation_alias=AliasChoices("MERIDIAN_ENV", "ENV"))
     licence_file: Optional[str] = None
     licence_file_path: Optional[str] = None
     licence_secret: Optional[str] = None
@@ -112,6 +112,10 @@ class Settings(BaseSettings):
     # Auth
     # Clerk removed - using local auth only
     auth_mode: str = "local"
+    # Live SAP write-back (BAPI execution) stays off until per-module BAPI
+    # parameter builders + commit/rollback are verified against the customer's
+    # release. With it off, fixes are delivered as export files (LSMW/BAPI).
+    live_writeback_enabled: bool = Field(default=False, validation_alias="MERIDIAN_LIVE_WRITEBACK_ENABLED")
 
     # SAP RFC sync
     credential_master_key: Optional[str] = None

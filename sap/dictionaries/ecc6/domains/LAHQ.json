@@ -1,0 +1,37 @@
+{
+ "domain": "LAHQ",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "1",
+   "high": null,
+   "text": "DE/Customizing and documentation complete"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "DE/Customizing complete; Documentation partly"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "DE/Customizing complete; No documentation"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "DE/Customizing application-dependent; No documentation"
+  },
+  {
+   "low": "0",
+   "high": null,
+   "text": "Not classified; Not a SAP standard language"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

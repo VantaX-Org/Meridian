@@ -1,0 +1,137 @@
+{
+ "domain": "CURTP",
+ "type": "CHAR",
+ "length": 2,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "00",
+   "high": null,
+   "text": "Document currency"
+  },
+  {
+   "low": "10",
+   "high": null,
+   "text": "Company code currency"
+  },
+  {
+   "low": "11",
+   "high": null,
+   "text": "Company code currency, group valuation"
+  },
+  {
+   "low": "12",
+   "high": null,
+   "text": "Company code currency, profit center valuation"
+  },
+  {
+   "low": "20",
+   "high": null,
+   "text": "Controlling area currency"
+  },
+  {
+   "low": "30",
+   "high": null,
+   "text": "Group currency"
+  },
+  {
+   "low": "31",
+   "high": null,
+   "text": "Group currency, group valuation"
+  },
+  {
+   "low": "32",
+   "high": null,
+   "text": "Group currency, profit center valuation"
+  },
+  {
+   "low": "40",
+   "high": null,
+   "text": "Hard currency"
+  },
+  {
+   "low": "50",
+   "high": null,
+   "text": "Index-based currency"
+  },
+  {
+   "low": "60",
+   "high": null,
+   "text": "Global company currency"
+  },
+  {
+   "low": "70",
+   "high": null,
+   "text": "Controlling object currency"
+  },
+  {
+   "low": "71",
+   "high": null,
+   "text": "Controlling object currency, group valuation"
+  },
+  {
+   "low": "72",
+   "high": null,
+   "text": "Controlling object currency, profit center valuation"
+  },
+  {
+   "low": "80",
+   "high": null,
+   "text": "Ledger currency"
+  },
+  {
+   "low": "81",
+   "high": null,
+   "text": "Ledger currency, group valuation"
+  },
+  {
+   "low": "82",
+   "high": null,
+   "text": "Ledger currency, profit center valuation"
+  },
+  {
+   "low": "90",
+   "high": null,
+   "text": "Profit center invoice currency"
+  },
+  {
+   "low": "92",
+   "high": null,
+   "text": "Profit center accounting currency, profit center valuation"
+  },
+  {
+   "low": "A0",
+   "high": null,
+   "text": "Financial management area currency"
+  },
+  {
+   "low": "B0",
+   "high": null,
+   "text": "Operating concern currency"
+  },
+  {
+   "low": "B2",
+   "high": null,
+   "text": "Operating concern currency, profit center valuation"
+  },
+  {
+   "low": "C0",
+   "high": null,
+   "text": "Consolidation unit currency"
+  },
+  {
+   "low": "C1",
+   "high": null,
+   "text": "Consolidation unit currency, group valuation"
+  },
+  {
+   "low": "C2",
+   "high": null,
+   "text": "Consolidation unit currency, profit center valuation"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

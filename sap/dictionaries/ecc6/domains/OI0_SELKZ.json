@@ -1,0 +1,22 @@
+{
+ "domain": "OI0_SELKZ",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Entry not selected / not active / function switched off"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Entry selected / active / function switched on"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

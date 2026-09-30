@@ -1,0 +1,249 @@
+{
+ "table": "T077D",
+ "description": "Customer account groups",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "KTOKD",
+   "key": true,
+   "data_element": "KTOKD",
+   "domain": "KTOKD",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Customer Account Group",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "FAUSA",
+   "key": false,
+   "data_element": "FAUSA_077D",
+   "domain": "FA040",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Customer master record field status def.for general data",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "FAUSF",
+   "key": false,
+   "data_element": "FAUSF_077D",
+   "domain": "FA040",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Customer master record field status def.for comp.code data",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "FAUSV",
+   "key": false,
+   "data_element": "FAUSV_077D",
+   "domain": "FA040",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Customer master record field status def.for sales fields",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "NUMKR",
+   "key": false,
+   "data_element": "NUMKR",
+   "domain": "CHAR2",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Number range",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "XCPDS",
+   "key": false,
+   "data_element": "XCPDS",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Account group for one-time accounts?",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "KALSM",
+   "key": false,
+   "data_element": "KALSMB",
+   "domain": "KALSM",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Output determination procedure",
+   "check_table": "T683"
+  },
+  {
+   "pos": 9,
+   "name": "DEAR1",
+   "key": false,
+   "data_element": "DEAR1",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Competitor",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "DEAR2",
+   "key": false,
+   "data_element": "DEAR2",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Sales partner",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "DEAR3",
+   "key": false,
+   "data_element": "DEAR3",
+   "domain": "DEAR3",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Sales prospect",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "DEAR4",
+   "key": false,
+   "data_element": "DEAR4",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator for customer type 4",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "DEAR5",
+   "key": false,
+   "data_element": "DEAR5",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "ID for default sold-to party",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "FAUS1",
+   "key": false,
+   "data_element": "FAUSA_077D",
+   "domain": "FA040",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Customer master record field status def.for general data",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "FAUSW",
+   "key": false,
+   "data_element": "FAUSW_077D",
+   "domain": "FA040",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Field status bar, plant master for IS-R data",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "FAUSG",
+   "key": false,
+   "data_element": "FAUSF_077D",
+   "domain": "FA040",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Customer master record field status def.for comp.code data",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "DEAR6",
+   "key": false,
+   "data_element": "DEAR6",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Consumer",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "FAUS2",
+   "key": false,
+   "data_element": "FAUSA_077D",
+   "domain": "FA040",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Customer master record field status def.for general data",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "FAUSU",
+   "key": false,
+   "data_element": "FAUSV_077D",
+   "domain": "FA040",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Customer master record field status def.for sales fields",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "KALSM",
+   "foreign_table": "T683",
+   "foreign_field": "KALSM"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

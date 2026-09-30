@@ -1,0 +1,972 @@
+{
+ "table": "MVKE",
+ "description": "Sales Data for Material",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "MATNR",
+   "key": true,
+   "data_element": "MATNR",
+   "domain": "MATNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Material Number",
+   "check_table": "MARA"
+  },
+  {
+   "pos": 3,
+   "name": "VKORG",
+   "key": true,
+   "data_element": "VKORG",
+   "domain": "VKORG",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Sales Organization",
+   "check_table": "TVKO"
+  },
+  {
+   "pos": 4,
+   "name": "VTWEG",
+   "key": true,
+   "data_element": "VTWEG",
+   "domain": "VTWEG",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Distribution Channel",
+   "check_table": "TVTW"
+  },
+  {
+   "pos": 6,
+   "name": "LVORM",
+   "key": false,
+   "data_element": "LVOVK",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Ind.: Flag material for deletion at distribution chain level",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "VERSG",
+   "key": false,
+   "data_element": "STGMA",
+   "domain": "STGMA",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Material statistics group",
+   "check_table": "TVSM"
+  },
+  {
+   "pos": 8,
+   "name": "BONUS",
+   "key": false,
+   "data_element": "BONUS",
+   "domain": "BONUS",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Volume rebate group",
+   "check_table": "TVBO"
+  },
+  {
+   "pos": 9,
+   "name": "PROVG",
+   "key": false,
+   "data_element": "PROVG",
+   "domain": "PROVG",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Commission group",
+   "check_table": "TVPR"
+  },
+  {
+   "pos": 10,
+   "name": "SKTOF",
+   "key": false,
+   "data_element": "SKTOF",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Cash discount indicator",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "VMSTA",
+   "key": false,
+   "data_element": "VMSTA",
+   "domain": "VMSTA",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Distribution-chain-specific material status",
+   "check_table": "TVMS"
+  },
+  {
+   "pos": 12,
+   "name": "VMSTD",
+   "key": false,
+   "data_element": "VMSTD",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date from which distr.-chain-spec. material status is valid",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "AUMNG",
+   "key": false,
+   "data_element": "MINAU",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Minimum order quantity in base unit of measure",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "LFMNG",
+   "key": false,
+   "data_element": "MINLF",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Minimum delivery quantity in delivery note processing",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "EFMNG",
+   "key": false,
+   "data_element": "MINEF",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Minimum make-to-order quantity",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "SCMNG",
+   "key": false,
+   "data_element": "SCHRT",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Delivery unit",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "SCHME",
+   "key": false,
+   "data_element": "SCHME",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit of measure of delivery unit",
+   "check_table": "T006"
+  },
+  {
+   "pos": 18,
+   "name": "VRKME",
+   "key": false,
+   "data_element": "VRKME",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Sales unit",
+   "check_table": "T006"
+  },
+  {
+   "pos": 19,
+   "name": "MTPOS",
+   "key": false,
+   "data_element": "MTPOS",
+   "domain": "MTPOS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Item category group from material master",
+   "check_table": "TPTM"
+  },
+  {
+   "pos": 20,
+   "name": "DWERK",
+   "key": false,
+   "data_element": "DWERK_EXT",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Delivering Plant (Own or External)",
+   "check_table": "TVKWZ"
+  },
+  {
+   "pos": 21,
+   "name": "PRODH",
+   "key": false,
+   "data_element": "PRODH_D",
+   "domain": "PRODH",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Product Hierarchy",
+   "check_table": "T179"
+  },
+  {
+   "pos": 22,
+   "name": "PMATN",
+   "key": false,
+   "data_element": "PMATN",
+   "domain": "MATNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Pricing Reference Material",
+   "check_table": "MARA"
+  },
+  {
+   "pos": 23,
+   "name": "KONDM",
+   "key": false,
+   "data_element": "KONDM",
+   "domain": "KONDM",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Material Pricing Group",
+   "check_table": "T178"
+  },
+  {
+   "pos": 24,
+   "name": "KTGRM",
+   "key": false,
+   "data_element": "KTGRM",
+   "domain": "KTGRM",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Account assignment group for this material",
+   "check_table": "TVKM"
+  },
+  {
+   "pos": 25,
+   "name": "MVGR1",
+   "key": false,
+   "data_element": "MVGR1",
+   "domain": "MVGR1",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Material group 1",
+   "check_table": "TVM1"
+  },
+  {
+   "pos": 26,
+   "name": "MVGR2",
+   "key": false,
+   "data_element": "MVGR2",
+   "domain": "MVGR2",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Material group 2",
+   "check_table": "TVM2"
+  },
+  {
+   "pos": 27,
+   "name": "MVGR3",
+   "key": false,
+   "data_element": "MVGR3",
+   "domain": "MVGR3",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Material group 3",
+   "check_table": "TVM3"
+  },
+  {
+   "pos": 28,
+   "name": "MVGR4",
+   "key": false,
+   "data_element": "MVGR4",
+   "domain": "MVGR4",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Material group 4",
+   "check_table": "TVM4"
+  },
+  {
+   "pos": 29,
+   "name": "MVGR5",
+   "key": false,
+   "data_element": "MVGR5",
+   "domain": "MVGR5",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Material group 5",
+   "check_table": "TVM5"
+  },
+  {
+   "pos": 31,
+   "name": "SSTUF",
+   "key": false,
+   "data_element": "SSTUF",
+   "domain": "SSTUF",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Assortment grade",
+   "check_table": "TWSS"
+  },
+  {
+   "pos": 32,
+   "name": "PFLKS",
+   "key": false,
+   "data_element": "PFLKS",
+   "domain": "PFLKS",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "External assortment priority",
+   "check_table": "TWSP"
+  },
+  {
+   "pos": 33,
+   "name": "LSTFL",
+   "key": false,
+   "data_element": "LSTFL",
+   "domain": "LSTFL",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Listing procedure for store or other assortment categories",
+   "check_table": "TWLV"
+  },
+  {
+   "pos": 34,
+   "name": "LSTVZ",
+   "key": false,
+   "data_element": "LSTVZ",
+   "domain": "LSTFL",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Listing procedure for distr. center assortment categories",
+   "check_table": "TWLV"
+  },
+  {
+   "pos": 35,
+   "name": "LSTAK",
+   "key": false,
+   "data_element": "LSTAK",
+   "domain": "LSTAK",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Listing functions (assortments) are active",
+   "check_table": null
+  },
+  {
+   "pos": 36,
+   "name": "LDVFL",
+   "key": false,
+   "data_element": "LDVFL",
+   "domain": "DATS",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date from which listed in the store",
+   "check_table": null
+  },
+  {
+   "pos": 37,
+   "name": "LDBFL",
+   "key": false,
+   "data_element": "LDBFL",
+   "domain": "DATS",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date to which listed in the store",
+   "check_table": null
+  },
+  {
+   "pos": 38,
+   "name": "LDVZL",
+   "key": false,
+   "data_element": "LDVZL",
+   "domain": "DATS",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date from which listed in the distribution center",
+   "check_table": null
+  },
+  {
+   "pos": 39,
+   "name": "LDBZL",
+   "key": false,
+   "data_element": "LDBZL",
+   "domain": "DATS",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date to which listed in the central warehouse/distr. center",
+   "check_table": null
+  },
+  {
+   "pos": 40,
+   "name": "VDVFL",
+   "key": false,
+   "data_element": "VDVFL",
+   "domain": "DATS",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date from which sold in the store",
+   "check_table": null
+  },
+  {
+   "pos": 41,
+   "name": "VDBFL",
+   "key": false,
+   "data_element": "VDBFL",
+   "domain": "DATS",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date to which sold in the store",
+   "check_table": null
+  },
+  {
+   "pos": 42,
+   "name": "VDVZL",
+   "key": false,
+   "data_element": "VDVZL",
+   "domain": "DATS",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date from which sold in the distribution center",
+   "check_table": null
+  },
+  {
+   "pos": 43,
+   "name": "VDBZL",
+   "key": false,
+   "data_element": "VDBZL",
+   "domain": "DATS",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date to which sold in the distribution center",
+   "check_table": null
+  },
+  {
+   "pos": 44,
+   "name": "PRAT1",
+   "key": false,
+   "data_element": "PRAT1",
+   "domain": "PRATA",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "ID for product attribute 1",
+   "check_table": null
+  },
+  {
+   "pos": 45,
+   "name": "PRAT2",
+   "key": false,
+   "data_element": "PRAT2",
+   "domain": "PRATA",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "ID for product attribute 2",
+   "check_table": null
+  },
+  {
+   "pos": 46,
+   "name": "PRAT3",
+   "key": false,
+   "data_element": "PRAT3",
+   "domain": "PRATA",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "ID for product attribute 3",
+   "check_table": null
+  },
+  {
+   "pos": 47,
+   "name": "PRAT4",
+   "key": false,
+   "data_element": "PRAT4",
+   "domain": "PRATA",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "ID for product attribute 4",
+   "check_table": null
+  },
+  {
+   "pos": 48,
+   "name": "PRAT5",
+   "key": false,
+   "data_element": "PRAT5",
+   "domain": "PRATA",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "ID for product attribute 5",
+   "check_table": null
+  },
+  {
+   "pos": 49,
+   "name": "PRAT6",
+   "key": false,
+   "data_element": "PRAT6",
+   "domain": "PRATA",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "ID for product attribute 6",
+   "check_table": null
+  },
+  {
+   "pos": 50,
+   "name": "PRAT7",
+   "key": false,
+   "data_element": "PRAT7",
+   "domain": "PRATA",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "ID for product attribute 7",
+   "check_table": null
+  },
+  {
+   "pos": 51,
+   "name": "PRAT8",
+   "key": false,
+   "data_element": "PRAT8",
+   "domain": "PRATA",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "ID for product attribute 8",
+   "check_table": null
+  },
+  {
+   "pos": 52,
+   "name": "PRAT9",
+   "key": false,
+   "data_element": "PRAT9",
+   "domain": "PRATA",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "ID for product attribute 9",
+   "check_table": null
+  },
+  {
+   "pos": 53,
+   "name": "PRATA",
+   "key": false,
+   "data_element": "PRATA",
+   "domain": "PRATA",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "ID for product attribute 10",
+   "check_table": null
+  },
+  {
+   "pos": 54,
+   "name": "RDPRF",
+   "key": false,
+   "data_element": "RDPRF",
+   "domain": "RDPRF",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Rounding Profile",
+   "check_table": "RDPR"
+  },
+  {
+   "pos": 55,
+   "name": "MEGRU",
+   "key": false,
+   "data_element": "MEGRU",
+   "domain": "MEGRU",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Unit of Measure Group",
+   "check_table": "TWMEG"
+  },
+  {
+   "pos": 56,
+   "name": "LFMAX",
+   "key": false,
+   "data_element": "MAXLF",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Maximum delivery quantity in store order processing",
+   "check_table": null
+  },
+  {
+   "pos": 57,
+   "name": "RJART",
+   "key": false,
+   "data_element": "RJART",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Flag rackjobber material",
+   "check_table": null
+  },
+  {
+   "pos": 58,
+   "name": "PBIND",
+   "key": false,
+   "data_element": "PBIND",
+   "domain": "PBIND",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator for price fixing",
+   "check_table": null
+  },
+  {
+   "pos": 59,
+   "name": "VAVME",
+   "key": false,
+   "data_element": "VAVME",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Variable Sales Unit Not Allowed",
+   "check_table": null
+  },
+  {
+   "pos": 60,
+   "name": "MATKC",
+   "key": false,
+   "data_element": "MATKC",
+   "domain": "MATKC",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Competition characterization of a material",
+   "check_table": null
+  },
+  {
+   "pos": 61,
+   "name": "PVMSO",
+   "key": false,
+   "data_element": "PVMSO",
+   "domain": "PVMSO",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Material sorting in product proposal",
+   "check_table": "*"
+  },
+  {
+   "pos": 64,
+   "name": "/BEV1/EMLGRP",
+   "key": false,
+   "data_element": "/BEV1/EMLGGRP",
+   "domain": "/BEV1/EMLGGRP",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Empties Group",
+   "check_table": "/BEV1/EMGRP"
+  },
+  {
+   "pos": 65,
+   "name": "/BEV1/EMDRCKSPL",
+   "key": false,
+   "data_element": "/BEV1/EMPRTCOL",
+   "domain": "/BEV1/EMPRTCOL",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Print Column Empties Returns Block",
+   "check_table": null
+  },
+  {
+   "pos": 68,
+   "name": "/BEV1/RPBEZME",
+   "key": false,
+   "data_element": "/BEV1/RPBEZME",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Base Unit of Measure for Statistics Totals List/Planning",
+   "check_table": "*"
+  },
+  {
+   "pos": 69,
+   "name": "/BEV1/RPSNS",
+   "key": false,
+   "data_element": "/BEV1/RPSNS",
+   "domain": "/BEV1/RPJANEIN",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "No Allocation to Totals Field (Do not Total)",
+   "check_table": null
+  },
+  {
+   "pos": 70,
+   "name": "/BEV1/RPSFA",
+   "key": false,
+   "data_element": "/BEV1/RPSFA",
+   "domain": "/BEV1/RPJANEIN",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Assignment to Totals Field Category 1",
+   "check_table": null
+  },
+  {
+   "pos": 71,
+   "name": "/BEV1/RPSKI",
+   "key": false,
+   "data_element": "/BEV1/RPSKI",
+   "domain": "/BEV1/RPJANEIN",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Assignment to Totals Field Category 2",
+   "check_table": null
+  },
+  {
+   "pos": 72,
+   "name": "/BEV1/RPSCO",
+   "key": false,
+   "data_element": "/BEV1/RPSCO",
+   "domain": "/BEV1/RPJANEIN",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Assignment to Totals Field Category 3",
+   "check_table": null
+  },
+  {
+   "pos": 73,
+   "name": "/BEV1/RPSSO",
+   "key": false,
+   "data_element": "/BEV1/RPSSO",
+   "domain": "/BEV1/RPJANEIN",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Assignment to Totals Field Category 4",
+   "check_table": null
+  },
+  {
+   "pos": 76,
+   "name": "PLGTP",
+   "key": false,
+   "data_element": "WRF_PLGTP",
+   "domain": "PLGTP",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Price Band Category",
+   "check_table": "TWPT"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "/BEV1/EMLGRP",
+   "foreign_table": "/BEV1/EMGRP",
+   "foreign_field": "LGGRP"
+  },
+  {
+   "field": "BONUS",
+   "foreign_table": "TVBO",
+   "foreign_field": "BONUS"
+  },
+  {
+   "field": "DWERK",
+   "foreign_table": "TVKWZ",
+   "foreign_field": "WERKS"
+  },
+  {
+   "field": "KONDM",
+   "foreign_table": "T178",
+   "foreign_field": "KONDM"
+  },
+  {
+   "field": "KTGRM",
+   "foreign_table": "TVKM",
+   "foreign_field": "KTGRM"
+  },
+  {
+   "field": "LSTFL",
+   "foreign_table": "TWLV",
+   "foreign_field": "LSTFL"
+  },
+  {
+   "field": "LSTVZ",
+   "foreign_table": "TWLV",
+   "foreign_field": "LSTFL"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MATNR",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "MEGRU",
+   "foreign_table": "TWMEG",
+   "foreign_field": "MEGRU"
+  },
+  {
+   "field": "MTPOS",
+   "foreign_table": "TPTM",
+   "foreign_field": "MTPOS"
+  },
+  {
+   "field": "MVGR1",
+   "foreign_table": "TVM1",
+   "foreign_field": "MVGR1"
+  },
+  {
+   "field": "MVGR2",
+   "foreign_table": "TVM2",
+   "foreign_field": "MVGR2"
+  },
+  {
+   "field": "MVGR3",
+   "foreign_table": "TVM3",
+   "foreign_field": "MVGR3"
+  },
+  {
+   "field": "MVGR4",
+   "foreign_table": "TVM4",
+   "foreign_field": "MVGR4"
+  },
+  {
+   "field": "MVGR5",
+   "foreign_table": "TVM5",
+   "foreign_field": "MVGR5"
+  },
+  {
+   "field": "PFLKS",
+   "foreign_table": "TWSP",
+   "foreign_field": "PFLKS"
+  },
+  {
+   "field": "PLGTP",
+   "foreign_table": "TWPT",
+   "foreign_field": "PLGTP"
+  },
+  {
+   "field": "PMATN",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "PRODH",
+   "foreign_table": "T179",
+   "foreign_field": "PRODH"
+  },
+  {
+   "field": "PROVG",
+   "foreign_table": "TVPR",
+   "foreign_field": "PROVG"
+  },
+  {
+   "field": "RDPRF",
+   "foreign_table": "RDPR",
+   "foreign_field": "RDPRF"
+  },
+  {
+   "field": "SCHME",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "SSTUF",
+   "foreign_table": "TWSS",
+   "foreign_field": "SSTUF"
+  },
+  {
+   "field": "VERSG",
+   "foreign_table": "TVSM",
+   "foreign_field": "STGMA"
+  },
+  {
+   "field": "VKORG",
+   "foreign_table": "TVKO",
+   "foreign_field": "VKORG"
+  },
+  {
+   "field": "VMSTA",
+   "foreign_table": "TVMS",
+   "foreign_field": "VMSTA"
+  },
+  {
+   "field": "VRKME",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "VTWEG",
+   "foreign_table": "TVTW",
+   "foreign_field": "VTWEG"
+  }
+ ]
+}

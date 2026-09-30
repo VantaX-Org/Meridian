@@ -1,0 +1,93 @@
+{
+ "table": "USMD1213",
+ "description": "Change Request: Objects",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "USMD_CREQUEST",
+   "key": true,
+   "data_element": "USMD_CREQUEST",
+   "domain": "USMD_CREQUEST",
+   "type": "NUMC",
+   "length": 12,
+   "decimals": 0,
+   "description": "Change Request",
+   "check_table": "USMD120C"
+  },
+  {
+   "pos": 3,
+   "name": "USMD_ENTITY",
+   "key": true,
+   "data_element": "USMD_ENTITY",
+   "domain": "USMD_ENTITY",
+   "type": "CHAR",
+   "length": 9,
+   "decimals": 0,
+   "description": "Entity Type",
+   "check_table": "*"
+  },
+  {
+   "pos": 4,
+   "name": "USMD_SEQNR",
+   "key": true,
+   "data_element": "USMD_SEQNR_OBJ",
+   "domain": null,
+   "type": "INT4",
+   "length": 10,
+   "decimals": 0,
+   "description": "Sequence Number",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "USMD_ENTITY_OBJ",
+   "key": true,
+   "data_element": "USMD_ENTITY",
+   "domain": "USMD_ENTITY",
+   "type": "CHAR",
+   "length": 9,
+   "decimals": 0,
+   "description": "Entity Type",
+   "check_table": "*"
+  },
+  {
+   "pos": 6,
+   "name": "USMD_VALUE",
+   "key": false,
+   "data_element": "USMD_VALUE",
+   "domain": "USMD_VALUE",
+   "type": "CHAR",
+   "length": 60,
+   "decimals": 0,
+   "description": "Characteristic Value",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "USMD_CREQUEST",
+   "foreign_table": "USMD120C",
+   "foreign_field": "USMD_CREQUEST"
+  }
+ ]
+}

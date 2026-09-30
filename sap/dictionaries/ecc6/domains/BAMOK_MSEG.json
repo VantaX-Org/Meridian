@@ -1,0 +1,52 @@
+{
+ "domain": "BAMOK_MSEG",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "0",
+   "high": null,
+   "text": "Restricted-Use Stock"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Unrestricted-Use Stock"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Stock in Quality Inspection"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Blocked Stock"
+  },
+  {
+   "low": "L",
+   "high": null,
+   "text": "Tied Empties"
+  },
+  {
+   "low": "M",
+   "high": null,
+   "text": "Stock Transfer of 'Empties', on Mat. Basis After Val. Basis"
+  },
+  {
+   "low": "W",
+   "high": null,
+   "text": "Stock Transfer of 'Empties', on Val. Basis After Mat. Basis"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Unrestricted-Use Stock (T156M-ZUSTD Read with ' ')"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

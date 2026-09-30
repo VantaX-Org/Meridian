@@ -1,0 +1,47 @@
+{
+ "domain": "DURAS",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Do not transfer any data"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Only purchasing info.record data (with confirm. dialog box)"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Only purchasing info. record data (without dialog box)"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Only material master data (with confirmation dialog box)"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Only material master data (without confirmation dialog box)"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Transfer all data (with confirmation dialog box)"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Transfer all data (without confirmation dialog box)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,22 @@
+{
+ "domain": "INTEG_CO",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Manual creation of cost elements"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Automatic creation of cost elements"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

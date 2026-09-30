@@ -1,9 +1,11 @@
-import io
 import json
+from datetime import datetime, timezone
 import logging
+import os
 import traceback
 
-import pandas as pd
+import yaml
+
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -19,22 +21,63 @@ from workers.db import get_sync_engine
 logger = logging.getLogger("meridian.worker")
 
 
-def _get_minio_client():
-    import os
-    from minio import Minio
+def _live_reference_values(engine, tenant_id: str, metadata: dict) -> dict[str, set[str]]:
+    """``TABLE.FIELD`` → values from the source system's live config snapshots.
 
-    return Minio(
-        endpoint=os.getenv("MINIO_ENDPOINT", "minio:9000"),
-        access_key=os.getenv("MINIO_ACCESS_KEY", "meridian"),
-        secret_key=os.getenv("MINIO_SECRET_KEY", ""),
-        secure=False,
-    )
+    Only snapshots with ``source='live'`` count — the SAP-standard baseline is
+    already what the rule's own ``reference_values`` encode.
+    """
+    system_id = metadata.get("system_id")
+    if not system_id:
+        return {}
+    out: dict[str, set[str]] = {}
+    with Session(engine) as session:
+        session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        rows = session.execute(
+            text("SELECT config_table, config_data FROM config_snapshots "
+                 "WHERE system_id = :sid AND source = 'live'"),
+            {"sid": system_id},
+        ).fetchall()
+    for table, data in rows:
+        for rec in data or []:
+            for col, val in rec.items():
+                if val not in (None, ""):
+                    out.setdefault(f"{table}.{col}", set()).add(str(val).strip())
+    return out
+
+
+def rule_set_fingerprint(modules: list[str], overrides: dict, generated: list[dict] | None = None) -> str:
+    """Identifies the rules a run applied (YAML + governance + app version) — trend
+    points produced by different rule sets are flagged as not comparable."""
+    import hashlib
+    from pathlib import Path
+
+    from checks.runner import _find_module_yaml
+
+    h = hashlib.sha256()
+    for m in sorted(modules):
+        try:
+            h.update(Path(_find_module_yaml(m)).read_bytes())
+        except FileNotFoundError:
+            h.update(m.encode())
+    h.update(json.dumps(overrides, sort_keys=True).encode())
+    for f in ("checks/rules/value_lexicon.yaml", "sap/dictionaries/populations.yaml"):
+        h.update((Path(__file__).resolve().parents[2] / f).read_bytes())
+    h.update(json.dumps(generated or [], sort_keys=True).encode())  # config-derived rules change with the config
+    version_file = Path("/app/VERSION")
+    if version_file.exists():
+        h.update(version_file.read_bytes())
+    return h.hexdigest()[:16]
+
+
+# A full extract (e.g. a quarter of BSEG) needs far more than the old 5 minutes.
+_CHECKS_LIMIT = int(os.getenv("MERIDIAN_CHECKS_TIME_LIMIT", "1800"))
 
 
 @celery_app.task(bind=True, name="workers.tasks.run_checks.run_checks",
-                 soft_time_limit=300, time_limit=360)
-def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
-    """Execute the full check suite against a dataset."""
+                 soft_time_limit=_CHECKS_LIMIT, time_limit=_CHECKS_LIMIT + 60)
+def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanalyse: bool = False):
+    """Execute the full check suite against a dataset (``reanalyse``: again, on the same version)."""
     logger.info(f"run_checks started: version_id={version_id}, tenant_id={tenant_id}")
 
     engine = get_sync_engine()
@@ -49,7 +92,7 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
             {"vid": version_id, "tid": tenant_id},
         )
         row = result.fetchone()
-        if row and row[0] == "complete":
+        if row and row[0] == "complete" and not reanalyse:
             logger.info(f"Version {version_id} already complete, skipping")
             return {"version_id": version_id, "status": "complete"}
 
@@ -71,82 +114,55 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
     )
 
     try:
-        # Step 3: Download parquet from MinIO
-        minio_client = _get_minio_client()
-        import os
-        bucket = os.getenv("MINIO_BUCKET_UPLOADS", "meridian-uploads")
-        response = minio_client.get_object(bucket, parquet_path)
-        parquet_bytes = response.read()
-        response.close()
-        response.release_conn()
-
-        # Step 4: Load into DataFrame — prune columns to only those referenced
-        # by any rule in the modules we're about to check. For large extracts
-        # (200+ columns) this can save 70-90% of memory and load time.
-        #
-        # We need to peek at the parquet schema first because we don't know
-        # the modules until we query analysis_versions metadata below, which
-        # itself happens after the engine reference is valid. So we load the
-        # column list once, then re-read with projection if we have modules.
-        parquet_buf = io.BytesIO(parquet_bytes)
-
-        # Query modules first (same SELECT as Step 5 below, hoisted here)
+        # Step 3: Load the dataset (extraction bundle or flat upload).
         with Session(engine) as session:
             session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
-            result = session.execute(
+            meta_row = session.execute(
                 text("SELECT metadata FROM analysis_versions WHERE id = :vid"),
                 {"vid": version_id},
+            ).fetchone()
+            tenant_row = session.execute(
+                text("SELECT dqs_weights FROM tenants WHERE id = :tid"), {"tid": str(tenant_id)},
+            ).fetchone()
+            # remember where the dataset lives (migration analysis re-reads it)
+            session.execute(
+                text("UPDATE analysis_versions SET metadata = COALESCE(metadata, '{}'::jsonb) "
+                     "|| jsonb_build_object('dataset_path', CAST(:p AS text)) WHERE id = :vid"),
+                {"vid": version_id, "p": parquet_path},
             )
-            row = result.fetchone()
-            metadata = row[0] if row else {}
-            modules = metadata.get("modules", [])
+            session.commit()
+        metadata = (meta_row[0] if meta_row else None) or {}
+        modules = metadata.get("modules", [])
+        tenant_weights = (tenant_row[0] if tenant_row else None) or {}
 
-        needed_columns: set[str] = set()
-        try:
-            from checks.runner import get_required_columns
-            for mod in modules:
-                try:
-                    needed_columns.update(get_required_columns(mod))
-                except FileNotFoundError:
-                    # Unknown module — skip pruning, fall back to full load
-                    needed_columns = set()
-                    break
-        except Exception as e:
-            logger.warning(f"Column pruning unavailable, loading full parquet: {e}")
-            needed_columns = set()
+        from api.services.source_design import dictionary_for
+        from workers.dataset import load_dataset
 
-        all_cols: set[str] | None = None
-        if needed_columns:
-            # Read only the parquet footer metadata to discover columns
-            # (no row data). Fall back silently if pyarrow isn't available.
-            try:
-                import pyarrow.parquet as pq
-                schema = pq.read_schema(parquet_buf)
-                parquet_buf.seek(0)
-                all_cols = set(schema.names)
-            except ImportError:
-                all_cols = None
+        with Session(engine) as session:
+            session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+            # source system's own DDIC (live snapshot) over the SAP-standard bundle
+            dictionary = dictionary_for(session, metadata.get("system_id"))
+            # rules generated from this system's own field-status customizing
+            from checks.field_status_rules import extra_fields, load_config
+            from sap.field_status_config import resolve_all
+            fs_resolutions = resolve_all(load_config(session, metadata.get("system_id")))
+        frames, df, row_count, col_count = load_dataset(
+            parquet_path, dictionary, modules,
+            extra={f"{t}.{f}" for t, fs in extra_fields(fs_resolutions).items() for f in fs})
 
-        if needed_columns and all_cols is not None:
-            project = [c for c in needed_columns if c in all_cols]
-            # Always keep likely identifier columns so sample_failing_records
-            # still has a usable id_field in the UI, even if no rule references it.
-            for id_candidate in all_cols:
-                if id_candidate in project:
-                    continue
-                up = str(id_candidate).upper()
-                if up.endswith(("LIFNR", "MATNR", "PARTNER", "KUNNR", "USERID")):
-                    project.append(id_candidate)
-            if project:
-                df = pd.read_parquet(parquet_buf, columns=project)
-            else:
-                df = pd.read_parquet(parquet_buf)
-        else:
-            df = pd.read_parquet(parquet_buf)
-
-        row_count = len(df)
-        col_count = len(df.columns)
         logger.info(f"Loaded DataFrame: {row_count} rows, {col_count} columns")
+
+        # Records per module = rows of the module's anchor table (flat upload: all rows).
+        from checks.frames import _graph
+        anchors = _graph()[1]
+        module_rows = {m: (len(frames.frames[anchors[m]]) if anchors.get(m) in frames.frames else row_count)
+                       for m in modules}
+        with Session(engine) as session:
+            session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+            session.execute(text("UPDATE analysis_versions SET metadata = COALESCE(metadata, '{}'::jsonb) "
+                                 "|| jsonb_build_object('module_rows', CAST(:mr AS jsonb)) WHERE id = :vid"),
+                            {"mr": json.dumps(module_rows), "vid": version_id})
+            session.commit()
 
         if row_count > 500_000:
             logger.warning(f"Large dataset detected ({row_count} rows). Analysis may take several minutes.")
@@ -165,11 +181,36 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
             total_rows=row_count,
         )
 
-        # Step 5: modules were loaded above as part of column pruning
         # Step 6: Run checks for each module
         from checks.runner import run_checks as execute_checks
 
         all_results = []
+        live_refs = _live_reference_values(engine, tenant_id, metadata)
+        from checks.overrides import load_overrides
+        with Session(engine) as session:
+            session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+            rule_overrides = load_overrides(session)
+            from checks.field_status_rules import generate
+            fs_rules = generate(fs_resolutions, modules)
+            session.execute(text("UPDATE analysis_versions SET metadata = COALESCE(metadata, '{}'::jsonb) "
+                                 "|| jsonb_build_object('field_status', CAST(:fs AS jsonb)) WHERE id = :vid"),
+                            {"vid": version_id, "fs": json.dumps([
+                                {"segment": r.segment.id, "definition": r.fauna, "reason": r.reason,
+                                 "account_groups": len(r.groups),
+                                 "rules": sum(1 for x in fs_rules if x["grain"] == r.segment.record_table)}
+                                for r in fs_resolutions])})
+            session.commit()
+        # misplaced values, placeholders, swaps, dead-in-text records (checks/value_placement.py)
+        from checks import value_placement
+        from checks.runner import _find_module_yaml
+        vp_rules = []
+        for m in modules:
+            try:
+                static = yaml.safe_load(_find_module_yaml(m).read_text()).get("rules", [])
+            except FileNotFoundError:
+                continue
+            vp_rules += value_placement.generate(m, static, dictionary)
+        fs_rules = fs_rules + vp_rules
         module_count = max(len(modules), 1)
         for idx, module_name in enumerate(modules):
             logger.info(f"Running checks for module: {module_name}")
@@ -189,7 +230,8 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
                 rows_processed=rows_done_before,
                 total_rows=row_count,
             )
-            results = execute_checks(module_name, df, tenant_id)
+            results = execute_checks(module_name, frames, tenant_id, reference_values=live_refs,
+                                     overrides=rule_overrides, extra_rules=fs_rules)
             all_results.extend(results)
             # Post-module tick so users see movement between modules.
             rows_done_after = int(((idx + 1) / module_count) * row_count)
@@ -201,29 +243,6 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
                 rows_processed=rows_done_after,
                 total_rows=row_count,
             )
-
-        # Step 6b: Cross-module consistency rules (P2P, OTC, etc.) — run
-        # against the full dataframe. Uses the pre-joined-single-df path
-        # because current uploads contain all referenced tables as
-        # prefix-suffixed columns on the same rows. Rules whose required
-        # columns aren't present are skipped silently.
-        try:
-            from checks.cross_module import discover_cross_module_rules, run_cross_module_on_prejoined
-            xm_rules = discover_cross_module_rules()
-            if xm_rules:
-                logger.info(f"Running {len(xm_rules)} cross-module rule(s)")
-                for rule in xm_rules:
-                    if set(rule.get("sources", [])) and not any(
-                        s.get("module") in modules for s in rule.get("sources", [])
-                    ):
-                        # None of the rule's sources are in this analysis —
-                        # skip (nothing would match anyway).
-                        continue
-                    res = run_cross_module_on_prejoined(rule, df)
-                    if res is not None:
-                        all_results.append(res)
-        except Exception as e:
-            logger.warning(f"cross-module check pass failed, continuing: {e}")
 
         # Step 6c: Z-table (customer-namespace) rules. The standard rule
         # packs target SAP-delivered tables only; customers with heavy
@@ -240,7 +259,9 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
                     if check_cls is None:
                         continue
                     try:
-                        res = check_cls(rule).run(df)
+                        from checks.runner import rule_columns
+                        built = frames.frame_for(rule_columns(rule), grain=rule.get("grain"))
+                        res = check_cls(rule).run(built[0], key_cols=built[2], grain=built[1]) if built else None
                         if res is not None:
                             all_results.append(res)
                     except Exception as e:
@@ -249,6 +270,31 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
                         )
         except Exception as e:
             logger.warning(f"Z-table check pass failed, continuing: {e}")
+
+        # Step 6d: DDIC conformance — every extracted field against the
+        # source system's own dictionary definition (type, length, case,
+        # fixed values, live check-table values).
+        try:
+            from checks.ddic_conformance import run_conformance
+            from checks.frames import tables_of
+            from checks.runner import get_required_columns
+            owner: dict[str, str] = {}
+            for m in modules:
+                try:
+                    for t in tables_of(get_required_columns(m)):
+                        owner.setdefault(t, m)
+                except FileNotFoundError:
+                    continue
+            table_frames = dict(frames.frames)
+            if frames.flat is not None:
+                for t in frames.unsplittable:
+                    table_frames[t] = frames.flat[[c for c in frames.flat.columns if c.startswith(t + ".")]]
+            for table, tdf in table_frames.items():
+                keys = [f"{table}.{k}" for k in dictionary.keys(table)]
+                all_results.extend(run_conformance(table, tdf, dictionary, owner.get(table, modules[0] if modules else ""),
+                                                   keys, live_refs))
+        except Exception as e:
+            logger.warning(f"DDIC conformance pass failed, continuing: {e}", exc_info=True)
 
         logger.info(f"Total check results: {len(all_results)}")
 
@@ -266,7 +312,7 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
         # Step 7-8: Score all modules
         from api.services.scoring import score_all_modules
 
-        dqs_results = score_all_modules(all_results)
+        dqs_results = score_all_modules(all_results, tenant_weights)
         dqs_summary = {mod: result.model_dump() for mod, result in dqs_results.items()}
 
         # Step 9: Insert findings into Postgres via a single executemany call.
@@ -286,7 +332,8 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
                     "affected_count": check_result.affected_count,
                     "total_count": check_result.total_count,
                     "pass_rate": check_result.pass_rate,
-                    "details": json.dumps(check_result.details) if check_result.details else "{}",
+                    "details": json.dumps({**(check_result.details or {}),
+                                           **({"error": check_result.error} if check_result.error else {})}),
                     "rule_context": json.dumps(check_result.rule_context) if check_result.rule_context else "{}",
                     "value_fix_map": json.dumps(check_result.value_fix_map) if check_result.value_fix_map else "{}",
                     "record_fixes": json.dumps(check_result.record_fixes) if check_result.record_fixes else "[]",
@@ -309,7 +356,12 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
                             CAST(:value_fix_map AS jsonb),
                             CAST(:record_fixes AS jsonb)
                         )
-                        ON CONFLICT (version_id, check_id, tenant_id) DO NOTHING
+                        ON CONFLICT (version_id, check_id, tenant_id) DO UPDATE SET
+                            module = EXCLUDED.module, severity = EXCLUDED.severity,
+                            dimension = EXCLUDED.dimension, affected_count = EXCLUDED.affected_count,
+                            total_count = EXCLUDED.total_count, pass_rate = EXCLUDED.pass_rate,
+                            details = EXCLUDED.details, rule_context = EXCLUDED.rule_context,
+                            value_fix_map = EXCLUDED.value_fix_map, record_fixes = EXCLUDED.record_fixes
                     """),
                     finding_rows,
                 )
@@ -332,17 +384,51 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
                 percent_complete=100,
             )
 
-            # Step 10: Update version with DQS summary
+            if reanalyse:
+                # checks that no longer run (disabled / removed) drop out of this version,
+                # unless an exception or write-back record still points at them
+                session.execute(text("""
+                    DELETE FROM findings f
+                     WHERE f.version_id = :vid AND NOT (f.check_id = ANY(:ids))
+                       AND NOT EXISTS (SELECT 1 FROM exceptions e WHERE e.linked_finding_id = f.id)
+                       AND NOT EXISTS (SELECT 1 FROM writeback_log w WHERE w.finding_id = f.id)
+                """), {"vid": version_id, "ids": [r.check_id for r in all_results]})
+
+            # Step 9b: record-level findings + cross-run issue lifecycle
+            # (savepoint: a failure here never loses the findings above).
+            try:
+                from api.services.record_issues import scope_of, track
+                with session.begin_nested():
+                    stats = track(session, str(tenant_id), str(version_id), scope_of(metadata), all_results, frames)
+                logger.info(f"record issues for {version_id}: {stats}")
+            except Exception as e:
+                logger.error(f"record-level tracking failed for {version_id}: {e}", exc_info=True)
+
+            # Step 10: Update version with DQS summary + which rule set produced it
+            analysis = {"at": datetime.now(timezone.utc).isoformat(), "rule_set": rule_set_fingerprint(modules, rule_overrides, fs_rules),
+                        "checks": len(all_results)}
             session.execute(
                 text("""
                     UPDATE analysis_versions
-                    SET status = 'complete', dqs_summary = CAST(:summary AS jsonb)
+                    SET status = 'complete', dqs_summary = CAST(:summary AS jsonb),
+                        metadata = COALESCE(metadata, '{}'::jsonb)
+                            || jsonb_build_object('rule_set', CAST(:rs AS text), 'analysed_at', CAST(:at AS text),
+                                                  'field_usage', CAST(:fu AS jsonb))
+                            || jsonb_build_object('analyses', COALESCE(metadata->'analyses', '[]'::jsonb)
+                                                              || jsonb_build_array(CAST(:an AS jsonb)))
                     WHERE id = :vid AND tenant_id = :tid
                 """),
                 {
                     "vid": version_id,
                     "tid": tenant_id,
                     "summary": json.dumps(dqs_summary),
+                    "rs": analysis["rule_set"], "at": analysis["at"], "an": json.dumps(analysis),
+                    # a field systematically used for other data (>30 % of ≥20 values): one field-level
+                    # finding, not scored — the records are already flagged by its VP- rule
+                    "fu": json.dumps([{"field": r.field, "module": r.module, "share": round(r.affected_count / r.total_count, 3),
+                                       "detected": (r.details or {}).get("detected", {})}
+                                      for r in all_results if r.check_id.startswith("VP-") and r.total_count >= 20
+                                      and r.affected_count / r.total_count > 0.3]),
                 },
             )
             session.commit()
@@ -479,6 +565,13 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str):
             logger.info(f"Enqueued run_cleaning for version_id={version_id}, modules={modules}")
         except Exception as e:
             logger.warning(f"Failed to enqueue run_cleaning (non-fatal): {e}")
+
+        # Data contracts (quality / volume / schema) against this run
+        try:
+            from workers.tasks.evaluate_contracts import evaluate_contracts
+            evaluate_contracts.delay(version_id, tenant_id)
+        except Exception as e:
+            logger.warning(f"Failed to enqueue evaluate_contracts (non-fatal): {e}")
 
         # Enqueue exception scan (non-blocking — failure is non-fatal)
         try:

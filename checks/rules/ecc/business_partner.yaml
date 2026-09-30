@@ -21,7 +21,7 @@ rules:
 - id: BP002
   field: BUT000.PARTNER
   check_class: regex_check
-  pattern: ^[0-9]{10}$
+  pattern: ^[A-Z0-9]{1,10}$
   severity: critical
   dimension: validity
   message: BP number must be exactly 10-digit numeric
@@ -37,7 +37,7 @@ rules:
   record_fix_template: 'Partner {BUT000.PARTNER}: number format is invalid (value: ''{actual_value}''). Reformat to 10-digit
     numeric via LSMW or number range reconfiguration.'
 - id: BP003
-  field: BUT000.BU_TYPE
+  field: BUT000.TYPE
   check_class: null_check
   severity: critical
   dimension: completeness
@@ -53,7 +53,7 @@ rules:
   record_fix_template: 'Partner {BUT000.PARTNER}: BU_TYPE is {actual_value}. Set to 1 (Person), 2 (Organisation), or 3 (Group)
     via BP (ECC) or Fiori F3893 (S/4HANA).'
 - id: BP004
-  field: BUT000.BU_TYPE
+  field: BUT000.TYPE
   check_class: domain_value_check
   allowed_values:
   - '1'
@@ -95,26 +95,10 @@ rules:
       SPRO under Business Partner > Basic Settings.'
   record_fix_template: 'Partner {BUT000.PARTNER}: BU_GROUP is {actual_value}. Assign a valid grouping via BP (ECC) or Fiori
     F3893 (S/4HANA).'
-- id: BP006
-  field: BUT000.NAME_ORG1
-  check_class: null_check
-  severity: high
-  dimension: completeness
-  message: Organisation name is required for BP category 2 (organisation)
-  why_it_matters: NAME_ORG1 is the primary organisation name for type-2 Business Partners. It is mandatory for organisation
-    BPs and used across all correspondence, billing documents, and SD transactions. In S/4HANA, this replaces the KNA1.NAME1
-    field from ECC (KNA1 is now a compatibility view only).
-  rule_authority: sap_hard_constraint
-  sap_impact: Organisation BPs without a name cannot be used in sales orders (VA01), billing (VF01), or customer correspondence.
-  fix_map:
-    __blank__: 'In ECC: set via transaction BP > Address tab > Name field. In S/4HANA: use Fiori F3893. Obtain the legal entity
-      name from business register.'
-  record_fix_template: 'Partner {BUT000.PARTNER}: NAME_ORG1 is {actual_value}. Set the organisation name via BP (ECC) or Fiori
-    F3893 (S/4HANA).'
 - id: BP007
   field: BUT000.NAME_FIRST
   check_class: null_check
-  severity: high
+  severity: medium
   dimension: completeness
   message: First name is required for BP category 1 (person)
   why_it_matters: NAME_FIRST is mandatory for person-type Business Partners (BU_TYPE = 1). It is used in correspondence salutation,
@@ -126,6 +110,9 @@ rules:
     __blank__: 'In ECC: set via transaction BP > Address tab. In S/4HANA: use Fiori F3893.'
   record_fix_template: 'Partner {BUT000.PARTNER}: NAME_FIRST is {actual_value}. Set the first name via BP (ECC) or Fiori F3893
     (S/4HANA).'
+  applies_when:
+    BUT000.TYPE:
+    - '1'
 - id: BP008
   field: BUT000.NAME_LAST
   check_class: null_check
@@ -141,20 +128,12 @@ rules:
     __blank__: 'In ECC: set via transaction BP > Address tab. In S/4HANA: use Fiori F3893.'
   record_fix_template: 'Partner {BUT000.PARTNER}: NAME_LAST is {actual_value}. Set the last name via BP (ECC) or Fiori F3893
     (S/4HANA).'
+  applies_when:
+    BUT000.TYPE:
+    - '1'
 - id: BP009
-  field: BUT000.TITLE_KEY
+  field: BUT000.TITLE
   check_class: domain_value_check
-  allowed_values:
-  - '0001'
-  - '0002'
-  - '0003'
-  - '0004'
-  - '0005'
-  - '0006'
-  - '0007'
-  - 0008
-  - 0009
-  - '0010'
   severity: medium
   dimension: validity
   message: Title key must be a valid SAP title code (0001-0010)
@@ -182,8 +161,8 @@ rules:
 - id: BP010
   field: BUT000.PARTNER_GUID
   check_class: regex_check
-  pattern: ^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$
-  severity: critical
+  pattern: ^([0-9A-Fa-f]{32}|[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12})$
+  severity: low
   dimension: validity
   message: Partner GUID must be valid UUID format for cross-system BP mapping
   why_it_matters: PARTNER_GUID is the globally unique identifier used for BP cross-system replication and migration mapping.
@@ -259,7 +238,7 @@ rules:
 - id: BP014
   field: BUT000.LANGU_CORR
   check_class: null_check
-  severity: medium
+  severity: low
   dimension: completeness
   message: Correspondence language is recommended for correct output formatting
   why_it_matters: LANGU_CORR determines the language for all correspondence, dunning letters, and output documents. Without
@@ -273,22 +252,9 @@ rules:
       codes (EN, DE, FR, etc.).'
   record_fix_template: 'Partner {BUT000.PARTNER}: LANGU_CORR is {actual_value}. Set the correspondence language via BP (ECC)
     or Fiori F3893 (S/4HANA).'
-- id: BP015
-  field: BUT000.CHANGED_AT
-  check_class: freshness_check
-  max_age_hours: 8760
-  severity: low
-  dimension: timeliness
-  message: BP record not updated in 1+ years - review if data is still current
-  why_it_matters: Business Partner records not updated in over a year may contain stale addresses, outdated contact information,
-    or inactive business relationships. Review via BP (ECC) or Fiori F3893 (S/4HANA) to verify current status.
-  rule_authority: best_practice
-  sap_impact: Stale BP records may cause returned correspondence, failed deliveries, and incorrect tax reporting.
-  fix_map:
-    __other__: 'Record has not been updated in over 1 year. In ECC: review via transaction BP. In S/4HANA: use Fiori F3893.
-      If active, refresh data. If inactive, flag for archival.'
-  record_fix_template: 'Partner {BUT000.PARTNER}: last updated {actual_value}. Review if this BP is still active and refresh
-    data if needed.'
+  applies_when:
+    BUT000.TYPE:
+    - '1'
 - id: BP016
   field: BUT100.RLTYP
   check_class: null_check
@@ -419,120 +385,43 @@ rules:
 - id: BP024
   field: BUT100.VALID_FROM
   check_class: cross_field_check
-  fields:
-  - BUT100.VALID_FROM
-  - BUT100.VALID_TO
-  condition: '`BUT100.VALID_FROM` <= `BUT100.VALID_TO`'
   severity: high
   dimension: consistency
   message: Role valid-from date must not be after valid-to date
-  why_it_matters: BUT100.VALID_FROM must be on or before BUT100.VALID_TO. An inverted date range means the BP role is never
-    valid, effectively blocking the partner from all transactions assigned to that role. This check applies to both ECC and
-    S/4HANA.
+  why_it_matters: BUT100.VALID_FROM must be on or before BUT100.VALID_TO. An inverted date range means the BP role
+    is never valid, effectively blocking the partner from all transactions assigned to that role. This check applies
+    to both ECC and S/4HANA.
   rule_authority: sap_hard_constraint
-  sap_impact: BP role is never active. Partner cannot be used as customer, vendor, or contact person depending on the affected
-    role.
-  fix_map:
-    __other__: 'Valid-from date is after valid-to date. In ECC: correct via transaction BP > Business Partner Role. In S/4HANA:
-      use Fiori F3893.'
+  sap_impact: BP role is never active. Partner cannot be used as customer, vendor, or contact person depending on
+    the affected role.
+  fix_map: {__other__: 'Valid-from date is after valid-to date. In ECC: correct via transaction BP > Business Partner
+      Role. In S/4HANA: use Fiori F3893.'}
   record_fix_template: 'Partner {BUT000.PARTNER}: VALID_FROM ({BUT100.VALID_FROM}) is after VALID_TO ({BUT100.VALID_TO}).
     Correct via BP (ECC) or Fiori F3893 (S/4HANA).'
-- id: BP025
-  field: BUT000.NAME_ORG1
-  check_class: cross_field_check
-  fields:
-  - BUT000.BU_TYPE
-  - BUT000.NAME_ORG1
-  condition: ~((`BUT000.BU_TYPE` == '2') & (`BUT000.NAME_ORG1`.isna() | (`BUT000.NAME_ORG1` == '')))
-  severity: critical
-  dimension: consistency
-  message: Organisation name (NAME_ORG1) is mandatory when BP category is 2 (Organisation)
-  why_it_matters: For organisation-type BPs (BU_TYPE = 2), NAME_ORG1 is the primary name field and is mandatory. SAP rejects
-    organisation BPs without a name during creation in both ECC (transaction BP) and S/4HANA (Fiori F3893). The CVI migration
-    program also requires this field for organisation BPs.
-  rule_authority: sap_hard_constraint
-  sap_impact: Organisation BP cannot be saved. All SD, FI, and MM transactions referencing this BP fail. CVI migration rejects
-    the record.
-  fix_map:
-    __other__: 'Organisation BP (type 2) has no name. In ECC: set via transaction BP > Address tab > Name field. In S/4HANA:
-      use Fiori F3893.'
-  record_fix_template: 'Partner {BUT000.PARTNER}: BU_TYPE is 2 (Organisation) but NAME_ORG1 is blank. Set the organisation
-    name via BP (ECC) or Fiori F3893 (S/4HANA).'
-- id: BP026
-  field: BUT000.NAME_LAST
-  check_class: cross_field_check
-  fields:
-  - BUT000.BU_TYPE
-  - BUT000.NAME_FIRST
-  - BUT000.NAME_LAST
-  condition: ~((`BUT000.BU_TYPE` == '1') & ((`BUT000.NAME_FIRST`.isna() | (`BUT000.NAME_FIRST` == '')) | (`BUT000.NAME_LAST`.isna()
-    | (`BUT000.NAME_LAST` == ''))))
-  severity: critical
-  dimension: consistency
-  message: First name and last name are mandatory when BP category is 1 (Person)
-  why_it_matters: For person-type BPs (BU_TYPE = 1), both NAME_FIRST and NAME_LAST are mandatory. SAP rejects person BPs without
-    both name fields during creation. In S/4HANA, the FPMD_BP_CONVERT migration program also enforces this. In ECC, KNA1.NAME1
-    was the primary field; in S/4HANA, BUT000.NAME_FIRST and NAME_LAST are the authoritative source.
-  rule_authority: sap_hard_constraint
-  sap_impact: Person BP cannot be saved. Correspondence and contact person functions are incomplete. CVI migration rejects
-    the record.
-  fix_map:
-    __other__: 'Person BP (type 1) is missing first name or last name. In ECC: set via transaction BP > Address tab. In S/4HANA:
-      use Fiori F3893.'
-  record_fix_template: 'Partner {BUT000.PARTNER}: BU_TYPE is 1 (Person) but name fields are incomplete (first: ''{BUT000.NAME_FIRST}'',
-    last: ''{BUT000.NAME_LAST}''). Set both names via BP (ECC) or Fiori F3893 (S/4HANA).'
+  fail_when: '`BUT100.VALID_FROM` > `BUT100.VALID_TO`'
+  require_populated: true
 - id: BP027
   field: BUT000.PARTNER
-  check_class: cross_field_check
-  fields:
-  - BUT000.PARTNER
-  condition: ~`BUT000.PARTNER`.duplicated(keep=False)
+  check_class: uniqueness_check
+  fields: [BUT000.PARTNER]
   severity: critical
   dimension: uniqueness
   message: Duplicate BP numbers detected - each partner must have a unique number
-  why_it_matters: Duplicate Business Partner numbers violate the primary key constraint. The migration program rejects duplicate
-    records, and duplicates that slip through cause data corruption in customer/vendor master data. In S/4HANA, BUT000 is
-    the single source of truth (KNA1/LFA1 are views only).
+  why_it_matters: Duplicate Business Partner numbers violate the primary key constraint. The migration program rejects
+    duplicate records, and duplicates that slip through cause data corruption in customer/vendor master data. In
+    S/4HANA, BUT000 is the single source of truth (KNA1/LFA1 are views only).
   rule_authority: sap_hard_constraint
-  sap_impact: Migration conversion fails on duplicate key insert. Post-migration, duplicate BPs cause incorrect financial
-    postings and order assignment.
-  fix_map:
-    __other__: 'Duplicate BP number detected. In ECC: review both records via transaction BP and merge or deactivate. In S/4HANA:
-      use Fiori F3893 or MDG-BP deduplication. For bulk deduplication, use SAP MDG-BP or a custom ABAP program.'
-  record_fix_template: 'Partner {BUT000.PARTNER}: duplicate detected. Review and merge or deactivate via BP (ECC) or Fiori
-    F3893 / MDG-BP (S/4HANA).'
-- id: BP028
-  field: ADRC.CITY2
-  check_class: null_check
-  severity: low
-  dimension: completeness
-  message: District is missing
-  why_it_matters: District (ADRC.CITY2) is not maintained. This field supports downstream processes and reporting accuracy.
-    Missing data may result in incomplete records or processing gaps.
-  rule_authority: best_practice
-  sap_impact: Missing District may cause incomplete data in related transactions and reports.
-  fix_map:
-    __blank__: 'In ECC: Set via BP transaction. In S/4HANA: Use Fiori app F3893 (Manage Business Partner).'
-  record_fix_template: 'Record is missing ADRC.CITY2. In ECC: Set via BP transaction. In S/4HANA: Use Fiori app F3893 (Manage
-    Business Partner).'
-- id: BP029
-  field: ADRC.FAX_NUMBER
-  check_class: null_check
-  severity: low
-  dimension: completeness
-  message: Fax number is missing
-  why_it_matters: Fax number (ADRC.FAX_NUMBER) is not maintained. This field supports downstream processes and reporting accuracy.
-    Missing data may result in incomplete records or processing gaps.
-  rule_authority: best_practice
-  sap_impact: Missing Fax number may cause incomplete data in related transactions and reports.
-  fix_map:
-    __blank__: 'In ECC: Set via BP transaction. In S/4HANA: Use Fiori app F3893 (Manage Business Partner).'
-  record_fix_template: 'Record is missing ADRC.FAX_NUMBER. In ECC: Set via BP transaction. In S/4HANA: Use Fiori app F3893
-    (Manage Business Partner).'
+  sap_impact: Migration conversion fails on duplicate key insert. Post-migration, duplicate BPs cause incorrect
+    financial postings and order assignment.
+  fix_map: {__other__: 'Duplicate BP number detected. In ECC: review both records via transaction BP and merge or
+      deactivate. In S/4HANA: use Fiori F3893 or MDG-BP deduplication. For bulk deduplication, use SAP MDG-BP or
+      a custom ABAP program.'}
+  record_fix_template: 'Partner {BUT000.PARTNER}: duplicate detected. Review and merge or deactivate via BP (ECC)
+    or Fiori F3893 / MDG-BP (S/4HANA).'
 - id: BP030
   field: ADRC.HOUSE_NUM1
   check_class: null_check
-  severity: medium
+  severity: low
   dimension: completeness
   message: House number is missing
   why_it_matters: House number (ADRC.HOUSE_NUM1) is not maintained. This field supports downstream processes and reporting
@@ -557,10 +446,21 @@ rules:
     __blank__: 'In ECC: Set via BP transaction. In S/4HANA: Use Fiori app F3893 (Manage Business Partner).'
   record_fix_template: 'Record is missing ADRC.REGION. In ECC: Set via BP transaction. In S/4HANA: Use Fiori app F3893 (Manage
     Business Partner).'
+  applies_when:
+    ADRC.COUNTRY:
+    - US
+    - CA
+    - AU
+    - BR
+    - MX
+    - IN
+    - CN
+    - IT
+    - ES
 - id: BP032
   field: ADRC.TEL_NUMBER
   check_class: null_check
-  severity: medium
+  severity: low
   dimension: completeness
   message: Telephone number is missing
   why_it_matters: Telephone number (ADRC.TEL_NUMBER) is not maintained. This field supports downstream processes and reporting
@@ -571,80 +471,24 @@ rules:
     __blank__: 'In ECC: Set via BP transaction. In S/4HANA: Use Fiori app F3893 (Manage Business Partner).'
   record_fix_template: 'Record is missing ADRC.TEL_NUMBER. In ECC: Set via BP transaction. In S/4HANA: Use Fiori app F3893
     (Manage Business Partner).'
-- id: BP033
-  field: BUT000.BPEXT
-  check_class: null_check
-  severity: low
-  dimension: completeness
-  message: External BP number is missing
-  why_it_matters: External BP number (BUT000.BPEXT) is not maintained. This field supports downstream processes and reporting
-    accuracy. Missing data may result in incomplete records or processing gaps.
-  rule_authority: best_practice
-  sap_impact: Missing External BP number may cause incomplete data in related transactions and reports.
-  fix_map:
-    __blank__: 'In ECC: Set via BP transaction. In S/4HANA: Use Fiori app F3893 (Manage Business Partner).'
-  record_fix_template: 'Record is missing BUT000.BPEXT. In ECC: Set via BP transaction. In S/4HANA: Use Fiori app F3893 (Manage
-    Business Partner).'
-- id: BP034
-  field: BUT000.BPKIND
-  check_class: null_check
-  severity: low
-  dimension: completeness
-  message: BP kind is missing
-  why_it_matters: BP kind (BUT000.BPKIND) is not maintained. This field supports downstream processes and reporting accuracy.
-    Missing data may result in incomplete records or processing gaps.
-  rule_authority: best_practice
-  sap_impact: Missing BP kind may cause incomplete data in related transactions and reports.
-  fix_map:
-    __blank__: 'In ECC: Set via BP transaction. In S/4HANA: Use Fiori app F3893 (Manage Business Partner).'
-  record_fix_template: 'Record is missing BUT000.BPKIND. In ECC: Set via BP transaction. In S/4HANA: Use Fiori app F3893 (Manage
-    Business Partner).'
-- id: BP035
-  field: BUT000.BU_SORT2
-  check_class: null_check
-  severity: low
-  dimension: completeness
-  message: Search term 2 is missing
-  why_it_matters: Search term 2 (BUT000.BU_SORT2) is not maintained. This field supports downstream processes and reporting
-    accuracy. Missing data may result in incomplete records or processing gaps.
-  rule_authority: best_practice
-  sap_impact: Missing Search term 2 may cause incomplete data in related transactions and reports.
-  fix_map:
-    __blank__: 'In ECC: Set via BP transaction. In S/4HANA: Use Fiori app F3893 (Manage Business Partner).'
-  record_fix_template: 'Record is missing BUT000.BU_SORT2. In ECC: Set via BP transaction. In S/4HANA: Use Fiori app F3893
-    (Manage Business Partner).'
 - id: BP036
-  field: BUT000.CREATED_AT
+  field: BUT000.CRDAT
   check_class: null_check
   severity: low
   dimension: completeness
   message: Created date is missing
-  why_it_matters: Created date (BUT000.CREATED_AT) is not maintained. This field supports downstream processes and reporting
+  why_it_matters: Created date (BUT000.CRDAT) is not maintained. This field supports downstream processes and reporting
     accuracy. Missing data may result in incomplete records or processing gaps.
   rule_authority: best_practice
   sap_impact: Missing Created date may cause incomplete data in related transactions and reports.
   fix_map:
     __blank__: 'In ECC: Set via BP transaction. In S/4HANA: Use Fiori app F3893 (Manage Business Partner).'
-  record_fix_template: 'Record is missing BUT000.CREATED_AT. In ECC: Set via BP transaction. In S/4HANA: Use Fiori app F3893
-    (Manage Business Partner).'
-- id: BP037
-  field: BUT000.NAME_ORG2
-  check_class: null_check
-  severity: low
-  dimension: completeness
-  message: Organization name 2 is missing
-  why_it_matters: Organization name 2 (BUT000.NAME_ORG2) is not maintained. This field supports downstream processes and reporting
-    accuracy. Missing data may result in incomplete records or processing gaps.
-  rule_authority: best_practice
-  sap_impact: Missing Organization name 2 may cause incomplete data in related transactions and reports.
-  fix_map:
-    __blank__: 'In ECC: Set via BP transaction. In S/4HANA: Use Fiori app F3893 (Manage Business Partner).'
-  record_fix_template: 'Record is missing BUT000.NAME_ORG2. In ECC: Set via BP transaction. In S/4HANA: Use Fiori app F3893
+  record_fix_template: 'Record is missing BUT000.CRDAT. In ECC: Set via BP transaction. In S/4HANA: Use Fiori app F3893
     (Manage Business Partner).'
 - id: BP038
   field: BUT000.NATIO
   check_class: null_check
-  severity: medium
+  severity: low
   dimension: completeness
   message: Nationality is missing
   why_it_matters: Nationality (BUT000.NATIO) is not maintained. This field supports downstream processes and reporting accuracy.
@@ -655,6 +499,9 @@ rules:
     __blank__: 'In ECC: Set via BP transaction. In S/4HANA: Use Fiori app F3893 (Manage Business Partner).'
   record_fix_template: 'Record is missing BUT000.NATIO. In ECC: Set via BP transaction. In S/4HANA: Use Fiori app F3893 (Manage
     Business Partner).'
+  applies_when:
+    BUT000.TYPE:
+    - '1'
 - id: BP039
   field: BUT000.NATPERS
   check_class: domain_value_check
@@ -693,38 +540,42 @@ rules:
     Business Partner).'
 
 - id: BP041
-  field: BUT000.STCEG
+  field: DFKKBPTAXNUM.TAXNUM
   check_class: regex_check
-  pattern: "^[A-Z]{2}[0-9A-Z]{5,15}$"
+  pattern: ^[A-Z]{2}[0-9A-Z]{5,15}$
   severity: high
   dimension: accuracy
-  message: Business partner VAT/tax registration number format is invalid
+  message: EU VAT registration number format is invalid
   why_it_matters: Invalid BP tax numbers cause tax reporting errors across both customer and vendor directions.
   rule_authority: best_practice
   sap_impact: Tax reporting fails. E-invoicing rejected. Both AP and AR tax reconciliation affected.
-  fix_map:
-    __blank__: "Correct the BP tax number via BP > Tax Numbers tab. Validate against VIES/SARS."
+  fix_map: {__blank__: Correct the BP tax number via BP > Tax Numbers tab. Validate against VIES/SARS.}
+  applies_when:
+    DFKKBPTAXNUM.TAXTYPE: [AT0, BE0, BG0, CY0, CZ0, DE0, DK0, EE0, EL0, ES0, FI0, FR0, HR0, HU0, IE0, IT0, LT0,
+      LU0, LV0, MT0, NL0, PL0, PT0, RO0, SE0, SI0, SK0]
 
 - id: BP042
   field: BUT000.BU_GROUP
   check_class: referential_check
-  reference_values: ["0001", "0002", "0003", "BP01", "BP02", "BPEM"]
   severity: high
   dimension: consistency
-  message: "Business partner group BU_GROUP must reference a valid entry in TB003"
-  why_it_matters: "BU_GROUP (BP grouping) drives number range, field selection, partner role assignments, and CVI-mapping behaviour for every Business Partner. An invalid BU_GROUP means BP (T-code) cannot open the record, CVI rejects the mapping to vendor/customer, and downstream sub-ledger synchronisation fails. Central in S/4HANA where BPs are the master source for vendors and customers."
+  message: Business partner grouping BU_GROUP must reference a valid entry in TB001
+  why_it_matters: BU_GROUP (BP grouping) drives number range, field selection, partner role assignments, and CVI-mapping behaviour
+    for every Business Partner. An invalid BU_GROUP means BP (T-code) cannot open the record, CVI rejects the mapping to vendor/customer,
+    and downstream sub-ledger synchronisation fails. Central in S/4HANA where BPs are the master source for vendors and customers.
   rule_authority: sap_hard_constraint
-  sap_impact: "BP cannot be maintained; CVI sync to vendor/customer fails; all downstream AP/AR process blocked for the BP."
+  sap_impact: BP cannot be maintained; CVI sync to vendor/customer fails; all downstream AP/AR process blocked for the BP.
   fix_map:
-    __blank__: "Assign BU_GROUP at BP creation. Mandatory for all Business Partner records."
-    __other__: "Business partner group '{invalid_value}' not in TB003. Reassign via BP (transaction) or configure in SPRO > Cross-Application Components > SAP Business Partner > Business Partner > Basic Settings > Business Partner Groupings."
-  record_fix_template: "Business Partner {BUT000.PARTNER}: BP group '{actual_value}' is not in TB003."
+    __blank__: Assign BU_GROUP at BP creation. Mandatory for all Business Partner records.
+    __other__: Business partner group '{invalid_value}' not in TB003. Reassign via BP (transaction) or configure in SPRO >
+      Cross-Application Components > SAP Business Partner > Business Partner > Basic Settings > Business Partner Groupings.
+  record_fix_template: 'Business Partner {BUT000.PARTNER}: BP group ''{actual_value}'' is not in TB003.'
 
 - id: BP043
   field: BUT000.NAME_ORG1
   check_class: null_check
   applies_when:
-    BUT000.BU_TYPE: ["2"]
+    BUT000.TYPE: ["2"]
   severity: critical
   dimension: completeness
   message: "Organisation name NAME_ORG1 is mandatory for organisation Business Partners"

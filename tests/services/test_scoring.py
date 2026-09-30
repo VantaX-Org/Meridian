@@ -97,12 +97,27 @@ def test_mixed_severities_no_critical_no_cap():
     assert result.medium_count == 1
     # Scoring uses record-level pass_rate, not binary pass/fail.
     # _make_result sets pass_rate=90.0 when passed=False, else 100.0.
-    # completeness dim avg = (100 + 90) / 2 = 95.0, × 0.25 = 23.75
-    # accuracy dim avg    = (100 + 90) / 2 = 95.0, × 0.25 = 23.75
-    # consistency 100 × 0.20 = 20, timeliness 100 × 0.10 = 10,
-    # uniqueness 100 × 0.10 = 10, validity 100 × 0.10 = 10
-    expected = 23.75 + 23.75 + 20 + 10 + 10 + 10
-    assert result.composite_score == expected
+    # completeness dim avg = (100 + 90) / 2 = 95.0 (weight 0.25)
+    # accuracy dim avg    = (100 + 90) / 2 = 95.0 (weight 0.25)
+    # Unmeasured dimensions (coverage 0) are excluded from the composite —
+    # absence of evidence is not a pass — so weights renormalise over the two.
+    assert result.composite_score == 95.0
+    assert result.weights == {"completeness": 0.5, "accuracy": 0.5}
+
+
+def test_errored_checks_excluded_from_score():
+    bad = _make_result("T9", dimension="completeness", passed=False).model_copy(
+        update={"error": "boom", "pass_rate": 0.0})
+    result = score_module([_make_result("T1", dimension="completeness", passed=True), bad], {})
+    assert result.composite_score == 100.0
+    assert result.errored_checks == 1
+
+
+def test_tenant_weights_ignore_non_dimension_keys_and_normalise():
+    from api.services.scoring import effective_weights
+    w = effective_weights({"completeness": 2, "accuracy": 2, "notification_config": {"x": 1}})
+    assert abs(sum(w.values()) - 1.0) < 1e-9
+    assert w["completeness"] == w["accuracy"]
 
 
 def test_custom_tenant_weights():

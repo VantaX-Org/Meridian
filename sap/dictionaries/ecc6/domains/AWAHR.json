@@ -1,0 +1,17 @@
+{
+ "domain": "AWAHR",
+ "type": "NUMC",
+ "length": 3,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "000",
+   "high": "100",
+   "text": "Sales Probability"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

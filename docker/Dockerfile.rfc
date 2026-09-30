@@ -1,0 +1,22 @@
+# =========================================================
+# Meridian — SAP RFC overlay, built ON THE CUSTOMER HOST
+#
+# The SAP NW RFC SDK is licensed per customer and PyRFC ships no Linux wheel,
+# so published images cannot contain either. This layers the host's SDK and
+# a PyRFC build on top of the published api/worker image.
+# Built by scripts/build-rfc-overlay.sh — never by CI.
+# =========================================================
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+
+COPY nwrfcsdk/ /opt/nwrfcsdk/
+ENV SAPNWRFC_HOME=/opt/nwrfcsdk \
+    LD_LIBRARY_PATH=/opt/nwrfcsdk/lib
+
+# PyRFC 3.3.1 is the final upstream release (source only on Linux).
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends gcc g++ \
+    && pip install --no-cache-dir "pyrfc==3.3.1" \
+    && apt-get purge -y gcc g++ && apt-get autoremove -y \
+    && rm -rf /var/lib/apt/lists/* \
+    && python -c "import pyrfc; print('pyrfc', pyrfc.__version__)"

@@ -1,0 +1,27 @@
+{
+ "domain": "LNSPL_LIKP",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "Delivery is for single warehouse"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Delivery is not for single warehouse"
+  },
+  {
+   "low": "",
+   "high": null,
+   "text": "Delivery split by warehouse number not set"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

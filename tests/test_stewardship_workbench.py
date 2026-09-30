@@ -229,20 +229,10 @@ def test_viewer_cannot_see_ai_confidence():
 
 def test_steward_can_approve_and_see_ai():
     """Steward permission set includes both approve and view_ai_confidence."""
-    path = Path("api/services/rbac.py")
-    content = path.read_text()
-    lines = content.split("\n")
-    in_steward = False
-    steward_perms = ""
-    for line in lines:
-        if '"steward"' in line:
-            in_steward = True
-        if in_steward:
-            steward_perms += line
-            if "}" in line:
-                break
-    assert '"approve"' in steward_perms
-    assert '"view_ai_confidence"' in steward_perms
+    from api.services.rbac import has_permission
+
+    assert has_permission("steward", "approve")
+    assert has_permission("steward", "view_ai_confidence")
 
 
 # ── L.6 Scheduler wiring ────────────────────────────────────────────────────

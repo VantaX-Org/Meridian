@@ -1,90 +1,83 @@
+import re
+
 import pandas as pd
 
-from checks.base import BaseCheck, CheckResult, find_id_field, safe_json
+from checks.base import BaseCheck, Evaluation, is_blank
+
+_BACKTICKED = re.compile(r"`([^`]+)`")
+_NUMERIC = {"DEC", "CURR", "QUAN", "INT1", "INT2", "INT4", "INT8", "FLTP", "DF16_DEC",
+            "DF34_DEC", "DECIMAL", "INTEGER"}
+_DATES = {"DATS", "DATE", "DATETIME"}
+
+
+def typed(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
+    """Copy of ``cols`` typed by the SAP dictionary for comparison.
+
+    RFC and CSV deliver every value as text, so ``"9.000" > "10.000"`` would be
+    True. Numeric DDIC types become numbers, dates become timestamps, and SAP
+    blanks (empty, whitespace, 00000000) become missing — so conditions can use
+    ``.isna()`` / ``.notna()`` and plain comparison operators.
+    """
+    from checks.types.domain_value_check import _parse_dates
+    from sap.ddic import get_dictionary
+
+    d = get_dictionary("s4hana")
+    out = {}
+    for c in cols:
+        s = df[c]
+        f = d.resolve(c)
+        kind = (f.type or "").upper() if f else ""
+        blank = is_blank(s)
+        if kind in _NUMERIC:
+            v = pd.to_numeric(s.astype("string").str.strip().str.replace(",", "", regex=False), errors="coerce")
+        elif kind in _DATES:
+            v = _parse_dates(s)
+        elif f is None and pd.api.types.is_numeric_dtype(s):
+            v = s  # unknown (e.g. customer Z) field already numeric
+        elif f is None:
+            txt = s.astype("string").str.strip()
+            num = pd.to_numeric(txt, errors="coerce")
+            # infer numbers only when every populated value parses as one
+            v = num if num[~blank].notna().all() and (~blank).any() else txt
+        else:
+            v = s.astype("string").str.strip()
+        out[c] = v.mask(blank)
+    return pd.DataFrame(out, index=df.index)
 
 
 class CrossFieldCheck(BaseCheck):
+    """Relationship between fields of the same record (at the rule's grain).
+
+    Preferred form: ``fail_when`` — rows where the expression is True fail.
+    Legacy form:   ``condition`` — rows where it is True pass.
+    ``require_populated: true`` limits the population to rows where every
+    referenced field has a value (blanks are null_check's job).
+    Evaluated with ``DataFrame.eval(engine="python")`` on DDIC-typed values.
+    """
+
     check_class = "cross_field_check"
+    default_dimension = "consistency"
 
-    def run(self, df: pd.DataFrame) -> CheckResult:
-        try:
-            field = self.rule.get("field") or self.rule.get("fields", [""])[0]
-            fields = self.rule.get("fields", [field])
-            condition = self.rule["condition"]
-            total = len(df)
+    def _expr(self) -> str:
+        return self.rule.get("fail_when") or self.rule["condition"]
 
-            # Check all required fields exist — skip if any are missing (partial extract)
-            missing = [f for f in fields if f not in df.columns]
-            if missing:
-                return None  # Skip — fields not in partial extract
+    def columns(self) -> list[str]:
+        cols = super().columns()
+        return cols + [c for c in _BACKTICKED.findall(self._expr()) if c not in cols]
 
-            # Rows matching the condition are the PASSING rows.
-            # df.query() cannot handle Series method calls like .duplicated()/.notna(),
-            # so use df.eval() with python engine and fall back to a sandboxed eval()
-            # for conditions that eval() can't parse (method chains, etc.).
-            try:
-                passing_mask = df.eval(condition, engine='python')
-            except Exception:
-                local_ns = {col: df[col] for col in df.columns}
-                local_ns["pd"] = pd
-                passing_mask = eval(condition, {"__builtins__": {}}, local_ns)
-
-            if not isinstance(passing_mask, pd.Series):
-                passing_mask = pd.Series(passing_mask, index=df.index)
-            # Coerce NaN comparisons to False so NaN rows count as failing.
-            passing_mask = passing_mask.fillna(False).astype(bool)
-
-            passing_count = int(passing_mask.sum())
-            affected = total - passing_count
-            pass_rate = (passing_count / total * 100) if total > 0 else 0.0
-
-            failing_mask = ~passing_mask
-            id_field = find_id_field(df)
-
-            # Include the id field plus all checked fields in the output
-            output_cols = [id_field] + [f for f in fields if f in df.columns and f != id_field]
-
-            # Only materialise the rows we actually need
-            failing_indices = failing_mask[failing_mask].index[:10]
-            sample_rows = df.loc[failing_indices, output_cols]
-
-            details = safe_json({
-                "fields_checked": fields,
-                "condition": condition,
-                "id_field_used": id_field,
-                "failing_record_count": int(affected),
-                "message": self.rule.get("message", ""),
-                "sample_failing_records": sample_rows
-                    .fillna("")
-                    .astype(str)
-                    .to_dict(orient="records"),
-            })
-
-            return CheckResult(
-                check_id=self.rule["id"],
-                module=self.rule.get("module", ""),
-                field=field,
-                severity=self.rule.get("severity", "medium"),
-                dimension=self.rule.get("dimension", "consistency"),
-                passed=(affected == 0),
-                affected_count=affected,
-                total_count=total,
-                pass_rate=round(pass_rate, 2),
-                message=self.rule.get("message", ""),
-                details=details,
-            )
-        except Exception as e:
-            return CheckResult(
-                check_id=self.rule.get("id", "UNKNOWN"),
-                module=self.rule.get("module", ""),
-                field=self.rule.get("field", ""),
-                severity=self.rule.get("severity", "medium"),
-                dimension=self.rule.get("dimension", "consistency"),
-                passed=False,
-                affected_count=0,
-                total_count=len(df),
-                pass_rate=0.0,
-                message=self.rule.get("message", ""),
-                details={},
-                error=str(e),
-            )
+    def evaluate(self, df: pd.DataFrame) -> Evaluation:
+        cols = self.columns()
+        t = typed(df, cols)
+        result = t.eval(self._expr(), engine="python")
+        if not isinstance(result, pd.Series):
+            result = pd.Series(result, index=df.index)
+        result = result.astype("boolean")
+        if self.rule.get("fail_when"):
+            failing = result.fillna(False).astype(bool)
+        else:
+            failing = ~result.fillna(False).astype(bool)
+        population = pd.Series(True, index=df.index)
+        if self.rule.get("require_populated"):
+            population = t.notna().all(axis=1)
+        return Evaluation(population, failing, {"expression": self._expr(), "fields_checked": cols,
+                                                "semantics": "fail_when" if self.rule.get("fail_when") else "pass_when"})

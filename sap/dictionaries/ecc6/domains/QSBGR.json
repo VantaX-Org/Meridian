@@ -1,0 +1,67 @@
+{
+ "domain": "QSBGR",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "0",
+   "high": null,
+   "text": "No Exemption Reason Reported"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Income Connected with a Company in the USA"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Exempt due to an IRS Code"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Income not from the USA"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Exempt due to a Tax Agreement"
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "Interest Exemption Portfolio for Internal Revenue Code Sect."
+  },
+  {
+   "low": "6",
+   "high": null,
+   "text": "Intermediary with Responsibility for Withholding Tax Amount"
+  },
+  {
+   "low": "7",
+   "high": null,
+   "text": "Foreign Private Limited Company / Trust with WH Tax Oblig."
+  },
+  {
+   "low": "8",
+   "high": null,
+   "text": "U.S. Branch with Status of a U.S. Person"
+  },
+  {
+   "low": "9",
+   "high": null,
+   "text": "Revenues in Accord. with Qualified Intermediary: Tax-Exempt"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Securities Lender for Replacement Dividends"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

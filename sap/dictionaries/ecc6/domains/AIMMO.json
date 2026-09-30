@@ -1,0 +1,22 @@
+{
+ "domain": "AIMMO",
+ "type": "NUMC",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "0",
+   "high": null,
+   "text": "Other asset without real estate management"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Real estate - property or buildings"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

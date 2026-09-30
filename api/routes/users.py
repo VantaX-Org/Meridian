@@ -37,7 +37,16 @@ class InviteUserBody(BaseModel):
 # ── GET /api/v1/users ────────────────────────────────────────────────────────
 
 
-@router.get("/users")
+@router.get("/users/assignable", dependencies=[Depends(require_permission("assign"))])
+async def assignable_users(db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+    """Active users work can be assigned to (id, name, email, role) — no admin rights needed."""
+    await _set_rls(db, tenant.id)
+    rows = await db.execute(text("SELECT id, name, email, role FROM users WHERE tenant_id = :tid AND is_active "
+                                 "ORDER BY name, email"), {"tid": str(tenant.id)})
+    return [{"id": str(r[0]), "name": r[1], "email": r[2], "role": r[3]} for r in rows.fetchall()]
+
+
+@router.get("/users", dependencies=[Depends(require_permission("manage_users"))])
 async def list_users(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),

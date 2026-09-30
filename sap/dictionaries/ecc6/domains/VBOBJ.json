@@ -1,0 +1,52 @@
+{
+ "domain": "VBOBJ",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "Order"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Purchase order"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Billing document"
+  },
+  {
+   "low": "K",
+   "high": null,
+   "text": "Sales activities"
+  },
+  {
+   "low": "L",
+   "high": null,
+   "text": "Delivery"
+  },
+  {
+   "low": "T",
+   "high": null,
+   "text": "Shipment"
+  },
+  {
+   "low": "V",
+   "high": null,
+   "text": "Shipping"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Others"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

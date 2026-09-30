@@ -1,0 +1,11 @@
+{
+ "domain": "KOLNR3",
+ "type": "NUMC",
+ "length": 3,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": "T682IA",
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

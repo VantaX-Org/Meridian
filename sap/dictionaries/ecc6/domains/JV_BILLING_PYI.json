@@ -1,0 +1,27 @@
+{
+ "domain": "JV_BILLING_PYI",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Non-zero period to date values"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Non-zero year to date values"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Non-zero inception to date values"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

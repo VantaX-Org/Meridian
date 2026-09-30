@@ -1,0 +1,32 @@
+{
+ "domain": "DPLFS",
+ "type": "CHAR",
+ "length": 2,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "Percentage breakdown"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Percentage fulfilment of target"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "User exit"
+  },
+  {
+   "low": "",
+   "high": null,
+   "text": ""
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

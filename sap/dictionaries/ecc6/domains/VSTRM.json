@@ -1,0 +1,27 @@
+{
+ "domain": "VSTRM",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Shipping scheduling off"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Shipping scheduling delivery order (w/o loading time) on"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Shipping scheduling on"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

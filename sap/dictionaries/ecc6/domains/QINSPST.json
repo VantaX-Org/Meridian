@@ -1,0 +1,52 @@
+{
+ "domain": "QINSPST",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": ""
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Inspection active (insp. lot created)"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "QM system certified in QINF (no insp. lot)"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "QM system certified for the vendor/manuf. (no insp. lot)"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Indicator 'No inspection' active in QINF (no insp. lot)"
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "Source insp. instead of GR insp. active in QINF (NoInspLot)"
+  },
+  {
+   "low": "6",
+   "high": null,
+   "text": "Insp. lot already created from previous document"
+  },
+  {
+   "low": "7",
+   "high": null,
+   "text": "Inspection lot is created at inbound delivery"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

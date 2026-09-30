@@ -34,6 +34,11 @@ RFC_SYSTEM_TYPES = ("ecc", "s4hana_onprem", "ewm")
 CLOUD_SYSTEM_TYPES = ("successfactors", "concur", "ariba", "s4hana_cloud")
 
 
+def baseline_key(system_type: str) -> str:
+    """Map a sap_systems.system_type to its BASELINE_CONFIG / registry key."""
+    return {"s4hana_onprem": "ecc", "ewm": "ewms"}.get(system_type, system_type)
+
+
 def connect_sap_system(system_type: str, params: dict):
     """Build and connect the correct SAP connector for a system_type.
 
@@ -177,6 +182,154 @@ class ConnectivityManager:
         """Return the correct connector instance for a system type."""
         return connect_sap_system(system_type, params)
 
+    # -- Extraction (rules-driven, per-table) -----------------------------------
+
+    def extract(self, system_id: str, modules: list[str], max_rows: int = 0,
+                scope: Optional[dict] = None) -> tuple[dict[str, pd.DataFrame], list[dict]]:
+        """Extract everything the rules of ``modules`` need from one system.
+
+        Returns ``({TABLE: frame with TABLE.FIELD columns}, coverage)``. The
+        coverage list says, per table, whether it was read live, how many rows,
+        whether the transactional window truncated it, or why it failed —
+        nothing is silently skipped.
+        """
+        import os
+
+        from api.services.source_design import dictionary_for
+        from sap.extraction_plan import ABAP_SYSTEM_TYPES, plan_modules, read_order, via_filters
+
+        system_row = self._load_system(system_id)
+        system_type = system_row.system_type
+        params = self._build_connection_params(system_row)
+        max_rows = max_rows or int(os.getenv("MERIDIAN_EXTRACT_MAX_ROWS", "5000000"))
+        dictionary = dictionary_for(self.session, system_id, system_type)
+        frames: dict[str, pd.DataFrame] = {}
+        coverage: list[dict] = []
+        try:
+            connector = self._get_connector(system_type, params)
+        finally:
+            for key in ("password", "client_secret", "api_key"):
+                params.pop(key, None)
+        try:
+            if system_type in ABAP_SYSTEM_TYPES:
+                plans = plan_modules(modules, dictionary, scope)
+                # fields this system's field-status customizing controls (checks/field_status_rules.py)
+                from checks.field_status_rules import extra_fields, load_config
+                from sap.field_status_config import resolve_all
+                for t, fs in extra_fields(resolve_all(load_config(self.session, system_id))).items():
+                    if t in plans:
+                        plans[t].fields |= {f for f in fs if dictionary.field(t, f) is not None}
+                raw: dict[str, pd.DataFrame] = {}
+                for table in read_order(plans):
+                    plan = plans[table]
+                    t = dictionary.table(table)
+                    cols = [c for c in plan.columns() if t is not None and c in t.fields]
+                    if t is None or not cols:
+                        coverage.append({"table": table, "status": "not_in_system", "purpose": plan.purpose})
+                        continue
+                    try:
+                        if plan.via:
+                            wheres = via_filters(table, plan.via, raw.get(plan.via))
+                            parts = [connector.read_table_full(table, cols, list(t.keys),
+                                     where=" AND ".join(x for x in (w, plan.where) if x), max_rows=max_rows)
+                                     for w in wheres]
+                            df = pd.concat(parts, ignore_index=True) if parts else pd.DataFrame(columns=cols)
+                        else:
+                            df = connector.read_table_full(table, cols, list(t.keys), where=plan.where,
+                                                           max_rows=max_rows)
+                    except SAPConnectorError as e:
+                        coverage.append({"table": table, "status": "failed", "detail": str(e)[:300]})
+                        continue
+                    raw[table] = df
+                    frames[table] = df.rename(columns={c: f"{table}.{c}" for c in df.columns})
+                    coverage.append({"table": table, "status": "live", "rows": len(df), "purpose": plan.purpose,
+                                     "window": plan.where if plan.where and not plan.where.startswith(tuple(
+                                         f"{f} = " for f in ("DATBI", "BDATU", "INACT"))) else None,
+                                     "truncated": len(df) >= max_rows})
+            elif system_type == "successfactors":
+                frames, coverage = self._extract_successfactors(connector, modules, dictionary, system_id)
+            else:
+                coverage.append({"table": "*", "status": "no_rule_mapping",
+                                 "detail": f"{system_type} data has no rule pack mapped yet; use upload or "
+                                           f"the cross-system integration module"})
+        finally:
+            connector.close()
+        return frames, coverage
+
+    def _extract_successfactors(self, connector, modules, dictionary, system_id):
+        """Assemble SF canonical tables from their source entities (see canonical/successfactors.yaml)."""
+        from checks.frames import tables_of
+        from checks.runner import _find_module_yaml, rule_columns
+        from api.services.source_design import latest_snapshot_id, load_overlay
+        import yaml as _yaml
+
+        wanted: set[str] = set()
+        for m in modules:
+            try:
+                for r in _yaml.safe_load(_find_module_yaml(m).read_text()).get("rules", []):
+                    wanted |= set(tables_of(rule_columns(r)))
+            except FileNotFoundError:
+                continue
+        snap = latest_snapshot_id(self.session, system_id)
+        live = load_overlay(self.session, snap)[0] if snap else {}
+        frames, coverage = {}, []
+        options: dict[str, dict[str, str]] = {}
+        if self.session is not None and system_id:
+            from sqlalchemy import text as _text
+            row = self.session.execute(_text("SELECT config_data FROM config_snapshots WHERE system_id = :s "
+                                             "AND config_table = 'PICKLIST_OPTION'"), {"s": str(system_id)}).first()
+            for o in (row[0] if row else None) or []:
+                options.setdefault(o["picklist"], {})[str(o["optionId"])] = o["externalCode"]
+        for table in sorted(wanted):
+            t = dictionary.table(table)
+            if t is None or not t.provenance.startswith("canonical:successfactors"):
+                continue
+            unavailable = {f["name"] for f in (live.get(table) or {}).get("fields", []) if f.get("available") is False}
+            by_entity: dict[str, dict[str, list[str]]] = {}
+            for f in t.fields.values():
+                ent, _, prop = (f.source or "").partition(".")
+                prop = prop.split(" ")[0]
+                if not ent[:1].isupper() or not prop or "<" in ent or f.name in unavailable:
+                    continue
+                by_entity.setdefault(ent, {}).setdefault(prop, []).append(f.name)
+            if not by_entity:
+                coverage.append({"table": table, "status": "upload_required",
+                                 "detail": "source is not an SF OData entity (e.g. payroll export)"})
+                continue
+            merged = None
+            for ent, props in by_entity.items():
+                join = [p for p in ("userId", "personIdExternal") if p not in props]
+                try:
+                    df = connector.read_entity_set(ent, select=sorted(set(props) | set(join)))
+                except Exception as e:
+                    coverage.append({"table": f"{table}←{ent}", "status": "failed", "detail": str(e)[:300]})
+                    continue
+                out = pd.DataFrame(index=df.index)
+                for prop, names in props.items():
+                    for n in names:
+                        out[f"{table}.{n}"] = df.get(prop)
+                for j in ("userId", "personIdExternal"):
+                    if j in df.columns:
+                        out[f"__{j}"] = df[j]
+                if merged is None:
+                    merged = out
+                else:
+                    on = [c for c in ("__userId", "__personIdExternal") if c in merged.columns and c in out.columns]
+                    merged = merged.merge(out.drop_duplicates(subset=on) if on else out,
+                                          how="left", on=on) if on else merged
+            if merged is None:
+                continue
+            merged = merged.drop(columns=[c for c in merged.columns if c.startswith("__")])
+            # legacy-picklist fields return the option id; rules and picklists speak external codes
+            for f in t.fields.values():
+                col, opts = f"{table}.{f.name}", options.get(f.picklist or "")
+                if opts and col in merged.columns:
+                    merged[col] = merged[col].map(lambda v: opts.get(str(v).strip(), v) if v is not None else v)
+            frames[table] = merged
+            coverage.append({"table": table, "status": "live", "rows": len(merged),
+                             "entities": sorted(by_entity), "unavailable_fields": sorted(unavailable)})
+        return frames, coverage
+
     # -- Extraction ------------------------------------------------------------
 
     def extract_module(
@@ -284,11 +437,20 @@ class ConnectivityManager:
     # -- Config Sync -----------------------------------------------------------
 
     def sync_config(self, system_id: str, modules: list[str]) -> dict:
-        """Sync SPRO/FO config for specified modules."""
+        """Sync SPRO/FO config for specified modules.
+
+        Live rows always win. A failed or empty live read never overwrites a
+        previous live snapshot; the SAP-standard baseline is only stored when
+        no snapshot exists yet, and it is labelled ``baseline``. The system's
+        ``config_sync_status`` reports what actually happened:
+        ``synced`` (all live) · ``partial`` (some baseline) · ``failed``.
+        """
         system_row = self._load_system(system_id)
         params = self._build_connection_params(system_row)
         system_type = params["system_type"]
         results = {}
+        live = baseline = 0
+        connection_failed = False
 
         for module in modules:
             targets = get_extraction_targets(system_type, module, include_config=True)
@@ -304,35 +466,40 @@ class ConnectivityManager:
                             if not df.empty:
                                 self._store_config_snapshot(system_id, module, target.source, df, "live")
                                 module_result["tables_synced"] += 1
-                            else:
-                                self._store_baseline_snapshot(system_id, module, target.source)
-                                module_result["tables_baseline"] += 1
+                                continue
+                            module_result["errors"].append(f"{target.source}: live read returned no rows")
                         except Exception as e:
                             logger.warning(f"Config read failed for {target.source}: {e}")
-                            self._store_baseline_snapshot(system_id, module, target.source)
-                            module_result["tables_baseline"] += 1
                             module_result["errors"].append(f"{target.source}: {str(e)[:100]}")
+                        if self._store_baseline_snapshot(system_id, module, target.source, system_type):
+                            module_result["tables_baseline"] += 1
                 finally:
                     connector.close()
             except Exception as e:
                 logger.error(f"Config sync connection failed: {e}")
+                connection_failed = True
+                module_result["errors"].append(f"connection: {str(e)[:200]}")
                 for target in config_targets:
-                    self._store_baseline_snapshot(system_id, module, target.source)
-                    module_result["tables_baseline"] += 1
-            finally:
-                for key in ("password", "client_secret", "api_key"):
-                    if key in params:
-                        params[key] = ""
+                    if self._store_baseline_snapshot(system_id, module, target.source, system_type):
+                        module_result["tables_baseline"] += 1
 
+            live += module_result["tables_synced"]
+            baseline += len(config_targets) - module_result["tables_synced"]
             results[module] = module_result
 
+        if connection_failed and live == 0:
+            status = "failed"
+        elif baseline or connection_failed:
+            status = "partial"
+        else:
+            status = "synced"
         self.session.execute(
             text("UPDATE sap_systems SET config_last_synced_at = now(), "
-                 "config_sync_status = 'synced' WHERE id = :sid"),
-            {"sid": system_id},
+                 "config_sync_status = :st WHERE id = :sid"),
+            {"sid": system_id, "st": status},
         )
         self.session.commit()
-        return results
+        return {"status": status, "modules": results}
 
     def _store_config_snapshots(self, system_id: str, module: str,
                                 config_frames: dict[str, pd.DataFrame]):
@@ -360,31 +527,31 @@ class ConnectivityManager:
         )
         self.session.commit()
 
-    def _store_baseline_snapshot(self, system_id: str, module: str, table_name: str):
+    def _store_baseline_snapshot(self, system_id: str, module: str, table_name: str,
+                                 system_type: str) -> bool:
+        """Store the SAP-standard baseline for this system type if no snapshot exists.
+
+        Returns True when a baseline row is (or already was) the stored value.
+        """
         from sap.baseline_config import BASELINE_CONFIG
-        for modules_map in BASELINE_CONFIG.values():
-            module_config = modules_map.get(module, {})
-            if table_name in module_config:
-                data = module_config[table_name]
-                self.session.execute(
-                    text("""
-                        INSERT INTO config_snapshots
-                            (id, tenant_id, system_id, module, config_table,
-                             config_data, record_count, source, synced_at)
-                        VALUES
-                            (gen_random_uuid(), :tid, :sid, :mod, :tbl,
-                             CAST(:data AS jsonb), :cnt, 'baseline', now())
-                        ON CONFLICT (tenant_id, system_id, module, config_table)
-                        DO UPDATE SET config_data = CAST(:data AS jsonb),
-                                      record_count = :cnt, source = 'baseline',
-                                      synced_at = now()
-                    """),
-                    {"tid": self.tenant_id, "sid": system_id, "mod": module,
-                     "tbl": table_name, "data": json.dumps(data),
-                     "cnt": len(data)},
-                )
-                self.session.commit()
-                return
+        data = BASELINE_CONFIG.get(baseline_key(system_type), {}).get(module, {}).get(table_name)
+        if data is None:
+            return False
+        self.session.execute(
+            text("""
+                INSERT INTO config_snapshots
+                    (id, tenant_id, system_id, module, config_table,
+                     config_data, record_count, source, synced_at)
+                VALUES
+                    (gen_random_uuid(), :tid, :sid, :mod, :tbl,
+                     CAST(:data AS jsonb), :cnt, 'baseline', now())
+                ON CONFLICT (tenant_id, system_id, module, config_table) DO NOTHING
+            """),
+            {"tid": self.tenant_id, "sid": system_id, "mod": module,
+             "tbl": table_name, "data": json.dumps(data), "cnt": len(data)},
+        )
+        self.session.commit()
+        return True
 
     # -- Health Check ----------------------------------------------------------
 

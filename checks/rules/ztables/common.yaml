@@ -16,46 +16,7 @@ rules:
   # on the specific customisation, but a null-check is usually safe when
   # the extension is mandatory by business rule.
 
-  - id: ZT001
-    field: MARA.ZZ_REACH_COMPLIANT
-    check_class: domain_value_check
-    allowed_values: ["X", " ", ""]
-    severity: medium
-    dimension: validity
-    message: "REACH compliance flag on MARA.ZZ_REACH_COMPLIANT must be X or blank"
-    why_it_matters: >-
-      A common customer append on MARA holds REACH (EU chemicals regulation)
-      compliance flags. Standard SAP doesn't ship this. An invalid value
-      (anything other than X or blank) indicates legacy data migration
-      artefacts and breaks the reach-compliance report.
-    rule_authority: best_practice
-    sap_impact: >-
-      REACH compliance report unreliable; procurement cannot block
-      non-compliant materials.
-    namespace: customer
-    fix_map:
-      __other__: "Correct via MM02 > customer fields; blank out invalid entries."
-    record_fix_template: "Material {MARA.MATNR}: REACH flag '{actual_value}' invalid."
 
-  - id: ZT002
-    field: LFA1.ZZ_SUPPLIER_RISK_SCORE
-    check_class: regex_check
-    pattern: "^(0|[1-9][0-9]?|100)$"
-    severity: medium
-    dimension: validity
-    message: "Supplier risk score must be a 0-100 integer"
-    why_it_matters: >-
-      Many tenants add a numeric risk score (0-100) to LFA1 for
-      procurement-risk reporting. A malformed value breaks the risk
-      dashboard and the supplier-selection workflow.
-    rule_authority: best_practice
-    sap_impact: >-
-      Risk dashboard misaggregates; supplier-selection workflow falls back
-      to unscored behaviour.
-    namespace: customer
-    fix_map:
-      __other__: "Risk score '{invalid_value}' must be 0-100. Correct via XK02 > customer fields."
-    record_fix_template: "Vendor {LFA1.LIFNR}: risk score '{actual_value}' is not 0-100."
 
   # ---- Full Z-tables (customer-created tables) ----
   # A tenant that has a ZVENDOR_EXT or ZCOST_ALLOCATION table should add

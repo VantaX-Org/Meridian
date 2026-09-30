@@ -59,38 +59,17 @@ def test_scoring_record_weights_by_total_count():
     assert res.dimension_coverage["accuracy"] == 0
 
 
-def test_pandas_polars_blank_parity():
-    """pandas and polars must score identically — otherwise a module's DQS
-    silently changes when it crosses the 50k-row engine threshold. Blanks ('')
-    are null_check's job in BOTH engines; regex/domain/referential exclude them.
-    """
-    import polars as pl
-
-    from checks.polars_engine import (
-        run_domain_check,
-        run_referential_check,
-        run_regex_check,
-    )
+def test_blanks_excluded_from_non_null_checks():
+    """Blanks ('' / whitespace / None) are null_check's job alone — regex,
+    domain and referential checks judge only populated values."""
     from checks.types.domain_value_check import DomainValueCheck
 
-    # 1 valid, 1 invalid, 1 blank, 1 null — the blank is the divergence trap.
-    df = pd.DataFrame({"F": ["ABC", "xx", "", None]})
-    lf = pl.from_pandas(df).lazy()
-
+    df = pd.DataFrame({"F": ["ABC", "xx", "  ", None]})
     rr = {"id": "r", "field": "F", "pattern": r"^[A-Z]+$", "dimension": "validity"}
-    pan = RegexCheck(rr).run(df)
-    pol = run_regex_check(lf, "F", r"^[A-Z]+$", rr)
-    assert (pan.affected_count, pan.total_count) == (pol["affected_count"], pol["total_count"]) == (1, 2)
-
     dr = {"id": "d", "field": "F", "allowed_values": ["ABC"], "dimension": "validity"}
-    pan2 = DomainValueCheck(dr).run(df)
-    pol2 = run_domain_check(lf, "F", ["ABC"], dr)
-    assert (pan2.affected_count, pan2.total_count) == (pol2["affected_count"], pol2["total_count"]) == (1, 2)
-
     fr = {"id": "f", "field": "F", "reference_values": ["ABC"], "dimension": "consistency"}
-    pan3 = ReferentialCheck(fr).run(df)
-    pol3 = run_referential_check(lf, "F", ["ABC"], fr)
-    assert (pan3.affected_count, pan3.total_count) == (pol3["affected_count"], pol3["total_count"]) == (1, 2)
+    for res in (RegexCheck(rr).run(df), DomainValueCheck(dr).run(df), ReferentialCheck(fr).run(df)):
+        assert (res.affected_count, res.total_count) == (1, 2)
 
 
 if __name__ == "__main__":

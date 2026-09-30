@@ -1,0 +1,408 @@
+{
+ "table": "MLGN",
+ "description": "Material Data for Each Warehouse Number",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "MATNR",
+   "key": true,
+   "data_element": "MATNR",
+   "domain": "MATNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Material Number",
+   "check_table": "MARA"
+  },
+  {
+   "pos": 3,
+   "name": "LGNUM",
+   "key": true,
+   "data_element": "LGNUM",
+   "domain": "LGNUM",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Warehouse Number / Warehouse Complex",
+   "check_table": "T300"
+  },
+  {
+   "pos": 5,
+   "name": "LVORM",
+   "key": false,
+   "data_element": "LVOLN",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Deletion flag for all material data of a warehouse number",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "LGBKZ",
+   "key": false,
+   "data_element": "LVS_LGBKZ",
+   "domain": "LVS_LGBKZ",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Storage Section Indicators",
+   "check_table": "T304"
+  },
+  {
+   "pos": 7,
+   "name": "LTKZE",
+   "key": false,
+   "data_element": "MLGN_LTKZE",
+   "domain": "LVS_LGTKZ",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Storage type indicator for stock placement",
+   "check_table": "T305"
+  },
+  {
+   "pos": 8,
+   "name": "LTKZA",
+   "key": false,
+   "data_element": "MLGN_LTKZA",
+   "domain": "LVS_LGTKZ",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Storage type indicator for stock removal",
+   "check_table": "T305"
+  },
+  {
+   "pos": 9,
+   "name": "LHMG1",
+   "key": false,
+   "data_element": "LVS_LHMNG1",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Loading equipment quantity 1",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "LHMG2",
+   "key": false,
+   "data_element": "LVS_LHMNG2",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Loading equipment quantity 2",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "LHMG3",
+   "key": false,
+   "data_element": "LVS_LHMNG3",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Loading equipment quantity 3",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "LHME1",
+   "key": false,
+   "data_element": "LHMEH1",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit of measure for loading equipment quantity 1",
+   "check_table": "T006"
+  },
+  {
+   "pos": 13,
+   "name": "LHME2",
+   "key": false,
+   "data_element": "LHMEH2",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit of measure for loading equipment quantity 2",
+   "check_table": "T006"
+  },
+  {
+   "pos": 14,
+   "name": "LHME3",
+   "key": false,
+   "data_element": "LHMEH3",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit of measure for loading equipment quantity 3",
+   "check_table": "T006"
+  },
+  {
+   "pos": 15,
+   "name": "LETY1",
+   "key": false,
+   "data_element": "LVS_LETYP1",
+   "domain": "LVS_LETYP",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "1st storage unit type",
+   "check_table": "T307"
+  },
+  {
+   "pos": 16,
+   "name": "LETY2",
+   "key": false,
+   "data_element": "LVS_LETYP2",
+   "domain": "LVS_LETYP",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "2nd storage unit type",
+   "check_table": "T307"
+  },
+  {
+   "pos": 17,
+   "name": "LETY3",
+   "key": false,
+   "data_element": "LVS_LETYP3",
+   "domain": "LVS_LETYP",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "3rd storage unit type",
+   "check_table": "T307"
+  },
+  {
+   "pos": 18,
+   "name": "LVSME",
+   "key": false,
+   "data_element": "LVS_LVSME",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Warehouse Management Unit of Measure",
+   "check_table": "T006"
+  },
+  {
+   "pos": 19,
+   "name": "KZZUL",
+   "key": false,
+   "data_element": "MLGN_KZZUL",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Allow addition to existing stock",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "BLOCK",
+   "key": false,
+   "data_element": "LVS_BLOCK2",
+   "domain": "LVS_BLOCK2",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Bulk storage indicator",
+   "check_table": "T338"
+  },
+  {
+   "pos": 21,
+   "name": "KZMBF",
+   "key": false,
+   "data_element": "KZMBF",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Message to inventory management",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "BSSKZ",
+   "key": false,
+   "data_element": "LVS_BSSKZ",
+   "domain": "LVS_BSSKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Special movement indicator for warehouse management",
+   "check_table": "T306"
+  },
+  {
+   "pos": 23,
+   "name": "MKAPV",
+   "key": false,
+   "data_element": "MLGN_MKAPV",
+   "domain": "DEC8_3",
+   "type": "DEC",
+   "length": 11,
+   "decimals": 3,
+   "description": "Capacity usage",
+   "check_table": null
+  },
+  {
+   "pos": 24,
+   "name": "BEZME",
+   "key": false,
+   "data_element": "MLGN_BEZME",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit of measure for capacity consumption",
+   "check_table": "T006"
+  },
+  {
+   "pos": 25,
+   "name": "PLKPT",
+   "key": false,
+   "data_element": "MLGN_PLKPT",
+   "domain": "LGTYP",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Picking storage type for rough-cut and detailed planning",
+   "check_table": "T301"
+  },
+  {
+   "pos": 26,
+   "name": "VOMEM",
+   "key": false,
+   "data_element": "MLGN_VOMEM",
+   "domain": "LVS_VOME",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Default for unit of measure from material master record",
+   "check_table": null
+  },
+  {
+   "pos": 27,
+   "name": "L2SKR",
+   "key": false,
+   "data_element": "MLGN_L2SKR",
+   "domain": "LVS_2SKREL",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Material relevance for 2-step picking",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "BEZME",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "BLOCK",
+   "foreign_table": "T338",
+   "foreign_field": "BLOCK"
+  },
+  {
+   "field": "BSSKZ",
+   "foreign_table": "T306",
+   "foreign_field": "BSSKZ"
+  },
+  {
+   "field": "LETY1",
+   "foreign_table": "T307",
+   "foreign_field": "LETYP"
+  },
+  {
+   "field": "LETY2",
+   "foreign_table": "T307",
+   "foreign_field": "LETYP"
+  },
+  {
+   "field": "LETY3",
+   "foreign_table": "T307",
+   "foreign_field": "LETYP"
+  },
+  {
+   "field": "LGBKZ",
+   "foreign_table": "T304",
+   "foreign_field": "LGBKZ"
+  },
+  {
+   "field": "LGNUM",
+   "foreign_table": "T300",
+   "foreign_field": "LGNUM"
+  },
+  {
+   "field": "LHME1",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "LHME2",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "LHME3",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "LTKZA",
+   "foreign_table": "T305",
+   "foreign_field": "LGTKZ"
+  },
+  {
+   "field": "LTKZE",
+   "foreign_table": "T305",
+   "foreign_field": "LGTKZ"
+  },
+  {
+   "field": "LVSME",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MATNR",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "PLKPT",
+   "foreign_table": "T301",
+   "foreign_field": "LGTYP"
+  }
+ ]
+}

@@ -1,0 +1,42 @@
+{
+ "domain": "ERLRE",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Not relevant for completion"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Item is completed with the first reference"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Item is completed after full quantity has been referenced"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Item is completed after the target qty is fully referenced"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Item is referenced via contract release"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Item is completed after full target value is referenced"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

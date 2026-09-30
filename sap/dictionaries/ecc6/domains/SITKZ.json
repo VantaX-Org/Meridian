@@ -1,0 +1,47 @@
+{
+ "domain": "SITKZ",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Not Relevant"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "GI from Issuing Valuated SiT to Receiving Valuated SiT"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "GI from Issuing Valuated SiT to Receiving Plant"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "SO-Related GI from Issuing Valuated Stock in Transit"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "GI from Issuing Plant to Receiving Valuated Stock in Transit"
+  },
+  {
+   "low": "I",
+   "high": null,
+   "text": "Goods Receipt for Inbound Delivery from Receiving Val. SiT"
+  },
+  {
+   "low": "N",
+   "high": null,
+   "text": "Not Relevant"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,22 @@
+{
+ "domain": "MSR_VRMA_REQ_LFM1",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Vendor RMA Not Required"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Vendor RMA Required"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

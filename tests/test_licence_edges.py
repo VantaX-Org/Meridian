@@ -247,6 +247,8 @@ async def test_validate_licence_in_offline_mode_skips_network(tmp_path, monkeypa
     monkeypatch.setenv("LICENCE_FILE_PATH", str(licence_file))
     monkeypatch.setenv("LICENCE_SECRET", "s3cret")
     monkeypatch.setattr(lic.settings, "licence_file", str(licence_file))
+    # offline is selected by configuration (settings), not by a file being present
+    monkeypatch.setattr(lic.settings, "licence_mode", "offline")
 
     class _Boom:
         def __init__(self, *a, **kw):
@@ -392,3 +394,137 @@ async def test_feature_route_still_403s_during_cutoff(monkeypatch):
     mw = lic.LicenceMiddleware(app=None)
     resp = await mw.dispatch(_FakeRequest("/api/v1/findings"), _ok_call_next)
     assert resp.status_code == 403
+
+
+
+# ── HQ verdicts, grace, dev bypass ────────────────────────────────────────────
+
+
+def _fake_client(lic, monkeypatch, status, body):
+    class _Resp:
+        status_code = status
+
+        def json(self):
+            return body
+
+    class _Client:
+        def __init__(self, *a, **kw):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def post(self, *a, **kw):
+            return _Resp()
+
+    monkeypatch.setattr(lic.httpx, "AsyncClient", _Client)
+
+
+@pytest.mark.asyncio
+async def test_revoked_licence_is_a_verdict_not_an_outage(monkeypatch):
+    from api.middleware import licence as lic
+
+    monkeypatch.setattr(lic.settings, "licence_mode", "online")
+    monkeypatch.setattr(lic, "_degraded_at", None)
+    _fake_client(lic, monkeypatch, 403, {"valid": False, "reason": "suspended"})
+    result = await lic._validate_licence()
+    assert result == {"valid": False, "reason": "suspended"}
+    assert lic._degraded_at is None  # HQ answered — not "unreachable"
+
+
+@pytest.mark.asyncio
+async def test_online_mode_ignores_local_licence_file(tmp_path, monkeypatch):
+    from api.middleware import licence as lic
+
+    f = tmp_path / "licence.json"
+    f.write_text(json.dumps({"active": True, "modules": ["*"]}))
+    monkeypatch.setattr(lic.settings, "licence_mode", "online")
+    monkeypatch.setattr(lic.settings, "licence_file", str(f))
+    _fake_client(lic, monkeypatch, 403, {"valid": False, "reason": "invalid_key"})
+    assert (await lic._validate_licence())["reason"] == "invalid_key"
+
+
+def test_unsigned_offline_file_grants_nothing(tmp_path, monkeypatch):
+    from api.middleware import licence as lic
+
+    f = tmp_path / "licence.json"
+    f.write_text(json.dumps({"active": True, "modules": ["*"]}))
+    monkeypatch.setenv("LICENCE_MODE", "offline")
+    monkeypatch.setenv("LICENCE_FILE_PATH", str(f))
+    monkeypatch.delenv("LICENCE_SECRET", raising=False)
+    monkeypatch.setattr(lic.settings, "licence_file", None)
+    assert lic._read_offline_licence() == {"valid": False, "reason": "unsigned_licence"}
+
+
+@pytest.mark.asyncio
+async def test_no_key_is_denied_outside_development(monkeypatch):
+    from api.middleware import licence as lic
+
+    monkeypatch.setattr(lic.settings, "licence_key", None)
+    monkeypatch.setattr(lic.settings, "env", "production")
+    monkeypatch.setattr(lic.settings, "licence_mode", "online")
+    monkeypatch.setattr(lic, "_cache", {"response": None, "expires_at": 0.0})
+    _fake_client(lic, monkeypatch, 400, {"valid": False, "reason": "missing_key"})
+    resp = await lic.LicenceMiddleware(app=None).dispatch(_FakeRequest("/api/v1/findings"), _ok_call_next)
+    assert resp.status_code == 402
+
+    monkeypatch.setattr(lic.settings, "env", "development")
+    resp = await lic.LicenceMiddleware(app=None).dispatch(_FakeRequest("/api/v1/findings"), _ok_call_next)
+    assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_expired_grace_keeps_last_signed_entitlements_with_warning(monkeypatch):
+    from api.middleware import licence as lic
+
+    expiry = (datetime.now(timezone.utc) - timedelta(days=2)).isoformat()
+    last = {"valid": True, "enabled_modules": ["fi_gl"], "features": {}, "expiry_date": expiry}
+    monkeypatch.setattr(lic.settings, "licence_key", "MRDX-TEST")
+    monkeypatch.setattr(lic.settings, "licence_mode", "online")
+    monkeypatch.setattr(lic, "_cache", {"response": last, "expires_at": 0.0})
+    _fake_client(lic, monkeypatch, 402, {"valid": False, "reason": "expired_grace"})
+    resp = await lic.LicenceMiddleware(app=None).dispatch(_FakeRequest("/api/v1/findings"), _ok_call_next)
+    assert resp.status_code == 200 and resp.headers["X-Licence-Warning"] == "expired_grace"
+
+    # past the 7-day window on the signed expiry → denied
+    last["expiry_date"] = (datetime.now(timezone.utc) - timedelta(days=9)).isoformat()
+    monkeypatch.setattr(lic, "_cache", {"response": last, "expires_at": 0.0})
+    resp = await lic.LicenceMiddleware(app=None).dispatch(_FakeRequest("/api/v1/findings"), _ok_call_next)
+    assert resp.status_code == 402
+
+
+def _rsa_pair():
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
+
+    k = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    pub = k.public_key().public_bytes(serialization.Encoding.PEM,
+                                      serialization.PublicFormat.SubjectPublicKeyInfo).decode()
+    return k, pub
+
+
+@pytest.mark.asyncio
+async def test_offline_token_verified_with_hq_public_key(monkeypatch):
+    import jwt as pyjwt
+
+    from api.middleware import licence as lic
+
+    key, pub = _rsa_pair()
+    now = int(datetime.now(timezone.utc).timestamp())
+    claims = {"iss": "meridian-hq", "tenant_id": "t-1", "exp": now + 86400, "enabled_modules": ["fi_gl"]}
+    monkeypatch.setattr(lic.settings, "licence_mode", "offline")
+    monkeypatch.setenv("MERIDIAN_OFFLINE_PUBLIC_KEY", pub)
+
+    monkeypatch.setenv("MERIDIAN_LICENCE_TOKEN", pyjwt.encode(claims, key, algorithm="RS256"))
+    ok = await lic._validate_licence()
+    assert ok["valid"] and ok["enabled_modules"] == ["fi_gl"] and ok["tenant_id"] == "t-1"
+
+    other, _ = _rsa_pair()  # forged with a different key
+    monkeypatch.setenv("MERIDIAN_LICENCE_TOKEN", pyjwt.encode(claims, other, algorithm="RS256"))
+    assert (await lic._validate_licence()) == {"valid": False, "reason": "invalid_token"}
+
+    monkeypatch.setenv("MERIDIAN_LICENCE_TOKEN", pyjwt.encode({**claims, "exp": now - 10}, key, algorithm="RS256"))
+    assert (await lic._validate_licence()) == {"valid": False, "reason": "expired"}

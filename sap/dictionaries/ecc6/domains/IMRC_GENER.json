@@ -1,0 +1,72 @@
+{
+ "domain": "IMRC_GENER",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "Transfer from API, without dialog"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Entry of vehicle usage"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Normal online entry"
+  },
+  {
+   "low": "I",
+   "high": null,
+   "text": "Batch input entry"
+  },
+  {
+   "low": "L",
+   "high": null,
+   "text": "Default from measurement reading entry list"
+  },
+  {
+   "low": "M",
+   "high": null,
+   "text": "R/2 -> R/3 migration"
+  },
+  {
+   "low": "Q",
+   "high": null,
+   "text": "Automatically created by the QM application"
+  },
+  {
+   "low": "R",
+   "high": null,
+   "text": "Manual transfer from the QM application"
+  },
+  {
+   "low": "T",
+   "high": null,
+   "text": "Created automatically by measurement reading transfer"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Customer variant 1"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Customer variant 2"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Customer variant 3"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,67 @@
+{
+ "domain": "VBKLT",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No classification"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Billing request (line item billing)"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Delivery order"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Scheduling agreement with delivery order"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Invoice correction request"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Delivery order correction"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Repair processing: Leading serviceable material"
+  },
+  {
+   "low": "G",
+   "high": null,
+   "text": "Repair processing: Leading service product"
+  },
+  {
+   "low": "H",
+   "high": null,
+   "text": "Scheduling agreement with external service agent processing"
+  },
+  {
+   "low": "I",
+   "high": null,
+   "text": "Consignment issue by external service agent"
+  },
+  {
+   "low": "K",
+   "high": null,
+   "text": "Correct consignment issue by external service agent"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

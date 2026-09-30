@@ -1,0 +1,558 @@
+{
+ "table": "ANLZ",
+ "description": "Time-Dependent Asset Allocations",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "BUKRS",
+   "key": true,
+   "data_element": "BUKRS",
+   "domain": "BUKRS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Company Code",
+   "check_table": "T001"
+  },
+  {
+   "pos": 3,
+   "name": "ANLN1",
+   "key": true,
+   "data_element": "ANLN1",
+   "domain": "ANLN1",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Main Asset Number",
+   "check_table": "ANLH"
+  },
+  {
+   "pos": 4,
+   "name": "ANLN2",
+   "key": true,
+   "data_element": "ANLN2",
+   "domain": "ANLN2",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Asset Subnumber",
+   "check_table": "ANLA"
+  },
+  {
+   "pos": 5,
+   "name": "BDATU",
+   "key": true,
+   "data_element": "BDATU",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date validity ends",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "ADATU",
+   "key": false,
+   "data_element": "ADATU",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date for beginning of validity",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "KOSTL",
+   "key": false,
+   "data_element": "KOSTL",
+   "domain": "KOSTL",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Cost Center",
+   "check_table": "*"
+  },
+  {
+   "pos": 8,
+   "name": "WERKS",
+   "key": false,
+   "data_element": "WERKS_D",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Plant",
+   "check_table": "T001W"
+  },
+  {
+   "pos": 9,
+   "name": "GSBER",
+   "key": false,
+   "data_element": "GSBER",
+   "domain": "GSBER",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Business Area",
+   "check_table": "TGSB"
+  },
+  {
+   "pos": 10,
+   "name": "LSTAR",
+   "key": false,
+   "data_element": "LSTAR",
+   "domain": "LSTAR",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Activity Type",
+   "check_table": "*"
+  },
+  {
+   "pos": 11,
+   "name": "MSFAK",
+   "key": false,
+   "data_element": "MSFAK",
+   "domain": "MSFAK",
+   "type": "DEC",
+   "length": 3,
+   "decimals": 2,
+   "description": "Multiple-shift factor for multiple shift operation",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "XSTIL",
+   "key": false,
+   "data_element": "XSTIL",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Asset shutdown",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "STORT",
+   "key": false,
+   "data_element": "STORT",
+   "domain": "AP_STAND",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Asset location",
+   "check_table": "T499S"
+  },
+  {
+   "pos": 14,
+   "name": "CAUFN",
+   "key": false,
+   "data_element": "CAUFN",
+   "domain": "AUFNR",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Internal order",
+   "check_table": "AUFK"
+  },
+  {
+   "pos": 15,
+   "name": "PLAN1",
+   "key": false,
+   "data_element": "PLAN1",
+   "domain": "CHAR12",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "no longer used",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "PLAN2",
+   "key": false,
+   "data_element": "PLAN2",
+   "domain": "CHAR4",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "No longer used",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "RAUMN",
+   "key": false,
+   "data_element": "RAUMNR",
+   "domain": "CHAR8",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Room",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "IAUFN",
+   "key": false,
+   "data_element": "IAUFN",
+   "domain": "AUFNR",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Maintenance order",
+   "check_table": "AUFK"
+  },
+  {
+   "pos": 19,
+   "name": "IPROJ",
+   "key": false,
+   "data_element": "PROJN",
+   "domain": "PROJN",
+   "type": "CHAR",
+   "length": 16,
+   "decimals": 0,
+   "description": "Old: Project number : No longer used --> PS_POSNR",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "TPLKZ",
+   "key": false,
+   "data_element": "FILL03",
+   "domain": "CHAR03",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unused field length 3",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "TPLNR",
+   "key": false,
+   "data_element": "TPLNR",
+   "domain": "TPLNR",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Functional Location",
+   "check_table": "*"
+  },
+  {
+   "pos": 22,
+   "name": "ANUPD",
+   "key": false,
+   "data_element": "ANUPD",
+   "domain": "ANUPD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Type of change to table",
+   "check_table": null
+  },
+  {
+   "pos": 23,
+   "name": "TXJCD",
+   "key": false,
+   "data_element": "TXJCD",
+   "domain": "TXJCD",
+   "type": "CHAR",
+   "length": 15,
+   "decimals": 0,
+   "description": "Tax Jurisdiction",
+   "check_table": "TTXJ"
+  },
+  {
+   "pos": 24,
+   "name": "IPSNR",
+   "key": false,
+   "data_element": "AM_IPSNR",
+   "domain": "PS_POSNR",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "WBS element - maintenance project",
+   "check_table": "PRPS"
+  },
+  {
+   "pos": 25,
+   "name": "KFZKZ",
+   "key": false,
+   "data_element": "AM_KFZKZ",
+   "domain": "AM_KFZKZ",
+   "type": "CHAR",
+   "length": 15,
+   "decimals": 0,
+   "description": "License plate no. of vehichle",
+   "check_table": null
+  },
+  {
+   "pos": 26,
+   "name": "PERNR",
+   "key": false,
+   "data_element": "PERNR_D",
+   "domain": "PERNR",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Personnel Number",
+   "check_table": null
+  },
+  {
+   "pos": 27,
+   "name": "KOSTLV",
+   "key": false,
+   "data_element": "KOSTLV",
+   "domain": "KOSTL",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Cost center responsible for asset",
+   "check_table": "*"
+  },
+  {
+   "pos": 29,
+   "name": "FISTL",
+   "key": false,
+   "data_element": "FISTL",
+   "domain": "FISTL",
+   "type": "CHAR",
+   "length": 16,
+   "decimals": 0,
+   "description": "Funds Center",
+   "check_table": "*"
+  },
+  {
+   "pos": 30,
+   "name": "GEBER",
+   "key": false,
+   "data_element": "BP_GEBER",
+   "domain": "BP_GEBER",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Fund",
+   "check_table": "*"
+  },
+  {
+   "pos": 31,
+   "name": "FKBER",
+   "key": false,
+   "data_element": "FKBER",
+   "domain": "FKBER",
+   "type": "CHAR",
+   "length": 16,
+   "decimals": 0,
+   "description": "Functional Area",
+   "check_table": "*"
+  },
+  {
+   "pos": 33,
+   "name": "GRANT_NBR",
+   "key": false,
+   "data_element": "GM_GRANT_NBR",
+   "domain": "GM_GRANT_NBR",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "Grant",
+   "check_table": null
+  },
+  {
+   "pos": 34,
+   "name": "GEBER2",
+   "key": false,
+   "data_element": "BP_GEBER2",
+   "domain": "BP_GEBER",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Fund for APC Account Assignments",
+   "check_table": "*"
+  },
+  {
+   "pos": 35,
+   "name": "FKBER2",
+   "key": false,
+   "data_element": "FKBER2",
+   "domain": "FKBER",
+   "type": "CHAR",
+   "length": 16,
+   "decimals": 0,
+   "description": "Functional Area for APC Account Assignments",
+   "check_table": "*"
+  },
+  {
+   "pos": 36,
+   "name": "GRANT_NBR2",
+   "key": false,
+   "data_element": "GM_GRANT_NBR2",
+   "domain": "GM_GRANT_NBR",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "Grant for APC Account Assignments",
+   "check_table": null
+  },
+  {
+   "pos": 37,
+   "name": "FISTL2",
+   "key": false,
+   "data_element": "FISTL2",
+   "domain": "FISTL",
+   "type": "CHAR",
+   "length": 16,
+   "decimals": 0,
+   "description": "Funds Center for APC Account Assignments",
+   "check_table": "*"
+  },
+  {
+   "pos": 38,
+   "name": "IMKEY",
+   "key": false,
+   "data_element": "IMKEY",
+   "domain": "IMKEY",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Internal Key for Real Estate Object",
+   "check_table": null
+  },
+  {
+   "pos": 39,
+   "name": "PS_PSP_PNR2",
+   "key": false,
+   "data_element": "PS_PSP_PNR2",
+   "domain": "PS_POSNR",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "WBS Element (Costs)",
+   "check_table": "*"
+  },
+  {
+   "pos": 40,
+   "name": "BUDGET_PD",
+   "key": false,
+   "data_element": "FM_BUDGET_PERIOD",
+   "domain": "FM_BUDGET_PERIOD",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "FM: Budget Period",
+   "check_table": "*"
+  },
+  {
+   "pos": 41,
+   "name": "BUDGET_PD2",
+   "key": false,
+   "data_element": "FM_BUDGET_PERIOD2",
+   "domain": "FM_BUDGET_PERIOD",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Budget Period for APC Account Assignments",
+   "check_table": "*"
+  },
+  {
+   "pos": 42,
+   "name": "SEGMENT",
+   "key": false,
+   "data_element": "FB_SEGMENT",
+   "domain": "FB_SEGMENT",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Segment for Segmental Reporting",
+   "check_table": "FAGL_SEGM"
+  },
+  {
+   "pos": 43,
+   "name": "PRCTR",
+   "key": false,
+   "data_element": "PRCTR",
+   "domain": "PRCTR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Profit Center",
+   "check_table": "*"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "ANLN1",
+   "foreign_table": "ANLH",
+   "foreign_field": "ANLN1"
+  },
+  {
+   "field": "ANLN2",
+   "foreign_table": "ANLA",
+   "foreign_field": "ANLN2"
+  },
+  {
+   "field": "BUKRS",
+   "foreign_table": "T001",
+   "foreign_field": "BUKRS"
+  },
+  {
+   "field": "CAUFN",
+   "foreign_table": "AUFK",
+   "foreign_field": "AUFNR"
+  },
+  {
+   "field": "GSBER",
+   "foreign_table": "TGSB",
+   "foreign_field": "GSBER"
+  },
+  {
+   "field": "IAUFN",
+   "foreign_table": "AUFK",
+   "foreign_field": "AUFNR"
+  },
+  {
+   "field": "IPSNR",
+   "foreign_table": "PRPS",
+   "foreign_field": "PSPNR"
+  },
+  {
+   "field": "SEGMENT",
+   "foreign_table": "FAGL_SEGM",
+   "foreign_field": "SEGMENT"
+  },
+  {
+   "field": "STORT",
+   "foreign_table": "T499S",
+   "foreign_field": "STAND"
+  },
+  {
+   "field": "TXJCD",
+   "foreign_table": "TTXJ",
+   "foreign_field": "TXJCD"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  }
+ ]
+}

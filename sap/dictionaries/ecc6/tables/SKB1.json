@@ -1,0 +1,600 @@
+{
+ "table": "SKB1",
+ "description": "G/L account master (company code)",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "BUKRS",
+   "key": true,
+   "data_element": "BUKRS",
+   "domain": "BUKRS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Company Code",
+   "check_table": "T001"
+  },
+  {
+   "pos": 3,
+   "name": "SAKNR",
+   "key": true,
+   "data_element": "SAKNR",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "G/L Account Number",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 4,
+   "name": "BEGRU",
+   "key": false,
+   "data_element": "BRGRU",
+   "domain": "BRGRU",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Authorization Group",
+   "check_table": "*"
+  },
+  {
+   "pos": 5,
+   "name": "BUSAB",
+   "key": false,
+   "data_element": "BUSAB",
+   "domain": "BUSAB",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Accounting clerk",
+   "check_table": "T001S"
+  },
+  {
+   "pos": 6,
+   "name": "DATLZ",
+   "key": false,
+   "data_element": "DATLZ",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date of the last interest calculation run",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "ERDAT",
+   "key": false,
+   "data_element": "ERDAT_RF",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date on which the Record Was Created",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "ERNAM",
+   "key": false,
+   "data_element": "ERNAM_RF",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of Person who Created the Object",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "FDGRV",
+   "key": false,
+   "data_element": "FDGRV",
+   "domain": "FDGRP",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Planning group",
+   "check_table": "T035"
+  },
+  {
+   "pos": 10,
+   "name": "FDLEV",
+   "key": false,
+   "data_element": "FDLEV",
+   "domain": "FDLEV",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Planning Level",
+   "check_table": "T036"
+  },
+  {
+   "pos": 11,
+   "name": "FIPLS",
+   "key": false,
+   "data_element": "FIPLS",
+   "domain": "FIPLS",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Financial Budget Item",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "FSTAG",
+   "key": false,
+   "data_element": "FSTAG",
+   "domain": "FSTAG",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Field status group",
+   "check_table": "T004F"
+  },
+  {
+   "pos": 13,
+   "name": "HBKID",
+   "key": false,
+   "data_element": "HBKID",
+   "domain": "HBKID",
+   "type": "CHAR",
+   "length": 5,
+   "decimals": 0,
+   "description": "Short key for a house bank",
+   "check_table": "T012"
+  },
+  {
+   "pos": 14,
+   "name": "HKTID",
+   "key": false,
+   "data_element": "HKTID",
+   "domain": "HKTID",
+   "type": "CHAR",
+   "length": 5,
+   "decimals": 0,
+   "description": "ID for account details",
+   "check_table": "T012K"
+  },
+  {
+   "pos": 15,
+   "name": "KDFSL",
+   "key": false,
+   "data_element": "KDFSL",
+   "domain": "KDFSL",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Key for Exchange Rate Differences in Foreign Currency Accts",
+   "check_table": "T030S"
+  },
+  {
+   "pos": 16,
+   "name": "MITKZ",
+   "key": false,
+   "data_element": "MITKZ",
+   "domain": "MITKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Account is reconciliation account",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "MWSKZ",
+   "key": false,
+   "data_element": "SMWSK",
+   "domain": "SMWSK",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Tax Category in Account Master Record",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "STEXT",
+   "key": false,
+   "data_element": "STEXT_SKB1",
+   "domain": "TEXT50",
+   "type": "CHAR",
+   "length": 50,
+   "decimals": 0,
+   "description": "G/L account additional text",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "VZSKZ",
+   "key": false,
+   "data_element": "VZSKZ",
+   "domain": "VZSKZ",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Interest calculation indicator",
+   "check_table": "T056"
+  },
+  {
+   "pos": 20,
+   "name": "WAERS",
+   "key": false,
+   "data_element": "WAERS_SKB1",
+   "domain": "WAERS",
+   "type": "CUKY",
+   "length": 5,
+   "decimals": 0,
+   "description": "Account currency",
+   "check_table": "TCURC"
+  },
+  {
+   "pos": 21,
+   "name": "WMETH",
+   "key": false,
+   "data_element": "WMETH",
+   "domain": "WMETH",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Indicator: account managed in external system",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "XGKON",
+   "key": false,
+   "data_element": "XGKON",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Cash receipt account / cash disbursement account",
+   "check_table": null
+  },
+  {
+   "pos": 23,
+   "name": "XINTB",
+   "key": false,
+   "data_element": "XINTB",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Is account only posted to automatically?",
+   "check_table": null
+  },
+  {
+   "pos": 24,
+   "name": "XKRES",
+   "key": false,
+   "data_element": "XKRES",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Can Line Items Be Displayed by Account?",
+   "check_table": null
+  },
+  {
+   "pos": 25,
+   "name": "XLOEB",
+   "key": false,
+   "data_element": "XLOEV",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Account marked for deletion?",
+   "check_table": null
+  },
+  {
+   "pos": 26,
+   "name": "XNKON",
+   "key": false,
+   "data_element": "XNKON",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Supplement for automatic postings ?",
+   "check_table": null
+  },
+  {
+   "pos": 27,
+   "name": "XOPVW",
+   "key": false,
+   "data_element": "XOPVW",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Open Item Management?",
+   "check_table": null
+  },
+  {
+   "pos": 28,
+   "name": "XSPEB",
+   "key": false,
+   "data_element": "XSPEB",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Is Account Blocked for Posting?",
+   "check_table": null
+  },
+  {
+   "pos": 29,
+   "name": "ZINDT",
+   "key": false,
+   "data_element": "DZINDT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Key date of the last interest calculation",
+   "check_table": null
+  },
+  {
+   "pos": 30,
+   "name": "ZINRT",
+   "key": false,
+   "data_element": "DZINRT",
+   "domain": "ZINRT",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Interest calculation frequency in months",
+   "check_table": null
+  },
+  {
+   "pos": 31,
+   "name": "ZUAWA",
+   "key": false,
+   "data_element": "DZUAWA",
+   "domain": "ZUAWA",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Key for sorting according to assignment numbers",
+   "check_table": "TZUN"
+  },
+  {
+   "pos": 32,
+   "name": "ALTKT",
+   "key": false,
+   "data_element": "ALTKT_SKB1",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Alternative Account Number in Company Code",
+   "check_table": "*"
+  },
+  {
+   "pos": 33,
+   "name": "XMITK",
+   "key": false,
+   "data_element": "XMITK",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Reconcil.acct ready for input at time of posting?",
+   "check_table": null
+  },
+  {
+   "pos": 34,
+   "name": "RECID",
+   "key": false,
+   "data_element": "JV_RECIND",
+   "domain": "JV_RECIND",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Recovery Indicator",
+   "check_table": "T8JJ"
+  },
+  {
+   "pos": 35,
+   "name": "FIPOS",
+   "key": false,
+   "data_element": "FIPOS",
+   "domain": "FIPOS",
+   "type": "CHAR",
+   "length": 14,
+   "decimals": 0,
+   "description": "Commitment Item",
+   "check_table": "*"
+  },
+  {
+   "pos": 36,
+   "name": "XMWNO",
+   "key": false,
+   "data_element": "XMWNO",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Tax code is not a required field",
+   "check_table": null
+  },
+  {
+   "pos": 37,
+   "name": "XSALH",
+   "key": false,
+   "data_element": "XSALH",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Only Manage Balances in Local Currency",
+   "check_table": null
+  },
+  {
+   "pos": 38,
+   "name": "BEWGP",
+   "key": false,
+   "data_element": "BEWGP",
+   "domain": "CHAR10",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Valuation Group",
+   "check_table": null
+  },
+  {
+   "pos": 39,
+   "name": "INFKY",
+   "key": false,
+   "data_element": "J_1AIFSKS",
+   "domain": "J_1AIFSKS",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Inflation Key",
+   "check_table": "J_1AINFSKS"
+  },
+  {
+   "pos": 40,
+   "name": "TOGRU",
+   "key": false,
+   "data_element": "TOGRU_S",
+   "domain": "TOGRU",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Tolerance Group for G/L Accounts",
+   "check_table": "T043S"
+  },
+  {
+   "pos": 41,
+   "name": "XLGCLR",
+   "key": false,
+   "data_element": "XLGCLR",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Clearing Specific to Ledger Groups",
+   "check_table": null
+  },
+  {
+   "pos": 42,
+   "name": "MCAKEY",
+   "key": false,
+   "data_element": "GLE_DTE_MCA_MCAKEY",
+   "domain": "GLE_MCA_MCAKEY",
+   "type": "CHAR",
+   "length": 5,
+   "decimals": 0,
+   "description": "MCA Key",
+   "check_table": "GLE_MCA_TMCAKEY"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "BUKRS",
+   "foreign_table": "T001",
+   "foreign_field": "BUKRS"
+  },
+  {
+   "field": "BUSAB",
+   "foreign_table": "T001S",
+   "foreign_field": "BUSAB"
+  },
+  {
+   "field": "FDGRV",
+   "foreign_table": "T035",
+   "foreign_field": "GRUPP"
+  },
+  {
+   "field": "FDLEV",
+   "foreign_table": "T036",
+   "foreign_field": "EBENE"
+  },
+  {
+   "field": "FSTAG",
+   "foreign_table": "T004F",
+   "foreign_field": "FSTAG"
+  },
+  {
+   "field": "HBKID",
+   "foreign_table": "T012",
+   "foreign_field": "HBKID"
+  },
+  {
+   "field": "HKTID",
+   "foreign_table": "T012K",
+   "foreign_field": "HKTID"
+  },
+  {
+   "field": "INFKY",
+   "foreign_table": "J_1AINFSKS",
+   "foreign_field": "J_1AIFSKS"
+  },
+  {
+   "field": "KDFSL",
+   "foreign_table": "T030S",
+   "foreign_field": "KDFSL"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MCAKEY",
+   "foreign_table": "GLE_MCA_TMCAKEY",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "RECID",
+   "foreign_table": "T8JJ",
+   "foreign_field": "RECID"
+  },
+  {
+   "field": "SAKNR",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "TOGRU",
+   "foreign_table": "T043S",
+   "foreign_field": "TOGRU"
+  },
+  {
+   "field": "VZSKZ",
+   "foreign_table": "T056",
+   "foreign_field": "VZSKZ"
+  },
+  {
+   "field": "WAERS",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  },
+  {
+   "field": "ZUAWA",
+   "foreign_table": "TZUN",
+   "foreign_field": "ZUAWA"
+  }
+ ]
+}

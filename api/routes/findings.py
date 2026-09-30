@@ -19,6 +19,7 @@ async def list_findings(
     module: Optional[str] = Query(None),
     severity: Optional[str] = Query(None),
     dimension: Optional[str] = Query(None),
+    check_id: Optional[str] = Query(None),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
@@ -33,6 +34,19 @@ async def list_findings(
         vid = uuid.UUID(version_id)
         base = base.where(Finding.version_id == vid)
         filters_applied["version_id"] = version_id
+    else:
+        # Current state: the latest complete run of each system (uploads count as one
+        # lineage) — never the same check counted once per historical run.
+        latest = (await db.execute(text("""
+            SELECT DISTINCT ON (COALESCE(metadata->>'system_id', 'upload')) id FROM analysis_versions
+             WHERE tenant_id = :tid AND status = 'complete'
+             ORDER BY COALESCE(metadata->>'system_id', 'upload'), run_at DESC
+        """), {"tid": str(tenant.id)})).scalars().all()
+        base = base.where(Finding.version_id.in_(latest))
+        filters_applied["version_id"] = "latest"
+    if check_id:
+        base = base.where(Finding.check_id == check_id)
+        filters_applied["check_id"] = check_id
 
     if module:
         base = base.where(Finding.module == module)
@@ -89,6 +103,7 @@ async def list_findings(
         "findings": [
             {
                 "id": str(f.id),
+                "version_id": str(f.version_id),
                 "module": f.module,
                 "check_id": f.check_id,
                 "severity": f.severity,

@@ -1,0 +1,2535 @@
+{
+ "table": "KNA1",
+ "description": "General Data in Customer Master",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "KUNNR",
+   "key": true,
+   "data_element": "KUNNR",
+   "domain": "KUNNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Customer Number",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "LAND1",
+   "key": false,
+   "data_element": "LAND1_GP",
+   "domain": "LAND1",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Country Key",
+   "check_table": "T005"
+  },
+  {
+   "pos": 4,
+   "name": "NAME1",
+   "key": false,
+   "data_element": "NAME1_GP",
+   "domain": "NAME",
+   "type": "CHAR",
+   "length": 35,
+   "decimals": 0,
+   "description": "Name 1",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "NAME2",
+   "key": false,
+   "data_element": "NAME2_GP",
+   "domain": "NAME",
+   "type": "CHAR",
+   "length": 35,
+   "decimals": 0,
+   "description": "Name 2",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "ORT01",
+   "key": false,
+   "data_element": "ORT01_GP",
+   "domain": "TEXT35",
+   "type": "CHAR",
+   "length": 35,
+   "decimals": 0,
+   "description": "City",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "PSTLZ",
+   "key": false,
+   "data_element": "PSTLZ",
+   "domain": "PSTLZ",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Postal Code",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "REGIO",
+   "key": false,
+   "data_element": "REGIO",
+   "domain": "REGIO",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Region (State, Province, County)",
+   "check_table": "T005S"
+  },
+  {
+   "pos": 9,
+   "name": "SORTL",
+   "key": false,
+   "data_element": "SORTL",
+   "domain": "CHAR10",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Sort field",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "STRAS",
+   "key": false,
+   "data_element": "STRAS_GP",
+   "domain": "TEXT35",
+   "type": "CHAR",
+   "length": 35,
+   "decimals": 0,
+   "description": "House number and street",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "TELF1",
+   "key": false,
+   "data_element": "TELF1",
+   "domain": "TEXT16",
+   "type": "CHAR",
+   "length": 16,
+   "decimals": 0,
+   "description": "First telephone number",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "TELFX",
+   "key": false,
+   "data_element": "TELFX",
+   "domain": "TEXT31",
+   "type": "CHAR",
+   "length": 31,
+   "decimals": 0,
+   "description": "Fax Number",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "XCPDK",
+   "key": false,
+   "data_element": "XCPDK",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Is the account a one-time account?",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "ADRNR",
+   "key": false,
+   "data_element": "ADRNR",
+   "domain": "ADRNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Address",
+   "check_table": "*"
+  },
+  {
+   "pos": 15,
+   "name": "MCOD1",
+   "key": false,
+   "data_element": "MCDD1",
+   "domain": "CHAR25",
+   "type": "CHAR",
+   "length": 25,
+   "decimals": 0,
+   "description": "Search term for matchcode search",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "MCOD2",
+   "key": false,
+   "data_element": "MCDD2",
+   "domain": "CHAR25",
+   "type": "CHAR",
+   "length": 25,
+   "decimals": 0,
+   "description": "Search Term for Matchcode Search",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "MCOD3",
+   "key": false,
+   "data_element": "MCDD3",
+   "domain": "CHAR25",
+   "type": "CHAR",
+   "length": 25,
+   "decimals": 0,
+   "description": "Search term for matchcode search",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "ANRED",
+   "key": false,
+   "data_element": "ANRED",
+   "domain": "TEXT15",
+   "type": "CHAR",
+   "length": 15,
+   "decimals": 0,
+   "description": "Title",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "AUFSD",
+   "key": false,
+   "data_element": "AUFSD_X",
+   "domain": "KAUFS",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Central order block for customer",
+   "check_table": "TVAST"
+  },
+  {
+   "pos": 21,
+   "name": "BAHNE",
+   "key": false,
+   "data_element": "BAHNE",
+   "domain": "BAHNH",
+   "type": "CHAR",
+   "length": 25,
+   "decimals": 0,
+   "description": "Express train station",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "BAHNS",
+   "key": false,
+   "data_element": "BAHNS",
+   "domain": "BAHNH",
+   "type": "CHAR",
+   "length": 25,
+   "decimals": 0,
+   "description": "Train station",
+   "check_table": null
+  },
+  {
+   "pos": 23,
+   "name": "BBBNR",
+   "key": false,
+   "data_element": "BBBNR",
+   "domain": "NUM07",
+   "type": "NUMC",
+   "length": 7,
+   "decimals": 0,
+   "description": "International location number  (part 1)",
+   "check_table": null
+  },
+  {
+   "pos": 24,
+   "name": "BBSNR",
+   "key": false,
+   "data_element": "BBSNR",
+   "domain": "NUM05",
+   "type": "NUMC",
+   "length": 5,
+   "decimals": 0,
+   "description": "International location number (Part 2)",
+   "check_table": null
+  },
+  {
+   "pos": 25,
+   "name": "BEGRU",
+   "key": false,
+   "data_element": "BRGRU",
+   "domain": "BRGRU",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Authorization Group",
+   "check_table": "*"
+  },
+  {
+   "pos": 26,
+   "name": "BRSCH",
+   "key": false,
+   "data_element": "BRSCH",
+   "domain": "BRSCH",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Industry key",
+   "check_table": "T016"
+  },
+  {
+   "pos": 27,
+   "name": "BUBKZ",
+   "key": false,
+   "data_element": "BUBKZ",
+   "domain": "NUM01",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Check digit for the international location number",
+   "check_table": null
+  },
+  {
+   "pos": 28,
+   "name": "DATLT",
+   "key": false,
+   "data_element": "DATLT",
+   "domain": "TEXT14",
+   "type": "CHAR",
+   "length": 14,
+   "decimals": 0,
+   "description": "Data communication line no.",
+   "check_table": null
+  },
+  {
+   "pos": 29,
+   "name": "ERDAT",
+   "key": false,
+   "data_element": "ERDAT_RF",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date on which the Record Was Created",
+   "check_table": null
+  },
+  {
+   "pos": 30,
+   "name": "ERNAM",
+   "key": false,
+   "data_element": "ERNAM_RF",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of Person who Created the Object",
+   "check_table": null
+  },
+  {
+   "pos": 31,
+   "name": "EXABL",
+   "key": false,
+   "data_element": "EXABL",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Unloading points exist",
+   "check_table": null
+  },
+  {
+   "pos": 32,
+   "name": "FAKSD",
+   "key": false,
+   "data_element": "FAKSD_X",
+   "domain": "FAKSP",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Central billing block for customer",
+   "check_table": "TVFS"
+  },
+  {
+   "pos": 33,
+   "name": "FISKN",
+   "key": false,
+   "data_element": "FISKN_D",
+   "domain": "KUNNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Account number of the master record with the fiscal address",
+   "check_table": "KNA1"
+  },
+  {
+   "pos": 34,
+   "name": "KNAZK",
+   "key": false,
+   "data_element": "KNAZK",
+   "domain": "WFCID",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Working Time Calendar",
+   "check_table": "TFACD"
+  },
+  {
+   "pos": 35,
+   "name": "KNRZA",
+   "key": false,
+   "data_element": "KNRZA",
+   "domain": "KUNNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Account number of an alternative payer",
+   "check_table": "KNA1"
+  },
+  {
+   "pos": 36,
+   "name": "KONZS",
+   "key": false,
+   "data_element": "KONZS",
+   "domain": "KONZS",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Group key",
+   "check_table": null
+  },
+  {
+   "pos": 37,
+   "name": "KTOKD",
+   "key": false,
+   "data_element": "KTOKD",
+   "domain": "KTOKD",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Customer Account Group",
+   "check_table": "T077D"
+  },
+  {
+   "pos": 38,
+   "name": "KUKLA",
+   "key": false,
+   "data_element": "KUKLA",
+   "domain": "KUKLA",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Customer classification",
+   "check_table": "TKUKL"
+  },
+  {
+   "pos": 39,
+   "name": "LIFNR",
+   "key": false,
+   "data_element": "LIFNR",
+   "domain": "LIFNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Account Number of Vendor or Creditor",
+   "check_table": "LFA1"
+  },
+  {
+   "pos": 40,
+   "name": "LIFSD",
+   "key": false,
+   "data_element": "LIFSD_X",
+   "domain": "LIFSP",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Central delivery block for the customer",
+   "check_table": "TVLS"
+  },
+  {
+   "pos": 41,
+   "name": "LOCCO",
+   "key": false,
+   "data_element": "LOCCO",
+   "domain": "LOCCO",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "City Coordinates",
+   "check_table": null
+  },
+  {
+   "pos": 42,
+   "name": "LOEVM",
+   "key": false,
+   "data_element": "LOEVM_X",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Central Deletion Flag for Master Record",
+   "check_table": null
+  },
+  {
+   "pos": 43,
+   "name": "NAME3",
+   "key": false,
+   "data_element": "NAME3_GP",
+   "domain": "NAME",
+   "type": "CHAR",
+   "length": 35,
+   "decimals": 0,
+   "description": "Name 3",
+   "check_table": null
+  },
+  {
+   "pos": 44,
+   "name": "NAME4",
+   "key": false,
+   "data_element": "NAME4_GP",
+   "domain": "NAME",
+   "type": "CHAR",
+   "length": 35,
+   "decimals": 0,
+   "description": "Name 4",
+   "check_table": null
+  },
+  {
+   "pos": 45,
+   "name": "NIELS",
+   "key": false,
+   "data_element": "NIELS",
+   "domain": "NIELS",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Nielsen ID",
+   "check_table": "TNLS"
+  },
+  {
+   "pos": 46,
+   "name": "ORT02",
+   "key": false,
+   "data_element": "ORT02_GP",
+   "domain": "TEXT35",
+   "type": "CHAR",
+   "length": 35,
+   "decimals": 0,
+   "description": "District",
+   "check_table": null
+  },
+  {
+   "pos": 47,
+   "name": "PFACH",
+   "key": false,
+   "data_element": "PFACH",
+   "domain": "PFACH",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "PO Box",
+   "check_table": null
+  },
+  {
+   "pos": 48,
+   "name": "PSTL2",
+   "key": false,
+   "data_element": "PSTL2",
+   "domain": "PSTLZ",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "P.O. Box Postal Code",
+   "check_table": null
+  },
+  {
+   "pos": 49,
+   "name": "COUNC",
+   "key": false,
+   "data_element": "COUNC",
+   "domain": "COUNC",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "County Code",
+   "check_table": "T005E"
+  },
+  {
+   "pos": 50,
+   "name": "CITYC",
+   "key": false,
+   "data_element": "CITYC",
+   "domain": "CITYC",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "City Code",
+   "check_table": "T005G"
+  },
+  {
+   "pos": 51,
+   "name": "RPMKR",
+   "key": false,
+   "data_element": "RPMKR",
+   "domain": "RPMKR",
+   "type": "CHAR",
+   "length": 5,
+   "decimals": 0,
+   "description": "Regional market",
+   "check_table": null
+  },
+  {
+   "pos": 52,
+   "name": "SPERR",
+   "key": false,
+   "data_element": "SPERB_X",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Central posting block",
+   "check_table": null
+  },
+  {
+   "pos": 53,
+   "name": "SPRAS",
+   "key": false,
+   "data_element": "SPRAS",
+   "domain": "SPRAS",
+   "type": "LANG",
+   "length": 1,
+   "decimals": 0,
+   "description": "Language Key",
+   "check_table": "T002"
+  },
+  {
+   "pos": 54,
+   "name": "STCD1",
+   "key": false,
+   "data_element": "STCD1",
+   "domain": "STCD1",
+   "type": "CHAR",
+   "length": 16,
+   "decimals": 0,
+   "description": "Tax Number 1",
+   "check_table": null
+  },
+  {
+   "pos": 55,
+   "name": "STCD2",
+   "key": false,
+   "data_element": "STCD2",
+   "domain": "STCD2",
+   "type": "CHAR",
+   "length": 11,
+   "decimals": 0,
+   "description": "Tax Number 2",
+   "check_table": null
+  },
+  {
+   "pos": 56,
+   "name": "STKZA",
+   "key": false,
+   "data_element": "STKZA",
+   "domain": "STKZA",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Business Partner Subject to Equalization Tax?",
+   "check_table": null
+  },
+  {
+   "pos": 57,
+   "name": "STKZU",
+   "key": false,
+   "data_element": "STKZU",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Liable for VAT",
+   "check_table": null
+  },
+  {
+   "pos": 58,
+   "name": "TELBX",
+   "key": false,
+   "data_element": "TELBX",
+   "domain": "TEXT15",
+   "type": "CHAR",
+   "length": 15,
+   "decimals": 0,
+   "description": "Telebox number",
+   "check_table": null
+  },
+  {
+   "pos": 59,
+   "name": "TELF2",
+   "key": false,
+   "data_element": "TELF2",
+   "domain": "TEXT16",
+   "type": "CHAR",
+   "length": 16,
+   "decimals": 0,
+   "description": "Second telephone number",
+   "check_table": null
+  },
+  {
+   "pos": 60,
+   "name": "TELTX",
+   "key": false,
+   "data_element": "TELTX",
+   "domain": "TEXT30",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Teletex number",
+   "check_table": null
+  },
+  {
+   "pos": 61,
+   "name": "TELX1",
+   "key": false,
+   "data_element": "TELX1",
+   "domain": "TEXT30",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Telex number",
+   "check_table": null
+  },
+  {
+   "pos": 62,
+   "name": "LZONE",
+   "key": false,
+   "data_element": "LZONE",
+   "domain": "ZONE",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Transportation zone to or from which the goods are delivered",
+   "check_table": "TZONE"
+  },
+  {
+   "pos": 63,
+   "name": "XZEMP",
+   "key": false,
+   "data_element": "XREGU",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Is an alternative payer allowed in document?",
+   "check_table": null
+  },
+  {
+   "pos": 64,
+   "name": "VBUND",
+   "key": false,
+   "data_element": "RASSC",
+   "domain": "RCOMP",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Company ID of trading partner",
+   "check_table": "T880"
+  },
+  {
+   "pos": 65,
+   "name": "STCEG",
+   "key": false,
+   "data_element": "STCEG",
+   "domain": "STCEG",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "VAT Registration Number",
+   "check_table": null
+  },
+  {
+   "pos": 66,
+   "name": "DEAR1",
+   "key": false,
+   "data_element": "DEAR1",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Competitor",
+   "check_table": null
+  },
+  {
+   "pos": 67,
+   "name": "DEAR2",
+   "key": false,
+   "data_element": "DEAR2",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Sales partner",
+   "check_table": null
+  },
+  {
+   "pos": 68,
+   "name": "DEAR3",
+   "key": false,
+   "data_element": "DEAR3",
+   "domain": "DEAR3",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Sales prospect",
+   "check_table": null
+  },
+  {
+   "pos": 69,
+   "name": "DEAR4",
+   "key": false,
+   "data_element": "DEAR4",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator for customer type 4",
+   "check_table": null
+  },
+  {
+   "pos": 70,
+   "name": "DEAR5",
+   "key": false,
+   "data_element": "DEAR5",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "ID for default sold-to party",
+   "check_table": null
+  },
+  {
+   "pos": 71,
+   "name": "GFORM",
+   "key": false,
+   "data_element": "GFORM",
+   "domain": "GFORM",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Legal status",
+   "check_table": "TVGF"
+  },
+  {
+   "pos": 72,
+   "name": "BRAN1",
+   "key": false,
+   "data_element": "BRAN1_D",
+   "domain": "BRACO",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Industry code 1",
+   "check_table": "TBRC"
+  },
+  {
+   "pos": 73,
+   "name": "BRAN2",
+   "key": false,
+   "data_element": "BRAN2",
+   "domain": "BRACO",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Industry code 2",
+   "check_table": "TBRC"
+  },
+  {
+   "pos": 74,
+   "name": "BRAN3",
+   "key": false,
+   "data_element": "BRAN3",
+   "domain": "BRACO",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Industry code 3",
+   "check_table": "TBRC"
+  },
+  {
+   "pos": 75,
+   "name": "BRAN4",
+   "key": false,
+   "data_element": "BRAN4",
+   "domain": "BRACO",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Industry code 4",
+   "check_table": "TBRC"
+  },
+  {
+   "pos": 76,
+   "name": "BRAN5",
+   "key": false,
+   "data_element": "BRAN5",
+   "domain": "BRACO",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Industry code 5",
+   "check_table": "TBRC"
+  },
+  {
+   "pos": 77,
+   "name": "EKONT",
+   "key": false,
+   "data_element": "EKONT",
+   "domain": "VBELN",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Initial contact",
+   "check_table": "VBUK"
+  },
+  {
+   "pos": 78,
+   "name": "UMSAT",
+   "key": false,
+   "data_element": "UMSAT",
+   "domain": "UMSAT",
+   "type": "CURR",
+   "length": 8,
+   "decimals": 2,
+   "description": "Annual sales",
+   "check_table": null
+  },
+  {
+   "pos": 79,
+   "name": "UMJAH",
+   "key": false,
+   "data_element": "UMJAH",
+   "domain": "JAHR",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Year For Which Sales are Given",
+   "check_table": null
+  },
+  {
+   "pos": 80,
+   "name": "UWAER",
+   "key": false,
+   "data_element": "UWAER",
+   "domain": "WAERS",
+   "type": "CUKY",
+   "length": 5,
+   "decimals": 0,
+   "description": "Currency of Sales Volume",
+   "check_table": "TCURC"
+  },
+  {
+   "pos": 81,
+   "name": "JMZAH",
+   "key": false,
+   "data_element": "JMZAH",
+   "domain": "JMZAH",
+   "type": "NUMC",
+   "length": 6,
+   "decimals": 0,
+   "description": "Yearly number of employees",
+   "check_table": null
+  },
+  {
+   "pos": 82,
+   "name": "JMJAH",
+   "key": false,
+   "data_element": "JMJAH",
+   "domain": "JAHR",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Year for which the number of employees is given",
+   "check_table": null
+  },
+  {
+   "pos": 83,
+   "name": "KATR1",
+   "key": false,
+   "data_element": "KATR1",
+   "domain": "ATTR1",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Attribute 1",
+   "check_table": "TVK1"
+  },
+  {
+   "pos": 84,
+   "name": "KATR2",
+   "key": false,
+   "data_element": "KATR2",
+   "domain": "ATTR2",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Attribute 2",
+   "check_table": "TVK2"
+  },
+  {
+   "pos": 85,
+   "name": "KATR3",
+   "key": false,
+   "data_element": "KATR3",
+   "domain": "ATTR3",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Attribute 3",
+   "check_table": "TVK3"
+  },
+  {
+   "pos": 86,
+   "name": "KATR4",
+   "key": false,
+   "data_element": "KATR4",
+   "domain": "ATTR4",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Attribute 4",
+   "check_table": "TVK4"
+  },
+  {
+   "pos": 87,
+   "name": "KATR5",
+   "key": false,
+   "data_element": "KATR5",
+   "domain": "ATTR5",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Attribute 5",
+   "check_table": "TVK5"
+  },
+  {
+   "pos": 88,
+   "name": "KATR6",
+   "key": false,
+   "data_element": "KATR6",
+   "domain": "ATTR6",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Attribute 6",
+   "check_table": "TVK6"
+  },
+  {
+   "pos": 89,
+   "name": "KATR7",
+   "key": false,
+   "data_element": "KATR7",
+   "domain": "ATTR7",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Attribute 7",
+   "check_table": "TVK7"
+  },
+  {
+   "pos": 90,
+   "name": "KATR8",
+   "key": false,
+   "data_element": "KATR8",
+   "domain": "ATTR8",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Attribute 8",
+   "check_table": "TVK8"
+  },
+  {
+   "pos": 91,
+   "name": "KATR9",
+   "key": false,
+   "data_element": "KATR9",
+   "domain": "ATTR9",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Attribute 9",
+   "check_table": "TVK9"
+  },
+  {
+   "pos": 92,
+   "name": "KATR10",
+   "key": false,
+   "data_element": "KATR10",
+   "domain": "ATTR10",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Attribute 10",
+   "check_table": "TVK0"
+  },
+  {
+   "pos": 93,
+   "name": "STKZN",
+   "key": false,
+   "data_element": "STKZN",
+   "domain": "STKZN",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Natural Person",
+   "check_table": null
+  },
+  {
+   "pos": 94,
+   "name": "UMSA1",
+   "key": false,
+   "data_element": "UMSA1",
+   "domain": "UMSA1",
+   "type": "CURR",
+   "length": 15,
+   "decimals": 2,
+   "description": "Annual sales",
+   "check_table": null
+  },
+  {
+   "pos": 95,
+   "name": "TXJCD",
+   "key": false,
+   "data_element": "TXJCD",
+   "domain": "TXJCD",
+   "type": "CHAR",
+   "length": 15,
+   "decimals": 0,
+   "description": "Tax Jurisdiction",
+   "check_table": "TTXJ"
+  },
+  {
+   "pos": 96,
+   "name": "PERIV",
+   "key": false,
+   "data_element": "PERIV",
+   "domain": "PERIV",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Fiscal Year Variant",
+   "check_table": "T009"
+  },
+  {
+   "pos": 97,
+   "name": "ABRVW",
+   "key": false,
+   "data_element": "ABRVW",
+   "domain": "ABRVW",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Usage Indicator",
+   "check_table": "TVLV"
+  },
+  {
+   "pos": 98,
+   "name": "INSPBYDEBI",
+   "key": false,
+   "data_element": "QINSPBYDEB",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Inspection Carried Out By Customer (No Inspection Lot)",
+   "check_table": null
+  },
+  {
+   "pos": 99,
+   "name": "INSPATDEBI",
+   "key": false,
+   "data_element": "QINSPATDEB",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Inspection for a Delivery Note After Outbound Delivery",
+   "check_table": null
+  },
+  {
+   "pos": 100,
+   "name": "KTOCD",
+   "key": false,
+   "data_element": "KTOCD",
+   "domain": "KTOKD",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Reference Account Group for One-Time Account (Customer)",
+   "check_table": "T077D"
+  },
+  {
+   "pos": 101,
+   "name": "PFORT",
+   "key": false,
+   "data_element": "PFORT_GP",
+   "domain": "TEXT35",
+   "type": "CHAR",
+   "length": 35,
+   "decimals": 0,
+   "description": "PO Box city",
+   "check_table": null
+  },
+  {
+   "pos": 102,
+   "name": "WERKS",
+   "key": false,
+   "data_element": "WERKS_D",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Plant",
+   "check_table": "T001W"
+  },
+  {
+   "pos": 103,
+   "name": "DTAMS",
+   "key": false,
+   "data_element": "DTAMS",
+   "domain": "DTAMS",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Report key for data medium exchange",
+   "check_table": null
+  },
+  {
+   "pos": 104,
+   "name": "DTAWS",
+   "key": false,
+   "data_element": "DTAWS",
+   "domain": "DTAWS",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Instruction key for data medium exchange",
+   "check_table": "*"
+  },
+  {
+   "pos": 105,
+   "name": "DUEFL",
+   "key": false,
+   "data_element": "DUEFL_BKPF",
+   "domain": "DUEFL_BKPF",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Status of Data Transfer into Subsequent Release",
+   "check_table": null
+  },
+  {
+   "pos": 106,
+   "name": "HZUOR",
+   "key": false,
+   "data_element": "HZUOR",
+   "domain": "HZUOR",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Assignment to Hierarchy",
+   "check_table": null
+  },
+  {
+   "pos": 107,
+   "name": "SPERZ",
+   "key": false,
+   "data_element": "SPERZ",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Payment Block",
+   "check_table": null
+  },
+  {
+   "pos": 108,
+   "name": "ETIKG",
+   "key": false,
+   "data_element": "ETIKG",
+   "domain": "ETIKG",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "IS-R Labeling: customer/plant group",
+   "check_table": "TWEK"
+  },
+  {
+   "pos": 109,
+   "name": "CIVVE",
+   "key": false,
+   "data_element": "CIVVE",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "ID for mainly non-military use",
+   "check_table": null
+  },
+  {
+   "pos": 110,
+   "name": "MILVE",
+   "key": false,
+   "data_element": "MILVE",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "ID for mainly military use",
+   "check_table": null
+  },
+  {
+   "pos": 111,
+   "name": "KDKG1",
+   "key": false,
+   "data_element": "KDKG1",
+   "domain": "KDKGR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Customer condition group 1",
+   "check_table": "TVKGG"
+  },
+  {
+   "pos": 112,
+   "name": "KDKG2",
+   "key": false,
+   "data_element": "KDKG2",
+   "domain": "KDKGR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Customer condition group 2",
+   "check_table": "TVKGG"
+  },
+  {
+   "pos": 113,
+   "name": "KDKG3",
+   "key": false,
+   "data_element": "KDKG3",
+   "domain": "KDKGR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Customer condition group 3",
+   "check_table": "TVKGG"
+  },
+  {
+   "pos": 114,
+   "name": "KDKG4",
+   "key": false,
+   "data_element": "KDKG4",
+   "domain": "KDKGR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Customer condition group 4",
+   "check_table": "TVKGG"
+  },
+  {
+   "pos": 115,
+   "name": "KDKG5",
+   "key": false,
+   "data_element": "KDKG5",
+   "domain": "KDKGR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Customer condition group 5",
+   "check_table": "TVKGG"
+  },
+  {
+   "pos": 116,
+   "name": "XKNZA",
+   "key": false,
+   "data_element": "XKNZA",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Alternative payer using account number",
+   "check_table": null
+  },
+  {
+   "pos": 117,
+   "name": "FITYP",
+   "key": false,
+   "data_element": "J_1AFITP_D",
+   "domain": "J_1AFITP",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Tax type",
+   "check_table": "J_1AFITP"
+  },
+  {
+   "pos": 118,
+   "name": "STCDT",
+   "key": false,
+   "data_element": "J_1ATOID",
+   "domain": "J_1ATOID",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Tax Number Type",
+   "check_table": "J_1ATODC"
+  },
+  {
+   "pos": 119,
+   "name": "STCD3",
+   "key": false,
+   "data_element": "STCD3",
+   "domain": "CHAR18",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Tax Number 3",
+   "check_table": null
+  },
+  {
+   "pos": 120,
+   "name": "STCD4",
+   "key": false,
+   "data_element": "STCD4",
+   "domain": "CHAR18",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Tax Number 4",
+   "check_table": null
+  },
+  {
+   "pos": 121,
+   "name": "STCD5",
+   "key": false,
+   "data_element": "STCD5",
+   "domain": "CHAR60",
+   "type": "CHAR",
+   "length": 60,
+   "decimals": 0,
+   "description": "Tax Number 5",
+   "check_table": null
+  },
+  {
+   "pos": 122,
+   "name": "XICMS",
+   "key": false,
+   "data_element": "J_1BTCICMS",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Customer is ICMS-exempt",
+   "check_table": null
+  },
+  {
+   "pos": 123,
+   "name": "XXIPI",
+   "key": false,
+   "data_element": "J_1BTCIPI",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Customer is IPI-exempt",
+   "check_table": null
+  },
+  {
+   "pos": 124,
+   "name": "XSUBT",
+   "key": false,
+   "data_element": "J_1BTCST",
+   "domain": "J_1BTCST1",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Customer group for Substituiçao Tributária calculation",
+   "check_table": "J_1BTXSTG"
+  },
+  {
+   "pos": 125,
+   "name": "CFOPC",
+   "key": false,
+   "data_element": "J_1BINDUS1",
+   "domain": "J_1BINDUS1",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Customer's CFOP category",
+   "check_table": null
+  },
+  {
+   "pos": 126,
+   "name": "TXLW1",
+   "key": false,
+   "data_element": "J_1BTAXLW1",
+   "domain": "J_1BTAXLW1",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Tax law: ICMS",
+   "check_table": "J_1BATL1"
+  },
+  {
+   "pos": 127,
+   "name": "TXLW2",
+   "key": false,
+   "data_element": "J_1BTAXLW2",
+   "domain": "J_1BTAXLW2",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Tax law: IPI",
+   "check_table": "J_1BATL2"
+  },
+  {
+   "pos": 128,
+   "name": "CCC01",
+   "key": false,
+   "data_element": "CCC01",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator for biochemical warfare for legal control",
+   "check_table": null
+  },
+  {
+   "pos": 129,
+   "name": "CCC02",
+   "key": false,
+   "data_element": "CCC02",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator for nuclear nonproliferation for legal control",
+   "check_table": null
+  },
+  {
+   "pos": 130,
+   "name": "CCC03",
+   "key": false,
+   "data_element": "CCC03",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator for national security for legal control",
+   "check_table": null
+  },
+  {
+   "pos": 131,
+   "name": "CCC04",
+   "key": false,
+   "data_element": "CCC04",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator for missile technology for legal control",
+   "check_table": null
+  },
+  {
+   "pos": 132,
+   "name": "CASSD",
+   "key": false,
+   "data_element": "CASSD_X",
+   "domain": "CASSP",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Central sales block for customer",
+   "check_table": null
+  },
+  {
+   "pos": 133,
+   "name": "KNURL",
+   "key": false,
+   "data_element": "URL",
+   "domain": "TEXT132",
+   "type": "CHAR",
+   "length": 132,
+   "decimals": 0,
+   "description": "Uniform resource locator",
+   "check_table": null
+  },
+  {
+   "pos": 134,
+   "name": "J_1KFREPRE",
+   "key": false,
+   "data_element": "REPRES",
+   "domain": "REPRES",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Name of Representative",
+   "check_table": null
+  },
+  {
+   "pos": 135,
+   "name": "J_1KFTBUS",
+   "key": false,
+   "data_element": "GESTYP",
+   "domain": "GESTYP",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Type of Business",
+   "check_table": "BUSTYPE"
+  },
+  {
+   "pos": 136,
+   "name": "J_1KFTIND",
+   "key": false,
+   "data_element": "INDTYP",
+   "domain": "INDTYP",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Type of Industry",
+   "check_table": "INDUSTYPE"
+  },
+  {
+   "pos": 137,
+   "name": "CONFS",
+   "key": false,
+   "data_element": "CONFS_X",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Status of Change Authorization (Central)",
+   "check_table": null
+  },
+  {
+   "pos": 138,
+   "name": "UPDAT",
+   "key": false,
+   "data_element": "UPDAT_RF",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date on Which the Changes Were Confirmed",
+   "check_table": null
+  },
+  {
+   "pos": 139,
+   "name": "UPTIM",
+   "key": false,
+   "data_element": "UPTIM_RF",
+   "domain": "AS4TIME",
+   "type": "TIMS",
+   "length": 6,
+   "decimals": 0,
+   "description": "Time of Last Change Confirmation",
+   "check_table": null
+  },
+  {
+   "pos": 140,
+   "name": "NODEL",
+   "key": false,
+   "data_element": "NODEL_X",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Central deletion block for master record",
+   "check_table": null
+  },
+  {
+   "pos": 141,
+   "name": "DEAR6",
+   "key": false,
+   "data_element": "DEAR6",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Consumer",
+   "check_table": null
+  },
+  {
+   "pos": 143,
+   "name": "SUFRAMA",
+   "key": false,
+   "data_element": "J_1BSUFRAMA",
+   "domain": "J_1BSUFRAMA",
+   "type": "CHAR",
+   "length": 9,
+   "decimals": 0,
+   "description": "Suframa Code",
+   "check_table": null
+  },
+  {
+   "pos": 144,
+   "name": "RG",
+   "key": false,
+   "data_element": "J_1BRG",
+   "domain": "J_1BRG",
+   "type": "CHAR",
+   "length": 11,
+   "decimals": 0,
+   "description": "RG Number",
+   "check_table": null
+  },
+  {
+   "pos": 145,
+   "name": "EXP",
+   "key": false,
+   "data_element": "J_1BEXP",
+   "domain": "J_1BEXP",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Issued by",
+   "check_table": null
+  },
+  {
+   "pos": 146,
+   "name": "UF",
+   "key": false,
+   "data_element": "J_1BUF",
+   "domain": "J_1BUF",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "State",
+   "check_table": null
+  },
+  {
+   "pos": 147,
+   "name": "RGDATE",
+   "key": false,
+   "data_element": "J_1BRGDATE",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "RG Issue Date",
+   "check_table": null
+  },
+  {
+   "pos": 148,
+   "name": "RIC",
+   "key": false,
+   "data_element": "J_1BRIC",
+   "domain": "J_1BRIC",
+   "type": "NUMC",
+   "length": 11,
+   "decimals": 0,
+   "description": "RIC Number",
+   "check_table": null
+  },
+  {
+   "pos": 149,
+   "name": "RNE",
+   "key": false,
+   "data_element": "J_1BRNE",
+   "domain": "J_1BRNE",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Foreign National Registration",
+   "check_table": null
+  },
+  {
+   "pos": 150,
+   "name": "RNEDATE",
+   "key": false,
+   "data_element": "J_1BRNEDATE",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "RNE Issue Date",
+   "check_table": null
+  },
+  {
+   "pos": 151,
+   "name": "CNAE",
+   "key": false,
+   "data_element": "J_1BCNAE",
+   "domain": "J_1BCNAE",
+   "type": "CHAR",
+   "length": 7,
+   "decimals": 0,
+   "description": "CNAE",
+   "check_table": "J_1BTCNAE"
+  },
+  {
+   "pos": 152,
+   "name": "LEGALNAT",
+   "key": false,
+   "data_element": "J_1BLEGALNAT",
+   "domain": "J_1BLEGALNAT",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Legal Nature",
+   "check_table": "J_1BTLEGALNAT"
+  },
+  {
+   "pos": 153,
+   "name": "CRTN",
+   "key": false,
+   "data_element": "J_1BCRTN",
+   "domain": "J_1BCRTN",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "CRT Number",
+   "check_table": null
+  },
+  {
+   "pos": 154,
+   "name": "ICMSTAXPAY",
+   "key": false,
+   "data_element": "J_1BICMSTAXPAY",
+   "domain": "J_1BICMSTAXPAY",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "ICMS Taxpayer",
+   "check_table": "J_1BTICMSTAXPAY"
+  },
+  {
+   "pos": 155,
+   "name": "INDTYP",
+   "key": false,
+   "data_element": "J_1BINDTYP",
+   "domain": "J_1BINDTYP",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Industry Main Type",
+   "check_table": "J_1BTINDTYP"
+  },
+  {
+   "pos": 156,
+   "name": "TDT",
+   "key": false,
+   "data_element": "J_1BTDT",
+   "domain": "J_1BTDT",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Tax Declaration Type",
+   "check_table": "J_1BTTDT"
+  },
+  {
+   "pos": 157,
+   "name": "COMSIZE",
+   "key": false,
+   "data_element": "J_1BCOMSIZE",
+   "domain": "J_1BCOMSIZE",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Company Size",
+   "check_table": "J_1BTCOMSIZE"
+  },
+  {
+   "pos": 158,
+   "name": "DECREGPC",
+   "key": false,
+   "data_element": "J_1BDECREGPC",
+   "domain": "J_1BDECREGPC",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Declaration Regimen for PIS/COFINS",
+   "check_table": "J_1BTDECREGPC"
+  },
+  {
+   "pos": 161,
+   "name": "/VSO/R_PALHGT",
+   "key": false,
+   "data_element": "/VSO/R_PAL_BIN_HGT",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Maximum Stacking Height of the Packaging Material (VSO)",
+   "check_table": null
+  },
+  {
+   "pos": 162,
+   "name": "/VSO/R_PAL_UL",
+   "key": false,
+   "data_element": "/VSO/R_PAL_UNIT_L",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit of Length for Packaging Material (VSO)",
+   "check_table": "T006"
+  },
+  {
+   "pos": 163,
+   "name": "/VSO/R_PK_MAT",
+   "key": false,
+   "data_element": "/VSO/M_PACK_BY_MAT",
+   "domain": "/VSO/M_XFIELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Customer-Related Packing for Each Packaging Material (VSO)",
+   "check_table": null
+  },
+  {
+   "pos": 164,
+   "name": "/VSO/R_MATPAL",
+   "key": false,
+   "data_element": "/VSO/M_MATNR_PAL",
+   "domain": "MATNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Packaging Material of the Customer in VSO",
+   "check_table": "MARA"
+  },
+  {
+   "pos": 165,
+   "name": "/VSO/R_I_NO_LYR",
+   "key": false,
+   "data_element": "/VSO/M_IPAL_NO_LYR",
+   "domain": "/VSO/M_IPAL_NO_LYR",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Number Layers Under an Inter-Pallet (VSO)",
+   "check_table": null
+  },
+  {
+   "pos": 166,
+   "name": "/VSO/R_ONE_MAT",
+   "key": false,
+   "data_element": "/VSO/M_ONE_MAT",
+   "domain": "/VSO/M_XFIELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Packing Material-Specific for Each Packaging Material",
+   "check_table": null
+  },
+  {
+   "pos": 167,
+   "name": "/VSO/R_ONE_SORT",
+   "key": false,
+   "data_element": "/VSO/M_ONE_SORT",
+   "domain": "/VSO/M_XFIELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Pack Only One Package Type for Each PKM (VSO)",
+   "check_table": null
+  },
+  {
+   "pos": 168,
+   "name": "/VSO/R_ULD_SIDE",
+   "key": false,
+   "data_element": "/VSO/M_UNLOAD_SIDE_PREF",
+   "domain": "/VSO/M_SIDE_PREF",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Side Preference of Loading/Unloading (VSO)",
+   "check_table": null
+  },
+  {
+   "pos": 169,
+   "name": "/VSO/R_LOAD_PREF",
+   "key": false,
+   "data_element": "/VSO/M_LOAD_PREF",
+   "domain": "/VSO/M_LOAD_PREF",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Front/Back Preference of Loading/Unloading (VSO)",
+   "check_table": null
+  },
+  {
+   "pos": 170,
+   "name": "/VSO/R_DPOINT",
+   "key": false,
+   "data_element": "/VSO/R_DELIVERYPOINT",
+   "domain": "/VSO/R_DELIVERYPOINT",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Collective Unloading Point for VSO",
+   "check_table": "/VSO/R_DPOINT"
+  },
+  {
+   "pos": 172,
+   "name": "ALC",
+   "key": false,
+   "data_element": "FMFG_ALC",
+   "domain": "FMFG_ALC",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Agency Location Code",
+   "check_table": "FMFGT_ALC"
+  },
+  {
+   "pos": 173,
+   "name": "PMT_OFFICE",
+   "key": false,
+   "data_element": "FMFG_PMT_OFF",
+   "domain": "FMFG_PMT_OFF",
+   "type": "CHAR",
+   "length": 5,
+   "decimals": 0,
+   "description": "Payment Office",
+   "check_table": "FMFGT_PO"
+  },
+  {
+   "pos": 176,
+   "name": "PSOFG",
+   "key": false,
+   "data_element": "PSOFG",
+   "domain": "PSOFG",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Processor group",
+   "check_table": "PSO19"
+  },
+  {
+   "pos": 177,
+   "name": "PSOIS",
+   "key": false,
+   "data_element": "PSOIS",
+   "domain": "CHAR20",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "Subledger acct preprocessing procedure",
+   "check_table": null
+  },
+  {
+   "pos": 179,
+   "name": "PSON1",
+   "key": false,
+   "data_element": "NAME1_GP",
+   "domain": "NAME",
+   "type": "CHAR",
+   "length": 35,
+   "decimals": 0,
+   "description": "Name 1",
+   "check_table": null
+  },
+  {
+   "pos": 180,
+   "name": "PSON2",
+   "key": false,
+   "data_element": "NAME2_GP",
+   "domain": "NAME",
+   "type": "CHAR",
+   "length": 35,
+   "decimals": 0,
+   "description": "Name 2",
+   "check_table": null
+  },
+  {
+   "pos": 181,
+   "name": "PSON3",
+   "key": false,
+   "data_element": "NAME3_GP",
+   "domain": "NAME",
+   "type": "CHAR",
+   "length": 35,
+   "decimals": 0,
+   "description": "Name 3",
+   "check_table": null
+  },
+  {
+   "pos": 182,
+   "name": "PSOVN",
+   "key": false,
+   "data_element": "PSOVN",
+   "domain": "NAME",
+   "type": "CHAR",
+   "length": 35,
+   "decimals": 0,
+   "description": "First Name",
+   "check_table": null
+  },
+  {
+   "pos": 183,
+   "name": "PSOTL",
+   "key": false,
+   "data_element": "PSOTL",
+   "domain": "FMPSOTL",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "Title",
+   "check_table": null
+  },
+  {
+   "pos": 184,
+   "name": "PSOHS",
+   "key": false,
+   "data_element": "PSOHS",
+   "domain": "CHAR06",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "House number: is no longer used from Release 4.6B",
+   "check_table": null
+  },
+  {
+   "pos": 185,
+   "name": "PSOST",
+   "key": false,
+   "data_element": "PSOST",
+   "domain": "PSOST",
+   "type": "CHAR",
+   "length": 28,
+   "decimals": 0,
+   "description": "Street: No longer used from Release 4.6B",
+   "check_table": null
+  },
+  {
+   "pos": 187,
+   "name": "PSOO1",
+   "key": false,
+   "data_element": "PSOO1",
+   "domain": "TEXT50",
+   "type": "CHAR",
+   "length": 50,
+   "decimals": 0,
+   "description": "Description",
+   "check_table": null
+  },
+  {
+   "pos": 188,
+   "name": "PSOO2",
+   "key": false,
+   "data_element": "PSOO1",
+   "domain": "TEXT50",
+   "type": "CHAR",
+   "length": 50,
+   "decimals": 0,
+   "description": "Description",
+   "check_table": null
+  },
+  {
+   "pos": 189,
+   "name": "PSOO3",
+   "key": false,
+   "data_element": "PSOO1",
+   "domain": "TEXT50",
+   "type": "CHAR",
+   "length": 50,
+   "decimals": 0,
+   "description": "Description",
+   "check_table": null
+  },
+  {
+   "pos": 190,
+   "name": "PSOO4",
+   "key": false,
+   "data_element": "PSOO1",
+   "domain": "TEXT50",
+   "type": "CHAR",
+   "length": 50,
+   "decimals": 0,
+   "description": "Description",
+   "check_table": null
+  },
+  {
+   "pos": 191,
+   "name": "PSOO5",
+   "key": false,
+   "data_element": "PSOO1",
+   "domain": "TEXT50",
+   "type": "CHAR",
+   "length": 50,
+   "decimals": 0,
+   "description": "Description",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "/VSO/R_DPOINT",
+   "foreign_table": "/VSO/R_DPOINT",
+   "foreign_field": "/VSO/R_DPOINT"
+  },
+  {
+   "field": "/VSO/R_MATPAL",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "/VSO/R_PAL_UL",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "ABRVW",
+   "foreign_table": "TVLV",
+   "foreign_field": "ABRVW"
+  },
+  {
+   "field": "ALC",
+   "foreign_table": "FMFGT_ALC",
+   "foreign_field": "ALC"
+  },
+  {
+   "field": "AUFSD",
+   "foreign_table": "TVAST",
+   "foreign_field": "AUFSP"
+  },
+  {
+   "field": "BRAN1",
+   "foreign_table": "TBRC",
+   "foreign_field": "BRACO"
+  },
+  {
+   "field": "BRAN2",
+   "foreign_table": "TBRC",
+   "foreign_field": "BRACO"
+  },
+  {
+   "field": "BRAN3",
+   "foreign_table": "TBRC",
+   "foreign_field": "BRACO"
+  },
+  {
+   "field": "BRAN4",
+   "foreign_table": "TBRC",
+   "foreign_field": "BRACO"
+  },
+  {
+   "field": "BRAN5",
+   "foreign_table": "TBRC",
+   "foreign_field": "BRACO"
+  },
+  {
+   "field": "BRSCH",
+   "foreign_table": "T016",
+   "foreign_field": "BRSCH"
+  },
+  {
+   "field": "CITYC",
+   "foreign_table": "T005G",
+   "foreign_field": "CITYC"
+  },
+  {
+   "field": "CNAE",
+   "foreign_table": "J_1BTCNAE",
+   "foreign_field": "J_1BCNAE"
+  },
+  {
+   "field": "COMSIZE",
+   "foreign_table": "J_1BTCOMSIZE",
+   "foreign_field": "J_1BCOMSIZE"
+  },
+  {
+   "field": "COUNC",
+   "foreign_table": "T005E",
+   "foreign_field": "COUNC"
+  },
+  {
+   "field": "DECREGPC",
+   "foreign_table": "J_1BTDECREGPC",
+   "foreign_field": "J_1BDECREGPC"
+  },
+  {
+   "field": "EKONT",
+   "foreign_table": "VBUK",
+   "foreign_field": "VBELN"
+  },
+  {
+   "field": "ETIKG",
+   "foreign_table": "TWEK",
+   "foreign_field": "KUNGR"
+  },
+  {
+   "field": "FAKSD",
+   "foreign_table": "TVFS",
+   "foreign_field": "FAKSP"
+  },
+  {
+   "field": "FISKN",
+   "foreign_table": "KNA1",
+   "foreign_field": "KUNNR"
+  },
+  {
+   "field": "FITYP",
+   "foreign_table": "J_1AFITP",
+   "foreign_field": "J_1AFITP"
+  },
+  {
+   "field": "GFORM",
+   "foreign_table": "TVGF",
+   "foreign_field": "GFORM"
+  },
+  {
+   "field": "ICMSTAXPAY",
+   "foreign_table": "J_1BTICMSTAXPAY",
+   "foreign_field": "J_1BICMSTAXPAY"
+  },
+  {
+   "field": "INDTYP",
+   "foreign_table": "J_1BTINDTYP",
+   "foreign_field": "J_1BINDTYP"
+  },
+  {
+   "field": "J_1KFTBUS",
+   "foreign_table": "BUSTYPE",
+   "foreign_field": "GESTYP"
+  },
+  {
+   "field": "J_1KFTIND",
+   "foreign_table": "INDUSTYPE",
+   "foreign_field": "INDTYPE"
+  },
+  {
+   "field": "KATR1",
+   "foreign_table": "TVK1",
+   "foreign_field": "KATR1"
+  },
+  {
+   "field": "KATR10",
+   "foreign_table": "TVK0",
+   "foreign_field": "KATR10"
+  },
+  {
+   "field": "KATR2",
+   "foreign_table": "TVK2",
+   "foreign_field": "KATR2"
+  },
+  {
+   "field": "KATR3",
+   "foreign_table": "TVK3",
+   "foreign_field": "KATR3"
+  },
+  {
+   "field": "KATR4",
+   "foreign_table": "TVK4",
+   "foreign_field": "KATR4"
+  },
+  {
+   "field": "KATR5",
+   "foreign_table": "TVK5",
+   "foreign_field": "KATR5"
+  },
+  {
+   "field": "KATR6",
+   "foreign_table": "TVK6",
+   "foreign_field": "KATR6"
+  },
+  {
+   "field": "KATR7",
+   "foreign_table": "TVK7",
+   "foreign_field": "KATR7"
+  },
+  {
+   "field": "KATR8",
+   "foreign_table": "TVK8",
+   "foreign_field": "KATR8"
+  },
+  {
+   "field": "KATR9",
+   "foreign_table": "TVK9",
+   "foreign_field": "KATR9"
+  },
+  {
+   "field": "KDKG1",
+   "foreign_table": "TVKGG",
+   "foreign_field": "KDKGR"
+  },
+  {
+   "field": "KDKG2",
+   "foreign_table": "TVKGG",
+   "foreign_field": "KDKGR"
+  },
+  {
+   "field": "KDKG3",
+   "foreign_table": "TVKGG",
+   "foreign_field": "KDKGR"
+  },
+  {
+   "field": "KDKG4",
+   "foreign_table": "TVKGG",
+   "foreign_field": "KDKGR"
+  },
+  {
+   "field": "KDKG5",
+   "foreign_table": "TVKGG",
+   "foreign_field": "KDKGR"
+  },
+  {
+   "field": "KNAZK",
+   "foreign_table": "TFACD",
+   "foreign_field": "IDENT"
+  },
+  {
+   "field": "KNRZA",
+   "foreign_table": "KNA1",
+   "foreign_field": "KUNNR"
+  },
+  {
+   "field": "KTOCD",
+   "foreign_table": "T077D",
+   "foreign_field": "KTOKD"
+  },
+  {
+   "field": "KTOKD",
+   "foreign_table": "T077D",
+   "foreign_field": "KTOKD"
+  },
+  {
+   "field": "KUKLA",
+   "foreign_table": "TKUKL",
+   "foreign_field": "KUKLA"
+  },
+  {
+   "field": "LAND1",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "LEGALNAT",
+   "foreign_table": "J_1BTLEGALNAT",
+   "foreign_field": "J_1BLEGALNAT"
+  },
+  {
+   "field": "LIFNR",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "LIFSD",
+   "foreign_table": "TVLS",
+   "foreign_field": "LIFSP"
+  },
+  {
+   "field": "LZONE",
+   "foreign_table": "TZONE",
+   "foreign_field": "ZONE1"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "NIELS",
+   "foreign_table": "TNLS",
+   "foreign_field": "NIELS"
+  },
+  {
+   "field": "PERIV",
+   "foreign_table": "T009",
+   "foreign_field": "PERIV"
+  },
+  {
+   "field": "PMT_OFFICE",
+   "foreign_table": "FMFGT_PO",
+   "foreign_field": "PMT_OFFICE"
+  },
+  {
+   "field": "PSOFG",
+   "foreign_table": "PSO19",
+   "foreign_field": "PSOFG"
+  },
+  {
+   "field": "REGIO",
+   "foreign_table": "T005S",
+   "foreign_field": "BLAND"
+  },
+  {
+   "field": "SPRAS",
+   "foreign_table": "T002",
+   "foreign_field": "SPRAS"
+  },
+  {
+   "field": "STCDT",
+   "foreign_table": "J_1ATODC",
+   "foreign_field": "J_1ATODC"
+  },
+  {
+   "field": "TDT",
+   "foreign_table": "J_1BTTDT",
+   "foreign_field": "J_1BTDT"
+  },
+  {
+   "field": "TXJCD",
+   "foreign_table": "TTXJ",
+   "foreign_field": "TXJCD"
+  },
+  {
+   "field": "TXLW1",
+   "foreign_table": "J_1BATL1",
+   "foreign_field": "TAXLAW"
+  },
+  {
+   "field": "TXLW2",
+   "foreign_table": "J_1BATL2",
+   "foreign_field": "TAXLAW"
+  },
+  {
+   "field": "UWAER",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  },
+  {
+   "field": "VBUND",
+   "foreign_table": "T880",
+   "foreign_field": "RCOMP"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  },
+  {
+   "field": "XSUBT",
+   "foreign_table": "J_1BTXSTG",
+   "foreign_field": "STGRP"
+  }
+ ]
+}

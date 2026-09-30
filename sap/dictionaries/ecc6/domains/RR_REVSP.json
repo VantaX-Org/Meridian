@@ -1,0 +1,32 @@
+{
+ "domain": "RR_REVSP",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Total Value: Linear and Correction Value Undistributed"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Total Val.: Linear and Correction Value Linearly Distributed"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Total Value: Billing-Plan-Reld and Corr. Value Undistributed"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Total Val.: Bill.Plan-Reld and Corr. Val. Linearly Distribtd"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

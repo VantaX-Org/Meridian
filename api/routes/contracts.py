@@ -3,9 +3,11 @@
 import json
 import uuid
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+
+from api.services.rbac import current_user_id, require_permission
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -38,7 +40,8 @@ class UpdateContractBody(BaseModel):
     quality_contract: Optional[dict] = None
     freshness_contract: Optional[dict] = None
     volume_contract: Optional[dict] = None
-    status: Optional[str] = None
+    # activation only through PUT /contracts/{id}/activate (`approve`, not the author)
+    status: Optional[Literal["draft", "pending_approval"]] = None
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -98,9 +101,10 @@ async def list_contracts(
 # ── 2. POST /api/v1/contracts — create draft contract ────────────────────────
 
 
-@router.post("/contracts", status_code=201)
+@router.post("/contracts", status_code=201, dependencies=[Depends(require_permission("manage_rules"))])
 async def create_contract(
     body: CreateContractBody,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
@@ -111,11 +115,11 @@ async def create_contract(
         text("""
             INSERT INTO contracts (id, tenant_id, name, description, producer, consumer,
                 schema_contract, quality_contract, freshness_contract, volume_contract,
-                status, created_at)
+                status, created_by, created_at)
             VALUES (:id, :tid, :name, :desc, :producer, :consumer,
                 CAST(:schema_c AS jsonb), CAST(:quality_c AS jsonb),
                 CAST(:freshness_c AS jsonb), CAST(:volume_c AS jsonb),
-                'draft', now())
+                'draft', CAST(:uid AS uuid), now())
         """),
         {
             "id": new_id,
@@ -128,6 +132,7 @@ async def create_contract(
             "quality_c": json.dumps(body.quality_contract) if body.quality_contract else None,
             "freshness_c": json.dumps(body.freshness_contract) if body.freshness_contract else None,
             "volume_c": json.dumps(body.volume_contract) if body.volume_contract else None,
+            "uid": current_user_id(request),
         },
     )
     await db.commit()
@@ -137,7 +142,7 @@ async def create_contract(
 # ── 3. PUT /api/v1/contracts/{id} — update draft contract ────────────────────
 
 
-@router.put("/contracts/{contract_id}")
+@router.put("/contracts/{contract_id}", dependencies=[Depends(require_permission("manage_rules"))])
 async def update_contract(
     contract_id: str,
     body: UpdateContractBody,
@@ -197,9 +202,10 @@ async def update_contract(
 # ── 4. PUT /api/v1/contracts/{id}/activate — activate contract ───────────────
 
 
-@router.put("/contracts/{contract_id}/activate")
+@router.put("/contracts/{contract_id}/activate", dependencies=[Depends(require_permission("approve"))])
 async def activate_contract(
     contract_id: str,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
@@ -207,12 +213,15 @@ async def activate_contract(
     tid = str(tenant.id)
 
     check = await db.execute(
-        text("SELECT status FROM contracts WHERE id = :cid AND tenant_id = :tid"),
+        text("SELECT status, created_by FROM contracts WHERE id = :cid AND tenant_id = :tid"),
         {"cid": contract_id, "tid": tid},
     )
     row = check.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Contract not found")
+    uid = current_user_id(request)
+    if row[1] is not None and uid is not None and str(row[1]) == uid:
+        raise HTTPException(status_code=403, detail="Four-eyes: the contract author cannot activate it.")
     if row[0] != "pending_approval":
         raise HTTPException(
             status_code=400,
@@ -221,10 +230,10 @@ async def activate_contract(
 
     await db.execute(
         text("""
-            UPDATE contracts SET status = 'active', activated_at = now()
+            UPDATE contracts SET status = 'active', activated_at = now(), approved_by = CAST(:uid AS uuid)
             WHERE id = :cid AND tenant_id = :tid
         """),
-        {"cid": contract_id, "tid": tid},
+        {"cid": contract_id, "tid": tid, "uid": uid},
     )
     await db.commit()
 
@@ -288,188 +297,3 @@ async def get_lineage_graph(
         depth=depth,
     )
     return result
-
-
-# ── Contract compliance check (call after analysis run completes) ────────────
-
-
-async def check_contract_compliance(
-    tenant_id: str,
-    version_id: str,
-    dqs_summary: dict,
-    db: AsyncSession,
-) -> list[dict]:
-    """Check all active contracts against actual DQS scores.
-
-    Called after every analysis run completes. Inserts compliance history rows
-    and creates exceptions for violations.
-
-    Args:
-        tenant_id: The tenant UUID string.
-        version_id: The analysis version UUID string.
-        dqs_summary: Dict of {module: {dimension_scores: {...}, ...}}.
-        db: Active async session with RLS already set.
-
-    Returns:
-        List of violation dicts (empty if all contracts are compliant).
-    """
-    # Fetch all active contracts for this tenant
-    result = await db.execute(
-        text("SELECT * FROM contracts WHERE tenant_id = :tid AND status = 'active'"),
-        {"tid": tenant_id},
-    )
-    contracts = [_row_to_dict(r) for r in result.fetchall()]
-
-    violations_created = []
-
-    for contract in contracts:
-        quality_contract = contract.get("quality_contract") or {}
-        if not quality_contract:
-            continue
-
-        # Compute average actual scores across all modules in this run
-        dimensions = ["completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity"]
-        actuals: dict[str, float | None] = {}
-        module_count = 0
-
-        for module_name, module_data in dqs_summary.items():
-            dim_scores = module_data.get("dimension_scores", {})
-            if dim_scores:
-                module_count += 1
-                for dim in dimensions:
-                    score = dim_scores.get(dim)
-                    if score is not None:
-                        actuals[dim] = actuals.get(dim, 0) + float(score)
-
-        # Average across modules
-        if module_count > 0:
-            for dim in dimensions:
-                if dim in actuals:
-                    actuals[dim] = round(actuals[dim] / module_count, 2)
-
-        # Check compliance
-        violations = []
-        overall_compliant = True
-        for dim in dimensions:
-            threshold = quality_contract.get(dim)
-            actual = actuals.get(dim)
-            if threshold is not None and actual is not None:
-                if actual < float(threshold):
-                    overall_compliant = False
-                    violations.append({
-                        "dimension": dim,
-                        "threshold": float(threshold),
-                        "actual": actual,
-                        "gap": round(float(threshold) - actual, 2),
-                    })
-
-        # Insert compliance history
-        await db.execute(
-            text("""
-                INSERT INTO contract_compliance_history
-                    (id, tenant_id, contract_id, version_id,
-                     completeness_actual, accuracy_actual, consistency_actual,
-                     timeliness_actual, uniqueness_actual, validity_actual,
-                     overall_compliant, violations, recorded_at)
-                VALUES (gen_random_uuid(), :tid, :cid, :vid,
-                        :comp, :acc, :cons, :time, :uniq, :val,
-                        :compliant, CAST(:violations AS jsonb), now())
-            """),
-            {
-                "tid": tenant_id,
-                "cid": str(contract["id"]),
-                "vid": version_id,
-                "comp": actuals.get("completeness"),
-                "acc": actuals.get("accuracy"),
-                "cons": actuals.get("consistency"),
-                "time": actuals.get("timeliness"),
-                "uniq": actuals.get("uniqueness"),
-                "val": actuals.get("validity"),
-                "compliant": overall_compliant,
-                "violations": json.dumps(violations) if violations else None,
-            },
-        )
-
-        # Create exception for violations
-        if violations:
-            violation_desc = "; ".join(
-                f"{v['dimension']}: {v['actual']}% < {v['threshold']}% (gap: {v['gap']}%)"
-                for v in violations
-            )
-            await db.execute(
-                text("""
-                    INSERT INTO exceptions
-                        (id, tenant_id, type, category, severity, status, title,
-                         description, source_reference, escalation_tier,
-                         sla_deadline, created_at)
-                    VALUES (gen_random_uuid(), :tid, 'contract_violation', 'data_quality',
-                            'high', 'open', :title, :desc, :ref, 1,
-                            now() + interval '24 hours', now())
-                """),
-                {
-                    "tid": tenant_id,
-                    "title": f"Contract violation: {contract['name']}",
-                    "desc": f"Contract '{contract['name']}' has SLA violations: {violation_desc}",
-                    "ref": str(contract["id"]),
-                },
-            )
-            violations_created.append({
-                "contract_id": str(contract["id"]),
-                "contract_name": contract["name"],
-                "violations": violations,
-            })
-
-    # ── Golden record schema_contract validation ────────────────────────────
-    for contract in contracts:
-        schema = contract.get('schema_contract')
-        if not schema:
-            continue
-
-        contract_id = str(contract['id'])
-        golden_records = await db.execute(text("""
-            SELECT id, sap_object_key, golden_fields
-            FROM master_records
-            WHERE tenant_id = :tid
-              AND status = 'golden'
-            LIMIT 200
-        """), {'tid': tenant_id})
-
-        for gr in golden_records.fetchall():
-            fields = gr[2] or {}
-            if isinstance(fields, str):
-                fields = json.loads(fields)
-            gr_violations = []
-            for field_name, rules in schema.items():
-                if not isinstance(rules, dict):
-                    continue
-                value = fields.get(field_name)
-                if rules.get('mandatory') and not value:
-                    gr_violations.append({
-                        'field': field_name,
-                        'reason': 'mandatory field missing in golden record',
-                    })
-                if value and rules.get('allowed_values'):
-                    if value not in rules['allowed_values']:
-                        gr_violations.append({
-                            'field': field_name,
-                            'reason': f'value not in allowed_values: {value}',
-                        })
-
-            if gr_violations:
-                await db.execute(text("""
-                    INSERT INTO contract_compliance_history
-                      (id, tenant_id, contract_id, overall_compliant, violations, recorded_at)
-                    VALUES
-                      (gen_random_uuid(), :tid, :cid, false, CAST(:v AS jsonb), now())
-                """), {
-                    'tid': tenant_id,
-                    'cid': contract_id,
-                    'v':   json.dumps({
-                        'type':             'golden_record_field',
-                        'object_key':        gr[1],
-                        'field_violations':  gr_violations,
-                    }),
-                })
-
-    await db.commit()
-    return violations_created

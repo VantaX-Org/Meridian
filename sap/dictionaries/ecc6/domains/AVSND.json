@@ -1,0 +1,22 @@
+{
+ "domain": "AVSND",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": true,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "X",
+   "high": null,
+   "text": "Without E-mail"
+  },
+  {
+   "low": "Y",
+   "high": null,
+   "text": "With E-mail"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

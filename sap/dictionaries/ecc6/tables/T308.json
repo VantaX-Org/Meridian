@@ -1,0 +1,88 @@
+{
+ "table": "T308",
+ "description": "Requirements Categories",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "LGNUM",
+   "key": true,
+   "data_element": "LGNUM",
+   "domain": "LGNUM",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Warehouse Number / Warehouse Complex",
+   "check_table": "T300"
+  },
+  {
+   "pos": 3,
+   "name": "BETYP",
+   "key": true,
+   "data_element": "LVS_BETYP",
+   "domain": "LVS_BETYP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Requirement Type",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "FELDN",
+   "key": false,
+   "data_element": "FELDN",
+   "domain": "CHAR16",
+   "type": "CHAR",
+   "length": 16,
+   "decimals": 0,
+   "description": "Name of field",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "DPMBN",
+   "key": false,
+   "data_element": "T308_DPMBN",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Dynamic storage bin - material document number",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "FELDL",
+   "key": false,
+   "data_element": "FELDN",
+   "domain": "CHAR16",
+   "type": "CHAR",
+   "length": 16,
+   "decimals": 0,
+   "description": "Name of field",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "LGNUM",
+   "foreign_table": "T300",
+   "foreign_field": "LGNUM"
+  }
+ ]
+}

@@ -1,0 +1,11 @@
+{
+ "domain": "DEC2_1",
+ "type": "DEC",
+ "length": 3,
+ "decimals": 1,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

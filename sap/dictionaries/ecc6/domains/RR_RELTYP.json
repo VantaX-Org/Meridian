@@ -1,0 +1,27 @@
+{
+ "domain": "RR_RELTYP",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Standard revenue recognition"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Time-related revenue recognition"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Service-related revenue recognition"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

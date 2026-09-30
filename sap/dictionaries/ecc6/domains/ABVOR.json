@@ -1,0 +1,22 @@
+{
+ "domain": "ABVOR",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Yes, pre-set with 1"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

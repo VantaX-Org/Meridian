@@ -1,0 +1,47 @@
+{
+ "domain": "BEZOB",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No reference required"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "With reference to an inquiry"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "With reference to a quotation"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "With reference to a sales order"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Scheduling agreement reference"
+  },
+  {
+   "low": "G",
+   "high": null,
+   "text": "With reference to a quantity contract"
+  },
+  {
+   "low": "M",
+   "high": null,
+   "text": "With ref.to billing document"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,207 @@
+{
+ "table": "KNVP",
+ "description": "Customer Master Partner Functions",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "KUNNR",
+   "key": true,
+   "data_element": "KUNNR",
+   "domain": "KUNNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Customer Number",
+   "check_table": "KNA1"
+  },
+  {
+   "pos": 3,
+   "name": "VKORG",
+   "key": true,
+   "data_element": "VKORG",
+   "domain": "VKORG",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Sales Organization",
+   "check_table": "TVKO"
+  },
+  {
+   "pos": 4,
+   "name": "VTWEG",
+   "key": true,
+   "data_element": "VTWEG",
+   "domain": "VTWEG",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Distribution Channel",
+   "check_table": "TVTW"
+  },
+  {
+   "pos": 5,
+   "name": "SPART",
+   "key": true,
+   "data_element": "SPART",
+   "domain": "SPART",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Division",
+   "check_table": "TSPA"
+  },
+  {
+   "pos": 6,
+   "name": "PARVW",
+   "key": true,
+   "data_element": "PARVW",
+   "domain": "PARVW",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Partner Role",
+   "check_table": "TPAR"
+  },
+  {
+   "pos": 7,
+   "name": "PARZA",
+   "key": true,
+   "data_element": "PARZA",
+   "domain": "PARZA",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Partner counter",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "KUNN2",
+   "key": false,
+   "data_element": "KUNN2",
+   "domain": "KUNNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Customer number of business partner",
+   "check_table": "KNA1"
+  },
+  {
+   "pos": 9,
+   "name": "LIFNR",
+   "key": false,
+   "data_element": "LIFNR",
+   "domain": "LIFNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Account Number of Vendor or Creditor",
+   "check_table": "LFA1"
+  },
+  {
+   "pos": 10,
+   "name": "PERNR",
+   "key": false,
+   "data_element": "PERNR_D",
+   "domain": "PERNR",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Personnel Number",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "PARNR",
+   "key": false,
+   "data_element": "PARNR",
+   "domain": "PARNR",
+   "type": "NUMC",
+   "length": 10,
+   "decimals": 0,
+   "description": "Number of contact person",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "KNREF",
+   "key": false,
+   "data_element": "KNREF",
+   "domain": "KNREF",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Customer description of partner (plant, storage location)",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "DEFPA",
+   "key": false,
+   "data_element": "DEFPA",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Default partner",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "KUNN2",
+   "foreign_table": "KNA1",
+   "foreign_field": "KUNNR"
+  },
+  {
+   "field": "KUNNR",
+   "foreign_table": "KNA1",
+   "foreign_field": "KUNNR"
+  },
+  {
+   "field": "LIFNR",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "PARVW",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  },
+  {
+   "field": "SPART",
+   "foreign_table": "TSPA",
+   "foreign_field": "SPART"
+  },
+  {
+   "field": "VKORG",
+   "foreign_table": "TVKO",
+   "foreign_field": "VKORG"
+  },
+  {
+   "field": "VTWEG",
+   "foreign_table": "TVTW",
+   "foreign_field": "VTWEG"
+  }
+ ]
+}

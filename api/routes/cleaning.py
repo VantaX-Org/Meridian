@@ -2,6 +2,7 @@
 
 import csv
 import io
+import logging
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -13,7 +14,9 @@ from sqlalchemy import func, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
-from api.services.rbac import require_permission
+from api.services.rbac import current_user_id, current_user_label, require_permission
+
+logger = logging.getLogger("meridian.cleaning")
 
 router = APIRouter(prefix="/api/v1", tags=["cleaning"])
 
@@ -67,7 +70,7 @@ async def _create_audit(
     object_type: str,
     data_before: dict | None = None,
     data_after: dict | None = None,
-    actor_name: str = "system",
+    actor_name: str | None = None,
     rule_id: str | None = None,
     metadata: dict | None = None,
 ) -> None:
@@ -88,7 +91,7 @@ async def _create_audit(
                     "queue_id": queue_id,
                     "rule_id": rule_id,
                     "action": action,
-                    "actor_name": actor_name,
+                    "actor_name": actor_name or current_user_label(),
                     "record_key": record_key,
                     "object_type": object_type,
                     "data_before": _json_dumps(data_before),
@@ -96,8 +99,8 @@ async def _create_audit(
                     "metadata": _json_dumps(metadata),
                 },
             )
-    except Exception:
-        pass  # audit trail unavailable — continue without it
+    except Exception as e:
+        logger.error(f"cleaning_audit insert failed for queue={queue_id} action={action}: {e}")
 
 
 def _json_dumps(obj: dict | None) -> str:
@@ -209,8 +212,8 @@ async def get_cleaning_item(
                 {"qid": item_id, "tid": str(tenant.id)},
             )
             audit = [_row_to_dict(r) for r in audit_result.fetchall()]
-    except Exception:
-        pass  # audit trail unavailable — continue without it
+    except Exception as e:
+        logger.warning(f"cleaning_audit read failed for item={item_id}: {e}")
 
     row = _row_to_dict(item)
     row["golden_record_exists"] = row.get("golden_record_id") is not None
@@ -246,7 +249,7 @@ async def approve_cleaning_item(
             UPDATE cleaning_queue SET status = 'approved', approved_by = :approver
             WHERE id = :id AND tenant_id = :tid
         """),
-        {"id": item_id, "tid": str(tenant.id), "approver": str(tenant.id)},
+        {"id": item_id, "tid": str(tenant.id), "approver": current_user_id()},
     )
 
     await _create_audit(
@@ -263,7 +266,7 @@ async def approve_cleaning_item(
 # ── POST /api/v1/cleaning/reject/{id} ────────────────────────────────────────
 
 
-@router.post("/cleaning/reject/{item_id}")
+@router.post("/cleaning/reject/{item_id}", dependencies=[Depends(require_permission("approve"))])
 async def reject_cleaning_item(
     item_id: str,
     body: RejectBody,
@@ -333,7 +336,7 @@ async def bulk_approve(
             )
             RETURNING cq.id
         """),
-        {**params, "approver": str(tenant.id)},
+        {**params, "approver": current_user_id()},
     )
     approved_ids = [str(r[0]) for r in result.fetchall()]
     await db.commit()
@@ -550,6 +553,8 @@ async def export_cleaning_data(
             continue
         after = row.get("record_data_after") or row.get("record_data_before") or {}
         record = {k: v for k, v in after.items() if k not in ("issue", "error")}
+        if export_format in ("csv", "xlsx"):  # review formats carry the SAP record key; load formats stay pure
+            record = {"RECORD_KEY": row.get("record_key"), **record}
         records_by_type.setdefault(row_object_type, []).append(record)
 
     if not records_by_type:
@@ -736,7 +741,7 @@ async def list_dedup_candidates(
 # ── POST /api/v1/dedup/preview ────────────────────────────────────────────────
 
 
-@router.post("/dedup/preview")
+@router.post("/dedup/preview", dependencies=[Depends(require_permission("mdm.read"))])
 async def dedup_preview(
     body: DedupPreviewBody,
     db: AsyncSession = Depends(get_db),
@@ -783,7 +788,7 @@ async def dedup_preview(
 # ── POST /api/v1/dedup/merge ─────────────────────────────────────────────────
 
 
-@router.post("/dedup/merge")
+@router.post("/dedup/merge", dependencies=[Depends(require_permission("approve"))])
 async def dedup_merge(
     body: DedupMergeBody,
     db: AsyncSession = Depends(get_db),
@@ -800,6 +805,18 @@ async def dedup_merge(
         raise HTTPException(status_code=404, detail="Candidate not found")
 
     row = _row_to_dict(candidate)
+    keys = {row.get("record_key_a"), row.get("record_key_b")}
+    if body.survivor_key not in keys:
+        raise HTTPException(status_code=400, detail="survivor_key must be one of the candidate's two records.")
+    if row.get("status") == "merged":
+        raise HTTPException(status_code=409, detail="Candidate already merged.")
+
+    # Consolidate the master records when both exist (golden-record fusion);
+    # otherwise the decision is recorded and applied when golden records are built.
+    from api.services.mdm_merge import merge_master_records
+    merged_key = (keys - {body.survivor_key}).pop()
+    consolidation = await merge_master_records(db, str(tenant.id), row.get("object_type", ""), body.survivor_key,
+                                               merged_key, current_user_id(), body.field_overrides)
 
     now = datetime.now(timezone.utc)
     await db.execute(
@@ -810,7 +827,7 @@ async def dedup_merge(
         """),
         {
             "id": body.candidate_id, "tid": str(tenant.id),
-            "sk": body.survivor_key, "now": now, "mb": str(tenant.id),
+            "sk": body.survivor_key, "now": now, "mb": current_user_id(),
         },
     )
 
@@ -835,4 +852,5 @@ async def dedup_merge(
         "status": "merged",
         "survivor_key": body.survivor_key,
         "merged_at": now.isoformat(),
+        "consolidated": consolidation,
     }

@@ -1,0 +1,158 @@
+{
+ "table": "T024E",
+ "description": "Purchasing Organizations",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "EKORG",
+   "key": true,
+   "data_element": "EKORG",
+   "domain": "EKORG",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Purchasing organization",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "EKOTX",
+   "key": false,
+   "data_element": "EKOTX",
+   "domain": "TEXT20",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "Description of purchasing organization",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "BUKRS",
+   "key": false,
+   "data_element": "BUKRS",
+   "domain": "BUKRS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Company Code",
+   "check_table": "T001"
+  },
+  {
+   "pos": 5,
+   "name": "TXADR",
+   "key": false,
+   "data_element": "TXADR",
+   "domain": "TDOBNAME",
+   "type": "CHAR",
+   "length": 70,
+   "decimals": 0,
+   "description": "Text Name: Sender Line",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "TXKOP",
+   "key": false,
+   "data_element": "TXKOP",
+   "domain": "TDOBNAME",
+   "type": "CHAR",
+   "length": 70,
+   "decimals": 0,
+   "description": "Text Name: Letter Heading",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "TXFUS",
+   "key": false,
+   "data_element": "TXFUS",
+   "domain": "TDOBNAME",
+   "type": "CHAR",
+   "length": 70,
+   "decimals": 0,
+   "description": "Text Name: Footer Lines",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "TXGRU",
+   "key": false,
+   "data_element": "TXGRU",
+   "domain": "TDOBNAME",
+   "type": "CHAR",
+   "length": 70,
+   "decimals": 0,
+   "description": "Text Name: Complimentary Close",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "KALSE",
+   "key": false,
+   "data_element": "KALSE",
+   "domain": "KALSE",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Group for Calculation Schema (Purchasing Organization)",
+   "check_table": "*"
+  },
+  {
+   "pos": 10,
+   "name": "MKALS",
+   "key": false,
+   "data_element": "MKALS",
+   "domain": "KALSM",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Calculation Schema for Market Price",
+   "check_table": "T683"
+  },
+  {
+   "pos": 11,
+   "name": "BPEFF",
+   "key": false,
+   "data_element": "BPEFF",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Effective Price",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "BUKRS",
+   "foreign_table": "T001",
+   "foreign_field": "BUKRS"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MKALS",
+   "foreign_table": "T683",
+   "foreign_field": "KALSM"
+  }
+ ]
+}

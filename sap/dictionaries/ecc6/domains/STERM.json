@@ -1,0 +1,42 @@
+{
+ "domain": "STERM",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Blank: No legs to be determined"
+  },
+  {
+   "low": "0",
+   "high": null,
+   "text": "0: Only determine assignment of deliveries to stages"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "1: Legs determined according to departure point & itinerary"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "2: Prelim.leg per loading point, subsqnt leg per ship-to pty"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "3: Determine preliminary and subsequent leg by delivery note"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "4: As 1, but ship. type for prel. and subs. legs changeable"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

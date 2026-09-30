@@ -1,0 +1,115 @@
+{
+ "table": "MEAN",
+ "description": "International Article Numbers (EANs) for Material",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "MATNR",
+   "key": true,
+   "data_element": "MATNR",
+   "domain": "MATNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Material Number",
+   "check_table": "MARA"
+  },
+  {
+   "pos": 3,
+   "name": "MEINH",
+   "key": true,
+   "data_element": "MEINH",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit of Measure for Display",
+   "check_table": "T006"
+  },
+  {
+   "pos": 4,
+   "name": "LFNUM",
+   "key": true,
+   "data_element": "LFNUM",
+   "domain": "CHAR5",
+   "type": "CHAR",
+   "length": 5,
+   "decimals": 0,
+   "description": "Consecutive number",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "EAN11",
+   "key": false,
+   "data_element": "EAN11",
+   "domain": "EAN11",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "International Article Number (EAN/UPC)",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "EANTP",
+   "key": false,
+   "data_element": "NUMTP",
+   "domain": "NUMTP",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Category of International Article Number (EAN)",
+   "check_table": "TNTP"
+  },
+  {
+   "pos": 7,
+   "name": "HPEAN",
+   "key": false,
+   "data_element": "HPEAN",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Main EAN",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "EANTP",
+   "foreign_table": "TNTP",
+   "foreign_field": "NUMTP"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MATNR",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "MEINH",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  }
+ ]
+}

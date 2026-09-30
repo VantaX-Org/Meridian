@@ -208,25 +208,9 @@ def run_relationship(self, version_id: str, tenant_id: str, module: str, parquet
     max_pairs = max_pairs or 100
     
     try:
-        # Download parquet from MinIO
-        from minio import Minio
-        import os
-        
-        minio_client = Minio(
-            endpoint=os.getenv("MINIO_ENDPOINT", "minio:9000"),
-            access_key=os.getenv("MINIO_ACCESS_KEY", "meridian"),
-            secret_key=os.getenv("MINIO_SECRET_KEY", ""),
-            secure=False,
-        )
-        
-        bucket = os.getenv("MINIO_BUCKET_UPLOADS", "meridian-uploads")
-        response = minio_client.get_object(bucket, parquet_path)
-        parquet_bytes = response.read()
-        response.close()
-        response.release_conn()
-        
-        import io
-        df = pd.read_parquet(io.BytesIO(parquet_bytes))
+        # Load the module's records (flat upload or extraction bundle)
+        from workers.dataset import load_module_frame
+        df = load_module_frame(parquet_path, module)
         logger.info(f"Loaded {len(df)} records for relationship detection")
         
         # Detect relationships

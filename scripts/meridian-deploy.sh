@@ -585,8 +585,6 @@ if [[ "$PRECONFIGURED" != "true" ]]; then
         printf '\n# Auth\n'
         printf 'AUTH_MODE=local\n'
         printf 'NEXT_PUBLIC_AUTH_MODE=local\n'
-        printf '\n# SAP\n'
-        printf 'SAP_CONNECTOR=mock\n'
         printf 'CREDENTIAL_MASTER_KEY=%s\n' "$_CRED_KEY"
         printf '\n# Updater sidecar (self-update — internal network only)\n'
         printf 'UPDATER_SHARED_SECRET=%s\n' "$_UPDATER_SECRET"

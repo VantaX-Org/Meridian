@@ -1,0 +1,132 @@
+{
+ "table": "T030",
+ "description": "Standard Accounts Table",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "KTOPL",
+   "key": true,
+   "data_element": "KTOPL",
+   "domain": "KTOPL",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Chart of Accounts",
+   "check_table": "T004"
+  },
+  {
+   "pos": 3,
+   "name": "KTOSL",
+   "key": true,
+   "data_element": "KTOSL",
+   "domain": "CHAR3",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Transaction Key",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "BWMOD",
+   "key": true,
+   "data_element": "BWMOD",
+   "domain": "CHAR4",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Valuation grouping code",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "KOMOK",
+   "key": true,
+   "data_element": "KOMOK",
+   "domain": "KOMOK",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Account Modification",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "BKLAS",
+   "key": true,
+   "data_element": "BKLAS",
+   "domain": "BKLAS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Valuation Class",
+   "check_table": "T025"
+  },
+  {
+   "pos": 7,
+   "name": "KONTS",
+   "key": false,
+   "data_element": "SAKNR",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "G/L Account Number",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 8,
+   "name": "KONTH",
+   "key": false,
+   "data_element": "SAKNR",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "G/L Account Number",
+   "check_table": "SKA1"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "BKLAS",
+   "foreign_table": "T025",
+   "foreign_field": "BKLAS"
+  },
+  {
+   "field": "KONTH",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KONTS",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTOPL",
+   "foreign_table": "T004",
+   "foreign_field": "KTOPL"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

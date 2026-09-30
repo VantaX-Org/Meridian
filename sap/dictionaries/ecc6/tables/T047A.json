@@ -1,0 +1,199 @@
+{
+ "table": "T047A",
+ "description": "Account Level Dunning Control",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "MAHNA",
+   "key": true,
+   "data_element": "MAHNA",
+   "domain": "MAHNA",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Dunning Procedure",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "RHYTH",
+   "key": false,
+   "data_element": "RHYTH_047A",
+   "domain": "NUM03",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Dunning Interval in Days",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "MIVRZ",
+   "key": false,
+   "data_element": "MIVRZ_047A",
+   "domain": "NUM03",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Days in arrears after which a dunning notice will be sent",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "KULEP",
+   "key": false,
+   "data_element": "KULEP_047A",
+   "domain": "NUM03",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Grace periods per line item",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "UMSKD",
+   "key": false,
+   "data_element": "UMSKL_047A",
+   "domain": "CHAR20",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "List of special G/L indicators to be edited",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "UMSKK",
+   "key": false,
+   "data_element": "UMSKL_047A",
+   "domain": "CHAR20",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "List of special G/L indicators to be edited",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "XNUMS",
+   "key": false,
+   "data_element": "XNUMS_047A",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Include standard transactions?",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "VZSKZ",
+   "key": false,
+   "data_element": "VZSKZ_047A",
+   "domain": "VZSKZ",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Interest calculation indicator for calc. of dunning interest",
+   "check_table": "T056"
+  },
+  {
+   "pos": 10,
+   "name": "MAHNR",
+   "key": false,
+   "data_element": "MAHNA_REF",
+   "domain": "MAHNA",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Reference Dunning Procedure for Text Selection",
+   "check_table": "T047A"
+  },
+  {
+   "pos": 11,
+   "name": "MAHNS",
+   "key": false,
+   "data_element": "MAHNS_047A",
+   "domain": "MAHNS",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Dunning level from which all due items are to be totaled",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "KALID",
+   "key": false,
+   "data_element": "HIDENT_47A",
+   "domain": "HIDENT",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Public holiday calendar key",
+   "check_table": "THOCI"
+  },
+  {
+   "pos": 13,
+   "name": "XMGER",
+   "key": false,
+   "data_element": "XMGER_047A",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Always Print Dunning Notice in Legal Dunning Procedure?",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "XSALSH",
+   "key": false,
+   "data_element": "XSALSH_047A",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Dunning Notice Even for Credit Account Balance",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "KALID",
+   "foreign_table": "THOCI",
+   "foreign_field": "IDENT"
+  },
+  {
+   "field": "MAHNR",
+   "foreign_table": "T047A",
+   "foreign_field": "MAHNA"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "VZSKZ",
+   "foreign_table": "T056",
+   "foreign_field": "VZSKZ"
+  }
+ ]
+}

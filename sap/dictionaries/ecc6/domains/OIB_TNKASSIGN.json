@@ -1,0 +1,27 @@
+{
+ "domain": "OIB_TNKASSIGN",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No tank creation allowed at this storage location"
+  },
+  {
+   "low": "M",
+   "high": null,
+   "text": "Tank creation allowed, not all materials are held in tanks"
+  },
+  {
+   "low": "T",
+   "high": null,
+   "text": "Tank creation allowed, all materials are held in tanks"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

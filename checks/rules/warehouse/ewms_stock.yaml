@@ -2,7 +2,7 @@ module: ewms_stock
 target_state: ECC_AND_S4HANA
 rules:
 - id: EWMS001
-  field: LGPLA.LGNUM
+  field: LAGP.LGNUM
   check_class: null_check
   severity: critical
   dimension: completeness
@@ -17,10 +17,10 @@ rules:
   fix_map:
     __blank__: 'In ECC: assign warehouse number via T-code LS01N or LX04. In S/4HANA with embedded EWM: maintain via Fiori
       app F1653 (Manage Warehouse Master Data) or /SCWM/LS01.'
-  record_fix_template: 'Bin {LGPLA.LGPLA}: LGNUM is {actual_value}. Assign the correct warehouse number via LS01N (ECC) or
+  record_fix_template: 'Bin {LAGP.LGPLA}: LGNUM is {actual_value}. Assign the correct warehouse number via LS01N (ECC) or
     Fiori app F1653 (S/4HANA).'
 - id: EWMS002
-  field: LGPLA.LGTYP
+  field: LAGP.LGTYP
   check_class: null_check
   severity: critical
   dimension: completeness
@@ -34,10 +34,10 @@ rules:
   fix_map:
     __blank__: 'In ECC: assign storage type via T-code LS01N or LX04. In S/4HANA with embedded EWM: maintain via Fiori app
       F1653 or /SCWM/LS01.'
-  record_fix_template: 'Bin {LGPLA.LGPLA}: LGTYP is {actual_value}. Assign the correct storage type via LS01N (ECC) or Fiori
+  record_fix_template: 'Bin {LAGP.LGPLA}: LGTYP is {actual_value}. Assign the correct storage type via LS01N (ECC) or Fiori
     app F1653 (S/4HANA).'
 - id: EWMS003
-  field: LGPLA.LGPLA
+  field: LAGP.LGPLA
   check_class: null_check
   severity: critical
   dimension: completeness
@@ -49,7 +49,7 @@ rules:
   sap_impact: Stock is unlocatable. Picking and putaway impossible. Physical inventory count cannot reference a bin.
   fix_map:
     __blank__: 'In ECC: create storage bin via T-code LS01N. In S/4HANA with embedded EWM: use Fiori app F1653 or /SCWM/LS01.'
-  record_fix_template: Record missing LGPLA. Create the storage bin via LS01N (ECC) or Fiori app F1653 (S/4HANA).
+  record_fix_template: Record missing LAGP. Create the storage bin via LS01N (ECC) or Fiori app F1653 (S/4HANA).
 - id: EWMS004
   field: LQUA.MATNR
   check_class: null_check
@@ -65,7 +65,7 @@ rules:
   fix_map:
     __blank__: 'In ECC: assign material via T-code LQ02. In S/4HANA embedded EWM: use /SCWM/MON to investigate and correct
       the quant.'
-  record_fix_template: 'Quant in bin {LGPLA.LGPLA}: MATNR is {actual_value}. Identify the physical material and assign via
+  record_fix_template: 'Quant in bin {LAGP.LGPLA}: MATNR is {actual_value}. Identify the physical material and assign via
     LQ02 (ECC) or /SCWM/MON (S/4HANA).'
 - id: EWMS005
   field: LQUA.MATNR
@@ -100,7 +100,7 @@ rules:
   fix_map:
     __blank__: 'In ECC: correct plant assignment via T-code LQ02. In S/4HANA embedded EWM: verify the warehouse-plant assignment
       via /SCWM/SPRO.'
-  record_fix_template: 'Quant {LQUA.MATNR} in bin {LGPLA.LGPLA}: WERKS is {actual_value}. Assign the correct plant via LQ02
+  record_fix_template: 'Quant {LQUA.MATNR} in bin {LAGP.LGPLA}: WERKS is {actual_value}. Assign the correct plant via LQ02
     (ECC) or /SCWM/ configuration (S/4HANA).'
 - id: EWMS007
   field: LQUA.BESTQ
@@ -128,7 +128,7 @@ rules:
   fix_map:
     __other__: 'BESTQ value ''{invalid_value}'' is not a valid stock category. Valid values: blank (unrestricted), Q (quality inspection),
       S (blocked), R (returns). In ECC: correct via LQ02. In S/4HANA: use /SCWM/MON.'
-  record_fix_template: 'Quant {LQUA.MATNR} in bin {LGPLA.LGPLA}: BESTQ is ''{actual_value}''. Set to a valid stock category
+  record_fix_template: 'Quant {LQUA.MATNR} in bin {LAGP.LGPLA}: BESTQ is ''{actual_value}''. Set to a valid stock category
     via LQ02 (ECC) or /SCWM/MON (S/4HANA).'
 - id: EWMS008
   field: LQUA.GESME
@@ -145,7 +145,7 @@ rules:
   fix_map:
     __blank__: 'In ECC: verify physical stock and correct via inventory adjustment MI01/MI04 or LQ02. In S/4HANA: use Fiori
       app F3844 (Physical Inventory) or /SCWM/MON.'
-  record_fix_template: 'Quant {LQUA.MATNR} in bin {LGPLA.LGPLA}: GESME is {actual_value}. Verify physical stock and adjust
+  record_fix_template: 'Quant {LQUA.MATNR} in bin {LAGP.LGPLA}: GESME is {actual_value}. Verify physical stock and adjust
     via MI01/MI04 (ECC) or Fiori app F3844 (S/4HANA).'
 - id: EWMS009
   field: LQUA.MEINS
@@ -169,7 +169,7 @@ rules:
   check_class: null_check
   severity: high
   dimension: completeness
-  message: "Batch number required for batch-managed materials \u2014 missing breaks FEFO"
+  message: Batch number required for batch-managed materials — missing breaks FEFO
   why_it_matters: For batch-managed materials, the batch number (CHARG) is required on every quant. Without it, FEFO (first
     expiry first out) picking strategy cannot function because the system cannot determine which batch expires first. This
     creates a compliance and safety risk for perishable or regulated goods. In S/4HANA, batch table MCHA is deprecated; batch
@@ -179,10 +179,14 @@ rules:
     for recalls and audit purposes.
   fix_map:
     __blank__: 'In ECC: assign batch via LQ02 or MSC2N. In S/4HANA: use Fiori app F3506 (Manage Batches) or MSC2N.'
-  record_fix_template: 'Quant {LQUA.MATNR} in bin {LGPLA.LGPLA}: CHARG is {actual_value}. Assign the correct batch number
-    via LQ02 (ECC) or Fiori app F3506 (S/4HANA).'
+  record_fix_template: 'Quant {LQUA.MATNR} in bin {LAGP.LGPLA}: CHARG is {actual_value}. Assign the correct batch number via
+    LQ02 (ECC) or Fiori app F3506 (S/4HANA).'
+  applies_when:
+    MARC.XCHPF:
+    - X
+  grain: LQUA
 - id: EWMS011
-  field: LGPLA.LGBER
+  field: LAGP.LGBER
   check_class: null_check
   severity: medium
   dimension: completeness
@@ -196,12 +200,12 @@ rules:
   fix_map:
     __blank__: 'In ECC: assign storage section via T-code LX04 or LS02N. In S/4HANA embedded EWM: maintain via Fiori app F1653
       or /SCWM/LS01.'
-  record_fix_template: 'Bin {LGPLA.LGPLA}: LGBER is {actual_value}. Assign the correct storage section via LX04 (ECC) or Fiori
+  record_fix_template: 'Bin {LAGP.LGPLA}: LGBER is {actual_value}. Assign the correct storage section via LX04 (ECC) or Fiori
     app F1653 (S/4HANA).'
 - id: EWMS012
-  field: LGPLA.KOBER
+  field: LAGP.KOBER
   check_class: null_check
-  severity: medium
+  severity: low
   dimension: completeness
   message: Picking area assignment optimises wave picking and picking route efficiency
   why_it_matters: Picking area (KOBER) groups bins into zones for wave picking and pick route optimisation. Without it, the
@@ -212,10 +216,14 @@ rules:
   fix_map:
     __blank__: 'In ECC: assign picking area via T-code LS02N > Picking area field. In S/4HANA embedded EWM: maintain via /SCWM/LS01
       or Fiori app F1653.'
-  record_fix_template: 'Bin {LGPLA.LGPLA}: KOBER is {actual_value}. Assign the correct picking area via LS02N (ECC) or Fiori
+  record_fix_template: 'Bin {LAGP.LGPLA}: KOBER is {actual_value}. Assign the correct picking area via LS02N (ECC) or Fiori
     app F1653 (S/4HANA).'
+  applies_when:
+    LAGP.KZDYN:
+      not_in:
+      - X
 - id: EWMS013
-  field: LGPLA.MAXLE
+  field: LAGP.MAXLE
   check_class: null_check
   severity: medium
   dimension: completeness
@@ -227,32 +235,26 @@ rules:
   sap_impact: Capacity-based putaway strategy disabled for this bin. Risk of overstocking. Bin utilisation reporting is incomplete.
   fix_map:
     __blank__: 'In ECC: set maximum capacity via T-code LS02N. In S/4HANA embedded EWM: maintain via Fiori app F1653 or /SCWM/LS01.'
-  record_fix_template: 'Bin {LGPLA.LGPLA}: MAXLE is {actual_value}. Set the maximum bin capacity via LS02N (ECC) or Fiori
+  record_fix_template: 'Bin {LAGP.LGPLA}: MAXLE is {actual_value}. Set the maximum bin capacity via LS02N (ECC) or Fiori
     app F1653 (S/4HANA).'
 - id: EWMS014
-  field: LGPLA.NESSION
+  field: LAGP.SKZUA
   check_class: domain_value_check
   severity: high
   dimension: accuracy
-  message: Bin block status must be a valid flag value
-  allowed_values:
-  - ''
-  - X
-  valid_values_with_labels:
-    ? ''
-    : Bin is available for use
-    X: "Bin is blocked \u2014 no putaway or picking allowed"
-  why_it_matters: The bin block status (NESSION) controls whether stock can be moved into or out of the bin. An invalid value
-    means the system cannot determine whether the bin is available, potentially allowing movements to physically blocked locations
-    or blocking movements to available bins.
+  message: Bin stock-removal block indicator must be blank or X
+  allowed_values: ['', X]
+  valid_values_with_labels: {? '' : Bin is available for use, X: Bin is blocked — no putaway or picking allowed}
+  why_it_matters: The bin block status (SKZUA) controls whether stock can be moved into or out of the bin. An invalid
+    value means the system cannot determine whether the bin is available, potentially allowing movements to physically
+    blocked locations or blocking movements to available bins.
   rule_authority: sap_hard_constraint
-  sap_impact: Bin availability status undefined. Putaway may direct stock to blocked bins. Picking may skip available bins.
-    Warehouse throughput affected.
-  fix_map:
-    __other__: 'Bin block status ''{invalid_value}'' is not valid. Valid values: blank (available), X (blocked). In ECC: correct
-      via LS02N. In S/4HANA: use /SCWM/LS01 or Fiori app F1653.'
-  record_fix_template: 'Bin {LGPLA.LGPLA}: NESSION is ''{actual_value}''. Set to blank (available) or X (blocked) via LS02N
-    (ECC) or Fiori app F1653 (S/4HANA).'
+  sap_impact: Bin availability status undefined. Putaway may direct stock to blocked bins. Picking may skip available
+    bins. Warehouse throughput affected.
+  fix_map: {__other__: 'Bin block status ''{invalid_value}'' is not valid. Valid values: blank (available), X (blocked).
+      In ECC: correct via LS02N. In S/4HANA: use /SCWM/LS01 or Fiori app F1653.'}
+  record_fix_template: 'Bin {LAGP.LGPLA}: SKZUA is ''{actual_value}''. Set to blank (available) or X (blocked) via
+    LS02N (ECC) or Fiori app F1653 (S/4HANA).'
 - id: EWMS015
   field: LQUA.LETYP
   check_class: null_check
@@ -268,121 +270,34 @@ rules:
   fix_map:
     __blank__: 'In ECC: assign storage unit type via T-code LQ02. In S/4HANA embedded EWM: maintain via /SCWM/HUMO or the
       Fiori warehouse monitor.'
-  record_fix_template: 'Quant {LQUA.MATNR} in bin {LGPLA.LGPLA}: LETYP is {actual_value}. Assign the correct storage unit
-    type via LQ02 (ECC) or /SCWM/HUMO (S/4HANA).'
-- id: EWMS016
-  field: LGPLA.LGPBE
-  check_class: null_check
-  severity: low
-  dimension: completeness
-  message: Fire containment section is missing
-  why_it_matters: Fire containment section (LGPLA.LGPBE) is not maintained. This field supports downstream processes and reporting
-    accuracy. Missing data may result in incomplete records or processing gaps.
-  rule_authority: best_practice
-  sap_impact: Missing Fire containment section may cause incomplete data in related transactions and reports.
-  fix_map:
-    __blank__: 'In ECC: Set via LS01N/LS02N. In S/4HANA: Use embedded EWM or /SCWM/ transactions.'
-  record_fix_template: 'Record is missing LGPLA.LGPBE. In ECC: Set via LS01N/LS02N. In S/4HANA: Use embedded EWM or /SCWM/
-    transactions.'
-- id: EWMS017
-  field: LGPLA.SKESSION
-  check_class: null_check
-  severity: low
-  dimension: completeness
-  message: Verification field is missing
-  why_it_matters: Verification field (LGPLA.SKESSION) is not maintained. This field supports downstream processes and reporting
-    accuracy. Missing data may result in incomplete records or processing gaps.
-  rule_authority: best_practice
-  sap_impact: Missing Verification field may cause incomplete data in related transactions and reports.
-  fix_map:
-    __blank__: 'In ECC: Set via LS01N/LS02N. In S/4HANA: Use embedded EWM or /SCWM/ transactions.'
-  record_fix_template: 'Record is missing LGPLA.SKESSION. In ECC: Set via LS01N/LS02N. In S/4HANA: Use embedded EWM or /SCWM/
-    transactions.'
-- id: EWMS018
-  field: LQUA.AUSME
-  check_class: null_check
-  severity: low
-  dimension: completeness
-  message: Outbound quantity is missing
-  why_it_matters: Outbound quantity (LQUA.AUSME) is not maintained. This field supports downstream processes and reporting
-    accuracy. Missing data may result in incomplete records or processing gaps.
-  rule_authority: best_practice
-  sap_impact: Missing Outbound quantity may cause incomplete data in related transactions and reports.
-  fix_map:
-    __blank__: 'In ECC: Set via LS01N/LS02N. In S/4HANA: Use embedded EWM or /SCWM/ transactions.'
-  record_fix_template: 'Record is missing LQUA.AUSME. In ECC: Set via LS01N/LS02N. In S/4HANA: Use embedded EWM or /SCWM/
-    transactions.'
-- id: EWMS019
-  field: LQUA.EINME
-  check_class: null_check
-  severity: low
-  dimension: completeness
-  message: Inbound quantity is missing
-  why_it_matters: Inbound quantity (LQUA.EINME) is not maintained. This field supports downstream processes and reporting
-    accuracy. Missing data may result in incomplete records or processing gaps.
-  rule_authority: best_practice
-  sap_impact: Missing Inbound quantity may cause incomplete data in related transactions and reports.
-  fix_map:
-    __blank__: 'In ECC: Set via LS01N/LS02N. In S/4HANA: Use embedded EWM or /SCWM/ transactions.'
-  record_fix_template: 'Record is missing LQUA.EINME. In ECC: Set via LS01N/LS02N. In S/4HANA: Use embedded EWM or /SCWM/
-    transactions.'
-- id: EWMS020
-  field: LQUA.LENUM
-  check_class: null_check
-  severity: low
-  dimension: completeness
-  message: Storage unit number is missing
-  why_it_matters: Storage unit number (LQUA.LENUM) is not maintained. This field supports downstream processes and reporting
-    accuracy. Missing data may result in incomplete records or processing gaps.
-  rule_authority: best_practice
-  sap_impact: Missing Storage unit number may cause incomplete data in related transactions and reports.
-  fix_map:
-    __blank__: 'In ECC: Set via LS01N/LS02N. In S/4HANA: Use embedded EWM or /SCWM/ transactions.'
-  record_fix_template: 'Record is missing LQUA.LENUM. In ECC: Set via LS01N/LS02N. In S/4HANA: Use embedded EWM or /SCWM/
-    transactions.'
-- id: EWMS021
-  field: LQUA.VERME
-  check_class: null_check
-  severity: low
-  dimension: completeness
-  message: Available stock (warehouse) is missing
-  why_it_matters: Available stock (warehouse) (LQUA.VERME) is not maintained. This field supports downstream processes and
-    reporting accuracy. Missing data may result in incomplete records or processing gaps.
-  rule_authority: best_practice
-  sap_impact: Missing Available stock (warehouse) may cause incomplete data in related transactions and reports.
-  fix_map:
-    __blank__: 'In ECC: Set via LS01N/LS02N. In S/4HANA: Use embedded EWM or /SCWM/ transactions.'
-  record_fix_template: 'Record is missing LQUA.VERME. In ECC: Set via LS01N/LS02N. In S/4HANA: Use embedded EWM or /SCWM/
-    transactions.'
+  record_fix_template: 'Quant {LQUA.MATNR} in bin {LAGP.LGPLA}: LETYP is {actual_value}. Assign the correct storage unit type
+    via LQ02 (ECC) or /SCWM/HUMO (S/4HANA).'
+  applies_when:
+    LQUA.LENUM:
+      populated: true
 
-- id: EWMS022
-  field: LGPLA.LGNUM
-  check_class: cross_field_check
-  fields: ['LGPLA.LGNUM']
-  condition: "~`LGPLA.LGNUM`.duplicated(keep=False)"
-  severity: high
-  dimension: uniqueness
-  message: Duplicate stock records detected — indicates data extract or quant duplication issue
-  why_it_matters: Duplicate stock quants cause inventory discrepancies, incorrect available-to-promise, and warehouse task creation against phantom stock.
-  rule_authority: best_practice
-  sap_impact: Available stock is overstated. Warehouse tasks are created for non-existent stock. Physical inventory count will show variances.
-  fix_map:
-    __blank__: "Verify the data extract is at quant level (one row per storage bin per material per batch). If genuine quant duplicates exist, run /SCWM/AQUA to reconcile."
 
 - id: EWMS024
-  field: LGPLA.LGTYP
+  field: LAGP.LGTYP
   check_class: referential_check
-  reference_values: ["0010", "0020", "0030", "0040", "0050", "0100", "0200", "0300", "0910"]
+  reference_values: []
   severity: high
   dimension: consistency
-  message: "Storage type LGTYP must reference a valid entry in /SCWM/T301"
-  why_it_matters: "LGTYP (storage type) defines the physical organisation of a storage bin — is it goods-receipt, quality-inspection, high-rack, or a shipping stage? EWMS task creation, putaway rules, and picking waves all branch on this type. An invalid LGTYP means /SCWM/LM01 (warehouse monitor) cannot render the bin, putaway exception handling fails, and goods are orphaned in the warehouse ('where is it?')."
+  message: Storage type LGTYP must exist in the warehouse's storage-type configuration (T301)
+  why_it_matters: LGTYP (storage type) defines the physical organisation of a storage bin — is it goods-receipt, quality-inspection,
+    high-rack, or a shipping stage? EWMS task creation, putaway rules, and picking waves all branch on this type. An invalid
+    LGTYP means /SCWM/LM01 (warehouse monitor) cannot render the bin, putaway exception handling fails, and goods are orphaned
+    in the warehouse ('where is it?').
   rule_authority: sap_hard_constraint
-  sap_impact: "Bin cannot be displayed in /SCWM/LM01; putaway/pick tasks cannot be generated for its stock; goods are effectively lost until manually reclassified."
+  sap_impact: Bin cannot be displayed in /SCWM/LM01; putaway/pick tasks cannot be generated for its stock; goods are effectively
+    lost until manually reclassified.
   fix_map:
-    __blank__: "Assign storage type at bin creation (/SCWM/LS02N). Required for every storage bin."
-    __other__: "Storage type '{invalid_value}' is not in /SCWM/T301. Reclassify the bin via /SCWM/LS02N or configure the missing type in EWMS customising (/SCWM/SPRO > EWM > Master Data > Define Storage Type)."
-  record_fix_template: "Storage bin {LGPLA.LGPBE}: storage type '{actual_value}' is not in /SCWM/T301."
+    __blank__: Assign storage type at bin creation (/SCWM/LS02N). Required for every storage bin.
+    __other__: Storage type '{invalid_value}' is not in /SCWM/T301. Reclassify the bin via /SCWM/LS02N or configure the missing
+      type in EWMS customising (/SCWM/SPRO > EWM > Master Data > Define Storage Type).
+  record_fix_template: 'Storage bin {LAGP.LGPLA}: storage type ''{actual_value}'' is not in T301.'
+  reference_table: T301
+  reference_field: LGTYP
 
 - id: EWMS025
   field: LQUA.LGNUM

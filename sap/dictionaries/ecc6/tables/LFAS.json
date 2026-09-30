@@ -1,0 +1,74 @@
+{
+ "table": "LFAS",
+ "description": "Vendor master (VAT registration numbers general section)",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "LIFNR",
+   "key": true,
+   "data_element": "LIFNR",
+   "domain": "LIFNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Account Number of Vendor or Creditor",
+   "check_table": "LFA1"
+  },
+  {
+   "pos": 3,
+   "name": "LAND1",
+   "key": true,
+   "data_element": "LAND1_GP",
+   "domain": "LAND1",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Country Key",
+   "check_table": "T005"
+  },
+  {
+   "pos": 4,
+   "name": "STCEG",
+   "key": false,
+   "data_element": "STCEG",
+   "domain": "STCEG",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "VAT Registration Number",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "LAND1",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "LIFNR",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

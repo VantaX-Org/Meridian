@@ -8,6 +8,7 @@ connect() — not on import of this module.
 from __future__ import annotations
 
 import logging
+import re
 from typing import Optional
 
 import pandas as pd
@@ -65,21 +66,101 @@ class RFCConnector(SAPConnector):
         where: Optional[str] = None,
         max_rows: int = 0,
     ) -> pd.DataFrame:
+        """Single RFC_READ_TABLE call (fields must fit the 512-byte work area)."""
         if self._conn is None:
             raise SAPConnectorError("read_table called before connect()")
-        options = [{"TEXT": where}] if where else []
         try:
             result = self._conn.call(
                 "RFC_READ_TABLE",
                 QUERY_TABLE=table,
                 FIELDS=[{"FIELDNAME": f} for f in fields],
-                OPTIONS=options,
+                OPTIONS=where_options(where),
                 ROWCOUNT=max_rows,
             )
         except Exception as e:
             safe = self._mask_password(str(e), self._password)
             raise SAPConnectorError(safe) from e
         return _parse_rfc_result(result)
+
+    def call(self, function: str, **params) -> dict:
+        """Call a remote-enabled function module (DDIF_FIELDINFO_GET, RFC_SYSTEM_INFO…)."""
+        if self._conn is None:
+            raise SAPConnectorError(f"{function} called before connect()")
+        try:
+            return self._conn.call(function, **params)
+        except Exception as e:
+            raise SAPConnectorError(self._mask_password(str(e), self._password)) from e
+
+    def read_table_full(
+        self,
+        table: str,
+        fields: list[str],
+        key_fields: list[str],
+        where: Optional[str] = None,
+        max_rows: int = 0,
+        page_size: int = 50_000,
+    ) -> pd.DataFrame:
+        """Read any number of fields and rows.
+
+        RFC_READ_TABLE returns rows in a 512-byte work area and in no defined
+        order, so wide tables are read in column groups that each carry the
+        key fields and are joined back on the key; each group is paged with
+        ROWSKIPS/ROWCOUNT. Groups that still overflow are split in half.
+        """
+        if self._conn is None:
+            raise SAPConnectorError("read_table_full called before connect()")
+        keys = [k for k in key_fields if k]
+        rest = [f for f in dict.fromkeys(fields) if f not in keys]
+        groups = self._groups(table, keys, rest)
+        merged: Optional[pd.DataFrame] = None
+        for group in groups:
+            part = self._read_paged(table, keys + group, where, max_rows, page_size)
+            merged = part if merged is None else merged.merge(part, on=keys, how="outer") if keys \
+                else pd.concat([merged, part], axis=1)
+        if merged is None:
+            merged = self._read_paged(table, keys, where, max_rows, page_size)
+        return merged
+
+    def _groups(self, table: str, keys: list[str], rest: list[str]) -> list[list[str]]:
+        """Split non-key fields into groups whose RFC work area fits 512 bytes."""
+        if not rest:
+            return []
+        try:
+            self._conn.call("RFC_READ_TABLE", QUERY_TABLE=table, NO_DATA="X",
+                            FIELDS=[{"FIELDNAME": f} for f in keys + rest])
+            return [rest]
+        except Exception as e:
+            if "DATA_BUFFER_EXCEEDED" not in str(e) or len(rest) == 1:
+                if len(rest) == 1:
+                    raise SAPConnectorError(
+                        self._mask_password(f"{table}: cannot read field {rest[0]}: {e}", self._password)
+                    ) from e
+                raise SAPConnectorError(self._mask_password(str(e), self._password)) from e
+        mid = len(rest) // 2
+        return self._groups(table, keys, rest[:mid]) + self._groups(table, keys, rest[mid:])
+
+    def _read_paged(self, table: str, fields: list[str], where: Optional[str],
+                    max_rows: int, page_size: int) -> pd.DataFrame:
+        pages, skip = [], 0
+        while True:
+            want = page_size if not max_rows else min(page_size, max_rows - skip)
+            if want <= 0:
+                break
+            try:
+                result = self._conn.call(
+                    "RFC_READ_TABLE", QUERY_TABLE=table, FIELDS=[{"FIELDNAME": f} for f in fields],
+                    OPTIONS=where_options(where), ROWSKIPS=skip, ROWCOUNT=want,
+                )
+            except Exception as e:
+                raise SAPConnectorError(self._mask_password(str(e), self._password)) from e
+            page = _parse_rfc_result(result)
+            if page.empty and not pages:
+                page = pd.DataFrame(columns=[f["FIELDNAME"].strip() for f in result.get("FIELDS", [])] or fields)
+            pages.append(page)
+            skip += len(page)
+            if len(page) < want:
+                break
+        return pd.concat(pages, ignore_index=True) if pages else pd.DataFrame(columns=fields)
 
     def execute_bapi(self, call: BAPICall) -> dict:
         if self._conn is None:
@@ -98,6 +179,34 @@ class RFCConnector(SAPConnector):
             return True
         except Exception:
             return False
+
+
+# ── RFC_READ_TABLE helpers ─────────────────────────────────────────────────────
+
+
+def where_options(where: Optional[str]) -> list[dict]:
+    """Split a WHERE clause into RFC_READ_TABLE OPTIONS lines (≤72 chars each).
+
+    Breaks only between tokens and never inside a quoted literal. Parentheses
+    and commas become separate tokens — ABAP dynamic WHERE needs blanks around
+    parentheses anyway ("IN ( 'A' , 'B' )").
+    """
+    if not where:
+        return []
+    tokens = re.findall(r"'[^']*'|[(),]|[^\s(),']+", where)
+    lines, cur = [], ""
+    for tok in tokens:
+        if len(tok) > 72:
+            raise SAPConnectorError(f"WHERE token longer than 72 characters: {tok[:20]}…")
+        cand = f"{cur} {tok}" if cur else tok
+        if len(cand) > 72:
+            lines.append(cur)
+            cur = tok
+        else:
+            cur = cand
+    if cur:
+        lines.append(cur)
+    return [{"TEXT": line} for line in lines]
 
 
 # ── RFC_READ_TABLE parser ──────────────────────────────────────────────────────

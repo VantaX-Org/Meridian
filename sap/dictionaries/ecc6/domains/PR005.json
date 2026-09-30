@@ -1,0 +1,62 @@
+{
+ "domain": "PR005",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "1",
+   "high": null,
+   "text": "Maximum value length, without gaps"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Maximum value length, numerical, without gaps"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Length to be kept to exactly, without gaps"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Length to be kept to exactly, numerical, without gaps"
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "Maximum value length"
+  },
+  {
+   "low": "6",
+   "high": null,
+   "text": "Maximum value length, numerical"
+  },
+  {
+   "low": "7",
+   "high": null,
+   "text": "Length to be kept to exactly"
+  },
+  {
+   "low": "8",
+   "high": null,
+   "text": "Length to be kept to exactly, numerical"
+  },
+  {
+   "low": "9",
+   "high": null,
+   "text": "Check against country-specific edit format"
+  },
+  {
+   "low": "0",
+   "high": null,
+   "text": "Deactivate Postal Code Check for USA"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

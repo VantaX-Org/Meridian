@@ -1,0 +1,37 @@
+{
+ "domain": "RBACONTROL",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Subitems Allowed, Plant Substitution in Item Not Allowed"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Subitems and Plant Substitution in Item Not Allowed"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Subitems Not Allowed, Plant Substitution in Item Allowed"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Subitems and Plant Substitution in Item Allowed"
+  },
+  {
+   "low": "N",
+   "high": null,
+   "text": "Rules-Based ATP Check Not Allowed"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

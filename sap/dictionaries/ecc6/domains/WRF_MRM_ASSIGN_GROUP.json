@@ -1,0 +1,11 @@
+{
+ "domain": "WRF_MRM_ASSIGN_GROUP",
+ "type": "CHAR",
+ "length": 4,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": "WRF_ASSIGN_GRP",
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

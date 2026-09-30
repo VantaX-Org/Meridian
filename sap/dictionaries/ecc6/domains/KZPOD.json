@@ -1,0 +1,32 @@
+{
+ "domain": "KZPOD",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Not relevant for proof of delivery"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Relevant and verified with no deviations"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Relevant and verified with deviations"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Relevant for proof of delivery"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

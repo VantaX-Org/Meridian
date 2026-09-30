@@ -1,0 +1,52 @@
+{
+ "domain": "BSTYP",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "Request for quotation"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Purchase requisition"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Purchase order"
+  },
+  {
+   "low": "I",
+   "high": null,
+   "text": "Info record"
+  },
+  {
+   "low": "K",
+   "high": null,
+   "text": "Contract"
+  },
+  {
+   "low": "L",
+   "high": null,
+   "text": "Scheduling agreement"
+  },
+  {
+   "low": "Q",
+   "high": null,
+   "text": "Service entry sheet"
+  },
+  {
+   "low": "W",
+   "high": null,
+   "text": "Source list"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

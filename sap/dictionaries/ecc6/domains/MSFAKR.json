@@ -1,0 +1,27 @@
+{
+ "domain": "MSFAKR",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "0",
+   "high": null,
+   "text": "Increase in depreciation and expired useful life"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Increase in deprec., no increase in exp. useful life"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "No effect on depreciation and useful life"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

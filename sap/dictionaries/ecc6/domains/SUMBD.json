@@ -1,0 +1,32 @@
+{
+ "domain": "SUMBD",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "Single records"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Totals records per day"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Totals records per week, reqs date on Monday of current week"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Totals records per week, reqs date on Monday of fol. week"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

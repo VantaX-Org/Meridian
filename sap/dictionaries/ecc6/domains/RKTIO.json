@@ -1,0 +1,37 @@
+{
+ "domain": "RKTIO",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No response if target value is exceeded"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Warning if target value is exceeded"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Error message if target value is exceeded"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "First time target value is exceeded, permitted with warning"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "As for 'A' but value contract is not blocked"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

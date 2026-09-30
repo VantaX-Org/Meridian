@@ -239,7 +239,7 @@ ECC_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
             fields=[
                 "SAKNR", "BUKRS", "MWSKZ", "XOPVW", "MITKZ",
                 "WAERS", "XKRES", "FDLEV", "XINTB", "BEGRU",
-                "ZUESSION",
+                "ZUAWA",
             ],
             description="GL account company code data",
         ),
@@ -315,7 +315,7 @@ ECC_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
         ExtractionTarget(
             source="EQUI",
             fields=[
-                "EQUNR", "EQTYP", "EQART", "HESSION", "SWERK", "STORT",
+                "EQUNR", "EQTYP", "EQART", "HERST", "SWERK", "STORT",
                 "BRGEW", "GEWEI", "ANSDT", "ERDAT", "ERNAM", "AEDAT",
                 "INBDT", "GEWRK",
             ],
@@ -324,7 +324,7 @@ ECC_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
         ExtractionTarget(
             source="IFLOT",
             fields=[
-                "TPLNR", "FLTYP", "IWERK", "STORT", "BESSION",
+                "TPLNR", "FLTYP", "IWERK", "STORT", "BEBER",
                 "ERDAT", "ERNAM", "AEDAT",
             ],
             description="Functional location master",
@@ -815,7 +815,7 @@ EWMS_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
             source="MCH1",
             fields=[
                 "MATNR", "CHARG", "WERKS", "HSDAT", "VFDAT",
-                "ZUESSION", "LIESSION", "ERNAM",
+                "ZUAWA", "LICHA", "ERNAM",
             ],
             description="Batch master",
         ),
@@ -891,6 +891,7 @@ SYSTEM_EXTRACTIONS: dict[str, dict[str, list[ExtractionTarget]]] = {
     "concur": CONCUR_EXTRACTIONS,
     "ariba": ARIBA_EXTRACTIONS,
     "ewms": EWMS_EXTRACTIONS,
+    "ewm": EWMS_EXTRACTIONS,  # sap_systems.system_type spelling
 }
 
 

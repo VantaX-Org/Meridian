@@ -1,0 +1,27 @@
+{
+ "domain": "PP_PDATE",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Posting date is not changed during posting"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Posting date is changed to system date"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Same as 1 only if the posting period is closed"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

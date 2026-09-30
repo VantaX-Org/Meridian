@@ -1,0 +1,185 @@
+{
+ "table": "MLGT",
+ "description": "Material Data for Each Storage Type",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "MATNR",
+   "key": true,
+   "data_element": "MATNR",
+   "domain": "MATNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Material Number",
+   "check_table": "MARA"
+  },
+  {
+   "pos": 3,
+   "name": "LGNUM",
+   "key": true,
+   "data_element": "LGNUM",
+   "domain": "LGNUM",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Warehouse Number / Warehouse Complex",
+   "check_table": "MLGN"
+  },
+  {
+   "pos": 4,
+   "name": "LGTYP",
+   "key": true,
+   "data_element": "LGTYP",
+   "domain": "LGTYP",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Storage Type",
+   "check_table": "T301"
+  },
+  {
+   "pos": 6,
+   "name": "LVORM",
+   "key": false,
+   "data_element": "LVOLT",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Deletion flag for all material data of a storage type",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "LGPLA",
+   "key": false,
+   "data_element": "LGPLA",
+   "domain": "LGPLA",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Storage Bin",
+   "check_table": "LAGP"
+  },
+  {
+   "pos": 8,
+   "name": "LPMAX",
+   "key": false,
+   "data_element": "MLGT_LPMAX",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Maximum storage bin quantity",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "LPMIN",
+   "key": false,
+   "data_element": "MLGT_LPMIN",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Minimum storage bin quantity",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "MAMNG",
+   "key": false,
+   "data_element": "MLGT_MAMNG",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Control quantity",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "NSMNG",
+   "key": false,
+   "data_element": "MLGT_NSMNG",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Replenishment quantity",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "KOBER",
+   "key": false,
+   "data_element": "KOBER",
+   "domain": "KOBER",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Picking Area",
+   "check_table": "T30A"
+  },
+  {
+   "pos": 13,
+   "name": "RDMNG",
+   "key": false,
+   "data_element": "MLGT_RDMNG",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Rounding qty",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "KOBER",
+   "foreign_table": "T30A",
+   "foreign_field": "KOBER"
+  },
+  {
+   "field": "LGNUM",
+   "foreign_table": "MLGN",
+   "foreign_field": "LGNUM"
+  },
+  {
+   "field": "LGPLA",
+   "foreign_table": "LAGP",
+   "foreign_field": "LGPLA"
+  },
+  {
+   "field": "LGTYP",
+   "foreign_table": "T301",
+   "foreign_field": "LGTYP"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MATNR",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  }
+ ]
+}

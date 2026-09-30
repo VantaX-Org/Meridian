@@ -1,0 +1,37 @@
+{
+ "domain": "AD_FLGMOB",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Telephone is Landline Telephone"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Telephone is Default Under Landline Telephones"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Telephone is Mobile Telephone but Not Default Mobile Phone"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Telephone is Default Mobile Telephone"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Obsolete - No Longer Valid"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

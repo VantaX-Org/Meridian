@@ -1,0 +1,27 @@
+{
+ "domain": "IMRC_PREST",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "1",
+   "high": null,
+   "text": "MeasReading processed: activities need to be carried out"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "MeasReading processed: activities covered by planned task"
+  },
+  {
+   "low": "7",
+   "high": null,
+   "text": "MeasReading processed: no activities need to be carried out"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

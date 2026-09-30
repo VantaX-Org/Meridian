@@ -1,0 +1,27 @@
+{
+ "domain": "XGWGK",
+ "type": "NUMC",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "0",
+   "high": null,
+   "text": "No maximum amount check"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Value based maximum amount check"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Check maximum amount with quantity"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

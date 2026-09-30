@@ -1,0 +1,22 @@
+{
+ "domain": "PRATK",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Ship-to party accepts product attribute"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Ship-to party does not accept product attribute"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

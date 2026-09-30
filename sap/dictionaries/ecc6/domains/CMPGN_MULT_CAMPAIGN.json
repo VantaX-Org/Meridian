@@ -1,0 +1,27 @@
+{
+ "domain": "CMPGN_MULT_CAMPAIGN",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Inactive"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Compatible with CRM (Sorting According to Access Sequence)"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Compatible with CRM and CRM Mobile (Simple Sorting)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -117,7 +117,6 @@ jobs:
           MINIO_BUCKET_REPORTS=meridian-reports
           AUTH_MODE=local
           NEXT_PUBLIC_AUTH_MODE=local
-          SAP_CONNECTOR=mock
           CREDENTIAL_MASTER_KEY=smoke_credential_master_key_change_in_real_deploy
           ENV
 

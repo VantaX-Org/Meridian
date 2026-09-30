@@ -1,0 +1,243 @@
+{
+ "table": "T059Z",
+ "description": "Withholding tax code (enhanced functions)",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "LAND1",
+   "key": true,
+   "data_element": "LAND1",
+   "domain": "LAND1",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Country Key",
+   "check_table": "T005"
+  },
+  {
+   "pos": 3,
+   "name": "WITHT",
+   "key": true,
+   "data_element": "WITHT",
+   "domain": "WITHT",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Indicator for withholding tax type",
+   "check_table": "T059P"
+  },
+  {
+   "pos": 4,
+   "name": "WT_WITHCD",
+   "key": true,
+   "data_element": "WT_WITHCD",
+   "domain": "WT_WITHCD",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Withholding tax code",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "QSCOD",
+   "key": false,
+   "data_element": "WT_OWTCD",
+   "domain": "WT_OWTCD",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Official Withholding Tax Key",
+   "check_table": "T059O"
+  },
+  {
+   "pos": 6,
+   "name": "QPROZ",
+   "key": false,
+   "data_element": "QPROZ",
+   "domain": "PRZ32",
+   "type": "DEC",
+   "length": 5,
+   "decimals": 2,
+   "description": "Percentage Subject to Withholding Tax",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "QSATZ",
+   "key": false,
+   "data_element": "WT_QSATZ",
+   "domain": "PRZ34",
+   "type": "DEC",
+   "length": 7,
+   "decimals": 4,
+   "description": "Withholding tax rate",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "QSATR",
+   "key": false,
+   "data_element": "WT_QSATR",
+   "domain": "PRZ34",
+   "type": "DEC",
+   "length": 7,
+   "decimals": 4,
+   "description": "Reduced withholding tax rate",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "XQFOR",
+   "key": false,
+   "data_element": "XQFOR",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Calculate withholding tax according to formula?",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "REGIO",
+   "key": false,
+   "data_element": "REGIO",
+   "domain": "REGIO",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Region (State, Province, County)",
+   "check_table": "T005S"
+  },
+  {
+   "pos": 11,
+   "name": "FPRCD",
+   "key": false,
+   "data_element": "FPRCD",
+   "domain": "FPRCD",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Provincial tax code",
+   "check_table": "T005P"
+  },
+  {
+   "pos": 12,
+   "name": "QEKAR",
+   "key": false,
+   "data_element": "QEKAR",
+   "domain": "QEKAR",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Income Type",
+   "check_table": "T059E"
+  },
+  {
+   "pos": 13,
+   "name": "WT_POSIN",
+   "key": false,
+   "data_element": "WT_POSIN",
+   "domain": "WT_POSIN",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Posting indicator",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "WT_RATEZ",
+   "key": false,
+   "data_element": "WT_RATEZ",
+   "domain": "INT2_NOS",
+   "type": "INT2",
+   "length": 5,
+   "decimals": 0,
+   "description": "Withholding tax rate counter",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "WT_RATEN",
+   "key": false,
+   "data_element": "WT_RATEN",
+   "domain": "INT2_NOS",
+   "type": "INT2",
+   "length": 5,
+   "decimals": 0,
+   "description": "Withholding tax rate denominator",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "WITHCD2",
+   "key": false,
+   "data_element": "WITHCD2",
+   "domain": "WITHCD2",
+   "type": "CHAR",
+   "length": 16,
+   "decimals": 0,
+   "description": "Withholding Tax Key",
+   "check_table": "T059Z_WITHCD2"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "FPRCD",
+   "foreign_table": "T005P",
+   "foreign_field": "FPRCD"
+  },
+  {
+   "field": "LAND1",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "QEKAR",
+   "foreign_table": "T059E",
+   "foreign_field": "QEKAR"
+  },
+  {
+   "field": "QSCOD",
+   "foreign_table": "T059O",
+   "foreign_field": "WT_QSCOD"
+  },
+  {
+   "field": "REGIO",
+   "foreign_table": "T005S",
+   "foreign_field": "BLAND"
+  },
+  {
+   "field": "WITHCD2",
+   "foreign_table": "T059Z_WITHCD2",
+   "foreign_field": "WITHCD2"
+  },
+  {
+   "field": "WITHT",
+   "foreign_table": "T059P",
+   "foreign_field": "WITHT"
+  }
+ ]
+}

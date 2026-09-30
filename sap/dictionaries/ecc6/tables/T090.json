@@ -1,0 +1,377 @@
+{
+ "table": "T090",
+ "description": "Depreciation calculation keys",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "AFARSL",
+   "key": true,
+   "data_element": "AFARSL_OLD",
+   "domain": "AFARSL",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Internal calculation key for depreciation and interest",
+   "check_table": "*"
+  },
+  {
+   "pos": 3,
+   "name": "GBEGIN",
+   "key": false,
+   "data_element": "GBEGIN",
+   "domain": "GBEGIN",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Start of Validity Period",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "AFATYP",
+   "key": false,
+   "data_element": "AFATYP",
+   "domain": "AFATYP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Depreciation type",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "XAFAUT",
+   "key": false,
+   "data_element": "XAFAUT",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Automatic calculation of depreciation or interest",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "DEGFAK",
+   "key": false,
+   "data_element": "DEGFAK",
+   "domain": "DEC1_2",
+   "type": "DEC",
+   "length": 3,
+   "decimals": 2,
+   "description": "Declining-balance multiplication factor",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "MAXPRZ",
+   "key": false,
+   "data_element": "MAXPRZ",
+   "domain": "AFPROZ",
+   "type": "DEC",
+   "length": 7,
+   "decimals": 4,
+   "description": "Maximum percentage rate",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "MINPRZ",
+   "key": false,
+   "data_element": "MINPRZ",
+   "domain": "AFPROZ",
+   "type": "DEC",
+   "length": 7,
+   "decimals": 4,
+   "description": "Minimum percentage rate",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "UMAFSL",
+   "key": false,
+   "data_element": "UMAFSL",
+   "domain": "AFARSL",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Calculation key after changeover",
+   "check_table": "T090"
+  },
+  {
+   "pos": 10,
+   "name": "UMRPRZ",
+   "key": false,
+   "data_element": "UMRPRZ",
+   "domain": "DEC2_1",
+   "type": "DEC",
+   "length": 3,
+   "decimals": 1,
+   "description": "Net book value percentage rate for depreciation changeover",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "XSTILL",
+   "key": false,
+   "data_element": "XSTILL",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Calculate shutdown",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "XENDAU",
+   "key": false,
+   "data_element": "XENDAU",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Depreciation after end of planned life",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "XUNTNL",
+   "key": false,
+   "data_element": "XUNTNL",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Calculation of depreciation below net book value zero",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "XEFDAU",
+   "key": false,
+   "data_element": "XEFDAU",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Depreciation with expired effective life",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "PERBZU",
+   "key": false,
+   "data_element": "PERBZU",
+   "domain": "PERBSL",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Period control: Acquisition",
+   "check_table": "T090R"
+  },
+  {
+   "pos": 16,
+   "name": "PERBNA",
+   "key": false,
+   "data_element": "PERBNA",
+   "domain": "PERBSL",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Period control: Acquisition in the following year",
+   "check_table": "T090R"
+  },
+  {
+   "pos": 17,
+   "name": "PERBAB",
+   "key": false,
+   "data_element": "PERBAB",
+   "domain": "PERBSL",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Period control: Retirement",
+   "check_table": "T090R"
+  },
+  {
+   "pos": 18,
+   "name": "PERBUM",
+   "key": false,
+   "data_element": "PERBUM",
+   "domain": "PERBSL",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Period control : Transfer",
+   "check_table": "T090R"
+  },
+  {
+   "pos": 19,
+   "name": "XDAILY",
+   "key": false,
+   "data_element": "XDAILY",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Depreciation calculation to exact day",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "XLIFEC",
+   "key": false,
+   "data_element": "XLIFEC",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Reduce useful life to the end of fiscal year",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "XAFNAH",
+   "key": false,
+   "data_element": "XAFNAH",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Depreciation levels by fiscal years and periods",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "XBZDAT",
+   "key": false,
+   "data_element": "XBZDAT",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Ind.: Calculate depreciation from the asset value date",
+   "check_table": null
+  },
+  {
+   "pos": 23,
+   "name": "UMSTM",
+   "key": false,
+   "data_element": "UMSTM",
+   "domain": "UMSTM",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Changeover method",
+   "check_table": null
+  },
+  {
+   "pos": 24,
+   "name": "AFACLA",
+   "key": false,
+   "data_element": "AFACLA",
+   "domain": "AFACLA",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Ordinary depreciation classification",
+   "check_table": null
+  },
+  {
+   "pos": 25,
+   "name": "AFAMET",
+   "key": false,
+   "data_element": "AFAMET",
+   "domain": "AFAMET",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Depreciation calculation method",
+   "check_table": null
+  },
+  {
+   "pos": 26,
+   "name": "XRAFA",
+   "key": false,
+   "data_element": "XRAFA",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Do not reduce depreciation in shortened fiscal year",
+   "check_table": null
+  },
+  {
+   "pos": 27,
+   "name": "MSFAKR",
+   "key": false,
+   "data_element": "MSFAKR",
+   "domain": "MSFAKR",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Effects of multiple shifts in depreciation key",
+   "check_table": null
+  },
+  {
+   "pos": 28,
+   "name": "SCHROTT",
+   "key": false,
+   "data_element": "AA_SCHROTT",
+   "domain": "AA_SCHROTT",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Effect of scrap value on the base value",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "PERBAB",
+   "foreign_table": "T090R",
+   "foreign_field": "PERBSL"
+  },
+  {
+   "field": "PERBNA",
+   "foreign_table": "T090R",
+   "foreign_field": "PERBSL"
+  },
+  {
+   "field": "PERBUM",
+   "foreign_table": "T090R",
+   "foreign_field": "PERBSL"
+  },
+  {
+   "field": "PERBZU",
+   "foreign_table": "T090R",
+   "foreign_field": "PERBSL"
+  },
+  {
+   "field": "UMAFSL",
+   "foreign_table": "T090",
+   "foreign_field": "AFARSL"
+  }
+ ]
+}

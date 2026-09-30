@@ -53,23 +53,6 @@ rules:
     __blank__: 'In ECC: obtain the legal entity name from the vendor''s business registration or existing contracts and set
       via T-code FK02 > Address tab. In S/4HANA: use Fiori app F3893 (Manage Business Partner).'
   record_fix_template: 'Vendor {LFA1.LIFNR}: NAME1 is {actual_value}. Set the vendor name via FK02 / Fiori app F3893.'
-- id: AP004
-  field: LFA1.NAME2
-  check_class: null_check
-  severity: low
-  dimension: completeness
-  message: Vendor name 2 is recommended for complete legal entity identification
-  why_it_matters: NAME2 provides additional name information (e.g., department, division, or trading name) that helps distinguish
-    vendors with similar primary names. It appears on purchase orders and payment documents alongside NAME1, improving clarity
-    for the receiving party.
-  rule_authority: best_practice
-  sap_impact: Purchase orders and correspondence may not fully identify the vendor, particularly for large organisations with
-    multiple divisions. Search results in ME21N may return ambiguous matches.
-  fix_map:
-    __blank__: 'In ECC: set the second name line via T-code FK02 > Address tab. In S/4HANA: use Fiori app F3893 (Manage Business
-      Partner).'
-  record_fix_template: 'Vendor {LFA1.LIFNR}: NAME2 is {actual_value}. Set additional name information via FK02 / Fiori app
-    F3893.'
 - id: AP005
   field: LFA1.LAND1
   check_class: null_check
@@ -106,9 +89,9 @@ rules:
 - id: AP007
   field: LFA1.STCD1
   check_class: null_check
-  severity: high
+  severity: low
   dimension: completeness
-  message: "Tax number 1 missing \u2014 required for VAT reporting and withholding tax"
+  message: Tax number 1 missing — required for VAT reporting and withholding tax
   why_it_matters: STCD1 (tax number 1) is required for VAT reporting, withholding tax calculation, and tax authority submissions.
     Without it, tax reports are incomplete and the company may face compliance penalties during tax audits.
   rule_authority: best_practice
@@ -118,24 +101,8 @@ rules:
     __blank__: 'In ECC: obtain the vendor''s VAT registration number or tax ID and set via T-code FK02 > General Data > Control
       tab. In S/4HANA: use Fiori app F3893 (Manage Business Partner) > Tax Numbers section.'
   record_fix_template: 'Vendor {LFA1.LIFNR}: STCD1 is {actual_value}. Set the tax number via FK02 / Fiori app F3893.'
-- id: AP008
-  field: LFA1.STCD2
-  check_class: null_check
-  severity: low
-  dimension: completeness
-  message: Tax number 2 is recommended for jurisdictions requiring multiple tax IDs
-  why_it_matters: STCD2 (tax number 2) is used in jurisdictions that require multiple tax identification numbers (e.g., company
-    registration number alongside VAT number). It supports extended tax reporting and compliance checks.
-  rule_authority: best_practice
-  sap_impact: Extended tax reports may be incomplete. Compliance checks requiring multiple tax IDs cannot be validated for
-    this vendor.
-  fix_map:
-    __blank__: 'In ECC: set via T-code FK02 > General Data > Control tab if a second tax ID is required by local regulations.
-      In S/4HANA: use Fiori app F3893.'
-  record_fix_template: 'Vendor {LFA1.LIFNR}: STCD2 is {actual_value}. Set the second tax number via FK02 / Fiori app F3893
-    if required by local regulations.'
 - id: AP009
-  field: LFA1.SMTP_ADDR
+  field: ADR6.SMTP_ADDR
   check_class: null_check
   severity: medium
   dimension: completeness
@@ -299,7 +266,7 @@ rules:
       T (bank transfer), C (cheque), E (EFT). In S/4HANA: use Fiori app F3893.'
   record_fix_template: 'Vendor {LFA1.LIFNR}: ZWELS is {actual_value}. Assign payment methods via FK02 / Fiori app F3893.'
 - id: AP018
-  field: LFA1.BANKS
+  field: LFBK.BANKS
   check_class: null_check
   severity: high
   dimension: completeness
@@ -314,8 +281,14 @@ rules:
     __blank__: 'In ECC: set the bank country via T-code FK02 > General Data > Payment Transactions > Bank Details. In S/4HANA:
       use Fiori app F3893 > Bank Details section.'
   record_fix_template: 'Vendor {LFA1.LIFNR}: BANKS is {actual_value}. Set the bank country via FK02 / Fiori app F3893.'
+  applies_when:
+    LFB1.ZWELS:
+      contains_any:
+      - T
+      - U
+      - E
 - id: AP019
-  field: LFA1.BANKL
+  field: LFBK.BANKL
   check_class: null_check
   severity: high
   dimension: completeness
@@ -329,37 +302,12 @@ rules:
     __blank__: 'In ECC: set the bank key via T-code FK02 > General Data > Payment Transactions > Bank Details. In S/4HANA:
       use Fiori app F3893.'
   record_fix_template: 'Vendor {LFA1.LIFNR}: BANKL is {actual_value}. Set the bank key via FK02 / Fiori app F3893.'
-- id: AP020
-  field: LFA1.BANKN
-  check_class: null_check
-  severity: high
-  dimension: completeness
-  message: Bank account number is required for payment processing
-  why_it_matters: BANKN (bank account number) is the vendor's bank account for receiving payments. Without it, no electronic
-    payments can be made. The automatic payment program F110 requires this field to generate payment files.
-  rule_authority: best_practice
-  sap_impact: No electronic payments possible. F110 payment file generation fails. All payments must be processed manually
-    outside SAP.
-  fix_map:
-    __blank__: 'In ECC: set the bank account number via T-code FK02 > General Data > Payment Transactions > Bank Details.
-      In S/4HANA: use Fiori app F3893.'
-  record_fix_template: 'Vendor {LFA1.LIFNR}: BANKN is {actual_value}. Set the bank account number via FK02 / Fiori app F3893.'
-- id: AP021
-  field: LFA1.KOINH
-  check_class: null_check
-  severity: medium
-  dimension: completeness
-  message: Bank account holder name is recommended for payment verification
-  why_it_matters: KOINH (account holder name) is used for payment verification and appears on remittance advices. Missing
-    account holder names make it difficult to verify that payments are going to the correct beneficiary and may cause bank
-    rejections in jurisdictions requiring beneficiary name matching.
-  rule_authority: best_practice
-  sap_impact: Remittance advices show blank beneficiary name. Bank payment rejections may occur in jurisdictions requiring
-    name matching.
-  fix_map:
-    __blank__: 'In ECC: set the account holder name via T-code FK02 > General Data > Payment Transactions > Bank Details.
-      In S/4HANA: use Fiori app F3893.'
-  record_fix_template: 'Vendor {LFA1.LIFNR}: KOINH is {actual_value}. Set the account holder name via FK02 / Fiori app F3893.'
+  applies_when:
+    LFB1.ZWELS:
+      contains_any:
+      - T
+      - U
+      - E
 - id: AP022
   field: LFA1.TELF1
   check_class: null_check
@@ -394,46 +342,38 @@ rules:
 - id: AP024
   field: LFA1.LIFNR
   check_class: cross_field_check
-  fields:
-  - LFA1.BANKS
-  - LFA1.BANKL
-  - LFA1.BANKN
-  condition: (`LFA1.BANKS`.notna() & `LFA1.BANKS` != '') & ((`LFA1.BANKL`.isna() | `LFA1.BANKL` == '') | (`LFA1.BANKN`.isna()
-    | `LFA1.BANKN` == ''))
   severity: critical
   dimension: consistency
   message: Vendor with bank country must have complete bank details (bank key + account number)
-  why_it_matters: When a vendor has a bank country (BANKS) populated, it indicates that bank details are intended to be maintained.
-    However, if the bank key (BANKL) or account number (BANKN) is missing, the bank details are incomplete and the automatic
-    payment program F110 will fail to generate payment files for this vendor. All three fields must be populated together.
+  why_it_matters: When a vendor has a bank country (BANKS) populated, it indicates that bank details are intended
+    to be maintained. However, if the bank key (BANKL) or account number (BANKN) is missing, the bank details are
+    incomplete and the automatic payment program F110 will fail to generate payment files for this vendor. All three
+    fields must be populated together.
   rule_authority: sap_hard_constraint
-  sap_impact: F110 payment file generation fails due to incomplete bank details. Manual intervention required for every payment
-    to this vendor. Bank validation routines produce errors.
-  fix_map:
-    __other__: 'Vendor has bank country but incomplete bank details. In ECC: complete all bank fields (BANKS, BANKL, BANKN)
-      via T-code FK02 > General Data > Payment Transactions > Bank Details. In S/4HANA: use Fiori app F3893 > Bank Details
-      section.'
-  record_fix_template: 'Vendor {LFA1.LIFNR}: bank country is set but bank key or account number is missing. Complete all bank
-    details via FK02 / Fiori app F3893.'
+  sap_impact: F110 payment file generation fails due to incomplete bank details. Manual intervention required for
+    every payment to this vendor. Bank validation routines produce errors.
+  fix_map: {__other__: 'Vendor has bank country but incomplete bank details. In ECC: complete all bank fields (BANKS,
+      BANKL, BANKN) via T-code FK02 > General Data > Payment Transactions > Bank Details. In S/4HANA: use Fiori
+      app F3893 > Bank Details section.'}
+  record_fix_template: 'Vendor {LFA1.LIFNR}: bank country is set but bank key or account number is missing. Complete
+    all bank details via FK02 / Fiori app F3893.'
+  fail_when: '`LFBK.BANKS`.notna() & (`LFBK.BANKL`.isna() | `LFBK.BANKN`.isna())'
 - id: AP025
   field: LFA1.LIFNR
-  check_class: cross_field_check
-  fields:
-  - LFA1.LIFNR
-  condition: ~`LFA1.LIFNR`.duplicated(keep=False)
+  check_class: uniqueness_check
+  fields: [LFA1.LIFNR]
   severity: critical
   dimension: uniqueness
-  message: "Duplicate vendor numbers detected \u2014 each vendor must be unique"
-  why_it_matters: Duplicate vendor numbers violate the primary key constraint. The migration program will reject duplicates,
-    and any that slip through cause incorrect AP postings, double payments, and broken vendor reporting. This typically indicates
-    a data extraction or consolidation error.
+  message: Duplicate vendor numbers detected — each vendor must be unique
+  why_it_matters: Duplicate vendor numbers violate the primary key constraint. The migration program will reject
+    duplicates, and any that slip through cause incorrect AP postings, double payments, and broken vendor reporting.
+    This typically indicates a data extraction or consolidation error.
   rule_authority: sap_hard_constraint
-  sap_impact: Migration fails on duplicate key insert. Post-migration, duplicate vendors cause double payments, incorrect
-    AP aging, and broken vendor reporting.
-  fix_map:
-    __other__: 'Duplicate vendor number detected. Identify the canonical record and merge or deactivate the duplicate. In
-      ECC: review both records via T-code FK03 and merge outstanding items. In S/4HANA: use Fiori app F3893 to review and
-      BP merge tools to consolidate.'
+  sap_impact: Migration fails on duplicate key insert. Post-migration, duplicate vendors cause double payments,
+    incorrect AP aging, and broken vendor reporting.
+  fix_map: {__other__: 'Duplicate vendor number detected. Identify the canonical record and merge or deactivate
+      the duplicate. In ECC: review both records via T-code FK03 and merge outstanding items. In S/4HANA: use Fiori
+      app F3893 to review and BP merge tools to consolidate.'}
   record_fix_template: 'Vendor {LFA1.LIFNR}: duplicate detected. Review and merge via FK03 / Fiori app F3893.'
 - id: AP026
   field: LFA1.ADRNR
@@ -448,48 +388,6 @@ rules:
   fix_map:
     __blank__: 'In ECC: Set via FK02/XK02. In S/4HANA: Use Fiori app F3893 (Manage Business Partner).'
   record_fix_template: 'Record is missing LFA1.ADRNR. In ECC: Set via FK02/XK02. In S/4HANA: Use Fiori app F3893 (Manage Business
-    Partner).'
-- id: AP027
-  field: LFB1.HBKID
-  check_class: null_check
-  severity: medium
-  dimension: completeness
-  message: House bank is missing
-  why_it_matters: House bank (LFB1.HBKID) is not maintained. This field supports downstream processes and reporting accuracy.
-    Missing data may result in incomplete records or processing gaps.
-  rule_authority: best_practice
-  sap_impact: Missing House bank may cause incomplete data in related transactions and reports.
-  fix_map:
-    __blank__: 'In ECC: Set via FK02/XK02. In S/4HANA: Use Fiori app F3893 (Manage Business Partner).'
-  record_fix_template: 'Record is missing LFB1.HBKID. In ECC: Set via FK02/XK02. In S/4HANA: Use Fiori app F3893 (Manage Business
-    Partner).'
-- id: AP028
-  field: LFB1.LNRZE
-  check_class: null_check
-  severity: low
-  dimension: completeness
-  message: Alternative payee is missing
-  why_it_matters: Alternative payee (LFB1.LNRZE) is not maintained. This field supports downstream processes and reporting
-    accuracy. Missing data may result in incomplete records or processing gaps.
-  rule_authority: best_practice
-  sap_impact: Missing Alternative payee may cause incomplete data in related transactions and reports.
-  fix_map:
-    __blank__: 'In ECC: Set via FK02/XK02. In S/4HANA: Use Fiori app F3893 (Manage Business Partner).'
-  record_fix_template: 'Record is missing LFB1.LNRZE. In ECC: Set via FK02/XK02. In S/4HANA: Use Fiori app F3893 (Manage Business
-    Partner).'
-- id: AP029
-  field: LFB1.PERNR
-  check_class: null_check
-  severity: low
-  dimension: completeness
-  message: Personnel number is missing
-  why_it_matters: Personnel number (LFB1.PERNR) is not maintained. This field supports downstream processes and reporting
-    accuracy. Missing data may result in incomplete records or processing gaps.
-  rule_authority: best_practice
-  sap_impact: Missing Personnel number may cause incomplete data in related transactions and reports.
-  fix_map:
-    __blank__: 'In ECC: Set via FK02/XK02. In S/4HANA: Use Fiori app F3893 (Manage Business Partner).'
-  record_fix_template: 'Record is missing LFB1.PERNR. In ECC: Set via FK02/XK02. In S/4HANA: Use Fiori app F3893 (Manage Business
     Partner).'
 - id: AP030
   field: LFB1.REPRF
@@ -513,26 +411,12 @@ rules:
     __other__: 'Value {invalid_value} is not valid for Double invoice check flag. Allowed values: ['''', ''X''].'
   record_fix_template: 'Record has invalid LFB1.REPRF value ''{actual_value}''. In ECC: Set via FK02/XK02. In S/4HANA: Use
     Fiori app F3893 (Manage Business Partner).'
-- id: AP031
-  field: LFB1.TOGRU
-  check_class: null_check
-  severity: medium
-  dimension: completeness
-  message: Tolerance group is missing
-  why_it_matters: Tolerance group (LFB1.TOGRU) is not maintained. This field supports downstream processes and reporting accuracy.
-    Missing data may result in incomplete records or processing gaps.
-  rule_authority: best_practice
-  sap_impact: Missing Tolerance group may cause incomplete data in related transactions and reports.
-  fix_map:
-    __blank__: 'In ECC: Set via FK02/XK02. In S/4HANA: Use Fiori app F3893 (Manage Business Partner).'
-  record_fix_template: 'Record is missing LFB1.TOGRU. In ECC: Set via FK02/XK02. In S/4HANA: Use Fiori app F3893 (Manage Business
-    Partner).'
 - id: AP032
   field: LFB1.XPORE
   check_class: domain_value_check
   severity: low
   dimension: validity
-  message: Auto payment flag has an invalid value
+  message: Pay-all-items-separately flag (LFB1.XPORE) has an invalid value
   why_it_matters: Auto payment flag (LFB1.XPORE) must contain a valid value. Invalid values may cause errors in downstream
     SAP processes and integrations.
   rule_authority: best_practice
@@ -550,104 +434,158 @@ rules:
   record_fix_template: 'Record has invalid LFB1.XPORE value ''{actual_value}''. In ECC: Set via FK02/XK02. In S/4HANA: Use
     Fiori app F3893 (Manage Business Partner).'
 
-- id: AP033
-  field: LFA1.ERDAT_VENDOR
-  check_class: freshness_check
-  max_age_hours: 17520
-  severity: low
-  dimension: timeliness
-  message: Vendor master not updated in 2+ years — review if bank details, payment terms, and addresses are still current
-  rule_authority: best_practice
-  why_it_matters: "Vendor master records untouched for 2+ years often carry outdated bank details, payment terms, or addresses. Stale banking data is a primary vector for misdirected and fraudulent payments."
-  sap_impact: "Payments may be remitted to closed or changed bank accounts; duplicate or one-time vendors accumulate; supplier reconciliation drifts."
-  fix_map:
-    __blank__: "Re-validate the vendor in FK02 / XK02 (ECC) or Fiori app F3893 Manage Business Partner (S/4HANA): confirm bank details, payment terms, and address against a current supplier statement, then save to refresh the change date."
-  record_fix_template: "Vendor {field} last changed {age_days} days ago. Re-validate bank, payment terms, and address in FK02/XK02 or BP, then save."
 
 - id: AP034
   field: LFA1.STCEG
   check_class: regex_check
-  pattern: "^[A-Z]{2}[0-9A-Z]{5,15}$"
+  pattern: ^[A-Z]{2}[0-9A-Z]{5,15}$
   severity: high
   dimension: accuracy
-  message: Vendor VAT/tax registration number format is invalid — must start with 2-letter country code followed by alphanumeric characters
+  message: Vendor VAT/tax registration number format is invalid — must start with 2-letter country code followed by alphanumeric
+    characters
   why_it_matters: Invalid VAT numbers cause tax reporting errors, rejected electronic invoices, and SARS/HMRC compliance failures.
   rule_authority: best_practice
   sap_impact: Tax reporting includes invalid VAT numbers. E-invoicing is rejected by tax authority. VAT reclaim is disallowed.
   fix_map:
-    __blank__: "Correct the vendor tax number via XK02 > Tax Information tab. Validate against the VIES or SARS database."
+    __blank__: Correct the vendor tax number via XK02 > Tax Information tab. Validate against the VIES or SARS database.
+  applies_when:
+    LFA1.LAND1:
+    - AT
+    - BE
+    - BG
+    - CY
+    - CZ
+    - DE
+    - DK
+    - EE
+    - ES
+    - FI
+    - FR
+    - GR
+    - HR
+    - HU
+    - IE
+    - IT
+    - LT
+    - LU
+    - LV
+    - MT
+    - NL
+    - PL
+    - PT
+    - RO
+    - SE
+    - SI
+    - SK
 
 - id: AP035
   field: LFA1.KTOKK
   check_class: referential_check
-  reference_values: ["0001", "0002", "0003", "0004", "CPD", "KRED"]
   severity: critical
   dimension: consistency
-  message: "Vendor account group KTOKK must reference a valid entry in T077Y"
-  why_it_matters: "KTOKK (vendor account group) drives field selection, number range, partner functions and reconciliation account for a vendor record. A KTOKK that isn't in T077Y means the vendor was created bypassing config or the group was deleted — the record becomes orphaned: XK02 cannot open it and F110 payment runs skip it. In S/4HANA, CVI migration rejects BPs whose vendor role has an unknown KTOKK."
+  message: Vendor account group KTOKK must reference a valid entry in T077K
+  why_it_matters: 'KTOKK (vendor account group) drives field selection, number range, partner functions and reconciliation
+    account for a vendor record. A KTOKK that isn''t in T077Y means the vendor was created bypassing config or the group was
+    deleted — the record becomes orphaned: XK02 cannot open it and F110 payment runs skip it. In S/4HANA, CVI migration rejects
+    BPs whose vendor role has an unknown KTOKK.'
   rule_authority: best_practice
-  sap_impact: "Vendor cannot be maintained (XK02), invoiced (MIRO), or paid (F110). Migration conversion rejects the record. Account-group reporting shows gaps."
+  sap_impact: Vendor cannot be maintained (XK02), invoiced (MIRO), or paid (F110). Migration conversion rejects the record.
+    Account-group reporting shows gaps.
   fix_map:
-    __blank__: "Assign a valid vendor account group via XK02 > General Data. For new vendors the account group is mandatory at FK01 creation."
-    __other__: "Vendor account group '{invalid_value}' is not defined in T077Y. Reassign via XK02 or configure the missing group in SPRO > Financial Accounting > AP/AR > Vendor Accounts > Master Data > Account Groups."
-  record_fix_template: "Vendor {LFA1.LIFNR}: account group '{actual_value}' is not in T077Y."
+    __blank__: Assign a valid vendor account group via XK02 > General Data. For new vendors the account group is mandatory
+      at FK01 creation.
+    __other__: Vendor account group '{invalid_value}' is not defined in T077Y. Reassign via XK02 or configure the missing
+      group in SPRO > Financial Accounting > AP/AR > Vendor Accounts > Master Data > Account Groups.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: account group ''{actual_value}'' is not in T077Y.'
 
 - id: AP036
-  field: LFA1.ZTERM
+  field: LFB1.ZTERM
   check_class: referential_check
-  reference_values: ["0001", "0002", "0003", "0004", "0005", "0006", "0007", "0008", "0009", "0010"]
   severity: high
   dimension: consistency
-  message: "Payment terms ZTERM must reference a valid entry in T052"
-  why_it_matters: "ZTERM determines baseline date, cash-discount windows, and net due date for every AP document. An invalid ZTERM breaks automatic payment (F110) — the program cannot calculate due date and falls back to immediate, potentially triggering overpayments or missed discounts."
+  message: Payment terms LFB1.ZTERM must exist in T052
+  why_it_matters: ZTERM determines baseline date, cash-discount windows, and net due date for every AP document. An invalid
+    ZTERM breaks automatic payment (F110) — the program cannot calculate due date and falls back to immediate, potentially
+    triggering overpayments or missed discounts.
   rule_authority: best_practice
-  sap_impact: "F110 cannot schedule correctly; cash-discount windows missed; payment-timing KPIs degraded."
+  sap_impact: F110 cannot schedule correctly; cash-discount windows missed; payment-timing KPIs degraded.
   fix_map:
-    __blank__: "Assign the correct payment terms via XK02 > Payment Transactions. Default to negotiated vendor terms; if none, use '0003' (Net 30)."
-    __other__: "Payment terms '{invalid_value}' not defined in T052. Reassign via XK02 or create the missing terms in SPRO via OBB8."
-  record_fix_template: "Vendor {LFA1.LIFNR}: payment terms '{actual_value}' not in T052."
+    __blank__: Assign the correct payment terms via XK02 > Payment Transactions. Default to negotiated vendor terms; if none,
+      use '0003' (Net 30).
+    __other__: Payment terms '{invalid_value}' not defined in T052. Reassign via XK02 or create the missing terms in SPRO
+      via OBB8.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: payment terms ''{actual_value}'' not in T052.'
 
 - id: AP037
-  field: LFA1.ZLSCH
+  field: LFB1.ZWELS
   check_class: referential_check
-  reference_values: ["C", "T", "U", "E", "W", "P", "S", "B"]
   severity: medium
   dimension: consistency
-  message: "Payment method ZLSCH must reference a valid entry in T042Z"
-  why_it_matters: "ZLSCH drives which payment-medium program runs for the vendor at F110. An unknown method causes F110 to error ('payment method X not defined for country Y') or silently skip the vendor — the payment file (DMEE/PEXR) is not generated for that record."
+  message: Every payment method in LFB1.ZWELS must exist in T042Z
+  why_it_matters: ZLSCH drives which payment-medium program runs for the vendor at F110. An unknown method causes F110 to
+    error ('payment method X not defined for country Y') or silently skip the vendor — the payment file (DMEE/PEXR) is not
+    generated for that record.
   rule_authority: best_practice
-  sap_impact: "F110 cannot generate payment medium; vendor excluded from automatic payments; manual F-53 required."
+  sap_impact: F110 cannot generate payment medium; vendor excluded from automatic payments; manual F-53 required.
   fix_map:
-    __blank__: "Assign payment method via XK02 > Payment Transactions. Domestic bank transfer = 'T'; check payment = 'C'."
-    __other__: "Payment method '{invalid_value}' not defined in T042Z. Reassign via XK02 or configure in FBZP."
-  record_fix_template: "Vendor {LFA1.LIFNR}: payment method '{actual_value}' not in T042Z."
+    __blank__: Assign payment method via XK02 > Payment Transactions. Domestic bank transfer = 'T'; check payment = 'C'.
+    __other__: Payment method '{invalid_value}' not defined in T042Z. Reassign via XK02 or configure in FBZP.
+  record_fix_template: 'Vendor {LFB1.LIFNR} / company code {LFB1.BUKRS}: payment methods ''{actual_value}'' include a method
+    not in T042Z.'
+  multi_value: chars
 
 - id: AP038
-  field: LFB1.MESSION
+  field: LFB5.MAHNA
   check_class: referential_check
-  reference_values: ["0001", "0002", "0003"]
   severity: low
   dimension: consistency
-  message: "Dunning procedure MESSION must reference a valid entry in T040"
-  why_it_matters: "MESSION determines the dunning cadence (levels, intervals, texts) for overdue vendor items (typically where the vendor is also a customer for netting). An invalid procedure means F150 cannot run dunning for the record."
+  message: Dunning procedure LFB5.MAHNA must exist in T047A
+  why_it_matters: MAHNA determines the dunning cadence (levels, intervals, texts) for overdue vendor items (typically where
+    the vendor is also a customer for netting). An invalid procedure means F150 cannot run dunning for the record.
   rule_authority: best_practice
-  sap_impact: "F150 excludes the vendor from dunning runs; netted items go undunned."
+  sap_impact: F150 excludes the vendor from dunning runs; netted items go undunned.
   fix_map:
-    __blank__: "Assign dunning procedure via XK02 > Correspondence. Only required where the vendor is also dunned for debit items."
-    __other__: "Dunning procedure '{invalid_value}' not in T040. Reassign via XK02 or configure in SPRO via FBMP."
-  record_fix_template: "Vendor {LFA1.LIFNR}: dunning procedure '{actual_value}' not in T040."
+    __blank__: Assign a dunning procedure via FK02 > Correspondence (only needed where the vendor is dunned for debit items).
+    __other__: Dunning procedure '{invalid_value}' is not defined in T047A. Reassign via FK02 or define it in FBMP.
+  record_fix_template: 'Vendor {LFB5.LIFNR} / company code {LFB5.BUKRS}: dunning procedure ''{actual_value}'' not in T047A.'
 
 - id: AP039
   field: LFBK.BANKN
   check_class: null_check
   applies_when:
-    LFA1.ZLSCH: ["T", "U", "E"]
+    LFB1.ZWELS:
+      contains_any: [T, U, E]
   severity: critical
   dimension: completeness
-  message: "Bank account BANKN is mandatory for vendors paid by electronic transfer"
-  why_it_matters: "Payment method T (bank transfer), U (ACH/direct debit), and E (wire) all require a populated vendor bank account on LFBK. An invalid or missing BANKN causes F110 to error out ('no bank details for payment method X') and blocks the entire payment run for all vendors sharing that run. Check-paid vendors (ZLSCH=C) and other non-electronic methods don't need bank details — this rule correctly only applies to electronically-paid records."
+  message: Bank account is mandatory for vendors paid by electronic transfer (LFB1.ZWELS contains T, U or E)
+  why_it_matters: Payment method T (bank transfer), U (ACH/direct debit), and E (wire) all require a populated vendor
+    bank account on LFBK. An invalid or missing BANKN causes F110 to error out ('no bank details for payment method
+    X') and blocks the entire payment run for all vendors sharing that run. Check-paid vendors (ZLSCH=C) and other
+    non-electronic methods don't need bank details — this rule correctly only applies to electronically-paid records.
   rule_authority: sap_hard_constraint
-  sap_impact: "F110 automatic-payment run errors; the vendor is excluded from the run, potentially delaying hundreds of payments in the same batch."
+  sap_impact: F110 automatic-payment run errors; the vendor is excluded from the run, potentially delaying hundreds
+    of payments in the same batch.
+  fix_map: {__blank__: 'Populate bank details via XK02 > Payment Transactions > Bank Details, or change payment
+      method to non-electronic (e.g. ZLSCH=C for check) via the same screen.'}
+  record_fix_template: 'Vendor {LFA1.LIFNR} (payment method {LFB1.ZWELS}): bank account BANKN is missing. Add via
+    XK02 > Bank Details.'
+
+- id: XREC001
+  field: LFB1.AKONT
+  check_class: cross_field_check
+  grain: LFB1
+  fail_when: "`SKB1.MITKZ`.isna() | (`SKB1.MITKZ` != 'K')"
+  applies_when:
+    LFB1.AKONT: {populated: true}
+  severity: critical
+  dimension: consistency
+  message: Reconciliation account is not a vendor reconciliation account in this company code
+  why_it_matters: Every posting to the vendor is mirrored to LFB1.AKONT in the general ledger. SAP checks the
+    account type on entry, but loaded or migrated records can point to an account that is missing in the company
+    code or is not a vendor reconciliation account (SKB1.MITKZ = 'K'), so the sub-ledger no longer reconciles.
+  rule_authority: sap_hard_constraint
+  sap_impact: Postings fail or land on the wrong G/L account; the vendor sub-ledger does not reconcile to the G/L.
   fix_map:
-    __blank__: "Populate bank details via XK02 > Payment Transactions > Bank Details, or change payment method to non-electronic (e.g. ZLSCH=C for check) via the same screen."
-  record_fix_template: "Vendor {LFA1.LIFNR} (payment method {LFA1.ZLSCH}): bank account BANKN is missing. Add via XK02 > Bank Details."
+    __other__: Set a valid vendor reconciliation account (XK02, company code data; BP in S/4HANA), or correct the
+      account's 'reconciliation account for account type' in FS00.
+  record_fix_template: 'Vendor company-code record {LFB1.BUKRS}: reconciliation account {LFB1.AKONT} is not a vendor reconciliation account.'

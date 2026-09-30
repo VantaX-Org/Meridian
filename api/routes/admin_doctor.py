@@ -24,7 +24,9 @@ import os
 from datetime import datetime, timezone
 from typing import Any, Literal
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+
+from api.services.rbac import require_permission
 from pydantic import BaseModel
 
 from api.config import settings
@@ -273,7 +275,7 @@ async def _check_migrations() -> DoctorItem:
         )
 
 
-@router.get("/admin/doctor", response_model=DoctorResponse)
+@router.get("/admin/doctor", response_model=DoctorResponse, dependencies=[Depends(require_permission("manage_system"))])
 async def doctor() -> DoctorResponse:
     """Run every subsystem probe concurrently, return a single summary.
 

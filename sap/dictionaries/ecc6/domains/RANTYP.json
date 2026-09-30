@@ -1,0 +1,62 @@
+{
+ "domain": "RANTYP",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "1",
+   "high": null,
+   "text": "Loans"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Securities"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Lease-Out - Real Estate"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Foreign Exchange"
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "Money Market"
+  },
+  {
+   "low": "6",
+   "high": null,
+   "text": "Derivatives"
+  },
+  {
+   "low": "7",
+   "high": null,
+   "text": "Open Item Transactions"
+  },
+  {
+   "low": "8",
+   "high": null,
+   "text": "Administration Contract - Real Estate"
+  },
+  {
+   "low": "Y",
+   "high": null,
+   "text": "Reserved for Customer Enhancements"
+  },
+  {
+   "low": "Z",
+   "high": null,
+   "text": "Reserved for Customer Enhancements"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

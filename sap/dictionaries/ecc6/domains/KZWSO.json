@@ -1,0 +1,27 @@
+{
+ "domain": "KZWSO",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Alternative unit of measure"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Proportion unit"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Product unit"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

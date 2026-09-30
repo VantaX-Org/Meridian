@@ -2,7 +2,7 @@ module: fleet_management
 target_state: ECC_AND_S4HANA
 rules:
 - id: FLEET001
-  field: FLEET_MASTER.REG_NUMBER
+  field: FLEET.LICENSE_NUM
   check_class: null_check
   severity: critical
   dimension: completeness
@@ -16,28 +16,24 @@ rules:
   fix_map:
     __blank__: 'In ECC: enter registration number via T-code IE02 > Fleet/Classification tab. In S/4HANA: use Fiori app F2723
       (Manage Equipment) or IE02.'
-  record_fix_template: 'Vehicle {FLEET_MASTER.VIN}: REG_NUMBER is {actual_value}. Enter the registration number via IE02 (ECC)
+  record_fix_template: 'Vehicle {FLEET.FLEET_VIN}: REG_NUMBER is {actual_value}. Enter the registration number via IE02 (ECC)
     or Fiori app F2723 (S/4HANA).'
+  applies_when:
+    EQUI.S_FLEET:
+    - X
 - id: FLEET002
-  field: FLEET_MASTER.VEHICLE_TYPE
+  field: FLEET.FLEET_CAT
   check_class: domain_value_check
   severity: high
   dimension: accuracy
   message: Vehicle type must be a valid fleet category
-  allowed_values:
-  - CAR
-  - TRUCK
-  - VAN
-  - BUS
-  - MOTORCYCLE
-  - TRAILER
   valid_values_with_labels:
-    CAR: "Passenger car \u2014 standard light vehicle"
-    TRUCK: "Truck \u2014 heavy goods vehicle"
-    VAN: "Van \u2014 light commercial vehicle"
-    BUS: "Bus \u2014 passenger transport"
-    MOTORCYCLE: "Motorcycle \u2014 two-wheeled vehicle"
-    TRAILER: "Trailer \u2014 non-powered hauled unit"
+    CAR: Passenger car — standard light vehicle
+    TRUCK: Truck — heavy goods vehicle
+    VAN: Van — light commercial vehicle
+    BUS: Bus — passenger transport
+    MOTORCYCLE: Motorcycle — two-wheeled vehicle
+    TRAILER: Trailer — non-powered hauled unit
   why_it_matters: Vehicle type drives maintenance scheduling intervals, insurance categorisation, driver licence requirements,
     and cost centre allocation rules. An invalid type means maintenance plans use wrong intervals, insurance premiums are
     miscalculated, and fleet reports are unreliable.
@@ -47,10 +43,13 @@ rules:
   fix_map:
     __other__: 'Vehicle type ''{invalid_value}'' is not a valid category. Valid types are: CAR, TRUCK, VAN, BUS, MOTORCYCLE,
       TRAILER. In ECC: correct via IE02 > Classification tab. In S/4HANA: use Fiori app F2723 or IE02.'
-  record_fix_template: 'Vehicle {FLEET_MASTER.REG_NUMBER}: VEHICLE_TYPE is ''{actual_value}''. Set to a valid type via IE02
-    (ECC) or Fiori app F2723 (S/4HANA).'
+  record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: VEHICLE_TYPE is ''{actual_value}''. Set to a valid type via IE02 (ECC)
+    or Fiori app F2723 (S/4HANA).'
+  applies_when:
+    EQUI.S_FLEET:
+    - X
 - id: FLEET003
-  field: FLEET_MASTER.VIN
+  field: FLEET.FLEET_VIN
   check_class: null_check
   severity: critical
   dimension: completeness
@@ -63,10 +62,13 @@ rules:
     Theft recovery impossible.
   fix_map:
     __blank__: 'In ECC: enter VIN via IE02 > Fleet/General tab. In S/4HANA: use Fiori app F2723 or IE02.'
-  record_fix_template: 'Vehicle {FLEET_MASTER.REG_NUMBER}: VIN is {actual_value}. Enter the VIN from the vehicle plate via
-    IE02 (ECC) or Fiori app F2723 (S/4HANA).'
+  record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: VIN is {actual_value}. Enter the VIN from the vehicle plate via IE02
+    (ECC) or Fiori app F2723 (S/4HANA).'
+  applies_when:
+    EQUI.S_FLEET:
+    - X
 - id: FLEET004
-  field: FLEET_MASTER.VIN
+  field: FLEET.FLEET_VIN
   check_class: regex_check
   pattern: ^[A-HJ-NPR-Z0-9]{17}$
   severity: high
@@ -81,7 +83,7 @@ rules:
   fix_map:
     __other__: 'VIN ''{invalid_value}'' does not match the ISO 3779 standard (17 chars, no I/O/Q). In ECC: correct via IE02
       > Fleet tab. In S/4HANA: use Fiori app F2723 or IE02.'
-  record_fix_template: 'Vehicle {FLEET_MASTER.REG_NUMBER}: VIN ''{actual_value}'' is non-standard. Verify against the physical
+  record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: VIN ''{actual_value}'' is non-standard. Verify against the physical
     VIN plate and correct via IE02 (ECC) or Fiori app F2723 (S/4HANA).'
 - id: FLEET005
   field: FLEET_MASTER.DRIVER_ID
@@ -98,8 +100,11 @@ rules:
   fix_map:
     __blank__: 'In ECC: assign driver via IE02 > Fleet tab using the personnel number. In S/4HANA: use Fiori app F2723 or
       IE02.'
-  record_fix_template: 'Vehicle {FLEET_MASTER.REG_NUMBER}: DRIVER_ID is {actual_value}. Assign the current driver via IE02
-    (ECC) or Fiori app F2723 (S/4HANA).'
+  record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: DRIVER_ID is {actual_value}. Assign the current driver via IE02 (ECC)
+    or Fiori app F2723 (S/4HANA).'
+  applies_when:
+    EQUI.S_FLEET:
+    - X
 - id: FLEET006
   field: FLEET_MASTER.LAST_SERVICE_DATE
   check_class: null_check
@@ -114,8 +119,11 @@ rules:
     reporting incomplete.
   fix_map:
     __blank__: 'In ECC: enter last service date via IE02 > Fleet tab. In S/4HANA: use Fiori app F2723 or IE02.'
-  record_fix_template: 'Vehicle {FLEET_MASTER.REG_NUMBER}: LAST_SERVICE_DATE is {actual_value}. Enter the most recent service
-    date via IE02 (ECC) or Fiori app F2723 (S/4HANA).'
+  record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: LAST_SERVICE_DATE is {actual_value}. Enter the most recent service date
+    via IE02 (ECC) or Fiori app F2723 (S/4HANA).'
+  applies_when:
+    EQUI.S_FLEET:
+    - X
 - id: FLEET007
   field: FLEET_MASTER.SERVICE_KM
   check_class: null_check
@@ -129,31 +137,32 @@ rules:
     and warranty compliance at risk.
   fix_map:
     __blank__: 'In ECC: set service interval via IE02 > Fleet tab. In S/4HANA: use Fiori app F2723 or IE02.'
-  record_fix_template: 'Vehicle {FLEET_MASTER.REG_NUMBER}: SERVICE_KM is {actual_value}. Set the service interval via IE02
-    (ECC) or Fiori app F2723 (S/4HANA).'
+  record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: SERVICE_KM is {actual_value}. Set the service interval via IE02 (ECC)
+    or Fiori app F2723 (S/4HANA).'
+  applies_when:
+    EQUI.S_FLEET:
+    - X
 - id: FLEET008
   field: FLEET_MASTER.SERVICE_KM
-  fields:
-  - FLEET_MASTER.SERVICE_KM
-  - FLEET_MASTER.CURRENT_KM
   check_class: cross_field_check
-  condition: '`FLEET_MASTER.SERVICE_KM` > `FLEET_MASTER.CURRENT_KM`'
   severity: high
-  dimension: consistency
-  message: Last service KM must not exceed current odometer reading
-  why_it_matters: "If SERVICE_KM (the odometer at last service) exceeds CURRENT_KM (current odometer), the data is logically\
-    \ inconsistent \u2014 the vehicle cannot have been serviced at a higher mileage than it currently shows. This indicates\
-    \ either an odometer rollback, data entry error, or a unit mismatch (km vs miles)."
+  dimension: timeliness
+  message: Vehicle has passed its next-service odometer reading — service overdue
+  why_it_matters: If SERVICE_KM (the odometer at last service) exceeds CURRENT_KM (current odometer), the data is logically
+    inconsistent — the vehicle cannot have been serviced at a higher mileage than it currently shows. This indicates either
+    an odometer rollback, data entry error, or a unit mismatch (km vs miles).
   rule_authority: best_practice
   sap_impact: Next service calculation produces negative distance-to-service. Maintenance notifications may fire incorrectly
     or not at all.
   fix_map:
     __blank__: 'In ECC: verify the odometer and service records, then correct via IE02 > Fleet tab. In S/4HANA: use Fiori
       app F2723 or IE02.'
-  record_fix_template: 'Vehicle {FLEET_MASTER.REG_NUMBER}: SERVICE_KM ({actual_value}) exceeds CURRENT_KM. Verify odometer
-    readings and correct via IE02 (ECC) or Fiori app F2723 (S/4HANA).'
+  record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: SERVICE_KM ({actual_value}) exceeds CURRENT_KM. Verify odometer readings
+    and correct via IE02 (ECC) or Fiori app F2723 (S/4HANA).'
+  fail_when: '`FLEET_MASTER.SERVICE_KM` < `FLEET_MASTER.CURRENT_KM`'
+  require_populated: true
 - id: FLEET009
-  field: FLEET_MASTER.COST_CENTRE
+  field: ILOA.KOSTL
   check_class: null_check
   severity: medium
   dimension: completeness
@@ -167,10 +176,13 @@ rules:
   fix_map:
     __blank__: 'In ECC: assign cost centre via IE02 > Organisation tab. In S/4HANA: use Fiori app F2723 or IE02 > Organisation
       tab.'
-  record_fix_template: 'Vehicle {FLEET_MASTER.REG_NUMBER}: COST_CENTRE is {actual_value}. Assign the correct cost centre via
-    IE02 (ECC) or Fiori app F2723 (S/4HANA).'
+  record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: COST_CENTRE is {actual_value}. Assign the correct cost centre via IE02
+    (ECC) or Fiori app F2723 (S/4HANA).'
+  applies_when:
+    EQUI.S_FLEET:
+    - X
 - id: FLEET010
-  field: FLEET_MASTER.MAKE
+  field: EQUI.HERST
   check_class: null_check
   severity: medium
   dimension: completeness
@@ -183,10 +195,13 @@ rules:
     be matched by manufacturer.
   fix_map:
     __blank__: 'In ECC: enter vehicle make via IE02 > Fleet tab. In S/4HANA: use Fiori app F2723 or IE02.'
-  record_fix_template: 'Vehicle {FLEET_MASTER.REG_NUMBER}: MAKE is {actual_value}. Enter the manufacturer via IE02 (ECC) or
-    Fiori app F2723 (S/4HANA).'
+  record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: MAKE is {actual_value}. Enter the manufacturer via IE02 (ECC) or Fiori
+    app F2723 (S/4HANA).'
+  applies_when:
+    EQUI.S_FLEET:
+    - X
 - id: FLEET011
-  field: FLEET_MASTER.MODEL
+  field: EQUI.TYPBZ
   check_class: null_check
   severity: medium
   dimension: completeness
@@ -198,10 +213,13 @@ rules:
     specifications unavailable.
   fix_map:
     __blank__: 'In ECC: enter vehicle model via IE02 > Fleet tab. In S/4HANA: use Fiori app F2723 or IE02.'
-  record_fix_template: 'Vehicle {FLEET_MASTER.REG_NUMBER}: MODEL is {actual_value}. Enter the model via IE02 (ECC) or Fiori
-    app F2723 (S/4HANA).'
+  record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: MODEL is {actual_value}. Enter the model via IE02 (ECC) or Fiori app
+    F2723 (S/4HANA).'
+  applies_when:
+    EQUI.S_FLEET:
+    - X
 - id: FLEET012
-  field: FLEET_MASTER.YEAR
+  field: EQUI.BAUJJ
   check_class: regex_check
   pattern: ^(19|20)\d{2}$
   severity: medium
@@ -215,7 +233,7 @@ rules:
   fix_map:
     __other__: 'Vehicle year ''{invalid_value}'' is not a valid 4-digit year. In ECC: correct via IE02 > Fleet tab. In S/4HANA:
       use Fiori app F2723 or IE02.'
-  record_fix_template: 'Vehicle {FLEET_MASTER.REG_NUMBER}: YEAR ''{actual_value}'' is invalid. Enter the correct manufacturing
+  record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: YEAR ''{actual_value}'' is invalid. Enter the correct manufacturing
     year via IE02 (ECC) or Fiori app F2723 (S/4HANA).'
 - id: FLEET013
   field: FLEET_MASTER.CURRENT_KM
@@ -230,14 +248,17 @@ rules:
     cannot be assessed.
   fix_map:
     __blank__: 'In ECC: enter current odometer via IE02 > Fleet tab. In S/4HANA: use Fiori app F2723 or IE02.'
-  record_fix_template: 'Vehicle {FLEET_MASTER.REG_NUMBER}: CURRENT_KM is {actual_value}. Enter the current odometer reading
-    via IE02 (ECC) or Fiori app F2723 (S/4HANA).'
+  record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: CURRENT_KM is {actual_value}. Enter the current odometer reading via
+    IE02 (ECC) or Fiori app F2723 (S/4HANA).'
+  applies_when:
+    EQUI.S_FLEET:
+    - X
 - id: FLEET014
   field: FLEET_MASTER.INSURANCE_EXPIRY
   check_class: null_check
   severity: critical
   dimension: completeness
-  message: "Insurance expiry date is mandatory for compliance \u2014 uninsured vehicles cannot operate"
+  message: Insurance expiry date is mandatory for compliance — uninsured vehicles cannot operate
   why_it_matters: INSURANCE_EXPIRY tracks when the vehicle's insurance policy expires. Operating a vehicle without valid insurance
     is illegal in most jurisdictions and exposes the organisation to significant financial liability. Missing expiry dates
     mean the fleet management system cannot alert before insurance lapses.
@@ -246,14 +267,17 @@ rules:
     Fleet compliance report incomplete.
   fix_map:
     __blank__: 'In ECC: enter insurance expiry via IE02 > Fleet tab. In S/4HANA: use Fiori app F2723 or IE02.'
-  record_fix_template: 'Vehicle {FLEET_MASTER.REG_NUMBER}: INSURANCE_EXPIRY is {actual_value}. Enter the insurance expiry
-    date via IE02 (ECC) or Fiori app F2723 (S/4HANA).'
+  record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: INSURANCE_EXPIRY is {actual_value}. Enter the insurance expiry date via
+    IE02 (ECC) or Fiori app F2723 (S/4HANA).'
+  applies_when:
+    EQUI.S_FLEET:
+    - X
 - id: FLEET015
-  field: FLEET_MASTER.LICENSE_EXPIRY
+  field: FLEET.EXPIRY_DATE
   check_class: null_check
   severity: critical
   dimension: completeness
-  message: "License expiry date is mandatory \u2014 expired license means vehicle cannot be on the road"
+  message: License expiry date is mandatory — expired license means vehicle cannot be on the road
   why_it_matters: LICENSE_EXPIRY tracks when the vehicle's operating license (road tax disc) expires. An expired license means
     the vehicle cannot legally be on public roads. Missing expiry dates prevent the fleet system from generating renewal alerts.
   rule_authority: sap_hard_constraint
@@ -261,8 +285,11 @@ rules:
     compliance reporting incomplete.
   fix_map:
     __blank__: 'In ECC: enter license expiry via IE02 > Fleet tab. In S/4HANA: use Fiori app F2723 or IE02.'
-  record_fix_template: 'Vehicle {FLEET_MASTER.REG_NUMBER}: LICENSE_EXPIRY is {actual_value}. Enter the license expiry date
-    via IE02 (ECC) or Fiori app F2723 (S/4HANA).'
+  record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: LICENSE_EXPIRY is {actual_value}. Enter the license expiry date via IE02
+    (ECC) or Fiori app F2723 (S/4HANA).'
+  applies_when:
+    EQUI.S_FLEET:
+    - X
 - id: FLEET016
   field: FLEET_MASTER.NEXT_SERVICE_DUE
   check_class: null_check
@@ -277,20 +304,24 @@ rules:
     __blank__: 'In ECC: Set via IE02 (Equipment Master). In S/4HANA: Use Fiori app F4283.'
   record_fix_template: 'Record is missing FLEET_MASTER.NEXT_SERVICE_DUE. In ECC: Set via IE02 (Equipment Master). In S/4HANA:
     Use Fiori app F4283.'
+  applies_when:
+    EQUI.S_FLEET:
+    - X
 
 - id: FLEET017
-  field: FLEET_MASTER.REG_NUMBER
-  check_class: cross_field_check
-  fields: ['FLEET_MASTER.REG_NUMBER']
-  condition: "~`FLEET_MASTER.REG_NUMBER`.duplicated(keep=False)"
+  field: FLEET.LICENSE_NUM
+  check_class: uniqueness_check
+  fields: [FLEET.LICENSE_NUM]
   severity: critical
   dimension: uniqueness
   message: Duplicate vehicle registration numbers detected — each vehicle must be unique
-  why_it_matters: Duplicate registrations cause incorrect cost allocation, doubled insurance premiums, and fleet size overstatement. Each vehicle must have a unique registration.
+  why_it_matters: Duplicate registrations cause incorrect cost allocation, doubled insurance premiums, and fleet
+    size overstatement. Each vehicle must have a unique registration.
   rule_authority: sap_hard_constraint
-  sap_impact: Maintenance costs are allocated to wrong vehicle. Insurance and licence costs are doubled. Fleet utilisation reports are unreliable.
-  fix_map:
-    __blank__: "Identify duplicate vehicle records. Merge or archive the duplicate via fleet management transaction. Update all linked maintenance orders."
+  sap_impact: Maintenance costs are allocated to wrong vehicle. Insurance and licence costs are doubled. Fleet utilisation
+    reports are unreliable.
+  fix_map: {__blank__: Identify duplicate vehicle records. Merge or archive the duplicate via fleet management transaction.
+      Update all linked maintenance orders.}
 
 - id: FLEET018
   field: FLEET_MASTER.LAST_SERVICE_DATE

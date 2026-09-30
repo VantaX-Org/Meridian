@@ -1,0 +1,207 @@
+{
+ "domain": "INTAG_EB",
+ "type": "NUMC",
+ "length": 3,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "000",
+   "high": null,
+   "text": "000: No interpretation"
+  },
+  {
+   "low": "001",
+   "high": null,
+   "text": "001: Standard algorithm"
+  },
+  {
+   "low": "011",
+   "high": null,
+   "text": "011:Outgoing Check: Check No. Different from Pymt Doc. No."
+  },
+  {
+   "low": "012",
+   "high": null,
+   "text": "012: Outgoing check: check number same as payment doc.no."
+  },
+  {
+   "low": "013",
+   "high": null,
+   "text": "013: Outgoing check: check number = or <> payment doc.no."
+  },
+  {
+   "low": "015",
+   "high": null,
+   "text": "015: Clearing transaction: selection using assignment"
+  },
+  {
+   "low": "019",
+   "high": null,
+   "text": "019: Reference no. (DME management)"
+  },
+  {
+   "low": "020",
+   "high": null,
+   "text": "020: Document number search"
+  },
+  {
+   "low": "021",
+   "high": null,
+   "text": "021: Reference document number search"
+  },
+  {
+   "low": "022",
+   "high": null,
+   "text": "022: Bank transfer method (Germany only) with doc.numbers"
+  },
+  {
+   "low": "023",
+   "high": null,
+   "text": "023 Bank transfer method (Germany only) with ref.numbers"
+  },
+  {
+   "low": "024",
+   "high": null,
+   "text": "024: Reserved"
+  },
+  {
+   "low": "025",
+   "high": null,
+   "text": "025: Invoice list"
+  },
+  {
+   "low": "026",
+   "high": null,
+   "text": "026: Ref.doc.no. - Search with preceding zeroes if <10"
+  },
+  {
+   "low": "027",
+   "high": null,
+   "text": "027: Reference number (TIT0)"
+  },
+  {
+   "low": "028",
+   "high": null,
+   "text": "028: Reference number using MULTICASH conversion programs"
+  },
+  {
+   "low": "029",
+   "high": null,
+   "text": "029: Payment order number"
+  },
+  {
+   "low": "030",
+   "high": null,
+   "text": "030: Brazilian search using BELNR, GJAHR, and BUZEI"
+  },
+  {
+   "low": "031",
+   "high": null,
+   "text": "031: Document number search (customer number from doc.line)"
+  },
+  {
+   "low": "032",
+   "high": null,
+   "text": "032: Look for EDI payment advice"
+  },
+  {
+   "low": "033",
+   "high": null,
+   "text": "033 Search for Payment Advice Notes"
+  },
+  {
+   "low": "034",
+   "high": null,
+   "text": "034 Finland Reference Number for Payment Order with RFFOFI_A"
+  },
+  {
+   "low": "035",
+   "high": null,
+   "text": "035 Search for structured payment notes -> SAP Note 555352"
+  },
+  {
+   "low": "050",
+   "high": null,
+   "text": "050: REAL ESTATE: First standard, then rental agrmt search"
+  },
+  {
+   "low": "051",
+   "high": null,
+   "text": "051: REAL ESTATE: Rental agreement search, then standard"
+  },
+  {
+   "low": "060",
+   "high": null,
+   "text": "060 Document Number Search for Clearing Documents"
+  },
+  {
+   "low": "120",
+   "high": null,
+   "text": "120 Document Number Search Without Test Read"
+  },
+  {
+   "low": "121",
+   "high": null,
+   "text": "121 Reference Document Number Search Without Test Read"
+  },
+  {
+   "low": "221",
+   "high": null,
+   "text": "221 RefDocNo. as 021 with Payment Service Provider Reconcil."
+  },
+  {
+   "low": "226",
+   "high": null,
+   "text": "226 RefDocNo. as 026 with Payment Service Provider Reconcil."
+  },
+  {
+   "low": "901",
+   "high": null,
+   "text": "901: Customer-Specific Interpretation Algorithm 1"
+  },
+  {
+   "low": "902",
+   "high": null,
+   "text": "902: Customer-Specific Interpretation Algorithm 2"
+  },
+  {
+   "low": "903",
+   "high": null,
+   "text": "903: Customer-Specific Interpretation Algorithm 3"
+  },
+  {
+   "low": "904",
+   "high": null,
+   "text": "904: Customer-Specific Interpretation Algorithm 4"
+  },
+  {
+   "low": "905",
+   "high": null,
+   "text": "905: Customer-Specific Interpretation Algorithm 5"
+  },
+  {
+   "low": "906",
+   "high": null,
+   "text": "906: Customer-Specific Interpretation Algorithm 6"
+  },
+  {
+   "low": "907",
+   "high": null,
+   "text": "907: Customer-Specific Interpretation Algorithm 7"
+  },
+  {
+   "low": "908",
+   "high": null,
+   "text": "908: Customer-Specific Interpretation Algorithm 8"
+  },
+  {
+   "low": "909",
+   "high": null,
+   "text": "909 Customer-Specific Interpretation Algorithm 9"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

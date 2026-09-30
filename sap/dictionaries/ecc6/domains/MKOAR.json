@@ -1,0 +1,57 @@
+{
+ "domain": "MKOAR",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "+",
+   "high": null,
+   "text": "Valid for all account types"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Assets"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "CO-PA: Profitability Analysis"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Customers"
+  },
+  {
+   "low": "G",
+   "high": null,
+   "text": "Special Purpose Ledger"
+  },
+  {
+   "low": "K",
+   "high": null,
+   "text": "Vendors"
+  },
+  {
+   "low": "M",
+   "high": null,
+   "text": "Materials"
+  },
+  {
+   "low": "S",
+   "high": null,
+   "text": "G/L accounts"
+  },
+  {
+   "low": "V",
+   "high": null,
+   "text": "Contract accounts"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,623 @@
+{
+ "table": "EQUZ",
+ "description": "Equipment time segment",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "EQUNR",
+   "key": true,
+   "data_element": "EQUNR",
+   "domain": "EQUNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Equipment Number",
+   "check_table": "EQUI"
+  },
+  {
+   "pos": 3,
+   "name": "DATBI",
+   "key": true,
+   "data_element": "DATBI",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Valid To Date",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "EQLFN",
+   "key": true,
+   "data_element": "EQLFN",
+   "domain": "NUM03",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Consecutive numbering of EquipUsagePeriods on same day",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "EQUZN",
+   "key": false,
+   "data_element": "EQNNR",
+   "domain": "NUM03",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Number of next EquipUsagePeriod on same day",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "ERDAT",
+   "key": false,
+   "data_element": "ERDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date on which the record was created",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "ERNAM",
+   "key": false,
+   "data_element": "ERNAM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of Person who Created the Object",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "AEDAT",
+   "key": false,
+   "data_element": "AEDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Last Changed On",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "AENAM",
+   "key": false,
+   "data_element": "AENAM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of Person Who Changed Object",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "TIMBI",
+   "key": false,
+   "data_element": "TIMBI",
+   "domain": "ZEITBI",
+   "type": "TIMS",
+   "length": 6,
+   "decimals": 0,
+   "description": "Equipment usage period time stamp",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "ESTAI",
+   "key": false,
+   "data_element": "RESERVE_CHAR_001",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "SAP Development Reserve: Format CHAR, Length 1",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "ESTAE",
+   "key": false,
+   "data_element": "RESERVE_CHAR_004",
+   "domain": "CHAR4",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "SAP Development reserve: Format CHAR, length 4",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "STNAM",
+   "key": false,
+   "data_element": "RESERVE_CHAR_012",
+   "domain": "CHAR12",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "SAP Development Reserve: Format CHAR, Length 12",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "LVORM",
+   "key": false,
+   "data_element": "RESERVE_CHAR_001",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "SAP Development Reserve: Format CHAR, Length 1",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "DATAB",
+   "key": false,
+   "data_element": "DATAB",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Valid-From Date",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "IWERK",
+   "key": false,
+   "data_element": "IWERK",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Maintenance Planning Plant",
+   "check_table": "T399I"
+  },
+  {
+   "pos": 17,
+   "name": "IWERKI",
+   "key": false,
+   "data_element": "INHER",
+   "domain": "INHER",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Data origin indicator",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "SUBMT",
+   "key": false,
+   "data_element": "SUBMT",
+   "domain": "MATNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Construction Type Material of the Object",
+   "check_table": "MARA"
+  },
+  {
+   "pos": 19,
+   "name": "MAPAR",
+   "key": false,
+   "data_element": "MAPAR",
+   "domain": "MAPAR",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Manufacturer part number",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "HEQUI",
+   "key": false,
+   "data_element": "HEQUI",
+   "domain": "EQUNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Superordinate Equipment",
+   "check_table": "EQUI"
+  },
+  {
+   "pos": 21,
+   "name": "HEQNR",
+   "key": false,
+   "data_element": "HEQNR",
+   "domain": "CHAR4",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Equipment position at InstallLoc (Superior Equip./FunctLoc)",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "INGRP",
+   "key": false,
+   "data_element": "INGRP",
+   "domain": "INGRP",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Planner Group for Customer Service and Plant Maintenance",
+   "check_table": "T024I"
+  },
+  {
+   "pos": 23,
+   "name": "INGRPI",
+   "key": false,
+   "data_element": "INHER",
+   "domain": "INHER",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Data origin indicator",
+   "check_table": null
+  },
+  {
+   "pos": 24,
+   "name": "PM_OBJTY",
+   "key": false,
+   "data_element": "PM_OBJTY",
+   "domain": "CR_OBJTY",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Object Type of CIM Resources for Work Center",
+   "check_table": null
+  },
+  {
+   "pos": 25,
+   "name": "GEWRK",
+   "key": false,
+   "data_element": "LGWID",
+   "domain": "CR_OBJID",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Object ID of the Work Center",
+   "check_table": "CRID"
+  },
+  {
+   "pos": 26,
+   "name": "GEWRKI",
+   "key": false,
+   "data_element": "INHER",
+   "domain": "INHER",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Data origin indicator",
+   "check_table": null
+  },
+  {
+   "pos": 27,
+   "name": "TIDNR",
+   "key": false,
+   "data_element": "TIDNR",
+   "domain": "TIDNR",
+   "type": "CHAR",
+   "length": 25,
+   "decimals": 0,
+   "description": "Technical identification number",
+   "check_table": null
+  },
+  {
+   "pos": 28,
+   "name": "TIDNRI",
+   "key": false,
+   "data_element": "INHER",
+   "domain": "INHER",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Data origin indicator",
+   "check_table": null
+  },
+  {
+   "pos": 29,
+   "name": "ILOAN",
+   "key": false,
+   "data_element": "ILOAN",
+   "domain": "ILOAN",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Location and account assignment for technical object",
+   "check_table": "ILOA"
+  },
+  {
+   "pos": 30,
+   "name": "KUND1",
+   "key": false,
+   "data_element": "KUND1",
+   "domain": "KUNNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Customer No.",
+   "check_table": "KNA1"
+  },
+  {
+   "pos": 31,
+   "name": "KUND2",
+   "key": false,
+   "data_element": "KUND2",
+   "domain": "KUNNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "End customer number",
+   "check_table": "KNA1"
+  },
+  {
+   "pos": 32,
+   "name": "KUND3",
+   "key": false,
+   "data_element": "KUND3",
+   "domain": "KUNNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Operator",
+   "check_table": "KNA1"
+  },
+  {
+   "pos": 33,
+   "name": "LIZNR",
+   "key": false,
+   "data_element": "LIZNR",
+   "domain": "CHAR20",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "Equipment license number",
+   "check_table": null
+  },
+  {
+   "pos": 34,
+   "name": "RBNR",
+   "key": false,
+   "data_element": "RBNR",
+   "domain": "RBNR",
+   "type": "CHAR",
+   "length": 9,
+   "decimals": 0,
+   "description": "Report layout",
+   "check_table": "T352B"
+  },
+  {
+   "pos": 35,
+   "name": "EZDAT",
+   "key": false,
+   "data_element": "EQDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date",
+   "check_table": null
+  },
+  {
+   "pos": 36,
+   "name": "EZBER",
+   "key": false,
+   "data_element": "EQBER",
+   "domain": "CHAR30",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Text for Notes",
+   "check_table": null
+  },
+  {
+   "pos": 37,
+   "name": "EZNUM",
+   "key": false,
+   "data_element": "EQNUM",
+   "domain": "NUM9",
+   "type": "NUMC",
+   "length": 9,
+   "decimals": 0,
+   "description": "Numerical Field",
+   "check_table": null
+  },
+  {
+   "pos": 38,
+   "name": "RBNR_I",
+   "key": false,
+   "data_element": "INHER",
+   "domain": "INHER",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Data origin indicator",
+   "check_table": null
+  },
+  {
+   "pos": 39,
+   "name": "IBLNR",
+   "key": false,
+   "data_element": "IBLNR",
+   "domain": "BELNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Physical inventory document",
+   "check_table": null
+  },
+  {
+   "pos": 40,
+   "name": "BLDAT",
+   "key": false,
+   "data_element": "BLDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Document Date in Document",
+   "check_table": null
+  },
+  {
+   "pos": 41,
+   "name": "PVS_FOCUS",
+   "key": false,
+   "data_element": "PVS_GUID_CCC",
+   "domain": "SYSUUID",
+   "type": "RAW",
+   "length": 16,
+   "decimals": 0,
+   "description": "Internal Identification for PVS Objects",
+   "check_table": null
+  },
+  {
+   "pos": 42,
+   "name": "PPEGUID",
+   "key": false,
+   "data_element": "PVS_GUID_CCC",
+   "domain": "SYSUUID",
+   "type": "RAW",
+   "length": 16,
+   "decimals": 0,
+   "description": "Internal Identification for PVS Objects",
+   "check_table": null
+  },
+  {
+   "pos": 43,
+   "name": "TECHS",
+   "key": false,
+   "data_element": "TECHS",
+   "domain": "TECHS",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Parameter Variant/Standard Variant",
+   "check_table": null
+  },
+  {
+   "pos": 44,
+   "name": "FUNCID",
+   "key": false,
+   "data_element": "CCC_FUNCID",
+   "domain": "CHAR40",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Function Identifier",
+   "check_table": null
+  },
+  {
+   "pos": 45,
+   "name": "FRCFIT",
+   "key": false,
+   "data_element": "CCC_FRCFIT",
+   "domain": "XCHAR",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Forced Installation/Dismantling",
+   "check_table": null
+  },
+  {
+   "pos": 46,
+   "name": "FRCRMV",
+   "key": false,
+   "data_element": "CCC_FRCRMV",
+   "domain": "XCHAR",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Force Dismantling Flag",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "EQUNR",
+   "foreign_table": "EQUI",
+   "foreign_field": "EQUNR"
+  },
+  {
+   "field": "GEWRK",
+   "foreign_table": "CRID",
+   "foreign_field": "OBJID"
+  },
+  {
+   "field": "HEQUI",
+   "foreign_table": "EQUI",
+   "foreign_field": "EQUNR"
+  },
+  {
+   "field": "ILOAN",
+   "foreign_table": "ILOA",
+   "foreign_field": "ILOAN"
+  },
+  {
+   "field": "INGRP",
+   "foreign_table": "T024I",
+   "foreign_field": "INGRP"
+  },
+  {
+   "field": "IWERK",
+   "foreign_table": "T399I",
+   "foreign_field": "IWERK"
+  },
+  {
+   "field": "KUND1",
+   "foreign_table": "KNA1",
+   "foreign_field": "KUNNR"
+  },
+  {
+   "field": "KUND2",
+   "foreign_table": "KNA1",
+   "foreign_field": "KUNNR"
+  },
+  {
+   "field": "KUND3",
+   "foreign_table": "KNA1",
+   "foreign_field": "KUNNR"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "RBNR",
+   "foreign_table": "T352B",
+   "foreign_field": "RBNR"
+  },
+  {
+   "field": "SUBMT",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  }
+ ]
+}

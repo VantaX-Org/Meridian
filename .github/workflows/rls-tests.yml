@@ -8,6 +8,13 @@ on:
       - "api/middleware/tenant.py"
       - "api/deps.py"
       - "tests/test_rls_integration.py"
+      - "tests/test_record_issues_pg.py"
+      - "api/services/record_issues.py"
+      - "api/services/contract_compliance.py"
+      - "api/services/mdm_merge.py"
+      - "api/routes/record_issues.py"
+      - "api/routes/versions.py"
+      - "requirements.txt"
       - ".github/workflows/rls-tests.yml"
   push:
     branches: [main]
@@ -35,7 +42,7 @@ jobs:
 
     env:
       MERIDIAN_TEST_DB_URL: postgresql://meridian_test:meridian_test@localhost:5432/meridian_test
-      DATABASE_URL: postgresql://meridian_test:meridian_test@localhost:5432/meridian_test
+      DATABASE_URL: postgresql+asyncpg://meridian_test:meridian_test@localhost:5432/meridian_test
       DATABASE_URL_SYNC: postgresql://meridian_test:meridian_test@localhost:5432/meridian_test
       # Alembic env.py reads these; give it what it needs to connect.
       PYTHONUNBUFFERED: "1"
@@ -52,16 +59,9 @@ jobs:
       - name: Install deps
         run: |
           python -m pip install --upgrade pip
-          # Install only what's required for migrations + tests — keeps the CI
-          # fast and avoids pulling LLM wheels for an RLS check.
-          pip install \
-            "sqlalchemy[asyncio]>=2.0.36" \
-            "alembic>=1.14.0" \
-            "psycopg2-binary>=2.9.10" \
-            "pytest>=8.0.0" \
-            "pytest-asyncio>=0.24.0" \
-            "pydantic-settings>=2.7.0" \
-            "pyyaml>=6.0.0"
+          # Pinned app requirements (the record-lifecycle tests exercise the API
+          # routes through asyncpg and the worker service through psycopg2).
+          pip install -r requirements.txt "pytest>=8.0.0" "pytest-asyncio>=0.24.0"
 
-      - name: Run RLS tests
-        run: pytest -v tests/test_rls_integration.py
+      - name: Run database integration tests
+        run: pytest -v tests/test_rls_integration.py tests/test_record_issues_pg.py

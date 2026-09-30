@@ -1,0 +1,11 @@
+{
+ "domain": "OIL_ABFAC",
+ "type": "DEC",
+ "length": 2,
+ "decimals": 1,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": "OIL_ABFAC_VALUES",
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,37 @@
+{
+ "domain": "RESTRIKEND",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "1",
+   "high": null,
+   "text": "Must finish on"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Cannot finish before"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Finish not later"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Finish from confirmation"
+  },
+  {
+   "low": "",
+   "high": null,
+   "text": ""
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

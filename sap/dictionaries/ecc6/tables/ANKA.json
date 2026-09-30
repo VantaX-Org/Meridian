@@ -1,0 +1,807 @@
+{
+ "table": "ANKA",
+ "description": "Asset classes:  general data",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "ANLKL",
+   "key": true,
+   "data_element": "ANLKL",
+   "domain": "ANLKL",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Asset Class",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "ERNAM",
+   "key": false,
+   "data_element": "ERNAM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of Person who Created the Object",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "ERDAT",
+   "key": false,
+   "data_element": "ERDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date on which the record was created",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "AENAM",
+   "key": false,
+   "data_element": "AENAM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of Person Who Changed Object",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "AEDAT",
+   "key": false,
+   "data_element": "AEDAT_ANLA",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Changed on",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "XLOEV",
+   "key": false,
+   "data_element": "XLOEV_ANKA",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Ind.: Asseet class marked for deletion",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "XSPEA",
+   "key": false,
+   "data_element": "XSPEA_ANKA",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Asset class is blocked",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "XOPVW",
+   "key": false,
+   "data_element": "OPVWA",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Asset under construct. with line item settlement",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "NUMKR",
+   "key": false,
+   "data_element": "NUMKR",
+   "domain": "CHAR2",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Number range",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "KTOGR",
+   "key": false,
+   "data_element": "KTOGR",
+   "domain": "KTOGR",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Account determination",
+   "check_table": "T095A"
+  },
+  {
+   "pos": 12,
+   "name": "ANKAR",
+   "key": false,
+   "data_element": "ANKAR",
+   "domain": "TDFORMNEW",
+   "type": "CHAR",
+   "length": 16,
+   "decimals": 0,
+   "description": "Layout set name for asset history",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "FELEI",
+   "key": false,
+   "data_element": "FELEI",
+   "domain": "FELEI",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Screen layout for Asset Accounting",
+   "check_table": "T082A"
+  },
+  {
+   "pos": 14,
+   "name": "BEGRU",
+   "key": false,
+   "data_element": "BEGRU",
+   "domain": "BEGRU",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Authorization Group",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "ZUAWA",
+   "key": false,
+   "data_element": "DZUAWA",
+   "domain": "ZUAWA",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Key for sorting according to assignment numbers",
+   "check_table": "TZUN"
+  },
+  {
+   "pos": 16,
+   "name": "GSBER",
+   "key": false,
+   "data_element": "GSBER",
+   "domain": "GSBER",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Business Area",
+   "check_table": "TGSB"
+  },
+  {
+   "pos": 17,
+   "name": "WERKS",
+   "key": false,
+   "data_element": "WERKS_D",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Plant",
+   "check_table": "T001W"
+  },
+  {
+   "pos": 18,
+   "name": "KOSTL",
+   "key": false,
+   "data_element": "KOSTL",
+   "domain": "KOSTL",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Cost Center",
+   "check_table": "*"
+  },
+  {
+   "pos": 19,
+   "name": "LSTAR",
+   "key": false,
+   "data_element": "LSTAR",
+   "domain": "LSTAR",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Activity Type",
+   "check_table": "*"
+  },
+  {
+   "pos": 20,
+   "name": "ANEQK",
+   "key": false,
+   "data_element": "ANEQK",
+   "domain": "ANEQK",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Historical management",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "ANEQS",
+   "key": false,
+   "data_element": "ANEQS",
+   "domain": "ANEQS",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Completeness indicator for the asset",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "MACKZ",
+   "key": false,
+   "data_element": "MACKZ",
+   "domain": "MACKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Matchcode indicator",
+   "check_table": null
+  },
+  {
+   "pos": 23,
+   "name": "LAND1",
+   "key": false,
+   "data_element": "AM_LAND1",
+   "domain": "LAND1",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Asset's country of origin",
+   "check_table": "T005"
+  },
+  {
+   "pos": 24,
+   "name": "LIFNR",
+   "key": false,
+   "data_element": "AM_LIFNR",
+   "domain": "LIFNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Account number of vendor (other key word)",
+   "check_table": "LFA1"
+  },
+  {
+   "pos": 25,
+   "name": "LIEFE",
+   "key": false,
+   "data_element": "LIEFE",
+   "domain": "TEXT30",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Name of asset supplier",
+   "check_table": null
+  },
+  {
+   "pos": 26,
+   "name": "ANLUE",
+   "key": false,
+   "data_element": "ANLUE",
+   "domain": "ANLUE",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Asset super number",
+   "check_table": "T087U"
+  },
+  {
+   "pos": 27,
+   "name": "EIGKZ",
+   "key": false,
+   "data_element": "EIGKZ",
+   "domain": "EIGKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Property indicator",
+   "check_table": "T097"
+  },
+  {
+   "pos": 28,
+   "name": "VMGLI",
+   "key": false,
+   "data_element": "VMGLI",
+   "domain": "VMGLI",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Property classification key",
+   "check_table": "T092"
+  },
+  {
+   "pos": 29,
+   "name": "XVRMW",
+   "key": false,
+   "data_element": "XVRMW",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Manual net worth tax value",
+   "check_table": null
+  },
+  {
+   "pos": 30,
+   "name": "INVSL",
+   "key": false,
+   "data_element": "INVSL",
+   "domain": "INVSL",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Investment support key",
+   "check_table": "*"
+  },
+  {
+   "pos": 31,
+   "name": "ORD41",
+   "key": false,
+   "data_element": "ORD41",
+   "domain": "ORD4X",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Evaluation group 1",
+   "check_table": "T087"
+  },
+  {
+   "pos": 32,
+   "name": "ORD42",
+   "key": false,
+   "data_element": "ORD42",
+   "domain": "ORD4X",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Evaluation group 2",
+   "check_table": "T087"
+  },
+  {
+   "pos": 33,
+   "name": "ORD43",
+   "key": false,
+   "data_element": "ORD43",
+   "domain": "ORD4X",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Evaluation group 3",
+   "check_table": "T087"
+  },
+  {
+   "pos": 34,
+   "name": "ORD44",
+   "key": false,
+   "data_element": "ORD44",
+   "domain": "ORD4X",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Evaluation group 4",
+   "check_table": "T087"
+  },
+  {
+   "pos": 35,
+   "name": "IZWEK",
+   "key": false,
+   "data_element": "IZWEK",
+   "domain": "IZWEK",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Reason for investment",
+   "check_table": "T087I"
+  },
+  {
+   "pos": 36,
+   "name": "HERST",
+   "key": false,
+   "data_element": "HERST",
+   "domain": "TEXT30",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Manufacturer of asset",
+   "check_table": null
+  },
+  {
+   "pos": 37,
+   "name": "MEINS",
+   "key": false,
+   "data_element": "MEINS",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Base Unit of Measure",
+   "check_table": "T006"
+  },
+  {
+   "pos": 38,
+   "name": "FEINS",
+   "key": false,
+   "data_element": "FEINS",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Area unit",
+   "check_table": "T006"
+  },
+  {
+   "pos": 39,
+   "name": "INKEN",
+   "key": false,
+   "data_element": "INKEN",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Inventory indicator",
+   "check_table": null
+  },
+  {
+   "pos": 40,
+   "name": "FIAMT",
+   "key": false,
+   "data_element": "FIAMT",
+   "domain": "TEXT25",
+   "type": "CHAR",
+   "length": 25,
+   "decimals": 0,
+   "description": "Local tax office",
+   "check_table": null
+  },
+  {
+   "pos": 41,
+   "name": "STADT",
+   "key": false,
+   "data_element": "ORT01_ANLA",
+   "domain": "TEXT25",
+   "type": "CHAR",
+   "length": 25,
+   "decimals": 0,
+   "description": "Municipality",
+   "check_table": null
+  },
+  {
+   "pos": 42,
+   "name": "ANLTP",
+   "key": false,
+   "data_element": "ANLTP",
+   "domain": "ANLTP",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Asset Category",
+   "check_table": null
+  },
+  {
+   "pos": 43,
+   "name": "XUNTV",
+   "key": false,
+   "data_element": "XUNTV",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "External/internal asset subnumber assignment",
+   "check_table": null
+  },
+  {
+   "pos": 44,
+   "name": "XAKTIV",
+   "key": false,
+   "data_element": "XAKTIV",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Capitalize fixed asset",
+   "check_table": null
+  },
+  {
+   "pos": 45,
+   "name": "LEAFI",
+   "key": false,
+   "data_element": "LEAFI",
+   "domain": "LIFNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Leasing company",
+   "check_table": "*"
+  },
+  {
+   "pos": 46,
+   "name": "LEJAR",
+   "key": false,
+   "data_element": "LEJAR",
+   "domain": "JARAF",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Length of lease in years",
+   "check_table": null
+  },
+  {
+   "pos": 47,
+   "name": "LEPER",
+   "key": false,
+   "data_element": "LEPER",
+   "domain": "PERAF",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Length of lease in periods",
+   "check_table": null
+  },
+  {
+   "pos": 48,
+   "name": "LRYTH",
+   "key": false,
+   "data_element": "LRYTH",
+   "domain": "PERAF",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Lease payment cycle",
+   "check_table": null
+  },
+  {
+   "pos": 49,
+   "name": "LMZIN",
+   "key": false,
+   "data_element": "LMZIN",
+   "domain": "AFPROZ",
+   "type": "DEC",
+   "length": 7,
+   "decimals": 4,
+   "description": "Leasing monthly interest rate (Capital Lease)",
+   "check_table": null
+  },
+  {
+   "pos": 50,
+   "name": "LEANZ",
+   "key": false,
+   "data_element": "LEANZ",
+   "domain": "DEC5",
+   "type": "DEC",
+   "length": 5,
+   "decimals": 0,
+   "description": "Number of lease payments",
+   "check_table": null
+  },
+  {
+   "pos": 51,
+   "name": "LETXT",
+   "key": false,
+   "data_element": "LETXT",
+   "domain": "TEXT50",
+   "type": "CHAR",
+   "length": 50,
+   "decimals": 0,
+   "description": "Leasing data text",
+   "check_table": null
+  },
+  {
+   "pos": 52,
+   "name": "AIMMO",
+   "key": false,
+   "data_element": "AIMMO",
+   "domain": "AIMMO",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: real estate",
+   "check_table": null
+  },
+  {
+   "pos": 53,
+   "name": "GDLGRP",
+   "key": false,
+   "data_element": "GDLGRP",
+   "domain": "GDLGRP",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Evaluation group 5",
+   "check_table": "T087G"
+  },
+  {
+   "pos": 54,
+   "name": "XERWRT",
+   "key": false,
+   "data_element": "XERWRT",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Ignore memo value",
+   "check_table": null
+  },
+  {
+   "pos": 55,
+   "name": "XANLGR",
+   "key": false,
+   "data_element": "XANLGR",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: asset class managed as group asset",
+   "check_table": null
+  },
+  {
+   "pos": 56,
+   "name": "XINVM",
+   "key": false,
+   "data_element": "IM_XINVM",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Asset under Construction for Investment Measures",
+   "check_table": null
+  },
+  {
+   "pos": 57,
+   "name": "LEART",
+   "key": false,
+   "data_element": "LEART",
+   "domain": "LEASART",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Leasing type",
+   "check_table": "T083L"
+  },
+  {
+   "pos": 58,
+   "name": "ABGSL",
+   "key": false,
+   "data_element": "IM_ABGR_SL",
+   "domain": "ABGR_SCHL",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Capitalization Key for Investment Measure",
+   "check_table": "TKKAA"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "ABGSL",
+   "foreign_table": "TKKAA",
+   "foreign_field": "ABGSL"
+  },
+  {
+   "field": "ANLUE",
+   "foreign_table": "T087U",
+   "foreign_field": "ANLUE"
+  },
+  {
+   "field": "EIGKZ",
+   "foreign_table": "T097",
+   "foreign_field": "EIGKZ"
+  },
+  {
+   "field": "FEINS",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "FELEI",
+   "foreign_table": "T082A",
+   "foreign_field": "FELEI"
+  },
+  {
+   "field": "GDLGRP",
+   "foreign_table": "T087G",
+   "foreign_field": "GDLGRP"
+  },
+  {
+   "field": "GSBER",
+   "foreign_table": "TGSB",
+   "foreign_field": "GSBER"
+  },
+  {
+   "field": "IZWEK",
+   "foreign_table": "T087I",
+   "foreign_field": "IZWEK"
+  },
+  {
+   "field": "KTOGR",
+   "foreign_table": "T095A",
+   "foreign_field": "KTOGR"
+  },
+  {
+   "field": "LAND1",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "LEART",
+   "foreign_table": "T083L",
+   "foreign_field": "LEART"
+  },
+  {
+   "field": "LIFNR",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "MEINS",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "ORD41",
+   "foreign_table": "T087",
+   "foreign_field": "ORD4X"
+  },
+  {
+   "field": "ORD42",
+   "foreign_table": "T087",
+   "foreign_field": "ORD4X"
+  },
+  {
+   "field": "ORD43",
+   "foreign_table": "T087",
+   "foreign_field": "ORD4X"
+  },
+  {
+   "field": "ORD44",
+   "foreign_table": "T087",
+   "foreign_field": "ORD4X"
+  },
+  {
+   "field": "VMGLI",
+   "foreign_table": "T092",
+   "foreign_field": "VMGLI"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  },
+  {
+   "field": "ZUAWA",
+   "foreign_table": "TZUN",
+   "foreign_field": "ZUAWA"
+  }
+ ]
+}

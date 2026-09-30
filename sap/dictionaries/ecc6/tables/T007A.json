@@ -1,0 +1,361 @@
+{
+ "table": "T007A",
+ "description": "Tax Keys",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "KALSM",
+   "key": true,
+   "data_element": "KALSM_D",
+   "domain": "KALSM",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Procedure (Pricing, Output Control, Acct. Det., Costing,...)",
+   "check_table": "T683"
+  },
+  {
+   "pos": 3,
+   "name": "MWSKZ",
+   "key": true,
+   "data_element": "MWSKZ",
+   "domain": "MWSKZ",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Tax on sales/purchases code",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "PRUEF",
+   "key": false,
+   "data_element": "PRUEF_007",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Error Message for Invalid Tax Amount ?",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "MWART",
+   "key": false,
+   "data_element": "MWART",
+   "domain": "MWART",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Tax Type",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "XMSTU",
+   "key": false,
+   "data_element": "CHAR1",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Single-Character Flag",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "ZMWSK",
+   "key": false,
+   "data_element": "DZMWSK",
+   "domain": "MWSKZ",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Target Tax Code (for Deferred Tax)",
+   "check_table": "T007A"
+  },
+  {
+   "pos": 9,
+   "name": "EGRKZ",
+   "key": false,
+   "data_element": "EGRKZ",
+   "domain": "EGRKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "EU Code / Code",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "XSLTA",
+   "key": false,
+   "data_element": "XSLTA_007A",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Tax code for sales taxes",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "PROCD",
+   "key": false,
+   "data_element": "PROCD_TTXP",
+   "domain": "CHAR10",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "SAP internal product code (external interface)",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "TXIND",
+   "key": false,
+   "data_element": "TXIND_007A",
+   "domain": "TXIND_007A",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Tax Category for US Taxes",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "TXREL",
+   "key": false,
+   "data_element": "TXREL_007A",
+   "domain": "TXREL_007A",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "'Tax Relevant' Indicator (Only for External Tax System)",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "LSTML",
+   "key": false,
+   "data_element": "LAND1_STML",
+   "domain": "LAND1",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Country for Tax Return",
+   "check_table": "T005"
+  },
+  {
+   "pos": 15,
+   "name": "J_1BUSAGE",
+   "key": false,
+   "data_element": "J_1BTXMMU",
+   "domain": "J_1BTXSDU",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Tax Calculation: Material Usage",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "J_1BISS",
+   "key": false,
+   "data_element": "J_1BTXMMIS",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Tax Calculation: Service Without ICMS/IPI",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "J_1BTAXLW1",
+   "key": false,
+   "data_element": "J_1BTAXLW1",
+   "domain": "J_1BTAXLW1",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Tax law: ICMS",
+   "check_table": "J_1BATL1"
+  },
+  {
+   "pos": 18,
+   "name": "J_1BTAXLW2",
+   "key": false,
+   "data_element": "J_1BTAXLW2",
+   "domain": "J_1BTAXLW2",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Tax law: IPI",
+   "check_table": "J_1BATL2"
+  },
+  {
+   "pos": 19,
+   "name": "J_1BTXICEX",
+   "key": false,
+   "data_element": "J_1BTXICEX",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "ICMS Stored as \"Exempt\" Instead of \"Other Basis\"",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "J_1BTXIPEX",
+   "key": false,
+   "data_element": "J_1BTXIPEX",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "IPI Stored as \"Exempt\" Instead of \"Other Basis\"",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "TOLERANCE",
+   "key": false,
+   "data_element": "TAX_TOLERANCE",
+   "domain": "PRZ21",
+   "type": "DEC",
+   "length": 3,
+   "decimals": 1,
+   "description": "Tolerance Percentage Rate for Tax Calculation",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "ZMWSK_ESA",
+   "key": false,
+   "data_element": "DZMWEA",
+   "domain": "MWSKZ",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Target Tax Code for Deferred EU Acquisition Tax, Output Tax",
+   "check_table": "T007A"
+  },
+  {
+   "pos": 23,
+   "name": "ZMWSK_ESE",
+   "key": false,
+   "data_element": "DZMWEE",
+   "domain": "MWSKZ",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Target Tax Code for Deferred EU Acquisition Tax, Input Tax",
+   "check_table": "T007A"
+  },
+  {
+   "pos": 24,
+   "name": "NEWDEFTAX",
+   "key": false,
+   "data_element": "NEWDEFTAX",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "New Deferred Tax Code: Yes/No",
+   "check_table": null
+  },
+  {
+   "pos": 25,
+   "name": "J_1BTAXLW4",
+   "key": false,
+   "data_element": "J_1BTAXLW4",
+   "domain": "J_1BTAXLW4",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "COFINS Tax Law",
+   "check_table": "J_1BATL4A"
+  },
+  {
+   "pos": 26,
+   "name": "J_1BTAXLW5",
+   "key": false,
+   "data_element": "J_1BTAXLW5",
+   "domain": "J_1BTAXLW5",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "PIS Tax Law",
+   "check_table": "J_1BATL5"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "J_1BTAXLW1",
+   "foreign_table": "J_1BATL1",
+   "foreign_field": "TAXLAW"
+  },
+  {
+   "field": "J_1BTAXLW2",
+   "foreign_table": "J_1BATL2",
+   "foreign_field": "TAXLAW"
+  },
+  {
+   "field": "J_1BTAXLW4",
+   "foreign_table": "J_1BATL4A",
+   "foreign_field": "TAXLAW"
+  },
+  {
+   "field": "J_1BTAXLW5",
+   "foreign_table": "J_1BATL5",
+   "foreign_field": "TAXLAW"
+  },
+  {
+   "field": "KALSM",
+   "foreign_table": "T683",
+   "foreign_field": "KALSM"
+  },
+  {
+   "field": "LSTML",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "ZMWSK",
+   "foreign_table": "T007A",
+   "foreign_field": "MWSKZ"
+  },
+  {
+   "field": "ZMWSK_ESA",
+   "foreign_table": "T007A",
+   "foreign_field": "MWSKZ"
+  },
+  {
+   "field": "ZMWSK_ESE",
+   "foreign_table": "T007A",
+   "foreign_field": "MWSKZ"
+  }
+ ]
+}

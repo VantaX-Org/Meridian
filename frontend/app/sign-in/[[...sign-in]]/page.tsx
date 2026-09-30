@@ -123,11 +123,6 @@ export default function SignInPage() {
 
         <div className="login-foot">
           <div>© {new Date().getFullYear()} Meridian · v4.2</div>
-          <div className="stack">
-            <Link href="#">Privacy</Link>
-            <Link href="#">Terms</Link>
-            <Link href="#">Status</Link>
-          </div>
         </div>
       </section>
 

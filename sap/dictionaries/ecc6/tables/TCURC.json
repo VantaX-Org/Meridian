@@ -1,0 +1,82 @@
+{
+ "table": "TCURC",
+ "description": "Currency Codes",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "WAERS",
+   "key": true,
+   "data_element": "WAERS_CURC",
+   "domain": "WAERS",
+   "type": "CUKY",
+   "length": 5,
+   "decimals": 0,
+   "description": "Currency Key",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "ISOCD",
+   "key": false,
+   "data_element": "ISOCD",
+   "domain": "ISOCD",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "ISO currency code",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "ALTWR",
+   "key": false,
+   "data_element": "ALTWR",
+   "domain": "CHAR3",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Alternative key for currencies",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "GDATU",
+   "key": false,
+   "data_element": "DATUM_CURC",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date until which the currency is valid",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "XPRIMARY",
+   "key": false,
+   "data_element": "XPRIMARY",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Primary SAP Currency Code for ISO Code",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": []
+}

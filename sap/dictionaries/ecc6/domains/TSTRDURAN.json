@@ -1,0 +1,11 @@
+{
+ "domain": "TSTRDURAN",
+ "type": "DEC",
+ "length": 11,
+ "decimals": 0,
+ "conversion_exit": "TSTRN",
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

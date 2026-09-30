@@ -1,0 +1,52 @@
+{
+ "domain": "TNDRST",
+ "type": "CHAR",
+ "length": 2,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "NW",
+   "high": null,
+   "text": "New offer from shipper"
+  },
+  {
+   "low": "AC",
+   "high": null,
+   "text": "Accepted by forwarding agent"
+  },
+  {
+   "low": "AW",
+   "high": null,
+   "text": "Accepted by forwarding agent with conditions"
+  },
+  {
+   "low": "RJ",
+   "high": null,
+   "text": "Rejected by forwarding agent"
+  },
+  {
+   "low": "CF",
+   "high": null,
+   "text": "Confirmed by shipper"
+  },
+  {
+   "low": "EX",
+   "high": null,
+   "text": "Exception triggered by forwarding agent"
+  },
+  {
+   "low": "",
+   "high": null,
+   "text": "Not offered to forwarding agent"
+  },
+  {
+   "low": "CN",
+   "high": null,
+   "text": "Offer canceled"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

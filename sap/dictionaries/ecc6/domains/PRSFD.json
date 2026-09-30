@@ -1,0 +1,32 @@
+{
+ "domain": "PRSFD",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No pricing"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Pricing standard"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Pricing for empties"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Pricing for free goods (100% discount)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

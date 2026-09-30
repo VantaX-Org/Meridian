@@ -19,7 +19,7 @@ def _make_bp_dataframe(n: int = 100) -> pd.DataFrame:
     for i in range(n):
         clean = i >= 10  # first 10 rows are dirty
         rows.append({
-            "BUT000.BU_TYPE": random.choice(["1", "2", "3"]) if clean else (None if i < 3 else "9"),
+            "BUT000.TYPE": random.choice(["1", "2", "3"]) if clean else (None if i < 3 else "9"),
             "BUT000.PARTNER": f"{1000000000 + i}" if clean else ("ABCDE" if i == 3 else f"{i}"),
             "ADR6.SMTP_ADDR": f"user{i}@example.com" if clean else ("bad-email" if i == 5 else None),
             "BUT000.NAME_ORG1": f"Org {i}" if clean else (None if i < 2 else f"Org {i}"),
@@ -30,7 +30,7 @@ def _make_bp_dataframe(n: int = 100) -> pd.DataFrame:
             "BUT000.PARTNER_GUID": str(uuid.uuid4()) if clean else "not-a-uuid",
             "BUT100.RLTYP": "FLCU01" if clean else (None if i < 4 else "FLCU01"),
             "BUT000.BU_SORT1": f"SEARCH{i}" if clean else (None if i == 6 else f"S{i}"),
-            "BUT000.CREATED_AT": (now - timedelta(days=random.randint(1, 300))).isoformat() if clean
+            "BUT000.CRDAT": (now - timedelta(days=random.randint(1, 300))).isoformat() if clean
                                  else (now - timedelta(days=400)).isoformat(),
         })
     return pd.DataFrame(rows)
@@ -40,7 +40,7 @@ def test_runner_returns_correct_count():
     df = _make_bp_dataframe(50)
     results = run_checks("business_partner", df, "test-tenant")
     # Non-None results = rules whose fields exist in this synthetic extract.
-    assert len(results) == 18
+    assert len(results) == 16
     assert all(isinstance(r, CheckResult) for r in results)
 
 

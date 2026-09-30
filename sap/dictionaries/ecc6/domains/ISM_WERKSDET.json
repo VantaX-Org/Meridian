@@ -1,0 +1,27 @@
+{
+ "domain": "ISM_WERKSDET",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Standard SD"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Standard Media"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Plant Assignment to Contract and Issue"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

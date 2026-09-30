@@ -1,0 +1,22 @@
+{
+ "domain": "AD_ID_CATEGORY",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": true,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Normal AddressID"
+  },
+  {
+   "low": "I",
+   "high": null,
+   "text": "Internal AddressID of Instance Sharing Address"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,115 @@
+{
+ "table": "BUT021_FS",
+ "description": "Time-Dependent Address Usages",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "CLIENT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "PARTNER",
+   "key": true,
+   "data_element": "BU_PARTNER",
+   "domain": "BU_PARTNER",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Business Partner Number",
+   "check_table": "BUT000"
+  },
+  {
+   "pos": 3,
+   "name": "VALID_TO",
+   "key": true,
+   "data_element": "BU_ADVW_VALID_TO",
+   "domain": "TZNTSTMPS",
+   "type": "DEC",
+   "length": 15,
+   "decimals": 0,
+   "description": "Validity End of a Business Partner Address Usage",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "ADR_KIND",
+   "key": true,
+   "data_element": "BU_ADRKIND",
+   "domain": "BU_ADRKIND",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Address Type",
+   "check_table": "TB009"
+  },
+  {
+   "pos": 5,
+   "name": "ADDRNUMBER",
+   "key": true,
+   "data_element": "AD_ADDRNUM",
+   "domain": "AD_ADDRNUM",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Address number",
+   "check_table": "BUT020"
+  },
+  {
+   "pos": 6,
+   "name": "VALID_FROM",
+   "key": false,
+   "data_element": "BU_ADVW_VALID_FROM",
+   "domain": "TZNTSTMPS",
+   "type": "DEC",
+   "length": 15,
+   "decimals": 0,
+   "description": "Validity Start of a Business Partner Address Usage",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "XDFADU",
+   "key": false,
+   "data_element": "BU_XDFADU",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Standard Address Usage",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "ADDRNUMBER",
+   "foreign_table": "BUT020",
+   "foreign_field": "ADDRNUMBER"
+  },
+  {
+   "field": "ADR_KIND",
+   "foreign_table": "TB009",
+   "foreign_field": "ADR_KIND"
+  },
+  {
+   "field": "CLIENT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "PARTNER",
+   "foreign_table": "BUT000",
+   "foreign_field": "PARTNER"
+  }
+ ]
+}

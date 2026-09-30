@@ -1,0 +1,27 @@
+{
+ "domain": "KZHULFR",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "HU not relevant for delivery item generation"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "HUs are relevant, but no delivery items have been generated"
+  },
+  {
+   "low": "Y",
+   "high": null,
+   "text": "HUs relevant. Del.items have been generated at least once"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

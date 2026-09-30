@@ -1,0 +1,3131 @@
+{
+ "table": "PLPO",
+ "description": "Task list - operation/activity",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "PLNTY",
+   "key": true,
+   "data_element": "PLNTY",
+   "domain": "PLNTY",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Task List Type",
+   "check_table": "TCA01"
+  },
+  {
+   "pos": 3,
+   "name": "PLNNR",
+   "key": true,
+   "data_element": "PLNNR",
+   "domain": "PLNNR",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Key for Task List Group",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "PLNKN",
+   "key": true,
+   "data_element": "PLNKN",
+   "domain": "KNTNR",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Number of the task list node",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "ZAEHL",
+   "key": true,
+   "data_element": "CIM_COUNT",
+   "domain": "CIM_COUNT",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Internal counter",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "DATUV",
+   "key": false,
+   "data_element": "DATUV",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Valid-From Date",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "TECHV",
+   "key": false,
+   "data_element": "TECHV",
+   "domain": "TECHS",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Technical status from",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "AENNR",
+   "key": false,
+   "data_element": "AENNR",
+   "domain": "AENNR",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Change Number",
+   "check_table": "AENR"
+  },
+  {
+   "pos": 9,
+   "name": "LOEKZ",
+   "key": false,
+   "data_element": "LKENZ",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Deletion Indicator",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "PARKZ",
+   "key": false,
+   "data_element": "PARKZ",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: inactive changes",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "ANDAT",
+   "key": false,
+   "data_element": "ANDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date Record Created on",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "ANNAM",
+   "key": false,
+   "data_element": "ANNAM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "User Who Created Record",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "AEDAT",
+   "key": false,
+   "data_element": "AEDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Last Changed On",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "AENAM",
+   "key": false,
+   "data_element": "AENAM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of Person Who Changed Object",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "SUMNR",
+   "key": false,
+   "data_element": "SUMKNTNR",
+   "domain": "KNTNR",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Node number of the superior operation",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "VORNR",
+   "key": false,
+   "data_element": "VORNR",
+   "domain": "VORNR",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Operation/Activity Number",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "STEUS",
+   "key": false,
+   "data_element": "STEUS",
+   "domain": "STEUS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Control key",
+   "check_table": "T430"
+  },
+  {
+   "pos": 18,
+   "name": "ARBID",
+   "key": false,
+   "data_element": "OBJEKTID",
+   "domain": "NUM08",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Object ID",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "OBJTY",
+   "key": false,
+   "data_element": "CR_OBJTY",
+   "domain": "CR_OBJTY",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Object types of the CIM resource",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "WERKS",
+   "key": false,
+   "data_element": "WERKS_D",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Plant",
+   "check_table": "T001W"
+  },
+  {
+   "pos": 21,
+   "name": "KTSCH",
+   "key": false,
+   "data_element": "KTSCH",
+   "domain": "KTSCH",
+   "type": "CHAR",
+   "length": 7,
+   "decimals": 0,
+   "description": "Standard text key",
+   "check_table": "T435"
+  },
+  {
+   "pos": 22,
+   "name": "LTXA1",
+   "key": false,
+   "data_element": "LTXA1",
+   "domain": "TEXT40",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Operation short text",
+   "check_table": null
+  },
+  {
+   "pos": 23,
+   "name": "LTXA2",
+   "key": false,
+   "data_element": "LTXA2",
+   "domain": "TEXT40",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Second line of the description",
+   "check_table": null
+  },
+  {
+   "pos": 24,
+   "name": "TXTSP",
+   "key": false,
+   "data_element": "SPRAS",
+   "domain": "SPRAS",
+   "type": "LANG",
+   "length": 1,
+   "decimals": 0,
+   "description": "Language Key",
+   "check_table": "T002"
+  },
+  {
+   "pos": 25,
+   "name": "VPLTY",
+   "key": false,
+   "data_element": "VPLNTY",
+   "domain": "PLNTY",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Type of the referenced task list",
+   "check_table": "*"
+  },
+  {
+   "pos": 26,
+   "name": "VPLNR",
+   "key": false,
+   "data_element": "VPLNNR",
+   "domain": "PLNNR",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Group of the referenced task list",
+   "check_table": null
+  },
+  {
+   "pos": 27,
+   "name": "VPLAL",
+   "key": false,
+   "data_element": "VPLNAL",
+   "domain": "ALTNR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Group counter of the referenced task list",
+   "check_table": null
+  },
+  {
+   "pos": 28,
+   "name": "VPLFL",
+   "key": false,
+   "data_element": "VPLBFL",
+   "domain": "PLNFOLGE",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Referenced sequence in routing",
+   "check_table": null
+  },
+  {
+   "pos": 29,
+   "name": "VINTV",
+   "key": false,
+   "data_element": "VINTV",
+   "domain": "VINTV",
+   "type": "DEC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Increment between referenced operations",
+   "check_table": null
+  },
+  {
+   "pos": 30,
+   "name": "MEINH",
+   "key": false,
+   "data_element": "VORME",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit of measure for activity",
+   "check_table": "T006"
+  },
+  {
+   "pos": 31,
+   "name": "UMREN",
+   "key": false,
+   "data_element": "CP_UMREN",
+   "domain": "UMBSN",
+   "type": "DEC",
+   "length": 5,
+   "decimals": 0,
+   "description": "Denominator for converting rtg and op units of measure",
+   "check_table": null
+  },
+  {
+   "pos": 32,
+   "name": "UMREZ",
+   "key": false,
+   "data_element": "CP_UMREZ",
+   "domain": "UMBSZ",
+   "type": "DEC",
+   "length": 5,
+   "decimals": 0,
+   "description": "Numerator for converting task list and oper. un. of measure",
+   "check_table": null
+  },
+  {
+   "pos": 33,
+   "name": "BMSCH",
+   "key": false,
+   "data_element": "BMSCH",
+   "domain": "BMSCH",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Base Quantity",
+   "check_table": null
+  },
+  {
+   "pos": 34,
+   "name": "ZMERH",
+   "key": false,
+   "data_element": "DZMERH",
+   "domain": "VGWRT",
+   "type": "QUAN",
+   "length": 9,
+   "decimals": 3,
+   "description": "Break",
+   "check_table": null
+  },
+  {
+   "pos": 35,
+   "name": "ZEIER",
+   "key": false,
+   "data_element": "DZEIER",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit for the break time",
+   "check_table": "T006"
+  },
+  {
+   "pos": 36,
+   "name": "LAR01",
+   "key": false,
+   "data_element": "LSTAR",
+   "domain": "LSTAR",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Activity Type",
+   "check_table": "CSLA"
+  },
+  {
+   "pos": 37,
+   "name": "VGE01",
+   "key": false,
+   "data_element": "VGWRTEH",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit of measure for the standard value",
+   "check_table": "T006"
+  },
+  {
+   "pos": 38,
+   "name": "VGW01",
+   "key": false,
+   "data_element": "VGWRT",
+   "domain": "VGWRT",
+   "type": "QUAN",
+   "length": 9,
+   "decimals": 3,
+   "description": "Standard Value",
+   "check_table": null
+  },
+  {
+   "pos": 39,
+   "name": "LAR02",
+   "key": false,
+   "data_element": "LSTAR",
+   "domain": "LSTAR",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Activity Type",
+   "check_table": "CSLA"
+  },
+  {
+   "pos": 40,
+   "name": "VGE02",
+   "key": false,
+   "data_element": "VGWRTEH",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit of measure for the standard value",
+   "check_table": "T006"
+  },
+  {
+   "pos": 41,
+   "name": "VGW02",
+   "key": false,
+   "data_element": "VGWRT",
+   "domain": "VGWRT",
+   "type": "QUAN",
+   "length": 9,
+   "decimals": 3,
+   "description": "Standard Value",
+   "check_table": null
+  },
+  {
+   "pos": 42,
+   "name": "LAR03",
+   "key": false,
+   "data_element": "LSTAR",
+   "domain": "LSTAR",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Activity Type",
+   "check_table": "CSLA"
+  },
+  {
+   "pos": 43,
+   "name": "VGE03",
+   "key": false,
+   "data_element": "VGWRTEH",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit of measure for the standard value",
+   "check_table": "T006"
+  },
+  {
+   "pos": 44,
+   "name": "VGW03",
+   "key": false,
+   "data_element": "VGWRT",
+   "domain": "VGWRT",
+   "type": "QUAN",
+   "length": 9,
+   "decimals": 3,
+   "description": "Standard Value",
+   "check_table": null
+  },
+  {
+   "pos": 45,
+   "name": "LAR04",
+   "key": false,
+   "data_element": "LSTAR",
+   "domain": "LSTAR",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Activity Type",
+   "check_table": "CSLA"
+  },
+  {
+   "pos": 46,
+   "name": "VGE04",
+   "key": false,
+   "data_element": "VGWRTEH",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit of measure for the standard value",
+   "check_table": "T006"
+  },
+  {
+   "pos": 47,
+   "name": "VGW04",
+   "key": false,
+   "data_element": "VGWRT",
+   "domain": "VGWRT",
+   "type": "QUAN",
+   "length": 9,
+   "decimals": 3,
+   "description": "Standard Value",
+   "check_table": null
+  },
+  {
+   "pos": 48,
+   "name": "LAR05",
+   "key": false,
+   "data_element": "LSTAR",
+   "domain": "LSTAR",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Activity Type",
+   "check_table": "CSLA"
+  },
+  {
+   "pos": 49,
+   "name": "VGE05",
+   "key": false,
+   "data_element": "VGWRTEH",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit of measure for the standard value",
+   "check_table": "T006"
+  },
+  {
+   "pos": 50,
+   "name": "VGW05",
+   "key": false,
+   "data_element": "VGWRT",
+   "domain": "VGWRT",
+   "type": "QUAN",
+   "length": 9,
+   "decimals": 3,
+   "description": "Standard Value",
+   "check_table": null
+  },
+  {
+   "pos": 51,
+   "name": "LAR06",
+   "key": false,
+   "data_element": "LSTAR",
+   "domain": "LSTAR",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Activity Type",
+   "check_table": "CSLA"
+  },
+  {
+   "pos": 52,
+   "name": "VGE06",
+   "key": false,
+   "data_element": "VGWRTEH",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit of measure for the standard value",
+   "check_table": "T006"
+  },
+  {
+   "pos": 53,
+   "name": "VGW06",
+   "key": false,
+   "data_element": "VGWRT",
+   "domain": "VGWRT",
+   "type": "QUAN",
+   "length": 9,
+   "decimals": 3,
+   "description": "Standard Value",
+   "check_table": null
+  },
+  {
+   "pos": 54,
+   "name": "ZERMA",
+   "key": false,
+   "data_element": "DZERMA",
+   "domain": "ZERMA",
+   "type": "CHAR",
+   "length": 5,
+   "decimals": 0,
+   "description": "Type of standard value calculation",
+   "check_table": "T429"
+  },
+  {
+   "pos": 55,
+   "name": "ZGDAT",
+   "key": false,
+   "data_element": "DZGDAT",
+   "domain": "CJAHR",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Date when the standard value was calculated",
+   "check_table": null
+  },
+  {
+   "pos": 56,
+   "name": "ZCODE",
+   "key": false,
+   "data_element": "DZCODE",
+   "domain": "ZCODE",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Reference number for standard value code",
+   "check_table": null
+  },
+  {
+   "pos": 57,
+   "name": "ZULNR",
+   "key": false,
+   "data_element": "DZULNR",
+   "domain": "ZULNR",
+   "type": "CHAR",
+   "length": 5,
+   "decimals": 0,
+   "description": "Basis for standard value calculation",
+   "check_table": null
+  },
+  {
+   "pos": 58,
+   "name": "RSANZ",
+   "key": false,
+   "data_element": "CR_RS_ANZ",
+   "domain": "NUM03",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Number of confirmation slips",
+   "check_table": null
+  },
+  {
+   "pos": 59,
+   "name": "PDEST",
+   "key": false,
+   "data_element": "CR_PDEST",
+   "domain": "RSPOPNAME",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Printer for shop papers",
+   "check_table": "TSP03"
+  },
+  {
+   "pos": 60,
+   "name": "LOANZ",
+   "key": false,
+   "data_element": "LOHNANZ",
+   "domain": "LOHNANZ",
+   "type": "DEC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Number of Time Tickets",
+   "check_table": null
+  },
+  {
+   "pos": 61,
+   "name": "LOART",
+   "key": false,
+   "data_element": "LOHNART",
+   "domain": "LOART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Wage type",
+   "check_table": null
+  },
+  {
+   "pos": 62,
+   "name": "QUALF",
+   "key": false,
+   "data_element": "QUALF",
+   "domain": "QUALF",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Suitability",
+   "check_table": "T423"
+  },
+  {
+   "pos": 63,
+   "name": "ANZMA",
+   "key": false,
+   "data_element": "ANZMS",
+   "domain": "ANZMA",
+   "type": "DEC",
+   "length": 5,
+   "decimals": 2,
+   "description": "Number of employees",
+   "check_table": null
+  },
+  {
+   "pos": 64,
+   "name": "RFGRP",
+   "key": false,
+   "data_element": "RUEFAGRP",
+   "domain": "RUEFAGRP",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Setup group category",
+   "check_table": "T426"
+  },
+  {
+   "pos": 65,
+   "name": "RFSCH",
+   "key": false,
+   "data_element": "RUEFASCHLU",
+   "domain": "RUEFASCHLU",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Setup group key",
+   "check_table": "T425"
+  },
+  {
+   "pos": 66,
+   "name": "RASCH",
+   "key": false,
+   "data_element": "RUEARSCHLU",
+   "domain": "RUEARSCHLU",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Setup Type Key",
+   "check_table": "T428"
+  },
+  {
+   "pos": 67,
+   "name": "AUFAK",
+   "key": false,
+   "data_element": "AUSCHUFAK",
+   "domain": "AUSCHUFAK",
+   "type": "DEC",
+   "length": 5,
+   "decimals": 3,
+   "description": "Scrap factor",
+   "check_table": null
+  },
+  {
+   "pos": 68,
+   "name": "LOGRP",
+   "key": false,
+   "data_element": "LOHNGRP",
+   "domain": "LOHNGRP",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Wage group",
+   "check_table": "T421"
+  },
+  {
+   "pos": 69,
+   "name": "UEMUS",
+   "key": false,
+   "data_element": "UEMUSKZ",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Required overlapping",
+   "check_table": null
+  },
+  {
+   "pos": 70,
+   "name": "UEKAN",
+   "key": false,
+   "data_element": "UEKANKZ",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Optional overlapping",
+   "check_table": null
+  },
+  {
+   "pos": 71,
+   "name": "FLIES",
+   "key": false,
+   "data_element": "FLIESSKZ",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: continuous flow production",
+   "check_table": null
+  },
+  {
+   "pos": 72,
+   "name": "ZEIMU",
+   "key": false,
+   "data_element": "DZEIMU",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit for the minimum overlap time",
+   "check_table": "T006"
+  },
+  {
+   "pos": 73,
+   "name": "ZMINU",
+   "key": false,
+   "data_element": "DZMINU",
+   "domain": "VGWRT",
+   "type": "QUAN",
+   "length": 9,
+   "decimals": 3,
+   "description": "Minimum overlap time",
+   "check_table": null
+  },
+  {
+   "pos": 74,
+   "name": "MINWE",
+   "key": false,
+   "data_element": "MINWEI",
+   "domain": "MINWEI",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Minimum Send-Ahead Quantity",
+   "check_table": null
+  },
+  {
+   "pos": 75,
+   "name": "SPMUS",
+   "key": false,
+   "data_element": "SPLITTUNG",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Required splitting",
+   "check_table": null
+  },
+  {
+   "pos": 76,
+   "name": "SPLIM",
+   "key": false,
+   "data_element": "SPLITTANZ",
+   "domain": "SPLITTANZ",
+   "type": "DEC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Maximum number of splits",
+   "check_table": null
+  },
+  {
+   "pos": 77,
+   "name": "ZEIMB",
+   "key": false,
+   "data_element": "DZEIMB",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit for the minimum processing time",
+   "check_table": "T006"
+  },
+  {
+   "pos": 78,
+   "name": "ZMINB",
+   "key": false,
+   "data_element": "DZMINB",
+   "domain": "VGWRT",
+   "type": "QUAN",
+   "length": 9,
+   "decimals": 3,
+   "description": "Minimum processing time",
+   "check_table": null
+  },
+  {
+   "pos": 79,
+   "name": "ZEILM",
+   "key": false,
+   "data_element": "DZEILM",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit for the maximum wait time",
+   "check_table": "T006"
+  },
+  {
+   "pos": 80,
+   "name": "ZLMAX",
+   "key": false,
+   "data_element": "DZLMAX",
+   "domain": "VGWRT",
+   "type": "QUAN",
+   "length": 9,
+   "decimals": 3,
+   "description": "Maximum wait time",
+   "check_table": null
+  },
+  {
+   "pos": 81,
+   "name": "ZEILP",
+   "key": false,
+   "data_element": "DZEILP",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit for the required wait time",
+   "check_table": "T006"
+  },
+  {
+   "pos": 82,
+   "name": "ZLPRO",
+   "key": false,
+   "data_element": "DZLPRO",
+   "domain": "VGWRT",
+   "type": "QUAN",
+   "length": 9,
+   "decimals": 3,
+   "description": "Minimum wait time",
+   "check_table": null
+  },
+  {
+   "pos": 83,
+   "name": "ZEIWN",
+   "key": false,
+   "data_element": "DZEIWN",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit for the standard queue time",
+   "check_table": "T006"
+  },
+  {
+   "pos": 84,
+   "name": "ZWNOR",
+   "key": false,
+   "data_element": "DZWNOR",
+   "domain": "VGWRT",
+   "type": "QUAN",
+   "length": 9,
+   "decimals": 3,
+   "description": "Standard queue time",
+   "check_table": null
+  },
+  {
+   "pos": 85,
+   "name": "ZEIWM",
+   "key": false,
+   "data_element": "DZEIWM",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit for the minumum queue time",
+   "check_table": "T006"
+  },
+  {
+   "pos": 86,
+   "name": "ZWMIN",
+   "key": false,
+   "data_element": "DZWMIN",
+   "domain": "VGWRT",
+   "type": "QUAN",
+   "length": 9,
+   "decimals": 3,
+   "description": "Minimum queue time",
+   "check_table": null
+  },
+  {
+   "pos": 87,
+   "name": "ZEITN",
+   "key": false,
+   "data_element": "DZEITN",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit for the standard move time",
+   "check_table": "T006"
+  },
+  {
+   "pos": 88,
+   "name": "ZTNOR",
+   "key": false,
+   "data_element": "DZTNOR",
+   "domain": "VGWRT",
+   "type": "QUAN",
+   "length": 9,
+   "decimals": 3,
+   "description": "Standard move time",
+   "check_table": null
+  },
+  {
+   "pos": 89,
+   "name": "ZEITM",
+   "key": false,
+   "data_element": "DZEITM",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit for the minimum move time",
+   "check_table": "T006"
+  },
+  {
+   "pos": 90,
+   "name": "ZTMIN",
+   "key": false,
+   "data_element": "DZTMIN",
+   "domain": "VGWRT",
+   "type": "QUAN",
+   "length": 9,
+   "decimals": 3,
+   "description": "Minimum move time",
+   "check_table": null
+  },
+  {
+   "pos": 91,
+   "name": "ABLIPKZ",
+   "key": false,
+   "data_element": "ABLIPKZ",
+   "domain": "FLAG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: simultaneous teardown and wait",
+   "check_table": null
+  },
+  {
+   "pos": 92,
+   "name": "RSTRA",
+   "key": false,
+   "data_element": "RSTRA",
+   "domain": "RSTRA",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Reduction strategy per operation/activity",
+   "check_table": "T499Q"
+  },
+  {
+   "pos": 93,
+   "name": "BZOFFB",
+   "key": false,
+   "data_element": "CP_OBZOFFB",
+   "domain": "CP_BZOFF",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Reference date for start of sub-operation",
+   "check_table": "TCA54"
+  },
+  {
+   "pos": 94,
+   "name": "OFFSTB",
+   "key": false,
+   "data_element": "CP_OOFFSTB",
+   "domain": "VNZTV",
+   "type": "QUAN",
+   "length": 5,
+   "decimals": 0,
+   "description": "Offset to sub-operation start",
+   "check_table": null
+  },
+  {
+   "pos": 95,
+   "name": "EHOFFB",
+   "key": false,
+   "data_element": "CP_OEHOFFB",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit for offset to start",
+   "check_table": "T006"
+  },
+  {
+   "pos": 96,
+   "name": "BZOFFE",
+   "key": false,
+   "data_element": "CP_OBZOFFE",
+   "domain": "CP_BZOFF",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Reference date for finish of sub-operation",
+   "check_table": "TCA54"
+  },
+  {
+   "pos": 97,
+   "name": "OFFSTE",
+   "key": false,
+   "data_element": "CP_OOFFSTE",
+   "domain": "VNZTV",
+   "type": "QUAN",
+   "length": 5,
+   "decimals": 0,
+   "description": "Offset to sub-operation finish",
+   "check_table": null
+  },
+  {
+   "pos": 98,
+   "name": "EHOFFE",
+   "key": false,
+   "data_element": "CP_OEHOFFE",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit for offset to finish",
+   "check_table": "T006"
+  },
+  {
+   "pos": 99,
+   "name": "SORTL",
+   "key": false,
+   "data_element": "SORTI",
+   "domain": "CHAR10",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Sort Term for Non-Stock Info Records",
+   "check_table": null
+  },
+  {
+   "pos": 100,
+   "name": "LIFNR",
+   "key": false,
+   "data_element": "LIFNR",
+   "domain": "LIFNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Account Number of Vendor or Creditor",
+   "check_table": "LFA1"
+  },
+  {
+   "pos": 101,
+   "name": "PLIFZ",
+   "key": false,
+   "data_element": "PLIFZ",
+   "domain": "DEC3",
+   "type": "DEC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Planned delivery time in days",
+   "check_table": null
+  },
+  {
+   "pos": 102,
+   "name": "PREIS",
+   "key": false,
+   "data_element": "IPREI",
+   "domain": "WERT11",
+   "type": "CURR",
+   "length": 11,
+   "decimals": 2,
+   "description": "Net Price in Purchasing Info Record",
+   "check_table": null
+  },
+  {
+   "pos": 103,
+   "name": "PEINH",
+   "key": false,
+   "data_element": "EPEIN",
+   "domain": "DEC5",
+   "type": "DEC",
+   "length": 5,
+   "decimals": 0,
+   "description": "Price unit",
+   "check_table": null
+  },
+  {
+   "pos": 104,
+   "name": "SAKTO",
+   "key": false,
+   "data_element": "KSTAR",
+   "domain": "KSTAR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Cost Element",
+   "check_table": "CSKA"
+  },
+  {
+   "pos": 105,
+   "name": "WAERS",
+   "key": false,
+   "data_element": "WAERS",
+   "domain": "WAERS",
+   "type": "CUKY",
+   "length": 5,
+   "decimals": 0,
+   "description": "Currency Key",
+   "check_table": "TCURC"
+  },
+  {
+   "pos": 106,
+   "name": "INFNR",
+   "key": false,
+   "data_element": "INFNR",
+   "domain": "INFNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Number of purchasing info record",
+   "check_table": "EINA"
+  },
+  {
+   "pos": 107,
+   "name": "ESOKZ",
+   "key": false,
+   "data_element": "ESOKZ",
+   "domain": "ESOKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Purchasing info record category",
+   "check_table": null
+  },
+  {
+   "pos": 108,
+   "name": "EKORG",
+   "key": false,
+   "data_element": "EKORG",
+   "domain": "EKORG",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Purchasing organization",
+   "check_table": "T024E"
+  },
+  {
+   "pos": 109,
+   "name": "EKGRP",
+   "key": false,
+   "data_element": "VG_EKGRP",
+   "domain": "EKGRP",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Purchasing group for external processing",
+   "check_table": "T024"
+  },
+  {
+   "pos": 110,
+   "name": "KZLGF",
+   "key": false,
+   "data_element": "KZLGF",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: fixed lot external processing",
+   "check_table": null
+  },
+  {
+   "pos": 111,
+   "name": "MATKL",
+   "key": false,
+   "data_element": "MATKL",
+   "domain": "MATKL",
+   "type": "CHAR",
+   "length": 9,
+   "decimals": 0,
+   "description": "Material Group",
+   "check_table": "T023"
+  },
+  {
+   "pos": 112,
+   "name": "DAUNO",
+   "key": false,
+   "data_element": "DAUNOR",
+   "domain": "DAUER_4_1",
+   "type": "QUAN",
+   "length": 5,
+   "decimals": 1,
+   "description": "Normal duration of the activity",
+   "check_table": null
+  },
+  {
+   "pos": 113,
+   "name": "DAUNE",
+   "key": false,
+   "data_element": "DAUNORE",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Normal duration/unit",
+   "check_table": "T006"
+  },
+  {
+   "pos": 114,
+   "name": "DAUMI",
+   "key": false,
+   "data_element": "DAUMIN",
+   "domain": "DAUER_4_1",
+   "type": "QUAN",
+   "length": 5,
+   "decimals": 1,
+   "description": "Minimum activity duration",
+   "check_table": null
+  },
+  {
+   "pos": 115,
+   "name": "DAUME",
+   "key": false,
+   "data_element": "DAUMINE",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit for the minimum duration",
+   "check_table": "T006"
+  },
+  {
+   "pos": 116,
+   "name": "DDEHN",
+   "key": false,
+   "data_element": "DAUDEHN",
+   "domain": "X",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: flexible duration",
+   "check_table": null
+  },
+  {
+   "pos": 117,
+   "name": "EINSA",
+   "key": false,
+   "data_element": "EINSCHRA",
+   "domain": "RESTRIKSTR",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Constraint on the basic start date for the activity",
+   "check_table": null
+  },
+  {
+   "pos": 118,
+   "name": "EINSE",
+   "key": false,
+   "data_element": "EINSCHRE",
+   "domain": "RESTRIKEND",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Constraint on the finish date of the activity",
+   "check_table": null
+  },
+  {
+   "pos": 119,
+   "name": "ARBEI",
+   "key": false,
+   "data_element": "ARBEIT",
+   "domain": "ARBEIT",
+   "type": "QUAN",
+   "length": 7,
+   "decimals": 1,
+   "description": "Work involved in the activity",
+   "check_table": null
+  },
+  {
+   "pos": 120,
+   "name": "ARBEH",
+   "key": false,
+   "data_element": "ARBEITE",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit for work",
+   "check_table": "T006"
+  },
+  {
+   "pos": 121,
+   "name": "ANZZL",
+   "key": false,
+   "data_element": "ANZKAP",
+   "domain": "INT1",
+   "type": "INT1",
+   "length": 3,
+   "decimals": 0,
+   "description": "Number of capacities required",
+   "check_table": null
+  },
+  {
+   "pos": 122,
+   "name": "PRZNT",
+   "key": false,
+   "data_element": "APROZENT",
+   "domain": "INT1",
+   "type": "INT1",
+   "length": 3,
+   "decimals": 0,
+   "description": "Work percentage",
+   "check_table": null
+  },
+  {
+   "pos": 123,
+   "name": "VERTL",
+   "key": false,
+   "data_element": "VERTEILUNG",
+   "domain": "VERTEILUNG",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Distribution function for capacity requirements",
+   "check_table": "T498"
+  },
+  {
+   "pos": 124,
+   "name": "MLSTN",
+   "key": false,
+   "data_element": "MILESTONE",
+   "domain": "MILESTONE",
+   "type": "CHAR",
+   "length": 5,
+   "decimals": 0,
+   "description": "Usage",
+   "check_table": "T433"
+  },
+  {
+   "pos": 125,
+   "name": "PPRIO",
+   "key": false,
+   "data_element": "PRIORITAET",
+   "domain": "PRIORITAET",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Priority",
+   "check_table": null
+  },
+  {
+   "pos": 126,
+   "name": "BUKRS",
+   "key": false,
+   "data_element": "BUKRS",
+   "domain": "BUKRS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Company Code",
+   "check_table": "T001"
+  },
+  {
+   "pos": 127,
+   "name": "SLWID",
+   "key": false,
+   "data_element": "SLWID",
+   "domain": "SLWID",
+   "type": "CHAR",
+   "length": 7,
+   "decimals": 0,
+   "description": "Key word ID for user-defined fields",
+   "check_table": "TCN00"
+  },
+  {
+   "pos": 128,
+   "name": "USR00",
+   "key": false,
+   "data_element": "USRCHAR20",
+   "domain": "USRCHAR20",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "User field with 20 characters",
+   "check_table": null
+  },
+  {
+   "pos": 129,
+   "name": "USR01",
+   "key": false,
+   "data_element": "USRCHAR20",
+   "domain": "USRCHAR20",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "User field with 20 characters",
+   "check_table": null
+  },
+  {
+   "pos": 130,
+   "name": "USR02",
+   "key": false,
+   "data_element": "USRCHAR10",
+   "domain": "USRCHAR10",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "User field with 10 characters",
+   "check_table": null
+  },
+  {
+   "pos": 131,
+   "name": "USR03",
+   "key": false,
+   "data_element": "USRCHAR10",
+   "domain": "USRCHAR10",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "User field with 10 characters",
+   "check_table": null
+  },
+  {
+   "pos": 132,
+   "name": "USR04",
+   "key": false,
+   "data_element": "USRQUAN13",
+   "domain": "USRQUAN13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "User field for quantity (length 10.3)",
+   "check_table": null
+  },
+  {
+   "pos": 133,
+   "name": "USE04",
+   "key": false,
+   "data_element": "USRUNIT",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "User field: Unit for quantity fields",
+   "check_table": "T006"
+  },
+  {
+   "pos": 134,
+   "name": "USR05",
+   "key": false,
+   "data_element": "USRQUAN13",
+   "domain": "USRQUAN13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "User field for quantity (length 10.3)",
+   "check_table": null
+  },
+  {
+   "pos": 135,
+   "name": "USE05",
+   "key": false,
+   "data_element": "USRUNIT",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "User field: Unit for quantity fields",
+   "check_table": "T006"
+  },
+  {
+   "pos": 136,
+   "name": "USR06",
+   "key": false,
+   "data_element": "USRCURR13",
+   "domain": "USRCURR13",
+   "type": "CURR",
+   "length": 13,
+   "decimals": 3,
+   "description": "User-defined field for values (length 10,3)",
+   "check_table": null
+  },
+  {
+   "pos": 137,
+   "name": "USE06",
+   "key": false,
+   "data_element": "USRCUKY",
+   "domain": "WAERS",
+   "type": "CUKY",
+   "length": 5,
+   "decimals": 0,
+   "description": "User field: Unit for value fields",
+   "check_table": "TCURC"
+  },
+  {
+   "pos": 138,
+   "name": "USR07",
+   "key": false,
+   "data_element": "USRCURR13",
+   "domain": "USRCURR13",
+   "type": "CURR",
+   "length": 13,
+   "decimals": 3,
+   "description": "User-defined field for values (length 10,3)",
+   "check_table": null
+  },
+  {
+   "pos": 139,
+   "name": "USE07",
+   "key": false,
+   "data_element": "USRCUKY",
+   "domain": "WAERS",
+   "type": "CUKY",
+   "length": 5,
+   "decimals": 0,
+   "description": "User field: Unit for value fields",
+   "check_table": "TCURC"
+  },
+  {
+   "pos": 140,
+   "name": "USR08",
+   "key": false,
+   "data_element": "USRDATE",
+   "domain": "USRDATE",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "User field for date",
+   "check_table": null
+  },
+  {
+   "pos": 141,
+   "name": "USR09",
+   "key": false,
+   "data_element": "USRDATE",
+   "domain": "USRDATE",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "User field for date",
+   "check_table": null
+  },
+  {
+   "pos": 142,
+   "name": "USR10",
+   "key": false,
+   "data_element": "USRFLAG",
+   "domain": "FLAG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "User-defined field: Indicator for reports",
+   "check_table": null
+  },
+  {
+   "pos": 143,
+   "name": "USR11",
+   "key": false,
+   "data_element": "USRFLAG",
+   "domain": "FLAG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "User-defined field: Indicator for reports",
+   "check_table": null
+  },
+  {
+   "pos": 144,
+   "name": "ANFKO",
+   "key": false,
+   "data_element": "ANFKO",
+   "domain": "KOSTL",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Requesting cost center",
+   "check_table": "CSKS"
+  },
+  {
+   "pos": 145,
+   "name": "ANFKOKRS",
+   "key": false,
+   "data_element": "ANFKOKRS",
+   "domain": "CACCD",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Controlling area of the requesting cost center",
+   "check_table": "TKA01"
+  },
+  {
+   "pos": 146,
+   "name": "KAPAR",
+   "key": false,
+   "data_element": "KAPART",
+   "domain": "KAPART",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Capacity category",
+   "check_table": "TC26"
+  },
+  {
+   "pos": 147,
+   "name": "INDET",
+   "key": false,
+   "data_element": "INDET",
+   "domain": "INDET",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Calculation key",
+   "check_table": null
+  },
+  {
+   "pos": 148,
+   "name": "LARNT",
+   "key": false,
+   "data_element": "LSTAR",
+   "domain": "LSTAR",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Activity Type",
+   "check_table": "CSLA"
+  },
+  {
+   "pos": 149,
+   "name": "PRKST",
+   "key": false,
+   "data_element": "PRKST",
+   "domain": "PRKST",
+   "type": "CURR",
+   "length": 11,
+   "decimals": 2,
+   "description": "Costs in the activity",
+   "check_table": null
+  },
+  {
+   "pos": 150,
+   "name": "QRASTERMNG",
+   "key": false,
+   "data_element": "QRASTERMNG",
+   "domain": "QPROBEFAK",
+   "type": "DEC",
+   "length": 5,
+   "decimals": 2,
+   "description": "Quantity for Grid Point Definition",
+   "check_table": null
+  },
+  {
+   "pos": 151,
+   "name": "QRASTEREH",
+   "key": false,
+   "data_element": "QRASTEREH",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Grid Unit of Measure",
+   "check_table": "T006"
+  },
+  {
+   "pos": 152,
+   "name": "ANLZU",
+   "key": false,
+   "data_element": "ANLZU",
+   "domain": "ANLZU",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Syst.Condition",
+   "check_table": "T357M"
+  },
+  {
+   "pos": 153,
+   "name": "ISTRU",
+   "key": false,
+   "data_element": "ISTRU",
+   "domain": "MATNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Assembly",
+   "check_table": "MARA"
+  },
+  {
+   "pos": 154,
+   "name": "ISTTY",
+   "key": false,
+   "data_element": "STLTY",
+   "domain": "STLTY",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "BOM Category",
+   "check_table": null
+  },
+  {
+   "pos": 155,
+   "name": "ISTNR",
+   "key": false,
+   "data_element": "STNUM",
+   "domain": "STNUM",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Bill of Material",
+   "check_table": null
+  },
+  {
+   "pos": 156,
+   "name": "ISTKN",
+   "key": false,
+   "data_element": "STLKN",
+   "domain": "KNTNR",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "BOM Item Node Number",
+   "check_table": null
+  },
+  {
+   "pos": 157,
+   "name": "ISTPO",
+   "key": false,
+   "data_element": "CIM_COUNT",
+   "domain": "CIM_COUNT",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Internal counter",
+   "check_table": null
+  },
+  {
+   "pos": 158,
+   "name": "IUPOZ",
+   "key": false,
+   "data_element": "UPOSZ",
+   "domain": "SPOSN",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Subitem Number",
+   "check_table": null
+  },
+  {
+   "pos": 159,
+   "name": "EBORT",
+   "key": false,
+   "data_element": "EBORT",
+   "domain": "TEXT20",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "Installation Point for Subitem",
+   "check_table": null
+  },
+  {
+   "pos": 160,
+   "name": "KALID",
+   "key": false,
+   "data_element": "WFCID",
+   "domain": "WFCID",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Factory Calendar",
+   "check_table": "TFACD"
+  },
+  {
+   "pos": 161,
+   "name": "FRSP",
+   "key": false,
+   "data_element": "FRSP",
+   "domain": "FRSP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Earliest possible activity / Latest possible activity",
+   "check_table": null
+  },
+  {
+   "pos": 162,
+   "name": "VERTN",
+   "key": false,
+   "data_element": "CR_VERTN",
+   "domain": "CR_VERTL",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Distr.cap.reqmts (plant maint.,process order, network)",
+   "check_table": "TC29"
+  },
+  {
+   "pos": 163,
+   "name": "ZGR01",
+   "key": false,
+   "data_element": "IDZEITGRAD",
+   "domain": "IDZEITGRAD",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Key for performance efficiency rate",
+   "check_table": "TC31"
+  },
+  {
+   "pos": 164,
+   "name": "ZGR02",
+   "key": false,
+   "data_element": "IDZEITGRAD",
+   "domain": "IDZEITGRAD",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Key for performance efficiency rate",
+   "check_table": "TC31"
+  },
+  {
+   "pos": 165,
+   "name": "ZGR03",
+   "key": false,
+   "data_element": "IDZEITGRAD",
+   "domain": "IDZEITGRAD",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Key for performance efficiency rate",
+   "check_table": "TC31"
+  },
+  {
+   "pos": 166,
+   "name": "ZGR04",
+   "key": false,
+   "data_element": "IDZEITGRAD",
+   "domain": "IDZEITGRAD",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Key for performance efficiency rate",
+   "check_table": "TC31"
+  },
+  {
+   "pos": 167,
+   "name": "ZGR05",
+   "key": false,
+   "data_element": "IDZEITGRAD",
+   "domain": "IDZEITGRAD",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Key for performance efficiency rate",
+   "check_table": "TC31"
+  },
+  {
+   "pos": 168,
+   "name": "ZGR06",
+   "key": false,
+   "data_element": "IDZEITGRAD",
+   "domain": "IDZEITGRAD",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Key for performance efficiency rate",
+   "check_table": "TC31"
+  },
+  {
+   "pos": 169,
+   "name": "MDLID",
+   "key": false,
+   "data_element": "MDLID",
+   "domain": "CHAR4",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Model ID for charge calculation",
+   "check_table": null
+  },
+  {
+   "pos": 170,
+   "name": "RUZUS",
+   "key": false,
+   "data_element": "RUZUS",
+   "domain": "RUZUS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Key: rounding and additional values",
+   "check_table": "TCERS"
+  },
+  {
+   "pos": 171,
+   "name": "BMEIH",
+   "key": false,
+   "data_element": "BMEIH",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Operation order quantity unit",
+   "check_table": "T006"
+  },
+  {
+   "pos": 172,
+   "name": "BMVRG",
+   "key": false,
+   "data_element": "BMVRG",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Purchase order quantity operation",
+   "check_table": null
+  },
+  {
+   "pos": 173,
+   "name": "CKSELKZ",
+   "key": false,
+   "data_element": "CK_SELKZ",
+   "domain": "CK_SELKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator for Relevancy to Costing",
+   "check_table": "TCK08"
+  },
+  {
+   "pos": 174,
+   "name": "KALKZ",
+   "key": false,
+   "data_element": "CK_KALKZ",
+   "domain": "FLAG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Cost",
+   "check_table": null
+  },
+  {
+   "pos": 175,
+   "name": "NPRIO",
+   "key": false,
+   "data_element": "NW_PRIO",
+   "domain": "NW_PRIO",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Priority",
+   "check_table": "TCN07"
+  },
+  {
+   "pos": 176,
+   "name": "PVZKN",
+   "key": false,
+   "data_element": "PLNKN",
+   "domain": "KNTNR",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Number of the task list node",
+   "check_table": null
+  },
+  {
+   "pos": 177,
+   "name": "PHFLG",
+   "key": false,
+   "data_element": "PHFLG",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Phase",
+   "check_table": null
+  },
+  {
+   "pos": 178,
+   "name": "PHSEQ",
+   "key": false,
+   "data_element": "PHSEQ",
+   "domain": "PHSEQ",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Control Recipe Destination",
+   "check_table": "TC52"
+  },
+  {
+   "pos": 179,
+   "name": "KNOBJ",
+   "key": false,
+   "data_element": "KNOBJ",
+   "domain": "KNOBJ",
+   "type": "NUMC",
+   "length": 18,
+   "decimals": 0,
+   "description": "Number of Object with Assigned Dependencies",
+   "check_table": null
+  },
+  {
+   "pos": 180,
+   "name": "ERFSICHT",
+   "key": false,
+   "data_element": "QERFSICHT",
+   "domain": "QERFSICHT",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Recording View",
+   "check_table": null
+  },
+  {
+   "pos": 181,
+   "name": "PSPNR",
+   "key": false,
+   "data_element": "PS_SPS_ELE",
+   "domain": "PS_SPSNR",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Standard WBS element",
+   "check_table": "PRPSS"
+  },
+  {
+   "pos": 182,
+   "name": "QLOTYPE",
+   "key": false,
+   "data_element": "OTYPE",
+   "domain": "OTYPE",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Object Type",
+   "check_table": "T778O"
+  },
+  {
+   "pos": 183,
+   "name": "QLOBJEKTID",
+   "key": false,
+   "data_element": "OBJEKTID",
+   "domain": "NUM08",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Object ID",
+   "check_table": null
+  },
+  {
+   "pos": 184,
+   "name": "QLKAPAR",
+   "key": false,
+   "data_element": "KAPART",
+   "domain": "KAPART",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Capacity category",
+   "check_table": "TC26"
+  },
+  {
+   "pos": 185,
+   "name": "QKZPRZEIT",
+   "key": false,
+   "data_element": "QKZPRZEIT",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Interval = Time (Time-Related)",
+   "check_table": null
+  },
+  {
+   "pos": 186,
+   "name": "QKZZTMG1",
+   "key": false,
+   "data_element": "QKZZTMG1",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Quantity Confirmation for Each Partial Lot",
+   "check_table": null
+  },
+  {
+   "pos": 187,
+   "name": "QKZPRMENG",
+   "key": false,
+   "data_element": "QKZPRMENG",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Creation Cycle = Quantity  (Quantity-Reference)",
+   "check_table": null
+  },
+  {
+   "pos": 188,
+   "name": "QKZPRFREI",
+   "key": false,
+   "data_element": "QKZPRFREI",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Interval Without Reference to Time or Quantity",
+   "check_table": null
+  },
+  {
+   "pos": 189,
+   "name": "QRASTZEHT",
+   "key": false,
+   "data_element": "QRASTZEHT",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Time Unit",
+   "check_table": "*"
+  },
+  {
+   "pos": 190,
+   "name": "QRASTZFAK",
+   "key": false,
+   "data_element": "QRASTZFAK",
+   "domain": "QPROBEFAK",
+   "type": "DEC",
+   "length": 5,
+   "decimals": 2,
+   "description": "Time Factor",
+   "check_table": null
+  },
+  {
+   "pos": 191,
+   "name": "QRASTMENG",
+   "key": false,
+   "data_element": "QRASTMENG",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Quantity Between Two Inspections",
+   "check_table": null
+  },
+  {
+   "pos": 192,
+   "name": "QPPKTABS",
+   "key": false,
+   "data_element": "QPPKTABS",
+   "domain": "QPPKTABS",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Flow Variants for Inspection Point Completion",
+   "check_table": null
+  },
+  {
+   "pos": 193,
+   "name": "KRIT1",
+   "key": false,
+   "data_element": "PLOBJ",
+   "domain": "CHAR18",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Planning object",
+   "check_table": null
+  },
+  {
+   "pos": 194,
+   "name": "CLASSID",
+   "key": false,
+   "data_element": "CLINT",
+   "domain": "CLINT",
+   "type": "NUMC",
+   "length": 10,
+   "decimals": 0,
+   "description": "Internal Class Number",
+   "check_table": "*"
+  },
+  {
+   "pos": 195,
+   "name": "PACKNO",
+   "key": false,
+   "data_element": "PACKNO",
+   "domain": "PACKNO",
+   "type": "NUMC",
+   "length": 10,
+   "decimals": 0,
+   "description": "Package number",
+   "check_table": "*"
+  },
+  {
+   "pos": 196,
+   "name": "EBELN",
+   "key": false,
+   "data_element": "EBELN",
+   "domain": "EBELN",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Purchasing Document Number",
+   "check_table": "*"
+  },
+  {
+   "pos": 197,
+   "name": "EBELP",
+   "key": false,
+   "data_element": "EBELP",
+   "domain": "EBELP",
+   "type": "NUMC",
+   "length": 5,
+   "decimals": 0,
+   "description": "Item Number of Purchasing Document",
+   "check_table": "EKPO"
+  },
+  {
+   "pos": 198,
+   "name": "CAPOC",
+   "key": false,
+   "data_element": "CAPOC",
+   "domain": "CAPOC",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Type of CAPP calculation at order creation",
+   "check_table": null
+  },
+  {
+   "pos": 199,
+   "name": "FLG_CAPTXT",
+   "key": false,
+   "data_element": "FLG_CAPTXT",
+   "domain": "FLAG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Ind: CAPP text exists",
+   "check_table": null
+  },
+  {
+   "pos": 200,
+   "name": "CN_WEIGHT",
+   "key": false,
+   "data_element": "EV_WEIGHTD",
+   "domain": "DEC8",
+   "type": "DEC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Aggregation weight for POC (PS progress)",
+   "check_table": null
+  },
+  {
+   "pos": 201,
+   "name": "QKZTLSBEST",
+   "key": false,
+   "data_element": "QKZTLSBEST",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Operation with Stock-Related Partial Lot Assignment",
+   "check_table": null
+  },
+  {
+   "pos": 202,
+   "name": "AUFKT",
+   "key": false,
+   "data_element": "AFAKT",
+   "domain": "AFAKT",
+   "type": "DEC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Execution Factor",
+   "check_table": null
+  },
+  {
+   "pos": 203,
+   "name": "DAFKT",
+   "key": false,
+   "data_element": "DFAKT",
+   "domain": "DFAKT",
+   "type": "DEC",
+   "length": 5,
+   "decimals": 2,
+   "description": "Average execution factor",
+   "check_table": null
+  },
+  {
+   "pos": 204,
+   "name": "RWFAK",
+   "key": false,
+   "data_element": "RWFAK",
+   "domain": "AUSCHUFAK",
+   "type": "DEC",
+   "length": 5,
+   "decimals": 3,
+   "description": "Rework factor (is not used yet)",
+   "check_table": null
+  },
+  {
+   "pos": 205,
+   "name": "AAUFG",
+   "key": false,
+   "data_element": "AAUFG",
+   "domain": "FLAG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Work center operation set",
+   "check_table": null
+  },
+  {
+   "pos": 206,
+   "name": "VERDART",
+   "key": false,
+   "data_element": "VERDART",
+   "domain": "VERDART",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Grouping Category",
+   "check_table": null
+  },
+  {
+   "pos": 207,
+   "name": "UAVO_AUFL",
+   "key": false,
+   "data_element": "UAVO_AUFL",
+   "domain": "FLAG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Suboper. do not apply to order",
+   "check_table": null
+  },
+  {
+   "pos": 208,
+   "name": "FRDLB",
+   "key": false,
+   "data_element": "CO_FRDLB",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Externally processed op. with subcontracting",
+   "check_table": null
+  },
+  {
+   "pos": 209,
+   "name": "QPART",
+   "key": false,
+   "data_element": "QPART",
+   "domain": "QPART",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Inspection Type",
+   "check_table": "*"
+  },
+  {
+   "pos": 210,
+   "name": "PRZ01",
+   "key": false,
+   "data_element": "CO_PRZNR",
+   "domain": "CO_PRZNR",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Business Process",
+   "check_table": "*"
+  },
+  {
+   "pos": 211,
+   "name": "TAKT",
+   "key": false,
+   "data_element": "LD_TAKT",
+   "domain": "LD_TAKT",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "takt within a line segment",
+   "check_table": null
+  },
+  {
+   "pos": 212,
+   "name": "OPRID",
+   "key": false,
+   "data_element": "CP_OPRID",
+   "domain": "CHAR8",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "External operation ID",
+   "check_table": null
+  },
+  {
+   "pos": 213,
+   "name": "NVADD",
+   "key": false,
+   "data_element": "LD_NVADD",
+   "domain": "ANKREUZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator for non-value-added operations",
+   "check_table": null
+  },
+  {
+   "pos": 214,
+   "name": "EVGEW",
+   "key": false,
+   "data_element": "EV_WEIGHTD",
+   "domain": "DEC8",
+   "type": "DEC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Aggregation weight for POC (PS progress)",
+   "check_table": null
+  },
+  {
+   "pos": 215,
+   "name": "RFPNT",
+   "key": false,
+   "data_element": "CN_RFPNT",
+   "domain": "CN_RFPNT",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "Reference point for BOM transfer",
+   "check_table": "TCNRFP"
+  },
+  {
+   "pos": 216,
+   "name": "FLG_TSK_GROUP",
+   "key": false,
+   "data_element": "FLG_TSK_GROUP_TYPE",
+   "domain": "FLAG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Group operation",
+   "check_table": null
+  },
+  {
+   "pos": 217,
+   "name": "ADPSP",
+   "key": false,
+   "data_element": "ADDCOMPARE_CORE",
+   "domain": "ADDCOMPARE_CORE",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Reference Element PM/PS",
+   "check_table": "*"
+  },
+  {
+   "pos": 220,
+   "name": "TPLNR",
+   "key": false,
+   "data_element": "TPLNR",
+   "domain": "TPLNR",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Functional Location",
+   "check_table": "*"
+  },
+  {
+   "pos": 221,
+   "name": "EQUNR",
+   "key": false,
+   "data_element": "EQUNR",
+   "domain": "EQUNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Equipment Number",
+   "check_table": "*"
+  },
+  {
+   "pos": 222,
+   "name": "MES_OPERID",
+   "key": false,
+   "data_element": "CO_MES_INT_OPERID",
+   "domain": "CHAR48",
+   "type": "CHAR",
+   "length": 48,
+   "decimals": 0,
+   "description": "Key of an Operation from an ME System",
+   "check_table": null
+  },
+  {
+   "pos": 223,
+   "name": "MES_STEPID",
+   "key": false,
+   "data_element": "CO_MES_INT_STEPID",
+   "domain": "CHAR6",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Key of a Step in a Routing (SAP ME)",
+   "check_table": null
+  },
+  {
+   "pos": 225,
+   "name": "SUBPLNAL",
+   "key": false,
+   "data_element": "SUBPLNAL",
+   "domain": "ALTNR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Subordinate Task List Group Counter",
+   "check_table": null
+  },
+  {
+   "pos": 226,
+   "name": "SUBPLNNR",
+   "key": false,
+   "data_element": "SUBPLNNR",
+   "domain": "PLNNR",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Key for Subordinate Task List Group",
+   "check_table": null
+  },
+  {
+   "pos": 227,
+   "name": "SUBPLNTY",
+   "key": false,
+   "data_element": "SUBPLNTY",
+   "domain": "PLNTY",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Task List Type: Subordinate Task List",
+   "check_table": "*"
+  },
+  {
+   "pos": 228,
+   "name": "XEXCLTL",
+   "key": false,
+   "data_element": "XEXCLTL",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Sign: Exclude Subordinate Task List (and in All Tree)",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "AENNR",
+   "foreign_table": "AENR",
+   "foreign_field": "AENNR"
+  },
+  {
+   "field": "ANFKO",
+   "foreign_table": "CSKS",
+   "foreign_field": "KOSTL"
+  },
+  {
+   "field": "ANFKOKRS",
+   "foreign_table": "TKA01",
+   "foreign_field": "KOKRS"
+  },
+  {
+   "field": "ANLZU",
+   "foreign_table": "T357M",
+   "foreign_field": "ANLZU"
+  },
+  {
+   "field": "ARBEH",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "BMEIH",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "BUKRS",
+   "foreign_table": "T001",
+   "foreign_field": "BUKRS"
+  },
+  {
+   "field": "BZOFFB",
+   "foreign_table": "TCA54",
+   "foreign_field": "BZOFF"
+  },
+  {
+   "field": "BZOFFE",
+   "foreign_table": "TCA54",
+   "foreign_field": "BZOFF"
+  },
+  {
+   "field": "CKSELKZ",
+   "foreign_table": "TCK08",
+   "foreign_field": "SELKZ"
+  },
+  {
+   "field": "DAUME",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "DAUNE",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "EBELP",
+   "foreign_table": "EKPO",
+   "foreign_field": "EBELP"
+  },
+  {
+   "field": "EHOFFB",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "EHOFFE",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "EKGRP",
+   "foreign_table": "T024",
+   "foreign_field": "EKGRP"
+  },
+  {
+   "field": "EKORG",
+   "foreign_table": "T024E",
+   "foreign_field": "EKORG"
+  },
+  {
+   "field": "INFNR",
+   "foreign_table": "EINA",
+   "foreign_field": "INFNR"
+  },
+  {
+   "field": "ISTRU",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "KALID",
+   "foreign_table": "TFACD",
+   "foreign_field": "IDENT"
+  },
+  {
+   "field": "KAPAR",
+   "foreign_table": "TC26",
+   "foreign_field": "KAPAR"
+  },
+  {
+   "field": "KTSCH",
+   "foreign_table": "T435",
+   "foreign_field": "VLSCH"
+  },
+  {
+   "field": "LAR01",
+   "foreign_table": "CSLA",
+   "foreign_field": "LSTAR"
+  },
+  {
+   "field": "LAR02",
+   "foreign_table": "CSLA",
+   "foreign_field": "LSTAR"
+  },
+  {
+   "field": "LAR03",
+   "foreign_table": "CSLA",
+   "foreign_field": "LSTAR"
+  },
+  {
+   "field": "LAR04",
+   "foreign_table": "CSLA",
+   "foreign_field": "LSTAR"
+  },
+  {
+   "field": "LAR05",
+   "foreign_table": "CSLA",
+   "foreign_field": "LSTAR"
+  },
+  {
+   "field": "LAR06",
+   "foreign_table": "CSLA",
+   "foreign_field": "LSTAR"
+  },
+  {
+   "field": "LARNT",
+   "foreign_table": "CSLA",
+   "foreign_field": "LSTAR"
+  },
+  {
+   "field": "LIFNR",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "LOGRP",
+   "foreign_table": "T421",
+   "foreign_field": "LOGRP"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MATKL",
+   "foreign_table": "T023",
+   "foreign_field": "MATKL"
+  },
+  {
+   "field": "MEINH",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "MLSTN",
+   "foreign_table": "T433",
+   "foreign_field": "MLSTN"
+  },
+  {
+   "field": "NPRIO",
+   "foreign_table": "TCN07",
+   "foreign_field": "NPRIO"
+  },
+  {
+   "field": "PDEST",
+   "foreign_table": "TSP03",
+   "foreign_field": "PADEST"
+  },
+  {
+   "field": "PHSEQ",
+   "foreign_table": "TC52",
+   "foreign_field": "PHSEQ"
+  },
+  {
+   "field": "PLNTY",
+   "foreign_table": "TCA01",
+   "foreign_field": "PLNTY"
+  },
+  {
+   "field": "PSPNR",
+   "foreign_table": "PRPSS",
+   "foreign_field": "PSPNR"
+  },
+  {
+   "field": "QLKAPAR",
+   "foreign_table": "TC26",
+   "foreign_field": "KAPAR"
+  },
+  {
+   "field": "QLOTYPE",
+   "foreign_table": "T778O",
+   "foreign_field": "OTYPE"
+  },
+  {
+   "field": "QRASTEREH",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "QUALF",
+   "foreign_table": "T423",
+   "foreign_field": "QUALF"
+  },
+  {
+   "field": "RASCH",
+   "foreign_table": "T428",
+   "foreign_field": "RASCH"
+  },
+  {
+   "field": "RFGRP",
+   "foreign_table": "T426",
+   "foreign_field": "RFGRP"
+  },
+  {
+   "field": "RFPNT",
+   "foreign_table": "TCNRFP",
+   "foreign_field": "RFPNT"
+  },
+  {
+   "field": "RFSCH",
+   "foreign_table": "T425",
+   "foreign_field": "RFSCH"
+  },
+  {
+   "field": "RSTRA",
+   "foreign_table": "T499Q",
+   "foreign_field": "RSTRA"
+  },
+  {
+   "field": "RUZUS",
+   "foreign_table": "TCERS",
+   "foreign_field": "RUZUS"
+  },
+  {
+   "field": "SAKTO",
+   "foreign_table": "CSKA",
+   "foreign_field": "KSTAR"
+  },
+  {
+   "field": "SLWID",
+   "foreign_table": "TCN00",
+   "foreign_field": "SLWID"
+  },
+  {
+   "field": "STEUS",
+   "foreign_table": "T430",
+   "foreign_field": "STEUS"
+  },
+  {
+   "field": "TXTSP",
+   "foreign_table": "T002",
+   "foreign_field": "SPRAS"
+  },
+  {
+   "field": "USE04",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "USE05",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "USE06",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  },
+  {
+   "field": "USE07",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  },
+  {
+   "field": "VERTL",
+   "foreign_table": "T498",
+   "foreign_field": "VERTL"
+  },
+  {
+   "field": "VERTN",
+   "foreign_table": "TC29",
+   "foreign_field": "VERTL"
+  },
+  {
+   "field": "VGE01",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "VGE02",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "VGE03",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "VGE04",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "VGE05",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "VGE06",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "WAERS",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  },
+  {
+   "field": "ZEIER",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "ZEILM",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "ZEILP",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "ZEIMB",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "ZEIMU",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "ZEITM",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "ZEITN",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "ZEIWM",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "ZEIWN",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "ZERMA",
+   "foreign_table": "T429",
+   "foreign_field": "ZERMA"
+  },
+  {
+   "field": "ZGR01",
+   "foreign_table": "TC31",
+   "foreign_field": "ID"
+  },
+  {
+   "field": "ZGR02",
+   "foreign_table": "TC31",
+   "foreign_field": "ID"
+  },
+  {
+   "field": "ZGR03",
+   "foreign_table": "TC31",
+   "foreign_field": "ID"
+  },
+  {
+   "field": "ZGR04",
+   "foreign_table": "TC31",
+   "foreign_field": "ID"
+  },
+  {
+   "field": "ZGR05",
+   "foreign_table": "TC31",
+   "foreign_field": "ID"
+  },
+  {
+   "field": "ZGR06",
+   "foreign_table": "TC31",
+   "foreign_field": "ID"
+  }
+ ]
+}

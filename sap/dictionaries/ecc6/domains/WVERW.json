@@ -1,0 +1,27 @@
+{
+ "domain": "WVERW",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "D",
+   "high": null,
+   "text": "Discounting"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Forfeiting"
+  },
+  {
+   "low": "I",
+   "high": null,
+   "text": "Collection"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

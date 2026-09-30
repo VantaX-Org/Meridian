@@ -71,6 +71,10 @@ class SystemResponse(BaseModel):
     updated_at: str
     last_sync_at: Optional[str] = None
     last_sync_status: Optional[str] = None
+    discovery_status: Optional[str] = None
+    discovered_at: Optional[str] = None
+    sap_release: Optional[str] = None
+    last_analysis_at: Optional[str] = None
 
 
 class UpdateSystemRequest(BaseModel):
@@ -134,7 +138,7 @@ async def register_system(
     body: RegisterSystemRequest,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    role: str = Depends(require_permission("manage_rules")),
+    role: str = Depends(require_permission("manage_systems")),
 ):
     """Register a new SAP system. Admin and Steward only."""
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
@@ -219,6 +223,9 @@ async def register_system(
         )
 
     await db.commit()
+    # Learn the source system's design straight away (DDIC, Z-objects,
+    # configuration). A connection failure is recorded on the snapshot.
+    enqueue_discovery(str(tenant.id), system_id)
 
     return SystemResponse(
         id=system_id,
@@ -262,7 +269,10 @@ async def list_systems(
                    (SELECT sr.status FROM sync_runs sr
                     JOIN sync_profiles sp ON sr.profile_id = sp.id
                     WHERE sp.system_id = s.id
-                    ORDER BY sr.started_at DESC LIMIT 1) as last_sync_status
+                    ORDER BY sr.started_at DESC LIMIT 1) as last_sync_status,
+                   s.discovery_status, s.discovered_at::text, s.sap_release,
+                   (SELECT max(v.run_at)::text FROM analysis_versions v
+                    WHERE v.metadata->>'system_id' = s.id::text AND v.status = 'complete') AS last_analysis_at
             FROM sap_systems s
             WHERE s.tenant_id = :tid
             ORDER BY s.created_at DESC
@@ -280,6 +290,7 @@ async def list_systems(
             health_message=r[16], last_health_check=r[17],
             config_last_synced_at=r[18], config_sync_status=r[19],
             last_sync_at=r[20], last_sync_status=r[21],
+            discovery_status=r[22], discovered_at=r[23], sap_release=r[24], last_analysis_at=r[25],
         )
         for r in rows
     ]
@@ -291,7 +302,7 @@ async def update_system(
     body: UpdateSystemRequest,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    role: str = Depends(require_permission("manage_rules")),
+    role: str = Depends(require_permission("manage_systems")),
 ):
     """Update an SAP system. Admin and Steward only."""
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
@@ -401,7 +412,7 @@ async def delete_system(
     system_id: str,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    role: str = Depends(require_permission("manage_rules")),
+    role: str = Depends(require_permission("manage_systems")),
 ):
     """Delete an SAP system and its credentials. Admin and Steward only."""
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
@@ -451,7 +462,7 @@ def _run_connection_test(system_type: str, params: dict, secrets_to_mask: list[s
 @router.post("/systems/test-connection", response_model=TestConnectionResponse)
 async def test_draft_connection(
     body: RegisterSystemRequest,
-    role: str = Depends(require_permission("manage_rules")),
+    role: str = Depends(require_permission("manage_systems")),
 ):
     """Test connection parameters before the system is registered (no system_id yet).
 
@@ -492,7 +503,7 @@ async def test_connection(
     system_id: str,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    role: str = Depends(require_permission("manage_rules")),
+    role: str = Depends(require_permission("manage_systems")),
 ):
     """Test the connection to an SAP system, for any system_type. Admin and Steward only."""
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
@@ -503,7 +514,7 @@ async def test_connection(
         text("""
             SELECT s.system_type, s.host, s.client, s.sysnr, s.username, s.base_url, s.company_id,
                    s.auth_type, s.client_id_encrypted, s.client_secret_encrypted,
-                   s.api_key_encrypted, sc.encrypted_password
+                   s.api_key_encrypted, sc.encrypted_password, s.token_url, s.discovery_status
             FROM sap_systems s
             LEFT JOIN system_credentials sc ON sc.system_id = s.id
             WHERE s.id = :sid AND s.tenant_id = :tid
@@ -515,7 +526,8 @@ async def test_connection(
         raise HTTPException(status_code=404, detail="System not found")
 
     (system_type, host, client, sysnr, username, base_url, company_id, auth_type,
-     client_id_encrypted, client_secret_encrypted, api_key_encrypted, encrypted_password) = row
+     client_id_encrypted, client_secret_encrypted, api_key_encrypted, encrypted_password,
+     token_url, discovery_status) = row
 
     from api.services.credential_store import decrypt_password
     import os
@@ -545,9 +557,22 @@ async def test_connection(
         "client_id": client_id,
         "client_secret": client_secret,
         "api_key": api_key,
-        "token_url": "",
+        "token_url": token_url or "",
     }
-    return _run_connection_test(system_type, params, [password, client_secret, api_key])
+    result = _run_connection_test(system_type, params, [password, client_secret, api_key])
+    if result.connected and not discovery_status:
+        enqueue_discovery(str(tenant.id), system_id)  # first successful connect → learn the design
+    return result
+
+
+def enqueue_discovery(tenant_id: str, system_id: str) -> Optional[str]:
+    """Queue source-design discovery; never fails the calling request."""
+    try:
+        from workers.tasks.run_discovery import discover_system
+        return discover_system.delay(tenant_id, system_id).id
+    except Exception as e:
+        logger.warning(f"could not enqueue discovery for {system_id}: {e}")
+        return None
 
 
 @router.post("/systems/{system_id}/sync")
@@ -555,7 +580,7 @@ async def trigger_sync(
     system_id: str,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    role: str = Depends(require_permission("manage_rules")),
+    role: str = Depends(require_permission("trigger_sync")),
 ):
     """Trigger a manual sync for all active profiles on this system."""
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
@@ -590,7 +615,7 @@ async def create_sync_profile(
     body: CreateSyncProfileRequest,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    role: str = Depends(require_permission("manage_rules")),
+    role: str = Depends(require_permission("manage_systems")),
 ):
     """Create a sync profile for an SAP system."""
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))

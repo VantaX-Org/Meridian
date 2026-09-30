@@ -1,0 +1,27 @@
+{
+ "domain": "BU_IS_ORG_CENTRE",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "BP Is Not an Organizational Center"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "BP Is Also an Organizational Center - BP Existed First"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "BP Is Also an Organizational Center - Org.Cent.Existed First"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

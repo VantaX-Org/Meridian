@@ -42,3 +42,9 @@ export async function resetPassword(
   );
   return data;
 }
+
+/** role → permitted actions, straight from the server's RBAC matrix. */
+export async function getRoleMatrix(): Promise<Record<string, string[]>> {
+  const { data } = await apiClient.get("/api/v1/auth/roles");
+  return data;
+}

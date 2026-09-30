@@ -1,0 +1,412 @@
+{
+ "table": "TVKO",
+ "description": "Organizational Unit: Sales Organizations",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "VKORG",
+   "key": true,
+   "data_element": "VKORG",
+   "domain": "VKORG",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Sales Organization",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "WAERS",
+   "key": false,
+   "data_element": "WAERS_V",
+   "domain": "WAERS",
+   "type": "CUKY",
+   "length": 5,
+   "decimals": 0,
+   "description": "Statistics currency",
+   "check_table": "TCURC"
+  },
+  {
+   "pos": 5,
+   "name": "BUKRS",
+   "key": false,
+   "data_element": "VKBUK",
+   "domain": "BUKRS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Company code of the sales organization",
+   "check_table": "T001"
+  },
+  {
+   "pos": 6,
+   "name": "ADRNR",
+   "key": false,
+   "data_element": "ADRNR",
+   "domain": "ADRNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Address",
+   "check_table": "*"
+  },
+  {
+   "pos": 7,
+   "name": "TXNAM_ADR",
+   "key": false,
+   "data_element": "TXNAM_ADR",
+   "domain": "TXNAM16",
+   "type": "CHAR",
+   "length": 16,
+   "decimals": 0,
+   "description": "Text name for form text module short address",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "TXNAM_KOP",
+   "key": false,
+   "data_element": "TXNAM_KOP",
+   "domain": "TXNAM16",
+   "type": "CHAR",
+   "length": 16,
+   "decimals": 0,
+   "description": "Text name for form text module letter header",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "TXNAM_FUS",
+   "key": false,
+   "data_element": "TXNAM_FUS",
+   "domain": "TXNAM16",
+   "type": "CHAR",
+   "length": 16,
+   "decimals": 0,
+   "description": "Text name for formula text module footer lines",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "TXNAM_GRU",
+   "key": false,
+   "data_element": "TXNAM_GRU",
+   "domain": "TXNAM16",
+   "type": "CHAR",
+   "length": 16,
+   "decimals": 0,
+   "description": "Text name for form text module: Greeting",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "VKOAU",
+   "key": false,
+   "data_element": "VKOAU",
+   "domain": "VKORG",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Reference sales org.for sales doc.types (by sales area)",
+   "check_table": "TVKO"
+  },
+  {
+   "pos": 12,
+   "name": "KUNNR",
+   "key": false,
+   "data_element": "KUNIV",
+   "domain": "KUNNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Customer number for intercompany billing",
+   "check_table": "KNA1"
+  },
+  {
+   "pos": 13,
+   "name": "BOAVO",
+   "key": false,
+   "data_element": "BOAVO",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Rebate processing active in the sales organization",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "VKOKL",
+   "key": false,
+   "data_element": "VKOKL",
+   "domain": "WFCID",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Sales organization calendar",
+   "check_table": "TFACD"
+  },
+  {
+   "pos": 15,
+   "name": "EKORG",
+   "key": false,
+   "data_element": "EKORG",
+   "domain": "EKORG",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Purchasing organization",
+   "check_table": "T024E"
+  },
+  {
+   "pos": 16,
+   "name": "EKGRP",
+   "key": false,
+   "data_element": "EKGRP",
+   "domain": "EKGRP",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Purchasing group",
+   "check_table": "T024"
+  },
+  {
+   "pos": 17,
+   "name": "LIFNR",
+   "key": false,
+   "data_element": "LIFNR",
+   "domain": "LIFNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Account Number of Vendor or Creditor",
+   "check_table": "LFA1"
+  },
+  {
+   "pos": 18,
+   "name": "WERKS",
+   "key": false,
+   "data_element": "WERKS_D",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Plant",
+   "check_table": "T001W"
+  },
+  {
+   "pos": 19,
+   "name": "BSART",
+   "key": false,
+   "data_element": "BSART",
+   "domain": "BSART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Order Type (Purchasing)",
+   "check_table": "T161"
+  },
+  {
+   "pos": 20,
+   "name": "BSTYP",
+   "key": false,
+   "data_element": "BSTYP",
+   "domain": "BSTYP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Purchasing document category",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "BWART",
+   "key": false,
+   "data_element": "BWARTWE",
+   "domain": "BWART",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Movement type (inventory management)",
+   "check_table": "T156"
+  },
+  {
+   "pos": 22,
+   "name": "LGORT",
+   "key": false,
+   "data_element": "LGORT_D",
+   "domain": "LGORT",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Storage location",
+   "check_table": "T001L"
+  },
+  {
+   "pos": 23,
+   "name": "TXNAM_SDB",
+   "key": false,
+   "data_element": "TXNAM_SDB",
+   "domain": "TXNAM16",
+   "type": "CHAR",
+   "length": 16,
+   "decimals": 0,
+   "description": "Text names for layout-set module SDS sender",
+   "check_table": null
+  },
+  {
+   "pos": 24,
+   "name": "MWSKZ",
+   "key": false,
+   "data_element": "J_1AMWSKZ",
+   "domain": "MWSKZ",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Tax code for SD documents",
+   "check_table": "T007A"
+  },
+  {
+   "pos": 25,
+   "name": "XSTCEG",
+   "key": false,
+   "data_element": "XSTCEG",
+   "domain": "XSTCEG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Determining the VAT registration number",
+   "check_table": null
+  },
+  {
+   "pos": 26,
+   "name": "J_1ANUTIME",
+   "key": false,
+   "data_element": "J_1ANUTIME",
+   "domain": "J_1ANUTIME",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Time of numbering for deliveries",
+   "check_table": null
+  },
+  {
+   "pos": 27,
+   "name": "MAXBI",
+   "key": false,
+   "data_element": "MAXBI",
+   "domain": "NUM03",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Maximum Number of Items in Billing Document",
+   "check_table": null
+  },
+  {
+   "pos": 29,
+   "name": "PLAUFZ",
+   "key": false,
+   "data_element": "/SAPHT/SW_PLAUFZ",
+   "domain": "NUM3",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Price protection period",
+   "check_table": null
+  },
+  {
+   "pos": 30,
+   "name": "PLAUEZ",
+   "key": false,
+   "data_element": "/SAPHT/SW_PLAUEZ",
+   "domain": "KDZEH",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Unit for price protection",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "BSART",
+   "foreign_table": "T161",
+   "foreign_field": "BSART"
+  },
+  {
+   "field": "BUKRS",
+   "foreign_table": "T001",
+   "foreign_field": "BUKRS"
+  },
+  {
+   "field": "BWART",
+   "foreign_table": "T156",
+   "foreign_field": "BWART"
+  },
+  {
+   "field": "EKGRP",
+   "foreign_table": "T024",
+   "foreign_field": "EKGRP"
+  },
+  {
+   "field": "EKORG",
+   "foreign_table": "T024E",
+   "foreign_field": "EKORG"
+  },
+  {
+   "field": "KUNNR",
+   "foreign_table": "KNA1",
+   "foreign_field": "KUNNR"
+  },
+  {
+   "field": "LGORT",
+   "foreign_table": "T001L",
+   "foreign_field": "LGORT"
+  },
+  {
+   "field": "LIFNR",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "MWSKZ",
+   "foreign_table": "T007A",
+   "foreign_field": "MWSKZ"
+  },
+  {
+   "field": "VKOAU",
+   "foreign_table": "TVKO",
+   "foreign_field": "VKORG"
+  },
+  {
+   "field": "VKOKL",
+   "foreign_table": "TFACD",
+   "foreign_field": "IDENT"
+  },
+  {
+   "field": "WAERS",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  }
+ ]
+}

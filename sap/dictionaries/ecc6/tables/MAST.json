@@ -1,0 +1,187 @@
+{
+ "table": "MAST",
+ "description": "Material to BOM Link",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "MATNR",
+   "key": true,
+   "data_element": "MATNR",
+   "domain": "MATNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Material Number",
+   "check_table": "MARA"
+  },
+  {
+   "pos": 3,
+   "name": "WERKS",
+   "key": true,
+   "data_element": "WERKS_D",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Plant",
+   "check_table": "T001W"
+  },
+  {
+   "pos": 4,
+   "name": "STLAN",
+   "key": true,
+   "data_element": "STLAN",
+   "domain": "STLAN",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "BOM Usage",
+   "check_table": "T416"
+  },
+  {
+   "pos": 5,
+   "name": "STLNR",
+   "key": true,
+   "data_element": "STNUM",
+   "domain": "STNUM",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Bill of Material",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "STLAL",
+   "key": true,
+   "data_element": "STALT",
+   "domain": "ALTNR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Alternative BOM",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "LOSVN",
+   "key": false,
+   "data_element": "LOSVN",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "From Lot Size",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "LOSBS",
+   "key": false,
+   "data_element": "LOSBS",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "To Lot Size",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "ANDAT",
+   "key": false,
+   "data_element": "ANDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date Record Created on",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "ANNAM",
+   "key": false,
+   "data_element": "ANNAM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "User Who Created Record",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "AEDAT",
+   "key": false,
+   "data_element": "AEDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Last Changed On",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "AENAM",
+   "key": false,
+   "data_element": "AENAM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of Person Who Changed Object",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "CSLTY",
+   "key": false,
+   "data_element": "CSLTY",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Configured Material (Storage Type)",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MATNR",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "STLAN",
+   "foreign_table": "T416",
+   "foreign_field": "STLAN"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  }
+ ]
+}

@@ -1,0 +1,62 @@
+{
+ "domain": "KOAID",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "Discount or surcharge"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Prices"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Expense reimbursement"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Taxes"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Extra pay"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Reserved (IS-OIL)"
+  },
+  {
+   "low": "G",
+   "high": null,
+   "text": "Tax Code"
+  },
+  {
+   "low": "H",
+   "high": null,
+   "text": "Determining sales deal"
+  },
+  {
+   "low": "Q",
+   "high": null,
+   "text": "Reserved (IS-OIL)"
+  },
+  {
+   "low": "W",
+   "high": null,
+   "text": "Wage Withholding Tax"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

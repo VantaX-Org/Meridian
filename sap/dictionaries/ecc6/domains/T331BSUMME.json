@@ -1,0 +1,27 @@
+{
+ "domain": "T331BSUMME",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No totals information"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Totals information not batch-specific"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Totals information batch-specific"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

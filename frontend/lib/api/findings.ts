@@ -6,6 +6,7 @@ export async function getFindings(params: {
   module?: string;
   severity?: string;
   dimension?: string;
+  check_id?: string;
   limit?: number;
   offset?: number;
 }): Promise<FindingList> {

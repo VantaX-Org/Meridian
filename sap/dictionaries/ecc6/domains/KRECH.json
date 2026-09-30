@@ -1,0 +1,102 @@
+{
+ "domain": "KRECH",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "Percentage"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Fixed amount"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Quantity"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Gross weight"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Net weight"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Volume"
+  },
+  {
+   "low": "G",
+   "high": null,
+   "text": "Formula"
+  },
+  {
+   "low": "H",
+   "high": null,
+   "text": "Percentage (in Hundreds)"
+  },
+  {
+   "low": "I",
+   "high": null,
+   "text": "Percentage (travel expenses)"
+  },
+  {
+   "low": "L",
+   "high": null,
+   "text": "Points"
+  },
+  {
+   "low": "M",
+   "high": null,
+   "text": "Quantity - monthy price"
+  },
+  {
+   "low": "N",
+   "high": null,
+   "text": "Quantity - yearly price"
+  },
+  {
+   "low": "O",
+   "high": null,
+   "text": "Quantity - daily price"
+  },
+  {
+   "low": "P",
+   "high": null,
+   "text": "Quantity - weekly price"
+  },
+  {
+   "low": "Q",
+   "high": null,
+   "text": "Reserved (IS-OIL)"
+  },
+  {
+   "low": "R",
+   "high": null,
+   "text": "Distance-dependent"
+  },
+  {
+   "low": "S",
+   "high": null,
+   "text": "Number of shipping units"
+  },
+  {
+   "low": "T",
+   "high": null,
+   "text": "Multi-dimensional"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

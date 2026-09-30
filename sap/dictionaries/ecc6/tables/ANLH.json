@@ -1,0 +1,117 @@
+{
+ "table": "ANLH",
+ "description": "Main asset number",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "BUKRS",
+   "key": true,
+   "data_element": "BUKRS",
+   "domain": "BUKRS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Company Code",
+   "check_table": "T001"
+  },
+  {
+   "pos": 3,
+   "name": "ANLN1",
+   "key": true,
+   "data_element": "ANLN1",
+   "domain": "ANLN1",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Main Asset Number",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "LUNTN",
+   "key": false,
+   "data_element": "LUNTN",
+   "domain": "ANLN2_4",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Last subnumber assigned to this main number",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "LANEP",
+   "key": false,
+   "data_element": "LANEP",
+   "domain": "LNRAN",
+   "type": "NUMC",
+   "length": 5,
+   "decimals": 0,
+   "description": "Last line item number assigned",
+   "check_table": "*"
+  },
+  {
+   "pos": 6,
+   "name": "ANUPD",
+   "key": false,
+   "data_element": "ANUPD",
+   "domain": "ANUPD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Type of change to table",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "FUNTN",
+   "key": false,
+   "data_element": "FUNTN",
+   "domain": "ANLN2",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "First subnumber assigned",
+   "check_table": "ANLA"
+  },
+  {
+   "pos": 8,
+   "name": "ANLHTXT",
+   "key": false,
+   "data_element": "ANLHTXT",
+   "domain": "TEXT50",
+   "type": "CHAR",
+   "length": 50,
+   "decimals": 0,
+   "description": "Asset main number text",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "BUKRS",
+   "foreign_table": "T001",
+   "foreign_field": "BUKRS"
+  },
+  {
+   "field": "FUNTN",
+   "foreign_table": "ANLA",
+   "foreign_field": "ANLN2"
+  }
+ ]
+}

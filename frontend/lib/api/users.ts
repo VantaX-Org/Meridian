@@ -31,3 +31,8 @@ export async function deleteUser(
   );
   return data;
 }
+
+export async function getAssignableUsers(): Promise<{ id: string; name: string; email: string; role: string }[]> {
+  const { data } = await apiClient.get("/api/v1/users/assignable");
+  return data;
+}

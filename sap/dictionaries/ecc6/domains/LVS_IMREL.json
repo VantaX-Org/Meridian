@@ -1,0 +1,27 @@
+{
+ "domain": "LVS_IMREL",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "1",
+   "high": null,
+   "text": "Start immediate posting change SLoc to SLoc in Invent. Mgmt"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Batch post.chge SLoc to SLoc in Inventory Management"
+  },
+  {
+   "low": "",
+   "high": null,
+   "text": "No posting in Inventory Management"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,112 @@
+# Active population per table: records a rule on that table does NOT judge.
+#
+# SAP keeps dead and special records in the same tables as live ones. Judging a
+# vendor flagged for deletion for a missing phone number, or a one-time account
+# (whose name/address/bank data is captured per document, in BSEC) for a
+# missing street, produces findings nobody should act on. Every exclusion here
+# is an SAP-standard flag; each is counted per rule (details.population_excluded)
+# so the population is never silently smaller.
+#
+#   field        TABLE.FIELD holding the flag (parent-table flags cascade:
+#                the central deletion flag LFA1.LOEVM covers every LFB1 row)
+#   values       flag values that exclude; omitted = any non-blank value
+#   only_fields / only_tables
+#                the exclusion applies only to rules reading these columns
+#
+# A rule is never filtered by a flag it reads itself (MM013 validates
+# MARA.LVORM), and `population: all` on a rule disables every exclusion.
+
+_deleted: &deleted_label "flagged for deletion"
+
+# name, address, communication, tax and bank data of a one-time account live on
+# the document (BSEC), not the master record
+_one_time_fields: &one_time_fields
+  [NAME2, NAME3, NAME4, STRAS, ORT01, ORT02, PSTLZ, PFACH, PSTL2, REGIO, TELF1, TELF2, TELFX,
+   TELX1, TELTX, STCD1, STCD2, STCD3, STCD4, STCD5, STCEG, STKZN, STKZU, BANKS, BANKL, BANKN, BKONT, KOINH, IBAN]
+
+tables:
+  LFA1:
+    - {id: deleted, field: LFA1.LOEVM, label: *deleted_label}
+    - {id: one_time_account, field: LFA1.XCPDK, values: [X], label: "one-time account", only_fields: *one_time_fields}
+  LFB1:
+    - {id: deleted, field: LFB1.LOEVM, label: *deleted_label}
+    - {id: deleted, field: LFA1.LOEVM, label: *deleted_label}
+  LFM1:
+    - {id: deleted, field: LFM1.LOEVM, label: *deleted_label}
+    - {id: deleted, field: LFA1.LOEVM, label: *deleted_label}
+  LFBK:
+    - {id: deleted, field: LFA1.LOEVM, label: *deleted_label}
+    - {id: one_time_account, field: LFA1.XCPDK, values: [X], label: "one-time account"}
+  KNA1:
+    - {id: deleted, field: KNA1.LOEVM, label: *deleted_label}
+    - {id: one_time_account, field: KNA1.XCPDK, values: [X], label: "one-time account", only_fields: *one_time_fields}
+  KNB1:
+    - {id: deleted, field: KNB1.LOEVM, label: *deleted_label}
+    - {id: deleted, field: KNA1.LOEVM, label: *deleted_label}
+  KNVV:
+    - {id: deleted, field: KNVV.LOEVM, label: *deleted_label}
+    - {id: deleted, field: KNA1.LOEVM, label: *deleted_label}
+  KNBK:
+    - {id: deleted, field: KNA1.LOEVM, label: *deleted_label}
+    - {id: one_time_account, field: KNA1.XCPDK, values: [X], label: "one-time account"}
+  BUT000:
+    - {id: deleted, field: BUT000.XDELE, label: "flagged for archiving"}
+  MARA:
+    - {id: deleted, field: MARA.LVORM, label: *deleted_label}
+  MAKT:
+    - {id: deleted, field: MARA.LVORM, label: *deleted_label}
+  MARC:
+    - {id: deleted, field: MARC.LVORM, label: *deleted_label}
+    - {id: deleted, field: MARA.LVORM, label: *deleted_label}
+  MARD:
+    - {id: deleted, field: MARD.LVORM, label: *deleted_label}
+    - {id: deleted, field: MARC.LVORM, label: *deleted_label}
+    - {id: deleted, field: MARA.LVORM, label: *deleted_label}
+  MBEW:
+    - {id: deleted, field: MBEW.LVORM, label: *deleted_label}
+    - {id: deleted, field: MARC.LVORM, label: *deleted_label}
+    - {id: deleted, field: MARA.LVORM, label: *deleted_label}
+  MVKE:
+    - {id: deleted, field: MVKE.LVORM, label: *deleted_label}
+    - {id: deleted, field: MARA.LVORM, label: *deleted_label}
+  MLGN:
+    - {id: deleted, field: MLGN.LVORM, label: *deleted_label}
+    - {id: deleted, field: MARA.LVORM, label: *deleted_label}
+  MCH1:
+    - {id: deleted, field: MCH1.LVORM, label: *deleted_label}
+  MCHA:
+    - {id: deleted, field: MCHA.LVORM, label: *deleted_label}
+    - {id: deleted, field: MCH1.LVORM, label: *deleted_label}
+  SKA1:
+    - {id: deleted, field: SKA1.XLOEV, label: *deleted_label}
+  SKB1:
+    - {id: deleted, field: SKB1.XLOEB, label: *deleted_label}
+    - {id: deleted, field: SKA1.XLOEV, label: *deleted_label}
+  ANLA:
+    - {id: deleted, field: ANLA.XLOEV, label: *deleted_label}
+    - {id: deactivated, field: ANLA.DEAKT, label: "asset deactivated (retired)"}
+  ANLB:
+    - {id: deleted, field: ANLA.XLOEV, label: *deleted_label}
+    - {id: deactivated, field: ANLA.DEAKT, label: "asset deactivated (retired)"}
+  ANLZ:
+    - {id: deleted, field: ANLA.XLOEV, label: *deleted_label}
+    - {id: deactivated, field: ANLA.DEAKT, label: "asset deactivated (retired)"}
+  EKKO:
+    - {id: deleted, field: EKKO.LOEKZ, values: [L, X], label: *deleted_label}
+  EKPO:
+    - {id: deleted, field: EKPO.LOEKZ, values: [L, X], label: *deleted_label}
+    - {id: deleted, field: EKKO.LOEKZ, values: [L, X], label: *deleted_label}
+  EBAN:
+    - {id: deleted, field: EBAN.LOEKZ, values: [L, X], label: *deleted_label}
+  EINA:
+    - {id: deleted, field: EINA.LOEKZ, values: [L, X], label: *deleted_label}
+  EINE:
+    - {id: deleted, field: EINE.LOEKZ, values: [L, X], label: *deleted_label}
+  VBAP:
+    - {id: rejected, field: VBAP.ABGRU, label: "item rejected (reason for rejection set)"}
+  STKO:
+    - {id: deleted, field: STKO.LOEKZ, values: [L, X], label: *deleted_label}
+  PLKO:
+    - {id: deleted, field: PLKO.LOEKZ, values: [L, X], label: *deleted_label}
+  CRHD:
+    - {id: deleted, field: CRHD.LVORM, label: *deleted_label}

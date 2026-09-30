@@ -4,6 +4,8 @@ import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
+
+from api.services.rbac import require_permission
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,7 +16,7 @@ router = APIRouter(prefix="/api/v1", tags=["analyse"])
 logger = logging.getLogger("meridian.analyse")
 
 
-@router.post("/versions/{version_id}/run-agents")
+@router.post("/versions/{version_id}/run-agents", dependencies=[Depends(require_permission("analyse"))])
 async def run_agents_endpoint(
     version_id: str,
     db: AsyncSession = Depends(get_db),

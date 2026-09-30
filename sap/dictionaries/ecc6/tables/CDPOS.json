@@ -1,0 +1,211 @@
+{
+ "table": "CDPOS",
+ "description": "Change document items",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDANT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "OBJECTCLAS",
+   "key": true,
+   "data_element": "CDOBJECTCL",
+   "domain": "OBJECTCL",
+   "type": "CHAR",
+   "length": 15,
+   "decimals": 0,
+   "description": "Object class",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "OBJECTID",
+   "key": true,
+   "data_element": "CDOBJECTV",
+   "domain": "CHAR90",
+   "type": "CHAR",
+   "length": 90,
+   "decimals": 0,
+   "description": "Object value",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "CHANGENR",
+   "key": true,
+   "data_element": "CDCHANGENR",
+   "domain": "CDCHANGENR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Document change number",
+   "check_table": "CDHDR"
+  },
+  {
+   "pos": 5,
+   "name": "TABNAME",
+   "key": true,
+   "data_element": "TABNAME",
+   "domain": "AS4TAB",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Table Name",
+   "check_table": "*"
+  },
+  {
+   "pos": 6,
+   "name": "TABKEY",
+   "key": true,
+   "data_element": "CDTABKEY",
+   "domain": "CHAR70",
+   "type": "CHAR",
+   "length": 70,
+   "decimals": 0,
+   "description": "Changed table record key",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "FNAME",
+   "key": true,
+   "data_element": "FIELDNAME",
+   "domain": "FDNAME",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Field Name",
+   "check_table": "*"
+  },
+  {
+   "pos": 8,
+   "name": "CHNGIND",
+   "key": true,
+   "data_element": "CDCHNGIND",
+   "domain": "CDCHNGIND",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Change type (U, I, E, D)",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "TEXT_CASE",
+   "key": false,
+   "data_element": "CDXFELD",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Flag: X=Text change",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "UNIT_OLD",
+   "key": false,
+   "data_element": "CDUNIT",
+   "domain": "CDUNIT",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Change documents, unit referenced",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "UNIT_NEW",
+   "key": false,
+   "data_element": "CDUNIT",
+   "domain": "CDUNIT",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Change documents, unit referenced",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "CUKY_OLD",
+   "key": false,
+   "data_element": "CDCUKY",
+   "domain": "WAERS",
+   "type": "CUKY",
+   "length": 5,
+   "decimals": 0,
+   "description": "Change documents, referenced currency",
+   "check_table": "TCURC"
+  },
+  {
+   "pos": 13,
+   "name": "CUKY_NEW",
+   "key": false,
+   "data_element": "CDCUKY",
+   "domain": "WAERS",
+   "type": "CUKY",
+   "length": 5,
+   "decimals": 0,
+   "description": "Change documents, referenced currency",
+   "check_table": "TCURC"
+  },
+  {
+   "pos": 14,
+   "name": "VALUE_NEW",
+   "key": false,
+   "data_element": "CDFLDVALN",
+   "domain": "FIELDVAL",
+   "type": "CHAR",
+   "length": 254,
+   "decimals": 0,
+   "description": "New contents of changed field",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "VALUE_OLD",
+   "key": false,
+   "data_element": "CDFLDVALO",
+   "domain": "FIELDVAL",
+   "type": "CHAR",
+   "length": 254,
+   "decimals": 0,
+   "description": "Old contents of changed field",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "CHANGENR",
+   "foreign_table": "CDHDR",
+   "foreign_field": "CHANGENR"
+  },
+  {
+   "field": "CUKY_NEW",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  },
+  {
+   "field": "CUKY_OLD",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  },
+  {
+   "field": "MANDANT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

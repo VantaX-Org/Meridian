@@ -1,0 +1,24 @@
+# Bounded reads for transactional tables (master data is always read in full).
+#
+#   where: pushed down to RFC_READ_TABLE. Placeholders:
+#          {months_ago:N}  → YYYYMMDD N months before today
+#          {years_ago:N}   → YYYY N years before this year
+#   via:   read only rows belonging to the parent rows already extracted
+#          (IN-lists over the join keys from sap/dictionaries/joins.yaml)
+# Override per deployment with MERIDIAN_EXTRACT_MONTHS (default windows below).
+EKKO:  {where: "BEDAT >= '{months_ago:24}'"}
+EKPO:  {via: EKKO}
+VBAK:  {where: "ERDAT >= '{months_ago:24}'"}
+VBAP:  {via: VBAK}
+VBUK:  {via: VBAK}
+VBUP:  {via: VBAP}
+BKPF:  {where: "BUDAT >= '{months_ago:3}'"}  # FI documents are high-volume: last quarter
+BSEG:  {via: BKPF}
+LTAK:  {where: "BDATU >= '{months_ago:6}'"}
+LTAP:  {via: LTAK}
+VTTK:  {where: "ERDAT >= '{months_ago:12}'"}
+VTTP:  {via: VTTK}
+CDHDR: {where: "UDATE >= '{months_ago:3}'"}
+CDPOS: {via: CDHDR}
+USMD120C: {where: "USMD_CREATED_AT >= '{months_ago:24}000000'"}
+USMD1213: {via: USMD120C}

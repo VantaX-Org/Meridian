@@ -1,0 +1,27 @@
+{
+ "domain": "KZFME",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Base unit of measure has priority"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Proportional unit has priority (active ingredient)"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Product unit of measure has priority (steel)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

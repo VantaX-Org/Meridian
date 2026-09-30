@@ -21,6 +21,9 @@ from api.routes.writeback import router as writeback_router
 from api.routes.cleaning import router as cleaning_router
 from api.routes.migration import router as migration_router
 from api.routes.exceptions import router as exceptions_router
+from api.routes.source_design import router as source_design_router
+from api.routes.record_issues import router as record_issues_router
+from api.routes.system_objects import router as system_objects_router
 from api.routes.analytics import router as analytics_router
 from api.routes.contracts import router as contracts_router
 from api.routes.notifications import router as notifications_router
@@ -251,6 +254,9 @@ app.include_router(writeback_router)
 app.include_router(cleaning_router)
 app.include_router(migration_router)
 app.include_router(exceptions_router)
+app.include_router(source_design_router)
+app.include_router(record_issues_router)
+app.include_router(system_objects_router)
 app.include_router(analytics_router)
 app.include_router(contracts_router)
 app.include_router(notifications_router)

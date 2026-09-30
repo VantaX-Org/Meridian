@@ -1,0 +1,32 @@
+{
+ "domain": "LTYPA",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "1",
+   "high": null,
+   "text": "Note (only in Append)"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Replace configurable material (only in Append)"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Note (Append and change)"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Replace configurable material (Append and change)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

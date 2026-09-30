@@ -1,0 +1,81 @@
+{
+ "table": "JEST",
+ "description": "Individual Object Status",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "OBJNR",
+   "key": true,
+   "data_element": "J_OBJNR",
+   "domain": "J_OBJNR",
+   "type": "CHAR",
+   "length": 22,
+   "decimals": 0,
+   "description": "Object number",
+   "check_table": "ONR00"
+  },
+  {
+   "pos": 3,
+   "name": "STAT",
+   "key": true,
+   "data_element": "J_STATUS",
+   "domain": "J_STATUS",
+   "type": "CHAR",
+   "length": 5,
+   "decimals": 0,
+   "description": "Object status",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "INACT",
+   "key": false,
+   "data_element": "J_INACT",
+   "domain": "J_INACT",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Status Is Inactive",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "CHGNR",
+   "key": false,
+   "data_element": "J_CHGNR",
+   "domain": "NUM3",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Change number",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "OBJNR",
+   "foreign_table": "ONR00",
+   "foreign_field": "OBJNR"
+  }
+ ]
+}

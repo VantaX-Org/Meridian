@@ -1,0 +1,22 @@
+{
+ "domain": "EXCOK",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Legal control: No check"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Legal control: Check in dispatch and export area"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

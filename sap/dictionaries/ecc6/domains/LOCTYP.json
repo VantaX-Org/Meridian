@@ -1,0 +1,77 @@
+{
+ "domain": "LOCTYP",
+ "type": "CHAR",
+ "length": 4,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "1001",
+   "high": null,
+   "text": "Production Plant"
+  },
+  {
+   "low": "1002",
+   "high": null,
+   "text": "Distribution center"
+  },
+  {
+   "low": "1003",
+   "high": null,
+   "text": "Shipping Point"
+  },
+  {
+   "low": "1005",
+   "high": null,
+   "text": "Transportation Zone"
+  },
+  {
+   "low": "1006",
+   "high": null,
+   "text": "Stock transfer point"
+  },
+  {
+   "low": "1007",
+   "high": null,
+   "text": "Storage Location MRP Area"
+  },
+  {
+   "low": "1010",
+   "high": null,
+   "text": "Customer"
+  },
+  {
+   "low": "1011",
+   "high": null,
+   "text": "Vendor"
+  },
+  {
+   "low": "1050",
+   "high": null,
+   "text": "Subcontractor"
+  },
+  {
+   "low": "1020",
+   "high": null,
+   "text": "Transportation Service Agent"
+  },
+  {
+   "low": "1030",
+   "high": null,
+   "text": "Terminal"
+  },
+  {
+   "low": "1031",
+   "high": null,
+   "text": "Geographical Area"
+  },
+  {
+   "low": "1040",
+   "high": null,
+   "text": "Store"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

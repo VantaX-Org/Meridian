@@ -1,0 +1,32 @@
+{
+ "domain": "BESKZ",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "E",
+   "high": null,
+   "text": "In-house production"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "External procurement"
+  },
+  {
+   "low": "",
+   "high": null,
+   "text": "No procurement"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Both procurement types"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

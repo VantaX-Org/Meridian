@@ -1,0 +1,76 @@
+{
+ "table": "DD02T",
+ "description": "SAP DD: SAP Table Texts",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "TABNAME",
+   "key": true,
+   "data_element": "TABNAME",
+   "domain": "AS4TAB",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Table Name",
+   "check_table": "DD02L"
+  },
+  {
+   "pos": 2,
+   "name": "DDLANGUAGE",
+   "key": true,
+   "data_element": "DDLANGUAGE",
+   "domain": "SPRAS",
+   "type": "LANG",
+   "length": 1,
+   "decimals": 0,
+   "description": "Language Key",
+   "check_table": "*"
+  },
+  {
+   "pos": 3,
+   "name": "AS4LOCAL",
+   "key": true,
+   "data_element": "AS4LOCAL",
+   "domain": "AS4LOCAL",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Activation Status of a Repository Object",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "AS4VERS",
+   "key": true,
+   "data_element": "AS4VERS",
+   "domain": "AS4VERS",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Version of the entry (not used)",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "DDTEXT",
+   "key": false,
+   "data_element": "AS4TEXT",
+   "domain": "AS4TEXT",
+   "type": "CHAR",
+   "length": 60,
+   "decimals": 0,
+   "description": "Short Description of Repository Objects",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "TABNAME",
+   "foreign_table": "DD02L",
+   "foreign_field": "TABNAME"
+  }
+ ]
+}

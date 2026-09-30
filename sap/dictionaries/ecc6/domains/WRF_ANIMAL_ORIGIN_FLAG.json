@@ -1,0 +1,22 @@
+{
+ "domain": "WRF_ANIMAL_ORIGIN_FLAG",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No Animal Origin"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Contains Non-Textile Parts of Animal Origin"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

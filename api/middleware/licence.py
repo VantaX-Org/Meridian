@@ -36,7 +36,9 @@ _first_failure_at: Optional[float] = None
 _degraded_at: Optional[float] = None  # When Cloudflare became unreachable
 LICENCE_DEGRADED_CUTOFF_SECONDS = 2 * 60 * 60  # 2 hours: 7200 seconds
 
-CACHE_TTL_SECONDS = 6 * 60 * 60  # 6 hours
+CACHE_TTL_SECONDS = 6 * 60 * 60  # 6 hours — valid licences
+INVALID_CACHE_TTL_SECONDS = 60  # a renewal or reactivation applies within a minute
+EXPIRY_GRACE_SECONDS = 7 * 24 * 60 * 60  # matches the licence worker's grace window
 FAILURE_CUTOFF_SECONDS = 48 * 60 * 60  # 48 hours
 
 
@@ -144,12 +146,11 @@ def _read_offline_licence() -> dict | None:
                 if _first_failure_at is None:
                     _first_failure_at = time.time()
                 return {"valid": False, "reason": "invalid_signature"}
-        elif licence_secret and "signature" not in data:
-            # Secret is set but file has no signature — legacy format, treat as payload
-            payload = data
         else:
-            # No secret configured — trust the file as-is (legacy behavior)
-            payload = data.get("payload", data)
+            # An unsigned file (or no LICENCE_SECRET to verify it with) grants
+            # nothing — otherwise anyone could write their own licence.
+            logger.warning("Offline licence is unsigned or LICENCE_SECRET is not set — rejecting")
+            return {"valid": False, "reason": "unsigned_licence"}
 
         # Reset failure counter on successful read
         _consecutive_failures = 0
@@ -180,6 +181,43 @@ def _read_offline_licence() -> dict | None:
         if _first_failure_at is None:
             _first_failure_at = time.time()
         return None
+
+
+def _read_offline_token() -> dict | None:
+    """Verify HQ's RS256 offline licence JWT (MERIDIAN_LICENCE_TOKEN).
+
+    Issued by POST /api/admin/tenants/:id/offline-token and verified with the
+    matching public key (MERIDIAN_OFFLINE_PUBLIC_KEY). None when no token is set.
+    """
+    token = os.getenv("MERIDIAN_LICENCE_TOKEN", "").strip()
+    if not token:
+        return None
+    key = os.getenv("MERIDIAN_OFFLINE_PUBLIC_KEY", "").strip()
+    if not key:
+        logger.error("MERIDIAN_LICENCE_TOKEN set but MERIDIAN_OFFLINE_PUBLIC_KEY is not — cannot verify")
+        return {"valid": False, "reason": "no_public_key"}
+    import jwt as pyjwt
+
+    try:
+        claims = pyjwt.decode(token, key, algorithms=["RS256"], issuer="meridian-hq",
+                              options={"require": ["exp", "tenant_id", "iss"]})
+    except pyjwt.ExpiredSignatureError:
+        return {"valid": False, "reason": "expired"}
+    except pyjwt.PyJWTError as e:
+        logger.warning(f"Offline licence token rejected: {type(e).__name__}")
+        return {"valid": False, "reason": "invalid_token"}
+    return {
+        "valid": True,
+        "status": "active",
+        "tenant_id": claims["tenant_id"],
+        "expiry_date": datetime.fromtimestamp(claims["exp"], tz=timezone.utc).isoformat(),
+        "enabled_modules": claims.get("enabled_modules", []),
+        "enabled_menu_items": claims.get("enabled_menu_items", []),
+        "features": claims.get("features", {}),
+        "llm_config": claims.get("llm_config", {}),
+        "rules": claims.get("rules", []),
+        "field_mappings": claims.get("field_mappings", []),
+    }
 
 
 def is_licence_degraded() -> bool:
@@ -287,80 +325,59 @@ def _sync_manifest_to_db(result: dict) -> None:
 
 
 def _do_sync_manifest(rules: list, field_mappings: list) -> None:
-    """Background thread: upsert rules and field_mappings into local DB."""
+    """Background thread: upsert HQ rule governance and field mappings into the local DB.
+
+    Field mappings belong to this deployment's tenant (HQ's tenant id is a
+    different key space), written under RLS.
+    """
     try:
-        from sqlalchemy import create_engine, text
-        from api.config import settings as _settings
+        from sqlalchemy import text
 
-        engine = create_engine(_settings.database_url_sync)
-        with engine.connect() as conn:
-            # Sync rules — upsert by rule id, mark source='hq'
+        from api.deps import _DEV_TENANT
+        from workers.db import get_sync_engine
+
+        local_tid = str(_DEV_TENANT.id)
+        with get_sync_engine().begin() as conn:
+            conn.execute(text("SELECT set_config('app.tenant_id', :tid, true)"), {"tid": local_tid})
             for rule in rules:
-                rule_id = rule.get("id")
-                if not rule_id:
+                if not rule.get("id"):
                     continue
-                conn.execute(
-                    text("""
-                        INSERT INTO rules_hq_cache (id, name, description, module, category, severity, enabled, conditions, thresholds, tags, source, updated_at)
-                        VALUES (:id, :name, :description, :module, :category, :severity, :enabled, :conditions, :thresholds, :tags, 'hq', NOW())
-                        ON CONFLICT(id) DO UPDATE SET
-                            name = EXCLUDED.name,
-                            description = EXCLUDED.description,
-                            module = EXCLUDED.module,
-                            category = EXCLUDED.category,
-                            severity = EXCLUDED.severity,
-                            enabled = EXCLUDED.enabled,
-                            conditions = EXCLUDED.conditions,
-                            thresholds = EXCLUDED.thresholds,
-                            tags = EXCLUDED.tags,
-                            updated_at = EXCLUDED.updated_at
-                    """),
-                    {
-                        "id": rule_id,
-                        "name": rule.get("name", ""),
-                        "description": rule.get("description"),
-                        "module": rule.get("module", ""),
-                        "category": rule.get("category", ""),
-                        "severity": rule.get("severity", "medium"),
-                        "enabled": rule.get("enabled", True),
-                        "conditions": json.dumps(rule.get("conditions", [])),
-                        "thresholds": json.dumps(rule.get("thresholds", {})),
-                        "tags": json.dumps(rule.get("tags", [])),
-                    },
-                )
-
-            # Sync field mappings
+                conn.execute(text("""
+                    INSERT INTO rules_hq_cache (id, name, description, module, category, severity, enabled,
+                                                conditions, thresholds, tags, source, updated_at)
+                    VALUES (:id, :name, :description, :module, :category, :severity, :enabled,
+                            CAST(:conditions AS jsonb), CAST(:thresholds AS jsonb), CAST(:tags AS jsonb), 'hq', NOW())
+                    ON CONFLICT (id) DO UPDATE SET
+                        name = EXCLUDED.name, description = EXCLUDED.description, module = EXCLUDED.module,
+                        category = EXCLUDED.category, severity = EXCLUDED.severity, enabled = EXCLUDED.enabled,
+                        conditions = EXCLUDED.conditions, thresholds = EXCLUDED.thresholds,
+                        tags = EXCLUDED.tags, updated_at = EXCLUDED.updated_at
+                """), {
+                    "id": rule["id"], "name": rule.get("name", ""), "description": rule.get("description"),
+                    "module": rule.get("module", ""), "category": rule.get("category", ""),
+                    "severity": rule.get("severity", "medium"), "enabled": bool(rule.get("enabled", True)),
+                    "conditions": json.dumps(rule.get("conditions", [])),
+                    "thresholds": json.dumps(rule.get("thresholds", {})), "tags": json.dumps(rule.get("tags", [])),
+                })
             for fm in field_mappings:
-                if not fm.get("tenant_id") or not fm.get("module") or not fm.get("standard_field"):
+                if not fm.get("module") or not fm.get("standard_field"):
                     continue
-                conn.execute(
-                    text("""
-                        INSERT INTO field_mappings (id, tenant_id, module, standard_field, standard_label, customer_field, customer_label, data_type, is_mapped, notes, updated_at)
-                        VALUES (:id, :tenant_id, :module, :standard_field, :standard_label, :customer_field, :customer_label, :data_type, :is_mapped, :notes, NOW())
-                        ON CONFLICT (tenant_id, module, standard_field) DO UPDATE SET
-                            standard_label = EXCLUDED.standard_label,
-                            customer_field = EXCLUDED.customer_field,
-                            customer_label = EXCLUDED.customer_label,
-                            data_type = EXCLUDED.data_type,
-                            is_mapped = EXCLUDED.is_mapped,
-                            notes = EXCLUDED.notes,
-                            updated_at = EXCLUDED.updated_at
-                    """),
-                    {
-                        "id": fm.get("id", str(uuid.uuid4())),
-                        "tenant_id": fm.get("tenant_id"),
-                        "module": fm.get("module"),
-                        "standard_field": fm.get("standard_field"),
-                        "standard_label": fm.get("standard_label"),
-                        "customer_field": fm.get("customer_field"),
-                        "customer_label": fm.get("customer_label"),
-                        "data_type": fm.get("data_type", "string"),
-                        "is_mapped": fm.get("is_mapped", False),
-                        "notes": fm.get("notes"),
-                    },
-                )
-            conn.commit()
-            logger.info(f"Synced {len(rules)} rules and {len(field_mappings)} field mappings from licence manifest")
+                conn.execute(text("""
+                    INSERT INTO field_mappings (id, tenant_id, module, standard_field, standard_label, customer_field,
+                                                customer_label, data_type, is_mapped, notes, updated_at)
+                    VALUES (gen_random_uuid(), :tenant_id, :module, :standard_field, :standard_label, :customer_field,
+                            :customer_label, :data_type, :is_mapped, :notes, NOW())
+                    ON CONFLICT (tenant_id, module, standard_field) DO UPDATE SET
+                        standard_label = EXCLUDED.standard_label, customer_field = EXCLUDED.customer_field,
+                        customer_label = EXCLUDED.customer_label, data_type = EXCLUDED.data_type,
+                        is_mapped = EXCLUDED.is_mapped, notes = EXCLUDED.notes, updated_at = EXCLUDED.updated_at
+                """), {
+                    "tenant_id": local_tid, "module": fm["module"], "standard_field": fm["standard_field"],
+                    "standard_label": fm.get("standard_label"), "customer_field": fm.get("customer_field"),
+                    "customer_label": fm.get("customer_label"), "data_type": fm.get("data_type", "string"),
+                    "is_mapped": bool(fm.get("is_mapped", False)), "notes": fm.get("notes"),
+                })
+        logger.info(f"Synced {len(rules)} rules and {len(field_mappings)} field mappings from licence manifest")
     except Exception as e:
         logger.warning(f"Failed to sync manifest to DB: {e}")
 
@@ -467,15 +484,10 @@ async def _validate_licence() -> dict | None:
     global _last_checked_at
     _last_checked_at = time.time()
 
-    # Offline mode: skip network call entirely
-    licence_mode = settings.licence_mode
-    if licence_mode == "offline":
-        return _read_offline_licence()
-
-    # Check offline licence file first (legacy support)
-    offline = _read_offline_licence()
-    if offline is not None:
-        return offline
+    # Offline / air-gapped: never touch the network. HQ's signed token first,
+    # then the legacy HMAC-signed licence file.
+    if settings.licence_mode in ("offline", "airgap"):
+        return _read_offline_token() or _read_offline_licence()
 
     # Task 08: Check degraded state cutoff BEFORE attempting network call
     if is_cloudflare_unreachable():
@@ -496,6 +508,17 @@ async def _validate_licence() -> dict | None:
             # host/path → 404) or an HQ-side outage (5xx). Surface the real
             # status instead of letting resp.json() throw a cryptic
             # "Expecting value: line 1 column 1" on the HTML error body.
+            if resp.status_code in (400, 402, 403):
+                # HQ answered: the key is invalid / suspended / expired (or in grace).
+                # That is a licence state — never "unreachable", which would let a
+                # revoked licence keep running on its last entitlements.
+                try:
+                    verdict = resp.json()
+                except Exception:
+                    verdict = None
+                if isinstance(verdict, dict) and verdict.get("valid") is False:
+                    _mark_cloudflare_healthy()
+                    return verdict
             if resp.status_code != 200:
                 logger.warning(
                     "Licence server returned HTTP %s for %s/api/licence/validate "
@@ -537,6 +560,7 @@ async def _validate_licence() -> dict | None:
 _LICENCE_EXEMPT_PREFIXES = (
     "/api/v1/auth",
     "/api/v1/licence",
+    "/api/v1/system/update",  # security/licence fixes must install even on a lapsed licence
 )
 
 
@@ -622,6 +646,29 @@ def enforce_licensed_modules(request: Request, requested: list[str]) -> None:
         )
 
 
+def _within_grace(expiry: str | None) -> bool:
+    if not expiry:
+        return False
+    try:
+        exp = datetime.fromisoformat(str(expiry).replace("Z", "+00:00"))
+        if exp.tzinfo is None:
+            exp = exp.replace(tzinfo=timezone.utc)
+    except ValueError:
+        return False
+    return time.time() < exp.timestamp() + EXPIRY_GRACE_SECONDS
+
+
+async def _serve_entitled(request: Request, call_next, manifest: dict):
+    """Attach the manifest's entitlements to the request, apply the feature gate, continue."""
+    request.state.licensed_modules = manifest.get("enabled_modules") or manifest.get("modules", [])
+    request.state.licensed_features = _features_to_list(manifest.get("features", {}))
+    request.state.licence_manifest = manifest
+    feature_block = _check_feature_gate(request.url.path, request.state.licensed_features)
+    if feature_block:
+        return feature_block
+    return await call_next(request)
+
+
 class LicenceMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         # Only check /api/v1/* routes
@@ -638,8 +685,9 @@ class LicenceMiddleware(BaseHTTPMiddleware):
         if request.url.path.startswith(_LICENCE_EXEMPT_PREFIXES):
             return await call_next(request)
 
-        # Dev mode — skip validation if no licence key and AUTH_MODE=local
-        if not settings.licence_key and settings.auth_mode == "local":
+        # Development only: no key → everything entitled. In any other
+        # deployment a missing key is a missing licence, not a bypass.
+        if not settings.licence_key and settings.env == "development":
             request.state.licensed_modules = ["*"]
             request.state.licensed_features = ["*"]
             return await call_next(request)
@@ -649,16 +697,10 @@ class LicenceMiddleware(BaseHTTPMiddleware):
         if _cache["response"] and _cache["expires_at"] > now:
             cached = _cache["response"]
             if cached.get("valid"):
-                enabled_modules = cached.get("enabled_modules") or cached.get("modules", [])
-                licensed_features = _features_to_list(cached.get("features", {}))
-                request.state.licensed_modules = enabled_modules
-                request.state.licensed_features = licensed_features
-                request.state.licence_manifest = cached
-                # Check feature gate
-                feature_block = _check_feature_gate(request.url.path, licensed_features)
-                if feature_block:
-                    return feature_block
-                return await call_next(request)
+                response = await _serve_entitled(request, call_next, cached)
+                if _cache.get("grace"):
+                    response.headers["X-Licence-Warning"] = "expired_grace"
+                return response
             else:
                 return JSONResponse(
                     {"error": "licence_invalid", "reason": cached.get("reason")},
@@ -685,17 +727,7 @@ class LicenceMiddleware(BaseHTTPMiddleware):
                     "Licence server unreachable — running degraded on the last "
                     "validated licence's entitlements"
                 )
-                enabled_modules = (
-                    last_known.get("enabled_modules") or last_known.get("modules", [])
-                )
-                licensed_features = _features_to_list(last_known.get("features", {}))
-                request.state.licensed_modules = enabled_modules
-                request.state.licensed_features = licensed_features
-                request.state.licence_manifest = last_known
-                feature_block = _check_feature_gate(request.url.path, licensed_features)
-                if feature_block:
-                    return feature_block
-                return await call_next(request)
+                return await _serve_entitled(request, call_next, last_known)
             logger.error(
                 "Licence server unreachable and no valid cached licence — denying"
             )
@@ -711,35 +743,34 @@ class LicenceMiddleware(BaseHTTPMiddleware):
                 status_code=403,
             )
 
+        if not result.get("valid"):
+            reason = result.get("reason", "unknown")
+            last_known = _cache.get("response")
+            # Grace: HQ says the licence expired less than 7 days ago. Keep the
+            # last SIGNED entitlements, bounded by that manifest's own expiry
+            # date (not by the unsigned grace timestamp), and warn every caller.
+            if reason == "expired_grace" and last_known and last_known.get("valid") \
+                    and _within_grace(last_known.get("expiry_date") or last_known.get("expiresAt")):
+                _manifest_cache.update({"status": "expired_grace",
+                                        "grace_period_ends": result.get("grace_period_ends")})
+                _cache["expires_at"] = now + INVALID_CACHE_TTL_SECONDS
+                _cache["grace"] = True
+                response = await _serve_entitled(request, call_next, last_known)
+                response.headers["X-Licence-Warning"] = "expired_grace"
+                return response
+            _cache["response"] = result
+            _cache["expires_at"] = now + INVALID_CACHE_TTL_SECONDS
+            _cache["grace"] = False
+            _manifest_cache.update({"valid": False, "status": reason})
+            return JSONResponse({"error": "licence_invalid", "reason": reason}, status_code=402)
+
         # Cache the result
         _cache["response"] = result
         _cache["expires_at"] = now + CACHE_TTL_SECONDS
+        _cache["grace"] = False
 
-        if result.get("valid"):
-            enabled_modules = result.get("enabled_modules") or result.get("modules", [])
-            licensed_features = _features_to_list(result.get("features", {}))
-
-            request.state.licensed_modules = enabled_modules
-            request.state.licensed_features = licensed_features
-            request.state.licence_manifest = result
-
-            # Populate full manifest cache for GET /api/v1/licence
-            _update_manifest_cache(result)
-
-            # Sync rules and field mappings from manifest asynchronously
-            _sync_manifest_to_db(result)
-
-            # Check feature gate
-            feature_block = _check_feature_gate(request.url.path, licensed_features)
-            if feature_block:
-                return feature_block
-            return await call_next(request)
-        else:
-            reason = result.get("reason", "unknown")
-            if reason == "expired_grace":
-                # Grace period — update manifest cache but still allow through with warning
-                _update_manifest_cache(result)
-            return JSONResponse(
-                {"error": "licence_invalid", "reason": reason},
-                status_code=402,
-            )
+        # Populate full manifest cache for GET /api/v1/licence
+        _update_manifest_cache(result)
+        # Sync rules and field mappings from manifest asynchronously
+        _sync_manifest_to_db(result)
+        return await _serve_entitled(request, call_next, result)

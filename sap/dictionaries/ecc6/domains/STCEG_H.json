@@ -1,0 +1,62 @@
+{
+ "domain": "STCEG_H",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "Ship-to party"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Payer"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Sold-to party"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Payer (KNAS segment)"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Manually entered or changed"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Entered manually in order"
+  },
+  {
+   "low": "G",
+   "high": null,
+   "text": "Own VAT reg. no. in dest. country"
+  },
+  {
+   "low": "H",
+   "high": null,
+   "text": "Payer for tax receiving country from order"
+  },
+  {
+   "low": "I",
+   "high": null,
+   "text": "Sold-to party for tax receiving country from order"
+  },
+  {
+   "low": "J",
+   "high": null,
+   "text": "Sold to party (segment KNAS)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

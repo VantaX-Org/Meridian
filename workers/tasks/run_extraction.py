@@ -1,6 +1,14 @@
-"""Celery task: module-aware extraction from any SAP system type."""
+"""Celery task: extract a system's data for the selected modules, then run checks.
+
+One analysis version per extraction (all modules together, so versions are
+comparable run-to-run). Data is stored as a per-table parquet bundle
+``staging/<tenant>/<version>/<TABLE>.parquet`` with ``TABLE.FIELD`` columns —
+the exact shape the check engine evaluates at record grain. Per-table
+coverage (rows, window, truncation, failures) is stored on the version.
+"""
 
 import io
+from datetime import datetime, timezone
 import json
 import logging
 import uuid
@@ -18,127 +26,102 @@ logger = logging.getLogger("meridian.workers.extraction")
 @celery_app.task(
     bind=True,
     name="workers.tasks.run_extraction.run_extraction",
-    soft_time_limit=600,
-    time_limit=660,
+    soft_time_limit=3000,
+    time_limit=3060,
     acks_late=True,
     reject_on_worker_lost=True,
 )
-def run_extraction(self, tenant_id, system_id, modules, include_config=True,
-                   sync_type="both"):
-    """Extract data and config for modules, then run check pipeline."""
-    engine = get_sync_engine()
+def run_extraction(self, tenant_id, system_id, modules, include_config=True, sync_type="both",
+                   scope=None, analyse=True, label=None):
+    """Download ``modules`` (business objects) from ``system_id`` into a new version.
 
+    The version is stored as ``extracted`` with its objects, scope and per-object
+    record counts; analysis runs now when ``analyse`` else on request
+    (POST /api/v1/versions/{id}/analyse). Every download is a new version.
+    """
+    engine = get_sync_engine()
+    version_id = str(uuid.uuid4())
     try:
         with Session(engine) as session:
             session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
-
             from api.services.connectivity_manager import ConnectivityManager
+
             manager = ConnectivityManager(session, tenant_id)
+            if sync_type == "config":
+                return manager.sync_config(system_id, modules)
 
-            for module in modules:
-                try:
-                    if sync_type in ("data", "both"):
-                        data_df, config_frames = manager.extract_module(
-                            system_id, module,
-                            include_config=(sync_type == "both"),
-                        )
+            frames, coverage = manager.extract(system_id, modules, scope=scope)
+            # refresh the live configuration the value rules compare against
+            from workers.tasks.run_discovery import _store_config
+            for c in coverage:
+                if c.get("purpose") == "config" and c["table"] in frames:
+                    df = frames[c["table"]]
+                    _store_config(session, tenant_id, system_id, "*", c["table"],
+                                  df.rename(columns=lambda x: x.split(".", 1)[-1]).to_dict(orient="records"))
+            data_tables = {t: df for t, df in frames.items()
+                           if any(c["table"] == t and c.get("purpose", "data") == "data" for c in coverage)}
+            if not data_tables:
+                _mark_modules(session, tenant_id, system_id, modules, "failed", 0)
+                logger.error(f"Extraction from {system_id} produced no data tables: {coverage}")
+                return {"status": "failed", "coverage": coverage}
 
-                        row_count = len(data_df) if not data_df.empty else 0
+            from api.config import settings
+            from api.services.storage import upload_file
 
-                        if not data_df.empty:
-                            # Store parquet to MinIO
-                            version_id = str(uuid.uuid4())
-                            parquet_buf = io.BytesIO()
-                            data_df.to_parquet(parquet_buf, index=False)
-                            parquet_bytes = parquet_buf.getvalue()
+            prefix = f"staging/{tenant_id}/{version_id}/"
+            for table, df in data_tables.items():
+                buf = io.BytesIO()
+                df.astype("string").to_parquet(buf, index=False)
+                # Upload failure fails the extraction — never report success
+                # for data the checks cannot read.
+                upload_file(settings.minio_bucket_uploads, f"{prefix}{table}.parquet", buf.getvalue())
 
-                            path = None
-                            try:
-                                from api.services.storage import upload_parquet
-                                path = f"staging/{tenant_id}/{version_id}/{module}.parquet"
-                                upload_parquet(path, parquet_bytes)
-                            except Exception as e:
-                                logger.warning(f"MinIO upload failed: {e}")
-                                path = None
+            from checks.frames import _graph
+            anchors = _graph()[1]
+            object_rows = {m: len(data_tables[anchors[m]]) for m in modules if anchors.get(m) in data_tables}
+            session.execute(
+                text("""
+                    INSERT INTO analysis_versions (id, tenant_id, status, label, metadata)
+                    VALUES (:vid, :tid, :st, :label, CAST(:meta AS jsonb))
+                """),
+                {"vid": version_id, "tid": tenant_id, "st": "pending" if analyse else "extracted",
+                 "label": label, "meta": json.dumps({
+                    "modules": modules, "source": "extraction", "system_id": system_id,
+                    "scope": scope or {}, "downloaded_at": datetime.now(timezone.utc).isoformat(),
+                    "dataset_path": prefix, "object_rows": object_rows,
+                    "coverage": coverage, "row_count": int(sum(len(d) for d in data_tables.values())),
+                })},
+            )
+            session.commit()
 
-                            # Create analysis version
-                            session.execute(
-                                text("""
-                                    INSERT INTO analysis_versions
-                                        (id, tenant_id, status, metadata)
-                                    VALUES (:vid, :tid, 'pending',
-                                            CAST(:meta AS jsonb))
-                                """),
-                                {
-                                    "vid": version_id,
-                                    "tid": tenant_id,
-                                    "meta": json.dumps({
-                                        "modules": [module],
-                                        "source": "extraction",
-                                        "system_id": system_id,
-                                    }),
-                                },
-                            )
-                            session.commit()
+            failed = {c["table"] for c in coverage if c["status"] == "failed"}
+            _mark_modules(session, tenant_id, system_id, modules, "partial" if failed else "success",
+                          int(sum(len(d) for d in data_tables.values())))
 
-                            # Enqueue check pipeline
-                            if path:
-                                from workers.tasks.run_checks import run_checks
-                                run_checks.delay(version_id, tenant_id, path)
-                            else:
-                                logger.warning(
-                                    f"Skipping run_checks for version={version_id}: parquet upload failed"
-                                )
-
-                    elif sync_type == "config":
-                        manager.sync_config(system_id, [module])
-                        row_count = 0
-
-                    # Update system_module_map
-                    session.execute(
-                        text("""
-                            INSERT INTO system_module_map
-                                (id, tenant_id, system_id, module,
-                                 last_synced_at, last_sync_status,
-                                 row_count, config_synced)
-                            VALUES (gen_random_uuid(), :tid, :sid, :mod,
-                                    now(), 'success', :cnt, :cfg)
-                            ON CONFLICT (tenant_id, system_id, module)
-                            DO UPDATE SET last_synced_at = now(),
-                                          last_sync_status = 'success',
-                                          row_count = :cnt,
-                                          config_synced = :cfg
-                        """),
-                        {
-                            "tid": tenant_id,
-                            "sid": system_id,
-                            "mod": module,
-                            "cnt": row_count if sync_type != "config" else 0,
-                            "cfg": sync_type in ("config", "both"),
-                        },
-                    )
-                    session.commit()
-                    logger.info(f"Extraction complete: {module} ({row_count} rows)")
-
-                except SoftTimeLimitExceeded:
-                    logger.error(f"Extraction timeout for {module}")
-                    raise
-                except Exception as e:
-                    logger.error(f"Extraction failed for {module}: {e}")
-                    session.execute(
-                        text("""
-                            INSERT INTO system_module_map
-                                (id, tenant_id, system_id, module,
-                                 last_synced_at, last_sync_status)
-                            VALUES (gen_random_uuid(), :tid, :sid, :mod,
-                                    now(), 'failed')
-                            ON CONFLICT (tenant_id, system_id, module)
-                            DO UPDATE SET last_synced_at = now(),
-                                          last_sync_status = 'failed'
-                        """),
-                        {"tid": tenant_id, "sid": system_id, "mod": module},
-                    )
-                    session.commit()
+        if analyse:
+            from workers.tasks.run_checks import run_checks
+            run_checks.delay(version_id, tenant_id, prefix)
+        logger.info(f"Extraction {version_id}: {len(data_tables)} tables, analysis {'enqueued' if analyse else 'on request'}")
+        return {"status": "success", "version_id": version_id, "coverage": coverage}
 
     except SoftTimeLimitExceeded:
         logger.error("Extraction task timed out")
+        with Session(engine) as session:
+            session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+            _mark_modules(session, tenant_id, system_id, modules, "failed", 0)
+        return {"status": "failed", "error": "timeout"}
+
+
+def _mark_modules(session, tenant_id, system_id, modules, status, rows) -> None:
+    for module in modules:
+        session.execute(
+            text("""
+                INSERT INTO system_module_map (id, tenant_id, system_id, module, last_synced_at,
+                                               last_sync_status, row_count, config_synced)
+                VALUES (gen_random_uuid(), :tid, :sid, :mod, now(), :st, :cnt, true)
+                ON CONFLICT (tenant_id, system_id, module)
+                DO UPDATE SET last_synced_at = now(), last_sync_status = :st, row_count = :cnt
+            """),
+            {"tid": tenant_id, "sid": system_id, "mod": module, "st": status, "cnt": rows},
+        )
+    session.commit()

@@ -1,0 +1,32 @@
+{
+ "domain": "LTAP_FHUTA",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "TO item affects no handling unit"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Item is no HU TO item"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Item is HU TO item"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Item is a material item for HU TO item"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

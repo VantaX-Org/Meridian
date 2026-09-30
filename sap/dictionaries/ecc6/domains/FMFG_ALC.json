@@ -1,0 +1,11 @@
+{
+ "domain": "FMFG_ALC",
+ "type": "CHAR",
+ "length": 8,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": "FMFGT_ALC",
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

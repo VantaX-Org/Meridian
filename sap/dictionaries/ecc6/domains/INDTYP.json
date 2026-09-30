@@ -1,0 +1,11 @@
+{
+ "domain": "INDTYP",
+ "type": "CHAR",
+ "length": 30,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": true,
+ "value_table": "INDUSTYPE",
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

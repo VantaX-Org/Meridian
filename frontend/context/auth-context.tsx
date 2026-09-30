@@ -8,6 +8,8 @@ interface AuthUser {
   email: string;
   name: string;
   role: string;
+  /** Effective permissions for `role`, computed server-side (rbac.py). */
+  permissions: string[];
 }
 
 interface AuthContextValue {

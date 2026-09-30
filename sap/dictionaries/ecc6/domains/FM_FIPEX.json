@@ -1,0 +1,11 @@
+{
+ "domain": "FM_FIPEX",
+ "type": "CHAR",
+ "length": 24,
+ "decimals": 0,
+ "conversion_exit": "FMCIL",
+ "lowercase": false,
+ "value_table": "FMCI",
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

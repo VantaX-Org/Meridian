@@ -1,0 +1,32 @@
+{
+ "domain": "MPROK",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No manual price change"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Manual price change carried out"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Condition manually deleted"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Manual price change released"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

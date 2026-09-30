@@ -1,14 +1,13 @@
-"""Benchmark: 400k-row extract through both engines.
+"""Benchmark + exactness: a 400k-row vendor extract through the check engine.
 
 Opt-in only — run with `pytest -m perf tests/checks/test_perf_400k.py -s`.
-Skipped automatically if polars is not installed, since this is an
-efficiency-focused test and pandas-only timings don't inform the comparison.
 
 What this proves:
-1. Polars runs all supported checks on 400k rows without OOM or timeout.
-2. Polars produces equivalent pass_rates to pandas (parity — not drift).
-3. The zero-serialization path (pl.from_pandas directly) beats a realistic
-   pandas baseline by a meaningful margin on the representative check mix.
+1. The engine evaluates a realistic rule mix on 400k rows inside the budget.
+2. Counts are exact (every injected defect found, none invented) — pass rates
+   are derived from counts, so a single failure is never rounded to 100 %.
+3. Vendor-level rules are evaluated once per vendor even though the extract is
+   at vendor × company-code grain (grain resolution, no fan-out double counting).
 """
 
 from __future__ import annotations
@@ -19,195 +18,70 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from checks.polars_engine import POLARS_AVAILABLE
-from checks.runner import _select_engine, CHECK_ENGINE_POLARS_THRESHOLD
+from checks.frames import TableFrames
+from checks.types.cross_field_check import CrossFieldCheck
+from checks.types.domain_value_check import DomainValueCheck
+from checks.types.null_check import NullCheck
+from checks.types.regex_check import RegexCheck
+
+pytestmark = pytest.mark.perf
+
+VENDORS = 200_000
+CC_PER_VENDOR = 2           # → 400k LFB1 rows
+BUDGET_SECONDS = 60
 
 
-pytestmark = [
-    pytest.mark.perf,
-    pytest.mark.skipif(not POLARS_AVAILABLE, reason="polars not installed"),
+def _frames(seed: int = 7) -> tuple[TableFrames, dict]:
+    rng = np.random.default_rng(seed)
+    lifnr = np.array([f"{i:010d}" for i in range(VENDORS)])
+    ktokk = rng.choice(["KRED", "0001", "0002", "XXXX"], size=VENDORS, p=[0.5, 0.3, 0.19, 0.01])
+    name1 = np.where(rng.random(VENDORS) < 0.02, "", "ACME")
+    stcd1 = np.where(rng.random(VENDORS) < 0.05, "BAD-1", "1234567890")
+    lfa1 = pd.DataFrame({"LFA1.LIFNR": lifnr, "LFA1.KTOKK": ktokk, "LFA1.NAME1": name1, "LFA1.STCD1": stcd1})
+
+    lfb1 = pd.DataFrame({
+        "LFB1.LIFNR": np.repeat(lifnr, CC_PER_VENDOR),
+        "LFB1.BUKRS": np.tile(["1000", "2000"], VENDORS),
+    })
+    lfb1["LFB1.AKONT"] = np.where(rng.random(len(lfb1)) < 0.03, "", "160000")
+    expected = {
+        "name_blank": int((name1 == "").sum()),
+        "bad_group": int((ktokk == "XXXX").sum()),
+        "bad_tax": int((stcd1 == "BAD-1").sum()),
+        "akont_blank": int((lfb1["LFB1.AKONT"] == "").sum()),
+    }
+    return TableFrames({"LFA1": lfa1, "LFB1": lfb1}, module="accounts_payable"), expected
+
+
+RULES = [
+    (NullCheck, {"id": "N1", "field": "LFA1.NAME1"}, "name_blank"),
+    (DomainValueCheck, {"id": "D1", "field": "LFA1.KTOKK", "allowed_values": ["KRED", "0001", "0002"]}, "bad_group"),
+    (RegexCheck, {"id": "R1", "field": "LFA1.STCD1", "pattern": r"^\d{10}$"}, "bad_tax"),
+    (NullCheck, {"id": "N2", "field": "LFB1.AKONT"}, "akont_blank"),
+    (CrossFieldCheck, {"id": "U1", "field": "LFA1.LIFNR", "condition": "~`LFA1.LIFNR`.duplicated(keep=False)"}, None),
 ]
 
 
-ROW_COUNT = 400_000
-
-
-def _synthetic_bp_frame(n: int = ROW_COUNT, seed: int = 42) -> pd.DataFrame:
-    """Generate a realistic-shaped Business Partner frame.
-
-    Mix matches the rule types that actually run at scale: ~20% nulls,
-    ~10% invalid enum values, ~5% malformed regex-checked fields.
-    """
-    rng = np.random.default_rng(seed)
-
-    # PARTNER — the id field. Always populated, numeric string.
-    partner = np.array([f"{i:010d}" for i in range(n)])
-
-    # BU_TYPE — domain-constrained. Valid: {"1","2","3"}. Invalid sprinkle: "7","8","9".
-    bu_choices = ["1", "2", "3", "1", "2", "3", "1", "2", "3", "7"]
-    bu_type = rng.choice(bu_choices, size=n)
-
-    # BU_SORT1 — ~20% null. Regex: alphanumeric only.
-    bu_sort1_raw = np.array([f"SORT{i % 1000:04d}" for i in range(n)], dtype=object)
-    null_mask = rng.random(n) < 0.20
-    bu_sort1 = np.where(null_mask, None, bu_sort1_raw)
-
-    # BP_COUNTRY — domain: ISO-2 codes. ~5% invalid (3-char or junk).
-    country_choices = ["ZA", "DE", "US", "GB", "FR", "ZA", "DE", "US", "XX", "ZAR"]
-    country = rng.choice(country_choices, size=n)
-
-    return pd.DataFrame({
-        "PARTNER": partner,
-        "BU_TYPE": bu_type,
-        "BU_SORT1": bu_sort1,
-        "BP_COUNTRY": country,
-    })
-
-
-# A representative rule mix at the size of a real module (20 rules).
-# Mix: 6 null, 6 regex, 6 domain, 2 referential — matches the distribution
-# seen in checks/rules/ecc/business_partner.yaml.
-def _build_rules() -> list[dict]:
-    rules: list[dict] = []
-    for i in range(6):
-        rules.append({
-            "id": f"BP-NULL-{i:03d}",
-            "check_class": "null_check",
-            "field": "BU_SORT1" if i % 2 == 0 else "BU_TYPE",
-            "severity": "medium",
-            "dimension": "completeness",
-            "threshold": 100.0,
-        })
-    for i in range(6):
-        rules.append({
-            "id": f"BP-REGEX-{i:03d}",
-            "check_class": "regex_check",
-            "field": "BU_SORT1",
-            "pattern": r"^[A-Z0-9]+$" if i % 2 == 0 else r"^SORT\d{4}$",
-            "severity": "medium",
-            "dimension": "validity",
-            "threshold": 100.0,
-        })
-    for i in range(6):
-        rules.append({
-            "id": f"BP-DOMAIN-{i:03d}",
-            "check_class": "domain_value_check",
-            "field": "BU_TYPE" if i % 2 == 0 else "BP_COUNTRY",
-            "allowed_values": (
-                ["1", "2", "3"] if i % 2 == 0
-                else ["ZA", "DE", "US", "GB", "FR"]
-            ),
-            "severity": "high",
-            "dimension": "validity",
-            "threshold": 100.0,
-        })
-    for i in range(2):
-        rules.append({
-            "id": f"BP-REF-{i:03d}",
-            "check_class": "referential_check",
-            "field": "BP_COUNTRY",
-            "reference_values": ["ZA", "DE", "US", "GB", "FR"],
-            "severity": "high",
-            "dimension": "consistency",
-            "threshold": 100.0,
-        })
-    return rules
-
-
-_RULES = _build_rules()
-
-
-def _run_pandas(df: pd.DataFrame) -> list[dict]:
-    """Drive the pandas engine directly, bypassing YAML loading."""
-    from checks.types.null_check import NullCheck
-    from checks.types.regex_check import RegexCheck
-    from checks.types.domain_value_check import DomainValueCheck
-    from checks.types.referential_check import ReferentialCheck
-
-    registry = {
-        "null_check": NullCheck,
-        "regex_check": RegexCheck,
-        "domain_value_check": DomainValueCheck,
-        "referential_check": ReferentialCheck,
-    }
-    results = []
-    for rule in _RULES:
-        rule = {**rule, "module": "business_partner"}
-        cls = registry[rule["check_class"]]
-        res = cls(rule).run(df)
-        if res is not None:
-            results.append({
-                "check_id": res.check_id,
-                "pass_rate": res.pass_rate,
-                "affected_count": res.affected_count,
-                "total_count": res.total_count,
-            })
-    return results
-
-
-def _run_polars(df: pd.DataFrame) -> list[dict]:
-    """Drive the polars engine via the new zero-serialization path."""
-    from checks.polars_engine import run_checks_polars_df
-
-    raw = run_checks_polars_df(df, "business_partner", [dict(r) for r in _RULES])
-    return [
-        {
-            "check_id": r["check_id"],
-            "pass_rate": r["pass_rate"],
-            "affected_count": r["affected_count"],
-            "total_count": r["total_count"],
-        }
-        for r in raw
-    ]
-
-
-def test_engine_autoselects_polars_at_400k():
-    """The default `auto` mode must pick polars at 400k rows."""
-    assert _select_engine(ROW_COUNT) == "polars"
-    assert _select_engine(CHECK_ENGINE_POLARS_THRESHOLD - 1) == "pandas"
-    assert _select_engine(CHECK_ENGINE_POLARS_THRESHOLD) == "polars"
-
-
-def test_400k_parity_and_speedup():
-    """Both engines agree on pass_rates, and polars is measurably faster."""
-    df = _synthetic_bp_frame()
-    assert len(df) == ROW_COUNT
-
-    # Warm-up: exclude import/jit cost from the measured path
-    _run_pandas(df.head(1_000))
-    _run_polars(df.head(1_000))
-
+def test_400k_exact_counts_within_budget():
+    frames, expected = _frames()
     t0 = time.perf_counter()
-    pandas_results = _run_pandas(df)
-    pandas_secs = time.perf_counter() - t0
+    results = {}
+    for cls, rule, _ in RULES:
+        frame, grain, keys = frames.frame_for(cls(rule).columns())
+        results[rule["id"]] = (cls(rule).run(frame, key_cols=keys, grain=grain), grain)
+    secs = time.perf_counter() - t0
+    print(f"\n[perf] {VENDORS * CC_PER_VENDOR:,} LFB1 rows / {VENDORS:,} vendors in {secs:.2f}s")
 
-    t0 = time.perf_counter()
-    polars_results = _run_polars(df)
-    polars_secs = time.perf_counter() - t0
-
-    print(f"\n[perf] 400k rows | pandas={pandas_secs:.2f}s | polars={polars_secs:.2f}s "
-          f"| speedup={pandas_secs / max(polars_secs, 1e-6):.1f}x")
-
-    # Parity — pass_rates must match within 0.01 pts across all rules
-    by_id_pandas = {r["check_id"]: r for r in pandas_results}
-    by_id_polars = {r["check_id"]: r for r in polars_results}
-    assert set(by_id_pandas) == set(by_id_polars), "engines ran different rule sets"
-
-    for check_id in by_id_pandas:
-        p = by_id_pandas[check_id]
-        q = by_id_polars[check_id]
-        assert abs(p["pass_rate"] - q["pass_rate"]) < 0.01, (
-            f"{check_id} pass_rate drift: pandas={p['pass_rate']} polars={q['pass_rate']}"
-        )
-        assert p["total_count"] == q["total_count"], (
-            f"{check_id} total_count drift: {p['total_count']} vs {q['total_count']}"
-        )
-
-    # Floor: polars must not regress pandas at 400k. The timing print above
-    # is the real signal for perf tuning; a hard multiplier is brittle under
-    # CI variance. On a quiet workstation this usually lands at 3-6× on a
-    # 20-rule module, but we only hard-assert that polars isn't slower.
-    assert polars_secs <= pandas_secs * 1.1, (
-        f"polars ({polars_secs:.2f}s) regressed vs pandas ({pandas_secs:.2f}s) "
-        "at 400k — investigate"
-    )
+    for cls, rule, exp_key in RULES:
+        res, grain = results[rule["id"]]
+        if exp_key:
+            assert res.affected_count == expected[exp_key], rule["id"]
+            assert len(res.failing_record_keys) == expected[exp_key]
+        if res.affected_count:
+            assert res.pass_rate < 100.0 and not res.passed
+    # vendor-level rules run once per vendor, company-code rules once per LFB1 row
+    assert results["N1"][0].total_count == VENDORS and results["N1"][1] == "LFA1"
+    assert results["N2"][0].total_count == VENDORS * CC_PER_VENDOR and results["N2"][1] == "LFB1"
+    # uniqueness at vendor grain: no false duplicates from the company-code fan-out
+    assert results["U1"][0].affected_count == 0
+    assert secs < BUDGET_SECONDS

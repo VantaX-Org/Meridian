@@ -1,0 +1,11 @@
+{
+ "domain": "STAWN",
+ "type": "CHAR",
+ "length": 17,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": "T604",
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

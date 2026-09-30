@@ -1,0 +1,81 @@
+{
+ "table": "T005S",
+ "description": "Taxes: Region (Province) Key",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "LAND1",
+   "key": true,
+   "data_element": "LAND1",
+   "domain": "LAND1",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Country Key",
+   "check_table": "T005"
+  },
+  {
+   "pos": 3,
+   "name": "BLAND",
+   "key": true,
+   "data_element": "REGIO",
+   "domain": "REGIO",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Region (State, Province, County)",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "FPRCD",
+   "key": false,
+   "data_element": "FPRCD",
+   "domain": "FPRCD",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Provincial tax code",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "HERBL",
+   "key": false,
+   "data_element": "HERBL",
+   "domain": "HERBL",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "State of manufacture",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "LAND1",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

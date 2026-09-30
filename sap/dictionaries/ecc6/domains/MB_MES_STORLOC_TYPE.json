@@ -1,0 +1,27 @@
+{
+ "domain": "MB_MES_STORLOC_TYPE",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No restrictions with regard to goods movements"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Inventory management only by incoming transfer postings"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Inventory management only by goods issue to production order"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

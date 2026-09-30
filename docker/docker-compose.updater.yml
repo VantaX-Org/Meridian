@@ -39,6 +39,12 @@ services:
       # of the compose files must literally be the same files at the same
       # path the host daemon already knows about.
       - /opt/meridian:/opt/meridian
+      # The host's registry login (install.sh runs `docker login ghcr.io` as
+      # root). The CLI in this container reads credentials from its OWN home,
+      # not the host daemon — without this, "Update now" cannot pull.
+      - /root/.docker:/root/.docker:ro
+      # SAP NW RFC SDK, so update.sh can rebuild the RFC overlay after a pull.
+      - ${SAPNWRFC_HOME:-/usr/local/sap/nwrfcsdk}:/usr/local/sap/nwrfcsdk:ro
     networks:
       - meridian-net
     restart: unless-stopped

@@ -1,0 +1,27 @@
+{
+ "domain": "ATPGM",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No call for collective availability check"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Collective availability check called up on saving"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Collective availability check when changing screens"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

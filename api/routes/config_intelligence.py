@@ -9,6 +9,8 @@ import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+
+from api.services.rbac import require_permission
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
@@ -62,7 +64,7 @@ async def _resolve_run_id(
 # 1. POST /discover — run full 3-layer analysis
 # ------------------------------------------------------------------
 
-@router.post("/discover", response_model=ConfigDiscoverResponse)
+@router.post("/discover", response_model=ConfigDiscoverResponse, dependencies=[Depends(require_permission("analyse"))])
 async def discover_config(
     request: ConfigDiscoverRequest,
     db: AsyncSession = Depends(get_db),

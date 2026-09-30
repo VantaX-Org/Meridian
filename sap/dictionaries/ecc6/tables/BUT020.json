@@ -1,0 +1,187 @@
+{
+ "table": "BUT020",
+ "description": "BP: Addresses",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "CLIENT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "PARTNER",
+   "key": true,
+   "data_element": "BU_PARTNER",
+   "domain": "BU_PARTNER",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Business Partner Number",
+   "check_table": "BUT000"
+  },
+  {
+   "pos": 3,
+   "name": "ADDRNUMBER",
+   "key": true,
+   "data_element": "AD_ADDRNUM",
+   "domain": "AD_ADDRNUM",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Address number",
+   "check_table": "ADRC"
+  },
+  {
+   "pos": 6,
+   "name": "XDFADR",
+   "key": false,
+   "data_element": "BU_XDFADR",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Address is standard address",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "ADEXT",
+   "key": false,
+   "data_element": "BU_ADEXT",
+   "domain": "BU_ADEXT",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "Address number in external system",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "NATION",
+   "key": false,
+   "data_element": "AD_NATION",
+   "domain": "AD_NATION",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Version ID for International Addresses",
+   "check_table": "TSADV"
+  },
+  {
+   "pos": 9,
+   "name": "GUID",
+   "key": false,
+   "data_element": "SYSUUID_C",
+   "domain": "SYSUUID_C",
+   "type": "CHAR",
+   "length": 32,
+   "decimals": 0,
+   "description": "UUID in character form",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "MOVE_ADDR",
+   "key": false,
+   "data_element": "BU_MOVE_ADDR",
+   "domain": "AD_ADDRNUM",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Number of Move Target Address for Address Moves",
+   "check_table": "*"
+  },
+  {
+   "pos": 12,
+   "name": "DATE_FROM",
+   "key": false,
+   "data_element": "BU_DATE_OBSOLETE",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date Obsolete",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "ADDRESS_GUID",
+   "key": false,
+   "data_element": "BU_ADDRESS_GUID",
+   "domain": "SYSUUID",
+   "type": "RAW",
+   "length": 16,
+   "decimals": 0,
+   "description": "GUID of a Business Partner Address",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "ADDR_VALID_FROM",
+   "key": false,
+   "data_element": "BU_ADDR_VALID_FROM",
+   "domain": "TZNTSTMPS",
+   "type": "DEC",
+   "length": 15,
+   "decimals": 0,
+   "description": "Validity Start of a Business Partner Address",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "ADDR_VALID_TO",
+   "key": false,
+   "data_element": "BU_ADDR_VALID_TO",
+   "domain": "TZNTSTMPS",
+   "type": "DEC",
+   "length": 15,
+   "decimals": 0,
+   "description": "Validity End of a Business Partner Address",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "ADDR_MOVE_DATE",
+   "key": false,
+   "data_element": "BU_ADDR_MOVE_DATE",
+   "domain": "TZNTSTMPS",
+   "type": "DEC",
+   "length": 15,
+   "decimals": 0,
+   "description": "Date of Move for Address Moves",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "ADDRNUMBER",
+   "foreign_table": "ADRC",
+   "foreign_field": "ADDRNUMBER"
+  },
+  {
+   "field": "CLIENT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "NATION",
+   "foreign_table": "TSADV",
+   "foreign_field": "NATION"
+  },
+  {
+   "field": "PARTNER",
+   "foreign_table": "BUT000",
+   "foreign_field": "PARTNER"
+  }
+ ]
+}

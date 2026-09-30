@@ -241,6 +241,8 @@ class CleaningQueue(Base):
     rollback_deadline = Column(DateTime(timezone=True), nullable=True)
     batch_id = Column(UUID(as_uuid=True), nullable=True)
     version_id = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id"), nullable=True)
+    golden_record_id = Column(UUID(as_uuid=True), nullable=True)  # migration 020
+    golden_field_value = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
 
     __table_args__ = (
@@ -653,7 +655,13 @@ class SAPSystem(Base):
 
     # Config sync tracking
     config_last_synced_at = Column(DateTime(timezone=True), nullable=True)
-    config_sync_status = Column(Text, server_default="never")  # never, syncing, synced, failed
+    config_sync_status = Column(Text, server_default="never")  # never, syncing, synced, partial, failed
+    # Source-design discovery (migration 047)
+    discovery_status = Column(Text, nullable=True)  # running, complete, partial, failed
+    discovered_at = Column(DateTime(timezone=True), nullable=True)
+    sap_release = Column(Text, nullable=True)
+    sap_product = Column(Text, nullable=True)  # ecc6 | s4hana | successfactors | …
+    last_snapshot_id = Column(UUID(as_uuid=True), nullable=True)
 
     credentials = relationship("SystemCredential", back_populates="system", cascade="all, delete-orphan")
     sync_profiles = relationship("SyncProfile", back_populates="system", cascade="all, delete-orphan")
@@ -713,8 +721,13 @@ class MigrationRun(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
     mode = Column(Text, nullable=False)  # source_to_source | source_to_destination
-    source_system_id = Column(UUID(as_uuid=True), ForeignKey("sap_systems.id"), nullable=False)
+    source_system_id = Column(UUID(as_uuid=True), ForeignKey("sap_systems.id"), nullable=True)
     dest_system_id = Column(UUID(as_uuid=True), ForeignKey("sap_systems.id"), nullable=True)
+    source_version_id = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id"), nullable=True)
+    target_release = Column(Text, nullable=True)  # s4hana (standard) when no target system is connected
+    target_connected = Column(Boolean, server_default="false")
+    records_total = Column(Integer, server_default="0")
+    records_blocked = Column(Integer, server_default="0")
     modules = Column(ARRAY(Text), server_default="{}")
     status = Column(Text, server_default="queued")  # queued|running|analysed|exported|failed
     readiness_verdict = Column(Text, nullable=True)  # go|conditional|no-go
@@ -752,6 +765,12 @@ class MigrationGapFinding(Base):
     status_source = Column(Text, nullable=True)
     domain_provenance = Column(Text, nullable=True)
     transfer_ready = Column(Boolean, server_default="false")
+    source_table = Column(Text, nullable=True)
+    source_field = Column(Text, nullable=True)
+    source_value = Column(Text, nullable=True)
+    target_value = Column(Text, nullable=True)
+    provenance = Column(Text, nullable=True)
+    grounded = Column(Boolean, server_default="true")
     created_at = Column(DateTime(timezone=True), server_default=text("now()"))
 
     __table_args__ = (
@@ -794,13 +813,100 @@ class TransferFieldMapping(Base):
     dest_field = Column(Text, nullable=True)  # NULL ⇒ explicitly unmapped/skipped
     transform_note = Column(Text, nullable=True)
     is_confirmed = Column(Boolean, server_default="false")
+    value_map = Column(Boolean, server_default="false")  # target value comes from transfer_value_mappings
+    origin = Column(Text, server_default="steward")      # identity | sap_standard | steward
     created_at = Column(DateTime(timezone=True), server_default=text("now()"))
     updated_at = Column(DateTime(timezone=True), nullable=True)
 
+    # unique (tenant, module, source_field, dest_system_type, dest_table, dest_field)
+    # NULLS NOT DISTINCT — created in migration 048 (one source field may feed
+    # several targets, e.g. LFA1.NAME1 → LFA1.NAME1 and BUT000.NAME_ORG1)
     __table_args__ = (
-        UniqueConstraint("tenant_id", "module", "source_field", "dest_system_type", name="uq_transfer_field_mappings"),
         Index("ix_transfer_field_mappings_tenant", "tenant_id"),
         Index("ix_transfer_field_mappings_lookup", "tenant_id", "module", "dest_system_type"),
+    )
+
+
+class FindingRecord(Base):
+    """Every failing record key per (version, check) — see migration 049."""
+    __tablename__ = "finding_records"
+
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    version_id = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id", ondelete="CASCADE"), primary_key=True)
+    check_id = Column(Text, primary_key=True)
+    module = Column(Text, nullable=False)
+    grain = Column(Text, nullable=True)
+    record_key = Column(Text, primary_key=True)
+
+    __table_args__ = (Index("ix_finding_records_tenant_record", "tenant_id", "record_key"),)
+
+
+class RecordIssue(Base):
+    """One failing (scope, check, record) tracked across runs."""
+    __tablename__ = "record_issues"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    scope = Column(Text, nullable=False)  # source system id, or 'upload'
+    module = Column(Text, nullable=False)
+    check_id = Column(Text, nullable=False)
+    record_key = Column(Text, nullable=False)
+    grain = Column(Text, nullable=True)
+    severity = Column(Text, nullable=False)
+    status = Column(Text, nullable=False, server_default="open")  # open|in_progress|accepted|resolved
+    resolution = Column(Text, nullable=True)  # verified_fixed|accepted_risk|false_positive
+    assigned_to = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    first_seen_version = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id"), nullable=False)
+    last_seen_version = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id"), nullable=False)
+    resolved_version = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id"), nullable=True)
+    first_seen_at = Column(DateTime(timezone=True), server_default=text("now()"))
+    last_seen_at = Column(DateTime(timezone=True), server_default=text("now()"))
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
+    reopened_count = Column(Integer, nullable=False, server_default="0")
+    updated_at = Column(DateTime(timezone=True), server_default=text("now()"))
+
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "scope", "check_id", "record_key", name="uq_record_issues"),
+        Index("ix_record_issues_queue", "tenant_id", "status", "module", "severity"),
+        Index("ix_record_issues_assignee", "tenant_id", "assigned_to", "status"),
+    )
+
+
+class RecordIssueEvent(Base):
+    __tablename__ = "record_issue_events"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    issue_id = Column(UUID(as_uuid=True), ForeignKey("record_issues.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), nullable=True)
+    user_label = Column(Text, nullable=True)
+    action = Column(Text, nullable=False)  # status|assign|comment|auto_resolved|reopened
+    from_value = Column(Text, nullable=True)
+    to_value = Column(Text, nullable=True)
+    note = Column(Text, nullable=True)
+    version_id = Column(UUID(as_uuid=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
+
+    __table_args__ = (Index("ix_record_issue_events_issue", "issue_id", "created_at"),)
+
+
+class TransferValueMapping(Base):
+    """Steward-maintained source → target value mapping (migration 048)."""
+
+    __tablename__ = "transfer_value_mappings"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    module = Column(Text, nullable=False)
+    target_field = Column(Text, nullable=False)
+    source_value = Column(Text, nullable=False)
+    target_value = Column(Text, nullable=False)
+    note = Column(Text, nullable=True)
+    updated_by = Column(UUID(as_uuid=True), nullable=True)
+    updated_at = Column(DateTime(timezone=True), server_default=text("now()"))
+
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "module", "target_field", "source_value", name="uq_transfer_value_mappings"),
     )
 
 
@@ -1358,6 +1464,56 @@ class ConfigSnapshot(Base):
         Index("ix_config_snapshots_tenant_system", "tenant_id", "system_id"),
         Index("ix_config_snapshots_module", "tenant_id", "module"),
     )
+
+
+class DdicSnapshot(Base):
+    """One discovery run of a connected system's data dictionary (migration 047)."""
+
+    __tablename__ = "ddic_snapshots"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    system_id = Column(UUID(as_uuid=True), ForeignKey("sap_systems.id", ondelete="CASCADE"), nullable=False)
+    status = Column(Text, nullable=False, server_default="running")
+    source = Column(Text, nullable=False)
+    system_info = Column(JSONB, nullable=True)
+    coverage = Column(JSONB, nullable=True)
+    table_count = Column(Integer, server_default="0")
+    customer_table_count = Column(Integer, server_default="0")
+    customer_field_count = Column(Integer, server_default="0")
+    error_detail = Column(Text, nullable=True)
+    task_id = Column(Text, nullable=True)
+    started_at = Column(DateTime(timezone=True), server_default=text("now()"))
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class DdicTable(Base):
+    __tablename__ = "ddic_tables"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    snapshot_id = Column(UUID(as_uuid=True), ForeignKey("ddic_snapshots.id", ondelete="CASCADE"), nullable=False)
+    table_name = Column(Text, nullable=False)
+    description = Column(Text, nullable=True)
+    category = Column(Text, nullable=True)
+    delivery_class = Column(Text, nullable=True)
+    customer_table = Column(Boolean, server_default="false")
+    field_count = Column(Integer, server_default="0")
+    definition = Column(JSONB, nullable=False)
+
+    __table_args__ = (UniqueConstraint("snapshot_id", "table_name", name="uq_ddic_tables_snapshot_table"),)
+
+
+class DdicDomain(Base):
+    __tablename__ = "ddic_domains"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    snapshot_id = Column(UUID(as_uuid=True), ForeignKey("ddic_snapshots.id", ondelete="CASCADE"), nullable=False)
+    domain = Column(Text, nullable=False)
+    fixed_values = Column(JSONB, nullable=False)
+
+    __table_args__ = (UniqueConstraint("snapshot_id", "domain", name="uq_ddic_domains_snapshot_domain"),)
 
 
 class SystemModuleMap(Base):

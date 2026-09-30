@@ -1,0 +1,357 @@
+{
+ "domain": "VBTYP",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": true,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "Inquiry"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Quotation"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Order"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Item proposal"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Scheduling agreement"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Scheduling agreement with external service agent"
+  },
+  {
+   "low": "G",
+   "high": null,
+   "text": "Contract"
+  },
+  {
+   "low": "H",
+   "high": null,
+   "text": "Returns"
+  },
+  {
+   "low": "I",
+   "high": null,
+   "text": "Order w/o charge"
+  },
+  {
+   "low": "J",
+   "high": null,
+   "text": "Delivery"
+  },
+  {
+   "low": "K",
+   "high": null,
+   "text": "Credit memo request"
+  },
+  {
+   "low": "L",
+   "high": null,
+   "text": "Debit memo request"
+  },
+  {
+   "low": "M",
+   "high": null,
+   "text": "Invoice"
+  },
+  {
+   "low": "N",
+   "high": null,
+   "text": "Invoice cancellation"
+  },
+  {
+   "low": "O",
+   "high": null,
+   "text": "Credit memo"
+  },
+  {
+   "low": "P",
+   "high": null,
+   "text": "Debit memo"
+  },
+  {
+   "low": "Q",
+   "high": null,
+   "text": "WMS transfer order"
+  },
+  {
+   "low": "R",
+   "high": null,
+   "text": "Goods movement"
+  },
+  {
+   "low": "S",
+   "high": null,
+   "text": "Credit memo cancellation"
+  },
+  {
+   "low": "T",
+   "high": null,
+   "text": "Returns delivery for order"
+  },
+  {
+   "low": "U",
+   "high": null,
+   "text": "Pro forma invoice"
+  },
+  {
+   "low": "V",
+   "high": null,
+   "text": "Purchase Order"
+  },
+  {
+   "low": "W",
+   "high": null,
+   "text": "Independent reqts plan"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Handling unit"
+  },
+  {
+   "low": "0",
+   "high": null,
+   "text": "Master contract"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Sales activities (CAS)"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "External transaction"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Invoice list"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Credit memo list"
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "Intercompany invoice"
+  },
+  {
+   "low": "6",
+   "high": null,
+   "text": "Intercompany credit memo"
+  },
+  {
+   "low": "7",
+   "high": null,
+   "text": "Delivery/shipping notification"
+  },
+  {
+   "low": "8",
+   "high": null,
+   "text": "Shipment"
+  },
+  {
+   "low": "a",
+   "high": null,
+   "text": "Shipment costs"
+  },
+  {
+   "low": "b",
+   "high": null,
+   "text": "CRM Opportunity"
+  },
+  {
+   "low": "c",
+   "high": null,
+   "text": "Unverified delivery"
+  },
+  {
+   "low": "d",
+   "high": null,
+   "text": "Trading Contract"
+  },
+  {
+   "low": "e",
+   "high": null,
+   "text": "Allocation table"
+  },
+  {
+   "low": "f",
+   "high": null,
+   "text": "Additional Billing Documents"
+  },
+  {
+   "low": "g",
+   "high": null,
+   "text": "Rough Goods Receipt (only IS-Retail)"
+  },
+  {
+   "low": "h",
+   "high": null,
+   "text": "Cancel Goods Issue"
+  },
+  {
+   "low": "i",
+   "high": null,
+   "text": "Goods receipt"
+  },
+  {
+   "low": "j",
+   "high": null,
+   "text": "JIT call"
+  },
+  {
+   "low": "n",
+   "high": null,
+   "text": "Reserved"
+  },
+  {
+   "low": "o",
+   "high": null,
+   "text": "Reserved"
+  },
+  {
+   "low": "p",
+   "high": null,
+   "text": "Goods Movement (Documentation)"
+  },
+  {
+   "low": "q",
+   "high": null,
+   "text": "Reserved"
+  },
+  {
+   "low": "r",
+   "high": null,
+   "text": "TD Transport (only IS-Oil)"
+  },
+  {
+   "low": "s",
+   "high": null,
+   "text": "Load Confirmation, Reposting (Only IS-Oil)"
+  },
+  {
+   "low": "t",
+   "high": null,
+   "text": "Gain    /  Loss    (Only IS-Oil)"
+  },
+  {
+   "low": "u",
+   "high": null,
+   "text": "Reentry into Storage (Only IS-Oil)"
+  },
+  {
+   "low": "v",
+   "high": null,
+   "text": "Data Collation (only IS-Oil)"
+  },
+  {
+   "low": "w",
+   "high": null,
+   "text": "Reservation (Only IS-Oil)"
+  },
+  {
+   "low": "x",
+   "high": null,
+   "text": "Load Confirmation, Goods Receipt (Only IS-Oil)"
+  },
+  {
+   "low": "$",
+   "high": null,
+   "text": "(AFS)"
+  },
+  {
+   "low": "+",
+   "high": null,
+   "text": "Accounting Document (Temporary)"
+  },
+  {
+   "low": "-",
+   "high": null,
+   "text": "Accounting Document (Temporary)"
+  },
+  {
+   "low": "#",
+   "high": null,
+   "text": "Revenue Recognition (Temporary)"
+  },
+  {
+   "low": "~",
+   "high": null,
+   "text": "Revenue Cancellation (Temporary)"
+  },
+  {
+   "low": "§",
+   "high": null,
+   "text": "Revenue Recognition/New View (Temporary)"
+  },
+  {
+   "low": "",
+   "high": null,
+   "text": "Revenue Cancellation/New View (Temporary)"
+  },
+  {
+   "low": ":",
+   "high": null,
+   "text": "Service Order"
+  },
+  {
+   "low": ".",
+   "high": null,
+   "text": "Service Notification"
+  },
+  {
+   "low": "&",
+   "high": null,
+   "text": "Warehouse Document"
+  },
+  {
+   "low": "*",
+   "high": null,
+   "text": "Pick Order"
+  },
+  {
+   "low": ",",
+   "high": null,
+   "text": "Shipment Document"
+  },
+  {
+   "low": "^",
+   "high": null,
+   "text": "Reserved"
+  },
+  {
+   "low": "|",
+   "high": null,
+   "text": "Reserved"
+  },
+  {
+   "low": "k",
+   "high": null,
+   "text": "Agency Document"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

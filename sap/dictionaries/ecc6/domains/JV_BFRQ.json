@@ -1,0 +1,32 @@
+{
+ "domain": "JV_BFRQ",
+ "type": "NUMC",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "0",
+   "high": null,
+   "text": "Monthly bill"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Quarterly bill"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Semi-annual bill"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Yearly bill"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

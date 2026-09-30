@@ -1,0 +1,87 @@
+{
+ "domain": "FKTYP",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "Order-related billing document"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Order-related billing document for rebate settlement"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Order-related billing document for partial rebate settlement"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Periodic billing document"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Periodic billing with active invoice accrual"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Accrual Calculation"
+  },
+  {
+   "low": "I",
+   "high": null,
+   "text": "Delivery-related billing document for inter-company billing"
+  },
+  {
+   "low": "K",
+   "high": null,
+   "text": "Order-related billing document for rebate correction"
+  },
+  {
+   "low": "L",
+   "high": null,
+   "text": "Delivery-related billing document"
+  },
+  {
+   "low": "P",
+   "high": null,
+   "text": "Down payment request"
+  },
+  {
+   "low": "R",
+   "high": null,
+   "text": "Invoice list"
+  },
+  {
+   "low": "U",
+   "high": null,
+   "text": "IS-U billing document requirement"
+  },
+  {
+   "low": "W",
+   "high": null,
+   "text": "POS billing document"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Billing using general interface"
+  },
+  {
+   "low": "",
+   "high": null,
+   "text": ""
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

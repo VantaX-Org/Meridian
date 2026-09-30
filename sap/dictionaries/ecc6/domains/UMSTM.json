@@ -1,0 +1,97 @@
+{
+ "domain": "UMSTM",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "0",
+   "high": null,
+   "text": "No automatic changeover"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Changeover when straight-line dep. is higher (Germany)"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Changeover when net book value percentage reached"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Changeover when net book value less than changeover amount"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Changeover when net book value less than straight-line rate"
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "Changeover after end of the useful life"
+  },
+  {
+   "low": "6",
+   "high": null,
+   "text": "Changeover in next year as soon as str.-line higher (Poland)"
+  },
+  {
+   "low": "7",
+   "high": null,
+   "text": "Changeover when net book value percent less or same as x%"
+  },
+  {
+   "low": "8",
+   "high": null,
+   "text": "Conversion After End of Planned Life (Inflation)"
+  },
+  {
+   "low": "9",
+   "high": null,
+   "text": "Same as 1, But No Changeover in Dep. Start Year (France)"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Free for user modification 1"
+  },
+  {
+   "low": "Y",
+   "high": null,
+   "text": "Free for user modification 2"
+  },
+  {
+   "low": "Z",
+   "high": null,
+   "text": "Free for user modification 3"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Same as 1, But Do Not Set Changeover Year (Spec.Dep. Poland)"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Same as 2, But Do Not Set Changeover Year/Period (Russia)"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Free for country-specifics 1"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Same as 5, But Not During Year (Only New Depreciation Calc.)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

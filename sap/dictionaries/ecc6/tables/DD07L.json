@@ -1,0 +1,100 @@
+{
+ "table": "DD07L",
+ "description": "R/3 DD: values for the domains",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "DOMNAME",
+   "key": true,
+   "data_element": "DOMNAME",
+   "domain": "DOMNAME",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Domain name",
+   "check_table": "DD01L"
+  },
+  {
+   "pos": 2,
+   "name": "AS4LOCAL",
+   "key": true,
+   "data_element": "AS4LOCAL",
+   "domain": "AS4LOCAL",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Activation Status of a Repository Object",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "VALPOS",
+   "key": true,
+   "data_element": "VALPOS",
+   "domain": "VALPOS",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Domain value key",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "AS4VERS",
+   "key": true,
+   "data_element": "AS4VERS",
+   "domain": "AS4VERS",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Version of the entry (not used)",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "DOMVALUE_L",
+   "key": false,
+   "data_element": "DOMVALUE_L",
+   "domain": "DOMVAL",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Values for Domains: Single Value / Upper Limit",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "DOMVALUE_H",
+   "key": false,
+   "data_element": "DOMVALUE_H",
+   "domain": "DOMVAL",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Values for domains, upper limit",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "APPVAL",
+   "key": false,
+   "data_element": "DDAPPVAL",
+   "domain": "DDAPPVAL",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "DD: Defines whether value of appender belongs to append",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "DOMNAME",
+   "foreign_table": "DD01L",
+   "foreign_field": "DOMNAME"
+  }
+ ]
+}

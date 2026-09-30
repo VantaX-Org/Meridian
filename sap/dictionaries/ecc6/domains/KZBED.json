@@ -1,0 +1,22 @@
+{
+ "domain": "KZBED",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "T",
+   "high": null,
+   "text": "Display of dependent requirements as a daily total"
+  },
+  {
+   "low": "0",
+   "high": null,
+   "text": "In rep. mfg, individual record in addn to total requirements"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,11 @@
+{
+ "domain": "ADDKO",
+ "type": "DEC",
+ "length": 9,
+ "decimals": 6,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,47 @@
+{
+ "domain": "LTAP_NULKO",
+ "type": "NUMC",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "0",
+   "high": null,
+   "text": "Do not carry out zero stock check."
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Zero stock check to be carried out (system)"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Zero stock check to be carried out (user)"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Zero stock check carried out: Bin empty (system)"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Zero stock check carried out: Bin empty (user)"
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "Zero stock check carried out: Bin not empty (system)"
+  },
+  {
+   "low": "6",
+   "high": null,
+   "text": "Zero stock check carried out: Bin not empty (user)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

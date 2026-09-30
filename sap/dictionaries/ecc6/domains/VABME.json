@@ -1,0 +1,27 @@
+{
+ "domain": "VABME",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Not active"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Active"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Active with own price"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

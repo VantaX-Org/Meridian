@@ -1,0 +1,58 @@
+{
+ "table": "CVERS",
+ "description": "Release Status of Software Components in System",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "COMPONENT",
+   "key": true,
+   "data_element": "DLVUNIT",
+   "domain": "DLVUNIT",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Software Component",
+   "check_table": null
+  },
+  {
+   "pos": 2,
+   "name": "RELEASE",
+   "key": false,
+   "data_element": "SAPRELEASE",
+   "domain": "CHAR10",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "SAP Release",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "EXTRELEASE",
+   "key": false,
+   "data_element": "SAPPATCHLV",
+   "domain": "CHAR10",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Patch Level of a Software Component",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "COMP_TYPE",
+   "key": false,
+   "data_element": "RELC_TYPE",
+   "domain": "RELC_TYPE",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Component Type Values",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": []
+}

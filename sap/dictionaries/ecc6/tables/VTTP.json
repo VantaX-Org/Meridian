@@ -1,0 +1,146 @@
+{
+ "table": "VTTP",
+ "description": "Shipment Item",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "TKNUM",
+   "key": true,
+   "data_element": "TKNUM",
+   "domain": "TKNUM",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Shipment Number",
+   "check_table": "VTTK"
+  },
+  {
+   "pos": 3,
+   "name": "TPNUM",
+   "key": true,
+   "data_element": "TPNUM",
+   "domain": "TPNUM",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Shipment item",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "VBELN",
+   "key": false,
+   "data_element": "VBELN_VL",
+   "domain": "VBELN",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Delivery",
+   "check_table": "VBUK"
+  },
+  {
+   "pos": 5,
+   "name": "TPRFO",
+   "key": false,
+   "data_element": "TPRFO",
+   "domain": "TPRFO",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Itinerary of shipment items",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "ERNAM",
+   "key": false,
+   "data_element": "ERNAM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of Person who Created the Object",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "ERDAT",
+   "key": false,
+   "data_element": "ERDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date on which the record was created",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "ERZET",
+   "key": false,
+   "data_element": "ERZET",
+   "domain": "UZEIT",
+   "type": "TIMS",
+   "length": 6,
+   "decimals": 0,
+   "description": "Entry time",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "PKSTA",
+   "key": false,
+   "data_element": "PKSTA_VTTP",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "There are Packed Deliveries Dependent on Shipping",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "KZHULFG",
+   "key": false,
+   "data_element": "KZHULFG",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Delivery Items for HUs Generated",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "TKNUM",
+   "foreign_table": "VTTK",
+   "foreign_field": "TKNUM"
+  },
+  {
+   "field": "VBELN",
+   "foreign_table": "VBUK",
+   "foreign_field": "VBELN"
+  }
+ ]
+}

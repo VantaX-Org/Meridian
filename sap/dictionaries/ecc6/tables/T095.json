@@ -1,0 +1,431 @@
+{
+ "table": "T095",
+ "description": "Balance sheet accounts for depreciation areas",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "KTOPL",
+   "key": true,
+   "data_element": "KTOPL",
+   "domain": "KTOPL",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Chart of Accounts",
+   "check_table": "T004"
+  },
+  {
+   "pos": 3,
+   "name": "KTOGR",
+   "key": true,
+   "data_element": "KTOGR",
+   "domain": "KTOGR",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Account determination",
+   "check_table": "T095A"
+  },
+  {
+   "pos": 4,
+   "name": "AFABE",
+   "key": true,
+   "data_element": "AFABE_D",
+   "domain": "AFABE",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Real depreciation area",
+   "check_table": "T093"
+  },
+  {
+   "pos": 5,
+   "name": "KTANSW",
+   "key": false,
+   "data_element": "KTANSW",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Bal. sheet account: Acquisition and production costs",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 6,
+   "name": "KTANZA",
+   "key": false,
+   "data_element": "KTANZA",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "G/L account:down payments",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 7,
+   "name": "KTERLW",
+   "key": false,
+   "data_element": "KTERLW",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Clearing account for revenue from asset sale",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 8,
+   "name": "KTMEHR",
+   "key": false,
+   "data_element": "KTMEHR",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "G/L account: asset retirement gain",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 9,
+   "name": "KTMAHK",
+   "key": false,
+   "data_element": "KTMAHK",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Acct:Gain from asset retirement over APC (curr. not used)",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 10,
+   "name": "KTMIND",
+   "key": false,
+   "data_element": "KTMIND",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "G/L account for asset retirement loss",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 11,
+   "name": "KTREST",
+   "key": false,
+   "data_element": "KTREST",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "G/L account for net book value when scrapped",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 12,
+   "name": "KTAPFG",
+   "key": false,
+   "data_element": "KTADEC",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "G/L account:Decimals from asset acquisition: not used",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 13,
+   "name": "KTAUFW",
+   "key": false,
+   "data_element": "KTAUFW",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Reconciliation account: Revaluation",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 14,
+   "name": "KTAUFG",
+   "key": false,
+   "data_element": "KTAUFG",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Offsetting account for revaluation",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 15,
+   "name": "KTANSG",
+   "key": false,
+   "data_element": "KTANSG",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Contra account: Acquisition value posting",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 16,
+   "name": "KTANZG",
+   "key": false,
+   "data_element": "KTANZG",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Contra account: Down payment posting",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 17,
+   "name": "KTVBAB",
+   "key": false,
+   "data_element": "KTVBAB",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Clearing acct.revenue from sale to affiliated company",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 18,
+   "name": "KTVZU",
+   "key": false,
+   "data_element": "KTVBZU",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Clearing acct: Acquisition from affiliated company",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 19,
+   "name": "KTVIZU",
+   "key": false,
+   "data_element": "KTVIZU",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Clearing account for allocation of investment support",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 20,
+   "name": "KTRIZU",
+   "key": false,
+   "data_element": "KTVRIZ",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Clearing account for repaying investment support",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 21,
+   "name": "KTARIZ",
+   "key": false,
+   "data_element": "KTARIZ",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Expense account:Repayment of investment support",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 22,
+   "name": "KTVERK",
+   "key": false,
+   "data_element": "KTVERK",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "G/L acct for costs of sale",
+   "check_table": "*"
+  },
+  {
+   "pos": 23,
+   "name": "KTCOAB",
+   "key": false,
+   "data_element": "KTCOAB",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Cost element for settlement of asset u. cons. to CO objects",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 24,
+   "name": "KTENAK",
+   "key": false,
+   "data_element": "KTENAK",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Revenue account for post-capitaliz. of asset",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 25,
+   "name": "KTNAIB",
+   "key": false,
+   "data_element": "KTNAIB",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Account for capitalization differences/nonoperating expense",
+   "check_table": "SKA1"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "AFABE",
+   "foreign_table": "T093",
+   "foreign_field": "AFABER"
+  },
+  {
+   "field": "KTANSG",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTANSW",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTANZA",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTANZG",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTAPFG",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTARIZ",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTAUFG",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTAUFW",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTCOAB",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTENAK",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTERLW",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTMAHK",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTMEHR",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTMIND",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTNAIB",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTOGR",
+   "foreign_table": "T095A",
+   "foreign_field": "KTOGR"
+  },
+  {
+   "field": "KTOPL",
+   "foreign_table": "T004",
+   "foreign_field": "KTOPL"
+  },
+  {
+   "field": "KTREST",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTRIZU",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTVBAB",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTVIZU",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTVZU",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

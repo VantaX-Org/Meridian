@@ -1,0 +1,47 @@
+{
+ "domain": "HNWAG",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Do not check"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Check at header level"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Check at item level"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Check at header level and copy if unique"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Check at item level and copy if unique"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Check at header level and go directly to selection list"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Check at item level and branch directly to selection list"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,52 @@
+{
+ "domain": "LVS_KZINV",
+ "type": "CHAR",
+ "length": 2,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No inventory"
+  },
+  {
+   "low": "PE",
+   "high": null,
+   "text": "Continuous inventory upon placement into stock"
+  },
+  {
+   "low": "PN",
+   "high": null,
+   "text": "Continuous inventory based on zero stock check"
+  },
+  {
+   "low": "PZ",
+   "high": null,
+   "text": "Continuous inventory"
+  },
+  {
+   "low": "ST",
+   "high": null,
+   "text": "Annual inventory"
+  },
+  {
+   "low": "MA",
+   "high": null,
+   "text": "Manual inventory"
+  },
+  {
+   "low": "CC",
+   "high": null,
+   "text": "Cycle counting"
+  },
+  {
+   "low": "DC",
+   "high": null,
+   "text": "Dynamic Cycle Count"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

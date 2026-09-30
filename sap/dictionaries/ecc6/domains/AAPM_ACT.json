@@ -1,0 +1,32 @@
+{
+ "domain": "AAPM_ACT",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No synchronization"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Saving triggers a workflow"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Direct synchronization after saving"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Direct synchronization plus workflow"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,11 @@
+{
+ "domain": "ZERMA",
+ "type": "CHAR",
+ "length": 5,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": "T429",
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,27 @@
+{
+ "domain": "RDMHD",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No rounding off"
+  },
+  {
+   "low": "-",
+   "high": null,
+   "text": "Start of chosen period (week, month or year)"
+  },
+  {
+   "low": "+",
+   "high": null,
+   "text": "End of chosen period (week, month or year)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

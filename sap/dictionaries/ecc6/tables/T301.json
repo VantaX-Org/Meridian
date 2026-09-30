@@ -1,0 +1,69 @@
+{
+ "table": "T301",
+ "description": "WM Storage Types",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "LGNUM",
+   "key": true,
+   "data_element": "LGNUM",
+   "domain": "LGNUM",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Warehouse Number / Warehouse Complex",
+   "check_table": "T300"
+  },
+  {
+   "pos": 3,
+   "name": "LGTYP",
+   "key": true,
+   "data_element": "LGTYP",
+   "domain": "LGTYP",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Storage Type",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "GLCGR",
+   "key": false,
+   "data_element": "LXYRD_GLCGR",
+   "domain": "CHAR3",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Location Group",
+   "check_table": "LYLGR"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "GLCGR",
+   "foreign_table": "LYLGR",
+   "foreign_field": "GLCGR"
+  },
+  {
+   "field": "LGNUM",
+   "foreign_table": "T300",
+   "foreign_field": "LGNUM"
+  }
+ ]
+}

@@ -42,6 +42,7 @@ services:
       # ── CORS (permissive — API port is internal-only) ─────
       - MERIDIAN_CORS_ORIGINS=*
       # ── Licence ─────────────────────────────────────────────
+      - MERIDIAN_ENV=${MERIDIAN_ENV:-development}   # only dev runs without a licence key
       - LICENCE_KEY=${LICENCE_KEY:-}
       - LICENCE_SERVER_URL=${LICENCE_SERVER_URL:-https://licence.meridian.vantax.co.za}
       - LICENCE_FILE=${LICENCE_FILE:-}
@@ -50,7 +51,6 @@ services:
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-dev-secret-change-me}
       - FRONTEND_URL=http://localhost:3000
       # ── SAP ─────────────────────────────────────────────────
-      - SAP_CONNECTOR=${SAP_CONNECTOR:-mock}
       # ── Notifications (optional) ────────────────────────────
       - RESEND_API_KEY=${RESEND_API_KEY:-}
       - TEAMS_WEBHOOK_URL=${TEAMS_WEBHOOK_URL:-}

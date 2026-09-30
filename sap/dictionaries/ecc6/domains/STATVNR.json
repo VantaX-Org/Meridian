@@ -1,0 +1,37 @@
+{
+ "domain": "STATVNR",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Delivery takes place regardless of main item"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Delivery only if main item is partially delivered"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Delivery only if main item is fully delivered"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Delivery if main item is part. delivered, only with main itm"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Delivery proportional to quantity in main item"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

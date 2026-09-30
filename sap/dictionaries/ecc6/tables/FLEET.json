@@ -1,0 +1,761 @@
+{
+ "table": "FLEET",
+ "description": "Fleet Attributes",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "OBJNR",
+   "key": true,
+   "data_element": "J_OBJNR",
+   "domain": "J_OBJNR",
+   "type": "CHAR",
+   "length": 22,
+   "decimals": 0,
+   "description": "Object number",
+   "check_table": "ONR00"
+  },
+  {
+   "pos": 3,
+   "name": "OBJECT_GRP",
+   "key": false,
+   "data_element": "ITOBGROUP",
+   "domain": "ITOBGROUP",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Grouping of technical objects in Plant Maintenance",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "FLEET_CAT",
+   "key": false,
+   "data_element": "FLEET_CAT",
+   "domain": "EQART",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Vehicle Type",
+   "check_table": "T370FLT"
+  },
+  {
+   "pos": 6,
+   "name": "FLEET_NUM",
+   "key": false,
+   "data_element": "FLEET_NUM",
+   "domain": "FLEET_NUM",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Identification number for fleet object",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "FLEET_VIN",
+   "key": false,
+   "data_element": "FLEET_VIN",
+   "domain": "FLEET_VIN",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Manufacturer Vehicle Identification Number for Fleet Object",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "CHASSIS_NUM",
+   "key": false,
+   "data_element": "CHASSIS_NUM",
+   "domain": "CHASSIS_NUM",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Chassis number",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "LICENSE_NUM",
+   "key": false,
+   "data_element": "LICENSE_NUM",
+   "domain": "LICENSE_NUM",
+   "type": "CHAR",
+   "length": 15,
+   "decimals": 0,
+   "description": "License plate number",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "EXPIRY_DATE",
+   "key": false,
+   "data_element": "EXPIRY_DATE",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Validity end date",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "FLEET_HGT",
+   "key": false,
+   "data_element": "FLEET_HGT",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Maximum fleet object height",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "FLEET_WID",
+   "key": false,
+   "data_element": "FLEET_WID",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Width of fleet object",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "FLEET_LEN",
+   "key": false,
+   "data_element": "FLEET_LEN",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Maximum fleet object length",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "DIM_UNIT",
+   "key": false,
+   "data_element": "DIM_UNIT",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit of length",
+   "check_table": "T006"
+  },
+  {
+   "pos": 16,
+   "name": "PRI_CALC",
+   "key": false,
+   "data_element": "PRI_CALC",
+   "domain": "PRI_CALC",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator to determine the calculation method f. consumption",
+   "check_table": "T370CLC"
+  },
+  {
+   "pos": 17,
+   "name": "REPLA_DATE",
+   "key": false,
+   "data_element": "REPLA_DATE",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date on which the object should be replaced",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "REPLA_ODOM",
+   "key": false,
+   "data_element": "REPLA_ODOM",
+   "domain": "FLTP_INOUT",
+   "type": "CHAR",
+   "length": 22,
+   "decimals": 0,
+   "description": "Odometer reading at replacement",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "REPLA_OPH",
+   "key": false,
+   "data_element": "REPLA_OPH",
+   "domain": "FLTP_INOUT",
+   "type": "CHAR",
+   "length": 22,
+   "decimals": 0,
+   "description": "Hour meter reading at replacement",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "NUM_AXLE",
+   "key": false,
+   "data_element": "NUM_AXLE",
+   "domain": "NUM2",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Number of Axles in Fleet Object",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "MAX_OCCUPANTS",
+   "key": false,
+   "data_element": "MAX_OCCUPANTS",
+   "domain": "NUM4",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Maximum number of occupants",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "CARD_NUM",
+   "key": false,
+   "data_element": "CARD_NUM",
+   "domain": "CHAR30",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Fuel card number",
+   "check_table": null
+  },
+  {
+   "pos": 23,
+   "name": "KEY_NUM",
+   "key": false,
+   "data_element": "KEY_NUM",
+   "domain": "CHAR20",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "Key number of vehicle",
+   "check_table": null
+  },
+  {
+   "pos": 24,
+   "name": "FLEET_USE",
+   "key": false,
+   "data_element": "FLEET_USE",
+   "domain": "FLEET_USE",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Usage indicator",
+   "check_table": "T370USG"
+  },
+  {
+   "pos": 25,
+   "name": "ENGINE_TYPE",
+   "key": false,
+   "data_element": "ENGINE_TYPE",
+   "domain": "ENGINE_TYPE",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Engine type",
+   "check_table": "T370ENG"
+  },
+  {
+   "pos": 26,
+   "name": "ENGINE_POWER",
+   "key": false,
+   "data_element": "ENGINE_POWER",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Power at specific number of revolutions per minute",
+   "check_table": null
+  },
+  {
+   "pos": 27,
+   "name": "UNIT_POWER",
+   "key": false,
+   "data_element": "UNIT_POWER",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Power unit",
+   "check_table": "T006"
+  },
+  {
+   "pos": 28,
+   "name": "REVOLUTIONS",
+   "key": false,
+   "data_element": "REVOLUTIONS",
+   "domain": "NUM7",
+   "type": "NUMC",
+   "length": 7,
+   "decimals": 0,
+   "description": "Revolutions per minute",
+   "check_table": null
+  },
+  {
+   "pos": 29,
+   "name": "ENGINE_CYL",
+   "key": false,
+   "data_element": "ENGINE_CYL",
+   "domain": "NUM2",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Number of cylinders",
+   "check_table": null
+  },
+  {
+   "pos": 30,
+   "name": "ENGINE_CAP",
+   "key": false,
+   "data_element": "ENGINE_CAP",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Engine capacity",
+   "check_table": null
+  },
+  {
+   "pos": 31,
+   "name": "UNIT_CAP",
+   "key": false,
+   "data_element": "UNIT_CAP",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit for engine capacity measurement",
+   "check_table": "T006"
+  },
+  {
+   "pos": 32,
+   "name": "ENGINE_SNR",
+   "key": false,
+   "data_element": "ENGINE_SNR",
+   "domain": "CHAR30",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Engine serial number of manufacturer",
+   "check_table": null
+  },
+  {
+   "pos": 33,
+   "name": "FUEL_PRI",
+   "key": false,
+   "data_element": "FUEL_PRI",
+   "domain": "FLUID_TYPE",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Consumable Type of Primary Fuel",
+   "check_table": "T370FLD"
+  },
+  {
+   "pos": 34,
+   "name": "FUEL_SEC",
+   "key": false,
+   "data_element": "FUEL_SEC",
+   "domain": "FLUID_TYPE",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Consumable type of secondary fuel",
+   "check_table": "T370FLD"
+  },
+  {
+   "pos": 35,
+   "name": "OIL_TYPE",
+   "key": false,
+   "data_element": "FLTOIL_TYPE",
+   "domain": "FLUID_TYPE",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Consumable type of oil",
+   "check_table": "T370FLD"
+  },
+  {
+   "pos": 36,
+   "name": "GROSS_WGT",
+   "key": false,
+   "data_element": "GROSS_WGT",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Total Weight Allowed",
+   "check_table": null
+  },
+  {
+   "pos": 37,
+   "name": "LOAD_WGT",
+   "key": false,
+   "data_element": "LOAD_WGT",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Maximum load weight",
+   "check_table": null
+  },
+  {
+   "pos": 38,
+   "name": "WGT_UNIT",
+   "key": false,
+   "data_element": "WEIGHT_UNIT",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit of weight",
+   "check_table": "*"
+  },
+  {
+   "pos": 39,
+   "name": "LOAD_HGT",
+   "key": false,
+   "data_element": "LOAD_HGT",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Load height",
+   "check_table": null
+  },
+  {
+   "pos": 40,
+   "name": "LOAD_WID",
+   "key": false,
+   "data_element": "LOAD_WID",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Load width",
+   "check_table": null
+  },
+  {
+   "pos": 41,
+   "name": "LOAD_LEN",
+   "key": false,
+   "data_element": "LOAD_LEN",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Load length",
+   "check_table": null
+  },
+  {
+   "pos": 42,
+   "name": "LOAD_DIM_UNIT",
+   "key": false,
+   "data_element": "LOAD_DIM_UNIT",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit for freight dimensions",
+   "check_table": "T006"
+  },
+  {
+   "pos": 43,
+   "name": "LOAD_VOL",
+   "key": false,
+   "data_element": "LOAD_VOL",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Load volume",
+   "check_table": null
+  },
+  {
+   "pos": 44,
+   "name": "VOL_UNIT",
+   "key": false,
+   "data_element": "VOL_UNIT",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Volume unit",
+   "check_table": "T006"
+  },
+  {
+   "pos": 45,
+   "name": "NO_COMPART",
+   "key": false,
+   "data_element": "NO_COMPART",
+   "domain": "NUM2",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "NUmber of compartments",
+   "check_table": null
+  },
+  {
+   "pos": 46,
+   "name": "SPEED_MAX",
+   "key": false,
+   "data_element": "SPEED_MAX",
+   "domain": "MENG9",
+   "type": "QUAN",
+   "length": 9,
+   "decimals": 3,
+   "description": "Maximum Fleet Object Speed",
+   "check_table": null
+  },
+  {
+   "pos": 47,
+   "name": "SPEED_UNIT",
+   "key": false,
+   "data_element": "SPEED_UNIT",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Speed Unit",
+   "check_table": "T006"
+  },
+  {
+   "pos": 48,
+   "name": "CONSUMP_TOL",
+   "key": false,
+   "data_element": "CONSUMP_TOL",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator Consumption Recording: Permitted Tolerances",
+   "check_table": null
+  },
+  {
+   "pos": 49,
+   "name": "CONSUMP_MOVE",
+   "key": false,
+   "data_element": "CONSUMP_MOVE",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator Consumption Recording: Material Movement",
+   "check_table": null
+  },
+  {
+   "pos": 53,
+   "name": "/DSD/RP_EIGEN",
+   "key": false,
+   "data_element": "/BEV1/RPEIGEN",
+   "domain": "/BEV1/RPEIGEN",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator for Own (X) or External Vehicle",
+   "check_table": null
+  },
+  {
+   "pos": 54,
+   "name": "/DSD/RP_AHLAST",
+   "key": false,
+   "data_element": "/BEV1/RPAHLAST",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Trailer Load",
+   "check_table": null
+  },
+  {
+   "pos": 55,
+   "name": "/DSD/RP_AHLAST_U",
+   "key": false,
+   "data_element": "WEIGHT_UNIT",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit of weight",
+   "check_table": "T006"
+  },
+  {
+   "pos": 56,
+   "name": "/DSD/RP_VARKAP",
+   "key": false,
+   "data_element": "/BEV1/RPVARKAP",
+   "domain": "/BEV1/RPVARKAP",
+   "type": "QUAN",
+   "length": 7,
+   "decimals": 2,
+   "description": "Free Capacity Field with Variable Unit of Measure",
+   "check_table": null
+  },
+  {
+   "pos": 57,
+   "name": "/DSD/RP_KAPUNIT",
+   "key": false,
+   "data_element": "/BEV1/RPKAPUNIT",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit of Measure for Var. Capacity Field",
+   "check_table": "T006"
+  },
+  {
+   "pos": 58,
+   "name": "/BEV1/LULEINH",
+   "key": false,
+   "data_element": "/BEV1/LULEINH",
+   "domain": "/BEV1/LULEINH",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Loading Units",
+   "check_table": null
+  },
+  {
+   "pos": 60,
+   "name": "/VSO/M_VSO_FTYPE",
+   "key": false,
+   "data_element": "/VSO/M_VSO_FLT_TYPE",
+   "domain": "/VSO/M_VSO_FLT_TYPE",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Vehicle Type for Vehicle Space Optimation",
+   "check_table": "/VSO/B_FLEET"
+  },
+  {
+   "pos": 61,
+   "name": "IS_SI_UNIT",
+   "key": false,
+   "data_element": "IS_SI_UNIT",
+   "domain": "IS_SI_UNIT",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "PM: Vehicle Data in SI Unit (e.g. Dimensions)",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "/DSD/RP_AHLAST_U",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "/DSD/RP_KAPUNIT",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "/VSO/M_VSO_FTYPE",
+   "foreign_table": "/VSO/B_FLEET",
+   "foreign_field": "VSO_FTYPE"
+  },
+  {
+   "field": "DIM_UNIT",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "ENGINE_TYPE",
+   "foreign_table": "T370ENG",
+   "foreign_field": "ENGINE_TYPE"
+  },
+  {
+   "field": "FLEET_CAT",
+   "foreign_table": "T370FLT",
+   "foreign_field": "FLEET_CAT"
+  },
+  {
+   "field": "FLEET_USE",
+   "foreign_table": "T370USG",
+   "foreign_field": "FLEET_USE"
+  },
+  {
+   "field": "FUEL_PRI",
+   "foreign_table": "T370FLD",
+   "foreign_field": "FLUID_TYPE"
+  },
+  {
+   "field": "FUEL_SEC",
+   "foreign_table": "T370FLD",
+   "foreign_field": "FLUID_TYPE"
+  },
+  {
+   "field": "LOAD_DIM_UNIT",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "OBJNR",
+   "foreign_table": "ONR00",
+   "foreign_field": "OBJNR"
+  },
+  {
+   "field": "OIL_TYPE",
+   "foreign_table": "T370FLD",
+   "foreign_field": "FLUID_TYPE"
+  },
+  {
+   "field": "PRI_CALC",
+   "foreign_table": "T370CLC",
+   "foreign_field": "CALC_KEY"
+  },
+  {
+   "field": "SPEED_UNIT",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "UNIT_CAP",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "UNIT_POWER",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "VOL_UNIT",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  }
+ ]
+}

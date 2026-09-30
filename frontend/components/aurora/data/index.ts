@@ -46,3 +46,6 @@ export type {
 
 export { resolveChartTokens, auroraEChartsTheme } from "./chart-theme";
 export type { ChartTokens } from "./chart-theme";
+
+export { Pager } from "./pager";
+export type { PagerProps } from "./pager";

@@ -99,6 +99,18 @@ $DC exec -T db pg_restore \
     < "${BACKUP_DIR}/meridian.dump"
 info "Dump restored"
 
+# The app runs as the non-owner role meridian_app (RLS is enforced against it).
+# --no-privileges dropped its grants, so re-grant whenever the role exists.
+$DC exec -T db psql -U meridian -d "$TARGET_DB" -v ON_ERROR_STOP=1 -c "
+DO \$\$ BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'meridian_app') THEN
+    GRANT USAGE ON SCHEMA public TO meridian_app;
+    GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO meridian_app;
+    GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO meridian_app;
+  END IF;
+END \$\$;" >/dev/null
+info "App role grants re-applied"
+
 # ─── 3. Verify migration head ──────────────────────────────────────────────
 ACTUAL_HEAD=$($DC exec -T db psql -U meridian -d "$TARGET_DB" -tAc \
     "SELECT version_num FROM alembic_version LIMIT 1" 2>/dev/null | tr -d '\r' || echo "")

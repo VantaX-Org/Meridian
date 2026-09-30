@@ -190,9 +190,9 @@ async def list_exceptions(
 # ── 2. GET /api/v1/exceptions/{id} — detail with comments ───────────────────
 
 
-@router.get("/exceptions/{exception_id}")
+@router.get("/exceptions/{exception_id:uuid}")
 async def get_exception(
-    exception_id: str,
+    exception_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
@@ -244,7 +244,7 @@ async def get_exception(
 # ── 3. POST /api/v1/exceptions — create manually ────────────────────────────
 
 
-@router.post("/exceptions", status_code=201)
+@router.post("/exceptions", status_code=201, dependencies=[Depends(require_permission("analyse"))])
 async def create_exception(
     body: CreateExceptionBody,
     db: AsyncSession = Depends(get_db),
@@ -283,7 +283,7 @@ async def create_exception(
 # ── 4. PUT /api/v1/exceptions/{id}/assign ────────────────────────────────────
 
 
-@router.put("/exceptions/{exception_id}/assign")
+@router.put("/exceptions/{exception_id}/assign", dependencies=[Depends(require_permission("assign"))])
 async def assign_exception(
     exception_id: str,
     body: AssignBody,
@@ -315,7 +315,7 @@ async def assign_exception(
 # ── 5. PUT /api/v1/exceptions/{id}/escalate ──────────────────────────────────
 
 
-@router.put("/exceptions/{exception_id}/escalate")
+@router.put("/exceptions/{exception_id}/escalate", dependencies=[Depends(require_permission("approve"))])
 async def escalate_exception(
     exception_id: str,
     body: EscalateBody,
@@ -409,7 +409,7 @@ async def resolve_exception(
 # ── 7. POST /api/v1/exceptions/{id}/comment ─────────────────────────────────
 
 
-@router.post("/exceptions/{exception_id}/comment")
+@router.post("/exceptions/{exception_id}/comment", dependencies=[Depends(require_permission("analyse"))])
 async def add_comment(
     exception_id: str,
     body: CommentBody,
@@ -499,7 +499,7 @@ async def list_rules(
 # ── 10. POST /api/v1/exceptions/rules — create rule ─────────────────────────
 
 
-@router.post("/exceptions/rules", status_code=201)
+@router.post("/exceptions/rules", status_code=201, dependencies=[Depends(require_permission("manage_rules"))])
 async def create_rule(
     body: CreateRuleBody,
     db: AsyncSession = Depends(get_db),
@@ -533,7 +533,7 @@ async def create_rule(
 # ── 11. PUT /api/v1/exceptions/rules/{id} — update rule ─────────────────────
 
 
-@router.put("/exceptions/rules/{rule_id}")
+@router.put("/exceptions/rules/{rule_id}", dependencies=[Depends(require_permission("manage_rules"))])
 async def update_rule(
     rule_id: str,
     body: UpdateRuleBody,

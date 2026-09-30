@@ -1,0 +1,47 @@
+{
+ "domain": "BUHBKT",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "0",
+   "high": null,
+   "text": "Area Does Not Post"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Area Posts in Realtime"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Area Posts APC and Depreciation Periodically"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Area Posts Depreciation Only"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Area Posts APC Directly and Depreciation"
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "Area Posts APC Only"
+  },
+  {
+   "low": "6",
+   "high": null,
+   "text": "Area Posts Only APC Directly"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

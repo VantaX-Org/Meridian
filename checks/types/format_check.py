@@ -11,7 +11,7 @@ alone, so blanks are excluded from the denominator here.
 
 import pandas as pd
 
-from checks.base import BaseCheck, CheckResult, find_id_field, safe_json
+from checks.base import BaseCheck, Evaluation, is_blank
 
 
 def valid_iban(s: str) -> bool:
@@ -70,88 +70,19 @@ VALIDATORS = {
 
 
 class FormatCheck(BaseCheck):
+    """Non-blank values must satisfy a published check-digit standard."""
+
     check_class = "format_check"
 
-    def run(self, df: pd.DataFrame) -> CheckResult | None:
-        try:
-            field = self.rule["field"]
-            fmt = str(self.rule.get("format", "")).lower()
-            validator = VALIDATORS.get(fmt)
-
-            if field not in df.columns:
-                return None  # Skip — field not in partial extract
-
-            if validator is None:
-                return CheckResult(
-                    check_id=self.rule.get("id", "UNKNOWN"),
-                    module=self.rule.get("module", ""),
-                    field=field,
-                    severity=self.rule.get("severity", "medium"),
-                    dimension=self.rule.get("dimension", "validity"),
-                    passed=False,
-                    affected_count=0,
-                    total_count=len(df),
-                    pass_rate=0.0,
-                    message=self.rule.get("message", ""),
-                    details={},
-                    error=f"Unknown format '{fmt}' (known: {sorted(VALIDATORS)})",
-                )
-
-            # Null detection is the sole responsibility of null_check — format
-            # only judges non-null values.
-            non_null = df[field].notna() & (df[field].astype(str).str.strip() != "")
-            values = df[field].astype(str)
-            valid_mask = pd.Series(False, index=df.index)
-            valid_mask.loc[non_null] = values[non_null].map(validator)
-            failing_mask = non_null & ~valid_mask
-
-            check_total = int(non_null.sum())
-            affected = int(failing_mask.sum())
-            pass_rate = ((check_total - affected) / check_total * 100) if check_total > 0 else 100.0
-
-            id_field = find_id_field(df)
-            failing_indices = list(failing_mask[failing_mask].index[:10])
-
-            details = safe_json({
-                "field_checked": field,
-                "format": fmt,
-                "id_field_used": id_field,
-                "failing_record_count": affected,
-                "message": self.rule.get("message", ""),
-                "sample_failing_records": [
-                    {id_field: str(df.at[idx, id_field]), field: str(df.at[idx, field])}
-                    for idx in failing_indices
-                ],
-            })
-
-            return CheckResult(
-                check_id=self.rule["id"],
-                module=self.rule.get("module", ""),
-                field=field,
-                severity=self.rule.get("severity", "medium"),
-                dimension=self.rule.get("dimension", "validity"),
-                passed=(affected == 0),
-                affected_count=affected,
-                total_count=check_total,
-                pass_rate=round(pass_rate, 2),
-                message=self.rule.get("message", ""),
-                details=details,
-            )
-        except Exception as e:
-            return CheckResult(
-                check_id=self.rule.get("id", "UNKNOWN"),
-                module=self.rule.get("module", ""),
-                field=self.rule.get("field", ""),
-                severity=self.rule.get("severity", "medium"),
-                dimension=self.rule.get("dimension", "validity"),
-                passed=False,
-                affected_count=0,
-                total_count=len(df),
-                pass_rate=0.0,
-                message=self.rule.get("message", ""),
-                details={},
-                error=str(e),
-            )
+    def evaluate(self, df: pd.DataFrame) -> Evaluation:
+        field = self.rule["field"]
+        fmt = str(self.rule.get("format", "")).lower()
+        validator = VALIDATORS.get(fmt)
+        if validator is None:
+            raise ValueError(f"Unknown format '{fmt}' (known: {sorted(VALIDATORS)})")
+        populated = ~is_blank(df[field])
+        valid = df[field].astype("string").map(lambda v: isinstance(v, str) and validator(v))
+        return Evaluation(populated, ~valid.astype(bool), {"format": fmt}, invalid_values_field=field)
 
 
 if __name__ == "__main__":

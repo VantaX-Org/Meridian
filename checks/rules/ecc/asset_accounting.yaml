@@ -75,11 +75,11 @@ rules:
   field: ANLB.AFASL
   check_class: null_check
   severity: critical
-  dimension: accuracy
-  message: "Depreciation key is mandatory \u2014 determines depreciation method and rates"
-  why_it_matters: "AFASL (depreciation key) is the most critical field in asset accounting. It determines exactly how the\
-    \ asset is depreciated \u2014 which method, which rates, over what period. Missing means no depreciation is posted and\
-    \ the asset will remain at full book value indefinitely, overstating the financial statements."
+  dimension: completeness
+  message: Depreciation key is mandatory — determines depreciation method and rates
+  why_it_matters: AFASL (depreciation key) is the most critical field in asset accounting. It determines exactly how the asset
+    is depreciated — which method, which rates, over what period. Missing means no depreciation is posted and the asset will
+    remain at full book value indefinitely, overstating the financial statements.
   rule_authority: sap_hard_constraint
   sap_impact: No depreciation posted for this asset. Financial statements show overstated asset value. Period-end AFAB depreciation
     run excludes this asset.
@@ -93,14 +93,14 @@ rules:
   field: ANLB.NDJAR
   check_class: null_check
   severity: critical
-  dimension: accuracy
-  message: "Useful life in years is mandatory \u2014 missing means depreciation calculates as zero"
+  dimension: completeness
+  message: Useful life in years is mandatory — missing means depreciation calculates as zero
   why_it_matters: NDJAR (useful life in years) defines the total depreciation period. Without it, the depreciation calculation
     has no basis period and the annual depreciation amount is zero. The asset will never be fully depreciated and book values
     will be permanently overstated.
   rule_authority: sap_hard_constraint
-  sap_impact: "Depreciation amount is zero \u2014 asset remains at acquisition value indefinitely. Financial statements overstate\
-    \ asset values. Tax depreciation schedules are incorrect."
+  sap_impact: Depreciation amount is zero — asset remains at acquisition value indefinitely. Financial statements overstate
+    asset values. Tax depreciation schedules are incorrect.
   fix_map:
     __blank__: 'Useful life is empty. In ECC: determine the correct useful life from the company''s depreciation policy or
       IFRS/local GAAP guidelines and set via AS02 > Depreciation Areas tab. In S/4HANA: use Fiori app F2747. Example: buildings
@@ -110,9 +110,9 @@ rules:
 - id: AA007
   field: ANLA.AKTIV
   check_class: null_check
-  severity: high
+  severity: medium
   dimension: completeness
-  message: "Capitalisation date missing \u2014 asset may not be included in depreciation run"
+  message: Capitalisation date missing — asset may not be included in depreciation run
   why_it_matters: AKTIV (capitalisation date) determines when depreciation starts for the asset. Without it, the depreciation
     run cannot determine the start period and the asset may be excluded from AFAB processing entirely. Pro-rata depreciation
     in the first year is also affected.
@@ -124,8 +124,11 @@ rules:
       > Capitalisation Date. In S/4HANA: use Fiori app F2747.'
   record_fix_template: 'Asset {ANLA.ANLN1}: AKTIV is {actual_value}. Set the capitalisation date via AS02 (ECC) or Fiori app
     F2747 (S/4HANA).'
+  applies_when:
+    ANLA.ZUGDT:
+      populated: true
 - id: AA008
-  field: ANLA.KOSTL
+  field: ANLZ.KOSTL
   check_class: null_check
   severity: high
   dimension: completeness
@@ -157,25 +160,8 @@ rules:
       \ S/4HANA: use Fiori app F2747. Example: \"Dell PowerEdge R740 Server \u2014 DC Room 3\"."
   record_fix_template: 'Asset {ANLA.ANLN1}: TXT50 is {actual_value}. Enter a meaningful asset description via AS02 (ECC) or
     Fiori app F2747 (S/4HANA).'
-- id: AA010
-  field: ANLB.NDPER
-  check_class: null_check
-  severity: medium
-  dimension: accuracy
-  message: "Useful life in periods missing \u2014 may affect pro-rata depreciation calculation"
-  why_it_matters: NDPER (useful life in periods/months) provides fine-grained control over the depreciation period beyond
-    whole years. When missing, SAP defaults to full years only, which may result in slightly inaccurate depreciation for assets
-    with non-standard useful lives (e.g., 3.5 years).
-  rule_authority: best_practice
-  sap_impact: Pro-rata depreciation may be slightly inaccurate. Assets with useful lives that are not whole years will be
-    rounded to the nearest whole year.
-  fix_map:
-    __blank__: 'Useful life in periods is empty. In ECC: if the asset has a useful life that is not a whole number of years,
-      set the remaining periods via AS02 > Depreciation Areas tab. In S/4HANA: use Fiori app F2747.'
-  record_fix_template: 'Asset {ANLA.ANLN1}: NDPER is {actual_value}. Set the useful life periods via AS02 > Depreciation Areas
-    tab or Fiori app F2747.'
 - id: AA011
-  field: ANLA.PRCTR
+  field: ANLZ.PRCTR
   check_class: null_check
   severity: high
   dimension: completeness
@@ -192,11 +178,11 @@ rules:
   record_fix_template: 'Asset {ANLA.ANLN1}: PRCTR is {actual_value}. Assign the profit centre via AS02 > Time-Dependent tab
     or Fiori app F2747.'
 - id: AA012
-  field: ANLA.GSBER
+  field: ANLZ.GSBER
   check_class: null_check
-  severity: medium
+  severity: low
   dimension: completeness
-  message: "Business area missing \u2014 affects segment reporting and balance sheet split"
+  message: Business area missing — affects segment reporting and balance sheet split
   why_it_matters: GSBER (business area) is used for segment reporting and internal balance sheet preparation by business area.
     Without it, the asset is excluded from business area financial statements and cross-company reporting is incomplete.
   rule_authority: best_practice
@@ -207,11 +193,11 @@ rules:
   record_fix_template: 'Asset {ANLA.ANLN1}: GSBER is {actual_value}. Assign the business area via AS02 (ECC) or Fiori app
     F2747 (S/4HANA).'
 - id: AA013
-  field: ANLA.WERKS
+  field: ANLZ.WERKS
   check_class: null_check
-  severity: medium
+  severity: low
   dimension: completeness
-  message: "Plant missing \u2014 asset location tracking is incomplete"
+  message: Plant missing — asset location tracking is incomplete
   why_it_matters: WERKS (plant) identifies the physical location of the asset at the plant level. Without it, asset location
     reporting is incomplete, physical inventory reconciliation by plant cannot include this asset, and insurance valuations
     by location are inaccurate.
@@ -244,7 +230,7 @@ rules:
   check_class: null_check
   severity: medium
   dimension: completeness
-  message: "Asset acquisition date missing \u2014 lifecycle tracking is incomplete"
+  message: Asset acquisition date missing — lifecycle tracking is incomplete
   why_it_matters: ZUGDT (asset value date for first acquisition) records when the first acquisition posting was made. Without
     it, asset age calculations, warranty tracking, and lifecycle cost analysis cannot be performed accurately.
   rule_authority: best_practice
@@ -255,12 +241,15 @@ rules:
       (ABZON). If missing, investigate the acquisition history. In S/4HANA: verify via Fiori app F2747.'
   record_fix_template: 'Asset {ANLA.ANLN1}: ZUGDT is {actual_value}. Verify acquisition date via AS03 (ECC) or Fiori app F2747
     (S/4HANA).'
+  applies_when:
+    ANLA.AKTIV:
+      populated: true
 - id: AA016
   field: ANLB.AFABG
   check_class: null_check
   severity: high
   dimension: completeness
-  message: "Depreciation start date missing \u2014 depreciation calculation has no start point"
+  message: Depreciation start date missing — depreciation calculation has no start point
   why_it_matters: AFABG (depreciation start date) specifies when depreciation begins for the asset in the given depreciation
     area. Without it, the AFAB depreciation run cannot calculate when to start depreciating and may skip the asset entirely
     or use an incorrect start date.
@@ -272,30 +261,11 @@ rules:
       use Fiori app F2747. This is typically the same as or after the capitalisation date.'
   record_fix_template: 'Asset {ANLA.ANLN1}: AFABG is {actual_value}. Set the depreciation start date via AS02 > Depreciation
     Areas tab or Fiori app F2747.'
-- id: AA017
-  field: ANLB.AFABG
-  fields:
-  - ANLB.AFABG
-  - ANLA.AKTIV
-  check_class: cross_field_check
-  condition: '`ANLB.AFABG`.notna() and `ANLA.AKTIV`.notna() and `ANLB.AFABG` < `ANLA.AKTIV`'
-  severity: high
-  dimension: consistency
-  message: "Depreciation start date is before capitalisation date \u2014 logically inconsistent"
-  why_it_matters: The depreciation start date (AFABG) should be on or after the capitalisation date (AKTIV). Depreciation
-    cannot begin before the asset is capitalised. If AFABG is earlier, it indicates a data entry error that will cause incorrect
-    pro-rata depreciation calculations and overstated accumulated depreciation.
-  rule_authority: sap_hard_constraint
-  sap_impact: Depreciation is calculated from an incorrect start date. Accumulated depreciation is overstated. Book values
-    are understated. Financial statements may contain material misstatement.
-  fix_map:
-    __blank__: 'Depreciation start date (AFABG) is before capitalisation date (AKTIV). In ECC: correct AFABG via AS02 > Depreciation
-      Areas tab so it is on or after the capitalisation date. In S/4HANA: use Fiori app F2747. Verify which date is correct
-      with the asset accountant.'
-  record_fix_template: 'Asset {ANLA.ANLN1}: AFABG is ''{actual_value}'' but AKTIV is earlier. Correct the depreciation start
-    date via AS02 or Fiori app F2747.'
+  applies_when:
+    ANLA.AKTIV:
+      populated: true
 - id: AA018
-  field: ANLA.STORT
+  field: ANLZ.STORT
   check_class: null_check
   severity: low
   dimension: completeness
@@ -328,65 +298,6 @@ rules:
       missing, it indicates a data load issue. Document the gap in the data migration log.
   record_fix_template: "Asset {ANLA.ANLN1}: ERDAT is {actual_value}. This field is system-set \u2014 investigate the data\
     \ source for the missing audit trail."
-- id: AA020
-  field: ANLA.SERNR
-  check_class: null_check
-  severity: low
-  dimension: completeness
-  message: "Serial number missing \u2014 individual asset identification is not possible"
-  why_it_matters: SERNR (serial number) links the asset to the manufacturer's serial number, enabling individual identification
-    for warranty claims, maintenance tracking, and regulatory compliance. Without it, traceability to the physical unit is
-    reduced.
-  rule_authority: best_practice
-  sap_impact: Warranty claims cannot reference the serial number. Manufacturer recalls cannot identify affected assets. Regulatory
-    traceability is reduced.
-  fix_map:
-    __blank__: 'Serial number is empty. In ECC: enter the manufacturer''s serial number via AS02 > General tab > Serial Number.
-      In S/4HANA: use Fiori app F2747. Obtain from the equipment nameplate or procurement records.'
-  record_fix_template: 'Asset {ANLA.ANLN1}: SERNR is {actual_value}. Enter the serial number via AS02 (ECC) or Fiori app F2747
-    (S/4HANA).'
-- id: AA021
-  field: ANLA.AIESSION
-  check_class: null_check
-  severity: low
-  dimension: completeness
-  message: Asset super number is missing
-  why_it_matters: Asset super number (ANLA.AIESSION) is not maintained. This field supports downstream processes and reporting
-    accuracy. Missing data may result in incomplete records or processing gaps.
-  rule_authority: best_practice
-  sap_impact: Missing Asset super number may cause incomplete data in related transactions and reports.
-  fix_map:
-    __blank__: 'In ECC: Set via AS02. In S/4HANA: Use Fiori app F2747 (Manage Fixed Asset).'
-  record_fix_template: 'Record is missing ANLA.AIESSION. In ECC: Set via AS02. In S/4HANA: Use Fiori app F2747 (Manage Fixed
-    Asset).'
-- id: AA022
-  field: ANLA.ANLN2
-  check_class: null_check
-  severity: medium
-  dimension: completeness
-  message: Asset sub-number is missing
-  why_it_matters: Asset sub-number (ANLA.ANLN2) is not maintained. This field supports downstream processes and reporting
-    accuracy. Missing data may result in incomplete records or processing gaps.
-  rule_authority: best_practice
-  sap_impact: Missing Asset sub-number may cause incomplete data in related transactions and reports.
-  fix_map:
-    __blank__: 'In ECC: Set via AS02. In S/4HANA: Use Fiori app F2747 (Manage Fixed Asset).'
-  record_fix_template: 'Record is missing ANLA.ANLN2. In ECC: Set via AS02. In S/4HANA: Use Fiori app F2747 (Manage Fixed
-    Asset).'
-- id: AA023
-  field: ANLA.DEAKT
-  check_class: null_check
-  severity: low
-  dimension: completeness
-  message: Deactivation date is missing
-  why_it_matters: Deactivation date (ANLA.DEAKT) is not maintained. This field supports downstream processes and reporting
-    accuracy. Missing data may result in incomplete records or processing gaps.
-  rule_authority: best_practice
-  sap_impact: Missing Deactivation date may cause incomplete data in related transactions and reports.
-  fix_map:
-    __blank__: 'In ECC: Set via AS02. In S/4HANA: Use Fiori app F2747 (Manage Fixed Asset).'
-  record_fix_template: 'Record is missing ANLA.DEAKT. In ECC: Set via AS02. In S/4HANA: Use Fiori app F2747 (Manage Fixed
-    Asset).'
 - id: AA024
   field: ANLA.ERNAM
   check_class: null_check
@@ -401,115 +312,52 @@ rules:
     __blank__: 'In ECC: Set via AS02. In S/4HANA: Use Fiori app F2747 (Manage Fixed Asset).'
   record_fix_template: 'Record is missing ANLA.ERNAM. In ECC: Set via AS02. In S/4HANA: Use Fiori app F2747 (Manage Fixed
     Asset).'
-- id: AA025
-  field: ANLA.RAESSION
-  check_class: null_check
-  severity: low
-  dimension: completeness
-  message: Evaluation group 1 is missing
-  why_it_matters: Evaluation group 1 (ANLA.RAESSION) is not maintained. This field supports downstream processes and reporting
-    accuracy. Missing data may result in incomplete records or processing gaps.
-  rule_authority: best_practice
-  sap_impact: Missing Evaluation group 1 may cause incomplete data in related transactions and reports.
-  fix_map:
-    __blank__: 'In ECC: Set via AS02. In S/4HANA: Use Fiori app F2747 (Manage Fixed Asset).'
-  record_fix_template: 'Record is missing ANLA.RAESSION. In ECC: Set via AS02. In S/4HANA: Use Fiori app F2747 (Manage Fixed
-    Asset).'
-- id: AA026
-  field: ANLA.TXA50
-  check_class: null_check
-  severity: low
-  dimension: completeness
-  message: Additional description is missing
-  why_it_matters: Additional description (ANLA.TXA50) is not maintained. This field supports downstream processes and reporting
-    accuracy. Missing data may result in incomplete records or processing gaps.
-  rule_authority: best_practice
-  sap_impact: Missing Additional description may cause incomplete data in related transactions and reports.
-  fix_map:
-    __blank__: 'In ECC: Set via AS02. In S/4HANA: Use Fiori app F2747 (Manage Fixed Asset).'
-  record_fix_template: 'Record is missing ANLA.TXA50. In ECC: Set via AS02. In S/4HANA: Use Fiori app F2747 (Manage Fixed
-    Asset).'
 - id: AA027
-  field: ANLB.SAFASL
+  field: ANLB.SAFBG
   check_class: null_check
   severity: low
   dimension: completeness
-  message: Special depreciation key is missing
-  why_it_matters: Special depreciation key (ANLB.SAFASL) is not maintained. This field supports downstream processes and reporting
-    accuracy. Missing data may result in incomplete records or processing gaps.
-  rule_authority: best_practice
-  sap_impact: Missing Special depreciation key may cause incomplete data in related transactions and reports.
-  fix_map:
-    __blank__: 'In ECC: Set via AS02. In S/4HANA: Use Fiori app F2747 (Manage Fixed Asset).'
-  record_fix_template: 'Record is missing ANLB.SAFASL. In ECC: Set via AS02. In S/4HANA: Use Fiori app F2747 (Manage Fixed
-    Asset).'
-- id: AA028
-  field: ANLB.SCESSION
-  check_class: null_check
-  severity: low
-  dimension: completeness
-  message: Scrap value is missing
-  why_it_matters: Scrap value (ANLB.SCESSION) is not maintained. This field supports downstream processes and reporting accuracy.
-    Missing data may result in incomplete records or processing gaps.
-  rule_authority: best_practice
-  sap_impact: Missing Scrap value may cause incomplete data in related transactions and reports.
-  fix_map:
-    __blank__: 'In ECC: Set via AS02. In S/4HANA: Use Fiori app F2747 (Manage Fixed Asset).'
-  record_fix_template: 'Record is missing ANLB.SCESSION. In ECC: Set via AS02. In S/4HANA: Use Fiori app F2747 (Manage Fixed
-    Asset).'
-- id: AA029
-  field: ANLZ.RAESSION
-  check_class: null_check
-  severity: low
-  dimension: completeness
-  message: Cost center (time-dependent) is missing
-  why_it_matters: Cost center (time-dependent) (ANLZ.RAESSION) is not maintained. This field supports downstream processes
+  message: Special depreciation start date missing for an area with a special depreciation rate
+  why_it_matters: Special depreciation key (ANLB.SAFBG) is not maintained. This field supports downstream processes
     and reporting accuracy. Missing data may result in incomplete records or processing gaps.
   rule_authority: best_practice
-  sap_impact: Missing Cost center (time-dependent) may cause incomplete data in related transactions and reports.
-  fix_map:
-    __blank__: 'In ECC: Set via AS02. In S/4HANA: Use Fiori app F2747 (Manage Fixed Asset).'
-  record_fix_template: 'Record is missing ANLZ.RAESSION. In ECC: Set via AS02. In S/4HANA: Use Fiori app F2747 (Manage Fixed
-    Asset).'
+  sap_impact: Missing Special depreciation key may cause incomplete data in related transactions and reports.
+  fix_map: {__blank__: 'In ECC: Set via AS02. In S/4HANA: Use Fiori app F2747 (Manage Fixed Asset).'}
+  record_fix_template: 'Record is missing ANLB.SAFBG. In ECC: Set via AS02. In S/4HANA: Use Fiori app F2747 (Manage
+    Fixed Asset).'
+  applies_when:
+    ANLB.SAPRZ: {gt: 0}
 - id: AA030
   field: ANLA.ANLN1
-  check_class: cross_field_check
-  fields: ['ANLA.ANLN1']
-  condition: "~`ANLA.ANLN1`.duplicated(keep=False)"
+  check_class: uniqueness_check
+  fields: [ANLA.BUKRS, ANLA.ANLN1, ANLA.ANLN2]
   severity: critical
   dimension: uniqueness
   message: Duplicate asset main numbers detected — each asset must be unique
-  why_it_matters: Duplicate asset numbers cause double depreciation, incorrect book values, and reconciliation breaks between the asset subledger and general ledger. Each fixed asset must have a unique main number (ANLN1) within the company code.
+  why_it_matters: Duplicate asset numbers cause double depreciation, incorrect book values, and reconciliation breaks
+    between the asset subledger and general ledger. Each fixed asset must have a unique main number (ANLN1) within
+    the company code.
   rule_authority: sap_hard_constraint
-  sap_impact: Depreciation is posted twice. Asset subledger does not reconcile with FI-GL. Asset value reports are overstated. Year-end close will flag the imbalance.
-  fix_map:
-    __blank__: "Identify and merge duplicate asset records via AS06 (asset transfer within company code) or archive the duplicate via OAAR. Reconcile with FI-GL after correction."
+  sap_impact: Depreciation is posted twice. Asset subledger does not reconcile with FI-GL. Asset value reports are
+    overstated. Year-end close will flag the imbalance.
+  fix_map: {__blank__: Identify and merge duplicate asset records via AS06 (asset transfer within company code)
+      or archive the duplicate via OAAR. Reconcile with FI-GL after correction.}
 
-- id: AA031
-  field: ANLA.AKTIV
-  check_class: freshness_check
-  max_age_hours: 87600
-  severity: low
-  dimension: timeliness
-  message: Asset capitalised more than 10 years ago — review if useful life and depreciation parameters are still appropriate
-  rule_authority: best_practice
-  why_it_matters: "Assets capitalised more than 10 years ago frequently outlive their planned useful life; depreciation terms and impairment status may no longer reflect reality."
-  sap_impact: "Balance sheet may overstate net book value; depreciation runs post against outdated useful life; retired assets linger as active."
-  fix_map:
-    __blank__: "Review the asset in AS02: confirm useful life, depreciation key, and whether the asset is still in use; retire via ABAVN if disposed, or update depreciation terms."
-  record_fix_template: "Asset {field} capitalised {age_days} days ago. Confirm useful life/depreciation key in AS02, or retire via ABAVN if disposed."
 
 - id: AA032
-  field: ANLA.AFASL
+  field: ANLB.AFASL
   check_class: referential_check
-  reference_values: ["LINA", "LINM", "DEGR", "DG20", "DG30", "0000", "MANL"]
   severity: high
   dimension: consistency
-  message: "Depreciation key AFASL must reference a valid entry in T093"
-  why_it_matters: "AFASL (depreciation key) determines how and over what period an asset depreciates. An invalid AFASL means AFAB (depreciation run) cannot post for the record — monthly close fails for that asset, and the depreciation expense is understated. S/4HANA Asset Accounting (new) reconciles depreciation posting to the universal journal; an orphaned key breaks the reconciliation."
+  message: Depreciation key ANLB.AFASL must exist in T090NA
+  why_it_matters: AFASL (depreciation key) determines how and over what period an asset depreciates. An invalid AFASL means
+    AFAB (depreciation run) cannot post for the record — monthly close fails for that asset, and the depreciation expense
+    is understated. S/4HANA Asset Accounting (new) reconciles depreciation posting to the universal journal; an orphaned key
+    breaks the reconciliation.
   rule_authority: sap_hard_constraint
-  sap_impact: "AFAB fails for the asset; depreciation expense missing from month-end; universal-journal reconciliation broken."
+  sap_impact: AFAB fails for the asset; depreciation expense missing from month-end; universal-journal reconciliation broken.
   fix_map:
-    __blank__: "Assign depreciation key at AS01/AS02 > Depreciation Areas tab. Required for every depreciation area."
-    __other__: "Depreciation key '{invalid_value}' not in T093. Reassign via AS02 or configure in SPRO > Financial Accounting > Asset Accounting > Depreciation > Valuation Methods > Depreciation Key > Maintain Depreciation Key (AFAMA)."
-  record_fix_template: "Asset {ANLA.ANLN1}: depreciation key '{actual_value}' is not in T093."
+    __blank__: Assign depreciation key at AS01/AS02 > Depreciation Areas tab. Required for every depreciation area.
+    __other__: Depreciation key '{invalid_value}' not in T093. Reassign via AS02 or configure in SPRO > Financial Accounting
+      > Asset Accounting > Depreciation > Valuation Methods > Depreciation Key > Maintain Depreciation Key (AFAMA).
+  record_fix_template: 'Asset {ANLA.ANLN1}: depreciation key ''{actual_value}'' is not in T093.'

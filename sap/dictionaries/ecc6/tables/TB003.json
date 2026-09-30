@@ -1,0 +1,110 @@
+{
+ "table": "TB003",
+ "description": "BP Roles",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "CLIENT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "ROLE",
+   "key": true,
+   "data_element": "BU_PARTNERROLE",
+   "domain": "BU_ROLE",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "BP Role",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "ROLECATEGORY",
+   "key": false,
+   "data_element": "BU_PARTNERROLECAT",
+   "domain": "BU_ROLECAT",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "BP Role Category",
+   "check_table": "TB003A"
+  },
+  {
+   "pos": 4,
+   "name": "STND_ROLECAT",
+   "key": false,
+   "data_element": "BU_XSTNDRL",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indic.:Standard Assignment BP Role -> BP Role Category",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "BPVIEW",
+   "key": false,
+   "data_element": "BU_BPVIEW",
+   "domain": "BU_RLTYP",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "BP View",
+   "check_table": "TBZ0"
+  },
+  {
+   "pos": 7,
+   "name": "XSUPPRESS",
+   "key": false,
+   "data_element": "BU_XSUPPRESS_RLTYP",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Hide Business Partner Role in Dialog",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "POSNR",
+   "key": false,
+   "data_element": "BU_POSNR_RLTYP",
+   "domain": "NUM3",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Position of Business Partner Role",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "BPVIEW",
+   "foreign_table": "TBZ0",
+   "foreign_field": "RLTYP"
+  },
+  {
+   "field": "CLIENT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "ROLECATEGORY",
+   "foreign_table": "TB003A",
+   "foreign_field": "ROLECATEGORY"
+  }
+ ]
+}

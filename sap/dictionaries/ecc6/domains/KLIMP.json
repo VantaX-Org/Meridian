@@ -1,0 +1,37 @@
+{
+ "domain": "KLIMP",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Do not carry out credit limit check"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Run simple credit limit check and warning message"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Rund simple credit limit check and error message"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Run simple credit limit check and delivery block"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Credit management: Automatic credit control"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

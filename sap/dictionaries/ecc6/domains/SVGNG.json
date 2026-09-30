@@ -1,0 +1,22 @@
+{
+ "domain": "SVGNG",
+ "type": "CHAR",
+ "length": 4,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "PMS2",
+   "high": null,
+   "text": "Order"
+  },
+  {
+   "low": "PMS4",
+   "high": null,
+   "text": "Service contract"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,14 +1,8 @@
 name: 400k rows perf check
 
 # Weekly scheduled run of the 400k-row perf test + ad-hoc workflow_dispatch.
-# Deliberately NOT on every PR — the synthetic frame generator + both engines
-# takes 1-2 min on a warm runner, and a per-PR cost buys little (perf
-# regressions usually show up in a Polars/pandas version bump, not a refactor).
-#
-# Signal routing: the test prints its pandas/polars timings and the speedup.
-# CI surfaces the stdout of the run in the job log; a regression trips the
-# floor assertion in tests/checks/test_perf_400k.py (polars must not be
-# slower than pandas) and fails the job.
+# Also on PRs touching the engine. The test asserts exact defect counts at
+# 400k rows, grain-correct totals, and a wall-clock budget; it prints timings.
 
 on:
   schedule:
@@ -17,8 +11,10 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
-      - "checks/polars_engine.py"
       - "checks/runner.py"
+      - "checks/frames.py"
+      - "checks/base.py"
+      - "sap/dictionaries/joins.yaml"
       - "checks/types/**"
       - "tests/checks/test_perf_400k.py"
       - ".github/workflows/perf-400k.yml"
@@ -45,7 +41,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install \
             "pandas>=2.2.0" \
-            "polars>=1.0.0" \
             "numpy" \
             "pyyaml>=6.0.0" \
             "pytest>=8.0.0" \
@@ -65,4 +60,4 @@ jobs:
         if: success()
         run: |
           echo "### 400k perf — passing" >> "$GITHUB_STEP_SUMMARY"
-          echo "See \`Run perf test\` step log for pandas vs polars timings." >> "$GITHUB_STEP_SUMMARY"
+          echo "See \`Run perf test\` step log for timings." >> "$GITHUB_STEP_SUMMARY"

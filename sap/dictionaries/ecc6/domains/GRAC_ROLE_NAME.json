@@ -1,0 +1,11 @@
+{
+ "domain": "GRAC_ROLE_NAME",
+ "type": "CHAR",
+ "length": 300,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": true,
+ "value_table": "GRACROLE",
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}
