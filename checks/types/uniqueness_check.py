@@ -23,7 +23,12 @@ class UniquenessCheck(BaseCheck):
         populated = pd.Series(True, index=df.index)
         for c in cols:
             populated &= ~is_blank(df[c])
-        norm = df[cols].apply(lambda s: s.astype("string").str.strip().str.upper()
-                              if self.rule.get("case_insensitive") else s.astype("string").str.strip())
+        def _norm(s: pd.Series) -> pd.Series:
+            s = s.astype("string").str.strip()
+            if self.rule.get("normalize") == "alnum":  # identifiers: 'ZA 4012-345.678' == 'ZA4012345678'
+                return s.str.replace(r"[^0-9A-Za-z]", "", regex=True).str.upper()
+            return s.str.upper() if self.rule.get("case_insensitive") else s
+
+        norm = df[cols].apply(_norm)
         dup = norm[populated].duplicated(keep=False).reindex(df.index, fill_value=False)
         return Evaluation(populated, dup, {"fields_checked": cols})

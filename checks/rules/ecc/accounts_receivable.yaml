@@ -591,3 +591,33 @@ rules:
       __other__: Set a valid customer reconciliation account (XD02, company code data; BP in S/4HANA), or correct the
         account's 'reconciliation account for account type' in FS00.
     record_fix_template: 'Customer company-code record {KNB1.BUKRS}: reconciliation account {KNB1.AKONT} is not a customer reconciliation account.'
+  - id: XDUP004
+    field: KNA1.STCEG
+    check_class: uniqueness_check
+    fields: [KNA1.STCEG]
+    normalize: alnum
+    severity: high
+    dimension: uniqueness
+    message: Several customers share the same VAT registration number
+    why_it_matters: >-
+      Two customer accounts with one VAT registration number are almost always the same legal entity created twice: credit exposure, dunning and sales history split across both.
+    rule_authority: best_practice
+    sap_impact: Credit limit bypassed across accounts; duplicate customer masters.
+    fix_map:
+      __other__: Merge the duplicate customers or correct the VAT number.
+    record_fix_template: 'Record {KNA1.STCEG} shares KNA1.STCEG with another record.'
+  - id: XDUP005
+    field: KNA1.STCD1
+    check_class: uniqueness_check
+    fields: [KNA1.STCD1]
+    normalize: alnum
+    severity: medium
+    dimension: uniqueness
+    message: Several customers share the same tax number 1
+    why_it_matters: >-
+      Two customer accounts with one tax number are almost always the same legal entity created twice.
+    rule_authority: best_practice
+    sap_impact: Duplicate customer masters; credit exposure split.
+    fix_map:
+      __other__: Merge the duplicate customers or correct the tax number.
+    record_fix_template: 'Record {KNA1.STCD1} shares KNA1.STCD1 with another record.'

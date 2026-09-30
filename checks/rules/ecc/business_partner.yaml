@@ -585,3 +585,19 @@ rules:
   fix_map:
     __blank__: "Populate the primary organisation name via BP (transaction) > Organisation role > General Data > Names. If the BP should be a person instead, change BU_TYPE to 1 via BP."
   record_fix_template: "Business Partner {BUT000.PARTNER} (organisation): NAME_ORG1 is missing. Populate via BP transaction > Names."
+- id: XDUP006
+  field: DFKKBPTAXNUM.TAXNUM
+  check_class: uniqueness_check
+  fields: [DFKKBPTAXNUM.TAXTYPE, DFKKBPTAXNUM.TAXNUM]
+  grain: DFKKBPTAXNUM
+  normalize: alnum
+  severity: high
+  dimension: uniqueness
+  message: Several business partners share the same tax number (same tax type)
+  why_it_matters: >-
+    Two business partners with one tax number of the same tax type are almost always the same legal entity created twice.
+  rule_authority: best_practice
+  sap_impact: Duplicate business partners behind vendor and customer roles.
+  fix_map:
+    __other__: Merge the duplicate business partners (BP / MDG consolidation) or correct the tax number.
+  record_fix_template: 'Record {DFKKBPTAXNUM.TAXTYPE} shares DFKKBPTAXNUM.TAXTYPE, DFKKBPTAXNUM.TAXNUM with another record.'

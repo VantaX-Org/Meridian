@@ -12,8 +12,8 @@ RULES_DIR = Path(__file__).parent.parent.parent / "checks" / "rules" / "ecc"
 
 # Expected rule counts per module
 EXPECTED_COUNTS = {
-    "accounts_payable": 31,
-    "accounts_receivable": 25,
+    "accounts_payable": 34,
+    "accounts_receivable": 27,
     "asset_accounting": 21,
     "mm_purchasing": 42,  # PUR031 removed (no ECC field); XP2P001-002 moved in from cross_module
     "sd_customer_master": 23,
@@ -106,7 +106,7 @@ def test_ap_checks_run_with_enrichment():
     results = run_checks("accounts_payable", df, "test-tenant")
 
     # Non-None results = rules whose fields exist in this synthetic extract.
-    assert len(results) == 8
+    assert len(results) == 9
     assert all(isinstance(r, CheckResult) for r in results)
 
     failing = [r for r in results if not r.passed and not r.error]
@@ -135,7 +135,7 @@ def test_total_new_ecc_rule_count():
     for module_name in EXPECTED_COUNTS:
         rules = _load_rules(module_name)
         total += len(rules)
-    assert total == 230, f"Expected 230 total ECC rules, got {total}"
+    assert total == 235, f"Expected 235 total ECC rules, got {total}"
 
 
 # ---- Test 6: domain_value_check rules have valid_values_with_labels ----

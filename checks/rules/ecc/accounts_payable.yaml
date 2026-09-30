@@ -589,3 +589,48 @@ rules:
     __other__: Set a valid vendor reconciliation account (XK02, company code data; BP in S/4HANA), or correct the
       account's 'reconciliation account for account type' in FS00.
   record_fix_template: 'Vendor company-code record {LFB1.BUKRS}: reconciliation account {LFB1.AKONT} is not a vendor reconciliation account.'
+- id: XDUP001
+  field: LFA1.STCEG
+  check_class: uniqueness_check
+  fields: [LFA1.STCEG]
+  normalize: alnum
+  severity: high
+  dimension: uniqueness
+  message: Several vendors share the same VAT registration number
+  why_it_matters: >-
+    Two vendor accounts with one VAT registration number are almost always the same legal entity created twice: invoices, payments and spend analytics split across both, duplicate-invoice checks miss cross-account duplicates, and a blocked account can be bypassed through the other.
+  rule_authority: best_practice
+  sap_impact: Duplicate vendor masters; duplicate payments across accounts; fragmented spend.
+  fix_map:
+    __other__: Merge the duplicate vendors (block and flag the redundant account for deletion, move open items), or correct the VAT number.
+  record_fix_template: 'Record {LFA1.STCEG} shares LFA1.STCEG with another record.'
+- id: XDUP002
+  field: LFA1.STCD1
+  check_class: uniqueness_check
+  fields: [LFA1.STCD1]
+  normalize: alnum
+  severity: medium
+  dimension: uniqueness
+  message: Several vendors share the same tax number 1
+  why_it_matters: >-
+    Two vendor accounts with one tax number are almost always the same legal entity created twice.
+  rule_authority: best_practice
+  sap_impact: Duplicate vendor masters; tax reporting split across accounts.
+  fix_map:
+    __other__: Merge the duplicate vendors or correct the tax number.
+  record_fix_template: 'Record {LFA1.STCD1} shares LFA1.STCD1 with another record.'
+- id: XDUP003
+  field: LFBK.BANKN
+  check_class: uniqueness_check
+  fields: [LFBK.BANKS, LFBK.BANKL, LFBK.BANKN]
+  grain: LFBK
+  severity: high
+  dimension: uniqueness
+  message: The same bank account is maintained for several vendors
+  why_it_matters: >-
+    Payments to one bank account from several vendor accounts are either a duplicate vendor or a payment-fraud pattern (a changed bank account pointing to another vendor's or an employee's account). Every occurrence must be explained.
+  rule_authority: best_practice
+  sap_impact: Payments for different vendors land in one account; classic payment-redirection fraud pattern.
+  fix_map:
+    __other__: Verify each vendor's bank details with the supplier (call-back to a known number); remove the account from vendors it does not belong to (XK02 / BP).
+  record_fix_template: 'Record {LFBK.BANKS} shares LFBK.BANKS, LFBK.BANKL, LFBK.BANKN with another record.'
