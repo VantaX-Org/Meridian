@@ -43,6 +43,10 @@ class DomainValueCheck(BaseCheck):
 def _parse_dates(s: pd.Series) -> pd.Series:
     """Parse SAP DATS (YYYYMMDD) and ISO dates; anything else → NaT."""
     txt = s.astype("string").str.strip()
+    # SAP timestamps (TZNTSTMPS DEC 15 / TZNTSTMPL DEC 21,7): YYYYMMDDhhmmss[.fraction]
+    stamp = txt.str.fullmatch(r"\d{14}(?:[.,]\d+)?", na=False)
+    ts = pd.to_datetime(txt.where(stamp).str[:14], format="%Y%m%d%H%M%S", errors="coerce")
     dats = pd.to_datetime(txt.where(txt.str.fullmatch(r"\d{8}", na=False)), format="%Y%m%d", errors="coerce")
-    other = pd.to_datetime(txt.where(~txt.str.fullmatch(r"\d{8}", na=False)), errors="coerce", utc=True, format="mixed")
-    return dats.fillna(other.dt.tz_localize(None) if hasattr(other, "dt") else other)
+    other = pd.to_datetime(txt.where(~txt.str.fullmatch(r"\d{8}", na=False) & ~stamp), errors="coerce", utc=True,
+                           format="mixed")
+    return ts.fillna(dats).fillna(other.dt.tz_localize(None) if hasattr(other, "dt") else other)

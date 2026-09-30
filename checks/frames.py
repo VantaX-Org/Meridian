@@ -107,7 +107,10 @@ class TableFrames:
             keys = [f"{table}.{k}" for k in d.keys(table)]
             if keys and all(k in df.columns for k in keys):
                 part = df[cols]
-                part = part[~part[keys].isna().all(axis=1)].drop_duplicates(subset=keys)
+                # drop rows the flat layout repeated (vendor data on every company-code
+                # line), never rows that merely share a key: those are duplicates or
+                # distinct records, and uniqueness rules must see them
+                part = part[~part[keys].isna().all(axis=1)].drop_duplicates()
                 frames[table] = part.reset_index(drop=True)
             else:
                 unsplittable.add(table)
