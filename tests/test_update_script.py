@@ -121,3 +121,13 @@ def test_failed_copy_aborts_and_restores_minio(tmp_path):
         < _index(calls, "docker start app1")
     assert not any("--force-recreate" in c or "rm -f oldminio" in c for c in calls)
     assert not (host / ".storage-migrated").exists()
+
+
+def test_root_update_sh_runs_the_real_update_from_any_directory(tmp_path):
+    host, env = _setup(tmp_path, new_update_sh=False)
+    shutil.copy(REPO / "update.sh", host / "update.sh")
+    r = subprocess.run(["bash", str(host / "update.sh")], cwd="/", env={**env, "OLD_MINIO": "oldminio"},
+                       capture_output=True, text=True, timeout=60)
+    assert r.returncode == 0, r.stdout + r.stderr
+    calls = Path(env["CALLS"]).read_text()
+    assert "storage_migration" in calls and (host / ".storage-migrated").exists()
