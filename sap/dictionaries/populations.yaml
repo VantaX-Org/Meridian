@@ -32,6 +32,8 @@ tables:
   LFB1:
     - {id: deleted, field: LFB1.LOEVM, label: *deleted_label}
     - {id: deleted, field: LFA1.LOEVM, label: *deleted_label}
+    - {id: one_time_account, field: LFA1.XCPDK, values: [X], label: "one-time account",
+       only_fields: [LFA1.STCD1, LFA1.STCD2, LFA1.STCEG, LFA1.NAME2, LFA1.STRAS, LFA1.TELF1]}
   LFM1:
     - {id: deleted, field: LFM1.LOEVM, label: *deleted_label}
     - {id: deleted, field: LFA1.LOEVM, label: *deleted_label}
@@ -44,6 +46,8 @@ tables:
   KNB1:
     - {id: deleted, field: KNB1.LOEVM, label: *deleted_label}
     - {id: deleted, field: KNA1.LOEVM, label: *deleted_label}
+    - {id: one_time_account, field: KNA1.XCPDK, values: [X], label: "one-time account",
+       only_fields: [KNA1.STCD1, KNA1.STCD2, KNA1.STCEG, KNA1.NAME2, KNA1.STRAS, KNA1.TELF1]}
   KNVV:
     - {id: deleted, field: KNVV.LOEVM, label: *deleted_label}
     - {id: deleted, field: KNA1.LOEVM, label: *deleted_label}
