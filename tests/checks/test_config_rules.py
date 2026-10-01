@@ -109,3 +109,38 @@ def test_universal_journal_only_from_the_live_dictionary():
     assert (r.total_count, r.affected_count) == (3, 2) and r.details["largest_imbalance"] == 500.0
     verdict, detail = prove(rule, live)
     assert verdict == "proven", detail
+
+
+def _live_prcd():
+    f = lambda pos, name, key, typ, ln: {"pos": pos, "name": name, "key": key, "data_element": name,  # noqa: E731
+                                         "domain": name, "type": typ, "length": ln, "decimals": 0,
+                                         "description": name, "check_table": None}
+    prcd = {"table": "PRCD_ELEMENTS", "description": "Pricing Elements", "category": "TRANSP",
+            "delivery_class": "A", "fields": [f(1, "CLIENT", True, "CLNT", 3), f(2, "KNUMV", True, "CHAR", 10),
+                                              f(3, "KPOSN", True, "NUMC", 6), f(4, "STUNR", True, "NUMC", 3),
+                                              f(5, "ZAEHK", True, "NUMC", 3), f(6, "KAPPL", False, "CHAR", 2),
+                                              f(7, "KSCHL", False, "CHAR", 4), f(8, "KDATU", False, "DATS", 8)],
+            "foreign_keys": []}
+    return get_dictionary("s4hana").overlay({"PRCD_ELEMENTS": prcd})
+
+
+def test_document_conditions_only_from_the_live_dictionary():
+    from sap.extraction_plan import plan_modules
+
+    assert not any(r["id"].startswith("PE-") for r in RULES)            # bundle: nothing
+    assert "PRCD_ELEMENTS" not in plan_modules(["sd_sales_orders"], D)
+    live = _live_prcd()
+    assert config_rules.generate("sd_sales_orders", {}, live) == []      # no T685A: nothing assumed
+    rule = next(r for r in config_rules.generate("sd_sales_orders", CONFIG, live) if r["id"] == "PE-V")
+    assert rule["allowed_values"] == ["K007", "KF00", "PR00"]
+    plan = plan_modules(["sd_sales_orders"], live)["PRCD_ELEMENTS"]
+    assert plan.where.startswith("KDATU >= ") and {"KSCHL", "KAPPL"} <= plan.fields
+    rows = [("1", "000010", "010", "001", "V", "PR00"), ("1", "000010", "020", "001", "V", ""),   # subtotal line
+            ("1", "000010", "030", "001", "V", "ZOLD"),                                            # deleted type
+            ("2", "000010", "010", "001", "M", "PB00")]                                            # purchasing
+    df = pd.DataFrame([dict(zip([f"PRCD_ELEMENTS.{c}" for c in ("KNUMV", "KPOSN", "STUNR", "ZAEHK", "KAPPL",
+                                                                 "KSCHL")], r)) for r in rows])
+    _, r = run_rule(rule, TableFrames({"PRCD_ELEMENTS": df}, live, module="sd_sales_orders"))
+    assert r.affected_count == 1
+    verdict, detail = prove(rule, live)
+    assert verdict == "proven", detail

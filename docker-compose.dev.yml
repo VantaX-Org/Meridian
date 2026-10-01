@@ -60,10 +60,10 @@ services:
       - SMTP_PASSWORD=${SMTP_PASSWORD:-}
       - SMTP_FROM=${SMTP_FROM:-noreply@meridian.local}
       # ── Microsoft Graph API (optional) ──────────────────────
-      - MICROSOFT_TENANT_ID=998b123c-e559-479d-bbb9-cf3330469a73
-      - MICROSOFT_CLIENT_ID=166236c5-34d7-42fa-b1bc-3ed62ea77211
-      - MICROSOFT_CLIENT_SECRET=POO8Q~tDn1~8c6EwAulNE_14qFJD2ri60OYv3ctU
-      - EMAIL_FROM=no-reply@gonxt.tech
+      - MICROSOFT_TENANT_ID=${MICROSOFT_TENANT_ID:-}
+      - MICROSOFT_CLIENT_ID=${MICROSOFT_CLIENT_ID:-}
+      - MICROSOFT_CLIENT_SECRET=${MICROSOFT_CLIENT_SECRET:-}
+      - EMAIL_FROM=${EMAIL_FROM:-noreply@meridian.local}
       # ── Observability ───────────────────────────────────────
       - SENTRY_DSN=${SENTRY_DSN:-}
     volumes:

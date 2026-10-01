@@ -110,14 +110,16 @@ def _time_constraints(module: str, config: dict[str, list[dict]], dictionary) ->
 
 # S/4HANA tables judged only when the connected system's own (live) dictionary has
 # every field the rule reads — the bundle never defines them, so nothing is assumed.
-LIVE_ONLY = {"ACDOCA": ("RLDNR", "RBUKRS", "GJAHR", "BELNR", "HSL", "BUDAT")}
+LIVE_ONLY = {"ACDOCA": ("RLDNR", "RBUKRS", "GJAHR", "BELNR", "HSL", "BUDAT"),
+             # document pricing conditions (S/4 successor of KONV); KDATU bounds the read
+             "PRCD_ELEMENTS": ("KNUMV", "KPOSN", "STUNR", "ZAEHK", "KAPPL", "KSCHL", "KDATU")}
+_LIVE_MODULES = {"ACDOCA": {"fi_gl"}, "PRCD_ELEMENTS": set(MODULE_KAPPL)}
 
 
 def live_tables(module: str, dictionary) -> dict[str, tuple[str, ...]]:
     """LIVE_ONLY tables this module judges on this system (all their fields present)."""
-    wanted = {"ACDOCA": "fi_gl"}
     return {t: f for t, f in LIVE_ONLY.items()
-            if wanted.get(t) == module and all(dictionary.field(t, x) is not None for x in f)}
+            if module in _LIVE_MODULES[t] and all(dictionary.field(t, x) is not None for x in f)}
 
 
 def _universal_journal(module: str, dictionary) -> list[dict]:
@@ -138,9 +140,30 @@ def _universal_journal(module: str, dictionary) -> list[dict]:
                                     "{ACDOCA.RLDNR}) does not balance."}]
 
 
+def _document_conditions(module: str, config: dict[str, list[dict]], dictionary) -> list[dict]:
+    kappl = MODULE_KAPPL.get(module)
+    types = sorted({_s(r, "KSCHL") for r in config.get("T685A") or [] if _s(r, "KAPPL") == kappl} - {""})
+    if "PRCD_ELEMENTS" not in live_tables(module, dictionary) or not types:
+        return []
+    # blank KSCHL = subtotal lines of the pricing procedure (domain checks skip blanks)
+    return [{"module": module, "id": f"PE-{kappl}", "check_class": "domain_value_check", "grain": "PRCD_ELEMENTS",
+             "field": "PRCD_ELEMENTS.KSCHL", "allowed_values": types,
+             "applies_when": {"PRCD_ELEMENTS.KAPPL": [kappl]},
+             "rule_authority": "system_pricing_configuration", "severity": "medium", "dimension": "consistency",
+             "message": "Document pricing condition uses a condition type the system no longer defines (T685A)",
+             "why_it_matters": "The condition type was deleted from customizing after documents were priced "
+                               "with it. Their conditions can no longer be interpreted.",
+             "sap_impact": "Copying, re-pricing, billing or output of the document fails or drops the condition.",
+             "fix_map": {"__other__": "Restore the condition type in customizing (V/06 or M/06) or re-price "
+                                      "the open documents that use it."},
+             "record_fix_template": "Condition {PRCD_ELEMENTS.STUNR}/{PRCD_ELEMENTS.ZAEHK} of document "
+                                    "condition {PRCD_ELEMENTS.KNUMV}, item {PRCD_ELEMENTS.KPOSN}, uses "
+                                    "condition type {PRCD_ELEMENTS.KSCHL}."}]
+
+
 def generate(module: str, config: dict[str, list[dict]], dictionary) -> list[dict]:
     return _pricing(module, config) + _time_constraints(module, config, dictionary) + \
-        _universal_journal(module, dictionary)
+        _universal_journal(module, dictionary) + _document_conditions(module, config, dictionary)
 
 
 def fields_for(table: str, dictionary) -> set[str]:
