@@ -33,10 +33,11 @@ redis:
   image: redis:7-alpine
   storageSize: 5Gi
 
-minio:
+storage:  # Garage object storage (docker/Dockerfile.garage)
   enabled: true
-  image: ghcr.io/vantax-org/meridian-minio:latest  # docker/Dockerfile.minio
+  image: ghcr.io/vantax-org/meridian-garage:latest
   storageSize: 100Gi
+  capacity: 100G  # Garage node capacity (Garage size units)
 
 ingress:
   enabled: false

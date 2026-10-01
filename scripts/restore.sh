@@ -7,7 +7,7 @@
 #   1. Verifies manifest.json exists + can be parsed
 #   2. Drops + recreates the meridian database (DESTRUCTIVE)
 #   3. pg_restore the dump (--clean --if-exists so it can run twice)
-#   4. Restores MinIO buckets from tar.gz
+#   4. Restores object storage from objects.tar
 #   5. Copies .env back (or decrypts env.gpg if present)
 #   6. Verifies migration head matches the manifest
 #
@@ -128,20 +128,20 @@ else
     RESTORE_EXIT=0
 fi
 
-# ─── 4. MinIO + .env (skipped in drill mode) ───────────────────────────────
+# ─── 4. Object storage + .env (skipped in drill mode) ───────────────────────────────
 if [[ "$DRILL" != "true" ]]; then
-    for bucket in meridian-uploads meridian-reports; do
-        tarball="${BACKUP_DIR}/${bucket}.tar.gz"
-        if [[ -f "$tarball" ]]; then
-            info "Restoring MinIO bucket: $bucket"
-            $DC cp "$tarball" "minio:/tmp/${bucket}.tar.gz"
-            $DC exec -T minio sh -c \
-                "rm -rf /data/${bucket} && mkdir -p /data && cd /data && tar -xzf /tmp/${bucket}.tar.gz"
-            info "  $bucket restored"
-        else
-            warn "$bucket.tar.gz not found in backup — skipping"
-        fi
-    done
+    if [[ -f "${BACKUP_DIR}/objects.tar" ]]; then
+        # Objects added after the backup are left in place (the restored database no longer refers to them).
+        info "Restoring object storage..."
+        $DC run --rm --no-deps -T --entrypoint python api -m api.services.storage_migration --import < "${BACKUP_DIR}/objects.tar" \
+            || fail "Object storage restore failed"
+    elif compgen -G "${BACKUP_DIR}/meridian-*.tar.gz" >/dev/null; then
+        warn "This backup holds MinIO's raw data files, which Garage cannot load — objects not restored."
+        warn "Restore them by hand: start the old MinIO on an empty volume, untar into /data, then run"
+        warn "  python -m api.services.storage_migration --source-endpoint <that-minio>:9000  (in the api image)"
+    else
+        warn "objects.tar not found in backup — skipping object storage"
+    fi
 
     if [[ -f "${BACKUP_DIR}/env.gpg" ]]; then
         info "Decrypting env.gpg (prompts for passphrase)..."

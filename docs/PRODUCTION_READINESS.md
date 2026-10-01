@@ -31,7 +31,7 @@ This document is the point-in-time snapshot of what's been done to get Meridian 
 - Prometheus metrics at `/metrics` (HTTP, Celery, LLM, audit, checks)
 - Structured JSON logs with request ID + tenant ID context
 - Opt-in monitoring stack (Prometheus + Alertmanager + Grafana) with 7 alert rules
-- `/api/v1/admin/doctor` subsystem probes (Postgres, Redis, MinIO, LLM, licence, migrations)
+- `/api/v1/admin/doctor` subsystem probes (Postgres, Redis, object storage, LLM, licence, migrations)
 - `backup.sh` + `restore.sh` + `backup-restore-drill.sh` + runbook
 - `update.sh` with snapshot-to-`:rollback` tags + auto-rollback on failed health check
 

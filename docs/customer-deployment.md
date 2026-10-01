@@ -58,7 +58,7 @@ After successful installation, the following services will be running:
 | `worker`   | Celery background jobs         | -     |
 | `db`       | PostgreSQL database            | 5432  |
 | `redis`    | Task queue & caching           | 6379  |
-| `minio`    | S3-compatible file storage     | 9000  |
+| `storage`  | S3-compatible file storage (Garage) | 9000  |
 | `llm`      | Ollama LLM (Tier 2 only)       | 11434 |
 
 ### Common Tasks
@@ -286,7 +286,7 @@ curl -X POST https://licence.meridian.vantax.co.za/api/licence/validate \
 │       │             │             │             │      │
 │  ┌────┴──────┬──────┴────┬────────┴────┬────────┴────┐ │
 │  │           │           │             │             │ │
-│  │  Postgre  │   Redis   │    MinIO    │     SAP     │ │
+│  │  Postgre  │   Redis   │   Garage    │     SAP     │ │
 │  │     SQL   │           │             │   (RFC/OData)│ │
 │  │           │           │             │             │ │
 │  └───────────┴───────────┴─────────────┴─────────────┘ │

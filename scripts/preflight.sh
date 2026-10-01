@@ -44,6 +44,8 @@ if [[ -f .env ]]; then
     for k in "LICENCE_KEY|MERIDIAN_LICENCE_KEY" "DB_PASSWORD" "CREDENTIAL_MASTER_KEY" "MINIO_SECRET_KEY|MINIO_PASSWORD"; do
         [[ -n "$(envval "$k")" ]] && pass "$k set" || fail "$k missing in .env"
     done
+    s3=$(envval "MINIO_SECRET_KEY|MINIO_PASSWORD")
+    [[ -z "$s3" || ${#s3} -ge 16 ]] || fail "storage password is ${#s3} characters — Garage needs 16+: set a longer MINIO_PASSWORD and MINIO_SECRET_KEY in .env"
     [[ -n "$(envval LICENCE_SERVER_PUBLIC_KEY)" ]] && pass "licence response signatures enforced" \
         || warn "LICENCE_SERVER_PUBLIC_KEY not set — forged licence responses would be accepted"
     [[ "$(envval 'MERIDIAN_ENV|ENV')" == "development" ]] && fail "MERIDIAN_ENV=development on a customer host (licensing bypassed)"
@@ -54,7 +56,7 @@ fi
 # ── Registries + licence server ───────────────────────────────────────────
 grep -q '"ghcr.io"' /root/.docker/config.json 2>/dev/null && pass "logged in to ghcr.io (host + updater)" \
     || fail "not logged in to ghcr.io — docker login ghcr.io (token with read:packages)"
-for reg in https://ghcr.io/v2/ https://quay.io/v2/; do
+for reg in https://ghcr.io/v2/; do
     code=$(curl -s -o /dev/null -m 15 -w '%{http_code}' "$reg")
     [[ "$code" =~ ^(200|401)$ ]] && pass "reachable: $reg" || fail "cannot reach $reg (HTTP $code) — proxy/firewall"
 done

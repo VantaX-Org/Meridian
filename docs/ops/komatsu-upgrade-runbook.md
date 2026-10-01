@@ -63,14 +63,37 @@ script through the updater sidecar):
 
 1. Snapshots the running images as `:rollback`.
 2. Pulls the new Meridian images and syncs this release's deployment files.
-3. Pulls the pinned Postgres, Redis and MinIO images (a failure here doesn't
-   block the update).
+3. Pulls the pinned Postgres and Redis images (a failure here doesn't block
+   the update).
 4. Rebuilds the RFC overlay, if one is configured.
 5. **Backs up the database** to `backups/pre-update-<UTC>.dump`, then aborts
    if the backup fails.
-6. Recreates `api`, `worker`, `beat`, `frontend` and `nginx`, runs the
+6. **First time on Garage only:** moves the files (uploads, reports) from
+   MinIO to Garage — see below.
+7. Recreates `api`, `worker`, `beat`, `frontend` and `nginx`, runs the
    migrations, and checks `/health`.
-7. Rolls back automatically if any step after the restart fails.
+8. Rolls back automatically if any step after the restart fails.
+
+### Object storage: MinIO → Garage (once)
+
+This release replaces MinIO with Garage. Garage cannot read MinIO's files on
+disk, so the first update copies them over S3:
+
+1. Stops `api`, `worker` and `beat` so nothing writes during the copy.
+2. Starts Garage next to the old MinIO and copies every object, bucket by
+   bucket. Each copy is read back and checked against the SHA-256 of the
+   original; a copy that was interrupted is resumed on the next run.
+3. Switches over only if every object matched: the old MinIO container is
+   removed and `.storage-migrated` is written. **The old volume
+   (`docker_minio_data`) is kept untouched.** Once Meridian checks out, free
+   the space with `docker volume rm docker_minio_data`.
+4. If anything failed, it removes Garage, brings MinIO and the app back
+   exactly as they were, and aborts the update with the reason.
+
+Garage needs a storage password of **16+ characters** (preflight checks it).
+If yours is shorter, set a new one in `.env` (`MINIO_PASSWORD` and
+`MINIO_SECRET_KEY`, same value, e.g. `openssl rand -hex 16`) before
+updating. The copy reads MinIO with MinIO's own, old credentials.
 
 ## 3. First time only: SAP RFC support
 
@@ -101,3 +124,7 @@ sudo bash scripts/update.sh --rollback      # previous images, incl. the RFC ove
 docker compose -f docker/docker-compose.customer.yml exec -T db \
     pg_restore -U meridian -d meridian --clean --if-exists < backups/pre-update-<UTC>.dump
 ```
+
+Rolling back keeps the files in Garage: the previous images reach it at
+`minio:9000` exactly as they reached MinIO. The untouched `docker_minio_data`
+volume is the last resort if the copied files themselves were ever in doubt.

@@ -65,11 +65,11 @@ SAP data, findings, and reports **never leave the customer boundary**.
               ▼
 ┌─────────────────────────────────────────────────────────┐
 │  Zone 2 — Customer Environment (all SAP data)           │
-│  ┌─────────┐ ┌────────┐ ┌──────┐ ┌──────┐ ┌─────┐      │
-│  │ FastAPI │ │ Celery │ │ PG16 │ │Redis │ │MinIO│      │
-│  │ + Lang  │ │ Workers│ │ +RLS │ │     │ │     │      │
-│  │ Graph   │ │        │ │      │ │     │ │     │      │
-│  └─────────┘ └────────┘ └──────┘ └──────┘ └─────┘      │
+│  ┌─────────┐ ┌────────┐ ┌──────┐ ┌──────┐ ┌──────┐     │
+│  │ FastAPI │ │ Celery │ │ PG16 │ │Redis │ │Garage│     │
+│  │ + Lang  │ │ Workers│ │ +RLS │ │     │ │      │     │
+│  │ Graph   │ │        │ │      │ │     │ │      │     │
+│  └─────────┘ └────────┘ └──────┘ └──────┘ └──────┘     │
 │  ┌──────────────┐ ┌────────────────────────────┐        │
 │  │ Next.js 15   │ │ Ollama (local LLM, Tier 2) │        │
 │  │ 30 pages     │ │ qwen3.5:9b        │        │
@@ -111,7 +111,7 @@ Access: Dashboard at `http://localhost:3000`, API at `http://localhost:8000`
 | Check engine | Pandas (default) or Polars (optional, 10-100x faster) |
 | Background jobs | Celery + Redis (12 scheduled tasks, all with timeouts) |
 | Database | PostgreSQL 16 + Alembic (33 migrations) + RLS |
-| Object storage | MinIO (S3-compatible) |
+| Object storage | Garage (S3-compatible, AGPL, shipped unmodified) |
 | Local LLM | Ollama (qwen3.5:9b, request_timeout=120) |
 | Frontend | Next.js 15, TypeScript, Tailwind v4, shadcn/ui (30 pages) |
 | SAP connectors | RFC, OData V2/V4, REST — 5 connector implementations |

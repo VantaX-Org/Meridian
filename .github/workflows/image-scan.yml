@@ -47,8 +47,8 @@ jobs:
           - image: meridian-nginx
             dockerfile: docker/Dockerfile.nginx
             context: .
-          - image: meridian-minio
-            dockerfile: docker/Dockerfile.minio
+          - image: meridian-garage
+            dockerfile: docker/Dockerfile.garage
             context: docker
 
     steps:

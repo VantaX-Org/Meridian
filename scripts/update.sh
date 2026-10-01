@@ -112,7 +112,7 @@ IMAGES=(
     "ghcr.io/vantax-org/meridian-worker"
     "ghcr.io/vantax-org/meridian-frontend"
     "ghcr.io/vantax-org/meridian-nginx"
-    "ghcr.io/vantax-org/meridian-minio"
+    "ghcr.io/vantax-org/meridian-garage"
 )
 
 # Locally built RFC overlay images (scripts/build-rfc-overlay.sh) are
@@ -200,6 +200,60 @@ rebuild_rfc_overlay() {
         || error "RFC overlay rebuild failed — update aborted before any restart. Running stack is untouched."
 }
 
+# One time, on installs that still run MinIO: copy every object into Garage
+# (api.services.storage_migration verifies each copy by SHA-256) before the
+# stack is switched over. The old MinIO volume is never touched, so the data
+# stays recoverable until an operator removes it.
+STORAGE_MARKER=".storage-migrated"
+migrate_object_storage() {
+    [[ -f "$STORAGE_MARKER" ]] && return 0
+    local cfg project net old vol apps old_env
+    cfg=$(dc config --format json 2>/dev/null | python3 -c \
+        'import json,sys; c=json.load(sys.stdin); print(c["name"], c["networks"]["meridian-net"]["name"])' 2>/dev/null) \
+        || error "Could not read the compose configuration — update aborted before any restart."
+    read -r project net <<<"$cfg"
+    old=$(docker ps -aq --filter "label=com.docker.compose.project=${project}" \
+        --filter "label=com.docker.compose.service=minio" | head -1)
+    if [[ -z "$old" ]]; then
+        if docker volume inspect "${project}_minio_data" >/dev/null 2>&1 \
+                && ! docker volume inspect "${project}_storage_data" >/dev/null 2>&1; then
+            error "MinIO data (volume ${project}_minio_data) found but no MinIO container to copy it from — update aborted, nothing changed."
+        fi
+        return 0
+    fi
+    info "Moving object storage from MinIO to Garage (one time; every object is verified)..."
+    # Read with the old MinIO's own credentials, so .env may already carry new (16+ char) ones.
+    old_env=$(docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$old")
+    export STORAGE_SOURCE_ACCESS_KEY STORAGE_SOURCE_SECRET_KEY
+    STORAGE_SOURCE_ACCESS_KEY=$(sed -n 's/^MINIO_ROOT_USER=//p' <<<"$old_env")
+    STORAGE_SOURCE_SECRET_KEY=$(sed -n 's/^MINIO_ROOT_PASSWORD=//p' <<<"$old_env")
+    write_status "migrating_storage" "Copying object storage from MinIO to Garage..."
+    apps=$(dc ps -q api worker beat)
+    [[ -n "$apps" ]] && docker stop $apps >/dev/null
+    docker start "$old" >/dev/null
+    # The old MinIO answers only as meridian-minio-migrate; "minio" becomes Garage.
+    docker network disconnect "$net" "$old" 2>/dev/null || true
+    docker network connect --alias meridian-minio-migrate "$net" "$old"
+    if dc up -d --wait storage \
+            && dc run --rm --no-deps -T -e STORAGE_SOURCE_ACCESS_KEY -e STORAGE_SOURCE_SECRET_KEY \
+                --entrypoint python api \
+                -m api.services.storage_migration --source-endpoint meridian-minio-migrate:9000; then
+        vol=$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Name}}{{end}}{{end}}' "$old")
+        docker rm -f "$old" >/dev/null
+        date -u +%FT%TZ > "$STORAGE_MARKER"
+        info "Object storage moved to Garage ✓"
+        warn "The old MinIO volume ${vol} is kept for rollback. Once Meridian checks out, free it with: docker volume rm ${vol}"
+        return 0
+    fi
+    dc logs --no-log-prefix storage 2>/dev/null | grep '^storage:' | tail -5 >&2 || true
+    dc rm -sf storage >/dev/null 2>&1 || true
+    docker network disconnect "$net" "$old" 2>/dev/null || true
+    docker network connect --alias minio "$net" "$old"
+    [[ -n "$apps" ]] && docker start $apps >/dev/null
+    write_status "failed" "Object storage copy to Garage failed — still running on MinIO."
+    error "Copying object storage to Garage failed — update aborted; Meridian keeps running on MinIO and the previous images. Reason in the log lines above."
+}
+
 pull_images() {
     # Meridian images first, by name — independent of the (possibly outdated)
     # compose file on this host, which is refreshed from the new image next.
@@ -212,10 +266,10 @@ pull_images() {
 }
 
 pull_dependencies() {
-    # Postgres / Redis / MinIO as pinned by this release's compose file. A
+    # Postgres / Redis as pinned by this release's compose file (object storage is a Meridian image). A
     # failure here never blocks the update: running containers keep their image.
-    docker compose -f "$COMPOSE_FILE" pull --ignore-pull-failures db redis minio >/dev/null 2>&1 \
-        || warn "Could not pull db/redis/minio images — the running ones are kept."
+    docker compose -f "$COMPOSE_FILE" pull --ignore-pull-failures db redis >/dev/null 2>&1 \
+        || warn "Could not pull db/redis images — the running ones are kept."
 }
 
 verify_health() {
@@ -315,6 +369,7 @@ rebuild_rfc_overlay
 
 write_status "backing_up" "Backing up the database..."
 backup_database
+migrate_object_storage
 
 # Roll forward onto the new images BEFORE migrating: `dc exec` targets the
 # live container, so the api container must already be the new image — or

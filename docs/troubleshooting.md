@@ -49,8 +49,8 @@
 
 **Solutions:**
 - Check worker logs for WeasyPrint errors: `docker compose logs worker | grep -i weasyprint`
-- Verify MinIO is accessible: `docker compose ps minio`
-- Check the reports bucket exists: `docker compose exec minio mc ls local/meridian-reports/`
+- Verify object storage is healthy: `docker compose ps storage` (Garage; the stack reaches it as `minio:9000`)
+- Check its setup log: `docker compose logs storage | grep '^storage:'` — the last line should be `storage: ready`
 
 ### "Upload fails with 422"
 
@@ -94,8 +94,8 @@ docker compose exec db psql -U vantax -d vantax -c "SELECT count(*) FROM tenants
 # Redis connectivity
 docker compose exec redis redis-cli ping
 
-# MinIO status
-curl -f http://localhost:9000/minio/health/live
+# Object storage (Garage) status
+docker compose exec storage curl -fsS http://127.0.0.1:3903/health
 
 # Ollama model list
 docker compose exec llm ollama list

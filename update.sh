@@ -52,7 +52,7 @@ IMAGES=(
     "ghcr.io/vantax-org/meridian-worker"
     "ghcr.io/vantax-org/meridian-frontend"
     "ghcr.io/vantax-org/meridian-nginx"
-    "ghcr.io/vantax-org/meridian-minio"
+    "ghcr.io/vantax-org/meridian-garage"
 )
 
 # ─── Snapshot current images → :rollback tag ───────────────────────────────
