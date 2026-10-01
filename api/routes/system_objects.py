@@ -244,3 +244,80 @@ async def trends(system_id: uuid.UUID, object: Optional[str] = None,
                 "failing_records_delta": last["failing_records"] - base["failing_records"]},
         })
     return {"summary": summary, "series": series if object else {}}
+
+
+# ── Customer reference lists (licensed data that never comes from SAP) ─────────
+_REF_COUNTRY = r"^[A-Z0-9]{2,3}$"
+_REF_POSTCODE = r"^[A-Z0-9][A-Z0-9 \-]{0,9}$"
+_REF_MAX_ROWS = 2_000_000
+
+
+class ReferenceSummary(BaseModel):
+    kind: str
+    records: int
+    countries: list[str]
+
+
+@router.post("/{system_id}/reference/postal-codes", response_model=ReferenceSummary,
+             dependencies=[Depends(require_permission("manage_systems"))])
+async def upload_postal_codes(system_id: uuid.UUID, request: Request, db: AsyncSession = Depends(get_db),
+                              tenant: Tenant = Depends(get_tenant)):
+    """Official postal codes as CSV (country,postcode — SAP country key). Every partner
+    address in a listed country is then checked against the list (PX- rules)."""
+    import csv
+    import io
+    import json
+    import re
+
+    raw = (await request.body())[: 64 * 1024 * 1024]
+    try:
+        text_body = raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        raise HTTPException(400, "The file must be UTF-8 text (CSV: country,postcode).")
+    rows, bad = set(), 0
+    for i, rec in enumerate(csv.reader(io.StringIO(text_body))):
+        if len(rec) < 2:
+            continue
+        country, postcode = rec[0].strip().upper(), rec[1].strip().upper()
+        if i == 0 and country in ("COUNTRY", "LAND1"):
+            continue  # header
+        if re.fullmatch(_REF_COUNTRY, country) and re.fullmatch(_REF_POSTCODE, postcode):
+            rows.add((country, postcode))
+        else:
+            bad += 1
+        if len(rows) > _REF_MAX_ROWS:
+            raise HTTPException(413, f"More than {_REF_MAX_ROWS:,} postal codes.")
+    if not rows:
+        raise HTTPException(400, "No valid rows (expected CSV columns: country,postcode).")
+    if bad > len(rows):
+        raise HTTPException(400, f"{bad} rows are not 'country,postcode' — check the file layout.")
+    await _rls(db, tenant)
+    exists = (await db.execute(text("SELECT 1 FROM sap_systems WHERE id = :sid"), {"sid": str(system_id)})).scalar()
+    if not exists:
+        raise HTTPException(404, "System not found")
+    data = [{"COUNTRY": c, "POSTCODE": p} for c, p in sorted(rows)]
+    await db.execute(text("""
+        INSERT INTO config_snapshots (id, tenant_id, system_id, module, config_table, config_data,
+                                      record_count, source, synced_at)
+        VALUES (gen_random_uuid(), :tid, :sid, 'reference', 'REF_POSTAL', CAST(:data AS jsonb), :cnt,
+                'reference', now())
+        ON CONFLICT (tenant_id, system_id, module, config_table)
+        DO UPDATE SET config_data = CAST(:data AS jsonb), record_count = :cnt, source = 'reference', synced_at = now()
+    """), {"tid": str(tenant.id), "sid": str(system_id), "data": json.dumps(data), "cnt": len(data)})
+    await db.commit()
+    return ReferenceSummary(kind="postal-codes", records=len(data), countries=sorted({c for c, _ in rows}))
+
+
+@router.get("/{system_id}/reference", response_model=list[ReferenceSummary],
+            dependencies=[Depends(require_permission("view"))])
+async def reference_lists(system_id: uuid.UUID, db: AsyncSession = Depends(get_db),
+                          tenant: Tenant = Depends(get_tenant)):
+    await _rls(db, tenant)
+    rows = (await db.execute(text("""
+        SELECT config_table, record_count,
+               (SELECT array_agg(DISTINCT e->>'COUNTRY') FROM jsonb_array_elements(config_data) e) AS countries
+          FROM config_snapshots WHERE system_id = :sid AND source = 'reference'
+    """), {"sid": str(system_id)})).fetchall()
+    kinds = {"REF_POSTAL": "postal-codes"}
+    return [ReferenceSummary(kind=kinds.get(r[0], r[0]), records=r[1] or 0, countries=sorted(r[2] or []))
+            for r in rows]

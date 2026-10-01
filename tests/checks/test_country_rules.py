@@ -57,3 +57,16 @@ def test_bank_details_against_country_rules_and_bank_directory():
 
 def test_nothing_without_the_systems_tables():
     assert generate("accounts_payable", [{"field": "LFA1.LIFNR", "check_class": "null_check"}], {}, D) == []
+
+
+def test_postal_codes_against_the_customers_official_list():
+    config = {"REF_POSTAL": [{"COUNTRY": "ZA", "POSTCODE": "2196"}, {"COUNTRY": "ZA", "POSTCODE": "0700"},
+                             {"COUNTRY": "GB", "POSTCODE": "SW1A 1AA"}]}
+    static = [{"field": "LFA1.LIFNR", "check_class": "null_check"}]
+    rule = {r["id"]: r for r in generate("accounts_payable", static, config, D)}["PX-LFA1-PSTLZ"]
+    lfa1 = pd.DataFrame({"LFA1.LIFNR": list("12345"), "LFA1.LAND1": ["ZA", "ZA", "GB", "DE", "ZA"],
+                         "LFA1.PSTLZ": ["2196", "9999", "sw1a 1aa", "10115", ""]})
+    _, r = run_rule(rule, TableFrames({"LFA1": lfa1}, D, module="accounts_payable"))
+    # 9999 is not a South African postal code; lower case is the same code; DE has no list loaded
+    assert r.failing_record_keys == ["LIFNR=2"] and r.total_count == 3
+    assert r.details["reference"] == "REF_POSTAL"

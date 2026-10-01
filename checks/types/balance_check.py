@@ -13,13 +13,17 @@ class BalanceCheck(BaseCheck):
 
     def columns(self) -> list[str]:
         r = self.rule
-        return list(dict.fromkeys(r["group_by"] + [r["amount"], r["sign_field"]]))
+        return list(dict.fromkeys(r["group_by"] + [r["amount"]] + ([r["sign_field"]] if r.get("sign_field") else [])))
 
     def evaluate(self, df: pd.DataFrame) -> Evaluation:
         r = self.rule
-        amount = sap_number(df[r["amount"]]).fillna(0).abs()
-        sign = df[r["sign_field"]].astype("string").str.strip().eq(r.get("debit_value", "S"))
-        signed = amount.where(sign, -amount)
+        amount = sap_number(df[r["amount"]]).fillna(0)
+        if r.get("sign_field"):  # unsigned amount + debit/credit indicator (BSEG)
+            amount = amount.abs()
+            sign = df[r["sign_field"]].astype("string").str.strip().eq(r.get("debit_value", "S"))
+            signed = amount.where(sign, -amount)
+        else:  # amounts carry their own sign (ACDOCA)
+            signed = amount
         keys = df[r["group_by"]].astype("string").apply(lambda s: s.str.strip()).fillna("")
         net = signed.groupby([keys[c] for c in r["group_by"]]).transform("sum")
         first = ~keys.duplicated()

@@ -102,7 +102,8 @@ def _discover_abap(session, tenant_id, system_id, snapshot_id, system_type, conn
     base = dictionary_for_system(system_type)
     plans = plan_modules(MODULES_BY_SYSTEM.get(system_type, []), base)
     from sap.field_status_config import CONFIG_TABLES as FIELD_STATUS
-    wanted = sorted(set(plans) | set(ORG_STRUCTURE) | set(FIELD_STATUS))
+    from checks.config_rules import LIVE_ONLY  # S/4 tables: their definition comes from the system itself
+    wanted = sorted(set(plans) | set(ORG_STRUCTURE) | set(FIELD_STATUS) | set(LIVE_ONLY))
     snap = ddic_reader.snapshot(conn, wanted)
     counts = store_snapshot(session, tenant_id, system_id, snapshot_id, snap)
     info = snap["system_info"]

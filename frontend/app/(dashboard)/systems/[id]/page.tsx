@@ -25,6 +25,7 @@ import {
 import { PageHead } from "@/components/meridian/atoms";
 import { getSystems, testConnection } from "@/lib/api/connectivity";
 import { ObjectsPanel, TrendsTab, VersionsTab } from "./versions";
+import { ReferencePanel } from "./reference-panel";
 import {
   discoverSystem,
   getDesign,
@@ -144,6 +145,7 @@ export default function SystemDesignPage() {
       )}
 
       {can("trigger_sync") && <ObjectsPanel id={id} onDownloaded={() => setTab("versions")} />}
+      {can("manage_systems") && <ReferencePanel id={id} />}
 
       <Panel>
         <Tabs<Tab> ariaLabel="System" value={tab} onValueChange={setTab}

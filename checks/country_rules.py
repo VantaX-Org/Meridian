@@ -76,7 +76,7 @@ def generate(module: str, static_rules: list[dict], config: dict[str, list[dict]
     from checks.frames import tables_of
     from checks.runner import rule_columns
 
-    if not config.get("T005") and not config.get("BNKA"):
+    if not config.get("T005") and not config.get("BNKA") and not config.get("REF_POSTAL"):
         return []
     tables = set(tables_of([c for r in static_rules for c in rule_columns(r)]))
     by_kind = specs(config)
@@ -105,6 +105,17 @@ def generate(module: str, static_rules: list[dict], config: dict[str, list[dict]
                                      f"street address (T005-XPLZS)",
                           "why_it_matters": "The system's own country settings make the postal code mandatory for "
                                             "street addresses; deliveries, tax jurisdictions and carriers depend on it."})
+        if kind == "postal" and config.get("REF_POSTAL"):
+            keys = sorted({f"{str(r.get('COUNTRY') or '').strip().upper()}|"
+                           f"{str(r.get('POSTCODE') or '').strip().upper()}" for r in config["REF_POSTAL"]})
+            rules.append({**base, "id": f"PX-{t}-{f}", "family": "exists", "field": col, "country_field": country,
+                          "keys": keys, "countries": sorted({k.split("|")[0] for k in keys}),
+                          "reference": "REF_POSTAL", "rule_authority": "customer_reference_data",
+                          "severity": "medium", "dimension": "accuracy",
+                          "message": f"Postal code ({col}) is not in the official postal code list for its country",
+                          "why_it_matters": "A postal code that does not exist cannot be delivered to and puts the "
+                                            "address in the wrong tax jurisdiction and carrier zone. Judged only "
+                                            "for countries whose official list is loaded."})
         if kind == "bank_number" and config.get("BNKA"):
             keys = sorted({f"{str(r.get('BANKS') or '').strip()}|{str(r.get('BANKL') or '').strip()}"
                            for r in config["BNKA"]})

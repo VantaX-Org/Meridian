@@ -105,3 +105,22 @@ export async function getTrends(
 export async function analyseVersion(versionId: string): Promise<{ status: string }> {
   return (await apiClient.post(`/api/v1/versions/${versionId}/analyse`)).data;
 }
+
+export interface ReferenceList {
+  kind: string;
+  records: number;
+  countries: string[];
+}
+
+export async function getReferenceLists(id: string): Promise<ReferenceList[]> {
+  return (await apiClient.get(`${base(id)}/reference`)).data;
+}
+
+/** CSV with columns country,postcode (SAP country key). Replaces the system's current list. */
+export async function uploadPostalCodes(id: string, csv: File): Promise<ReferenceList> {
+  return (
+    await apiClient.post(`${base(id)}/reference/postal-codes`, await csv.text(), {
+      headers: { "Content-Type": "text/csv" },
+    })
+  ).data;
+}

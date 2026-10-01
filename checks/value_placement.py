@@ -173,8 +173,63 @@ def _vat_fr(d: str) -> bool:  # numeric key + SIREN
     return len(d) == 11 and int(d[:2]) == (12 + 3 * (int(d[2:]) % 97)) % 97
 
 
+def _weighted(d: str, weights) -> int:
+    return sum(int(x) * w for x, w in zip(d, weights))
+
+
+def _luhn(d: str) -> bool:
+    total = 0
+    for i, x in enumerate(reversed(d)):
+        n = int(x) * (2 if i % 2 else 1)
+        total += n - 9 if n > 9 else n
+    return total % 10 == 0
+
+
+def _vat_at(d: str) -> bool:  # U + 8 digits; doubled digits summed, offset 4
+    s = sum(int(x) if i % 2 == 0 else sum(divmod(int(x) * 2, 10)) for i, x in enumerate(d[:7]))
+    return (10 - (s + 4) % 10) % 10 == int(d[7])
+
+
+def _vat_nl(v: str) -> bool:  # 9 digits B 2 digits: MOD 11 (legal entities) or MOD 97 (sole traders, 2020)
+    d = v[:9]
+    mod11 = (_weighted(d[:8], range(9, 1, -1)) % 11) == int(d[8])
+    mod97 = int("2321" + d + "11" + v[10:]) % 97 == 1
+    return mod11 or mod97
+
+
+def _vat_pl(d: str) -> bool:
+    r = _weighted(d, (6, 5, 7, 2, 3, 4, 5, 6, 7)) % 11
+    return r != 10 and r == int(d[9])
+
+
+def _vat_dk(d: str) -> bool:
+    return _weighted(d, (2, 7, 6, 5, 4, 3, 2, 1)) % 11 == 0
+
+
+def _vat_fi(d: str) -> bool:
+    r = _weighted(d, (7, 9, 10, 5, 8, 4, 2)) % 11
+    return r != 1 and (0 if r == 0 else 11 - r) == int(d[7])
+
+
+def _vat_se(d: str) -> bool:  # organisation number (Luhn) + 01
+    return d.endswith("01") and _luhn(d[:10])
+
+
+def _vat_pt(d: str) -> bool:
+    c = 11 - _weighted(d, range(9, 1, -1)) % 11
+    return (0 if c >= 10 else c) == int(d[8])
+
+
+def _vat_gb(d: str) -> bool:  # 9 digits: MOD 97, or MOD 9755 (numbers issued since 2010)
+    total = _weighted(d[:7], range(8, 1, -1)) + int(d[7:9])
+    return total % 97 == 0 or (total + 55) % 97 == 0
+
+
 VAT_CHECKS = {"BE": (_vat_be, r"^\d{10}$"), "DE": (_vat_de, r"^\d{9}$"), "IT": (_vat_it, r"^\d{11}$"),
-              "FR": (_vat_fr, r"^\d{11}$")}
+              "FR": (_vat_fr, r"^\d{11}$"), "AT": (lambda b: _vat_at(b[1:]), r"^U\d{8}$"),
+              "NL": (_vat_nl, r"^\d{9}B\d{2}$"), "PL": (_vat_pl, r"^\d{10}$"), "DK": (_vat_dk, r"^\d{8}$"),
+              "FI": (_vat_fi, r"^\d{8}$"), "SE": (_vat_se, r"^\d{12}$"), "PT": (_vat_pt, r"^\d{9}$"),
+              "GB": (_vat_gb, r"^\d{9}$")}
 
 
 def vat_status(v: str) -> str:
