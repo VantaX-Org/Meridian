@@ -106,7 +106,7 @@ def test_ap_checks_run_with_enrichment():
     results = run_checks("accounts_payable", df, "test-tenant")
 
     # Non-None results = rules whose fields exist in this synthetic extract.
-    assert len(results) == 9
+    assert len(results) == 8  # AP007 now needs STCEG too, absent from this extract
     assert all(isinstance(r, CheckResult) for r in results)
 
     failing = [r for r in results if not r.passed and not r.error]

@@ -35,8 +35,8 @@ def exclusions(rule: dict, tables: list[str], columns: list[str]) -> list[dict]:
             if x["field"] in own:
                 continue  # never filter a rule by the flag it validates
             only = x.get("only_fields")
-            if only and not any(c.split(".", 1)[1] in only for c in own if c.split(".", 1)[0] == t):
-                continue
+            if only and not any(c in only or (c.split(".", 1)[0] == t and c.split(".", 1)[1] in only) for c in own):
+                continue  # names are fields of this table; TABLE.FIELD entries reach attribute tables (ADR6)
             out.append(x)
     return out
 

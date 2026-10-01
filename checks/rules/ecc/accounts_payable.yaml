@@ -88,10 +88,10 @@ rules:
     Fiori app F3893.'
 - id: AP007
   field: LFA1.STCD1
-  check_class: null_check
+  check_class: cross_field_check
   severity: low
   dimension: completeness
-  message: Tax number 1 missing — required for VAT reporting and withholding tax
+  message: Vendor has no tax identification (neither tax number 1 nor VAT registration number)
   why_it_matters: STCD1 (tax number 1) is required for VAT reporting, withholding tax calculation, and tax authority submissions.
     Without it, tax reports are incomplete and the company may face compliance penalties during tax audits.
   rule_authority: best_practice
@@ -101,6 +101,7 @@ rules:
     __blank__: 'In ECC: obtain the vendor''s VAT registration number or tax ID and set via T-code FK02 > General Data > Control
       tab. In S/4HANA: use Fiori app F3893 (Manage Business Partner) > Tax Numbers section.'
   record_fix_template: 'Vendor {LFA1.LIFNR}: STCD1 is {actual_value}. Set the tax number via FK02 / Fiori app F3893.'
+  fail_when: '`LFA1.STCD1`.isna() & `LFA1.STCEG`.isna()'
 - id: AP009
   field: ADR6.SMTP_ADDR
   check_class: null_check

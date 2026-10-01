@@ -106,10 +106,10 @@ rules:
 
   - id: SDCM006
     field: KNA1.STCD1
-    check_class: null_check
+    check_class: cross_field_check
     severity: low
     dimension: completeness
-    message: Tax number missing — required for tax-compliant invoicing
+    message: Customer has no tax identification (neither tax number 1 nor VAT registration number)
     why_it_matters: STCD1 (tax number) is required for generating tax-compliant invoices. Many jurisdictions require the customer's
       tax registration number on invoices for VAT deduction. Missing tax number results in non-compliant billing documents from
       VF01.
@@ -120,6 +120,7 @@ rules:
       __blank__: 'In ECC: obtain the customer''s VAT number or tax ID and set via T-code VD02 > General Data > Control tab or
         XD02. In S/4HANA: use Fiori app F3893 > Tax Numbers section.'
     record_fix_template: 'Customer {KNA1.KUNNR}: STCD1 is {actual_value}. Set the tax number via VD02 / Fiori app F3893.'
+    fail_when: '`KNA1.STCD1`.isna() & `KNA1.STCEG`.isna()'
 
   - id: SDCM007
     field: ADR6.SMTP_ADDR

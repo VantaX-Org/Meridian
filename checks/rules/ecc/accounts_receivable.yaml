@@ -129,10 +129,10 @@ rules:
 
   - id: AR007
     field: KNA1.STCD1
-    check_class: null_check
+    check_class: cross_field_check
     severity: low
     dimension: completeness
-    message: Tax number missing — required for VAT reporting and tax compliance
+    message: Customer has no tax identification (neither tax number 1 nor VAT registration number)
     why_it_matters: STCD1 (tax number 1) is required for VAT reporting, output tax calculation, and tax authority submissions.
       Without it, tax reports are incomplete and the company may face compliance penalties. Many jurisdictions require the customer's
       tax ID on invoices.
@@ -143,6 +143,7 @@ rules:
       __blank__: 'In ECC: obtain the customer''s VAT registration number or tax ID and set via T-code FD02 > General Data >
         Control tab. In S/4HANA: use Fiori app F3893 > Tax Numbers section.'
     record_fix_template: 'Customer {KNA1.KUNNR}: STCD1 is {actual_value}. Set the tax number via FD02 / Fiori app F3893.'
+    fail_when: '`KNA1.STCD1`.isna() & `KNA1.STCEG`.isna()'
 
   - id: AR008
     field: ADR6.SMTP_ADDR
