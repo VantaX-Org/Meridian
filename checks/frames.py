@@ -120,6 +120,7 @@ class TableFrames:
         self.unsplittable = unsplittable or set()
         self.module = module
         self._cache: dict[tuple, tuple[pd.DataFrame, str, list[str]]] = {}
+        self.incomplete: set[str] = set()  # tables the extraction could not read completely
         self._apply_moved_fields()
 
     # ── construction ─────────────────────────────────────────────────────

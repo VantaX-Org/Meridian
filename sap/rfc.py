@@ -170,9 +170,14 @@ class RFCConnector(SAPConnector):
             return {}
         try:
             r = self._conn.call("EM_GET_NUMBER_OF_ENTRIES", IT_TABLES=[{"TABNAME": t} for t in tables])
+            return {str(x.get("TABNAME", "")).strip(): int(x.get("TABROWS") or 0) for x in r.get("IT_TABLES", [])}
         except Exception:
-            return {}
-        return {str(x.get("TABNAME", "")).strip(): int(x.get("TABROWS") or 0) for x in r.get("IT_TABLES", [])}
+            if len(tables) == 1:
+                return {}
+        out: dict[str, int] = {}  # one unreadable table: count the others one by one
+        for t in tables:
+            out.update(self.count_rows([t]))
+        return out
 
     def execute_bapi(self, call: BAPICall) -> dict:
         if self._conn is None:

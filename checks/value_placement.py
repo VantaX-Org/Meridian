@@ -82,8 +82,8 @@ TARGET = {  # where the value belongs (fix guidance)
 # ── detectors: vectorised over a Series of stripped, non-blank strings ────
 _EMAIL = re.compile(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(?:\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}")
 _URL = re.compile(r"(?i)\b(?:https?://|www\.)[^\s]+")
-# a phone keyword followed by a number of >= 7 digits ("ph" would be pH, "cell 0-500 kg" a load cell)
-_PHONE_KW = re.compile(r"(?i)\b(?:tel|telephone|phone|cell|mobile|mob|fax)\b\.?\s*:?\s*\+?\(?(?:\d[\s().\-]*){7,}")
+# a phone keyword followed by a number of >= 7 digits ('pH 7.5' and 'load cell 0-500 kg' are too short)
+_PHONE_KW = re.compile(r"(?i)\b(?:tel|telephone|phone|ph|cell|mobile|mob|fax)\b\.?\s*:?\s*\+?\(?(?:\d[\s().\-]*){7,}")
 _PHONE = re.compile(r"^(?:\+|00|0|\()[\d\s().\-]+$")
 _PO_BOX = re.compile(r"(?i)\b(?:p\.?\s?o\.?\s?box|post\s?box|postbus|postfach|private\s+bag|p\.?\s?o\.?\s+bag|"
                      r"bo[iî]te\s+postale|apartado\s+postal|caixa\s+postal|casilla)\b")

@@ -91,8 +91,7 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
                     "dataset_path": prefix, "object_rows": object_rows,
                     "coverage": coverage, "row_count": int(sum(len(d) for d in data_tables.values())),
                     # every data table read completely (row count reconciled, no truncation, no paging drift)
-                    "extraction_complete": all(c.get("complete", True) for c in coverage
-                                               if c.get("purpose", "data") == "data" and c["status"] == "live")
+                    "extraction_complete": all(c.get("complete", True) for c in coverage if c["status"] == "live")
                                            and not any(c["status"] == "failed" for c in coverage),
                 })},
             )

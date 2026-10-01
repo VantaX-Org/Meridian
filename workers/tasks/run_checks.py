@@ -156,6 +156,8 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanaly
             conversions=conversion_maps(fs_config))
 
         logger.info(f"Loaded DataFrame: {row_count} rows, {col_count} columns")
+        frames.incomplete = {c["table"] for c in metadata.get("coverage") or []
+                             if c.get("complete") is False or c.get("truncated")}
 
         # Records per module = rows of the module's anchor table (flat upload: all rows).
         from checks.frames import _graph

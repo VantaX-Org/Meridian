@@ -71,6 +71,11 @@ def exclude(frame: pd.DataFrame, rules: list[dict], frames=None) -> tuple[pd.Dat
         for p in parts[1:]:  # composite key, e.g. material type | industry sector
             v = v + "|" + p
         if x.get("in_table"):
+            spec = x["in_table"]
+            t = getattr(frames, "frames", {}).get(spec["table"]) if frames is not None else None
+            if t is None or any(f"{spec['table']}.{f}" not in t.columns for f in [spec["column"], *spec.get("where", {})]):
+                counts[f"unverified_{x['id']}"] = int((~out).sum())  # status not extracted: cannot tell, say so
+                continue
             hit = v.isin(_status_values(x, frames))
         else:
             hit = v.isin([str(a) for a in x["values"]]) if x.get("values") else v.ne("") & v.ne("00000000")

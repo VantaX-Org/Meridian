@@ -25,6 +25,13 @@ def load_config(session, system_id: str | None) -> dict[str, list[dict]]:
     return {t: list(d or []) for t, d in rows}
 
 
+def conversions_for(session, system_id: str | None) -> dict[str, dict[str, str]]:
+    """External → internal code maps (CUNIT, AUART) from the system's own tables; every
+    loader of an uploaded dataset passes them so all views of one dataset agree."""
+    from sap.field_status_config import conversion_maps
+    return conversion_maps(load_config(session, system_id))
+
+
 def generate(resolutions: list[Resolution], modules: list[str]) -> list[dict]:
     rules = []
     for res in resolutions:

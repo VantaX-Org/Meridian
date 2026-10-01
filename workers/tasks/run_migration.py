@@ -129,7 +129,9 @@ def run_migration(self, tenant_id, run_id, mode, source_system_id, dest_system_i
                 return _finish(session, run_id, "failed",
                                "No analysed source dataset — run an extraction or upload for the source first.", {})
             source_dict = dictionary_for(session, source_system_id or meta.get("system_id"))
-            frames, _, _, _ = load_dataset(meta["dataset_path"], source_dict, modules)
+            from checks.field_status_rules import conversions_for
+            frames, _, _, _ = load_dataset(meta["dataset_path"], source_dict, modules,
+                                           conversions=conversions_for(session, source_system_id or meta.get("system_id")))
 
             if dest_system_id:
                 target_dict = dictionary_for(session, dest_system_id)

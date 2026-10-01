@@ -127,3 +127,10 @@ def test_equipment_flagged_for_deletion_by_status_is_out_of_the_population():
     f = TableFrames({"EQUI": equi, "JEST": jest}, D, module="plant_maintenance")
     _, r = run_rule({"id": "X", "field": "EQUI.HERST", "check_class": "null_check", "module": "plant_maintenance"}, f)
     assert sorted(r.failing_record_keys) == ["EQUNR=E1", "EQUNR=E3"] and r.details["population_excluded"] == {"deleted": 1}
+
+
+def test_missing_status_table_is_reported_not_silent():
+    equi = pd.DataFrame({"EQUI.EQUNR": ["E1"], "EQUI.OBJNR": ["IE1"], "EQUI.HERST": [""]})
+    f = TableFrames({"EQUI": equi}, D, module="fleet_management")
+    _, r = run_rule({"id": "X", "field": "EQUI.HERST", "check_class": "null_check", "module": "fleet_management"}, f)
+    assert r.details["population_excluded"] == {"unverified_deleted": 1}

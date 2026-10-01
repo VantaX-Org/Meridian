@@ -206,14 +206,15 @@ async def trends(system_id: uuid.UUID, object: Optional[str] = None,
                 "scope": meta.get("scope", {}), "rule_set": meta.get("rule_set"),
             }
             flags = []
+            point["incomplete"] = meta.get("extraction_complete") is False
+            if point["incomplete"] or (pts and pts[-1].get("incomplete")):
+                flags.append("incomplete_extract")
             if pts:
                 prev = pts[-1]
                 if prev["scope"] != point["scope"]:
                     flags.append("scope_changed")
                 if prev["rule_set"] and point["rule_set"] and prev["rule_set"] != point["rule_set"]:
                     flags.append("rules_changed")
-                if meta.get("extraction_complete") is False:
-                    flags.append("incomplete_extract")
                 if prev["records"] and point["records"] is not None and \
                         abs(point["records"] - prev["records"]) / prev["records"] > VOLUME_SHIFT:
                     flags.append("volume_shift")

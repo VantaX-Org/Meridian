@@ -18,6 +18,7 @@ from checks.frames import TableFrames
 
 MIN_GROUP = 10
 THRESHOLD = 5.0
+MIN_FACTOR = 3.0  # and at least 3x off the peer median: a 1 % difference in a uniform group is not an outlier
 MAX_REPORTED = 200
 
 # value (numerator [/ denominator]) compared within `per`
@@ -72,13 +73,14 @@ def find(module: str, frames: TableFrames) -> dict[str, dict]:
             lambda g: _modified_z(g) if len(g) >= MIN_GROUP else g * 0.0)
         median = value[ok].groupby([keys.loc[ok, c] for c in spec["per"]]).transform("median")
         size = value[ok].groupby([keys.loc[ok, c] for c in spec["per"]]).transform("size")
-        flagged = z.abs() > THRESHOLD
+        ratio = value[ok] / median
+        flagged = (z.abs() > THRESHOLD) & ((ratio >= MIN_FACTOR) | (ratio <= 1 / MIN_FACTOR))
         rk = record_keys(df.loc[flagged[flagged].index], key_cols)
         rows = [{"record_key": str(rk.at[i]), "value": round(float(value.at[i]), 4),
-                 "peer_median": round(float(median.at[i]), 4), "factor": round(float(value.at[i] / median.at[i]), 2),
+                 "peer_median": round(float(median.at[i]), 4), "factor": float(f"{ratio.at[i]:.4g}"),
                  "peers": int(size.at[i]), "group": {c: str(keys.at[i, c]) for c in spec["per"]}}
                 for i in flagged[flagged].index]
-        rows.sort(key=lambda r: -abs(np.log10(r["factor"])) if r["factor"] > 0 else 0)
+        rows.sort(key=lambda r: -abs(np.log10(r["factor"])))  # furthest off first, below or above
         out[spec["id"]] = {"label": spec["label"], "checked": int((size >= MIN_GROUP).sum()),
                            "outliers": len(rows), "top": rows[:MAX_REPORTED]}
     return out

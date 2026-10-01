@@ -20,7 +20,7 @@ def test_weight_outliers_within_peer_groups():
     res = find("material_master", TableFrames({"MARA": mara}, D, module="material_master"))["OUT-MARA-NTGEW"]
     assert res["outliers"] == 2 and {r["record_key"] for r in res["top"]} == {"MATNR=M004", "MATNR=M009"}
     assert res["checked"] == n  # the 3-member group is too small to judge
-    assert res["top"][0]["factor"] in (1000.0, 0.0) or abs(res["top"][0]["factor"]) > 100
+    assert abs(np.log10(res["top"][0]["factor"])) > 2  # furthest off first: three orders of magnitude
 
 
 def test_identical_peers_with_one_deviation():
@@ -28,3 +28,9 @@ def test_identical_peers_with_one_deviation():
                          "MARA.MATKL": ["G"] * 12, "MARA.GEWEI": ["KG"] * 12})
     res = find("material_master", TableFrames({"MARA": mara}, D, module="material_master"))["OUT-MARA-NTGEW"]
     assert [r["record_key"] for r in res["top"]] == ["MATNR=M11"]
+
+
+def test_uniform_group_with_a_small_deviation_is_not_an_outlier():
+    mara = pd.DataFrame({"MARA.MATNR": [f"M{i}" for i in range(12)], "MARA.NTGEW": ["1.000"] * 11 + ["1.010"],
+                         "MARA.MATKL": ["G"] * 12, "MARA.GEWEI": ["KG"] * 12})
+    assert find("material_master", TableFrames({"MARA": mara}, D, module="material_master"))["OUT-MARA-NTGEW"]["outliers"] == 0

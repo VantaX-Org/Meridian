@@ -127,10 +127,11 @@ def test_module_run_includes_generated_rules():
 
 def test_sap_number_formats():
     from checks.base import sap_number
-    got = sap_number(pd.Series(["1234.50-", "1,234.50", "1.234,50", "12,5", "7", "", "x", "0.000", "1.000",
-                                "1.234.567"])).tolist()
-    assert got[:5] == [-1234.5, 1234.5, 1234.5, 12.5, 7.0] and pd.isna(got[5]) and pd.isna(got[6]) and got[7] == 0
-    assert got[8] == 1.0 and got[9] == 1234567  # RFC QUAN "1.000" is one, not a thousand
+    # one column, one convention (as an RFC extract or a spreadsheet export writes it)
+    got = sap_number(pd.Series(["1234.50-", "1,234.50", "7", "", "x", "0.000", "1.000"])).tolist()
+    assert got[:3] == [-1234.5, 1234.5, 7.0] and pd.isna(got[3]) and pd.isna(got[4]) and got[5] == 0
+    assert got[6] == 1.0  # RFC QUAN "1.000" is one, not a thousand
+    assert sap_number(pd.Series(["1.234,50", "12,5", "1.234.567"])).tolist() == [1234.5, 12.5, 1234567]
 
 
 def test_uploads_are_brought_to_internal_format():
@@ -175,3 +176,21 @@ def test_upload_external_codes_become_internal_through_the_systems_tables():
 def test_measuring_ranges_are_not_phone_numbers():
     assert hits("phone_keyword", ["Load cell 0-500 kg", "Lime dosing pump pH 9.5-10.5", "Cell 12"]) == [False] * 3
     assert all(hits("phone_keyword", ["Acme Tel: 011 555 1234", "cell 082 555 1234"]))
+
+
+def test_number_columns_are_read_in_one_convention():
+    from checks.base import sap_number
+    assert sap_number(pd.Series(["12,500", "1,000", "7"])).tolist() == [12500, 1000, 7]          # English column
+    assert sap_number(pd.Series(["12,500", "12,5", "1.234,50"])).tolist() == [12.5, 12.5, 1234.5]  # European column
+
+
+def test_balance_not_judged_on_an_incomplete_extraction():
+    import yaml
+    from checks.runner import _find_module_yaml
+    rule = next(r for r in yaml.safe_load(_find_module_yaml("fi_gl").read_text())["rules"] if r["id"] == "XFI001")
+    bseg = pd.DataFrame({"BSEG.BUKRS": ["1000"], "BSEG.BELNR": ["1"], "BSEG.GJAHR": ["2026"], "BSEG.BUZEI": ["001"],
+                         "BSEG.DMBTR": ["10.00"], "BSEG.SHKZG": ["S"]})
+    f = TableFrames({"BSEG": bseg}, D, module="fi_gl")
+    f.incomplete = {"BSEG"}
+    _, r = run_rule({**rule, "module": "fi_gl", "applies_when": None}, f)
+    assert r.error and "incomplete" in r.error

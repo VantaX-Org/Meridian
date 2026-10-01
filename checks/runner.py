@@ -141,6 +141,11 @@ def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[st
              suppressed: dict[str, tuple[list[str], set[str]]] | None = None) -> tuple[dict, CheckResult | None]:
     """Evaluate one rule at its grain: (rule as evaluated, result or None when not applicable)."""
     check_cls = REGISTRY[rule["check_class"]]
+    partial = sorted(set(tables_of(rule_columns(rule))) & getattr(frames, "incomplete", set()))
+    if rule.get("check_class") == "balance_check" and partial:
+        # a document missing lines in the extract is not an unbalanced ledger document
+        return rule, check_cls(rule)._error(frames.flat if frames.flat is not None else pd.DataFrame(),
+                                            f"not evaluated: extraction of {', '.join(partial)} is incomplete")
     if rule.get("check_class") in ("referential_check", "domain_value_check"):
         rule = _with_reference(rule, frames.dictionary, reference_values or {})
     try:
