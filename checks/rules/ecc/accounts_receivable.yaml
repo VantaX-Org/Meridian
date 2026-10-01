@@ -144,6 +144,10 @@ rules:
         Control tab. In S/4HANA: use Fiori app F3893 > Tax Numbers section.'
     record_fix_template: 'Customer {KNA1.KUNNR}: STCD1 is {actual_value}. Set the tax number via FD02 / Fiori app F3893.'
     fail_when: '`KNA1.STCD1`.isna() & `KNA1.STCEG`.isna()'
+    applies_when:
+      KNA1.STKZN:
+        not_in:
+        - X
 
   - id: AR008
     field: ADR6.SMTP_ADDR

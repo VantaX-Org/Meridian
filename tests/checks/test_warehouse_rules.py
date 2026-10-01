@@ -12,13 +12,13 @@ RULES_DIR = Path(__file__).parent.parent.parent / "checks" / "rules" / "warehous
 
 # Expected rule counts per module
 EXPECTED_COUNTS = {
-    "ewms_stock": 17,
+    "ewms_stock": 16,
     "ewms_transfer_orders": 16,
     "fleet_management": 18,
-    "cross_system_integration": 8,
+    "cross_system_integration": 7,
     "transport_management": 16,
     "batch_management": 10,
-    "wm_interface": 10,
+    "wm_interface": 7,
     "grc_compliance": 14,
     "mdg_master_data": 14,
 }
@@ -107,7 +107,7 @@ def test_total_warehouse_rule_count():
     for module_name in EXPECTED_COUNTS:
         rules = _load_rules(module_name)
         total += len(rules)
-    assert total == 123, f"Expected 123 total warehouse rules, got {total}"
+    assert total == 118, f"Expected 118 total warehouse rules, got {total}"
 
 
 # ---- Test 6: domain_value_check rules have valid_values_with_labels ----

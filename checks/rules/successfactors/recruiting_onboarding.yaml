@@ -134,10 +134,10 @@ rules:
   check_class: null_check
   severity: critical
   dimension: completeness
-  message: "User ID is mandatory for onboarding \u2014 used to create Employee Central record on hire"
-  why_it_matters: "USERID in onboarding is the identifier that will be used to create the Employee Central record when the\
-    \ hire is finalised. Without it, the onboarding-to-EC handoff fails completely \u2014 no employee record is created, which\
-    \ means no payroll enrolment, no benefit assignment, and no position allocation for the new hire."
+  message: User ID is mandatory for onboarding — used to create Employee Central record on hire
+  why_it_matters: USERID in onboarding is the identifier that will be used to create the Employee Central record when the
+    hire is finalised. Without it, the onboarding-to-EC handoff fails completely — no employee record is created, which means
+    no payroll enrolment, no benefit assignment, and no position allocation for the new hire.
   rule_authority: best_practice
   sap_impact: Employee Central record not created on hire. Payroll enrolment blocked. Benefits, time management, and position
     assignment all fail for the new hire.
@@ -146,15 +146,16 @@ rules:
       > Candidate Management > Edit Candidate Info.
   record_fix_template: 'Onboarding candidate {ONBOARDINGCANDIDATEINFO.USERID}: USERID is missing. Assign via Onboarding >
     Candidate Management before hire date.'
+  grain: ONBOARDINGCANDIDATEINFO
 - id: REC012
   field: ONBOARDINGCANDIDATEINFO.HIRE_DATE
   check_class: null_check
   severity: critical
   dimension: completeness
-  message: "Hire date is mandatory \u2014 triggers all onboarding workflows and IT provisioning"
-  why_it_matters: "HIRE_DATE is the trigger date for the entire onboarding workflow chain \u2014 IT account provisioning,\
-    \ equipment ordering, day-1 task assignment, and the Employee Central record creation. Without a hire date, none of these\
-    \ time-sensitive processes can be scheduled."
+  message: Hire date is mandatory — triggers all onboarding workflows and IT provisioning
+  why_it_matters: HIRE_DATE is the trigger date for the entire onboarding workflow chain — IT account provisioning, equipment
+    ordering, day-1 task assignment, and the Employee Central record creation. Without a hire date, none of these time-sensitive
+    processes can be scheduled.
   rule_authority: best_practice
   sap_impact: All onboarding workflows fail to trigger. IT provisioning not initiated. Day-1 tasks not assigned. EC record
     creation date unknown.
@@ -162,6 +163,7 @@ rules:
     __blank__: Set the confirmed hire date via Onboarding > Candidate Management > Edit Candidate Info. Use ISO format YYYY-MM-DD.
   record_fix_template: 'Onboarding candidate {ONBOARDINGCANDIDATEINFO.USERID}: HIRE_DATE is missing. Set via Onboarding >
     Candidate Management. Format: YYYY-MM-DD.'
+  grain: ONBOARDINGCANDIDATEINFO
 - id: REC013
   field: ONBOARDINGCANDIDATEINFO.DEPARTMENT
   check_class: null_check
@@ -179,15 +181,15 @@ rules:
       a valid department in your SF org structure.
   record_fix_template: 'Onboarding candidate {ONBOARDINGCANDIDATEINFO.USERID}: DEPARTMENT is missing. Assign via Onboarding
     > Candidate Management.'
+  grain: ONBOARDINGCANDIDATEINFO
 - id: REC014
   field: ONBOARDINGCANDIDATEINFO.MANAGER_ID
   check_class: null_check
   severity: high
   dimension: completeness
   message: Manager ID is required to route day-1 onboarding tasks to the hiring manager
-  why_it_matters: "MANAGER_ID determines which manager receives the day-1 onboarding task list \u2014 including equipment\
-    \ handover, team introduction scheduling, and probation review setup. Without it, all manager-routed onboarding tasks\
-    \ are unassigned."
+  why_it_matters: MANAGER_ID determines which manager receives the day-1 onboarding task list — including equipment handover,
+    team introduction scheduling, and probation review setup. Without it, all manager-routed onboarding tasks are unassigned.
   rule_authority: best_practice
   sap_impact: Day-1 onboarding tasks not routed to hiring manager. Equipment handover, team introductions, and probation setup
     not assigned.
@@ -196,6 +198,7 @@ rules:
       must already exist as an active employee in Employee Central.
   record_fix_template: 'Onboarding candidate {ONBOARDINGCANDIDATEINFO.USERID}: MANAGER_ID is missing. Assign hiring manager
     via Onboarding > Candidate Management.'
+  grain: ONBOARDINGCANDIDATEINFO
 - id: REC015
   field: ONBOARDINGCANDIDATEINFO.STATUS
   check_class: null_check
@@ -212,6 +215,7 @@ rules:
       > Candidate Management.
   record_fix_template: 'Onboarding candidate {ONBOARDINGCANDIDATEINFO.USERID}: STATUS is missing. Set via Onboarding > Candidate
     Management.'
+  grain: ONBOARDINGCANDIDATEINFO
 - id: REC017
   field: JOBREQUISITION.RECRUITER
   check_class: null_check

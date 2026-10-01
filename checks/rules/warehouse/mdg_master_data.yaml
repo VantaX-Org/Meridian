@@ -296,3 +296,7 @@ rules:
       USMD120C.USMD_DATA_ACTIVE:
         not_in:
         - X
+      USMD120C.USMD_CREQ_STATUS:
+        not_in:
+        - '05'
+        - '06'

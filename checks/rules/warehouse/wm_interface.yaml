@@ -26,57 +26,8 @@ rules:
       Material WM assignment: LGNUM is {actual_value}. Assign the warehouse via MM02 >
       WM views (ECC) or /SCWM/MAT1 (S/4HANA embedded EWM).
 
-  - id: WMI002
-    field: MLGN.LGBKZ
-    check_class: null_check
-    severity: low
-    dimension: completeness
-    message: Storage bin indicator controls putaway strategy for this material-warehouse
-    why_it_matters: LGBKZ (storage bin indicator) on MLGN defines the putaway strategy for the material in this warehouse. Without
-      it, the system defaults to a generic strategy that may place goods in unsuitable bin types, reducing warehouse efficiency.
-      In S/4HANA embedded EWM, putaway strategies are configured via /SCWM/ process-oriented storage control.
-    rule_authority: best_practice
-    sap_impact: Putaway strategy defaults to generic logic. Material may be placed in wrong bin type. Warehouse efficiency degraded.
-    fix_map:
-      __blank__: 'In ECC: set storage bin indicator via MM02 > Warehouse Management 1 view. In S/4HANA: MLGN deprecated — configure
-        putaway via /SCWM/SPRO storage process settings.'
-    record_fix_template: 'Material WM assignment for warehouse {MLGN.LGNUM}: LGBKZ is {actual_value}. Set via MM02 > WM1 view
-      (ECC) or /SCWM/ configuration (S/4HANA).'
 
-  - id: WMI003
-    field: MLGN.LTKZE
-    check_class: null_check
-    severity: low
-    dimension: completeness
-    message: Stock placement (putaway) storage type indicator is not maintained
-    why_it_matters: LTKZE (stock removal indicator) on MLGN defines the picking strategy for the material in this warehouse
-      (e.g. FIFO, LIFO, FEFO). Without it, picking defaults to a generic strategy that may not enforce expiry-based or receipt-date-based
-      picking sequences.
-    rule_authority: best_practice
-    sap_impact: Picking strategy defaults to generic logic. FEFO/FIFO not enforced. Expired stock may be picked out of sequence.
-      Warehouse compliance risk.
-    fix_map:
-      __blank__: 'In ECC: set stock removal indicator via MM02 > Warehouse Management 1 view. In S/4HANA: configure picking
-        strategy via /SCWM/SPRO storage process settings.'
-    record_fix_template: 'Material WM assignment for warehouse {MLGN.LGNUM}: LTKZE is {actual_value}. Set via MM02 > WM1 view
-      (ECC) or /SCWM/ configuration (S/4HANA).'
 
-  - id: WMI004
-    field: MLGN.LTKZA
-    check_class: null_check
-    severity: low
-    dimension: completeness
-    message: Stock removal storage type indicator is not maintained
-    why_it_matters: LTKZA (stock placement indicator) determines the putaway sequence when goods are received. It works with
-      LGBKZ to fully define how materials are stored. Missing values may cause putaway to use suboptimal bin selection.
-    rule_authority: best_practice
-    sap_impact: Putaway sequence not optimised. Goods receipt may be placed in less efficient locations. Warehouse space utilisation
-      degraded.
-    fix_map:
-      __blank__: 'In ECC: set stock placement indicator via MM02 > Warehouse Management 1 view. In S/4HANA: configure via /SCWM/SPRO
-        storage process settings.'
-    record_fix_template: 'Material WM assignment for warehouse {MLGN.LGNUM}: LTKZA is {actual_value}. Set via MM02 > WM1 view
-      (ECC) or /SCWM/ configuration (S/4HANA).'
 
   - id: WMI005
     field: MLGT.LGTYP

@@ -255,22 +255,6 @@ rules:
   applies_when:
     BUT000.TYPE:
     - '1'
-- id: BP016
-  field: BUT100.RLTYP
-  check_class: null_check
-  severity: high
-  dimension: completeness
-  message: BP role type is required - determines partner function
-  why_it_matters: RLTYP defines the Business Partner role (customer, vendor, contact person). In S/4HANA, roles drive which
-    views are available and which processes the BP can participate in. Role assignment is required for the customer-vendor
-    integration (CVI) mapping. Managed via BP (ECC) or Fiori F3893 (S/4HANA).
-  rule_authority: sap_hard_constraint
-  sap_impact: BP without a role cannot be used as customer in SD or vendor in MM. CVI mapping in S/4HANA requires role assignment.
-  fix_map:
-    __blank__: 'In ECC: assign via transaction BP > Business Partner Role. Common roles: BUR001 (customer), BUR002 (vendor),
-      BUR010 (contact person). In S/4HANA: use Fiori F3893.'
-  record_fix_template: 'Partner {BUT000.PARTNER}: RLTYP is {actual_value}. Assign the correct BP role via BP (ECC) or Fiori
-    F3893 (S/4HANA).'
 - id: BP017
   field: ADR6.SMTP_ADDR
   check_class: null_check
@@ -287,6 +271,7 @@ rules:
       from business owner or CRM system.'
   record_fix_template: 'Partner {BUT000.PARTNER}: SMTP_ADDR is {actual_value}. Add email address via BP (ECC) or Fiori F3893
     (S/4HANA).'
+  grain: BUT000
 - id: BP018
   field: ADR6.SMTP_ADDR
   check_class: regex_check
@@ -305,6 +290,7 @@ rules:
       BP > Address > Communication > Email. In S/4HANA: use Fiori F3893.'
   record_fix_template: 'Partner {BUT000.PARTNER}: email ''{actual_value}'' is invalid. Correct the format via BP (ECC) or
     Fiori F3893 (S/4HANA).'
+  grain: BUT000
 - id: BP019
   field: ADRC.COUNTRY
   check_class: null_check
@@ -322,6 +308,7 @@ rules:
       maintained in table T005.'
   record_fix_template: 'Partner {BUT000.PARTNER}: COUNTRY is {actual_value}. Set the ISO country code via BP (ECC) or Fiori
     F3893 (S/4HANA).'
+  grain: BUT000
 - id: BP020
   field: ADRC.CITY1
   check_class: null_check
@@ -337,6 +324,7 @@ rules:
     __blank__: 'In ECC: set via transaction BP > Address tab. In S/4HANA: use Fiori F3893. Obtain from business address records
       or postal database.'
   record_fix_template: 'Partner {BUT000.PARTNER}: CITY1 is {actual_value}. Set the city name via BP (ECC) or Fiori F3893 (S/4HANA).'
+  grain: BUT000
 - id: BP021
   field: ADRC.POST_CODE1
   check_class: null_check
@@ -352,6 +340,62 @@ rules:
     __blank__: 'In ECC: set via transaction BP > Address tab. In S/4HANA: use Fiori F3893.'
   record_fix_template: 'Partner {BUT000.PARTNER}: POST_CODE1 is {actual_value}. Set the postal code via BP (ECC) or Fiori
     F3893 (S/4HANA).'
+  grain: BUT000
+  applies_when:
+    ADRC.COUNTRY:
+      not_in:
+      - AE
+      - AG
+      - AO
+      - AW
+      - BF
+      - BI
+      - BJ
+      - BO
+      - BS
+      - BW
+      - BZ
+      - CD
+      - CF
+      - CG
+      - CI
+      - CK
+      - CM
+      - DJ
+      - DM
+      - ER
+      - FJ
+      - GD
+      - GM
+      - GQ
+      - GY
+      - HK
+      - KI
+      - KM
+      - KN
+      - KP
+      - LC
+      - LY
+      - ML
+      - MO
+      - MR
+      - NR
+      - NU
+      - QA
+      - RW
+      - SB
+      - SC
+      - SL
+      - SR
+      - SY
+      - TG
+      - TL
+      - TO
+      - TV
+      - UG
+      - VU
+      - YE
+      - ZW
 - id: BP022
   field: ADRC.STREET
   check_class: null_check
@@ -366,6 +410,7 @@ rules:
     __blank__: 'In ECC: set via transaction BP > Address tab. In S/4HANA: use Fiori F3893.'
   record_fix_template: 'Partner {BUT000.PARTNER}: STREET is {actual_value}. Set the street address via BP (ECC) or Fiori F3893
     (S/4HANA).'
+  grain: BUT000
 - id: BP023
   field: ADRC.LANGU
   check_class: null_check
@@ -382,6 +427,7 @@ rules:
       FR, etc.).'
   record_fix_template: 'Partner {BUT000.PARTNER}: LANGU is {actual_value}. Set the address language via BP (ECC) or Fiori
     F3893 (S/4HANA).'
+  grain: BUT000
 - id: BP024
   field: BUT100.VALID_FROM
   check_class: cross_field_check
@@ -432,6 +478,7 @@ rules:
     __blank__: 'In ECC: Set via BP transaction. In S/4HANA: Use Fiori app F3893 (Manage Business Partner).'
   record_fix_template: 'Record is missing ADRC.HOUSE_NUM1. In ECC: Set via BP transaction. In S/4HANA: Use Fiori app F3893
     (Manage Business Partner).'
+  grain: BUT000
 - id: BP031
   field: ADRC.REGION
   check_class: null_check
@@ -457,6 +504,7 @@ rules:
     - CN
     - IT
     - ES
+  grain: BUT000
 - id: BP032
   field: ADRC.TEL_NUMBER
   check_class: null_check
@@ -471,6 +519,7 @@ rules:
     __blank__: 'In ECC: Set via BP transaction. In S/4HANA: Use Fiori app F3893 (Manage Business Partner).'
   record_fix_template: 'Record is missing ADRC.TEL_NUMBER. In ECC: Set via BP transaction. In S/4HANA: Use Fiori app F3893
     (Manage Business Partner).'
+  grain: BUT000
 - id: BP036
   field: BUT000.CRDAT
   check_class: null_check

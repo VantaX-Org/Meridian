@@ -140,24 +140,6 @@ rules:
       on the source document.
 
 
-  - id: XSYS012
-    field: XSYS.BUDAT
-    check_class: cross_field_check
-    severity: medium
-    dimension: consistency
-    message: Posting date should not be before document date in cross-system transactions
-    why_it_matters: While SAP technically allows posting date (BUDAT) to differ from document date (BLDAT), in cross-system
-      integration a posting date significantly before the document date can indicate a backdating issue or data synchronisation
-      error. This affects period assignment and financial reporting consistency across systems.
-    rule_authority: best_practice
-    sap_impact: Period assignment may be inconsistent across systems. Financial reporting shows the transaction in
-      different periods depending on which date is used.
-    fix_map: {__blank__: 'In ECC: verify dates via FB03 or the posting transaction. In S/4HANA: check via Fiori app
-        F0717 (Display Journal Entries).'}
-    record_fix_template: 'Cross-system record: BUDAT ({actual_value}) is after BLDAT. Verify the dates are correct
-      via FB03 (ECC) or Fiori app F0717 (S/4HANA).'
-    fail_when: '`XSYS.BUDAT` < `XSYS.BLDAT`'
-    require_populated: true
 
   - id: XSYS013
     field: XSYS.MATNR

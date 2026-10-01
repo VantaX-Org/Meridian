@@ -512,14 +512,60 @@ rules:
   applies_when:
     PERADDRESS.COUNTRY:
       not_in:
-      - HKG
-      - MAC
-      - ARE
-      - QAT
+      - ABW
       - AGO
+      - ARE
+      - ATG
+      - BDI
+      - BEN
+      - BFA
       - BHS
+      - BLZ
       - BWA
+      - CAF
+      - CIV
+      - CMR
+      - COD
+      - COG
+      - COK
+      - COM
+      - DJI
+      - DMA
+      - ERI
       - FJI
+      - GIN
+      - GMB
+      - GNQ
+      - GRD
+      - GUY
+      - HKG
+      - KIR
+      - KNA
+      - LBY
+      - LCA
+      - MAC
+      - MLI
+      - MRT
+      - MWI
+      - NRU
+      - PRK
+      - QAT
+      - RWA
+      - SLB
+      - SLE
+      - SOM
+      - STP
+      - SUR
+      - SYC
+      - SYR
+      - TGO
+      - TKL
+      - TLS
+      - TON
+      - TUV
+      - UGA
+      - VUT
+      - YEM
       - ZWE
 - id: EC036
   field: PERINFO.NATIONALITY

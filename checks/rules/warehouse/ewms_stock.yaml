@@ -202,26 +202,6 @@ rules:
       or /SCWM/LS01.'
   record_fix_template: 'Bin {LAGP.LGPLA}: LGBER is {actual_value}. Assign the correct storage section via LX04 (ECC) or Fiori
     app F1653 (S/4HANA).'
-- id: EWMS012
-  field: LAGP.KOBER
-  check_class: null_check
-  severity: low
-  dimension: completeness
-  message: Picking area assignment optimises wave picking and picking route efficiency
-  why_it_matters: Picking area (KOBER) groups bins into zones for wave picking and pick route optimisation. Without it, the
-    system cannot include this bin in wave-based picking runs, reducing warehouse throughput and increasing pick path distances.
-  rule_authority: best_practice
-  sap_impact: Bin excluded from wave picking runs. Pick route optimisation ignores this bin. Throughput reduced for materials
-    in this location.
-  fix_map:
-    __blank__: 'In ECC: assign picking area via T-code LS02N > Picking area field. In S/4HANA embedded EWM: maintain via /SCWM/LS01
-      or Fiori app F1653.'
-  record_fix_template: 'Bin {LAGP.LGPLA}: KOBER is {actual_value}. Assign the correct picking area via LS02N (ECC) or Fiori
-    app F1653 (S/4HANA).'
-  applies_when:
-    LAGP.KZDYN:
-      not_in:
-      - X
 - id: EWMS013
   field: LAGP.MAXLE
   check_class: null_check

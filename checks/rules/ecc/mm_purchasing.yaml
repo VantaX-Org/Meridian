@@ -354,7 +354,7 @@ rules:
   check_class: null_check
   severity: medium
   dimension: completeness
-  message: "Payment terms missing \u2014 invoice due date cannot be calculated"
+  message: Payment terms missing — invoice due date cannot be calculated
   why_it_matters: ZTERM (payment terms) determines when the invoice is due for payment and whether cash discounts apply. Without
     it, the payment program (F110) cannot calculate due dates, and the vendor may not receive timely payment. Cash discount
     opportunities are lost.
@@ -365,6 +365,9 @@ rules:
     __blank__: 'Payment terms are empty. In ECC: set via ME22N > Header > Delivery/Invoice tab. In S/4HANA: use Fiori app
       F2229. Payment terms are normally inherited from the vendor master.'
   record_fix_template: 'PO {EKKO.EBELN}: ZTERM is {actual_value}. Set the payment terms via ME22N or Fiori app F2229.'
+  applies_when:
+    EKKO.LIFNR:
+      populated: true
 - id: PUR022
   field: EKKO.INCO1
   check_class: null_check
@@ -381,12 +384,17 @@ rules:
     __blank__: 'Incoterms are empty. In ECC: set via ME22N > Header > Delivery/Invoice tab. In S/4HANA: use Fiori app F2229.
       Common values: EXW, FOB, CIF, DAP, DDP.'
   record_fix_template: 'PO {EKKO.EBELN}: INCO1 is {actual_value}. Set the Incoterms via ME22N or Fiori app F2229.'
+  applies_when:
+    EKKO.LIFNR:
+      populated: true
 - id: PUR023
   field: EKKO.LOEKZ
   check_class: domain_value_check
   allowed_values:
   - ''
   - X
+  - L
+  - S
   severity: medium
   dimension: validity
   message: PO header deletion indicator must be blank or X
@@ -397,8 +405,8 @@ rules:
     active nor properly deleted.
   valid_values_with_labels:
     ? ''
-    : "Active \u2014 PO is not deleted"
-    X: "Deleted \u2014 PO is marked for deletion"
+    : Active — PO is not deleted
+    X: Deleted — PO is marked for deletion
   fix_map:
     __other__: 'Deletion indicator ''{invalid_value}'' is not valid. Must be blank (active) or X (deleted). In ECC: correct
       via ME22N. In S/4HANA: use Fiori app F2229. If the PO should be deleted, use the delete function in ME22N.'
@@ -433,18 +441,22 @@ rules:
   severity: high
   dimension: consistency
   message: PO line requires goods receipt but has no plant assigned
-  why_it_matters: When the goods receipt indicator (WEPOS) is set to X, a plant (WERKS) must be specified to determine
-    where goods are received. Without a plant, MIGO cannot post the goods receipt — the inventory location is unknown.
-    This is a blocking inconsistency in the procure-to-pay process.
+  why_it_matters: When the goods receipt indicator (WEPOS) is set to X, a plant (WERKS) must be specified to determine where
+    goods are received. Without a plant, MIGO cannot post the goods receipt — the inventory location is unknown. This is a
+    blocking inconsistency in the procure-to-pay process.
   rule_authority: sap_hard_constraint
-  sap_impact: MIGO cannot post goods receipt — no receiving plant specified. Inventory cannot be updated. The PO
-    line is stuck — goods are expected but cannot be received.
-  fix_map: {__blank__: 'Goods receipt is required (WEPOS=X) but plant is missing. In ECC: assign the receiving plant
-      via ME22N > Item Detail > Delivery tab. In S/4HANA: use Fiori app F2229. The plant must be valid for the purchasing
-      organisation.'}
-  record_fix_template: 'PO {EKKO.EBELN} item {EKPO.EBELP}: WEPOS is ''X'' but WERKS is ''{actual_value}''. Assign
-    the receiving plant via ME22N or Fiori app F2229.'
+  sap_impact: MIGO cannot post goods receipt — no receiving plant specified. Inventory cannot be updated. The PO line is stuck
+    — goods are expected but cannot be received.
+  fix_map:
+    __blank__: 'Goods receipt is required (WEPOS=X) but plant is missing. In ECC: assign the receiving plant via ME22N > Item
+      Detail > Delivery tab. In S/4HANA: use Fiori app F2229. The plant must be valid for the purchasing organisation.'
+  record_fix_template: 'PO {EKKO.EBELN} item {EKPO.EBELP}: WEPOS is ''X'' but WERKS is ''{actual_value}''. Assign the receiving
+    plant via ME22N or Fiori app F2229.'
   fail_when: (`EKPO.WEPOS` == 'X') & `EKPO.WERKS`.isna()
+  applies_when:
+    EKKO.BSTYP:
+    - F
+    - L
 - id: PUR026
   field: EKKO.ERNAM
   check_class: null_check
@@ -658,6 +670,8 @@ rules:
     EKPO.ELIKZ:
       not_in:
       - X
+    EKKO.BSTYP:
+    - F
 
 - id: PUR044
   field: EKPO.NETPR

@@ -170,3 +170,8 @@ def test_upload_external_codes_become_internal_through_the_systems_tables():
     f = TableFrames.from_flat(pd.DataFrame({"MARA.MATNR": ["1", "2"], "MARA.MEINS": ["PC", "KG"],
                                             "VBAK.VBELN": ["1", "2"], "VBAK.AUART": ["OR", "ZOR"]}), D, conversions=maps)
     assert f.flat["MARA.MEINS"].tolist() == ["ST", "KG"] and f.flat["VBAK.AUART"].tolist() == ["TA", "ZOR"]
+
+
+def test_measuring_ranges_are_not_phone_numbers():
+    assert hits("phone_keyword", ["Load cell 0-500 kg", "Lime dosing pump pH 9.5-10.5", "Cell 12"]) == [False] * 3
+    assert all(hits("phone_keyword", ["Acme Tel: 011 555 1234", "cell 082 555 1234"]))

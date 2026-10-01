@@ -224,6 +224,7 @@ rules:
       F1602. Valid units: KG, G, LB, OZ, T, TO.'
   record_fix_template: 'Material {MARA.MATNR}: GEWEI is ''{actual_value}''. Set to a valid weight unit via MM02 (ECC) or Fiori
     F1602 (S/4HANA).'
+  live_reference: false
 - id: MM017
   field: MARA.VOLEH
   check_class: domain_value_check
@@ -257,6 +258,7 @@ rules:
       F1602.'
   record_fix_template: 'Material {MARA.MATNR}: VOLEH is ''{actual_value}''. Set to a valid volume unit via MM02 (ECC) or Fiori
     F1602 (S/4HANA).'
+  live_reference: false
 - id: MM018B
   field: MARA.EAN11
   check_class: format_check
@@ -791,6 +793,9 @@ rules:
     __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
   record_fix_template: 'Record is missing MARA.MFRNR. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
     Product Master Data).'
+  applies_when:
+    MARA.MFRPN:
+      populated: true
 - id: MM063
   field: MARA.MFRPN
   check_class: null_check
@@ -805,6 +810,9 @@ rules:
     __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
   record_fix_template: 'Record is missing MARA.MFRPN. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
     Product Master Data).'
+  applies_when:
+    MARA.MFRNR:
+      populated: true
 - id: MM068
   field: MARA.NUMTP
   check_class: null_check
@@ -872,6 +880,10 @@ rules:
     __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
   record_fix_template: 'Record is missing MARA.TRAGR. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
     Product Master Data).'
+  applies_when:
+    MARA.VPSTA:
+      contains_any:
+      - V
 - id: MM079
   field: MARA.VPSTA
   check_class: null_check
@@ -1047,6 +1059,10 @@ rules:
     __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
   record_fix_template: 'Record is missing MARC.LADGR. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
     Product Master Data).'
+  applies_when:
+    MARC.PSTAT:
+      contains_any:
+      - V
 - id: MM098
   field: MARC.LGFSB
   check_class: null_check

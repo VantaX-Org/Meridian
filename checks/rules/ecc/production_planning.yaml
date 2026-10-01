@@ -230,10 +230,10 @@ rules:
     - R
 - id: PP014
   field: STPO.MENGE
-  check_class: null_check
+  check_class: cross_field_check
   severity: critical
   dimension: completeness
-  message: BOM component quantity is mandatory — zero means no material reserved for production
+  message: BOM component quantity is blank or zero (negative quantities are co-/by-products and valid)
   why_it_matters: MENGE on a BOM line defines how much of the component is consumed per parent base quantity. Zero or blank
     means no material is reserved for production, causing stock shortages during execution and incorrect product costing.
   rule_authority: sap_hard_constraint
@@ -248,6 +248,7 @@ rules:
       not_in:
       - T
       - D
+  fail_when: '`STPO.MENGE`.isna() | (`STPO.MENGE` == 0)'
 - id: PP015
   field: STPO.MEINS
   check_class: null_check

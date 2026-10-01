@@ -201,7 +201,7 @@ rules:
   - id: LMS014
     field: LEARNINGASSIGNMENT.DUE_DATE
     check_class: freshness_check
-    max_age_hours: 0
+    max_age_hours: 24
     severity: high
     dimension: timeliness
     message: Learning assignment past due date — overdue mandatory training creates compliance risk

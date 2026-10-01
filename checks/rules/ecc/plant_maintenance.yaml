@@ -87,6 +87,7 @@ rules:
       tab > Maintenance Plant. In S/4HANA: use Fiori app F4283.'
   record_fix_template: 'Equipment {EQUI.EQUNR}: SWERK is {actual_value}. Assign the maintenance plant via IE02 (ECC) or Fiori
     app F4283 (S/4HANA).'
+  grain: EQUI
 - id: PM006
   field: EQUZ.IWERK
   check_class: null_check
@@ -228,7 +229,7 @@ rules:
   check_class: null_check
   severity: high
   dimension: completeness
-  message: "Cost centre missing \u2014 maintenance costs cannot be allocated"
+  message: Cost centre missing — maintenance costs cannot be allocated
   why_it_matters: KOSTL (cost centre) on the equipment determines where maintenance costs are allocated. Without it, work
     order settlement has no cost object and maintenance expense allocation is incomplete. This affects total cost of ownership
     tracking per department.
@@ -240,6 +241,7 @@ rules:
       > Cost Centre. In S/4HANA: use Fiori app F4283.'
   record_fix_template: 'Equipment {EQUI.EQUNR}: KOSTL is {actual_value}. Assign the cost centre via IE02 (ECC) or Fiori app
     F4283 (S/4HANA).'
+  grain: EQUI
 - id: PM016
   field: EQUI.EQART
   check_class: null_check
@@ -344,15 +346,16 @@ rules:
   severity: low
   dimension: completeness
   message: ABC indicator (equipment) is missing
-  why_it_matters: ABC indicator (equipment) (ILOA.ABCKZ) is not maintained. This field supports downstream processes and
-    reporting accuracy. Missing data may result in incomplete records or processing gaps.
+  why_it_matters: ABC indicator (equipment) (ILOA.ABCKZ) is not maintained. This field supports downstream processes and reporting
+    accuracy. Missing data may result in incomplete records or processing gaps.
   rule_authority: best_practice
   sap_impact: Missing ABC indicator (equipment) may cause incomplete data in related transactions and reports.
   fix_map:
     __blank__: 'In ECC: Set via IE02/IL02. In S/4HANA: Use Fiori app F4283 (Manage Equipment) or F4284 (Manage Functional
       Location).'
-  record_fix_template: 'Record is missing ILOA.ABCKZ. In ECC: Set via IE02/IL02. In S/4HANA: Use Fiori app F4283 (Manage
-    Equipment) or F4284 (Manage Functional Location).'
+  record_fix_template: 'Record is missing ILOA.ABCKZ. In ECC: Set via IE02/IL02. In S/4HANA: Use Fiori app F4283 (Manage Equipment)
+    or F4284 (Manage Functional Location).'
+  grain: EQUI
 - id: PM024
   field: EQUI.BAUJJ
   check_class: null_check

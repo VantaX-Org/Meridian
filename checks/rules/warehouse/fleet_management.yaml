@@ -105,12 +105,15 @@ rules:
   applies_when:
     EQUI.S_FLEET:
     - X
+    FLEET.FLEET_CAT:
+      not_in:
+      - TRAILER
 - id: FLEET006
-  field: FLEET_MASTER.LAST_SERVICE_DATE
-  check_class: null_check
+  field: EQUI.INBDT
+  check_class: freshness_check
   severity: high
   dimension: completeness
-  message: Last service date required for maintenance scheduling and compliance tracking
+  message: Fleet object in service for over a year with no recorded service
   why_it_matters: LAST_SERVICE_DATE is needed to calculate when the next service is due. Without it, the maintenance scheduling
     system cannot determine the service interval countdown and the vehicle's maintenance history has a gap that affects warranty
     and compliance.
@@ -119,11 +122,15 @@ rules:
     reporting incomplete.
   fix_map:
     __blank__: 'In ECC: enter last service date via IE02 > Fleet tab. In S/4HANA: use Fiori app F2723 or IE02.'
-  record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: LAST_SERVICE_DATE is {actual_value}. Enter the most recent service date
-    via IE02 (ECC) or Fiori app F2723 (S/4HANA).'
+  record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: in service since {actual_value} with no completed maintenance call. Complete
+    the overdue service (IW32) or record the last service via IE02 / Fiori app F2723.'
   applies_when:
     EQUI.S_FLEET:
     - X
+    FLEET_MASTER.LAST_SERVICE_DATE:
+    - ''
+    - '00000000'
+  max_age_hours: 8760
 - id: FLEET007
   field: FLEET_MASTER.SERVICE_KM
   check_class: null_check
@@ -142,6 +149,9 @@ rules:
   applies_when:
     EQUI.S_FLEET:
     - X
+    FLEET.FLEET_CAT:
+      not_in:
+      - TRAILER
 - id: FLEET008
   field: FLEET_MASTER.SERVICE_KM
   check_class: cross_field_check
@@ -181,6 +191,7 @@ rules:
   applies_when:
     EQUI.S_FLEET:
     - X
+  grain: EQUI
 - id: FLEET010
   field: EQUI.HERST
   check_class: null_check
@@ -253,6 +264,9 @@ rules:
   applies_when:
     EQUI.S_FLEET:
     - X
+    FLEET.FLEET_CAT:
+      not_in:
+      - TRAILER
 - id: FLEET014
   field: FLEET_MASTER.INSURANCE_EXPIRY
   check_class: null_check

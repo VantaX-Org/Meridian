@@ -111,7 +111,8 @@ def _with_reference(rule: dict, dictionary, reference_values: dict[str, set[str]
     out = {**rule, "_reference_key": key}
     if field is not None and field.allowed_values():
         out["_ddic_fixed"] = sorted(field.allowed_values())  # domain fixed values (DD07L)
-    if key and key in reference_values:
+    # live values replace the baseline unless the rule's list is narrower by design (weight units ⊂ T006)
+    if key and key in reference_values and rule.get("live_reference") is not False:
         out["_live_reference"] = reference_values[key]
     return out
 

@@ -77,27 +77,6 @@ rules:
       sheet) or leave empty (P&L) via FS00 / Fiori app F2735.
 
 
-  - id: GL005
-    field: SKA1.FUNC_AREA
-    check_class: null_check
-    severity: low
-    dimension: completeness
-    message: Functional area is required for cost-of-sales accounting
-    why_it_matters: Functional area enables cost-of-sales accounting, which is mandatory in S/4HANA for the P&L statement by
-      function. In ECC, it supports management reporting by function (sales, administration, R&D). Without it, cost-of-sales
-      P&L reporting is incomplete and may violate local GAAP requirements in jurisdictions that mandate functional P&L presentation.
-    rule_authority: sap_hard_constraint
-    sap_impact: Cost-of-sales P&L (transaction F.01 with FSV by function) is incomplete. Management reporting by function is
-      not possible. Automatic derivation rules in OKBD do not fire without a base assignment.
-    fix_map:
-      __blank__: 'In ECC: assign functional area via T-code FS00 or configure automatic derivation rules via T-code OKBD. In
-        S/4HANA: use Fiori app F2735 (Manage G/L Account Master Data) or configure derivation in OKBD.'
-    record_fix_template: 'GL Account {SKA1.SAKNR}: FUNC_AREA is {actual_value}. Assign the functional area via FS00 / Fiori
-      app F2735 or configure derivation in OKBD.'
-    applies_when:
-      SKA1.XBILK:
-        not_in:
-        - X
 
   - id: GL006
     field: SKA1.KTOPL

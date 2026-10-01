@@ -34,6 +34,11 @@ rules:
       Check if the rating scale is configured correctly on the review template.
   record_fix_template: 'Review for employee {PMREVIEWRESULT.USERID}: OVERALL_RATING is missing. Complete the review form and
     ensure the final rating is submitted.'
+  applies_when:
+    PMREVIEWRESULT.FORM_STATUS:
+    - '3'
+    - Completed
+    - COMPLETED
 - id: PERF003
   field: PMREVIEWRESULT.REVIEW_PERIOD
   check_class: null_check
@@ -83,6 +88,11 @@ rules:
       check routing rules in Performance > Admin > Form Template Configuration.
   record_fix_template: 'Review for employee {PMREVIEWRESULT.USERID}: MANAGER_RATING is missing. Ensure the manager completes
     their assessment.'
+  applies_when:
+    PMREVIEWRESULT.FORM_STATUS:
+    - '3'
+    - Completed
+    - COMPLETED
 - id: PERF007
   field: GOALPLAN.USERID
   check_class: null_check

@@ -604,19 +604,21 @@ rules:
   field: VBAK.VBELN
   check_class: cross_field_check
   grain: VBAK
-  fail_when: '`KNA1.AUFSD`.notna()'
+  fail_when: '`KNA1.AUFSD`.notna() & `VBAK.LIFSK`.isna()'
   applies_when:
-    VBAK.GBSTK: {not_in: [C]}
+    VBAK.GBSTK:
+      not_in:
+      - C
   severity: medium
   dimension: consistency
   message: Open sales order for a customer with a central order block
-  why_it_matters: The order block was set after this order was created; the order still delivers unless it is
-    reviewed. Either the block or the order is out of date.
+  why_it_matters: The order block was set after this order was created; the order still delivers unless it is reviewed. Either
+    the block or the order is out of date.
   rule_authority: best_practice
   sap_impact: Goods ship to a customer the business has blocked (credit, legal, or commercial reasons).
   fix_map:
-    __other__: Review the order with the owner of the block; set a delivery/billing block on the order (VA02) or lift
-      the customer block (XD05/VD05).
+    __other__: Review the order with the owner of the block; set a delivery block on the order (VA02, header > Shipping >
+      delivery block) or lift the customer block (XD05/VD05).
   record_fix_template: 'Sales order {VBAK.VBELN}: sold-to {VBAK.KUNNR} has order block ''{KNA1.AUFSD}''.'
 - id: XO2C003
   field: VBAP.MATNR
@@ -624,8 +626,11 @@ rules:
   grain: VBAP
   fail_when: (`MARA.LVORM` == 'X')
   applies_when:
-    VBAK.GBSTK: {not_in: [C]}
-    VBAP.MATNR: {populated: true}
+    VBAP.GBSTA:
+      not_in:
+      - C
+    VBAP.MATNR:
+      populated: true
   severity: high
   dimension: consistency
   message: Open sales order item for a material flagged for deletion
@@ -633,6 +638,6 @@ rules:
   rule_authority: best_practice
   sap_impact: Deliveries and revenue post against a material being retired; the material cannot be archived.
   fix_map:
-    __other__: Reject the item (VA02, reason for rejection) or substitute the successor material; remove the deletion
-      flag (MM06) if the material is still sold.
+    __other__: Reject the item (VA02, reason for rejection) or substitute the successor material; remove the deletion flag
+      (MM06) if the material is still sold.
   record_fix_template: 'Sales order {VBAP.VBELN} item {VBAP.POSNR}: material {VBAP.MATNR} is flagged for deletion.'

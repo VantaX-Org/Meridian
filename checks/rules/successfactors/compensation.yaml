@@ -222,7 +222,7 @@ rules:
     reference_field: externalCode
 
   - id: COMP011
-    field: COMPINFO.SALARY
+    field: COMPINFO.COMPA_RATIO
     check_class: cross_field_check
     severity: medium
     dimension: consistency
@@ -235,13 +235,11 @@ rules:
     fix_map:
       __blank__: Review the employee's salary against their pay grade range. Either adjust the salary to fall within range or
         update the pay grade to match the current salary level. Update via Admin Center > Compensation Import.
-    record_fix_template: 'Employee {COMPINFO.USERID}: SALARY is outside pay range (min: {COMPINFO.PAY_RANGE_MIN}, max: {COMPINFO.PAY_RANGE_MAX}).
-      Review via Admin Center > Compensation.'
-    fail_when: (`COMPINFO.SALARY` < `COMPINFO.PAY_RANGE_MIN`) | (`COMPINFO.SALARY` > `COMPINFO.PAY_RANGE_MAX`)
+    record_fix_template: 'Employee {COMPINFO.USERID}: annualised salary (compa-ratio {COMPINFO.COMPA_RATIO} x midpoint {COMPINFO.PAY_RANGE_MID})
+      is outside the pay range (min: {COMPINFO.PAY_RANGE_MIN}, max: {COMPINFO.PAY_RANGE_MAX}). Review via Admin Center > Compensation.'
+    fail_when: ((`COMPINFO.COMPA_RATIO` + 0.005) * `COMPINFO.PAY_RANGE_MID` < `COMPINFO.PAY_RANGE_MIN`) | ((`COMPINFO.COMPA_RATIO`
+      - 0.005) * `COMPINFO.PAY_RANGE_MID` > `COMPINFO.PAY_RANGE_MAX`)
     require_populated: true
-    applies_when:
-      COMPINFO.COMP_FREQUENCY:
-      - ANN
 
   - id: COMP012
     field: COMPINFO.PAY_RANGE_MIN

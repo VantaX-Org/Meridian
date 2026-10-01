@@ -52,9 +52,13 @@ tables:
     - {id: one_time_account, field: KNA1.XCPDK, values: [X], label: "one-time account"}
   BUT000:
     - {id: deleted, field: BUT000.XDELE, label: "flagged for archiving"}
+  BUT020:  # a partner's addresses (ADRC / ADR6 rules evaluate here)
+    - {id: deleted, field: BUT000.XDELE, label: "flagged for archiving"}
   MARA:
     - {id: deleted, field: MARA.LVORM, label: *deleted_label}
   MAKT:
+    - {id: deleted, field: MARA.LVORM, label: *deleted_label}
+  MARM:
     - {id: deleted, field: MARA.LVORM, label: *deleted_label}
   MARC:
     - {id: deleted, field: MARC.LVORM, label: *deleted_label}
@@ -106,6 +110,11 @@ tables:
   VBAP:
     - {id: rejected, field: VBAP.ABGRU, label: "item rejected (reason for rejection set)"}
   STKO:
+    - {id: deleted, field: STKO.LOEKZ, values: [L, X], label: *deleted_label}
+  MAST:  # BOM header rules are evaluated at the material-BOM link
+    - {id: deleted, field: STKO.LOEKZ, values: [L, X], label: *deleted_label}
+  STPO:
+    - {id: deleted, field: STPO.LKENZ, values: [X], label: "BOM item deleted (change number)"}
     - {id: deleted, field: STKO.LOEKZ, values: [L, X], label: *deleted_label}
   PLKO:
     - {id: deleted, field: PLKO.LOEKZ, values: [L, X], label: *deleted_label}

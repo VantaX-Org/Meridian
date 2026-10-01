@@ -177,21 +177,6 @@ rules:
       app F2747. The profit centre is often derived from the cost centre assignment.'
   record_fix_template: 'Asset {ANLA.ANLN1}: PRCTR is {actual_value}. Assign the profit centre via AS02 > Time-Dependent tab
     or Fiori app F2747.'
-- id: AA012
-  field: ANLZ.GSBER
-  check_class: null_check
-  severity: low
-  dimension: completeness
-  message: Business area missing — affects segment reporting and balance sheet split
-  why_it_matters: GSBER (business area) is used for segment reporting and internal balance sheet preparation by business area.
-    Without it, the asset is excluded from business area financial statements and cross-company reporting is incomplete.
-  rule_authority: best_practice
-  sap_impact: Business area financial statements exclude this asset. Segment reporting is incomplete. Cross-company cost allocation
-    by business area is affected.
-  fix_map:
-    __blank__: 'Business area is empty. In ECC: assign via AS02 > General tab > Business Area. In S/4HANA: use Fiori app F2747.'
-  record_fix_template: 'Asset {ANLA.ANLN1}: GSBER is {actual_value}. Assign the business area via AS02 (ECC) or Fiori app
-    F2747 (S/4HANA).'
 - id: AA013
   field: ANLZ.WERKS
   check_class: null_check

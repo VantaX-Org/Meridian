@@ -132,6 +132,8 @@ rules:
     applies_when:
       MARA.MHDHB:
         gt: 0
+      MCH1.LWEDT:
+        populated: true
     grain: MCH1
 
 
