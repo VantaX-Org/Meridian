@@ -119,11 +119,11 @@ async def rules_summary(
 
     result = await db.execute(
         text("""
-            SELECT category, severity, enabled,
+            SELECT category, severity, enabled, source,
                    COUNT(*) AS count
             FROM rules
             WHERE tenant_id = :tid
-            GROUP BY category, severity, enabled
+            GROUP BY category, severity, enabled, source
             ORDER BY category, severity
         """),
         {"tid": str(tenant.id)},

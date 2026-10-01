@@ -316,6 +316,15 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanaly
                         owner.setdefault(t, m)
                 except FileNotFoundError:
                     continue
+            # fields a rule already checks against their allowed values — not reported twice
+            value_checked = {r["field"] for r in fs_rules if r.get("field")
+                             and r.get("check_class") in ("referential_check", "domain_value_check")}
+            for m in modules:
+                try:
+                    value_checked |= {r["field"] for r in yaml.safe_load(_find_module_yaml(m).read_text()).get("rules", [])
+                                      if r.get("field") and r.get("check_class") in ("referential_check", "domain_value_check")}
+                except FileNotFoundError:
+                    continue
             table_frames = dict(frames.frames)
             if frames.flat is not None:
                 for t in frames.unsplittable:
@@ -323,7 +332,7 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanaly
             for table, tdf in table_frames.items():
                 keys = [f"{table}.{k}" for k in dictionary.keys(table)]
                 all_results.extend(run_conformance(table, tdf, dictionary, owner.get(table, modules[0] if modules else ""),
-                                                   keys, live_refs))
+                                                   keys, live_refs, value_checked))
         except Exception as e:
             logger.warning(f"DDIC conformance pass failed, continuing: {e}", exc_info=True)
 

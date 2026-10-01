@@ -1,9 +1,10 @@
 """Pilot scorecard: how right Meridian is, judged by the customer's own stewards.
 
-Precision per rule comes from the steward decisions already recorded on record
-issues: a reviewed issue is one closed as false positive, accepted risk or fixed
-(by a steward, or verified fixed by a later run). Precision = reviewed issues that
-were real / reviewed issues.
+Precision per rule comes from the steward decisions recorded on record issues
+(record_issues.steward_verdict): an issue closed as false positive, accepted risk
+or fixed — by a steward, or verified fixed by a later run — is reviewed, and the
+verdict stays when a later run re-opens the issue because the fix did not land.
+Precision = reviewed issues that were real / reviewed issues.
 
 Recall comes from a list of records the stewards already know are wrong (uploaded
 per system): a known record is caught when any record issue of that system, in
@@ -16,7 +17,6 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Iterable
 
-REVIEWED = ("false_positive", "accepted_risk", "fixed_in_source", "verified_fixed")
 MIN_REVIEWED = 10     # rules with fewer reviewed issues are not rated
 TARGET_PRECISION = 0.9
 

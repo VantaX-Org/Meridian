@@ -14,7 +14,9 @@ standard) says what each field may contain:
 One result per (table, kind): population = populated cells of the checked
 fields, failing = cells that violate; record keys identify every failing
 record, details break the violations down per field. Blank cells are out of
-scope (null detection is null_check's job).
+scope (null detection is null_check's job). Fields a module rule already checks
+against their allowed values (``value_checked``) are not value-checked again
+here: the same record would be reported twice.
 """
 
 from __future__ import annotations
@@ -68,8 +70,8 @@ def _violations(values: pd.Series, f, check_values: set[str] | None) -> dict[str
 
 
 def run_conformance(table: str, df: pd.DataFrame, dictionary: Dictionary, module: str,
-                    key_cols: list[str], reference_values: dict[str, set[str]] | None = None
-                    ) -> list[CheckResult]:
+                    key_cols: list[str], reference_values: dict[str, set[str]] | None = None,
+                    value_checked: set[str] | None = None) -> list[CheckResult]:
     t = dictionary.table(table)
     if t is None or t.category == "VIEW" or df.empty:
         return []
@@ -87,6 +89,8 @@ def run_conformance(table: str, df: pd.DataFrame, dictionary: Dictionary, module
             continue
         check_values = reference_values.get(f.check_ref) if f.check_ref else None
         for kind, bad in _violations(df[col], f, check_values).items():
+            if kind in ("fixed_value", "check_table") and col in (value_checked or ()):
+                continue
             bad = bad.fillna(True).astype(bool) & populated
             cells[kind] += int(populated.sum())
             n = int(bad.sum())

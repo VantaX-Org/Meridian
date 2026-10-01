@@ -52,20 +52,21 @@ export default function SettingsRulesPage() {
   });
 
   // All hooks must run before any conditional return.
-  const summary = summaryQ.data?.summary ?? [];
+  const summary = useMemo(() => summaryQ.data?.summary ?? [], [summaryQ.data]);
   const rules: Rule[] = rulesQ.data?.rules ?? [];
   const total = rulesQ.data?.total ?? rules.length;
 
+  // from the summary (every rule), not the page of rules loaded below
   const totals = useMemo(() => {
     const t = { yaml: 0, hq: 0, enabled: 0, disabled: 0 };
-    for (const r of rules) {
-      if (r.source === "yaml") t.yaml++;
-      else t.hq++;
-      if (r.enabled) t.enabled++;
-      else t.disabled++;
+    for (const row of summary) {
+      if (row.source === "yaml") t.yaml += row.count;
+      else t.hq += row.count;
+      if (row.enabled) t.enabled += row.count;
+      else t.disabled += row.count;
     }
     return t;
-  }, [rules]);
+  }, [summary]);
 
   const summaryByCategory = useMemo(() => {
     const map = new Map<string, { count: number; enabled: number }>();

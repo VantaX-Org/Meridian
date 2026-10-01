@@ -153,6 +153,18 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.warning(f"Dev tenant init failed: {e}")
 
+    # Rule catalogue + standard upload fields for every tenant, in step with this release
+    try:
+        import asyncio as _aio
+
+        from api.services.tenant_seed import seed_all
+        from workers.db import get_sync_engine
+
+        seeded = await _aio.to_thread(seed_all, get_sync_engine())
+        logger.info(f"Tenant catalogues: {seeded}")
+    except Exception as e:
+        logger.warning(f"Tenant catalogue sync failed: {e}")
+
     # Schedule non-blocking LLM connection test in background
     import asyncio
 
