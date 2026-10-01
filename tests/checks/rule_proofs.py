@@ -237,6 +237,12 @@ def prove(rule: dict, dictionary) -> tuple[str, str]:
         return _prove_aggregate(rule, dictionary, cand, live)
     if rule.get("check_class") == "exists_check":
         return _prove_exists(rule, dictionary, cand, live)
+    if rule.get("check_class") == "similarity_check":
+        # one block: a typo'd near-duplicate pair and an unrelated name (expected: 3 in scope, 2 failing)
+        block = {c: "B1" for c in rule.get("block_by") or []}
+        rows = [{**block, rule["field"]: n} for n in ("ACME ENGINEERING WORKS", "ACME ENGINERING WORKS",
+                                                       "ZULU FREIGHT SERVICES")]
+        return _verify(rule, dictionary, rows, (3, 2), live)
     combos = itertools.product(*(cand[c] for c in cols))
     values = [dict(zip(cols, combo)) for combo in itertools.islice(combos, MAX_ROWS)]
     df = _rows(rule, dictionary, values)
