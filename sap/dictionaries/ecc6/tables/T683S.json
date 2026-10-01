@@ -1,0 +1,286 @@
+{
+ "table": "T683S",
+ "description": "Pricing Procedure: Data",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "KVEWE",
+   "key": true,
+   "data_element": "KVEWE",
+   "domain": "KVEWE",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Usage of the Condition Table",
+   "check_table": "T681V"
+  },
+  {
+   "pos": 3,
+   "name": "KAPPL",
+   "key": true,
+   "data_element": "KAPPL",
+   "domain": "KAPPL",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Application",
+   "check_table": "T681A"
+  },
+  {
+   "pos": 4,
+   "name": "KALSM",
+   "key": true,
+   "data_element": "KALSM_D",
+   "domain": "KALSM",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Procedure (Pricing, Output Control, Acct. Det., Costing,...)",
+   "check_table": "T683"
+  },
+  {
+   "pos": 5,
+   "name": "STUNR",
+   "key": true,
+   "data_element": "STUNR",
+   "domain": "STUNR",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Level Number",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "ZAEHK",
+   "key": true,
+   "data_element": "DZAEHK",
+   "domain": "ZAEHK",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Condition counter",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "KSCHL",
+   "key": false,
+   "data_element": "KSCHL",
+   "domain": "KSCHL",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Condition Type",
+   "check_table": "T685"
+  },
+  {
+   "pos": 8,
+   "name": "STUNB",
+   "key": false,
+   "data_element": "STUNB",
+   "domain": "STUNR",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "From reference step (for percentage conditions)",
+   "check_table": "*"
+  },
+  {
+   "pos": 9,
+   "name": "STUN2",
+   "key": false,
+   "data_element": "STUN2",
+   "domain": "STUNR",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "To reference step (for percentages)",
+   "check_table": "*"
+  },
+  {
+   "pos": 10,
+   "name": "KAUTO",
+   "key": false,
+   "data_element": "KAUTO",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Condition determined manually",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "KOBED",
+   "key": false,
+   "data_element": "KOBED",
+   "domain": "BEDNG",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Requirement",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "KZWIW",
+   "key": false,
+   "data_element": "KZWIW",
+   "domain": "KZWIW",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Condition subtotal",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "KSTAT",
+   "key": false,
+   "data_element": "KSTAT",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Condition is used for statistics",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "KOFRM",
+   "key": false,
+   "data_element": "KOFRM",
+   "domain": "KOFRM",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Condition formula for alternative calculation type",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "KOFRA",
+   "key": false,
+   "data_element": "KOFRA",
+   "domain": "KOFRM",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Condition Formula for Condition Basis",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "KVSL1",
+   "key": false,
+   "data_element": "KVSL1",
+   "domain": "KVSCHL",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Account key",
+   "check_table": "T687"
+  },
+  {
+   "pos": 17,
+   "name": "KVSL2",
+   "key": false,
+   "data_element": "KVSL2",
+   "domain": "KVSCHL",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Account key - accruals / provisions",
+   "check_table": "T687"
+  },
+  {
+   "pos": 18,
+   "name": "DRUKZ",
+   "key": false,
+   "data_element": "DRUKZ",
+   "domain": "DRUKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Print Indicator",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "KOBLI",
+   "key": false,
+   "data_element": "KOBLI",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Condition is mandatory",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "/SAPCEM/CONV_ME",
+   "key": false,
+   "data_element": "/SAPCEM/CONV_ME",
+   "domain": "X",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Conversion of Unit of Measure",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "KALSM",
+   "foreign_table": "T683",
+   "foreign_field": "KALSM"
+  },
+  {
+   "field": "KAPPL",
+   "foreign_table": "T681A",
+   "foreign_field": "KAPPL"
+  },
+  {
+   "field": "KSCHL",
+   "foreign_table": "T685",
+   "foreign_field": "KSCHL"
+  },
+  {
+   "field": "KVEWE",
+   "foreign_table": "T681V",
+   "foreign_field": "KVEWE"
+  },
+  {
+   "field": "KVSL1",
+   "foreign_table": "T687",
+   "foreign_field": "KVSL1"
+  },
+  {
+   "field": "KVSL2",
+   "foreign_table": "T687",
+   "foreign_field": "KVSL1"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

@@ -282,7 +282,7 @@ export default function ConnectivityPage() {
   if (isLoading) {
     return (
       <>
-        <PageHead title="Connectivity" route="Connect · /connectivity" sub="Loading…" />
+        <PageHead title="Connectivity" route="Systems & data · /connectivity" sub="Loading…" />
         <Skeleton className="h-[420px] rounded-[10px]" />
       </>
     );
@@ -290,7 +290,7 @@ export default function ConnectivityPage() {
   if (error) {
     return (
       <>
-        <PageHead title="Connectivity" route="Connect · /connectivity" sub="Failed to load." />
+        <PageHead title="Connectivity" route="Systems & data · /connectivity" sub="Failed to load." />
         <div className="mn-card mn-card-pad" style={{ color: "var(--mn-neg)" }}>
           Could not reach <code>/api/v1/systems</code>.
         </div>
@@ -331,7 +331,7 @@ export default function ConnectivityPage() {
     <>
       <PageHead
         title="Connectivity"
-        route="Connect · /connectivity"
+        route="Systems & data · /connectivity"
         sub={
           <>
             <strong style={{ color: "var(--mn-ink-700)" }}>{list.length} systems</strong> wired in via{" "}
@@ -375,9 +375,9 @@ export default function ConnectivityPage() {
         title="Topology"
         caption="All systems connect through the Meridian core · live packet flow on healthy edges"
         right={
-          <a href="/systems" className="mn-link">
+          <Link href="/systems" className="mn-link">
             Systems <ArrowRight size={11} />
-          </a>
+          </Link>
         }
       />
       <div

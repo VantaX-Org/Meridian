@@ -105,3 +105,55 @@ def test_extract_end_to_end_evaluates_at_grain(monkeypatch):
     ap039 = results.get("AP039")  # bank required for electronic payment (ZWELS contains T)
     assert ap039 is not None and ap039.grain == "LFB1"
     assert set(ap039.failing_record_keys) == {"LIFNR=V3|BUKRS=1000"}  # V1 has LFBK, V2 pays by cheque
+
+
+def test_extraction_reconciles_row_counts_with_sap(monkeypatch):
+    """An unfiltered read must return SAP's own COUNT(*); a shortfall marks the table incomplete."""
+    from api.services import connectivity_manager as cm
+
+    lfa1 = pd.DataFrame({"MANDT": ["100"] * 2, "LIFNR": ["V1", "V2"], "NAME1": ["A", "B"], "KTOKK": ["KRED"] * 2})
+    lfb1 = pd.DataFrame({"MANDT": ["100"], "LIFNR": ["V1"], "BUKRS": ["1000"], "AKONT": ["160000"]})
+    fake = FakeRFCConnector({"LFA1": lfa1, "LFB1": lfb1})
+    fake._conn.extra_rows["LFA1"] = 1  # SAP holds 3 vendors, the read returned 2
+
+    class Mgr(cm.ConnectivityManager):
+        def __init__(self):
+            self.tenant_id, self.session = "t", None
+
+        def _load_system(self, sid):
+            return type("R", (), {"system_type": "ecc", "id": sid})()
+
+        def _build_connection_params(self, row):
+            return {"system_type": "ecc"}
+
+        def _get_connector(self, system_type, params):
+            return fake
+
+    monkeypatch.setattr("api.services.source_design.dictionary_for", lambda s, sid, st=None: get_dictionary("ecc6"))
+    _, coverage = Mgr().extract("sys", ["accounts_payable"])
+    cov = {c["table"]: c for c in coverage}
+    assert cov["LFA1"]["source_rows"] == 3 and cov["LFA1"]["complete"] is False
+    assert cov["LFB1"]["source_rows"] == 1 and cov["LFB1"]["complete"] is True
+
+
+def test_payroll_totals_through_the_customer_function():
+    from api.services.connectivity_manager import ConnectivityManager
+
+    rgdir = pd.DataFrame({"PERNR": ["00001001", "00001001", "00001002"], "SEQNR": ["00001", "00002", "00001"]})
+    conn = FakeRFCConnector({})
+    df, entry = ConnectivityManager._payroll_totals(conn, rgdir)
+    assert df is None and entry["status"] == "not_installed" and "docs/payroll-rfc.md" in entry["detail"]
+
+    def fm(fm, **p):  # the installed function: one employee the RFC user may not read
+        if fm != "Z_MERIDIAN_PAYROLL_TOTALS":
+            raise AssertionError(fm)
+        rows = [{"PERNR": r["PERNR"], "SEQNR": r["SEQNR"], "FPPER": "202601", "INPER": "202601", "PAYDT": "20260125",
+                 "LGART": "/560", "BETRG": 15000.5, "ANZHL": 0, "WAERS": "ZAR"}
+                for r in p["IT_RESULTS"] if r["PERNR"] == "00001001"]
+        return {"ET_TOTALS": rows, "EV_SKIPPED": 1}
+
+    conn._conn.call = fm
+    df, entry = ConnectivityManager._payroll_totals(conn, rgdir)
+    assert len(df) == 2 and df["BETRG"].tolist() == ["15000.5", "15000.5"]
+    assert entry == {"table": "ZMERIDIAN_PAYRT", "purpose": "data", "status": "live", "rows": 2, "results": 3,
+                     "unauthorised": 1, "complete": False}

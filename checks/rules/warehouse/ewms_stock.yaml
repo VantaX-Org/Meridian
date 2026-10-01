@@ -202,26 +202,6 @@ rules:
       or /SCWM/LS01.'
   record_fix_template: 'Bin {LAGP.LGPLA}: LGBER is {actual_value}. Assign the correct storage section via LX04 (ECC) or Fiori
     app F1653 (S/4HANA).'
-- id: EWMS012
-  field: LAGP.KOBER
-  check_class: null_check
-  severity: low
-  dimension: completeness
-  message: Picking area assignment optimises wave picking and picking route efficiency
-  why_it_matters: Picking area (KOBER) groups bins into zones for wave picking and pick route optimisation. Without it, the
-    system cannot include this bin in wave-based picking runs, reducing warehouse throughput and increasing pick path distances.
-  rule_authority: best_practice
-  sap_impact: Bin excluded from wave picking runs. Pick route optimisation ignores this bin. Throughput reduced for materials
-    in this location.
-  fix_map:
-    __blank__: 'In ECC: assign picking area via T-code LS02N > Picking area field. In S/4HANA embedded EWM: maintain via /SCWM/LS01
-      or Fiori app F1653.'
-  record_fix_template: 'Bin {LAGP.LGPLA}: KOBER is {actual_value}. Assign the correct picking area via LS02N (ECC) or Fiori
-    app F1653 (S/4HANA).'
-  applies_when:
-    LAGP.KZDYN:
-      not_in:
-      - X
 - id: EWMS013
   field: LAGP.MAXLE
   check_class: null_check
@@ -311,3 +291,305 @@ rules:
   fix_map:
     __blank__: "Assign the warehouse number via the goods-movement / putaway transaction (LT01) or correct the quant in /SCWM/MON. Required for every LQUA quant."
   record_fix_template: "Quant {LQUA.LQNUM}: warehouse number (LGNUM) is missing. Assign via LT01 / /SCWM/MON."
+
+# ── Breadth: quant address, cross-object integrity, units, special stock, bin status ──
+
+- id: EWMS026
+  field: LQUA.LGTYP
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Storage type is missing on the quant — the stock has no storage-type address
+  why_it_matters: A quant (LQUA) is located by warehouse number, storage type and storage bin. Without the storage
+    type the quant cannot be found by any putaway or picking strategy, the bin stock overview (LS26 / LX03) cannot
+    show it, and inventory cannot count it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Stock is invisible to stock removal strategies and to WM physical inventory; transfer orders for it
+    cannot be created.
+  fix_map:
+    __blank__: Determine the physical location of the stock, then correct it with a transfer order from the
+      differences interim storage type (LT01) or by clearing the quant through physical inventory (LI01N/LI11N/LI20).
+  record_fix_template: 'Quant {LQUA.LQNUM} (material {LQUA.MATNR}): storage type is {actual_value}. Relocate the stock
+    via LT01 or clear it through WM physical inventory.'
+
+- id: EWMS027
+  field: LQUA.LGPLA
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Storage bin is missing on the quant — the stock has no bin address
+  why_it_matters: Every quant sits in exactly one storage bin. A quant without a bin cannot be picked, counted or
+    moved; FIFO/FEFO strategies skip it and the warehouse book stock no longer matches what is on the shelves.
+  rule_authority: sap_hard_constraint
+  sap_impact: Stock cannot be removed or counted; WM and IM stock reconciliation (LX23) shows a difference.
+  fix_map:
+    __blank__: Locate the stock physically and post it to the correct bin via LT01 from the differences storage type,
+      or clear it via WM physical inventory (LI01N → LI11N → LI20).
+  record_fix_template: 'Quant {LQUA.LQNUM} (material {LQUA.MATNR}): storage bin is {actual_value}. Post the stock to
+    its real bin via LT01.'
+
+- id: EWMS028
+  field: LQUA.MEINS
+  check_class: cross_field_check
+  grain: LQUA
+  fail_when: '`LQUA.MEINS` != `MARA.MEINS`'
+  require_populated: true
+  severity: high
+  dimension: consistency
+  message: Quant unit of measure differs from the material's base unit of measure
+  why_it_matters: WM keeps every quant quantity in the material's base unit of measure (LQUA.MEINS = MARA.MEINS);
+    SAP does not let the base unit change while stock exists. A quant in another unit was loaded wrongly — its
+    quantity is off by the conversion factor, and WM stock no longer reconciles with IM (MARD).
+  rule_authority: sap_hard_constraint
+  sap_impact: WM/IM stock comparison (LX23) shows differences; picking and replenishment quantities are wrong by
+    the unit conversion factor.
+  fix_map:
+    __other__: Clear the quant through WM physical inventory and re-post it in the base unit of measure; analyse how
+      the quant was created (migration program, direct table update).
+  record_fix_template: 'Quant {LQUA.LQNUM} (material {LQUA.MATNR}): unit {LQUA.MEINS} is not the base unit
+    {MARA.MEINS}.'
+
+- id: EWMS029
+  field: LQUA.SONUM
+  check_class: null_check
+  applies_when:
+    LQUA.SOBKZ: {populated: true}
+  severity: high
+  dimension: completeness
+  message: Special stock quant has no special stock number
+  why_it_matters: Special stock (sales order stock E, project stock Q, vendor consignment K, returnable packaging M,
+    …) belongs to a specific owner or account assignment, identified by LQUA.SONUM. Without it the quant cannot be
+    tied to the sales order, project or vendor that owns it, and it can be issued to the wrong requirement.
+  rule_authority: sap_hard_constraint
+  sap_impact: Special stock cannot be assigned to its owner; consignment settlement and sales-order/project
+    stock consumption post against the wrong account.
+  fix_map:
+    __blank__: Determine the owner of the special stock and correct the quant through WM physical inventory /
+      posting change (LU04) with the correct special stock number.
+  record_fix_template: 'Quant {LQUA.LQNUM}: special stock {LQUA.SOBKZ} without special stock number.'
+
+- id: EWMS030
+  field: LQUA.SOBKZ
+  check_class: cross_field_check
+  fail_when: '`LQUA.SONUM`.notna() & `LQUA.SOBKZ`.isna()'
+  severity: medium
+  dimension: consistency
+  message: Quant carries a special stock number but no special stock indicator
+  why_it_matters: The special stock number (LQUA.SONUM) only has meaning together with the special stock indicator
+    (LQUA.SOBKZ). A number without an indicator makes the quant look like free company stock while it was booked to
+    a sales order, project or vendor.
+  rule_authority: sap_hard_constraint
+  sap_impact: Owned or assigned stock is treated as unrestricted company stock and can be issued to any requirement.
+  fix_map:
+    __other__: Determine whether the stock is special stock; correct the quant via posting change (LU04) or WM
+      physical inventory clearing.
+  record_fix_template: 'Quant {LQUA.LQNUM}: special stock number {LQUA.SONUM} without special stock indicator.'
+
+- id: EWMS031
+  field: LQUA.VERME
+  check_class: cross_field_check
+  fail_when: '`LQUA.VERME` > `LQUA.GESME`'
+  require_populated: true
+  severity: high
+  dimension: consistency
+  message: Available quantity of the quant exceeds its total quantity
+  why_it_matters: Available stock (LQUA.VERME) is the total quantity (GESME) minus the quantity already reserved by
+    open removal transfer orders (AUSME). It can never exceed the total; a quant that does was updated
+    inconsistently and stock removal strategies will allocate stock that does not exist.
+  rule_authority: sap_hard_constraint
+  sap_impact: Transfer orders are created for more stock than the bin holds; pickers find shortages and
+    confirmations post differences.
+  fix_map:
+    __other__: Count the bin (LI01N) and clear the difference (LI20); check open transfer orders for the quant (LT22).
+  record_fix_template: 'Quant {LQUA.LQNUM}: available {LQUA.VERME} > total {LQUA.GESME}.'
+
+- id: EWMS032
+  field: LQUA.GEWEI
+  check_class: cross_field_check
+  fail_when: '(`LQUA.MGEWI` > 0) & `LQUA.GEWEI`.isna()'
+  severity: medium
+  dimension: consistency
+  message: Quant weight is maintained without a weight unit
+  why_it_matters: The quant weight (LQUA.MGEWI) is a quantity that is only meaningful with its unit (LQUA.GEWEI).
+    Weight-based capacity checks and bin load totals cannot use a weight without a unit.
+  rule_authority: sap_hard_constraint
+  sap_impact: Weight-based capacity checks of the storage type are wrong for this bin.
+  fix_map:
+    __other__: Maintain the weight unit in the material master (gross weight with weight unit) and correct the quant.
+  record_fix_template: 'Quant {LQUA.LQNUM}: weight {LQUA.MGEWI} without weight unit.'
+
+- id: EWMS033
+  field: LAGP.GEWEI
+  check_class: cross_field_check
+  fail_when: '(`LAGP.LGEWI` > 0) & `LAGP.GEWEI`.isna()'
+  severity: medium
+  dimension: consistency
+  message: Bin load capacity is maintained without a weight unit
+  why_it_matters: The load capacity of a bin (LAGP.LGEWI) is compared with the weight of the stock placed into it.
+    Without its unit (LAGP.GEWEI) the capacity check cannot convert the material weight and either blocks valid
+    putaways or lets the bin be overloaded.
+  rule_authority: sap_hard_constraint
+  sap_impact: Weight capacity checks during putaway are unreliable for this bin — rack overload risk.
+  fix_map:
+    __other__: Maintain the weight unit for the bin (LS02N) — usually KG.
+  record_fix_template: 'Bin {LAGP.LGTYP}/{LAGP.LGPLA}: load capacity {LAGP.LGEWI} without weight unit.'
+
+- id: EWMS034
+  field: LAGP.KZLER
+  check_class: cross_field_check
+  fail_when: '(`LAGP.KZLER` == ''X'') & (`LAGP.ANZQU` > 0)'
+  severity: high
+  dimension: consistency
+  message: Bin is flagged empty but still holds quants
+  why_it_matters: SAP sets the empty-bin indicator (LAGP.KZLER) when the last quant leaves a bin and clears it when
+    stock is placed. An empty bin with quants (LAGP.ANZQU > 0) is proposed by putaway strategies as free, so new
+    stock is directed into an occupied location.
+  rule_authority: sap_hard_constraint
+  sap_impact: Putaway strategies (next empty bin, bulk) propose an occupied bin; transfer orders fail at
+    confirmation or mix stock.
+  fix_map:
+    __other__: Run the bin status consistency report (RLLQ0100 / LX23) or count the bin (LI01N) to reset the
+      indicators.
+  record_fix_template: 'Bin {LAGP.LGTYP}/{LAGP.LGPLA}: flagged empty but holds {LAGP.ANZQU} quant(s).'
+
+- id: EWMS035
+  field: LAGP.KZVOL
+  check_class: cross_field_check
+  fail_when: '(`LAGP.KZLER` == ''X'') & (`LAGP.KZVOL` == ''X'')'
+  severity: medium
+  dimension: consistency
+  message: Bin is flagged both empty and full
+  why_it_matters: A bin cannot be empty (LAGP.KZLER) and full (LAGP.KZVOL) at the same time. The contradiction
+    means the status update was interrupted or the bin was loaded directly; putaway and replenishment read
+    whichever flag they check first.
+  rule_authority: sap_hard_constraint
+  sap_impact: Putaway strategies skip a free bin or propose a full one.
+  fix_map:
+    __other__: Count the bin (LI01N) or run the bin consistency report to reset the status indicators.
+  record_fix_template: 'Bin {LAGP.LGTYP}/{LAGP.LGPLA}: flagged empty and full at the same time.'
+
+- id: EWMS036
+  field: LQUA.LGTYP
+  check_class: referential_check
+  reference_values: []
+  reference_table: T301
+  reference_field: LGTYP
+  severity: high
+  dimension: consistency
+  message: Quant storage type does not exist in the warehouse's storage-type configuration (T301)
+  why_it_matters: Putaway, stock removal, capacity and inventory control are all defined per storage type (T301).
+    Stock in a storage type that is not configured cannot be processed by any WM function.
+  rule_authority: sap_hard_constraint
+  sap_impact: Transfer orders for this stock cannot be created; the stock is stranded.
+  fix_map:
+    __other__: Storage type '{invalid_value}' is not configured. Move the stock to a configured storage type via
+      physical inventory clearing, or configure the storage type (SPRO > Logistics Execution > WM > Master Data >
+      Define Storage Type).
+  record_fix_template: 'Quant {LQUA.LQNUM}: storage type ''{actual_value}'' is not in T301.'
+
+- id: EWMS037
+  field: LQUA.LETYP
+  check_class: referential_check
+  reference_values: []
+  reference_table: T307
+  reference_field: LETYP
+  severity: medium
+  dimension: consistency
+  message: Storage unit type on the quant does not exist in the configuration (T307)
+  why_it_matters: The storage unit type (pallet, mesh box, …) drives bin type assignment and capacity in SU-managed
+    storage types. An unconfigured type cannot be checked against bin types, so putaway into SU-managed bins fails.
+  rule_authority: sap_hard_constraint
+  sap_impact: Putaway and stock transfer of this storage unit fail the bin-type check.
+  fix_map:
+    __other__: Storage unit type '{invalid_value}' is not configured (T307). Correct the storage unit (LS32) or
+      configure the type.
+  record_fix_template: 'Quant {LQUA.LQNUM}: storage unit type ''{actual_value}'' is not in T307.'
+
+- id: EWMS038
+  field: LAGP.LGBER
+  check_class: referential_check
+  reference_values: []
+  reference_table: T302
+  reference_field: LGBER
+  severity: medium
+  dimension: consistency
+  message: Storage section of the bin does not exist in the configuration (T302)
+  why_it_matters: Storage section search (T304/T30A) assigns stock to sections such as fast-movers or heavy parts.
+    A bin in an unconfigured section is never proposed by the section search, so it stays empty or must be filled
+    manually.
+  rule_authority: sap_hard_constraint
+  sap_impact: The bin is never found by the putaway storage section search.
+  fix_map:
+    __other__: Storage section '{invalid_value}' is not configured (T302). Re-assign the bin to a valid section
+      (LS02N / LS11) or configure the section.
+  record_fix_template: 'Bin {LAGP.LGTYP}/{LAGP.LGPLA}: storage section ''{actual_value}'' is not in T302.'
+
+- id: EWMS039
+  field: LAGP.LPTYP
+  check_class: referential_check
+  reference_values: []
+  reference_table: T303
+  reference_field: LPTYP
+  severity: medium
+  dimension: consistency
+  message: Storage bin type does not exist in the configuration (T303)
+  why_it_matters: The bin type is matched against the storage unit type (T334/T307) when stock is placed into
+    SU-managed storage types. A bin with an unconfigured bin type never matches, so putaway cannot use it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Bin-type check rejects every storage unit for this bin.
+  fix_map:
+    __other__: Bin type '{invalid_value}' is not configured (T303). Correct the bin (LS02N / LS11).
+  record_fix_template: 'Bin {LAGP.LGTYP}/{LAGP.LGPLA}: bin type ''{actual_value}'' is not in T303.'
+
+- id: EWMS040
+  field: LQUA.SOBKZ
+  check_class: referential_check
+  reference_values: []
+  reference_table: T148
+  reference_field: SOBKZ
+  severity: high
+  dimension: accuracy
+  message: Special stock indicator of the quant does not exist in the configuration (T148)
+  why_it_matters: The special stock indicator defines who owns the stock and how it is valuated (sales order,
+    project, consignment). An unknown indicator cannot be processed by IM, so the WM stock cannot be reconciled or
+    issued.
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods movements for this stock fail; WM/IM reconciliation shows a difference.
+  fix_map:
+    __other__: Special stock indicator '{invalid_value}' is not in T148. Correct the quant through WM physical
+      inventory clearing.
+  record_fix_template: 'Quant {LQUA.LQNUM}: special stock indicator ''{actual_value}'' is not in T148.'
+
+- id: EWMS041
+  field: LAGP.KZINV
+  check_class: domain_value_check
+  severity: medium
+  dimension: validity
+  message: Inventory method of the bin is not a valid SAP inventory method
+  why_it_matters: The inventory method on the bin (annual, continuous, cycle counting, zero-stock check, putaway
+    inventory) is a fixed SAP domain (LVS_KZINV). Any other value leaves the bin outside every physical inventory
+    run — a statutory inventory gap.
+  rule_authority: sap_hard_constraint
+  sap_impact: The bin is not selected for physical inventory; the annual inventory is incomplete.
+  fix_map:
+    __other__: Reset the inventory indicator by counting the bin (LX16 / LI01N).
+  record_fix_template: 'Bin {LAGP.LGTYP}/{LAGP.LGPLA}: inventory method ''{actual_value}'' is not valid.'
+
+- id: EWMS042
+  field: LQUA.CHARG
+  check_class: cross_field_check
+  grain: LQUA
+  fail_when: '`LQUA.CHARG`.notna() & `MARC.MATNR`.notna() & `MARC.XCHPF`.isna()'
+  severity: medium
+  dimension: consistency
+  message: Quant carries a batch for a material that is not batch-managed in the plant
+  why_it_matters: Batches exist only for batch-managed materials (MARC.XCHPF); SAP does not allow batch management to
+    be switched off while stock exists. A quant with a batch for a non-batch material was loaded wrongly and cannot
+    be posted in IM, where no batch stock (MCHB) exists for it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods movements for this stock fail in IM; WM/IM reconciliation shows the batch quant as a difference.
+  fix_map:
+    __other__: Clear the quant through WM physical inventory and re-post it without a batch, or — if the material
+      must be batch-managed — activate batch management (MM02, only possible without stock).
+  record_fix_template: 'Quant {LQUA.LQNUM}: batch {LQUA.CHARG} on material {LQUA.MATNR}, which is not batch-managed
+    in plant {LQUA.WERKS}.'

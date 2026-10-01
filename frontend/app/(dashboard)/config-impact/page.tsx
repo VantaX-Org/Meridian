@@ -42,7 +42,7 @@ export default function ConfigImpactPage() {
   if (versionsQ.isLoading || (latest && impactQ.isLoading)) {
     return (
       <>
-        <PageHead title="Config Impact" route="Connect · /config-impact" sub="Loading…" />
+        <PageHead title="Config Impact" route="Process & impact · /config-impact" sub="Loading…" />
         <Skeleton className="h-[420px] rounded-[10px]" />
       </>
     );
@@ -53,7 +53,7 @@ export default function ConfigImpactPage() {
       <>
         <PageHead
           title="Config Impact"
-          route="Connect · /config-impact"
+          route="Process & impact · /config-impact"
           sub="Config impact analysis runs against a completed version. None available yet."
         />
         <div className="mn-card mn-card-pad" style={{ textAlign: "center", color: "var(--mn-ink-400)" }}>
@@ -66,7 +66,7 @@ export default function ConfigImpactPage() {
   if (versionsQ.error || impactQ.error) {
     return (
       <>
-        <PageHead title="Config Impact" route="Connect · /config-impact" sub="Failed to load." />
+        <PageHead title="Config Impact" route="Process & impact · /config-impact" sub="Failed to load." />
         <div className="mn-card mn-card-pad" style={{ color: "var(--mn-neg)" }}>
           Could not reach <code>/api/v1/config-impact/{"{versionId}"}</code>.
         </div>
@@ -87,7 +87,7 @@ export default function ConfigImpactPage() {
     <>
       <PageHead
         title="Config Impact"
-        route="Connect · /config-impact"
+        route="Process & impact · /config-impact"
         sub={
           <>
             <strong style={{ color: "var(--mn-ink-700)" }}>{summary.total_features_assessed}</strong> features assessed against version{" "}

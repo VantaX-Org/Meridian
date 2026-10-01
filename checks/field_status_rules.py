@@ -25,6 +25,13 @@ def load_config(session, system_id: str | None) -> dict[str, list[dict]]:
     return {t: list(d or []) for t, d in rows}
 
 
+def conversions_for(session, system_id: str | None) -> dict[str, dict[str, str]]:
+    """External → internal code maps (CUNIT, AUART) from the system's own tables; every
+    loader of an uploaded dataset passes them so all views of one dataset agree."""
+    from sap.field_status_config import conversion_maps
+    return conversion_maps(load_config(session, system_id))
+
+
 def generate(resolutions: list[Resolution], modules: list[str]) -> list[dict]:
     rules = []
     for res in resolutions:
@@ -57,6 +64,58 @@ def generate(resolutions: list[Resolution], modules: list[str]) -> list[dict]:
                  f"suppress it ({seg.config_table})"),
             })
     return rules
+
+
+def generate_material(material: dict[str, dict[str, str]], modules: list[str]) -> list[dict]:
+    """Rules from the material master field selection (sap/field_status_config.resolve_material)."""
+    if "material_master" not in modules:
+        return []
+    rules = []
+    for col, by_group in sorted(material.items()):
+        for st in ("required", "suppressed"):
+            groups = sorted(g for g, s in by_group.items() if s == st)
+            if not groups:
+                continue
+            label = ", ".join(g.replace("|", "/") for g in groups[:6]) + (" …" if len(groups) > 6 else "")
+            rules.append({
+                "id": f"FS-{col.replace('.', '-')}-{'REQ' if st == 'required' else 'SUP'}",
+                "module": "material_master", "check_class": "field_status_check", "field": col,
+                "group_field": ["MARA.MTART", "MARA.MBRSH"], "groups": groups, "kind": st, "grain": "MARA",
+                "severity": "high" if st == "required" else "low",
+                "dimension": "completeness" if st == "required" else "consistency",
+                "config_table": "T130A/T130F", "fauna": "material field selection",
+                "message": (f"{col} is required for material type / industry sector {label} by this system's "
+                            f"material master field selection") if st == "required" else
+                           (f"{col} is populated although material type / industry sector {label} hide it"),
+            })
+    return rules
+
+
+def suppressed_fields(resolutions: list[Resolution], material: dict[str, dict[str, str]]
+                      ) -> dict[str, tuple[list[str], set[str]]]:
+    """{TABLE.FIELD: (group fields, groups that hide it)} — shipped rules then leave
+    those records alone (a hidden field cannot be maintained)."""
+    out: dict[str, tuple[list[str], set[str]]] = {}
+    for res in resolutions:
+        if res.fauna is None:
+            continue
+        for group, statuses in res.groups.items():
+            for col, st in statuses.items():
+                if st == "suppressed":
+                    out.setdefault(col, ([res.segment.group_source], set()))[1].add(group)
+    for col, by_group in material.items():
+        for group, st in by_group.items():
+            if st == "suppressed":
+                out.setdefault(col, (["MARA.MTART", "MARA.MBRSH"], set()))[1].add(group)
+    return out
+
+
+def material_fields(material: dict[str, dict[str, str]]) -> dict[str, set[str]]:
+    out: dict[str, set[str]] = {"MARA": {"MTART", "MBRSH"}} if material else {}
+    for col in material:
+        t, f = col.split(".", 1)
+        out.setdefault(t, set()).add(f)
+    return out
 
 
 def extra_fields(resolutions: list[Resolution]) -> dict[str, set[str]]:

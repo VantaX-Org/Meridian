@@ -5,7 +5,7 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
-from checks.base import BaseCheck, CheckResult
+from checks.base import BaseCheck, CheckResult, sap_number
 from checks.frames import TableFrames, tables_of
 from checks.population import exclude, exclusions, fields_for
 from checks.fix_generator import FixGenerator
@@ -19,6 +19,10 @@ from checks.types.format_check import FormatCheck
 from checks.types.field_status_check import FieldStatusCheck
 from checks.types.uniqueness_check import UniquenessCheck
 from checks.types.value_placement_check import ValuePlacementCheck
+from checks.types.balance_check import BalanceCheck
+from checks.types.country_format_check import CountryFormatCheck
+from checks.types.aggregate_check import AggregateCheck
+from checks.types.interval_check import IntervalCheck
 
 logger = logging.getLogger("meridian.checks")
 
@@ -29,7 +33,8 @@ def apply_context(df: pd.DataFrame, applies_when: dict | None) -> pd.DataFrame:
     `applies_when` is a dict of {field: allowed_values}; AND-combined.
     Returns:
       - df unchanged if applies_when is None/empty
-      - df.iloc[:0] (zero rows) if any field in applies_when is missing
+      - df.iloc[:0] (zero rows) if any field in applies_when is missing (a
+        {blank: true} condition on a missing field holds: nothing carries a value)
         from the extract — lets the caller treat the rule as "not applicable
         to this extract" via the existing None-result pathway
       - filtered df otherwise
@@ -43,6 +48,8 @@ def apply_context(df: pd.DataFrame, applies_when: dict | None) -> pd.DataFrame:
     mask = pd.Series(True, index=df.index)
     for field, allowed in applies_when.items():
         if field not in df.columns:
+            if isinstance(allowed, dict) and set(allowed) == {"blank"}:
+                continue  # not extracted: no record is known to carry a value (e.g. no branch accounts)
             return df.iloc[:0]
         values = df[field].astype("string").str.strip()
         if isinstance(allowed, dict):
@@ -55,8 +62,10 @@ def apply_context(df: pd.DataFrame, applies_when: dict | None) -> pd.DataFrame:
                 mask &= ~values.isin({str(v).strip() for v in allowed["not_in"]}).fillna(False)
             if allowed.get("populated"):
                 mask &= values.fillna("").ne("") & ~values.isin(("00000000",)).fillna(False)
+            if allowed.get("blank"):
+                mask &= values.fillna("").eq("") | values.isin(("00000000",)).fillna(False)
             if "gt" in allowed:
-                mask &= pd.to_numeric(values, errors="coerce").gt(float(allowed["gt"])).fillna(False)
+                mask &= sap_number(values).gt(float(allowed["gt"])).fillna(False)
         else:
             mask &= values.isin({str(v).strip() for v in allowed}).fillna(False)
     return df[mask]
@@ -72,7 +81,14 @@ REGISTRY: dict[str, type[BaseCheck]] = {
     "field_status_check": FieldStatusCheck,
     "uniqueness_check": UniquenessCheck,
     "value_placement_check": ValuePlacementCheck,
+    "balance_check": BalanceCheck,
+    "country_format_check": CountryFormatCheck,
+    "aggregate_check": AggregateCheck,
+    "interval_check": IntervalCheck,
 }
+
+# check types judging a group of rows together: only sound on a complete extract
+_WHOLE_GROUP = {"balance_check", "aggregate_check", "interval_check"}
 
 RULES_DIR = Path(__file__).parent / "rules"
 CATEGORIES = ["ecc", "successfactors", "warehouse"]
@@ -109,7 +125,8 @@ def _with_reference(rule: dict, dictionary, reference_values: dict[str, set[str]
     out = {**rule, "_reference_key": key}
     if field is not None and field.allowed_values():
         out["_ddic_fixed"] = sorted(field.allowed_values())  # domain fixed values (DD07L)
-    if key and key in reference_values:
+    # live values replace the baseline unless the rule's list is narrower by design (weight units ⊂ T006)
+    if key and key in reference_values and rule.get("live_reference") is not False:
         out["_live_reference"] = reference_values[key]
     return out
 
@@ -129,10 +146,16 @@ def get_required_columns(module_name: str) -> set[str]:
     return cols | {f"{t}.{f}" for t in tables_of(cols) for f in fields_for(t)}
 
 
-def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[str]] | None = None
-             ) -> tuple[dict, CheckResult | None]:
+def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[str]] | None = None,
+             suppressed: dict[str, tuple[list[str], set[str]]] | None = None) -> tuple[dict, CheckResult | None]:
     """Evaluate one rule at its grain: (rule as evaluated, result or None when not applicable)."""
     check_cls = REGISTRY[rule["check_class"]]
+    partial = sorted(set(tables_of(rule_columns(rule))) & getattr(frames, "incomplete", set()))
+    if rule.get("check_class") in _WHOLE_GROUP and partial:
+        # a group missing rows in the extract (document lines, PO history, validity
+        # periods) is not an unbalanced / unmatched / interrupted group
+        return rule, check_cls(rule)._error(frames.flat if frames.flat is not None else pd.DataFrame(),
+                                            f"not evaluated: extraction of {', '.join(partial)} is incomplete")
     if rule.get("check_class") in ("referential_check", "domain_value_check"):
         rule = _with_reference(rule, frames.dictionary, reference_values or {})
     try:
@@ -142,14 +165,18 @@ def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[st
         frame, grain, key_cols = built
         cols = rule_columns(rule)
         excl = exclusions(rule, [grain] if grain else tables_of(cols), cols)
-        need = [x["field"] for x in excl if x["field"] not in frame.columns]
+        hidden = (suppressed or {}).get(rule.get("field", ""))
+        if hidden and rule.get("check_class") != "field_status_check":
+            # the system's own field status hides this field for these groups: nothing to fill there
+            excl = excl + [{"id": "hidden_by_field_status", "fields": hidden[0], "values": sorted(hidden[1])}]
+        need = [c for x in excl for c in (x.get("fields") or [x["field"]]) if c not in frame.columns]
         if need and grain:
             try:  # parent-table flags (LFA1.LOEVM for an LFB1 rule) join at the same grain
                 wider = frames.frame_for(cols + need, grain=grain)
                 frame = wider[0] if wider is not None else frame
             except ValueError:
                 pass
-        frame, excluded = exclude(frame, excl)
+        frame, excluded = exclude(frame, excl, frames)
         scoped = apply_context(frame, rule.get("applies_when"))
         if len(scoped) == 0:
             return rule, None  # no records in the rule's population
@@ -169,6 +196,7 @@ def run_checks(
     reference_values: dict[str, set[str]] | None = None,
     overrides: dict[str, dict] | None = None,
     extra_rules: list[dict] | None = None,
+    suppressed: dict[str, tuple[list[str], set[str]]] | None = None,
 ) -> list[CheckResult]:
     """Load a module's YAML rules and evaluate each at its correct record grain.
 
@@ -207,7 +235,7 @@ def run_checks(
             result_rules.append(rule)
             continue
 
-        rule, result = run_rule(rule, frames, reference_values)
+        rule, result = run_rule(rule, frames, reference_values, suppressed)
         if result is None:
             skipped += 1
             continue

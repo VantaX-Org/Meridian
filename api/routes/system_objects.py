@@ -147,6 +147,15 @@ async def system_versions(system_id: uuid.UUID, limit: int = Query(50, le=200),
             "records": meta.get("object_rows") or meta.get("module_rows") or {},
             "analysed_at": meta.get("analysed_at"), "rule_set": meta.get("rule_set"),
             "baseline": meta.get("baseline") is True,
+            "extraction_complete": meta.get("extraction_complete"),
+            # per-table read status; anything not read completely is listed with its reason
+            "coverage": {"read": sum(1 for c in meta.get("coverage") or [] if c.get("status") == "live"),
+                         "issues": [{"table": c.get("table"), "status": c.get("status"), "rows": c.get("rows"),
+                                     "source_rows": c.get("source_rows"), "detail": c.get("detail")}
+                                    for c in meta.get("coverage") or []
+                                    if c.get("status") != "live" or c.get("complete") is False]},
+            "outliers": {k: {"label": v.get("label"), "outliers": v.get("outliers", 0), "checked": v.get("checked", 0)}
+                         for k, v in (meta.get("outliers") or {}).items()},
             "analysable": bool(meta.get("dataset_path")) and r.status not in ("pending", "running"),
             "dqs": {m: (d or {}).get("composite_score") for m, d in dqs.items()},
             # rules generated from the system's field-status customizing, per segment
@@ -203,6 +212,9 @@ async def trends(system_id: uuid.UUID, object: Optional[str] = None,
                 "scope": meta.get("scope", {}), "rule_set": meta.get("rule_set"),
             }
             flags = []
+            point["incomplete"] = meta.get("extraction_complete") is False
+            if point["incomplete"] or (pts and pts[-1].get("incomplete")):
+                flags.append("incomplete_extract")
             if pts:
                 prev = pts[-1]
                 if prev["scope"] != point["scope"]:

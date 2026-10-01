@@ -77,27 +77,6 @@ rules:
       sheet) or leave empty (P&L) via FS00 / Fiori app F2735.
 
 
-  - id: GL005
-    field: SKA1.FUNC_AREA
-    check_class: null_check
-    severity: low
-    dimension: completeness
-    message: Functional area is required for cost-of-sales accounting
-    why_it_matters: Functional area enables cost-of-sales accounting, which is mandatory in S/4HANA for the P&L statement by
-      function. In ECC, it supports management reporting by function (sales, administration, R&D). Without it, cost-of-sales
-      P&L reporting is incomplete and may violate local GAAP requirements in jurisdictions that mandate functional P&L presentation.
-    rule_authority: sap_hard_constraint
-    sap_impact: Cost-of-sales P&L (transaction F.01 with FSV by function) is incomplete. Management reporting by function is
-      not possible. Automatic derivation rules in OKBD do not fire without a base assignment.
-    fix_map:
-      __blank__: 'In ECC: assign functional area via T-code FS00 or configure automatic derivation rules via T-code OKBD. In
-        S/4HANA: use Fiori app F2735 (Manage G/L Account Master Data) or configure derivation in OKBD.'
-    record_fix_template: 'GL Account {SKA1.SAKNR}: FUNC_AREA is {actual_value}. Assign the functional area via FS00 / Fiori
-      app F2735 or configure derivation in OKBD.'
-    applies_when:
-      SKA1.XBILK:
-        not_in:
-        - X
 
   - id: GL006
     field: SKA1.KTOPL
@@ -637,3 +616,510 @@ rules:
       __blank__: Reverse the document (FB08) and re-post with the correct tax code, or correct the account's tax category
         if it was set in error (FS00).
     record_fix_template: 'Document {BSEG.BELNR}/{BSEG.GJAHR} line {BSEG.BUZEI}, account {BSEG.HKONT}: tax code missing.'
+
+  - id: XFI001
+    field: BSEG.DMBTR
+    check_class: balance_check
+    grain: BSEG
+    group_by: [BSEG.BUKRS, BSEG.BELNR, BSEG.GJAHR]
+    amount: BSEG.DMBTR
+    sign_field: BSEG.SHKZG
+    debit_value: S
+    applies_when:
+      BKPF.BSTAT: {not_in: [D, M, S, V, W, Z]}   # noted items, samples, recurring originals, parked: no posting
+    severity: critical
+    dimension: accuracy
+    message: Posted FI document does not balance in company-code currency (debits ≠ credits)
+    why_it_matters: >-
+      SAP only posts a document whose line items net to zero. A posted document that does not balance
+      means line items are missing from the extract or were changed outside the posting logic (direct
+      table updates, a broken interface, an incomplete archive/reload) — the ledger no longer adds up.
+    rule_authority: sap_hard_constraint
+    sap_impact: Trial balance and financial statements do not reconcile; the imbalance is invisible in FAGLB03 totals.
+    fix_map:
+      __other__: Compare the document in FB03 with the extract; if the lines differ, re-extract. If FB03 shows the
+        imbalance too, raise it with SAP support (the ledger was changed outside the posting logic).
+    record_fix_template: 'Document {BSEG.BELNR}/{BSEG.GJAHR} (company code {BSEG.BUKRS}) does not balance.'
+
+  # ── G/L master: internal consistency ─────────────────────────────────────
+  - id: GL032
+    field: SKA1.GVTYP
+    check_class: cross_field_check
+    fail_when: (`SKA1.XBILK` == 'X') & `SKA1.GVTYP`.notna()
+    severity: high
+    dimension: consistency
+    message: Balance sheet account (XBILK = X) also carries a P&L statement account type (GVTYP)
+    why_it_matters: >-
+      An account is either a balance sheet account or a P&L account. The P&L statement account type
+      tells year-end closing (F.16 / FAGLGVTR) which retained-earnings account receives the balance;
+      on a balance sheet account it is meaningless and FS00 does not allow it. Both set at once comes
+      from a migration or a direct table load and leaves the account's classification ambiguous to
+      every report that reads one flag but not the other.
+    rule_authority: sap_hard_constraint
+    sap_impact: Year-end carry-forward and financial statement versions may classify the account
+      inconsistently; reconciliation of retained earnings is unreliable.
+    fix_map:
+      __other__: Decide whether the account is a balance sheet or a P&L account and correct the type in
+        FS00 > Type/Description (S/4HANA Fiori app F2735). Clearing XBILK makes it a P&L account; setting
+        it removes the P&L statement type.
+    record_fix_template: 'G/L account {SKA1.SAKNR}: balance sheet account with P&L statement type ''{actual_value}''.'
+
+  - id: GL033
+    field: SKB1.XOPVW
+    check_class: cross_field_check
+    fail_when: (`SKB1.XOPVW` == 'X')
+    applies_when:
+      SKB1.MITKZ: [A, D, K, V]
+    severity: high
+    dimension: consistency
+    message: Reconciliation account is managed on an open item basis
+    why_it_matters: >-
+      The open items of a reconciliation account live in its sub-ledger (customer, vendor, asset,
+      contract account). SAP does not allow open item management on a reconciliation account: the
+      G/L account is updated only in total by the sub-ledger, so open items on it can never be
+      cleared and automatic clearing (F.13) and the regrouping programs mis-handle it.
+    rule_authority: sap_hard_constraint
+    sap_impact: Line items on the account can never be cleared; open item lists and the AP/AR
+      reconciliation (F.03, FAGLF03) show permanent differences.
+    fix_map:
+      __other__: Remove the open item management flag in FS00 > Control Data (S/4HANA F2735). If line items
+        were already posted on the account with the flag set, agree the conversion with SAP support rather
+        than editing tables.
+    record_fix_template: 'G/L account {SKB1.SAKNR} (company code {SKB1.BUKRS}): reconciliation account
+      (type {SKB1.MITKZ}) managed on an open item basis.'
+
+  - id: GL034
+    field: SKB1.MITKZ
+    check_class: cross_field_check
+    grain: SKB1
+    fail_when: '`SKA1.SAKNR`.notna() & `SKA1.XBILK`.isna()'
+    applies_when:
+      SKB1.MITKZ: [A, D, K, V]
+    severity: high
+    dimension: consistency
+    message: Reconciliation account is a P&L account (SKA1.XBILK blank)
+    why_it_matters: >-
+      A reconciliation account carries the G/L total of open receivables, payables or asset values —
+      a balance sheet item by definition. As a P&L account its balance is closed to retained earnings
+      at year-end (F.16) while the sub-ledger balances carry forward, so the sub-ledger and the G/L
+      stop reconciling from the first year-end.
+    rule_authority: sap_hard_constraint
+    sap_impact: Sub-ledger and G/L diverge at every year-end; the balance sheet understates receivables,
+      payables or fixed assets.
+    fix_map:
+      __other__: Classify the account as a balance sheet account (FS00 > Type/Description, S/4HANA F2735),
+        or remove the reconciliation account type if the account is not a sub-ledger control account.
+    record_fix_template: 'G/L account {SKB1.SAKNR} (company code {SKB1.BUKRS}): reconciliation account type
+      ''{actual_value}'' on a P&L account.'
+
+  # ── FI documents: fields every posted document carries ─────────────────────
+  - id: GL035
+    field: BKPF.BUDAT
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: Accounting document has no posting date
+    why_it_matters: >-
+      The posting date decides the fiscal year and period a document updates. SAP cannot post without
+      it, so a blank value means the header was loaded or changed outside the posting logic — the
+      document is invisible to every period-based report.
+    rule_authority: sap_hard_constraint
+    sap_impact: Period balances (FAGLB03), the trial balance and every key-date report omit the document.
+    fix_map:
+      __blank__: Compare the document in FB03 with the extract; re-extract if FB03 shows a posting date,
+        otherwise raise the corrupt header with SAP support.
+    record_fix_template: 'Document {BKPF.BELNR}/{BKPF.GJAHR} (company code {BKPF.BUKRS}): posting date missing.'
+
+  - id: GL036
+    field: BKPF.BLDAT
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: Accounting document has no document date
+    why_it_matters: >-
+      The document date (invoice date) is mandatory at posting; it is the default baseline date for
+      payment terms and the date tax authorities and auditors match against the source document.
+    rule_authority: sap_hard_constraint
+    sap_impact: Due-date and cash-discount calculation, tax reporting by invoice date and audit
+      sampling lose their reference date.
+    fix_map:
+      __blank__: Compare the document in FB03 with the extract; re-extract if FB03 shows a document date,
+        otherwise raise the corrupt header with SAP support (the field cannot be changed with FB02).
+    record_fix_template: 'Document {BKPF.BELNR}/{BKPF.GJAHR} (company code {BKPF.BUKRS}): document date missing.'
+
+  - id: GL037
+    field: BKPF.BLART
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: Accounting document has no document type
+    why_it_matters: >-
+      The document type controls the number range, the permitted account types and reversal. SAP
+      cannot post without it; a blank value is a corrupt or interface-built header.
+    rule_authority: sap_hard_constraint
+    sap_impact: The document cannot be reversed (FB08) and drops out of every document-type based
+      report and authorisation check.
+    fix_map:
+      __blank__: Compare the document in FB03 with the extract; a blank document type in FB03 must be
+        repaired by SAP support.
+    record_fix_template: 'Document {BKPF.BELNR}/{BKPF.GJAHR} (company code {BKPF.BUKRS}): document type missing.'
+
+  - id: GL038
+    field: BKPF.WAERS
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: Accounting document has no document currency
+    why_it_matters: >-
+      Every amount in document currency (BSEG.WRBTR) is meaningless without the currency key; SAP
+      requires it at posting. Foreign currency valuation and open item clearing in document currency
+      are impossible.
+    rule_authority: sap_hard_constraint
+    sap_impact: Foreign currency valuation (FAGL_FCV), clearing and payment in document currency fail.
+    fix_map:
+      __blank__: Compare the document in FB03 with the extract; a blank currency in FB03 must be repaired
+        by SAP support.
+    record_fix_template: 'Document {BKPF.BELNR}/{BKPF.GJAHR} (company code {BKPF.BUKRS}): document currency missing.'
+
+  - id: GL039
+    field: BKPF.STJAH
+    check_class: cross_field_check
+    fail_when: '`BKPF.STBLG`.notna() & (`BKPF.STJAH`.isna() | (`BKPF.STJAH` == ''0000''))'
+    severity: medium
+    dimension: consistency
+    message: Reversal document number is set without its fiscal year
+    why_it_matters: >-
+      A reversal (FB08, MR8M, VF11) writes the reverse document number and its fiscal year to the
+      header together; the number alone does not identify a document. A number without a year breaks
+      the link between a document and its reversal.
+    rule_authority: sap_hard_constraint
+    sap_impact: Document flow and reversal reporting cannot find the reversing document; the original
+      may be reversed again or counted as still valid.
+    fix_map:
+      __other__: Look up the reversal in FB03 (Environment > Document flow); re-extract if FB03 shows the
+        fiscal year, otherwise raise the inconsistent header with SAP support.
+    record_fix_template: 'Document {BKPF.BELNR}/{BKPF.GJAHR}: reversed by {BKPF.STBLG} but the reversal
+      fiscal year is missing.'
+
+  # ── FI line items: account assignment by account type ────────────────────
+  - id: GL040
+    field: BSEG.HKONT
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: Line item has no G/L account
+    why_it_matters: >-
+      Every line item updates a G/L account — for customer, vendor and asset lines it is the
+      reconciliation account. A line without one updates no ledger total, so the sub-ledger and the
+      G/L stop reconciling.
+    rule_authority: sap_hard_constraint
+    sap_impact: The trial balance omits the line; sub-ledger to G/L reconciliation (F.03) shows differences.
+    fix_map:
+      __blank__: Compare the document in FB03 with the extract; re-extract if FB03 shows the account,
+        otherwise raise the corrupt line item with SAP support.
+    record_fix_template: 'Document {BSEG.BELNR}/{BSEG.GJAHR} line {BSEG.BUZEI}: G/L account missing.'
+
+  - id: GL041
+    field: BSEG.SHKZG
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: Line item has no debit/credit indicator
+    why_it_matters: >-
+      Line item amounts are stored unsigned; the debit/credit indicator alone decides the sign. A line
+      without it cannot be added into any balance and the document cannot be shown to balance.
+    rule_authority: sap_hard_constraint
+    sap_impact: Balances, the document balance check and every line item report treat the amount with
+      an undefined sign.
+    fix_map:
+      __blank__: Compare the document in FB03 with the extract; re-extract if FB03 shows the line, otherwise
+        raise the corrupt line item with SAP support.
+    record_fix_template: 'Document {BSEG.BELNR}/{BSEG.GJAHR} line {BSEG.BUZEI}: debit/credit indicator missing.'
+
+  - id: GL042
+    field: BSEG.BSCHL
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: Line item has no posting key
+    why_it_matters: >-
+      The posting key determines the account type, debit/credit and the field status of a line. SAP
+      cannot post a line without it; a blank value is an interface- or migration-built line.
+    rule_authority: sap_hard_constraint
+    sap_impact: Line item reports and payment / dunning selection by posting key skip the line.
+    fix_map:
+      __blank__: Compare the document in FB03 with the extract; a line without posting key in FB03 must be
+        repaired by SAP support.
+    record_fix_template: 'Document {BSEG.BELNR}/{BSEG.GJAHR} line {BSEG.BUZEI}: posting key missing.'
+
+  - id: GL043
+    field: BSEG.LIFNR
+    check_class: null_check
+    applies_when:
+      BSEG.KOART: [K]
+    severity: critical
+    dimension: completeness
+    message: Vendor line item (account type K) has no vendor
+    why_it_matters: >-
+      A line with account type K is a vendor open item; the vendor number is its account. Without it the
+      item belongs to nobody — it cannot be paid (F110), cleared or shown on any vendor account.
+    rule_authority: sap_hard_constraint
+    sap_impact: The payable is in the G/L reconciliation account but on no vendor account; AP and G/L do
+      not reconcile and the liability is never paid.
+    fix_map:
+      __blank__: Compare the document in FB03 with the extract; re-extract if FB03 shows the vendor,
+        otherwise raise the corrupt line item with SAP support.
+    record_fix_template: 'Document {BSEG.BELNR}/{BSEG.GJAHR} line {BSEG.BUZEI}: vendor line without vendor number.'
+
+  - id: GL044
+    field: BSEG.KUNNR
+    check_class: null_check
+    applies_when:
+      BSEG.KOART: [D]
+    severity: critical
+    dimension: completeness
+    message: Customer line item (account type D) has no customer
+    why_it_matters: >-
+      A line with account type D is a customer open item; the customer number is its account. Without
+      it the receivable cannot be dunned, collected, cleared or shown on any customer account.
+    rule_authority: sap_hard_constraint
+    sap_impact: The receivable is in the G/L reconciliation account but on no customer account; AR and
+      G/L do not reconcile and the amount is never collected.
+    fix_map:
+      __blank__: Compare the document in FB03 with the extract; re-extract if FB03 shows the customer,
+        otherwise raise the corrupt line item with SAP support.
+    record_fix_template: 'Document {BSEG.BELNR}/{BSEG.GJAHR} line {BSEG.BUZEI}: customer line without customer number.'
+
+  - id: GL045
+    field: BSEG.ANLN1
+    check_class: null_check
+    applies_when:
+      BSEG.KOART: [A]
+    severity: critical
+    dimension: completeness
+    message: Asset line item (account type A) has no asset number
+    why_it_matters: >-
+      A line with account type A posts an acquisition, retirement or transfer to a fixed asset; the
+      asset number is its account. Without it the asset sub-ledger never receives the value.
+    rule_authority: sap_hard_constraint
+    sap_impact: The asset reconciliation account and the asset sub-ledger (AW01N, S_ALR_87011963) differ;
+      depreciation is never calculated on the value.
+    fix_map:
+      __blank__: Compare the document in FB03 with the extract; re-extract if FB03 shows the asset,
+        otherwise raise the corrupt line item with SAP support.
+    record_fix_template: 'Document {BSEG.BELNR}/{BSEG.GJAHR} line {BSEG.BUZEI}: asset line without asset number.'
+
+  - id: GL046
+    field: BSEG.ANBWA
+    check_class: null_check
+    applies_when:
+      BSEG.KOART: [A]
+    severity: high
+    dimension: completeness
+    message: Asset line item (account type A) has no asset transaction type
+    why_it_matters: >-
+      The asset transaction type decides whether an asset line is an acquisition, retirement, transfer
+      or post-capitalisation, and in which column of the asset history sheet it appears. SAP requires it
+      on every asset line.
+    rule_authority: sap_hard_constraint
+    sap_impact: The asset history sheet (S_ALR_87011990) cannot place the value; depreciation and
+      retirement gain/loss are calculated wrongly or not at all.
+    fix_map:
+      __blank__: Compare the document in FB03 with the extract; re-extract if FB03 shows the transaction
+        type, otherwise raise the corrupt line item with SAP support.
+    record_fix_template: 'Document {BSEG.BELNR}/{BSEG.GJAHR} line {BSEG.BUZEI}: asset {BSEG.ANLN1} posted without
+      transaction type.'
+
+  - id: GL047
+    field: BSEG.ZFBDT
+    check_class: null_check
+    applies_when:
+      BSEG.KOART: [D, K]
+    severity: medium
+    dimension: completeness
+    message: Customer / vendor line item has no baseline date for payment
+    why_it_matters: >-
+      The net due date and the cash discount dates of every customer and vendor item are calculated
+      from the baseline date. SAP fills it on every customer and vendor line at posting; without it the
+      item has no due date.
+    rule_authority: sap_hard_constraint
+    sap_impact: The payment run (F110) and dunning (F150) cannot determine when the item is due; ageing
+      reports (S_ALR_87012078 / 87012168) put it in the wrong bucket.
+    fix_map:
+      __blank__: Set the baseline date in FB02 (vendor/customer line > Baseline date) where the field is
+        changeable; otherwise reverse and re-post the document.
+    record_fix_template: 'Document {BSEG.BELNR}/{BSEG.GJAHR} line {BSEG.BUZEI}: baseline date for payment missing.'
+
+  - id: GL048
+    field: BSEG.AUGBL
+    check_class: cross_field_check
+    fail_when: (`BSEG.AUGBL`.notna() & `BSEG.AUGDT`.isna()) | (`BSEG.AUGDT`.notna() & `BSEG.AUGBL`.isna())
+    severity: high
+    dimension: consistency
+    message: Line item clearing document and clearing date are not set together
+    why_it_matters: >-
+      Clearing writes the clearing document number and the clearing date to an item in one step, and
+      resetting the clearing (FBRA) removes both. One without the other means the item is neither
+      reliably open nor cleared.
+    rule_authority: sap_hard_constraint
+    sap_impact: Open item lists at a key date (FBL1N/FBL3N/FBL5N), the payment run and ageing reports
+      treat the item inconsistently.
+    fix_map:
+      __other__: Display the item in FB03 (Environment > Document flow). Re-extract if FB03 is consistent;
+        otherwise raise the inconsistent clearing with SAP support (do not reset it by table update).
+    record_fix_template: 'Document {BSEG.BELNR}/{BSEG.GJAHR} line {BSEG.BUZEI}: clearing document ''{actual_value}''
+      without matching clearing date (or the reverse).'
+
+  - id: GL049
+    field: BSEG.AUGDT
+    check_class: cross_field_check
+    grain: BSEG
+    fail_when: (`BSEG.AUGDT` < `BKPF.BUDAT`)
+    severity: medium
+    dimension: consistency
+    message: Line item was cleared before it was posted (clearing date before posting date)
+    why_it_matters: >-
+      An item can only be cleared on or after its own posting date; SAP rejects an earlier clearing
+      date. An item cleared before it was posted is never open at any key date, so key-date open item
+      lists and ageing reports never show it.
+    rule_authority: sap_hard_constraint
+    sap_impact: Key-date open item reports and balance confirmations disagree with the account balance.
+    fix_map:
+      __other__: Reset the clearing (FBRA) and clear again with a clearing date on or after the posting
+        date; if FBRA is not possible, raise the item with SAP support.
+    record_fix_template: 'Document {BSEG.BELNR}/{BSEG.GJAHR} line {BSEG.BUZEI}: cleared on {BSEG.AUGDT}, before
+      its posting date {BKPF.BUDAT}.'
+
+  # ── FI line items: consistency with the G/L account master ──────────────
+  - id: GL050
+    field: BSEG.HKONT
+    check_class: cross_field_check
+    grain: BSEG
+    fail_when: >-
+      `SKB1.SAKNR`.notna() & (((`BSEG.KOART` == 'K') & (`SKB1.MITKZ`.fillna('') != 'K'))
+      | ((`BSEG.KOART` == 'D') & (`SKB1.MITKZ`.fillna('') != 'D'))
+      | ((`BSEG.KOART` == 'A') & (`SKB1.MITKZ`.fillna('') != 'A')))
+    severity: critical
+    dimension: consistency
+    message: Customer, vendor or asset line posted to a G/L account that is not a reconciliation account of that type
+    why_it_matters: >-
+      A customer (D), vendor (K) or asset (A) line updates the G/L through the reconciliation account of
+      the same type. SAP determines that account from the master record and never posts the line
+      elsewhere; a mismatch means the line or the account's reconciliation type was changed outside
+      the posting logic.
+    rule_authority: sap_hard_constraint
+    sap_impact: Sub-ledger and G/L no longer reconcile (F.03, FAGLF03); the balance sheet shows the
+      receivable, payable or asset on the wrong line.
+    fix_map:
+      __other__: Check the reconciliation account in the customer/vendor/asset class master and the
+        account's reconciliation type in FS00; correct the master and repost through the sub-ledger.
+    record_fix_template: 'Document {BSEG.BELNR}/{BSEG.GJAHR} line {BSEG.BUZEI}: account type {BSEG.KOART} posted
+      to G/L account {BSEG.HKONT} with reconciliation type ''{SKB1.MITKZ}''.'
+
+  - id: GL051
+    field: BSEG.HKONT
+    check_class: cross_field_check
+    grain: BSEG
+    fail_when: (`BSEG.KOART` == 'S') & ((`SKB1.MITKZ` == 'D') | (`SKB1.MITKZ` == 'K'))
+    severity: critical
+    dimension: consistency
+    message: G/L line posted directly to a customer or vendor reconciliation account
+    why_it_matters: >-
+      A customer or vendor reconciliation account may only be updated through its sub-ledger; SAP
+      rejects direct G/L postings to it. A G/L line on such an account puts an amount into the
+      receivables or payables total that no customer or vendor account contains.
+    rule_authority: sap_hard_constraint
+    sap_impact: AR/AP sub-ledger and G/L do not reconcile; the difference cannot be cleared or paid.
+    fix_map:
+      __other__: Reverse the document (FB08) and post the amount through the customer or vendor account,
+        or to a G/L clearing account that is not a reconciliation account.
+    record_fix_template: 'Document {BSEG.BELNR}/{BSEG.GJAHR} line {BSEG.BUZEI}: G/L posting to reconciliation
+      account {BSEG.HKONT} (type {SKB1.MITKZ}).'
+
+  - id: GL052
+    field: BSEG.HKONT
+    check_class: cross_field_check
+    grain: BSEG
+    fail_when: (`SKB1.WAERS` != `BKPF.HWAER`) & (`BKPF.WAERS` != `SKB1.WAERS`)
+    applies_when:
+      BSEG.KOART: [S]
+    severity: high
+    dimension: consistency
+    message: G/L account kept in a foreign currency was posted in a different currency
+    why_it_matters: >-
+      An account whose currency differs from the company code currency (a foreign currency bank
+      account, for example) may only be posted in that currency — SAP enforces it so that the account
+      balance in account currency stays complete. A posting in another currency leaves the balance in
+      account currency wrong.
+    rule_authority: sap_hard_constraint
+    sap_impact: The account balance in account currency no longer matches the bank statement;
+      foreign currency valuation (FAGL_FCV) revalues a wrong balance.
+    fix_map:
+      __other__: Reverse the document (FB08) and post it in the account currency, or use an account kept in
+        company code currency for postings in other currencies.
+    record_fix_template: 'Document {BSEG.BELNR}/{BSEG.GJAHR} line {BSEG.BUZEI}: account {BSEG.HKONT} (currency
+      {SKB1.WAERS}) posted in {BKPF.WAERS}.'
+
+  - id: GL053
+    field: BSEG.MWSKZ
+    check_class: cross_field_check
+    grain: BSEG
+    fail_when: (`BSEG.MWSKZ` != `SKB1.MWSKZ`) & `SKB1.MWSKZ`.str.fullmatch('[A-Za-z0-9]{1,2}')
+    applies_when:
+      BSEG.KOART: [S]
+    severity: high
+    dimension: consistency
+    message: G/L line uses a tax code other than the one its account allows
+    why_it_matters: >-
+      When an account's tax category is a specific tax code (rather than '<', '>', '-', '+' or '*'),
+      SAP accepts only that tax code on the account. Another code on the line means the document was
+      loaded or changed outside the posting checks, and the VAT return reports it under the wrong code.
+    rule_authority: sap_hard_constraint
+    sap_impact: Tax is reported under the wrong code in the VAT return (S_ALR_87012357); input tax may be
+      claimed or output tax declared at the wrong rate.
+    fix_map:
+      __other__: Reverse the document (FB08) and re-post with the account's tax code, or correct the
+        account's tax category (FS00 > Control Data) if it no longer reflects the business.
+    record_fix_template: 'Document {BSEG.BELNR}/{BSEG.GJAHR} line {BSEG.BUZEI}: tax code ''{actual_value}'' on
+      account {BSEG.HKONT}, which only allows ''{SKB1.MWSKZ}''.'
+
+  # ── FI line items: amounts ───────────────────────────────────────────────
+  - id: GL054
+    field: BSEG.WRBTR
+    check_class: cross_field_check
+    grain: BSEG
+    fail_when: (`BKPF.WAERS` == `BKPF.HWAER`) & (`BSEG.DMBTR` != `BSEG.WRBTR`)
+    severity: high
+    dimension: accuracy
+    message: Document in company code currency, but the line's local and document currency amounts differ
+    why_it_matters: >-
+      When the document currency is the company code currency, SAP stores the same amount in both
+      amount fields of every line. Different amounts mean one of them was changed or loaded wrongly —
+      reports in document currency and in local currency then disagree.
+    rule_authority: sap_hard_constraint
+    sap_impact: Balances in transaction currency and local currency differ for the same account;
+      open item clearing in document currency leaves residuals.
+    fix_map:
+      __other__: Compare the document in FB03 with the extract; re-extract if FB03 shows equal amounts,
+        otherwise reverse and re-post the document.
+    record_fix_template: 'Document {BSEG.BELNR}/{BSEG.GJAHR} line {BSEG.BUZEI}: local amount {BSEG.DMBTR} but
+      document amount {BSEG.WRBTR} in the same currency {BKPF.WAERS}.'
+
+  - id: GL055
+    field: BSEG.DMBTR
+    check_class: cross_field_check
+    fail_when: (`BSEG.SHKZG` == 'S') & ((`BSEG.DMBTR` < 0) | (`BSEG.WRBTR` < 0))
+    severity: high
+    dimension: accuracy
+    message: Debit line item carries a negative amount
+    why_it_matters: >-
+      SAP stores line item amounts without sign; the debit/credit indicator carries the sign. A
+      negative amount on a debit line reverses its effect in every total that adds the amount by the
+      indicator, so the line was built outside the posting logic.
+    rule_authority: sap_hard_constraint
+    sap_impact: Balances and the document balance are wrong by twice the amount of the line.
+    fix_map:
+      __other__: Compare the document in FB03 with the extract; re-extract if FB03 shows a positive amount,
+        otherwise raise the corrupt line item with SAP support.
+    record_fix_template: 'Document {BSEG.BELNR}/{BSEG.GJAHR} line {BSEG.BUZEI}: debit line with negative amount
+      {actual_value}.'

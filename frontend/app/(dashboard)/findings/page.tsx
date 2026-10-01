@@ -24,6 +24,7 @@ import { getFindingRecords, getVersion } from "@/lib/api/versions";
 import { copyToClipboard, saveView } from "@/components/meridian/actions";
 import { SearchField, matchesSearch } from "@/components/meridian/controls";
 import { formatModuleName } from "@/lib/format";
+import { useRole } from "@/hooks/use-role";
 import type { Dimension, Finding, Severity } from "@/types/api";
 
 type SevKey = "critical" | "high" | "medium" | "low";
@@ -164,6 +165,7 @@ export default function FindingsPage() {
 }
 
 function FindingsWorkspace() {
+  const { can } = useRole();
   const params = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -231,7 +233,7 @@ function FindingsWorkspace() {
   if (isLoading) {
     return (
       <>
-        <PageHead title="Findings" route="Analyse · /findings" sub="Loading findings…" />
+        <PageHead title="Findings" route="Quality · /findings" sub="Loading findings…" />
         <div className="mn-row" style={{ gridTemplateColumns: "repeat(6, 1fr)", marginBottom: 14 }}>
           {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} className="h-20 rounded-[10px]" />
@@ -245,7 +247,7 @@ function FindingsWorkspace() {
   if (error) {
     return (
       <>
-        <PageHead title="Findings" route="Analyse · /findings" sub="Failed to load findings." />
+        <PageHead title="Findings" route="Quality · /findings" sub="Failed to load findings." />
         <div className="mn-card mn-card-pad" style={{ color: "var(--mn-neg)" }}>
           Could not reach <code>/api/v1/findings</code>.
         </div>
@@ -257,7 +259,7 @@ function FindingsWorkspace() {
     <>
       <PageHead
         title="Findings"
-        route="Analyse · /findings"
+        route="Quality · /findings"
         sub={
           <>
             <strong style={{ color: "var(--mn-neg)" }}>{counts.critical} critical</strong>,{" "}
@@ -275,7 +277,9 @@ function FindingsWorkspace() {
             >
               <BookmarkIcon /> Save view
             </button>
-            <Link href="/settings/rules" className="mn-btn mn-btn-primary">New rule</Link>
+            {can("manage_rules") && (
+              <Link href="/settings/rules" className="mn-btn mn-btn-primary">New rule</Link>
+            )}
           </>
         }
       />
@@ -292,7 +296,7 @@ function FindingsWorkspace() {
         <KPI label="High" value={counts.high} tone="warn" />
         <KPI label="Medium" value={counts.medium} tone="warn" />
         <KPI label="Low" value={counts.low} />
-        <KPI label="Modules affected" value={facets.module.length} />
+        <KPI label="Objects affected" value={facets.module.length} />
       </div>
 
       {/* Hero — severity stack */}
@@ -357,7 +361,7 @@ function FindingsWorkspace() {
           <aside className="mn-facets">
             <Facet title="Severity" items={facets.severity} activeKey={filter.severity ?? null}
               onClick={(k) => set({ severity: k ?? undefined })} />
-            <Facet title="Module" items={facets.module} activeKey={filter.module ?? null}
+            <Facet title="Object" items={facets.module} activeKey={filter.module ?? null}
               onClick={(k) => set({ module: k ?? undefined })} />
           </aside>
 
@@ -369,7 +373,7 @@ function FindingsWorkspace() {
                     <th style={{ paddingLeft: 20 }}>Severity</th>
                     <th>ID</th>
                     <th>Finding</th>
-                    <th>Module</th>
+                    <th>Object</th>
                     <th>Rule</th>
                     <th className="right">Records</th>
                     <th>Age</th>
@@ -459,7 +463,7 @@ function FindingsWorkspace() {
                 </div>
                 <h3 className="mn-detail-title">{selected.details?.message ?? selected.check_id}</h3>
                 <div className="mn-detail-meta">
-                  <div><span className="k">Module</span><span className="v">{selected.module}</span></div>
+                  <div><span className="k">Object</span><span className="v">{selected.module}</span></div>
                   <div><span className="k">Rule</span><span className="v mn-tabular">{selected.check_id}</span></div>
                   <div><span className="k">Dimension</span><span className="v">{selected.dimension}</span></div>
                   {selected.details?.field_checked && (

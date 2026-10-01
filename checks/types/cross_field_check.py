@@ -2,7 +2,7 @@ import re
 
 import pandas as pd
 
-from checks.base import BaseCheck, Evaluation, is_blank
+from checks.base import BaseCheck, Evaluation, is_blank, sap_number
 
 _BACKTICKED = re.compile(r"`([^`]+)`")
 _NUMERIC = {"DEC", "CURR", "QUAN", "INT1", "INT2", "INT4", "INT8", "FLTP", "DF16_DEC",
@@ -29,7 +29,7 @@ def typed(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
         kind = (f.type or "").upper() if f else ""
         blank = is_blank(s)
         if kind in _NUMERIC:
-            v = pd.to_numeric(s.astype("string").str.strip().str.replace(",", "", regex=False), errors="coerce")
+            v = sap_number(s)
         elif kind in _DATES:
             v = _parse_dates(s)
         elif f is None and pd.api.types.is_numeric_dtype(s):

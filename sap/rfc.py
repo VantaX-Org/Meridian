@@ -18,6 +18,11 @@ from .base import BAPICall, SAPConnectionParams, SAPConnector, SAPConnectorError
 logger = logging.getLogger("meridian.sap.rfc")
 
 
+PAYROLL_FUNCTION = "Z_MERIDIAN_PAYROLL_TOTALS"
+PAYROLL_TABLE = "ZMERIDIAN_PAYRT"
+PAYROLL_FIELDS = ["PERNR", "SEQNR", "FPPER", "INPER", "PAYDT", "LGART", "BETRG", "ANZHL", "WAERS"]
+
+
 class RFCConnector(SAPConnector):
     """SAP connector backed by pyrfc / SAP NW RFC SDK."""
 
@@ -161,6 +166,36 @@ class RFCConnector(SAPConnector):
             if len(page) < want:
                 break
         return pd.concat(pages, ignore_index=True) if pages else pd.DataFrame(columns=fields)
+
+    def count_rows(self, tables: list[str]) -> dict[str, int]:
+        """SAP's own row count per table (EM_GET_NUMBER_OF_ENTRIES, client-specific
+        COUNT(*)) — the reference an unfiltered extraction must match. {} when the
+        function is not available to this user."""
+        if self._conn is None or not tables:
+            return {}
+        try:
+            r = self._conn.call("EM_GET_NUMBER_OF_ENTRIES", IT_TABLES=[{"TABNAME": t} for t in tables])
+            return {str(x.get("TABNAME", "")).strip(): int(x.get("TABROWS") or 0) for x in r.get("IT_TABLES", [])}
+        except Exception:
+            if len(tables) == 1:
+                return {}
+        out: dict[str, int] = {}  # one unreadable table: count the others one by one
+        for t in tables:
+            out.update(self.count_rows([t]))
+        return out
+
+    def payroll_totals(self, keys: list[tuple[str, str]], chunk: int = 2000) -> tuple[pd.DataFrame, int]:
+        """Wage-type totals per payroll result (PERNR, SEQNR) from the customer-installed,
+        read-only Z_MERIDIAN_PAYROLL_TOTALS (sap/abap/, docs/payroll-rfc.md). Returns
+        (ZMERIDIAN_PAYRT rows, results the caller was not authorised to read)."""
+        rows: list[dict] = []
+        skipped = 0
+        for i in range(0, len(keys), chunk):
+            r = self.call(PAYROLL_FUNCTION, IT_RESULTS=[{"PERNR": p, "SEQNR": q} for p, q in keys[i:i + chunk]])
+            rows += r.get("ET_TOTALS") or []
+            skipped += int(r.get("EV_SKIPPED") or 0)
+        df = pd.DataFrame(rows, columns=PAYROLL_FIELDS) if rows else pd.DataFrame(columns=PAYROLL_FIELDS)
+        return df[PAYROLL_FIELDS].astype(str).apply(lambda c: c.str.strip()), skipped
 
     def execute_bapi(self, call: BAPICall) -> dict:
         if self._conn is None:

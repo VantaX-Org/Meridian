@@ -99,7 +99,8 @@ def _kind(dictionary, col: str) -> str:
 
 _PLACEMENT_SAMPLES = {"misplaced": ["ap@example.co.za", "www.acme.com", "0115551234", "GB82WEST12345698765432", "Acme"], "placeholder": ["N/A", "Acme"],
                       "swap": ["2196", "JOHANNESBURG"], "status_text": ["DO NOT USE", "Acme"],
-                      "date_range": ["20991231", "20200101"], "change_before_create": ["20200101", "20210101"]}
+                      "date_range": ["20991231", "20200101"], "change_before_create": ["20200101", "20210101"],
+                      "vat_checksum": ["DE136695977", "DE136695976"]}
 _FORMAT_SAMPLES = {"gtin": "4006381333931", "ean": "4006381333931", "iban": "GB82WEST12345698765432",
                    "luhn": "4539148803436467", "email": "ap@example.co.za", "date": TODAY}
 
@@ -109,14 +110,23 @@ def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
     cols = rule_columns(rule)
     expr = rule.get("fail_when") or rule.get("condition") or ""
     literals = [a or b for a, b in re.findall(r"'([^']*)'|\"([^\"]*)\"", expr)]
+    # columns compared with each other: also try "the same value as the other side"
+    paired: dict[str, list[str]] = {}
+    for a, b in re.findall(r"`([^`]+)`\s*(?:==|!=|<=|>=|<|>)\s*`([^`]+)`", expr):
+        paired.setdefault(a, []).append(f"@={b}")
+        paired.setdefault(b, []).append(f"@={a}")
     numbers = re.findall(r"(?<![\w.`])(-?\d+(?:\.\d+)?)(?![\w`])", expr)
     out = {}
     for c in cols:
+        if c in (rule.get("group_by") or []):
+            continue  # a group key (document number): each generated record is its own group
         vals: list[str] = []
         if c == rule.get("field") and expr and f"`{c}`" not in expr and not (rule.get("applies_when") or {}).get(c):
             continue  # a cross-field rule's anchor: keep the record id
         if rule.get("check_class") == "value_placement_check" and c in (rule.get("fields") or [rule["field"]]):
             vals += _PLACEMENT_SAMPLES[rule["family"]]
+        if c == rule.get("split_field"):
+            vals += [str(v) for v in rule["left_values"][:1] + rule["right_values"][:1]]
         if c == rule.get("field"):
             vals += [str(v) for v in (rule.get("allowed_values") or [])][:4]
             vals += [str(v) for v in (rule.get("reference_values") or [])][:4]
@@ -134,12 +144,12 @@ def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
             vals += [str(v) for v in aw[:3]]
         elif isinstance(aw, dict):
             vals += [str(v) for v in (aw.get("contains_any") or [])[:2]]
-            vals += ["N0"] if "not_in" in aw else ["X"]  # a value outside a not_in list
+            vals += [""] if aw.get("blank") else ["N0"] if "not_in" in aw else ["X"]  # inside the scope
             if "gt" in aw:
                 vals.append(str(float(aw["gt"]) + 1))
         if f"`{c}`" in expr:
             vals += literals[:4] + numbers[:4]
-        vals += _PROBES[_kind(dictionary, c)]
+        vals += paired.get(c, [])[:1] + _PROBES[_kind(dictionary, c)]
         out[c] = list(dict.fromkeys(vals))[:10]
     return out
 
@@ -163,8 +173,10 @@ def _rows(rule: dict, dictionary, values: list[dict[str, str]]) -> pd.DataFrame:
                     r[f"{e.child}.{c}"] = r[f"{e.parent}.{p}"] = r.get(f"{e.parent}.{p}", f"K{i}")
                 for f, fv in e.filter + e.prefer:
                     r[f"{e.child}.{f}"] = fv
+        same = {k: x[2:] for k, x in v.items() if isinstance(x, str) and x.startswith("@=")}
+        v = {k: x for k, x in v.items() if k not in same}
         for k, x in v.items():  # a join field keeps its partner in step, so records still link
-            if x and k in joined and len(values) > 3:
+            if x and k in joined:
                 x = f"{x}{i}"
             r[k] = x
             for e in edges:
@@ -174,6 +186,8 @@ def _rows(rule: dict, dictionary, values: list[dict[str, str]]) -> pd.DataFrame:
                             r[f"{e.parent}.{p}"] = x
                         elif k == f"{e.parent}.{p}":
                             r[f"{e.child}.{c}"] = x
+        for k, other in same.items():  # "the same value as the other side", after every other value is set
+            r[k] = r.get(other, "")
         recs.append(r)
     return pd.DataFrame(recs)
 
@@ -212,6 +226,15 @@ def prove(rule: dict, dictionary) -> tuple[str, str]:
             a[other], b[other] = "D1", "D2"
         rows = [{**{c: dup[c] if c in aw else f"U{c[-3:]}" for c in cols}, **({other: "D3"} if other else {})}, a, b]
         return _verify(rule, dictionary, rows, (3, 2), live)
+    if rule.get("check_class") == "interval_check":
+        # one group: two adjoining periods, then a third starting inside the first
+        g = {c: "G1" for c in rule["group_by"]}
+        s, e = rule["start"], rule["end"]
+        rows = [{**g, s: "20200101", e: "20201231"}, {**g, s: "20210101", e: "99991231"},
+                {**g, s: "20200601", e: "20200630"}]
+        return _verify(rule, dictionary, rows, (3, 1), live)
+    if rule.get("check_class") == "aggregate_check":
+        return _prove_aggregate(rule, dictionary, cand, live)
     combos = itertools.product(*(cand[c] for c in cols))
     values = [dict(zip(cols, combo)) for combo in itertools.islice(combos, MAX_ROWS)]
     df = _rows(rule, dictionary, values)
@@ -224,11 +247,16 @@ def prove(rule: dict, dictionary) -> tuple[str, str]:
     failing = _failing_rows(result, df, dictionary)
     if not failing:
         return "never_fails", f"no candidate record fails ({len(values)} tried)"
-    passing = [i for i in range(len(values)) if i not in failing]
-    for p in passing[:600]:
-        verdict = _verify(rule, dictionary, [values[p], values[min(failing)]], (2, 1), live)
-        if verdict[0] == "proven":
-            return verdict
+    must_blank = {c for c, a in (rule.get("applies_when") or {}).items() if isinstance(a, dict) and a.get("blank")}
+    # populated records first (a blank the rule's scope requires does not count)
+    blanks = lambda i: sum(1 for c, x in values[i].items() if x == "" and c not in must_blank)  # noqa: E731
+    passing = sorted((i for i in range(len(values)) if i not in failing), key=blanks)
+    bad = sorted(failing, key=blanks)
+    for tries, p in enumerate(passing[:600]):
+        for f in bad[: 1 if tries >= 50 else 4]:  # the first failing record may sit outside the population
+            verdict = _verify(rule, dictionary, [values[p], values[f]], (2, 1), live)
+            if verdict[0] == "proven":
+                return verdict
     return ("never_passes" if len(failing) >= result.total_count else "not_applicable",
             f"{len(failing)}/{result.total_count} fail; no passing record in the population")
 
@@ -242,3 +270,30 @@ def _verify(rule, dictionary, rows, expected, live=None) -> tuple[str, str]:
         return "error", r.error
     got = (r.total_count, r.affected_count)
     return ("proven", f"good={rows[0]} bad={rows[-1]}") if got == expected else ("unproven", f"{got} != {expected}")
+
+
+def _prove_aggregate(rule, dictionary, cand, live) -> tuple[str, str]:
+    """Two groups in the rule's scope: one whose totals agree, one whose totals differ
+    the way the rule looks for (expected: 2 groups, 1 failing)."""
+    aw = rule.get("applies_when") or {}
+    row = {c: cand[c][0] for c in cand if c in aw}
+    if rule.get("sign_field"):
+        row[rule["sign_field"]] = rule.get("debit_value", "S")
+    left, right, amt = rule["left_values"][0], rule["right_values"][0], rule["amount"]
+    off = "16" if rule.get("compare") == "right_gt_left" else "4"
+    rows = [{**row, rule["split_field"]: left, amt: "10"}, {**row, rule["split_field"]: right, amt: "10"},
+            {**row, rule["split_field"]: left, amt: "10"}, {**row, rule["split_field"]: right, amt: off}]
+    df = _rows(rule, dictionary, rows)
+    edges, _ = _graph()
+    for c in rule["group_by"]:  # each pair of rows is one group, on both sides of every join
+        same = {c} | {f"{e.parent}.{p}" for e in edges for ch, p in e.on if f"{e.child}.{ch}" == c} | \
+               {f"{e.child}.{ch}" for e in edges for ch, p in e.on if f"{e.parent}.{p}" == c}
+        for col in same & set(df.columns):
+            df[col] = ["G1", "G1", "G2", "G2"]
+    _, r = run_rule(rule, TableFrames.from_flat(df, dictionary, module=rule.get("module")), live or {})
+    if r is None:
+        return "not_applicable", "no result on the proof records"
+    if r.error:
+        return "error", r.error
+    got = (r.total_count, r.affected_count)
+    return ("proven", f"groups={rows}") if got == (2, 1) else ("unproven", f"{got} != (2, 1)")

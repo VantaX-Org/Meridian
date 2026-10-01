@@ -22,3 +22,20 @@ CDHDR: {where: "UDATE >= '{months_ago:3}'"}
 CDPOS: {via: CDHDR}
 USMD120C: {where: "USMD_CREATED_AT >= '{months_ago:24}000000'"}
 USMD1213: {via: USMD120C}
+# open items are read in full (they are the live sub-ledger); cleared items by clearing date
+BSAK:  {where: "AUGDT >= '{months_ago:12}'"}
+BSAD:  {where: "AUGDT >= '{months_ago:12}'"}
+EKBE:  {via: EKPO}
+RBKP:  {where: "BUDAT >= '{months_ago:24}'"}
+RSEG:  {via: RBKP}
+# condition records still valid today or later (expired prices cannot be used)
+KONH:  {where: "DATBI >= '{months_ago:0}'"}
+KONP:  {via: KONH}
+A004:  {where: "DATBI >= '{months_ago:0}'"}
+A005:  {where: "DATBI >= '{months_ago:0}'"}
+A304:  {where: "DATBI >= '{months_ago:0}'"}
+A305:  {where: "DATBI >= '{months_ago:0}'"}
+A017:  {where: "DATBI >= '{months_ago:0}'"}
+A018:  {where: "DATBI >= '{months_ago:0}'"}
+HRPY_RGDIR: {where: "FPEND >= '{months_ago:24}'"}
+ZMERIDIAN_PAYRT: {via: HRPY_RGDIR}  # read through the customer's RFC function, not RFC_READ_TABLE

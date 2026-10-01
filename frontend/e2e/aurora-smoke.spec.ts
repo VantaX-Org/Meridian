@@ -61,14 +61,16 @@ test.describe("Aurora — smoke across the four workspaces", () => {
   });
 });
 
-test.describe("Aurora — nav group is present", () => {
-  test("Sidebar exposes the four Aurora routes", async ({ page }) => {
+test.describe("Aurora — routes stay wired", () => {
+  test("The four Aurora routes resolve", async ({ page }) => {
     await page.goto("/", { waitUntil: "domcontentloaded" });
-    // Each Aurora route should be linkable from the nav. Without
-    // authenticating we won't see the rendered sidebar, but the
-    // presence of the Aurora label in the layout's NAV_GROUPS is
-    // covered by the grep-level assertion in the lint suite; this
-    // test verifies at runtime that the listed URLs resolve.
+    // /workbench (My queue), /process (Process map) and /admin (Users &
+    // audit) are nav items in frontend/lib/nav.ts; /command-centre left
+    // the nav and is linked from the Command Centre at / as "Live
+    // operations". Without authenticating we won't see the rendered
+    // sidebar — nav contents are covered by the grep-level assertions
+    // in tests/test_phase_o_nav_redesign.py — so this test verifies at
+    // runtime that the URLs still resolve.
     for (const href of [
       "/command-centre",
       "/workbench",

@@ -292,3 +292,145 @@ rules:
     record_fix_template: >-
       Access risk {GRACSODRISK.RISKID}: RISK_LEVEL is {actual_value}. Assign the
       correct severity via GRC Access Control.
+
+  # ── Breadth: target system, role master, certification, risk master ──
+
+  - id: GRC016
+    field: GRACUSERROLE.CONNECTOR
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: Role assignment has no target system (connector)
+    why_it_matters: Every user-role assignment in Access Control is provisioned to a specific system through its
+      connector (GRACUSERROLE.CONNECTOR). Without it the assignment cannot be provisioned, de-provisioned or included
+      in system-level risk analysis — the user's access in the real system is unknown.
+    rule_authority: sap_hard_constraint
+    sap_impact: Access risk analysis and user access reviews miss this assignment; removal requests cannot be
+      provisioned.
+    fix_map:
+      __blank__: Re-run the role/user synchronisation jobs (GRAC_REPOSITORY_OBJECT_SYNC, GRAC_ROLE_USAGE_SYNC) or
+        correct the assignment's system in Access Control.
+    record_fix_template: 'Assignment {GRACUSERROLE.USERROLEID} (user {GRACUSERROLE.USER_ID}): no connector.'
+
+  - id: GRC017
+    field: GRACUSERROLE.CONNECTOR
+    check_class: referential_check
+    reference_values: []
+    reference_table: GRFNCCICONNECTOR
+    reference_field: CONNECTOR
+    severity: high
+    dimension: consistency
+    message: Role assignment points to a connector that is not configured in GRC
+    why_it_matters: Assignments to a connector that no longer exists (a decommissioned or renamed system) are never
+      synchronised again. They stay in reviews and risk reports as phantom access or hide real access in the
+      renamed system.
+    rule_authority: sap_hard_constraint
+    sap_impact: Risk analysis and user access reviews report on a system that is not connected.
+    fix_map:
+      __other__: Connector '{invalid_value}' is not configured. Clean up assignments of decommissioned systems
+        (GRAC_REPOSITORY_OBJECT_SYNC with full sync) or restore the connector (SPRO > GRC > Common Component
+        Settings > Integration Framework).
+    record_fix_template: 'Assignment {GRACUSERROLE.USERROLEID}: connector ''{actual_value}'' is not configured.'
+
+  - id: GRC018
+    field: GRACROLE.ROLE_TYPE
+    check_class: null_check
+    grain: GRACROLE
+    severity: high
+    dimension: completeness
+    message: Role has no role type
+    why_it_matters: The role type (single, composite, derived, business, …) decides how Access Control analyses and
+      provisions a role — a composite role is expanded into its single roles for risk analysis. A role without a type
+      cannot be analysed correctly.
+    rule_authority: sap_hard_constraint
+    sap_impact: Risk analysis of the role and of every user holding it is incomplete; role provisioning fails.
+    fix_map:
+      __blank__: Maintain the role type in Business Role Management (NWBC > Access Management > Role Management), or
+        re-import the role.
+    record_fix_template: 'Role {GRACROLE.ROLE_NAME}: no role type.'
+
+  - id: GRC019
+    field: GRACROLE.ROLE_TYPE
+    check_class: referential_check
+    grain: GRACROLE
+    reference_values: []
+    reference_table: GRACROLETYPE
+    reference_field: ROLE_TYPE
+    severity: medium
+    dimension: consistency
+    message: Role type is not configured in GRC (GRACROLETYPE)
+    why_it_matters: Role types are configured in GRC; a role with an unknown type cannot be processed by role
+      methodology, analysis or provisioning.
+    rule_authority: sap_hard_constraint
+    sap_impact: The role cannot be analysed or provisioned.
+    fix_map:
+      __other__: Role type '{invalid_value}' is not configured. Correct the role in Role Management.
+    record_fix_template: 'Role {GRACROLE.ROLE_NAME}: role type ''{actual_value}'' is not configured.'
+
+  - id: GRC020
+    field: GRACROLE.CERTIFY_DUE
+    check_class: freshness_check
+    grain: GRACROLE
+    max_age_hours: 0
+    applies_when:
+      GRACROLE.LOCKED: {blank: true}
+    severity: medium
+    dimension: timeliness
+    message: Role certification is overdue
+    why_it_matters: Roles with a certification period must be re-certified by their owner by the due date
+      (GRACROLE.CERTIFY_DUE). An overdue certification means the role's content has not been reviewed within the
+      period the organisation committed to — a standard SOX / ITGC access-control finding.
+    rule_authority: best_practice
+    sap_impact: Audit finding on periodic role content review; unreviewed authorisations stay in production roles.
+    fix_map:
+      __other__: Launch the role certification review for the role (GRAC_SOD_REVIEW / Role Certification) and have the
+        owner certify or update it.
+    record_fix_template: 'Role {GRACROLE.ROLE_NAME}: certification due {actual_value} is overdue.'
+
+  - id: GRC021
+    field: GRACSODRISK.BZPRCID
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: Access risk is not assigned to a business process
+    why_it_matters: Every access risk belongs to a business process (procure-to-pay, order-to-cash, …). Risk owners,
+      mitigation approvers and risk reports are organised by business process; a risk without one has no owner and
+      drops out of process-level reporting.
+    rule_authority: sap_hard_constraint
+    sap_impact: The risk is missing from business-process risk reports and has no responsible approver.
+    fix_map:
+      __blank__: Assign the business process in Access Risk maintenance (NWBC > Rule Setup > Access Risk).
+    record_fix_template: 'Access risk {GRACSODRISK.RISKID}: no business process.'
+
+  - id: GRC022
+    field: GRACSODRISK.RISKTYPE
+    check_class: domain_value_check
+    severity: high
+    dimension: validity
+    message: Access risk type is not a valid SAP value
+    why_it_matters: The risk type is a fixed SAP domain (1 segregation of duties, 2 critical action, 3 critical
+      permission). Rule generation builds different rules per type; any other value produces no rules, so the risk is
+      never detected.
+    rule_authority: sap_hard_constraint
+    sap_impact: No access rules are generated for the risk; violations are never reported.
+    fix_map:
+      __other__: Correct the risk type in Access Risk maintenance and regenerate the rules.
+    record_fix_template: 'Access risk {GRACSODRISK.RISKID}: risk type ''{actual_value}'' is not valid.'
+
+  - id: GRC023
+    field: GRACROLE.ROLE_NAME
+    check_class: uniqueness_check
+    fields: [GRACROLE.ROLE_NAME, GRACROLE.CONNECTOR_GRP]
+    grain: GRACROLE
+    severity: high
+    dimension: uniqueness
+    message: The same role name exists twice in one landscape (connector group)
+    why_it_matters: Access Control identifies a role by its name within a landscape. Two role records with the same
+      name in one connector group split the role's assignments, owners and mitigations between them, so risk analysis
+      and reviews see only half the picture.
+    rule_authority: sap_hard_constraint
+    sap_impact: Role usage, ownership and certification are split across duplicates; provisioning picks either.
+    fix_map:
+      __other__: Merge the duplicate role records — reassign users and owners to one and delete the other (Role
+        Management / GRAC_ROLE_DELETE).
+    record_fix_template: 'Role {GRACROLE.ROLE_NAME} exists more than once in connector group {GRACROLE.CONNECTOR_GRP}.'

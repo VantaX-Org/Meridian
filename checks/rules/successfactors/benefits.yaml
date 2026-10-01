@@ -149,3 +149,55 @@ rules:
       __blank__: Review duplicate enrollments in Admin Center > Benefits. End-date or delete the incorrect enrollment. Verify
         carrier feed after correction.
 
+  - id: BEN012
+    field: BENEFITENROLLMENT.EMPLOYEE_COST
+    check_class: cross_field_check
+    fail_when: '`BENEFITENROLLMENT.EMPLOYEE_COST` < 0'
+    require_populated: true
+    severity: medium
+    dimension: validity
+    message: Employee contribution must not be negative
+    why_it_matters: The employee contribution is deducted through payroll. A negative contribution turns the deduction into
+      a payment to the employee and understates the employee's share in carrier and cost reporting.
+    rule_authority: best_practice
+    sap_impact: Payroll pays the contribution to the employee instead of deducting it; benefit cost reporting wrong.
+    fix_map:
+      __blank__: Correct the employee contribution on the enrolment via Benefits Administration; refunds are handled as separate
+        claims, not negative contributions.
+    record_fix_template: 'Enrolment {BENEFITENROLLMENT.USERID}/{BENEFITENROLLMENT.PLAN_ID}: employee contribution {BENEFITENROLLMENT.EMPLOYEE_COST}
+      is negative.'
+  - id: BEN013
+    field: BENEFITENROLLMENT.EMPLOYER_COST
+    check_class: cross_field_check
+    fail_when: '`BENEFITENROLLMENT.EMPLOYER_COST` < 0'
+    require_populated: true
+    severity: medium
+    dimension: validity
+    message: Employer contribution must not be negative
+    why_it_matters: A negative employer contribution reduces the recorded employer cost of the plan and, where the employer
+      share is a taxable fringe benefit, the employee's taxable value.
+    rule_authority: best_practice
+    sap_impact: Employer benefit cost understated; taxable fringe-benefit value and carrier premium files wrong.
+    fix_map:
+      __blank__: Correct the employer contribution on the enrolment via Benefits Administration.
+    record_fix_template: 'Enrolment {BENEFITENROLLMENT.USERID}/{BENEFITENROLLMENT.PLAN_ID}: employer contribution {BENEFITENROLLMENT.EMPLOYER_COST}
+      is negative.'
+  - id: BEN014
+    field: BENEFITENROLLMENT.PLAN_TYPE
+    check_class: null_check
+    severity: high
+    dimension: consistency
+    message: Enrolment references a benefit whose type cannot be resolved (benefit missing or deleted)
+    why_it_matters: Benefit type is mandatory on every Benefit object. An enrolment whose plan returns no benefit type points
+      to a benefit that was deleted or never existed, so eligibility, contribution rules and the carrier feed cannot be determined
+      for it.
+    rule_authority: sap_hard_constraint
+    sap_impact: Enrolment excluded from carrier files and benefit statements; payroll deduction has no plan rules behind it.
+    fix_map:
+      __blank__: Re-enrol the employee in an existing benefit via Benefits Administration, or restore the benefit definition
+        in Manage Data > Benefit.
+    record_fix_template: 'Enrolment {BENEFITENROLLMENT.USERID}: plan ''{BENEFITENROLLMENT.PLAN_ID}'' does not resolve to a
+      benefit.'
+    applies_when:
+      BENEFITENROLLMENT.PLAN_ID:
+        populated: true

@@ -143,14 +143,21 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanaly
             # source system's own DDIC (live snapshot) over the SAP-standard bundle
             dictionary = dictionary_for(session, metadata.get("system_id"))
             # rules generated from this system's own field-status customizing
-            from checks.field_status_rules import extra_fields, load_config
-            from sap.field_status_config import resolve_all
-            fs_resolutions = resolve_all(load_config(session, metadata.get("system_id")))
+            from checks.field_status_rules import extra_fields, load_config, material_fields
+            from sap.field_status_config import conversion_maps, resolve_all, resolve_material
+            fs_config = load_config(session, metadata.get("system_id"))
+            fs_resolutions = resolve_all(fs_config)
+            fs_material = resolve_material(fs_config, dictionary)
+        fs_extra = {**extra_fields(fs_resolutions)}
+        for t, fs in material_fields(fs_material).items():
+            fs_extra[t] = fs_extra.get(t, set()) | fs
         frames, df, row_count, col_count = load_dataset(
-            parquet_path, dictionary, modules,
-            extra={f"{t}.{f}" for t, fs in extra_fields(fs_resolutions).items() for f in fs})
+            parquet_path, dictionary, modules, extra={f"{t}.{f}" for t, fs in fs_extra.items() for f in fs},
+            conversions=conversion_maps(fs_config))
 
         logger.info(f"Loaded DataFrame: {row_count} rows, {col_count} columns")
+        frames.incomplete = {c["table"] for c in metadata.get("coverage") or []
+                             if c.get("complete") is False or c.get("truncated")}
 
         # Records per module = rows of the module's anchor table (flat upload: all rows).
         from checks.frames import _graph
@@ -190,18 +197,26 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanaly
         with Session(engine) as session:
             session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
             rule_overrides = load_overrides(session)
-            from checks.field_status_rules import generate
+            from checks.field_status_rules import generate, generate_material
             fs_rules = generate(fs_resolutions, modules)
+            material_rules = generate_material(fs_material, modules)
             session.execute(text("UPDATE analysis_versions SET metadata = COALESCE(metadata, '{}'::jsonb) "
                                  "|| jsonb_build_object('field_status', CAST(:fs AS jsonb)) WHERE id = :vid"),
                             {"vid": version_id, "fs": json.dumps([
                                 {"segment": r.segment.id, "definition": r.fauna, "reason": r.reason,
                                  "account_groups": len(r.groups),
                                  "rules": sum(1 for x in fs_rules if x["grain"] == r.segment.record_table)}
-                                for r in fs_resolutions])})
+                                for r in fs_resolutions] + ([
+                                {"segment": "material_master", "definition": "T130A/T130F",
+                                 "reason": "" if fs_material else "material field selection not read from the system",
+                                 "account_groups": len({g for v in fs_material.values() for g in v}),
+                                 "rules": len(material_rules)}] if "material_master" in modules else []))})
             session.commit()
+            fs_rules = fs_rules + material_rules
+            from checks.field_status_rules import suppressed_fields
+            fs_suppressed = suppressed_fields(fs_resolutions, fs_material)
         # misplaced values, placeholders, swaps, dead-in-text records (checks/value_placement.py)
-        from checks import value_placement
+        from checks import config_rules, country_rules, value_placement
         from checks.runner import _find_module_yaml
         vp_rules = []
         for m in modules:
@@ -210,8 +225,11 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanaly
             except FileNotFoundError:
                 continue
             vp_rules += value_placement.generate(m, static, dictionary)
+            vp_rules += country_rules.generate(m, static, fs_config, dictionary)  # T005 / BNKA
+            vp_rules += config_rules.generate(m, fs_config, dictionary)  # T685A / T582A
         fs_rules = fs_rules + vp_rules
         module_count = max(len(modules), 1)
+        outliers: dict[str, dict] = {}
         for idx, module_name in enumerate(modules):
             logger.info(f"Running checks for module: {module_name}")
             self.update_state(state='PROGRESS', meta={
@@ -231,8 +249,10 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanaly
                 total_rows=row_count,
             )
             results = execute_checks(module_name, frames, tenant_id, reference_values=live_refs,
-                                     overrides=rule_overrides, extra_rules=fs_rules)
+                                     overrides=rule_overrides, extra_rules=fs_rules, suppressed=fs_suppressed)
             all_results.extend(results)
+            from checks.outliers import find as find_outliers
+            outliers.update(find_outliers(module_name, frames))  # reported, never scored
             # Post-module tick so users see movement between modules.
             rows_done_after = int(((idx + 1) / module_count) * row_count)
             update_task_progress(
@@ -413,7 +433,7 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanaly
                     SET status = 'complete', dqs_summary = CAST(:summary AS jsonb),
                         metadata = COALESCE(metadata, '{}'::jsonb)
                             || jsonb_build_object('rule_set', CAST(:rs AS text), 'analysed_at', CAST(:at AS text),
-                                                  'field_usage', CAST(:fu AS jsonb))
+                                                  'field_usage', CAST(:fu AS jsonb), 'outliers', CAST(:ol AS jsonb))
                             || jsonb_build_object('analyses', COALESCE(metadata->'analyses', '[]'::jsonb)
                                                               || jsonb_build_array(CAST(:an AS jsonb)))
                     WHERE id = :vid AND tenant_id = :tid
@@ -423,6 +443,7 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanaly
                     "tid": tenant_id,
                     "summary": json.dumps(dqs_summary),
                     "rs": analysis["rule_set"], "at": analysis["at"], "an": json.dumps(analysis),
+                    "ol": json.dumps(outliers),
                     # a field systematically used for other data (>30 % of ≥20 values): one field-level
                     # finding, not scored — the records are already flagged by its VP- rule
                     "fu": json.dumps([{"field": r.field, "module": r.module, "share": round(r.affected_count / r.total_count, 3),

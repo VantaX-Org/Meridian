@@ -82,7 +82,8 @@ TARGET = {  # where the value belongs (fix guidance)
 # ── detectors: vectorised over a Series of stripped, non-blank strings ────
 _EMAIL = re.compile(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(?:\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}")
 _URL = re.compile(r"(?i)\b(?:https?://|www\.)[^\s]+")
-_PHONE_KW = re.compile(r"(?i)\b(?:tel|telephone|phone|ph|cell|mobile|mob|fax)\b\.?\s*:?\s*\+?\(?\d[\d\s().\-]{5,}")
+# a phone keyword followed by a number of >= 7 digits ('pH 7.5' and 'load cell 0-500 kg' are too short)
+_PHONE_KW = re.compile(r"(?i)\b(?:tel|telephone|phone|ph|cell|mobile|mob|fax)\b\.?\s*:?\s*\+?\(?(?:\d[\s().\-]*){7,}")
 _PHONE = re.compile(r"^(?:\+|00|0|\()[\d\s().\-]+$")
 _PO_BOX = re.compile(r"(?i)\b(?:p\.?\s?o\.?\s?box|post\s?box|postbus|postfach|private\s+bag|p\.?\s?o\.?\s+bag|"
                      r"bo[iî]te\s+postale|apartado\s+postal|caixa\s+postal|casilla)\b")
@@ -140,6 +141,59 @@ DETECTORS = {
     "care_of_primary": lambda s: s.str.contains(_CARE_OF),
     "attention": lambda s: s.str.contains(_ATTN),
 }
+
+
+# EU VAT check digits — only published algorithms; other countries are not judged
+def _vat_be(d: str) -> bool:
+    return len(d) == 10 and 97 - int(d[:8]) % 97 == int(d[8:])
+
+
+def _vat_de(d: str) -> bool:  # ISO 7064 MOD 11,10
+    if len(d) != 9:
+        return False
+    product = 10
+    for c in d[:8]:
+        total = (int(c) + product) % 10 or 10
+        product = (2 * total) % 11
+    check = 11 - product
+    return (0 if check == 10 else check) == int(d[8])
+
+
+def _vat_it(d: str) -> bool:  # Luhn over the 11 digits
+    if len(d) != 11:
+        return False
+    total = 0
+    for i, c in enumerate(d):
+        n = int(c) * (2 if i % 2 else 1)
+        total += n - 9 if n > 9 else n
+    return total % 10 == 0
+
+
+def _vat_fr(d: str) -> bool:  # numeric key + SIREN
+    return len(d) == 11 and int(d[:2]) == (12 + 3 * (int(d[2:]) % 97)) % 97
+
+
+VAT_CHECKS = {"BE": (_vat_be, r"^\d{10}$"), "DE": (_vat_de, r"^\d{9}$"), "IT": (_vat_it, r"^\d{11}$"),
+              "FR": (_vat_fr, r"^\d{11}$")}
+
+
+def vat_status(v: str) -> str:
+    """'ok' | 'bad' (well-formed, wrong check digits) | 'n/a' (country not checked or malformed)."""
+    v = re.sub(r"[\s.\-]", "", v.upper())
+    cc, body = v[:2], v[2:]
+    if cc not in VAT_CHECKS or not re.fullmatch(VAT_CHECKS[cc][1], body):
+        return "n/a"  # malformed is the format rule's finding, not this one
+    return "ok" if VAT_CHECKS[cc][0](body) else "bad"
+
+
+_LEGAL_FORMS = re.compile(r"\b(?:PTY|PROPRIETARY|LTD|LIMITED|PLC|GMBH|MBH|AG|KG|OHG|EK|BV|NV|SA|SAS|SARL|SPA|SRL|"
+                          r"INC|INCORPORATED|LLC|CORP|CORPORATION|CO|COMPANY|CC|AB|OY|AS|APS|SE)\b")
+
+
+def name_key(s: pd.Series) -> pd.Series:
+    """'Acme (Pty) Ltd.' == 'ACME PTY LTD' == 'acme': legal form, case and punctuation ignored."""
+    t = s.astype("string").str.upper().str.replace(r"[^0-9A-Z ]", " ", regex=True)
+    return t.str.replace(_LEGAL_FORMS, " ", regex=True).str.replace(r"\s+", "", regex=True)
 
 
 @lru_cache(maxsize=1)
@@ -259,6 +313,20 @@ def generate(module: str, static_rules: list[dict], dictionary) -> list[dict]:
                           "why_it_matters": "A change date before the creation date means one of them was loaded "
                                             "or migrated wrongly; change-history and audit reporting cannot be "
                                             "trusted for this record."})
+        if dictionary.field(t, "STCEG") is not None:
+            rules.append({**base, "id": f"VT-{t}-STCEG", "family": "vat_checksum", "field": f"{t}.STCEG",
+                          "severity": "high", "dimension": "validity",
+                          "message": f"VAT registration number ({t}.STCEG) has wrong check digits",
+                          "why_it_matters": "A VAT number with wrong check digits is not a registered number: "
+                                            "EC sales lists and input-VAT claims citing it are rejected."})
+        if t in ("LFA1", "KNA1") and all(dictionary.field(t, x) for x in ("NAME1", "PSTLZ", "LAND1")):
+            rules.append({**base, "check_class": "uniqueness_check", "id": f"ND-{t}", "normalize": "name",
+                          "field": f"{t}.NAME1", "fields": [f"{t}.NAME1", f"{t}.PSTLZ", f"{t}.LAND1"],
+                          "severity": "medium", "dimension": "uniqueness",
+                          "message": f"Probable duplicate: same name (ignoring legal form and punctuation), "
+                                     f"postal code and country ({t})",
+                          "why_it_matters": "The same business created twice splits its history, limits and open "
+                                            "items across accounts and defeats duplicate-invoice and credit checks."})
         if t in SWAP_PAIRS and all(dictionary.field(t, x) for x in SWAP_PAIRS[t]):
             pc, city = SWAP_PAIRS[t]
             rules.append({**base, "id": f"SW-{t}-{pc}-{city}", "family": "swap", "field": f"{t}.{city}",

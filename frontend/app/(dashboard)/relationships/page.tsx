@@ -52,7 +52,7 @@ export default function RelationshipsPage() {
   if (isLoading) {
     return (
       <>
-        <PageHead title="Relationships" route="Govern · /relationships" sub="Loading…" />
+        <PageHead title="Relationships" route="Master data · /relationships" sub="Loading…" />
         <Skeleton className="h-[420px] rounded-[10px]" />
       </>
     );
@@ -60,7 +60,7 @@ export default function RelationshipsPage() {
   if (error) {
     return (
       <>
-        <PageHead title="Relationships" route="Govern · /relationships" sub="Failed to load." />
+        <PageHead title="Relationships" route="Master data · /relationships" sub="Failed to load." />
         <div className="mn-card mn-card-pad" style={{ color: "var(--mn-neg)" }}>
           Could not reach <code>/api/v1/relationships</code>.
         </div>
@@ -72,7 +72,7 @@ export default function RelationshipsPage() {
     <>
       <PageHead
         title="Relationships"
-        route="Govern · /relationships"
+        route="Master data · /relationships"
         sub={
           <>
             <strong style={{ color: "var(--mn-ink-700)" }}>{nodes.length} entities</strong> linked by{" "}

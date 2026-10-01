@@ -164,6 +164,8 @@ function MDMPanel() {
 
 /* ── Operational ──────────────────────────────────────────────── */
 function OperationalPanel() {
+  // Reference time for age/SLA maths, fixed per mount (Date.now() is impure in render).
+  const [now] = useState(() => Date.now());
   const systemsQ = useQuery({ queryKey: ["systems.list"], queryFn: getSystems });
   const systems: SAPSystem[] = systemsQ.data ?? [];
   const runsResults = useQueries({
@@ -205,7 +207,7 @@ function OperationalPanel() {
     return <Skeleton className="h-[420px] rounded-[10px]" />;
   }
 
-  const cutoff24h = Date.now() - 24 * 3600 * 1000;
+  const cutoff24h = now - 24 * 3600 * 1000;
   const recent = allRuns.filter((r) => new Date(r.started_at).getTime() >= cutoff24h);
   const completed = allRuns.filter((r) => r.completed_at);
   const durations = completed
@@ -725,7 +727,7 @@ export default function AnalyticsPage() {
     <>
       <PageHead
         title="Analytics"
-        route="Analyse · /analytics"
+        route="Overview · /analytics"
         sub={
           <>
             Multi-lens analytical drilldown.{" "}

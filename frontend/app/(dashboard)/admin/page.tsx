@@ -151,7 +151,7 @@ export default function AdminPage() {
   if (usersQ.isLoading || licenceQ.isLoading) {
     return (
       <>
-        <PageHead title="Admin" route="Aurora · /admin" sub="Loading…" />
+        <PageHead title="Users & audit" route="Admin · /admin" sub="Loading…" />
         <Skeleton className="h-[420px] rounded-[10px]" />
       </>
     );
@@ -159,7 +159,7 @@ export default function AdminPage() {
   if (usersQ.error || licenceQ.error) {
     return (
       <>
-        <PageHead title="Admin" route="Aurora · /admin" sub="Failed to load." />
+        <PageHead title="Users & audit" route="Admin · /admin" sub="Failed to load." />
         <div className="mn-card mn-card-pad" style={{ color: "var(--mn-neg)" }}>
           Could not reach <code>/api/v1/users</code> or <code>/api/v1/licence</code>.
         </div>
@@ -174,8 +174,8 @@ export default function AdminPage() {
   return (
     <>
       <PageHead
-        title="Admin"
-        route="Aurora · /admin"
+        title="Users & audit"
+        route="Admin · /admin"
         sub={
           <>
             <strong style={{ color: "var(--mn-ink-700)" }}>{licence.tier ?? "Estate"}</strong> ·{" "}

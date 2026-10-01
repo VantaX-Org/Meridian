@@ -1,0 +1,67 @@
+{
+ "domain": "DRUKZ",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": true,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "It was not printed"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Printing at item level (previous procedure)"
+  },
+  {
+   "low": "S",
+   "high": null,
+   "text": "Printing at totals level (previous procedure)"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Total: General"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Total: if value <> zero"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Total: if value <> previous value"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Total: if value <> zero and value <> previous value"
+  },
+  {
+   "low": "a",
+   "high": null,
+   "text": "at item: General"
+  },
+  {
+   "low": "b",
+   "high": null,
+   "text": "at item: if value <> zero"
+  },
+  {
+   "low": "c",
+   "high": null,
+   "text": "at item: if value <> previous value"
+  },
+  {
+   "low": "d",
+   "high": null,
+   "text": "at item: if value <> zero and value <> previous value"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

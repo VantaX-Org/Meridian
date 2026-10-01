@@ -88,10 +88,10 @@ rules:
     Fiori app F3893.'
 - id: AP007
   field: LFA1.STCD1
-  check_class: null_check
+  check_class: cross_field_check
   severity: low
   dimension: completeness
-  message: Tax number 1 missing — required for VAT reporting and withholding tax
+  message: Vendor has no tax identification (neither tax number 1 nor VAT registration number)
   why_it_matters: STCD1 (tax number 1) is required for VAT reporting, withholding tax calculation, and tax authority submissions.
     Without it, tax reports are incomplete and the company may face compliance penalties during tax audits.
   rule_authority: best_practice
@@ -101,6 +101,7 @@ rules:
     __blank__: 'In ECC: obtain the vendor''s VAT registration number or tax ID and set via T-code FK02 > General Data > Control
       tab. In S/4HANA: use Fiori app F3893 (Manage Business Partner) > Tax Numbers section.'
   record_fix_template: 'Vendor {LFA1.LIFNR}: STCD1 is {actual_value}. Set the tax number via FK02 / Fiori app F3893.'
+  fail_when: '`LFA1.STCD1`.isna() & `LFA1.STCEG`.isna()'
 - id: AP009
   field: ADR6.SMTP_ADDR
   check_class: null_check
@@ -589,3 +590,824 @@ rules:
     __other__: Set a valid vendor reconciliation account (XK02, company code data; BP in S/4HANA), or correct the
       account's 'reconciliation account for account type' in FS00.
   record_fix_template: 'Vendor company-code record {LFB1.BUKRS}: reconciliation account {LFB1.AKONT} is not a vendor reconciliation account.'
+- id: XDUP001
+  field: LFA1.STCEG
+  check_class: uniqueness_check
+  fields:
+  - LFA1.STCEG
+  - LFB1.BUKRS
+  normalize: alnum
+  severity: high
+  dimension: uniqueness
+  message: Several vendors share the same VAT registration number
+  why_it_matters: 'Two vendor accounts with one VAT registration number are almost always the same legal entity created twice:
+    invoices, payments and spend analytics split across both, duplicate-invoice checks miss cross-account duplicates, and
+    a blocked account can be bypassed through the other.'
+  rule_authority: best_practice
+  sap_impact: Duplicate vendor masters; duplicate payments across accounts; fragmented spend.
+  fix_map:
+    __other__: Merge the duplicate vendors (block and flag the redundant account for deletion, move open items), or correct
+      the VAT number.
+  record_fix_template: Record {LFA1.STCEG} shares LFA1.STCEG with another record.
+  grain: LFB1
+  applies_when:
+    LFB1.LNRZE:
+      blank: true
+- id: XDUP002
+  field: LFA1.STCD1
+  check_class: uniqueness_check
+  fields:
+  - LFA1.STCD1
+  - LFB1.BUKRS
+  normalize: alnum
+  severity: medium
+  dimension: uniqueness
+  message: Several vendors share the same tax number 1
+  why_it_matters: Two vendor accounts with one tax number are almost always the same legal entity created twice.
+  rule_authority: best_practice
+  sap_impact: Duplicate vendor masters; tax reporting split across accounts.
+  fix_map:
+    __other__: Merge the duplicate vendors or correct the tax number.
+  record_fix_template: Record {LFA1.STCD1} shares LFA1.STCD1 with another record.
+  grain: LFB1
+  applies_when:
+    LFB1.LNRZE:
+      blank: true
+- id: XDUP003
+  field: LFBK.BANKN
+  check_class: uniqueness_check
+  fields: [LFBK.BANKS, LFBK.BANKL, LFBK.BANKN]
+  grain: LFBK
+  severity: high
+  dimension: uniqueness
+  message: The same bank account is maintained for several vendors
+  why_it_matters: >-
+    Payments to one bank account from several vendor accounts are either a duplicate vendor or a payment-fraud pattern (a changed bank account pointing to another vendor's or an employee's account). Every occurrence must be explained.
+  rule_authority: best_practice
+  sap_impact: Payments for different vendors land in one account; classic payment-redirection fraud pattern.
+  fix_map:
+    __other__: Verify each vendor's bank details with the supplier (call-back to a known number); remove the account from vendors it does not belong to (XK02 / BP).
+  record_fix_template: 'Record {LFBK.BANKS} shares LFBK.BANKS, LFBK.BANKL, LFBK.BANKN with another record.'
+- id: XLNK001
+  field: LFA1.KUNNR
+  check_class: cross_field_check
+  grain: LFA1
+  fail_when: '`KNA1.KUNNR`.isna() | `KNA1.LIFNR`.isna() | (`KNA1.LIFNR` != `LFA1.LIFNR`)'
+  applies_when:
+    LFA1.KUNNR: {populated: true}
+  severity: medium
+  dimension: consistency
+  message: The vendor's linked customer does not exist or does not link back to this vendor
+  why_it_matters: A vendor linked to a customer (LFA1.KUNNR) is offset against it in payment and dunning runs (with
+    clearing flags LFB1.XVERR / KNB1.XVERR). A link to a customer that does not exist, or that points to a different
+    vendor, makes that clearing act on the wrong account or not at all.
+  rule_authority: best_practice
+  sap_impact: Vendor/customer clearing in F110 and dunning offsets against the wrong account or silently not at all.
+  fix_map:
+    __other__: Maintain the link on both sides — customer in the vendor (XK02 > Control) and vendor in the customer
+      (XD02 > Control) — or remove it (BP relationship in S/4HANA).
+  record_fix_template: 'Vendor {LFA1.LIFNR}: linked customer {LFA1.KUNNR} is missing or links to vendor {KNA1.LIFNR}.'
+- id: AP040
+  field: LFM1.WAERS
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Order currency is missing in the vendor's purchasing-organisation data
+  why_it_matters: 'LFM1.WAERS is a required entry of the vendor purchasing view (XK01/MK01; BP role FLVN01 in S/4HANA):
+    every purchase order, contract and scheduling agreement for this purchasing organisation takes its currency from it.
+    A record without it was loaded around the screen checks (LSMW, direct input, migration).'
+  rule_authority: sap_hard_constraint
+  sap_impact: ME21N proposes no currency for this vendor; automatic PO creation from requisitions (ME59N) fails for the
+    purchasing organisation.
+  fix_map:
+    __blank__: 'Maintain the order currency in XK02/MK02 > Purchasing data (S/4HANA: BP, role FLVN01, purchasing organisation
+      data).'
+  record_fix_template: 'Vendor {LFM1.LIFNR}, purchasing organisation {LFM1.EKORG}: order currency is {actual_value}.'
+- id: AP041
+  field: LFM1.WAERS
+  check_class: referential_check
+  severity: medium
+  dimension: consistency
+  message: Vendor order currency LFM1.WAERS must exist in TCURC
+  why_it_matters: The order currency is copied into every purchase order for this purchasing organisation. A currency key
+    that is not defined in TCURC cannot be converted or posted.
+  rule_authority: best_practice
+  sap_impact: PO creation stops with an unknown-currency error; no exchange rate can be determined.
+  fix_map:
+    __other__: Currency '{invalid_value}' is not defined in TCURC. Correct the order currency in XK02/MK02 (BP role FLVN01
+      in S/4HANA).
+  record_fix_template: 'Vendor {LFM1.LIFNR}, purchasing organisation {LFM1.EKORG}: order currency ''{actual_value}'' is
+    not in TCURC.'
+- id: AP042
+  field: LFM1.ZTERM
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Purchasing payment terms LFM1.ZTERM must exist in T052
+  why_it_matters: Purchasing payment terms are copied into every PO and from there into the invoice (MIRO). Terms that are
+    not defined in T052 leave the invoice without a baseline date and due date.
+  rule_authority: best_practice
+  sap_impact: Invoices referencing these POs get no due date; F110 pays them immediately or not at all.
+  fix_map:
+    __other__: Payment terms '{invalid_value}' are not defined in T052. Correct them in XK02/MK02 or create the terms (OBB8).
+  record_fix_template: 'Vendor {LFM1.LIFNR}, purchasing organisation {LFM1.EKORG}: payment terms ''{actual_value}'' not
+    in T052.'
+- id: AP043
+  field: LFM1.INCO1
+  check_class: referential_check
+  severity: medium
+  dimension: consistency
+  message: Purchasing Incoterms LFM1.INCO1 must exist in TINC
+  why_it_matters: Incoterms default into every purchase order and drive freight conditions, customs data and the transfer
+    of risk. A code that is not in TINC cannot be copied into the PO.
+  rule_authority: best_practice
+  sap_impact: PO creation errors on the Incoterms; freight conditions and foreign-trade data are not determined.
+  fix_map:
+    __other__: Incoterm '{invalid_value}' is not defined in TINC. Correct it in XK02/MK02 (purchasing data).
+  record_fix_template: 'Vendor {LFM1.LIFNR}, purchasing organisation {LFM1.EKORG}: Incoterm ''{actual_value}'' not in TINC.'
+- id: AP044
+  field: LFM1.INCO2
+  check_class: cross_field_check
+  fail_when: '`LFM1.INCO2`.notna() & `LFM1.INCO1`.isna()'
+  severity: medium
+  dimension: consistency
+  message: Incoterms location is maintained without an Incoterm
+  why_it_matters: INCO2 is the named place of the Incoterm in INCO1. A place without an Incoterm is never copied into the
+    purchase order on its own, so the delivery terms the buyer agreed are silently lost.
+  rule_authority: best_practice
+  sap_impact: POs are created without delivery terms; freight and risk transfer are undefined.
+  fix_map:
+    __other__: Enter the agreed Incoterm in XK02/MK02 > Purchasing data, or remove the orphaned location.
+  record_fix_template: 'Vendor {LFM1.LIFNR}, purchasing organisation {LFM1.EKORG}: Incoterms location ''{LFM1.INCO2}'' has
+    no Incoterm.'
+- id: AP045
+  field: LFM1.EKORG
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Vendor purchasing organisation LFM1.EKORG must exist in T024E
+  why_it_matters: Purchasing data can only be used in a purchasing organisation that exists. Data kept for an organisation
+    that was removed from the configuration contradicts the organisational structure.
+  rule_authority: best_practice
+  sap_impact: The vendor's purchasing data is unreachable; source determination and reporting show a non-existent purchasing
+    organisation.
+  fix_map:
+    __other__: Purchasing organisation '{invalid_value}' is not defined in T024E. Delete the obsolete purchasing data or
+      re-create the vendor in the right purchasing organisation (MK01).
+  record_fix_template: 'Vendor {LFM1.LIFNR}: purchasing organisation ''{actual_value}'' does not exist in T024E.'
+- id: AP046
+  field: LFM1.EKGRP
+  check_class: referential_check
+  severity: medium
+  dimension: consistency
+  message: Vendor purchasing group LFM1.EKGRP must exist in T024
+  why_it_matters: The purchasing group in the vendor's purchasing data is the default for automatically created purchase
+    orders and the key for buyer-specific output and reporting.
+  rule_authority: best_practice
+  sap_impact: Automatic PO generation (ME59N, MRP) fails or assigns no buyer; spend analytics by buyer are wrong.
+  fix_map:
+    __other__: Purchasing group '{invalid_value}' is not defined in T024. Correct it in XK02/MK02 > Purchasing data.
+  record_fix_template: 'Vendor {LFM1.LIFNR}, purchasing organisation {LFM1.EKORG}: purchasing group ''{actual_value}'' not
+    in T024.'
+- id: AP047
+  field: LFM1.KALSK
+  check_class: referential_check
+  severity: medium
+  dimension: consistency
+  message: Vendor schema group LFM1.KALSK must exist in TMKK
+  why_it_matters: The vendor schema group (KALSK) selects the purchasing calculation schema (pricing procedure) in every
+    PO. A schema group that is not defined finds no calculation schema.
+  rule_authority: best_practice
+  sap_impact: PO pricing fails with 'no calculation schema determined'; conditions, freight and discounts are missing.
+  fix_map:
+    __other__: Schema group '{invalid_value}' is not defined in TMKK. Correct it in XK02/MK02 > Purchasing data.
+  record_fix_template: 'Vendor {LFM1.LIFNR}, purchasing organisation {LFM1.EKORG}: schema group ''{actual_value}'' not in
+    TMKK.'
+- id: AP048
+  field: LFM1.SPERM
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  valid_values_with_labels:
+    ? ''
+    : No purchasing block in this purchasing organisation
+    X: Purchasing blocked in this purchasing organisation
+  severity: high
+  dimension: validity
+  message: Purchasing block at purchasing-organisation level must be X (blocked) or empty (open)
+  why_it_matters: 'LFM1.SPERM blocks new purchasing documents for the vendor in one purchasing organisation. Any other value
+    is not interpreted by SAP: the block is neither reliably active nor reliably absent.'
+  rule_authority: best_practice
+  sap_impact: Purchasing documents may be created for a supplier the business meant to block, or blocked for one it did
+    not.
+  fix_map:
+    __other__: Set or clear the block in XK05/MK05 (BP purchasing data in S/4HANA); never write other values by load.
+  record_fix_template: 'Vendor {LFM1.LIFNR}, purchasing organisation {LFM1.EKORG}: purchasing block ''{actual_value}'' is
+    invalid.'
+- id: AP049
+  field: LFM1.LOEVM
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  valid_values_with_labels:
+    ? ''
+    : Active in this purchasing organisation
+    X: Flagged for deletion in this purchasing organisation
+  severity: medium
+  dimension: validity
+  message: Deletion flag at purchasing-organisation level must be X (flagged) or empty
+  why_it_matters: The purchasing-level deletion flag stops new documents and queues the data for archiving. A value other
+    than X is not recognised as a deletion flag.
+  rule_authority: best_practice
+  sap_impact: Archiving and purchasing blocks behave unpredictably for this purchasing organisation.
+  fix_map:
+    __other__: Set or remove the deletion flag in XK06/MK06; never write other values by load.
+  record_fix_template: 'Vendor {LFM1.LIFNR}, purchasing organisation {LFM1.EKORG}: deletion flag ''{actual_value}'' is invalid.'
+- id: AP050
+  field: LFM1.WEBRE
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  valid_values_with_labels: &id001
+    ? ''
+    : Not set
+    X: Set
+  severity: low
+  dimension: validity
+  message: GR-based invoice verification indicator must be X or empty
+  why_it_matters: LFM1.WEBRE is the default for GR-based invoice verification in PO items. Only X switches it on.
+  rule_authority: best_practice
+  sap_impact: PO items get the wrong invoice-verification control; invoices match against the wrong reference.
+  fix_map:
+    __other__: Correct the indicator in XK02/MK02 > Purchasing data.
+  record_fix_template: 'Vendor {LFM1.LIFNR}, purchasing organisation {LFM1.EKORG}: GR-based IV indicator ''{actual_value}''
+    is invalid.'
+- id: AP051
+  field: LFM1.XERSY
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  valid_values_with_labels: *id001
+  severity: low
+  dimension: validity
+  message: Evaluated receipt settlement indicator must be X or empty
+  why_it_matters: LFM1.XERSY makes the vendor eligible for evaluated receipt settlement (MRRL). Only X switches it on.
+  rule_authority: best_practice
+  sap_impact: ERS settles goods receipts that should be invoiced by the vendor, or skips those that should be settled.
+  fix_map:
+    __other__: Correct the ERS indicator in XK02/MK02 > Purchasing data.
+  record_fix_template: 'Vendor {LFM1.LIFNR}, purchasing organisation {LFM1.EKORG}: ERS indicator ''{actual_value}'' is invalid.'
+- id: AP052
+  field: LFB1.BUKRS
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Vendor company code LFB1.BUKRS must exist in T001
+  why_it_matters: Vendor company-code data can only be posted in a company code that exists. Data kept for a company code
+    that was removed from the configuration contradicts the organisational structure.
+  rule_authority: best_practice
+  sap_impact: The vendor's company-code data is unreachable; open-item and payment reports show a non-existent company code.
+  fix_map:
+    __other__: Company code '{invalid_value}' is not defined in T001. Remove the obsolete company-code data.
+  record_fix_template: 'Vendor {LFB1.LIFNR}: company code ''{actual_value}'' does not exist in T001.'
+- id: AP053
+  field: LFB1.SPERR
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  valid_values_with_labels:
+    ? ''
+    : No posting block in this company code
+    X: Posting blocked in this company code
+  severity: high
+  dimension: validity
+  message: Company-code posting block must be X (blocked) or empty (open)
+  why_it_matters: LFB1.SPERR blocks postings to the vendor in one company code. SAP only recognises X; any other value leaves
+    the block state undefined.
+  rule_authority: best_practice
+  sap_impact: Invoices may be posted to a supplier the business meant to block, or rejected for one it did not.
+  fix_map:
+    __other__: Set or clear the block in XK05/FK05 (BP company-code data in S/4HANA); never write other values by load.
+  record_fix_template: 'Vendor {LFB1.LIFNR}, company code {LFB1.BUKRS}: posting block ''{actual_value}'' is invalid.'
+- id: AP054
+  field: LFB1.LOEVM
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  valid_values_with_labels:
+    ? ''
+    : Active in this company code
+    X: Flagged for deletion in this company code
+  severity: high
+  dimension: validity
+  message: Company-code deletion flag must be X (flagged) or empty
+  why_it_matters: The company-code deletion flag queues the vendor's company-code data for archiving. SAP only recognises
+    X.
+  rule_authority: best_practice
+  sap_impact: Archiving and posting checks behave unpredictably for this company code.
+  fix_map:
+    __other__: Set or remove the flag in XK06/FK06; never write other values by load.
+  record_fix_template: 'Vendor {LFB1.LIFNR}, company code {LFB1.BUKRS}: deletion flag ''{actual_value}'' is invalid.'
+- id: AP055
+  field: LFB1.ZAHLS
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Vendor payment block LFB1.ZAHLS must exist in T008
+  why_it_matters: The payment block key decides whether F110 may pay the vendor's open items. A key that is not defined
+    in T008 has no meaning to the payment program.
+  rule_authority: best_practice
+  sap_impact: 'F110 treats the vendor''s items inconsistently: payments are stopped without a documented reason or are released
+    although a block was intended.'
+  fix_map:
+    __other__: Payment block '{invalid_value}' is not defined in T008. Correct it in XK02/FK02 > Payment transactions.
+  record_fix_template: 'Vendor {LFB1.LIFNR}, company code {LFB1.BUKRS}: payment block ''{actual_value}'' not in T008.'
+- id: AP056
+  field: LFB1.HBKID
+  check_class: referential_check
+  severity: medium
+  dimension: consistency
+  message: Vendor house bank LFB1.HBKID must exist in T012
+  why_it_matters: The house bank in the vendor master tells F110 which of the company's bank accounts pays this vendor.
+    A house bank that is not defined cannot be used for payment.
+  rule_authority: best_practice
+  sap_impact: F110 cannot select a paying bank for the vendor's items; payment runs leave them as exceptions.
+  fix_map:
+    __other__: House bank '{invalid_value}' is not defined in T012. Correct it in XK02/FK02 > Payment transactions or remove
+      it to let bank determination (FBZP) decide.
+  record_fix_template: 'Vendor {LFB1.LIFNR}, company code {LFB1.BUKRS}: house bank ''{actual_value}'' not in T012.'
+- id: AP057
+  field: LFB1.FDGRV
+  check_class: referential_check
+  severity: low
+  dimension: consistency
+  message: Vendor planning group LFB1.FDGRV must exist in T035
+  why_it_matters: The planning group places the vendor's open items in cash management and the liquidity forecast. A group
+    that is not defined drops the items out of the forecast.
+  rule_authority: best_practice
+  sap_impact: Cash position and liquidity forecast (FF7A/FF7B) understate outgoing payments.
+  fix_map:
+    __other__: Planning group '{invalid_value}' is not defined in T035. Correct it in XK02/FK02 > Account management.
+  record_fix_template: 'Vendor {LFB1.LIFNR}, company code {LFB1.BUKRS}: planning group ''{actual_value}'' not in T035.'
+- id: AP058
+  field: LFB1.TOGRU
+  check_class: referential_check
+  severity: low
+  dimension: consistency
+  message: Vendor tolerance group LFB1.TOGRU must exist in T043G
+  why_it_matters: The tolerance group sets the payment differences SAP accepts when clearing the vendor's items. A group
+    that is not defined leaves clearing without tolerances.
+  rule_authority: best_practice
+  sap_impact: Payment differences cannot be written off automatically; clearing (F-44, F110) stops on small differences.
+  fix_map:
+    __other__: Tolerance group '{invalid_value}' is not defined in T043G. Correct it in XK02/FK02 > Payment transactions.
+  record_fix_template: 'Vendor {LFB1.LIFNR}, company code {LFB1.BUKRS}: tolerance group ''{actual_value}'' not in T043G.'
+- id: AP059
+  field: LFB1.XVERR
+  check_class: cross_field_check
+  grain: LFB1
+  fail_when: '`LFA1.KUNNR`.isna()'
+  applies_when:
+    LFB1.XVERR:
+    - X
+  severity: medium
+  dimension: consistency
+  message: Clearing with customer is switched on but the vendor is not linked to a customer
+  why_it_matters: Offsetting a vendor's payables against the same partner's receivables (F110, dunning) needs both the 'clearing
+    with customer' indicator (LFB1.XVERR) and the customer number in the vendor's control data (LFA1.KUNNR). With the indicator
+    alone nothing is offset.
+  rule_authority: best_practice
+  sap_impact: The payment program pays the vendor in full although the partner owes receivables; netting agreed with the
+    partner does not happen.
+  fix_map:
+    __other__: Enter the customer number in XK02 > Control data (BP vendor/customer roles in S/4HANA), or remove the clearing
+      indicator if no netting is agreed.
+  record_fix_template: 'Vendor {LFB1.LIFNR}, company code {LFB1.BUKRS}: clearing with customer is set but no customer is
+    linked.'
+- id: AP060
+  field: LFB1.LNRZE
+  check_class: cross_field_check
+  grain: LFB1
+  fail_when: '`LFB1.LNRZE` == `LFB1.LIFNR`'
+  applies_when:
+    LFB1.LNRZE:
+      populated: true
+  severity: medium
+  dimension: consistency
+  message: Vendor is entered as its own head office
+  why_it_matters: LFB1.LNRZE turns the account into a branch whose items are posted to the head office. A vendor that is
+    its own head office is a self-reference with no meaning; it typically arrives by load and breaks the head office/branch
+    logic for payment and dunning.
+  rule_authority: best_practice
+  sap_impact: Branch items are not consolidated at a real head office; payments and dunning run on the branch.
+  fix_map:
+    __other__: Clear the head office field or enter the real head office account in XK02 > Account management.
+  record_fix_template: 'Vendor {LFB1.LIFNR}, company code {LFB1.BUKRS}: head office is the vendor itself.'
+- id: AP061
+  field: LFB1.LNRZB
+  check_class: cross_field_check
+  grain: LFB1
+  fail_when: '`LFB1.LNRZB` == `LFB1.LIFNR`'
+  applies_when:
+    LFB1.LNRZB:
+      populated: true
+  severity: low
+  dimension: consistency
+  message: Vendor is entered as its own alternative payee in the company code
+  why_it_matters: The alternative payee (LFB1.LNRZB) receives payments meant for the vendor. Naming the vendor itself is
+    meaningless and usually hides a loading error in which the real payee was lost.
+  rule_authority: best_practice
+  sap_impact: Payments go to the vendor although a different payee was intended.
+  fix_map:
+    __other__: Enter the real alternative payee or clear the field in XK02 > Payment transactions.
+  record_fix_template: 'Vendor {LFB1.LIFNR}, company code {LFB1.BUKRS}: alternative payee is the vendor itself.'
+- id: AP062
+  field: LFA1.LNRZA
+  check_class: cross_field_check
+  fail_when: '`LFA1.LNRZA` == `LFA1.LIFNR`'
+  applies_when:
+    LFA1.LNRZA:
+      populated: true
+  severity: low
+  dimension: consistency
+  message: Vendor is entered as its own alternative payee
+  why_it_matters: The alternative payee (LFA1.LNRZA) receives payments meant for the vendor in every company code. Naming
+    the vendor itself is meaningless and usually hides a loading error in which the real payee was lost.
+  rule_authority: best_practice
+  sap_impact: Payments go to the vendor although a different payee was intended.
+  fix_map:
+    __other__: Enter the real alternative payee or clear the field in XK02 > Payment transactions.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: alternative payee is the vendor itself.'
+- id: AP063
+  field: LFB1.AKONT
+  check_class: cross_field_check
+  grain: LFB1
+  fail_when: (`SKB1.XSPEB` == 'X') | (`SKB1.XLOEB` == 'X')
+  applies_when:
+    LFB1.AKONT:
+      populated: true
+  severity: high
+  dimension: consistency
+  message: Vendor reconciliation account is blocked for posting or flagged for deletion in the company code
+  why_it_matters: Every posting to the vendor is also posted to its reconciliation account. When that G/L account is blocked
+    for posting (SKB1.XSPEB) or flagged for deletion (SKB1.XLOEB) in the company code, SAP rejects every invoice, credit
+    memo and payment for the vendor.
+  rule_authority: sap_hard_constraint
+  sap_impact: MIRO, FB60 and F110 fail with 'account blocked for posting'; the vendor cannot be invoiced or paid in this
+    company code.
+  fix_map:
+    __other__: Assign an active vendor reconciliation account (XK02, company code data; BP in S/4HANA), or lift the block
+      on the G/L account in FS00 if it was set by mistake.
+  record_fix_template: 'Vendor {LFB1.LIFNR}, company code {LFB1.BUKRS}: reconciliation account {LFB1.AKONT} is blocked or
+    flagged for deletion.'
+- id: AP064
+  field: LFB5.MANSP
+  check_class: referential_check
+  severity: low
+  dimension: consistency
+  message: Vendor dunning block LFB5.MANSP must exist in T040S
+  why_it_matters: The dunning block key stops dunning of the vendor's debit balances. A key that is not defined in T040S
+    is not recognised by the dunning program.
+  rule_authority: best_practice
+  sap_impact: Debit balances (overpayments, returns) are dunned or not dunned contrary to the intention.
+  fix_map:
+    __other__: Dunning block '{invalid_value}' is not defined in T040S. Correct it in XK02/FK02 > Correspondence.
+  record_fix_template: 'Vendor {LFB5.LIFNR}, company code {LFB5.BUKRS}: dunning block ''{actual_value}'' not in T040S.'
+- id: AP065
+  field: LFBK.BANKS
+  check_class: referential_check
+  grain: LFBK
+  severity: high
+  dimension: consistency
+  message: Vendor bank country LFBK.BANKS must exist in T005
+  why_it_matters: The bank country, with the bank key, identifies the vendor's bank. A country that is not in T005 cannot
+    be resolved to a bank directory entry or a payment format.
+  rule_authority: best_practice
+  sap_impact: F110 cannot create the payment medium for this bank account; the vendor is not paid by transfer.
+  fix_map:
+    __other__: Bank country '{invalid_value}' is not defined in T005. Correct the bank details in XK02 > Payment transactions
+      (BP bank details in S/4HANA).
+  record_fix_template: 'Vendor {LFBK.LIFNR}: bank country ''{actual_value}'' not in T005.'
+- id: AP066
+  field: LFBK.KOVON
+  check_class: cross_field_check
+  grain: LFBK
+  fail_when: '`LFBK.KOVON` > `LFBK.KOBIS`'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Bank details validity starts after it ends
+  why_it_matters: Bank details are used for payment only inside their validity period (KOVON-KOBIS). A period that ends
+    before it starts is never valid, so the bank account is silently unusable.
+  rule_authority: best_practice
+  sap_impact: F110 finds no valid bank details for the vendor and leaves the items as exceptions.
+  fix_map:
+    __other__: Correct the validity dates of the bank details in XK02 > Payment transactions (BP bank details in S/4HANA).
+  record_fix_template: 'Vendor {LFBK.LIFNR}: bank details valid from {LFBK.KOVON} to {LFBK.KOBIS}.'
+- id: AP067
+  field: LFA1.LAND1
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Vendor country LFA1.LAND1 must exist in T005
+  why_it_matters: The vendor's country drives tax determination, withholding tax, payment methods, address format and foreign-trade
+    data. A country key that is not defined in T005 resolves none of them.
+  rule_authority: best_practice
+  sap_impact: Tax and payment method determination fail; the vendor cannot be paid or reported (EC sales list, withholding
+    tax).
+  fix_map:
+    __other__: Country '{invalid_value}' is not defined in T005. Correct the vendor address in XK02 (BP address in S/4HANA).
+  record_fix_template: 'Vendor {LFA1.LIFNR}: country ''{actual_value}'' not in T005.'
+- id: AP068
+  field: LFA1.REGIO
+  check_class: null_check
+  applies_when:
+    LFA1.LAND1:
+    - US
+    - CA
+    - BR
+    - IN
+  severity: medium
+  dimension: completeness
+  message: Region (state/province) is missing for a vendor in a country that requires it
+  why_it_matters: 'In the United States, Canada, Brazil and India the region is part of every postal address and the key
+    for tax: US/CA jurisdiction codes, Brazilian ICMS by state (UF) and Indian GST by state code are all determined from
+    it.'
+  rule_authority: best_practice
+  sap_impact: Tax jurisdiction / state tax determination fails or uses the wrong rate; payment media and 1099/GST reporting
+    carry an incomplete address.
+  fix_map:
+    __blank__: Maintain the region in XK02 > Address (BP address in S/4HANA).
+  record_fix_template: 'Vendor {LFA1.LIFNR}: region is {actual_value} for country {LFA1.LAND1}.'
+- id: AP069
+  field: LFA1.REGIO
+  check_class: referential_check
+  severity: medium
+  dimension: consistency
+  message: Vendor region LFA1.REGIO must exist in T005S
+  why_it_matters: Regions are defined per country in T005S. A region code that does not exist cannot drive tax jurisdiction
+    or address formatting.
+  rule_authority: best_practice
+  sap_impact: State-level tax determination and reporting fail for the vendor.
+  fix_map:
+    __other__: Region '{invalid_value}' is not defined in T005S. Correct the vendor address in XK02 (BP in S/4HANA).
+  record_fix_template: 'Vendor {LFA1.LIFNR}: region ''{actual_value}'' not in T005S.'
+- id: AP070
+  field: LFA1.SPRAS
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Vendor language key is missing
+  why_it_matters: The language key selects the language of purchase orders, payment advices and dunning letters sent to
+    the vendor.
+  rule_authority: best_practice
+  sap_impact: Output is produced in the logon language or not at all; payment advices and POs may be unreadable for the
+    supplier.
+  fix_map:
+    __blank__: Maintain the language in XK02 > Address > Communication (BP address in S/4HANA).
+  record_fix_template: 'Vendor {LFA1.LIFNR}: language key is {actual_value}.'
+- id: AP071
+  field: LFA1.XCPDK
+  check_class: domain_value_check
+  allowed_values:
+  - ''
+  - X
+  valid_values_with_labels:
+    ? ''
+    : Normal account
+    X: One-time account
+  severity: low
+  dimension: validity
+  message: One-time account indicator must be X or empty
+  why_it_matters: LFA1.XCPDK marks an account whose name, address and bank data are entered per document (BSEC). SAP only
+    recognises X; any other value leaves it unclear where the payee data lives.
+  rule_authority: best_practice
+  sap_impact: Payments to one-time vendors may use master data that does not exist, or ask for document data that is never
+    entered.
+  fix_map:
+    __other__: Correct the indicator via the account group (XK02); one-time vendors must use a one-time account group.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: one-time indicator ''{actual_value}'' is invalid.'
+- id: AP072
+  field: BSIK.AUGBL
+  check_class: cross_field_check
+  grain: BSIK
+  fail_when: '`BSIK.AUGBL`.notna() | `BSIK.AUGDT`.notna()'
+  severity: high
+  dimension: consistency
+  message: Open vendor item carries a clearing document or clearing date
+  why_it_matters: BSIK is the secondary index of OPEN vendor items; when an item is cleared SAP moves it to BSAK. An open-item
+    row with clearing data means the index and the line item disagree, so the open-item list (FBL1N) and the account balance
+    no longer match.
+  rule_authority: sap_hard_constraint
+  sap_impact: The item can be paid or dunned again although it is cleared, or never shows in FBL1N.
+  fix_map:
+    __other__: Run the FI comparative analysis (SAPF190) for the company code and fiscal year; if it reports differences,
+      raise an SAP incident — secondary indexes are never edited by hand.
+  record_fix_template: Open item {BSIK.BUKRS}/{BSIK.LIFNR} document {BSIK.BELNR}/{BSIK.GJAHR} item {BSIK.BUZEI} carries clearing
+    data.
+- id: AP073
+  field: BSIK.DMBTR
+  check_class: cross_field_check
+  grain: BSIK
+  fail_when: (`BSIK.DMBTR` == 0) & (`BSIK.WRBTR` != 0)
+  severity: high
+  dimension: accuracy
+  message: Open vendor item has a document-currency amount but zero in company-code currency
+  why_it_matters: Every posted line item is translated into company-code currency. A zero local amount against a non-zero
+    document amount means the translation failed (missing exchange rate, manual override), so the item is worth nothing in
+    the ledger.
+  rule_authority: sap_hard_constraint
+  sap_impact: The sub-ledger and G/L balance in local currency understate the item; foreign-currency valuation (FAGL_FCV)
+    and payment proposal amounts are wrong.
+  fix_map:
+    __other__: Check the exchange rate type and rate on the posting date (OB08); reverse and re-post the document with the
+      correct translation.
+  record_fix_template: 'Open item {BSIK.BUKRS}/{BSIK.LIFNR} document {BSIK.BELNR}/{BSIK.GJAHR} item {BSIK.BUZEI}: amount {BSIK.WRBTR}
+    {BSIK.WAERS} translates to 0.'
+- id: AP074
+  field: BSIK.HKONT
+  check_class: cross_field_check
+  grain: BSIK
+  fail_when: '`BSIK.HKONT`.notna() & `LFB1.AKONT`.notna() & (`BSIK.HKONT` != `LFB1.AKONT`)'
+  applies_when:
+    BSIK.UMSKZ:
+      blank: true
+    BSIK.BSTAT:
+      not_in:
+      - S
+  severity: medium
+  dimension: consistency
+  message: Open vendor item sits on a reconciliation account other than the vendor's current one
+  why_it_matters: Normal vendor items post to the reconciliation account in the company-code master (LFB1.AKONT). When that
+    account is changed, items posted before keep the old one, so the vendor balance is split across reconciliation accounts
+    until they are cleared or reposted.
+  rule_authority: best_practice
+  sap_impact: Balance-sheet reporting and the sub-ledger/G/L reconciliation (FAGLF03) show the balance under the wrong account;
+    regrouping (FAGLF101) uses the wrong account.
+  fix_map:
+    __other__: 'Either restore the reconciliation account in the vendor master or repost the open items to the new reconciliation
+      account (SAP note ''Changing reconciliation account with open items'': program FAGL_MM_RECON / clear and re-post).'
+  record_fix_template: Open item {BSIK.BUKRS}/{BSIK.LIFNR} document {BSIK.BELNR}/{BSIK.GJAHR} item {BSIK.BUZEI} is on account
+    {BSIK.HKONT}; master says {LFB1.AKONT}.
+- id: AP075
+  field: LFA1.LOEVM
+  check_class: cross_field_check
+  grain: BSIK
+  fail_when: (`LFA1.LOEVM` == 'X') | (`LFB1.LOEVM` == 'X')
+  severity: high
+  dimension: consistency
+  message: Open item on a vendor flagged for deletion
+  why_it_matters: 'A vendor marked for deletion is meant to be finished with. Open items on it are still owed or receivable:
+    they will not be archived, are easily overlooked in reviews of active accounts, and payments or dunning may be blocked
+    by the deletion flag.'
+  rule_authority: best_practice
+  sap_impact: Archiving of the vendor fails; outstanding liabilities or receivables sit on a dead account.
+  fix_map:
+    __other__: Clear or settle the open items, or remove the deletion flag (XK06) until they are settled.
+  record_fix_template: 'Open item {BSIK.BUKRS}/{BSIK.LIFNR} document {BSIK.BELNR}/{BSIK.GJAHR} item {BSIK.BUZEI}: the vendor
+    is flagged for deletion.'
+- id: AP076
+  field: BSIK.ZFBDT
+  check_class: null_check
+  grain: BSIK
+  severity: medium
+  dimension: completeness
+  message: Open vendor item has no baseline date for payment
+  why_it_matters: The due date and every cash-discount date are computed from the baseline date. Without it the item has no
+    due date.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payment run (F110) and dunning (F150) cannot schedule the item; ageing reports misplace it.
+  fix_map:
+    __blank__: Maintain the baseline date on the item (FB02 / FBL1N-FBL5N change line items).
+  record_fix_template: Open item {BSIK.BUKRS}/{BSIK.LIFNR} document {BSIK.BELNR}/{BSIK.GJAHR} item {BSIK.BUZEI} has no baseline
+    date.
+- id: AP077
+  field: BSIK.DMBTR
+  check_class: cross_field_check
+  grain: BSIK
+  fail_when: (`BSIK.DMBTR` < 0) | (`BSIK.WRBTR` < 0)
+  severity: high
+  dimension: validity
+  message: Open vendor item stores a negative amount
+  why_it_matters: SAP stores line-item amounts unsigned; the debit/credit indicator (SHKZG) carries the sign. A negative stored
+    amount double-negates the item in every total.
+  rule_authority: sap_hard_constraint
+  sap_impact: Balances, payment proposals and ageing net the item the wrong way.
+  fix_map:
+    __other__: 'The item was written outside the posting logic: raise an SAP incident and reverse / re-post the document.'
+  record_fix_template: Open item {BSIK.BUKRS}/{BSIK.LIFNR} document {BSIK.BELNR}/{BSIK.GJAHR} item {BSIK.BUZEI} stores a negative
+    amount.
+- id: AP078
+  field: BSIK.ZBD2T
+  check_class: cross_field_check
+  grain: BSIK
+  fail_when: ((`BSIK.ZBD2T` > 0) & (`BSIK.ZBD2T` < `BSIK.ZBD1T`)) | ((`BSIK.ZBD3T` > 0) & (`BSIK.ZBD3T` < `BSIK.ZBD2T`))
+  severity: medium
+  dimension: consistency
+  message: Open vendor item's payment-term days are out of order
+  why_it_matters: 'Cash-discount days 1 < days 2 < net days: each later period must be longer than the one before. Out-of-order
+    days make the net due date fall before a discount date.'
+  rule_authority: sap_hard_constraint
+  sap_impact: Discount is taken after the net due date or the item is paid late; due-date analysis is wrong.
+  fix_map:
+    __other__: Correct the payment-term days on the item (FB02) or re-apply the payment term.
+  record_fix_template: 'Open item {BSIK.BUKRS}/{BSIK.LIFNR} document {BSIK.BELNR}/{BSIK.GJAHR} item {BSIK.BUZEI}: days {BSIK.ZBD1T}
+    / {BSIK.ZBD2T} / {BSIK.ZBD3T}.'
+- id: AP079
+  field: BSIK.ZLSPR
+  check_class: referential_check
+  grain: BSIK
+  severity: medium
+  dimension: validity
+  message: Open vendor item's payment block reason is not defined (T008)
+  why_it_matters: A payment block reason that is not configured cannot be released through the normal workflow and is not
+    explained to whoever reviews the block.
+  rule_authority: sap_hard_constraint
+  sap_impact: The item is excluded from every payment run until someone notices and edits it.
+  fix_map:
+    __other__: Replace the block reason with one defined in T008 (OB27), or release the block.
+  record_fix_template: 'Open item {BSIK.BUKRS}/{BSIK.LIFNR} document {BSIK.BELNR}/{BSIK.GJAHR} item {BSIK.BUZEI}: payment
+    block ''{actual_value}'' is not defined.'
+- id: AP080
+  field: BSIK.UMSKZ
+  check_class: referential_check
+  grain: BSIK
+  severity: medium
+  dimension: validity
+  message: Open vendor item's special G/L indicator is not defined (T074U)
+  why_it_matters: The special G/L indicator decides the alternative reconciliation account (down payments, guarantees, bills
+    of exchange). One that is not configured has no account determination.
+  rule_authority: sap_hard_constraint
+  sap_impact: The item cannot be cleared through the special G/L transactions; balance-sheet classification is wrong.
+  fix_map:
+    __other__: Configure the indicator (OBYR / T074U) or repost the item without it.
+  record_fix_template: 'Open item {BSIK.BUKRS}/{BSIK.LIFNR} document {BSIK.BELNR}/{BSIK.GJAHR} item {BSIK.BUZEI}: special
+    G/L indicator ''{actual_value}'' is not defined.'
+- id: AP081
+  field: BSAK.AUGDT
+  check_class: cross_field_check
+  grain: BSAK
+  fail_when: '`BSAK.AUGDT` < `BSAK.BUDAT`'
+  severity: high
+  dimension: consistency
+  message: Cleared vendor item was cleared before it was posted
+  why_it_matters: An item can only be cleared on or after its posting date. A clearing date before the posting date means
+    the clearing was back-dated incorrectly or the item data is corrupt.
+  rule_authority: sap_hard_constraint
+  sap_impact: Key-date open-item lists (as of a date between the two) omit an item that was open; ageing and payment-behaviour
+    analysis are wrong.
+  fix_map:
+    __other__: Reset the clearing (FBRA) and clear again with a valid clearing date.
+  record_fix_template: 'Cleared item {BSAK.BUKRS}/{BSAK.LIFNR} document {BSAK.BELNR}/{BSAK.GJAHR} item {BSAK.BUZEI}: cleared
+    {BSAK.AUGDT}, posted {BSAK.BUDAT}.'
+- id: AP082
+  field: BSAK.AUGBL
+  check_class: cross_field_check
+  grain: BSAK
+  fail_when: '`BSAK.AUGBL`.isna() | `BSAK.AUGDT`.isna()'
+  severity: high
+  dimension: completeness
+  message: Cleared vendor item has no clearing document or clearing date
+  why_it_matters: BSAK holds CLEARED items only; each carries the clearing document and date. A row without them cannot be
+    traced to the payment or clearing that settled it.
+  rule_authority: sap_hard_constraint
+  sap_impact: 'The item is neither open nor traceably cleared: the audit trail from invoice to payment breaks.'
+  fix_map:
+    __other__: Run SAPF190 for the company code / year; raise an SAP incident if it reports differences.
+  record_fix_template: Cleared item {BSAK.BUKRS}/{BSAK.LIFNR} document {BSAK.BELNR}/{BSAK.GJAHR} item {BSAK.BUZEI} has no
+    clearing reference.
+- id: AP083
+  field: BSIK.XBLNR
+  check_class: uniqueness_check
+  grain: BSIK
+  fields:
+  - BSIK.BUKRS
+  - BSIK.LIFNR
+  - BSIK.XBLNR
+  - BSIK.WRBTR
+  - BSIK.WAERS
+  normalize: alnum
+  applies_when:
+    BSIK.SHKZG:
+    - H
+    BSIK.UMSKZ:
+      blank: true
+  severity: critical
+  dimension: uniqueness
+  message: 'Possible duplicate vendor invoice: same vendor, reference, amount and currency still open'
+  why_it_matters: Two open invoices from one vendor with the same reference and amount are almost always the same invoice
+    entered twice. SAP's own duplicate-invoice check compares the reference exactly, so 'INV-1001' and 'INV1001' slip through;
+    this check ignores spaces, dashes and punctuation.
+  rule_authority: best_practice
+  sap_impact: 'Both invoices are paid by the next payment run: a direct cash loss that has to be recovered from the vendor.'
+  fix_map:
+    __other__: Block both items for payment (FB02, payment block), confirm with the vendor statement, and reverse the duplicate
+      (FB08 / MR8M).
+  record_fix_template: 'Invoice {BSIK.BELNR}/{BSIK.GJAHR} of vendor {BSIK.LIFNR}: reference {BSIK.XBLNR}, {BSIK.WRBTR} {BSIK.WAERS}
+    is open more than once.'

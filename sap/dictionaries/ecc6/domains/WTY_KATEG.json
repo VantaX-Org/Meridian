@@ -1,0 +1,32 @@
+{
+ "domain": "WTY_KATEG",
+ "type": "CHAR",
+ "length": 2,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "IC",
+   "high": null,
+   "text": "Incoming Customer (IC)"
+  },
+  {
+   "low": "OV",
+   "high": null,
+   "text": "Outgoing Vendor (OV)"
+  },
+  {
+   "low": "IV",
+   "high": null,
+   "text": "Incoming Vendor (IV)"
+  },
+  {
+   "low": "OC",
+   "high": null,
+   "text": "Outgoing Customer (OC)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

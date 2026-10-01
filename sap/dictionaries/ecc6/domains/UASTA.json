@@ -1,0 +1,37 @@
+{
+ "domain": "UASTA",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Business volume comparison/agreement is not defined"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Bus. vol. compar./agreement optional and was not carried out"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Bus. vol. compar./agreement optional and already carried out"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Bus.vol. compar./agree. required and not yet carried out"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Bus.vol. compar./agree. required and already carried out"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -148,3 +148,82 @@ rules:
       > Time Management.'
 
 
+  - id: TIME013
+    field: TIMESHEET.HOURS
+    check_class: cross_field_check
+    fail_when: '`TIMESHEET.HOURS` > 24'
+    require_populated: true
+    severity: high
+    dimension: validity
+    message: More than 24 hours recorded on one day
+    why_it_matters: 'A time-sheet entry covers a single day. More than 24 hours on one day is physically impossible: it is
+      a decimal/unit error (minutes entered as hours, 80 instead of 8.0) and is paid as such.'
+    rule_authority: best_practice
+    sap_impact: Gross pay and overtime grossly overstated for this day; cost-centre labour cost wrong.
+    fix_map:
+      __blank__: Correct the recorded hours in the employee's time sheet (Time Sheet > Edit) and re-approve.
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: {TIMESHEET.HOURS} hours recorded on one day.'
+    applies_when:
+      TIMESHEET.ABSENCE_TYPE:
+        blank: true
+  - id: TIME014
+    field: TIMESHEET.OVERTIME_HOURS
+    check_class: cross_field_check
+    fail_when: (`TIMESHEET.OVERTIME_HOURS` < 0) | (`TIMESHEET.OVERTIME_HOURS` > 24)
+    require_populated: true
+    severity: medium
+    dimension: validity
+    message: Overtime hours must be between 0 and 24 for one day
+    why_it_matters: Overtime is paid at premium rates. Negative overtime or more than 24 overtime hours on one day is a recording
+      error that payroll pays (or claws back) at the overtime rate.
+    rule_authority: best_practice
+    sap_impact: Overtime premiums over- or under-paid; working-time compliance reporting wrong.
+    fix_map:
+      __blank__: Correct the overtime recording in the employee's time sheet and re-approve.
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: overtime {TIMESHEET.OVERTIME_HOURS} hours is outside
+      0-24.'
+  - id: TIME015
+    field: TIMESHEET.ABSENCE_TYPE
+    check_class: referential_check
+    severity: high
+    dimension: accuracy
+    message: Absence time type must be an active time type of the tenant
+    why_it_matters: The time type decides whether an absence is paid, which time account it deducts from and which payroll
+      wage type it produces. An absence with a time type that does not exist (deleted, mistyped, migrated code) deducts nothing
+      and is not replicated to payroll.
+    rule_authority: sap_hard_constraint
+    sap_impact: Absence not deducted from the time account; payroll replication (infotype 2001) fails or pays incorrectly.
+    fix_map:
+      __other__: Time type '{invalid_value}' does not exist. Re-record the absence with a valid time type via Time Off.
+    record_fix_template: 'Absence {TIMESHEET.USERID} {TIMESHEET.DATE}: time type ''{actual_value}'' does not exist.'
+  - id: TIME016
+    field: TIMESHEET.TIME_ACCOUNT_TYPE
+    check_class: referential_check
+    severity: medium
+    dimension: accuracy
+    message: Time account type must be an active time account type of the tenant
+    why_it_matters: Time account types define accrual rules, booking period and pay-out on termination. A time account whose
+      type does not exist cannot accrue, be booked against or be paid out.
+    rule_authority: sap_hard_constraint
+    sap_impact: Accruals stop; absences cannot be booked against the account; leave pay-out on termination wrong.
+    fix_map:
+      __other__: Time account type '{invalid_value}' does not exist. Correct the account type or recreate the time account
+        via Manage Time Accounts.
+    record_fix_template: 'Time account {TIMESHEET.USERID}: account type ''{actual_value}'' does not exist.'
+  - id: TIME017
+    field: TIMESHEET.DATE
+    check_class: cross_field_check
+    fail_when: '`TIMESHEET.DATE` > `EMPEMPLOYMENT.END_DATE`'
+    require_populated: true
+    severity: high
+    dimension: consistency
+    message: Time recorded after the employee's employment end date
+    why_it_matters: After the termination date the employee has no working time and no entitlement to paid absence. Time or
+      absence recorded after the end date is either a booking for the wrong person or an absence left over from before the
+      termination was entered — payroll pays it, or leave pay-out deducts it twice.
+    rule_authority: best_practice
+    sap_impact: Payroll pays time after termination; leave pay-out on termination calculated on a wrong balance.
+    fix_map:
+      __blank__: Delete or cancel the time/absence records dated after the termination date, or correct the termination date
+        if it is wrong.
+    record_fix_template: 'Time record {TIMESHEET.USERID} {TIMESHEET.DATE}: after employment end date {EMPEMPLOYMENT.END_DATE}.'

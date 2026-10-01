@@ -1,0 +1,47 @@
+{
+ "domain": "BERGL",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "All"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Delivery"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Delivery Item"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Shipping Units"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Shipment costs item"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Per shipping unit"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Shipping unit incl. delivery items"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

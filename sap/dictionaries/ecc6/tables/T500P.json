@@ -1,0 +1,226 @@
+{
+ "table": "T500P",
+ "description": "Personnel Areas",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "PERSA",
+   "key": true,
+   "data_element": "PERSA",
+   "domain": "PERSA",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Personnel Area",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "MOLGA",
+   "key": false,
+   "data_element": "MOLGA",
+   "domain": "MOLGA",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Country Grouping",
+   "check_table": "T500L"
+  },
+  {
+   "pos": 4,
+   "name": "BUKRS",
+   "key": false,
+   "data_element": "BUKRS",
+   "domain": "BUKRS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Company Code",
+   "check_table": "T001"
+  },
+  {
+   "pos": 5,
+   "name": "NAME1",
+   "key": false,
+   "data_element": "PBTXT",
+   "domain": "TEXT30",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Personnel Area Text",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "NAME2",
+   "key": false,
+   "data_element": "NAME2",
+   "domain": "TEXT30",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Name 2",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "STRAS",
+   "key": false,
+   "data_element": "STRAS",
+   "domain": "TEXT30",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "House number and street",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "PFACH",
+   "key": false,
+   "data_element": "PFACH",
+   "domain": "PFACH",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "PO Box",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "PSTLZ",
+   "key": false,
+   "data_element": "PSTLZ",
+   "domain": "PSTLZ",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Postal Code",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "ORT01",
+   "key": false,
+   "data_element": "ORT01",
+   "domain": "TEXT25",
+   "type": "CHAR",
+   "length": 25,
+   "decimals": 0,
+   "description": "City",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "LAND1",
+   "key": false,
+   "data_element": "LAND1",
+   "domain": "LAND1",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Country Key",
+   "check_table": "T005"
+  },
+  {
+   "pos": 12,
+   "name": "REGIO",
+   "key": false,
+   "data_element": "REGIO",
+   "domain": "REGIO",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Region (State, Province, County)",
+   "check_table": "T005S"
+  },
+  {
+   "pos": 13,
+   "name": "COUNC",
+   "key": false,
+   "data_element": "COUNC",
+   "domain": "COUNC",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "County Code",
+   "check_table": "T005E"
+  },
+  {
+   "pos": 14,
+   "name": "CITYC",
+   "key": false,
+   "data_element": "CITYC",
+   "domain": "CITYC",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "City Code",
+   "check_table": "T005G"
+  },
+  {
+   "pos": 15,
+   "name": "ADRNR",
+   "key": false,
+   "data_element": "ADRNR",
+   "domain": "ADRNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Address",
+   "check_table": "*"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "BUKRS",
+   "foreign_table": "T001",
+   "foreign_field": "BUKRS"
+  },
+  {
+   "field": "CITYC",
+   "foreign_table": "T005G",
+   "foreign_field": "CITYC"
+  },
+  {
+   "field": "COUNC",
+   "foreign_table": "T005E",
+   "foreign_field": "COUNC"
+  },
+  {
+   "field": "LAND1",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MOLGA",
+   "foreign_table": "T500L",
+   "foreign_field": "MOLGA"
+  },
+  {
+   "field": "REGIO",
+   "foreign_table": "T005S",
+   "foreign_field": "BLAND"
+  }
+ ]
+}

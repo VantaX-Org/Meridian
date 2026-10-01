@@ -77,7 +77,7 @@ export default function GoldenRecordsPage() {
   if (isLoading) {
     return (
       <>
-        <PageHead title="Golden Records" route="Govern · /golden-records" sub="Loading master records…" />
+        <PageHead title="Golden Records" route="Master data · /golden-records" sub="Loading master records…" />
         <Skeleton className="h-[420px] rounded-[10px]" />
       </>
     );
@@ -85,7 +85,7 @@ export default function GoldenRecordsPage() {
   if (error) {
     return (
       <>
-        <PageHead title="Golden Records" route="Govern · /golden-records" sub="Failed to load." />
+        <PageHead title="Golden Records" route="Master data · /golden-records" sub="Failed to load." />
         <div className="mn-card mn-card-pad" style={{ color: "var(--mn-neg)" }}>
           Could not reach <code>/api/v1/master-records</code>.
         </div>
@@ -97,7 +97,7 @@ export default function GoldenRecordsPage() {
     <>
       <PageHead
         title="Golden Records"
-        route="Govern · /golden-records"
+        route="Master data · /golden-records"
         sub={
           <>
             <strong style={{ color: "var(--mn-ink-700)" }}>{total.toLocaleString()} master records</strong> across the estate ·{" "}

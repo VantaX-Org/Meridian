@@ -177,21 +177,6 @@ rules:
       app F2747. The profit centre is often derived from the cost centre assignment.'
   record_fix_template: 'Asset {ANLA.ANLN1}: PRCTR is {actual_value}. Assign the profit centre via AS02 > Time-Dependent tab
     or Fiori app F2747.'
-- id: AA012
-  field: ANLZ.GSBER
-  check_class: null_check
-  severity: low
-  dimension: completeness
-  message: Business area missing — affects segment reporting and balance sheet split
-  why_it_matters: GSBER (business area) is used for segment reporting and internal balance sheet preparation by business area.
-    Without it, the asset is excluded from business area financial statements and cross-company reporting is incomplete.
-  rule_authority: best_practice
-  sap_impact: Business area financial statements exclude this asset. Segment reporting is incomplete. Cross-company cost allocation
-    by business area is affected.
-  fix_map:
-    __blank__: 'Business area is empty. In ECC: assign via AS02 > General tab > Business Area. In S/4HANA: use Fiori app F2747.'
-  record_fix_template: 'Asset {ANLA.ANLN1}: GSBER is {actual_value}. Assign the business area via AS02 (ECC) or Fiori app
-    F2747 (S/4HANA).'
 - id: AA013
   field: ANLZ.WERKS
   check_class: null_check
@@ -361,3 +346,148 @@ rules:
     __other__: Depreciation key '{invalid_value}' not in T093. Reassign via AS02 or configure in SPRO > Financial Accounting
       > Asset Accounting > Depreciation > Valuation Methods > Depreciation Key > Maintain Depreciation Key (AFAMA).
   record_fix_template: 'Asset {ANLA.ANLN1}: depreciation key ''{actual_value}'' is not in T093.'
+
+# ── Internal consistency: asset lifecycle dates ─────────────────────────────
+- id: AA033
+  field: ANLA.DEAKT
+  check_class: cross_field_check
+  fail_when: (`ANLA.DEAKT` < `ANLA.AKTIV`) | (`ANLA.DEAKT` < `ANLA.ZUGDT`)
+  severity: high
+  dimension: consistency
+  message: Asset deactivated before it was capitalised or first acquired
+  why_it_matters: >-
+    The deactivation date is the value date of the retirement or transfer that took the asset's last
+    value out. SAP does not post a retirement with a value date before the capitalisation date or the
+    first acquisition, so a deactivation date before either means one of the dates was loaded or
+    changed wrongly.
+  rule_authority: sap_hard_constraint
+  sap_impact: The asset history sheet (S_ALR_87011990) and depreciation simulation place the asset's
+    life in the wrong periods; pro-rata depreciation and the retirement gain/loss are miscalculated.
+  fix_map:
+    __other__: Display the asset's transactions in AW01N and correct the date that disagrees with them
+      (capitalisation date in AS02 or, for legacy assets, AS92; a wrong retirement must be reversed and
+      re-posted).
+  record_fix_template: 'Asset {ANLA.ANLN1}-{ANLA.ANLN2} (company code {ANLA.BUKRS}): deactivated on {ANLA.DEAKT},
+    capitalised {ANLA.AKTIV}, first acquisition {ANLA.ZUGDT}.'
+
+- id: AA034
+  field: ANLZ.ADATU
+  check_class: cross_field_check
+  grain: ANLZ
+  fail_when: (`ANLZ.ADATU` > `ANLZ.BDATU`)
+  severity: medium
+  dimension: consistency
+  message: Time-dependent asset assignment starts after it ends (ANLZ valid-from after valid-to)
+  why_it_matters: >-
+    Cost centre, plant, location and profit centre of an asset are kept in time segments. A segment
+    whose valid-from date is after its valid-to date covers no day at all, so the assignment in force
+    for that period is undefined.
+  rule_authority: sap_hard_constraint
+  sap_impact: Depreciation for the period is posted to the wrong or no cost centre (AFAB); asset lists
+    by cost centre or plant at a key date omit the asset.
+  fix_map:
+    __other__: Correct the time-dependent data in AS02 > Time-dependent tab (S/4HANA Fiori app F2747) so
+      that every interval starts on or before its end date.
+  record_fix_template: 'Asset {ANLZ.ANLN1}-{ANLZ.ANLN2} (company code {ANLZ.BUKRS}): time segment valid from
+    {ANLZ.ADATU} to {ANLZ.BDATU}.'
+
+- id: AA035
+  field: ANLB.ADATU
+  check_class: cross_field_check
+  fail_when: (`ANLB.ADATU` > `ANLB.BDATU`)
+  severity: medium
+  dimension: consistency
+  message: Time-dependent depreciation terms start after they end (ANLB valid-from after valid-to)
+  why_it_matters: >-
+    Depreciation terms (key, useful life) can change over time; each interval runs from its valid-from
+    to its valid-to date. An interval starting after it ends covers no period, so the depreciation terms
+    in force for that time are undefined.
+  rule_authority: sap_hard_constraint
+  sap_impact: The depreciation run (AFAB) and recalculation (AFAR) use the wrong depreciation terms for
+    the periods concerned.
+  fix_map:
+    __other__: Correct the time-dependent depreciation terms in AS02 > Depreciation areas (S/4HANA Fiori
+      app F2747).
+  record_fix_template: 'Asset {ANLB.ANLN1}-{ANLB.ANLN2} area {ANLB.AFABE}: depreciation terms valid from
+    {ANLB.ADATU} to {ANLB.BDATU}.'
+
+- id: AA036
+  field: ANLA.MEINS
+  check_class: cross_field_check
+  fail_when: (`ANLA.MENGE` > 0) & `ANLA.MEINS`.isna()
+  severity: medium
+  dimension: consistency
+  message: Asset quantity has no unit of measure
+  why_it_matters: >-
+    A quantity without its unit cannot be read — 12 could be pieces, metres or square metres. SAP
+    requires the unit when a quantity is entered on the asset (collective low-value assets, physical
+    inventory).
+  rule_authority: sap_hard_constraint
+  sap_impact: The low-value asset quantity check and asset physical inventory (AR31/AR32) count the
+    wrong units.
+  fix_map:
+    __other__: Enter the unit of measure next to the quantity in AS02 > General tab (S/4HANA Fiori app F2747).
+  record_fix_template: 'Asset {ANLA.ANLN1}-{ANLA.ANLN2}: quantity {ANLA.MENGE} without unit of measure.'
+
+# ── Uniqueness of business identifiers ─────────────────────────────────────
+- id: AA037
+  field: ANLA.INVNR
+  check_class: uniqueness_check
+  fields: [ANLA.BUKRS, ANLA.INVNR]
+  normalize: alnum
+  applies_when:
+    ANLA.ANLN2: ['0000']
+  severity: medium
+  dimension: uniqueness
+  message: The same inventory number (asset tag) is used by more than one main asset in the company code
+  why_it_matters: >-
+    The inventory number is the physical tag or barcode that links the asset on the floor to the asset
+    register. Two main assets with the same tag cannot both be confirmed in a physical inventory — one
+    of them is a duplicate registration or carries the other's tag. Sub-numbers are excluded: they
+    legitimately share the tag of their main asset.
+  rule_authority: best_practice
+  sap_impact: Physical inventory (AR31/AR32) confirms the wrong asset; duplicate registrations are
+    depreciated twice and the asset register overstates fixed assets.
+  fix_map:
+    __other__: Compare the assets in AW01N; retire or merge a duplicate registration (ABUMN transfer, then
+      deactivate), or give each physical asset its own tag in AS02 > General tab.
+  record_fix_template: 'Asset {ANLA.ANLN1} (company code {ANLA.BUKRS}): inventory number {ANLA.INVNR} is also
+    used by another main asset.'
+
+# ── Validity against the system's configuration ────────────────────────────
+- id: AA038
+  field: ANLA.ANLKL
+  check_class: referential_check
+  severity: high
+  dimension: validity
+  message: Asset class ANLA.ANLKL must exist in the system's asset classes (ANKA)
+  why_it_matters: >-
+    The asset class supplies the account determination, screen layout, number range and default
+    depreciation terms of the asset. An asset whose class is not defined (a migration mapping gap or a
+    deleted class) has no account determination, so no transaction can post to it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Acquisitions, retirements and the depreciation run (AFAB) fail with missing account
+    determination; the asset is missing from class-based reports.
+  fix_map:
+    __other__: Asset class '{invalid_value}' is not defined. Create it (OAOA) with the right account
+      determination, or move the asset to a valid class (AS02 is not possible — transfer with ABUMN to a
+      new asset in the right class).
+  record_fix_template: 'Asset {ANLA.ANLN1}-{ANLA.ANLN2}: asset class ''{actual_value}'' is not defined in ANKA.'
+
+- id: AA039
+  field: ANLB.AFABE
+  check_class: referential_check
+  severity: high
+  dimension: validity
+  message: Depreciation area ANLB.AFABE must exist in the chart of depreciation (T093)
+  why_it_matters: >-
+    Every depreciation area of an asset must be defined in the company code's chart of depreciation —
+    it decides the ledger, the posting rules and whether values are posted to the G/L. Terms for an
+    undefined area are never read by the depreciation run and point to a broken migration.
+  rule_authority: sap_hard_constraint
+  sap_impact: Depreciation for the area is never calculated or posted; parallel valuation (IFRS/local
+    GAAP/tax) is incomplete.
+  fix_map:
+    __other__: Depreciation area '{invalid_value}' is not defined. Define it in the chart of depreciation
+      (OADB) or remove the orphaned terms through SAP support.
+  record_fix_template: 'Asset {ANLB.ANLN1}-{ANLB.ANLN2}: depreciation area ''{actual_value}'' is not defined in T093.'

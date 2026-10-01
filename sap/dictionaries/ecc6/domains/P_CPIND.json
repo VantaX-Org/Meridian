@@ -1,0 +1,27 @@
+{
+ "domain": "P_CPIND",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "S",
+   "high": null,
+   "text": "Salary structure"
+  },
+  {
+   "low": "T",
+   "high": null,
+   "text": "Pay scale structure"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Direct entry"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

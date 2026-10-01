@@ -230,10 +230,10 @@ rules:
     - R
 - id: PP014
   field: STPO.MENGE
-  check_class: null_check
+  check_class: cross_field_check
   severity: critical
   dimension: completeness
-  message: BOM component quantity is mandatory — zero means no material reserved for production
+  message: BOM component quantity is blank or zero (negative quantities are co-/by-products and valid)
   why_it_matters: MENGE on a BOM line defines how much of the component is consumed per parent base quantity. Zero or blank
     means no material is reserved for production, causing stock shortages during execution and incorrect product costing.
   rule_authority: sap_hard_constraint
@@ -248,6 +248,7 @@ rules:
       not_in:
       - T
       - D
+  fail_when: '`STPO.MENGE`.isna() | (`STPO.MENGE` == 0)'
 - id: PP015
   field: STPO.MEINS
   check_class: null_check
@@ -429,3 +430,586 @@ rules:
     are generated every run.
   fix_map:
     __blank__: Correct the MRP controller via MM02 > MRP 1 view. Ensure the controller code exists in OMD0.
+# ── Rule-breadth extension (PP030+): BOM header/items, routings and operations, work centres, repetitive manufacturing, configuration ────
+- id: PP030
+  field: STKO.BMENG
+  check_class: cross_field_check
+  require_populated: true
+  fail_when: '`STKO.BMENG` <= 0'
+  severity: critical
+  dimension: consistency
+  message: BOM base quantity is zero or negative
+  why_it_matters: Component quantities are stated per base quantity of the header material; the BOM explosion scales them
+    by order quantity / base quantity. CS01 requires a positive base quantity.
+  rule_authority: sap_hard_constraint
+  sap_impact: 'BOM explosion divides by zero: production and planned orders get no or infinite component requirements; product
+    costing fails.'
+  fix_map:
+    __other__: Set the base quantity on the header (Quantity data) via CS02 (ECC and S/4HANA; Fiori Maintain Bill of Material).
+  record_fix_template: 'BOM {STKO.STLNR} alternative {STKO.STLAL}: base quantity {actual_value}.'
+- id: PP031
+  field: STKO.BMEIN
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: BOM base unit of measure is missing
+  why_it_matters: The base quantity is expressed in the BOM's base unit (normally the header material's base unit); CS01
+    requires it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Order quantities cannot be converted to the BOM base quantity; explosion is wrong.
+  fix_map:
+    __blank__: Enter the base unit on the header via CS02 (ECC and S/4HANA; Fiori Maintain Bill of Material).
+  record_fix_template: 'BOM {STKO.STLNR} alternative {STKO.STLAL}: base unit missing.'
+- id: PP032
+  field: MAST.LOSVN
+  check_class: cross_field_check
+  fail_when: (`MAST.LOSBS` > 0) & (`MAST.LOSVN` > `MAST.LOSBS`)
+  severity: medium
+  dimension: consistency
+  message: BOM alternative lot-size range is inverted (from lot size above to lot size)
+  why_it_matters: 'Alternative BOMs are selected by the order''s lot size within the range LOSVN - LOSBS of the material-BOM
+    link. A from-lot-size above the to-lot-size is an empty range: the alternative is never selected.'
+  rule_authority: sap_hard_constraint
+  sap_impact: Automatic alternative selection (by lot size) never picks this alternative; orders use another BOM.
+  fix_map:
+    __other__: Correct the lot-size range of the alternative via CS02 (ECC and S/4HANA; Fiori Maintain Bill of Material)
+      (header > Quantity data).
+  record_fix_template: 'Material {MAST.MATNR} BOM {MAST.STLNR}/{MAST.STLAL}: lot size {actual_value} to {MAST.LOSBS}.'
+- id: PP033
+  field: STPO.IDNRK
+  check_class: cross_field_check
+  fail_when: '`STPO.IDNRK` == `MAST.MATNR`'
+  applies_when:
+    STPO.POSTP:
+    - L
+    - N
+    - R
+    STPO.REKRS:
+      not_in:
+      - X
+  severity: critical
+  dimension: consistency
+  message: BOM component is the header material itself (recursive BOM) without recursiveness allowed
+  why_it_matters: A component equal to the assembly makes the BOM explode into itself. SAP only accepts it when the item
+    is explicitly flagged as recursive-allowed (e.g. recycling of a by-product).
+  rule_authority: sap_hard_constraint
+  sap_impact: BOM explosion in MRP, costing and order creation stops with a recursion error for the assembly.
+  fix_map:
+    __other__: Remove the component or, if the recursion is intended, set 'recursiveness allowed' on the item via CS02 (ECC
+      and S/4HANA; Fiori Maintain Bill of Material).
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: component {actual_value} is the header material.'
+- id: PP034
+  field: STPO.ROMS1
+  check_class: cross_field_check
+  fail_when: ~(`STPO.ROMS1` > 0)
+  applies_when:
+    STPO.POSTP:
+    - R
+  severity: high
+  dimension: completeness
+  message: Variable-size item has no size
+  why_it_matters: A variable-size item (category R) is a piece cut from a stock material; its quantity is calculated from
+    its sizes with the formula. CS01 requires at least size 1.
+  rule_authority: sap_hard_constraint
+  sap_impact: The variable-size quantity cannot be calculated; the component requirement is wrong.
+  fix_map:
+    __other__: Enter the sizes (and number of pieces) on the item via CS02 (ECC and S/4HANA; Fiori Maintain Bill of Material).
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: size 1 is {actual_value}.'
+- id: PP035
+  field: STPO.ROMEI
+  check_class: null_check
+  applies_when:
+    STPO.POSTP:
+    - R
+  severity: medium
+  dimension: completeness
+  message: Variable-size item has no unit for its sizes
+  why_it_matters: The sizes of a variable-size item are in the size unit (mm, m); the formula converts them into the component
+    quantity with it.
+  rule_authority: sap_hard_constraint
+  sap_impact: The variable-size quantity cannot be computed.
+  fix_map:
+    __blank__: Enter the unit for the sizes on the item via CS02 (ECC and S/4HANA; Fiori Maintain Bill of Material).
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: size unit missing.'
+- id: PP036
+  field: STPO.DOKNR
+  check_class: null_check
+  applies_when:
+    STPO.POSTP:
+    - D
+  severity: medium
+  dimension: completeness
+  message: Document item has no document number
+  why_it_matters: A document item (category D) links a drawing or specification from document management to the BOM; the
+    document number is the link.
+  rule_authority: sap_hard_constraint
+  sap_impact: Shop papers and engineering views show an empty document reference.
+  fix_map:
+    __blank__: Enter the document (type, number, part, version) on the item via CS02 (ECC and S/4HANA; Fiori Maintain Bill
+      of Material).
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: document item without a document.'
+- id: PP037
+  field: STPO.DOKAR
+  check_class: null_check
+  applies_when:
+    STPO.POSTP:
+    - D
+  severity: medium
+  dimension: completeness
+  message: Document item has no document type
+  why_it_matters: The document type is part of the document key (type, number, part, version); without it the document cannot
+    be found.
+  rule_authority: sap_hard_constraint
+  sap_impact: The linked document cannot be opened from the BOM.
+  fix_map:
+    __blank__: Enter the document type on the item via CS02 (ECC and S/4HANA; Fiori Maintain Bill of Material).
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: document type missing.'
+- id: PP038
+  field: STPO.MATKL
+  check_class: null_check
+  applies_when:
+    STPO.POSTP:
+    - N
+    STPO.IDNRK:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: Non-stock item without a material has no material group
+  why_it_matters: A non-stock item (category N) without a material master is procured directly for the order; the purchase
+    requisition takes its material group from the BOM item, and CS01 requires it.
+  rule_authority: sap_hard_constraint
+  sap_impact: The order's purchase requisition cannot be created for the item.
+  fix_map:
+    __blank__: Enter the material group in the item's purchasing data via CS02 (ECC and S/4HANA; Fiori Maintain Bill of
+      Material).
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: non-stock item without material group.'
+- id: PP039
+  field: STPO.SAKTO
+  check_class: null_check
+  applies_when:
+    STPO.POSTP:
+    - N
+    STPO.IDNRK:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: Non-stock item without a material has no cost element
+  why_it_matters: Costs of a directly procured non-stock item are posted to the order under the item's cost element; CS01
+    requires it in the purchasing data.
+  rule_authority: sap_hard_constraint
+  sap_impact: The requisition / PO for the item has no account to post to, and product costing omits the item.
+  fix_map:
+    __blank__: Enter the cost element in the item's purchasing data via CS02 (ECC and S/4HANA; Fiori Maintain Bill of Material).
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: non-stock item without cost element.'
+- id: PP040
+  field: STPO.ALPGR
+  check_class: null_check
+  applies_when:
+    STPO.ALPOS:
+    - X
+  severity: medium
+  dimension: completeness
+  message: Alternative item has no alternative item group
+  why_it_matters: Alternative items are interchangeable components grouped by the alternative item group, which carries
+    the strategy and usage probabilities. An alternative item outside a group is never substituted.
+  rule_authority: sap_hard_constraint
+  sap_impact: Availability-driven substitution and probability-weighted planning do not work for the item.
+  fix_map:
+    __blank__: Enter the alternative item group (with strategy and usage probability) via CS02 (ECC and S/4HANA; Fiori Maintain
+      Bill of Material).
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: alternative item without group.'
+- id: PP041
+  field: PLKO.PLNME
+  check_class: null_check
+  applies_when: &id001
+    PLKO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+  severity: high
+  dimension: completeness
+  message: Routing / recipe has no task list unit of measure
+  why_it_matters: Lot-size ranges and operation quantities of the task list are in its unit of measure (normally the material's
+    base unit); CA01 requires it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Order quantities cannot be converted into operation quantities; scheduling and costing are wrong.
+  fix_map:
+    __blank__: 'Enter the unit on the header via CA02 / C202 for master recipes (S/4HANA: Fiori Manage Routings).'
+  record_fix_template: 'Task list {PLKO.PLNTY}/{PLKO.PLNNR}/{PLKO.PLNAL}: unit missing.'
+- id: PP042
+  field: PLKO.LOSBS
+  check_class: cross_field_check
+  require_populated: true
+  fail_when: '`PLKO.LOSBS` <= 0'
+  applies_when: *id001
+  severity: high
+  dimension: consistency
+  message: Routing / recipe to-lot-size is zero
+  why_it_matters: A task list is selected for an order only when the order quantity lies in its lot-size range; the standard
+    upper limit is 99,999,999. A zero upper limit excludes every order.
+  rule_authority: sap_hard_constraint
+  sap_impact: Automatic routing selection never finds the task list; orders are created without operations.
+  fix_map:
+    __other__: 'Set the to-lot-size (normally 99,999,999) on the header via CA02 / C202 for master recipes (S/4HANA: Fiori
+      Manage Routings).'
+  record_fix_template: 'Task list {PLKO.PLNTY}/{PLKO.PLNNR}/{PLKO.PLNAL}: to-lot-size {actual_value}.'
+- id: PP043
+  field: PLPO.VORNR
+  check_class: null_check
+  applies_when: &id002
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      not_in:
+      - X
+  severity: high
+  dimension: completeness
+  message: Operation has no operation number
+  why_it_matters: The operation number orders the operations and is how component allocations, confirmations and capacity
+    requirements refer to it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Operations cannot be sequenced, confirmed or referenced.
+  fix_map:
+    __blank__: 'Renumber the operations via CA02 / C202 for master recipes (S/4HANA: Fiori Manage Routings).'
+  record_fix_template: 'Task list {PLPO.PLNTY}/{PLPO.PLNNR} operation {PLPO.VORNR}: operation number missing.'
+- id: PP044
+  field: PLPO.STEUS
+  check_class: null_check
+  applies_when: *id002
+  severity: critical
+  dimension: completeness
+  message: Operation has no control key
+  why_it_matters: The control key decides whether an operation is scheduled, costed, confirmed, printed or processed externally;
+    CA01 requires it on every operation.
+  rule_authority: sap_hard_constraint
+  sap_impact: The operation is neither scheduled nor costed nor confirmable in production orders.
+  fix_map:
+    __blank__: 'Enter the control key (e.g. PP01) via CA02 / C202 for master recipes (S/4HANA: Fiori Manage Routings).'
+  record_fix_template: 'Task list {PLPO.PLNTY}/{PLPO.PLNNR} operation {PLPO.VORNR}: control key missing.'
+- id: PP045
+  field: PLPO.BMSCH
+  check_class: cross_field_check
+  require_populated: true
+  fail_when: '`PLPO.BMSCH` <= 0'
+  applies_when: *id002
+  severity: high
+  dimension: consistency
+  message: Operation base quantity is zero
+  why_it_matters: Standard values (setup, machine, labour) are given per operation base quantity; scheduling and costing
+    scale them by order quantity / base quantity.
+  rule_authority: sap_hard_constraint
+  sap_impact: Operation durations and costs divide by zero.
+  fix_map:
+    __other__: 'Set the base quantity of the operation (normally 1) via CA02 / C202 for master recipes (S/4HANA: Fiori Manage
+      Routings).'
+  record_fix_template: 'Task list {PLPO.PLNTY}/{PLPO.PLNNR} operation {PLPO.VORNR}: base quantity {actual_value}.'
+- id: PP046
+  field: PLPO.UMREZ
+  check_class: cross_field_check
+  require_populated: true
+  fail_when: (`PLPO.UMREZ` <= 0) | (`PLPO.UMREN` <= 0)
+  applies_when: *id002
+  severity: high
+  dimension: consistency
+  message: Operation unit conversion to the task list unit is zero
+  why_it_matters: Operation quantities are converted from the task list unit with UMREZ / UMREN (1 / 1 when the units are
+    the same). A zero factor divides by zero.
+  rule_authority: sap_hard_constraint
+  sap_impact: Operation quantities, durations and confirmations cannot be computed.
+  fix_map:
+    __other__: 'Correct the conversion of the operation unit via CA02 / C202 for master recipes (S/4HANA: Fiori Manage Routings).'
+  record_fix_template: 'Task list {PLPO.PLNTY}/{PLPO.PLNNR} operation {PLPO.VORNR}: conversion {PLPO.UMREZ}/{PLPO.UMREN}.'
+- id: PP047
+  field: PLPO.VGW01
+  check_class: cross_field_check
+  fail_when: (`PLPO.VGW01` > 0) & `PLPO.VGE01`.isna()
+  applies_when: *id002
+  severity: high
+  dimension: completeness
+  message: Operation standard value 1 (typically setup) is maintained without its unit
+  why_it_matters: Each standard value is a duration or quantity whose unit (minutes, hours) is required next to it; CA01
+    refuses a value without its unit. Which activity a standard value measures (setup, machine, labour) is set by the work
+    centre's standard value key.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling and costing cannot convert the standard value into time or cost; the operation is scheduled and
+    costed as if it took no time.
+  fix_map:
+    __other__: 'Enter the unit for the standard value via CA02 / C202 for master recipes (S/4HANA: Fiori Manage Routings).'
+  record_fix_template: 'Task list {PLPO.PLNTY}/{PLPO.PLNNR} operation {PLPO.VORNR}: standard value 1 without unit.'
+- id: PP062
+  field: PLPO.VGW02
+  check_class: cross_field_check
+  fail_when: (`PLPO.VGW02` > 0) & `PLPO.VGE02`.isna()
+  applies_when: *id002
+  severity: high
+  dimension: completeness
+  message: Operation standard value 2 (typically machine) is maintained without its unit
+  why_it_matters: Each standard value is a duration or quantity whose unit (minutes, hours) is required next to it; CA01
+    refuses a value without its unit. Which activity a standard value measures (setup, machine, labour) is set by the work
+    centre's standard value key.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling and costing cannot convert the standard value into time or cost; the operation is scheduled and
+    costed as if it took no time.
+  fix_map:
+    __other__: 'Enter the unit for the standard value via CA02 / C202 for master recipes (S/4HANA: Fiori Manage Routings).'
+  record_fix_template: 'Task list {PLPO.PLNTY}/{PLPO.PLNNR} operation {PLPO.VORNR}: standard value 2 without unit.'
+- id: PP063
+  field: PLPO.VGW03
+  check_class: cross_field_check
+  fail_when: (`PLPO.VGW03` > 0) & `PLPO.VGE03`.isna()
+  applies_when: *id002
+  severity: high
+  dimension: completeness
+  message: Operation standard value 3 (typically labour) is maintained without its unit
+  why_it_matters: Each standard value is a duration or quantity whose unit (minutes, hours) is required next to it; CA01
+    refuses a value without its unit. Which activity a standard value measures (setup, machine, labour) is set by the work
+    centre's standard value key.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling and costing cannot convert the standard value into time or cost; the operation is scheduled and
+    costed as if it took no time.
+  fix_map:
+    __other__: 'Enter the unit for the standard value via CA02 / C202 for master recipes (S/4HANA: Fiori Manage Routings).'
+  record_fix_template: 'Task list {PLPO.PLNTY}/{PLPO.PLNNR} operation {PLPO.VORNR}: standard value 3 without unit.'
+- id: PP048
+  field: CRHD.ENDDA
+  check_class: cross_field_check
+  fail_when: '`CRHD.BEGDA` > `CRHD.ENDDA`'
+  applies_when:
+    CRHD.OBJTY:
+    - A
+  severity: high
+  dimension: consistency
+  message: Work centre validity ends before it starts
+  why_it_matters: A work centre is valid from BEGDA to ENDDA; operations can only use it within that period. An end before
+    the start is an empty period.
+  rule_authority: sap_hard_constraint
+  sap_impact: The work centre cannot be used in task lists or orders; scheduling and capacity planning fail for operations
+    that reference it.
+  fix_map:
+    __other__: Correct the validity via CR02 (ECC and S/4HANA).
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: valid {CRHD.BEGDA} to {actual_value}.'
+- id: PP049
+  field: CRHD.VERWE
+  check_class: null_check
+  applies_when:
+    CRHD.OBJTY:
+    - A
+  severity: high
+  dimension: completeness
+  message: Work centre has no work centre category
+  why_it_matters: The work centre category controls which screens, fields and task list types the work centre can be used
+    with; CR01 requires it.
+  rule_authority: sap_hard_constraint
+  sap_impact: The work centre cannot be maintained or assigned consistently.
+  fix_map:
+    __blank__: The category is set at creation; recreate the work centre via CR01 or correct it via CR02 (ECC and S/4HANA).
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: category missing.'
+- id: PP050
+  field: CRHD.ARBPL
+  check_class: uniqueness_check
+  fields:
+  - CRHD.WERKS
+  - CRHD.ARBPL
+  applies_when:
+    CRHD.OBJTY:
+    - A
+  severity: high
+  dimension: uniqueness
+  message: The same work centre name exists more than once in a plant
+  why_it_matters: Task lists, orders and confirmations refer to a work centre by plant and name; SAP keeps that pair unique
+    (CR01 refuses a duplicate). Duplicates come from direct loads and make the reference ambiguous.
+  rule_authority: sap_hard_constraint
+  sap_impact: Operations pick either record; capacity, costing rates and confirmations are split between them.
+  fix_map:
+    __other__: 'Keep one work centre per plant and name: reassign task lists and orders to it (CA85 mass replace) and flag
+      the other for deletion.'
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: name used by another work centre (object {CRHD.OBJID}).'
+- id: PP051
+  field: MARC.SFEPR
+  check_class: null_check
+  applies_when:
+    MARC.SAUFT:
+    - X
+  severity: high
+  dimension: completeness
+  message: Material allowed for repetitive manufacturing has no REM profile
+  why_it_matters: 'Repetitive manufacturing (MRP 4 > ''Repetitive mfg'') is controlled entirely by the REM profile: backflushing,
+    reporting points, activity posting and the planned order type. MM02 requires the profile when the indicator is set.'
+  rule_authority: sap_hard_constraint
+  sap_impact: Backflushing (MFBF) and run schedule quantities cannot be processed for the material.
+  fix_map:
+    __blank__: Enter the REM profile in MRP 4 via MM02 (ECC) or Fiori F1602 Manage Product Master Data (S/4HANA).
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: repetitive manufacturing allowed but no REM profile.'
+- id: PP052
+  field: STKO.BMEIN
+  check_class: referential_check
+  severity: high
+  dimension: validity
+  message: BOM base unit (STKO.BMEIN) is not defined in the system's configuration (T006)
+  why_it_matters: BOM base unit is a key into the system's own configuration (T006). A value that is not configured there
+    cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct loads,
+    client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Order quantities cannot be converted to the BOM base quantity.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T006. Correct the value via CS02 (ECC and S/4HANA; Fiori Maintain Bill of
+      Material), or create it in customizing (CUNI) if it is genuinely needed.'
+  record_fix_template: 'BOM {STKO.STLNR} alternative {STKO.STLAL}: bom base unit ''{actual_value}'' is not configured (T006).'
+- id: PP053
+  field: STPO.MEINS
+  check_class: referential_check
+  severity: high
+  dimension: validity
+  message: Component unit (STPO.MEINS) is not defined in the system's configuration (T006)
+  why_it_matters: Component unit is a key into the system's own configuration (T006). A value that is not configured there
+    cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct loads,
+    client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Component requirements cannot be converted to the component's base unit.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T006. Correct the value via CS02 (ECC and S/4HANA; Fiori Maintain Bill of
+      Material), or create it in customizing (CUNI) if it is genuinely needed.'
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: component unit ''{actual_value}'' is not configured (T006).'
+- id: PP054
+  field: STPO.LGORT
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Component issue storage location (STPO.LGORT) is not defined in the system's configuration (T001L)
+  why_it_matters: Component issue storage location is a key into the system's own configuration (T001L). A value that is
+    not configured there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes
+    from direct loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Reservations and backflushes default to a storage location that does not exist.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T001L. Correct the value via CS02 (ECC and S/4HANA; Fiori Maintain Bill of
+      Material), or create it in customizing (OX09) if it is genuinely needed.'
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: component issue storage location ''{actual_value}'' is not configured
+    (T001L).'
+- id: PP055
+  field: PLKO.PLNME
+  check_class: referential_check
+  severity: high
+  dimension: validity
+  message: Task list unit (PLKO.PLNME) is not defined in the system's configuration (T006)
+  why_it_matters: Task list unit is a key into the system's own configuration (T006). A value that is not configured there
+    cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct loads,
+    client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Order quantities cannot be converted into operation quantities.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T006. Correct the value via CA02 / C202 for master recipes (S/4HANA: Fiori
+      Manage Routings), or create it in customizing (CUNI) if it is genuinely needed.'
+  record_fix_template: 'Task list {PLKO.PLNTY}/{PLKO.PLNNR}/{PLKO.PLNAL}: task list unit ''{actual_value}'' is not configured
+    (T006).'
+- id: PP056
+  field: PLPO.STEUS
+  check_class: referential_check
+  applies_when: *id002
+  severity: critical
+  dimension: validity
+  message: Operation control key (PLPO.STEUS) is not defined in the system's configuration (T430)
+  why_it_matters: Operation control key is a key into the system's own configuration (T430). A value that is not configured
+    there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct
+    loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: The operation cannot be scheduled, costed or confirmed.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T430. Correct the value via CA02 / C202 for master recipes (S/4HANA: Fiori
+      Manage Routings), or create it in customizing (OPJ8) if it is genuinely needed.'
+  record_fix_template: 'Task list {PLPO.PLNTY}/{PLPO.PLNNR} operation {PLPO.VORNR}: operation control key ''{actual_value}''
+    is not configured (T430).'
+- id: PP057
+  field: PLPO.MEINH
+  check_class: referential_check
+  applies_when: *id002
+  severity: medium
+  dimension: validity
+  message: Operation unit (PLPO.MEINH) is not defined in the system's configuration (T006)
+  why_it_matters: Operation unit is a key into the system's own configuration (T006). A value that is not configured there
+    cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct loads,
+    client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Operation quantities cannot be converted.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T006. Correct the value via CA02 / C202 for master recipes (S/4HANA: Fiori
+      Manage Routings), or create it in customizing (CUNI) if it is genuinely needed.'
+  record_fix_template: 'Task list {PLPO.PLNTY}/{PLPO.PLNNR} operation {PLPO.VORNR}: operation unit ''{actual_value}'' is
+    not configured (T006).'
+- id: PP058
+  field: CRHD.VERWE
+  check_class: referential_check
+  applies_when:
+    CRHD.OBJTY:
+    - A
+  severity: high
+  dimension: validity
+  message: Work centre category (CRHD.VERWE) is not defined in the system's configuration (TC30)
+  why_it_matters: Work centre category is a key into the system's own configuration (TC30). A value that is not configured
+    there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct
+    loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: The work centre cannot be maintained or used in task lists.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in TC30. Correct the value via CR02 (ECC and S/4HANA), or create it in customizing
+      (OP40) if it is genuinely needed.'
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: work centre category ''{actual_value}'' is not configured
+    (TC30).'
+- id: PP059
+  field: CRHD.PLANV
+  check_class: referential_check
+  applies_when:
+    CRHD.OBJTY:
+    - A
+  severity: medium
+  dimension: validity
+  message: Work centre task list usage (CRHD.PLANV) is not defined in the system's configuration (TC23)
+  why_it_matters: Work centre task list usage is a key into the system's own configuration (TC23). A value that is not configured
+    there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct
+    loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Task lists of the intended type cannot use the work centre.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in TC23. Correct the value via CR02 (ECC and S/4HANA), or create it in customizing
+      (OP45) if it is genuinely needed.'
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: work centre task list usage ''{actual_value}'' is not
+    configured (TC23).'
+- id: PP060
+  field: CRHD.VGWTS
+  check_class: referential_check
+  applies_when:
+    CRHD.OBJTY:
+    - A
+  severity: high
+  dimension: validity
+  message: Standard value key (CRHD.VGWTS) is not defined in the system's configuration (TC21)
+  why_it_matters: Standard value key is a key into the system's own configuration (TC21). A value that is not configured
+    there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct
+    loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Operations at the work centre have no standard value parameters; scheduling and costing formulas fail.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in TC21. Correct the value via CR02 (ECC and S/4HANA), or create it in customizing
+      (OP19) if it is genuinely needed.'
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: standard value key ''{actual_value}'' is not configured
+    (TC21).'
+- id: PP061
+  field: MARC.SFEPR
+  check_class: referential_check
+  severity: high
+  dimension: validity
+  message: Repetitive manufacturing profile (MARC.SFEPR) is not defined in the system's configuration (T437S)
+  why_it_matters: Repetitive manufacturing profile is a key into the system's own configuration (T437S). A value that is
+    not configured there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes
+    from direct loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Backflushing and run schedule processing fail for the material.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T437S. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA), or create it in customizing (OSP2) if it is genuinely needed.'
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: repetitive manufacturing profile ''{actual_value}'' is
+    not configured (T437S).'

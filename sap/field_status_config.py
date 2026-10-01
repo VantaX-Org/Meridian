@@ -59,7 +59,72 @@ CONFIG_TABLES = {
     "T077D": ["KTOKD", "FAUSA", "FAUS1", "FAUS2", "FAUSF", "FAUSG", "FAUSV", "FAUSU"],
     "TMODO": ["FAUNA", "MODIF", "GGRUP"],
     "TMODU": ["FAUNA", "MODIF", "TABNM", "FELDN", "KOART"],
+    # material master field selection
+    "T130F": ["FNAME", "FGRUP"],        # field (TABLE-FIELD) → field selection group
+    "T130A": ["FLREF", "FAUSW"],        # field reference → status per group (position = group)
+    "T134": ["MTART", "FLREF"],         # material type → field reference
+    "T137": ["MBRSH", "FLREF"],         # industry sector → field reference
+    # conversion exits: external (language-dependent) → internal codes, for uploaded values
+    "T006A": ["SPRAS", "MSEHI", "MSEH3"],        # CUNIT: 'PC' (EN) / 'ST' (DE) → internal 'ST'
+    "TAUUM": ["SPRAS", "AUART", "AUART_SPR"],    # AUART: 'OR' (EN) → internal 'TA'
+    # country settings and bank directory (checks/country_rules.py)
+    "T005": ["LAND1", "LNPLZ", "PRPLZ", "XPLZS", "LNST1", "PRST1", "LNST2", "PRST2", "LNBKN", "PRBKN", "LNBLZ", "PRBLZ"],
+    "BNKA": ["BANKS", "BANKL"],
+    # pricing condition types and HR infotype time constraints (checks/config_rules.py)
+    "T685A": ["KAPPL", "KSCHL", "KNEGA", "KRECH", "KOAID"],
+    "T582A": ["INFTY", "ZEITB"],
 }
+
+
+def conversion_maps(config: dict[str, list[dict]]) -> dict[str, dict[str, str]]:
+    """{conversion exit: {external: internal}} from this system's own tables. English
+    first; a code from another language is used only when it maps to one internal code."""
+    out: dict[str, dict[str, str]] = {}
+    for exit_, table, internal, external in (("CUNIT", "T006A", "MSEHI", "MSEH3"), ("AUART", "TAUUM", "AUART", "AUART_SPR")):
+        rows = config.get(table) or []
+        if not rows:
+            continue
+        internals = {str(r.get(internal) or "").strip() for r in rows} - {""}
+        english = {str(r.get(external) or "").strip(): str(r.get(internal) or "").strip()
+                   for r in rows if str(r.get("SPRAS") or "").strip() == "E"}
+        other: dict[str, set[str]] = {}
+        for r in rows:
+            other.setdefault(str(r.get(external) or "").strip(), set()).add(str(r.get(internal) or "").strip())
+        m = {ext: next(iter(ints)) for ext, ints in other.items() if len(ints) == 1}
+        m.update(english)
+        out[exit_] = {ext: i for ext, i in m.items() if ext and i and ext not in internals}  # internal codes stay as they are
+    return out
+
+# SAP's documented priority when several references set a material field: hide > display > required > optional
+_PRIORITY = {"-": 3, "*": 2, "+": 1, ".": 0}
+MATERIAL_TABLES = ("MARA", "MAKT")  # client-level data, controlled by material type and industry sector
+
+
+def resolve_material(config: dict[str, list[dict]], dictionary) -> dict[str, dict[str, str]]:
+    """{TABLE.FIELD: {"MTART|MBRSH": "required" | "suppressed"}} from this system's
+    material field selection. Empty unless all four tables were read."""
+    if not all(config.get(t) for t in ("T130F", "T130A", "T134", "T137")):
+        return {}
+    strings = {str(r["FLREF"]).strip(): str(r.get("FAUSW") or "") for r in config["T130A"]}
+    mtart = {str(r["MTART"]).strip(): strings.get(str(r.get("FLREF") or "").strip()) for r in config["T134"]}
+    mbrsh = {str(r["MBRSH"]).strip(): strings.get(str(r.get("FLREF") or "").strip()) for r in config["T137"]}
+    out: dict[str, dict[str, str]] = {}
+    for r in config["T130F"]:
+        table, _, name = str(r.get("FNAME", "")).strip().partition("-")
+        group = str(r.get("FGRUP") or "").strip()
+        f = dictionary.field(table, name) if table in MATERIAL_TABLES else None
+        if f is None or f.key or not group.isdigit() or int(group) < 1:
+            continue
+        pos = int(group) - 1
+        for mt, s1 in mtart.items():
+            for mb, s2 in mbrsh.items():
+                chars = [s[pos] for s in (s1, s2) if s and pos < len(s) and s[pos] in _PRIORITY]
+                if not chars:
+                    continue
+                st = STATUS[max(chars, key=_PRIORITY.get)]
+                if st in ("required", "suppressed"):
+                    out.setdefault(f"{table}.{name}", {})[f"{mt}|{mb}"] = st
+    return out
 _SEGMENT_LEN = 40  # every FAUS* column is CHAR 40
 
 

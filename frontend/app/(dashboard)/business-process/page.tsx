@@ -60,7 +60,7 @@ export default function BusinessProcessPage() {
   if (versionsQ.isLoading) {
     return (
       <>
-        <PageHead title="Business Processes" route="Connect · /business-process" sub="Loading…" />
+        <PageHead title="Process readiness" route="Process & impact · /business-process" sub="Loading…" />
         <Skeleton className="h-[420px] rounded-[10px]" />
       </>
     );
@@ -70,8 +70,8 @@ export default function BusinessProcessPage() {
     return (
       <>
         <PageHead
-          title="Business Processes"
-          route="Connect · /business-process"
+          title="Process readiness"
+          route="Process & impact · /business-process"
           sub="Business process readiness runs against a completed version."
         />
         <div className="mn-card mn-card-pad" style={{ textAlign: "center", color: "var(--mn-ink-400)" }}>
@@ -89,8 +89,8 @@ export default function BusinessProcessPage() {
   return (
     <>
       <PageHead
-        title="Business Processes"
-        route="Connect · /business-process"
+        title="Process readiness"
+        route="Process & impact · /business-process"
         sub={
           <>
             Process readiness for version{" "}

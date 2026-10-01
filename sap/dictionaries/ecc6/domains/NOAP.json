@@ -1,0 +1,27 @@
+{
+ "domain": "NOAP",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Error message if no organizational assignment exists"
+  },
+  {
+   "low": "W",
+   "high": null,
+   "text": "Warning if no organizational assignment exists"
+  },
+  {
+   "low": "N",
+   "high": null,
+   "text": "No message if no organizational assignment exists"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

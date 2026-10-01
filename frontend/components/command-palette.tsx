@@ -2,28 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import {
-  AlertTriangle,
-  BarChart3,
-  Bookmark,
-  Brain,
-  BrainCircuit,
-  ClipboardList,
-  Database,
-  FileText,
-  GitCompareArrows,
-  KeyRound,
-  LayoutDashboard,
-  Network,
-  Play,
-  Plug2,
-  RefreshCw,
-  Server,
-  Settings,
-  Sparkles,
-  Upload,
-  Workflow,
-} from "lucide-react";
+import { Bookmark } from "lucide-react";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import {
   Command,
@@ -35,69 +14,16 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from "@/components/ui/command";
-
-interface NavOption {
-  href: string;
-  label: string;
-  icon: React.ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
-  keywords?: string;
-  shortcut?: string;
-}
-
-const PAGES: ReadonlyArray<{ group: string; items: NavOption[] }> = [
-  {
-    group: "Analyse",
-    items: [
-      { href: "/", label: "Dashboard", icon: LayoutDashboard, keywords: "overview home dqs", shortcut: "⌘1" },
-      { href: "/findings", label: "Findings", icon: AlertTriangle, keywords: "checks critical severity" },
-      { href: "/issues", label: "Issues", icon: AlertTriangle, keywords: "records work list assign failing" },
-      { href: "/analytics", label: "Analytics", icon: BarChart3, keywords: "charts metrics" },
-      { href: "/mining", label: "Mining", icon: Sparkles, keywords: "patterns clustering" },
-      { href: "/run-sync", label: "Run Sync", icon: Play, keywords: "trigger sync module" },
-      { href: "/upload", label: "Import", icon: Upload, keywords: "load data file" },
-    ],
-  },
-  {
-    group: "Govern",
-    items: [
-      { href: "/stewardship", label: "Stewardship", icon: ClipboardList, keywords: "workbench review queue" },
-      { href: "/golden-records", label: "Golden Records", icon: Database, keywords: "master mdm" },
-      { href: "/glossary", label: "Glossary", icon: FileText, keywords: "terms business" },
-      { href: "/relationships", label: "Relationships", icon: Network, keywords: "lineage graph" },
-      { href: "/ai/rules", label: "AI Rules", icon: BrainCircuit, keywords: "propose" },
-    ],
-  },
-  {
-    group: "Connect",
-    items: [
-      { href: "/systems", label: "Systems", icon: Server, keywords: "sap hana" },
-      { href: "/connectivity", label: "Connectivity", icon: Plug2, keywords: "sources endpoints" },
-      { href: "/sync", label: "Sync Monitor", icon: RefreshCw, keywords: "jobs runs schedule" },
-      { href: "/config-impact", label: "Config Impact", icon: Workflow, keywords: "features sankey" },
-    ],
-  },
-  {
-    group: "Report",
-    items: [
-      { href: "/reports", label: "Reports", icon: FileText, keywords: "pdf analysis" },
-      { href: "/versions", label: "Versions", icon: GitCompareArrows, keywords: "history snapshots" },
-    ],
-  },
-  {
-    group: "Admin",
-    items: [
-      { href: "/settings", label: "Settings", icon: Settings, keywords: "preferences config" },
-      { href: "/settings/ai", label: "AI Settings", icon: Brain, keywords: "ollama model provider" },
-      { href: "/settings/licence", label: "Licence", icon: KeyRound, keywords: "seats modules" },
-    ],
-  },
-];
+import { useVisibleNav } from "@/hooks/use-nav";
+import { flattenNav } from "@/lib/nav";
 
 type QuickAction = {
   id: string;
   label: string;
   hint?: string;
   icon: React.ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+  /** Shown only while this page is in the user's nav. */
+  page: string;
   run: (ctx: { router: ReturnType<typeof useRouter> }) => void;
 };
 
@@ -107,6 +33,7 @@ const QUICK_ACTIONS: ReadonlyArray<QuickAction> = [
     label: "Go to Findings with active filters",
     hint: "Opens /findings with the last saved view applied",
     icon: Bookmark,
+    page: "/findings",
     run: ({ router }) => router.push("/findings"),
   },
 ];
@@ -118,6 +45,10 @@ interface CommandPaletteProps {
 
 export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   const router = useRouter();
+  // Same nav as the sidebar (lib/nav.ts), with the same role + licence filters.
+  const groups = useVisibleNav();
+  const visibleHrefs = new Set(groups.flatMap((g) => flattenNav(g.items).map((i) => i.href)));
+  const quickActions = QUICK_ACTIONS.filter((a) => visibleHrefs.has(a.page));
 
   const go = React.useCallback(
     (href: string) => {
@@ -140,20 +71,20 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
             Jump to any page, action, or saved view.
           </DialogPrimitive.Description>
           <Command label="Command palette" loop className="bg-transparent">
-            <CommandInput placeholder="Jump to… (try 'findings', 'sap systems')" autoFocus />
+            <CommandInput placeholder="Jump to… (try 'findings', 'systems')" autoFocus />
             <CommandList>
               <CommandEmpty>No matches.</CommandEmpty>
-              {PAGES.map((group, gi) => (
+              {groups.map((group, gi) => (
                 <React.Fragment key={group.group}>
                   {gi > 0 ? <CommandSeparator /> : null}
                   <CommandGroup heading={group.group}>
-                    {group.items.map((item) => (
+                    {flattenNav(group.items).map((item) => (
                       <CommandItem
                         key={item.href}
                         value={`${item.label} ${item.keywords ?? ""}`}
                         onSelect={() => go(item.href)}
                       >
-                        <item.icon className="h-4 w-4 text-muted-foreground" aria-hidden />
+                        <item.icon size={16} className="h-4 w-4 text-muted-foreground" />
                         <span className="flex-1 truncate">{item.label}</span>
                         {item.shortcut ? (
                           <CommandShortcut>{item.shortcut}</CommandShortcut>
@@ -165,27 +96,29 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                   </CommandGroup>
                 </React.Fragment>
               ))}
-              <CommandSeparator />
-              <CommandGroup heading="Quick actions">
-                {QUICK_ACTIONS.map((action) => (
-                  <CommandItem
-                    key={action.id}
-                    value={`${action.label} ${action.hint ?? ""}`}
-                    onSelect={() => {
-                      onOpenChange(false);
-                      action.run({ router });
-                    }}
-                  >
-                    <action.icon className="h-4 w-4 text-muted-foreground" aria-hidden />
-                    <span className="flex-1 truncate">{action.label}</span>
-                    {action.hint ? (
-                      <span className="ml-auto truncate text-[10px] text-muted-foreground">
-                        {action.hint}
-                      </span>
-                    ) : null}
-                  </CommandItem>
-                ))}
-              </CommandGroup>
+              {quickActions.length > 0 && <CommandSeparator />}
+              {quickActions.length > 0 && (
+                <CommandGroup heading="Quick actions">
+                  {quickActions.map((action) => (
+                    <CommandItem
+                      key={action.id}
+                      value={`${action.label} ${action.hint ?? ""}`}
+                      onSelect={() => {
+                        onOpenChange(false);
+                        action.run({ router });
+                      }}
+                    >
+                      <action.icon className="h-4 w-4 text-muted-foreground" aria-hidden />
+                      <span className="flex-1 truncate">{action.label}</span>
+                      {action.hint ? (
+                        <span className="ml-auto truncate text-[10px] text-muted-foreground">
+                          {action.hint}
+                        </span>
+                      ) : null}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              )}
             </CommandList>
             <div className="flex items-center justify-between border-t border-border px-3 py-2 text-[10px] text-muted-foreground">
               <div className="flex items-center gap-3">

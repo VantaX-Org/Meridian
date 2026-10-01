@@ -157,3 +157,20 @@ rules:
       are wasted on duplicates.
     fix_map: {__blank__: Review duplicate nominations in Succession > Talent Pool. Remove the duplicate entry and
         verify readiness rating on the surviving record.}
+
+  - id: SUC012
+    field: SUCCESSIONCANDIDATE.RANKING
+    check_class: cross_field_check
+    fail_when: '`SUCCESSIONCANDIDATE.RANKING` < 0'
+    require_populated: true
+    severity: low
+    dimension: validity
+    message: Successor ranking must not be negative
+    why_it_matters: The ranking orders the successors of a position on the succession org chart and in talent reports. A negative
+      rank cannot be a position in that order and sorts the nominee ahead of the real first successor.
+    rule_authority: best_practice
+    sap_impact: Succession org chart and bench-strength reports show successors in the wrong order.
+    fix_map:
+      __blank__: Re-order the successors of the position on the succession org chart / Position Tile.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for {SUCCESSIONCANDIDATE.POSITION_ID}: rank {SUCCESSIONCANDIDATE.RANKING}
+      is negative.'

@@ -22,6 +22,7 @@ from sap.base import (
     CloudConnectionParams,
     SAPConnectorError,
 )
+from sap.rfc import PAYROLL_FUNCTION, PAYROLL_TABLE
 from sap.extraction_registry import (
     get_extraction_targets,
     get_available_modules,
@@ -214,18 +215,31 @@ class ConnectivityManager:
             if system_type in ABAP_SYSTEM_TYPES:
                 plans = plan_modules(modules, dictionary, scope)
                 # fields this system's field-status customizing controls (checks/field_status_rules.py)
-                from checks.field_status_rules import extra_fields, load_config
-                from sap.field_status_config import resolve_all
-                for t, fs in extra_fields(resolve_all(load_config(self.session, system_id))).items():
+                from checks.field_status_rules import extra_fields, load_config, material_fields
+                from sap.field_status_config import resolve_all, resolve_material
+                fs_config = load_config(self.session, system_id)
+                controlled = list(extra_fields(resolve_all(fs_config)).items()) + \
+                    list(material_fields(resolve_material(fs_config, dictionary)).items())
+                for t, fs in controlled:
                     if t in plans:
                         plans[t].fields |= {f for f in fs if dictionary.field(t, f) is not None}
                 raw: dict[str, pd.DataFrame] = {}
+                # reconciliation: an unfiltered read must return exactly SAP's own row count
+                counts = connector.count_rows([t for t, p in plans.items() if not p.where and not p.via]) \
+                    if hasattr(connector, "count_rows") else {}
                 for table in read_order(plans):
                     plan = plans[table]
                     t = dictionary.table(table)
                     cols = [c for c in plan.columns() if t is not None and c in t.fields]
                     if t is None or not cols:
                         coverage.append({"table": table, "status": "not_in_system", "purpose": plan.purpose})
+                        continue
+                    if table == PAYROLL_TABLE:  # payroll cluster: only through the customer's read-only function
+                        df, entry = self._payroll_totals(connector, raw.get("HRPY_RGDIR"))
+                        coverage.append(entry)
+                        if df is not None:
+                            raw[table] = df
+                            frames[table] = df.rename(columns={c: f"{table}.{c}" for c in df.columns})
                         continue
                     try:
                         if plan.via:
@@ -240,12 +254,24 @@ class ConnectivityManager:
                     except SAPConnectorError as e:
                         coverage.append({"table": table, "status": "failed", "detail": str(e)[:300]})
                         continue
+                    # RFC_READ_TABLE pages without a sort order: pages can overlap. Repeated
+                    # rows are dropped; a key that still repeats means the read is inconsistent.
+                    df = df.drop_duplicates()
+                    keys = [k for k in t.keys if k in df.columns]
+                    dup_keys = int(df.duplicated(subset=keys).sum()) if keys else 0
                     raw[table] = df
                     frames[table] = df.rename(columns={c: f"{table}.{c}" for c in df.columns})
-                    coverage.append({"table": table, "status": "live", "rows": len(df), "purpose": plan.purpose,
-                                     "window": plan.where if plan.where and not plan.where.startswith(tuple(
-                                         f"{f} = " for f in ("DATBI", "BDATU", "INACT"))) else None,
-                                     "truncated": len(df) >= max_rows})
+                    entry = {"table": table, "status": "live", "rows": len(df), "purpose": plan.purpose,
+                             "window": plan.where if plan.where and not plan.where.startswith(tuple(
+                                 f"{f} = " for f in ("DATBI", "BDATU", "INACT"))) else None,
+                             "truncated": len(df) >= max_rows}
+                    if table in counts:
+                        entry["source_rows"] = counts[table]
+                    entry["complete"] = not entry["truncated"] and not dup_keys and \
+                        (table not in counts or counts[table] == len(df))
+                    if dup_keys:
+                        entry["duplicate_keys"] = dup_keys
+                    coverage.append(entry)
             elif system_type == "successfactors":
                 frames, coverage = self._extract_successfactors(connector, modules, dictionary, system_id)
             else:
@@ -255,6 +281,27 @@ class ConnectivityManager:
         finally:
             connector.close()
         return frames, coverage
+
+    @staticmethod
+    def _payroll_totals(connector, rgdir: Optional[pd.DataFrame]) -> tuple[Optional[pd.DataFrame], dict]:
+        """ZMERIDIAN_PAYRT for the extracted payroll results, or why it is not available."""
+        entry = {"table": PAYROLL_TABLE, "purpose": "data"}
+        if not hasattr(connector, "payroll_totals"):
+            return None, {**entry, "status": "not_in_system"}
+        if rgdir is None or not len(rgdir):
+            return None, {**entry, "status": "live", "rows": 0, "complete": True}
+        keys = sorted({(str(p).strip(), str(q).strip()) for p, q in zip(rgdir["PERNR"], rgdir["SEQNR"])})
+        try:
+            df, skipped = connector.payroll_totals(keys)
+        except SAPConnectorError as e:
+            if "FU_NOT_FOUND" in str(e) or PAYROLL_FUNCTION in str(e):
+                return None, {**entry, "status": "not_installed",
+                              "detail": f"{PAYROLL_FUNCTION} is not installed: payroll amounts are not checked "
+                                        "(see docs/payroll-rfc.md)"}
+            return None, {**entry, "status": "failed", "detail": str(e)[:300]}
+        # a result the RFC user may not read is a gap in the data, not a clean result
+        return df, {**entry, "status": "live", "rows": len(df), "results": len(keys), "unauthorised": skipped,
+                    "complete": skipped == 0}
 
     def _extract_successfactors(self, connector, modules, dictionary, system_id):
         """Assemble SF canonical tables from their source entities (see canonical/successfactors.yaml)."""

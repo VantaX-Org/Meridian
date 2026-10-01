@@ -1,0 +1,27 @@
+{
+ "domain": "PAD_NAUST",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Maintenance is permissible"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Maintenance is not permissible"
+  },
+  {
+   "low": "W",
+   "high": null,
+   "text": "Maintenance with warning is permissible"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

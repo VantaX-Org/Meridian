@@ -296,3 +296,145 @@ rules:
       USMD120C.USMD_DATA_ACTIVE:
         not_in:
         - X
+      USMD120C.USMD_CREQ_STATUS:
+        not_in:
+        - '05'
+        - '06'
+
+  # ── Breadth: change request type, timeline consistency, overdue, change document trail ──
+
+  - id: MDG018
+    field: USMD120C.USMD_CREQ_TYPE
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: Change request has no change request type
+    why_it_matters: The change request type decides the data model, the entity types allowed, the workflow and the
+      approval steps (USMD110C). A change request without a type cannot be routed or processed.
+    rule_authority: sap_hard_constraint
+    sap_impact: The change request cannot be opened or processed in the MDG inbox; its objects stay locked.
+    fix_map:
+      __blank__: Investigate how the change request was created; withdraw it (USMD_REMOVE_CREQUEST / MDG cleanup) and
+        recreate it with the correct type.
+    record_fix_template: 'Change request {USMD120C.USMD_CREQUEST}: no change request type.'
+
+  - id: MDG019
+    field: USMD120C.USMD_CREQ_TYPE
+    check_class: referential_check
+    reference_values: []
+    reference_table: USMD110C
+    reference_field: USMD_CREQ_TYPE
+    severity: high
+    dimension: consistency
+    message: Change request type does not exist in the MDG configuration (USMD110C)
+    why_it_matters: Workflow, steps and permitted entity types are read from the change request type's
+      configuration. A type that was deleted or never transported leaves the change request unprocessable.
+    rule_authority: sap_hard_constraint
+    sap_impact: The change request cannot be processed; objects in it remain locked for other change requests.
+    fix_map:
+      __other__: Change request type '{invalid_value}' is not configured. Transport the type (MDGIMG > General
+        Settings > Process Modeling > Change Requests) or withdraw the change request.
+    record_fix_template: 'Change request {USMD120C.USMD_CREQUEST}: type ''{actual_value}'' is not in USMD110C.'
+
+  - id: MDG020
+    field: USMD120C.USMD_RELEASED_AT
+    check_class: cross_field_check
+    fail_when: '`USMD120C.USMD_RELEASED_AT` < `USMD120C.USMD_CREATED_AT`'
+    require_populated: true
+    severity: high
+    dimension: consistency
+    message: Change request was released before it was created
+    why_it_matters: Final approval (USMD_RELEASED_AT) always follows creation (USMD_CREATED_AT). A release before
+      creation means the timestamps were loaded or changed wrongly, so governance cycle times and the audit trail of
+      who approved what, when, cannot be trusted.
+    rule_authority: sap_hard_constraint
+    sap_impact: Governance SLA and audit reporting are wrong for this change request.
+    fix_map:
+      __other__: Investigate the migration or direct update that wrote the timestamps; document the gap for audit.
+    record_fix_template: 'Change request {USMD120C.USMD_CREQUEST}: released {USMD120C.USMD_RELEASED_AT} before created
+      {USMD120C.USMD_CREATED_AT}.'
+
+  - id: MDG021
+    field: USMD120C.USMD_CHANGED_AT
+    check_class: cross_field_check
+    fail_when: '`USMD120C.USMD_CHANGED_AT` < `USMD120C.USMD_CREATED_AT`'
+    require_populated: true
+    severity: medium
+    dimension: consistency
+    message: Change request was last changed before it was created
+    why_it_matters: The last-change timestamp of a change request cannot precede its creation. The contradiction
+      means the timestamps were loaded wrongly; ageing and cycle-time reports built on them are wrong.
+    rule_authority: sap_hard_constraint
+    sap_impact: Change request ageing and processing-time reports are wrong.
+    fix_map:
+      __other__: Investigate the migration or direct update that wrote the timestamps.
+    record_fix_template: 'Change request {USMD120C.USMD_CREQUEST}: changed {USMD120C.USMD_CHANGED_AT} before created
+      {USMD120C.USMD_CREATED_AT}.'
+
+  - id: MDG022
+    field: USMD120C.USMD_DUE_DATE
+    check_class: freshness_check
+    max_age_hours: 0
+    applies_when:
+      USMD120C.USMD_DATA_ACTIVE: {not_in: ['X']}
+      USMD120C.USMD_CREQ_STATUS: {not_in: ['05', '06']}
+    severity: medium
+    dimension: timeliness
+    message: Open change request is past its due date
+    why_it_matters: The due date (USMD_DUE_DATE) is the date the requester needs the master data by — a new
+      material for a production start, a supplier for a first order. An open change request past its due date is
+      blocking a business process right now.
+    rule_authority: best_practice
+    sap_impact: The business process waiting for the master data (purchasing, production, sales) is delayed; the
+      objects in the change request stay locked.
+    fix_map:
+      __other__: Escalate the change request to its current processor (MDG inbox / workflow log) and complete or
+        withdraw it.
+    record_fix_template: 'Change request {USMD120C.USMD_CREQUEST}: due {actual_value}, still open.'
+
+  - id: MDG023
+    field: CDHDR.USERNAME
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: Change document has no user name
+    why_it_matters: The change document header (CDHDR) is the audit evidence of who changed master data. SAP always
+      records the user; a change document without one breaks the audit trail required for ITGC and SOX change
+      management.
+    rule_authority: sap_hard_constraint
+    sap_impact: Changes to master data cannot be attributed to a person; audit trail is incomplete.
+    fix_map:
+      __blank__: Investigate how the change document was written (migration or direct table update) and document the
+        gap for audit.
+    record_fix_template: 'Change document {CDHDR.OBJECTCLAS}/{CDHDR.OBJECTID}/{CDHDR.CHANGENR}: no user name.'
+
+  - id: MDG024
+    field: CDHDR.UDATE
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: Change document has no change date
+    why_it_matters: The change date in the change document header places a master data change in time. Without it,
+      period-based change reviews and 'who changed bank details before this payment run' investigations miss the
+      change.
+    rule_authority: sap_hard_constraint
+    sap_impact: The change is missing from date-based change reports (RSSCD100, MDG change analytics).
+    fix_map:
+      __blank__: Investigate how the change document was written and document the gap for audit.
+    record_fix_template: 'Change document {CDHDR.OBJECTCLAS}/{CDHDR.OBJECTID}/{CDHDR.CHANGENR}: no change date.'
+
+  - id: MDG025
+    field: CDPOS.CHNGIND
+    check_class: domain_value_check
+    severity: medium
+    dimension: validity
+    message: Change document item has an invalid change type
+    why_it_matters: The change type of a change document item is a fixed SAP domain (U update, I insert, E/J single
+      field delete/insert, D delete). Any other value cannot be interpreted by change reports, so the change is
+      shown wrongly or not at all.
+    rule_authority: sap_hard_constraint
+    sap_impact: Change reports misclassify or drop the change.
+    fix_map:
+      __other__: Investigate how the change document was written and document the gap for audit.
+    record_fix_template: 'Change document {CDPOS.OBJECTCLAS}/{CDPOS.OBJECTID}/{CDPOS.CHANGENR}: change type
+      ''{actual_value}'' is not valid.'

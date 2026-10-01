@@ -7,6 +7,8 @@ import { useQuery } from "@tanstack/react-query";
 import { AdminDoctorCard } from "@/components/aurora";
 import { getDoctor } from "@/lib/api/admin-doctor";
 import { useRole } from "@/hooks/use-role";
+import { useNavGate } from "@/hooks/use-nav";
+import { isItemVisible, SETTINGS_ITEMS } from "@/lib/nav";
 
 const SETTINGS_NAV = [
   {
@@ -73,6 +75,13 @@ function Doctor() {
 
 export default function SettingsIndexPage() {
   const { can } = useRole();
+  const gate = useNavGate();
+  // Each card carries the same permission + licence gate as its nav entry
+  // (lib/nav.ts SETTINGS_ITEMS), so a role only sees pages it can use.
+  const cards = SETTINGS_NAV.filter((s) => {
+    const item = SETTINGS_ITEMS.find((i) => i.href === s.route);
+    return item ? isItemVisible(item, gate) : true;
+  });
   return (
     <>
       <PageHead
@@ -80,17 +89,21 @@ export default function SettingsIndexPage() {
         route="/settings"
         sub={
           <>
-            Configure how Meridian operates — rule engine triggers, field mapping schemas, AI provider and licence. Users and
-            the role permission matrix live under{" "}
-            <Link className="mn-link" href="/admin" style={{ padding: 0, margin: 0 }}>
-              Admin
-            </Link>
-            .
+            Configure how Meridian operates — rule engine triggers, field mapping schemas, AI provider and licence.
+            {can("manage_users") && (
+              <>
+                {" "}Users and the role permission matrix live under{" "}
+                <Link className="mn-link" href="/admin" style={{ padding: 0, margin: 0 }}>
+                  Users &amp; audit
+                </Link>
+                .
+              </>
+            )}
           </>
         }
       />
       <div className="mn-row" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))" }}>
-        {SETTINGS_NAV.map((s) => (
+        {cards.map((s) => (
           <Link key={s.k} href={s.route} className="mn-settings-card">
             <div className="mn-settings-icon">{s.icon}</div>
             <div style={{ flex: 1, minWidth: 0 }}>

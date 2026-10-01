@@ -1,0 +1,47 @@
+{
+ "domain": "ZEITB",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "1",
+   "high": null,
+   "text": "Record must have no gaps, no overlappings"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Record may include gaps, no overlappings"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Record may include gaps, can exist more than once"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Infotype exists just once from Jan.1 1800 to Dec.12 9999"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "IT exists for maximum of once from Jan.1 1800 to Dec.12 9999"
+  },
+  {
+   "low": "T",
+   "high": null,
+   "text": "Time constraint is based on subtype or subtype table"
+  },
+  {
+   "low": "Z",
+   "high": null,
+   "text": "Time constraint for time management infotypes -> T554Y"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

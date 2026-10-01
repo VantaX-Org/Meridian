@@ -43,7 +43,7 @@ def _read(client, bucket: str, name: str) -> bytes:
 
 
 def load_dataset(path: str, dictionary: Dictionary, modules: Optional[list[str]] = None,
-                 extra: Optional[set[str]] = None) -> tuple[TableFrames, Optional[pd.DataFrame], int, int]:
+                 extra: Optional[set[str]] = None, conversions: Optional[dict[str, dict[str, str]]] = None) -> tuple[TableFrames, Optional[pd.DataFrame], int, int]:
     """(frames, flat_df_or_None, row_count, column_count) for a dataset path."""
     client = _client()
     bucket = os.getenv("MINIO_BUCKET_UPLOADS", "meridian-uploads")
@@ -65,11 +65,14 @@ def load_dataset(path: str, dictionary: Dictionary, modules: Optional[list[str]]
         # table's DDIC key (needed to split the flat frame at its grain).
         try:
             from checks.runner import get_required_columns
+            from checks.config_rules import fields_for as config_fields
+            from checks.country_rules import fields_for as country_fields
             from checks.value_placement import fields_for
             for mod in modules:
                 needed |= get_required_columns(mod)
             needed |= set(extra or ())
-            needed |= {f"{t}.{f}" for t in tables_of(needed) for f in fields_for(t, dictionary)}
+            needed |= {f"{t}.{f}" for t in tables_of(needed)
+                       for f in fields_for(t, dictionary) | country_fields(t, dictionary) | config_fields(t, dictionary)}
             needed |= {f"{t}.{k}" for t in tables_of(needed) for k in dictionary.keys(t)}
         except FileNotFoundError:
             needed = set()
@@ -78,7 +81,7 @@ def load_dataset(path: str, dictionary: Dictionary, modules: Optional[list[str]]
     buf.seek(0)
     project = [c for c in all_cols if c in needed] if needed else None
     df = pd.read_parquet(buf, columns=project or None)
-    return TableFrames.from_flat(df, dictionary), df, len(df), len(df.columns)
+    return TableFrames.from_flat(df, dictionary, conversions=conversions), df, len(df), len(df.columns)
 
 
 def load_module_frame(path: str, module: str, dictionary: Optional[Dictionary] = None) -> pd.DataFrame:

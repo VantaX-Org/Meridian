@@ -1,0 +1,330 @@
+{
+ "table": "KONH",
+ "description": "Conditions (Header)",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "KNUMH",
+   "key": true,
+   "data_element": "KNUMH",
+   "domain": "KNUMB",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Condition record number",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "ERNAM",
+   "key": false,
+   "data_element": "ERNAM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of Person who Created the Object",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "ERDAT",
+   "key": false,
+   "data_element": "ERDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date on which the record was created",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "KVEWE",
+   "key": false,
+   "data_element": "KVEWE",
+   "domain": "KVEWE",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Usage of the Condition Table",
+   "check_table": "T681V"
+  },
+  {
+   "pos": 6,
+   "name": "KOTABNR",
+   "key": false,
+   "data_element": "KOTABNR",
+   "domain": "KOTABNR",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Condition table",
+   "check_table": "T681"
+  },
+  {
+   "pos": 7,
+   "name": "KAPPL",
+   "key": false,
+   "data_element": "KAPPL",
+   "domain": "KAPPL",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Application",
+   "check_table": "T681A"
+  },
+  {
+   "pos": 8,
+   "name": "KSCHL",
+   "key": false,
+   "data_element": "KSCHA",
+   "domain": "KSCHL",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Condition Type",
+   "check_table": "T685"
+  },
+  {
+   "pos": 9,
+   "name": "VAKEY",
+   "key": false,
+   "data_element": "VAKEY",
+   "domain": "VAKEY",
+   "type": "CHAR",
+   "length": 100,
+   "decimals": 0,
+   "description": "Variable key 100 bytes",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "DATAB",
+   "key": false,
+   "data_element": "DATAB",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Valid-From Date",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "DATBI",
+   "key": false,
+   "data_element": "DATBI",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Valid To Date",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "KOSRT",
+   "key": false,
+   "data_element": "KOSRT",
+   "domain": "CHAR10",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Search term for conditions",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "KZUST",
+   "key": false,
+   "data_element": "KZUST",
+   "domain": "KZUST",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Responsibility in SD for condition/material",
+   "check_table": "T686C"
+  },
+  {
+   "pos": 14,
+   "name": "KNUMA_PI",
+   "key": false,
+   "data_element": "KNUMA_PI",
+   "domain": "KNUMA",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Promotion",
+   "check_table": "KONA"
+  },
+  {
+   "pos": 15,
+   "name": "KNUMA_AG",
+   "key": false,
+   "data_element": "KNUMA_AG",
+   "domain": "KNUMA",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Sales deal",
+   "check_table": "KONA"
+  },
+  {
+   "pos": 16,
+   "name": "KNUMA_SQ",
+   "key": false,
+   "data_element": "KNUMA_SQ",
+   "domain": "KNUMA",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Sales quote",
+   "check_table": "KONA"
+  },
+  {
+   "pos": 17,
+   "name": "KNUMA_SD",
+   "key": false,
+   "data_element": "KNUMA_SD",
+   "domain": "KNUMA",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Standard agreement",
+   "check_table": "KONA"
+  },
+  {
+   "pos": 18,
+   "name": "AKTNR",
+   "key": false,
+   "data_element": "WAKTION",
+   "domain": "WAKTION",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Promotion",
+   "check_table": "*"
+  },
+  {
+   "pos": 19,
+   "name": "KNUMA_BO",
+   "key": false,
+   "data_element": "KNUMA_BO",
+   "domain": "KNUMA",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Agreement (subsequent settlement)",
+   "check_table": "KONA"
+  },
+  {
+   "pos": 20,
+   "name": "LICNO",
+   "key": false,
+   "data_element": "LICNO",
+   "domain": "LICNO",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "Tax exemption license number",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "LICDT",
+   "key": false,
+   "data_element": "LICDT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date license granted",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "VADAT",
+   "key": false,
+   "data_element": "VADAT_KO",
+   "domain": "CHAR100",
+   "type": "CHAR",
+   "length": 100,
+   "decimals": 0,
+   "description": "Variable Data Part",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "KAPPL",
+   "foreign_table": "T681A",
+   "foreign_field": "KAPPL"
+  },
+  {
+   "field": "KNUMA_AG",
+   "foreign_table": "KONA",
+   "foreign_field": "KNUMA"
+  },
+  {
+   "field": "KNUMA_BO",
+   "foreign_table": "KONA",
+   "foreign_field": "KNUMA"
+  },
+  {
+   "field": "KNUMA_PI",
+   "foreign_table": "KONA",
+   "foreign_field": "KNUMA"
+  },
+  {
+   "field": "KNUMA_SD",
+   "foreign_table": "KONA",
+   "foreign_field": "KNUMA"
+  },
+  {
+   "field": "KNUMA_SQ",
+   "foreign_table": "KONA",
+   "foreign_field": "KNUMA"
+  },
+  {
+   "field": "KOTABNR",
+   "foreign_table": "T681",
+   "foreign_field": "KOTABNR"
+  },
+  {
+   "field": "KSCHL",
+   "foreign_table": "T685",
+   "foreign_field": "KSCHL"
+  },
+  {
+   "field": "KVEWE",
+   "foreign_table": "T681V",
+   "foreign_field": "KVEWE"
+  },
+  {
+   "field": "KZUST",
+   "foreign_table": "T686C",
+   "foreign_field": "KZUST"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

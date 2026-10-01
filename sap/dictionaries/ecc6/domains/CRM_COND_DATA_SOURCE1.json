@@ -1,0 +1,122 @@
+{
+ "domain": "CRM_COND_DATA_SOURCE1",
+ "type": "CHAR",
+ "length": 2,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Condition Technique (old)"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Condition Technique (new)"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Cash Flow (FS/Leasing)"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Tax Determination"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Financial Mathematics (Leasing)"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Cash Discount"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Billing for One-Time Payments"
+  },
+  {
+   "low": "G",
+   "high": null,
+   "text": "EBP: Price From Product Catalog"
+  },
+  {
+   "low": "H",
+   "high": null,
+   "text": "Cost"
+  },
+  {
+   "low": "I",
+   "high": null,
+   "text": "Floating Rates / Indexation"
+  },
+  {
+   "low": "J",
+   "high": null,
+   "text": "IPM: Basic Value"
+  },
+  {
+   "low": "K",
+   "high": null,
+   "text": "EBP: Price From Backend Contract"
+  },
+  {
+   "low": "L",
+   "high": null,
+   "text": "Social: Requirement Determination"
+  },
+  {
+   "low": "M",
+   "high": null,
+   "text": "CRM: Condition from ERP Purchasing Contract"
+  },
+  {
+   "low": "N",
+   "high": null,
+   "text": "CRM: Download of an ERP Dispute Case"
+  },
+  {
+   "low": "O",
+   "high": null,
+   "text": "CRM: Accruals"
+  },
+  {
+   "low": "Q",
+   "high": null,
+   "text": "CRM: Pricing"
+  },
+  {
+   "low": "U",
+   "high": null,
+   "text": "UBB: Prebilling"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Customer Reserve 1"
+  },
+  {
+   "low": "Y",
+   "high": null,
+   "text": "Customer Reserve 2"
+  },
+  {
+   "low": "Z",
+   "high": null,
+   "text": "Customer Reserve 3"
+  },
+  {
+   "low": "EC",
+   "high": null,
+   "text": "CRM: External Configurator"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

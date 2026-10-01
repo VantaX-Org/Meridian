@@ -1,0 +1,32 @@
+{
+ "domain": "EPAST",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Entries in payroll past are permissible: No message"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Entries in payroll past are permissible: W message"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Entries in payroll past are not permissible"
+  },
+  {
+   "low": "I",
+   "high": null,
+   "text": "Check for entries in payroll past is infotype-specific"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

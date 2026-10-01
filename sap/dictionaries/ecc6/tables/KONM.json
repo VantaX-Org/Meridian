@@ -1,0 +1,82 @@
+{
+ "table": "KONM",
+ "description": "Conditions (1-Dimensional Quantity Scale)",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "KNUMH",
+   "key": true,
+   "data_element": "KNUMH",
+   "domain": "KNUMB",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Condition record number",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "KOPOS",
+   "key": true,
+   "data_element": "KOPOS",
+   "domain": "NUM02",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Sequential number of the condition",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "KLFN1",
+   "key": true,
+   "data_element": "KLFN1",
+   "domain": "KLFNR",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Current number of the line scale",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "KSTBM",
+   "key": false,
+   "data_element": "KSTBM",
+   "domain": "MENG15",
+   "type": "QUAN",
+   "length": 15,
+   "decimals": 3,
+   "description": "Condition scale quantity",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "KBETR",
+   "key": false,
+   "data_element": "KBETR",
+   "domain": "WERTV6",
+   "type": "CURR",
+   "length": 11,
+   "decimals": 2,
+   "description": "Rate (condition amount or percentage)",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": []
+}

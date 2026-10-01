@@ -37,8 +37,11 @@ import {
 } from "@/lib/api/source-design";
 import { relativeTime } from "@/lib/format";
 import { useRole } from "@/hooks/use-role";
+import { useUrlState } from "@/hooks/use-url-state";
 
 type Tab = "versions" | "trends" | "tables" | "config" | "coverage" | "snapshots";
+const TABS: readonly Tab[] = ["versions", "trends", "tables", "config", "coverage", "snapshots"];
+const isTab = (v: string): v is Tab => (TABS as readonly string[]).includes(v);
 const PAGE = 100;
 
 const STATUS_TONE: Record<string, ChipTone> = {
@@ -56,7 +59,10 @@ export default function SystemDesignPage() {
   const { id } = useParams<{ id: string }>();
   const qc = useQueryClient();
   const { can } = useRole();
-  const [tab, setTab] = useState<Tab>("versions");
+  // The tab lives in the URL (?tab=trends) so Versions and Trends can be linked to.
+  const [tabParam, setTabParam] = useUrlState("tab", "versions");
+  const tab: Tab = isTab(tabParam) ? tabParam : "versions";
+  const setTab = (t: Tab) => setTabParam(t);
 
   const { data: systems = [] } = useQuery({ queryKey: ["systems"], queryFn: getSystems });
   const system = systems.find((s) => s.id === id);

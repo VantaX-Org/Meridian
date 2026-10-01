@@ -1,0 +1,27 @@
+{
+ "domain": "RUKOR",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Always corrected"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Never corrected"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Corrected if no manual accruals have been posted"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

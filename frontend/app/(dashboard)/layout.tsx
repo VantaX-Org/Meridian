@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useSyncExternalStore } from "react";
 import {
   User,
   Bell,
@@ -83,7 +83,9 @@ function LocalUserButton() {
 const UserButton = LocalUserButton;
 
 /**
- * Header-bar export dropdown.
+ * Header-bar export dropdown. Rendered only for roles with the `export`
+ * permission (the config-matches export requires it; the PDF/JSON report
+ * stays available to every role from /reports).
  *
  * Resolves the most recent ``agents_complete`` version and offers direct
  * downloads for its PDF report, JSON report, and config-matches workbook.
@@ -125,10 +127,10 @@ function HeaderExportMenu() {
         <DropdownMenuGroup>
           <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
             {isLoading
-              ? "Finding latest analysis…"
+              ? "Finding the latest version…"
               : hasReport
-                ? `Latest analysis: ${latestLabel}`
-                : "No completed analysis yet"}
+                ? `Latest analysed version: ${latestLabel}`
+                : "No analysed version yet"}
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
 
@@ -209,41 +211,15 @@ function HeaderExportMenu() {
   );
 }
 
-import {
-  type LucideIcon,
-  Eraser,        // Cleaning — keep lucide for now
-  ArrowLeftRight,// Migration — source→destination transfer
-  Sliders,       // Settings sub-nav
-  Map as MapIcon,// Settings sub-nav
-} from "lucide-react";
 import "@/app/sidebar-responsive.css";
 import { MeridianMark } from "@/components/meridian/icons";
-import {
-  LayoutDashIcon,
-  ClipboardIcon,
-  WorkflowIcon,
-  SettingsIcon,
-  BarChartIcon,
-  UploadIcon,
-  AlertIcon,
-  AnalyticsIcon,
-  SparklesNavIcon,
-  PlayIcon,
-  FileTextIcon,
-  GitCompareIcon,
-  DatabaseIcon,
-  BookIcon,
-  ContractIcon,
-  ServerIcon,
-  PlugIcon,
-  RefreshIcon,
-} from "@/components/meridian/nav-icons";
+import { getPageTitle, PAGE_TITLES } from "@/lib/nav";
+import { useVisibleNav } from "@/hooks/use-nav";
 import { useAuth } from "@/context/auth-context";
 import { ForcePasswordChange } from "@/components/force-password-change";
 import { UpdateAvailableModal } from "@/components/update-available-modal";
 import { UpdateModalProvider } from "@/context/update-modal-context";
 import { useRole } from "@/hooks/use-role";
-import { useLicence } from "@/hooks/use-licence";
 import { getUpdateStatus } from "@/lib/api/system-update";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -276,48 +252,6 @@ import {
 } from "@/lib/api/notifications";
 import { relativeTime } from "@/lib/format";
 import type { HealthResponse, Notification as NotifType } from "@/types/api";
-
-/* ─── Page title mapping ─── */
-const PAGE_TITLES: Record<string, string> = {
-  "/": "Overview",
-  "/systems": "SAP Systems",
-  "/sync": "Sync Monitor",
-  "/upload": "Import Data",
-  "/golden-records": "Golden Records",
-  "/glossary": "Business Glossary",
-  "/contracts": "Data Contracts",
-  "/relationships": "Relationships",
-  "/stewardship": "Stewardship",
-  "/ai/rules": "AI Rules",
-  "/exceptions": "Exceptions",
-  "/cleaning": "Cleaning Queue",
-  "/migration": "Migration",
-  "/dedup": "Deduplication",
-  "/match-rules": "Match Rules",
-  "/findings": "Findings",
-  "/issues": "Issues",
-  "/analytics": "Analytics",
-  "/run-sync": "Run Sync",
-  "/reports": "Reports",
-  "/versions": "Versions",
-  "/settings": "Settings",
-  "/settings/rules": "Rules Engine",
-  "/settings/field-mapping": "SAP Field Mapping",
-  "/mining": "Mining",
-  "/connectivity": "Connectivity",
-  "/config-impact": "Config Impact",
-  "/business-process": "Business Processes",
-  "/notifications": "Notifications",
-  "/users": "User Management",
-};
-
-function getPageTitle(pathname: string): string {
-  if (PAGE_TITLES[pathname]) return PAGE_TITLES[pathname];
-  for (const [path, title] of Object.entries(PAGE_TITLES)) {
-    if (pathname.startsWith(path + "/")) return title;
-  }
-  return "Meridian";
-}
 
 /* ─── Notification bell ─── */
 const NOTIF_TYPE_ICONS: Record<string, string> = {
@@ -447,104 +381,6 @@ function NotificationBell() {
   );
 }
 
-/* ─── Nav config ─── */
-type NavIcon = LucideIcon | ((props: { size?: number; className?: string; style?: React.CSSProperties }) => React.JSX.Element);
-
-interface NavItem {
-  href: string;
-  label: string;
-  icon: NavIcon;
-  permission?: string;
-  licenceKey?: string;
-  badge?: number;
-}
-
-interface NavGroup {
-  group: string;
-  items: NavItem[];
-}
-
-// Nav groups follow the Claude Design handoff (Aurora · Analyse · Report ·
-// Steward · Govern · Connect · Settings) and use the bespoke per-item icon
-// set from components/meridian/nav-icons.tsx.
-const NAV_GROUPS: NavGroup[] = [
-  {
-    group: "Aurora",
-    items: [
-      { href: "/command-centre", label: "Command Centre", icon: LayoutDashIcon, licenceKey: "dashboard" },
-      { href: "/workbench", label: "Workbench", icon: ClipboardIcon, licenceKey: "stewardship" },
-      { href: "/process", label: "Process", icon: WorkflowIcon },
-      { href: "/admin", label: "Admin", icon: SettingsIcon, permission: "manage_users" },
-    ],
-  },
-  {
-    group: "Analyse",
-    items: [
-      { href: "/", label: "Overview", icon: BarChartIcon, licenceKey: "dashboard" },
-      { href: "/upload", label: "Import", icon: UploadIcon, licenceKey: "import", permission: "upload" },
-      { href: "/findings", label: "Findings", icon: AlertIcon, licenceKey: "findings" },
-      { href: "/issues", label: "Issues", icon: ClipboardIcon, licenceKey: "findings" },
-      { href: "/analytics", label: "Analytics", icon: AnalyticsIcon, licenceKey: "analytics" },
-      { href: "/mining", label: "Mining", icon: SparklesNavIcon },
-      { href: "/run-sync", label: "Run Sync", icon: PlayIcon, licenceKey: "sync", permission: "trigger_sync" },
-    ],
-  },
-  {
-    group: "Report",
-    items: [
-      { href: "/reports", label: "Reports", icon: FileTextIcon, licenceKey: "reports" },
-      { href: "/versions", label: "Versions", icon: GitCompareIcon, licenceKey: "versions" },
-    ],
-  },
-  {
-    group: "Steward",
-    items: [
-      { href: "/stewardship", label: "Workbench", icon: ClipboardIcon, licenceKey: "stewardship" },
-      { href: "/ai/rules", label: "AI Rules", icon: SparklesNavIcon, permission: "review_ai_rules" },
-      { href: "/exceptions", label: "Exceptions", icon: AlertIcon },
-      { href: "/cleaning", label: "Cleaning", icon: Eraser },
-      { href: "/migration", label: "Migration", icon: ArrowLeftRight, permission: "analyse" },
-      { href: "/dedup", label: "Dedup", icon: GitCompareIcon },
-    ],
-  },
-  {
-    group: "Govern",
-    items: [
-      { href: "/golden-records", label: "Golden Records", icon: DatabaseIcon },
-      { href: "/glossary", label: "Glossary", icon: BookIcon },
-      { href: "/contracts", label: "Contracts", icon: ContractIcon, licenceKey: "contracts" },
-      { href: "/relationships", label: "Relationships", icon: WorkflowIcon },
-    ],
-  },
-  {
-    group: "Connect",
-    items: [
-      { href: "/systems", label: "Systems", icon: ServerIcon },
-      { href: "/connectivity", label: "Connectivity", icon: PlugIcon },
-      { href: "/sync", label: "Sync Monitor", icon: RefreshIcon },
-      { href: "/config-impact", label: "Config Impact", icon: AlertIcon },
-      { href: "/business-process", label: "Processes", icon: WorkflowIcon },
-    ],
-  },
-];
-
-// Settings sub-nav items (admin-only)
-import { Key } from "lucide-react";
-
-interface SettingsNavItem {
-  href: string;
-  label: string;
-  icon: NavIcon;
-  permission: string;
-  licenceKey?: string;
-}
-
-const SETTINGS_SUB_NAV: SettingsNavItem[] = [
-  { href: "/settings/rules", label: "Rules Engine", icon: Sliders, permission: "manage_rules", licenceKey: "rules_engine" },
-  { href: "/settings/field-mapping", label: "Field Mapping", icon: MapIcon, permission: "manage_field_mappings", licenceKey: "field_mapping" },
-  { href: "/settings/licence", label: "Licence", icon: Key, permission: "view", licenceKey: "licence" },
-];
-
 /*
  * Sidebar content — uses data-* attributes for CSS-driven responsive collapse.
  * Between lg (1024px) and xl (1280px), globals.css hides labels and collapses
@@ -554,52 +390,44 @@ const SETTINGS_SUB_NAV: SettingsNavItem[] = [
 function SidebarNav({
   collapsed,
   pathname,
-  userRole,
   onNavClick,
 }: {
   collapsed: boolean;
   pathname: string;
-  userRole: string;
   onNavClick?: () => void;
 }) {
-  const { can } = useRole();
-  const { isMenuItemEnabled } = useLicence();
+  // Shared nav (lib/nav.ts), already filtered by role and licence — the
+  // command palette reads the same list.
+  const groups = useVisibleNav();
+  const isActive = (href: string, exact: boolean) =>
+    exact || href === "/" ? pathname === href : pathname === href || pathname.startsWith(href + "/");
 
   return (
     <nav className="flex flex-col gap-5">
-      {NAV_GROUPS.map(({ group, items }) => {
-        const visibleItems = items.filter((item) => {
-          // Check licence: item must be enabled in manifest
-          if (item.licenceKey && !isMenuItemEnabled(item.licenceKey)) return false;
-          // Check permission: AI Rules is gated on review_ai_rules
-          if (item.permission && !can(item.permission)) return false;
-          return true;
-        });
-        if (visibleItems.length === 0) return null;
-
-        return (
-          <div key={group}>
-            {!collapsed && (
-              <span
-                data-sidebar-label
-                className="mb-1.5 block px-3 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--mn-ink-300)]"
-              >
-                {group}
-              </span>
-            )}
-            {collapsed && (
-              <div className="mb-1 mx-auto w-6 border-t border-black/[0.06]" />
-            )}
-            {!collapsed && (
-              <div data-sidebar-divider className="hidden mb-1 mx-auto w-6 border-t border-black/[0.06]" />
-            )}
-            <div className="flex flex-col gap-0.5">
-              {visibleItems.map((item) => {
-                const { href, label, icon: Icon } = item;
-                const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
-                return (
+      {groups.map(({ group, items }) => (
+        <div key={group}>
+          {!collapsed && (
+            <span
+              data-sidebar-label
+              className="mb-1.5 block px-3 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--mn-ink-300)]"
+            >
+              {group}
+            </span>
+          )}
+          {collapsed && (
+            <div className="mb-1 mx-auto w-6 border-t border-black/[0.06]" />
+          )}
+          {!collapsed && (
+            <div data-sidebar-divider className="hidden mb-1 mx-auto w-6 border-t border-black/[0.06]" />
+          )}
+          <div className="flex flex-col gap-0.5">
+            {items.map((item) => {
+              const { href, label, icon: Icon, children } = item;
+              // A parent with sub-pages (Settings) is active only on its own index page.
+              const active = isActive(href, Boolean(children?.length));
+              return (
+                <div key={href} className="flex flex-col gap-0.5">
                   <Link
-                    key={href}
                     href={href}
                     data-sidebar-link
                     title={label}
@@ -625,66 +453,38 @@ function SidebarNav({
                       </span>
                     )}
                   </Link>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })}
 
-      {/* Settings — with admin-only sub-items */}
-      <div>
-        {collapsed && <div className="mb-1 mx-auto w-6 border-t border-black/[0.06]" />}
-        {!collapsed && <div data-sidebar-divider className="hidden mb-1 mx-auto w-6 border-t border-black/[0.06]" />}
-        <Link
-          href="/settings"
-          data-sidebar-link
-          title="Settings"
-          onClick={onNavClick}
-          className={`group relative flex items-center gap-3 rounded-lg transition-all duration-150 ${
-            collapsed
-              ? "mx-auto h-10 w-10 justify-center"
-              : "mx-1 px-3 py-2"
-          } ${
-            pathname === "/settings"
-              ? "bg-primary/[0.08] text-primary font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-r-full before:bg-primary"
-              : "text-[#6B7280] hover:bg-black/[0.04] hover:text-foreground"
-          }`}
-        >
-          <SettingsIcon size={collapsed ? 20 : 18} className="shrink-0" />
-          {!collapsed && <span data-sidebar-label className="text-[13px] font-medium">Settings</span>}
-        </Link>
-
-        {/* Admin-only settings sub-items (only shown expanded + admin role) */}
-        {!collapsed && (
-          <div className="mt-0.5 ml-3 flex flex-col gap-0.5">
-            {SETTINGS_SUB_NAV.filter(
-              (item) => can(item.permission) && (!item.licenceKey || isMenuItemEnabled(item.licenceKey))
-            ).map(
-              ({ href, label, icon: Icon }) => {
-                const active = pathname.startsWith(href);
-                return (
-                  <Link
-                    key={href}
-                    href={href}
-                    data-sidebar-link
-                    title={label}
-                    onClick={onNavClick}
-                    className={`group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 text-[12.5px] transition-all duration-150 ${
-                      active
-                        ? "bg-[var(--mn-primary-50)] text-[var(--mn-primary-700)] font-semibold before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[2px] before:rounded-r-full before:bg-[var(--mn-primary)]"
-                        : "text-[var(--mn-ink-500)] hover:bg-black/[0.04] hover:text-[var(--mn-ink-900)]"
-                    }`}
-                  >
-                    <Icon className="h-[14px] w-[14px] shrink-0" />
-                    <span data-sidebar-label className="font-medium truncate">{label}</span>
-                  </Link>
-                );
-              }
-            )}
+                  {/* Sub-pages (Settings tabs) — expanded sidebar only */}
+                  {!collapsed && children && children.length > 0 && (
+                    <div className="ml-3 flex flex-col gap-0.5">
+                      {children.map(({ href: subHref, label: subLabel, icon: SubIcon }) => {
+                        const subActive = isActive(subHref, false);
+                        return (
+                          <Link
+                            key={subHref}
+                            href={subHref}
+                            data-sidebar-link
+                            title={subLabel}
+                            onClick={onNavClick}
+                            className={`group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 text-[12.5px] transition-all duration-150 ${
+                              subActive
+                                ? "bg-[var(--mn-primary-50)] text-[var(--mn-primary-700)] font-semibold before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[2px] before:rounded-r-full before:bg-[var(--mn-primary)]"
+                                : "text-[var(--mn-ink-500)] hover:bg-black/[0.04] hover:text-[var(--mn-ink-900)]"
+                            }`}
+                          >
+                            <SubIcon className="h-[14px] w-[14px] shrink-0" />
+                            <span data-sidebar-label className="font-medium truncate">{subLabel}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
-        )}
-      </div>
+        </div>
+      ))}
     </nav>
   );
 }
@@ -722,6 +522,27 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   );
 }
 
+/* ─── Sidebar collapse preference (localStorage-backed external store) ─── */
+const COLLAPSE_KEY = "mn_sidebar_collapsed";
+const COLLAPSE_EVENT = "mn-sidebar-collapsed";
+
+function subscribeCollapsed(onChange: () => void): () => void {
+  window.addEventListener("storage", onChange);
+  window.addEventListener(COLLAPSE_EVENT, onChange);
+  return () => {
+    window.removeEventListener("storage", onChange);
+    window.removeEventListener(COLLAPSE_EVENT, onChange);
+  };
+}
+
+function readCollapsed(): boolean {
+  try {
+    return localStorage.getItem(COLLAPSE_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
 /* ─── Main layout ─── */
 export default function DashboardLayout({
   children,
@@ -730,20 +551,17 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
 
-  // Persist sidebar collapse preference
-  useEffect(() => {
-    const saved = localStorage.getItem("mn_sidebar_collapsed");
-    if (saved === "true") setCollapsed(true);
-  }, []);
+  // Persisted sidebar collapse preference (server render: expanded).
+  const collapsed = useSyncExternalStore(subscribeCollapsed, readCollapsed, () => false);
 
   const toggleCollapse = useCallback(() => {
-    setCollapsed((prev) => {
-      const next = !prev;
-      localStorage.setItem("mn_sidebar_collapsed", String(next));
-      return next;
-    });
+    try {
+      localStorage.setItem(COLLAPSE_KEY, String(!readCollapsed()));
+    } catch {
+      return;
+    }
+    window.dispatchEvent(new Event(COLLAPSE_EVENT));
   }, []);
 
   // Close mobile sidebar on escape
@@ -755,10 +573,13 @@ export default function DashboardLayout({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [sidebarOpen]);
 
-  // Close mobile sidebar on route change
-  useEffect(() => {
+  // Close mobile sidebar on route change (state adjusted during render,
+  // not in an effect).
+  const [sidebarRoute, setSidebarRoute] = useState(pathname);
+  if (sidebarRoute !== pathname) {
+    setSidebarRoute(pathname);
     setSidebarOpen(false);
-  }, [pathname]);
+  }
 
   const { data: health } = useQuery<HealthResponse>({
     queryKey: ["health"],
@@ -795,7 +616,7 @@ export default function DashboardLayout({
         : "bg-muted-foreground";
   const licencePulse = licence?.valid === true ? "animate-[vx-pulse-dot_2s_ease-in-out_infinite]" : "";
 
-  const { role: userRole } = useRole();
+  const { can } = useRole();
   const pageTitle = getPageTitle(pathname);
   const { open: cmdkOpen, setOpen: setCmdkOpen } = useCommandPalette();
   const breadcrumbItems = useMemo(() => {
@@ -880,21 +701,22 @@ export default function DashboardLayout({
           <SidebarNav
             collapsed={collapsed}
             pathname={pathname}
-            userRole={userRole}
             onNavClick={() => setSidebarOpen(false)}
           />
         </ScrollArea>
 
-        {/* Footer — licence + collapse toggle */}
+        {/* Footer — licence + collapse toggle. The licence status links to
+            the Licence page, which every role may read (Settings itself is
+            only listed for roles that can change something there). */}
         <div data-sidebar-footer className={`flex items-center border-t border-black/[0.06] ${collapsed ? "flex-col gap-3 px-2 py-3" : "justify-between px-5 py-3"}`}>
-          <div className="flex items-center gap-2">
+          <Link href="/settings/licence" title="Licence details" className="flex items-center gap-2">
             <div className={`h-2 w-2 rounded-full ${licenceDotColor} ${licencePulse}`} />
             {!collapsed && (
               <span data-sidebar-label className="text-[13px] text-muted-foreground">
                 {licence?.valid === true ? "Licensed" : licence?.valid === false ? "Unlicensed" : "Checking…"}
               </span>
             )}
-          </div>
+          </Link>
           <button
             type="button"
             onClick={toggleCollapse}
@@ -951,7 +773,7 @@ export default function DashboardLayout({
             </span>
 
             {/* Export dropdown — downloads for the most recent completed version */}
-            <HeaderExportMenu />
+            {can("export") && <HeaderExportMenu />}
 
             <NotificationBell />
             <div className="ml-1">

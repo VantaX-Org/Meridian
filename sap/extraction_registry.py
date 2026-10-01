@@ -287,6 +287,29 @@ ECC_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
     ],
 
     # ------------------------------------------------------------------
+    # HCM (on-premise infotypes) — same modules as SuccessFactors EC/payroll;
+    # the extracted tables follow the rules (sap/extraction_plan.py)
+    # ------------------------------------------------------------------
+    "employee_central": [
+        ExtractionTarget(source="PA0000", fields=["PERNR", "BEGDA", "ENDDA", "MASSN", "STAT2"], description="Actions"),
+        ExtractionTarget(source="PA0001", fields=["PERNR", "BEGDA", "ENDDA", "BUKRS", "WERKS", "BTRTL", "PERSG",
+                                                  "PERSK", "ABKRS", "KOSTL", "PLANS"],
+                         description="Organisational assignment"),
+        ExtractionTarget(source="PA0002", fields=["PERNR", "BEGDA", "ENDDA", "NACHN", "VORNA", "GBDAT", "PERID"],
+                         description="Personal data"),
+        ExtractionTarget(source="T582A", fields=["INFTY", "ZEITB"], description="Infotype time constraints",
+                         is_config=True),
+    ],
+    "payroll_integration": [
+        ExtractionTarget(source="PA0008", fields=["PERNR", "BEGDA", "ENDDA", "TRFAR", "BSGRD", "WAERS"],
+                         description="Basic pay"),
+        ExtractionTarget(source="HRPY_RGDIR", fields=["PERNR", "SEQNR", "FPPER", "INPER", "SRTZA", "PAYDT"],
+                         description="Payroll results directory"),
+        ExtractionTarget(source="ZMERIDIAN_PAYRT", fields=["PERNR", "SEQNR", "LGART", "BETRG", "WAERS"],
+                         description="Payroll wage-type totals (customer-installed Z_MERIDIAN_PAYROLL_TOTALS)"),
+    ],
+
+    # ------------------------------------------------------------------
     # Asset Accounting
     # ------------------------------------------------------------------
     "asset_accounting": [

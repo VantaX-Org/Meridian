@@ -100,6 +100,31 @@ def is_blank(series: pd.Series) -> pd.Series:
     return series.isna() | s.isna() | (s == "") | s.isin(("00000000", "000000"))
 
 
+# Decimal comma vs thousands comma is decided per column, from unambiguous values:
+# '12,5' / '1.234,50' / '1.234.567' prove a European column; '1,234.50' / '1,234,567'
+# an English one. Without European evidence a comma groups thousands ('12,500' =
+# 12500). A single dot is always a decimal point — RFC writes QUAN "1.000" for 1.0.
+_EU_PROOF = r"^\d{1,3}(?:\.\d{3})+,\d+$|^\d+,(?:\d{1,2}|\d{4,})$|^\d{1,3}(?:\.\d{3}){2,}$"
+_EN_PROOF = r"^\d{1,3}(?:,\d{3})+\.\d+$|^\d{1,3}(?:,\d{3}){2,}$"
+
+
+def sap_number(series: pd.Series) -> pd.Series:
+    """Numbers as SAP and spreadsheets write them: RFC puts the sign last
+    (``1234.50-``), uploads may use thousands separators (``1,234.50``) or the
+    European form (``1.234,50``). Anything else non-numeric becomes NaN."""
+    s = series.astype("string").str.strip()
+    neg = s.str.endswith("-", na=False)
+    s = s.str.rstrip("-").str.lstrip("+")
+    european = s.str.match(_EU_PROOF, na=False).any() and not s.str.match(_EN_PROOF, na=False).any()
+    if european:
+        grouped = s.str.contains(",", regex=False, na=False) | s.str.match(r"^\d{1,3}(?:\.\d{3}){2,}$", na=False)
+        s = s.where(~grouped, s.str.replace(".", "", regex=False).str.replace(",", ".", regex=False))
+    else:
+        s = s.str.replace(",", "", regex=False)
+    n = pd.to_numeric(s, errors="coerce")
+    return n.where(~neg, -n)
+
+
 def pass_rate_of(total: int, affected: int) -> float:
     """Percentage of passing records, never rounded up to 100 while failures exist."""
     if total <= 0:

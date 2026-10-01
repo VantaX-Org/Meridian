@@ -1,0 +1,42 @@
+{
+ "domain": "KPRDT",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Standard (KOMK-PRSDT; tax and rebate KOMK-FBUDA)"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Date of services rendered (KOMK-FBUDA)"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Price date (KOMK-PRSDT)"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Billing date (KOMK-FKDAT)"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Creation date (KOMK-ERDAT)"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Order date (KOMK-AUDAT)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

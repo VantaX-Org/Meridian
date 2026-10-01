@@ -337,3 +337,263 @@ rules:
     sap_impact: Freight cost cannot be settled to the carrier. Shipment tracking references are broken. Carrier performance reporting is unreliable.
     fix_map:
       __blank__: "Correct the forwarding agent number via VT02N. Ensure the carrier is maintained as a vendor in LFA1."
+
+  # ── Breadth: organisational data, configuration references, status/date trail, units ──
+
+  - id: TM019
+    field: VTTK.SHTYP
+    check_class: referential_check
+    reference_values: []
+    reference_table: TVTK
+    reference_field: SHTYP
+    severity: high
+    dimension: consistency
+    message: Shipment type does not exist in the configuration (TVTK)
+    why_it_matters: The shipment type controls number range, leg determination, completion type, shipment cost
+      relevance and output. A shipment with an unconfigured type cannot be processed or costed.
+    rule_authority: sap_hard_constraint
+    sap_impact: The shipment cannot be changed, completed or settled (VT02N, VI01).
+    fix_map:
+      __other__: Shipment type '{invalid_value}' is not in TVTK. Configure it (SPRO > Logistics Execution >
+        Transportation > Shipments > Define Shipment Types) or correct the interface that created the shipment.
+    record_fix_template: 'Shipment {VTTK.TKNUM}: shipment type ''{actual_value}'' is not in TVTK.'
+
+  - id: TM020
+    field: VTTK.TPLST
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: Shipment has no transportation planning point
+    why_it_matters: The transportation planning point (VTTK.TPLST) is the organisational unit responsible for the
+      shipment and is required when a shipment is created (VT01N). It drives the company code of shipment costs,
+      authorisations and every transport worklist (VT11, VT70).
+    rule_authority: sap_hard_constraint
+    sap_impact: The shipment is invisible in planning worklists; shipment costs cannot be assigned to a company code.
+    fix_map:
+      __blank__: Investigate how the shipment was created (interface or migration) and recreate it with a
+        transportation planning point (VT01N).
+    record_fix_template: 'Shipment {VTTK.TKNUM}: transportation planning point is {actual_value}.'
+
+  - id: TM021
+    field: VTTK.TPLST
+    check_class: referential_check
+    reference_values: []
+    reference_table: TTDS
+    reference_field: TPLST
+    severity: high
+    dimension: consistency
+    message: Transportation planning point does not exist in the configuration (TTDS)
+    why_it_matters: The planning point is assigned to a company code (TTDS); shipment cost settlement and
+      authorisation checks read it. An unconfigured planning point stops shipment cost processing.
+    rule_authority: sap_hard_constraint
+    sap_impact: Shipment cost documents cannot be created or settled for this shipment.
+    fix_map:
+      __other__: Planning point '{invalid_value}' is not in TTDS. Configure it (Enterprise Structure > Logistics
+        Execution > Maintain Transportation Planning Point).
+    record_fix_template: 'Shipment {VTTK.TKNUM}: planning point ''{actual_value}'' is not in TTDS.'
+
+  - id: TM022
+    field: VTTK.VSART
+    check_class: referential_check
+    reference_values: []
+    reference_table: T173
+    reference_field: VSART
+    severity: medium
+    dimension: consistency
+    message: Shipping type of the shipment does not exist in the configuration (T173)
+    why_it_matters: The shipping type (road, rail, sea, air, parcel) drives shipment cost calculation (pricing
+      condition access) and foreign-trade mode of transport. An unconfigured type cannot be priced.
+    rule_authority: sap_hard_constraint
+    sap_impact: Freight cannot be calculated; Intrastat/customs mode of transport is missing.
+    fix_map:
+      __other__: Shipping type '{invalid_value}' is not in T173. Correct the shipment (VT02N) or configure the type.
+    record_fix_template: 'Shipment {VTTK.TKNUM}: shipping type ''{actual_value}'' is not in T173.'
+
+  - id: TM023
+    field: VTTK.DATBG
+    check_class: cross_field_check
+    fail_when: '`VTTK.DATBG` > `VTTK.DATEN`'
+    require_populated: true
+    severity: high
+    dimension: consistency
+    message: Actual shipment start is after the actual shipment end
+    why_it_matters: A shipment departs (VTTK.DATBG) before it arrives (VTTK.DATEN). Reversed actual dates give negative
+      transit times, wrong carrier on-time performance and wrong time-dependent freight charges.
+    rule_authority: sap_hard_constraint
+    sap_impact: Carrier performance and transit-time reporting are wrong; time-based freight is mis-calculated.
+    fix_map:
+      __other__: Correct the actual dates on the shipment's deadlines tab (VT02N) from the carrier's proof of delivery.
+    record_fix_template: 'Shipment {VTTK.TKNUM}: started {VTTK.DATBG}, ended {VTTK.DATEN}.'
+
+  - id: TM024
+    field: VTTK.DALBG
+    check_class: cross_field_check
+    fail_when: '`VTTK.DALBG` > `VTTK.DALEN`'
+    require_populated: true
+    severity: medium
+    dimension: consistency
+    message: Actual loading start is after the actual loading end
+    why_it_matters: Loading starts (VTTK.DALBG) before it ends (VTTK.DALEN). Reversed dates corrupt dock and loading
+      performance and the time-dependent waiting/loading charges of the carrier.
+    rule_authority: sap_hard_constraint
+    sap_impact: Dock scheduling and loading-time KPIs are wrong for this shipment.
+    fix_map:
+      __other__: Correct the loading dates on the shipment's deadlines tab (VT02N).
+    record_fix_template: 'Shipment {VTTK.TKNUM}: loading started {VTTK.DALBG}, ended {VTTK.DALEN}.'
+
+  - id: TM025
+    field: VTTK.DPLBG
+    check_class: cross_field_check
+    fail_when: '`VTTK.DPLBG` > `VTTK.DPLEN`'
+    require_populated: true
+    severity: medium
+    dimension: consistency
+    message: Planned loading start is after the planned loading end
+    why_it_matters: Planned loading dates schedule docks and warehouse picking waves. A planned start after the
+      planned end makes the shipment unschedulable and pushes picking into the wrong wave.
+    rule_authority: sap_hard_constraint
+    sap_impact: Dock and wave planning for this shipment is wrong.
+    fix_map:
+      __other__: Correct the planned loading dates (VT02N > Deadlines) or the route/scheduling that proposed them.
+    record_fix_template: 'Shipment {VTTK.TKNUM}: planned loading {VTTK.DPLBG} to {VTTK.DPLEN}.'
+
+  - id: TM026
+    field: VTTK.DALEN
+    check_class: cross_field_check
+    fail_when: '`VTTK.DALEN` > `VTTK.DATBG`'
+    require_populated: true
+    severity: medium
+    dimension: consistency
+    message: Loading ended after the shipment had already started
+    why_it_matters: SAP sets shipment statuses in sequence — loading end before shipment start. A loading end dated
+      after departure means one of the dates was entered wrongly, so loading, waiting and transit times are all wrong.
+    rule_authority: sap_hard_constraint
+    sap_impact: Transit-time and loading-time reporting and time-based freight charges are wrong.
+    fix_map:
+      __other__: Correct the loading end or shipment start date on the deadlines tab (VT02N).
+    record_fix_template: 'Shipment {VTTK.TKNUM}: loading ended {VTTK.DALEN}, shipment started {VTTK.DATBG}.'
+
+  - id: TM027
+    field: VTTK.DTDIS
+    check_class: null_check
+    applies_when:
+      VTTK.STDIS: ['X']
+    severity: medium
+    dimension: completeness
+    message: Shipment planning is complete but the planning end date is missing
+    why_it_matters: Setting the 'planning' status (VTTK.STDIS) records the date planning was completed (DTDIS). It is
+      the start point for transport lead-time measurement and the trigger date for carrier output.
+    rule_authority: sap_hard_constraint
+    sap_impact: Planning-to-departure lead time cannot be measured for this shipment.
+    fix_map:
+      __blank__: Enter the planning end date on the shipment's deadlines tab (VT02N).
+    record_fix_template: 'Shipment {VTTK.TKNUM}: planning status set without planning end date.'
+
+  - id: TM028
+    field: VTTK.DAREG
+    check_class: null_check
+    applies_when:
+      VTTK.STREG: ['X']
+    severity: medium
+    dimension: completeness
+    message: Shipment is checked in but the check-in date is missing
+    why_it_matters: The check-in status (VTTK.STREG) records when the vehicle arrived at the plant (DAREG). Waiting
+      time and demurrage charges are calculated from it.
+    rule_authority: sap_hard_constraint
+    sap_impact: Waiting time and demurrage cannot be calculated or disputed with the carrier.
+    fix_map:
+      __blank__: Enter the actual check-in date on the shipment's deadlines tab (VT02N).
+    record_fix_template: 'Shipment {VTTK.TKNUM}: checked in without check-in date.'
+
+  - id: TM029
+    field: VTTK.DALBG
+    check_class: null_check
+    applies_when:
+      VTTK.STLBG: ['X']
+    severity: medium
+    dimension: completeness
+    message: Loading has started but the loading start date is missing
+    why_it_matters: The loading-start status (VTTK.STLBG) records when loading began (DALBG). Loading times and dock
+      utilisation are measured from it.
+    rule_authority: sap_hard_constraint
+    sap_impact: Loading time and dock utilisation cannot be measured for this shipment.
+    fix_map:
+      __blank__: Enter the actual loading start date on the shipment's deadlines tab (VT02N).
+    record_fix_template: 'Shipment {VTTK.TKNUM}: loading started without loading start date.'
+
+  - id: TM030
+    field: VTTK.DALEN
+    check_class: null_check
+    applies_when:
+      VTTK.STLAD: ['X']
+    severity: medium
+    dimension: completeness
+    message: Loading has ended but the loading end date is missing
+    why_it_matters: The loading-end status (VTTK.STLAD) records when loading finished (DALEN). Goods issue timing and
+      loading performance are measured from it.
+    rule_authority: sap_hard_constraint
+    sap_impact: Loading time cannot be measured; goods issue timing cannot be verified.
+    fix_map:
+      __blank__: Enter the actual loading end date on the shipment's deadlines tab (VT02N).
+    record_fix_template: 'Shipment {VTTK.TKNUM}: loading ended without loading end date.'
+
+  - id: TM031
+    field: VTTK.DTABF
+    check_class: null_check
+    applies_when:
+      VTTK.STABF: ['X']
+    severity: medium
+    dimension: completeness
+    message: Shipment completion is set but the completion date is missing
+    why_it_matters: The shipment-completion status (VTTK.STABF) records when shipping documents were completed
+      (DTABF). It is the usual trigger for goods issue and for shipment cost document creation.
+    rule_authority: sap_hard_constraint
+    sap_impact: Shipment cost creation and goods issue timing cannot be traced for this shipment.
+    fix_map:
+      __blank__: Enter the shipment completion date on the shipment's deadlines tab (VT02N).
+    record_fix_template: 'Shipment {VTTK.TKNUM}: completion status set without completion date.'
+
+  - id: TM032
+    field: VTTK.MEDST
+    check_class: cross_field_check
+    fail_when: '(`VTTK.DISTZ` > 0) & `VTTK.MEDST`.isna()'
+    severity: medium
+    dimension: consistency
+    message: Shipment distance is maintained without a unit of measure
+    why_it_matters: The distance (VTTK.DISTZ) is a quantity whose unit is VTTK.MEDST (KM, MI). Distance-based freight
+      scales and emissions reporting cannot interpret a distance without its unit.
+    rule_authority: sap_hard_constraint
+    sap_impact: Distance-based shipment costs cannot be calculated; CO2 reporting is wrong.
+    fix_map:
+      __other__: Maintain the distance unit on the shipment (VT02N) or on the route (TVRO).
+    record_fix_template: 'Shipment {VTTK.TKNUM}: distance {VTTK.DISTZ} without unit.'
+
+  - id: TM033
+    field: VTTK.MEIZT
+    check_class: cross_field_check
+    fail_when: '((`VTTK.FAHZT` > 0) | (`VTTK.GESZT` > 0)) & `VTTK.MEIZT`.isna()'
+    severity: medium
+    dimension: consistency
+    message: Shipment travel time is maintained without a unit of measure
+    why_it_matters: Travel times (VTTK.FAHZT / GESZT) are quantities whose unit is VTTK.MEIZT (hours, days).
+      Scheduling and time-based freight cannot interpret a duration without its unit.
+    rule_authority: sap_hard_constraint
+    sap_impact: Shipment scheduling and time-based freight charges are wrong.
+    fix_map:
+      __other__: Maintain the time unit on the shipment (VT02N).
+    record_fix_template: 'Shipment {VTTK.TKNUM}: travel time without unit.'
+
+  - id: TM034
+    field: VTTK.ABFER
+    check_class: domain_value_check
+    severity: high
+    dimension: validity
+    message: Shipment completion type is not a valid SAP value
+    why_it_matters: The shipment completion type (loaded/empty, outbound/inbound) is a fixed SAP domain (ABFER, 1-4)
+      copied from the shipment type. It decides whether the shipment carries deliveries and how shipment costs are
+      determined.
+    rule_authority: sap_hard_constraint
+    sap_impact: Delivery assignment and shipment cost determination behave unpredictably for this shipment.
+    fix_map:
+      __other__: Correct the shipment type configuration (TVTK) and recreate the shipment.
+    record_fix_template: 'Shipment {VTTK.TKNUM}: completion type ''{actual_value}'' is not valid.'

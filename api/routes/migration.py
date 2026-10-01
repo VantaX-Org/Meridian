@@ -365,7 +365,9 @@ async def export_migration(
         from workers.tasks.run_migration import load_mappings, load_value_maps, module_source_tables
         with Session(get_sync_engine()) as s:
             s.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
-            frames, _, _, _ = load_dataset(meta["dataset_path"], dictionary_for(s, run.source_system_id), run.modules)
+            from checks.field_status_rules import conversions_for
+            frames, _, _, _ = load_dataset(meta["dataset_path"], dictionary_for(s, run.source_system_id), run.modules,
+                                           conversions=conversions_for(s, run.source_system_id))
             mtables = {m: module_source_tables(m, frames) for m in run.modules}
             maps = {m: load_mappings(s, m, target_type) for m in run.modules}
             vms = {m: load_value_maps(s, m) for m in run.modules}
@@ -531,7 +533,9 @@ async def seed_field_map(
             if not vid or not meta.get("dataset_path"):
                 return None
             src_d = dictionary_for(s, body.source_system_id or meta.get("system_id"))
-            frames, _, _, _ = load_dataset(meta["dataset_path"], src_d, [body.module])
+            from checks.field_status_rules import conversions_for
+            frames, _, _, _ = load_dataset(meta["dataset_path"], src_d, [body.module],
+                                           conversions=conversions_for(s, body.source_system_id or meta.get("system_id")))
             tables = module_source_tables(body.module, frames)
             tgt_d = dictionary_for_system(body.dest_system_type)
             seed = seed_mappings({t: list(frames.frames[t].columns) for t in tables}, src_d, tgt_d)

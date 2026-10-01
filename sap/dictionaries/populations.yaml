@@ -22,7 +22,8 @@ _deleted: &deleted_label "flagged for deletion"
 # the document (BSEC), not the master record
 _one_time_fields: &one_time_fields
   [NAME2, NAME3, NAME4, STRAS, ORT01, ORT02, PSTLZ, PFACH, PSTL2, REGIO, TELF1, TELF2, TELFX,
-   TELX1, TELTX, STCD1, STCD2, STCD3, STCD4, STCD5, STCEG, STKZN, STKZU, BANKS, BANKL, BANKN, BKONT, KOINH, IBAN]
+   TELX1, TELTX, STCD1, STCD2, STCD3, STCD4, STCD5, STCEG, STKZN, STKZU, BANKS, BANKL, BANKN, BKONT, KOINH, IBAN,
+   ADR6.SMTP_ADDR, ADR2.TEL_NUMBER, ADR3.FAX_NUMBER, ADRC.STREET, ADRC.CITY1, ADRC.POST_CODE1, ADRC.TEL_NUMBER]
 
 tables:
   LFA1:
@@ -31,6 +32,8 @@ tables:
   LFB1:
     - {id: deleted, field: LFB1.LOEVM, label: *deleted_label}
     - {id: deleted, field: LFA1.LOEVM, label: *deleted_label}
+    - {id: one_time_account, field: LFA1.XCPDK, values: [X], label: "one-time account",
+       only_fields: [LFA1.STCD1, LFA1.STCD2, LFA1.STCEG, LFA1.NAME2, LFA1.STRAS, LFA1.TELF1]}
   LFM1:
     - {id: deleted, field: LFM1.LOEVM, label: *deleted_label}
     - {id: deleted, field: LFA1.LOEVM, label: *deleted_label}
@@ -43,6 +46,8 @@ tables:
   KNB1:
     - {id: deleted, field: KNB1.LOEVM, label: *deleted_label}
     - {id: deleted, field: KNA1.LOEVM, label: *deleted_label}
+    - {id: one_time_account, field: KNA1.XCPDK, values: [X], label: "one-time account",
+       only_fields: [KNA1.STCD1, KNA1.STCD2, KNA1.STCEG, KNA1.NAME2, KNA1.STRAS, KNA1.TELF1]}
   KNVV:
     - {id: deleted, field: KNVV.LOEVM, label: *deleted_label}
     - {id: deleted, field: KNA1.LOEVM, label: *deleted_label}
@@ -51,9 +56,21 @@ tables:
     - {id: one_time_account, field: KNA1.XCPDK, values: [X], label: "one-time account"}
   BUT000:
     - {id: deleted, field: BUT000.XDELE, label: "flagged for archiving"}
+  BUT020:  # a partner's addresses (ADRC / ADR6 rules evaluate here)
+    - {id: deleted, field: BUT000.XDELE, label: "flagged for archiving"}
+  BUT100:
+    - {id: deleted, field: BUT000.XDELE, label: "flagged for archiving"}
+  BUT0BK:
+    - {id: deleted, field: BUT000.XDELE, label: "flagged for archiving"}
+  BUT0ID:
+    - {id: deleted, field: BUT000.XDELE, label: "flagged for archiving"}
+  DFKKBPTAXNUM:
+    - {id: deleted, field: BUT000.XDELE, label: "flagged for archiving"}
   MARA:
     - {id: deleted, field: MARA.LVORM, label: *deleted_label}
   MAKT:
+    - {id: deleted, field: MARA.LVORM, label: *deleted_label}
+  MARM:
     - {id: deleted, field: MARA.LVORM, label: *deleted_label}
   MARC:
     - {id: deleted, field: MARC.LVORM, label: *deleted_label}
@@ -106,7 +123,67 @@ tables:
     - {id: rejected, field: VBAP.ABGRU, label: "item rejected (reason for rejection set)"}
   STKO:
     - {id: deleted, field: STKO.LOEKZ, values: [L, X], label: *deleted_label}
+  MAST:  # BOM header rules are evaluated at the material-BOM link
+    - {id: deleted, field: STKO.LOEKZ, values: [L, X], label: *deleted_label}
+  STPO:
+    - {id: deleted, field: STPO.LKENZ, values: [X], label: "BOM item deleted (change number)"}
+    - {id: deleted, field: STKO.LOEKZ, values: [L, X], label: *deleted_label}
   PLKO:
     - {id: deleted, field: PLKO.LOEKZ, values: [L, X], label: *deleted_label}
+  # equipment / functional locations: deletion is a status (I0076 DLFL in JEST), not a field
+  EQUI:
+    - {id: deleted, field: EQUI.OBJNR, label: "flagged for deletion (status DLFL)",
+       in_table: {table: JEST, column: OBJNR, where: {STAT: [I0076], INACT: [""]}}}
+  EQUZ:
+    - {id: deleted, field: EQUI.OBJNR, label: "flagged for deletion (status DLFL)",
+       in_table: {table: JEST, column: OBJNR, where: {STAT: [I0076], INACT: [""]}}}
+  IFLOT:
+    - {id: deleted, field: IFLOT.OBJNR, label: "flagged for deletion (status DLFL)",
+       in_table: {table: JEST, column: OBJNR, where: {STAT: [I0076], INACT: [""]}}}
   CRHD:
     - {id: deleted, field: CRHD.LVORM, label: *deleted_label}
+  # pricing: a condition record flagged for deletion is ignored by pricing
+  KONH:
+    - {id: deleted, field: KONP.LOEVM_KO, label: *deleted_label}
+  A004:
+    - {id: deleted, field: KONP.LOEVM_KO, label: *deleted_label}
+  A005:
+    - {id: deleted, field: KONP.LOEVM_KO, label: *deleted_label}
+  A304:
+    - {id: deleted, field: KONP.LOEVM_KO, label: *deleted_label}
+  A305:
+    - {id: deleted, field: KONP.LOEVM_KO, label: *deleted_label}
+  A017:
+    - {id: deleted, field: KONP.LOEVM_KO, label: *deleted_label}
+  A018:
+    - {id: deleted, field: KONP.LOEVM_KO, label: *deleted_label}
+  # HR infotypes: a locked record (SPRPS) is pending release and not yet valid for payroll
+  PA0000:
+    - {id: locked, field: PA0000.SPRPS, values: [X], label: "locked (not yet released)"}
+  PA0001:
+    - {id: locked, field: PA0001.SPRPS, values: [X], label: "locked (not yet released)"}
+  PA0002:
+    - {id: locked, field: PA0002.SPRPS, values: [X], label: "locked (not yet released)"}
+  PA0006:
+    - {id: locked, field: PA0006.SPRPS, values: [X], label: "locked (not yet released)"}
+  PA0007:
+    - {id: locked, field: PA0007.SPRPS, values: [X], label: "locked (not yet released)"}
+  PA0008:
+    - {id: locked, field: PA0008.SPRPS, values: [X], label: "locked (not yet released)"}
+  PA0009:
+    - {id: locked, field: PA0009.SPRPS, values: [X], label: "locked (not yet released)"}
+  PA0014:
+    - {id: locked, field: PA0014.SPRPS, values: [X], label: "locked (not yet released)"}
+  PA0015:
+    - {id: locked, field: PA0015.SPRPS, values: [X], label: "locked (not yet released)"}
+  PA0105:
+    - {id: locked, field: PA0105.SPRPS, values: [X], label: "locked (not yet released)"}
+  PA0185:
+    - {id: locked, field: PA0185.SPRPS, values: [X], label: "locked (not yet released)"}
+  # payroll: only the current, non-voided result of a period counts (older ones were recalculated)
+  HRPY_RGDIR:
+    - {id: superseded, field: HRPY_RGDIR.SRTZA, values: [O, P], label: "superseded by a recalculation"}
+    - {id: voided, field: HRPY_RGDIR.VOID, values: [X], label: "voided result"}
+  ZMERIDIAN_PAYRT:
+    - {id: superseded, field: HRPY_RGDIR.SRTZA, values: [O, P], label: "superseded by a recalculation"}
+    - {id: voided, field: HRPY_RGDIR.VOID, values: [X], label: "voided result"}

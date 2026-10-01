@@ -14,6 +14,7 @@ import {
 } from "@/lib/api/exceptions";
 import { copyToClipboard } from "@/components/meridian/actions";
 import { relativeTime } from "@/lib/format";
+import { useRole } from "@/hooks/use-role";
 import type { Exception, ExceptionStatus } from "@/types/api";
 
 const STATUS_TONE: Record<ExceptionStatus, { bg: string; fg: string; l: string }> = {
@@ -45,6 +46,11 @@ const ROOT_CAUSE_CATEGORIES = [
 
 export default function ExceptionsPage() {
   const qc = useQueryClient();
+  // Backend guards (api/routes/exceptions.py): requesting needs `analyse`,
+  // resolving and escalating need `approve`.
+  const { can } = useRole();
+  const canRequest = can("analyse");
+  const canApprove = can("approve");
   const [statusFilter, setStatusFilter] = useState<"all" | ExceptionStatus>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [requestOpen, setRequestOpen] = useState(false);
@@ -108,7 +114,7 @@ export default function ExceptionsPage() {
   if (isLoading) {
     return (
       <>
-        <PageHead title="Exceptions" route="Steward · /exceptions" sub="Loading…" />
+        <PageHead title="Exceptions" route="Fix · /exceptions" sub="Loading…" />
         <Skeleton className="h-[420px] rounded-[10px]" />
       </>
     );
@@ -116,7 +122,7 @@ export default function ExceptionsPage() {
   if (error) {
     return (
       <>
-        <PageHead title="Exceptions" route="Steward · /exceptions" sub="Failed to load." />
+        <PageHead title="Exceptions" route="Fix · /exceptions" sub="Failed to load." />
         <div className="mn-card mn-card-pad" style={{ color: "var(--mn-neg)" }}>
           Could not reach <code>/api/v1/exceptions</code>.
         </div>
@@ -128,7 +134,7 @@ export default function ExceptionsPage() {
     <>
       <PageHead
         title="Exceptions"
-        route="Steward · /exceptions"
+        route="Fix · /exceptions"
         sub={
           <>
             <strong style={{ color: "var(--mn-pos)" }}>{open} open</strong>,{" "}
@@ -137,7 +143,7 @@ export default function ExceptionsPage() {
           </>
         }
         actions={
-          <>
+          canRequest ? (
             <Dialog open={requestOpen} onOpenChange={setRequestOpen}>
               <DialogTrigger type="button" className="mn-btn mn-btn-primary">
                 Request exception
@@ -203,7 +209,7 @@ export default function ExceptionsPage() {
                 </form>
               </DialogContent>
             </Dialog>
-          </>
+          ) : undefined
         }
       />
 
@@ -444,23 +450,27 @@ export default function ExceptionsPage() {
                 </div>
               )}
               <div className="mn-detail-actions">
-                <button
-                  type="button"
-                  className="mn-btn mn-btn-primary"
-                  style={{ flex: 1, justifyContent: "center" }}
-                  onClick={() => setResolveOpen(true)}
-                  disabled={resolveExc.isPending || selected.status === "resolved" || selected.status === "closed"}
-                >
-                  {resolveExc.isPending ? "Resolving…" : "Resolve"}
-                </button>
-                <button
-                  type="button"
-                  className="mn-btn mn-btn-ghost"
-                  onClick={() => escalateExc.mutate(selected.id)}
-                  disabled={escalateExc.isPending}
-                >
-                  {escalateExc.isPending ? "Escalating…" : "Escalate"}
-                </button>
+                {canApprove && (
+                  <>
+                    <button
+                      type="button"
+                      className="mn-btn mn-btn-primary"
+                      style={{ flex: 1, justifyContent: "center" }}
+                      onClick={() => setResolveOpen(true)}
+                      disabled={resolveExc.isPending || selected.status === "resolved" || selected.status === "closed"}
+                    >
+                      {resolveExc.isPending ? "Resolving…" : "Resolve"}
+                    </button>
+                    <button
+                      type="button"
+                      className="mn-btn mn-btn-ghost"
+                      onClick={() => escalateExc.mutate(selected.id)}
+                      disabled={escalateExc.isPending}
+                    >
+                      {escalateExc.isPending ? "Escalating…" : "Escalate"}
+                    </button>
+                  </>
+                )}
                 <button
                   type="button"
                   className="mn-btn mn-btn-ghost"

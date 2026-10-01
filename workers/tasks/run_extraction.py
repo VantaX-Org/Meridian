@@ -90,11 +90,14 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
                     "scope": scope or {}, "downloaded_at": datetime.now(timezone.utc).isoformat(),
                     "dataset_path": prefix, "object_rows": object_rows,
                     "coverage": coverage, "row_count": int(sum(len(d) for d in data_tables.values())),
+                    # every data table read completely (row count reconciled, no truncation, no paging drift)
+                    "extraction_complete": all(c.get("complete", True) for c in coverage if c["status"] == "live")
+                                           and not any(c["status"] == "failed" for c in coverage),
                 })},
             )
             session.commit()
 
-            failed = {c["table"] for c in coverage if c["status"] == "failed"}
+            failed = {c["table"] for c in coverage if c["status"] == "failed" or c.get("complete") is False}
             _mark_modules(session, tenant_id, system_id, modules, "partial" if failed else "success",
                           int(sum(len(d) for d in data_tables.values())))
 

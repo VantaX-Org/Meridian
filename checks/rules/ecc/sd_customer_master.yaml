@@ -106,10 +106,10 @@ rules:
 
   - id: SDCM006
     field: KNA1.STCD1
-    check_class: null_check
+    check_class: cross_field_check
     severity: low
     dimension: completeness
-    message: Tax number missing — required for tax-compliant invoicing
+    message: Customer has no tax identification (neither tax number 1 nor VAT registration number)
     why_it_matters: STCD1 (tax number) is required for generating tax-compliant invoices. Many jurisdictions require the customer's
       tax registration number on invoices for VAT deduction. Missing tax number results in non-compliant billing documents from
       VF01.
@@ -120,6 +120,11 @@ rules:
       __blank__: 'In ECC: obtain the customer''s VAT number or tax ID and set via T-code VD02 > General Data > Control tab or
         XD02. In S/4HANA: use Fiori app F3893 > Tax Numbers section.'
     record_fix_template: 'Customer {KNA1.KUNNR}: STCD1 is {actual_value}. Set the tax number via VD02 / Fiori app F3893.'
+    fail_when: '`KNA1.STCD1`.isna() & `KNA1.STCEG`.isna()'
+    applies_when:
+      KNA1.STKZN:
+        not_in:
+        - X
 
   - id: SDCM007
     field: ADR6.SMTP_ADDR
@@ -556,3 +561,392 @@ rules:
       Customer {KNA1.KUNNR}: WAERS is {actual_value}. Assign the sales area
       currency via VD02 / Fiori app F3893.
 
+  - id: SDCM026
+    field: KNVV.VKORG
+    check_class: referential_check
+    severity: high
+    dimension: consistency
+    message: Customer sales organisation KNVV.VKORG must exist in TVKO
+    why_it_matters: Sales-area data can only be used in a sales organisation that exists. Data kept for a sales organisation
+      that was removed from the configuration contradicts the organisational structure.
+    rule_authority: best_practice
+    sap_impact: The sales area is unreachable in VA01; reporting shows a non-existent sales organisation.
+    fix_map:
+      __other__: Sales organisation '{invalid_value}' is not defined in TVKO. Delete the obsolete sales-area data or extend
+        the customer to the right sales area (VD01/XD01).
+    record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: sales organisation ''{actual_value}''
+      does not exist in TVKO.'
+  - id: SDCM027
+    field: KNVV.VTWEG
+    check_class: referential_check
+    severity: high
+    dimension: consistency
+    message: Customer distribution channel KNVV.VTWEG must exist in TVTW
+    why_it_matters: The distribution channel is part of the sales area every sales document is created in. A channel that
+      is not defined makes the sales area unusable.
+    rule_authority: best_practice
+    sap_impact: Sales documents cannot be created in this sales area.
+    fix_map:
+      __other__: Distribution channel '{invalid_value}' is not defined in TVTW. Delete the obsolete sales-area data or extend
+        the customer to the right sales area.
+    record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: distribution channel ''{actual_value}''
+      does not exist in TVTW.'
+  - id: SDCM028
+    field: KNVV.SPART
+    check_class: referential_check
+    severity: high
+    dimension: consistency
+    message: Customer division KNVV.SPART must exist in TSPA
+    why_it_matters: The division is part of the sales area every sales document is created in. A division that is not defined
+      makes the sales area unusable.
+    rule_authority: best_practice
+    sap_impact: Sales documents cannot be created in this sales area.
+    fix_map:
+      __other__: Division '{invalid_value}' is not defined in TSPA. Delete the obsolete sales-area data or extend the customer
+        to the right sales area.
+    record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: division ''{actual_value}''
+      does not exist in TSPA.'
+  - id: SDCM029
+    field: KNVV.KALKS
+    check_class: referential_check
+    severity: high
+    dimension: consistency
+    message: Customer pricing procedure KNVV.KALKS must exist in TVKD
+    why_it_matters: The customer pricing procedure key (KALKS) is one of the three keys of pricing procedure determination
+      (OVKK). A key that is not defined in TVKD determines no pricing procedure.
+    rule_authority: best_practice
+    sap_impact: 'Sales orders get no pricing procedure: no prices, no taxes, the order is incomplete and cannot be billed.'
+    fix_map:
+      __other__: Customer pricing procedure '{invalid_value}' is not defined in TVKD. Correct it in VD02/XD02 > Sales area
+        > Sales.
+    record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: customer pricing procedure
+      ''{actual_value}'' not in TVKD.'
+  - id: SDCM030
+    field: KNVV.KDGRP
+    check_class: referential_check
+    severity: medium
+    dimension: consistency
+    message: Customer group KNVV.KDGRP must exist in T151
+    why_it_matters: The customer group is a key of pricing conditions, statistics and often revenue account determination.
+      A group that is not defined in T151 matches no condition record.
+    rule_authority: best_practice
+    sap_impact: Group-based prices and discounts are not found; sales statistics by customer group are wrong.
+    fix_map:
+      __other__: Customer group '{invalid_value}' is not defined in T151. Correct it in VD02/XD02 > Sales area > Sales.
+    record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: customer group ''{actual_value}''
+      not in T151.'
+  - id: SDCM031
+    field: KNVV.KTGRD
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: Account assignment group is missing in the sales area
+    why_it_matters: Revenue account determination (VKOA, condition type KOFI) reads the customer's account assignment group
+      from the sales area. Without it the billing document only finds a revenue account if a generic fallback entry exists;
+      otherwise the document is not released to accounting.
+    rule_authority: best_practice
+    sap_impact: Billing documents stop with 'account determination error' (VFX3 backlog); revenue is posted late or to a generic
+      account.
+    fix_map:
+      __blank__: Maintain the account assignment group in VD02/XD02 > Sales area > Billing documents.
+    record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: account assignment group
+      is missing.'
+  - id: SDCM032
+    field: KNVV.KTGRD
+    check_class: referential_check
+    severity: medium
+    dimension: consistency
+    message: Customer account assignment group KNVV.KTGRD must exist in TVKT
+    why_it_matters: Revenue account determination (VKOA) reads the account assignment group of the customer. A group that
+      is not defined in TVKT matches no account determination record.
+    rule_authority: best_practice
+    sap_impact: Billing documents are not released to accounting ('account determination error').
+    fix_map:
+      __other__: Account assignment group '{invalid_value}' is not defined in TVKT. Correct it in VD02/XD02 > Sales area >
+        Billing documents.
+    record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: account assignment group
+      ''{actual_value}'' not in TVKT.'
+  - id: SDCM033
+    field: KNVV.VSBED
+    check_class: referential_check
+    severity: medium
+    dimension: consistency
+    message: Customer shipping conditions KNVV.VSBED must exist in TVSB
+    why_it_matters: Shipping conditions drive shipping point and route determination for every order item. A condition that
+      is not defined in TVSB determines neither.
+    rule_authority: best_practice
+    sap_impact: Order items get no shipping point or route; deliveries cannot be created.
+    fix_map:
+      __other__: Shipping condition '{invalid_value}' is not defined in TVSB. Correct it in VD02/XD02 > Sales area > Shipping.
+    record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: shipping condition ''{actual_value}''
+      not in TVSB.'
+  - id: SDCM034
+    field: KNVV.ZTERM
+    check_class: referential_check
+    severity: high
+    dimension: consistency
+    message: Sales-area payment terms KNVV.ZTERM must exist in T052
+    why_it_matters: Sales-area payment terms are copied into every sales order and billing document and from there into the
+      receivable. Terms that are not defined in T052 leave the invoice without a due date.
+    rule_authority: best_practice
+    sap_impact: Billing documents carry undefined terms; receivables fall due immediately and dunning is wrong.
+    fix_map:
+      __other__: Payment terms '{invalid_value}' are not defined in T052. Correct them in VD02/XD02 > Sales area > Billing
+        documents.
+    record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: payment terms ''{actual_value}''
+      not in T052.'
+  - id: SDCM035
+    field: KNVV.VERSG
+    check_class: referential_check
+    severity: low
+    dimension: consistency
+    message: Customer statistics group KNVV.VERSG must exist in TVSD
+    why_it_matters: The customer statistics group decides whether sales documents update the sales information system (LIS).
+      A group that is not defined in TVSD is not evaluated.
+    rule_authority: best_practice
+    sap_impact: The customer's sales are missing from or mis-assigned in LIS/S4 sales statistics.
+    fix_map:
+      __other__: Statistics group '{invalid_value}' is not defined in TVSD. Correct it in VD02/XD02 > Sales area > Sales.
+    record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: statistics group ''{actual_value}''
+      not in TVSD.'
+  - id: SDCM036
+    field: KNVV.PLTYP
+    check_class: referential_check
+    severity: low
+    dimension: consistency
+    message: Customer price list type KNVV.PLTYP must exist in T189
+    why_it_matters: The price list type selects price-list condition records for the customer. A type that is not defined
+      in T189 matches no price list.
+    rule_authority: best_practice
+    sap_impact: Price-list prices are not found; orders fall back to other prices or are incomplete.
+    fix_map:
+      __other__: Price list type '{invalid_value}' is not defined in T189. Correct it in VD02/XD02 > Sales area > Sales.
+    record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: price list type ''{actual_value}''
+      not in T189.'
+  - id: SDCM037
+    field: KNVV.KONDA
+    check_class: referential_check
+    severity: low
+    dimension: consistency
+    message: Customer price group KNVV.KONDA must exist in T188
+    why_it_matters: The price group selects group-specific discounts and surcharges for the customer. A group that is not
+      defined in T188 matches no condition record.
+    rule_authority: best_practice
+    sap_impact: Agreed group discounts or surcharges are not applied to the customer's orders.
+    fix_map:
+      __other__: Price group '{invalid_value}' is not defined in T188. Correct it in VD02/XD02 > Sales area > Sales.
+    record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: price group ''{actual_value}''
+      not in T188.'
+  - id: SDCM038
+    field: KNVV.PERFK
+    check_class: referential_check
+    severity: low
+    dimension: consistency
+    message: Customer invoice dates calendar KNVV.PERFK must exist in TFACD
+    why_it_matters: The invoice dates calendar schedules periodic (collective) billing for the customer. A calendar that does
+      not exist yields no billing date.
+    rule_authority: best_practice
+    sap_impact: Deliveries are not picked up by periodic billing runs; invoices are not created on schedule.
+    fix_map:
+      __other__: Calendar '{invalid_value}' does not exist (TFACD). Correct the invoice dates in VD02/XD02 > Sales area >
+        Billing documents.
+    record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: invoice dates calendar
+      ''{actual_value}'' does not exist in TFACD.'
+  - id: SDCM039
+    field: KNVV.KKBER
+    check_class: referential_check
+    severity: medium
+    dimension: consistency
+    message: Sales-area credit control area KNVV.KKBER must exist in T014
+    why_it_matters: A credit control area in the sales area overrides the one derived from the company code for credit checks.
+      An area that is not defined in T014 has no credit limits.
+    rule_authority: best_practice
+    sap_impact: Sales orders in this sales area are credit-checked against nothing.
+    fix_map:
+      __other__: Credit control area '{invalid_value}' is not defined in T014. Correct it in VD02/XD02 > Sales area > Billing
+        documents.
+    record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: credit control area ''{actual_value}''
+      not in T014.'
+  - id: SDCM040
+    field: KNVV.VWERK
+    check_class: referential_check
+    severity: medium
+    dimension: consistency
+    message: Customer delivering plant KNVV.VWERK must be a plant assigned to sales (TVKWZ)
+    why_it_matters: The delivering plant is proposed into every order item. Only plants assigned to a sales organisation and
+      distribution channel (TVKWZ) can deliver.
+    rule_authority: best_practice
+    sap_impact: Order items get a plant that cannot deliver for the sales area; availability check and delivery fail.
+    fix_map:
+      __other__: Plant '{invalid_value}' is not assigned to any sales organisation/distribution channel (TVKWZ). Correct the
+        delivering plant in VD02/XD02 > Sales area > Shipping.
+    record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: delivering plant ''{actual_value}''
+      not allowed in TVKWZ.'
+  - id: SDCM041
+    field: KNVV.BZIRK
+    check_class: referential_check
+    severity: low
+    dimension: consistency
+    message: Customer sales district KNVV.BZIRK must exist in T171
+    why_it_matters: The sales district is a key of pricing and sales statistics. A district that is not defined in T171 matches
+      no condition record or statistic.
+    rule_authority: best_practice
+    sap_impact: District prices are not found; sales statistics by district are wrong.
+    fix_map:
+      __other__: Sales district '{invalid_value}' is not defined in T171. Correct it in VD02/XD02 > Sales area > Sales.
+    record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: sales district ''{actual_value}''
+      not in T171.'
+  - id: SDCM042
+    field: KNVV.VKBUR
+    check_class: referential_check
+    severity: low
+    dimension: consistency
+    message: Customer sales office KNVV.VKBUR must exist in TVBUR
+    why_it_matters: The sales office is proposed into sales documents and drives responsibility, output and statistics. An
+      office that is not defined in TVBUR cannot be copied into the order.
+    rule_authority: best_practice
+    sap_impact: Orders are created without a valid sales office; reporting and output by office are wrong.
+    fix_map:
+      __other__: Sales office '{invalid_value}' is not defined in TVBUR. Correct it in VD02/XD02 > Sales area > Sales.
+    record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: sales office ''{actual_value}''
+      not in TVBUR.'
+  - id: SDCM043
+    field: KNVV.VKGRP
+    check_class: referential_check
+    severity: low
+    dimension: consistency
+    message: Customer sales group KNVV.VKGRP must exist in TVBVK
+    why_it_matters: The sales group is proposed into sales documents. Only sales groups assigned to a sales office (TVBVK)
+      are valid.
+    rule_authority: best_practice
+    sap_impact: Orders are created without a valid sales group; reporting by sales group is wrong.
+    fix_map:
+      __other__: Sales group '{invalid_value}' is not assigned to a sales office (TVBVK). Correct it in VD02/XD02 > Sales
+        area > Sales.
+    record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: sales group ''{actual_value}''
+      not in TVBVK.'
+  - id: SDCM044
+    field: KNVV.AUFSD
+    check_class: referential_check
+    severity: medium
+    dimension: consistency
+    message: Sales-area order block KNVV.AUFSD must exist in TVAST
+    why_it_matters: A sales-area order block stops order processing by the reason defined in TVAST. A block code that is not
+      defined has no rule attached, so the intended block is not applied consistently.
+    rule_authority: best_practice
+    sap_impact: Orders are blocked without a recognised reason, or not blocked although the business intended it.
+    fix_map:
+      __other__: Order block '{invalid_value}' is not defined in TVAST. Set the correct block in VD05/XD05 or clear it.
+    record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: order block ''{actual_value}''
+      not in TVAST.'
+  - id: SDCM045
+    field: KNVV.LIFSD
+    check_class: referential_check
+    severity: medium
+    dimension: consistency
+    message: Sales-area delivery block KNVV.LIFSD must exist in TVLS
+    why_it_matters: A sales-area delivery block stops deliveries by the reason defined in TVLS. A block code that is not defined
+      has no rule attached, so the intended block is not applied consistently.
+    rule_authority: best_practice
+    sap_impact: Deliveries are blocked without a recognised reason, or not blocked although the business intended it.
+    fix_map:
+      __other__: Delivery block '{invalid_value}' is not defined in TVLS. Set the correct block in VD05/XD05 or clear it.
+    record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: delivery block ''{actual_value}''
+      not in TVLS.'
+  - id: SDCM046
+    field: KNVV.FAKSD
+    check_class: referential_check
+    severity: medium
+    dimension: consistency
+    message: Sales-area billing block KNVV.FAKSD must exist in TVFS
+    why_it_matters: A sales-area billing block stops billing by the reason defined in TVFS. A block code that is not defined
+      has no rule attached, so the intended block is not applied consistently.
+    rule_authority: best_practice
+    sap_impact: Billing is blocked without a recognised reason, or not blocked although the business intended it.
+    fix_map:
+      __other__: Billing block '{invalid_value}' is not defined in TVFS. Set the correct block in VD05/XD05 or clear it.
+    record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: billing block ''{actual_value}''
+      not in TVFS.'
+  - id: SDCM047
+    field: KNVV.LOEVM
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    valid_values_with_labels:
+      ? ''
+      : Active in this sales area
+      X: Flagged for deletion in this sales area
+    severity: medium
+    dimension: validity
+    message: Sales-area deletion flag must be X (flagged) or empty
+    why_it_matters: The sales-level deletion flag stops new sales documents in the sales area and queues the data for archiving.
+      SAP only recognises X.
+    rule_authority: best_practice
+    sap_impact: Orders may still be created in a sales area the business meant to close, or archiving skips it.
+    fix_map:
+      __other__: Set or remove the flag in VD06/XD06; never write other values by load.
+    record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: deletion flag ''{actual_value}''
+      is invalid.'
+  - id: SDCM048
+    field: KNVV.KZTLF
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - A
+    - B
+    - C
+    - D
+    valid_values_with_labels:
+      ? ''
+      : Partial delivery allowed
+      A: Create delivery with quantity greater than zero
+      B: Create only one delivery, even if quantity is zero
+      C: Only complete delivery allowed
+      D: No limit to subsequent deliveries
+    severity: low
+    dimension: validity
+    message: Partial delivery control must be one of SAP's fixed values (blank, A, B, C, D)
+    why_it_matters: KNVV.KZTLF is copied into every order item and controls whether and how partial deliveries are created.
+      SAP only interprets its fixed values.
+    rule_authority: best_practice
+    sap_impact: Deliveries are split or held back contrary to the agreement with the customer.
+    fix_map:
+      __other__: Correct the partial delivery control in VD02/XD02 > Sales area > Shipping.
+    record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: partial delivery control
+      ''{actual_value}'' is invalid.'
+  - id: SDCM049
+    field: KNVV.AUTLF
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    valid_values_with_labels:
+      ? ''
+      : Partial delivery of the order allowed
+      X: Complete delivery of the order required
+    severity: low
+    dimension: validity
+    message: Complete delivery indicator must be X or empty
+    why_it_matters: KNVV.AUTLF is copied into the order header and forces the whole order to ship in one delivery. SAP only
+      recognises X.
+    rule_authority: best_practice
+    sap_impact: Orders ship partially although the customer requires complete delivery, or wait unnecessarily.
+    fix_map:
+      __other__: Correct the complete delivery indicator in VD02/XD02 > Sales area > Shipping.
+    record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: complete delivery indicator
+      ''{actual_value}'' is invalid.'
+  - id: SDCM050
+    field: KNA1.LAND1
+    check_class: referential_check
+    severity: high
+    dimension: consistency
+    message: Customer country KNA1.LAND1 must exist in T005
+    why_it_matters: The customer's country drives output tax determination, export control, route determination and the address
+      on every order, delivery note and invoice. A country key that is not in T005 resolves none of them.
+    rule_authority: best_practice
+    sap_impact: Tax determination fails on sales orders; deliveries cannot be routed; invoices carry an invalid address.
+    fix_map:
+      __other__: Country '{invalid_value}' is not defined in T005. Correct the customer address in XD02/VD02 (BP address in
+        S/4HANA).
+    record_fix_template: 'Customer {KNA1.KUNNR}: country ''{actual_value}'' not in T005.'

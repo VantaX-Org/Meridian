@@ -105,12 +105,15 @@ rules:
   applies_when:
     EQUI.S_FLEET:
     - X
+    FLEET.FLEET_CAT:
+      not_in:
+      - TRAILER
 - id: FLEET006
-  field: FLEET_MASTER.LAST_SERVICE_DATE
-  check_class: null_check
+  field: EQUI.INBDT
+  check_class: freshness_check
   severity: high
   dimension: completeness
-  message: Last service date required for maintenance scheduling and compliance tracking
+  message: Fleet object in service for over a year with no recorded service
   why_it_matters: LAST_SERVICE_DATE is needed to calculate when the next service is due. Without it, the maintenance scheduling
     system cannot determine the service interval countdown and the vehicle's maintenance history has a gap that affects warranty
     and compliance.
@@ -119,11 +122,15 @@ rules:
     reporting incomplete.
   fix_map:
     __blank__: 'In ECC: enter last service date via IE02 > Fleet tab. In S/4HANA: use Fiori app F2723 or IE02.'
-  record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: LAST_SERVICE_DATE is {actual_value}. Enter the most recent service date
-    via IE02 (ECC) or Fiori app F2723 (S/4HANA).'
+  record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: in service since {actual_value} with no completed maintenance call. Complete
+    the overdue service (IW32) or record the last service via IE02 / Fiori app F2723.'
   applies_when:
     EQUI.S_FLEET:
     - X
+    FLEET_MASTER.LAST_SERVICE_DATE:
+    - ''
+    - '00000000'
+  max_age_hours: 8760
 - id: FLEET007
   field: FLEET_MASTER.SERVICE_KM
   check_class: null_check
@@ -142,6 +149,9 @@ rules:
   applies_when:
     EQUI.S_FLEET:
     - X
+    FLEET.FLEET_CAT:
+      not_in:
+      - TRAILER
 - id: FLEET008
   field: FLEET_MASTER.SERVICE_KM
   check_class: cross_field_check
@@ -181,6 +191,7 @@ rules:
   applies_when:
     EQUI.S_FLEET:
     - X
+  grain: EQUI
 - id: FLEET010
   field: EQUI.HERST
   check_class: null_check
@@ -253,6 +264,9 @@ rules:
   applies_when:
     EQUI.S_FLEET:
     - X
+    FLEET.FLEET_CAT:
+      not_in:
+      - TRAILER
 - id: FLEET014
   field: FLEET_MASTER.INSURANCE_EXPIRY
   check_class: null_check
@@ -336,3 +350,240 @@ rules:
   fix_map:
     __blank__: "Schedule the overdue service: raise a maintenance order against the vehicle, confirm odometer/usage, and record the completed service to refresh the service date."
   record_fix_template: "Vehicle {field} not serviced {age_days} days. Raise a maintenance order, perform the overdue service, and record completion."
+
+# ── Breadth: VIN uniqueness, legal validity, service plan consistency, physical data and units ──
+
+- id: FLEET019
+  field: FLEET.FLEET_VIN
+  check_class: uniqueness_check
+  fields: [FLEET.FLEET_VIN]
+  case_insensitive: true
+  severity: critical
+  dimension: uniqueness
+  message: The same vehicle identification number (VIN) is maintained for several fleet objects
+  why_it_matters: A VIN identifies exactly one physical vehicle worldwide (ISO 3779). Two fleet objects with one VIN
+    are the same vehicle recorded twice, or a typing error that hides the real vehicle — costs, fuel, fines and
+    insurance claims are split or posted to the wrong vehicle.
+  rule_authority: sap_hard_constraint
+  sap_impact: Vehicle costs and maintenance history are split across duplicates; recalls and insurance claims
+    cannot be matched to the right vehicle.
+  fix_map:
+    __other__: Compare both fleet objects with the registration documents; correct the wrong VIN (IE02 > Fleet) or
+      deactivate the duplicate equipment.
+  record_fix_template: 'Equipment {EQUI.EQUNR}: VIN {FLEET.FLEET_VIN} is also used by another fleet object.'
+
+- id: FLEET020
+  field: FLEET.EXPIRY_DATE
+  check_class: freshness_check
+  max_age_hours: 0
+  applies_when:
+    EQUI.S_FLEET: ['X']
+  severity: high
+  dimension: timeliness
+  message: Vehicle registration (licence) validity has expired
+  why_it_matters: A vehicle whose registration has expired may not be driven on public roads; insurance typically
+    does not cover it. A fleet object with a past validity end date is either operating illegally or the renewal was
+    not recorded — both need action.
+  rule_authority: best_practice
+  sap_impact: The vehicle may be dispatched while unlicensed; fines and uninsured-loss exposure.
+  fix_map:
+    __other__: Renew the registration and record the new validity end date (IE02 > Fleet), or take the vehicle out
+      of service (set status INAC).
+  record_fix_template: 'Equipment {EQUI.EQUNR} ({FLEET.LICENSE_NUM}): licence expired {actual_value}.'
+
+- id: FLEET021
+  field: FLEET_MASTER.INSURANCE_EXPIRY
+  check_class: freshness_check
+  max_age_hours: 0
+  applies_when:
+    EQUI.S_FLEET: ['X']
+  severity: critical
+  dimension: timeliness
+  message: Vehicle insurance has expired
+  why_it_matters: Operating a vehicle without valid insurance is unlawful in most jurisdictions and leaves every
+    accident uninsured. A past insurance expiry on an active fleet object means the policy lapsed or the renewal
+    was not recorded.
+  rule_authority: best_practice
+  sap_impact: The vehicle may be dispatched uninsured; full liability for accidents.
+  fix_map:
+    __other__: Confirm the policy with the insurer and record the new expiry date, or take the vehicle out of
+      service.
+  record_fix_template: 'Equipment {EQUI.EQUNR}: insurance expired {actual_value}.'
+
+- id: FLEET022
+  field: FLEET_MASTER.NEXT_SERVICE_DUE
+  check_class: cross_field_check
+  fail_when: '`FLEET_MASTER.NEXT_SERVICE_DUE` < `FLEET_MASTER.LAST_SERVICE_DATE`'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Next service is due before the last service was performed
+  why_it_matters: The next service date is scheduled from the last completed service. A next-due date before the
+    last service date means the schedule was not updated after the service — the vehicle shows as overdue (or
+    is never called in again) for the wrong reason.
+  rule_authority: sap_hard_constraint
+  sap_impact: Preventive maintenance scheduling (IP10) and overdue reporting are wrong for this vehicle.
+  fix_map:
+    __other__: Complete the maintenance order of the last service (IW32 / IW41) so the maintenance plan reschedules,
+      or correct the next due date.
+  record_fix_template: 'Equipment {EQUI.EQUNR}: next service {FLEET_MASTER.NEXT_SERVICE_DUE} before last service
+    {FLEET_MASTER.LAST_SERVICE_DATE}.'
+
+- id: FLEET023
+  field: FLEET.LOAD_WGT
+  check_class: cross_field_check
+  fail_when: '`FLEET.LOAD_WGT` > `FLEET.GROSS_WGT`'
+  applies_when:
+    FLEET.GROSS_WGT: {gt: 0}
+  severity: high
+  dimension: consistency
+  message: Maximum load weight exceeds the total permissible weight of the vehicle
+  why_it_matters: The total permissible weight (FLEET.GROSS_WGT) includes the vehicle's own weight plus its load
+    (FLEET.LOAD_WGT). A load limit above the total weight is physically impossible; transport planning that trusts
+    it overloads the vehicle.
+  rule_authority: sap_hard_constraint
+  sap_impact: Shipments are planned above the legal axle and gross weight — overload fines and safety risk.
+  fix_map:
+    __other__: Correct the weights from the vehicle registration document (IE02 > Fleet > Weights).
+  record_fix_template: 'Equipment {EQUI.EQUNR}: load weight {FLEET.LOAD_WGT} > total weight {FLEET.GROSS_WGT}.'
+
+- id: FLEET024
+  field: FLEET.WGT_UNIT
+  check_class: cross_field_check
+  fail_when: '((`FLEET.GROSS_WGT` > 0) | (`FLEET.LOAD_WGT` > 0)) & `FLEET.WGT_UNIT`.isna()'
+  severity: medium
+  dimension: consistency
+  message: Vehicle weights are maintained without a weight unit
+  why_it_matters: Gross and load weight (FLEET.GROSS_WGT / LOAD_WGT) are quantities whose unit is FLEET.WGT_UNIT. A
+    weight without unit cannot be compared with shipment weights or legal limits.
+  rule_authority: sap_hard_constraint
+  sap_impact: Vehicle capacity checks in transport planning cannot use the weights.
+  fix_map:
+    __other__: Maintain the weight unit (IE02 > Fleet > Weights).
+  record_fix_template: 'Equipment {EQUI.EQUNR}: weights without unit.'
+
+- id: FLEET025
+  field: FLEET.DIM_UNIT
+  check_class: cross_field_check
+  fail_when: '((`FLEET.FLEET_HGT` > 0) | (`FLEET.FLEET_WID` > 0) | (`FLEET.FLEET_LEN` > 0)) & `FLEET.DIM_UNIT`.isna()'
+  severity: medium
+  dimension: consistency
+  message: Vehicle dimensions are maintained without a unit of length
+  why_it_matters: Height, width and length of the vehicle (FLEET_HGT / WID / LEN) are quantities whose unit is
+    FLEET.DIM_UNIT. Clearance checks (bridges, tunnels, docks) cannot use a dimension without its unit.
+  rule_authority: sap_hard_constraint
+  sap_impact: Route and dock clearance checks cannot use the vehicle dimensions.
+  fix_map:
+    __other__: Maintain the unit of length (IE02 > Fleet > Dimensions).
+  record_fix_template: 'Equipment {EQUI.EQUNR}: dimensions without unit.'
+
+- id: FLEET026
+  field: FLEET.UNIT_POWER
+  check_class: cross_field_check
+  fail_when: '(`FLEET.ENGINE_POWER` > 0) & `FLEET.UNIT_POWER`.isna()'
+  severity: low
+  dimension: consistency
+  message: Engine power is maintained without a power unit
+  why_it_matters: Engine power (FLEET.ENGINE_POWER) is a quantity whose unit is FLEET.UNIT_POWER (kW, HP). Without
+    the unit the value cannot be used for tax, emission class or spare-part selection.
+  rule_authority: sap_hard_constraint
+  sap_impact: Vehicle tax and emission reporting cannot use the engine power.
+  fix_map:
+    __other__: Maintain the power unit (IE02 > Fleet > Engine).
+  record_fix_template: 'Equipment {EQUI.EQUNR}: engine power {FLEET.ENGINE_POWER} without unit.'
+
+- id: FLEET027
+  field: FLEET.UNIT_CAP
+  check_class: cross_field_check
+  fail_when: '(`FLEET.ENGINE_CAP` > 0) & `FLEET.UNIT_CAP`.isna()'
+  severity: low
+  dimension: consistency
+  message: Engine capacity is maintained without a unit
+  why_it_matters: Engine capacity (FLEET.ENGINE_CAP) is a quantity whose unit is FLEET.UNIT_CAP (ccm, l). Without
+    the unit the value cannot be used for tax classes or parts selection.
+  rule_authority: sap_hard_constraint
+  sap_impact: Vehicle tax class and parts compatibility cannot use the engine capacity.
+  fix_map:
+    __other__: Maintain the engine capacity unit (IE02 > Fleet > Engine).
+  record_fix_template: 'Equipment {EQUI.EQUNR}: engine capacity {FLEET.ENGINE_CAP} without unit.'
+
+- id: FLEET028
+  field: FLEET.REPLA_DATE
+  check_class: cross_field_check
+  fail_when: '`FLEET.REPLA_DATE` < `EQUI.INBDT`'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Planned replacement date is before the vehicle's start-up date
+  why_it_matters: A vehicle is replaced after it is put into service (EQUI.INBDT). A replacement date before
+    start-up was entered wrongly, so fleet renewal planning and depreciation-based replacement budgets are wrong.
+  rule_authority: sap_hard_constraint
+  sap_impact: Fleet replacement planning schedules the vehicle for immediate replacement.
+  fix_map:
+    __other__: Correct the replacement date (IE02 > Fleet) from the fleet renewal policy.
+  record_fix_template: 'Equipment {EQUI.EQUNR}: replacement {FLEET.REPLA_DATE} before start-up {EQUI.INBDT}.'
+
+- id: FLEET029
+  field: FLEET.FUEL_PRI
+  check_class: referential_check
+  reference_values: []
+  reference_table: T370FLD
+  reference_field: FLUID_TYPE
+  severity: medium
+  dimension: consistency
+  message: Primary fuel type does not exist in the consumables configuration (T370FLD)
+  why_it_matters: Fuel consumption recording (IFCU) validates the fuel against the vehicle's primary fuel type. A
+    fuel type that is not configured makes consumption postings for the vehicle fail.
+  rule_authority: sap_hard_constraint
+  sap_impact: Fuel consumption cannot be recorded or valued for this vehicle.
+  fix_map:
+    __other__: Fuel type '{invalid_value}' is not in T370FLD. Correct the vehicle (IE02 > Fleet > Engine) or configure
+      the consumable type.
+  record_fix_template: 'Equipment {EQUI.EQUNR}: fuel type ''{actual_value}'' is not configured.'
+
+- id: FLEET030
+  field: FLEET.ENGINE_TYPE
+  check_class: referential_check
+  reference_values: []
+  reference_table: T370ENG
+  reference_field: ENGINE_TYPE
+  severity: low
+  dimension: consistency
+  message: Engine type does not exist in the fleet configuration (T370ENG)
+  why_it_matters: Engine types group vehicles for maintenance strategies and parts. An unconfigured engine type
+    cannot be used in selection or reporting.
+  rule_authority: sap_hard_constraint
+  sap_impact: The vehicle is missing from engine-type based maintenance and parts planning.
+  fix_map:
+    __other__: Engine type '{invalid_value}' is not in T370ENG. Correct the vehicle (IE02 > Fleet > Engine).
+  record_fix_template: 'Equipment {EQUI.EQUNR}: engine type ''{actual_value}'' is not configured.'
+
+- id: FLEET031
+  field: FLEET.LOAD_DIM_UNIT
+  check_class: cross_field_check
+  fail_when: '((`FLEET.LOAD_HGT` > 0) | (`FLEET.LOAD_WID` > 0) | (`FLEET.LOAD_LEN` > 0)) & `FLEET.LOAD_DIM_UNIT`.isna()'
+  severity: low
+  dimension: consistency
+  message: Load space dimensions are maintained without a unit of length
+  why_it_matters: The load space dimensions (LOAD_HGT / WID / LEN) are quantities whose unit is
+    FLEET.LOAD_DIM_UNIT. Load planning cannot compare them with package dimensions without the unit.
+  rule_authority: sap_hard_constraint
+  sap_impact: Load space planning cannot use the vehicle's load dimensions.
+  fix_map:
+    __other__: Maintain the unit for the load dimensions (IE02 > Fleet > Dimensions).
+  record_fix_template: 'Equipment {EQUI.EQUNR}: load dimensions without unit.'
+
+- id: FLEET032
+  field: FLEET.VOL_UNIT
+  check_class: cross_field_check
+  fail_when: '(`FLEET.LOAD_VOL` > 0) & `FLEET.VOL_UNIT`.isna()'
+  severity: low
+  dimension: consistency
+  message: Load volume is maintained without a volume unit
+  why_it_matters: The load volume (FLEET.LOAD_VOL) is a quantity whose unit is FLEET.VOL_UNIT. Volume-based load
+    planning cannot use it without the unit.
+  rule_authority: sap_hard_constraint
+  sap_impact: Volume capacity checks in transport planning cannot use the vehicle's load volume.
+  fix_map:
+    __other__: Maintain the volume unit (IE02 > Fleet > Dimensions).
+  record_fix_template: 'Equipment {EQUI.EQUNR}: load volume {FLEET.LOAD_VOL} without unit.'

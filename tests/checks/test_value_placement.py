@@ -123,3 +123,92 @@ def test_module_run_includes_generated_rules():
     extra = g("accounts_payable", static, D)
     ids = {r.check_id for r in run_checks("accounts_payable", _frames(), "t", extra_rules=extra)}
     assert {"ST-LFA1", "SW-LFA1-PSTLZ-ORT01"} <= ids
+
+
+def test_sap_number_formats():
+    from checks.base import sap_number
+    # one column, one convention (as an RFC extract or a spreadsheet export writes it)
+    got = sap_number(pd.Series(["1234.50-", "1,234.50", "7", "", "x", "0.000", "1.000"])).tolist()
+    assert got[:3] == [-1234.5, 1234.5, 7.0] and pd.isna(got[3]) and pd.isna(got[4]) and got[5] == 0
+    assert got[6] == 1.0  # RFC QUAN "1.000" is one, not a thousand
+    assert sap_number(pd.Series(["1.234,50", "12,5", "1.234.567"])).tolist() == [1234.5, 12.5, 1234567]
+
+
+def test_uploads_are_brought_to_internal_format():
+    from checks.frames import TableFrames
+    f = TableFrames.from_flat(pd.DataFrame({"LFB1.LIFNR": ["100001"], "LFB1.BUKRS": ["1000"], "LFB1.AKONT": ["140000"],
+                                            "MARA.MATNR": ["4711"], "LFA1.LIFNR": ["ABC"]}), D)
+    assert f.frames["LFB1"]["LFB1.AKONT"].iloc[0] == "0000140000"
+    assert f.frames["LFB1"]["LFB1.LIFNR"].iloc[0] == "0000100001"
+    assert f.flat["MARA.MATNR"].iloc[0] == "000000000000004711" and f.flat["LFA1.LIFNR"].iloc[0] == "ABC"
+
+
+def test_fi_document_balance():
+    import yaml
+    from checks.runner import _find_module_yaml
+    rule = next(r for r in yaml.safe_load(_find_module_yaml("fi_gl").read_text())["rules"] if r["id"] == "XFI001")
+    bkpf = pd.DataFrame({"BKPF.BUKRS": ["1000"] * 3, "BKPF.BELNR": ["1", "2", "3"], "BKPF.GJAHR": ["2026"] * 3,
+                         "BKPF.BSTAT": ["", "", "S"]})
+    bseg = pd.DataFrame({"BSEG.BUKRS": ["1000"] * 5, "BSEG.BELNR": ["1", "1", "2", "2", "3"], "BSEG.GJAHR": ["2026"] * 5,
+                         "BSEG.BUZEI": ["001", "002", "001", "002", "001"],
+                         "BSEG.DMBTR": ["1234.50", "1234.50", "100.00", "99.00", "50.00"],
+                         "BSEG.SHKZG": ["S", "H", "S", "H", "S"]})
+    _, r = run_rule({**rule, "module": "fi_gl"}, TableFrames({"BKPF": bkpf, "BSEG": bseg}, D, module="fi_gl"))
+    # doc 1 balances, doc 2 is off by 1.00, doc 3 is a noted item (no posting)
+    assert (r.total_count, r.affected_count) == (2, 1) and r.failing_record_keys == ["BUKRS=1000|BELNR=2|GJAHR=2026|BUZEI=001"]
+    assert r.details["largest_imbalance"] == 1.0
+
+
+def test_upload_external_codes_become_internal_through_the_systems_tables():
+    from checks.frames import TableFrames
+    from sap.field_status_config import conversion_maps
+    maps = conversion_maps({
+        "T006A": [{"SPRAS": "E", "MSEHI": "ST", "MSEH3": "PC"}, {"SPRAS": "D", "MSEHI": "ST", "MSEH3": "ST"},
+                  {"SPRAS": "E", "MSEHI": "KG", "MSEH3": "KG"}],
+        "TAUUM": [{"SPRAS": "E", "AUART": "TA", "AUART_SPR": "OR"}],
+    })
+    assert maps == {"CUNIT": {"PC": "ST"}, "AUART": {"OR": "TA"}}
+    f = TableFrames.from_flat(pd.DataFrame({"MARA.MATNR": ["1", "2"], "MARA.MEINS": ["PC", "KG"],
+                                            "VBAK.VBELN": ["1", "2"], "VBAK.AUART": ["OR", "ZOR"]}), D, conversions=maps)
+    assert f.flat["MARA.MEINS"].tolist() == ["ST", "KG"] and f.flat["VBAK.AUART"].tolist() == ["TA", "ZOR"]
+
+
+def test_measuring_ranges_are_not_phone_numbers():
+    assert hits("phone_keyword", ["Load cell 0-500 kg", "Lime dosing pump pH 9.5-10.5", "Cell 12"]) == [False] * 3
+    assert all(hits("phone_keyword", ["Acme Tel: 011 555 1234", "cell 082 555 1234"]))
+
+
+def test_number_columns_are_read_in_one_convention():
+    from checks.base import sap_number
+    assert sap_number(pd.Series(["12,500", "1,000", "7"])).tolist() == [12500, 1000, 7]          # English column
+    assert sap_number(pd.Series(["12,500", "12,5", "1.234,50"])).tolist() == [12.5, 12.5, 1234.5]  # European column
+
+
+def test_balance_not_judged_on_an_incomplete_extraction():
+    import yaml
+    from checks.runner import _find_module_yaml
+    rule = next(r for r in yaml.safe_load(_find_module_yaml("fi_gl").read_text())["rules"] if r["id"] == "XFI001")
+    bseg = pd.DataFrame({"BSEG.BUKRS": ["1000"], "BSEG.BELNR": ["1"], "BSEG.GJAHR": ["2026"], "BSEG.BUZEI": ["001"],
+                         "BSEG.DMBTR": ["10.00"], "BSEG.SHKZG": ["S"]})
+    f = TableFrames({"BSEG": bseg}, D, module="fi_gl")
+    f.incomplete = {"BSEG"}
+    _, r = run_rule({**rule, "module": "fi_gl", "applies_when": None}, f)
+    assert r.error and "incomplete" in r.error
+
+
+def test_vat_check_digits():
+    from checks.value_placement import vat_status
+    # published valid examples: BE 0428759497, DE 136695976, IT 00743110157, FR 40303265045
+    assert [vat_status(v) for v in ("BE0428759497", "DE136695976", "IT00743110157", "FR40303265045")] == ["ok"] * 4
+    assert [vat_status(v) for v in ("BE0428759498", "DE136695977", "IT00743110158", "FR41303265045")] == ["bad"] * 4
+    assert vat_status("DE12345") == "n/a" and vat_status("NL123456789B01") == "n/a"  # malformed / not checked
+
+
+def test_near_duplicate_names():
+    lfa1 = pd.DataFrame({"LFA1.LIFNR": ["1", "2", "3", "4"],
+                         "LFA1.NAME1": ["Acme (Pty) Ltd.", "ACME PTY LTD", "Acme Pty Ltd", "Beta GmbH"],
+                         "LFA1.PSTLZ": ["2196", "2196", "8001", "2196"], "LFA1.LAND1": ["ZA", "ZA", "ZA", "ZA"]})
+    rule = next(r for r in generate("accounts_payable", [{"field": "LFA1.LIFNR", "check_class": "null_check"}], D)
+                if r["id"] == "ND-LFA1")
+    _, r = run_rule(rule, TableFrames({"LFA1": lfa1}, D, module="accounts_payable"))
+    assert sorted(r.failing_record_keys) == ["LIFNR=1", "LIFNR=2"]  # 3 is in another town

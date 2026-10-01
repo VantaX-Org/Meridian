@@ -47,8 +47,8 @@ const STATUSES: { id: IssueStatus; label: string }[] = [
 ];
 const SEVERITY_TONE: Record<string, ChipTone> = { critical: "danger", high: "danger", medium: "warning", low: "neutral" };
 const RESOLUTION_LABEL: Record<string, string> = {
-  verified_fixed: "verified fixed by a later run",
-  fixed_in_source: "marked fixed — awaiting the next run",
+  verified_fixed: "verified fixed by a later version",
+  fixed_in_source: "marked fixed — awaiting the next version",
   accepted_risk: "risk accepted",
   false_positive: "false positive",
 };
@@ -85,7 +85,7 @@ const columns = (selected: Set<string>, toggle: (id: string) => void): ColumnDef
     ),
     meta: { width: 380 } satisfies AuroraColumnMeta,
   },
-  { id: "module", header: "Module", cell: ({ row }) => formatModuleName(row.original.module), meta: { width: 160 } satisfies AuroraColumnMeta },
+  { id: "module", header: "Object", cell: ({ row }) => formatModuleName(row.original.module), meta: { width: 160 } satisfies AuroraColumnMeta },
   { id: "assignee", header: "Assignee", cell: ({ row }) => row.original.assignee_email ?? "—", meta: { width: 180 } satisfies AuroraColumnMeta },
   {
     id: "seen", header: "First seen",
@@ -166,9 +166,9 @@ function IssuesWorkList() {
   return (
     <div data-theme="light" className="space-y-6">
       <PageHead
-        title="Issues"
-        route="/issues"
-        sub="Every failing SAP record, per check, tracked across runs. A later run that evaluates the record and finds it passing resolves it automatically; if it fails again it re-opens."
+        title="Failing records"
+        route="Quality · /issues"
+        sub="Every failing SAP record, per check, tracked across versions. A later version that evaluates the record and finds it passing resolves it automatically; if it fails again it re-opens."
         actions={can("export") ? (
           <Stack direction="row" gap={2}>
             {(["xlsx", "csv"] as const).map((f) => (
@@ -183,10 +183,10 @@ function IssuesWorkList() {
 
       <Panel>
         <Stack gap={4}>
-          <Tabs<IssueStatus> ariaLabel="Issue status" value={filter.status ?? "open"} onValueChange={(s) => set({ status: s })}
+          <Tabs<IssueStatus> ariaLabel="Failing record status" value={filter.status ?? "open"} onValueChange={(s) => set({ status: s })}
             items={STATUSES.map((s) => ({ id: s.id, label: s.label, count: counts[s.id] ?? 0 }))} />
           <Stack direction="row" gap={2} wrap align="center">
-            <Select placeholder="All modules" value={filter.module ?? ""} aria-label="Module"
+            <Select placeholder="All objects" value={filter.module ?? ""} aria-label="Object"
               options={modules.map((m) => ({ value: m, label: formatModuleName(m) }))} onValueChange={(v) => set({ module: v || undefined })} />
             <Select placeholder="All severities" value={filter.severity ?? ""} aria-label="Severity"
               options={["critical", "high", "medium", "low"].map((s) => ({ value: s, label: s }))}
@@ -234,10 +234,10 @@ function IssuesWorkList() {
             getRowId={(r) => r.id}
             onRowActivate={(r) => setOpenId(r.id)}
             maxHeight={560}
-            ariaLabel="Record issues"
-            empty={<Text tone="muted">{isFetching ? "Fetching issues…" : "No issues match — run an analysis or widen the filters."}</Text>}
+            ariaLabel="Failing records"
+            empty={<Text tone="muted">{isFetching ? "Fetching failing records…" : "No failing records match — analyse a version or widen the filters."}</Text>}
           />
-          <Pager offset={offset} total={data?.total ?? 0} pageSize={PAGE} onChange={setOffset} noun="issues" />
+          <Pager offset={offset} total={data?.total ?? 0} pageSize={PAGE} onChange={setOffset} noun="failing records" />
         </Stack>
       </Panel>
       <IssueDrawer id={openId} onClose={() => setOpenId(null)} canComment={can("analyse")} />
@@ -278,7 +278,7 @@ function IssueDrawer({ id, onClose, canComment }: { id: string | null; onClose: 
             </Link>
           </Stack>
           <Stack gap={2}>
-            <Text className="font-semibold">Run by run</Text>
+            <Text className="font-semibold">Version by version</Text>
             <Stack direction="row" gap={1} wrap>
               {data.runs.map((r) => (
                 <span key={r.version_id} title={new Date(r.run_at).toLocaleString()}>

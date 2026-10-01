@@ -17,6 +17,7 @@ import {
 import { copyToClipboard } from "@/components/meridian/actions";
 import { ConfirmDialog } from "@/components/meridian/controls";
 import { relativeTime } from "@/lib/format";
+import { useRole } from "@/hooks/use-role";
 
 function previewLine(item: CleaningQueueItem): string {
   if (item.merge_preview && typeof item.merge_preview === "object") {
@@ -37,6 +38,11 @@ function statusToBucket(s: string): "auto" | "review" {
 
 export default function CleaningPage() {
   const qc = useQueryClient();
+  // Backend guards (api/routes/cleaning.py): approve/reject/bulk-approve need
+  // `approve`, roll back needs `apply`.
+  const { can } = useRole();
+  const canApprove = can("approve");
+  const canApply = can("apply");
   const [filter, setFilter] = useState<"all" | "auto" | "review">("all");
   const [autoOpen, setAutoOpen] = useState(false);
 
@@ -104,7 +110,7 @@ export default function CleaningPage() {
   if (isLoading) {
     return (
       <>
-        <PageHead title="Cleaning Queue" route="Steward · /cleaning" sub="Loading…" />
+        <PageHead title="Cleaning Queue" route="Fix · /cleaning" sub="Loading…" />
         <Skeleton className="h-[420px] rounded-[10px]" />
       </>
     );
@@ -112,7 +118,7 @@ export default function CleaningPage() {
   if (error) {
     return (
       <>
-        <PageHead title="Cleaning Queue" route="Steward · /cleaning" sub="Failed to load." />
+        <PageHead title="Cleaning Queue" route="Fix · /cleaning" sub="Failed to load." />
         <div className="mn-card mn-card-pad" style={{ color: "var(--mn-neg)" }}>
           Could not reach <code>/api/v1/cleaning/queue</code>.
         </div>
@@ -124,7 +130,7 @@ export default function CleaningPage() {
     <>
       <PageHead
         title="Cleaning Queue"
-        route="Steward · /cleaning"
+        route="Fix · /cleaning"
         sub={
           <>
             <strong style={{ color: "var(--mn-ink-700)" }}>{total} records</strong> in queue ·{" "}
@@ -133,14 +139,16 @@ export default function CleaningPage() {
           </>
         }
         actions={
-          <button
-            type="button"
-            className="mn-btn mn-btn-primary"
-            onClick={() => setAutoOpen(true)}
-            disabled={runAuto.isPending}
-          >
-            {runAuto.isPending ? "Running…" : "Run auto-jobs"}
-          </button>
+          canApprove ? (
+            <button
+              type="button"
+              className="mn-btn mn-btn-primary"
+              onClick={() => setAutoOpen(true)}
+              disabled={runAuto.isPending}
+            >
+              {runAuto.isPending ? "Running…" : "Run auto-jobs"}
+            </button>
+          ) : undefined
         }
       />
 
@@ -234,16 +242,18 @@ export default function CleaningPage() {
                     >
                       ✓ Auto-applied
                     </span>
-                    <button
-                      type="button"
-                      className="mn-btn mn-btn-ghost"
-                      onClick={() => rollback.mutate(j.id)}
-                      disabled={rollback.isPending}
-                    >
-                      {rollback.isPending ? "Rolling back…" : "Roll back"}
-                    </button>
+                    {canApply && (
+                      <button
+                        type="button"
+                        className="mn-btn mn-btn-ghost"
+                        onClick={() => rollback.mutate(j.id)}
+                        disabled={rollback.isPending}
+                      >
+                        {rollback.isPending ? "Rolling back…" : "Roll back"}
+                      </button>
+                    )}
                   </>
-                ) : (
+                ) : canApprove ? (
                   <>
                     <button
                       type="button"
@@ -262,7 +272,7 @@ export default function CleaningPage() {
                       Approve <ArrowRight size={13} />
                     </button>
                   </>
-                )}
+                ) : null}
               </div>
             </div>
           );
