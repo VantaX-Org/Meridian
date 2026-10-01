@@ -90,3 +90,17 @@ def test_accounts_payable_golden():
     assert name.details["population_excluded"] == {"deleted": 1}
     tax = next(r for r in results if r.check_id == "AP007")
     assert tax.details["population_excluded"] == {"deleted": 1, "one_time_account": 1}
+
+
+def test_branch_accounts_share_their_head_offices_vat_number():
+    """A branch account (LFB1.LNRZE = head office) legitimately carries the head office's
+    VAT number; only accounts without a head office are compared, per company code."""
+    from checks.runner import run_rule
+    rule = next(r for r in yaml.safe_load(_find_module_yaml("accounts_payable").read_text())["rules"] if r["id"] == "XDUP001")
+    lfa1 = pd.DataFrame({"LFA1.LIFNR": ["H1", "B1", "D1", "D2"],
+                         "LFA1.STCEG": ["DE111111111", "DE111111111", "DE222222222", "DE222222222"]})
+    lfb1 = pd.DataFrame({"LFB1.LIFNR": ["H1", "B1", "D1", "D2"], "LFB1.BUKRS": ["1000"] * 4,
+                         "LFB1.LNRZE": ["", "H1", "", ""]})
+    _, r = run_rule({**rule, "module": "accounts_payable"},
+                    TableFrames({"LFA1": lfa1, "LFB1": lfb1}, D, module="accounts_payable"))
+    assert sorted(r.failing_record_keys) == ["LIFNR=D1|BUKRS=1000", "LIFNR=D2|BUKRS=1000"]

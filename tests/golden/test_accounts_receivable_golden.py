@@ -186,7 +186,7 @@ def test_accounts_receivable_golden():
         "PH-KNA1-TELF1": {f"KUNNR={D_TEL}"},                      # 0000000000 is a placeholder
         "SW-KNA1-PSTLZ-ORT01": {f"KUNNR={D_SWAP}"},               # city in the postal code, code in the city
         "ST-KNA1": {f"KUNNR={D_DNU}"},                            # "DO NOT USE" in the name, nothing blocked
-        "XDUP005": {f"KUNNR={D_DUP1}", f"KUNNR={D_DUP2}"},        # one legal entity created twice
+        "XDUP005": {f"KUNNR={D_DUP1}|BUKRS=1000", f"KUNNR={D_DUP2}|BUKRS=1000"},        # one legal entity created twice
     }, found
     # DEL is flagged for deletion and OT is a one-time account: out of the population, counted
     name = next(r for r in results if r.check_id == "AR003")

@@ -30,7 +30,8 @@ def apply_context(df: pd.DataFrame, applies_when: dict | None) -> pd.DataFrame:
     `applies_when` is a dict of {field: allowed_values}; AND-combined.
     Returns:
       - df unchanged if applies_when is None/empty
-      - df.iloc[:0] (zero rows) if any field in applies_when is missing
+      - df.iloc[:0] (zero rows) if any field in applies_when is missing (a
+        {blank: true} condition on a missing field holds: nothing carries a value)
         from the extract — lets the caller treat the rule as "not applicable
         to this extract" via the existing None-result pathway
       - filtered df otherwise
@@ -44,6 +45,8 @@ def apply_context(df: pd.DataFrame, applies_when: dict | None) -> pd.DataFrame:
     mask = pd.Series(True, index=df.index)
     for field, allowed in applies_when.items():
         if field not in df.columns:
+            if isinstance(allowed, dict) and set(allowed) == {"blank"}:
+                continue  # not extracted: no record is known to carry a value (e.g. no branch accounts)
             return df.iloc[:0]
         values = df[field].astype("string").str.strip()
         if isinstance(allowed, dict):
@@ -56,6 +59,8 @@ def apply_context(df: pd.DataFrame, applies_when: dict | None) -> pd.DataFrame:
                 mask &= ~values.isin({str(v).strip() for v in allowed["not_in"]}).fillna(False)
             if allowed.get("populated"):
                 mask &= values.fillna("").ne("") & ~values.isin(("00000000",)).fillna(False)
+            if allowed.get("blank"):
+                mask &= values.fillna("").eq("") | values.isin(("00000000",)).fillna(False)
             if "gt" in allowed:
                 mask &= sap_number(values).gt(float(allowed["gt"])).fillna(False)
         else:
