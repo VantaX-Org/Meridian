@@ -62,6 +62,10 @@ const STATUS_TONE: Record<string, ChipTone> = {
 const findingsHref = (versionId: string, object: string) =>
   `/findings?${new URLSearchParams({ version_id: versionId, module: object })}`;
 
+/** Field profile + candidate hidden rules of one object in one version. */
+const profileHref = (systemId: string, versionId: string, object: string) =>
+  `/systems/${systemId}/versions/${versionId}/profile?${new URLSearchParams({ object })}`;
+
 const list = (v: string) => v.split(/[\s,;]+/).map((x) => x.trim().toUpperCase()).filter(Boolean);
 const delta = (n: number | undefined, invert = false, digits = 1) => {
   if (n === undefined || n === null) return <span className="text-[var(--aurora-fg-muted)]">—</span>;
@@ -270,6 +274,9 @@ export function VersionsTab({ id, canAnalyse }: { id: string; canAnalyse: boolea
                 <div key={o}>
                   <Link className="underline" href={findingsHref(v.id, o)}>
                     {formatModuleName(o)} <span className="aurora-number">{d?.toFixed(1) ?? "—"}</span>
+                  </Link>{" "}
+                  <Link className="text-[12px] text-[var(--aurora-fg-tertiary)] underline" href={profileHref(id, v.id, o)}>
+                    Profile
                   </Link>
                 </div>
               ))}

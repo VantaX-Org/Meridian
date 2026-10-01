@@ -890,6 +890,48 @@ class RecordIssueEvent(Base):
     __table_args__ = (Index("ix_record_issue_events_issue", "issue_id", "created_at"),)
 
 
+class FieldProfile(Base):
+    """Profile of one TABLE.FIELD in one analysed version and object — see migration 051."""
+    __tablename__ = "field_profiles"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    version_id = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id", ondelete="CASCADE"), nullable=False)
+    module = Column(Text, nullable=False)
+    table_name = Column(Text, nullable=False)
+    field = Column(Text, nullable=False)
+    stats = Column(JSONB, nullable=False, server_default="{}")  # checks/profiling.py:profile_series
+    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
+
+    __table_args__ = (
+        UniqueConstraint("version_id", "module", "table_name", "field", name="uq_field_profiles"),
+        Index("ix_field_profiles_tenant_version_module", "tenant_id", "version_id", "module"),
+    )
+
+
+class FieldDependency(Base):
+    """Candidate hidden rule A → B (≥ 99 %, < 100 % of records) — see migration 051."""
+    __tablename__ = "field_dependencies"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    version_id = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id", ondelete="CASCADE"), nullable=False)
+    module = Column(Text, nullable=False)
+    table_name = Column(Text, nullable=False)
+    determinant = Column(Text, nullable=False)  # TABLE.FIELD
+    dependent = Column(Text, nullable=False)    # TABLE.FIELD
+    support = Column(Float, nullable=False)
+    populated_rows = Column(Integer, nullable=False)  # records with the determinant populated
+    violations = Column(Integer, nullable=False)
+    sample_keys = Column(JSONB, nullable=False, server_default="[]")
+    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
+
+    __table_args__ = (
+        UniqueConstraint("version_id", "module", "determinant", "dependent", name="uq_field_dependencies"),
+        Index("ix_field_dependencies_tenant_version_module", "tenant_id", "version_id", "module"),
+    )
+
+
 class TransferValueMapping(Base):
     """Steward-maintained source → target value mapping (migration 048)."""
 
