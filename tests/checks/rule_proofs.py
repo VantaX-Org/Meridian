@@ -235,6 +235,8 @@ def prove(rule: dict, dictionary) -> tuple[str, str]:
         return _verify(rule, dictionary, rows, (3, 1), live)
     if rule.get("check_class") == "aggregate_check":
         return _prove_aggregate(rule, dictionary, cand, live)
+    if rule.get("check_class") == "exists_check":
+        return _prove_exists(rule, dictionary, cand, live)
     combos = itertools.product(*(cand[c] for c in cols))
     values = [dict(zip(cols, combo)) for combo in itertools.islice(combos, MAX_ROWS)]
     df = _rows(rule, dictionary, values)
@@ -297,3 +299,31 @@ def _prove_aggregate(rule, dictionary, cand, live) -> tuple[str, str]:
         return "error", r.error
     got = (r.total_count, r.affected_count)
     return ("proven", f"groups={rows}") if got == (2, 1) else ("unproven", f"{got} != (2, 1)")
+
+
+def _prove_exists(rule, dictionary, cand, live) -> tuple[str, str]:
+    """One record referencing an existing, active target and one referencing a record that
+    is not there (expected: 2 in scope, 1 failing). A third target record is inactive."""
+    aw = rule.get("applies_when") or {}
+    refs = list(rule.get("fields") or [rule["field"]])
+    row = {c: cand[c][0] for c in cand if c in aw}
+    rows = [{**row, **{c: f"T1{i}" for i, c in enumerate(refs)}},
+            {**row, **{c: f"T9{i}" for i, c in enumerate(refs)}}]
+    df = _rows(rule, dictionary, rows)
+    frames = TableFrames.from_flat(df, dictionary, module=rule.get("module"))
+    t = rule["target_table"]
+    target = {f"{t}.{k}": ["TK1"] for k in dictionary.keys(t)}
+    for i, f in enumerate(rule["target_fields"]):
+        target[f"{t}.{f}"] = [f"T1{i}"]
+    for f, cond in (rule.get("target_when") or {}).items():
+        target[f"{t}.{f}"] = ["" if isinstance(cond, dict) and cond.get("blank") else str((cond or [""])[0])]
+    extra = pd.DataFrame(target)
+    have = frames.frames.get(t)
+    frames.frames[t] = extra if have is None else pd.concat([have, extra], ignore_index=True)
+    _, r = run_rule(rule, frames, live or {})
+    if r is None:
+        return "not_applicable", "no result on the proof records"
+    if r.error:
+        return "error", r.error
+    got = (r.total_count, r.affected_count)
+    return ("proven", f"refs={rows}") if got == (2, 1) else ("unproven", f"{got} != (2, 1)")

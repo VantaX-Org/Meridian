@@ -12,7 +12,7 @@ RULES_DIR = Path(__file__).parent.parent.parent / "checks" / "rules" / "successf
 
 # Expected rule counts per module
 EXPECTED_COUNTS = {
-    "employee_central": 96,
+    "employee_central": 97,
     "compensation": 19,
     "recruiting_onboarding": 16,
     "learning_management": 16,
@@ -115,7 +115,7 @@ def test_ec_null_check_finds_failures_with_enrichment():
     results = run_checks("employee_central", df, "test-tenant")
 
     # Non-None results = rules whose fields exist in this synthetic extract.
-    assert len(results) == 13
+    assert len(results) == 14
     assert all(isinstance(r, CheckResult) for r in results)
 
     failing = [r for r in results if not r.passed and not r.error]
@@ -144,7 +144,7 @@ def test_total_sf_rule_count():
     for module_name in EXPECTED_COUNTS:
         rules = _load_rules(module_name)
         total += len(rules)
-    assert total == 226, f"Expected 226 total SF rules, got {total}"
+    assert total == 227, f"Expected 227 total SF rules, got {total}"
 
 
 # ---- Test 6: domain_value_check rules have valid_values_with_labels ----

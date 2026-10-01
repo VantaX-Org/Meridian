@@ -211,6 +211,7 @@ def test_employee_central_golden():
         "EC020": {"PERSON_ID=100112|PHONE_TYPE=M"},
         "EC048": {"USERID=100115"},
         "EC058": {"USERID=100116"},
+        "EC075": {"USERID=100116"},                                             # ...and is no employee
         "EC059": {"USERID=100117"},
         "EC060": {"USERID=100118"},
         "EC061": {"PERSON_ID=100119|EMAIL_TYPE=B", "PERSON_ID=100120|EMAIL_TYPE=B"},

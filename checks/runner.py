@@ -23,6 +23,7 @@ from checks.types.balance_check import BalanceCheck
 from checks.types.country_format_check import CountryFormatCheck
 from checks.types.aggregate_check import AggregateCheck
 from checks.types.interval_check import IntervalCheck
+from checks.types.exists_check import ExistsCheck, key_of
 
 logger = logging.getLogger("meridian.checks")
 
@@ -85,6 +86,7 @@ REGISTRY: dict[str, type[BaseCheck]] = {
     "country_format_check": CountryFormatCheck,
     "aggregate_check": AggregateCheck,
     "interval_check": IntervalCheck,
+    "exists_check": ExistsCheck,
 }
 
 # check types judging a group of rows together: only sound on a complete extract
@@ -138,11 +140,33 @@ def rule_columns(rule: dict) -> list[str]:
     return list(dict.fromkeys(cols + list((rule.get("applies_when") or {}).keys())))
 
 
+def target_columns(rule: dict) -> list[str]:
+    """Columns of the table an exists_check looks references up in (read in full, not joined)."""
+    if rule.get("check_class") != "exists_check":
+        return []
+    t = rule["target_table"]
+    return [f"{t}.{f}" for f in list(rule["target_fields"]) + list(rule.get("target_when") or {})]
+
+
+def _with_targets(rule: dict, frames: TableFrames) -> dict | str | None:
+    """The rule with its target key set; None when the target table was not read; a reason
+    when it was read incompletely (a reference to a record outside the read is not missing)."""
+    t = rule["target_table"]
+    if t in getattr(frames, "incomplete", set()) | getattr(frames, "partial", set()):
+        return f"not evaluated: {t} was not read in full (incomplete, windowed or scoped download)"
+    target = frames.frames.get(t)
+    if target is None or any(c not in target.columns for c in target_columns(rule)):
+        return None
+    when = {f"{t}.{k}": v for k, v in (rule.get("target_when") or {}).items()}
+    target = apply_context(target, when)
+    return {**rule, "_target_values": set(key_of(target, [f"{t}.{f}" for f in rule["target_fields"]]))}
+
+
 def get_required_columns(module_name: str) -> set[str]:
     """Return every column referenced by the rules of a module (for column pruning)."""
     with open(_find_module_yaml(module_name), "r") as f:
         config = yaml.safe_load(f)
-    cols = {c for rule in config.get("rules", []) for c in rule_columns(rule)}
+    cols = {c for rule in config.get("rules", []) for c in rule_columns(rule) + target_columns(rule)}
     return cols | {f"{t}.{f}" for t in tables_of(cols) for f in fields_for(t)}
 
 
@@ -158,6 +182,13 @@ def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[st
                                             f"not evaluated: extraction of {', '.join(partial)} is incomplete")
     if rule.get("check_class") in ("referential_check", "domain_value_check"):
         rule = _with_reference(rule, frames.dictionary, reference_values or {})
+    if rule.get("check_class") == "exists_check":
+        resolved = _with_targets(rule, frames)
+        if resolved is None:
+            return rule, None  # the referenced table is not in the extract
+        if isinstance(resolved, str):
+            return rule, check_cls(rule)._error(frames.flat if frames.flat is not None else pd.DataFrame(), resolved)
+        rule = resolved
     try:
         built = frames.frame_for(rule_columns(rule), grain=rule.get("grain"))
         if built is None:

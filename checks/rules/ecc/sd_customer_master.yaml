@@ -950,3 +950,24 @@ rules:
       __other__: Country '{invalid_value}' is not defined in T005. Correct the customer address in XD02/VD02 (BP address in
         S/4HANA).
     record_fix_template: 'Customer {KNA1.KUNNR}: country ''{actual_value}'' not in T005.'
+  - id: SDCM051
+    field: KNVP.KUNN2
+    check_class: exists_check
+    grain: KNVP
+    target_table: KNA1
+    target_fields:
+    - KUNNR
+    target_when:
+      LOEVM:
+        blank: true
+    severity: high
+    dimension: consistency
+    message: Partner (ship-to, bill-to, payer) does not exist or is flagged for deletion
+    why_it_matters: Sales documents copy the customer's partners from the sales-area partner functions; a partner that is missing
+      or flagged for deletion is copied into every new order.
+    rule_authority: sap_hard_constraint
+    sap_impact: Orders ship to, bill or charge an account that should no longer be used; billing to a deleted payer fails.
+    fix_map:
+      __other__: Replace the partner in the customer's sales-area partner functions (XD02 > Partner functions).
+    record_fix_template: 'Customer {KNVP.KUNNR} ({KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART}): partner {KNVP.PARVW} {KNVP.KUNN2}
+      does not exist or is deleted.'

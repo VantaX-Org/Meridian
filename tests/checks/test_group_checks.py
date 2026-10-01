@@ -48,3 +48,25 @@ def test_overlap_gap_and_open_end():
     # the gap row and the group's last row are one and the same for employee 3
     df2 = _pa([("5", "20200101", "20201231")])
     assert IntervalCheck({**IT, "open_ended": True}).run(df2).affected_count == 1
+
+
+def test_exists_check_against_live_partial_and_missing_targets():
+    from checks.frames import TableFrames
+    from checks.runner import run_rule
+    from sap.ddic import get_dictionary
+
+    d = get_dictionary("ecc6")
+    rule = {"id": "T", "module": "accounts_payable", "field": "LFB1.LNRZE", "check_class": "exists_check",
+            "target_table": "LFA1", "target_fields": ["LIFNR"], "target_when": {"LOEVM": {"blank": True}},
+            "severity": "high", "message": "m"}
+    lfb1 = pd.DataFrame({"LFB1.LIFNR": ["B1", "B2", "B3", "B4"], "LFB1.BUKRS": ["1000"] * 4,
+                         "LFB1.LNRZE": ["H1", "H2", "H9", ""]})       # live, deleted, missing, none
+    lfa1 = pd.DataFrame({"LFA1.LIFNR": ["H1", "H2", "B1", "B2", "B3", "B4"], "LFA1.LOEVM": ["", "X", "", "", "", ""]})
+    frames = TableFrames({"LFB1": lfb1, "LFA1": lfa1}, d, module="accounts_payable")
+    _, r = run_rule(rule, frames)
+    assert (r.total_count, r.affected_count) == (3, 2)
+    frames.partial = {"LFA1"}  # a scoped download cannot prove a vendor does not exist
+    _, r = run_rule(rule, frames)
+    assert r.error and "not read in full" in r.error
+    _, r = run_rule(rule, TableFrames({"LFB1": lfb1}, d, module="accounts_payable"))
+    assert r is None
