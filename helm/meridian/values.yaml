@@ -4,8 +4,8 @@ replicaCount:
   frontend: 1
 
 image:
-  api: ghcr.io/agentum-au/meridian-api:latest
-  frontend: ghcr.io/agentum-au/meridian-frontend:latest
+  api: ghcr.io/vantax-org/meridian-api:latest
+  frontend: ghcr.io/vantax-org/meridian-frontend:latest
   pullPolicy: IfNotPresent
 
 llm:
