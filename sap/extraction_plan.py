@@ -54,6 +54,7 @@ class TablePlan:
     via: Optional[str] = None          # read by parent keys (see extraction_windows.yaml)
     purpose: str = "data"              # data | config
     modules: set[str] = field(default_factory=set)
+    partial: bool = False              # windowed / parent-keyed / scoped: not every record of the table
 
     def columns(self) -> list[str]:
         return list(dict.fromkeys(self.keys + sorted(self.fields - set(self.keys))))
@@ -134,7 +135,7 @@ def plan_modules(modules: list[str], dictionary: Dictionary, scope: Optional[dic
     from checks.config_rules import fields_for as config_fields
     from checks.country_rules import fields_for as country_fields
     from checks.value_placement import fields_for as placement_fields
-    from checks.runner import _find_module_yaml, rule_columns
+    from checks.runner import _find_module_yaml, rule_columns, target_columns
 
     edges, _ = _graph()
     joinable = {t for e in edges for t in (e.parent, e.child)}
@@ -166,6 +167,9 @@ def plan_modules(modules: list[str], dictionary: Dictionary, scope: Optional[dic
             path_tables = tf.path_tables(cols, grain=rule.get("grain")) or set(tables_of(cols))
             for t in path_tables:
                 add(t, {c.split(".", 1)[1] for c in cols if c.startswith(t + ".")}, module)
+            # the master table a reference must exist in (read in full)
+            for c in target_columns(rule):
+                add(c.split(".", 1)[0], {c.split(".", 1)[1]}, module)
             # configuration tables holding the allowed values
             if rule.get("check_class") in ("domain_value_check", "referential_check") and rule.get("field"):
                 f = dictionary.resolve(rule["field"])
@@ -190,8 +194,9 @@ def plan_modules(modules: list[str], dictionary: Dictionary, scope: Optional[dic
         filters = [f"{f} = '{v or ' '}'" for e in edges if e.child == t for f, v in e.filter]
         if w.get("where"):
             filters.append(_window(w["where"], scope or {}))
-        if p.purpose == "data":
-            filters += _scope_filters(t, dictionary, scope or {})
+        scoped = _scope_filters(t, dictionary, scope or {}) if p.purpose == "data" else []
+        filters += scoped
+        p.partial = bool(w.get("where") or w.get("via") or scoped)
         p.where = " AND ".join(filters) or None
         p.via = w.get("via") if w.get("via") in plans else None
     return plans

@@ -1665,3 +1665,23 @@ rules:
     __other__: Verify the document against the employee's records and correct the wrong one.
   record_fix_template: 'Employee {PA0185.PERNR} ({PA0185.BEGDA}-{PA0185.ENDDA}): the same identity document number is held
     by two personnel numbers.'
+- id: EC075
+  field: EMPEMPLOYMENT.MANAGER_ID
+  check_class: exists_check
+  target_table: EMPEMPLOYMENT
+  target_fields:
+  - USERID
+  applies_when:
+    EMPEMPLOYMENT.MANAGER_ID:
+      not_in:
+      - NO_MANAGER
+  severity: high
+  dimension: consistency
+  message: Manager is not an employee
+  why_it_matters: Approvals, performance forms and org charts follow the manager; a manager ID that is no employee breaks
+    the chain.
+  rule_authority: sap_hard_constraint
+  sap_impact: Workflows route to nobody; the employee drops out of the manager's team views.
+  fix_map:
+    __other__: Assign an existing manager in the job information (Employee Central > Job Information).
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: manager {EMPEMPLOYMENT.MANAGER_ID} is not an employee.'

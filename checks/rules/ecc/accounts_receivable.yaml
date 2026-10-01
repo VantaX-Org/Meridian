@@ -1278,3 +1278,63 @@ rules:
       __other__: Replace the block with a reason defined in T040S, or release it.
     record_fix_template: 'Open item {BSID.BUKRS}/{BSID.KUNNR} document {BSID.BELNR}/{BSID.GJAHR}: dunning block ''{actual_value}''
       is not defined.'
+  - id: AR068
+    field: KNB1.KNRZE
+    check_class: exists_check
+    target_table: KNA1
+    target_fields:
+    - KUNNR
+    target_when:
+      LOEVM:
+        blank: true
+    severity: high
+    dimension: consistency
+    message: Head office account does not exist or is flagged for deletion
+    why_it_matters: Branch accounts post their receivables to the head office account. A head office that is missing or flagged
+      for deletion receives items nobody collects.
+    rule_authority: sap_hard_constraint
+    sap_impact: Dunning and payment allocation run against a dead account.
+    fix_map:
+      __other__: Point the branch to the current head office (XD02 > Company code > Account management), or remove the deletion
+        flag.
+    record_fix_template: 'Customer {KNB1.KUNNR} in company code {KNB1.BUKRS}: head office {KNB1.KNRZE} does not exist or is
+      deleted.'
+  - id: AR069
+    field: KNA1.KNRZA
+    check_class: exists_check
+    target_table: KNA1
+    target_fields:
+    - KUNNR
+    target_when:
+      LOEVM:
+        blank: true
+    severity: high
+    dimension: consistency
+    message: Alternative payer does not exist or is flagged for deletion
+    why_it_matters: Direct debits and incoming payments are drawn from the alternative payer; it must be a live customer account.
+    rule_authority: sap_hard_constraint
+    sap_impact: Direct debits fail or are drawn from an account that should no longer be charged.
+    fix_map:
+      __other__: Maintain a current alternative payer (XD02 > Payment transactions) or remove it.
+    record_fix_template: 'Customer {KNA1.KUNNR}: alternative payer {KNA1.KNRZA} does not exist or is deleted.'
+  - id: AR070
+    field: KNKK.KNKLI
+    check_class: exists_check
+    grain: KNKK
+    target_table: KNA1
+    target_fields:
+    - KUNNR
+    target_when:
+      LOEVM:
+        blank: true
+    severity: high
+    dimension: consistency
+    message: Credit account does not exist or is flagged for deletion
+    why_it_matters: Credit exposure of several customers is pooled on the credit account; a missing or deleted credit account
+      pools exposure on nothing.
+    rule_authority: sap_hard_constraint
+    sap_impact: Credit checks pass orders that exceed the group's real limit.
+    fix_map:
+      __other__: Assign a current credit account (FD32) or make the customer its own credit account.
+    record_fix_template: 'Customer {KNKK.KUNNR} (credit area {KNKK.KKBER}): credit account {KNKK.KNKLI} does not exist or is
+      deleted.'

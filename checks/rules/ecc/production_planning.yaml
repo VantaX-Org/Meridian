@@ -1013,3 +1013,45 @@ rules:
       Data (S/4HANA), or create it in customizing (OSP2) if it is genuinely needed.'
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: repetitive manufacturing profile ''{actual_value}'' is
     not configured (T437S).'
+- id: PP064
+  field: STPO.IDNRK
+  check_class: exists_check
+  target_table: MARA
+  target_fields:
+  - MATNR
+  target_when:
+    LVORM:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: BOM component does not exist or is flagged for deletion
+  why_it_matters: BOM explosion turns each component into a dependent requirement; a dead component creates requirements for
+    material that can no longer be procured or produced.
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP plans a deleted material; production orders cannot issue the component.
+  fix_map:
+    __other__: Replace the component in the BOM (CS02) with its successor, or remove it.
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: component {STPO.IDNRK} does not exist or is deleted.'
+- id: PP065
+  field: MAST.MATNR
+  check_class: exists_check
+  fields:
+  - MAST.MATNR
+  - MAST.WERKS
+  target_table: MARC
+  target_fields:
+  - MATNR
+  - WERKS
+  target_when:
+    LVORM:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: BOM exists for a material that is not active in the plant
+  why_it_matters: A plant BOM is used by MRP and production in that plant only; without an active plant record it is never
+    used.
+  rule_authority: sap_hard_constraint
+  sap_impact: Dead BOMs mislead costing and engineering-change analysis.
+  fix_map:
+    __other__: Delete the BOM allocation (CS02) or extend the material to the plant.
+  record_fix_template: 'BOM allocation {MAST.MATNR} plant {MAST.WERKS}: the material is not active in the plant.'

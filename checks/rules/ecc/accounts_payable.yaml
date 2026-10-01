@@ -1411,3 +1411,61 @@ rules:
       (FB08 / MR8M).
   record_fix_template: 'Invoice {BSIK.BELNR}/{BSIK.GJAHR} of vendor {BSIK.LIFNR}: reference {BSIK.XBLNR}, {BSIK.WRBTR} {BSIK.WAERS}
     is open more than once.'
+- id: AP084
+  field: LFB1.LNRZE
+  check_class: exists_check
+  target_table: LFA1
+  target_fields:
+  - LIFNR
+  target_when:
+    LOEVM:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Head office account does not exist or is flagged for deletion
+  why_it_matters: Branch accounts post their open items to the head office account. A head office that is missing or flagged
+    for deletion receives postings nobody manages any more.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payments and dunning for the branch run against a dead account; archiving of the head office fails.
+  fix_map:
+    __other__: Point the branch to the current head office (XK02 > Company code > Account management), or remove the deletion
+      flag.
+  record_fix_template: 'Vendor {LFB1.LIFNR} in company code {LFB1.BUKRS}: head office {LFB1.LNRZE} does not exist or is deleted.'
+- id: AP085
+  field: LFA1.LNRZA
+  check_class: exists_check
+  target_table: LFA1
+  target_fields:
+  - LIFNR
+  target_when:
+    LOEVM:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Alternative payee does not exist or is flagged for deletion
+  why_it_matters: The payment run pays the alternative payee instead of the vendor; it must be a live vendor account.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payments go to an account that should no longer receive money, or the payment run fails.
+  fix_map:
+    __other__: Maintain a current alternative payee (XK02 > Payment transactions) or remove it.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: alternative payee {LFA1.LNRZA} does not exist or is deleted.'
+- id: AP086
+  field: LFB1.LNRZB
+  check_class: exists_check
+  target_table: LFA1
+  target_fields:
+  - LIFNR
+  target_when:
+    LOEVM:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Company-code alternative payee does not exist or is flagged for deletion
+  why_it_matters: The payment run pays the company-code alternative payee instead of the vendor; it must be a live vendor
+    account.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payments go to an account that should no longer receive money, or the payment run fails.
+  fix_map:
+    __other__: Maintain a current alternative payee (XK02 > Company code > Payment transactions) or remove it.
+  record_fix_template: 'Vendor {LFB1.LIFNR} in company code {LFB1.BUKRS}: alternative payee {LFB1.LNRZB} does not exist or
+    is deleted.'

@@ -158,6 +158,8 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanaly
         logger.info(f"Loaded DataFrame: {row_count} rows, {col_count} columns")
         frames.incomplete = {c["table"] for c in metadata.get("coverage") or []
                              if c.get("complete") is False or c.get("truncated")}
+        # windowed / scoped reads: fine to judge, but not a complete list to look references up in
+        frames.partial = {c["table"] for c in metadata.get("coverage") or [] if c.get("partial")}
 
         # Records per module = rows of the module's anchor table (flat upload: all rows).
         from checks.frames import _graph

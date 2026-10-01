@@ -121,6 +121,7 @@ class TableFrames:
         self.module = module
         self._cache: dict[tuple, tuple[pd.DataFrame, str, list[str]]] = {}
         self.incomplete: set[str] = set()  # tables the extraction could not read completely
+        self.partial: set[str] = set()  # tables read by window or scope (not every record)
         self._apply_moved_fields()
 
     # ── construction ─────────────────────────────────────────────────────

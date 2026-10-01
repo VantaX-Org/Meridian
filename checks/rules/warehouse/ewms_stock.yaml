@@ -593,3 +593,24 @@ rules:
       must be batch-managed — activate batch management (MM02, only possible without stock).
   record_fix_template: 'Quant {LQUA.LQNUM}: batch {LQUA.CHARG} on material {LQUA.MATNR}, which is not batch-managed
     in plant {LQUA.WERKS}.'
+- id: EWMS043
+  field: LQUA.LGPLA
+  check_class: exists_check
+  fields:
+  - LQUA.LGNUM
+  - LQUA.LGTYP
+  - LQUA.LGPLA
+  target_table: LAGP
+  target_fields:
+  - LGNUM
+  - LGTYP
+  - LGPLA
+  severity: high
+  dimension: consistency
+  message: Stock (quant) sits in a storage bin that does not exist
+  why_it_matters: Every quant belongs to a storage bin; a quant whose bin does not exist cannot be picked, counted or moved.
+  rule_authority: sap_hard_constraint
+  sap_impact: Warehouse stock and IM stock drift apart; inventory counts miss the quant.
+  fix_map:
+    __other__: Recreate the bin (LS01N) and move the quant (LT10), or clear it with an inventory difference.
+  record_fix_template: 'Quant {LQUA.LGNUM}/{LQUA.LQNUM}: bin {LQUA.LGTYP}/{LQUA.LGPLA} does not exist.'

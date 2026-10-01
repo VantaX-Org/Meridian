@@ -857,3 +857,55 @@ rules:
       indicator) or assign a valid indicator on the Organisation tab (IE02 / IL02).
   record_fix_template: 'Location data {ILOA.ILOAN} (functional location {ILOA.TPLNR}): ABC indicator
     ''{actual_value}'' is not defined in T370C.'
+- id: PM056
+  field: EQUZ.HEQUI
+  check_class: exists_check
+  target_table: EQUI
+  target_fields:
+  - EQUNR
+  severity: high
+  dimension: consistency
+  message: Superior equipment does not exist
+  why_it_matters: An equipment installed in a superior equipment inherits its location and appears in its structure; a superior
+    that does not exist breaks the hierarchy.
+  rule_authority: sap_hard_constraint
+  sap_impact: The equipment disappears from structure lists (IH03) and cost roll-ups.
+  fix_map:
+    __other__: Install the equipment in an existing superior equipment (IE02 > Structure) or dismantle it.
+  record_fix_template: 'Equipment {EQUZ.EQUNR}: superior equipment {EQUZ.HEQUI} does not exist.'
+- id: PM057
+  field: IFLOT.TPLMA
+  check_class: exists_check
+  target_table: IFLOT
+  target_fields:
+  - TPLNR
+  severity: high
+  dimension: consistency
+  message: Superior functional location does not exist
+  why_it_matters: A functional location's superior defines the technical structure; a missing superior leaves the location
+    orphaned.
+  rule_authority: sap_hard_constraint
+  sap_impact: The location is missing from the structure display and from cost and notification roll-ups.
+  fix_map:
+    __other__: Assign an existing superior functional location (IL02) or create it.
+  record_fix_template: 'Functional location {IFLOT.TPLNR}: superior {IFLOT.TPLMA} does not exist.'
+- id: PM058
+  field: EQUZ.GEWRK
+  check_class: exists_check
+  target_table: CRHD
+  target_fields:
+  - OBJID
+  target_when:
+    OBJTY:
+    - A
+    LVORM:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Equipment's main work centre does not exist or is flagged for deletion
+  why_it_matters: Maintenance orders and notifications take the main work centre from the equipment for planning and costing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orders get no responsible work centre; capacity and cost planning skip them.
+  fix_map:
+    __other__: Assign an existing work centre (IE02 > Organisation).
+  record_fix_template: 'Equipment {EQUZ.EQUNR}: main work centre {EQUZ.GEWRK} does not exist or is deleted.'

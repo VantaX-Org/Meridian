@@ -348,3 +348,26 @@ rules:
       __other__: Storage location '{invalid_value}' is not in T001L. Configure it (OX09) or move the stock and delete the
         storage location data.
     record_fix_template: 'Material {MARD.MATNR}, plant {MARD.WERKS}: storage location ''{actual_value}'' is not in T001L.'
+  - id: WMI022
+    field: MLGT.LGPLA
+    check_class: exists_check
+    fields:
+    - MLGT.LGNUM
+    - MLGT.LGTYP
+    - MLGT.LGPLA
+    target_table: LAGP
+    target_fields:
+    - LGNUM
+    - LGTYP
+    - LGPLA
+    severity: high
+    dimension: consistency
+    message: Fixed bin does not exist in the storage type
+    why_it_matters: Fixed-bin storage types put away and pick from the material's fixed bin; a bin that does not exist stops
+      putaway and replenishment.
+    rule_authority: sap_hard_constraint
+    sap_impact: Transfer orders for the material fail with 'storage bin does not exist'.
+    fix_map:
+      __other__: Create the bin (LS01N) or correct the material's fixed bin (MM02 > Warehouse management 2).
+    record_fix_template: 'Material {MLGT.MATNR} warehouse {MLGT.LGNUM} storage type {MLGT.LGTYP}: fixed bin {MLGT.LGPLA} does
+      not exist.'

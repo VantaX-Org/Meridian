@@ -2263,3 +2263,82 @@ rules:
   fix_map:
     __other__: Delete the record, or recreate it under a defined condition type.
   record_fix_template: 'Condition record {KONH.KNUMH} ({KONH.KSCHL}): condition type ''{actual_value}'' is not defined.'
+- id: PUR130
+  field: EINA.MATNR
+  check_class: exists_check
+  target_table: MARA
+  target_fields:
+  - MATNR
+  target_when:
+    LVORM:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Purchasing info record for a material that does not exist or is flagged for deletion
+  why_it_matters: Info records supply the price and vendor proposal for automatic PO creation; one for a dead material keeps
+    offering it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Source determination proposes a material that can no longer be procured.
+  fix_map:
+    __other__: Flag the info record for deletion (ME15) or correct the material.
+  record_fix_template: 'Info record {EINA.INFNR}: material {EINA.MATNR} does not exist or is deleted.'
+- id: PUR131
+  field: EINA.LIFNR
+  check_class: exists_check
+  target_table: LFA1
+  target_fields:
+  - LIFNR
+  target_when:
+    LOEVM:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Purchasing info record for a vendor that does not exist or is flagged for deletion
+  why_it_matters: Source determination proposes the info record's vendor; a dead vendor is proposed for new requisitions.
+  rule_authority: sap_hard_constraint
+  sap_impact: Automatic PO creation fails or orders from a vendor that should no longer be used.
+  fix_map:
+    __other__: Flag the info record for deletion (ME15) or move it to the current vendor.
+  record_fix_template: 'Info record {EINA.INFNR}: vendor {EINA.LIFNR} does not exist or is deleted.'
+- id: PUR132
+  field: EORD.LIFNR
+  check_class: exists_check
+  target_table: LFA1
+  target_fields:
+  - LIFNR
+  target_when:
+    LOEVM:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Source list names a vendor that does not exist or is flagged for deletion
+  why_it_matters: The source list fixes or allows the vendor for automatic source determination.
+  rule_authority: sap_hard_constraint
+  sap_impact: Requisitions are assigned to a dead vendor; MRP-driven purchasing stalls.
+  fix_map:
+    __other__: Delete the source-list entry (ME01) or replace the vendor.
+  record_fix_template: 'Source list {EORD.MATNR} plant {EORD.WERKS} record {EORD.ZEORD}: vendor {EORD.LIFNR} does not exist
+    or is deleted.'
+- id: PUR133
+  field: EORD.MATNR
+  check_class: exists_check
+  fields:
+  - EORD.MATNR
+  - EORD.WERKS
+  target_table: MARC
+  target_fields:
+  - MATNR
+  - WERKS
+  target_when:
+    LVORM:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Source list for a material that is not active in the plant
+  why_it_matters: A source list belongs to a material in a plant; without an active plant record the material cannot be procured
+    there.
+  rule_authority: sap_hard_constraint
+  sap_impact: Source determination keeps an entry that can never be used.
+  fix_map:
+    __other__: Delete the source list (ME01) or extend the material to the plant (MM01).
+  record_fix_template: 'Source list {EORD.MATNR} plant {EORD.WERKS}: the material is not active in the plant.'
