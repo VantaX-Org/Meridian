@@ -339,8 +339,9 @@ def generate(module: str, static_rules: list[dict], dictionary) -> list[dict]:
             name, block, grain = NEAR_DUPLICATE[t]
             rules.append({**base, "check_class": "similarity_check", "id": f"FZ-{t}", "field": name,
                           "block_by": list(block), "grain": grain, "threshold": 0.9,
+                          "exact_rule": t in ("LFA1", "KNA1"),  # ND-<table> reports identical names
                           "severity": "medium", "dimension": "uniqueness",
-                          "message": f"Possible duplicate: near-identical name ({name}) within the same "
+                          "message": f"Possible duplicate: identical or near-identical name ({name}) within the same "
                                      f"{' / '.join(b.split('.')[1] for b in block)}",
                           "why_it_matters": "Records keyed in twice with a typo or different word order escape "
                                             "exact duplicate checks; the business ends up with two accounts or two "

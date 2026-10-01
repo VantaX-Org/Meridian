@@ -80,12 +80,15 @@ def test_similarity_check_finds_typos_not_variants():
     names = [("BOLT HEX M10X20 ZINC", "001"), ("BOLT HEX M10X25 ZINC", "001"),   # different size: distinct
              ("HYDRAULIC FILTER ELEMENT", "002"), ("HYDRAULC FILTER ELEMENT", "002"),  # typo: near-duplicate
              ("ELEMENT FILTER HYDRAULIC", "003"), ("HYDRAULIC FILTER ELEMENT", "004"),  # other blocks: never paired
-             ("GEAR PUMP", "005"), ("GEAR PUMP", "005"),                    # exact: the uniqueness rule's job
+             ("GEAR PUMP ASSY", "005"), ("GEAR PUMP ASSY", "005"),          # identical
              ("PUMP", "006"), ("PUMPS", "006")]                             # too short to judge
     df = pd.DataFrame({"MAKT.MAKTX": [n for n, _ in names], "MARA.MATKL": [g for _, g in names]})
     r = SimilarityCheck(rule).run(df)
-    assert r.affected_count == 2 and r.details["near_duplicate_pairs"] == [
-        ["HYDRAULIC FILTER ELEMENT", "HYDRAULC FILTER ELEMENT"]]
+    # no exact rule on descriptions: identical ones are reported here
+    assert r.affected_count == 4 and r.details["near_duplicate_pairs"] == [
+        ["HYDRAULIC FILTER ELEMENT", "HYDRAULC FILTER ELEMENT"], ["GEAR PUMP ASSY", "GEAR PUMP ASSY"]]
+    # with an exact rule (ND on partners), identical names are left to it
+    assert SimilarityCheck({**rule, "exact_rule": True}).run(df).affected_count == 2
     # word order alone is a near-duplicate within one block
     df2 = pd.DataFrame({"MAKT.MAKTX": ["FILTER ELEMENT HYDRAULIC", "HYDRAULIC FILTER ELEMENT"],
                         "MARA.MATKL": ["002", "002"]})
@@ -94,3 +97,4 @@ def test_similarity_check_finds_typos_not_variants():
     big = pd.DataFrame({"MAKT.MAKTX": [f"PART NUMBER {i}" for i in range(5)], "MARA.MATKL": ["9"] * 5})
     r = SimilarityCheck({**rule, "max_block": 4}).run(big)
     assert r.affected_count == 0 and r.details["blocks_skipped_too_large"] == 1
+    assert r.total_count == 0 and r.details["records_not_compared"] == 5  # unknown, not passing
