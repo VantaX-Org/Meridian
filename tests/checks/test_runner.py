@@ -40,7 +40,7 @@ def test_runner_returns_correct_count():
     df = _make_bp_dataframe(50)
     results = run_checks("business_partner", df, "test-tenant")
     # Non-None results = rules whose fields exist in this synthetic extract.
-    assert len(results) == 15
+    assert len(results) == 17
     assert all(isinstance(r, CheckResult) for r in results)
 
 

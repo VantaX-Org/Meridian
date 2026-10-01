@@ -1,0 +1,151 @@
+{
+ "table": "T685",
+ "description": "Conditions: Types",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "KVEWE",
+   "key": true,
+   "data_element": "KVEWE",
+   "domain": "KVEWE",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Usage of the Condition Table",
+   "check_table": "T681V"
+  },
+  {
+   "pos": 3,
+   "name": "KAPPL",
+   "key": true,
+   "data_element": "KAPPL",
+   "domain": "KAPPL",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Application",
+   "check_table": "T681Z"
+  },
+  {
+   "pos": 4,
+   "name": "KSCHL",
+   "key": true,
+   "data_element": "KSCHL",
+   "domain": "KSCHL",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Condition Type",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "KOZGF",
+   "key": false,
+   "data_element": "KOZGF",
+   "domain": "KOZGF",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Access sequence",
+   "check_table": "T682"
+  },
+  {
+   "pos": 6,
+   "name": "DATVO",
+   "key": false,
+   "data_element": "DATVO",
+   "domain": "DATVO",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Date proposed as valid-to date",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "DTVOB",
+   "key": false,
+   "data_element": "DTVOB",
+   "domain": "DTVOB",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Proposed starting date for the rebate validity period",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "J_3GPRAEND",
+   "key": false,
+   "data_element": "J_3GPRAEND",
+   "domain": "X",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Take Price Change Over Time Into Account",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "J_3GBUARTL",
+   "key": false,
+   "data_element": "J_3GBUARTL",
+   "domain": "J_3GBUART",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Posting Type - Providing Party",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "J_3GBUARTB",
+   "key": false,
+   "data_element": "J_3GBUARTB",
+   "domain": "J_3GBUART",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Posting Type - Debited Party",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "KAPPL",
+   "foreign_table": "T681Z",
+   "foreign_field": "KAPPL"
+  },
+  {
+   "field": "KOZGF",
+   "foreign_table": "T682",
+   "foreign_field": "KOZGF"
+  },
+  {
+   "field": "KVEWE",
+   "foreign_table": "T681V",
+   "foreign_field": "KVEWE"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

@@ -1,0 +1,728 @@
+{
+ "table": "PA0001",
+ "description": "HR Master Record: Infotype 0001 (Org. Assignment)",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 3,
+   "name": "PERNR",
+   "key": true,
+   "data_element": "PERSNO",
+   "domain": "PERSNO",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Personnel number",
+   "check_table": "PA0003"
+  },
+  {
+   "pos": 4,
+   "name": "SUBTY",
+   "key": true,
+   "data_element": "SUBTY",
+   "domain": "SUBTY",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Subtype",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "OBJPS",
+   "key": true,
+   "data_element": "OBJPS",
+   "domain": "OBJPS",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Object Identification",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "SPRPS",
+   "key": true,
+   "data_element": "SPRPS",
+   "domain": "SPRPS",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Lock Indicator for HR Master Data Record",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "ENDDA",
+   "key": true,
+   "data_element": "ENDDA",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "End Date",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "BEGDA",
+   "key": true,
+   "data_element": "BEGDA",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Start Date",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "SEQNR",
+   "key": true,
+   "data_element": "SEQNR",
+   "domain": "NUM03",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Number of Infotype Record With Same Key",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "AEDTM",
+   "key": false,
+   "data_element": "AEDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Last Changed On",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "UNAME",
+   "key": false,
+   "data_element": "AENAM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of Person Who Changed Object",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "HISTO",
+   "key": false,
+   "data_element": "HISTO",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Historical Record Flag",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "ITXEX",
+   "key": false,
+   "data_element": "ITXEX",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Text Exists for Infotype",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "REFEX",
+   "key": false,
+   "data_element": "PRFEX",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Reference Fields Exist (Primary/Secondary Costs)",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "ORDEX",
+   "key": false,
+   "data_element": "ORDEX",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Confirmation Fields Exist",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "ITBLD",
+   "key": false,
+   "data_element": "ITBLD",
+   "domain": "CHAR2",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Infotype Screen Control",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "PREAS",
+   "key": false,
+   "data_element": "PREAS",
+   "domain": "PREAS",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Reason for Changing Master Data",
+   "check_table": "T530E"
+  },
+  {
+   "pos": 19,
+   "name": "FLAG1",
+   "key": false,
+   "data_element": "NUSED",
+   "domain": "NUSED",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Reserved Field/Unused Field",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "FLAG2",
+   "key": false,
+   "data_element": "NUSED",
+   "domain": "NUSED",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Reserved Field/Unused Field",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "FLAG3",
+   "key": false,
+   "data_element": "NUSED",
+   "domain": "NUSED",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Reserved Field/Unused Field",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "FLAG4",
+   "key": false,
+   "data_element": "NUSED",
+   "domain": "NUSED",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Reserved Field/Unused Field",
+   "check_table": null
+  },
+  {
+   "pos": 23,
+   "name": "RESE1",
+   "key": false,
+   "data_element": "NUSED2",
+   "domain": "NUSED2",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Reserved Field/Unused Field of Length 2",
+   "check_table": null
+  },
+  {
+   "pos": 24,
+   "name": "RESE2",
+   "key": false,
+   "data_element": "NUSED2",
+   "domain": "NUSED2",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Reserved Field/Unused Field of Length 2",
+   "check_table": null
+  },
+  {
+   "pos": 25,
+   "name": "GRPVL",
+   "key": false,
+   "data_element": "PCCE_GPVAL",
+   "domain": "PCCE_GPVAL",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Grouping Value for Personnel Assignments",
+   "check_table": null
+  },
+  {
+   "pos": 28,
+   "name": "BUKRS",
+   "key": false,
+   "data_element": "BUKRS",
+   "domain": "BUKRS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Company Code",
+   "check_table": "T001"
+  },
+  {
+   "pos": 29,
+   "name": "WERKS",
+   "key": false,
+   "data_element": "PERSA",
+   "domain": "PERSA",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Personnel Area",
+   "check_table": "T500P"
+  },
+  {
+   "pos": 30,
+   "name": "PERSG",
+   "key": false,
+   "data_element": "PERSG",
+   "domain": "PERSG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Employee Group",
+   "check_table": "T501"
+  },
+  {
+   "pos": 31,
+   "name": "PERSK",
+   "key": false,
+   "data_element": "PERSK",
+   "domain": "PERSK",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Employee Subgroup",
+   "check_table": "T503K"
+  },
+  {
+   "pos": 32,
+   "name": "VDSK1",
+   "key": false,
+   "data_element": "VDSK1",
+   "domain": "VDSK1",
+   "type": "CHAR",
+   "length": 14,
+   "decimals": 0,
+   "description": "Organizational Key",
+   "check_table": "T527O"
+  },
+  {
+   "pos": 33,
+   "name": "GSBER",
+   "key": false,
+   "data_element": "GSBER",
+   "domain": "GSBER",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Business Area",
+   "check_table": "TGSB"
+  },
+  {
+   "pos": 34,
+   "name": "BTRTL",
+   "key": false,
+   "data_element": "BTRTL",
+   "domain": "BTRTL",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Personnel Subarea",
+   "check_table": "T001P"
+  },
+  {
+   "pos": 35,
+   "name": "JUPER",
+   "key": false,
+   "data_element": "JUPER",
+   "domain": "JUPER",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Legal Person",
+   "check_table": null
+  },
+  {
+   "pos": 36,
+   "name": "ABKRS",
+   "key": false,
+   "data_element": "ABKRS",
+   "domain": "ABKRS",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Payroll Area",
+   "check_table": "T549A"
+  },
+  {
+   "pos": 37,
+   "name": "ANSVH",
+   "key": false,
+   "data_element": "ANSVH",
+   "domain": "ANSVH",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Work Contract",
+   "check_table": "T542A"
+  },
+  {
+   "pos": 38,
+   "name": "KOSTL",
+   "key": false,
+   "data_element": "KOSTL",
+   "domain": "KOSTL",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Cost Center",
+   "check_table": "CSKS"
+  },
+  {
+   "pos": 39,
+   "name": "ORGEH",
+   "key": false,
+   "data_element": "ORGEH",
+   "domain": "ORGEH",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Organizational Unit",
+   "check_table": "T527X"
+  },
+  {
+   "pos": 40,
+   "name": "PLANS",
+   "key": false,
+   "data_element": "PLANS",
+   "domain": "PLANS",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Position",
+   "check_table": "T528B"
+  },
+  {
+   "pos": 41,
+   "name": "STELL",
+   "key": false,
+   "data_element": "STELL",
+   "domain": "STELL",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Job",
+   "check_table": "T513"
+  },
+  {
+   "pos": 42,
+   "name": "MSTBR",
+   "key": false,
+   "data_element": "MSTBR",
+   "domain": "MSTBR",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Supervisor Area",
+   "check_table": null
+  },
+  {
+   "pos": 43,
+   "name": "SACHA",
+   "key": false,
+   "data_element": "SACHA",
+   "domain": "SACHA",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Payroll Administrator",
+   "check_table": "T526"
+  },
+  {
+   "pos": 44,
+   "name": "SACHP",
+   "key": false,
+   "data_element": "SACHP",
+   "domain": "SACHA",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Administrator for HR Master Data",
+   "check_table": "T526"
+  },
+  {
+   "pos": 45,
+   "name": "SACHZ",
+   "key": false,
+   "data_element": "SACHZ",
+   "domain": "SACHA",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Administrator for Time Recording",
+   "check_table": "T526"
+  },
+  {
+   "pos": 46,
+   "name": "SNAME",
+   "key": false,
+   "data_element": "SMNAM",
+   "domain": "CHAR30",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Employee's Name (Sortable by LAST NAME FIRST NAME)",
+   "check_table": null
+  },
+  {
+   "pos": 47,
+   "name": "ENAME",
+   "key": false,
+   "data_element": "EMNAM",
+   "domain": "TEXT40",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Formatted Name of Employee or Applicant",
+   "check_table": null
+  },
+  {
+   "pos": 48,
+   "name": "OTYPE",
+   "key": false,
+   "data_element": "OTYPE",
+   "domain": "OTYPE",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Object Type",
+   "check_table": "T778O"
+  },
+  {
+   "pos": 49,
+   "name": "SBMOD",
+   "key": false,
+   "data_element": "SBMOD",
+   "domain": "CHAR4",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Administrator Group",
+   "check_table": null
+  },
+  {
+   "pos": 50,
+   "name": "KOKRS",
+   "key": false,
+   "data_element": "KOKRS",
+   "domain": "CACCD",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Controlling Area",
+   "check_table": "TKA01"
+  },
+  {
+   "pos": 51,
+   "name": "FISTL",
+   "key": false,
+   "data_element": "FISTL",
+   "domain": "FISTL",
+   "type": "CHAR",
+   "length": 16,
+   "decimals": 0,
+   "description": "Funds Center",
+   "check_table": "*"
+  },
+  {
+   "pos": 52,
+   "name": "GEBER",
+   "key": false,
+   "data_element": "BP_GEBER",
+   "domain": "BP_GEBER",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Fund",
+   "check_table": "*"
+  },
+  {
+   "pos": 53,
+   "name": "FKBER",
+   "key": false,
+   "data_element": "FKBER",
+   "domain": "FKBER",
+   "type": "CHAR",
+   "length": 16,
+   "decimals": 0,
+   "description": "Functional Area",
+   "check_table": "*"
+  },
+  {
+   "pos": 54,
+   "name": "GRANT_NBR",
+   "key": false,
+   "data_element": "GM_GRANT_NBR",
+   "domain": "GM_GRANT_NBR",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "Grant",
+   "check_table": null
+  },
+  {
+   "pos": 55,
+   "name": "SGMNT",
+   "key": false,
+   "data_element": "FB_SEGMENT",
+   "domain": "FB_SEGMENT",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Segment for Segmental Reporting",
+   "check_table": "*"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "ABKRS",
+   "foreign_table": "T549A",
+   "foreign_field": "ABKRS"
+  },
+  {
+   "field": "ANSVH",
+   "foreign_table": "T542A",
+   "foreign_field": "ANSVH"
+  },
+  {
+   "field": "BTRTL",
+   "foreign_table": "T001P",
+   "foreign_field": "BTRTL"
+  },
+  {
+   "field": "BUKRS",
+   "foreign_table": "T001",
+   "foreign_field": "BUKRS"
+  },
+  {
+   "field": "GSBER",
+   "foreign_table": "TGSB",
+   "foreign_field": "GSBER"
+  },
+  {
+   "field": "KOKRS",
+   "foreign_table": "TKA01",
+   "foreign_field": "KOKRS"
+  },
+  {
+   "field": "KOSTL",
+   "foreign_table": "CSKS",
+   "foreign_field": "KOSTL"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "ORGEH",
+   "foreign_table": "T527X",
+   "foreign_field": "ORGEH"
+  },
+  {
+   "field": "OTYPE",
+   "foreign_table": "T778O",
+   "foreign_field": "OTYPE"
+  },
+  {
+   "field": "PERNR",
+   "foreign_table": "PA0003",
+   "foreign_field": "PERNR"
+  },
+  {
+   "field": "PERSG",
+   "foreign_table": "T501",
+   "foreign_field": "PERSG"
+  },
+  {
+   "field": "PERSK",
+   "foreign_table": "T503K",
+   "foreign_field": "PERSK"
+  },
+  {
+   "field": "PLANS",
+   "foreign_table": "T528B",
+   "foreign_field": "PLANS"
+  },
+  {
+   "field": "PREAS",
+   "foreign_table": "T530E",
+   "foreign_field": "PREAS"
+  },
+  {
+   "field": "SACHA",
+   "foreign_table": "T526",
+   "foreign_field": "SACHX"
+  },
+  {
+   "field": "SACHP",
+   "foreign_table": "T526",
+   "foreign_field": "SACHX"
+  },
+  {
+   "field": "SACHZ",
+   "foreign_table": "T526",
+   "foreign_field": "SACHX"
+  },
+  {
+   "field": "STELL",
+   "foreign_table": "T513",
+   "foreign_field": "STELL"
+  },
+  {
+   "field": "VDSK1",
+   "foreign_table": "T527O",
+   "foreign_field": "ORGKY"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "T500P",
+   "foreign_field": "PERSA"
+  }
+ ]
+}

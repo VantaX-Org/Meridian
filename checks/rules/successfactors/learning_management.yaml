@@ -246,3 +246,92 @@ rules:
     record_fix_template: >-
       Assignment {LEARNINGASSIGNMENT.USERID}: status is missing. Set via
       Learning > Admin > Assignment Management.
+
+  - id: LMS016
+    field: LEARNINGASSIGNMENT.DUE_DATE
+    check_class: cross_field_check
+    fail_when: '`LEARNINGASSIGNMENT.DUE_DATE`.dt.normalize() < `LEARNINGASSIGNMENT.ASSIGNED_DATE`.dt.normalize()'
+    require_populated: true
+    severity: medium
+    dimension: consistency
+    message: Assignment is due before the day it was assigned
+    why_it_matters: 'A required date before the assignment date makes the item overdue the moment it is assigned: the learner
+      never had a compliant window, overdue notifications fire immediately and compliance reporting counts a breach that is
+      a data error.'
+    rule_authority: best_practice
+    sap_impact: Item overdue on assignment; compliance KPIs and overdue escalations wrong for this learner.
+    fix_map:
+      __blank__: Correct the required date (or the assignment date) in Learning Administration > Users > Learning Plan.
+    record_fix_template: 'Learner {LEARNINGASSIGNMENT.USERID}: {LEARNINGASSIGNMENT.COURSE_ID} due {LEARNINGASSIGNMENT.DUE_DATE},
+      before it was assigned ({LEARNINGASSIGNMENT.ASSIGNED_DATE}).'
+  - id: LMS017
+    field: LEARNINGCOMPLETION.USERID
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: Learning history record must identify the learner
+    why_it_matters: 'A completion without a learner ID cannot be credited to anyone: the learner''s compliance status stays
+      incomplete and the record is invisible to every report.'
+    rule_authority: sap_hard_constraint
+    sap_impact: Completion not credited; learner appears non-compliant; certification evidence lost.
+    fix_map:
+      __blank__: Re-record the learning event for the correct learner via Learning Administration > Record Learning.
+    record_fix_template: 'Learning history {LEARNINGCOMPLETION.COURSE_ID}: learner ID is missing.'
+  - id: LMS018
+    field: LEARNINGCOMPLETION.COURSE_ID
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: Learning history record must identify the learning item
+    why_it_matters: 'A completion without an item ID cannot satisfy any requirement: assignments and curricula stay open and
+      the record cannot be audited.'
+    rule_authority: sap_hard_constraint
+    sap_impact: Required assignment not closed; curriculum status wrong; audit evidence missing.
+    fix_map:
+      __blank__: Re-record the learning event against the correct item via Learning Administration > Record Learning.
+    record_fix_template: 'Learning history {LEARNINGCOMPLETION.USERID}: item ID is missing.'
+  - id: LMS019
+    field: LEARNINGCOMPLETION.STATUS
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: Learning history record must carry a completion status
+    why_it_matters: The completion status decides whether a learning event satisfies the requirement (completed/passed) or
+      not (failed, incomplete). Without it, SAP SuccessFactors Learning cannot decide whether the item is fulfilled.
+    rule_authority: sap_hard_constraint
+    sap_impact: Requirement not fulfilled; curriculum and compliance status cannot be computed for this record.
+    fix_map:
+      __blank__: Set the completion status on the learning event via Learning Administration > Learning History.
+    record_fix_template: 'Learning history {LEARNINGCOMPLETION.USERID}/{LEARNINGCOMPLETION.COURSE_ID}: completion status missing.'
+  - id: LMS020
+    field: LEARNINGCOMPLETION.SCORE
+    check_class: cross_field_check
+    fail_when: '`LEARNINGCOMPLETION.SCORE` < 0'
+    require_populated: true
+    severity: low
+    dimension: validity
+    message: Learning score must not be negative
+    why_it_matters: Scores are compared with the item's passing threshold. A negative score is a load or interface error and
+      turns a pass into a fail (or hides a real result) in assessment reporting.
+    rule_authority: best_practice
+    sap_impact: Pass/fail determination and assessment analytics wrong for this record.
+    fix_map:
+      __blank__: Correct the score on the learning history record via Learning Administration.
+    record_fix_template: 'Learning history {LEARNINGCOMPLETION.USERID}/{LEARNINGCOMPLETION.COURSE_ID}: score {LEARNINGCOMPLETION.SCORE}
+      is negative.'
+  - id: LMS021
+    field: LEARNINGCOMPLETION.CREDIT_HOURS
+    check_class: cross_field_check
+    fail_when: '`LEARNINGCOMPLETION.CREDIT_HOURS` < 0'
+    require_populated: true
+    severity: low
+    dimension: validity
+    message: Credit hours must not be negative
+    why_it_matters: Credit hours accumulate towards continuing-education and certification requirements. A negative value
+      subtracts hours the learner earned elsewhere.
+    rule_authority: best_practice
+    sap_impact: Continuing-education and certification hour totals understated.
+    fix_map:
+      __blank__: Correct the credit hours on the learning history record via Learning Administration.
+    record_fix_template: 'Learning history {LEARNINGCOMPLETION.USERID}/{LEARNINGCOMPLETION.COURSE_ID}: credit hours {LEARNINGCOMPLETION.CREDIT_HOURS}
+      are negative.'

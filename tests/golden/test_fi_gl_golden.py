@@ -26,6 +26,9 @@ D = get_dictionary("ecc6")
 #          430000 field status group missing (GL017)
 #          113300 petty cash: telephone number inside the long text (VP-SKAT-TXT50)
 #          481000 company-code segment created in 2091 (DT-SKB1-ERDAT)
+#          141000 export receivables: reconciliation account managed on open items (GL033)
+#          210000 long-term loans: balance sheet account with a P&L statement type (GL032)
+# clean:   113400 USD bank account (account currency USD), 477000 postage (tax category: only V1)
 # population: 199999 flagged for deletion centrally (SKA1.XLOEV), no text, no field status group
 #             113200 closed bank account flagged for deletion in company code 1000 (SKB1.XLOEB)
 ACCOUNTS = [
@@ -46,6 +49,10 @@ ACCOUNTS = [
     ("0000479000", "ERG.", "", "", "", "", "20210118"),
     ("0000481000", "ERG.", "", "X", "", "", "20180301"),
     ("0000199999", "BILA", "X", "", "", "X", "20190102"),
+    ("0000113400", "FIN.", "X", "", "", "", "20220601"),
+    ("0000141000", "BILA", "X", "", "", "", "20230301"),
+    ("0000210000", "BILA", "X", "X", "", "", "20230301"),
+    ("0000477000", "ERG.", "", "X", "", "", "20180301"),
 ]
 TEXTS = {  # SAKNR → (TXT20, TXT50) in English; 199999 has none
     "0000113100": ("Std Bank current acc", "Standard Bank current account 012345678"),
@@ -63,6 +70,10 @@ TEXTS = {  # SAKNR → (TXT20, TXT50) in English; 199999 has none
     "0000430000": ("Salaries", "Salaries and wages - monthly staff"),
     "0000479000": ("Sundry expenses", "Sundry operating expenses"),
     "0000481000": ("Bank charges", "Bank charges and fees"),
+    "0000113400": ("FNB USD account", "First National Bank USD call account"),
+    "0000141000": ("Receivables export", "Trade receivables - export customers"),
+    "0000210000": ("Long-term loans", "Long-term loans - Standard Bank facility"),
+    "0000477000": ("Postage and courier", "Postage, courier and freight-out (VAT V1 only)"),
 }
 COMPANY = [
     # SAKNR,       XOPVW, XKRES, FDLEV, XGKON, XINTB, FSTAG,  MITKZ, ZUAWA, MWSKZ, XMWNO, XLOEB, ERDAT
@@ -82,7 +93,12 @@ COMPANY = [
     ("0000479000", "",  "X", "",   "",  "",  "G004", "",  "001", "",  "",  "",  "20210118"),
     ("0000481000", "",  "X", "",   "",  "",  "G004", "",  "001", "",  "",  "",  "20910415"),
     ("0000199999", "",  "X", "",   "",  "",  "",     "",  "001", "",  "",  "",  "20190102"),
+    ("0000113400", "",  "X", "F0", "X", "",  "G005", "",  "001", "",  "",  "",  "20220601"),
+    ("0000141000", "X", "",  "",   "",  "",  "G067", "D", "001", "",  "",  "",  "20230301"),
+    ("0000210000", "",  "X", "",   "",  "",  "G001", "",  "001", "",  "",  "",  "20230301"),
+    ("0000477000", "",  "X", "",   "",  "",  "G004", "",  "001", "V1", "", "",  "20180301"),
 ]
+ACCOUNT_CURRENCY = {"0000113400": "USD"}   # every other account is kept in company code currency ZAR
 
 # ── FI documents (fiscal year 2026, ZAR) ─────────────────────────────────
 # BELNR, BLART, BSTAT, BUDAT, lines: (BSCHL, KOART, SHKZG, HKONT, DMBTR, MWSKZ, KOSTL, LIFNR, KUNNR)
@@ -120,7 +136,45 @@ DOCS = [
     ("0100000046", "ZM", "", "20260630", [
         ("40", "S", "S", "0000194500", "250.00", "", "", "", ""),
         ("50", "S", "H", "0000113100", "250.00", "", "", "", "")]),
+    # clean: USD receipt on the USD bank account (document currency USD, ZAR 18.50 / USD)
+    ("1400000020", "SA", "", "20260815", [
+        ("40", "S", "S", "0000113400", "18500.00", "", "", "", ""),
+        ("50", "S", "H", "0000194500", "18500.00", "", "", "", "")]),
+    # clean: postage with the account's own tax code V1
+    ("0100000049", "SA", "", "20260703", [
+        ("40", "S", "S", "0000477000", "80.00", "V1", "0000004120", "", ""),
+        ("50", "S", "H", "0000113100", "80.00", "",   "",           "", "")]),
+    # defect GL052: the USD bank account posted in ZAR
+    ("1400000021", "SA", "", "20260816", [
+        ("40", "S", "S", "0000113400", "5000.00", "", "", "", ""),
+        ("50", "S", "H", "0000194500", "5000.00", "", "", "", "")]),
+    # defect GL054: ZAR document whose second line carries a different document-currency amount
+    ("0100000047", "SA", "", "20260701", [
+        ("40", "S", "S", "0000194500", "300.00", "", "", "", ""),
+        ("50", "S", "H", "0000113100", "300.00", "", "", "", "")]),
+    # defect GL053: postage posted with tax code V2 although the account only allows V1
+    ("0100000048", "SA", "", "20260702", [
+        ("40", "S", "S", "0000477000", "120.00", "V2", "0000004120", "", ""),
+        ("50", "S", "H", "0000113100", "120.00", "",   "",           "", "")]),
+    # defect GL050: interface-built vendor line on the suspense account (not a reconciliation account)
+    ("1900000103", "KR", "", "20260806", [
+        ("31", "K", "H", "0000194500", "400.00", "", "",           "0000100023", ""),
+        ("40", "S", "S", "0000470000", "400.00", "", "0000004120", "",           "")]),
+    # defect GL049: invoice posted 20 Aug but cleared by a payment dated 10 Aug
+    ("1900000104", "KR", "", "20260820", [
+        ("31", "K", "H", "0000160000", "230.00", "", "",           "0000100023", ""),
+        ("40", "S", "S", "0000470000", "230.00", "", "0000004120", "",           "")]),
+    ("1500000013", "KZ", "", "20260810", [
+        ("25", "K", "S", "0000160000", "230.00", "", "", "0000100023", ""),
+        ("50", "S", "H", "0000113100", "230.00", "", "", "",           "")]),
 ]
+DOC_CURRENCY = {"1400000020": "USD"}                       # every other document is in ZAR
+WRBTR = {("1400000020", "001"): "1000.00", ("1400000020", "002"): "1000.00",
+         ("0100000047", "002"): "30.00"}                   # amount in document currency where it differs
+CLEARING = {  # (BELNR, BUZEI) → (clearing document, clearing date)
+    ("1900000101", "001"): ("1500000012", "20260831"), ("1500000012", "001"): ("1500000012", "20260831"),
+    ("1900000104", "001"): ("1500000013", "20260810"), ("1500000013", "001"): ("1500000013", "20260810"),
+}
 
 
 def _frames() -> TableFrames:
@@ -150,25 +204,30 @@ def _frames() -> TableFrames:
             "XLOEB", "ERDAT"]
     skb1 = pd.DataFrame({f"SKB1.{c}": [row[i] for row in COMPANY] for i, c in enumerate(cols)})
     skb1.insert(0, "SKB1.BUKRS", "1000")
-    skb1["SKB1.WAERS"] = "ZAR"
+    skb1["SKB1.WAERS"] = [ACCOUNT_CURRENCY.get(row[0], "ZAR") for row in COMPANY]
     skb1["SKB1.ERNAM"] = "MNAIDOO"
 
     bkpf = pd.DataFrame({
         "BKPF.BUKRS": ["1000"] * len(DOCS), "BKPF.BELNR": [d[0] for d in DOCS], "BKPF.GJAHR": ["2026"] * len(DOCS),
         "BKPF.BLART": [d[1] for d in DOCS], "BKPF.BSTAT": [d[2] for d in DOCS],
         "BKPF.BUDAT": [d[3] for d in DOCS], "BKPF.BLDAT": [d[3] for d in DOCS],
-        "BKPF.WAERS": ["ZAR"] * len(DOCS), "BKPF.USNAM": ["MNAIDOO"] * len(DOCS),
+        "BKPF.WAERS": [DOC_CURRENCY.get(d[0], "ZAR") for d in DOCS], "BKPF.HWAER": ["ZAR"] * len(DOCS),
+        "BKPF.USNAM": ["MNAIDOO"] * len(DOCS), "BKPF.STBLG": [""] * len(DOCS), "BKPF.STJAH": ["0000"] * len(DOCS),
     })
+    bldat = {d[0]: d[3] for d in DOCS}
     lines = [(d[0], f"{i:03d}", *ln) for d in DOCS for i, ln in enumerate(d[4], start=1)]
     bseg = pd.DataFrame({
         "BSEG.BUKRS": ["1000"] * len(lines), "BSEG.BELNR": [x[0] for x in lines],
         "BSEG.GJAHR": ["2026"] * len(lines), "BSEG.BUZEI": [x[1] for x in lines],
         "BSEG.BSCHL": [x[2] for x in lines], "BSEG.KOART": [x[3] for x in lines],
         "BSEG.SHKZG": [x[4] for x in lines], "BSEG.HKONT": [x[5] for x in lines],
-        "BSEG.DMBTR": [x[6] for x in lines], "BSEG.WRBTR": [x[6] for x in lines],
+        "BSEG.DMBTR": [x[6] for x in lines], "BSEG.WRBTR": [WRBTR.get((x[0], x[1]), x[6]) for x in lines],
         "BSEG.MWSKZ": [x[7] for x in lines], "BSEG.KOSTL": [x[8] for x in lines],
         "BSEG.LIFNR": [x[9] for x in lines], "BSEG.KUNNR": [x[10] for x in lines],
         "BSEG.STCEG": [""] * len(lines),
+        "BSEG.ZFBDT": [bldat[x[0]] if x[3] in ("D", "K") else "00000000" for x in lines],
+        "BSEG.AUGBL": [CLEARING.get((x[0], x[1]), ("", ""))[0] for x in lines],
+        "BSEG.AUGDT": [CLEARING.get((x[0], x[1]), ("", "00000000"))[1] for x in lines],
     })
     return TableFrames({"SKA1": ska1, "SKAT": skat, "SKB1": skb1, "BKPF": bkpf, "BSEG": bseg}, D, module="fi_gl")
 
@@ -201,6 +260,13 @@ def test_fi_gl_golden():
         "XP2P003": {"BUKRS=1000|BELNR=1900000102|GJAHR=2026|BUZEI=002"},  # tax code missing
         "XFI001": {"BUKRS=1000|BELNR=0100000045|GJAHR=2026|BUZEI=001"},   # debits != credits
         "GL029": {"BUKRS=1000|BELNR=0100000046|GJAHR=2026"},      # document type ZM not in T003
+        "GL032": {"KTOPL=INT|SAKNR=0000210000"},                  # balance sheet account with P&L type
+        "GL033": {"BUKRS=1000|SAKNR=0000141000"},                 # reconciliation account on open items
+        "GL049": {"BUKRS=1000|BELNR=1900000104|GJAHR=2026|BUZEI=001"},    # cleared before it was posted
+        "GL050": {"BUKRS=1000|BELNR=1900000103|GJAHR=2026|BUZEI=001"},    # vendor line on a non-recon account
+        "GL052": {"BUKRS=1000|BELNR=1400000021|GJAHR=2026|BUZEI=001"},    # USD account posted in ZAR
+        "GL053": {"BUKRS=1000|BELNR=0100000048|GJAHR=2026|BUZEI=001"},    # tax code V2, account allows V1
+        "GL054": {"BUKRS=1000|BELNR=0100000047|GJAHR=2026|BUZEI=002"},    # ZAR document, DMBTR != WRBTR
     }, found
     # 199999 is flagged for deletion centrally, 113200 in company code 1000 only: out of the
     # population, counted. The noted item (BSTAT S) is outside the balance rule's scope.
@@ -209,4 +275,4 @@ def test_fi_gl_golden():
     fsg = next(r for r in results if r.check_id == "GL017")
     assert fsg.details["population_excluded"] == {"deleted": 2}
     balance = next(r for r in results if r.check_id == "XFI001")
-    assert balance.details["groups"] == 7
+    assert balance.details["groups"] == 15

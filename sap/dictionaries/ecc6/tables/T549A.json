@@ -1,0 +1,86 @@
+{
+ "table": "T549A",
+ "description": "Payroll areas",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "ABKRS",
+   "key": true,
+   "data_element": "ABKRS",
+   "domain": "ABKRS",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Payroll Area",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "PERMO",
+   "key": false,
+   "data_element": "PERMO",
+   "domain": "PERMO",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Period Parameters",
+   "check_table": "T549R"
+  },
+  {
+   "pos": 4,
+   "name": "CALCR",
+   "key": false,
+   "data_element": "CALCR",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Run payroll for payroll area",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "DATMO",
+   "key": false,
+   "data_element": "DATMO",
+   "domain": "DATMO",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Date modifier",
+   "check_table": "T549L"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "DATMO",
+   "foreign_table": "T549L",
+   "foreign_field": "DATMO"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "PERMO",
+   "foreign_table": "T549R",
+   "foreign_field": "PERMO"
+  }
+ ]
+}

@@ -50,6 +50,19 @@ LIVE = {
     "COMPINFO.COMP_FREQUENCY": {"ANN", "MON", "BWK", "HOURLY"},
     "COMPINFO.PAY_TYPE": {"BASE_SAL", "HOURLY_RATE", "CAR_ALLOW", "HOUSING_ALLOW"},
     "COMPINFO.PAY_GRADE": {"GR03", "GR06", "GR07", "GR08", "GR10"},
+    "COMPINFO.CURRENCY": {"ZAR", "USD", "EUR", "HKD"},
+    "EMPEMPLOYMENT.DIVISION": {"CORP", "FIN", "OPS", "SLS"},
+    "EMPEMPLOYMENT.DEPARTMENT": {"CORP-EXEC", "FIN-CTRL", "OPS-PLAN", "SLS-APAC", "SLS-EA", "SLS-NA"},
+    "EMPEMPLOYMENT.LOCATION": {"JNB-HQ", "SFO-01", "STR-01", "HKG-01", "KLA-01"},
+    "EMPEMPLOYMENT.COST_CENTER": {"101000", "102100", "410200", "520300", "610100", "710100"},
+    "EMPEMPLOYMENT.JOB_CODE": {"EXEC-CEO", "FIN-ACC", "FIN-MGR", "SCM-PLN", "SLS-AE"},
+    "PERINFO.NATIONALITY": {"ZAF", "USA", "DEU", "HKG", "UGA"},
+    "PERADDRESS.COUNTRY": {"ZAF", "USA", "DEU", "HKG", "UGA"},
+    "PERINFO.SALUTATION": {"MR", "MS", "DR"},
+    "PERINFO.MARITAL_STATUS": {"S", "M", "D", "W"},
+    "PERADDRESS.ADDRESS_TYPE": {"home", "mailing"},
+    "TIMESHEET.ABSENCE_TYPE": {"VACATION", "SICK"},
+    "TIMESHEET.TIME_ACCOUNT_TYPE": {"VAC_ANNUAL"},
 }
 
 
@@ -118,6 +131,13 @@ def test_employee_central_golden():
         _employee("100114", START_DATE="2024-08-01", CREATED_DATE="2024-07-08", COMPANY="UG01", DIVISION="SLS",
                   DEPARTMENT="SLS-EA", LOCATION="KLA-01", COST_CENTER="710100", JOB_CODE="SLS-AE",
                   JOB_TITLE="Account Executive", MANAGER_ID="100102"),
+        _employee("100115", DEPARTMENT="FIN-TAX"),                              # EC048 no such department
+        _employee("100116", MANAGER_ID="Thandiwe Nkosi"),                       # EC058 a name, not a user
+        _employee("100117"),                                                    # EC059 (born after hire)
+        _employee("100118", EVENT_REASON="TERRES", STATUS="T"),                 # EC060 no end date
+        _employee("100119"), _employee("100120"),                               # EC061 (shared e-mail)
+        _employee("100121"), _employee("100122"),                               # EC062 (same national ID)
+        _employee("100123"), _employee("100124"), _employee("100125"), _employee("100126"),
     ]
     per = [
         _person("100100", "Sipho", "Dlamini", GENDER="M", DATE_OF_BIRTH="1971-08-02", NATIONAL_ID="7108025800083"),
@@ -136,6 +156,15 @@ def test_employee_central_golden():
         _person("100112", "Precious", "Mahlangu"), _person("100113", "Kagiso", "Molefe", GENDER="M"),
         _person("100114", "Brian", "Okello", GENDER="M", NATIONALITY="UGA", NATIONAL_ID="CM9001234567AB",
                 DATE_OF_BIRTH="1992-06-14"),
+        _person("100115", "Naledi", "Sithole"), _person("100116", "Themba", "Mabuza", GENDER="M"),
+        _person("100117", "Lindiwe", "Cele", DATE_OF_BIRTH="2017-03-15"),     # EC059 born after the 2016 hire
+        _person("100118", "Sizwe", "Ngcobo", GENDER="M"),
+        _person("100119", "Palesa", "Mokoena"), _person("100120", "Palesa", "Mokoena-Dube"),
+        _person("100121", "Refilwe", "Tau"),
+        _person("100122", "Refilwe", "Tau", NATIONAL_ID="860315 0121 087"),    # EC062 same ID as 100121
+        _person("100123", "Mpho", "Radebe"), _person("100124", "Karabo", "Phiri"),
+        _person("100125", "Dineo", "Masilo", MARITAL_STATUS="Married"),         # EC055 label, not the code
+        _person("100126", "Tshepo", "Baloyi", GENDER="M", NATIONALITY="SA"),    # EC052 ISO-2, not ISO-3
     ]
     pids = [p["PERSON_ID"] for p in per]
     names = {p["PERSON_ID"]: (p["PREFERRED_NAME"] or p["FIRSTNAME"]).lower().replace(" ", "") for p in per}
@@ -144,6 +173,8 @@ def test_employee_central_golden():
     email = [{"PERSON_ID": p, "EMAIL_TYPE": "B",
               "EMAIL_ADDRESS": f"{names[p]}.{p}@{domain.get(p, 'meridian-demo.co.za')}"} for p in pids]
     email[10]["EMAIL_ADDRESS"] = "zanele.khumalo.meridian-demo.co.za"     # EC018 100110: no @
+    by_pid = {e["PERSON_ID"]: e for e in email}
+    by_pid["100120"]["EMAIL_ADDRESS"] = by_pid["100119"]["EMAIL_ADDRESS"].upper()  # EC061 shared mailbox
     email += [{"PERSON_ID": "100101", "EMAIL_TYPE": "P", "EMAIL_ADDRESS": "thandiwe.nkosi@gmail.com"},
               {"PERSON_ID": "100103", "EMAIL_TYPE": "P", "EMAIL_ADDRESS": "k.mueller@web.de"}]
     phone = [{"PERSON_ID": p, "PHONE_TYPE": "B", "PHONE_NUMBER": f"+27 11 555 {p[-4:]}"} for p in pids]
@@ -151,6 +182,7 @@ def test_employee_central_golden():
     phone[5]["PHONE_NUMBER"], phone[14]["PHONE_NUMBER"] = "+852 2555 0105", "+256 41 455 0114"
     phone += [{"PERSON_ID": "100101", "PHONE_TYPE": "C", "PHONE_NUMBER": "+27 82 555 0101"},
               {"PERSON_ID": "100112", "PHONE_TYPE": "M", "PHONE_NUMBER": "+27 83 555 0112"}]  # EC020 'M' not a type
+    phone[pids.index("100123")]["PHONE_NUMBER"] = "ask reception"         # EC063 not a number
     addr = [_za_address(p) for p in pids]
     addr[2] = {"PERSON_ID": "100102", "ADDRESS_TYPE": "home", "ADDRESS_LINE1": "455 Market Street",
                "ADDRESS_LINE2": "Apt 1204", "CITY": "San Francisco", "STATE": "CA", "ZIPCODE": "94105",
@@ -164,6 +196,7 @@ def test_employee_central_golden():
                 "ADDRESS_LINE2": "Kamwokya", "CITY": "Kampala", "STATE": "", "ZIPCODE": "",
                 "COUNTRY": "UGA"}                                          # Uganda has no postcodes either
     addr[11]["ZIPCODE"] = ""                                               # EC033 100111: ZA postcode missing
+    addr[pids.index("100124")]["ZIPCODE"] = "21934"                        # EC072 ZA postcodes have 4 digits
 
     results, found = _run("employee_central", _frames("employee_central", {
         "EMPEMPLOYMENT": emp, "PERINFO": per, "PEREMAIL": email, "PERPHONE": phone, "PERADDRESS": addr}))
@@ -176,9 +209,20 @@ def test_employee_central_golden():
         "EC018": {"PERSON_ID=100110|EMAIL_TYPE=B"},
         "EC033": {"PERSON_ID=100111|ADDRESS_TYPE=home"},
         "EC020": {"PERSON_ID=100112|PHONE_TYPE=M"},
+        "EC048": {"USERID=100115"},
+        "EC058": {"USERID=100116"},
+        "EC059": {"USERID=100117"},
+        "EC060": {"USERID=100118"},
+        "EC061": {"PERSON_ID=100119|EMAIL_TYPE=B", "PERSON_ID=100120|EMAIL_TYPE=B"},
+        "EC062": {"PERSON_ID=100121", "PERSON_ID=100122"},
+        "EC063": {"PERSON_ID=100123|PHONE_TYPE=B"},
+        "EC072": {"PERSON_ID=100124|ADDRESS_TYPE=home"},
+        "EC055": {"PERSON_ID=100125"},
+        "EC052": {"PERSON_ID=100126"},
     }, found
     ran = {r.check_id for r in results}
     assert {"EC014", "EC019", "EC021", "EC032", "EC041", "EC043"} <= ran  # judged, and passed
+    assert {"EC046", "EC047", "EC049", "EC050", "EC051", "EC053", "EC054", "EC056", "EC064", "EC067"} <= ran
 
 
 # ── Compensation ─────────────────────────────────────────────────────────────
@@ -220,6 +264,10 @@ def test_compensation_golden():
               PAY_RANGE_MID="500000.00", PAY_RANGE_MAX="600000.00"),
         _comp("100114", SALARY="700000.00", COMPA_RATIO="0.93"),
         _comp("100114", PAY_TYPE="HOUSING_ALLOW", SALARY=""),                             # COMP005 no amount
+        _comp("100116", SALARY="700000.00", CURRENCY="ZAD", COMPA_RATIO="0.93"),          # COMP020 no such currency
+        _comp("100117", SALARY="700000.00", PAY_RANGE_MIN="900000.00", PAY_RANGE_MID="",  # COMP019 min/max swapped
+              PAY_RANGE_MAX="600000.00", COMPA_RATIO="0.93"),                             # (+ COMP015 no midpoint)
+        _comp("100118", SALARY="700000.00", COMP_FREQUENCY="", COMPA_RATIO="0.93"),       # COMP021 no frequency
     ]
     _, found = _run("compensation", _frames("compensation", {"COMPINFO": rows}))
     assert found == {
@@ -228,6 +276,10 @@ def test_compensation_golden():
         "COMP011": {"USERID=100112|EFFECTIVE_DATE=2025-04-01"},
         "COMP018": {"USERID=100113|EFFECTIVE_DATE=2025-04-01"},
         "COMP005": {"USERID=100114|EFFECTIVE_DATE=2025-04-01"},
+        "COMP020": {"USERID=100110|EFFECTIVE_DATE=2025-04-01", "USERID=100116|EFFECTIVE_DATE=2025-04-01"},
+        "COMP019": {"USERID=100117|EFFECTIVE_DATE=2025-04-01"},
+        "COMP015": {"USERID=100117|EFFECTIVE_DATE=2025-04-01"},
+        "COMP021": {"USERID=100118|EFFECTIVE_DATE=2025-04-01"},
     }, found
 
 
@@ -260,12 +312,18 @@ def test_benefits_golden():
         _enrol("100105", "HK_MED_AIA", ENROL_DATE="", EMPLOYEE_COST="0.00", EMPLOYER_COST="1450.00"),  # BEN004
         _enrol("100106", "ZA_MED_DISC"), _enrol("100106", "ZA_MED_DISC"),          # BEN011 enrolled twice
         _enrol("100109", "ZA_GAP_COVER", PLAN_TYPE="GAP", EMPLOYEE_COST="", EMPLOYER_COST="0.00"),     # BEN007
+        _enrol("100110", "ZA_MED_DISC", EMPLOYEE_COST="-2140.00"),                                      # BEN012
+        _enrol("100111", "ZA_GRP_LIFE", PLAN_TYPE="LIFE", EMPLOYEE_COST="0.00", EMPLOYER_COST="-312.00"),  # BEN013
+        _enrol("100112", "ZA_DENTAL_OLD", PLAN_TYPE=""),                     # BEN014 benefit no longer exists
     ]
     _, found = _run("benefits", _frames("benefits", {"BENEFITENROLLMENT": rows}))
     assert found == {
         "BEN004": {"USERID=100105|PLAN_ID=HK_MED_AIA"},
         "BEN011": {"USERID=100106|PLAN_ID=ZA_MED_DISC"},
         "BEN007": {"USERID=100109|PLAN_ID=ZA_GAP_COVER"},
+        "BEN012": {"USERID=100110|PLAN_ID=ZA_MED_DISC"},
+        "BEN013": {"USERID=100111|PLAN_ID=ZA_GRP_LIFE"},
+        "BEN014": {"USERID=100112|PLAN_ID=ZA_DENTAL_OLD"},
     }, found
 
 
@@ -292,6 +350,9 @@ def test_payroll_integration_golden():
         _pay("100111", "202509", "2025-09-25", "39000.00", "7620.00", "2340.00", COST_CENTRE=""),  # PAY005
         _pay("100112", "202509", "2025-09-25", "45000.00", "9480.00", "2700.00"),    # PAY016 result loaded twice
         _pay("100112", "202509", "2025-09-25", "45000.00", "9480.00", "2700.00"),
+        _pay("100113", "SEP-25", "2025-09-25", "43000.00", "8900.00", "2580.00"),             # PAY017
+        _pay("100114", "202509", "2025-09-25", "43000.00", "8900.00", "2580.00", PAYROLL_AREA="MONTHLY"),  # PAY018
+        _pay("100115", "202509", "2025-09-25", "43000.00", "8900.00", "2580.00", COMPANY="ZA01_LE"),  # PAY019
     ]
     _, found = _run("payroll_integration", _frames("payroll_integration", {"PAYRESULT": rows}))
     assert found == {
@@ -299,6 +360,9 @@ def test_payroll_integration_golden():
         "PAY004": {"USERID=100110|PAY_PERIOD=202509"},
         "PAY005": {"USERID=100111|PAY_PERIOD=202509"},
         "PAY016": {"USERID=100112|PAY_PERIOD=202509"},
+        "PAY017": {"USERID=100113|PAY_PERIOD=SEP-25"},
+        "PAY018": {"USERID=100114|PAY_PERIOD=202509"},
+        "PAY019": {"USERID=100115|PAY_PERIOD=202509"},
     }, found
 
 
@@ -318,6 +382,9 @@ def test_performance_goals_golden():
         # seeded defect: completed form without its final rating
         {"USERID": "100105", "REVIEW_PERIOD": "2025-01-01", "REVIEW_DATE": "2026-02-25", "FORM_STATUS": "3",
          "OVERALL_RATING": "", "MANAGER_RATING": "3.5", "SELF_RATING": "3.5"},             # PERF002
+        # completed in December for a cycle that only starts in January: wrong review period
+        {"USERID": "100106", "REVIEW_PERIOD": "2026-01-01", "REVIEW_DATE": "2025-12-15", "FORM_STATUS": "3",
+         "OVERALL_RATING": "3.0", "MANAGER_RATING": "3.0", "SELF_RATING": "3.0"},             # PERF017
     ]
     goals = [
         {"GOAL_ID": "5001", "USERID": "100101", "GOAL_NAME": "Close month-end within 5 working days",
@@ -335,12 +402,16 @@ def test_performance_goals_golden():
         {"GOAL_ID": "5005", "USERID": "100105", "GOAL_NAME": "",                            # PERF008
          "GOAL_METRIC": "HKD 3m pipeline", "GOAL_STATUS": "On Track", "GOAL_WEIGHT": "100",
          "TARGET_DATE": "2026-12-31"},
+        {"GOAL_ID": "5006", "USERID": "100106", "GOAL_NAME": "Reduce DSO", "GOAL_METRIC": "DSO <= 45 days",
+         "GOAL_STATUS": "On Track", "GOAL_WEIGHT": "120", "TARGET_DATE": "2026-12-31"},   # PERF016
     ]
     _, found = _run("performance_goals", _frames("performance_goals",
                                                  {"PMREVIEWRESULT": forms, "GOALPLAN": goals}))
     assert found == {
         "PERF002": {"USERID=100105|REVIEW_PERIOD=2025-01-01"},
         "PERF008": {"GOAL_ID=5005"},
+        "PERF016": {"GOAL_ID=5006"},
+        "PERF017": {"USERID=100106|REVIEW_PERIOD=2026-01-01"},
     }, found
 
 
@@ -358,11 +429,13 @@ def test_succession_planning_golden():
         # seeded defects — one each
         nom("J Smith", "POS-100103", 120),                                # SUC008 not a user id
         nom("100106", "POS-100101", 3 * 365 + 30),                        # SUC010 not reviewed in 3 years
+        nom("100107", "POS-100104", 100, rank="-1"),                       # SUC012 negative rank
     ]
     _, found = _run("succession_planning", _frames("succession_planning", {"SUCCESSIONCANDIDATE": rows}))
     assert found == {
         "SUC008": {"NOMINEE_ID=J Smith|POSITION_ID=POS-100103"},
         "SUC010": {"NOMINEE_ID=100106|POSITION_ID=POS-100101"},
+        "SUC012": {"NOMINEE_ID=100107|POSITION_ID=POS-100104"},
     }, found
 
 
@@ -403,12 +476,14 @@ def test_recruiting_onboarding_golden():
          "MANAGER_ID": "100102", "TASK_COMPLETION": ""},
         {"USERID": "100132", "HIRE_DATE": "2026-10-19", "STATUS": "IN_PROGRESS", "DEPARTMENT": "OPS-PLAN",
          "MANAGER_ID": "", "TASK_COMPLETION": ""},                                                # REC014
+        {"USERID": "100133", "HIRE_DATE": "2026-09-08", "STATUS": "COMPLETED", "DEPARTMENT": "FIN-CTRL",
+         "MANAGER_ID": "100101", "TASK_COMPLETION": ""},          # REC020 hire moved to 15 Sep in EC only
     ]
     # one analysis covers EC and recruiting together, so the employee extract sits in the same frames:
     # long-standing employees have no onboarding process and must not be judged by onboarding rules
     emp = [{"USERID": u, "PERSON_ID": u, "START_DATE": d, "STATUS": "A"}
            for u, d in (("100100", "2012-02-01"), ("100101", "2016-07-01"), ("100102", "2023-01-09"),
-                        ("100131", "2026-09-01"))]
+                        ("100131", "2026-09-01"), ("100133", "2026-09-15"))]
     _, found = _run("recruiting_onboarding", _frames("recruiting_onboarding", {
         "EMPEMPLOYMENT": emp, "JOBREQUISITION": reqs, "JOBAPPLICATION": apps, "ONBOARDINGCANDIDATEINFO": onb}))
     assert found == {
@@ -416,6 +491,7 @@ def test_recruiting_onboarding_golden():
         "REC008": {"JOB_REQ_ID=1205"},
         "REC005": {"CANDIDATE_ID=70005|JOB_REQ_ID=1201"},
         "REC014": {"USERID=100132"},
+        "REC020": {"USERID=100133"},
     }, found
 
 
@@ -435,6 +511,7 @@ def test_learning_management_golden():
         item("100106", "POPIA-2026", "POPIA Data Privacy Awareness 2026", _day(-20), assigned=-90),  # LMS014
         item("100107", "COC-2026", "Code of Conduct Attestation 2026", _day(30), required="Yes"),    # LMS006
         item("100108", "HSE-101", "Health and Safety Induction", ""),                                # LMS003
+        item("100109", "EXCEL-ADV", "Advanced Excel for Planners", _day(-40), required="false"),     # LMS016
     ]
     history = [
         {"USERID": "100101", "COURSE_ID": "POPIA-2025", "COMPLETION_DATE": "2025-03-14", "STATUS": "COMPLETE",
@@ -445,6 +522,17 @@ def test_learning_management_golden():
          "SCORE": "", "CREDIT_HOURS": "4.0"},
         {"USERID": "100104", "COURSE_ID": "HSE-101", "COMPLETION_DATE": "", "STATUS": "COMPLETE",   # LMS009
          "SCORE": "", "CREDIT_HOURS": "2.0"},
+        # seeded defects — one each
+        {"USERID": "", "COURSE_ID": "AML-101", "COMPLETION_DATE": "2025-05-02", "STATUS": "COMPLETE",   # LMS017
+         "SCORE": "88", "CREDIT_HOURS": "1.0"},
+        {"USERID": "100106", "COURSE_ID": "", "COMPLETION_DATE": "2025-05-06", "STATUS": "COMPLETE",    # LMS018
+         "SCORE": "", "CREDIT_HOURS": "1.0"},
+        {"USERID": "100107", "COURSE_ID": "COC-2025", "COMPLETION_DATE": "2025-02-11", "STATUS": "",    # LMS019
+         "SCORE": "100", "CREDIT_HOURS": "0.5"},
+        {"USERID": "100108", "COURSE_ID": "COC-2025", "COMPLETION_DATE": "2025-02-12", "STATUS": "COMPLETE",
+         "SCORE": "-5", "CREDIT_HOURS": "0.5"},                                                          # LMS020
+        {"USERID": "100109", "COURSE_ID": "COC-2025", "COMPLETION_DATE": "2025-02-13", "STATUS": "COMPLETE",
+         "SCORE": "95", "CREDIT_HOURS": "-0.5"},                                                         # LMS021
     ]
     _, found = _run("learning_management", _frames("learning_management", {
         "LEARNINGASSIGNMENT": assignments, "LEARNINGCOMPLETION": history}))
@@ -453,6 +541,12 @@ def test_learning_management_golden():
         "LMS006": {"USERID=100107|COURSE_ID=COC-2026"},
         "LMS003": {"USERID=100108|COURSE_ID=HSE-101"},
         "LMS009": {"USERID=100104|COURSE_ID=HSE-101|COMPLETION_DATE="},
+        "LMS016": {"USERID=100109|COURSE_ID=EXCEL-ADV"},
+        "LMS017": {"USERID=|COURSE_ID=AML-101|COMPLETION_DATE=2025-05-02"},
+        "LMS018": {"USERID=100106|COURSE_ID=|COMPLETION_DATE=2025-05-06"},
+        "LMS019": {"USERID=100107|COURSE_ID=COC-2025|COMPLETION_DATE=2025-02-11"},
+        "LMS020": {"USERID=100108|COURSE_ID=COC-2025|COMPLETION_DATE=2025-02-12"},
+        "LMS021": {"USERID=100109|COURSE_ID=COC-2025|COMPLETION_DATE=2025-02-13"},
     }, found
 
 
@@ -474,10 +568,30 @@ def test_time_attendance_golden():
         entry("100106", "2026-09-21", status="SUBMITTED"),                # TIME005
         entry("100107", "2026-09-21", "8h"),                              # TIME012
         entry("100108", "2026-09-21", ""),                                # TIME003
+        entry("100109", "2026-09-21"),                                    # TIME017 after leaving on 15 Sep
+        entry("100110", "2026-09-21", "26.0"),                            # TIME013 more than a day
+        entry("100111", "2026-09-21", OVERTIME_HOURS="30.0"),             # TIME014
+        entry("100112", "2026-09-21", ABSENCE_TYPE="VACATON", TIME_ACCOUNT_TYPE="VAC_ANNUAL",  # TIME015
+              BALANCE="12.0"),
+        entry("100113", "2026-09-21", ABSENCE_TYPE="VACATION", TIME_ACCOUNT_TYPE="VAC_ANUAL",  # TIME016
+              BALANCE="12.0"),
     ]
-    _, found = _run("time_attendance", _frames("time_attendance", {"TIMESHEET": rows}))
+    # employment end dates (time after termination): 100104 left before its last entry was dated
+    emp = [{"USERID": u, "PERSON_ID": u, "START_DATE": "2016-07-01", "END_DATE": "", "STATUS": "A"}
+           for u in ("100101", "100102", "100103", "100105", "100106", "100107", "100108", "100110", "100111",
+                     "100112", "100113")]
+    emp += [{"USERID": "100104", "PERSON_ID": "100104", "START_DATE": "2018-03-01", "END_DATE": "2025-06-30",
+             "STATUS": "T"},
+            {"USERID": "100109", "PERSON_ID": "100109", "START_DATE": "2016-07-01", "END_DATE": "2026-09-15",
+             "STATUS": "T"}]
+    _, found = _run("time_attendance", _frames("time_attendance", {"TIMESHEET": rows, "EMPEMPLOYMENT": emp}))
     assert found == {
         "TIME005": {"USERID=100106|DATE=2026-09-21"},
         "TIME012": {"USERID=100107|DATE=2026-09-21"},
         "TIME003": {"USERID=100108|DATE=2026-09-21"},
+        "TIME017": {"USERID=100109|DATE=2026-09-21"},
+        "TIME013": {"USERID=100110|DATE=2026-09-21"},
+        "TIME014": {"USERID=100111|DATE=2026-09-21"},
+        "TIME015": {"USERID=100112|DATE=2026-09-21"},
+        "TIME016": {"USERID=100113|DATE=2026-09-21"},
     }, found

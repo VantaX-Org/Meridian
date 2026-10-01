@@ -68,7 +68,7 @@ def _frames() -> TableFrames:
             D_INCO2: "4470124409", D_INCO1: "4060177713", D_LPRIO: "4790106654", D_WAERS: "4520149987",
             D_ERDAT: "4840112236", DEL: "4610133429"}),
         "KNA1.STCD2": [""] * n, "KNA1.STCD3": [""] * n, "KNA1.STCD4": [""] * n,
-        "KNA1.STCEG": _col({C2: "DE287419653"}),
+        "KNA1.STCEG": _col({C2: "DE136695976"}),
         "KNA1.TELF1": _col({
             C1: "0169734400", C2: "+49 621 8774 0", C3: "0119752200", C4: "0823456781", D_POBOX: "0333452100",
             D_MAIL: "0169812300", D_KALKS: "0137551800", D_INCO2: "0227141600", D_INCO1: "0583036200",
@@ -99,7 +99,7 @@ def _frames() -> TableFrames:
         "KNVV.INCO1": ["FCA"] * m, "KNVV.INCO2": ["Sasolburg"] * m,
         "KNVV.ERDAT": [kna1.set_index("KNA1.KUNNR").at[a[0], "KNA1.ERDAT"] if a[0] != D_ERDAT else "20181002"
                        for a in areas],
-        "KNVV.LOEVM": [""] * m,
+        "KNVV.LOEVM": [""] * m, "KNVV.KTGRD": ["01"] * m,
     })
     knvv.loc[knvv["KNVV.KUNNR"] == C2, ["KNVV.WAERS", "KNVV.INCO1", "KNVV.INCO2", "KNVV.KDGRP"]] = \
         ["EUR", "CIP", "Mannheim", "02"]
@@ -107,8 +107,10 @@ def _frames() -> TableFrames:
         ["0001", "DAP", "Pretoria", "05", ""]
     knvv.loc[knvv["KNVV.KUNNR"] == OT, ["KNVV.ZTERM", "KNVV.INCO1", "KNVV.INCO2"]] = ["0001", "EXW", "Sasolburg"]
     stale = (knvv["KNVV.KUNNR"] == C3) & (knvv["KNVV.VTWEG"] == "20")
-    knvv.loc[stale, ["KNVV.LOEVM", "KNVV.KALKS", "KNVV.ZTERM", "KNVV.VSBED"]] = ["X", "", "", ""]
-    knvv.loc[knvv["KNVV.KUNNR"] == DEL, ["KNVV.KALKS", "KNVV.WAERS"]] = ["", ""]
+    knvv.loc[stale, ["KNVV.LOEVM", "KNVV.KALKS", "KNVV.ZTERM", "KNVV.VSBED", "KNVV.KTGRD"]] = ["X", "", "", "", ""]
+    knvv.loc[knvv["KNVV.KUNNR"] == DEL, ["KNVV.KALKS", "KNVV.WAERS", "KNVV.KTGRD"]] = ["", "", ""]
+    knvv.loc[knvv["KNVV.KUNNR"] == D_ERDAT, "KNVV.KTGRD"] = ""   # no account assignment group
+    knvv.loc[knvv["KNVV.KUNNR"] == D_MAIL, "KNVV.VSBED"] = "99"  # shipping condition not in TVSB
     knvv.loc[knvv["KNVV.KUNNR"] == D_KALKS, "KNVV.KALKS"] = ""
     knvv.loc[knvv["KNVV.KUNNR"] == D_INCO2, ["KNVV.INCO1", "KNVV.INCO2"]] = ["FOB", ""]
     knvv.loc[knvv["KNVV.KUNNR"] == D_INCO1, "KNVV.INCO1"] = "FOT"
@@ -134,7 +136,9 @@ def _live_config(rules) -> dict[str, set[str]]:
     """The system's own check tables, as discovery would read them."""
     values = {"INCO1": {"EXW", "FCA", "FAS", "FOB", "CFR", "CIF", "CPT", "CIP", "DAP", "DPU", "DDP", "DAT", "DDU",
                         "DES", "DEQ", "DAF", "UN"},
-              "LPRIO": {"01", "02", "03"}}
+              "LPRIO": {"01", "02", "03"}, "VKORG": {"1000"}, "VTWEG": {"10", "20"}, "SPART": {"00"},
+              "KALKS": {"1", "2"}, "KDGRP": {"01", "02", "05"}, "KTGRD": {"01", "02"}, "VSBED": {"01", "02"},
+              "ZTERM": {"0001", "ZB30"}, "VERSG": {"1"}, "LAND1": {"ZA", "DE"}}
     out = {}
     for r in rules:
         if r.get("check_class") in ("referential_check", "domain_value_check") and r["field"].split(".")[1] in values:
@@ -164,6 +168,8 @@ def test_sd_customer_master_golden():
         "SDCM020": {_area(D_LPRIO)},                     # delivery priority 09 not in TPRIO
         "SDCM018": {_area(D_WAERS)},                     # RAND is not an ISO currency code
         "DT-KNA1-ERDAT": {f"KUNNR={D_ERDAT}"},           # created in the future (loaded wrongly)
+        "SDCM031": {_area(D_ERDAT)},                     # no account assignment group (revenue accounts)
+        "SDCM033": {_area(D_MAIL)},                      # shipping condition 99 not in TVSB
     }, found
     # DEL is flagged for deletion, OT is a one-time account, C3's wholesale area is deleted at sales level
     name = next(r for r in results if r.check_id == "SDCM003")
@@ -174,3 +180,5 @@ def test_sd_customer_master_golden():
     assert mail.details["population_excluded"] == {"deleted": 1, "one_time_account": 1}
     pricing = next(r for r in results if r.check_id == "SDCM013")   # DEL's area (central flag) + C3's area
     assert pricing.details["population_excluded"] == {"deleted": 2}
+    accounts = next(r for r in results if r.check_id == "SDCM031")
+    assert accounts.details["population_excluded"] == {"deleted": 2}

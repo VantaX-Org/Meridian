@@ -25,6 +25,9 @@ class UniquenessCheck(BaseCheck):
             populated &= ~is_blank(df[c])
         def _norm(s: pd.Series) -> pd.Series:
             s = s.astype("string").str.strip()
+            if self.rule.get("normalize") == "name":  # 'Acme (Pty) Ltd.' == 'ACME PTY LTD'
+                from checks.value_placement import name_key
+                return name_key(s)
             if self.rule.get("normalize") == "alnum":  # identifiers: 'ZA 4012-345.678' == 'ZA4012345678'
                 return s.str.replace(r"[^0-9A-Za-z]", "", regex=True).str.upper()
             return s.str.upper() if self.rule.get("case_insensitive") else s

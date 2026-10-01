@@ -488,3 +488,372 @@ rules:
   sap_impact: Warranty validation fails. Age-based maintenance triggers are wrong. Asset lifecycle reports are unreliable.
   fix_map:
     __blank__: "Correct the equipment construction year via IE02 > General tab."
+
+# ── Internal consistency: dates, units, construction data ───────────────────
+- id: PM036
+  field: EQUZ.DATAB
+  check_class: cross_field_check
+  grain: EQUZ
+  fail_when: (`EQUZ.DATAB` > `EQUZ.DATBI`)
+  severity: medium
+  dimension: consistency
+  message: Equipment time segment starts after it ends (EQUZ valid-from after valid-to)
+  why_it_matters: >-
+    Installation location, planning plant, work centre and account assignment of an equipment are
+    kept in time segments. A segment whose valid-from date is after its valid-to date covers no day,
+    so the equipment's location and cost assignment for that period are undefined.
+  rule_authority: sap_hard_constraint
+  sap_impact: Installation history (IE03 > Structure > Usage list) and orders settled for the period
+    pick up no or the wrong cost centre and location.
+  fix_map:
+    __other__: Review the usage periods in IE03 (Structure > Usage list) and correct the installation /
+      dismantling dates through IE02 or IE4N; table entries must not be edited directly.
+  record_fix_template: 'Equipment {EQUZ.EQUNR}: time segment valid from {EQUZ.DATAB} to {EQUZ.DATBI}.'
+
+- id: PM037
+  field: EQUI.BAUJJ
+  check_class: cross_field_check
+  fail_when: (`EQUI.BAUJJ` > `EQUI.INBDT`.dt.year.astype('Int64').astype('string')) & (`EQUI.BAUJJ` >= '1900') & (`EQUI.BAUJJ` <= '2099')
+  severity: medium
+  dimension: accuracy
+  message: Equipment construction year is after its start-up date
+  why_it_matters: >-
+    An object cannot be started up before it was built. A construction year after the start-up year
+    means one of the two dates is wrong, and age-based maintenance strategies, warranty and
+    replacement planning start from the wrong date.
+  rule_authority: best_practice
+  sap_impact: Age-based maintenance plans, reliability (MTBF) and replacement analyses use a wrong
+    equipment age.
+  fix_map:
+    __other__: Check the nameplate and commissioning records; correct the construction year or the
+      start-up date in IE02 > General tab (S/4HANA Fiori app F4283).
+  record_fix_template: 'Equipment {EQUI.EQUNR}: built {EQUI.BAUJJ}, started up {EQUI.INBDT}.'
+
+- id: PM038
+  field: IFLOT.BAUJJ
+  check_class: cross_field_check
+  fail_when: (`IFLOT.BAUJJ` > `IFLOT.DATAB`.dt.year.astype('Int64').astype('string')) & (`IFLOT.BAUJJ` >= '1900') & (`IFLOT.BAUJJ` <= '2099')
+  severity: medium
+  dimension: accuracy
+  message: Functional location construction year is after its start-up date
+  why_it_matters: >-
+    A plant section cannot be started up before it was built. A construction year after the start-up
+    year means one of the two dates is wrong, and age-based maintenance and replacement planning for
+    the location start from the wrong date.
+  rule_authority: best_practice
+  sap_impact: Age-based maintenance plans and asset-condition reporting by functional location use a
+    wrong age.
+  fix_map:
+    __other__: Correct the construction year or the start-up date in IL02 > General tab (S/4HANA Fiori
+      app F4284).
+  record_fix_template: 'Functional location {IFLOT.TPLNR}: built {IFLOT.BAUJJ}, started up {IFLOT.DATAB}.'
+
+- id: PM039
+  field: IFLOT.BAUJJ
+  check_class: regex_check
+  pattern: '^(19|20)\d{2}$'
+  severity: medium
+  dimension: accuracy
+  message: Functional location construction year is invalid — must be a 4-digit year between 1900 and 2099
+  why_it_matters: The construction year feeds age-based maintenance strategies and replacement planning; a
+    2-digit or garbled year cannot be used and makes the location's age unknown.
+  rule_authority: best_practice
+  sap_impact: Age-based maintenance triggers and asset lifecycle reports for the location are unreliable.
+  fix_map:
+    __other__: Correct the construction year in IL02 > General tab (S/4HANA Fiori app F4284).
+  record_fix_template: 'Functional location {IFLOT.TPLNR}: construction year ''{actual_value}'' is not a 4-digit year.'
+
+- id: PM040
+  field: EQUI.BAUMM
+  check_class: regex_check
+  pattern: '^(0[0-9]|1[0-2])$'
+  severity: low
+  dimension: validity
+  message: Equipment construction month must be 01-12 (00 when unknown)
+  why_it_matters: The construction month refines the equipment age for warranty and age-based maintenance; a
+    value outside 01-12 is not a month and comes from a migration or interface.
+  rule_authority: sap_hard_constraint
+  sap_impact: Warranty and age calculations that use the construction month fail or are wrong.
+  fix_map:
+    __other__: Correct the construction month in IE02 > General tab (S/4HANA Fiori app F4283).
+  record_fix_template: 'Equipment {EQUI.EQUNR}: construction month ''{actual_value}'' is not 01-12.'
+
+- id: PM041
+  field: IFLOT.BAUMM
+  check_class: regex_check
+  pattern: '^(0[0-9]|1[0-2])$'
+  severity: low
+  dimension: validity
+  message: Functional location construction month must be 01-12 (00 when unknown)
+  why_it_matters: The construction month refines the age of the location for age-based maintenance; a value
+    outside 01-12 is not a month and comes from a migration or interface.
+  rule_authority: sap_hard_constraint
+  sap_impact: Age calculations that use the construction month fail or are wrong.
+  fix_map:
+    __other__: Correct the construction month in IL02 > General tab (S/4HANA Fiori app F4284).
+  record_fix_template: 'Functional location {IFLOT.TPLNR}: construction month ''{actual_value}'' is not 01-12.'
+
+- id: PM042
+  field: EQUI.WAERS
+  check_class: cross_field_check
+  fail_when: ((`EQUI.ANSWT` > 0) & `EQUI.WAERS`.isna()) | ((`EQUI.BRGEW` > 0) & `EQUI.GEWEI`.isna())
+  severity: medium
+  dimension: consistency
+  message: Equipment acquisition value without currency, or weight without unit
+  why_it_matters: >-
+    An amount without its currency or a weight without its unit cannot be read or totalled — 185 000
+    could be rand or euro, 12 could be kilograms or tonnes. SAP stores the unit with the value; a
+    missing one comes from a migration or an interface.
+  rule_authority: sap_hard_constraint
+  sap_impact: Equipment value and weight reports (IH08 list fields), insurance valuations and lifting /
+    transport planning use undefined units.
+  fix_map:
+    __other__: Enter the currency next to the acquisition value and the unit next to the weight in IE02 >
+      General tab (S/4HANA Fiori app F4283).
+  record_fix_template: 'Equipment {EQUI.EQUNR}: acquisition value {EQUI.ANSWT} {EQUI.WAERS}, weight {EQUI.BRGEW}
+    {EQUI.GEWEI}.'
+
+- id: PM043
+  field: IFLOT.WAERS
+  check_class: cross_field_check
+  fail_when: ((`IFLOT.ANSWT` > 0) & `IFLOT.WAERS`.isna()) | ((`IFLOT.BRGEW` > 0) & `IFLOT.GEWEI`.isna())
+  severity: medium
+  dimension: consistency
+  message: Functional location acquisition value without currency, or weight without unit
+  why_it_matters: >-
+    An amount without its currency or a weight without its unit cannot be read or totalled. SAP stores
+    the unit with the value; a missing one comes from a migration or an interface.
+  rule_authority: sap_hard_constraint
+  sap_impact: Value and weight reporting by functional location (IH06 list fields) uses undefined units.
+  fix_map:
+    __other__: Enter the currency next to the acquisition value and the unit next to the weight in IL02 >
+      General tab (S/4HANA Fiori app F4284).
+  record_fix_template: 'Functional location {IFLOT.TPLNR}: acquisition value {IFLOT.ANSWT} {IFLOT.WAERS},
+    weight {IFLOT.BRGEW} {IFLOT.GEWEI}.'
+
+- id: PM044
+  field: ILOA.KOKRS
+  check_class: cross_field_check
+  grain: ILOA
+  fail_when: '`ILOA.KOSTL`.notna() & `ILOA.KOKRS`.isna()'
+  severity: high
+  dimension: consistency
+  message: Location data carry a cost centre without a controlling area
+  why_it_matters: >-
+    A cost centre is only unique within its controlling area. Location / account assignment data
+    (ILOA) with a cost centre but no controlling area cannot identify the cost centre, so orders
+    created for the object inherit an assignment that cannot be settled.
+  rule_authority: sap_hard_constraint
+  sap_impact: Maintenance orders for the equipment or functional location cannot derive their
+    settlement receiver; costs stay on the order (KO88 / IW38 settlement errors).
+  fix_map:
+    __other__: Re-enter the company code / cost centre on the Organisation tab (IE02 or IL02) so that the
+      controlling area is derived again.
+  record_fix_template: 'Location data {ILOA.ILOAN} (functional location {ILOA.TPLNR}): cost centre {ILOA.KOSTL}
+    without controlling area.'
+
+- id: PM045
+  field: CRHD.ENDDA
+  check_class: cross_field_check
+  fail_when: (`CRHD.ENDDA` < `CRHD.BEGDA`)
+  severity: medium
+  dimension: consistency
+  message: Work centre is valid to a date before it is valid from
+  why_it_matters: >-
+    A work centre can only be used in orders, task lists and maintenance plans within its validity
+    period. An end date before the start date gives it no validity at all.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orders and task lists referencing the work centre fail scheduling and capacity planning;
+    confirmations against it are rejected.
+  fix_map:
+    __other__: Correct the validity period of the work centre in IR02 (S/4HANA Fiori app Manage Work Centers).
+  record_fix_template: 'Work centre {CRHD.ARBPL} (plant {CRHD.WERKS}): valid from {CRHD.BEGDA} to {CRHD.ENDDA}.'
+
+# ── Structure: status and hierarchy consistency ────────────────────────────
+- id: PM046
+  field: JEST.STAT
+  check_class: cross_field_check
+  grain: EQUI
+  fail_when: (`JEST.STAT` == 'I0100') & `ILOA.TPLNR`.isna() & `EQUZ.HEQUI`.isna()
+  severity: high
+  dimension: consistency
+  message: Equipment has system status INST (installed) but no installation location
+  why_it_matters: >-
+    Status INST is set when an equipment is installed at a functional location or in a superior
+    equipment, and removed when it is dismantled. Installed with neither means the installation data
+    were lost (migration, direct table change): the equipment is missing from the plant structure,
+    while status-based selections treat it as installed.
+  rule_authority: sap_hard_constraint
+  sap_impact: The equipment is missing from the structure list (IH01) and from orders and notifications
+    created on the functional location; installed-base and spare-parts reporting disagree.
+  fix_map:
+    __other__: Install the equipment at its functional location or superior equipment in IE02 (Structure
+      > Change installation location) or IE4N; if it is not installed, dismantle it so the status changes
+      to AVLB.
+  record_fix_template: 'Equipment {EQUI.EQUNR}: status INST without functional location or superior equipment.'
+
+- id: PM047
+  field: IFLOT.TPLMA
+  check_class: cross_field_check
+  fail_when: (`IFLOT.TPLMA` == `IFLOT.TPLNR`)
+  severity: high
+  dimension: consistency
+  message: Functional location is its own superior functional location
+  why_it_matters: >-
+    The functional location hierarchy must be a tree. A location that is its own superior creates a
+    loop: structure displays and hierarchy-based cost roll-ups never reach a top node.
+  rule_authority: sap_hard_constraint
+  sap_impact: Structure list (IH01), hierarchy reporting and cost roll-up (IW39 by structure) break or
+    loop for the location and everything below it.
+  fix_map:
+    __other__: Assign the correct superior functional location in IL02 > Structure tab (S/4HANA Fiori app F4284).
+  record_fix_template: 'Functional location {IFLOT.TPLNR}: superior functional location is itself.'
+
+- id: PM048
+  field: EQUZ.HEQUI
+  check_class: cross_field_check
+  grain: EQUZ
+  fail_when: (`EQUZ.HEQUI` == `EQUZ.EQUNR`)
+  severity: high
+  dimension: consistency
+  message: Equipment is installed in itself (superior equipment = the equipment)
+  why_it_matters: >-
+    An equipment hierarchy must be a tree. An equipment installed in itself creates a loop that no
+    structure display or cost roll-up can resolve, and it hides where the equipment really is.
+  rule_authority: sap_hard_constraint
+  sap_impact: Structure list (IH03), installed-base reporting and order cost roll-up loop or omit the
+    equipment.
+  fix_map:
+    __other__: Dismantle the equipment and install it in the correct superior equipment or functional
+      location (IE02 > Structure, or IE4N).
+  record_fix_template: 'Equipment {EQUZ.EQUNR}: superior equipment is itself.'
+
+# ── Uniqueness of business identifiers ─────────────────────────────────────
+- id: PM049
+  field: EQUI.SERNR
+  check_class: uniqueness_check
+  fields: [EQUI.MATNR, EQUI.SERNR]
+  severity: high
+  dimension: uniqueness
+  message: The same material / serial number combination is used by more than one equipment
+  why_it_matters: >-
+    A serial number identifies one physical unit of a material; SAP keeps exactly one equipment per
+    material and serial number. Two equipment records for one unit split its history, so goods
+    movements, service and warranty go to either record at random.
+  rule_authority: sap_hard_constraint
+  sap_impact: Serial-number checks in goods movements and deliveries (IQ09, MIGO) fail or update the wrong
+    record; maintenance and warranty history is split.
+  fix_map:
+    __other__: Keep the record with the movement and maintenance history; change or delete the serial number
+      of the duplicate (IQ02) and archive it.
+  record_fix_template: 'Equipment {EQUI.EQUNR}: material {EQUI.MATNR} serial number {EQUI.SERNR} is also used
+    by another equipment.'
+
+- id: PM050
+  field: EQUI.SERGE
+  check_class: uniqueness_check
+  fields: [EQUI.HERST, EQUI.TYPBZ, EQUI.SERGE]
+  normalize: alnum
+  severity: medium
+  dimension: uniqueness
+  message: Two equipment records carry the same manufacturer, model and manufacturer serial number
+  why_it_matters: >-
+    Manufacturer, model number and manufacturer serial number together identify one physical unit.
+    Two equipment records with the same combination are the same machine registered twice: its
+    maintenance history, costs and warranty claims are split between them.
+  rule_authority: best_practice
+  sap_impact: Failure analysis (MTBF/MTTR), warranty claims and maintenance cost per machine are split
+    across two records; maintenance plans may schedule the same work twice.
+  fix_map:
+    __other__: Compare both records in IE03; keep the installed one with the history, move open orders and
+      notifications to it, and flag the duplicate for deletion (IE02 > Edit > Set deletion flag).
+  record_fix_template: 'Equipment {EQUI.EQUNR}: {EQUI.HERST} {EQUI.TYPBZ} serial {EQUI.SERGE} is also
+    registered on another equipment.'
+
+- id: PM051
+  field: CRHD.ARBPL
+  check_class: uniqueness_check
+  fields: [CRHD.OBJTY, CRHD.WERKS, CRHD.ARBPL]
+  severity: high
+  dimension: uniqueness
+  message: The same work centre name exists twice in a plant
+  why_it_matters: >-
+    Orders, task lists, maintenance plans and confirmations refer to a work centre by plant and name;
+    SAP allows each name only once per plant. Two records with the same name make every reference
+    ambiguous.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orders and task lists resolve the work centre to either record; capacity planning and
+    activity-type costing are split.
+  fix_map:
+    __other__: Keep the work centre that orders and task lists use; rename or delete the duplicate (IR02).
+  record_fix_template: 'Work centre {CRHD.ARBPL} in plant {CRHD.WERKS} exists more than once.'
+
+# ── Validity against the system's configuration ────────────────────────────
+- id: PM052
+  field: EQUI.EQTYP
+  check_class: referential_check
+  severity: high
+  dimension: validity
+  message: Equipment category EQUI.EQTYP must exist in the system's equipment categories (T370T)
+  why_it_matters: >-
+    The equipment category controls the number range, the views, history and change documents and
+    whether the equipment can be installed or serialised. An equipment whose category is not defined
+    cannot be opened or changed.
+  rule_authority: sap_hard_constraint
+  sap_impact: IE02/IE03 fail for the equipment; orders and notifications cannot be created on it.
+  fix_map:
+    __other__: Equipment category '{invalid_value}' is not defined. Define it (OIEN) or change the
+      equipment's category (IE02 > Edit > Change equipment category).
+  record_fix_template: 'Equipment {EQUI.EQUNR}: equipment category ''{actual_value}'' is not defined in T370T.'
+
+- id: PM053
+  field: EQUI.EQART
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Object type EQUI.EQART must exist in the system's technical object types (T370K)
+  why_it_matters: >-
+    The object type classifies the equipment for catalog profiles, reporting and maintenance
+    strategies. An undefined type is a migration mapping gap: the equipment drops out of every
+    analysis by object type.
+  rule_authority: sap_hard_constraint
+  sap_impact: Reliability and cost analyses by object type (PMIS, MCI1) omit the equipment; catalog
+    profile determination for notifications fails.
+  fix_map:
+    __other__: Object type '{invalid_value}' is not defined. Define it (customizing Technical object types,
+      OI08) or assign a valid type in IE02 > General tab.
+  record_fix_template: 'Equipment {EQUI.EQUNR}: object type ''{actual_value}'' is not defined in T370K.'
+
+- id: PM054
+  field: IFLOT.FLTYP
+  check_class: referential_check
+  severity: high
+  dimension: validity
+  message: Functional location category IFLOT.FLTYP must exist in the system's categories (T370F)
+  why_it_matters: >-
+    The functional location category controls views, history and change documents of the location.
+    An undefined category cannot be processed and points to a migration mapping gap.
+  rule_authority: sap_hard_constraint
+  sap_impact: IL02/IL03 fail for the location; orders and notifications cannot be created on it.
+  fix_map:
+    __other__: Functional location category '{invalid_value}' is not defined. Define it in customizing or
+      correct the location's category.
+  record_fix_template: 'Functional location {IFLOT.TPLNR}: category ''{actual_value}'' is not defined in T370F.'
+
+- id: PM055
+  field: ILOA.ABCKZ
+  check_class: referential_check
+  grain: ILOA
+  severity: medium
+  dimension: validity
+  message: ABC indicator ILOA.ABCKZ must exist in the system's ABC indicators (T370C)
+  why_it_matters: >-
+    The ABC indicator ranks technical objects by criticality and drives order priorities, maintenance
+    strategies and reporting. An undefined indicator ranks the object nowhere.
+  rule_authority: sap_hard_constraint
+  sap_impact: Criticality-based scheduling and reporting by ABC indicator omit the object.
+  fix_map:
+    __other__: ABC indicator '{invalid_value}' is not defined. Define it in customizing (Maintain ABC
+      indicator) or assign a valid indicator on the Organisation tab (IE02 / IL02).
+  record_fix_template: 'Location data {ILOA.ILOAN} (functional location {ILOA.TPLNR}): ABC indicator
+    ''{actual_value}'' is not defined in T370C.'

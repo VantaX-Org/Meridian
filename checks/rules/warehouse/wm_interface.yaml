@@ -163,5 +163,188 @@ rules:
       Material WM assignment for warehouse {MLGN.LGNUM}: LTKZE '{actual_value}' is
       not valid. Correct via MM02 > WM1 view (ECC).
 
+  # ── Breadth: fixed-bin quantities, units, WM configuration references ──
 
+  - id: WMI012
+    field: MLGT.LPMIN
+    check_class: cross_field_check
+    fail_when: '`MLGT.LPMIN` > `MLGT.LPMAX`'
+    applies_when:
+      MLGT.LPMAX: {gt: 0}
+    severity: high
+    dimension: consistency
+    message: Minimum fixed-bin quantity is greater than the maximum bin quantity
+    why_it_matters: Fixed-bin replenishment (LP21 / LP22) creates a transfer requirement when the bin stock falls below
+      the minimum (MLGT.LPMIN) and fills it up to the maximum (MLGT.LPMAX). A minimum above the maximum triggers
+      replenishment immediately after every refill, or a replenishment that cannot fit into the bin.
+    rule_authority: sap_hard_constraint
+    sap_impact: Endless or oversized replenishment transfer orders for the picking bin.
+    fix_map:
+      __other__: Correct minimum and maximum bin quantity in the material master (MM02 > Warehouse Management 2 >
+        storage type data).
+    record_fix_template: 'Material {MLGT.MATNR}, warehouse {MLGT.LGNUM}, storage type {MLGT.LGTYP}: minimum
+      {MLGT.LPMIN} > maximum {MLGT.LPMAX}.'
 
+  - id: WMI013
+    field: MLGN.LHME1
+    check_class: cross_field_check
+    fail_when: '(`MLGN.LHMG1` > 0) & `MLGN.LHME1`.isna()'
+    severity: high
+    dimension: consistency
+    message: Palletization quantity is maintained without its unit of measure
+    why_it_matters: The loading equipment quantity (MLGN.LHMG1) says how much of the material fits on one storage
+      unit; it is a quantity whose unit is MLGN.LHME1. Putaway splits goods receipts into storage units with it —
+      without the unit the split cannot be computed.
+    rule_authority: sap_hard_constraint
+    sap_impact: Goods receipts are not split into pallets; one oversized storage unit is proposed for putaway.
+    fix_map:
+      __other__: Maintain the unit for the loading equipment quantity (MM02 > Warehouse Management 2 > Palletization
+        data).
+    record_fix_template: 'Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: palletization quantity {MLGN.LHMG1} without
+      unit.'
+
+  - id: WMI014
+    field: MLGN.BEZME
+    check_class: cross_field_check
+    fail_when: '(`MLGN.MKAPV` > 0) & `MLGN.BEZME`.isna()'
+    severity: medium
+    dimension: consistency
+    message: Capacity usage is maintained without its unit of measure
+    why_it_matters: Capacity usage (MLGN.MKAPV) is the capacity one unit of the material consumes in a bin, per unit
+      MLGN.BEZME. Storage types with a material-dependent capacity check cannot compute bin capacity without that
+      unit.
+    rule_authority: sap_hard_constraint
+    sap_impact: Capacity check rejects or ignores the material at putaway.
+    fix_map:
+      __other__: Maintain the unit for the capacity usage (MM02 > Warehouse Management 1).
+    record_fix_template: 'Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: capacity usage {MLGN.MKAPV} without unit.'
+
+  - id: WMI015
+    field: MLGN.LTKZE
+    check_class: referential_check
+    reference_values: []
+    reference_table: T305
+    reference_field: LGTKZ
+    severity: high
+    dimension: consistency
+    message: Storage type indicator for putaway does not exist in the warehouse configuration (T305)
+    why_it_matters: The putaway storage type indicator selects the storage type search sequence (T334T). An indicator
+      that is not configured finds no search sequence, so the goods receipt cannot be put away automatically.
+    rule_authority: sap_hard_constraint
+    sap_impact: Putaway transfer orders fail with 'no storage type found'; goods stay in the GR interim area.
+    fix_map:
+      __other__: Indicator '{invalid_value}' is not in T305. Correct the material (MM02 > Warehouse Management 1) or
+        configure the indicator and its search sequence.
+    record_fix_template: 'Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: putaway indicator ''{actual_value}'' is not
+      in T305.'
+
+  - id: WMI016
+    field: MLGN.LTKZA
+    check_class: referential_check
+    reference_values: []
+    reference_table: T305
+    reference_field: LGTKZ
+    severity: high
+    dimension: consistency
+    message: Storage type indicator for stock removal does not exist in the warehouse configuration (T305)
+    why_it_matters: The stock removal storage type indicator selects where picking looks for stock (T334T). An
+      indicator that is not configured finds no search sequence, so deliveries and production supply cannot be picked.
+    rule_authority: sap_hard_constraint
+    sap_impact: Picking transfer orders fail with 'no stock found'; deliveries cannot be picked.
+    fix_map:
+      __other__: Indicator '{invalid_value}' is not in T305. Correct the material (MM02 > Warehouse Management 1) or
+        configure the indicator and its search sequence.
+    record_fix_template: 'Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: removal indicator ''{actual_value}'' is not in
+      T305.'
+
+  - id: WMI017
+    field: MLGN.LGBKZ
+    check_class: referential_check
+    reference_values: []
+    reference_table: T304
+    reference_field: LGBKZ
+    severity: medium
+    dimension: consistency
+    message: Storage section indicator does not exist in the warehouse configuration (T304)
+    why_it_matters: The storage section indicator selects the storage section search (T30A). An unconfigured indicator
+      finds no section, so putaway into section-controlled storage types fails.
+    rule_authority: sap_hard_constraint
+    sap_impact: Putaway into storage types with section check fails for this material.
+    fix_map:
+      __other__: Indicator '{invalid_value}' is not in T304. Correct the material (MM02 > Warehouse Management 1).
+    record_fix_template: 'Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: section indicator ''{actual_value}'' is not in
+      T304.'
+
+  - id: WMI018
+    field: MLGN.LETY1
+    check_class: referential_check
+    reference_values: []
+    reference_table: T307
+    reference_field: LETYP
+    severity: medium
+    dimension: consistency
+    message: Storage unit type in the palletization data does not exist in the configuration (T307)
+    why_it_matters: The first storage unit type of the palletization data is proposed for every goods-receipt storage
+      unit. An unconfigured type cannot be matched to bin types, so putaway into SU-managed storage types fails.
+    rule_authority: sap_hard_constraint
+    sap_impact: Putaway into SU-managed storage types fails the bin-type check.
+    fix_map:
+      __other__: Storage unit type '{invalid_value}' is not in T307. Correct the palletization data (MM02 >
+        Warehouse Management 2).
+    record_fix_template: 'Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: storage unit type ''{actual_value}'' is not in
+      T307.'
+
+  - id: WMI019
+    field: MLGT.LGTYP
+    check_class: referential_check
+    reference_values: []
+    reference_table: T301
+    reference_field: LGTYP
+    severity: high
+    dimension: consistency
+    message: Storage type of the material's storage type data does not exist in the configuration (T301)
+    why_it_matters: Storage-type data of a material (fixed bin, minimum/maximum, replenishment) is only read for
+      configured storage types. Data for an unconfigured storage type is dead — the fixed bin is never replenished.
+    rule_authority: sap_hard_constraint
+    sap_impact: Fixed-bin picking and replenishment do not work for this material.
+    fix_map:
+      __other__: Storage type '{invalid_value}' is not in T301. Delete the storage type data or correct the storage type
+        (MM02 > Warehouse Management 2).
+    record_fix_template: 'Material {MLGT.MATNR}, warehouse {MLGT.LGNUM}: storage type ''{actual_value}'' is not in T301.'
+
+  - id: WMI020
+    field: MLGN.LGNUM
+    check_class: referential_check
+    reference_values: []
+    reference_table: T300
+    reference_field: LGNUM
+    severity: critical
+    dimension: consistency
+    message: Warehouse number of the material's warehouse data does not exist in the configuration (T300)
+    why_it_matters: Warehouse management data (MLGN) is read for the warehouse number assigned to the plant/storage
+      location (T320). Data under a warehouse number that is not configured is never used — the material has no
+      usable WM data and every putaway falls back to defaults or fails.
+    rule_authority: sap_hard_constraint
+    sap_impact: Putaway and picking ignore the material's WM data; storage type search fails.
+    fix_map:
+      __other__: Warehouse '{invalid_value}' is not in T300. Extend the material to the correct warehouse (MM01 >
+        Warehouse Management views) and delete the stray data.
+    record_fix_template: 'Material {MLGN.MATNR}: warehouse number ''{actual_value}'' is not in T300.'
+
+  - id: WMI021
+    field: MARD.LGORT
+    check_class: referential_check
+    reference_values: []
+    reference_table: T001L
+    reference_field: LGORT
+    severity: high
+    dimension: consistency
+    message: Storage location of the material does not exist in the configuration (T001L)
+    why_it_matters: Storage locations link IM stock to a warehouse number (T320). Stock in a storage location that is
+      not configured cannot be moved in IM and is not linked to WM.
+    rule_authority: sap_hard_constraint
+    sap_impact: Goods movements to and from the storage location fail; the WM interface cannot be determined.
+    fix_map:
+      __other__: Storage location '{invalid_value}' is not in T001L. Configure it (OX09) or move the stock and delete the
+        storage location data.
+    record_fix_template: 'Material {MARD.MATNR}, plant {MARD.WERKS}: storage location ''{actual_value}'' is not in T001L.'

@@ -65,11 +65,13 @@ def load_dataset(path: str, dictionary: Dictionary, modules: Optional[list[str]]
         # table's DDIC key (needed to split the flat frame at its grain).
         try:
             from checks.runner import get_required_columns
+            from checks.country_rules import fields_for as country_fields
             from checks.value_placement import fields_for
             for mod in modules:
                 needed |= get_required_columns(mod)
             needed |= set(extra or ())
-            needed |= {f"{t}.{f}" for t in tables_of(needed) for f in fields_for(t, dictionary)}
+            needed |= {f"{t}.{f}" for t in tables_of(needed)
+                       for f in fields_for(t, dictionary) | country_fields(t, dictionary)}
             needed |= {f"{t}.{k}" for t in tables_of(needed) for k in dictionary.keys(t)}
         except FileNotFoundError:
             needed = set()

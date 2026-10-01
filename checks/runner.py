@@ -20,6 +20,9 @@ from checks.types.field_status_check import FieldStatusCheck
 from checks.types.uniqueness_check import UniquenessCheck
 from checks.types.value_placement_check import ValuePlacementCheck
 from checks.types.balance_check import BalanceCheck
+from checks.types.country_format_check import CountryFormatCheck
+from checks.types.aggregate_check import AggregateCheck
+from checks.types.interval_check import IntervalCheck
 
 logger = logging.getLogger("meridian.checks")
 
@@ -79,7 +82,13 @@ REGISTRY: dict[str, type[BaseCheck]] = {
     "uniqueness_check": UniquenessCheck,
     "value_placement_check": ValuePlacementCheck,
     "balance_check": BalanceCheck,
+    "country_format_check": CountryFormatCheck,
+    "aggregate_check": AggregateCheck,
+    "interval_check": IntervalCheck,
 }
+
+# check types judging a group of rows together: only sound on a complete extract
+_WHOLE_GROUP = {"balance_check", "aggregate_check", "interval_check"}
 
 RULES_DIR = Path(__file__).parent / "rules"
 CATEGORIES = ["ecc", "successfactors", "warehouse"]
@@ -142,8 +151,9 @@ def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[st
     """Evaluate one rule at its grain: (rule as evaluated, result or None when not applicable)."""
     check_cls = REGISTRY[rule["check_class"]]
     partial = sorted(set(tables_of(rule_columns(rule))) & getattr(frames, "incomplete", set()))
-    if rule.get("check_class") == "balance_check" and partial:
-        # a document missing lines in the extract is not an unbalanced ledger document
+    if rule.get("check_class") in _WHOLE_GROUP and partial:
+        # a group missing rows in the extract (document lines, PO history, validity
+        # periods) is not an unbalanced / unmatched / interrupted group
         return rule, check_cls(rule)._error(frames.flat if frames.flat is not None else pd.DataFrame(),
                                             f"not evaluated: extraction of {', '.join(partial)} is incomplete")
     if rule.get("check_class") in ("referential_check", "domain_value_check"):

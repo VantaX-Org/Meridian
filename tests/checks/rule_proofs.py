@@ -99,7 +99,8 @@ def _kind(dictionary, col: str) -> str:
 
 _PLACEMENT_SAMPLES = {"misplaced": ["ap@example.co.za", "www.acme.com", "0115551234", "GB82WEST12345698765432", "Acme"], "placeholder": ["N/A", "Acme"],
                       "swap": ["2196", "JOHANNESBURG"], "status_text": ["DO NOT USE", "Acme"],
-                      "date_range": ["20991231", "20200101"], "change_before_create": ["20200101", "20210101"]}
+                      "date_range": ["20991231", "20200101"], "change_before_create": ["20200101", "20210101"],
+                      "vat_checksum": ["DE136695977", "DE136695976"]}
 _FORMAT_SAMPLES = {"gtin": "4006381333931", "ean": "4006381333931", "iban": "GB82WEST12345698765432",
                    "luhn": "4539148803436467", "email": "ap@example.co.za", "date": TODAY}
 
@@ -124,6 +125,8 @@ def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
             continue  # a cross-field rule's anchor: keep the record id
         if rule.get("check_class") == "value_placement_check" and c in (rule.get("fields") or [rule["field"]]):
             vals += _PLACEMENT_SAMPLES[rule["family"]]
+        if c == rule.get("split_field"):
+            vals += [str(v) for v in rule["left_values"][:1] + rule["right_values"][:1]]
         if c == rule.get("field"):
             vals += [str(v) for v in (rule.get("allowed_values") or [])][:4]
             vals += [str(v) for v in (rule.get("reference_values") or [])][:4]
@@ -223,6 +226,13 @@ def prove(rule: dict, dictionary) -> tuple[str, str]:
             a[other], b[other] = "D1", "D2"
         rows = [{**{c: dup[c] if c in aw else f"U{c[-3:]}" for c in cols}, **({other: "D3"} if other else {})}, a, b]
         return _verify(rule, dictionary, rows, (3, 2), live)
+    if rule.get("check_class") == "interval_check":
+        # one group: two adjoining periods, then a third starting inside the first
+        g = {c: "G1" for c in rule["group_by"]}
+        s, e = rule["start"], rule["end"]
+        rows = [{**g, s: "20200101", e: "20201231"}, {**g, s: "20210101", e: "99991231"},
+                {**g, s: "20200601", e: "20200630"}]
+        return _verify(rule, dictionary, rows, (3, 1), live)
     combos = itertools.product(*(cand[c] for c in cols))
     values = [dict(zip(cols, combo)) for combo in itertools.islice(combos, MAX_ROWS)]
     df = _rows(rule, dictionary, values)
@@ -235,7 +245,9 @@ def prove(rule: dict, dictionary) -> tuple[str, str]:
     failing = _failing_rows(result, df, dictionary)
     if not failing:
         return "never_fails", f"no candidate record fails ({len(values)} tried)"
-    blanks = lambda i: sum(1 for x in values[i].values() if x == "")  # noqa: E731 — populated records first
+    must_blank = {c for c, a in (rule.get("applies_when") or {}).items() if isinstance(a, dict) and a.get("blank")}
+    # populated records first (a blank the rule's scope requires does not count)
+    blanks = lambda i: sum(1 for c, x in values[i].items() if x == "" and c not in must_blank)  # noqa: E731
     passing = sorted((i for i in range(len(values)) if i not in failing), key=blanks)
     bad = sorted(failing, key=blanks)
     for tries, p in enumerate(passing[:600]):

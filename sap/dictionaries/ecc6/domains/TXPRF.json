@@ -1,0 +1,27 @@
+{
+ "domain": "TXPRF",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Commercial"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Round up"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Round down"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

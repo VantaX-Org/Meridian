@@ -641,3 +641,216 @@ rules:
     __other__: Reject the item (VA02, reason for rejection) or substitute the successor material; remove the deletion flag
       (MM06) if the material is still sold.
   record_fix_template: 'Sales order {VBAP.VBELN} item {VBAP.POSNR}: material {VBAP.MATNR} is flagged for deletion.'
+
+# ── Item ↔ header consistency ──────────────────────────────────────────────
+- id: SDSO036
+  field: VBAP.WAERK
+  check_class: cross_field_check
+  grain: VBAP
+  fail_when: (`VBAP.WAERK` != `VBAK.WAERK`)
+  severity: high
+  dimension: consistency
+  message: Item currency differs from the sales document currency
+  why_it_matters: >-
+    A sales document has one document currency; SAP copies it into every item. An item in another
+    currency was changed or loaded outside the order logic, so its net value is added into the order
+    value, credit exposure and billing in the wrong currency.
+  rule_authority: sap_hard_constraint
+  sap_impact: Order value (VBAK.NETWR), credit exposure (FD32 / UKM) and the billing document add amounts
+    in different currencies; revenue is misstated.
+  fix_map:
+    __other__: Display the order in VA03; if the item currency is wrong in the system, reject the item and
+      re-enter it (VA02), or recreate the order. Re-extract if VA03 shows one currency.
+  record_fix_template: 'Sales order {VBAP.VBELN} item {VBAP.POSNR}: item currency {VBAP.WAERK}, document currency
+    {VBAK.WAERK}.'
+
+- id: SDSO037
+  field: VBAP.GBSTA
+  check_class: cross_field_check
+  grain: VBAP
+  fail_when: (`VBAK.GBSTK` == 'C') & ((`VBAP.GBSTA` == 'A') | (`VBAP.GBSTA` == 'B'))
+  severity: high
+  dimension: consistency
+  message: Sales order is completed at header level, but this item is still open
+  why_it_matters: >-
+    The header's overall processing status is derived from its items: the order is only completed
+    when every item is completed or rejected. A completed header over an open item is a broken status
+    update — the open item is invisible to every list that selects open orders by header status.
+  rule_authority: sap_hard_constraint
+  sap_impact: Backlog and delivery due lists (VA05, VL10) skip the open item; the item is never
+    delivered or billed, or is delivered without anyone tracking it.
+  fix_map:
+    __other__: Recalculate the document status with report SDVBUK00, then deliver or reject the item (VA02).
+  record_fix_template: 'Sales order {VBAP.VBELN} item {VBAP.POSNR}: item status ''{actual_value}'' under a completed
+    header.'
+
+- id: SDSO038
+  field: VBAP.ERDAT
+  check_class: cross_field_check
+  grain: VBAP
+  fail_when: (`VBAP.ERDAT` < `VBAK.ERDAT`)
+  severity: low
+  dimension: consistency
+  message: Order item was created before its sales order
+  why_it_matters: >-
+    An item is created with or after its document; its creation date can never precede the header's.
+    An earlier date means one of them was loaded or changed wrongly, and order-intake and cycle-time
+    reporting by item date is distorted.
+  rule_authority: sap_hard_constraint
+  sap_impact: Order intake per period and order-to-delivery lead times are misreported.
+  fix_map:
+    __other__: Correct the creation dates in the migration source and reload, or document the gap; the
+      dates cannot be changed in VA02.
+  record_fix_template: 'Sales order {VBAP.VBELN} item {VBAP.POSNR}: item created {VBAP.ERDAT}, order created
+    {VBAK.ERDAT}.'
+
+# ── Header validity periods ───────────────────────────────────────────────
+- id: SDSO039
+  field: VBAK.BNDDT
+  check_class: cross_field_check
+  fail_when: (`VBAK.BNDDT` < `VBAK.ANGDT`)
+  severity: medium
+  dimension: consistency
+  message: Quotation / inquiry is valid to a date before it is valid from
+  why_it_matters: >-
+    A quotation is binding from its valid-from date to its valid-to date. A valid-to date before the
+    valid-from date covers no day: the quotation can never be referenced by an order, yet it stays
+    open in the quotation lists.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orders with reference to the quotation fail; quotation follow-up (VA25) and the
+    quotation success rate are wrong.
+  fix_map:
+    __other__: Correct the validity period in VA22 (header > Sales tab), or reject the quotation if it
+      has expired.
+  record_fix_template: 'Quotation {VBAK.VBELN}: valid from {VBAK.ANGDT} to {VBAK.BNDDT}.'
+
+- id: SDSO040
+  field: VBAK.GUEEN
+  check_class: cross_field_check
+  fail_when: (`VBAK.GUEEN` < `VBAK.GUEBG`)
+  severity: medium
+  dimension: consistency
+  message: Contract / scheduling agreement is valid to a date before it is valid from
+  why_it_matters: >-
+    Release orders and billing plans of an outline agreement are only possible within its validity
+    period. An end date before the start date gives the agreement no validity at all.
+  rule_authority: sap_hard_constraint
+  sap_impact: Release orders against the contract are rejected; periodic billing plans and contract
+    renewal lists (VA45) are wrong.
+  fix_map:
+    __other__: Correct the contract validity in VA42 (header > Contract data tab).
+  record_fix_template: 'Contract {VBAK.VBELN}: valid from {VBAK.GUEBG} to {VBAK.GUEEN}.'
+
+# ── Item quantities, units and weights ─────────────────────────────────────
+- id: SDSO041
+  field: VBAP.UMVKZ
+  check_class: cross_field_check
+  fail_when: >-
+    ((`VBAP.VRKME` == `VBAP.MEINS`) & (`VBAP.UMVKZ` != `VBAP.UMVKN`))
+    | (`VBAP.UMVKZ` <= 0) | (`VBAP.UMVKN` <= 0)
+  applies_when:
+    VBAP.MATNR:
+      populated: true
+  severity: high
+  dimension: accuracy
+  message: Conversion between sales unit and base unit is zero or contradicts identical units
+  why_it_matters: >-
+    The order quantity is converted into the base unit with the item's numerator/denominator
+    (UMVKZ/UMVKN) for availability check, delivery and goods issue. A zero factor turns every quantity
+    into zero or a division error; when sales and base unit are the same, the factor must be 1.
+  rule_authority: sap_hard_constraint
+  sap_impact: ATP, delivery quantities and goods issue (VL02N) post wrong stock quantities.
+  fix_map:
+    __other__: Check the alternative units of measure of the material (MM02 > Units of measure); re-enter
+      the item (VA02) so the conversion is redetermined.
+  record_fix_template: 'Sales order {VBAP.VBELN} item {VBAP.POSNR}: {VBAP.VRKME} → {VBAP.MEINS} converted
+    {VBAP.UMVKZ}/{VBAP.UMVKN}.'
+
+- id: SDSO042
+  field: VBAP.MEINS
+  check_class: cross_field_check
+  grain: VBAP
+  fail_when: (`VBAP.MEINS` != `MARA.MEINS`)
+  applies_when:
+    VBAP.GBSTA:
+      not_in: [C]
+    VBAP.MATNR:
+      populated: true
+  severity: medium
+  dimension: consistency
+  message: Open order item has a base unit that differs from the material's base unit
+  why_it_matters: >-
+    Delivery, picking and goods issue convert quantities into the material's base unit. An open item
+    whose base unit no longer matches the material master (base unit changed while orders were open,
+    or a migration mismatch) converts the order quantity with the wrong factor.
+  rule_authority: sap_hard_constraint
+  sap_impact: Deliveries and goods issues post the wrong stock quantity; availability check confirms
+    quantities in the wrong unit.
+  fix_map:
+    __other__: Reject the item and re-enter it (VA02) so the material's current base unit is used, or
+      correct the material's base unit (MM02) if it was changed in error.
+  record_fix_template: 'Sales order {VBAP.VBELN} item {VBAP.POSNR}: base unit {VBAP.MEINS}, material
+    {VBAP.MATNR} has {MARA.MEINS}.'
+
+- id: SDSO043
+  field: VBAP.NTGEW
+  check_class: cross_field_check
+  fail_when: (`VBAP.NTGEW` > `VBAP.BRGEW`)
+  severity: medium
+  dimension: accuracy
+  message: Item net weight is greater than its gross weight
+  why_it_matters: >-
+    Gross weight includes packaging, so it can never be below the net weight; SAP rejects it in the
+    material master and derives item weights from it. A higher net weight comes from a manual
+    override or a migration error.
+  rule_authority: sap_hard_constraint
+  sap_impact: Shipment weights, freight cost calculation and export declarations use wrong weights.
+  fix_map:
+    __other__: Correct the weights on the item (VA02 > Item > Shipping) or in the material master (MM02 >
+      Basic data) and redetermine the item weights.
+  record_fix_template: 'Sales order {VBAP.VBELN} item {VBAP.POSNR}: net weight {VBAP.NTGEW} > gross weight
+    {VBAP.BRGEW}.'
+
+- id: SDSO044
+  field: VBAP.GEWEI
+  check_class: cross_field_check
+  fail_when: ((`VBAP.BRGEW` > 0) & `VBAP.GEWEI`.isna()) | ((`VBAP.VOLUM` > 0) & `VBAP.VOLEH`.isna())
+  severity: medium
+  dimension: consistency
+  message: Item weight or volume has no unit
+  why_it_matters: >-
+    A weight or volume without its unit cannot be totalled — 12 could be kilograms or tonnes. SAP
+    always stores the unit with the value; a missing unit comes from an interface or a migration.
+  rule_authority: sap_hard_constraint
+  sap_impact: Delivery and shipment totals, freight costs and load planning use undefined units.
+  fix_map:
+    __other__: Redetermine the weights and volume on the item (VA02 > Item > Shipping) from the material
+      master, which must carry the weight and volume units (MM02 > Basic data).
+  record_fix_template: 'Sales order {VBAP.VBELN} item {VBAP.POSNR}: weight {VBAP.BRGEW} {VBAP.GEWEI}, volume
+    {VBAP.VOLUM} {VBAP.VOLEH}.'
+
+# ── Cross-object: open orders on blocked masters ──────────────────────────
+- id: SDSO045
+  field: VBAK.KUNNR
+  check_class: cross_field_check
+  grain: VBAK
+  fail_when: (`KNA1.SPERR` == 'X')
+  applies_when:
+    VBAK.GBSTK:
+      not_in: [C]
+    KNA1.LOEVM:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Open sales order for a customer blocked for posting
+  why_it_matters: >-
+    A central posting block on the customer stops every accounting document for the account. The open
+    order still delivers, but its billing document cannot be released to accounting — revenue and the
+    receivable are never posted. (Customers also flagged for deletion are reported by XO2C001.)
+  rule_authority: sap_hard_constraint
+  sap_impact: Billing documents stay blocked for accounting (VFX3 shows the posting block error);
+    revenue and receivables are understated while goods have left.
+  fix_map:
+    __other__: Review the order with the owner of the block; set a delivery block on the order (VA02) or
+      lift the posting block (XD05 / BP in S/4HANA) if the customer is still active.
+  record_fix_template: 'Sales order {VBAK.VBELN}: sold-to {VBAK.KUNNR} is blocked for posting.'

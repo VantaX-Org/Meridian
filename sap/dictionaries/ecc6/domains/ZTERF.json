@@ -1,0 +1,42 @@
+{
+ "domain": "ZTERF",
+ "type": "NUMC",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": "T555U",
+ "fixed_values": [
+  {
+   "low": "0",
+   "high": null,
+   "text": "No time evaluation"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "1st time evaluation"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "PDC time evaluation"
+  },
+  {
+   "low": "7",
+   "high": null,
+   "text": "Time evaluation without payroll integration"
+  },
+  {
+   "low": "8",
+   "high": null,
+   "text": "External services"
+  },
+  {
+   "low": "9",
+   "high": null,
+   "text": "Time evaluation of planned times"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

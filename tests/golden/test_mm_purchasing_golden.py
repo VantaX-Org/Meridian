@@ -19,6 +19,11 @@ One seeded defect each:
   4500012013  open item on a vendor blocked for purchasing         XP2P005 cross-object (EKPO → LFA1)
   4500012015  open item on a material deleted at its plant         XP2P006 cross-object (EKPO → MARC)
   vendor 0000100050  phone 0000000000                              PH-LFA1-TELF1 generated (placeholder)
+  4500012016  GR-based invoice verification without goods receipt  PUR057  indicator combination
+  4600000202  contract valid to a date before it is valid from      PUR048  date range
+  4500012017  open item, vendor blocked in purchasing org (LFM1)    PUR063  cross-object (EKPO → LFM1)
+  info record 5300000003 / 1000  price unit 0                       PUR080  cross-field (EINE)
+  source list 300010 / 1000 / 00002  valid to before valid from     PUR084  date range (EORD)
 Population:
   4500011990  PO flagged for deletion (LOEKZ L) — and incomplete: excluded, counted
 """
@@ -58,11 +63,12 @@ def _ekko(ebeln, bsart, lifnr, waers, zterm, bedat, bstyp="F", inco1="FCA", inco
 
 
 def _ekpo(ebeln, ebelp, txz01, matnr, werks, matkl, menge, meins, netpr, netwr, pstyp="0", knttp="",
-          elikz="", erekz="", wepos="X", repos="X", loekz="", ktmng="0.000") -> dict:
+          elikz="", erekz="", wepos="X", repos="X", loekz="", ktmng="0.000", webre="") -> dict:
     return {"EBELN": ebeln, "EBELP": ebelp, "LOEKZ": loekz, "TXZ01": txz01, "MATNR": matnr, "WERKS": werks,
             "LGORT": "0001" if werks and not knttp else "", "MATKL": matkl, "MENGE": menge, "MEINS": meins,
             "BPRME": meins, "NETPR": netpr, "PEINH": "1", "NETWR": netwr, "PSTYP": pstyp, "KNTTP": knttp,
-            "ELIKZ": elikz, "EREKZ": erekz, "WEPOS": wepos, "REPOS": repos, "KTMNG": ktmng}
+            "ELIKZ": elikz, "EREKZ": erekz, "WEPOS": wepos, "REPOS": repos, "KTMNG": ktmng, "WEBRE": webre,
+            "LMEIN": meins, "UMREZ": "1", "UMREN": "1", "BPUMZ": "1", "BPUMN": "1"}
 
 
 def _frames() -> TableFrames:
@@ -74,7 +80,7 @@ def _frames() -> TableFrames:
          "LOEVM": "", "SPERR": "", "SPERM": "", "KTOKK": "KRED", "ADRNR": "0000041001"},
         {"LIFNR": metals, "NAME1": "Rheintal Dichtungstechnik GmbH", "NAME2": "", "SORTL": "RHEINTAL",
          "STRAS": "Hafenstr. 21", "ORT01": "Mannheim", "PSTLZ": "68159", "LAND1": "DE", "TELF1": "+49 621 4390",
-         "TELFX": "+49 621 4391", "STCD1": "", "STCEG": "DE813456789", "LFURL": "", "ERDAT": "20170622",
+         "TELFX": "+49 621 4391", "STCD1": "", "STCEG": "DE136695976", "LFURL": "", "ERDAT": "20170622",
          "LOEVM": "", "SPERR": "", "SPERM": "", "KTOKK": "KRED", "ADRNR": "0000041002"},
         {"LIFNR": bearings, "NAME1": "Highveld Bearing Supplies (Pty) Ltd", "NAME2": "", "SORTL": "HIGHVELD",
          "STRAS": "7 Bessemer St", "ORT01": "Germiston", "PSTLZ": "1401", "LAND1": "ZA", "TELF1": "0118251200",
@@ -102,6 +108,7 @@ def _frames() -> TableFrames:
                               (castings, "20190114", "ZAR", "0001", "Vereeniging"),
                               (umgeni, "20210301", "ZAR", "0001", "Durban")]
     ])
+    lfm1.loc[lfm1["LFM1.LIFNR"] == umgeni, "LFM1.SPERM"] = "X"
     bar, seal, bearing, pump, plate = _m(300010), _m(400200), _m(500075), _m(100100), _m(300040)
     mara = _table("MARA", [
         {"MATNR": m, "MTART": t, "MATKL": g, "MEINS": u, "ERSDA": "20190312", "LAEDA": "20240611", "LVORM": "",
@@ -136,6 +143,10 @@ def _frames() -> TableFrames:
         _ekko("4500012012", "NB", bearings, "ZAR", "0001", recent, inco2="Germiston"),
         _ekko("4500012013", "NB", castings, "ZAR", "0001", older, inco2="Vereeniging"),
         _ekko("4500012015", "NB", steel, "ZAR", "0001", older),
+        _ekko("4500012016", "NB", steel, "ZAR", "0001", recent),
+        _ekko("4600000202", "MK", bearings, "ZAR", "0001", _ago(30), bstyp="K", inco2="Germiston",
+              kdatb=_ago(30), kdate=_ago(60)),
+        _ekko("4500012017", "NB", umgeni, "ZAR", "0001", recent, inco2="Durban"),
         # flagged for deletion — and incomplete (no purchasing group): out of the population
         _ekko("4500011990", "NB", steel, "ZAR", "0001", older, ekgrp="", loekz="L"),
     ])
@@ -168,11 +179,44 @@ def _frames() -> TableFrames:
               "2150.00", "25800.00", knttp="F"),
         _ekpo("4500012015", "00010", "Plate 316L 12mm", plate, "1000", "STEEL", "800.000", "KG", "71.20",
               "56960.00"),
+        _ekpo("4500012016", "00010", "Round bar 316L 50mm", bar, "1000", "STEEL", "400.000", "KG", "62.50",
+              "25000.00", wepos="", webre="X"),  # GR-based IV without goods receipt
+        _ekpo("4600000202", "00010", "Deep groove ball bearing 6205-2RSH", bearing, "", "BEARINGS", "0.000",
+              "ST", "81.50", "81500.00", ktmng="1000.000"),  # contract valid to before valid from
+        _ekpo("4500012017", "00010", "Mechanical seal kit MG1 35mm", seal, "1000", "SEALS", "20.000", "ST",
+              "69.00", "1380.00"),  # open, vendor blocked in purchasing org 1000
         _ekpo("4500011990", "00010", "Round bar 316L 50mm", bar, "1000", "", "300.000", "KG", "62.50",
               "18750.00", loekz="L"),
     ])
+    # purchasing info records: 5300000003 / 1000 has price unit 0 (defect)
+    eina = _table("EINA", [
+        {"INFNR": i, "MATNR": m, "MATKL": g, "LIFNR": v, "LOEKZ": "", "ERDAT": "20200115", "ERNAM": "BUY_TMOKOENA",
+         "TXZ01": "", "MEINS": u, "LMEIN": u, "UMREZ": "1", "UMREN": "1", "IDNLF": idn, "LIFAB": "", "LIFBI": ""}
+        for i, m, g, v, u, idn in [("5300000001", bar, "STEEL", steel, "KG", "SM-316L-50"),
+                                   ("5300000002", seal, "SEALS", metals, "ST", "MG1-35-G60"),
+                                   ("5300000003", bearing, "BEARINGS", bearings, "ST", "6205-2RSH-C3")]
+    ])
+    eine = _table("EINE", [
+        {"INFNR": i, "EKORG": "1000", "ESOKZ": "0", "WERKS": "", "LOEKZ": "", "ERDAT": "20200115",
+         "ERNAM": "BUY_TMOKOENA", "EKGRP": "001", "WAERS": w, "MINBM": "0.000", "NORBM": "1.000", "APLFZ": d,
+         "NETPR": p, "PEINH": pe, "BPRME": u, "BPUMZ": "1", "BPUMN": "1", "BSTMA": "0.000", "INCO1": "FCA",
+         "INCO2": c, "MWSKZ": "V1"}
+        for i, w, d, p, pe, u, c in [("5300000001", "ZAR", "21", "62.50", "1", "KG", "Johannesburg"),
+                                     ("5300000002", "EUR", "28", "68.50", "1", "ST", "Mannheim"),
+                                     ("5300000003", "ZAR", "10", "86.40", "0", "ST", "Germiston")]
+    ])
+    # source list: bar 1000 has a record valid to a date before it is valid from (defect)
+    eord = _table("EORD", [
+        {"MATNR": m, "WERKS": "1000", "ZEORD": z, "ERDAT": "20200115", "ERNAM": "BUY_TMOKOENA", "VDATU": f,
+         "BDATU": t, "LIFNR": v, "FLIFN": fx, "EBELN": a, "EBELP": ap, "FEBEL": "", "RESWK": "", "NOTKZ": "",
+         "EKORG": "1000", "AUTET": "1"}
+        for m, z, f, t, v, fx, a, ap in [(seal, "00001", "20200115", "99991231", metals, "X", "", "00000"),
+                                         (bar, "00001", "20200115", "99991231", steel, "", "5500000101", "00010"),
+                                         (bearing, "00001", "20200115", "99991231", bearings, "X", "", "00000"),
+                                         (bar, "00002", "20250101", "20241231", umgeni, "", "", "00000")]
+    ])
     return TableFrames({"EKKO": ekko, "EKPO": ekpo, "LFA1": lfa1, "LFM1": lfm1, "MARA": mara, "MAKT": makt,
-                        "MARC": marc}, D, module="mm_purchasing")
+                        "MARC": marc, "EINA": eina, "EINE": eine, "EORD": eord}, D, module="mm_purchasing")
 
 
 def _live_config(rules) -> dict[str, set[str]]:
@@ -203,6 +247,11 @@ def test_mm_purchasing_golden():
         "XP2P005": {"EBELN=4500012013|EBELP=00010"},             # open item, vendor blocked for purchasing
         "XP2P006": {"EBELN=4500012015|EBELP=00010"},             # open item, material deleted at plant 1000
         "PH-LFA1-TELF1": {"LIFNR=0000100050"},                   # 0000000000 as the phone number
+        "PUR057": {"EBELN=4500012016|EBELP=00010"},              # GR-based IV set, no goods receipt expected
+        "PUR048": {"EBELN=4600000202"},                          # contract valid to before valid from
+        "PUR063": {"EBELN=4500012017|EBELP=00010"},              # open item, vendor blocked in purchasing org
+        "PUR080": {"INFNR=5300000003|EKORG=1000|ESOKZ=0|WERKS="},  # info record price unit 0
+        "PUR084": {"MATNR=000000000000300010|WERKS=1000|ZEORD=00002"},  # source valid to before valid from
     }, found
     # 4500011990 is flagged for deletion: out of header and item rules, counted; item 4500012004/00020 is
     # deleted in a live PO

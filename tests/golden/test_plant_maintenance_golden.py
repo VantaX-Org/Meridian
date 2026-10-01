@@ -60,6 +60,12 @@ def _frames() -> TableFrames:
         "EQUI.BAUMM": ["11", "11", "05", "10", "11", "04", "12", "03", "09"],
         "EQUI.OBJNR": [f"IE{e}" for e in eq],
         "EQUI.LVORM": [""] * 9,
+        "EQUI.BRGEW": ["640.000", "640.000", "480.000", "480.000", "640.000", "1350.000", "210.000", "480.000",
+                       "1350.000"],
+        "EQUI.GEWEI": ["KG"] * 9,
+        # E4, the rotable spare motor, is serialised (material + serial number)
+        "EQUI.MATNR": ["", "", "", "000000000000200101", "", "", "", "", ""],
+        "EQUI.SERNR": ["", "", "", "M75-0001", "", "", "", "", ""],
     })
     eqkt = pd.DataFrame({  # E9 has no text row at all; E1 also has a German text (English wins)
         "EQKT.EQUNR": eq[:8] + [eq[0]],
@@ -120,6 +126,11 @@ def _frames() -> TableFrames:
         "IFLOT.ILOAN": fl_iloan,
         "IFLOT.OBJNR": [f"IF{i:020d}" for i in range(1, 10)],
         "IFLOT.LVORM": [""] * 9,
+        "IFLOT.DATAB": ["20180301"] * 8 + ["20240601"],
+        "IFLOT.BAUJJ": ["2016"] * 6 + ["2021", "2016", "2024"],  # FL7: boiler house "built" 3 years after start-up
+        "IFLOT.BAUMM": ["06"] * 9,
+        "IFLOT.ANSWT": ["0.00"] * 9, "IFLOT.WAERS": [""] * 9,
+        "IFLOT.BRGEW": ["0.000"] * 9, "IFLOT.GEWEI": [""] * 9,
     })
     iloa_fl = pd.DataFrame({
         "ILOA.ILOAN": fl_iloan,
@@ -162,6 +173,37 @@ def _frames() -> TableFrames:
         "CRHD.AEDAT_TERM": ["20220110", "20180105", "20180105", "20180105"],
         "CRHD.AEDAT_TECH": ["00000000"] * 4,
     })
+    # E10: sump pump with status INST whose installation location was lost in the migration (no
+    # functional location, no superior equipment) — otherwise complete
+    e10 = _eq(10)
+    equi = pd.concat([equi, pd.DataFrame([{
+        "EQUI.EQUNR": e10, "EQUI.ERDAT": "20240305", "EQUI.AEDAT": "00000000", "EQUI.EQTYP": "M",
+        "EQUI.EQART": "PUMP", "EQUI.INBDT": "20240401", "EQUI.ANSDT": "20240301", "EQUI.ANSWT": "64000.00",
+        "EQUI.WAERS": "ZAR", "EQUI.HERST": "Sulzer", "EQUI.HERLD": "CH", "EQUI.TYPBZ": "AHLSTAR A22",
+        "EQUI.SERGE": "SZ7781234", "EQUI.BAUJJ": "2023", "EQUI.BAUMM": "12", "EQUI.OBJNR": f"IE{e10}",
+        "EQUI.LVORM": "", "EQUI.BRGEW": "185.000", "EQUI.GEWEI": "KG", "EQUI.MATNR": "", "EQUI.SERNR": ""}])],
+        ignore_index=True)
+    eqkt = pd.concat([eqkt, pd.DataFrame([{"EQKT.EQUNR": e10, "EQKT.SPRAS": "E", "EQKT.EQKTX": "Sump pump P-601"}])],
+                     ignore_index=True)
+    equz = pd.concat([equz, pd.DataFrame([
+        {"EQUZ.EQUNR": e10, "EQUZ.DATBI": "99991231", "EQUZ.EQLFN": "001", "EQUZ.DATAB": "20240401",
+         "EQUZ.ERDAT": "20240305", "EQUZ.AEDAT": "00000000", "EQUZ.IWERK": "ZA01", "EQUZ.GEWRK": "10000045",
+         "EQUZ.TIDNR": "P-601", "EQUZ.ILOAN": _iloan(10), "EQUZ.HEQUI": ""},
+        # E3's first usage period was keyed in reversed: it ends (31 Aug) before it starts (1 Sep)
+        {"EQUZ.EQUNR": eq[2], "EQUZ.DATBI": "20190831", "EQUZ.EQLFN": "001", "EQUZ.DATAB": "20190901",
+         "EQUZ.ERDAT": "20190805", "EQUZ.AEDAT": "00000000", "EQUZ.IWERK": "ZA01", "EQUZ.GEWRK": "10000046",
+         "EQUZ.TIDNR": "M-201", "EQUZ.ILOAN": _iloan(91), "EQUZ.HEQUI": ""}])], ignore_index=True)
+    iloa_eq = pd.concat([iloa_eq, pd.DataFrame([{
+        "ILOA.ILOAN": _iloan(10), "ILOA.TPLNR": "", "ILOA.ABCKZ": "B", "ILOA.SWERK": "ZA01", "ILOA.KOKRS": "1000",
+        "ILOA.KOSTL": "0000410100", "ILOA.BUKRS": "1000", "ILOA.GSBER": "9900"}])], ignore_index=True)
+    jest = pd.concat([jest, pd.DataFrame([(f"IE{e10}", "I0099", "X"), (f"IE{e10}", "I0100", "")],
+                                         columns=jest.columns)], ignore_index=True)
+    # W5 duplicates the name of W1 in the same plant (created by a migration run)
+    crhd = pd.concat([crhd, pd.DataFrame([{
+        "CRHD.OBJTY": "A", "CRHD.OBJID": "10000049", "CRHD.ARBPL": "MECH-01", "CRHD.WERKS": "ZA01",
+        "CRHD.VERWE": "0005", "CRHD.BEGDA": "20180101", "CRHD.ENDDA": "99991231", "CRHD.LVORM": "",
+        "CRHD.AEDAT_GRND": "00000000", "CRHD.AEDAT_VORA": "00000000", "CRHD.AEDAT_TERM": "20180105",
+        "CRHD.AEDAT_TECH": "00000000"}])], ignore_index=True)
     iloa = pd.concat([iloa_eq, iloa_fl], ignore_index=True)
     return TableFrames({"EQUI": equi, "EQKT": eqkt, "EQUZ": equz, "ILOA": iloa, "IFLOT": iflot,
                         "IFLOTX": iflotx, "JEST": jest, "CRHD": crhd}, D, module=MODULE)
@@ -193,12 +235,16 @@ def test_plant_maintenance_golden():
         "DO-EQUI": {f"EQUNR={_eq(8)}"},                # changed before it was created
         "PM004": {f"EQUNR={_eq(9)}"},                  # no equipment description in any language read
         "PM009": {"TPLNR=ZA01-WSH"},                   # functional location without planning plant
+        "PM036": {f"EQUNR={_eq(3)}|DATBI=20190831|EQLFN=001"},   # usage period ends before it starts
+        "PM038": {"TPLNR=ZA01-UTL-BLR"},               # built 2021, started up 2018
+        "PM046": {f"EQUNR={_eq(10)}"},                 # status INST without installation location
+        "PM051": {"OBJTY=A|OBJID=10000045", "OBJTY=A|OBJID=10000049"},  # work centre MECH-01 twice in ZA01
     }, found
     # the retired work centre W4 (no plant any more) is flagged for deletion: out of the population, counted
     for rid in ("PM021", "PM022"):
         wc = next(r for r in results if r.check_id == rid)
         assert wc.details["population_excluded"] == {"deleted": 1}, rid
-        assert wc.total_count == 3, rid
+        assert wc.total_count == 4, rid
 
 
 def test_measuring_range_in_equipment_description_is_not_a_phone_number():

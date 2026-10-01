@@ -82,7 +82,7 @@ def _frames() -> TableFrames:
             D_DNU: "4930166651", D_DUP1: "4380154420", D_DUP2: "4380154420"}),
         "KNA1.STCD2": [""] * n, "KNA1.STCD3": [""] * n, "KNA1.STCD4": [""] * n,
         # DEL is the old duplicate of C2 (same VAT number) — flagged for deletion, so no duplicate finding
-        "KNA1.STCEG": _col({C2: "DE214365871", C3: "NL853746291B01", C4: "FR40552081317", DEL: "DE214365871"}),
+        "KNA1.STCEG": _col({C2: "DE136695976", C3: "NL853746291B01", C4: "FR40303265045", DEL: "DE136695976"}),
         "KNA1.TELF1": _col({
             C1: "0113921500", C2: "+49 711 8204 0", C3: "+31 30 241 5500", C4: "+33 4 72 10 35 00",
             C5: "0218871234", C6: "0823194470",
@@ -103,6 +103,7 @@ def _frames() -> TableFrames:
         "KNA1.CASSD": [""] * n,
         "KNA1.STKZN": _col({C6: "X"}),
         "KNA1.XCPDK": _col({OT: "X"}),
+        "KNA1.LIFNR": [""] * n, "KNA1.KNRZA": [""] * n,
     })
     kna1.loc[kna1["KNA1.KUNNR"] == OT, ["KNA1.STRAS", "KNA1.ORT01", "KNA1.PSTLZ", "KNA1.TELF1", "KNA1.STCD1"]] = ""
     kna1.loc[kna1["KNA1.KUNNR"] == DEL, "KNA1.TELF1"] = ""
@@ -115,7 +116,9 @@ def _frames() -> TableFrames:
         "KNB1.TLFNS": _col({C1: "011 392 1543", C2: "+49 711 8204 233"}),
         "KNB1.TLFXS": [""] * n,
         "KNB1.ERDAT": kna1["KNA1.ERDAT"].tolist(),
-        "KNB1.LOEVM": [""] * n,
+        "KNB1.LOEVM": [""] * n, "KNB1.SPERR": [""] * n, "KNB1.ZAHLS": [""] * n,
+        "KNB1.KNRZE": [""] * n, "KNB1.KNRZB": [""] * n,
+        "KNB1.XVERR": _col({D_TEL: "X"}),   # clearing with vendor, but no vendor linked
     })
     knb1.loc[knb1["KNB1.KUNNR"] == DEL, "KNB1.ZTERM"] = ""   # would fail AR021 if it were judged
     c5_2000 = knb1[knb1["KNB1.KUNNR"] == C5].assign(**{"KNB1.BUKRS": "2000", "KNB1.ERDAT": "20220301"})
@@ -130,6 +133,12 @@ def _frames() -> TableFrames:
         "KNKK.KUNNR": credit, "KNKK.KKBER": ["1000"] * len(credit),
         "KNKK.KLIMK": ["0.00" if k == OT else "250000.00" for k in credit],
         "KNKK.ERDAT": [kna1.set_index("KNA1.KUNNR").at[k, "KNA1.ERDAT"] for k in credit],
+        # D_DUNN has a credit limit but no risk category; the one-time account (zero limit) needs none
+        "KNKK.CTLPC": ["" if k in (D_DUNN, OT) else "001" for k in credit],
+        "KNKK.DTREV": ["20250310"] * len(credit),
+        # D_NAME2: next review planned before the last review took place
+        "KNKK.NXTRV": ["20250101" if k == D_NAME2 else "20260310" for k in credit],
+        "KNKK.CRBLB": [""] * len(credit),
     })
     emails = {C1: "accounts@protea-eng.co.za", C2: "rechnungseingang@brenner-maschinenbau.de",
               C3: "crediteuren@vandijk-installatie.nl", C4: "comptabilite@slr-robinetterie.fr",
@@ -149,16 +158,24 @@ def _frames() -> TableFrames:
     skb1 = pd.DataFrame({"SKB1.BUKRS": ["1000", "1000", "2000"],
                          "SKB1.SAKNR": ["0000140000", "0000113100", "0000140000"],
                          "SKB1.MITKZ": ["D", "", "D"], "SKB1.ERDAT": ["20050101", "20050101", "20210601"],
-                         "SKB1.XLOEB": ["", "", ""]})
-    return TableFrames({"KNA1": kna1, "KNB1": knb1, "KNB5": knb5, "KNKK": knkk, "ADR6": adr6, "SKB1": skb1}, D,
-                       module="accounts_receivable")
+                         "SKB1.XLOEB": ["", "", ""], "SKB1.XSPEB": ["", "X", ""]})
+    # bank details (direct debit): D_DNU has no bank key; DEL's incomplete details are out of the population
+    knbk = pd.DataFrame({
+        "KNBK.KUNNR": [C1, C2, D_DNU, DEL], "KNBK.BANKS": ["ZA", "DE", "ZA", "DE"],
+        "KNBK.BANKL": ["250655", "60050101", "", ""], "KNBK.BANKN": ["62012345678", "0532013000", "62087654321", ""],
+        "KNBK.KOVON": ["20170622", "20120514", "20170622", ""], "KNBK.KOBIS": ["99991231", "99991231", "99991231", ""],
+    })
+    return TableFrames({"KNA1": kna1, "KNB1": knb1, "KNB5": knb5, "KNKK": knkk, "ADR6": adr6, "SKB1": skb1,
+                        "KNBK": knbk}, D, module="accounts_receivable")
 
 
 def _live_config(rules) -> dict[str, set[str]]:
     """The system's own check tables, as discovery would read them."""
     values = {"KTOKD": {"0001", "0002", "0003", "0004", "CPD", "CPDA"},
               "AUFSD": {"01", "02", "03", "08", "10"}, "LIFSD": {"01", "02", "03", "08"},
-              "FAKSD": {"01", "02", "08"}}
+              "FAKSD": {"01", "02", "08"}, "BUKRS": {"1000", "2000"}, "ZTERM": {"0001", "Z030", "ZB30"},
+              "ZWELS": {"C", "E"}, "MAHNA": {"0001"}, "KKBER": {"1000"}, "CTLPC": {"001", "002", "003"},
+              "LAND1": {"ZA", "DE", "NL", "FR"}, "BANKS": {"ZA", "DE", "NL", "FR"}}
     out = {}
     for r in rules:
         if r.get("check_class") in ("referential_check", "domain_value_check") and r["field"].split(".")[1] in values:
@@ -187,6 +204,12 @@ def test_accounts_receivable_golden():
         "SW-KNA1-PSTLZ-ORT01": {f"KUNNR={D_SWAP}"},               # city in the postal code, code in the city
         "ST-KNA1": {f"KUNNR={D_DNU}"},                            # "DO NOT USE" in the name, nothing blocked
         "XDUP005": {f"KUNNR={D_DUP1}|BUKRS=1000", f"KUNNR={D_DUP2}|BUKRS=1000"},        # one legal entity created twice
+        "ND-KNA1": {f"KUNNR={D_DUP1}", f"KUNNR={D_DUP2}"},       # same name (legal form aside), postal code, country
+        "AR037": {f"KUNNR={D_TEL}|BUKRS=1000"},                   # clearing with vendor, no vendor linked
+        "AR041": {f"KUNNR={D_AKONT}|BUKRS=1000"},                 # 113100 is also blocked for posting
+        "AR045": {f"KUNNR={D_DUNN}"},                             # credit limit without risk category
+        "AR047": {f"KUNNR={D_NAME2}"},                            # next credit review before the last one
+        "AR049": {f"KUNNR={D_DNU}"},                              # bank details without a bank key
     }, found
     # DEL is flagged for deletion and OT is a one-time account: out of the population, counted
     name = next(r for r in results if r.check_id == "AR003")
@@ -197,5 +220,7 @@ def test_accounts_receivable_golden():
     assert mail.details["population_excluded"] == {"deleted": 1, "one_time_account": 1}
     vat = next(r for r in results if r.check_id == "XDUP004")   # DEL shares C2's VAT number
     assert vat.details["population_excluded"] == {"deleted": 1, "one_time_account": 1}
+    bank = next(r for r in results if r.check_id == "AR049")   # DEL's incomplete bank details are not judged
+    assert bank.details["population_excluded"] == {"deleted": 1}
     terms = next(r for r in results if r.check_id == "AR021")   # central deletion flag covers company code 1000
     assert terms.details["population_excluded"] == {"deleted": 1}

@@ -245,3 +245,23 @@ rules:
   fix_map: {__blank__: Merge duplicate candidates in Recruiting > Candidate Management > Merge Candidates. Preserve
       the record with the most complete application history.}
 
+- id: REC020
+  field: ONBOARDINGCANDIDATEINFO.HIRE_DATE
+  check_class: cross_field_check
+  fail_when: '`ONBOARDINGCANDIDATEINFO.HIRE_DATE` != `EMPEMPLOYMENT.START_DATE`'
+  require_populated: true
+  grain: ONBOARDINGCANDIDATEINFO
+  severity: medium
+  dimension: consistency
+  message: Onboarding hire date differs from the employee's employment start date
+  why_it_matters: Onboarding schedules day-one tasks, equipment, compliance forms and the new-hire welcome around the hire
+    date. When the hire date in Employee Central was moved after onboarding started and the onboarding process was not updated,
+    tasks fire on the wrong day and compliance forms (I-9, tax forms) carry the wrong start date.
+  rule_authority: best_practice
+  sap_impact: Onboarding and compliance tasks scheduled for the wrong day; statutory new-hire forms carry a start date that
+    differs from payroll.
+  fix_map:
+    __blank__: 'Align the dates: correct the hire date in Employment Details or update the onboarding process hire date
+      (Onboarding > Manage Pending Hires / Onboarding Dashboard).'
+  record_fix_template: 'New hire {ONBOARDINGCANDIDATEINFO.USERID}: onboarding hire date {ONBOARDINGCANDIDATEINFO.HIRE_DATE}
+    differs from employment start date {EMPEMPLOYMENT.START_DATE}.'

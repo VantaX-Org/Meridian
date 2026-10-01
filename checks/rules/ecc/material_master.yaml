@@ -1318,3 +1318,1022 @@ rules:
     __other__: Correct the base unit's conversion to 1/1 (MM02 > Additional data > Units of measure); if stock exists,
       check the impact with the controller first.
   record_fix_template: 'Material {MARM.MATNR}: base unit {MARM.MEINH} converts {MARM.UMREZ}/{MARM.UMREN} instead of 1/1.'
+# ── Rule-breadth extension (MM151+): valuation, stock, units, GTIN, MRP, domains, configuration ─────────
+- id: MM151
+  field: MBEW.PEINH
+  check_class: cross_field_check
+  require_populated: true
+  fail_when: '`MBEW.PEINH` <= 0'
+  severity: critical
+  dimension: consistency
+  message: Price unit of the valuation record is zero or negative
+  why_it_matters: 'Every valuation price (standard, moving average, future price) is stored per price unit: value = quantity
+    x price / PEINH. A price unit of 0 divides by zero; SAP''s MM01/MM02 never accept it, so it only enters through direct
+    loads or broken migrations.'
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods movements, revaluation and costing for the material at this valuation area dump or post nonsense values;
+    inventory value cannot be computed.
+  fix_map:
+    __other__: Set the price unit to 1 (or the unit the price is quoted per) in the Accounting 1 view via MM02 (ECC) or
+      Fiori F1602 Manage Product Master Data (S/4HANA). If stock exists, correct the price together with the unit through
+      MR21 so the stock value stays right.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: price unit is {actual_value}; it must be at least 1.'
+- id: MM152
+  field: MBEW.VERPR
+  check_class: cross_field_check
+  fail_when: (`MBEW.VPRSV` == 'V') & (`MBEW.LBKUM` > 0) & ~(`MBEW.VERPR` > 0)
+  severity: high
+  dimension: consistency
+  message: Moving-average-priced material holds valuated stock at a zero moving average price
+  why_it_matters: Under price control V the stock value is quantity x moving average price. Stock on hand at a zero price
+    is inventory with no value on the balance sheet, and every goods issue from it is posted at zero cost.
+  rule_authority: sap_hard_constraint
+  sap_impact: Inventory is understated; consumption and cost of goods sold for this material post at zero; product costs
+    built on the price are wrong.
+  fix_map:
+    __other__: Establish the correct price with the controller and revalue the stock via MR21 (price change); then check
+      why receipts posted at zero value (free-of-charge receipts, initial stock entry without a value).
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: {MBEW.LBKUM} units in stock at moving average price {actual_value}.'
+- id: MM153
+  field: MBEW.SALK3
+  check_class: cross_field_check
+  fail_when: (`MBEW.LBKUM` > 0) & (`MBEW.SALK3` < 0)
+  severity: critical
+  dimension: consistency
+  message: Valuated stock has a positive quantity but a negative value
+  why_it_matters: Stock value is quantity x price, and neither the standard nor the moving average price can be negative,
+    so a positive quantity can never carry a negative value. The record is out of balance with the stock account.
+  rule_authority: sap_hard_constraint
+  sap_impact: The material's stock account in FI disagrees with the physical stock; goods issues post negative consumption;
+    the moving average price derived from value / quantity is negative.
+  fix_map:
+    __other__: Analyse the valuation history (MB5L, CKM3N with the material ledger) with the controller and correct the
+      value via MR21 / MR22.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: {MBEW.LBKUM} in stock valued at {actual_value}.'
+- id: MM154
+  field: MBEW.ZKDAT
+  check_class: cross_field_check
+  fail_when: (`MBEW.ZKPRS` > 0) & `MBEW.ZKDAT`.isna()
+  severity: medium
+  dimension: consistency
+  message: Future standard price is set without the date from which it is valid
+  why_it_matters: The future price (ZKPRS) only becomes the standard price when MR21 / CK24 activates it on its valid-from
+    date (ZKDAT). MM02 does not accept a future price without that date.
+  rule_authority: sap_hard_constraint
+  sap_impact: The future price is never activated; standard price changes planned by costing are silently skipped.
+  fix_map:
+    __other__: Enter the valid-from date of the future price in Costing 2 via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA), or remove the future price.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: future price {MBEW.ZKPRS} has no valid-from date.'
+- id: MM155
+  field: MBEW.VPRSV
+  check_class: cross_field_check
+  fail_when: (`MBEW.VPRSV` != 'V')
+  applies_when:
+    MBEW.BWTTY:
+      populated: true
+    MBEW.BWTAR:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Split-valuated material is not under moving average price control at its valuation header
+  why_it_matters: With split valuation the stock of each valuation type is valued separately and the header record (no valuation
+    type) only totals them. SAP requires price control V on the header, because its price is the quantity-weighted average
+    of the valuation-type prices.
+  rule_authority: sap_hard_constraint
+  sap_impact: Totals at the valuation header do not reconcile with the valuation-type records; MM02 rejects further changes
+    to the accounting view.
+  fix_map:
+    __other__: Set price control V on the valuation header (MM02 > Accounting 1, no valuation type); keep S or V per valuation
+      type as required.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: split-valuated header has price control {actual_value}.'
+- id: MM156
+  field: MARD.LABST
+  check_class: cross_field_check
+  fail_when: (`MARD.LABST` < 0) & (`MARC.XMCNG`.isna() | (`MARC.XMCNG` != 'X'))
+  severity: high
+  dimension: consistency
+  message: Unrestricted-use stock is negative in a plant where negative stock is not allowed for the material
+  why_it_matters: SAP lets unrestricted-use stock go below zero only when negative stocks are allowed for the material in
+    the plant (MARC.XMCNG) and for the storage location. Without that flag a negative quantity cannot arise from a goods
+    movement; it points to a direct table load or an inconsistency between stock and documents.
+  rule_authority: sap_hard_constraint
+  sap_impact: Availability checks, MRP and physical inventory work from a quantity that cannot exist; valuation of the missing
+    quantity is undefined.
+  fix_map:
+    __other__: Reconcile the storage-location stock with its material documents (MB5B / MMBE); post the missing receipt
+      or correct the stock via inventory (MI01-MI07). Only allow negative stock (MRP view, plant) if the business genuinely
+      posts issues before receipts.
+  record_fix_template: 'Material {MARD.MATNR}, plant {MARD.WERKS}, storage location {MARD.LGORT}: unrestricted stock {actual_value}.'
+- id: MM157
+  field: MARD.INSME
+  check_class: cross_field_check
+  fail_when: (`MARD.INSME` < 0) | (`MARD.SPEME` < 0) | (`MARD.RETME` < 0) | (`MARD.EINME` < 0) | (`MARD.UMLME` < 0)
+  severity: high
+  dimension: consistency
+  message: Quality-inspection, blocked, returns, restricted or in-transfer stock is negative
+  why_it_matters: Negative stock is only ever possible for unrestricted-use stock. Quality-inspection, blocked, blocked
+    returns, restricted-use and stock in transfer can never fall below zero through a goods movement.
+  rule_authority: sap_hard_constraint
+  sap_impact: Stock overviews, usage decisions and transfer postings work from an impossible quantity; the storage location's
+    stock totals and valuation are wrong.
+  fix_map:
+    __other__: Reconcile the stock types with their material documents (MB5B, MB52) and correct them through physical inventory
+      or a transfer posting with the controller's agreement.
+  record_fix_template: 'Material {MARD.MATNR}, plant {MARD.WERKS}, storage location {MARD.LGORT}: negative stock in a non-unrestricted
+    stock type.'
+- id: MM158
+  field: MARD.LBSTF
+  check_class: cross_field_check
+  fail_when: ~(`MARD.LBSTF` > 0)
+  applies_when:
+    MARD.DISKZ:
+    - '1'
+  severity: medium
+  dimension: consistency
+  message: Storage location planned separately (storage-location MRP) has no replenishment quantity
+  why_it_matters: With storage-location MRP indicator 1 the location is planned by its own reorder point and replenished
+    by the fixed replenishment quantity. Without a quantity, MRP creates no (or zero) replenishment proposals.
+  rule_authority: sap_hard_constraint
+  sap_impact: The storage location runs out of stock without MRP ever proposing a stock transfer or purchase.
+  fix_map:
+    __other__: Maintain the replenishment quantity (and reorder point) for the storage location in MRP 4 via MM02 (ECC)
+      or Fiori F1602 Manage Product Master Data (S/4HANA), or remove indicator 1 if the location should be planned with
+      the plant.
+  record_fix_template: 'Material {MARD.MATNR}, plant {MARD.WERKS}, storage location {MARD.LGORT}: replenishment quantity
+    {actual_value}.'
+- id: MM159
+  field: MARA.GEWEI
+  check_class: cross_field_check
+  fail_when: ((`MARA.BRGEW` > 0) | (`MARA.NTGEW` > 0)) & `MARA.GEWEI`.isna()
+  severity: medium
+  dimension: completeness
+  message: The weight of the material is maintained without its unit
+  why_it_matters: A weight value is a quantity field whose meaning is defined by its unit field (MARA.GEWEI); SAP screens
+    refuse a quantity without a unit. Without it the number cannot be converted, so shipping, packing and freight calculations
+    cannot use it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Delivery and shipment weight totals, packing proposals, freight costing and dangerous-goods / foreign-trade
+    declarations ignore or mis-read the value.
+  fix_map:
+    __other__: Enter the unit for the weight (Basic data 1 / Additional data > Units of measure) via MM02 (ECC) or Fiori
+      F1602 Manage Product Master Data (S/4HANA).
+  record_fix_template: 'Material {MARA.MATNR}: weight maintained but unit MARA.GEWEI is blank.'
+- id: MM160
+  field: MARA.VOLEH
+  check_class: cross_field_check
+  fail_when: (`MARA.VOLUM` > 0) & `MARA.VOLEH`.isna()
+  severity: medium
+  dimension: completeness
+  message: The volume of the material is maintained without its unit
+  why_it_matters: A volume value is a quantity field whose meaning is defined by its unit field (MARA.VOLEH); SAP screens
+    refuse a quantity without a unit. Without it the number cannot be converted, so shipping, packing and freight calculations
+    cannot use it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Delivery and shipment volume totals, packing proposals, freight costing and dangerous-goods / foreign-trade
+    declarations ignore or mis-read the value.
+  fix_map:
+    __other__: Enter the unit for the volume (Basic data 1 / Additional data > Units of measure) via MM02 (ECC) or Fiori
+      F1602 Manage Product Master Data (S/4HANA).
+  record_fix_template: 'Material {MARA.MATNR}: volume maintained but unit MARA.VOLEH is blank.'
+- id: MM161
+  field: MARA.MEABM
+  check_class: cross_field_check
+  fail_when: ((`MARA.LAENG` > 0) | (`MARA.BREIT` > 0) | (`MARA.HOEHE` > 0)) & `MARA.MEABM`.isna()
+  severity: medium
+  dimension: completeness
+  message: The dimensions of the material is maintained without its unit
+  why_it_matters: A dimensions value is a quantity field whose meaning is defined by its unit field (MARA.MEABM); SAP screens
+    refuse a quantity without a unit. Without it the number cannot be converted, so shipping, packing and freight calculations
+    cannot use it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Delivery and shipment dimensions totals, packing proposals, freight costing and dangerous-goods / foreign-trade
+    declarations ignore or mis-read the value.
+  fix_map:
+    __other__: Enter the unit for the dimensions (Basic data 1 / Additional data > Units of measure) via MM02 (ECC) or Fiori
+      F1602 Manage Product Master Data (S/4HANA).
+  record_fix_template: 'Material {MARA.MATNR}: dimensions maintained but unit MARA.MEABM is blank.'
+- id: MM162
+  field: MARM.GEWEI
+  check_class: cross_field_check
+  fail_when: (`MARM.BRGEW` > 0) & `MARM.GEWEI`.isna()
+  severity: medium
+  dimension: completeness
+  message: The weight of the alternative unit of measure is maintained without its unit
+  why_it_matters: A weight value is a quantity field whose meaning is defined by its unit field (MARM.GEWEI); SAP screens
+    refuse a quantity without a unit. Without it the number cannot be converted, so shipping, packing and freight calculations
+    cannot use it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Delivery and shipment weight totals, packing proposals, freight costing and dangerous-goods / foreign-trade
+    declarations ignore or mis-read the value.
+  fix_map:
+    __other__: Enter the unit for the weight (Basic data 1 / Additional data > Units of measure) via MM02 (ECC) or Fiori
+      F1602 Manage Product Master Data (S/4HANA).
+  record_fix_template: 'Material {MARM.MATNR}, unit {MARM.MEINH}: weight maintained but unit MARM.GEWEI is blank.'
+- id: MM163
+  field: MARM.VOLEH
+  check_class: cross_field_check
+  fail_when: (`MARM.VOLUM` > 0) & `MARM.VOLEH`.isna()
+  severity: medium
+  dimension: completeness
+  message: The volume of the alternative unit of measure is maintained without its unit
+  why_it_matters: A volume value is a quantity field whose meaning is defined by its unit field (MARM.VOLEH); SAP screens
+    refuse a quantity without a unit. Without it the number cannot be converted, so shipping, packing and freight calculations
+    cannot use it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Delivery and shipment volume totals, packing proposals, freight costing and dangerous-goods / foreign-trade
+    declarations ignore or mis-read the value.
+  fix_map:
+    __other__: Enter the unit for the volume (Basic data 1 / Additional data > Units of measure) via MM02 (ECC) or Fiori
+      F1602 Manage Product Master Data (S/4HANA).
+  record_fix_template: 'Material {MARM.MATNR}, unit {MARM.MEINH}: volume maintained but unit MARM.VOLEH is blank.'
+- id: MM164
+  field: MARM.MEABM
+  check_class: cross_field_check
+  fail_when: ((`MARM.LAENG` > 0) | (`MARM.BREIT` > 0) | (`MARM.HOEHE` > 0)) & `MARM.MEABM`.isna()
+  severity: medium
+  dimension: completeness
+  message: The dimensions of the alternative unit of measure is maintained without its unit
+  why_it_matters: A dimensions value is a quantity field whose meaning is defined by its unit field (MARM.MEABM); SAP screens
+    refuse a quantity without a unit. Without it the number cannot be converted, so shipping, packing and freight calculations
+    cannot use it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Delivery and shipment dimensions totals, packing proposals, freight costing and dangerous-goods / foreign-trade
+    declarations ignore or mis-read the value.
+  fix_map:
+    __other__: Enter the unit for the dimensions (Basic data 1 / Additional data > Units of measure) via MM02 (ECC) or Fiori
+      F1602 Manage Product Master Data (S/4HANA).
+  record_fix_template: 'Material {MARM.MATNR}, unit {MARM.MEINH}: dimensions maintained but unit MARM.MEABM is blank.'
+- id: MM165
+  field: MARM.EAN11
+  check_class: format_check
+  format: gtin
+  severity: medium
+  dimension: validity
+  message: GTIN/EAN of an alternative unit of measure has an invalid check digit
+  why_it_matters: Each unit of measure (carton, pallet) carries its own GTIN in MARM. Its last digit is a GS1 mod-10 check
+    digit; a mistyped digit gives a barcode that looks right but is rejected by scanners and trading partners.
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods receipt and picking by scanning fail for that unit; EDI messages (DESADV, ORDERS) quoting the GTIN are
+    rejected by the partner.
+  fix_map:
+    __other__: GTIN '{invalid_value}' fails the GS1 check digit. Verify it against the GS1 registration and correct it in
+      Additional data > Units of measure via MM02 (ECC) or Fiori F1602 Manage Product Master Data (S/4HANA).
+  record_fix_template: 'Material {MARM.MATNR}, unit {MARM.MEINH}: GTIN {actual_value} fails the GS1 check digit.'
+- id: MM166
+  field: MARM.NUMTP
+  check_class: null_check
+  applies_when:
+    MARM.EAN11:
+      populated: true
+  severity: low
+  dimension: completeness
+  message: EAN category is missing for a unit of measure that carries a GTIN
+  why_it_matters: The EAN category (NUMTP) tells SAP how the GTIN was assigned (manufacturer EAN, in-store number, UPC)
+    and drives the check-digit and number-range validation of the GTIN. MM01 requires it as soon as a GTIN is entered.
+  rule_authority: sap_hard_constraint
+  sap_impact: The GTIN is not validated against its category; internal number assignment and EAN reporting by category miss
+    the unit.
+  fix_map:
+    __blank__: Enter the EAN category for the unit in Additional data > Units of measure via MM02 (ECC) or Fiori F1602 Manage
+      Product Master Data (S/4HANA).
+  record_fix_template: 'Material {MARM.MATNR}, unit {MARM.MEINH}: GTIN {MARM.EAN11} has no EAN category.'
+- id: MM167
+  field: MARM.EAN11
+  check_class: uniqueness_check
+  fields:
+  - MARM.EAN11
+  normalize: alnum
+  severity: high
+  dimension: uniqueness
+  message: The same GTIN/EAN is assigned to more than one material or unit of measure
+  why_it_matters: A GTIN identifies exactly one trade item (one material in one packaging level) worldwide. When two units
+    or materials share it, a scan or an EDI line cannot be resolved to the right material or quantity.
+  rule_authority: best_practice
+  sap_impact: Scanning at goods receipt / picking and inbound EDI (ORDERS, DESADV) map to the wrong material or unit; quantities
+    are converted with the wrong factor.
+  fix_map:
+    __other__: Determine which material/unit the GTIN is registered for (GS1) and remove or replace it on the others in
+      Additional data > Units of measure via MM02 (ECC) or Fiori F1602 Manage Product Master Data (S/4HANA).
+  record_fix_template: 'Material {MARM.MATNR}, unit {MARM.MEINH}: GTIN {actual_value} is also used by another material or
+    unit.'
+- id: MM168
+  field: MARA.MFRPN
+  check_class: uniqueness_check
+  fields:
+  - MARA.MFRNR
+  - MARA.MFRPN
+  normalize: alnum
+  applies_when:
+    MARA.BMATN:
+      blank: true
+  severity: medium
+  dimension: uniqueness
+  message: Two materials carry the same manufacturer and manufacturer part number (duplicate material)
+  why_it_matters: The manufacturer part number identifies the physical part. Two materials for the same manufacturer part
+    split its stock, consumption history and purchasing volume and are the classic duplicate in a spare-parts catalogue.
+    Manufacturer part number materials (MPN, with an internal material in BMATN) are deliberately separate and are not judged.
+  rule_authority: best_practice
+  sap_impact: Stock is split across duplicates; MRP reorders one while the other has stock; purchasing volume and contract
+    coverage are fragmented.
+  fix_map:
+    __other__: Confirm the duplicate, choose the surviving material, transfer stock (309), move open documents, BOM items
+      and info records, then flag the duplicate for deletion (MM06) and set a blocking material status.
+  record_fix_template: 'Material {MARA.MATNR}: manufacturer {MARA.MFRNR} part {actual_value} is also used by another material.'
+- id: MM169
+  field: MARC.BESKZ
+  check_class: null_check
+  applies_when:
+    MARC.DISMM:
+      populated: true
+      not_in:
+      - ND
+  severity: high
+  dimension: completeness
+  message: Procurement type is missing on a material planned by MRP
+  why_it_matters: MRP uses the procurement type to decide whether a shortage becomes a planned order for in-house production,
+    a purchase requisition, or both. It is a required field of the MRP 2 view whenever the material is planned.
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP cannot create the right procurement proposal; the material is reported with exception messages instead
+    of being replenished.
+  fix_map:
+    __blank__: Set the procurement type (E in-house, F external, X both) in MRP 2 via MM02 (ECC) or Fiori F1602 Manage Product
+      Master Data (S/4HANA).
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: MRP type {MARC.DISMM} but no procurement type.'
+- id: MM170
+  field: MARC.MINBE
+  check_class: cross_field_check
+  require_populated: true
+  fail_when: '`MARC.MINBE` < `MARC.EISBE`'
+  applies_when:
+    MARC.DISMM:
+    - VB
+    - VM
+  severity: medium
+  dimension: consistency
+  message: Reorder point is below the safety stock
+  why_it_matters: In reorder point planning the reorder point is the safety stock plus the expected consumption during the
+    replenishment lead time. A reorder point below the safety stock means MRP orders only after the safety stock is already
+    being consumed.
+  rule_authority: best_practice
+  sap_impact: Replenishment starts too late; the safety stock is regularly breached and shortages occur during the lead
+    time.
+  fix_map:
+    __other__: Recalculate the reorder point (safety stock + lead-time consumption) and maintain it in MRP 1 via MM02 (ECC)
+      or Fiori F1602 Manage Product Master Data (S/4HANA), or switch to automatic reorder point planning (VM).
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: reorder point {actual_value} below safety stock {MARC.EISBE}.'
+- id: MM171
+  field: MARC.MABST
+  check_class: cross_field_check
+  fail_when: (`MARC.MABST` > 0) & (`MARC.MINBE` > `MARC.MABST`)
+  applies_when:
+    MARC.DISLS:
+    - HB
+    MARC.DISMM:
+    - VB
+    - VM
+  severity: high
+  dimension: consistency
+  message: Maximum stock level is below the reorder point (replenish-to-maximum lot sizing)
+  why_it_matters: With lot-sizing procedure HB the order quantity is maximum stock level minus available stock. When the
+    reorder point is above the maximum stock level, MRP triggers at a stock that is already above the maximum and computes
+    a zero or negative quantity.
+  rule_authority: sap_hard_constraint
+  sap_impact: Reorder point planning fires without producing a usable proposal; the material is not replenished.
+  fix_map:
+    __other__: Set the maximum stock level above the reorder point in MRP 1 via MM02 (ECC) or Fiori F1602 Manage Product
+      Master Data (S/4HANA).
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: maximum stock {actual_value} below reorder point {MARC.MINBE}.'
+- id: MM172
+  field: MARC.AUSDT
+  check_class: null_check
+  applies_when:
+    MARC.KZAUS:
+      populated: true
+  severity: high
+  dimension: completeness
+  message: Discontinued material has no effective-out date
+  why_it_matters: Discontinuation (MRP 4) makes MRP switch dependent requirements to the follow-up material once the discontinued
+    material's stock is used up, but only from the effective-out date on. Without the date the discontinuation never takes
+    effect.
+  rule_authority: sap_hard_constraint
+  sap_impact: Requirements stay on the discontinued part; MRP keeps ordering a part that is being phased out, or the follow-up
+    material is never planned.
+  fix_map:
+    __blank__: Enter the effective-out date in MRP 4 via MM02 (ECC) or Fiori F1602 Manage Product Master Data (S/4HANA).
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: discontinuation indicator {MARC.KZAUS} without effective-out
+    date.'
+- id: MM173
+  field: MARC.NFMAT
+  check_class: null_check
+  applies_when:
+    MARC.KZAUS:
+    - '1'
+  severity: high
+  dimension: completeness
+  message: Material under simple discontinuation has no follow-up material
+  why_it_matters: Simple discontinuation (indicator 1) hands the remaining requirements of the discontinued part to its
+    follow-up material. Without a follow-up material the requirements have nowhere to go.
+  rule_authority: best_practice
+  sap_impact: Once the stock of the discontinued part is consumed, dependent requirements are left uncovered; production
+    orders are short of the component.
+  fix_map:
+    __blank__: Enter the follow-up material in MRP 4 via MM02 (ECC) or Fiori F1602 Manage Product Master Data (S/4HANA);
+      it must have an MRP view in the same plant.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: discontinued without a follow-up material.'
+- id: MM174
+  field: MARC.NFMAT
+  check_class: cross_field_check
+  require_populated: true
+  fail_when: '`MARC.NFMAT` == `MARC.MATNR`'
+  severity: medium
+  dimension: consistency
+  message: Material is its own follow-up material
+  why_it_matters: A follow-up material replaces the discontinued one. Naming the material itself creates a loop, and the
+    discontinuation never moves requirements anywhere.
+  rule_authority: sap_hard_constraint
+  sap_impact: Discontinuation is ineffective; MRP keeps planning the outgoing part.
+  fix_map:
+    __other__: Replace the follow-up material with the successor part in MRP 4 via MM02 (ECC) or Fiori F1602 Manage Product
+      Master Data (S/4HANA).
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: follow-up material is the material itself.'
+- id: MM175
+  field: MARC.PERKZ
+  check_class: domain_value_check
+  severity: medium
+  dimension: validity
+  message: Period indicator (MARC.PERKZ) is not a value of its SAP domain
+  why_it_matters: Period indicator has a fixed set of values defined by SAP in the field's domain; no customizing can add
+    values. Any other value can only come from a direct load and is ignored or rejected by the programs that read it.
+  rule_authority: sap_hard_constraint
+  sap_impact: The function controlled by the indicator (planning periods, requirements grouping, BOM selection, discontinuation,
+    backflushing, material-ledger price determination) behaves unpredictably.
+  fix_map:
+    __other__: Replace '{invalid_value}' with one of the domain values via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA).
+  record_fix_template: 'Material {MARC.MATNR}: MARC.PERKZ is ''{actual_value}''.'
+- id: MM176
+  field: MARC.SBDKZ
+  check_class: domain_value_check
+  severity: medium
+  dimension: validity
+  message: Individual/collective requirements indicator (MARC.SBDKZ) is not a value of its SAP domain
+  why_it_matters: Individual/collective requirements indicator has a fixed set of values defined by SAP in the field's domain;
+    no customizing can add values. Any other value can only come from a direct load and is ignored or rejected by the programs
+    that read it.
+  rule_authority: sap_hard_constraint
+  sap_impact: The function controlled by the indicator (planning periods, requirements grouping, BOM selection, discontinuation,
+    backflushing, material-ledger price determination) behaves unpredictably.
+  fix_map:
+    __other__: Replace '{invalid_value}' with one of the domain values via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA).
+  record_fix_template: 'Material {MARC.MATNR}: MARC.SBDKZ is ''{actual_value}''.'
+- id: MM177
+  field: MARC.ALTSL
+  check_class: domain_value_check
+  severity: medium
+  dimension: validity
+  message: Method for selecting alternative BOMs (MARC.ALTSL) is not a value of its SAP domain
+  why_it_matters: Method for selecting alternative BOMs has a fixed set of values defined by SAP in the field's domain;
+    no customizing can add values. Any other value can only come from a direct load and is ignored or rejected by the programs
+    that read it.
+  rule_authority: sap_hard_constraint
+  sap_impact: The function controlled by the indicator (planning periods, requirements grouping, BOM selection, discontinuation,
+    backflushing, material-ledger price determination) behaves unpredictably.
+  fix_map:
+    __other__: Replace '{invalid_value}' with one of the domain values via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA).
+  record_fix_template: 'Material {MARC.MATNR}: MARC.ALTSL is ''{actual_value}''.'
+- id: MM178
+  field: MARC.KZAUS
+  check_class: domain_value_check
+  severity: medium
+  dimension: validity
+  message: Discontinuation indicator (MARC.KZAUS) is not a value of its SAP domain
+  why_it_matters: Discontinuation indicator has a fixed set of values defined by SAP in the field's domain; no customizing
+    can add values. Any other value can only come from a direct load and is ignored or rejected by the programs that read
+    it.
+  rule_authority: sap_hard_constraint
+  sap_impact: The function controlled by the indicator (planning periods, requirements grouping, BOM selection, discontinuation,
+    backflushing, material-ledger price determination) behaves unpredictably.
+  fix_map:
+    __other__: Replace '{invalid_value}' with one of the domain values via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA).
+  record_fix_template: 'Material {MARC.MATNR}: MARC.KZAUS is ''{actual_value}''.'
+- id: MM179
+  field: MARC.RGEKZ
+  check_class: domain_value_check
+  severity: medium
+  dimension: validity
+  message: Backflush indicator (MARC.RGEKZ) is not a value of its SAP domain
+  why_it_matters: Backflush indicator has a fixed set of values defined by SAP in the field's domain; no customizing can
+    add values. Any other value can only come from a direct load and is ignored or rejected by the programs that read it.
+  rule_authority: sap_hard_constraint
+  sap_impact: The function controlled by the indicator (planning periods, requirements grouping, BOM selection, discontinuation,
+    backflushing, material-ledger price determination) behaves unpredictably.
+  fix_map:
+    __other__: Replace '{invalid_value}' with one of the domain values via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA).
+  record_fix_template: 'Material {MARC.MATNR}: MARC.RGEKZ is ''{actual_value}''.'
+- id: MM180
+  field: MBEW.MLAST
+  check_class: domain_value_check
+  severity: medium
+  dimension: validity
+  message: Material price determination (material ledger) (MBEW.MLAST) is not a value of its SAP domain
+  why_it_matters: Material price determination (material ledger) has a fixed set of values defined by SAP in the field's
+    domain; no customizing can add values. Any other value can only come from a direct load and is ignored or rejected by
+    the programs that read it.
+  rule_authority: sap_hard_constraint
+  sap_impact: The function controlled by the indicator (planning periods, requirements grouping, BOM selection, discontinuation,
+    backflushing, material-ledger price determination) behaves unpredictably.
+  fix_map:
+    __other__: Replace '{invalid_value}' with one of the domain values via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA).
+  record_fix_template: 'Material {MARC.MATNR}: MBEW.MLAST is ''{actual_value}''.'
+- id: MM181
+  field: MBEW.BKLAS
+  check_class: referential_check
+  severity: critical
+  dimension: validity
+  message: Valuation class (MBEW.BKLAS) is not defined in the system's configuration (T025)
+  why_it_matters: Valuation class is a key into the system's own configuration (T025). A value that is not configured there
+    cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct loads,
+    client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Account determination for every goods movement and invoice of the material fails (no G/L account found).
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T025. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OMSK).'
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: valuation class ''{actual_value}'' is not configured
+    (T025).'
+- id: MM182
+  field: MARC.MMSTA
+  check_class: referential_check
+  severity: high
+  dimension: validity
+  message: Plant-specific material status (MARC.MMSTA) is not defined in the system's configuration (T141)
+  why_it_matters: Plant-specific material status is a key into the system's own configuration (T141). A value that is not
+    configured there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes
+    from direct loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: 'The status cannot be interpreted: the procurement, production or sales blocks it should enforce do not apply.'
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T141. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OMS4).'
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: plant-specific material status ''{actual_value}'' is
+    not configured (T141).'
+- id: MM183
+  field: MARA.MSTAV
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Cross-distribution-chain material status (MARA.MSTAV) is not defined in the system's configuration (TVMS)
+  why_it_matters: Cross-distribution-chain material status is a key into the system's own configuration (TVMS). A value
+    that is not configured there cannot be interpreted by the functions that read it; SAP's own screens never accept it,
+    so it comes from direct loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Sales blocks intended by the status are not enforced; sales orders and deliveries are accepted.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in TVMS. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OVAS).'
+  record_fix_template: 'Material {MARA.MATNR}: cross-distribution-chain material status ''{actual_value}'' is not configured
+    (TVMS).'
+- id: MM184
+  field: MVKE.VMSTA
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Distribution-chain-specific material status (MVKE.VMSTA) is not defined in the system's configuration (TVMS)
+  why_it_matters: Distribution-chain-specific material status is a key into the system's own configuration (TVMS). A value
+    that is not configured there cannot be interpreted by the functions that read it; SAP's own screens never accept it,
+    so it comes from direct loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Sales blocks intended by the status are not enforced for this sales organisation / channel.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in TVMS. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OVAS).'
+  record_fix_template: 'Material {MVKE.MATNR}, sales org {MVKE.VKORG}/{MVKE.VTWEG}: distribution-chain-specific material
+    status ''{actual_value}'' is not configured (TVMS).'
+- id: MM185
+  field: MARC.DISPO
+  check_class: referential_check
+  severity: high
+  dimension: validity
+  message: MRP controller (MARC.DISPO) is not defined in the system's configuration (T024D)
+  why_it_matters: MRP controller is a key into the system's own configuration (T024D). A value that is not configured there
+    cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct loads,
+    client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP results and exception messages are not routed to any planner; the material drops out of MD06/MD07 monitoring.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T024D. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OPPE / OMD0).'
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: mrp controller ''{actual_value}'' is not configured (T024D).'
+- id: MM186
+  field: MARC.DISLS
+  check_class: referential_check
+  severity: high
+  dimension: validity
+  message: Lot-sizing procedure (MARC.DISLS) is not defined in the system's configuration (T439A)
+  why_it_matters: Lot-sizing procedure is a key into the system's own configuration (T439A). A value that is not configured
+    there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct
+    loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP cannot calculate procurement quantities and terminates planning of the material with an error.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T439A. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OMI4).'
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: lot-sizing procedure ''{actual_value}'' is not configured
+    (T439A).'
+- id: MM187
+  field: MARC.EKGRP
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Purchasing group (MARC.EKGRP) is not defined in the system's configuration (T024)
+  why_it_matters: Purchasing group is a key into the system's own configuration (T024). A value that is not configured there
+    cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct loads,
+    client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Purchase requisitions created by MRP carry an unknown buyer group and cannot be converted or released.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T024. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OME4).'
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: purchasing group ''{actual_value}'' is not configured
+    (T024).'
+- id: MM188
+  field: MARC.FEVOR
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: Production supervisor (MARC.FEVOR) is not defined in the system's configuration (T024F)
+  why_it_matters: Production supervisor is a key into the system's own configuration (T024F). A value that is not configured
+    there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct
+    loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Production orders carry an unknown supervisor; order type defaults and selection by supervisor fail.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T024F. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OPJ9).'
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: production supervisor ''{actual_value}'' is not configured
+    (T024F).'
+- id: MM189
+  field: MARC.LADGR
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Loading group (MARC.LADGR) is not defined in the system's configuration (TLGR)
+  why_it_matters: Loading group is a key into the system's own configuration (TLGR). A value that is not configured there
+    cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct loads,
+    client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Shipping point determination fails for sales orders and stock transport orders of the material.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in TLGR. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OVL5).'
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: loading group ''{actual_value}'' is not configured (TLGR).'
+- id: MM190
+  field: MARC.SOBSL
+  check_class: referential_check
+  severity: high
+  dimension: validity
+  message: Special procurement type (MARC.SOBSL) is not defined in the system's configuration (T460A)
+  why_it_matters: Special procurement type is a key into the system's own configuration (T460A). A value that is not configured
+    there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct
+    loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP cannot interpret the special procurement (stock transfer, phantom, subcontracting); proposals are wrong
+    or missing.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T460A. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OMD9).'
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: special procurement type ''{actual_value}'' is not configured
+    (T460A).'
+- id: MM191
+  field: MARC.FHORI
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Scheduling margin key (MARC.FHORI) is not defined in the system's configuration (T436A)
+  why_it_matters: Scheduling margin key is a key into the system's own configuration (T436A). A value that is not configured
+    there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct
+    loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Floats and the opening period cannot be determined; planned orders are scheduled with wrong dates.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T436A. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OPPQ).'
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: scheduling margin key ''{actual_value}'' is not configured
+    (T436A).'
+- id: MM192
+  field: MARC.AWSLS
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Variance key (MARC.AWSLS) is not defined in the system's configuration (TKV01)
+  why_it_matters: Variance key is a key into the system's own configuration (TKV01). A value that is not configured there
+    cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct loads,
+    client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Variance calculation for production orders of the material is not possible.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in TKV01. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OKV1).'
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: variance key ''{actual_value}'' is not configured (TKV01).'
+- id: MM193
+  field: MARC.LGPRO
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Production storage location (MARC.LGPRO) is not defined in the system's configuration (T001L)
+  why_it_matters: Production storage location is a key into the system's own configuration (T001L). A value that is not
+    configured there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes
+    from direct loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods issues and backflushes for production default to a storage location that does not exist.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T001L. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OX09).'
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: production storage location ''{actual_value}'' is not
+    configured (T001L).'
+- id: MM194
+  field: MARC.LGFSB
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Default storage location for external procurement (MARC.LGFSB) is not defined in the system's configuration (T001L)
+  why_it_matters: Default storage location for external procurement is a key into the system's own configuration (T001L).
+    A value that is not configured there cannot be interpreted by the functions that read it; SAP's own screens never accept
+    it, so it comes from direct loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Purchase requisitions and goods receipts default to a storage location that does not exist.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T001L. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OX09).'
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: default storage location for external procurement ''{actual_value}''
+    is not configured (T001L).'
+- id: MM195
+  field: MARC.MTVFP
+  check_class: referential_check
+  severity: high
+  dimension: validity
+  message: Availability checking group (MARC.MTVFP) is not defined in the system's configuration (TMVF)
+  why_it_matters: Availability checking group is a key into the system's own configuration (TMVF). A value that is not configured
+    there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct
+    loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: The availability check in sales orders, production orders and deliveries cannot run for the material.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in TMVF. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OVZ2).'
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: availability checking group ''{actual_value}'' is not
+    configured (TMVF).'
+- id: MM196
+  field: MARC.STRGR
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Planning strategy group (MARC.STRGR) is not defined in the system's configuration (T461P)
+  why_it_matters: Planning strategy group is a key into the system's own configuration (T461P). A value that is not configured
+    there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct
+    loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Planned independent requirements cannot be consumed; make-to-stock / make-to-order planning fails.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T461P. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OPPS).'
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: planning strategy group ''{actual_value}'' is not configured
+    (T461P).'
+- id: MM197
+  field: MARC.MAABC
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: ABC indicator (MARC.MAABC) is not defined in the system's configuration (TMABC)
+  why_it_matters: ABC indicator is a key into the system's own configuration (TMABC). A value that is not configured there
+    cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct loads,
+    client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: ABC-based MRP selection, cycle counting and reporting mis-classify the material.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in TMABC. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OMI9 (TMABC)).'
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: abc indicator ''{actual_value}'' is not configured (TMABC).'
+- id: MM198
+  field: MARC.HERKL
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Country of origin (MARC.HERKL) is not defined in the system's configuration (T005)
+  why_it_matters: Country of origin is a key into the system's own configuration (T005). A value that is not configured
+    there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct
+    loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Preference and origin declarations in foreign trade cannot be issued for the material.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T005. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OY01).'
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: country of origin ''{actual_value}'' is not configured
+    (T005).'
+- id: MM199
+  field: MARA.SPART
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Division (MARA.SPART) is not defined in the system's configuration (TSPA)
+  why_it_matters: Division is a key into the system's own configuration (TSPA). A value that is not configured there cannot
+    be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct loads, client
+    copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Sales area determination for orders of the material fails; pricing and reporting by division are wrong.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in TSPA. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OVXB).'
+  record_fix_template: 'Material {MARA.MATNR}: division ''{actual_value}'' is not configured (TSPA).'
+- id: MM200
+  field: MARA.TRAGR
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Transportation group (MARA.TRAGR) is not defined in the system's configuration (TTGR)
+  why_it_matters: Transportation group is a key into the system's own configuration (TTGR). A value that is not configured
+    there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct
+    loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Route determination in sales orders and deliveries fails for the material.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in TTGR. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OVTG).'
+  record_fix_template: 'Material {MARA.MATNR}: transportation group ''{actual_value}'' is not configured (TTGR).'
+- id: MM201
+  field: MARA.PRDHA
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: Product hierarchy (MARA.PRDHA) is not defined in the system's configuration (T179)
+  why_it_matters: Product hierarchy is a key into the system's own configuration (T179). A value that is not configured
+    there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct
+    loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Pricing, profitability analysis and sales reporting by product hierarchy lose the material.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T179. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (V/76).'
+  record_fix_template: 'Material {MARA.MATNR}: product hierarchy ''{actual_value}'' is not configured (T179).'
+- id: MM202
+  field: MARA.MTPOS_MARA
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: General item category group (MARA.MTPOS_MARA) is not defined in the system's configuration (TPTM)
+  why_it_matters: General item category group is a key into the system's own configuration (TPTM). A value that is not configured
+    there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct
+    loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Item category determination in sales documents fails or picks the wrong item category.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in TPTM. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OVS9).'
+  record_fix_template: 'Material {MARA.MATNR}: general item category group ''{actual_value}'' is not configured (TPTM).'
+- id: MM203
+  field: MARA.BSTME
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Purchase order unit (MARA.BSTME) is not defined in the system's configuration (T006)
+  why_it_matters: Purchase order unit is a key into the system's own configuration (T006). A value that is not configured
+    there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct
+    loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Purchase orders default to an order unit that cannot be converted to the base unit.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T006. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (CUNI).'
+  record_fix_template: 'Material {MARA.MATNR}: purchase order unit ''{actual_value}'' is not configured (T006).'
+- id: MM204
+  field: MARA.NUMTP
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: EAN category (MARA.NUMTP) is not defined in the system's configuration (TNTP)
+  why_it_matters: EAN category is a key into the system's own configuration (TNTP). A value that is not configured there
+    cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct loads,
+    client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: The GTIN cannot be validated or assigned from its number range.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in TNTP. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (W4ES).'
+  record_fix_template: 'Material {MARA.MATNR}: ean category ''{actual_value}'' is not configured (TNTP).'
+- id: MM205
+  field: MVKE.KTGRM
+  check_class: referential_check
+  severity: high
+  dimension: validity
+  message: Account assignment group (material) (MVKE.KTGRM) is not defined in the system's configuration (TVKM)
+  why_it_matters: Account assignment group (material) is a key into the system's own configuration (TVKM). A value that
+    is not configured there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it
+    comes from direct loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Revenue account determination at billing fails; invoices cannot be released to accounting.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in TVKM. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OVK5).'
+  record_fix_template: 'Material {MVKE.MATNR}, sales org {MVKE.VKORG}/{MVKE.VTWEG}: account assignment group (material)
+    ''{actual_value}'' is not configured (TVKM).'
+- id: MM206
+  field: MVKE.MTPOS
+  check_class: referential_check
+  severity: high
+  dimension: validity
+  message: Item category group (sales) (MVKE.MTPOS) is not defined in the system's configuration (TPTM)
+  why_it_matters: Item category group (sales) is a key into the system's own configuration (TPTM). A value that is not configured
+    there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct
+    loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Item category determination in sales orders fails for the sales area.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in TPTM. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OVS9).'
+  record_fix_template: 'Material {MVKE.MATNR}, sales org {MVKE.VKORG}/{MVKE.VTWEG}: item category group (sales) ''{actual_value}''
+    is not configured (TPTM).'
+- id: MM207
+  field: MVKE.DWERK
+  check_class: referential_check
+  severity: high
+  dimension: validity
+  message: Delivering plant (MVKE.DWERK) is not defined in the system's configuration (TVKWZ)
+  why_it_matters: Delivering plant is a key into the system's own configuration (TVKWZ). A value that is not configured
+    there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct
+    loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Sales orders propose a plant that is not assigned to any sales organisation and distribution channel.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in TVKWZ. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OVX6).'
+  record_fix_template: 'Material {MVKE.MATNR}, sales org {MVKE.VKORG}/{MVKE.VTWEG}: delivering plant ''{actual_value}''
+    is not configured (TVKWZ).'
+- id: MM208
+  field: MVKE.VRKME
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Sales unit (MVKE.VRKME) is not defined in the system's configuration (T006)
+  why_it_matters: Sales unit is a key into the system's own configuration (T006). A value that is not configured there cannot
+    be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct loads, client
+    copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Sales orders default to a unit of measure that does not exist.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T006. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (CUNI).'
+  record_fix_template: 'Material {MVKE.MATNR}, sales org {MVKE.VKORG}/{MVKE.VTWEG}: sales unit ''{actual_value}'' is not
+    configured (T006).'
+- id: MM209
+  field: MVKE.PRODH
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: Product hierarchy (sales) (MVKE.PRODH) is not defined in the system's configuration (T179)
+  why_it_matters: Product hierarchy (sales) is a key into the system's own configuration (T179). A value that is not configured
+    there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct
+    loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Pricing and profitability analysis by product hierarchy lose the material in this sales area.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T179. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (V/76).'
+  record_fix_template: 'Material {MVKE.MATNR}, sales org {MVKE.VKORG}/{MVKE.VTWEG}: product hierarchy (sales) ''{actual_value}''
+    is not configured (T179).'
+- id: MM210
+  field: MARM.MEINH
+  check_class: referential_check
+  severity: high
+  dimension: validity
+  message: Alternative unit of measure (MARM.MEINH) is not defined in the system's configuration (T006)
+  why_it_matters: Alternative unit of measure is a key into the system's own configuration (T006). A value that is not configured
+    there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct
+    loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Quantities entered in this unit cannot be converted; documents in the unit are rejected.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T006. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (CUNI).'
+  record_fix_template: 'Material {MARM.MATNR}: alternative unit of measure ''{actual_value}'' is not configured (T006).'
+- id: MM211
+  field: MARD.LGORT
+  check_class: referential_check
+  severity: high
+  dimension: validity
+  message: Storage location (MARD.LGORT) is not defined in the system's configuration (T001L)
+  why_it_matters: Storage location is a key into the system's own configuration (T001L). A value that is not configured
+    there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct
+    loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Stock is held in a storage location that is not defined for the plant; goods movements to it fail.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T001L. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OX09).'
+  record_fix_template: 'Material {MARD.MATNR}, plant {MARD.WERKS}: storage location ''{actual_value}'' is not configured
+    (T001L).'

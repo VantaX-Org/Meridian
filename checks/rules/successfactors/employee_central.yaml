@@ -684,3 +684,511 @@ rules:
   fix_map:
     __blank__: "Assign a valid email type (Business / Personal) via Admin Center > Employee Data > Email Information."
   record_fix_template: "Employee {EMPEMPLOYMENT.USERID}: email type is missing. Assign via Admin Center > Email Information."
+
+- id: EC046
+  field: EMPEMPLOYMENT.PERSON_ID
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Person ID (personIdExternal) is mandatory on every employment
+  why_it_matters: 'personIdExternal is the key of EmpEmployment and the only link from the employment to the person''s personal
+    information, e-mail, phone, address and national ID. An employment without it cannot be joined to the person: name,
+    date of birth and contact data are missing from every downstream process.'
+  rule_authority: sap_hard_constraint
+  sap_impact: Employment is orphaned from its person record. Payroll replication (infotypes 0002/0006) fails; the employee
+    has no name in org chart, workflows or pay slips.
+  fix_map:
+    __blank__: Re-import the employment with its personIdExternal via Admin Center > Import Employee Data > Employment Details,
+      matching the person's existing Person ID.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: PERSON_ID is missing. Re-import Employment Details with the person''s
+    ID.'
+- id: EC047
+  field: EMPEMPLOYMENT.DIVISION
+  check_class: referential_check
+  severity: medium
+  dimension: consistency
+  message: Division DIVISION must reference an active FODivision foundation object
+  why_it_matters: Division on Job Information must be an active FODivision. A division that was deleted or inactivated after
+    assignment, or loaded around the picklist, drops the employee out of division-based permission groups, reporting lines
+    and the Business Unit > Division > Department hierarchy.
+  rule_authority: sap_hard_constraint
+  sap_impact: Employee missing from division-filtered reports and role-based permission groups.
+  fix_map:
+    __other__: Division '{invalid_value}' is not an active FODivision. Reassign the employee to a valid division via Admin
+      Center > Employee Files > Job Information, or create/reactivate it in Admin Center > Manage Organization, Pay and
+      Job Structures.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: division ''{actual_value}'' is not an active FODivision.'
+- id: EC048
+  field: EMPEMPLOYMENT.DEPARTMENT
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Department DEPARTMENT must reference an active FODepartment foundation object
+  why_it_matters: Department drives the org chart, department-based approval workflows, permission groups and (in most tenants)
+    the default cost centre. A department that does not exist as an active FODepartment leaves the employee outside the
+    organisation structure.
+  rule_authority: sap_hard_constraint
+  sap_impact: Employee missing from the org chart and department-based workflows; payroll cost assignment may default incorrectly.
+  fix_map:
+    __other__: Department '{invalid_value}' is not an active FODepartment. Reassign the employee to a valid department via
+      Admin Center > Employee Files > Job Information, or create/reactivate it in Admin Center > Manage Organization, Pay
+      and Job Structures.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: department ''{actual_value}'' is not an active FODepartment.'
+- id: EC049
+  field: EMPEMPLOYMENT.LOCATION
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Location LOCATION must reference an active FOLocation foundation object
+  why_it_matters: Location determines time zone, holiday calendar, work schedule defaults and, for Employee Central Payroll,
+    the tax and work-location assignment. A location that is not an active FOLocation breaks time management and location-based
+    eligibility.
+  rule_authority: sap_hard_constraint
+  sap_impact: Holiday calendar and work schedule not determined; time-off and time-sheet calculations wrong; payroll tax
+    location missing.
+  fix_map:
+    __other__: Location '{invalid_value}' is not an active FOLocation. Reassign the employee to a valid location via Admin
+      Center > Employee Files > Job Information, or create/reactivate it in Admin Center > Manage Organization, Pay and
+      Job Structures.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: location ''{actual_value}'' is not an active FOLocation.'
+- id: EC050
+  field: EMPEMPLOYMENT.COST_CENTER
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Cost centre COST_CENTER must reference an active FOCostCenter foundation object
+  why_it_matters: Cost centre on Job Information is replicated to Employee Central Payroll / SAP ERP (infotype 0001) and
+    receives every salary posting. A cost centre that is not an active FOCostCenter (closed, never replicated from FI, or
+    mistyped) fails replication or posts payroll to a suspense account.
+  rule_authority: sap_hard_constraint
+  sap_impact: Employee replication to payroll fails; payroll posting to FI rejected or posted to a default cost centre.
+  fix_map:
+    __other__: Cost centre '{invalid_value}' is not an active FOCostCenter. Reassign the employee to a valid cost centre
+      via Admin Center > Employee Files > Job Information, or create/reactivate it in Admin Center > Manage Organization,
+      Pay and Job Structures.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: cost centre ''{actual_value}'' is not an active FOCostCenter.'
+- id: EC051
+  field: EMPEMPLOYMENT.JOB_CODE
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Job classification JOB_CODE must reference an active FOJobCode foundation object
+  why_it_matters: Job classification drives job title defaults, pay-grade and FLSA/overtime status, job-family reporting
+    and position creation. A job code that is not an active FOJobCode leaves the employee without these derived attributes.
+  rule_authority: sap_hard_constraint
+  sap_impact: Pay grade and overtime eligibility not derived; job-family and EEO reporting exclude the employee.
+  fix_map:
+    __other__: Job classification '{invalid_value}' is not an active FOJobCode. Reassign the employee to a valid job classification
+      via Admin Center > Employee Files > Job Information, or create/reactivate it in Admin Center > Manage Organization,
+      Pay and Job Structures.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: job classification ''{actual_value}'' is not an active FOJobCode.'
+- id: EC052
+  field: PERINFO.NATIONALITY
+  check_class: referential_check
+  severity: medium
+  dimension: accuracy
+  message: Nationality NATIONALITY must be a country defined in the tenant (Country object, ISO-3 code)
+  why_it_matters: Nationality is read by work-permit, global assignment and statutory reporting. A value that is not an
+    active Country code (ISO-2 'ZA' instead of 'ZAF', free text) is invisible to those processes.
+  rule_authority: sap_hard_constraint
+  sap_impact: Work-permit and statutory nationality reporting exclude the person; payroll replication of infotype 0002 nationality
+    fails.
+  fix_map:
+    __other__: Nationality '{invalid_value}' is not an active Country code. Use the ISO-3 country code (e.g. ZAF, USA, DEU)
+      via People Profile > Personal Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: nationality ''{actual_value}'' is not a Country code.'
+- id: EC053
+  field: PERADDRESS.COUNTRY
+  check_class: referential_check
+  severity: high
+  dimension: accuracy
+  message: Address country COUNTRY must be a country defined in the tenant (Country object, ISO-3 code)
+  why_it_matters: The address country selects the country-specific address format, state and postal-code validation and
+    the tax jurisdiction used by payroll. A country code that does not exist leaves the address unformatted and unvalidated.
+  rule_authority: sap_hard_constraint
+  sap_impact: Address cannot be replicated to payroll (infotype 0006); tax residency and statutory forms use the wrong or
+    no country.
+  fix_map:
+    __other__: Country '{invalid_value}' is not an active Country code. Correct the address country via People Profile >
+      Addresses, using the ISO-3 code.
+  record_fix_template: 'Person {PERADDRESS.PERSON_ID}: address country ''{actual_value}'' is not a Country code.'
+- id: EC054
+  field: PERINFO.SALUTATION
+  check_class: referential_check
+  reference_table: PICKLIST
+  reference_field: salutation
+  severity: low
+  dimension: accuracy
+  message: Salutation SALUTATION must be a value of the tenant's 'salutation' picklist
+  why_it_matters: Salutation is printed on letters, offer and contract documents. A value outside the tenant's salutation
+    picklist prints as a raw code or blank in generated documents.
+  rule_authority: customer_configured
+  sap_impact: Generated letters and documents show a raw code or no salutation.
+  fix_map:
+    __other__: Salutation '{invalid_value}' is not an active value of picklist salutation. Replace it with the correct external
+      code via People Profile, or add the value in Admin Center > Picklist Center if it is genuinely missing.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: salutation ''{actual_value}'' is not in picklist salutation.'
+- id: EC055
+  field: PERINFO.MARITAL_STATUS
+  check_class: referential_check
+  reference_table: PICKLIST
+  reference_field: ecMaritalStatus
+  severity: medium
+  dimension: accuracy
+  message: Marital status MARITAL_STATUS must be a value of the tenant's 'ecMaritalStatus' picklist
+  why_it_matters: Marital status feeds tax-class derivation, benefits dependant eligibility and payroll replication (infotype
+    0002 FAMST). A value outside the ecMaritalStatus picklist cannot be mapped.
+  rule_authority: customer_configured
+  sap_impact: Payroll replication value mapping fails; tax and benefit eligibility derived from marital status are wrong.
+  fix_map:
+    __other__: Marital status '{invalid_value}' is not an active value of picklist ecMaritalStatus. Replace it with the
+      correct external code via People Profile, or add the value in Admin Center > Picklist Center if it is genuinely missing.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: marital status ''{actual_value}'' is not in picklist ecMaritalStatus.'
+- id: EC056
+  field: PERADDRESS.ADDRESS_TYPE
+  check_class: referential_check
+  reference_table: PICKLIST
+  reference_field: addressType
+  severity: medium
+  dimension: accuracy
+  message: Address type ADDRESS_TYPE must be a value of the tenant's 'addressType' picklist
+  why_it_matters: Address type decides which address is the home (tax, payroll) address and which is mailing or emergency.
+    A type outside the addressType picklist is not replicated and cannot be selected.
+  rule_authority: customer_configured
+  sap_impact: Address not replicated to payroll infotype 0006; the employee has no recognised home address.
+  fix_map:
+    __other__: Address type '{invalid_value}' is not an active value of picklist addressType. Replace it with the correct
+      external code via People Profile, or add the value in Admin Center > Picklist Center if it is genuinely missing.
+  record_fix_template: 'Person {PERADDRESS.PERSON_ID}: address type ''{actual_value}'' is not in picklist addressType.'
+- id: EC058
+  field: EMPEMPLOYMENT.MANAGER_ID
+  check_class: regex_check
+  pattern: ^[a-zA-Z0-9._@-]{1,100}$
+  severity: medium
+  dimension: validity
+  message: Manager ID must be a user ID (or NO_MANAGER), not a name or free text
+  why_it_matters: MANAGER_ID holds the manager's user ID. A name, e-mail display text or other free text does not resolve
+    to a user, so the reporting line is broken even though the field is filled.
+  rule_authority: best_practice
+  sap_impact: Reporting line broken; manager workflows and manager self-service do not reach any user.
+  fix_map:
+    __other__: Manager '{invalid_value}' is not a user ID. Select the manager by user in Job Information > Manager.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: manager ''{actual_value}'' is not a valid user ID.'
+- id: EC059
+  field: EMPEMPLOYMENT.START_DATE
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.START_DATE` <= `PERINFO.DATE_OF_BIRTH`'
+  require_populated: true
+  severity: high
+  dimension: consistency
+  message: Employment start date is on or before the person's date of birth
+  why_it_matters: A person cannot be employed before they were born. Either the date of birth or the hire date was loaded
+    wrongly (day/month swap, default date, century error), and every age-based rule — minimum working age, pension and retirement
+    eligibility, benefits age bands — is computed on a wrong value.
+  rule_authority: best_practice
+  sap_impact: Age-based eligibility (pension, benefits, retirement) and service-length calculations wrong; statutory age
+    reporting incorrect.
+  fix_map:
+    __blank__: Verify the date of birth (People Profile > Personal Information) and the hire date (Employment Details) against
+      the employee's ID document and contract; correct the wrong one.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: start date {EMPEMPLOYMENT.START_DATE} is not after date of birth
+    {PERINFO.DATE_OF_BIRTH}.'
+- id: EC060
+  field: EMPEMPLOYMENT.END_DATE
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Terminated or retired employment (status T/R) must carry an employment end date
+  why_it_matters: 'The termination event sets the employment end date (EmpEmployment.endDate). A terminated or retired employee
+    without one has no last working day: final-pay, leave pay-out, benefit termination and headcount-movement reporting
+    cannot determine when the employment ended.'
+  rule_authority: sap_hard_constraint
+  sap_impact: Final payroll and leave pay-out cannot be timed; benefits are not terminated; leaver counts and turnover reports
+    omit the employee.
+  fix_map:
+    __blank__: Enter the termination end date via Take Action > Terminate (or correct the termination record in Employment
+      Details).
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: terminated/retired but END_DATE is blank. Correct the termination
+    record.'
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - T
+    - R
+- id: EC061
+  field: PEREMAIL.EMAIL_ADDRESS
+  check_class: uniqueness_check
+  fields:
+  - PEREMAIL.EMAIL_ADDRESS
+  case_insensitive: true
+  severity: medium
+  dimension: uniqueness
+  message: Business e-mail address is shared by more than one person
+  why_it_matters: The business e-mail is the address SuccessFactors sends every notification, password reset and approval
+    request to, and commonly the SSO / identity-provisioning key. Two persons with the same business address are either
+    one person entered twice or a shared mailbox — notifications for one reach the other, and identity provisioning cannot
+    tell them apart.
+  rule_authority: best_practice
+  sap_impact: Notifications and personal data (offers, pay statements) delivered to another person; SSO / IAS user provisioning
+    conflicts.
+  fix_map:
+    __blank__: Check whether the persons are duplicates (merge or delete the duplicate person) or give each person their
+      own business address via People Profile > Contact Information.
+  record_fix_template: 'Person {PEREMAIL.PERSON_ID}: business e-mail ''{actual_value}'' is also held by another person.'
+  applies_when:
+    PEREMAIL.EMAIL_TYPE:
+    - B
+- id: EC062
+  field: PERINFO.NATIONAL_ID
+  check_class: uniqueness_check
+  fields:
+  - PERINFO.NATIONAL_ID
+  normalize: alnum
+  severity: high
+  dimension: uniqueness
+  message: National ID is held by more than one person
+  why_it_matters: A national ID identifies exactly one person. The same number on two Person IDs means a duplicate person
+    (typically a rehire created as a new person) or a mistyped ID — payroll tax reporting, social-security filings and background
+    checks attach to the wrong record.
+  rule_authority: best_practice
+  sap_impact: Tax and social-security filings for two employees under one ID number; duplicate person records split employment,
+    pay and benefit history.
+  fix_map:
+    __blank__: Compare both persons. If they are the same person, merge them (keep one Person ID); otherwise correct the
+      mistyped national ID via People Profile > National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: national ID ''{actual_value}'' is also held by another person.'
+- id: EC063
+  field: PERPHONE.PHONE_NUMBER
+  check_class: regex_check
+  pattern: ^[+(]?[0-9][0-9 ()./-]*$
+  severity: low
+  dimension: validity
+  message: Phone number must contain only digits and separators (+, space, brackets, '.', '/', '-')
+  why_it_matters: Phone numbers are dialled by telephony integrations, MFA / SMS and emergency notification tools. Text
+    in the number field ('n/a', 'ask reception', a name or an e-mail) passes the mandatory check but cannot be dialled.
+  rule_authority: best_practice
+  sap_impact: SMS / MFA and emergency notifications fail for this person; the field looks filled but is unusable.
+  fix_map:
+    __other__: Phone number '{invalid_value}' contains text. Enter the number only via People Profile > Contact Information;
+      use the extension field for extensions.
+  record_fix_template: 'Person {PERPHONE.PERSON_ID}: phone number ''{actual_value}'' is not a dialable number.'
+- id: EC064
+  field: PERADDRESS.ZIPCODE
+  check_class: regex_check
+  pattern: ^\d{5}(-\d{4})?$
+  severity: medium
+  dimension: validity
+  message: Postal code does not match the United States postal-code format
+  why_it_matters: United States postal codes have a fixed national format (94105 or 94105-1234). A code that does not match
+    it was mistyped or loaded into the wrong field; payroll tax-jurisdiction and address validation reject it, and mail
+    to the employee is misrouted.
+  rule_authority: best_practice
+  sap_impact: Address validation and payroll replication (infotype 0006 postal-code check) reject the address; tax jurisdiction
+    / locality cannot be derived.
+  fix_map:
+    __other__: Postal code '{invalid_value}' is not a valid United States postal code (expected e.g. 94105 or 94105-1234).
+      Correct it via People Profile > Addresses.
+  record_fix_template: 'Person {PERADDRESS.PERSON_ID}: postal code ''{actual_value}'' does not match the United States format.'
+  applies_when:
+    PERADDRESS.COUNTRY:
+    - USA
+- id: EC065
+  field: PERADDRESS.ZIPCODE
+  check_class: regex_check
+  pattern: ^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$
+  severity: medium
+  dimension: validity
+  message: Postal code does not match the Canada postal-code format
+  why_it_matters: Canada postal codes have a fixed national format (M5V 3L9). A code that does not match it was mistyped
+    or loaded into the wrong field; payroll tax-jurisdiction and address validation reject it, and mail to the employee
+    is misrouted.
+  rule_authority: best_practice
+  sap_impact: Address validation and payroll replication (infotype 0006 postal-code check) reject the address; tax jurisdiction
+    / locality cannot be derived.
+  fix_map:
+    __other__: Postal code '{invalid_value}' is not a valid Canada postal code (expected e.g. M5V 3L9). Correct it via People
+      Profile > Addresses.
+  record_fix_template: 'Person {PERADDRESS.PERSON_ID}: postal code ''{actual_value}'' does not match the Canada format.'
+  applies_when:
+    PERADDRESS.COUNTRY:
+    - CAN
+- id: EC066
+  field: PERADDRESS.ZIPCODE
+  check_class: regex_check
+  pattern: ^([A-Za-z]{1,2}\d[A-Za-z\d]? ?\d[A-Za-z]{2}|GIR ?0AA)$
+  severity: medium
+  dimension: validity
+  message: Postal code does not match the United Kingdom postal-code format
+  why_it_matters: United Kingdom postal codes have a fixed national format (SW1A 1AA). A code that does not match it was
+    mistyped or loaded into the wrong field; payroll tax-jurisdiction and address validation reject it, and mail to the
+    employee is misrouted.
+  rule_authority: best_practice
+  sap_impact: Address validation and payroll replication (infotype 0006 postal-code check) reject the address; tax jurisdiction
+    / locality cannot be derived.
+  fix_map:
+    __other__: Postal code '{invalid_value}' is not a valid United Kingdom postal code (expected e.g. SW1A 1AA). Correct
+      it via People Profile > Addresses.
+  record_fix_template: 'Person {PERADDRESS.PERSON_ID}: postal code ''{actual_value}'' does not match the United Kingdom
+    format.'
+  applies_when:
+    PERADDRESS.COUNTRY:
+    - GBR
+- id: EC067
+  field: PERADDRESS.ZIPCODE
+  check_class: regex_check
+  pattern: ^\d{5}$
+  severity: medium
+  dimension: validity
+  message: Postal code does not match the Germany postal-code format
+  why_it_matters: Germany postal codes have a fixed national format (70173). A code that does not match it was mistyped
+    or loaded into the wrong field; payroll tax-jurisdiction and address validation reject it, and mail to the employee
+    is misrouted.
+  rule_authority: best_practice
+  sap_impact: Address validation and payroll replication (infotype 0006 postal-code check) reject the address; tax jurisdiction
+    / locality cannot be derived.
+  fix_map:
+    __other__: Postal code '{invalid_value}' is not a valid Germany postal code (expected e.g. 70173). Correct it via People
+      Profile > Addresses.
+  record_fix_template: 'Person {PERADDRESS.PERSON_ID}: postal code ''{actual_value}'' does not match the Germany format.'
+  applies_when:
+    PERADDRESS.COUNTRY:
+    - DEU
+- id: EC068
+  field: PERADDRESS.ZIPCODE
+  check_class: regex_check
+  pattern: ^\d{5}$
+  severity: medium
+  dimension: validity
+  message: Postal code does not match the France postal-code format
+  why_it_matters: France postal codes have a fixed national format (75008). A code that does not match it was mistyped or
+    loaded into the wrong field; payroll tax-jurisdiction and address validation reject it, and mail to the employee is
+    misrouted.
+  rule_authority: best_practice
+  sap_impact: Address validation and payroll replication (infotype 0006 postal-code check) reject the address; tax jurisdiction
+    / locality cannot be derived.
+  fix_map:
+    __other__: Postal code '{invalid_value}' is not a valid France postal code (expected e.g. 75008). Correct it via People
+      Profile > Addresses.
+  record_fix_template: 'Person {PERADDRESS.PERSON_ID}: postal code ''{actual_value}'' does not match the France format.'
+  applies_when:
+    PERADDRESS.COUNTRY:
+    - FRA
+- id: EC069
+  field: PERADDRESS.ZIPCODE
+  check_class: regex_check
+  pattern: ^[1-9]\d{3} ?[A-Za-z]{2}$
+  severity: medium
+  dimension: validity
+  message: Postal code does not match the Netherlands postal-code format
+  why_it_matters: Netherlands postal codes have a fixed national format (1012 AB). A code that does not match it was mistyped
+    or loaded into the wrong field; payroll tax-jurisdiction and address validation reject it, and mail to the employee
+    is misrouted.
+  rule_authority: best_practice
+  sap_impact: Address validation and payroll replication (infotype 0006 postal-code check) reject the address; tax jurisdiction
+    / locality cannot be derived.
+  fix_map:
+    __other__: Postal code '{invalid_value}' is not a valid Netherlands postal code (expected e.g. 1012 AB). Correct it
+      via People Profile > Addresses.
+  record_fix_template: 'Person {PERADDRESS.PERSON_ID}: postal code ''{actual_value}'' does not match the Netherlands format.'
+  applies_when:
+    PERADDRESS.COUNTRY:
+    - NLD
+- id: EC070
+  field: PERADDRESS.ZIPCODE
+  check_class: regex_check
+  pattern: ^\d{4}$
+  severity: medium
+  dimension: validity
+  message: Postal code does not match the Australia postal-code format
+  why_it_matters: Australia postal codes have a fixed national format (2000). A code that does not match it was mistyped
+    or loaded into the wrong field; payroll tax-jurisdiction and address validation reject it, and mail to the employee
+    is misrouted.
+  rule_authority: best_practice
+  sap_impact: Address validation and payroll replication (infotype 0006 postal-code check) reject the address; tax jurisdiction
+    / locality cannot be derived.
+  fix_map:
+    __other__: Postal code '{invalid_value}' is not a valid Australia postal code (expected e.g. 2000). Correct it via People
+      Profile > Addresses.
+  record_fix_template: 'Person {PERADDRESS.PERSON_ID}: postal code ''{actual_value}'' does not match the Australia format.'
+  applies_when:
+    PERADDRESS.COUNTRY:
+    - AUS
+- id: EC071
+  field: PERADDRESS.ZIPCODE
+  check_class: regex_check
+  pattern: ^[1-9]\d{2} ?\d{3}$
+  severity: medium
+  dimension: validity
+  message: Postal code does not match the India postal-code format
+  why_it_matters: India postal codes have a fixed national format (110001). A code that does not match it was mistyped or
+    loaded into the wrong field; payroll tax-jurisdiction and address validation reject it, and mail to the employee is
+    misrouted.
+  rule_authority: best_practice
+  sap_impact: Address validation and payroll replication (infotype 0006 postal-code check) reject the address; tax jurisdiction
+    / locality cannot be derived.
+  fix_map:
+    __other__: Postal code '{invalid_value}' is not a valid India postal code (expected e.g. 110001). Correct it via People
+      Profile > Addresses.
+  record_fix_template: 'Person {PERADDRESS.PERSON_ID}: postal code ''{actual_value}'' does not match the India format.'
+  applies_when:
+    PERADDRESS.COUNTRY:
+    - IND
+- id: EC072
+  field: PERADDRESS.ZIPCODE
+  check_class: regex_check
+  pattern: ^\d{4}$
+  severity: medium
+  dimension: validity
+  message: Postal code does not match the South Africa postal-code format
+  why_it_matters: South Africa postal codes have a fixed national format (2193). A code that does not match it was mistyped
+    or loaded into the wrong field; payroll tax-jurisdiction and address validation reject it, and mail to the employee
+    is misrouted.
+  rule_authority: best_practice
+  sap_impact: Address validation and payroll replication (infotype 0006 postal-code check) reject the address; tax jurisdiction
+    / locality cannot be derived.
+  fix_map:
+    __other__: Postal code '{invalid_value}' is not a valid South Africa postal code (expected e.g. 2193). Correct it via
+      People Profile > Addresses.
+  record_fix_template: 'Person {PERADDRESS.PERSON_ID}: postal code ''{actual_value}'' does not match the South Africa format.'
+  applies_when:
+    PERADDRESS.COUNTRY:
+    - ZAF
+- id: EC073
+  field: PERADDRESS.ZIPCODE
+  check_class: regex_check
+  pattern: ^\d{5}-?\d{3}$
+  severity: medium
+  dimension: validity
+  message: Postal code does not match the Brazil postal-code format
+  why_it_matters: Brazil postal codes have a fixed national format (01310-100). A code that does not match it was mistyped
+    or loaded into the wrong field; payroll tax-jurisdiction and address validation reject it, and mail to the employee
+    is misrouted.
+  rule_authority: best_practice
+  sap_impact: Address validation and payroll replication (infotype 0006 postal-code check) reject the address; tax jurisdiction
+    / locality cannot be derived.
+  fix_map:
+    __other__: Postal code '{invalid_value}' is not a valid Brazil postal code (expected e.g. 01310-100). Correct it via
+      People Profile > Addresses.
+  record_fix_template: 'Person {PERADDRESS.PERSON_ID}: postal code ''{actual_value}'' does not match the Brazil format.'
+  applies_when:
+    PERADDRESS.COUNTRY:
+    - BRA
+- id: EC074
+  field: PERADDRESS.ZIPCODE
+  check_class: regex_check
+  pattern: ^\d{3}-?\d{4}$
+  severity: medium
+  dimension: validity
+  message: Postal code does not match the Japan postal-code format
+  why_it_matters: Japan postal codes have a fixed national format (100-0001). A code that does not match it was mistyped
+    or loaded into the wrong field; payroll tax-jurisdiction and address validation reject it, and mail to the employee
+    is misrouted.
+  rule_authority: best_practice
+  sap_impact: Address validation and payroll replication (infotype 0006 postal-code check) reject the address; tax jurisdiction
+    / locality cannot be derived.
+  fix_map:
+    __other__: Postal code '{invalid_value}' is not a valid Japan postal code (expected e.g. 100-0001). Correct it via People
+      Profile > Addresses.
+  record_fix_template: 'Person {PERADDRESS.PERSON_ID}: postal code ''{actual_value}'' does not match the Japan format.'
+  applies_when:
+    PERADDRESS.COUNTRY:
+    - JPN

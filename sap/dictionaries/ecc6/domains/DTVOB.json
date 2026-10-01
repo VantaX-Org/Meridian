@@ -1,0 +1,37 @@
+{
+ "domain": "DTVOB",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Today's date"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "First day of the week"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "First day of month"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "First day of year"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "No default"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

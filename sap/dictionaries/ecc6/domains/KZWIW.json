@@ -1,0 +1,147 @@
+{
+ "domain": "KZWIW",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No separate sub-totals"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Carry over value to KOMP-KZWI1"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Carry over value to KOMP-KZWI2"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Carry over value to KOMP-KZWI3"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Carry over value to KOMP-KZWI4"
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "Carry over value to KOMP-KZWI5"
+  },
+  {
+   "low": "6",
+   "high": null,
+   "text": "Carry over value to KOMP-KZWI6"
+  },
+  {
+   "low": "7",
+   "high": null,
+   "text": "Carry over value to KOMP_BONBA (rebate basis 1)"
+  },
+  {
+   "low": "8",
+   "high": null,
+   "text": "Copy values according to KOMP-PREVA (preference value)"
+  },
+  {
+   "low": "9",
+   "high": null,
+   "text": "Copy values to KOMP-BRTWR (gross value)"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Carry over price to KOMP-CMPRE (credit price)"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Carry over value to KOMP-WAVWR (cost)"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Carry over value to KOMP-GKWRT (statistical value)"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Copy value to XWORKD"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Copy value to XWORKE"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Copy value to XWORKF"
+  },
+  {
+   "low": "G",
+   "high": null,
+   "text": "Copy value to XWORKG"
+  },
+  {
+   "low": "H",
+   "high": null,
+   "text": "Copy value to XWORKH"
+  },
+  {
+   "low": "I",
+   "high": null,
+   "text": "Wertübernahme nach XWORKI"
+  },
+  {
+   "low": "J",
+   "high": null,
+   "text": "Copy value to XWORKJ"
+  },
+  {
+   "low": "K",
+   "high": null,
+   "text": "Copy price to XWORKK"
+  },
+  {
+   "low": "L",
+   "high": null,
+   "text": "Copy price to XWORKL"
+  },
+  {
+   "low": "M",
+   "high": null,
+   "text": "Copy price to XWORKM"
+  },
+  {
+   "low": "Q",
+   "high": null,
+   "text": "Reserved (IS-OIL)"
+  },
+  {
+   "low": "S",
+   "high": null,
+   "text": "Copy values to KOMP-EFFWR (effective value)"
+  },
+  {
+   "low": "Y",
+   "high": null,
+   "text": "Reserved (IS-OIL)"
+  },
+  {
+   "low": "Z",
+   "high": null,
+   "text": "Reserved (IS-OIL)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

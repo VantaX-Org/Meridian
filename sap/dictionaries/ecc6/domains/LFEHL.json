@@ -1,0 +1,42 @@
+{
+ "domain": "LFEHL",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No vendor error"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Price error"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Conditions error"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Quantity error"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Quantity error + price error"
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "Quantity error + condition error"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

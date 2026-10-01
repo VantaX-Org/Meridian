@@ -204,3 +204,41 @@ rules:
     __blank__: Identify duplicate review forms in Admin Center > Performance. Delete the incorrect form. Verify the correct
       form is routed in the current cycle.
 
+- id: PERF016
+  field: GOALPLAN.GOAL_WEIGHT
+  check_class: cross_field_check
+  fail_when: (`GOALPLAN.GOAL_WEIGHT` < 0) | (`GOALPLAN.GOAL_WEIGHT` > 100)
+  require_populated: true
+  severity: medium
+  dimension: validity
+  message: Goal weight must be between 0 and 100 percent
+  why_it_matters: Goal weights are percentages of the goal plan. A weight below 0 or above 100 distorts the calculated goal-section
+    rating and every rating that rolls up from it (overall form rating, calibration).
+  rule_authority: best_practice
+  sap_impact: Calculated goal rating and overall form rating wrong; calibration and pay-for-performance use a wrong score.
+  fix_map:
+    __blank__: Correct the goal weight (0-100) in the employee's goal plan.
+  record_fix_template: 'Goal {GOALPLAN.GOAL_ID} ({GOALPLAN.USERID}): weight {GOALPLAN.GOAL_WEIGHT} is outside 0-100.'
+- id: PERF017
+  field: PMREVIEWRESULT.REVIEW_DATE
+  check_class: cross_field_check
+  fail_when: '`PMREVIEWRESULT.REVIEW_DATE`.dt.normalize() < `PMREVIEWRESULT.REVIEW_PERIOD`'
+  require_populated: true
+  severity: low
+  dimension: consistency
+  message: Completed review form was last changed before its review period started
+  why_it_matters: A form is completed at the end of its route, after the review period has begun. A completed form whose
+    last change predates the start of the review period carries a wrong review-period start (or was migrated with wrong
+    dates) and is reported in the wrong cycle.
+  rule_authority: best_practice
+  sap_impact: Rating reported in the wrong performance cycle; calibration and merit eligibility use the wrong period.
+  fix_map:
+    __blank__: Check the form's review period start/end dates against the cycle it belongs to; correct the form template's
+      period or re-launch the form.
+  record_fix_template: 'Review {PMREVIEWRESULT.USERID}: completed form last changed {PMREVIEWRESULT.REVIEW_DATE}, before
+    review period start {PMREVIEWRESULT.REVIEW_PERIOD}.'
+  applies_when:
+    PMREVIEWRESULT.FORM_STATUS:
+    - '3'
+    - Completed
+    - COMPLETED

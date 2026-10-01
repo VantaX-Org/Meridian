@@ -7,7 +7,11 @@ positive; each seeded defect must be found exactly where it was put.
 Data is in SAP internal format as RFC delivers it: MATNR / IDNRK as 18-digit
 MATN1, STLNR as 8-digit NUMCV, quantities as QUAN text with a decimal point
 ("1.000"), units as internal codes (ST, not PC), initial dates 00000000, the
-standard routing lot-size range 0 – 99,999,999."""
+standard routing lot-size range 0 – 99,999,999.
+
+Seeded defects for the operation and work-centre rules: routing 50000001 operation 0030 has no
+control key (PP044), rate routing 60000001 operation 0020 has base quantity 0 (PP045), work
+centre PACK-01 is valid to a date before it is valid from (PP048)."""
 
 import pandas as pd
 import yaml
@@ -83,7 +87,7 @@ def _frames() -> TableFrames:
         "STPO.STLTY": "M", "STPO.STLNR": _bom(b), "STPO.STLKN": f"{k:08d}", "STPO.STPOZ": f"{b * 100 + k:08d}",
         "STPO.POSNR": pos, "STPO.POSTP": cat, "STPO.IDNRK": comp, "STPO.MENGE": qty, "STPO.MEINS": uom,
         "STPO.POTX1": txt, "STPO.DATUV": "20190415", "STPO.ANDAT": "20190415",
-        "STPO.AEDAT": "00000000", "STPO.LKENZ": "", **{f"STPO.{f}": v for f, v in extra.items()},
+        "STPO.AEDAT": "00000000", "STPO.LKENZ": "", "STPO.REKRS": "", **{f"STPO.{f}": v for f, v in extra.items()},
     } for b, k, pos, cat, comp, qty, uom, txt, extra in items]).fillna("")
     # ── routings / recipes (PLKO) ──────────────────────────────────────────
     # N1 routing (two header versions under engineering change), N1 alt. 02 for large lots,
@@ -116,20 +120,44 @@ def _frames() -> TableFrames:
                        "Impeller machining", "Seal kit assembly", ""],  # 50000005: no description
     })
     # ── work centres (CRHD) and MRP views (MARC) ───────────────────────────
-    crhd = pd.DataFrame({  # ASSY-03 is flagged for deletion
-        "CRHD.OBJTY": ["A"] * 4,
-        "CRHD.OBJID": ["10000011", "10000012", "10000013", "10000014"],
-        "CRHD.ARBPL": ["ASSY-01", "ASSY-02", "MACH-01", "ASSY-03"],
-        "CRHD.WERKS": ["ZA01"] * 4,
-        "CRHD.VERWE": ["0001", "0001", "0001", "0001"],
-        "CRHD.BEGDA": ["20180101"] * 4,
-        "CRHD.ENDDA": ["99991231"] * 4,
-        "CRHD.LVORM": ["", "", "", "X"],
-        "CRHD.AEDAT_GRND": ["20220110", "00000000", "20230404", "20190301"],
-        "CRHD.AEDAT_VORA": ["20220110", "00000000", "00000000", "00000000"],
-        "CRHD.AEDAT_TERM": ["20220110", "20180105", "20180105", "20180105"],
-        "CRHD.AEDAT_TECH": ["00000000"] * 4,
+    crhd = pd.DataFrame({  # ASSY-03 is flagged for deletion; PACK-01 valid to a date before it is valid from (defect)
+        "CRHD.OBJTY": ["A"] * 5,
+        "CRHD.OBJID": ["10000011", "10000012", "10000013", "10000014", "10000015"],
+        "CRHD.ARBPL": ["ASSY-01", "ASSY-02", "MACH-01", "ASSY-03", "PACK-01"],
+        "CRHD.WERKS": ["ZA01"] * 5,
+        "CRHD.VERWE": ["0001", "0001", "0001", "0001", "0001"],
+        "CRHD.PLANV": ["009"] * 5,
+        "CRHD.VGWTS": ["SAP1"] * 5,
+        "CRHD.BEGDA": ["20180101"] * 4 + ["20240101"],
+        "CRHD.ENDDA": ["99991231"] * 4 + ["20231231"],
+        "CRHD.LVORM": ["", "", "", "X", ""],
+        "CRHD.AEDAT_GRND": ["20220110", "00000000", "20230404", "20190301", "00000000"],
+        "CRHD.AEDAT_VORA": ["20220110", "00000000", "00000000", "00000000", "00000000"],
+        "CRHD.AEDAT_TERM": ["20220110", "20180105", "20180105", "20180105", "00000000"],
+        "CRHD.AEDAT_TECH": ["00000000"] * 5,
     })
+    # ── operations (PLPO): routing N1, rate routing R1 and recipe 2 ──────────
+    # 50000001 op 0030 has no control key (defect); 60000001 op 0020 has base quantity 0 (defect)
+    ops = [
+        # PLNTY, PLNNR, PLNKN, VORNR, STEUS, LTXA1, MEINH, BMSCH, (VGW01, VGE01), (VGW02, VGE02), (VGW03, VGE03)
+        ("N", "50000001", 1, "0010", "PP01", "Assemble casing", "ST", "1.000", ("15", "MIN"), ("6", "MIN"), ("6", "MIN")),
+        ("N", "50000001", 2, "0020", "PP01", "Fit impeller and seal", "ST", "1.000", ("10", "MIN"), ("8", "MIN"),
+         ("8", "MIN")),
+        ("N", "50000001", 3, "0030", "", "Pressure test", "ST", "1.000", ("0", ""), ("12", "MIN"), ("12", "MIN")),
+        ("N", "50000001", 4, "0040", "PP02", "External painting", "ST", "1.000", ("0", ""), ("0", ""), ("0", "")),
+        ("R", "60000001", 1, "0010", "PP01", "Line assembly", "ST", "10.000", ("30", "MIN"), ("1", "H"), ("1", "H")),
+        ("R", "60000001", 2, "0020", "PP01", "Line test", "ST", "0.000", ("0", ""), ("20", "MIN"), ("20", "MIN")),
+        ("2", "70000001", 1, "0010", "PI01", "Blend base oil and thickener", "KG", "100.000", ("20", "MIN"),
+         ("2", "H"), ("1", "H")),
+    ]
+    plpo = pd.DataFrame([{
+        "PLPO.PLNTY": t, "PLPO.PLNNR": n, "PLPO.PLNKN": f"{k:08d}", "PLPO.ZAEHL": "00000001",
+        "PLPO.DATUV": "20190415", "PLPO.LOEKZ": "", "PLPO.ANDAT": "20190415", "PLPO.AEDAT": "00000000",
+        "PLPO.VORNR": v, "PLPO.STEUS": st, "PLPO.WERKS": "ZA01", "PLPO.LTXA1": tx, "PLPO.MEINH": u,
+        "PLPO.UMREZ": "1", "PLPO.UMREN": "1", "PLPO.BMSCH": b,
+        "PLPO.VGW01": w1[0], "PLPO.VGE01": w1[1], "PLPO.VGW02": w2[0], "PLPO.VGE02": w2[1],
+        "PLPO.VGW03": w3[0], "PLPO.VGE03": w3[1],
+    } for t, n, k, v, st, tx, u, b, w1, w2, w3 in ops])
     marc = pd.DataFrame({  # 100360 is a consumable outside MRP (ND) — no MRP controller, rightly
         "MARC.MATNR": [_m(100100), _m(100110), _m(100120), _m(100300), _m(100360), _m(100370), _m(100380)],
         "MARC.WERKS": ["ZA01"] * 7,
@@ -138,21 +166,24 @@ def _frames() -> TableFrames:
         "MARC.BESKZ": ["E", "E", "E", "F", "F", "F", "F"],
         "MARC.LVORM": ["", "", "", "", "", "", "X"],                   # 100380 flagged for deletion
     })
-    return TableFrames({"MAST": mast, "STKO": stko, "STPO": stpo, "PLKO": plko, "CRHD": crhd, "MARC": marc},
+    return TableFrames({"MAST": mast, "STKO": stko, "STPO": stpo, "PLKO": plko, "PLPO": plpo, "CRHD": crhd,
+                        "MARC": marc},
                        D, module=MODULE)
 
 
 def _live_config(rules) -> dict[str, set[str]]:
     """The system's own check tables, as discovery would read them."""
-    values = {"STATU": {"1", "2", "3", "4"}, "VERWE": {"1", "2", "3", "4", "5", "6", "9"},
+    values = {"STATU": {"1", "2", "3", "4"}, "PLKO.VERWE": {"1", "2", "3", "4", "5", "6", "9"},
               "STLAN": {"1", "2", "3", "4", "5", "6"}, "STLST": {"01", "02"},
-              "POSTP": {"L", "N", "R", "T", "D", "K", "I"}}
+              "POSTP": {"L", "N", "R", "T", "D", "K", "I"}, "CRHD.VERWE": {"0001", "0007", "0008"},
+              "STEUS": {"PP01", "PP02", "PP03", "PI01", "PI02"}, "PLANV": {"001", "009"}, "VGWTS": {"SAP1", "SAP2"}}
     out = {}
     for r in rules:
-        if r.get("check_class") in ("referential_check", "domain_value_check") and r["field"].split(".")[1] in values:
+        v = values.get(r.get("field")) or values.get(r["field"].split(".")[1])
+        if r.get("check_class") in ("referential_check", "domain_value_check") and v:
             key = _with_reference(r, D, {}).get("_reference_key")
             if key:
-                out[key] = values[r["field"].split(".")[1]]
+                out[key] = v
     return out
 
 
@@ -180,10 +211,13 @@ def test_production_planning_golden():
         "PP013": {_stpo(104, 2)},                              # variable-size item without component
         "PP015": {_stpo(104, 3)},                              # stock item without unit of measure
         "PP029": {f"MATNR={_m(100370)}|WERKS=ZA01"},           # lowercase MRP controller
+        "PP044": {"PLNTY=N|PLNNR=50000001|PLNKN=00000003|ZAEHL=00000001"},  # operation without control key
+        "PP045": {"PLNTY=R|PLNNR=60000001|PLNKN=00000002|ZAEHL=00000001"},  # operation base quantity 0
+        "PP048": {"OBJTY=A|OBJID=10000015"},                   # work centre valid to before valid from
     }, found
     # routing 50000009 (no description either) and work centre ASSY-03 are flagged for deletion,
     # material 100380 is flagged for deletion at plant ZA01: out of the population, counted
-    for rid, total in (("PP003", 9), ("PP001", 9), ("PP017", 3), ("PP018", 3), ("PP029", 5)):
+    for rid, total in (("PP003", 9), ("PP001", 9), ("PP017", 4), ("PP018", 4), ("PP029", 5)):
         r = next(x for x in results if x.check_id == rid)
         assert r.details["population_excluded"] == {"deleted": 1}, rid
         assert r.total_count == total, rid

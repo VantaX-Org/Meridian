@@ -1,0 +1,22 @@
+{
+ "domain": "PAD_DATR2",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "3",
+   "high": null,
+   "text": "Valid record for entered data"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Records with valid days between entry date and CPU date"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

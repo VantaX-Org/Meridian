@@ -59,6 +59,11 @@ class ValuePlacementCheck(BaseCheck):
                 blocked |= _text(df, c).ne("")
             return Evaluation(pd.Series(True, index=df.index), marked & ~blocked,
                               {"marked_in_text": int(marked.sum()), "marked_and_blocked": int((marked & blocked).sum())})
+        if family == "vat_checksum":
+            from checks.value_placement import vat_status
+            s = _text(df, self.rule["field"])
+            st = s.map(lambda v: vat_status(v) if v else "n/a")
+            return Evaluation(st.ne("n/a"), st.eq("bad"), invalid_values_field=self.rule["field"])
         if family == "date_range":
             d = _parse_dates(df[self.rule["field"]])
             populated = ~is_blank(df[self.rule["field"]])

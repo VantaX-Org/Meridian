@@ -1,0 +1,32 @@
+{
+ "domain": "PAD_DATR1",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "1",
+   "high": null,
+   "text": "Read all records"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Valid record(s) for CPU date"
+  },
+  {
+   "low": "6",
+   "high": null,
+   "text": "All records from CPU date to 31.12.9999"
+  },
+  {
+   "low": "7",
+   "high": null,
+   "text": "All records from 01.01.1900 to CPU date"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

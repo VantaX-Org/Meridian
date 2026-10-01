@@ -1,0 +1,22 @@
+{
+ "domain": "CALCD",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "X",
+   "high": null,
+   "text": "Payroll already run for period acc. to PA03"
+  },
+  {
+   "low": "",
+   "high": null,
+   "text": "Payroll not yet run for period acc. to PA03"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

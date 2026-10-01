@@ -1,0 +1,327 @@
+{
+ "table": "T001P",
+ "description": "Personnel Area/Subarea",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "WERKS",
+   "key": true,
+   "data_element": "PERSA",
+   "domain": "PERSA",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Personnel Area",
+   "check_table": "T500P"
+  },
+  {
+   "pos": 3,
+   "name": "BTRTL",
+   "key": true,
+   "data_element": "BTRTL_001P",
+   "domain": "BTRTL",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Personnel Subarea",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "BTEXT",
+   "key": false,
+   "data_element": "BTRTX",
+   "domain": "TEXT15",
+   "type": "CHAR",
+   "length": 15,
+   "decimals": 0,
+   "description": "Personnel Subarea Text",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "MOLGA",
+   "key": false,
+   "data_element": "MOLGA",
+   "domain": "MOLGA",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Country Grouping",
+   "check_table": "T500L"
+  },
+  {
+   "pos": 6,
+   "name": "MOURA",
+   "key": false,
+   "data_element": "MOURA",
+   "domain": "MODIF",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Personnel Subarea Grouping for Leave Types",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "TRFGB",
+   "key": false,
+   "data_element": "TRFGB",
+   "domain": "TRFGB",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Pay Scale Area",
+   "check_table": "T510G"
+  },
+  {
+   "pos": 8,
+   "name": "TRFAR",
+   "key": false,
+   "data_element": "TRFAR",
+   "domain": "TRFAR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Pay scale type",
+   "check_table": "T510A"
+  },
+  {
+   "pos": 9,
+   "name": "MOABW",
+   "key": false,
+   "data_element": "MOABW",
+   "domain": "MOABW",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Personnel subarea grouping for absence and attendance types",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "MOABT",
+   "key": false,
+   "data_element": "NUSED2",
+   "domain": "NUSED2",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Reserved Field/Unused Field of Length 2",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "MOTAT",
+   "key": false,
+   "data_element": "NUSED2",
+   "domain": "NUSED2",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Reserved Field/Unused Field of Length 2",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "MOVER",
+   "key": false,
+   "data_element": "MOVER",
+   "domain": "MOVER",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Personnel Subarea Grpg for Substitution/Availability Types",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "URLKL",
+   "key": false,
+   "data_element": "URLKL",
+   "domain": "URLKL",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "PS grouping for attendance and absence counting",
+   "check_table": "T554X"
+  },
+  {
+   "pos": 14,
+   "name": "JUPER",
+   "key": false,
+   "data_element": "JUPER",
+   "domain": "JUPER",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Legal Person",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "MOBDE",
+   "key": false,
+   "data_element": "MOBDE",
+   "domain": "MOBDE",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Grouping of Personnel Subareas for Time Recording",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "MOZKO",
+   "key": false,
+   "data_element": "MOZKO",
+   "domain": "MOZKO",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Grouping of Personnel Subareas for Time Quota Types",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "MOPTB",
+   "key": false,
+   "data_element": "MOPTB",
+   "domain": "MOPTB",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Personnel subarea grouping for premiums",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "WKTYP",
+   "key": false,
+   "data_element": "WKTYP",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Personnel Subarea for Primary Wage Type and Wage Maintenance",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "MOSTA",
+   "key": false,
+   "data_element": "MOSTA",
+   "domain": "MODIF",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Statistics Modifier",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "MOBUR",
+   "key": false,
+   "data_element": "MOBUR",
+   "domain": "MOBUR",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Personnel Subarea Grouping for Appraisals",
+   "check_table": "*"
+  },
+  {
+   "pos": 21,
+   "name": "MOFID",
+   "key": false,
+   "data_element": "HIDENT",
+   "domain": "HIDENT",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Public Holiday Calendar",
+   "check_table": "THOCI"
+  },
+  {
+   "pos": 22,
+   "name": "MOSID",
+   "key": false,
+   "data_element": "MOSID",
+   "domain": "MOSID",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Personnel Subarea Grouping for Work Schedules",
+   "check_table": "T508Z"
+  },
+  {
+   "pos": 23,
+   "name": "MODSZ",
+   "key": false,
+   "data_element": "NUSED2",
+   "domain": "NUSED2",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Reserved Field/Unused Field of Length 2",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MOFID",
+   "foreign_table": "THOCI",
+   "foreign_field": "IDENT"
+  },
+  {
+   "field": "MOLGA",
+   "foreign_table": "T500L",
+   "foreign_field": "MOLGA"
+  },
+  {
+   "field": "MOSID",
+   "foreign_table": "T508Z",
+   "foreign_field": "MOSID"
+  },
+  {
+   "field": "TRFAR",
+   "foreign_table": "T510A",
+   "foreign_field": "TRFAR"
+  },
+  {
+   "field": "TRFGB",
+   "foreign_table": "T510G",
+   "foreign_field": "TRFGB"
+  },
+  {
+   "field": "URLKL",
+   "foreign_table": "T554X",
+   "foreign_field": "URLKL"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "T500P",
+   "foreign_field": "PERSA"
+  }
+ ]
+}

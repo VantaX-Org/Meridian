@@ -47,6 +47,11 @@ ASSETS = [
      "20240401", "20240401", "20240328", "00000000", "", "00000000", "", "N/A"),             # PH-ANLA-STADT
     ("000000320022", "0000", "00003200", "HP ZBook Studio G10 workstation", "Engineering", "ZA-IT-2209",
      "20250303", "20250303", "20250228", "00000000", "", "00000000", "", "Johannesburg"),    # AA016 area 15
+    ("000000300018", "0000", "00003000", "Bench grinder Metabo DS 200", "Workshop", "ZA-PLT-0412",
+     "20220510", "20220510", "20220505", "00000000", "", "00000000", "", "Germiston"),       # AA037 lathe's tag
+    # AA033: legacy-loaded scrapped trailer, deactivated (2019) before its capitalisation date (2020)
+    ("000000310006", "0000", "00003100", "Trailer Henred 2-axle - scrapped", "Fleet no. 06", "ZA-FLT-0006",
+     "20200301", "20200301", "20200225", "20200301", "", "20190131", "", "Germiston"),
     # population: retired (sold) vehicle whose cost centre was closed; asset created in error
     ("000000310001", "0000", "00003100", "Toyota Corolla 1.8 - sold", "Fleet no. 01", "ZA-FLT-0001",
      "20170301", "20170301", "20170227", "20240630", "", "20240630", "", "Germiston"),
@@ -66,6 +71,8 @@ CURRENT = {
     "000000300016": ("0000004120", "0000001200", "",     "1000", "GER-L1"),
     "000000310005": ("0000004300", "0000001300", "",     "1000", "GER-YARD"),
     "000000320022": ("0000004200", "0000001200", "",     "1100", "JHB-F2"),
+    "000000300018": ("0000004150", "0000001200", "",     "1000", "GER-WS"),
+    "000000310006": ("0000004300", "0000001300", "",     "1000", "GER-YARD"),
     "000000310001": ("",           "0000001300", "",     "1000", "GER-YARD"),
     "000000300017": ("",           "",           "",     "",     ""),
 }
@@ -89,6 +96,9 @@ def _frames() -> TableFrames:
     anla = pd.DataFrame({f"ANLA.{c}": [a[i] for a in ASSETS] for i, c in enumerate(cols)})
     anla.insert(0, "ANLA.BUKRS", "1000")
     anla["ANLA.ERNAM"] = ["TNKOSI"] * len(ASSETS)
+    # quantity and unit (the docking station is a single piece; everything else carries no quantity)
+    anla["ANLA.MENGE"] = ["1.000" if a[0] == "000000320021" and a[1] == "0001" else "0.000" for a in ASSETS]
+    anla["ANLA.MEINS"] = ["ST" if a[0] == "000000320021" and a[1] == "0001" else "" for a in ASSETS]
 
     anlb_rows = []
     for a in ASSETS:
@@ -103,16 +113,19 @@ def _frames() -> TableFrames:
                 aedat = a[9]
                 if afabe == "15":  # special tax depreciation 20 % from the capitalisation period
                     saprz, safbg = "20.0000", afabg
-            anlb_rows.append(("1000", a[0], a[1], afabe, "99991231", afasl, ndjar, ndper, afabg, safbg,
+            anlb_rows.append(("1000", a[0], a[1], afabe, "99991231", "19000101", afasl, ndjar, ndper, afabg, safbg,
                               saprz, a[8], aedat))
     anlb = pd.DataFrame(anlb_rows, columns=[f"ANLB.{c}" for c in (
-        "BUKRS", "ANLN1", "ANLN2", "AFABE", "BDATU", "AFASL", "NDJAR", "NDPER", "AFABG", "SAFBG", "SAPRZ",
+        "BUKRS", "ANLN1", "ANLN2", "AFABE", "BDATU", "ADATU", "AFASL", "NDJAR", "NDPER", "AFABG", "SAFBG", "SAPRZ",
         "ERDAT", "AEDAT")])
 
     anlz_rows = [("1000", a[0], a[1], "99991231", a[6] if a[6] != "00000000" else a[8], *CURRENT[a[0]])
                  for a in ASSETS]
     # history: the lathe moved from cost centre 4100 to 4120 on 1 Jan 2024 (old segment must be ignored)
     anlz_rows.append(("1000", "000000300012", "0000", "20231231", "20210315", "", "", "", "", ""))
+    # defect AA034: the docking station's first segment ends (29 Feb) before it starts (1 Mar)
+    anlz_rows.append(("1000", "000000320021", "0001", "20240229", "20240301", "0000004010", "0000001000", "",
+                      "1100", "JHB-F3"))
     anlz = pd.DataFrame(anlz_rows, columns=[f"ANLZ.{c}" for c in (
         "BUKRS", "ANLN1", "ANLN2", "BDATU", "ADATU", "KOSTL", "PRCTR", "GSBER", "WERKS", "STORT")])
     return TableFrames({"ANLA": anla, "ANLB": anlb, "ANLZ": anlz}, D, module="asset_accounting")
@@ -145,11 +158,15 @@ def test_asset_accounting_golden():
         "DO-ANLA": {"BUKRS=1000|ANLN1=000000300016|ANLN2=0000"},           # changed before created
         "PH-ANLA-STADT": {"BUKRS=1000|ANLN1=000000310005|ANLN2=0000"},     # 'N/A' as municipality
         "AA016": {"BUKRS=1000|ANLN1=000000320022|ANLN2=0000|AFABE=15|BDATU=99991231"},  # no dep. start date
+        "AA033": {"BUKRS=1000|ANLN1=000000310006|ANLN2=0000"},             # deactivated before capitalised
+        "AA034": {"BUKRS=1000|ANLN1=000000320021|ANLN2=0001|BDATU=20240229"},  # segment ends before it starts
+        "AA037": {"BUKRS=1000|ANLN1=000000300012|ANLN2=0000",
+                  "BUKRS=1000|ANLN1=000000300018|ANLN2=0000"},             # two main assets, one tag
     }, found
-    # the sold vehicle is deactivated and the lathe created in error is flagged for deletion:
-    # out of the population, counted
+    # the sold vehicle and the scrapped trailer are deactivated and the lathe created in error is
+    # flagged for deletion: out of the population, counted
     for check_id in ("AA008", "AA014", "AA009"):
         r = next(r for r in results if r.check_id == check_id)
-        assert r.details["population_excluded"] == {"deleted": 1, "deactivated": 1}, check_id
+        assert r.details["population_excluded"] == {"deleted": 1, "deactivated": 2}, check_id
     areas = next(r for r in results if r.check_id == "AA005")
-    assert areas.details["population_excluded"] == {"deleted": 2, "deactivated": 2}
+    assert areas.details["population_excluded"] == {"deleted": 2, "deactivated": 4}

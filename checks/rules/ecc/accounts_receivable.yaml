@@ -637,3 +637,644 @@ rules:
     applies_when:
       KNB1.KNRZE:
         blank: true
+  - id: AR029
+    field: KNB1.BUKRS
+    check_class: referential_check
+    severity: high
+    dimension: consistency
+    message: Customer company code KNB1.BUKRS must exist in T001
+    why_it_matters: Customer company-code data can only be posted in a company code that exists. Data kept for a company code
+      that was removed from the configuration contradicts the organisational structure.
+    rule_authority: best_practice
+    sap_impact: The customer's company-code data is unreachable; open-item, dunning and credit reports show a non-existent
+      company code.
+    fix_map:
+      __other__: Company code '{invalid_value}' is not defined in T001. Remove the obsolete company-code data.
+    record_fix_template: 'Customer {KNB1.KUNNR}: company code ''{actual_value}'' does not exist in T001.'
+  - id: AR030
+    field: KNB1.ZTERM
+    check_class: referential_check
+    severity: high
+    dimension: consistency
+    message: Customer payment terms KNB1.ZTERM must exist in T052
+    why_it_matters: KNB1.ZTERM sets baseline date, cash discount and net due date of every FI invoice to the customer and
+      the due date used by dunning. Terms that are not defined in T052 leave the items without a due date.
+    rule_authority: best_practice
+    sap_impact: Items fall due immediately; dunning, cash-discount handling and ageing are wrong for this customer.
+    fix_map:
+      __other__: Payment terms '{invalid_value}' are not defined in T052. Correct them in XD02/FD02 > Payment transactions
+        or create the terms (OBB8).
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: payment terms ''{actual_value}'' not in T052.'
+  - id: AR031
+    field: KNB1.ZWELS
+    check_class: referential_check
+    multi_value: chars
+    severity: medium
+    dimension: consistency
+    message: Every payment method in KNB1.ZWELS must exist in T042Z
+    why_it_matters: KNB1.ZWELS lists the payment methods the payment program may use for the customer (direct debit, refunds).
+      Every character must be a payment method defined for the country in T042Z.
+    rule_authority: best_practice
+    sap_impact: F110 skips the customer's items for an undefined method; direct debits and refunds are not executed.
+    fix_map:
+      __other__: Payment method '{invalid_value}' is not defined in T042Z. Correct the list in XD02/FD02 > Payment transactions.
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: payment methods ''{actual_value}'' contain a method
+      not in T042Z.'
+  - id: AR032
+    field: KNB1.ZAHLS
+    check_class: referential_check
+    severity: medium
+    dimension: consistency
+    message: Customer payment block KNB1.ZAHLS must exist in T008
+    why_it_matters: The payment block key decides whether F110 may collect (direct debit) or refund the customer's items.
+      A key that is not defined in T008 has no meaning to the payment program.
+    rule_authority: best_practice
+    sap_impact: Direct debits or refunds are stopped without a documented reason, or released although a block was intended.
+    fix_map:
+      __other__: Payment block '{invalid_value}' is not defined in T008. Correct it in XD02/FD02 > Payment transactions.
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: payment block ''{actual_value}'' not in T008.'
+  - id: AR033
+    field: KNB1.HBKID
+    check_class: referential_check
+    severity: low
+    dimension: consistency
+    message: Customer house bank KNB1.HBKID must exist in T012
+    why_it_matters: The house bank in the customer master tells the payment program which of the company's bank accounts collects
+      direct debits from this customer. A house bank that is not defined cannot be used.
+    rule_authority: best_practice
+    sap_impact: Direct debits for the customer are left as exceptions in the payment run.
+    fix_map:
+      __other__: House bank '{invalid_value}' is not defined in T012. Correct it in XD02/FD02 > Payment transactions or remove
+        it to let bank determination (FBZP) decide.
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: house bank ''{actual_value}'' not in T012.'
+  - id: AR034
+    field: KNB1.FDGRV
+    check_class: referential_check
+    severity: low
+    dimension: consistency
+    message: Customer planning group KNB1.FDGRV must exist in T035
+    why_it_matters: The planning group places the customer's open items in cash management and the liquidity forecast. A group
+      that is not defined drops the items out of the forecast.
+    rule_authority: best_practice
+    sap_impact: Cash position and liquidity forecast (FF7A/FF7B) understate incoming payments.
+    fix_map:
+      __other__: Planning group '{invalid_value}' is not defined in T035. Correct it in XD02/FD02 > Account management.
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: planning group ''{actual_value}'' not in T035.'
+  - id: AR035
+    field: KNB1.SPERR
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    valid_values_with_labels:
+      ? ''
+      : No posting block in this company code
+      X: Posting blocked in this company code
+    severity: high
+    dimension: validity
+    message: Company-code posting block must be X (blocked) or empty (open)
+    why_it_matters: KNB1.SPERR blocks postings to the customer in one company code. SAP only recognises X; any other value
+      leaves the block state undefined.
+    rule_authority: best_practice
+    sap_impact: Invoices and payments may post to a customer the business meant to block, or be rejected for one it did not.
+    fix_map:
+      __other__: Set or clear the block in XD05/FD05 (BP company-code data in S/4HANA); never write other values by load.
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: posting block ''{actual_value}'' is invalid.'
+  - id: AR036
+    field: KNB1.LOEVM
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    valid_values_with_labels:
+      ? ''
+      : Active in this company code
+      X: Flagged for deletion in this company code
+    severity: high
+    dimension: validity
+    message: Company-code deletion flag must be X (flagged) or empty
+    why_it_matters: The company-code deletion flag queues the customer's company-code data for archiving. SAP only recognises
+      X.
+    rule_authority: best_practice
+    sap_impact: Archiving and posting checks behave unpredictably for this company code.
+    fix_map:
+      __other__: Set or remove the flag in XD06/FD06; never write other values by load.
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: deletion flag ''{actual_value}'' is invalid.'
+  - id: AR037
+    field: KNB1.XVERR
+    check_class: cross_field_check
+    grain: KNB1
+    fail_when: '`KNA1.LIFNR`.isna()'
+    applies_when:
+      KNB1.XVERR:
+      - X
+    severity: medium
+    dimension: consistency
+    message: Clearing with vendor is switched on but the customer is not linked to a vendor
+    why_it_matters: Offsetting a customer's receivables against the same partner's payables (F110, dunning) needs both the
+      'clearing with vendor' indicator (KNB1.XVERR) and the vendor number in the customer's control data (KNA1.LIFNR). With
+      the indicator alone nothing is offset.
+    rule_authority: best_practice
+    sap_impact: Receivables are dunned and payables paid in full although netting with the partner was agreed.
+    fix_map:
+      __other__: Enter the vendor number in XD02 > Control data (BP customer/vendor roles in S/4HANA), or remove the clearing
+        indicator if no netting is agreed.
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: clearing with vendor is set but no vendor is linked.'
+  - id: AR038
+    field: KNB1.KNRZE
+    check_class: cross_field_check
+    grain: KNB1
+    fail_when: '`KNB1.KNRZE` == `KNB1.KUNNR`'
+    applies_when:
+      KNB1.KNRZE:
+        populated: true
+    severity: medium
+    dimension: consistency
+    message: Customer is entered as its own head office
+    why_it_matters: KNB1.KNRZE turns the account into a branch whose items are posted to the head office. A customer that
+      is its own head office is a self-reference with no meaning; it typically arrives by load and breaks the head office/branch
+      logic for dunning, credit exposure and payment allocation.
+    rule_authority: best_practice
+    sap_impact: Branch items are not consolidated at a real head office; dunning and credit exposure run on the branch.
+    fix_map:
+      __other__: Clear the head office field or enter the real head office account in XD02 > Account management.
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: head office is the customer itself.'
+  - id: AR039
+    field: KNB1.KNRZB
+    check_class: cross_field_check
+    grain: KNB1
+    fail_when: '`KNB1.KNRZB` == `KNB1.KUNNR`'
+    applies_when:
+      KNB1.KNRZB:
+        populated: true
+    severity: low
+    dimension: consistency
+    message: Customer is entered as its own alternative payer in the company code
+    why_it_matters: The alternative payer (KNB1.KNRZB) pays or is debited for the customer. Naming the customer itself is
+      meaningless and usually hides a loading error in which the real payer was lost.
+    rule_authority: best_practice
+    sap_impact: Direct debits and payment advices are addressed to the customer although another payer was intended.
+    fix_map:
+      __other__: Enter the real alternative payer or clear the field in XD02 > Payment transactions.
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: alternative payer is the customer itself.'
+  - id: AR040
+    field: KNA1.KNRZA
+    check_class: cross_field_check
+    fail_when: '`KNA1.KNRZA` == `KNA1.KUNNR`'
+    applies_when:
+      KNA1.KNRZA:
+        populated: true
+    severity: low
+    dimension: consistency
+    message: Customer is entered as its own alternative payer
+    why_it_matters: The alternative payer (KNA1.KNRZA) pays or is debited for the customer in every company code. Naming the
+      customer itself is meaningless and usually hides a loading error in which the real payer was lost.
+    rule_authority: best_practice
+    sap_impact: Direct debits and payment advices are addressed to the customer although another payer was intended.
+    fix_map:
+      __other__: Enter the real alternative payer or clear the field in XD02 > Payment transactions.
+    record_fix_template: 'Customer {KNA1.KUNNR}: alternative payer is the customer itself.'
+  - id: AR041
+    field: KNB1.AKONT
+    check_class: cross_field_check
+    grain: KNB1
+    fail_when: (`SKB1.XSPEB` == 'X') | (`SKB1.XLOEB` == 'X')
+    applies_when:
+      KNB1.AKONT:
+        populated: true
+    severity: high
+    dimension: consistency
+    message: Customer reconciliation account is blocked for posting or flagged for deletion in the company code
+    why_it_matters: Every posting to the customer is also posted to its reconciliation account. When that G/L account is blocked
+      for posting (SKB1.XSPEB) or flagged for deletion (SKB1.XLOEB) in the company code, SAP rejects every invoice, credit
+      memo and incoming payment for the customer.
+    rule_authority: sap_hard_constraint
+    sap_impact: Billing documents are not released to accounting (VFX3); FB70, F-28 and lockbox postings fail with 'account
+      blocked for posting'.
+    fix_map:
+      __other__: Assign an active customer reconciliation account (XD02, company code data; BP in S/4HANA), or lift the block
+        on the G/L account in FS00 if it was set by mistake.
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: reconciliation account {KNB1.AKONT} is blocked
+      or flagged for deletion.'
+  - id: AR042
+    field: KNB5.MAHNA
+    check_class: referential_check
+    severity: medium
+    dimension: consistency
+    message: Customer dunning procedure KNB5.MAHNA must exist in T047A
+    why_it_matters: The dunning procedure decides intervals, levels, charges and forms of every dunning run (F150). A procedure
+      that is not defined in T047A is skipped by the dunning program.
+    rule_authority: best_practice
+    sap_impact: Overdue items are never dunned; DSO rises unnoticed.
+    fix_map:
+      __other__: Dunning procedure '{invalid_value}' is not defined in T047A. Correct it in XD02/FD02 > Correspondence.
+    record_fix_template: 'Customer {KNB5.KUNNR}, company code {KNB5.BUKRS}: dunning procedure ''{actual_value}'' not in T047A.'
+  - id: AR043
+    field: KNB5.MANSP
+    check_class: referential_check
+    severity: low
+    dimension: consistency
+    message: Customer dunning block KNB5.MANSP must exist in T040S
+    why_it_matters: The dunning block key excludes the customer from dunning runs. A key that is not defined in T040S is not
+      recognised by the dunning program.
+    rule_authority: best_practice
+    sap_impact: Overdue items are dunned or not dunned contrary to the intention.
+    fix_map:
+      __other__: Dunning block '{invalid_value}' is not defined in T040S. Correct it in XD02/FD02 > Correspondence.
+    record_fix_template: 'Customer {KNB5.KUNNR}, company code {KNB5.BUKRS}: dunning block ''{actual_value}'' not in T040S.'
+  - id: AR044
+    field: KNKK.KKBER
+    check_class: referential_check
+    severity: high
+    dimension: consistency
+    message: Credit control area KNKK.KKBER must exist in T014
+    why_it_matters: Credit limits are kept per credit control area. Credit data for an area that does not exist is never read
+      by the credit check of sales orders and deliveries.
+    rule_authority: best_practice
+    sap_impact: The customer's credit limit is not checked; orders release without credit control.
+    fix_map:
+      __other__: Credit control area '{invalid_value}' is not defined in T014. Re-create the credit data in the right area
+        (FD32) and delete the obsolete record.
+    record_fix_template: 'Customer {KNKK.KUNNR}: credit control area ''{actual_value}'' does not exist in T014.'
+  - id: AR045
+    field: KNKK.CTLPC
+    check_class: null_check
+    applies_when:
+      KNKK.KLIMK:
+        gt: 0
+    severity: medium
+    dimension: completeness
+    message: Customer has a credit limit but no risk category
+    why_it_matters: Automatic credit control (OVA8) is defined per credit control area, risk category and credit group. A
+      customer with a credit limit but no risk category matches no credit-check rule, so the limit is never enforced on sales
+      orders or deliveries.
+    rule_authority: best_practice
+    sap_impact: Sales orders and deliveries are not credit-checked; exposure can exceed the limit without a block.
+    fix_map:
+      __blank__: Assign the risk category in FD32 > Status (UKM_BP in S/4HANA credit management).
+    record_fix_template: 'Customer {KNA1.KUNNR}: credit limit {KNKK.KLIMK} without a risk category.'
+  - id: AR046
+    field: KNKK.CTLPC
+    check_class: referential_check
+    severity: medium
+    dimension: consistency
+    message: Credit risk category KNKK.CTLPC must exist in T691A
+    why_it_matters: The risk category selects the automatic credit-check rule (OVA8). A category that is not defined in T691A
+      matches no rule, so the credit limit is not enforced.
+    rule_authority: best_practice
+    sap_impact: Sales orders and deliveries are not credit-checked for this customer.
+    fix_map:
+      __other__: Risk category '{invalid_value}' is not defined in T691A. Correct it in FD32 > Status.
+    record_fix_template: 'Customer {KNA1.KUNNR}: risk category ''{actual_value}'' not in T691A.'
+  - id: AR047
+    field: KNKK.NXTRV
+    check_class: cross_field_check
+    fail_when: '`KNKK.NXTRV` < `KNKK.DTREV`'
+    require_populated: true
+    severity: low
+    dimension: consistency
+    message: Next internal credit review is dated before the last internal review
+    why_it_matters: After a credit review (DTREV) the next review date (NXTRV) is set into the future. A next review before
+      the last one means the review cycle was not maintained, and the 'next review date' credit check in OVA8 blocks orders
+      against a date that has already passed.
+    rule_authority: best_practice
+    sap_impact: Orders are blocked by the review-date check, or reviews are not scheduled at all.
+    fix_map:
+      __other__: Set the next internal review date after the last review in FD32 > Status.
+    record_fix_template: 'Customer {KNA1.KUNNR}: next review {KNKK.NXTRV} is before last review {KNKK.DTREV}.'
+  - id: AR048
+    field: KNKK.CRBLB
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    valid_values_with_labels:
+      ? ''
+      : Not blocked by credit management
+      X: Blocked by credit management
+    severity: medium
+    dimension: validity
+    message: Credit management block indicator must be X or empty
+    why_it_matters: KNKK.CRBLB blocks the customer in credit management. SAP only recognises X; any other value leaves the
+      block state undefined.
+    rule_authority: best_practice
+    sap_impact: Orders may be released for a customer credit management meant to block.
+    fix_map:
+      __other__: Set or clear the block in FD32 > Status; never write other values by load.
+    record_fix_template: 'Customer {KNA1.KUNNR}: credit block indicator ''{actual_value}'' is invalid.'
+  - id: AR049
+    field: KNBK.BANKL
+    check_class: cross_field_check
+    fail_when: '`KNBK.BANKS`.notna() & (`KNBK.BANKL`.isna() | `KNBK.BANKN`.isna())'
+    severity: high
+    dimension: consistency
+    message: Customer bank details are incomplete (bank country without bank key or account number)
+    why_it_matters: Bank details are identified by bank country, bank key and account number. Without all three the payment
+      program cannot create direct debits or refunds for the customer.
+    rule_authority: best_practice
+    sap_impact: Direct debits and refunds to this customer cannot be executed by F110.
+    fix_map:
+      __other__: Complete the bank details in XD02 > Payment transactions (BP bank details in S/4HANA).
+    record_fix_template: 'Customer {KNA1.KUNNR}: bank details {KNBK.BANKS}/{KNBK.BANKL}/{KNBK.BANKN} are incomplete.'
+  - id: AR050
+    field: KNBK.BANKS
+    check_class: referential_check
+    grain: KNBK
+    severity: medium
+    dimension: consistency
+    message: Customer bank country KNBK.BANKS must exist in T005
+    why_it_matters: The bank country, with the bank key, identifies the customer's bank. A country that is not in T005 cannot
+      be resolved to a bank directory entry or a payment format.
+    rule_authority: best_practice
+    sap_impact: Direct debits and refunds cannot be created for this bank account.
+    fix_map:
+      __other__: Bank country '{invalid_value}' is not defined in T005. Correct the bank details in XD02 > Payment transactions.
+    record_fix_template: 'Customer {KNBK.KUNNR}: bank country ''{actual_value}'' not in T005.'
+  - id: AR051
+    field: KNBK.KOVON
+    check_class: cross_field_check
+    grain: KNBK
+    fail_when: '`KNBK.KOVON` > `KNBK.KOBIS`'
+    require_populated: true
+    severity: medium
+    dimension: consistency
+    message: Bank details validity starts after it ends
+    why_it_matters: Bank details are used for payment only inside their validity period (KOVON-KOBIS). A period that ends
+      before it starts is never valid, so the bank account is silently unusable.
+    rule_authority: best_practice
+    sap_impact: Direct debits and refunds find no valid bank details for the customer.
+    fix_map:
+      __other__: Correct the validity dates of the bank details in XD02 > Payment transactions (BP in S/4HANA).
+    record_fix_template: 'Customer {KNBK.KUNNR}: bank details valid from {KNBK.KOVON} to {KNBK.KOBIS}.'
+  - id: AR052
+    field: KNA1.LAND1
+    check_class: referential_check
+    severity: high
+    dimension: consistency
+    message: Customer country KNA1.LAND1 must exist in T005
+    why_it_matters: The customer's country drives tax determination, EC sales list, payment methods and address format. A
+      country key that is not defined in T005 resolves none of them.
+    rule_authority: best_practice
+    sap_impact: Tax determination and statutory reporting fail; invoices carry an invalid address.
+    fix_map:
+      __other__: Country '{invalid_value}' is not defined in T005. Correct the customer address in XD02 (BP address in S/4HANA).
+    record_fix_template: 'Customer {KNA1.KUNNR}: country ''{actual_value}'' not in T005.'
+  - id: AR053
+    field: KNA1.REGIO
+    check_class: null_check
+    applies_when:
+      KNA1.LAND1:
+      - US
+      - CA
+      - BR
+      - IN
+    severity: medium
+    dimension: completeness
+    message: Region (state/province) is missing for a customer in a country that requires it
+    why_it_matters: 'In the United States, Canada, Brazil and India the region is part of every postal address and the key
+      for tax: US/CA jurisdiction codes, Brazilian ICMS by state (UF) and Indian GST place of supply are all determined from
+      it.'
+    rule_authority: best_practice
+    sap_impact: Output tax is determined with the wrong rate or not at all; invoices and e-invoicing (NF-e, GST e-invoice)
+      are rejected.
+    fix_map:
+      __blank__: Maintain the region in XD02 > Address (BP address in S/4HANA).
+    record_fix_template: 'Customer {KNA1.KUNNR}: region is {actual_value} for country {KNA1.LAND1}.'
+  - id: AR054
+    field: KNA1.REGIO
+    check_class: referential_check
+    severity: medium
+    dimension: consistency
+    message: Customer region KNA1.REGIO must exist in T005S
+    why_it_matters: Regions are defined per country in T005S. A region code that does not exist cannot drive tax jurisdiction
+      or address formatting.
+    rule_authority: best_practice
+    sap_impact: State-level tax determination and reporting fail for the customer.
+    fix_map:
+      __other__: Region '{invalid_value}' is not defined in T005S. Correct the customer address in XD02 (BP in S/4HANA).
+    record_fix_template: 'Customer {KNA1.KUNNR}: region ''{actual_value}'' not in T005S.'
+  - id: AR055
+    field: KNA1.XCPDK
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    valid_values_with_labels:
+      ? ''
+      : Normal account
+      X: One-time account
+    severity: low
+    dimension: validity
+    message: One-time account indicator must be X or empty
+    why_it_matters: KNA1.XCPDK marks an account whose name, address and bank data are entered per document (BSEC). SAP only
+      recognises X; any other value leaves it unclear where the customer data lives.
+    rule_authority: best_practice
+    sap_impact: Invoices to one-time customers may use master data that does not exist, or ask for document data that is never
+      entered.
+    fix_map:
+      __other__: Correct the indicator via the account group (XD02); one-time customers must use a one-time account group.
+    record_fix_template: 'Customer {KNA1.KUNNR}: one-time indicator ''{actual_value}'' is invalid.'
+  - id: AR056
+    field: BSID.AUGBL
+    check_class: cross_field_check
+    grain: BSID
+    fail_when: '`BSID.AUGBL`.notna() | `BSID.AUGDT`.notna()'
+    severity: high
+    dimension: consistency
+    message: Open customer item carries a clearing document or clearing date
+    why_it_matters: BSID is the secondary index of OPEN customer items; when an item is cleared SAP moves it to BSAD. An open-item
+      row with clearing data means the index and the line item disagree, so the open-item list (FBL5N) and the account balance
+      no longer match.
+    rule_authority: sap_hard_constraint
+    sap_impact: The item can be paid or dunned again although it is cleared, or never shows in FBL5N.
+    fix_map:
+      __other__: Run the FI comparative analysis (SAPF190) for the company code and fiscal year; if it reports differences,
+        raise an SAP incident — secondary indexes are never edited by hand.
+    record_fix_template: Open item {BSID.BUKRS}/{BSID.KUNNR} document {BSID.BELNR}/{BSID.GJAHR} item {BSID.BUZEI} carries clearing
+      data.
+  - id: AR057
+    field: BSID.DMBTR
+    check_class: cross_field_check
+    grain: BSID
+    fail_when: (`BSID.DMBTR` == 0) & (`BSID.WRBTR` != 0)
+    severity: high
+    dimension: accuracy
+    message: Open customer item has a document-currency amount but zero in company-code currency
+    why_it_matters: Every posted line item is translated into company-code currency. A zero local amount against a non-zero
+      document amount means the translation failed (missing exchange rate, manual override), so the item is worth nothing in
+      the ledger.
+    rule_authority: sap_hard_constraint
+    sap_impact: The sub-ledger and G/L balance in local currency understate the item; foreign-currency valuation (FAGL_FCV)
+      and payment proposal amounts are wrong.
+    fix_map:
+      __other__: Check the exchange rate type and rate on the posting date (OB08); reverse and re-post the document with the
+        correct translation.
+    record_fix_template: 'Open item {BSID.BUKRS}/{BSID.KUNNR} document {BSID.BELNR}/{BSID.GJAHR} item {BSID.BUZEI}: amount {BSID.WRBTR}
+      {BSID.WAERS} translates to 0.'
+  - id: AR058
+    field: BSID.HKONT
+    check_class: cross_field_check
+    grain: BSID
+    fail_when: '`BSID.HKONT`.notna() & `KNB1.AKONT`.notna() & (`BSID.HKONT` != `KNB1.AKONT`)'
+    applies_when:
+      BSID.UMSKZ:
+        blank: true
+      BSID.BSTAT:
+        not_in:
+        - S
+    severity: medium
+    dimension: consistency
+    message: Open customer item sits on a reconciliation account other than the customer's current one
+    why_it_matters: Normal customer items post to the reconciliation account in the company-code master (KNB1.AKONT). When that
+      account is changed, items posted before keep the old one, so the customer balance is split across reconciliation accounts
+      until they are cleared or reposted.
+    rule_authority: best_practice
+    sap_impact: Balance-sheet reporting and the sub-ledger/G/L reconciliation (FAGLF03) show the balance under the wrong account;
+      regrouping (FAGLF101) uses the wrong account.
+    fix_map:
+      __other__: 'Either restore the reconciliation account in the customer master or repost the open items to the new reconciliation
+        account (SAP note ''Changing reconciliation account with open items'': program FAGL_MM_RECON / clear and re-post).'
+    record_fix_template: Open item {BSID.BUKRS}/{BSID.KUNNR} document {BSID.BELNR}/{BSID.GJAHR} item {BSID.BUZEI} is on account
+      {BSID.HKONT}; master says {KNB1.AKONT}.
+  - id: AR059
+    field: KNA1.LOEVM
+    check_class: cross_field_check
+    grain: BSID
+    fail_when: (`KNA1.LOEVM` == 'X') | (`KNB1.LOEVM` == 'X')
+    severity: high
+    dimension: consistency
+    message: Open item on a customer flagged for deletion
+    why_it_matters: 'A customer marked for deletion is meant to be finished with. Open items on it are still owed or receivable:
+      they will not be archived, are easily overlooked in reviews of active accounts, and payments or dunning may be blocked
+      by the deletion flag.'
+    rule_authority: best_practice
+    sap_impact: Archiving of the customer fails; outstanding liabilities or receivables sit on a dead account.
+    fix_map:
+      __other__: Clear or settle the open items, or remove the deletion flag (XD06) until they are settled.
+    record_fix_template: 'Open item {BSID.BUKRS}/{BSID.KUNNR} document {BSID.BELNR}/{BSID.GJAHR} item {BSID.BUZEI}: the customer
+      is flagged for deletion.'
+  - id: AR060
+    field: BSID.ZFBDT
+    check_class: null_check
+    grain: BSID
+    severity: medium
+    dimension: completeness
+    message: Open customer item has no baseline date for payment
+    why_it_matters: The due date and every cash-discount date are computed from the baseline date. Without it the item has no
+      due date.
+    rule_authority: sap_hard_constraint
+    sap_impact: Payment run (F110) and dunning (F150) cannot schedule the item; ageing reports misplace it.
+    fix_map:
+      __blank__: Maintain the baseline date on the item (FB02 / FBL1N-FBL5N change line items).
+    record_fix_template: Open item {BSID.BUKRS}/{BSID.KUNNR} document {BSID.BELNR}/{BSID.GJAHR} item {BSID.BUZEI} has no baseline
+      date.
+  - id: AR061
+    field: BSID.DMBTR
+    check_class: cross_field_check
+    grain: BSID
+    fail_when: (`BSID.DMBTR` < 0) | (`BSID.WRBTR` < 0)
+    severity: high
+    dimension: validity
+    message: Open customer item stores a negative amount
+    why_it_matters: SAP stores line-item amounts unsigned; the debit/credit indicator (SHKZG) carries the sign. A negative stored
+      amount double-negates the item in every total.
+    rule_authority: sap_hard_constraint
+    sap_impact: Balances, payment proposals and ageing net the item the wrong way.
+    fix_map:
+      __other__: 'The item was written outside the posting logic: raise an SAP incident and reverse / re-post the document.'
+    record_fix_template: Open item {BSID.BUKRS}/{BSID.KUNNR} document {BSID.BELNR}/{BSID.GJAHR} item {BSID.BUZEI} stores a negative
+      amount.
+  - id: AR062
+    field: BSID.ZBD2T
+    check_class: cross_field_check
+    grain: BSID
+    fail_when: ((`BSID.ZBD2T` > 0) & (`BSID.ZBD2T` < `BSID.ZBD1T`)) | ((`BSID.ZBD3T` > 0) & (`BSID.ZBD3T` < `BSID.ZBD2T`))
+    severity: medium
+    dimension: consistency
+    message: Open customer item's payment-term days are out of order
+    why_it_matters: 'Cash-discount days 1 < days 2 < net days: each later period must be longer than the one before. Out-of-order
+      days make the net due date fall before a discount date.'
+    rule_authority: sap_hard_constraint
+    sap_impact: Discount is taken after the net due date or the item is paid late; due-date analysis is wrong.
+    fix_map:
+      __other__: Correct the payment-term days on the item (FB02) or re-apply the payment term.
+    record_fix_template: 'Open item {BSID.BUKRS}/{BSID.KUNNR} document {BSID.BELNR}/{BSID.GJAHR} item {BSID.BUZEI}: days {BSID.ZBD1T}
+      / {BSID.ZBD2T} / {BSID.ZBD3T}.'
+  - id: AR063
+    field: BSID.ZLSPR
+    check_class: referential_check
+    grain: BSID
+    severity: medium
+    dimension: validity
+    message: Open customer item's payment block reason is not defined (T008)
+    why_it_matters: A payment block reason that is not configured cannot be released through the normal workflow and is not
+      explained to whoever reviews the block.
+    rule_authority: sap_hard_constraint
+    sap_impact: The item is excluded from every payment run until someone notices and edits it.
+    fix_map:
+      __other__: Replace the block reason with one defined in T008 (OB27), or release the block.
+    record_fix_template: 'Open item {BSID.BUKRS}/{BSID.KUNNR} document {BSID.BELNR}/{BSID.GJAHR} item {BSID.BUZEI}: payment
+      block ''{actual_value}'' is not defined.'
+  - id: AR064
+    field: BSID.UMSKZ
+    check_class: referential_check
+    grain: BSID
+    severity: medium
+    dimension: validity
+    message: Open customer item's special G/L indicator is not defined (T074U)
+    why_it_matters: The special G/L indicator decides the alternative reconciliation account (down payments, guarantees, bills
+      of exchange). One that is not configured has no account determination.
+    rule_authority: sap_hard_constraint
+    sap_impact: The item cannot be cleared through the special G/L transactions; balance-sheet classification is wrong.
+    fix_map:
+      __other__: Configure the indicator (OBYR / T074U) or repost the item without it.
+    record_fix_template: 'Open item {BSID.BUKRS}/{BSID.KUNNR} document {BSID.BELNR}/{BSID.GJAHR} item {BSID.BUZEI}: special
+      G/L indicator ''{actual_value}'' is not defined.'
+  - id: AR065
+    field: BSAD.AUGDT
+    check_class: cross_field_check
+    grain: BSAD
+    fail_when: '`BSAD.AUGDT` < `BSAD.BUDAT`'
+    severity: high
+    dimension: consistency
+    message: Cleared customer item was cleared before it was posted
+    why_it_matters: An item can only be cleared on or after its posting date. A clearing date before the posting date means
+      the clearing was back-dated incorrectly or the item data is corrupt.
+    rule_authority: sap_hard_constraint
+    sap_impact: Key-date open-item lists (as of a date between the two) omit an item that was open; ageing and payment-behaviour
+      analysis are wrong.
+    fix_map:
+      __other__: Reset the clearing (FBRA) and clear again with a valid clearing date.
+    record_fix_template: 'Cleared item {BSAD.BUKRS}/{BSAD.KUNNR} document {BSAD.BELNR}/{BSAD.GJAHR} item {BSAD.BUZEI}: cleared
+      {BSAD.AUGDT}, posted {BSAD.BUDAT}.'
+  - id: AR066
+    field: BSAD.AUGBL
+    check_class: cross_field_check
+    grain: BSAD
+    fail_when: '`BSAD.AUGBL`.isna() | `BSAD.AUGDT`.isna()'
+    severity: high
+    dimension: completeness
+    message: Cleared customer item has no clearing document or clearing date
+    why_it_matters: BSAD holds CLEARED items only; each carries the clearing document and date. A row without them cannot be
+      traced to the payment or clearing that settled it.
+    rule_authority: sap_hard_constraint
+    sap_impact: 'The item is neither open nor traceably cleared: the audit trail from invoice to payment breaks.'
+    fix_map:
+      __other__: Run SAPF190 for the company code / year; raise an SAP incident if it reports differences.
+    record_fix_template: Cleared item {BSAD.BUKRS}/{BSAD.KUNNR} document {BSAD.BELNR}/{BSAD.GJAHR} item {BSAD.BUZEI} has no
+      clearing reference.
+  - id: AR067
+    field: BSID.MANSP
+    check_class: referential_check
+    grain: BSID
+    severity: medium
+    dimension: validity
+    message: Open customer item's dunning block reason is not defined (T040S)
+    why_it_matters: A dunning block reason that is not configured is not explained to collections and cannot be managed through
+      the normal dunning-block reports.
+    rule_authority: sap_hard_constraint
+    sap_impact: The item is silently left out of every dunning run.
+    fix_map:
+      __other__: Replace the block with a reason defined in T040S, or release it.
+    record_fix_template: 'Open item {BSID.BUKRS}/{BSID.KUNNR} document {BSID.BELNR}/{BSID.GJAHR}: dunning block ''{actual_value}''
+      is not defined.'

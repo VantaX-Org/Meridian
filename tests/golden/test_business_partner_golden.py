@@ -105,6 +105,16 @@ TAX = [  # EU VAT registration numbers (DE0 / NL0); ...19 is a second BP for the
 ]
 
 
+# BP bank details: (PARTNER, BKVID, BANKS, BANKL, BANKN, IBAN, BK_VALID_FROM, BK_VALID_TO)
+BANKS = [
+    ("0001000012", "0001", "ZA", "250655", "62012345678", "", "20190412000000", OPEN),        # no IBAN in ZA
+    ("0001000013", "0001", "DE", "37040044", "0532013000", "DE89370400440532013000", "20200115000000", OPEN),
+    ("0001000015", "0001", "NL", "ABNA", "0417164300", "NL91ABNA0417164300", "20200302000000", OPEN),
+    ("0001000020", "0001", "ZA", "632005", "4055512345", "", "20250101000000", "20241231235959"),  # ends first
+    ("0001000021", "0001", "DE", "37040044", "0532013001", "DE89370400440532013001", "20220301000000", OPEN),
+]                                                                       # ...21: IBAN check digits do not match
+
+
 def _frames() -> TableFrames:
     cols = ["PARTNER", "TYPE", "BU_GROUP", "TITLE", "NAME_ORG1", "NAME_ORG2", "NAME_FIRST", "NAME_LAST",
             "BU_SORT1", "BU_SORT2", "LANGU_CORR", "NATIO", "NATPERS", "XDELE", "XBLCK", "CRDAT", "CHDAT",
@@ -113,6 +123,10 @@ def _frames() -> TableFrames:
     but000["BUT000.CRUSR"] = "SDLAMINI"
     but000["BUT000.NAME_ORG3"] = ""
     but000["BUT000.NAMEMIDDLE"] = but000["BUT000.PARTNER"].map({"0001000014": "Nomvula"}).fillna("")
+    # founding / liquidation dates: ...24 was liquidated before it was founded
+    but000["BUT000.FOUND_DAT"] = but000["BUT000.PARTNER"].map({"0001000012": "19870301", "0001000024": "20200101"}
+                                                              ).fillna("")
+    but000["BUT000.LIQUID_DAT"] = but000["BUT000.PARTNER"].map({"0001000024": "20190101"}).fillna("")
     but020 = pd.DataFrame({"BUT020.PARTNER": list(ADDRESSES), "BUT020.ADDRNUMBER": [a[0] for a in ADDRESSES.values()],
                            "BUT020.XDFADR": ["X"] * len(ADDRESSES)})
     adrc = pd.DataFrame({
@@ -137,13 +151,19 @@ def _frames() -> TableFrames:
     but100 = pd.DataFrame(ROLES, columns=["BUT100.PARTNER", "BUT100.RLTYP", "BUT100.VALID_FROM", "BUT100.VALID_TO"])
     but100.insert(2, "BUT100.DFVAL", "")
     tax = pd.DataFrame(TAX, columns=["DFKKBPTAXNUM.PARTNER", "DFKKBPTAXNUM.TAXTYPE", "DFKKBPTAXNUM.TAXNUM"])
+    tax["DFKKBPTAXNUM.TAXNUMXL"] = ""
+    bank = pd.DataFrame(BANKS, columns=["BUT0BK.PARTNER", "BUT0BK.BKVID", "BUT0BK.BANKS", "BUT0BK.BANKL",
+                                        "BUT0BK.BANKN", "BUT0BK.IBAN", "BUT0BK.BK_VALID_FROM",
+                                        "BUT0BK.BK_VALID_TO"])
     return TableFrames({"BUT000": but000, "BUT020": but020, "ADRC": adrc, "ADR6": adr6, "BUT100": but100,
-                        "DFKKBPTAXNUM": tax}, D, module="business_partner")
+                        "DFKKBPTAXNUM": tax, "BUT0BK": bank}, D, module="business_partner")
 
 
 def _live_config(rules) -> dict[str, set[str]]:
     """The system's own check tables, as discovery would read them."""
-    values = {"TITLE": {"0001", "0002", "0003", "0004"}, "BU_GROUP": {"0001", "0002"}}
+    values = {"TITLE": {"0001", "0002", "0003", "0004"}, "BU_GROUP": {"0001", "0002"},
+              "BANKS": {"ZA", "DE", "NL", "US"}, "RLTYP": {"000000", "FLCU00", "FLCU01", "FLVN00", "FLVN01"},
+              "TAXTYPE": {"DE0", "NL0", "ZA1"}, "COUNTRY": {"ZA", "DE", "NL", "US", "AE"}}
     out = {}
     for r in rules:
         if r.get("check_class") in ("referential_check", "domain_value_check") and r["field"].split(".")[1] in values:
@@ -169,6 +189,9 @@ def test_business_partner_golden():
         "ST-BUT000": {"PARTNER=0001000024"},                     # 'OBSOLETE' search term, not blocked
         "PH-ADRC-TEL_NUMBER": {"PARTNER=0001000025|ADDRNUMBER=0000045114"},  # 0000000000 as telephone
         "BP018": {"PARTNER=0001000026"},                         # comma instead of dot in the domain
+        "BP049": {"PARTNER=0001000024"},                         # liquidated before it was founded
+        "BP052": {"PARTNER=0001000020|BKVID=0001"},              # bank details end before they start
+        "BP055": {"PARTNER=0001000021|BKVID=0001"},              # IBAN fails the mod-97 check
     }, found
     # ...27 is flagged for archiving: out of the population, counted — on its address and
     # e-mail too, which are judged at the partner's grain
@@ -178,5 +201,8 @@ def test_business_partner_golden():
         assert r.details["population_excluded"] == {"deleted": 1}, check_id
         assert r.grain == "BUT000", check_id
     # the general role 000000 every BP carries is a role, not an initial value
+    # (the archived partner's roles are out of the population, counted)
     roles = next(r for r in results if r.check_id == "BP024")
-    assert roles.total_count == len(ROLES)
+    archived = sum(1 for r in ROLES if r[0] == "0001000027")
+    assert archived and roles.details["population_excluded"] == {"deleted": archived}
+    assert roles.total_count == len(ROLES) - archived

@@ -337,3 +337,57 @@ rules:
       __other__: Pay grade '{invalid_value}' is not in FOPayGrade. Reassign via Admin Center > Compensation Information, or
         configure the missing grade in Admin Center > Foundation Objects > Pay Grade.
     record_fix_template: 'Employee {COMPINFO.USERID}: pay grade ''{actual_value}'' is not in FOPayGrade.'
+
+  - id: COMP019
+    field: COMPINFO.PAY_RANGE_MIN
+    check_class: cross_field_check
+    fail_when: '`COMPINFO.PAY_RANGE_MIN` > `COMPINFO.PAY_RANGE_MAX`'
+    require_populated: true
+    severity: medium
+    dimension: consistency
+    message: Pay range minimum is greater than its maximum
+    why_it_matters: A pay range runs from minimum to maximum. A minimum above the maximum (values swapped or a typo on load)
+      makes range penetration, compa-ratio and merit-guideline lookups meaningless for every employee in the grade. Ranges
+      that also carry a midpoint are judged by COMP012.
+    rule_authority: best_practice
+    sap_impact: Compensation worksheet range penetration and merit guidelines wrong for everyone mapped to this pay range.
+    fix_map:
+      __blank__: Correct the pay range minimum/maximum in Admin Center > Manage Organization, Pay and Job Structures > Pay
+        Range.
+    record_fix_template: 'Employee {COMPINFO.USERID}: pay range min {COMPINFO.PAY_RANGE_MIN} exceeds max {COMPINFO.PAY_RANGE_MAX}.'
+    applies_when:
+      COMPINFO.PAY_RANGE_MID:
+        blank: true
+  - id: COMP020
+    field: COMPINFO.CURRENCY
+    check_class: referential_check
+    severity: high
+    dimension: accuracy
+    message: Pay component currency must be a currency defined in the tenant (Currency object)
+    why_it_matters: 'A well-formed but non-existent currency code (e.g. ''ZAD'', a retired code) passes the format check but
+      cannot be converted: annualisation, compensation planning in the planner''s currency and payroll replication (infotype
+      0008 WAERS) all fail.'
+    rule_authority: sap_hard_constraint
+    sap_impact: Pay component cannot be converted or replicated to payroll; compensation worksheet shows no value.
+    fix_map:
+      __other__: Currency '{invalid_value}' is not an active Currency. Correct the pay component currency via Compensation
+        Information.
+    record_fix_template: 'Employee {COMPINFO.USERID}: pay component currency ''{actual_value}'' does not exist.'
+  - id: COMP021
+    field: COMPINFO.COMP_FREQUENCY
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: Recurring pay component with an amount must carry a frequency
+    why_it_matters: The frequency (annual, monthly, hourly, ...) tells Employee Central how to annualise the amount for compa-ratio,
+      range penetration and total compensation, and payroll how often to pay it. An amount without a frequency cannot be annualised
+      or replicated.
+    rule_authority: sap_hard_constraint
+    sap_impact: Compa-ratio and annualised salary blank; pay component replication to payroll (infotype 0008) fails.
+    fix_map:
+      __blank__: Set the frequency on the recurring pay component via Compensation Information (e.g. ANN for annual salary,
+        MON for monthly allowance).
+    record_fix_template: 'Employee {COMPINFO.USERID}: pay component {COMPINFO.PAY_TYPE} has an amount but no frequency.'
+    applies_when:
+      COMPINFO.SALARY:
+        populated: true

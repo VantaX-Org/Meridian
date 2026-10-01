@@ -90,6 +90,27 @@ edges:
   - {parent: VBAK, child: VBUK, join: {VBELN: VBELN}, cardinality: one}
   - {parent: VBAP, child: VBUP, join: {VBELN: VBELN, POSNR: POSNR}, cardinality: one}
 
+  # ── Open items (vendor / customer sub-ledger) ───────────────────────────
+  - {parent: LFB1, child: BSIK, join: {BUKRS: BUKRS, LIFNR: LIFNR}, cardinality: many}
+  - {parent: LFB1, child: BSAK, join: {BUKRS: BUKRS, LIFNR: LIFNR}, cardinality: many}
+  - {parent: KNB1, child: BSID, join: {BUKRS: BUKRS, KUNNR: KUNNR}, cardinality: many}
+  - {parent: KNB1, child: BSAD, join: {BUKRS: BUKRS, KUNNR: KUNNR}, cardinality: many}
+
+  # ── PO history (GR/IR) and logistics invoice verification ──────────────
+  - {parent: EKPO, child: EKBE, join: {EBELN: EBELN, EBELP: EBELP}, cardinality: many}
+  - {parent: RBKP, child: RSEG, join: {BELNR: BELNR, GJAHR: GJAHR}, cardinality: many}
+  - {parent: LFA1, child: RBKP, join: {LIFNR: LIFNR}, cardinality: many}
+
+  # ── Pricing condition records (A-table key → KONH header → KONP item) ──
+  # the first item carries the rate; KOPOS 02+ are condition supplements
+  - {parent: KONH, child: KONP, join: {KNUMH: KNUMH}, cardinality: one, prefer: {KOPOS: "01"}}
+  - {parent: KONH, child: A004, join: {KNUMH: KNUMH}, cardinality: many}
+  - {parent: KONH, child: A005, join: {KNUMH: KNUMH}, cardinality: many}
+  - {parent: KONH, child: A304, join: {KNUMH: KNUMH}, cardinality: many}
+  - {parent: KONH, child: A305, join: {KNUMH: KNUMH}, cardinality: many}
+  - {parent: KONH, child: A017, join: {KNUMH: KNUMH}, cardinality: many}
+  - {parent: KONH, child: A018, join: {KNUMH: KNUMH}, cardinality: many}
+
   # ── Plant maintenance ──────────────────────────────────────────────────
   - {parent: EQUI, child: EQKT,  join: {EQUNR: EQUNR}, cardinality: one, prefer: {SPRAS: "E"}}
   - {parent: EQUI, child: EQUZ,  join: {EQUNR: EQUNR}, cardinality: one, filter: {DATBI: "99991231"}}

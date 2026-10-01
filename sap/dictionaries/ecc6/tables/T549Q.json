@@ -1,0 +1,117 @@
+{
+ "table": "T549Q",
+ "description": "Payroll Periods",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "PERMO",
+   "key": true,
+   "data_element": "PERMO",
+   "domain": "PERMO",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Period Parameters",
+   "check_table": "T549R"
+  },
+  {
+   "pos": 3,
+   "name": "PABRJ",
+   "key": true,
+   "data_element": "PABRJ",
+   "domain": "GJAHR",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Payroll Year",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "PABRP",
+   "key": true,
+   "data_element": "PABRP",
+   "domain": "PABRP",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Payroll Period",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "VABRJ",
+   "key": false,
+   "data_element": "VABRJ",
+   "domain": "GJAHR",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Previous payroll year",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "VABRP",
+   "key": false,
+   "data_element": "VABRP",
+   "domain": "PABRP",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Previous payroll period",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "BEGDA",
+   "key": false,
+   "data_element": "BEGDA",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Start Date",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "ENDDA",
+   "key": false,
+   "data_element": "ENDDA",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "End Date",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "PERMO",
+   "foreign_table": "T549R",
+   "foreign_field": "PERMO"
+  }
+ ]
+}

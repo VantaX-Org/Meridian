@@ -1,0 +1,11 @@
+{
+ "domain": "VDSK1",
+ "type": "CHAR",
+ "length": 14,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": "T527O",
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

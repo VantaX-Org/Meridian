@@ -19,6 +19,11 @@ One seeded defect each:
   500090  supplier URL in the material description           VP-MAKT-MAKTX  generated (misplaced)
   300030  "DO NOT USE" in the description, no status block  ST-MARA generated (status text)
   200060  standard price 0 on a standard-priced plant        MM043   cross-field (valuation)
+  500095  price unit 0 in the accounting view                MM151   cross-field (valuation)
+  400330  weights maintained without a weight unit            MM159   cross-field (unit of a quantity)
+  300040  negative quality-inspection stock in MARD           MM157   cross-field (stock)
+  500097  HB lot sizing: maximum stock below reorder point    MM171   cross-field (MRP parameters)
+  300050  plant-specific status Z9 not in the system's T141   MM182   referential (live config)
 Population:
   300099  flagged for deletion (MARA.LVORM) — and incomplete: excluded, counted
   300010 / plant 1100 flagged for deletion at plant level (MARC.LVORM): excluded, counted
@@ -45,10 +50,10 @@ def _table(name: str, rows: list[dict]) -> pd.DataFrame:
 
 def _mara(matnr, mtart, matkl, meins, brgew, ntgew, volum, voleh, ean11="", numtp="", pstat="", spart="01",
           prdha="", xchpf="", mfrnr="", mfrpn="", tragr="", mtpos="NORM", ersda="20190312", laeda="20240611",
-          lvorm="", mstae="", mbrsh="M") -> dict:
+          lvorm="", mstae="", mbrsh="M", gewei="KG") -> dict:
     return {"MATNR": matnr, "ERSDA": ersda, "ERNAM": "MDM_JNAIDOO", "LAEDA": laeda, "AENAM": "MDM_PSMIT",
             "VPSTA": pstat, "PSTAT": pstat, "LVORM": lvorm, "MTART": mtart, "MBRSH": mbrsh, "MATKL": matkl,
-            "MEINS": meins, "BSTME": "", "GEWEI": "KG", "BRGEW": brgew, "NTGEW": ntgew, "VOLUM": volum,
+            "MEINS": meins, "BSTME": "", "GEWEI": gewei, "BRGEW": brgew, "NTGEW": ntgew, "VOLUM": volum,
             "VOLEH": voleh, "EAN11": ean11, "NUMTP": numtp, "MSTAE": mstae, "SPART": spart, "PRDHA": prdha,
             "XCHPF": xchpf, "KZKFG": "", "MFRNR": mfrnr, "MFRPN": mfrpn, "QMPUR": "", "TRAGR": tragr,
             "MTPOS_MARA": mtpos, "MHDHB": "0", "MHDRZ": "0"}
@@ -56,23 +61,26 @@ def _mara(matnr, mtart, matkl, meins, brgew, ntgew, volum, voleh, ean11="", numt
 
 def _marc(matnr, werks, beskz, pstat, dismm="PD", dispo="101", disls="EX", sobsl="", prctr="0000010100",
           abcin="B", fevor="", awsls="", lgfsb="", plifz="0", minbe="0.000", mabst="0.000", bstfe="0.000",
-          bstmi="0.000", bstma="0.000", herkl="ZA", ladgr="", xchpf="", sernp="", lvorm="") -> dict:
+          bstmi="0.000", bstma="0.000", herkl="ZA", ladgr="", xchpf="", sernp="", lvorm="", mmsta="",
+          eisbe="0.000") -> dict:
     return {"MATNR": matnr, "WERKS": werks, "PSTAT": pstat, "LVORM": lvorm, "DISMM": dismm, "DISPO": dispo,
             "DISLS": disls, "BESKZ": beskz, "SOBSL": sobsl, "PRCTR": prctr, "ABCIN": abcin, "FEVOR": fevor,
             "SERNP": sernp, "AWSLS": awsls, "BSTFE": bstfe, "MABST": mabst, "MINBE": minbe, "BSTMI": bstmi,
             "BSTMA": bstma, "FHORI": "000", "HERKL": herkl, "KORDB": "", "LADGR": ladgr, "LGFSB": lgfsb,
-            "PERKZ": "M", "PLIFZ": plifz, "FABKZ": "", "EKGRP": "001", "XCHPF": xchpf}
+            "PERKZ": "M", "PLIFZ": plifz, "FABKZ": "", "EKGRP": "001", "XCHPF": xchpf, "MMSTA": mmsta,
+            "EISBE": eisbe, "XMCNG": ""}
 
 
-def _mbew(matnr, bwkey, vprsv, stprs, verpr, bklas, ekalr="", lvorm="") -> dict:
+def _mbew(matnr, bwkey, vprsv, stprs, verpr, bklas, ekalr="", lvorm="", peinh="1") -> dict:
     return {"MATNR": matnr, "BWKEY": bwkey, "BWTAR": "", "LVORM": lvorm, "VPRSV": vprsv, "STPRS": stprs,
-            "VERPR": verpr, "PEINH": "1", "BKLAS": bklas, "EKALR": ekalr}
+            "VERPR": verpr, "PEINH": peinh, "BKLAS": bklas, "EKALR": ekalr}
 
 
 def _frames() -> TableFrames:
     pump, housing, bar, seal, bearing = _m(100100), _m(200050), _m(300010), _m(400200), _m(500075)
     no_matkl, bad_dismm, heavy_net, bad_marm = _m(100900), _m(300020), _m(400300), _m(400310)
     bad_ean, url_text, dead_text, zero_std, deleted = _m(500080), _m(500090), _m(300030), _m(200060), _m(300099)
+    zero_peinh, no_gewei, neg_insp, max_below_rop, bad_mmsta = _m(500095), _m(400330), _m(300040), _m(500097), _m(300050)
 
     mara = _table("MARA", [
         _mara(pump, "FERT", "PUMPS", "ST", "48.500", "42.000", "96.000", "L", "6009876000101", "HE",
@@ -96,6 +104,14 @@ def _frames() -> TableFrames:
               mfrnr="0000300077", mfrpn="SPA 1250 LW"),
         _mara(dead_text, "ROH", "STEEL", "KG", "1.000", "1.000", "0.125", "L", pstat="KEDLB"),
         _mara(zero_std, "HALB", "CASTINGS", "ST", "22.000", "22.000", "11.000", "L", pstat="KDLABG"),
+        _mara(zero_peinh, "ERSA", "BEARINGS", "ST", "0.180", "0.170", "0.110", "L", pstat="KEDLB",
+              mfrnr="0000300045", mfrpn="6207-2RSH"),
+        _mara(no_gewei, "HAWA", "SEALS", "ST", "0.520", "0.450", "0.600", "L", pstat="KEDLB", gewei="",
+              mfrnr="0000300012", mfrpn="MG1/45-G60"),
+        _mara(neg_insp, "ROH", "STEEL", "KG", "1.000", "1.000", "0.125", "L", pstat="KEDLB"),
+        _mara(max_below_rop, "ERSA", "BEARINGS", "ST", "0.250", "0.230", "0.150", "L", pstat="KEDLB",
+              mfrnr="0000300045", mfrpn="6208-2RSH"),
+        _mara(bad_mmsta, "ROH", "STEEL", "KG", "1.000", "1.000", "0.125", "L", pstat="KEDLB"),
         # flagged for deletion — and incomplete (no material group): out of the population
         _mara(deleted, "ROH", "", "KG", "1.000", "1.000", "0.125", "L", pstat="KEDLB", lvorm="X",
               ersda="20110405", laeda="20230118"),
@@ -108,6 +124,9 @@ def _frames() -> TableFrames:
         (bad_marm, "Mechanical seal kit MG1 40mm"), (bad_ean, "Deep groove ball bearing 6206-2RSH"),
         (url_text, "V-belt SPA 1250 see www.optibelt.com"), (dead_text, "Plate 316L 10mm DO NOT USE"),
         (zero_std, "Impeller CP-300 cast"), (deleted, "Round bar 316L 60mm"),
+        (zero_peinh, "Deep groove ball bearing 6207-2RSH"), (no_gewei, "Mechanical seal kit MG1 45mm"),
+        (neg_insp, "Plate 316L 12mm"), (max_below_rop, "Deep groove ball bearing 6208-2RSH"),
+        (bad_mmsta, "Round bar 304 60mm"),
     ]])
     marc = _table("MARC", [
         _marc(pump, "1000", "E", "VDLABGQ", fevor="001", awsls="000001", abcin="A", ladgr="0001", sernp="0001"),
@@ -131,6 +150,12 @@ def _frames() -> TableFrames:
         _marc(dead_text, "1000", "F", "EDLB", lgfsb="0001", plifz="21"),
         _marc(zero_std, "1000", "E", "DLABG", fevor="001", awsls="000001"),
         _marc(deleted, "1000", "F", "EDLB", prctr="", lgfsb="0001", plifz="21"),
+        _marc(zero_peinh, "1000", "F", "EDLB", lgfsb="0002", plifz="10", herkl="IT", abcin="C"),
+        _marc(no_gewei, "1000", "F", "EDLB", lgfsb="0001", plifz="28", herkl="DE"),
+        _marc(neg_insp, "1000", "F", "EDLB", lgfsb="0001", plifz="21", mmsta="01"),
+        _marc(max_below_rop, "1000", "F", "EDLB", dismm="VB", disls="HB", minbe="20.000", mabst="15.000",
+              eisbe="5.000", lgfsb="0002", plifz="10", herkl="IT", abcin="C"),
+        _marc(bad_mmsta, "1000", "F", "EDLB", lgfsb="0001", plifz="21", mmsta="Z9"),
     ])
     mbew = _table("MBEW", [
         _mbew(pump, "1000", "S", "18450.00", "18450.00", "7920", ekalr="X"),
@@ -149,6 +174,11 @@ def _frames() -> TableFrames:
         _mbew(dead_text, "1000", "V", "0.00", "75.30", "3000"),
         _mbew(zero_std, "1000", "S", "0.00", "0.00", "7900", ekalr="X"),
         _mbew(deleted, "1000", "V", "0.00", "60.00", "3000"),
+        _mbew(zero_peinh, "1000", "V", "0.00", "0.00", "3040", peinh="0"),
+        _mbew(no_gewei, "1000", "V", "0.00", "1450.00", "3100"),
+        _mbew(neg_insp, "1000", "V", "0.00", "71.20", "3000"),
+        _mbew(max_below_rop, "1000", "V", "0.00", "131.00", "3040"),
+        _mbew(bad_mmsta, "1000", "V", "0.00", "52.40", "3000"),
     ])
     mvke = _table("MVKE", [
         {"MATNR": m, "VKORG": "1000", "VTWEG": "10", "LVORM": "", "DWERK": "1000", "KTGRM": "01",
@@ -165,8 +195,19 @@ def _frames() -> TableFrames:
         (bad_marm, "ST", "10", "1"),
         (bad_ean, "ST", "1", "1"), (url_text, "ST", "1", "1"), (dead_text, "KG", "1", "1"),
         (zero_std, "ST", "1", "1"), (deleted, "KG", "1", "1"),
+        (zero_peinh, "ST", "1", "1"), (no_gewei, "ST", "1", "1"), (neg_insp, "KG", "1", "1"),
+        (max_below_rop, "ST", "1", "1"), (bad_mmsta, "KG", "1", "1"),
     ]])
-    return TableFrames({"MARA": mara, "MAKT": makt, "MARC": marc, "MBEW": mbew, "MVKE": mvke, "MARM": marm}, D,
+    # storage-location stock (MARD): 300040 has negative quality-inspection stock (defect)
+    mard = _table("MARD", [
+        {"MATNR": m, "WERKS": "1000", "LGORT": lg, "LVORM": "", "LABST": lab, "INSME": ins, "SPEME": "0.000",
+         "RETME": "0.000", "EINME": "0.000", "UMLME": "0.000", "DISKZ": "", "LBSTF": "0.000", "ERSDA": "20190312"}
+        for m, lg, lab, ins in [(pump, "0001", "6.000", "0.000"), (bar, "0001", "1250.000", "40.000"),
+                                (seal, "0001", "64.000", "0.000"), (bearing, "0002", "85.000", "0.000"),
+                                (neg_insp, "0001", "300.000", "5.000-")]
+    ])
+    return TableFrames({"MARA": mara, "MAKT": makt, "MARC": marc, "MBEW": mbew, "MVKE": mvke, "MARM": marm,
+                        "MARD": mard}, D,
                        module="material_master")
 
 
@@ -182,6 +223,7 @@ def _live_config(rules) -> dict[str, set[str]]:
         "DISMM": {"PD", "VB", "V1", "VV", "ND"},
         "SERNP": {"0001"},
         "ABCIN": {"A", "B", "C"},
+        "MMSTA": {"01", "02"},
     }
     out = {}
     for r in rules:
@@ -208,6 +250,11 @@ def test_material_master_golden():
         "VP-MAKT-MAKTX": {"MATNR=000000000000500090"},           # supplier URL in the description
         "ST-MARA": {"MATNR=000000000000300030"},                 # "DO NOT USE" but no MSTAE block
         "MM043": {"MATNR=000000000000200060|WERKS=1000"},        # standard price 0 under price control S
+        "MM151": {"MATNR=000000000000500095|WERKS=1000"},        # price unit 0 in the accounting view
+        "MM159": {"MATNR=000000000000400330"},                   # weights without a weight unit
+        "MM157": {"MATNR=000000000000300040|WERKS=1000|LGORT=0001"},  # negative quality-inspection stock
+        "MM171": {"MATNR=000000000000500097|WERKS=1000"},        # max stock 15 below reorder point 20 (HB)
+        "MM182": {"MATNR=000000000000300050|WERKS=1000"},        # plant status Z9 not configured (T141)
     }, found
     # 300099 is flagged for deletion: out of every MARA-, MAKT- and plant-level rule, counted
     group = next(r for r in results if r.check_id == "MM007")
@@ -215,4 +262,4 @@ def test_material_master_golden():
     # at plant level the deleted material's plant and the bar's deleted plant 1100 are both excluded
     prctr = next(r for r in results if r.check_id == "MM029")
     assert prctr.details["population_excluded"] == {"deleted": 2}
-    assert prctr.total_count == 14
+    assert prctr.total_count == 19

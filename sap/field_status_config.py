@@ -67,6 +67,9 @@ CONFIG_TABLES = {
     # conversion exits: external (language-dependent) → internal codes, for uploaded values
     "T006A": ["SPRAS", "MSEHI", "MSEH3"],        # CUNIT: 'PC' (EN) / 'ST' (DE) → internal 'ST'
     "TAUUM": ["SPRAS", "AUART", "AUART_SPR"],    # AUART: 'OR' (EN) → internal 'TA'
+    # country settings and bank directory (checks/country_rules.py)
+    "T005": ["LAND1", "LNPLZ", "PRPLZ", "XPLZS", "LNST1", "PRST1", "LNST2", "PRST2", "LNBKN", "PRBKN", "LNBLZ", "PRBLZ"],
+    "BNKA": ["BANKS", "BANKL"],
 }
 
 

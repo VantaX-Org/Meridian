@@ -1,0 +1,27 @@
+{
+ "domain": "RURZE",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Infotype is not relevant for PDC retroactive accounting"
+  },
+  {
+   "low": "R",
+   "high": null,
+   "text": "Change triggers retroactive accnt. in PDC time evaluation"
+  },
+  {
+   "low": "T",
+   "high": null,
+   "text": "PDC retroactive accnt. is field-dependent acc. to T588G"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

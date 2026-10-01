@@ -650,3 +650,338 @@ rules:
   fix_map:
     __other__: Merge the duplicate business partners (BP / MDG consolidation) or correct the tax number.
   record_fix_template: 'Record {DFKKBPTAXNUM.TAXTYPE} shares DFKKBPTAXNUM.TAXTYPE, DFKKBPTAXNUM.TAXNUM with another record.'
+- id: BP044
+  field: BUT000.NAME_GRP1
+  check_class: null_check
+  applies_when:
+    BUT000.TYPE:
+    - '3'
+  severity: high
+  dimension: completeness
+  message: Group name is mandatory for business partners of category 3 (group)
+  why_it_matters: 'For a group partner (BUT000.TYPE = 3) Name 1 of the group is the partner''s name: it is the required
+    name field of the category in transaction BP and is printed on every document and shown in every search. A group without
+    it was loaded around the BP checks.'
+  rule_authority: sap_hard_constraint
+  sap_impact: The partner cannot be identified in searches, correspondence or documents; BP maintenance rejects the record
+    until the name is entered.
+  fix_map:
+    __blank__: Enter the group name in transaction BP (Name 1) or via the Manage Business Partner app.
+  record_fix_template: 'BP {BUT000.PARTNER}: group name is {actual_value}.'
+- id: BP045
+  field: BUT000.NAME_ORG1
+  check_class: cross_field_check
+  fail_when: '`BUT000.NAME_ORG1`.notna()'
+  applies_when:
+    BUT000.TYPE:
+    - '1'
+  severity: low
+  dimension: consistency
+  message: Person business partner carries an organisation name
+  why_it_matters: 'Name fields belong to the BP category: a person (TYPE 1) is named by first and last name, an organisation
+    by NAME_ORG1-4. Transaction BP never shows organisation names on a person, so a value here comes from a load and is
+    invisible to users while still used by duplicate checks and interfaces.'
+  rule_authority: best_practice
+  sap_impact: Duplicate checks, CVI mapping and interfaces read a name nobody can see or correct in BP.
+  fix_map:
+    __other__: Clear the organisation name, or — if the partner really is an organisation — create it with category 2 and
+      move the roles (the category cannot be changed).
+  record_fix_template: BP {BUT000.PARTNER} is a person but carries organisation name '{BUT000.NAME_ORG1}'.
+- id: BP046
+  field: BUT000.NAME_LAST
+  check_class: cross_field_check
+  fail_when: '`BUT000.NAME_LAST`.notna()'
+  applies_when:
+    BUT000.TYPE:
+    - '2'
+  severity: low
+  dimension: consistency
+  message: Organisation business partner carries a person's last name
+  why_it_matters: 'Name fields belong to the BP category: an organisation (TYPE 2) is named by NAME_ORG1-4, a person by
+    first and last name. Transaction BP never shows person names on an organisation, so a value here comes from a load and
+    is invisible to users while still used by duplicate checks and interfaces.'
+  rule_authority: best_practice
+  sap_impact: Duplicate checks, CVI mapping and interfaces read a name nobody can see or correct in BP.
+  fix_map:
+    __other__: Clear the person name fields, or — if the partner really is a person — create it with category 1 and move
+      the roles (the category cannot be changed).
+  record_fix_template: BP {BUT000.PARTNER} is an organisation but carries last name '{BUT000.NAME_LAST}'.
+- id: BP047
+  field: BUT000.XSEXM
+  check_class: cross_field_check
+  fail_when: ((`BUT000.XSEXM` == 'X') & (`BUT000.XSEXF` == 'X')) | ((`BUT000.XSEXM` == 'X') & (`BUT000.XSEXU` == 'X')) |
+    ((`BUT000.XSEXF` == 'X') & (`BUT000.XSEXU` == 'X'))
+  applies_when:
+    BUT000.TYPE:
+    - '1'
+  severity: low
+  dimension: consistency
+  message: More than one gender indicator is set on a person
+  why_it_matters: SAP stores a person's gender as three mutually exclusive indicators (male, female, unknown) that transaction
+    BP maintains as one choice. Two set at once is a combination BP cannot produce; the value derived by interfaces (HR,
+    CVI form of address) is then arbitrary.
+  rule_authority: best_practice
+  sap_impact: Form of address and gender passed to interfaces are unpredictable.
+  fix_map:
+    __other__: Re-select the gender in transaction BP > Person, so that exactly one indicator is set.
+  record_fix_template: 'BP {BUT000.PARTNER}: gender indicators male ''{BUT000.XSEXM}'', female ''{BUT000.XSEXF}'', unknown
+    ''{BUT000.XSEXU}''.'
+- id: BP048
+  field: BUT000.BIRTHDT
+  check_class: cross_field_check
+  fail_when: '`BUT000.BIRTHDT` > `BUT000.DEATHDT`'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Date of birth is after the date of death
+  why_it_matters: A person cannot die before being born. One of the two dates was entered or loaded wrongly, which breaks
+    age-based checks, sanctioned-party screening and data-privacy retention (ILM) calculations.
+  rule_authority: best_practice
+  sap_impact: Screening and retention periods are computed from a wrong date.
+  fix_map:
+    __other__: Correct the date of birth or date of death in transaction BP > Person.
+  record_fix_template: 'BP {BUT000.PARTNER}: born {BUT000.BIRTHDT}, died {BUT000.DEATHDT}.'
+- id: BP049
+  field: BUT000.FOUND_DAT
+  check_class: cross_field_check
+  fail_when: '`BUT000.FOUND_DAT` > `BUT000.LIQUID_DAT`'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Organisation was founded after its liquidation date
+  why_it_matters: An organisation cannot be liquidated before it was founded. One of the dates is wrong, which misleads
+    credit management and supplier/customer risk evaluation that read them.
+  rule_authority: best_practice
+  sap_impact: Credit and risk evaluations work with an impossible company history.
+  fix_map:
+    __other__: Correct the founding or liquidation date in transaction BP > Organisation.
+  record_fix_template: 'BP {BUT000.PARTNER}: founded {BUT000.FOUND_DAT}, liquidated {BUT000.LIQUID_DAT}.'
+- id: BP050
+  field: BUT000.VALID_FROM
+  check_class: cross_field_check
+  fail_when: '`BUT000.VALID_FROM` > `BUT000.VALID_TO`'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Business partner validity starts after it ends
+  why_it_matters: 'BUT000.VALID_FROM/VALID_TO bound the period in which the partner may be used. A period that ends before
+    it starts is never valid: the partner is unusable everywhere that checks validity.'
+  rule_authority: best_practice
+  sap_impact: Documents and interfaces reject the partner as not valid on any date.
+  fix_map:
+    __other__: Correct the partner's validity period in transaction BP (or set it open-ended).
+  record_fix_template: 'BP {BUT000.PARTNER}: valid from {BUT000.VALID_FROM} to {BUT000.VALID_TO}.'
+- id: BP051
+  field: BUT020.ADDR_VALID_FROM
+  check_class: cross_field_check
+  grain: BUT020
+  fail_when: '`BUT020.ADDR_VALID_FROM` > `BUT020.ADDR_VALID_TO`'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Business partner address validity starts after it ends
+  why_it_matters: Time-dependent addresses are used only inside their validity period. An address whose period ends before
+    it starts is never valid, so documents fall back to another address or find none.
+  rule_authority: best_practice
+  sap_impact: Correspondence, deliveries and tax determination use the wrong address or none.
+  fix_map:
+    __other__: Correct the address validity in transaction BP > Addresses > Address overview.
+  record_fix_template: 'BP {BUT020.PARTNER}, address {BUT020.ADDRNUMBER}: valid from {BUT020.ADDR_VALID_FROM} to {BUT020.ADDR_VALID_TO}.'
+- id: BP052
+  field: BUT0BK.BK_VALID_FROM
+  check_class: cross_field_check
+  grain: BUT0BK
+  fail_when: '`BUT0BK.BK_VALID_FROM` > `BUT0BK.BK_VALID_TO`'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Business partner bank details validity starts after it ends
+  why_it_matters: Bank details are used for payments and direct debits only inside their validity period. A period that
+    ends before it starts is never valid, so the bank account is silently unusable.
+  rule_authority: best_practice
+  sap_impact: The payment program finds no valid bank details for the partner.
+  fix_map:
+    __other__: Correct the validity of the bank details in transaction BP > Payment transactions.
+  record_fix_template: 'BP {BUT0BK.PARTNER}, bank details {BUT0BK.BKVID}: valid from {BUT0BK.BK_VALID_FROM} to {BUT0BK.BK_VALID_TO}.'
+- id: BP053
+  field: BUT0ID.VALID_DATE_FROM
+  check_class: cross_field_check
+  grain: BUT0ID
+  fail_when: '`BUT0ID.VALID_DATE_FROM` > `BUT0ID.VALID_DATE_TO`'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Identification number validity starts after it ends
+  why_it_matters: Identification numbers (registration, DUNS, licences) carry a validity period. A period that ends before
+    it starts means the identification is never valid and cannot be relied on in compliance checks.
+  rule_authority: best_practice
+  sap_impact: Compliance, KYC and licence checks treat the partner as unidentified.
+  fix_map:
+    __other__: Correct the validity of the identification number in transaction BP > Identification.
+  record_fix_template: 'BP {BUT0ID.PARTNER}, ID type {BUT0ID.TYPE}: valid from {BUT0ID.VALID_DATE_FROM} to {BUT0ID.VALID_DATE_TO}.'
+- id: BP054
+  field: BUT0BK.BANKL
+  check_class: cross_field_check
+  grain: BUT0BK
+  fail_when: '`BUT0BK.BANKS`.notna() & (`BUT0BK.BANKL`.isna() | (`BUT0BK.BANKN`.isna() & `BUT0BK.IBAN`.isna()))'
+  severity: high
+  dimension: consistency
+  message: Business partner bank details are incomplete (bank country without bank key or account)
+  why_it_matters: Bank details are identified by bank country and bank key, and need an account number or IBAN. Without
+    them the payment program cannot pay the vendor role or collect from the customer role.
+  rule_authority: best_practice
+  sap_impact: F110 payments and direct debits for this partner cannot be executed.
+  fix_map:
+    __other__: Complete the bank details in transaction BP > Payment transactions (bank key and account number or IBAN).
+  record_fix_template: 'BP {BUT0BK.PARTNER}, bank details {BUT0BK.BKVID}: bank key or account is missing.'
+- id: BP055
+  field: BUT0BK.IBAN
+  check_class: format_check
+  grain: BUT0BK
+  format: iban
+  severity: high
+  dimension: validity
+  message: IBAN of the business partner's bank details fails the ISO 13616 check
+  why_it_matters: An IBAN carries two check digits (ISO 13616, mod 97). A value that fails the check is mistyped or truncated;
+    SEPA payments and direct debits to it are rejected by the bank.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payment files are rejected by the bank; transfers and SEPA direct debits for the partner fail.
+  fix_map:
+    __other__: Re-enter the IBAN from the partner's bank confirmation in transaction BP > Payment transactions.
+  record_fix_template: 'BP {BUT0BK.PARTNER}, bank details {BUT0BK.BKVID}: IBAN ''{actual_value}'' fails the check digits.'
+- id: BP056
+  field: BUT0BK.BANKS
+  check_class: referential_check
+  grain: BUT0BK
+  severity: high
+  dimension: consistency
+  message: Business partner bank country BUT0BK.BANKS must exist in T005
+  why_it_matters: The bank country, with the bank key, identifies the partner's bank. A country that is not in T005 cannot
+    be resolved to a bank or a payment format.
+  rule_authority: best_practice
+  sap_impact: Payments and direct debits cannot be created for this bank account.
+  fix_map:
+    __other__: Bank country '{invalid_value}' is not defined in T005. Correct the bank details in transaction BP.
+  record_fix_template: 'BP {BUT0BK.PARTNER}, bank details {BUT0BK.BKVID}: bank country ''{actual_value}'' not in T005.'
+- id: BP057
+  field: BUT100.RLTYP
+  check_class: referential_check
+  grain: BUT100
+  severity: high
+  dimension: consistency
+  message: Business partner role BUT100.RLTYP must exist in TB003
+  why_it_matters: BP roles (customer, vendor, contact person …) decide which data and processes are available for the partner.
+    A role that is not defined in TB003 cannot be displayed or used.
+  rule_authority: best_practice
+  sap_impact: The partner cannot be maintained in that role; CVI synchronisation to KNA1/LFA1 fails.
+  fix_map:
+    __other__: Role '{invalid_value}' is not defined in TB003. Remove the role assignment or assign the correct role in
+      transaction BP.
+  record_fix_template: 'BP {BUT100.PARTNER}: role ''{actual_value}'' not in TB003.'
+- id: BP058
+  field: BUT000.BPKIND
+  check_class: referential_check
+  severity: medium
+  dimension: consistency
+  message: Business partner type BUT000.BPKIND must exist in TB004
+  why_it_matters: The BP type controls field groups and authorisation for the partner. A type that is not defined in TB004
+    cannot be maintained.
+  rule_authority: best_practice
+  sap_impact: Field control and authorisation checks for the partner do not work.
+  fix_map:
+    __other__: BP type '{invalid_value}' is not defined in TB004. Correct it in transaction BP > Control.
+  record_fix_template: 'BP {BUT000.PARTNER}: BP type ''{actual_value}'' not in TB004.'
+- id: BP059
+  field: DFKKBPTAXNUM.TAXTYPE
+  check_class: referential_check
+  grain: DFKKBPTAXNUM
+  severity: high
+  dimension: consistency
+  message: Tax number category DFKKBPTAXNUM.TAXTYPE must exist in TFKTAXNUMTYPE_C
+  why_it_matters: The tax number category says which country and kind of tax number is stored (DE0 VAT, US01 EIN …). A category
+    that is not defined is not read by tax determination, CVI or statutory reporting.
+  rule_authority: best_practice
+  sap_impact: The tax number is not transferred to KNA1/LFA1 via CVI and not printed on invoices; EC sales list and e-invoicing
+    miss it.
+  fix_map:
+    __other__: Tax number category '{invalid_value}' is not defined. Re-enter the tax number under the right category in
+      transaction BP > Identification > Tax numbers.
+  record_fix_template: 'BP {DFKKBPTAXNUM.PARTNER}: tax number category ''{actual_value}'' is not defined.'
+- id: BP060
+  field: DFKKBPTAXNUM.TAXNUM
+  check_class: cross_field_check
+  grain: DFKKBPTAXNUM
+  fail_when: '`DFKKBPTAXNUM.TAXNUM`.isna() & `DFKKBPTAXNUM.TAXNUMXL`.isna()'
+  severity: medium
+  dimension: completeness
+  message: Tax number category is maintained without a tax number
+  why_it_matters: A DFKKBPTAXNUM row states that the partner has a tax number of that category; the number itself is in
+    TAXNUM (or TAXNUMXL for long numbers). A row with neither claims a registration that is not there.
+  rule_authority: best_practice
+  sap_impact: Invoices and statutory reports print an empty tax number; CVI transfers a blank tax number to KNA1/LFA1.
+  fix_map:
+    __other__: Enter the tax number for the category in transaction BP > Identification > Tax numbers, or delete the empty
+      row.
+  record_fix_template: 'BP {DFKKBPTAXNUM.PARTNER}: tax number category {DFKKBPTAXNUM.TAXTYPE} has no number.'
+- id: BP061
+  field: BUT0ID.TYPE
+  check_class: referential_check
+  grain: BUT0ID
+  severity: medium
+  dimension: consistency
+  message: Identification type BUT0ID.TYPE must exist in TB039A
+  why_it_matters: Identification types are configured in TB039A (with their uniqueness and country rules). An ID number
+    stored under an undefined type cannot be displayed or validated.
+  rule_authority: best_practice
+  sap_impact: Registration and DUNS numbers stored under the undefined type are invisible to BP, duplicate checks and compliance
+    screening.
+  fix_map:
+    __other__: ID type '{invalid_value}' is not defined in TB039A. Re-enter the number under the right type in transaction
+      BP > Identification.
+  record_fix_template: 'BP {BUT0ID.PARTNER}: identification type ''{actual_value}'' not in TB039A.'
+- id: BP062
+  field: ADRC.COUNTRY
+  check_class: referential_check
+  grain: BUT000
+  severity: high
+  dimension: consistency
+  message: Business partner address country ADRC.COUNTRY must exist in T005
+  why_it_matters: The address country drives tax determination, address format, bank checks and foreign-trade data for every
+    role of the partner. A country key that is not defined in T005 resolves none of them.
+  rule_authority: best_practice
+  sap_impact: Tax determination and address formatting fail; CVI transfers an invalid country to KNA1/LFA1.
+  fix_map:
+    __other__: Country '{invalid_value}' is not defined in T005. Correct the address in transaction BP.
+  record_fix_template: 'BP {BUT000.PARTNER}: address country ''{actual_value}'' not in T005.'
+- id: BP063
+  field: ADRC.REGION
+  check_class: referential_check
+  grain: BUT000
+  severity: medium
+  dimension: consistency
+  message: Business partner region ADRC.REGION must exist in T005S
+  why_it_matters: Regions are defined per country in T005S. A region code that does not exist cannot drive tax jurisdiction
+    or address formatting.
+  rule_authority: best_practice
+  sap_impact: State-level tax determination and reporting fail for the partner.
+  fix_map:
+    __other__: Region '{invalid_value}' is not defined in T005S. Correct the address in transaction BP.
+  record_fix_template: 'BP {BUT000.PARTNER}: region ''{actual_value}'' not in T005S.'
+- id: BP064
+  field: BUT000.PARTNER_GUID
+  check_class: uniqueness_check
+  fields:
+  - BUT000.PARTNER_GUID
+  normalize: alnum
+  severity: high
+  dimension: uniqueness
+  message: Several business partners share the same partner GUID
+  why_it_matters: The partner GUID identifies the BP across systems and in the CVI link tables (CVI_CUST_LINK, CVI_VEND_LINK
+    are keyed by it). SAP generates one per partner; a shared GUID means records were copied by a load, and CVI, MDG replication
+    and interfaces resolve both partners to the same object.
+  rule_authority: best_practice
+  sap_impact: Customer/vendor synchronisation and replication update the wrong partner; S/4HANA conversion stops on the
+    duplicate GUID.
+  fix_map:
+    __other__: Regenerate the GUID of the copied partner (re-create it via BP / MDG) and correct the CVI link.
+  record_fix_template: 'BP {BUT000.PARTNER}: partner GUID {BUT000.PARTNER_GUID} is shared with another partner.'

@@ -162,4 +162,212 @@ rules:
       XSYS.OBJECT_TYPE:
       - MATERIAL
 
+  # ── Breadth: accounting document keys, internal key format, duplicate business identifiers ──
 
+  - id: XSYS014
+    field: XSYS.BUKRS
+    check_class: null_check
+    applies_when:
+      XSYS.OBJECT_TYPE: ['FI_DOCUMENT']
+    severity: critical
+    dimension: completeness
+    message: Accounting document has no company code
+    why_it_matters: An SAP accounting document is identified by company code, document number and fiscal year. Without
+      the company code the document cannot be matched to its counterpart in the other system, so the reconciliation
+      reports it as missing on both sides.
+    rule_authority: sap_hard_constraint
+    sap_impact: The document cannot be reconciled across systems; posting gaps go undetected.
+    fix_map:
+      __blank__: Correct the extract or interface mapping so the company code (BKPF-BUKRS) is carried with every
+        accounting document.
+    record_fix_template: 'Accounting document {XSYS.OBJECT_KEY} ({XSYS.SOURCE_SYSTEM}): no company code.'
+
+  - id: XSYS015
+    field: XSYS.GJAHR
+    check_class: null_check
+    applies_when:
+      XSYS.OBJECT_TYPE: ['FI_DOCUMENT']
+    severity: critical
+    dimension: completeness
+    message: Accounting document has no fiscal year
+    why_it_matters: Document numbers restart every fiscal year; without the fiscal year (BKPF-GJAHR) a document number
+      is ambiguous and can be matched to the wrong year's document.
+    rule_authority: sap_hard_constraint
+    sap_impact: Documents are matched to the wrong year or not at all during reconciliation.
+    fix_map:
+      __blank__: Correct the extract or interface mapping so the fiscal year is carried with every accounting document.
+    record_fix_template: 'Accounting document {XSYS.OBJECT_KEY} ({XSYS.SOURCE_SYSTEM}): no fiscal year.'
+
+  - id: XSYS016
+    field: XSYS.BELNR
+    check_class: null_check
+    applies_when:
+      XSYS.OBJECT_TYPE: ['FI_DOCUMENT']
+    severity: critical
+    dimension: completeness
+    message: Accounting document has no document number
+    why_it_matters: The accounting document number (BKPF-BELNR) is the business identifier both systems share. Without
+      it the document cannot be matched or traced back to the ledger.
+    rule_authority: sap_hard_constraint
+    sap_impact: The document cannot be reconciled or audited across systems.
+    fix_map:
+      __blank__: Correct the extract or interface mapping so the document number is carried with every accounting
+        document.
+    record_fix_template: 'Accounting document {XSYS.OBJECT_KEY} ({XSYS.SOURCE_SYSTEM}): no document number.'
+
+  - id: XSYS017
+    field: XSYS.BUDAT
+    check_class: null_check
+    applies_when:
+      XSYS.OBJECT_TYPE: ['FI_DOCUMENT']
+    severity: high
+    dimension: completeness
+    message: Accounting document has no posting date
+    why_it_matters: The posting date (BKPF-BUDAT) decides the period a document belongs to. SAP never posts without it;
+      a document without posting date cannot be placed in a period, so period-level reconciliation between systems
+      is impossible.
+    rule_authority: sap_hard_constraint
+    sap_impact: Period totals cannot be reconciled across systems.
+    fix_map:
+      __blank__: Correct the extract or interface mapping so the posting date is carried with every accounting document.
+    record_fix_template: 'Accounting document {XSYS.OBJECT_KEY} ({XSYS.SOURCE_SYSTEM}): no posting date.'
+
+  - id: XSYS018
+    field: XSYS.BLDAT
+    check_class: null_check
+    applies_when:
+      XSYS.OBJECT_TYPE: ['FI_DOCUMENT']
+    severity: medium
+    dimension: completeness
+    message: Accounting document has no document date
+    why_it_matters: The document date (BKPF-BLDAT) is mandatory in every SAP posting and is the date of the original
+      business document (invoice date). Without it, cash discount, ageing and duplicate-invoice checks across systems
+      cannot be performed.
+    rule_authority: sap_hard_constraint
+    sap_impact: Duplicate invoice detection and ageing comparison across systems fail for this document.
+    fix_map:
+      __blank__: Correct the extract or interface mapping so the document date is carried with every accounting
+        document.
+    record_fix_template: 'Accounting document {XSYS.OBJECT_KEY} ({XSYS.SOURCE_SYSTEM}): no document date.'
+
+  - id: XSYS019
+    field: XSYS.WAERS
+    check_class: null_check
+    applies_when:
+      XSYS.OBJECT_TYPE: ['FI_DOCUMENT']
+    severity: high
+    dimension: completeness
+    message: Accounting document has no currency
+    why_it_matters: Every SAP accounting document carries its document currency (BKPF-WAERS). Amounts compared across
+      systems without a currency can match by number while differing in value.
+    rule_authority: sap_hard_constraint
+    sap_impact: Amount reconciliation across systems is meaningless for this document.
+    fix_map:
+      __blank__: Correct the extract or interface mapping so the document currency is carried with every accounting
+        document.
+    record_fix_template: 'Accounting document {XSYS.OBJECT_KEY} ({XSYS.SOURCE_SYSTEM}): no currency.'
+
+  - id: XSYS020
+    field: XSYS.LIFNR
+    check_class: regex_check
+    pattern: '^(\d{10}|[A-Z0-9\-_/\.]*[A-Z\-_/\.][A-Z0-9\-_/\.]*)$'
+    severity: medium
+    dimension: validity
+    message: Vendor number is not in SAP's internal format (numeric numbers must carry leading zeros)
+    why_it_matters: SAP stores numeric vendor numbers with leading zeros (ALPHA conversion — '100200' is stored as
+      '0000100200') and alphanumeric numbers in upper case. A vendor number in another format never matches the same
+      vendor in the other system, so the reconciliation reports a false gap and hides the real one.
+    rule_authority: sap_hard_constraint
+    sap_impact: Cross-system vendor matching fails; duplicate or missing vendors are reported wrongly.
+    fix_map:
+      __other__: Apply the ALPHA conversion (CONVERSION_EXIT_ALPHA_INPUT) in the extract or interface mapping.
+    record_fix_template: 'Record {XSYS.OBJECT_KEY} ({XSYS.SOURCE_SYSTEM}): vendor ''{actual_value}'' is not in internal
+      format.'
+
+  - id: XSYS021
+    field: XSYS.KUNNR
+    check_class: regex_check
+    pattern: '^(\d{10}|[A-Z0-9\-_/\.]*[A-Z\-_/\.][A-Z0-9\-_/\.]*)$'
+    severity: medium
+    dimension: validity
+    message: Customer number is not in SAP's internal format (numeric numbers must carry leading zeros)
+    why_it_matters: SAP stores numeric customer numbers with leading zeros (ALPHA conversion — '200300' is stored as
+      '0000200300') and alphanumeric numbers in upper case. A customer number in another format never matches the same
+      customer in the other system.
+    rule_authority: sap_hard_constraint
+    sap_impact: Cross-system customer matching fails; duplicate or missing customers are reported wrongly.
+    fix_map:
+      __other__: Apply the ALPHA conversion (CONVERSION_EXIT_ALPHA_INPUT) in the extract or interface mapping.
+    record_fix_template: 'Record {XSYS.OBJECT_KEY} ({XSYS.SOURCE_SYSTEM}): customer ''{actual_value}'' is not in
+      internal format.'
+
+  - id: XSYS022
+    field: XSYS.PERNR
+    check_class: regex_check
+    pattern: '^\d{8}$'
+    severity: medium
+    dimension: validity
+    message: Personnel number is not an 8-digit number
+    why_it_matters: The SAP personnel number (PERNR) is an 8-digit numeric field stored with leading zeros. Any other
+      form cannot be matched to the employee in HCM, payroll or SuccessFactors Employee Central replication.
+    rule_authority: sap_hard_constraint
+    sap_impact: Employee records cannot be matched across HR, payroll and finance systems.
+    fix_map:
+      __other__: Map the personnel number as 8 digits with leading zeros in the extract or replication mapping.
+    record_fix_template: 'Record {XSYS.OBJECT_KEY} ({XSYS.SOURCE_SYSTEM}): personnel number ''{actual_value}''.'
+
+  - id: XSYS023
+    field: XSYS.BELNR
+    check_class: uniqueness_check
+    fields: [XSYS.SOURCE_SYSTEM, XSYS.BUKRS, XSYS.GJAHR, XSYS.BELNR]
+    applies_when:
+      XSYS.OBJECT_TYPE: ['FI_DOCUMENT']
+    severity: high
+    dimension: uniqueness
+    message: The same accounting document appears more than once in one system
+    why_it_matters: Company code, fiscal year and document number identify exactly one SAP accounting document. The
+      same document twice in one system's extract (under different keys) is double-counted in every reconciliation
+      total.
+    rule_authority: sap_hard_constraint
+    sap_impact: Reconciliation totals are overstated; a real missing document can be masked by the duplicate.
+    fix_map:
+      __other__: Remove the duplicate from the interface or extract; check the object key mapping for the document.
+    record_fix_template: 'Accounting document {XSYS.BUKRS}/{XSYS.BELNR}/{XSYS.GJAHR} appears more than once in
+      {XSYS.SOURCE_SYSTEM}.'
+
+  - id: XSYS024
+    field: XSYS.LIFNR
+    check_class: uniqueness_check
+    fields: [XSYS.SOURCE_SYSTEM, XSYS.LIFNR, XSYS.BUKRS]
+    applies_when:
+      XSYS.OBJECT_TYPE: ['VENDOR']
+    severity: high
+    dimension: uniqueness
+    message: The same vendor and company code appear more than once in one system
+    why_it_matters: A vendor's company-code data exists once per company code. The same vendor and company code twice
+      in one system's extract means the extract or a key mapping duplicates it, so vendor counts and comparisons
+      across systems are wrong.
+    rule_authority: sap_hard_constraint
+    sap_impact: Cross-system vendor reconciliation double-counts the vendor; mismatches are hidden.
+    fix_map:
+      __other__: Remove the duplicate from the extract; check the object key mapping for the vendor.
+    record_fix_template: 'Vendor {XSYS.LIFNR} / company code {XSYS.BUKRS} appears more than once in {XSYS.SOURCE_SYSTEM}.'
+
+  - id: XSYS025
+    field: XSYS.KUNNR
+    check_class: uniqueness_check
+    fields: [XSYS.SOURCE_SYSTEM, XSYS.KUNNR, XSYS.BUKRS]
+    applies_when:
+      XSYS.OBJECT_TYPE: ['CUSTOMER']
+    severity: high
+    dimension: uniqueness
+    message: The same customer and company code appear more than once in one system
+    why_it_matters: A customer's company-code data exists once per company code. The same customer and company code
+      twice in one system's extract means the extract or a key mapping duplicates it, so customer comparisons across
+      systems are wrong.
+    rule_authority: sap_hard_constraint
+    sap_impact: Cross-system customer reconciliation double-counts the customer; mismatches are hidden.
+    fix_map:
+      __other__: Remove the duplicate from the extract; check the object key mapping for the customer.
+    record_fix_template: 'Customer {XSYS.KUNNR} / company code {XSYS.BUKRS} appears more than once in
+      {XSYS.SOURCE_SYSTEM}.'

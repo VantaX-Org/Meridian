@@ -342,3 +342,47 @@ rules:
         not_in:
         - X
 
+  - id: PAY017
+    field: PAYRESULT.PAY_PERIOD
+    check_class: regex_check
+    pattern: ^\d{4}(0[1-9]|[1-4][0-9]|5[0-3])$
+    severity: high
+    dimension: validity
+    message: Payroll period must be YYYYPP (four-digit payroll year + period 01-53)
+    why_it_matters: 'SAP payroll periods (FPPER) are the payroll year followed by the period number: 01-12 monthly, up to
+      26 bi-weekly, up to 53 weekly. Any other value cannot be matched to a payroll control record, so the result cannot be
+      reconciled, posted or reported by period.'
+    rule_authority: sap_hard_constraint
+    sap_impact: Result cannot be assigned to a payroll period; FI posting and period reconciliation exclude it.
+    fix_map:
+      __other__: Period '{invalid_value}' is not YYYYPP. Re-export the payroll result with the FPPER period (e.g. 202509).
+    record_fix_template: 'Payroll result {PAYRESULT.USERID}: period ''{actual_value}'' is not a valid payroll period.'
+  - id: PAY018
+    field: PAYRESULT.PAYROLL_AREA
+    check_class: regex_check
+    pattern: ^[A-Z0-9]{1,2}$
+    severity: low
+    dimension: validity
+    message: Payroll area must be a 1-2 character SAP payroll area code
+    why_it_matters: The payroll area (ABKRS) is a two-character code that selects the payroll calendar and control record.
+      A description or longer code ('Monthly', 'ZA_MONTHLY') in its place cannot be matched to a payroll calendar.
+    rule_authority: sap_hard_constraint
+    sap_impact: Result cannot be matched to a payroll calendar or control record; period reconciliation fails.
+    fix_map:
+      __other__: Payroll area '{invalid_value}' is not an ABKRS code. Export the two-character payroll area (e.g. Z1).
+    record_fix_template: 'Payroll result {PAYRESULT.USERID}: payroll area ''{actual_value}'' is not a payroll area code.'
+  - id: PAY019
+    field: PAYRESULT.COMPANY
+    check_class: regex_check
+    pattern: ^[A-Z0-9]{1,4}$
+    severity: medium
+    dimension: validity
+    message: Company code on the payroll result must be a 1-4 character SAP company code
+    why_it_matters: Payroll posts to FI by company code (BUKRS, four characters, upper case). An Employee Central legal-entity
+      code or name in this field cannot be posted and breaks the payroll-to-FI reconciliation.
+    rule_authority: sap_hard_constraint
+    sap_impact: Payroll posting to FI rejected for this result; company-level payroll reconciliation incomplete.
+    fix_map:
+      __other__: Company '{invalid_value}' is not a company code. Map the legal entity to its FI company code in the payroll
+        export.
+    record_fix_template: 'Payroll result {PAYRESULT.USERID}: company ''{actual_value}'' is not a company code.'

@@ -1,0 +1,106 @@
+{
+ "table": "T074U",
+ "description": "Special G/L Indicator Properties",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "KOART",
+   "key": true,
+   "data_element": "KOART",
+   "domain": "KOART",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Account type",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "UMSKZ",
+   "key": true,
+   "data_element": "UMSKZ",
+   "domain": "UMSKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Special G/L Indicator",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "UMSKS",
+   "key": false,
+   "data_element": "UMSKS",
+   "domain": "UMSKS",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Special G/L Transaction Type",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "MERKP",
+   "key": false,
+   "data_element": "MERKP_074U",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Noted Item without Balance Update?",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "ZUMKZ",
+   "key": false,
+   "data_element": "DZUMKZ_074",
+   "domain": "CHAR20",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "List of the Target Special G/L Indicators from Requests",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "KLIMP",
+   "key": false,
+   "data_element": "KLIMP_074U",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Take into Account for Credit Limit ?",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "DIAMS",
+   "key": false,
+   "data_element": "DIAMS_074U",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Send Warning Message if Balance Exists ?",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": []
+}

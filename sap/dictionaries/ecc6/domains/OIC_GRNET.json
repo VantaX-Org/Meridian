@@ -1,0 +1,32 @@
+{
+ "domain": "OIC_GRNET",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Normal Processing"
+  },
+  {
+   "low": "G",
+   "high": null,
+   "text": "Invoicing Always Based on Gross Volume"
+  },
+  {
+   "low": "N",
+   "high": null,
+   "text": "Invoicing Always Based on Net Volume"
+  },
+  {
+   "low": "R",
+   "high": null,
+   "text": "Invoicing Based on Line Item Rule (OIGNRULE)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

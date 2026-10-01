@@ -236,3 +236,80 @@ rules:
       MCHB.CLABS:
         gt: 0
 
+  # ── Breadth: batch status vs stock, lifecycle dates, deletion with stock, origin ──
+
+  - id: BATCH016
+    field: MCH1.ZUSTD
+    check_class: cross_field_check
+    grain: MCHB
+    fail_when: '(`MCH1.ZUSTD` == ''X'') & (`MCHB.CLABS` > 0)'
+    severity: high
+    dimension: consistency
+    message: Batch is restricted but still holds unrestricted-use stock
+    why_it_matters: Setting a batch to restricted (MCH1.ZUSTD) moves its unrestricted stock to restricted-use stock
+      (movement type 342; MCHB.CEINM). A restricted batch with unrestricted stock (MCHB.CLABS) contradicts its own
+      status — MRP, ATP and picking treat stock as available that quality has withheld.
+    rule_authority: sap_hard_constraint
+    sap_impact: Withheld stock is confirmed to sales orders and picked for deliveries or production.
+    fix_map:
+      __other__: Post the stock to restricted use (MIGO 344/342 via batch status change in MSC2N) or, if the batch was
+        released, set it back to unrestricted status.
+    record_fix_template: 'Batch {MCHB.CHARG} (material {MCHB.MATNR}, plant {MCHB.WERKS}, sloc {MCHB.LGORT}) is
+      restricted but holds {MCHB.CLABS} unrestricted.'
+
+  - id: BATCH017
+    field: MCH1.LWEDT
+    check_class: cross_field_check
+    fail_when: '`MCH1.HSDAT` > `MCH1.LWEDT`'
+    require_populated: true
+    severity: high
+    dimension: consistency
+    message: Batch was manufactured after its last goods receipt
+    why_it_matters: A batch is received (MCH1.LWEDT) after it is manufactured (MCH1.HSDAT). A manufacturing date
+      after the goods receipt is physically impossible — the date was entered or migrated wrongly, and the shelf-life
+      expiration date calculated from it is wrong too.
+    rule_authority: sap_hard_constraint
+    sap_impact: The calculated shelf-life expiration date is too late — expired stock can be issued under FEFO.
+    fix_map:
+      __other__: Correct the date of manufacture from the certificate of analysis or production order (MSC2N) and
+        recalculate the shelf-life expiration date.
+    record_fix_template: 'Batch {MCH1.CHARG} (material {MCH1.MATNR}): manufactured {MCH1.HSDAT}, last received
+      {MCH1.LWEDT}.'
+
+  - id: BATCH018
+    field: MCHB.CLABS
+    check_class: cross_field_check
+    grain: MCHB
+    fail_when: '((`MCH1.LVORM` == ''X'') | (`MCHA.LVORM` == ''X'')) & ((`MCHB.CLABS` > 0) | (`MCHB.CINSM` > 0) | (`MCHB.CSPEM` > 0))'
+    severity: high
+    dimension: consistency
+    message: Batch is flagged for deletion but still holds stock
+    why_it_matters: A batch is flagged for deletion when it is used up. Stock in a batch flagged for deletion
+      (MCH1.LVORM / MCHA.LVORM) is physically there but treated as gone — archiving skips it, planners ignore it and
+      the stock silently ages in the warehouse.
+    rule_authority: best_practice
+    sap_impact: Stock in the batch is overlooked by planning and disposal; archiving of the batch fails.
+    fix_map:
+      __other__: Remove the deletion flag (MSC2N) if the stock is real, or count and scrap the stock (MI01 / MIGO 551)
+        before deleting the batch.
+    record_fix_template: 'Batch {MCHB.CHARG} (material {MCHB.MATNR}, plant {MCHB.WERKS}) is flagged for deletion but
+      holds stock.'
+
+  - id: BATCH019
+    field: MCH1.HERKL
+    check_class: referential_check
+    reference_values: []
+    reference_table: T005
+    reference_field: LAND1
+    severity: medium
+    dimension: accuracy
+    message: Country of origin of the batch does not exist in the country configuration (T005)
+    why_it_matters: The batch country of origin (MCH1.HERKL) is copied to deliveries and customs declarations
+      (preference and origin determination). A country that is not configured cannot be used in foreign-trade
+      documents.
+    rule_authority: sap_hard_constraint
+    sap_impact: Export/import documents for this batch carry an invalid origin; customs declarations are rejected.
+    fix_map:
+      __other__: Country '{invalid_value}' is not in T005. Correct the origin in the batch master (MSC2N > Basic data 1).
+    record_fix_template: 'Batch {MCH1.CHARG} (material {MCH1.MATNR}): country of origin ''{actual_value}'' is not in
+      T005.'

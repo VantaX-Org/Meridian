@@ -1,0 +1,67 @@
+{
+ "domain": "VGABE",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "1",
+   "high": null,
+   "text": "Goods Receipt"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Invoice Receipt"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Subseq. Debit/Credit"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Down Payment"
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "Payment"
+  },
+  {
+   "low": "6",
+   "high": null,
+   "text": "Goods Issue for Stock Transfer"
+  },
+  {
+   "low": "7",
+   "high": null,
+   "text": "Consumption (Subcontracting)"
+  },
+  {
+   "low": "8",
+   "high": null,
+   "text": "Delivery (Stock Transfer)"
+  },
+  {
+   "low": "9",
+   "high": null,
+   "text": "Service Entry Sheet"
+  },
+  {
+   "low": "Q",
+   "high": null,
+   "text": "Comparison for Internally Posted Material (Only IS-OIL)"
+  },
+  {
+   "low": "R",
+   "high": null,
+   "text": "Return Delivery via Delivery Note"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

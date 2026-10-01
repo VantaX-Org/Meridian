@@ -1,0 +1,178 @@
+{
+ "table": "A304",
+ "description": "Material with release status",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "KAPPL",
+   "key": true,
+   "data_element": "KAPPL",
+   "domain": "KAPPL",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Application",
+   "check_table": "T681A"
+  },
+  {
+   "pos": 3,
+   "name": "KSCHL",
+   "key": true,
+   "data_element": "KSCHA",
+   "domain": "KSCHL",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Condition Type",
+   "check_table": "T685"
+  },
+  {
+   "pos": 4,
+   "name": "VKORG",
+   "key": true,
+   "data_element": "VKORG",
+   "domain": "VKORG",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Sales Organization",
+   "check_table": "TVKO"
+  },
+  {
+   "pos": 5,
+   "name": "VTWEG",
+   "key": true,
+   "data_element": "VTWEG",
+   "domain": "VTWEG",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Distribution Channel",
+   "check_table": "TVTW"
+  },
+  {
+   "pos": 6,
+   "name": "MATNR",
+   "key": true,
+   "data_element": "MATNR",
+   "domain": "MATNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Material Number",
+   "check_table": "MARA"
+  },
+  {
+   "pos": 7,
+   "name": "KFRST",
+   "key": true,
+   "data_element": "KFRST",
+   "domain": "KFRST",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Release Status",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "DATBI",
+   "key": true,
+   "data_element": "KODATBI",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Validity end date of the condition record",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "DATAB",
+   "key": false,
+   "data_element": "KODATAB",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Validity start date of the condition record",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "KBSTAT",
+   "key": false,
+   "data_element": "KBSTAT",
+   "domain": "KBSTAT",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Processing status for conditions",
+   "check_table": "T686E"
+  },
+  {
+   "pos": 11,
+   "name": "KNUMH",
+   "key": false,
+   "data_element": "KNUMH",
+   "domain": "KNUMB",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Condition record number",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "KAPPL",
+   "foreign_table": "T681A",
+   "foreign_field": "KAPPL"
+  },
+  {
+   "field": "KBSTAT",
+   "foreign_table": "T686E",
+   "foreign_field": "KBSTAT"
+  },
+  {
+   "field": "KSCHL",
+   "foreign_table": "T685",
+   "foreign_field": "KSCHL"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MATNR",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "VKORG",
+   "foreign_table": "TVKO",
+   "foreign_field": "VKORG"
+  },
+  {
+   "field": "VTWEG",
+   "foreign_table": "TVTW",
+   "foreign_field": "VTWEG"
+  }
+ ]
+}

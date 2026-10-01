@@ -194,3 +194,21 @@ def test_balance_not_judged_on_an_incomplete_extraction():
     f.incomplete = {"BSEG"}
     _, r = run_rule({**rule, "module": "fi_gl", "applies_when": None}, f)
     assert r.error and "incomplete" in r.error
+
+
+def test_vat_check_digits():
+    from checks.value_placement import vat_status
+    # published valid examples: BE 0428759497, DE 136695976, IT 00743110157, FR 40303265045
+    assert [vat_status(v) for v in ("BE0428759497", "DE136695976", "IT00743110157", "FR40303265045")] == ["ok"] * 4
+    assert [vat_status(v) for v in ("BE0428759498", "DE136695977", "IT00743110158", "FR41303265045")] == ["bad"] * 4
+    assert vat_status("DE12345") == "n/a" and vat_status("NL123456789B01") == "n/a"  # malformed / not checked
+
+
+def test_near_duplicate_names():
+    lfa1 = pd.DataFrame({"LFA1.LIFNR": ["1", "2", "3", "4"],
+                         "LFA1.NAME1": ["Acme (Pty) Ltd.", "ACME PTY LTD", "Acme Pty Ltd", "Beta GmbH"],
+                         "LFA1.PSTLZ": ["2196", "2196", "8001", "2196"], "LFA1.LAND1": ["ZA", "ZA", "ZA", "ZA"]})
+    rule = next(r for r in generate("accounts_payable", [{"field": "LFA1.LIFNR", "check_class": "null_check"}], D)
+                if r["id"] == "ND-LFA1")
+    _, r = run_rule(rule, TableFrames({"LFA1": lfa1}, D, module="accounts_payable"))
+    assert sorted(r.failing_record_keys) == ["LIFNR=1", "LIFNR=2"]  # 3 is in another town

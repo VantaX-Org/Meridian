@@ -58,6 +58,14 @@ tables:
     - {id: deleted, field: BUT000.XDELE, label: "flagged for archiving"}
   BUT020:  # a partner's addresses (ADRC / ADR6 rules evaluate here)
     - {id: deleted, field: BUT000.XDELE, label: "flagged for archiving"}
+  BUT100:
+    - {id: deleted, field: BUT000.XDELE, label: "flagged for archiving"}
+  BUT0BK:
+    - {id: deleted, field: BUT000.XDELE, label: "flagged for archiving"}
+  BUT0ID:
+    - {id: deleted, field: BUT000.XDELE, label: "flagged for archiving"}
+  DFKKBPTAXNUM:
+    - {id: deleted, field: BUT000.XDELE, label: "flagged for archiving"}
   MARA:
     - {id: deleted, field: MARA.LVORM, label: *deleted_label}
   MAKT:
@@ -134,3 +142,18 @@ tables:
        in_table: {table: JEST, column: OBJNR, where: {STAT: [I0076], INACT: [""]}}}
   CRHD:
     - {id: deleted, field: CRHD.LVORM, label: *deleted_label}
+  # pricing: a condition record flagged for deletion is ignored by pricing
+  KONH:
+    - {id: deleted, field: KONP.LOEVM_KO, label: *deleted_label}
+  A004:
+    - {id: deleted, field: KONP.LOEVM_KO, label: *deleted_label}
+  A005:
+    - {id: deleted, field: KONP.LOEVM_KO, label: *deleted_label}
+  A304:
+    - {id: deleted, field: KONP.LOEVM_KO, label: *deleted_label}
+  A305:
+    - {id: deleted, field: KONP.LOEVM_KO, label: *deleted_label}
+  A017:
+    - {id: deleted, field: KONP.LOEVM_KO, label: *deleted_label}
+  A018:
+    - {id: deleted, field: KONP.LOEVM_KO, label: *deleted_label}

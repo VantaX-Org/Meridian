@@ -287,23 +287,28 @@ rules:
   - '9'
   severity: high
   dimension: validity
-  message: Item category must be a valid purchasing item category (0, 1, 2, 3, 7, 9)
-  why_it_matters: 'PSTYP (item category) controls the procurement behaviour of the PO line: standard, consignment, subcontracting,
-    third-party, etc. Invalid values prevent goods receipt processing and invoice verification from working correctly.'
+  message: Item category must be a valid internal purchasing item category (0-9, T163)
+  why_it_matters: 'PSTYP (internal item category) controls the procurement behaviour of the PO line: standard, limit, consignment,
+    subcontracting, third-party, text, stock transfer, service. Invalid values prevent goods receipt processing and invoice
+    verification from working correctly.'
   rule_authority: sap_hard_constraint
   sap_impact: Goods receipt processing logic is undefined. Invoice verification behaviour is unknown. Account assignment may
     be incorrect.
   valid_values_with_labels:
-    '0': Standard
-    '1': Consignment
-    '2': Subcontracting
-    '3': Service (limit)
-    '7': Stock transport order
-    '9': Third-party
+    '0': Standard (blank)
+    '1': Limit (B)
+    '2': Consignment (K)
+    '3': Subcontracting (L)
+    '4': Material unknown (M)
+    '5': Third-party (S)
+    '6': Text (T)
+    '7': Stock transfer (U)
+    '8': Material group (W)
+    '9': Service (D)
   fix_map:
-    __other__: 'Item category ''{invalid_value}'' is not a recognised value. Valid categories: 0 (standard), 1 (consignment),
-      2 (subcontracting), 3 (service/limit), 7 (stock transport order), 9 (third-party). In ECC: correct via ME22N. In S/4HANA:
-      use Fiori app F2229.'
+    __other__: 'Item category ''{invalid_value}'' is not a recognised value. Valid internal categories: 0 standard, 1 limit,
+      2 consignment, 3 subcontracting, 4 material unknown, 5 third-party, 6 text, 7 stock transfer, 8 material group, 9 service.
+      In ECC: correct via ME22N. In S/4HANA: use Fiori app F2229.'
   record_fix_template: 'PO {EKKO.EBELN} item {EKPO.EBELP}: PSTYP is ''{actual_value}''. Set to a valid item category via ME22N
     or Fiori app F2229.'
 - id: PUR019
@@ -778,3 +783,1151 @@ rules:
   fix_map:
     __other__: Close or delete the PO item (ME22N), or remove the deletion flag (MM06) if the material is still needed.
   record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: material {EKPO.MATNR} is flagged for deletion.'
+# ── Rule-breadth extension (PUR046+): agreements, item quantities/prices/units, indicators, open items on blocked masters, requisitions, info records, source lists, configuration ────
+- id: PUR046
+  field: EKKO.KDATE
+  check_class: null_check
+  applies_when: &id001
+    EKKO.BSTYP:
+    - K
+    - L
+  severity: high
+  dimension: completeness
+  message: Contract or scheduling agreement has no validity end date
+  why_it_matters: Contracts and scheduling agreements are valid for a period; ME31K / ME31L require its end date. Source
+    determination and release-order creation only use agreements whose period covers the date.
+  rule_authority: sap_hard_constraint
+  sap_impact: The agreement is never found as a valid source of supply, or never expires, so release orders and delivery
+    schedules run against outdated terms.
+  fix_map:
+    __blank__: 'Enter the validity end date on the header via ME32K / ME32L (S/4HANA: Fiori Manage Purchase Contracts /
+      Scheduling Agreements).'
+  record_fix_template: 'Agreement {EKKO.EBELN}: validity end date missing.'
+- id: PUR047
+  field: EKKO.KDATB
+  check_class: null_check
+  applies_when: *id001
+  severity: medium
+  dimension: completeness
+  message: Contract or scheduling agreement has no validity start date
+  why_it_matters: The validity start is the other half of an outline agreement's period and is required by ME31K / ME31L.
+    Without it source determination cannot tell from when the agreement may be used.
+  rule_authority: sap_hard_constraint
+  sap_impact: Source determination and release documentation cannot evaluate the agreement period.
+  fix_map:
+    __blank__: 'Enter the validity start date on the header via ME32K / ME32L (S/4HANA: Fiori Manage Purchase Contracts
+      / Scheduling Agreements).'
+  record_fix_template: 'Agreement {EKKO.EBELN}: validity start date missing.'
+- id: PUR048
+  field: EKKO.KDATE
+  check_class: cross_field_check
+  fail_when: '`EKKO.KDATB` > `EKKO.KDATE`'
+  applies_when: *id001
+  severity: high
+  dimension: consistency
+  message: Outline agreement validity ends before it starts
+  why_it_matters: 'An agreement''s validity period runs from KDATB to KDATE. An end before the start is an empty period:
+    the agreement is never valid, and SAP''s screens reject it.'
+  rule_authority: sap_hard_constraint
+  sap_impact: The agreement is never proposed as a source of supply; release orders against it are refused.
+  fix_map:
+    __other__: 'Correct the validity period on the header via ME32K / ME32L (S/4HANA: Fiori Manage Purchase Contracts /
+      Scheduling Agreements).'
+  record_fix_template: 'Agreement {EKKO.EBELN}: valid from {EKKO.KDATB} to {actual_value}.'
+- id: PUR049
+  field: EKKO.SPRAS
+  check_class: null_check
+  applies_when:
+    EKKO.LIFNR:
+      populated: true
+  severity: low
+  dimension: completeness
+  message: Purchasing document has no language for its output to the vendor
+  why_it_matters: The document language selects the texts and form language of the PO / agreement output sent to the vendor.
+    It is copied from the vendor master and required on every vendor document.
+  rule_authority: sap_hard_constraint
+  sap_impact: Message output (print, e-mail, EDI) fails or is issued without item and header texts.
+  fix_map:
+    __blank__: Enter the language on the header (Communication tab) via ME22N (ECC and S/4HANA; Fiori F0842A Manage Purchase
+      Orders); maintain the vendor's language too.
+  record_fix_template: 'Purchasing document {EKKO.EBELN}: no output language.'
+- id: PUR050
+  field: EKKO.BSTYP
+  check_class: domain_value_check
+  severity: high
+  dimension: validity
+  message: Purchasing document category is not a value of its SAP domain
+  why_it_matters: The document category (A RFQ, F purchase order, K contract, L scheduling agreement) is fixed by SAP and
+    set by the transaction that creates the document. Any other value cannot be processed.
+  rule_authority: sap_hard_constraint
+  sap_impact: The document cannot be displayed or processed by any purchasing transaction.
+  fix_map:
+    __other__: Investigate how the document was created; documents of an unknown category must be corrected by SAP support
+      or archived.
+  record_fix_template: 'Purchasing document {EKKO.EBELN}: category ''{actual_value}''.'
+- id: PUR051
+  field: EKPO.MENGE
+  check_class: cross_field_check
+  require_populated: true
+  fail_when: '`EKPO.MENGE` <= 0'
+  applies_when:
+    EKKO.BSTYP:
+    - F
+    EKPO.PSTYP:
+      not_in:
+      - '1'
+      - '6'
+  severity: critical
+  dimension: completeness
+  message: Purchase order item has no order quantity
+  why_it_matters: 'A purchase order item orders a quantity: goods receipt, invoice verification and the commitment all work
+    from it. ME21N rejects a zero quantity; limit and text items, which carry no quantity, are not judged.'
+  rule_authority: sap_hard_constraint
+  sap_impact: Nothing can be received or invoiced against the item; the commitment and the vendor's delivery schedule are
+    empty.
+  fix_map:
+    __other__: Enter the order quantity via ME22N (ECC and S/4HANA; Fiori F0842A Manage Purchase Orders), or delete the
+      item if it is not needed.
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: order quantity {actual_value}.'
+- id: PUR052
+  field: EKPO.NETPR
+  check_class: cross_field_check
+  fail_when: '`EKPO.NETPR` == 0'
+  applies_when:
+    EKKO.BSTYP:
+    - F
+    EKPO.REPOS:
+    - X
+    EKPO.PSTYP:
+      not_in:
+      - '1'
+      - '2'
+      - '6'
+  severity: high
+  dimension: accuracy
+  message: Invoiced purchase order item has a net price of zero
+  why_it_matters: 'An item that expects an invoice (IR indicator) must have a price: SAP rejects a zero net price unless
+    the item is free of charge, which removes the invoice indicator. Limit, consignment and text items are priced elsewhere
+    and are not judged.'
+  rule_authority: sap_hard_constraint
+  sap_impact: The goods receipt is valued at zero; the invoice cannot be matched and is blocked for price variance; commitments
+    and spend are understated.
+  fix_map:
+    __other__: Enter the agreed price via ME22N (ECC and S/4HANA; Fiori F0842A Manage Purchase Orders) (or mark the item
+      free of charge if it is), and maintain the info record so the price is proposed next time.
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: net price {actual_value} although an invoice is expected.'
+- id: PUR053
+  field: EKPO.PEINH
+  check_class: cross_field_check
+  require_populated: true
+  fail_when: '`EKPO.PEINH` <= 0'
+  severity: high
+  dimension: consistency
+  message: Price unit of the purchasing document item is zero
+  why_it_matters: The item value is quantity x net price / price unit. A zero price unit divides by zero; ME21N never accepts
+    it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Item value, goods receipt valuation and invoice matching cannot be computed.
+  fix_map:
+    __other__: Set the price unit (normally 1) via ME22N (ECC and S/4HANA; Fiori F0842A Manage Purchase Orders).
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: price unit {actual_value}.'
+- id: PUR054
+  field: EKPO.BPUMZ
+  check_class: cross_field_check
+  fail_when: ~(`EKPO.BPUMZ` > 0) | ~(`EKPO.BPUMN` > 0)
+  applies_when: &id002
+    EKPO.MATNR:
+      populated: true
+    EKPO.PSTYP:
+      not_in:
+      - '1'
+      - '6'
+  severity: high
+  dimension: consistency
+  message: Conversion between order price unit and order unit is zero
+  why_it_matters: When the price is quoted in a different unit than the quantity is ordered in, SAP converts with BPUMZ
+    / BPUMN (1 / 1 when both units are the same). A zero factor divides by zero.
+  rule_authority: sap_hard_constraint
+  sap_impact: Item value and invoice amounts cannot be converted; invoice verification fails for the item.
+  fix_map:
+    __other__: Re-enter the order price unit on the item (Conditions / Quantities) via ME22N (ECC and S/4HANA; Fiori F0842A
+      Manage Purchase Orders) so SAP re-derives the conversion from the info record or material master.
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: price-unit conversion {EKPO.BPUMZ}/{EKPO.BPUMN}.'
+- id: PUR055
+  field: EKPO.UMREZ
+  check_class: cross_field_check
+  fail_when: ~(`EKPO.UMREZ` > 0) | ~(`EKPO.UMREN` > 0)
+  applies_when: *id002
+  severity: high
+  dimension: consistency
+  message: Conversion between order unit and base unit is zero
+  why_it_matters: Goods receipts post stock in the material's base unit, converted from the order unit with UMREZ / UMREN
+    (copied from the material's units of measure). A zero factor divides by zero.
+  rule_authority: sap_hard_constraint
+  sap_impact: The goods receipt quantity in the base unit cannot be computed; stock and valuation postings fail.
+  fix_map:
+    __other__: Maintain the conversion for the order unit in the material master (MM02 > Units of measure) and re-enter
+      the order unit via ME22N (ECC and S/4HANA; Fiori F0842A Manage Purchase Orders).
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: order-unit conversion {EKPO.UMREZ}/{EKPO.UMREN}.'
+- id: PUR056
+  field: EKPO.UMREZ
+  check_class: cross_field_check
+  require_populated: true
+  fail_when: (`EKPO.MEINS` == `EKPO.LMEIN`) & (`EKPO.UMREZ` != `EKPO.UMREN`)
+  severity: high
+  dimension: consistency
+  message: Order unit equals the base unit but is not converted 1:1
+  why_it_matters: When the item is ordered in the material's base unit the conversion to the base unit must be 1 = 1. Any
+    other factor multiplies every received quantity.
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods receipts post the wrong stock quantity; GR/IR and valuation are off by the factor.
+  fix_map:
+    __other__: Re-enter the order unit via ME22N (ECC and S/4HANA; Fiori F0842A Manage Purchase Orders); check the material's
+      base-unit conversion (MARM) is 1/1.
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: unit {EKPO.MEINS} converts {EKPO.UMREZ}/{EKPO.UMREN} to itself.'
+- id: PUR057
+  field: EKPO.WEBRE
+  check_class: cross_field_check
+  fail_when: (`EKPO.WEBRE` == 'X') & (`EKPO.WEPOS`.isna() | (`EKPO.WEPOS` != 'X'))
+  severity: high
+  dimension: consistency
+  message: GR-based invoice verification is set on an item that expects no goods receipt
+  why_it_matters: 'GR-based invoice verification matches each invoice to a goods receipt. SAP only allows the indicator
+    together with the goods-receipt indicator: without a receipt there is nothing to match.'
+  rule_authority: sap_hard_constraint
+  sap_impact: Invoices for the item can never be posted (no goods receipt to reference).
+  fix_map:
+    __other__: Set the goods-receipt indicator, or remove GR-based IV, on the Delivery / Invoice tab via ME22N (ECC and
+      S/4HANA; Fiori F0842A Manage Purchase Orders).
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: GR-based IV without goods receipt.'
+- id: PUR058
+  field: EKPO.WEUNB
+  check_class: cross_field_check
+  fail_when: (`EKPO.WEUNB` == 'X') & (`EKPO.WEPOS`.isna() | (`EKPO.WEPOS` != 'X'))
+  severity: medium
+  dimension: consistency
+  message: Non-valuated goods receipt is set on an item that expects no goods receipt
+  why_it_matters: The non-valuated GR indicator says how the goods receipt is posted; it is only valid together with the
+    goods-receipt indicator.
+  rule_authority: sap_hard_constraint
+  sap_impact: The indicators contradict each other; receipt and invoice processing follow neither intention.
+  fix_map:
+    __other__: Correct the goods-receipt indicators on the Delivery tab via ME22N (ECC and S/4HANA; Fiori F0842A Manage
+      Purchase Orders).
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: non-valuated GR without goods receipt.'
+- id: PUR059
+  field: EKKO.RESWK
+  check_class: cross_field_check
+  grain: EKPO
+  fail_when: '`EKKO.RESWK`.isna()'
+  applies_when:
+    EKPO.PSTYP:
+    - '7'
+  severity: critical
+  dimension: completeness
+  message: Stock transport item has no supplying plant
+  why_it_matters: A stock transport item (item category U) moves stock from a supplying plant to the receiving plant. Delivery
+    creation, goods issue and shipping point determination all start from the supplying plant on the header.
+  rule_authority: sap_hard_constraint
+  sap_impact: No outbound delivery can be created; the stock transfer cannot be shipped.
+  fix_map:
+    __other__: Enter the supplying plant on the header via ME22N (ECC and S/4HANA; Fiori F0842A Manage Purchase Orders)
+      (or recreate the stock transport order).
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: stock transport item without supplying plant.'
+- id: PUR060
+  field: EKPO.KTMNG
+  check_class: cross_field_check
+  fail_when: ~(`EKPO.KTMNG` > 0)
+  applies_when:
+    EKKO.BSTYP:
+    - L
+    EKPO.PSTYP:
+      not_in:
+      - '6'
+  severity: high
+  dimension: completeness
+  message: Scheduling agreement item has no target quantity
+  why_it_matters: A scheduling agreement item is called off by delivery schedule lines up to its target quantity; ME31L
+    requires the target quantity.
+  rule_authority: sap_hard_constraint
+  sap_impact: Delivery schedules cannot be checked against the agreed quantity; release documentation and statistics for
+    the agreement are empty.
+  fix_map:
+    __other__: 'Enter the target quantity via ME32K / ME32L (S/4HANA: Fiori Manage Purchase Contracts / Scheduling Agreements).'
+  record_fix_template: 'Scheduling agreement {EKPO.EBELN} item {EKPO.EBELP}: target quantity {actual_value}.'
+- id: PUR061
+  field: EKPO.KTMNG
+  check_class: cross_field_check
+  fail_when: ~(`EKPO.KTMNG` > 0) & ~(`EKKO.KTWRT` > 0)
+  applies_when:
+    EKKO.BSTYP:
+    - K
+    EKPO.PSTYP:
+      not_in:
+      - '6'
+  severity: medium
+  dimension: completeness
+  message: Contract item has neither a target quantity nor a header target value
+  why_it_matters: A contract is either a quantity contract (target quantity per item) or a value contract (target value
+    on the header). An item with neither has nothing to release against.
+  rule_authority: sap_hard_constraint
+  sap_impact: Release orders are not checked against any agreed volume; contract consumption cannot be monitored.
+  fix_map:
+    __other__: 'Enter the item target quantity or the header target value via ME32K / ME32L (S/4HANA: Fiori Manage Purchase
+      Contracts / Scheduling Agreements).'
+  record_fix_template: 'Contract {EKPO.EBELN} item {EKPO.EBELP}: no target quantity and no target value.'
+- id: PUR062
+  field: EKPO.MATNR
+  check_class: null_check
+  applies_when:
+    EKPO.PSTYP:
+    - '2'
+    - '3'
+  severity: high
+  dimension: completeness
+  message: Consignment or subcontracting item has no material
+  why_it_matters: Consignment (item category K) and subcontracting (L) both manage stock of a specific material — vendor
+    consignment stock or components provided to the subcontractor — so SAP requires a material number.
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods receipt into consignment stock or provision of components to the subcontractor is impossible.
+  fix_map:
+    __blank__: Recreate the item with the material via ME22N (ECC and S/4HANA; Fiori F0842A Manage Purchase Orders).
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: consignment/subcontracting item without material.'
+- id: PUR063
+  field: EKPO.EBELP
+  check_class: cross_field_check
+  grain: EKPO
+  fail_when: (`LFM1.SPERM` == 'X') | (`LFM1.LOEVM` == 'X')
+  applies_when:
+    EKPO.ELIKZ:
+      not_in:
+      - X
+  severity: high
+  dimension: consistency
+  message: Open PO item for a vendor blocked or flagged for deletion in the purchasing organisation
+  why_it_matters: A purchasing block or deletion flag on the vendor's purchasing-organisation data stops new documents in
+    that purchasing organisation, not the open ones; deliveries and invoices keep arriving against this item.
+  rule_authority: sap_hard_constraint
+  sap_impact: Receipts and payments continue for a supplier the purchasing organisation has stopped; the vendor's purchasing
+    data cannot be archived while the item is open.
+  fix_map:
+    __other__: Close the item (delivery completed in ME22N) or move it to the successor vendor; if the vendor is still active
+      in this purchasing organisation, remove the block (XK05 / BP in S/4HANA).
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: vendor {EKKO.LIFNR} is blocked or deleted in purchasing organisation
+    {EKKO.EKORG}.'
+- id: PUR064
+  field: EKPO.EBELP
+  check_class: cross_field_check
+  grain: EKPO
+  fail_when: '`LFA1.SPERR` == ''X'''
+  applies_when:
+    EKPO.REPOS:
+    - X
+    EKPO.EREKZ:
+      not_in:
+      - X
+  severity: medium
+  dimension: consistency
+  message: PO item still awaiting its invoice for a vendor with a central posting block
+  why_it_matters: A central posting block on the vendor stops every posting to the vendor account, including the invoice
+    this item still expects (IR indicator set, final invoice not yet posted).
+  rule_authority: sap_hard_constraint
+  sap_impact: The vendor's invoice cannot be posted in MIRO; the goods receipt stays on GR/IR indefinitely.
+  fix_map:
+    __other__: Agree with accounts payable whether the block is still needed; then either remove it (XK05 / BP) or close
+      the item (final invoice indicator) and clear GR/IR (MR11).
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: vendor {EKKO.LIFNR} has a central posting block.'
+- id: PUR065
+  field: EBAN.MENGE
+  check_class: cross_field_check
+  fail_when: ~(`EBAN.MENGE` > 0)
+  applies_when:
+    EBAN.PSTYP:
+      not_in:
+      - '1'
+      - '6'
+  severity: high
+  dimension: completeness
+  message: Purchase requisition item has no quantity
+  why_it_matters: A requisition requests a quantity; ME51N rejects zero. Text and limit items, which have no quantity, are
+    not judged.
+  rule_authority: sap_hard_constraint
+  sap_impact: The requisition cannot be converted into a purchase order; MRP coverage is overstated.
+  fix_map:
+    __other__: 'Enter the quantity via ME52N (S/4HANA: Fiori Manage Purchase Requisitions) or delete the item.'
+  record_fix_template: 'Requisition {EBAN.BANFN} item {EBAN.BNFPO}: quantity {actual_value}.'
+- id: PUR066
+  field: EBAN.MEINS
+  check_class: null_check
+  applies_when:
+    EBAN.PSTYP:
+      not_in:
+      - '1'
+      - '6'
+  severity: medium
+  dimension: completeness
+  message: Purchase requisition item has no unit of measure
+  why_it_matters: The requested quantity has no meaning without its unit; ME51N requires it.
+  rule_authority: sap_hard_constraint
+  sap_impact: The requisition cannot be converted into a purchase order.
+  fix_map:
+    __blank__: 'Enter the unit via ME52N (S/4HANA: Fiori Manage Purchase Requisitions).'
+  record_fix_template: 'Requisition {EBAN.BANFN} item {EBAN.BNFPO}: unit missing.'
+- id: PUR067
+  field: EBAN.WERKS
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Purchase requisition item has no plant
+  why_it_matters: The plant is where the goods are needed; ME51N requires it for source determination, account determination
+    and the delivery address.
+  rule_authority: sap_hard_constraint
+  sap_impact: No source of supply can be assigned; the requisition cannot be converted into a purchase order.
+  fix_map:
+    __blank__: 'Enter the plant via ME52N (S/4HANA: Fiori Manage Purchase Requisitions).'
+  record_fix_template: 'Requisition {EBAN.BANFN} item {EBAN.BNFPO}: plant missing.'
+- id: PUR068
+  field: EBAN.LFDAT
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Purchase requisition item has no delivery date
+  why_it_matters: The delivery date tells purchasing and MRP when the goods are needed; ME51N requires it.
+  rule_authority: sap_hard_constraint
+  sap_impact: The requisition cannot be scheduled or converted; MRP cannot net it against requirements.
+  fix_map:
+    __blank__: 'Enter the delivery date via ME52N (S/4HANA: Fiori Manage Purchase Requisitions).'
+  record_fix_template: 'Requisition {EBAN.BANFN} item {EBAN.BNFPO}: delivery date missing.'
+- id: PUR069
+  field: EBAN.MATKL
+  check_class: null_check
+  applies_when:
+    EBAN.PSTYP:
+      not_in:
+      - '6'
+  severity: medium
+  dimension: completeness
+  message: Purchase requisition item has no material group
+  why_it_matters: The material group classifies the requirement for buyer assignment, release strategies and spend reporting;
+    it is copied from the material or required when there is none.
+  rule_authority: sap_hard_constraint
+  sap_impact: Release strategies classified by material group do not apply; spend analysis loses the item.
+  fix_map:
+    __blank__: 'Enter the material group via ME52N (S/4HANA: Fiori Manage Purchase Requisitions).'
+  record_fix_template: 'Requisition {EBAN.BANFN} item {EBAN.BNFPO}: material group missing.'
+- id: PUR070
+  field: EBAN.KNTTP
+  check_class: cross_field_check
+  fail_when: '`EBAN.MATNR`.isna() & `EBAN.KNTTP`.isna() & (`EBAN.PSTYP`.isna() | (`EBAN.PSTYP` != ''6''))'
+  severity: high
+  dimension: completeness
+  message: Requisition item without a material has no account assignment
+  why_it_matters: An item without a material master cannot go into stock, so SAP requires an account assignment (cost centre,
+    order, asset, project) to know where the consumption is posted. Text items are not judged.
+  rule_authority: sap_hard_constraint
+  sap_impact: The requisition cannot be converted; the goods receipt or invoice would have no account to post to.
+  fix_map:
+    __other__: 'Enter the account assignment category and its object via ME52N (S/4HANA: Fiori Manage Purchase Requisitions),
+      or enter the material.'
+  record_fix_template: 'Requisition {EBAN.BANFN} item {EBAN.BNFPO}: no material and no account assignment.'
+- id: PUR071
+  field: EBAN.PEINH
+  check_class: cross_field_check
+  require_populated: true
+  fail_when: '`EBAN.PEINH` <= 0'
+  severity: medium
+  dimension: consistency
+  message: Price unit of the requisition item is zero
+  why_it_matters: The requisition value (used by release strategies and budget checks) is quantity x valuation price / price
+    unit; a zero price unit divides by zero.
+  rule_authority: sap_hard_constraint
+  sap_impact: The requisition value cannot be computed; value-based release strategies cannot classify the item.
+  fix_map:
+    __other__: 'Set the price unit (normally 1) via ME52N (S/4HANA: Fiori Manage Purchase Requisitions).'
+  record_fix_template: 'Requisition {EBAN.BANFN} item {EBAN.BNFPO}: price unit {actual_value}.'
+- id: PUR072
+  field: EINA.LIFNR
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Purchasing info record has no vendor
+  why_it_matters: An info record holds the conditions of one vendor for one material (or material group); the vendor is
+    part of its identity.
+  rule_authority: sap_hard_constraint
+  sap_impact: The record can never be used for source determination or price proposals.
+  fix_map:
+    __blank__: 'Info records cannot change vendor; create a new info record via ME11 and delete this one via ME12 (S/4HANA:
+      Fiori Manage Purchasing Info Records).'
+  record_fix_template: 'Info record {EINA.INFNR}: vendor missing.'
+- id: PUR073
+  field: EINA.MATKL
+  check_class: null_check
+  applies_when:
+    EINA.MATNR:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: Info record without a material has no material group
+  why_it_matters: Info records for materials without a master record are found by material group (and sort term); ME11 requires
+    the material group when there is no material.
+  rule_authority: sap_hard_constraint
+  sap_impact: The record is never proposed for requisitions or POs of that material group.
+  fix_map:
+    __blank__: 'Enter the material group via ME12 (S/4HANA: Fiori Manage Purchasing Info Records).'
+  record_fix_template: 'Info record {EINA.INFNR}: no material and no material group.'
+- id: PUR074
+  field: EINA.MEINS
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Purchasing info record has no order unit
+  why_it_matters: The order unit is the unit the vendor sells in; its price and the PO quantity proposed from the info record
+    are expressed in it.
+  rule_authority: sap_hard_constraint
+  sap_impact: POs proposed from the record have no unit; the price cannot be applied.
+  fix_map:
+    __blank__: 'Enter the order unit via ME12 (S/4HANA: Fiori Manage Purchasing Info Records).'
+  record_fix_template: 'Info record {EINA.INFNR}: order unit missing.'
+- id: PUR075
+  field: EINA.UMREZ
+  check_class: cross_field_check
+  fail_when: ~(`EINA.UMREZ` > 0) | ~(`EINA.UMREN` > 0)
+  applies_when:
+    EINA.MATNR:
+      populated: true
+  severity: high
+  dimension: consistency
+  message: Info record conversion between order unit and base unit is zero
+  why_it_matters: The info record converts the vendor's order unit to the material's base unit with UMREZ / UMREN; a zero
+    factor divides by zero when the PO quantity is converted.
+  rule_authority: sap_hard_constraint
+  sap_impact: PO items created from the record cannot convert the quantity; goods receipts post wrong stock.
+  fix_map:
+    __other__: 'Re-enter the order unit and its conversion via ME12 (S/4HANA: Fiori Manage Purchasing Info Records).'
+  record_fix_template: 'Info record {EINA.INFNR}: conversion {EINA.UMREZ}/{EINA.UMREN}.'
+- id: PUR076
+  field: EINA.UMREZ
+  check_class: cross_field_check
+  require_populated: true
+  fail_when: (`EINA.MEINS` == `EINA.LMEIN`) & (`EINA.UMREZ` != `EINA.UMREN`)
+  severity: high
+  dimension: consistency
+  message: Info record order unit equals the base unit but is not converted 1:1
+  why_it_matters: When the vendor sells in the material's base unit the conversion must be 1 = 1; any other factor scales
+    every PO quantity proposed from the record.
+  rule_authority: sap_hard_constraint
+  sap_impact: PO quantities and goods receipts are off by the factor.
+  fix_map:
+    __other__: 'Correct the conversion via ME12 (S/4HANA: Fiori Manage Purchasing Info Records).'
+  record_fix_template: 'Info record {EINA.INFNR}: unit {EINA.MEINS} converts {EINA.UMREZ}/{EINA.UMREN} to itself.'
+- id: PUR077
+  field: EINA.LIFBI
+  check_class: cross_field_check
+  fail_when: '`EINA.LIFAB` > `EINA.LIFBI`'
+  severity: medium
+  dimension: consistency
+  message: Info record is available until a date before it is available from
+  why_it_matters: The availability period (LIFAB - LIFBI) says when the vendor can deliver the material; an end before the
+    start is an empty period.
+  rule_authority: sap_hard_constraint
+  sap_impact: Source determination never finds the vendor deliverable.
+  fix_map:
+    __other__: 'Correct the availability period via ME12 (S/4HANA: Fiori Manage Purchasing Info Records).'
+  record_fix_template: 'Info record {EINA.INFNR}: available {EINA.LIFAB} to {actual_value}.'
+- id: PUR078
+  field: EINA.MATNR
+  check_class: uniqueness_check
+  fields:
+  - EINA.MATNR
+  - EINA.LIFNR
+  severity: high
+  dimension: uniqueness
+  message: More than one purchasing info record exists for the same material and vendor
+  why_it_matters: SAP keeps exactly one info record per vendor and material (ME11 refuses a second); price proposals, source
+    determination and the PO's info-record update all assume it. Duplicates come from direct loads and split the price history.
+  rule_authority: sap_hard_constraint
+  sap_impact: POs pick one of the records at random; conditions and price history are split; the 'update info record' indicator
+    updates only one.
+  fix_map:
+    __other__: 'Keep one info record per material and vendor; move conditions to it and flag the other for deletion via
+      ME12 (S/4HANA: Fiori Manage Purchasing Info Records).'
+  record_fix_template: 'Info record {EINA.INFNR}: material {EINA.MATNR} / vendor {EINA.LIFNR} has another info record.'
+- id: PUR079
+  field: EINE.NETPR
+  check_class: cross_field_check
+  fail_when: '`EINE.NETPR` < 0'
+  severity: high
+  dimension: accuracy
+  message: Info record net price is negative
+  why_it_matters: The info record price is proposed into every PO for the vendor and material; a purchase price cannot be
+    negative.
+  rule_authority: sap_hard_constraint
+  sap_impact: POs are proposed with negative prices; goods receipts are valued negatively.
+  fix_map:
+    __other__: 'Correct the price (conditions) via ME12 (S/4HANA: Fiori Manage Purchasing Info Records).'
+  record_fix_template: 'Info record {EINE.INFNR}, purchasing org {EINE.EKORG}: net price {actual_value}.'
+- id: PUR080
+  field: EINE.PEINH
+  check_class: cross_field_check
+  require_populated: true
+  fail_when: '`EINE.PEINH` <= 0'
+  severity: high
+  dimension: consistency
+  message: Info record price unit is zero
+  why_it_matters: The info record price is per price unit; zero divides by zero when the price is applied to a PO.
+  rule_authority: sap_hard_constraint
+  sap_impact: PO items proposed from the record get no usable price.
+  fix_map:
+    __other__: 'Set the price unit via ME12 (S/4HANA: Fiori Manage Purchasing Info Records).'
+  record_fix_template: 'Info record {EINE.INFNR}, purchasing org {EINE.EKORG}: price unit {actual_value}.'
+- id: PUR081
+  field: EINE.WAERS
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Info record purchasing data has no currency
+  why_it_matters: The info record price is meaningless without its currency, and SAP requires it with the price.
+  rule_authority: sap_hard_constraint
+  sap_impact: The price cannot be proposed into POs or compared with other sources.
+  fix_map:
+    __blank__: 'Enter the currency via ME12 (S/4HANA: Fiori Manage Purchasing Info Records).'
+  record_fix_template: 'Info record {EINE.INFNR}, purchasing org {EINE.EKORG}: currency missing.'
+- id: PUR082
+  field: EINE.BPUMZ
+  check_class: cross_field_check
+  fail_when: ~(`EINE.BPUMZ` > 0) | ~(`EINE.BPUMN` > 0)
+  applies_when:
+    EINE.BPRME:
+      populated: true
+  severity: medium
+  dimension: consistency
+  message: Info record conversion between order price unit and order unit is zero
+  why_it_matters: When the vendor quotes in a different unit than it sells in, SAP converts with BPUMZ / BPUMN; a zero factor
+    divides by zero.
+  rule_authority: sap_hard_constraint
+  sap_impact: PO prices proposed from the record cannot be converted.
+  fix_map:
+    __other__: 'Re-enter the order price unit via ME12 (S/4HANA: Fiori Manage Purchasing Info Records).'
+  record_fix_template: 'Info record {EINE.INFNR}, purchasing org {EINE.EKORG}: conversion {EINE.BPUMZ}/{EINE.BPUMN}.'
+- id: PUR083
+  field: EINE.MINBM
+  check_class: cross_field_check
+  fail_when: (`EINE.BSTMA` > 0) & (`EINE.MINBM` > `EINE.BSTMA`)
+  severity: medium
+  dimension: consistency
+  message: Info record minimum order quantity exceeds the maximum order quantity
+  why_it_matters: Minimum and maximum PO quantity bound what may be ordered from the vendor; a minimum above the maximum
+    leaves no valid quantity.
+  rule_authority: sap_hard_constraint
+  sap_impact: Every PO quantity for the vendor triggers a quantity warning or error.
+  fix_map:
+    __other__: 'Correct the minimum or maximum quantity via ME12 (S/4HANA: Fiori Manage Purchasing Info Records).'
+  record_fix_template: 'Info record {EINE.INFNR}, purchasing org {EINE.EKORG}: minimum {actual_value} above maximum {EINE.BSTMA}.'
+- id: PUR084
+  field: EORD.BDATU
+  check_class: cross_field_check
+  fail_when: '`EORD.VDATU` > `EORD.BDATU`'
+  severity: high
+  dimension: consistency
+  message: Source list record is valid to a date before it is valid from
+  why_it_matters: A source list record is used only within its validity period; an end before the start makes it never valid,
+    and ME01 rejects it.
+  rule_authority: sap_hard_constraint
+  sap_impact: The source is never proposed; with a source list requirement the material cannot be ordered from it.
+  fix_map:
+    __other__: 'Correct the validity via ME01 (S/4HANA: Fiori Manage Source Lists).'
+  record_fix_template: 'Source list {EORD.MATNR} plant {EORD.WERKS} record {EORD.ZEORD}: valid {EORD.VDATU} to {actual_value}.'
+- id: PUR085
+  field: EORD.VDATU
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Source list record has no valid-from date
+  why_it_matters: ME01 requires a validity period for each source list record; source determination selects records by it.
+  rule_authority: sap_hard_constraint
+  sap_impact: The record is not found by source determination.
+  fix_map:
+    __blank__: 'Enter the validity via ME01 (S/4HANA: Fiori Manage Source Lists).'
+  record_fix_template: 'Source list {EORD.MATNR} plant {EORD.WERKS} record {EORD.ZEORD}: valid-from missing.'
+- id: PUR086
+  field: EORD.BDATU
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Source list record has no valid-to date
+  why_it_matters: ME01 requires a validity period for each source list record; source determination selects records by it.
+  rule_authority: sap_hard_constraint
+  sap_impact: The record is not found by source determination.
+  fix_map:
+    __blank__: 'Enter the validity via ME01 (S/4HANA: Fiori Manage Source Lists).'
+  record_fix_template: 'Source list {EORD.MATNR} plant {EORD.WERKS} record {EORD.ZEORD}: valid-to missing.'
+- id: PUR087
+  field: EORD.LIFNR
+  check_class: cross_field_check
+  fail_when: '`EORD.LIFNR`.isna() & `EORD.RESWK`.isna()'
+  severity: high
+  dimension: completeness
+  message: Source list record names neither a vendor nor a supplying plant
+  why_it_matters: A source of supply is either an external vendor (optionally with an agreement) or a supplying plant for
+    stock transfers; a record with neither names no source.
+  rule_authority: sap_hard_constraint
+  sap_impact: Source determination proposes nothing; MRP cannot assign a source to requisitions.
+  fix_map:
+    __other__: 'Enter the vendor or the supplying plant via ME01 (S/4HANA: Fiori Manage Source Lists).'
+  record_fix_template: 'Source list {EORD.MATNR} plant {EORD.WERKS} record {EORD.ZEORD}: no vendor and no supplying plant.'
+- id: PUR088
+  field: EORD.EKORG
+  check_class: null_check
+  applies_when:
+    EORD.LIFNR:
+      populated: true
+  severity: high
+  dimension: completeness
+  message: Source list record for a vendor has no purchasing organisation
+  why_it_matters: A vendor source is valid for a purchasing organisation; ME01 requires it so the PO can be created in that
+    organisation with the vendor's purchasing data.
+  rule_authority: sap_hard_constraint
+  sap_impact: Requisitions assigned to the source cannot be converted into POs.
+  fix_map:
+    __blank__: 'Enter the purchasing organisation via ME01 (S/4HANA: Fiori Manage Source Lists).'
+  record_fix_template: 'Source list {EORD.MATNR} plant {EORD.WERKS} record {EORD.ZEORD}: vendor {EORD.LIFNR} without purchasing
+    organisation.'
+- id: PUR089
+  field: EORD.EBELN
+  check_class: null_check
+  applies_when:
+    EORD.FEBEL:
+    - X
+  severity: medium
+  dimension: completeness
+  message: Source list record fixes an agreement item but names no agreement
+  why_it_matters: The 'fixed agreement item' indicator makes source determination always use the named outline agreement
+    item; without the agreement number there is nothing to fix.
+  rule_authority: sap_hard_constraint
+  sap_impact: Release orders cannot be created automatically from the source list.
+  fix_map:
+    __blank__: 'Enter the agreement and item via ME01 (S/4HANA: Fiori Manage Source Lists) or remove the indicator.'
+  record_fix_template: 'Source list {EORD.MATNR} plant {EORD.WERKS} record {EORD.ZEORD}: fixed agreement item without agreement.'
+- id: PUR090
+  field: EORD.NOTKZ
+  check_class: cross_field_check
+  fail_when: (`EORD.NOTKZ` == 'X') & (`EORD.FLIFN` == 'X')
+  severity: high
+  dimension: consistency
+  message: Source list record is both the fixed source and blocked
+  why_it_matters: A fixed source is the one source determination must use; a blocked source must never be used. A record
+    cannot be both.
+  rule_authority: sap_hard_constraint
+  sap_impact: Source determination receives contradictory instructions; requisitions get no source or the blocked one.
+  fix_map:
+    __other__: 'Remove either the fixed or the blocked indicator via ME01 (S/4HANA: Fiori Manage Source Lists).'
+  record_fix_template: 'Source list {EORD.MATNR} plant {EORD.WERKS} record {EORD.ZEORD}: fixed and blocked.'
+- id: PUR091
+  field: EKKO.EKORG
+  check_class: referential_check
+  severity: critical
+  dimension: validity
+  message: Purchasing organisation (EKKO.EKORG) is not defined in the system's configuration (T024E)
+  why_it_matters: Purchasing organisation is a key into the system's own configuration (T024E). A value that is not configured
+    there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct
+    loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: 'The document''s purchasing organisation does not exist: vendor purchasing data, conditions and output cannot
+    be determined.'
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T024E. Correct the value via ME22N (ECC and S/4HANA; Fiori F0842A Manage Purchase
+      Orders), or create it in customizing (OX08) if it is genuinely needed.'
+  record_fix_template: 'Purchasing document {EKKO.EBELN}: purchasing organisation ''{actual_value}'' is not configured (T024E).'
+- id: PUR092
+  field: EKKO.EKGRP
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Purchasing group (EKKO.EKGRP) is not defined in the system's configuration (T024)
+  why_it_matters: Purchasing group is a key into the system's own configuration (T024). A value that is not configured there
+    cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct loads,
+    client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: The responsible buyer group is unknown; release strategies and buyer worklists miss the document.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T024. Correct the value via ME22N (ECC and S/4HANA; Fiori F0842A Manage Purchase
+      Orders), or create it in customizing (OME4) if it is genuinely needed.'
+  record_fix_template: 'Purchasing document {EKKO.EBELN}: purchasing group ''{actual_value}'' is not configured (T024).'
+- id: PUR093
+  field: EKKO.BUKRS
+  check_class: referential_check
+  severity: critical
+  dimension: validity
+  message: Company code (EKKO.BUKRS) is not defined in the system's configuration (T001)
+  why_it_matters: Company code is a key into the system's own configuration (T001). A value that is not configured there
+    cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct loads,
+    client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: 'Goods receipts and invoices cannot be posted: the company code does not exist.'
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T001. Correct the value via ME22N (ECC and S/4HANA; Fiori F0842A Manage Purchase
+      Orders), or create it in customizing (OX02) if it is genuinely needed.'
+  record_fix_template: 'Purchasing document {EKKO.EBELN}: company code ''{actual_value}'' is not configured (T001).'
+- id: PUR094
+  field: EKKO.WAERS
+  check_class: referential_check
+  severity: high
+  dimension: validity
+  message: Document currency (EKKO.WAERS) is not defined in the system's configuration (TCURC)
+  why_it_matters: Document currency is a key into the system's own configuration (TCURC). A value that is not configured
+    there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct
+    loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Prices and values of the document cannot be translated or posted.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in TCURC. Correct the value via ME22N (ECC and S/4HANA; Fiori F0842A Manage Purchase
+      Orders), or create it in customizing (OY03) if it is genuinely needed.'
+  record_fix_template: 'Purchasing document {EKKO.EBELN}: document currency ''{actual_value}'' is not configured (TCURC).'
+- id: PUR095
+  field: EKKO.ZTERM
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Payment terms (EKKO.ZTERM) is not defined in the system's configuration (T052)
+  why_it_matters: Payment terms is a key into the system's own configuration (T052). A value that is not configured there
+    cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct loads,
+    client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: The invoice due date and cash discount cannot be calculated from the PO terms.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T052. Correct the value via ME22N (ECC and S/4HANA; Fiori F0842A Manage Purchase
+      Orders), or create it in customizing (OBB8) if it is genuinely needed.'
+  record_fix_template: 'Purchasing document {EKKO.EBELN}: payment terms ''{actual_value}'' is not configured (T052).'
+- id: PUR096
+  field: EKKO.INCO1
+  check_class: referential_check
+  reference_table: TINC
+  reference_field: INCO1
+  severity: low
+  dimension: validity
+  message: Incoterms (EKKO.INCO1) is not defined in the system's configuration (TINC)
+  why_it_matters: Incoterms is a key into the system's own configuration (TINC). A value that is not configured there cannot
+    be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct loads, client
+    copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Freight responsibility and customs value cannot be derived; output to the vendor shows an unknown term.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in TINC. Correct the value via ME22N (ECC and S/4HANA; Fiori F0842A Manage Purchase
+      Orders), or create it in customizing (OVSG) if it is genuinely needed.'
+  record_fix_template: 'Purchasing document {EKKO.EBELN}: incoterms ''{actual_value}'' is not configured (TINC).'
+- id: PUR097
+  field: EKPO.WERKS
+  check_class: referential_check
+  severity: critical
+  dimension: validity
+  message: Plant (EKPO.WERKS) is not defined in the system's configuration (T001W)
+  why_it_matters: Plant is a key into the system's own configuration (T001W). A value that is not configured there cannot
+    be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct loads, client
+    copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods receipt, account determination and MRP cannot use the item.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T001W. Correct the value via ME22N (ECC and S/4HANA; Fiori F0842A Manage Purchase
+      Orders), or create it in customizing (OX10) if it is genuinely needed.'
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: plant ''{actual_value}'' is not configured (T001W).'
+- id: PUR098
+  field: EKPO.MEINS
+  check_class: referential_check
+  severity: high
+  dimension: validity
+  message: Order unit (EKPO.MEINS) is not defined in the system's configuration (T006)
+  why_it_matters: Order unit is a key into the system's own configuration (T006). A value that is not configured there cannot
+    be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct loads, client
+    copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: The ordered quantity cannot be converted or received.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T006. Correct the value via ME22N (ECC and S/4HANA; Fiori F0842A Manage Purchase
+      Orders), or create it in customizing (CUNI) if it is genuinely needed.'
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: order unit ''{actual_value}'' is not configured (T006).'
+- id: PUR099
+  field: EKPO.BPRME
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Order price unit (EKPO.BPRME) is not defined in the system's configuration (T006)
+  why_it_matters: Order price unit is a key into the system's own configuration (T006). A value that is not configured there
+    cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct loads,
+    client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: The item price cannot be converted to the ordered quantity.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T006. Correct the value via ME22N (ECC and S/4HANA; Fiori F0842A Manage Purchase
+      Orders), or create it in customizing (CUNI) if it is genuinely needed.'
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: order price unit ''{actual_value}'' is not configured (T006).'
+- id: PUR100
+  field: EKPO.MATKL
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Material group (EKPO.MATKL) is not defined in the system's configuration (T023)
+  why_it_matters: Material group is a key into the system's own configuration (T023). A value that is not configured there
+    cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct loads,
+    client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Spend analysis, release strategies and account determination by material group miss the item.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T023. Correct the value via ME22N (ECC and S/4HANA; Fiori F0842A Manage Purchase
+      Orders), or create it in customizing (OMSF) if it is genuinely needed.'
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: material group ''{actual_value}'' is not configured (T023).'
+- id: PUR101
+  field: EKPO.MWSKZ
+  check_class: referential_check
+  reference_table: T007A
+  reference_field: MWSKZ
+  severity: high
+  dimension: validity
+  message: Tax code (EKPO.MWSKZ) is not defined in the system's configuration (T007A)
+  why_it_matters: Tax code is a key into the system's own configuration (T007A). A value that is not configured there cannot
+    be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct loads, client
+    copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Input tax cannot be calculated at invoice verification.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T007A. Correct the value via ME22N (ECC and S/4HANA; Fiori F0842A Manage Purchase
+      Orders), or create it in customizing (FTXP) if it is genuinely needed.'
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: tax code ''{actual_value}'' is not configured (T007A).'
+- id: PUR102
+  field: EKPO.LGORT
+  check_class: referential_check
+  reference_table: T001L
+  reference_field: LGORT
+  severity: medium
+  dimension: validity
+  message: Storage location (EKPO.LGORT) is not defined in the system's configuration (T001L)
+  why_it_matters: Storage location is a key into the system's own configuration (T001L). A value that is not configured
+    there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct
+    loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: The goods receipt proposes a storage location that does not exist.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T001L. Correct the value via ME22N (ECC and S/4HANA; Fiori F0842A Manage Purchase
+      Orders), or create it in customizing (OX09) if it is genuinely needed.'
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: storage location ''{actual_value}'' is not configured (T001L).'
+- id: PUR103
+  field: EBAN.EKGRP
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Purchasing group (requisition) (EBAN.EKGRP) is not defined in the system's configuration (T024)
+  why_it_matters: Purchasing group (requisition) is a key into the system's own configuration (T024). A value that is not
+    configured there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes
+    from direct loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: The requisition reaches no buyer's worklist.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T024. Correct the value via ME52N (S/4HANA: Fiori Manage Purchase Requisitions),
+      or create it in customizing (OME4) if it is genuinely needed.'
+  record_fix_template: 'Requisition {EBAN.BANFN} item {EBAN.BNFPO}: purchasing group (requisition) ''{actual_value}'' is
+    not configured (T024).'
+- id: PUR104
+  field: EBAN.WERKS
+  check_class: referential_check
+  severity: high
+  dimension: validity
+  message: Plant (requisition) (EBAN.WERKS) is not defined in the system's configuration (T001W)
+  why_it_matters: Plant (requisition) is a key into the system's own configuration (T001W). A value that is not configured
+    there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct
+    loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: The requisition cannot be sourced or converted.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T001W. Correct the value via ME52N (S/4HANA: Fiori Manage Purchase Requisitions),
+      or create it in customizing (OX10) if it is genuinely needed.'
+  record_fix_template: 'Requisition {EBAN.BANFN} item {EBAN.BNFPO}: plant (requisition) ''{actual_value}'' is not configured
+    (T001W).'
+- id: PUR105
+  field: EBAN.MEINS
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Unit of measure (requisition) (EBAN.MEINS) is not defined in the system's configuration (T006)
+  why_it_matters: Unit of measure (requisition) is a key into the system's own configuration (T006). A value that is not
+    configured there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes
+    from direct loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: The requested quantity cannot be converted into an order unit.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T006. Correct the value via ME52N (S/4HANA: Fiori Manage Purchase Requisitions),
+      or create it in customizing (CUNI) if it is genuinely needed.'
+  record_fix_template: 'Requisition {EBAN.BANFN} item {EBAN.BNFPO}: unit of measure (requisition) ''{actual_value}'' is
+    not configured (T006).'
+- id: PUR106
+  field: EBAN.MATKL
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Material group (requisition) (EBAN.MATKL) is not defined in the system's configuration (T023)
+  why_it_matters: Material group (requisition) is a key into the system's own configuration (T023). A value that is not
+    configured there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes
+    from direct loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Release strategies and buyer determination by material group miss the requisition.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T023. Correct the value via ME52N (S/4HANA: Fiori Manage Purchase Requisitions),
+      or create it in customizing (OMSF) if it is genuinely needed.'
+  record_fix_template: 'Requisition {EBAN.BANFN} item {EBAN.BNFPO}: material group (requisition) ''{actual_value}'' is not
+    configured (T023).'
+- id: PUR107
+  field: EBAN.EKORG
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Purchasing organisation (requisition) (EBAN.EKORG) is not defined in the system's configuration (T024E)
+  why_it_matters: Purchasing organisation (requisition) is a key into the system's own configuration (T024E). A value that
+    is not configured there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it
+    comes from direct loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: 'The assigned source cannot be used: the purchasing organisation does not exist.'
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T024E. Correct the value via ME52N (S/4HANA: Fiori Manage Purchase Requisitions),
+      or create it in customizing (OX08) if it is genuinely needed.'
+  record_fix_template: 'Requisition {EBAN.BANFN} item {EBAN.BNFPO}: purchasing organisation (requisition) ''{actual_value}''
+    is not configured (T024E).'
+- id: PUR108
+  field: EINA.MEINS
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Order unit (info record) (EINA.MEINS) is not defined in the system's configuration (T006)
+  why_it_matters: Order unit (info record) is a key into the system's own configuration (T006). A value that is not configured
+    there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct
+    loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: PO quantities proposed from the info record cannot be converted.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T006. Correct the value via ME12 (S/4HANA: Fiori Manage Purchasing Info Records),
+      or create it in customizing (CUNI) if it is genuinely needed.'
+  record_fix_template: 'Info record {EINA.INFNR}: order unit (info record) ''{actual_value}'' is not configured (T006).'
+- id: PUR109
+  field: EINA.MATKL
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Material group (info record) (EINA.MATKL) is not defined in the system's configuration (T023)
+  why_it_matters: Material group (info record) is a key into the system's own configuration (T023). A value that is not
+    configured there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes
+    from direct loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: The info record is never found for its material group.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T023. Correct the value via ME12 (S/4HANA: Fiori Manage Purchasing Info Records),
+      or create it in customizing (OMSF) if it is genuinely needed.'
+  record_fix_template: 'Info record {EINA.INFNR}: material group (info record) ''{actual_value}'' is not configured (T023).'
+- id: PUR110
+  field: EINE.EKORG
+  check_class: referential_check
+  severity: high
+  dimension: validity
+  message: Purchasing organisation (info record) (EINE.EKORG) is not defined in the system's configuration (T024E)
+  why_it_matters: Purchasing organisation (info record) is a key into the system's own configuration (T024E). A value that
+    is not configured there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it
+    comes from direct loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: The info record's conditions apply to a purchasing organisation that does not exist.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T024E. Correct the value via ME12 (S/4HANA: Fiori Manage Purchasing Info Records),
+      or create it in customizing (OX08) if it is genuinely needed.'
+  record_fix_template: 'Info record {EINE.INFNR}, purchasing org {EINE.EKORG}: purchasing organisation (info record) ''{actual_value}''
+    is not configured (T024E).'
+- id: PUR111
+  field: EINE.WERKS
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Plant (info record) (EINE.WERKS) is not defined in the system's configuration (T001W)
+  why_it_matters: Plant (info record) is a key into the system's own configuration (T001W). A value that is not configured
+    there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct
+    loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Plant-specific info record conditions are never found.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T001W. Correct the value via ME12 (S/4HANA: Fiori Manage Purchasing Info Records),
+      or create it in customizing (OX10) if it is genuinely needed.'
+  record_fix_template: 'Info record {EINE.INFNR}, purchasing org {EINE.EKORG}: plant (info record) ''{actual_value}'' is
+    not configured (T001W).'
+- id: PUR112
+  field: EINE.WAERS
+  check_class: referential_check
+  severity: high
+  dimension: validity
+  message: Currency (info record) (EINE.WAERS) is not defined in the system's configuration (TCURC)
+  why_it_matters: Currency (info record) is a key into the system's own configuration (TCURC). A value that is not configured
+    there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct
+    loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: The info record price cannot be proposed or compared.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in TCURC. Correct the value via ME12 (S/4HANA: Fiori Manage Purchasing Info Records),
+      or create it in customizing (OY03) if it is genuinely needed.'
+  record_fix_template: 'Info record {EINE.INFNR}, purchasing org {EINE.EKORG}: currency (info record) ''{actual_value}''
+    is not configured (TCURC).'
+- id: PUR113
+  field: EINE.EKGRP
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: Purchasing group (info record) (EINE.EKGRP) is not defined in the system's configuration (T024)
+  why_it_matters: Purchasing group (info record) is a key into the system's own configuration (T024). A value that is not
+    configured there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes
+    from direct loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: POs proposed from the info record carry an unknown buyer group.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T024. Correct the value via ME12 (S/4HANA: Fiori Manage Purchasing Info Records),
+      or create it in customizing (OME4) if it is genuinely needed.'
+  record_fix_template: 'Info record {EINE.INFNR}, purchasing org {EINE.EKORG}: purchasing group (info record) ''{actual_value}''
+    is not configured (T024).'
+- id: PUR114
+  field: EINE.INCO1
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: Incoterms (info record) (EINE.INCO1) is not defined in the system's configuration (TINC)
+  why_it_matters: Incoterms (info record) is a key into the system's own configuration (TINC). A value that is not configured
+    there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct
+    loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: POs proposed from the info record carry an unknown Incoterm.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in TINC. Correct the value via ME12 (S/4HANA: Fiori Manage Purchasing Info Records),
+      or create it in customizing (OVSG) if it is genuinely needed.'
+  record_fix_template: 'Info record {EINE.INFNR}, purchasing org {EINE.EKORG}: incoterms (info record) ''{actual_value}''
+    is not configured (TINC).'
+- id: PUR115
+  field: EINE.MWSKZ
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Tax code (info record) (EINE.MWSKZ) is not defined in the system's configuration (T007A)
+  why_it_matters: Tax code (info record) is a key into the system's own configuration (T007A). A value that is not configured
+    there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct
+    loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: POs proposed from the info record carry a tax code that cannot be calculated.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T007A. Correct the value via ME12 (S/4HANA: Fiori Manage Purchasing Info Records),
+      or create it in customizing (FTXP) if it is genuinely needed.'
+  record_fix_template: 'Info record {EINE.INFNR}, purchasing org {EINE.EKORG}: tax code (info record) ''{actual_value}''
+    is not configured (T007A).'
+- id: PUR116
+  field: EORD.EKORG
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Purchasing organisation (source list) (EORD.EKORG) is not defined in the system's configuration (T024E)
+  why_it_matters: Purchasing organisation (source list) is a key into the system's own configuration (T024E). A value that
+    is not configured there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it
+    comes from direct loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: The source of supply points to a purchasing organisation that does not exist.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T024E. Correct the value via ME01 (S/4HANA: Fiori Manage Source Lists), or
+      create it in customizing (OX08) if it is genuinely needed.'
+  record_fix_template: 'Source list {EORD.MATNR} plant {EORD.WERKS} record {EORD.ZEORD}: purchasing organisation (source
+    list) ''{actual_value}'' is not configured (T024E).'

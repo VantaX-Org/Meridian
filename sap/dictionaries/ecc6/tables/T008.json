@@ -1,0 +1,76 @@
+{
+ "table": "T008",
+ "description": "Blocking Reasons for Automatic Payment Transcations",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "ZAHLS",
+   "key": true,
+   "data_element": "DZAHLS",
+   "domain": "ZAHLS",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Block Key for Payment",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "CHAR1",
+   "key": false,
+   "data_element": "XZVAE",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Change in Payment Proposal Permitted?",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "XOZSP",
+   "key": false,
+   "data_element": "XOZSP",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Blocked for manual payments",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "XNCHG",
+   "key": false,
+   "data_element": "XNCHG",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Payment block, not changeable",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

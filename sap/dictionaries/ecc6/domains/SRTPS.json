@@ -1,0 +1,32 @@
+{
+ "domain": "SRTPS",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "In asc. order by subtype, in desc. order by 'from' date"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "In desc. order by 'from' date, in asc. order by subtype"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "In asc. order by subtype, in asc. order by 'from' date"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "In asc. order by 'from' date, in asc. order by subtype"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

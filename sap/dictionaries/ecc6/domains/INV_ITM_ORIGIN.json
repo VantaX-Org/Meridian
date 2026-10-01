@@ -1,0 +1,27 @@
+{
+ "domain": "INV_ITM_ORIGIN",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Inv.Ver.: Item Newly Created"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Diff.Inv.: Item Newly Created"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Diff.Inv.: Item Copied from Preceding Invoice"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

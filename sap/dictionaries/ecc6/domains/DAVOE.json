@@ -1,0 +1,32 @@
+{
+ "domain": "DAVOE",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Infotype dependent, in general no default"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Default value is 31.12.9999"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Leaving date"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Start date of the current record"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}
