@@ -909,6 +909,22 @@ class FieldProfile(Base):
     )
 
 
+class KnownIssue(Base):
+    """A record the customer's stewards know is wrong — recall of the pilot scorecard (migration 052)."""
+    __tablename__ = "known_issues"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    scope = Column(Text, nullable=False)
+    module = Column(Text, nullable=False, server_default="")
+    record_ref = Column(Text, nullable=False)
+    note = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
+
+    __table_args__ = (UniqueConstraint("tenant_id", "scope", "module", "record_ref", name="uq_known_issues"),
+                      Index("ix_known_issues_tenant_scope", "tenant_id", "scope"))
+
+
 class FieldDependency(Base):
     """Candidate hidden rule A → B (≥ 99 %, < 100 % of records) — see migration 051."""
     __tablename__ = "field_dependencies"

@@ -116,6 +116,21 @@ SAP user and authorisations: `docs/sap-connector.md`.
 - **Extract & analyse** one module, then check that **Issues** and **Versions**
   fill in.
 
+## 5. Pilot scorecard: is Meridian right about Komatsu's data?
+
+After the first **Extract & analyse**, open the system and click **Pilot scorecard**.
+
+- **Precision per rule** comes from your stewards' decisions in **Issues**: close
+  each reviewed issue as *false positive*, *accepted risk* or *fixed in source*.
+  A rule is rated once 10 of its issues are reviewed, and flagged **needs tuning**
+  below 90 %. Send the flagged rules back with a few example records.
+- **Recall:** upload the records your stewards already know are wrong
+  (CSV `object,record,note`; record = SAP key, parts separated by `|`, e.g.
+  `accounts_payable,1000|100001,duplicate vendor`). The scorecard shows how many
+  Meridian caught and lists the ones it missed.
+- **Reference data** (system page): upload the official postal codes and your
+  licensed SWIFT BIC directory, then analyse again.
+
 ## Rollback
 
 ```bash
