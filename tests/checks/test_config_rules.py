@@ -20,6 +20,11 @@ CONFIG = {
         {"KAPPL": "V", "KSCHL": "KF00", "KNEGA": "", "KRECH": "B", "KOAID": "A"},
         {"KAPPL": "M", "KSCHL": "PB00", "KNEGA": "A", "KRECH": "C", "KOAID": "B"},
     ],
+    "T683S": [{"KVEWE": "A", "KAPPL": "V", "KALSM": "RVAA01", "KSCHL": "PR00"},
+              {"KVEWE": "A", "KAPPL": "V", "KALSM": "RVAA01", "KSCHL": "K007"},
+              {"KVEWE": "A", "KAPPL": "V", "KALSM": "RVAA01", "KSCHL": ""},       # subtotal step
+              {"KVEWE": "B", "KAPPL": "V", "KALSM": "V10000", "KSCHL": "KF00"},   # output, not pricing
+              {"KVEWE": "A", "KAPPL": "M", "KALSM": "RM0000", "KSCHL": "PB00"}],
     "T582A": [{"INFTY": "0001", "ZEITB": "1"}, {"INFTY": "0105", "ZEITB": "2"},
               {"INFTY": "0009", "ZEITB": "T"}, {"INFTY": "0015", "ZEITB": "3"}],
 }
@@ -29,7 +34,7 @@ RULES = (config_rules.generate("sd_sales_orders", CONFIG, D) + config_rules.gene
 
 def test_generated_set():
     assert sorted(r["id"] for r in RULES) == sorted([
-        "KS-V-X", "KS-V-A", "KC-V-A", "KC-V-B", "KC-V-C", "KZ-V", "KS-M-A", "KC-M-C", "KZ-M",
+        "KS-V-X", "KS-V-A", "KC-V-A", "KC-V-B", "KC-V-C", "KZ-V", "KP-V", "KS-M-A", "KC-M-C", "KZ-M", "KP-M",
         "TC-PA0001", "TC-PA0105"])  # subtype-dependent (T) and constraint 3 are not judged
     assert config_rules.generate("sd_sales_orders", {}, D) == []
     assert config_rules.generate("fi_gl", CONFIG, D) == []
@@ -63,6 +68,19 @@ def test_pricing_rules_judge_condition_records():
     assert got["KC-V-C"].affected_count == 1
     assert got["KS-V-X"].affected_count == 1
     assert got["KS-V-A"].affected_count == 0
+    assert got["KP-V"].affected_count == 0                       # PR00 and K007 are in RVAA01
+
+
+def test_condition_type_in_no_pricing_procedure():
+    kp = next(r for r in RULES if r["id"] == "KP-V")
+    assert kp["allowed_values"] == ["K007", "PR00"]              # KF00 is only in an output procedure
+    frames = _konp([("1", "PR00", "C", "12.50", ""), ("2", "KF00", "B", "4", ""),
+                    ("3", "KF00", "B", "4", "X")])               # deleted: out of the population
+    _, r = run_rule(kp, frames)
+    assert (r.total_count, r.affected_count) == (2, 1)
+    assert config_rules.generate("sd_sales_orders", {"T685A": CONFIG["T685A"]}, D) and \
+        not any(x["id"].startswith("KP-") for x in config_rules.generate(
+            "sd_sales_orders", {"T685A": CONFIG["T685A"]}, D))   # no T683S: nothing assumed
 
 
 def test_time_constraint_one_needs_unbroken_history():

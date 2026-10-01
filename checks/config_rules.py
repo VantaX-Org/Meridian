@@ -4,7 +4,9 @@ T685A (condition types), per usage/application: KNEGA restricts a condition
 type to negative ('X') or positive ('A') rates, KRECH fixes its calculation
 type, KOAID 'B' marks price conditions. Records loaded or kept after the
 condition type changed contradict it: a surcharge stored as a discount, a
-quantity price on a percentage condition, a zero price.
+quantity price on a percentage condition, a zero price. T683S (pricing
+procedure steps, usage A): a record of a condition type no procedure lists is
+never found by pricing.
 
 T582A (infotype attributes): the time constraint ZEITB. 1 = the infotype must
 exist without gaps from hire to 31.12.9999 (org assignment, personal data);
@@ -72,6 +74,22 @@ def _pricing(module: str, config: dict[str, list[dict]]) -> list[dict]:
                     "fix_map": {"__other__": "Maintain the price, or delete the record so the document stops "
                                              "for a missing price."},
                     "record_fix_template": rec + " has a zero rate."})
+    # condition types in at least one pricing procedure (usage A); records of any other are never found
+    in_proc = sorted({_s(r, "KSCHL") for r in config.get("T683S") or []
+                      if _s(r, "KVEWE") == "A" and _s(r, "KAPPL") == kappl} - {""})
+    if in_proc:
+        out.append({**base, "id": f"KP-{kappl}", "check_class": "domain_value_check", "field": "KONP.KSCHL",
+                    "allowed_values": in_proc, "applies_when": {"KONP.KAPPL": [kappl]}, "severity": "low",
+                    "message": "Condition record's condition type is in none of the system's pricing procedures "
+                               "(T683S)",
+                    "why_it_matters": "Pricing only looks for condition types listed in the pricing procedure it "
+                                      "determines. A record of a type no procedure lists is never found: it is "
+                                      "dead master data, or a price someone believes is applied and is not.",
+                    "sap_impact": "The record has no effect on any document; prices and discounts users maintain "
+                                  "on it are silently ignored.",
+                    "fix_map": {"__other__": "Add the condition type to the pricing procedure where it belongs "
+                                             "(V/08 or M/08), or delete the obsolete records."},
+                    "record_fix_template": rec + " is of a condition type no pricing procedure uses."})
     return out
 
 
