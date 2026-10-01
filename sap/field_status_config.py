@@ -80,6 +80,7 @@ CONFIG_TABLES = {
 # stored as config snapshots with source 'reference' (api/routes/system_objects.py).
 REFERENCE_TABLES = {
     "REF_POSTAL": ["COUNTRY", "POSTCODE"],  # official postal codes per country (SAP country key)
+    "REF_BIC": ["BIC", "COUNTRY"],          # licensed SWIFT BIC directory (BIC11; COUNTRY = BIC characters 5-6)
 }
 
 

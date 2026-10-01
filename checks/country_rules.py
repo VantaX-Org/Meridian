@@ -7,7 +7,9 @@ address needs a postal code (XPLZS). Data that was loaded around those checks
 (migrations, interfaces, direct loads) is exactly what they find. Bank keys
 must exist in the system's bank directory — judged only for countries whose
 directory is loaded at all, so foreign banks are never condemned for a
-directory the customer does not keep. Nothing is generated without the tables.
+directory the customer does not keep. A licensed SWIFT directory the customer
+uploads (REF_BIC) is checked the same way: only BICs of countries it lists are
+judged. Nothing is generated without the tables.
 """
 
 from __future__ import annotations
@@ -76,7 +78,7 @@ def generate(module: str, static_rules: list[dict], config: dict[str, list[dict]
     from checks.frames import tables_of
     from checks.runner import rule_columns
 
-    if not config.get("T005") and not config.get("BNKA") and not config.get("REF_POSTAL"):
+    if not any(config.get(t) for t in ("T005", "BNKA", "REF_POSTAL", "REF_BIC")):
         return []
     tables = set(tables_of([c for r in static_rules for c in rule_columns(r)]))
     by_kind = specs(config)
@@ -125,4 +127,18 @@ def generate(module: str, static_rules: list[dict], config: dict[str, list[dict]
                           "message": f"Bank key ({col}) does not exist in the system's bank directory (BNKA)",
                           "why_it_matters": "Payment runs read the bank's SWIFT code and address from the bank "
                                             "directory; a bank key that is not there fails the payment medium."})
+    if config.get("REF_BIC") and "BNKA" in tables and dictionary.field("BNKA", "SWIFT") is not None:
+        keys = sorted({str(r.get("BIC") or "").strip().upper() for r in config["REF_BIC"]} - {""})
+        rules.append({**base, "id": "BX-BNKA", "family": "bic", "field": "BNKA.SWIFT", "country_field": "BNKA.BANKS",
+                      "keys": keys, "countries": sorted({k[4:6] for k in keys}), "reference": "REF_BIC",
+                      "rule_authority": "customer_reference_data", "severity": "high", "dimension": "accuracy",
+                      "message": "SWIFT/BIC (BNKA.SWIFT) is not in the SWIFT directory loaded for its country",
+                      "why_it_matters": "A well-formed BIC can still belong to no bank, or to a closed one. Payment "
+                                        "media carry it unchanged and the bank rejects the transfer. Judged only "
+                                        "for countries the loaded directory covers.",
+                      "sap_impact": "Payments to every vendor and customer of this bank are rejected or returned.",
+                      "fix_map": {"__other__": "Look the bank up in the SWIFT directory and correct the BIC in the "
+                                               "bank directory (FI02)."},
+                      "record_fix_template": "Bank {BNKA.BANKS}/{BNKA.BANKL}: BIC {BNKA.SWIFT} is not in the SWIFT "
+                                             "directory."})
     return rules

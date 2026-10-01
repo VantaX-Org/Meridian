@@ -464,8 +464,16 @@ def test_postal_code_reference_upload_feeds_the_rules(app_engine):
                              headers={"X-User-Role": "admin"})
             assert r.status_code == 200 and r.json() == {"kind": "postal-codes", "records": 3,
                                                          "countries": ["GB", "ZA"]}  # formula row rejected
+            bics = "BIC\nSBZAZAJJ\nfirnzajj903\nNOT-A-BIC\n"
+            r = await c.post(f"/api/v1/systems/{sid}/reference/bic", content=bics.encode(),
+                             headers={"X-User-Role": "analyst"})
+            assert r.status_code == 403
+            r = await c.post(f"/api/v1/systems/{sid}/reference/bic", content=bics.encode(),
+                             headers={"X-User-Role": "admin"})
+            assert r.status_code == 200 and r.json() == {"kind": "bic", "records": 2, "countries": ["ZA"]}
             lists = (await c.get(f"/api/v1/systems/{sid}/reference", headers={"X-User-Role": "analyst"})).json()
-            assert lists == [{"kind": "postal-codes", "records": 3, "countries": ["GB", "ZA"]}]
+            assert lists == [{"kind": "bic", "records": 2, "countries": ["ZA"]},
+                             {"kind": "postal-codes", "records": 3, "countries": ["GB", "ZA"]}]
 
     async def main():
         try:
@@ -482,6 +490,7 @@ def test_postal_code_reference_upload_feeds_the_rules(app_engine):
         s.execute(text("SET app.tenant_id = :t"), {"t": tid})
         config = load_config(s, sid)
     assert len(config["REF_POSTAL"]) == 3
+    assert sorted(r["BIC"] for r in config["REF_BIC"]) == ["FIRNZAJJ903", "SBZAZAJJXXX"]
     rules = generate("accounts_payable", [{"field": "LFA1.LIFNR", "check_class": "null_check"}], config,
                      get_dictionary("ecc6"))
     px = next(r for r in rules if r["id"] == "PX-LFA1-PSTLZ")
