@@ -464,8 +464,16 @@ def test_postal_code_reference_upload_feeds_the_rules(app_engine):
                              headers={"X-User-Role": "admin"})
             assert r.status_code == 200 and r.json() == {"kind": "postal-codes", "records": 3,
                                                          "countries": ["GB", "ZA"]}  # formula row rejected
+            bics = "BIC\nSBZAZAJJ\nfirnzajj903\nNOT-A-BIC\n"
+            r = await c.post(f"/api/v1/systems/{sid}/reference/bic", content=bics.encode(),
+                             headers={"X-User-Role": "analyst"})
+            assert r.status_code == 403
+            r = await c.post(f"/api/v1/systems/{sid}/reference/bic", content=bics.encode(),
+                             headers={"X-User-Role": "admin"})
+            assert r.status_code == 200 and r.json() == {"kind": "bic", "records": 2, "countries": ["ZA"]}
             lists = (await c.get(f"/api/v1/systems/{sid}/reference", headers={"X-User-Role": "analyst"})).json()
-            assert lists == [{"kind": "postal-codes", "records": 3, "countries": ["GB", "ZA"]}]
+            assert lists == [{"kind": "bic", "records": 2, "countries": ["ZA"]},
+                             {"kind": "postal-codes", "records": 3, "countries": ["GB", "ZA"]}]
 
     async def main():
         try:
@@ -482,7 +490,82 @@ def test_postal_code_reference_upload_feeds_the_rules(app_engine):
         s.execute(text("SET app.tenant_id = :t"), {"t": tid})
         config = load_config(s, sid)
     assert len(config["REF_POSTAL"]) == 3
+    assert sorted(r["BIC"] for r in config["REF_BIC"]) == ["FIRNZAJJ903", "SBZAZAJJXXX"]
     rules = generate("accounts_payable", [{"field": "LFA1.LIFNR", "check_class": "null_check"}], config,
                      get_dictionary("ecc6"))
     px = next(r for r in rules if r["id"] == "PX-LFA1-PSTLZ")
     assert px["countries"] == ["GB", "ZA"] and "ZA|0700" in px["keys"]
+
+
+def test_pilot_scorecard_precision_and_recall(app_engine):
+    """Steward decisions on issues → precision per rule; uploaded known issues → recall; RLS-scoped."""
+    import asyncio
+
+    from fastapi import FastAPI
+    from httpx import ASGITransport, AsyncClient
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+    from api.deps import Tenant, get_db, get_tenant
+    from api.routes.pilot import router as pilot_router
+
+    owner, app_eng = app_engine
+    tid, other, sid = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
+    with owner.begin() as c:
+        c.execute(text("INSERT INTO tenants (id, name) VALUES (:a, 'T8'), (:b, 'T9')"), {"a": tid, "b": other})
+    with app_eng.begin() as c:
+        c.execute(text("SET LOCAL app.tenant_id = :t"), {"t": tid})
+        c.execute(text("INSERT INTO sap_systems (id, tenant_id, name) VALUES (:s, :t, 'PRD')"), {"s": sid, "t": tid})
+    vendors = [str(i) for i in range(1, 13)]
+    _run(app_eng, tid, sid, [_result("CHK-A", vendors, total=12)], vendors)
+    with app_eng.begin() as c:
+        c.execute(text("SET LOCAL app.tenant_id = :t"), {"t": tid})
+        for k, res in [("1", "false_positive"), ("2", "false_positive")] + [(str(i), "fixed_in_source")
+                                                                           for i in range(3, 12)]:
+            c.execute(text("UPDATE record_issues SET status = 'resolved', resolution = :r WHERE record_key = :k"),
+                      {"r": res, "k": f"LIFNR={k}"})
+    aeng = create_async_engine(app_eng.url.set(drivername="postgresql+asyncpg"))
+    factory = async_sessionmaker(aeng, expire_on_commit=False)
+
+    async def _db():
+        async with factory() as s:
+            yield s
+
+    api = FastAPI()
+    api.include_router(pilot_router)
+    api.dependency_overrides[get_db] = _db
+    who = {"tenant": tid}
+    api.dependency_overrides[get_tenant] = lambda: Tenant(uuid.UUID(who["tenant"]), "T", [])
+
+    async def scenario():
+        async with AsyncClient(transport=ASGITransport(app=api), base_url="http://t") as c:
+            csv = ("object,record,note\naccounts_payable,1,duplicate vendor\n,LIFNR=0000000005,\n"
+                   "accounts_payable,99,known bad\nfi_gl,7,\n=HYPERLINK(1),x,\n")
+            url = f"/api/v1/systems/{sid}/pilot"
+            r = await c.post(f"{url}/known-issues", content=csv.encode(), headers={"X-User-Role": "analyst"})
+            assert r.status_code == 403
+            r = await c.post(f"{url}/known-issues", content=csv.encode(), headers={"X-User-Role": "admin"})
+            assert r.status_code == 200 and r.json() == {"records": 4, "rejected": 1}
+            card = (await c.get(f"{url}/scorecard", headers={"X-User-Role": "analyst"})).json()
+            assert card["precision"]["reviewed"] == 11 and card["precision"]["false_positives"] == 2
+            [rule] = card["rules"]
+            assert rule["check_id"] == "CHK-A" and rule["flagged"] == 12 and rule["open"] == 1
+            assert rule["precision"] == round(9 / 11, 4) and rule["needs_tuning"]
+            rec = card["recall"]
+            assert (rec["known"], rec["caught"], rec["missed_total"]) == (4, 2, 2)
+            assert {m["record_ref"] for m in rec["missed"]} == {"99", "7"} and rec["objects_not_analysed"] == ["fi_gl"]
+            who["tenant"] = other   # another tenant sees neither the system nor its lists
+            r = await c.get(f"{url}/scorecard", headers={"X-User-Role": "admin"})
+            assert r.status_code == 404
+
+    async def main():
+        try:
+            await scenario()
+        finally:
+            await aeng.dispose()
+
+    os.environ["MERIDIAN_DEV_ROLE_HEADER"] = "1"
+    try:
+        asyncio.run(main())
+    finally:
+        os.environ.pop("MERIDIAN_DEV_ROLE_HEADER", None)

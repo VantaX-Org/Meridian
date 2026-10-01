@@ -25,6 +25,7 @@ from api.routes.source_design import router as source_design_router
 from api.routes.record_issues import router as record_issues_router
 from api.routes.system_objects import router as system_objects_router
 from api.routes.field_profiles import router as field_profiles_router
+from api.routes.pilot import router as pilot_router
 from api.routes.analytics import router as analytics_router
 from api.routes.contracts import router as contracts_router
 from api.routes.notifications import router as notifications_router
@@ -259,6 +260,7 @@ app.include_router(source_design_router)
 app.include_router(record_issues_router)
 app.include_router(system_objects_router)
 app.include_router(field_profiles_router)
+app.include_router(pilot_router)
 app.include_router(analytics_router)
 app.include_router(contracts_router)
 app.include_router(notifications_router)

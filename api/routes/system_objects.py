@@ -266,7 +266,6 @@ async def upload_postal_codes(system_id: uuid.UUID, request: Request, db: AsyncS
     address in a listed country is then checked against the list (PX- rules)."""
     import csv
     import io
-    import json
     import re
 
     raw = (await request.body())[: 64 * 1024 * 1024]
@@ -291,21 +290,67 @@ async def upload_postal_codes(system_id: uuid.UUID, request: Request, db: AsyncS
         raise HTTPException(400, "No valid rows (expected CSV columns: country,postcode).")
     if bad > len(rows):
         raise HTTPException(400, f"{bad} rows are not 'country,postcode' — check the file layout.")
+    await _store_reference(db, tenant, system_id, "REF_POSTAL", [{"COUNTRY": c, "POSTCODE": p} for c, p in sorted(rows)])
+    return ReferenceSummary(kind="postal-codes", records=len(rows), countries=sorted({c for c, _ in rows}))
+
+
+_BIC_RE = r"^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$"
+
+
+@router.post("/{system_id}/reference/bic", response_model=ReferenceSummary,
+             dependencies=[Depends(require_permission("manage_systems"))])
+async def upload_bic_directory(system_id: uuid.UUID, request: Request, db: AsyncSession = Depends(get_db),
+                               tenant: Tenant = Depends(get_tenant)):
+    """The customer's licensed SWIFT BIC directory as CSV (first column: BIC; BIC8 is read as
+    the head office, BIC8 + 'XXX'). Every bank's BIC in a covered country is then checked
+    against it (BX-BNKA)."""
+    import csv
+    import io
+    import re
+
+    raw = (await request.body())[: 64 * 1024 * 1024]
+    try:
+        text_body = raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        raise HTTPException(400, "The file must be UTF-8 text (CSV, first column: BIC).")
+    bics, bad = set(), 0
+    for i, rec in enumerate(csv.reader(io.StringIO(text_body))):
+        if not rec or not rec[0].strip():
+            continue
+        bic = rec[0].strip().upper()
+        if i == 0 and bic in ("BIC", "SWIFT", "BIC11", "BICCODE"):
+            continue  # header
+        if re.fullmatch(_BIC_RE, bic):
+            bics.add(bic + "XXX" if len(bic) == 8 else bic)
+        else:
+            bad += 1
+        if len(bics) > _REF_MAX_ROWS:
+            raise HTTPException(413, f"More than {_REF_MAX_ROWS:,} BICs.")
+    if not bics:
+        raise HTTPException(400, "No valid BICs (expected CSV, first column: BIC).")
+    if bad > len(bics):
+        raise HTTPException(400, f"{bad} rows are not a BIC — check the file layout.")
+    await _store_reference(db, tenant, system_id, "REF_BIC", [{"BIC": b, "COUNTRY": b[4:6]} for b in sorted(bics)])
+    return ReferenceSummary(kind="bic", records=len(bics), countries=sorted({b[4:6] for b in bics}))
+
+
+async def _store_reference(db: AsyncSession, tenant: Tenant, system_id: uuid.UUID, table: str,
+                           data: list[dict]) -> None:
+    import json
+
     await _rls(db, tenant)
     exists = (await db.execute(text("SELECT 1 FROM sap_systems WHERE id = :sid"), {"sid": str(system_id)})).scalar()
     if not exists:
         raise HTTPException(404, "System not found")
-    data = [{"COUNTRY": c, "POSTCODE": p} for c, p in sorted(rows)]
     await db.execute(text("""
         INSERT INTO config_snapshots (id, tenant_id, system_id, module, config_table, config_data,
                                       record_count, source, synced_at)
-        VALUES (gen_random_uuid(), :tid, :sid, 'reference', 'REF_POSTAL', CAST(:data AS jsonb), :cnt,
+        VALUES (gen_random_uuid(), :tid, :sid, 'reference', :tbl, CAST(:data AS jsonb), :cnt,
                 'reference', now())
         ON CONFLICT (tenant_id, system_id, module, config_table)
         DO UPDATE SET config_data = CAST(:data AS jsonb), record_count = :cnt, source = 'reference', synced_at = now()
-    """), {"tid": str(tenant.id), "sid": str(system_id), "data": json.dumps(data), "cnt": len(data)})
+    """), {"tid": str(tenant.id), "sid": str(system_id), "tbl": table, "data": json.dumps(data), "cnt": len(data)})
     await db.commit()
-    return ReferenceSummary(kind="postal-codes", records=len(data), countries=sorted({c for c, _ in rows}))
 
 
 @router.get("/{system_id}/reference", response_model=list[ReferenceSummary],
@@ -316,8 +361,8 @@ async def reference_lists(system_id: uuid.UUID, db: AsyncSession = Depends(get_d
     rows = (await db.execute(text("""
         SELECT config_table, record_count,
                (SELECT array_agg(DISTINCT e->>'COUNTRY') FROM jsonb_array_elements(config_data) e) AS countries
-          FROM config_snapshots WHERE system_id = :sid AND source = 'reference'
+          FROM config_snapshots WHERE system_id = :sid AND source = 'reference' ORDER BY config_table
     """), {"sid": str(system_id)})).fetchall()
-    kinds = {"REF_POSTAL": "postal-codes"}
+    kinds = {"REF_POSTAL": "postal-codes", "REF_BIC": "bic"}
     return [ReferenceSummary(kind=kinds.get(r[0], r[0]), records=r[1] or 0, countries=sorted(r[2] or []))
             for r in rows]

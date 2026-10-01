@@ -101,6 +101,9 @@ export default function SystemDesignPage() {
         sub={system ? `${system.system_type} · ${system.environment} — what Meridian learned about this system's design: its data dictionary, customer extensions and live configuration, compared with the SAP standard.` : undefined}
         actions={
           <Stack direction="row" gap={2}>
+            <Link href={`/systems/${id}/pilot`}>
+              <Button variant="ghost" size="sm">Pilot scorecard</Button>
+            </Link>
             {can("trigger_sync") && (
               <>
                 <Button variant="secondary" size="sm" leadingIcon={<RefreshCw size={14} className={test.isPending ? "animate-spin" : ""} />}

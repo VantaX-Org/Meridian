@@ -124,3 +124,12 @@ export async function uploadPostalCodes(id: string, csv: File): Promise<Referenc
     })
   ).data;
 }
+
+/** The licensed SWIFT BIC directory as CSV (first column: BIC). Replaces the system's current directory. */
+export async function uploadBicDirectory(id: string, csv: File): Promise<ReferenceList> {
+  return (
+    await apiClient.post(`${base(id)}/reference/bic`, await csv.text(), {
+      headers: { "Content-Type": "text/csv" },
+    })
+  ).data;
+}
