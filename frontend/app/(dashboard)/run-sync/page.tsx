@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { PageHead, KPI } from "@/components/meridian/atoms";
@@ -81,9 +81,11 @@ export default function RunSyncPage() {
     return next;
   }, [modules, localStatus]);
 
-  // Clear local overrides once backend confirms the new state.
-  useEffect(() => {
-    if (!modules) return;
+  // Clear local overrides once backend confirms the new state. Adjusted
+  // during render when a new poll result arrives, not in an effect.
+  const [reconciledFor, setReconciledFor] = useState(modules);
+  if (modules && modules !== reconciledFor) {
+    setReconciledFor(modules);
     setLocalStatus((prev) => {
       const next = { ...prev };
       let changed = false;
@@ -97,7 +99,7 @@ export default function RunSyncPage() {
       }
       return changed ? next : prev;
     });
-  }, [modules]);
+  }
 
   const trigger = useMutation({
     mutationFn: (ids: string[]) => triggerModules(ids),
@@ -166,7 +168,7 @@ export default function RunSyncPage() {
   if (isLoading) {
     return (
       <>
-        <PageHead title="Run Sync" route="Analyse · /run-sync" sub="Loading modules…" />
+        <PageHead title="Run Sync" route="Systems & data · /run-sync" sub="Loading modules…" />
         <div className="mn-row" style={{ gridTemplateColumns: "repeat(4, 1fr)", marginBottom: 18 }}>
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-20 rounded-[10px]" />
@@ -184,7 +186,7 @@ export default function RunSyncPage() {
   if (error) {
     return (
       <>
-        <PageHead title="Run Sync" route="Analyse · /run-sync" sub="Failed to load modules." />
+        <PageHead title="Run Sync" route="Systems & data · /run-sync" sub="Failed to load modules." />
         <div className="mn-card mn-card-pad" style={{ color: "var(--mn-neg)" }}>
           Could not reach <code>/api/v1/sync-trigger/modules</code>. Check the API is running.
         </div>
@@ -196,7 +198,7 @@ export default function RunSyncPage() {
     <>
       <PageHead
         title="Run Sync"
-        route="Analyse · /run-sync"
+        route="Systems & data · /run-sync"
         sub="Select modules to re-run analysis against the most recent uploaded data."
         actions={
           <>

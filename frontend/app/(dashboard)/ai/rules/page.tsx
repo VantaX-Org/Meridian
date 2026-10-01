@@ -67,7 +67,7 @@ export default function AiRulesPage() {
   if (rulesQ.isLoading) {
     return (
       <>
-        <PageHead title="AI Rules" route="Steward · /ai/rules" sub="Loading proposals…" />
+        <PageHead title="AI rule review" route="Fix · /ai/rules" sub="Loading proposals…" />
         <Skeleton className="h-[420px] rounded-[10px]" />
       </>
     );
@@ -75,7 +75,7 @@ export default function AiRulesPage() {
   if (rulesQ.error) {
     return (
       <>
-        <PageHead title="AI Rules" route="Steward · /ai/rules" sub="Failed to load." />
+        <PageHead title="AI rule review" route="Fix · /ai/rules" sub="Failed to load." />
         <div className="mn-card mn-card-pad" style={{ color: "var(--mn-neg)" }}>
           Could not reach <code>/api/v1/ai/proposed-rules</code>.
         </div>
@@ -86,8 +86,8 @@ export default function AiRulesPage() {
   return (
     <>
       <PageHead
-        title="AI Rules"
-        route="Steward · /ai/rules"
+        title="AI rule review"
+        route="Fix · /ai/rules"
         sub="Match rules proposed by the engine from accepted steward corrections. Approve to promote into the live match engine."
       />
 

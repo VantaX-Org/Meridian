@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { PageHead, KPI, SectionHeader } from "@/components/meridian/atoms";
 import { ArrowRight, MoreH, SparklesIcon } from "@/components/meridian/icons";
@@ -39,6 +40,8 @@ interface MergedRow {
 }
 
 export default function SyncMonPage() {
+  // Reference time for age/SLA maths, fixed per mount (Date.now() is impure in render).
+  const [now] = useState(() => Date.now());
   const [search, setSearch] = useState("");
   const systemsQ = useQuery({
     queryKey: ["systems.list"],
@@ -69,9 +72,9 @@ export default function SyncMonPage() {
   }, [systems, runsResults]);
 
   const last24hRows = useMemo(() => {
-    const cutoff = Date.now() - 24 * 3600 * 1000;
+    const cutoff = now - 24 * 3600 * 1000;
     return merged.filter((m) => new Date(m.run.started_at).getTime() >= cutoff);
-  }, [merged]);
+  }, [merged, now]);
 
   const summary = useMemo(() => {
     const success = last24hRows.filter((r) => mapStatus(r.run) === "ok").length;
@@ -93,7 +96,7 @@ export default function SyncMonPage() {
   if (loading && merged.length === 0) {
     return (
       <>
-        <PageHead title="Sync Monitor" route="Connect · /sync" sub="Loading sync runs…" />
+        <PageHead title="Download history" route="Systems & data · /sync" sub="Loading sync runs…" />
         <div className="mn-row" style={{ gridTemplateColumns: "repeat(5, 1fr)", marginBottom: 18 }}>
           {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} className="h-20 rounded-[10px]" />
@@ -107,7 +110,7 @@ export default function SyncMonPage() {
   if (error) {
     return (
       <>
-        <PageHead title="Sync Monitor" route="Connect · /sync" sub="Failed to load sync history." />
+        <PageHead title="Download history" route="Systems & data · /sync" sub="Failed to load sync history." />
         <div className="mn-card mn-card-pad" style={{ color: "var(--mn-neg)" }}>
           Could not reach <code>/api/v1/systems/&lt;id&gt;/runs</code>.
         </div>
@@ -120,8 +123,8 @@ export default function SyncMonPage() {
   return (
     <>
       <PageHead
-        title="Sync Monitor"
-        route="Connect · /sync"
+        title="Download history"
+        route="Systems & data · /sync"
         sub={
           <>
             <strong style={{ color: "var(--mn-ink-700)" }}>{summary.runs24h} runs</strong> in the last 24h ·{" "}
@@ -132,7 +135,13 @@ export default function SyncMonPage() {
           </>
         }
         actions={
-          <SearchField value={search} onChange={setSearch} placeholder="Filter runs…" />
+          <>
+            <SearchField value={search} onChange={setSearch} placeholder="Filter runs…" />
+            {/* /run-sync left the nav; it is reached from here. */}
+            <Link href="/run-sync" className="mn-btn mn-btn-ghost">
+              Re-run analysis <ArrowRight size={13} />
+            </Link>
+          </>
         }
       />
 

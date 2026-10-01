@@ -294,7 +294,7 @@ export function TrendsTab({ id }: { id: string }) {
         <thead><tr>
           <th className={th}>Object</th><th className={`${th} text-right`}>DQS</th><th className={th}>vs previous</th>
           <th className={th}>vs baseline</th><th className={`${th} text-right`}>Failing records</th><th className={th}>vs previous</th>
-          <th className={th}>Runs</th><th className={th} />
+          <th className={th}>Versions</th><th className={th} />
         </tr></thead>
         <tbody>
           {overview.summary.map((s) => (
@@ -303,7 +303,7 @@ export function TrendsTab({ id }: { id: string }) {
               <td className={td}>{formatModuleName(s.object)}</td>
               <td className={`${td} text-right aurora-number`}>{s.dqs?.toFixed(1) ?? "—"}</td>
               <td className={td}>{delta(s.dqs_delta)}</td>
-              <td className={td}>{s.vs_baseline ? <>{delta(s.vs_baseline.dqs_delta)} <span className="text-[11px] text-[var(--aurora-fg-muted)]">{s.vs_baseline.pinned ? "pinned" : "first run"}</span></> : "—"}</td>
+              <td className={td}>{s.vs_baseline ? <>{delta(s.vs_baseline.dqs_delta)} <span className="text-[11px] text-[var(--aurora-fg-muted)]">{s.vs_baseline.pinned ? "pinned" : "first version"}</span></> : "—"}</td>
               <td className={`${td} text-right aurora-number`}>{s.failing_records.toLocaleString()}</td>
               <td className={td}>{delta(s.failing_records_delta, true, 0)}</td>
               <td className={`${td} aurora-number`}>{s.points}</td>
@@ -317,16 +317,16 @@ export function TrendsTab({ id }: { id: string }) {
         <Stack gap={3}>
           <Text variant="text-lead">{formatModuleName(active)}</Text>
           {points.some((p) => !p.comparable) && (
-            <Banner tone="warning" title="Some runs are not like-for-like">
+            <Banner tone="warning" title="Some versions are not like-for-like">
               A change there may come from what was downloaded or which rules ran, not from the data getting better or worse.
             </Banner>
           )}
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <LineChart ariaLabel="DQS per run — select a point for its findings" height={220}
+            <LineChart ariaLabel="DQS per version — select a point for its findings" height={220}
               data={points.map((p) => ({ run: new Date(p.run_at).toLocaleDateString(), dqs: p.dqs ?? 0 }))}
               xKey="run" series={[{ key: "dqs", label: "DQS" }]} yFormatter={(v) => v.toFixed(0)}
               onPointClick={(i) => points[i] && router.push(findingsHref(points[i].version_id, active))} />
-            <LineChart ariaLabel="Failing records per run — select a point for its findings" height={220}
+            <LineChart ariaLabel="Failing records per version — select a point for its findings" height={220}
               onPointClick={(i) => points[i] && router.push(findingsHref(points[i].version_id, active))}
               data={points.map((p) => ({ run: new Date(p.run_at).toLocaleDateString(), failing: p.failing_records,
                 opened: p.issues_opened, resolved: p.issues_resolved }))}
@@ -335,7 +335,7 @@ export function TrendsTab({ id }: { id: string }) {
           </div>
           <table className="w-full text-[13px]">
             <thead><tr>
-              <th className={th}>Run</th><th className={`${th} text-right`}>Records</th><th className={`${th} text-right`}>DQS</th>
+              <th className={th}>Version</th><th className={`${th} text-right`}>Records</th><th className={`${th} text-right`}>DQS</th>
               <th className={th}>Δ</th><th className={th}>Dimensions</th><th className={`${th} text-right`}>Failing</th><th className={`${th} text-right`}>New</th>
               <th className={`${th} text-right`}>Fixed</th><th className={th}>Comparable</th><th className={th} />
             </tr></thead>

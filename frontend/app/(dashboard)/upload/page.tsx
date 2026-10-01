@@ -179,12 +179,12 @@ export default function UploadPage() {
   const uploadMut = useMutation({
     mutationFn: async () => {
       if (!file) throw new Error("No file selected");
-      const module = moduleOverride ?? match?.detected_module ?? "";
-      if (!module) throw new Error("No module selected");
+      const targetModule = moduleOverride ?? match?.detected_module ?? "";
+      if (!targetModule) throw new Error("No module selected");
       setUploadPct(0);
       const response = await uploadFile(
         file,
-        module,
+        targetModule,
         null,
         (pct) => setUploadPct(pct),
       );
@@ -284,8 +284,8 @@ export default function UploadPage() {
   return (
     <>
       <PageHead
-        title="Import"
-        route="Analyse · /import"
+        title="Import file"
+        route="Systems & data · /upload"
         sub={
           file
             ? `Staged · ${file.name} · ${formatSize(file.size)}`

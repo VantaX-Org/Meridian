@@ -13,6 +13,7 @@ import {
 } from "@/lib/api/cleaning";
 import { SearchField, matchesSearch, ConfirmDialog } from "@/components/meridian/controls";
 import { relativeTime } from "@/lib/format";
+import { useRole } from "@/hooks/use-role";
 
 const OBJECT_TYPES = ["vendor", "customer", "material"] as const;
 type ObjectType = (typeof OBJECT_TYPES)[number];
@@ -62,6 +63,8 @@ function ScoreRing({ value }: { value: number }) {
 
 export default function DedupPage() {
   const qc = useQueryClient();
+  // Merging needs `approve` (api/routes/cleaning.py /dedup/merge).
+  const canMerge = useRole().can("approve");
   const [kind, setKind] = useState<"all" | ObjectType>("all");
   const [search, setSearch] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -123,7 +126,7 @@ export default function DedupPage() {
   if (loading && allItems.length === 0) {
     return (
       <>
-        <PageHead title="Dedup" route="Steward · /dedup" sub="Loading dedup queue…" />
+        <PageHead title="Duplicates" route="Fix · /dedup" sub="Loading dedup queue…" />
         <Skeleton className="h-[420px] rounded-[10px]" />
       </>
     );
@@ -132,7 +135,7 @@ export default function DedupPage() {
   if (error && allItems.length === 0) {
     return (
       <>
-        <PageHead title="Dedup" route="Steward · /dedup" sub="Failed to load." />
+        <PageHead title="Duplicates" route="Fix · /dedup" sub="Failed to load." />
         <div className="mn-card mn-card-pad" style={{ color: "var(--mn-neg)" }}>
           Could not reach <code>/api/v1/dedup/candidates/&lt;type&gt;</code>.
         </div>
@@ -161,8 +164,8 @@ export default function DedupPage() {
   return (
     <>
       <PageHead
-        title="Dedup"
-        route="Steward · /dedup"
+        title="Duplicates"
+        route="Fix · /dedup"
         sub={
           <>
             <strong style={{ color: "var(--mn-warn)" }}>{totalPairs} duplicate pairs</strong> awaiting review.
@@ -176,20 +179,22 @@ export default function DedupPage() {
         actions={
           <>
             <SearchField value={search} onChange={setSearch} placeholder="Filter pairs…" />
-            <button
-              type="button"
-              className="mn-btn mn-btn-primary"
-              onClick={() => {
-                if (highConfidence.length === 0) {
-                  toast.info("No pairs above 95% match to bulk merge");
-                  return;
-                }
-                setConfirmOpen(true);
-              }}
-              disabled={bulkMerge.isPending}
-            >
-              {bulkMerge.isPending ? "Merging…" : "Bulk merge"}
-            </button>
+            {canMerge && (
+              <button
+                type="button"
+                className="mn-btn mn-btn-primary"
+                onClick={() => {
+                  if (highConfidence.length === 0) {
+                    toast.info("No pairs above 95% match to bulk merge");
+                    return;
+                  }
+                  setConfirmOpen(true);
+                }}
+                disabled={bulkMerge.isPending}
+              >
+                {bulkMerge.isPending ? "Merging…" : "Bulk merge"}
+              </button>
+            )}
           </>
         }
       />
@@ -332,16 +337,18 @@ export default function DedupPage() {
                 >
                   Survivor: {survivorKeyFor(p)}
                 </span>
-                <button
-                  type="button"
-                  className="mn-btn mn-btn-primary"
-                  onClick={() =>
-                    merge.mutate({ candidate: p, survivorKey: survivorKeyFor(p) })
-                  }
-                  disabled={merge.isPending}
-                >
-                  {merge.isPending ? "Merging…" : "Approve merge"} <ArrowRight size={13} />
-                </button>
+                {canMerge && (
+                  <button
+                    type="button"
+                    className="mn-btn mn-btn-primary"
+                    onClick={() =>
+                      merge.mutate({ candidate: p, survivorKey: survivorKeyFor(p) })
+                    }
+                    disabled={merge.isPending}
+                  >
+                    {merge.isPending ? "Merging…" : "Approve merge"} <ArrowRight size={13} />
+                  </button>
+                )}
               </div>
             </div>
           );

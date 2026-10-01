@@ -563,7 +563,7 @@ function daysRemaining(expiryDate: string): number {
 
 // Must stay in sync with ALL_MENU_ITEMS in
 // cloudflare/portal/app/admin/tenants/[tenant_id]/TenantDetailClient.tsx and
-// the licenceKey values in frontend/app/(dashboard)/layout.tsx's nav config —
+// the licenceKey values in frontend/lib/nav.ts (the shared nav config) —
 // rules_engine and field_mapping were added to both of those but never
 // backfilled here, so every tenant created via the normal "New Tenant" flow
 // (which omits enabled_menu_items and falls back to this default) was

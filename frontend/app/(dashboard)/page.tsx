@@ -13,6 +13,7 @@ import { getMdmDashboard } from "@/lib/api/mdm-metrics";
 import { AxiosError } from "axios";
 import { formatModuleName } from "@/lib/format";
 import { EmptyState } from "@/components/ui/empty-state";
+import { useRole } from "@/hooks/use-role";
 import type { DQSSummary, DimensionScores, Version } from "@/types/api";
 
 import {
@@ -130,6 +131,7 @@ const RANGE_OPTIONS = ["7d", "30d", "90d", "YTD"] as const;
 export default function OverviewPage() {
   const userRole = getUserRole();
   const [range, setRange] = useState<(typeof RANGE_OPTIONS)[number]>("30d");
+  const { can } = useRole();
   const [moduleSearch, setModuleSearch] = useState("");
   const [now] = useState(() => Date.now());
 
@@ -206,7 +208,7 @@ export default function OverviewPage() {
       <Alert variant="destructive" className="rounded-2xl">
         <AlertTriangle className="h-4 w-4" />
         <AlertDescription>
-          Failed to load dashboard data.{" "}
+          Could not load analysed versions.{" "}
           <Button variant="link" className="px-0" onClick={() => refetchVersions()}>
             Retry
           </Button>
@@ -219,12 +221,38 @@ export default function OverviewPage() {
     return (
       <div className="py-8">
         <GettingStarted hasAnalysis={false} />
-        <EmptyState
-          illustration="data"
-          title="No analysis data yet"
-          description="Upload SAP data to get your first Data Quality Score across your modules."
-          action={{ label: "Upload data", href: "/upload" }}
-        />
+        {can("manage_systems") ? (
+          <EmptyState
+            illustration="data"
+            title="No analysis data yet"
+            description={
+              <>
+                Connect an SAP system, download its objects and analyse them to get your first Data Quality Score.
+                {can("upload") && (
+                  <>
+                    {" "}Or <Link className="mn-link" href="/upload">import a file</Link>.
+                  </>
+                )}
+              </>
+            }
+            action={{ label: "Connect a system", href: "/systems" }}
+          />
+        ) : (
+          <EmptyState
+            illustration="data"
+            title="No analysis data yet"
+            description={
+              <>
+                The first Data Quality Score appears here once a connected system&apos;s objects are analysed.
+                {can("upload") && (
+                  <>
+                    {" "}You can also <Link className="mn-link" href="/upload">import a file</Link>.
+                  </>
+                )}
+              </>
+            }
+          />
+        )}
       </div>
     );
   }
@@ -337,8 +365,8 @@ export default function OverviewPage() {
     <div style={{ minHeight: "100%" }}>
       <GettingStarted hasAnalysis />
       <PageHead
-        title="Overview"
-        route="Analyse · /"
+        title="Command Centre"
+        route="Overview · /"
         sub={
           <>
             {dqsDelta !== undefined && dqsDelta > 0 ? (
@@ -385,6 +413,9 @@ export default function OverviewPage() {
             >
               <BookmarkIcon /> Save view
             </button>
+            <Link href="/command-centre" className="mn-btn mn-btn-ghost">
+              Live operations <ArrowRight size={12} />
+            </Link>
           </>
         }
       />

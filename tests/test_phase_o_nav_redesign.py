@@ -5,70 +5,141 @@ import pytest
 
 
 # ── O.1 Grouped sidebar navigation ──────────────────────────────────────────
+#
+# The nav is defined once in frontend/lib/nav.ts and read by both the sidebar
+# (app/(dashboard)/layout.tsx) and the ⌘K command palette, so the two can't
+# drift. Groups follow the user's job, in journey order.
+
+NAV = Path("frontend/lib/nav.ts")
+LAYOUT = Path("frontend/app/(dashboard)/layout.tsx")
+PALETTE = Path("frontend/components/command-palette.tsx")
+
+NAV_GROUP_ORDER = (
+    "Overview",
+    "Systems & data",
+    "Quality",
+    "Fix",
+    "Master data",
+    "Process & impact",
+    "Reports",
+    "Admin",
+)
+
+
+def _nav() -> str:
+    return NAV.read_text(encoding="utf-8")
+
+
+def _group_block(content: str, group: str) -> str:
+    """Source text of one group, from its `group:` line to the next group."""
+    start = content.index(f'group: "{group}"')
+    nxt = content.find("group: ", start + 1)
+    return content[start: nxt if nxt != -1 else len(content)]
 
 
 def test_sidebar_has_nav_groups():
-    """Sidebar uses grouped navigation with Connect / Govern / Steward / Analyse / Report."""
-    path = Path("frontend/app/(dashboard)/layout.tsx")
-    content = path.read_text(encoding="utf-8")
-    for group in ("Connect", "Govern", "Steward", "Analyse", "Report"):
-        assert group in content, f"Missing nav group: {group}"
+    """The shared nav has the job-based groups, in journey order."""
+    content = _nav()
+    positions = [content.index(f'group: "{g}"') for g in NAV_GROUP_ORDER]
+    assert positions == sorted(positions), "Nav groups are out of journey order"
 
 
-def test_sidebar_connect_items():
-    """Connect group has Systems, Sync Monitor, Import."""
-    path = Path("frontend/app/(dashboard)/layout.tsx")
-    content = path.read_text(encoding="utf-8")
-    assert "/systems" in content
-    assert "/sync" in content
-    assert "/upload" in content
+def test_sidebar_and_palette_share_nav():
+    """Sidebar and command palette both render the role/licence-filtered shared nav."""
+    layout = LAYOUT.read_text(encoding="utf-8")
+    palette = PALETTE.read_text(encoding="utf-8")
+    assert "useVisibleNav" in layout
+    assert "useVisibleNav" in palette
+    assert "NAV_GROUPS: NavGroup[] = [" not in layout, "layout must not keep its own nav copy"
+    assert "const PAGES" not in palette, "palette must not keep its own nav copy"
+    # Header titles come from the nav labels, not a hand-kept map.
+    assert 'from "@/lib/nav"' in layout
+    assert "export const PAGE_TITLES" in _nav()
 
 
-def test_sidebar_govern_items():
-    """Govern group has Golden Records, Glossary, Contracts, Relationships."""
-    path = Path("frontend/app/(dashboard)/layout.tsx")
-    content = path.read_text(encoding="utf-8")
-    assert "/golden-records" in content
-    assert "/glossary" in content
-    assert "/contracts" in content
-    assert "/relationships" in content
+def test_overview_items():
+    """Overview holds Command Centre at / plus Analytics; no 'Dashboard' label."""
+    block = _group_block(_nav(), "Overview")
+    assert 'href: "/", label: "Command Centre"' in block
+    assert '"/analytics"' in block
+    palette = PALETTE.read_text(encoding="utf-8")
+    assert 'label: "Dashboard"' not in palette and 'label: "Dashboard"' not in _nav()
 
 
-def test_sidebar_steward_items():
-    """Steward group has Workbench, AI Rules, Exceptions, Cleaning, Dedup."""
-    path = Path("frontend/app/(dashboard)/layout.tsx")
-    content = path.read_text(encoding="utf-8")
-    assert "/stewardship" in content
-    assert "/ai/rules" in content
-    assert "/exceptions" in content
-    assert "/cleaning" in content
-    assert "/dedup" in content
+def test_sidebar_systems_and_data_items():
+    """Systems & data (second group) has Systems, Import file, Download history, Migration."""
+    block = _group_block(_nav(), "Systems & data")
+    for href in ("/systems", "/upload", "/sync", "/migration"):
+        assert f'"{href}"' in block, f"{href} missing from Systems & data"
 
 
-def test_sidebar_analyse_items():
-    """Analyse group has Dashboard, Findings, Analytics."""
-    path = Path("frontend/app/(dashboard)/layout.tsx")
-    content = path.read_text(encoding="utf-8")
-    # Dashboard is "/"
-    assert "Dashboard" in content
-    assert "/findings" in content
-    assert "/analytics" in content
+def test_sidebar_quality_items():
+    """Quality has Findings, Failing records (/issues) and Compare versions (/versions)."""
+    block = _group_block(_nav(), "Quality")
+    assert '"/findings"' in block
+    assert 'href: "/issues", label: "Failing records"' in block
+    assert 'href: "/versions", label: "Compare versions"' in block
 
 
-def test_sidebar_report_items():
-    """Report group has Reports and Versions."""
-    path = Path("frontend/app/(dashboard)/layout.tsx")
-    content = path.read_text(encoding="utf-8")
-    assert "/reports" in content
-    assert "/versions" in content
+def test_sidebar_fix_items():
+    """Fix has the two renamed queues plus Cleaning, Exceptions, Duplicates, AI rule review."""
+    block = _group_block(_nav(), "Fix")
+    assert 'href: "/workbench", label: "My queue"' in block
+    assert 'href: "/stewardship", label: "Team workload"' in block
+    for href in ("/cleaning", "/exceptions", "/dedup", "/ai/rules"):
+        assert f'"{href}"' in block, f"{href} missing from Fix"
+    assert 'label: "Workbench"' not in _nav(), "duplicate 'Workbench' labels must be gone"
 
 
-def test_ai_rules_permission_gating():
-    """AI Rules nav item is gated by review_ai_rules permission."""
-    path = Path("frontend/app/(dashboard)/layout.tsx")
-    content = path.read_text(encoding="utf-8")
-    assert 'permission: "review_ai_rules"' in content
-    assert "can(item.permission)" in content
+def test_sidebar_master_data_items():
+    """Master data has Golden records, Glossary, Contracts, Relationships."""
+    block = _group_block(_nav(), "Master data")
+    for href in ("/golden-records", "/glossary", "/contracts", "/relationships"):
+        assert f'"{href}"' in block
+
+
+def test_sidebar_process_and_impact_items():
+    """Process & impact has the process map, readiness, config impact and pattern mining."""
+    block = _group_block(_nav(), "Process & impact")
+    for href in ("/process", "/business-process", "/config-impact", "/mining"):
+        assert f'"{href}"' in block
+
+
+def test_sidebar_reports_and_admin_items():
+    """Reports has Reports; Admin has Users & audit and Settings with its sub-pages."""
+    content = _nav()
+    assert '"/reports"' in _group_block(content, "Reports")
+    admin = _group_block(content, "Admin")
+    assert '"/admin"' in admin and '"/settings"' in admin
+    for href in ("/settings/rules", "/settings/field-mapping", "/settings/ai", "/settings/licence"):
+        assert f'"{href}"' in content
+
+
+def test_pages_removed_from_nav_stay_routable():
+    """Off-nav pages keep their routes and still get a header title."""
+    content = _nav()
+    for href in ("/command-centre", "/connectivity", "/run-sync"):
+        assert f'href: "{href}"' not in content, f"{href} should no longer be a nav item"
+        assert f'"{href}":' in content, f"{href} needs a header title"
+        assert Path(f"frontend/app/(dashboard){href}/page.tsx").exists()
+
+
+def test_nav_permission_gating():
+    """Items gate on 'any of' backend permission names; the filter applies them."""
+    content = _nav()
+    assert 'anyOf: ["review_ai_rules"]' in content
+    assert 'anyOf: ["manage_users"]' in content
+    assert 'anyOf: ["trigger_sync"]' in content
+    assert 'anyOf: ["approve", "apply", "assign", "mdm.write", "review_ai_rules"]' in content
+    assert "anyOf.some((p) => can(p))" in content
+    assert "isMenuItemEnabled(item.licenceKey)" in content
+
+
+def test_settings_cards_are_gated():
+    """Settings cards use the same gate as their nav entries."""
+    content = Path("frontend/app/(dashboard)/settings/page.tsx").read_text(encoding="utf-8")
+    assert "isItemVisible" in content
+    assert "SETTINGS_ITEMS" in content
 
 
 # ── O.2 AI Rules page ──────────────────────────────────────────────────────

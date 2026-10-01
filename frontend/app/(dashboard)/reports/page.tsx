@@ -105,7 +105,7 @@ function ReportsList() {
   if (isLoading) {
     return (
       <>
-        <PageHead title="Reports" route="Report · /reports" sub="Loading reports…" />
+        <PageHead title="Reports" route="Reports · /reports" sub="Loading reports…" />
         <div className="mn-row" style={{ gridTemplateColumns: "repeat(4, 1fr)", marginBottom: 18 }}>
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-20 rounded-[10px]" />
@@ -119,7 +119,7 @@ function ReportsList() {
   if (error) {
     return (
       <>
-        <PageHead title="Reports" route="Report · /reports" sub="Failed to load reports." />
+        <PageHead title="Reports" route="Reports · /reports" sub="Failed to load reports." />
         <div className="mn-card mn-card-pad" style={{ color: "var(--mn-neg)" }}>
           Could not reach <code>/api/v1/versions</code>.
         </div>
@@ -139,7 +139,7 @@ function ReportsList() {
     <>
       <PageHead
         title="Reports"
-        route="Report · /reports"
+        route="Reports · /reports"
         sub={
           <>
             <strong style={{ color: "var(--mn-ink-700)" }}>{total} reports</strong> available ·{" "}

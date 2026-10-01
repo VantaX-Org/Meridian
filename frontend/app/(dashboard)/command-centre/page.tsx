@@ -116,7 +116,7 @@ export default function CommandCentrePage() {
   if (isLoading) {
     return (
       <>
-        <PageHead title="Command Centre" route="Aurora · /command-centre" sub="Loading live view…" />
+        <PageHead title="Live operations" route="Overview · /command-centre" sub="Loading live view…" />
         <div className="mn-row" style={{ gridTemplateColumns: "repeat(6, 1fr)", marginBottom: 18 }}>
           {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} className="h-20 rounded-[10px]" />
@@ -129,7 +129,7 @@ export default function CommandCentrePage() {
   if (error) {
     return (
       <>
-        <PageHead title="Command Centre" route="Aurora · /command-centre" sub="Failed to load." />
+        <PageHead title="Live operations" route="Overview · /command-centre" sub="Failed to load." />
         <div className="mn-card mn-card-pad" style={{ color: "var(--mn-neg)" }}>
           Could not reach one of the live endpoints (mdm/findings/systems/stewardship).
         </div>
@@ -160,8 +160,8 @@ export default function CommandCentrePage() {
   return (
     <>
       <PageHead
-        title="Command Centre"
-        route="Aurora · /command-centre"
+        title="Live operations"
+        route="Overview · /command-centre"
         sub={
           <>
             Live view across <strong style={{ color: "var(--mn-ink-700)" }}>{systems.length} systems</strong> ·{" "}

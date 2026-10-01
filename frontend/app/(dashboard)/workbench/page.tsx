@@ -31,6 +31,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { relativeTime } from "@/lib/format";
+import { useRole } from "@/hooks/use-role";
 import type { StewardshipQueueItem } from "@/types/api";
 
 function priorityChip(p: number): "P1" | "P2" | "P3" {
@@ -64,6 +65,10 @@ const ITEM_TYPE_LABEL: Record<string, string> = {
 
 export default function WorkbenchPage() {
   const qc = useQueryClient();
+  // Approve / reject / bulk approve need `approve` (api/routes/stewardship.py).
+  const canApprove = useRole().can("approve");
+  // Reference time for age/SLA maths, fixed per mount (Date.now() is impure in render).
+  const [now] = useState(() => Date.now());
   const [activeId, setActiveId] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<"sla" | "priority" | "age">("sla");
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -154,9 +159,9 @@ export default function WorkbenchPage() {
       if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
       if (!focused) return;
       const k = ev.key;
-      if (k === "a" || k === "A") {
+      if ((k === "a" || k === "A") && canApprove) {
         resolve.mutate({ id: focused.id, action: "approve" });
-      } else if (k === "r" || k === "R") {
+      } else if ((k === "r" || k === "R") && canApprove) {
         setOverrideReason("");
         setOverrideOpen(true);
       } else if (k === "e" || k === "E") {
@@ -170,7 +175,7 @@ export default function WorkbenchPage() {
       }
       ev.preventDefault();
     },
-    [focused, items, overrideOpen, bulkOpen, resolve, escalate],
+    [focused, items, overrideOpen, bulkOpen, resolve, escalate, canApprove],
   );
   useEffect(() => {
     window.addEventListener("keydown", onKey);
@@ -180,7 +185,7 @@ export default function WorkbenchPage() {
   if (queueQ.isLoading || metricsQ.isLoading) {
     return (
       <>
-        <PageHead title="Workbench" route="Aurora · /workbench" sub="Loading queue…" />
+        <PageHead title="My queue" route="Fix · /workbench" sub="Loading queue…" />
         <Skeleton className="h-[420px] rounded-[10px]" />
       </>
     );
@@ -188,7 +193,7 @@ export default function WorkbenchPage() {
   if (queueQ.error || metricsQ.error) {
     return (
       <>
-        <PageHead title="Workbench" route="Aurora · /workbench" sub="Failed to load." />
+        <PageHead title="My queue" route="Fix · /workbench" sub="Failed to load." />
         <div className="mn-card mn-card-pad" style={{ color: "var(--mn-neg)" }}>
           Could not reach <code>/api/v1/stewardship</code>.
         </div>
@@ -201,14 +206,14 @@ export default function WorkbenchPage() {
 
   const assignedToMe = items.filter((t) => t.assigned_to).length;
   const slaAtRisk = items.filter(
-    (t) => t.sla_hours !== null && t.due_at && new Date(t.due_at).getTime() - Date.now() < (t.sla_hours * 0.5) * 3600 * 1000,
+    (t) => t.sla_hours !== null && t.due_at && new Date(t.due_at).getTime() - now < (t.sla_hours * 0.5) * 3600 * 1000,
   ).length;
 
   return (
     <>
       <PageHead
-        title="Workbench"
-        route="Aurora · /workbench"
+        title="My queue"
+        route="Fix · /workbench"
         sub={
           <>
             You have <strong style={{ color: "var(--mn-ink-700)" }}>{items.length} open tasks</strong>.{" "}
@@ -222,20 +227,22 @@ export default function WorkbenchPage() {
         actions={
           <>
             <span className="mn-pill"><span className="pdot" />Live queue</span>
-            <button
-              type="button"
-              className="mn-btn mn-btn-primary"
-              onClick={() => {
-                if (items.length === 0) {
-                  toast.info("Nothing to approve");
-                  return;
-                }
-                setBulkOpen(true);
-              }}
-              disabled={bulk.isPending || items.length === 0}
-            >
-              {bulk.isPending ? "Approving…" : "Bulk approve"}
-            </button>
+            {canApprove && (
+              <button
+                type="button"
+                className="mn-btn mn-btn-primary"
+                onClick={() => {
+                  if (items.length === 0) {
+                    toast.info("Nothing to approve");
+                    return;
+                  }
+                  setBulkOpen(true);
+                }}
+                disabled={bulk.isPending || items.length === 0}
+              >
+                {bulk.isPending ? "Approving…" : "Bulk approve"}
+              </button>
+            )}
           </>
         }
       />
@@ -414,17 +421,19 @@ export default function WorkbenchPage() {
               </div>
 
               <div className="mn-wb-actions">
-                <button
-                  type="button"
-                  className="mn-btn mn-btn-ghost"
-                  onClick={() => {
-                    setOverrideReason("");
-                    setOverrideOpen(true);
-                  }}
-                  disabled={resolve.isPending || override.isPending}
-                >
-                  Reject
-                </button>
+                {canApprove && (
+                  <button
+                    type="button"
+                    className="mn-btn mn-btn-ghost"
+                    onClick={() => {
+                      setOverrideReason("");
+                      setOverrideOpen(true);
+                    }}
+                    disabled={resolve.isPending || override.isPending}
+                  >
+                    Reject
+                  </button>
+                )}
                 <button
                   type="button"
                   className="mn-btn mn-btn-ghost"
@@ -434,14 +443,16 @@ export default function WorkbenchPage() {
                   {escalate.isPending ? "Escalating…" : "Escalate"}
                 </button>
                 <div style={{ flex: 1 }} />
-                <button
-                  type="button"
-                  className="mn-btn mn-btn-primary"
-                  onClick={() => resolve.mutate({ id: selected.id, action: "approve" })}
-                  disabled={resolve.isPending}
-                >
-                  {resolve.isPending ? "Approving…" : "Approve"} <ArrowRight size={13} />
-                </button>
+                {canApprove && (
+                  <button
+                    type="button"
+                    className="mn-btn mn-btn-primary"
+                    onClick={() => resolve.mutate({ id: selected.id, action: "approve" })}
+                    disabled={resolve.isPending}
+                  >
+                    {resolve.isPending ? "Approving…" : "Approve"} <ArrowRight size={13} />
+                  </button>
+                )}
               </div>
             </div>
           ) : (

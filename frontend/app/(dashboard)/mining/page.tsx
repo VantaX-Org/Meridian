@@ -51,7 +51,7 @@ export default function MiningPage() {
   if (summaryQ.isLoading || patternsQ.isLoading) {
     return (
       <>
-        <PageHead title="Mining" route="Analyse · /mining" sub="Loading…" />
+        <PageHead title="Pattern mining" route="Process & impact · /mining" sub="Loading…" />
         <Skeleton className="h-[420px] rounded-[10px]" />
       </>
     );
@@ -60,7 +60,7 @@ export default function MiningPage() {
   if (summaryQ.error || patternsQ.error) {
     return (
       <>
-        <PageHead title="Mining" route="Analyse · /mining" sub="Failed to load." />
+        <PageHead title="Pattern mining" route="Process & impact · /mining" sub="Failed to load." />
         <div className="mn-card mn-card-pad" style={{ color: "var(--mn-neg)" }}>
           Could not reach <code>/api/v1/mining/*</code>.
         </div>
@@ -76,8 +76,8 @@ export default function MiningPage() {
   return (
     <>
       <PageHead
-        title="Mining"
-        route="Analyse · /mining"
+        title="Pattern mining"
+        route="Process & impact · /mining"
         sub={
           available
             ? (

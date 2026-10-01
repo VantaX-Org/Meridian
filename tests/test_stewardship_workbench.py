@@ -369,12 +369,10 @@ def test_frontend_types_defined():
 
 
 def test_frontend_nav_has_stewardship():
-    """Dashboard layout includes Stewardship nav item under Steward group."""
-    path = Path("frontend/app/(dashboard)/layout.tsx")
-    content = path.read_text(encoding="utf-8")
-    assert "/stewardship" in content
-    assert "Steward" in content  # group label
-    assert "ClipboardIcon" in content
+    """The shared nav (sidebar + ⌘K) has the steward pages in the Fix group."""
+    content = Path("frontend/lib/nav.ts").read_text(encoding="utf-8")
+    assert 'href: "/stewardship", label: "Team workload"' in content
+    assert 'href: "/workbench", label: "My queue", icon: ClipboardIcon' in content
 
 
 # ── L.2 ai_triage task file structure ────────────────────────────────────────

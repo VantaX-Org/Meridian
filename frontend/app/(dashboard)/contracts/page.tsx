@@ -84,7 +84,7 @@ export default function ContractsPage() {
   if (isLoading) {
     return (
       <>
-        <PageHead title="Contracts" route="Govern · /contracts" sub="Loading…" />
+        <PageHead title="Contracts" route="Master data · /contracts" sub="Loading…" />
         <Skeleton className="h-[420px] rounded-[10px]" />
       </>
     );
@@ -92,7 +92,7 @@ export default function ContractsPage() {
   if (error) {
     return (
       <>
-        <PageHead title="Contracts" route="Govern · /contracts" sub="Failed to load." />
+        <PageHead title="Contracts" route="Master data · /contracts" sub="Failed to load." />
         <div className="mn-card mn-card-pad" style={{ color: "var(--mn-neg)" }}>
           Could not reach <code>/api/v1/contracts</code>.
         </div>
@@ -106,7 +106,7 @@ export default function ContractsPage() {
     <>
       <PageHead
         title="Contracts"
-        route="Govern · /contracts"
+        route="Master data · /contracts"
         sub={
           <>
             <strong style={{ color: "var(--mn-ink-700)" }}>{total} data contracts</strong> defined between systems.{" "}

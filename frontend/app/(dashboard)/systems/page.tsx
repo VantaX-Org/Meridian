@@ -1,6 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { PageHead, KPI, SectionHeader, StatusDot } from "@/components/meridian/atoms";
@@ -16,6 +18,7 @@ import {
   triggerSync,
 } from "@/lib/api/systems";
 import { relativeTime } from "@/lib/format";
+import { useRole } from "@/hooks/use-role";
 import type { SAPSystem, SystemType } from "@/types/api";
 
 const RFC_SYSTEM_TYPES: SystemType[] = ["ecc", "s4hana_onprem", "ewm"];
@@ -102,6 +105,12 @@ function systemInitials(name: string) {
 
 export default function SystemsPage() {
   const qc = useQueryClient();
+  const router = useRouter();
+  // Same permission names as the backend guards (api/routes/systems.py):
+  // connect / test / delete need manage_systems, syncs need trigger_sync.
+  const { can } = useRole();
+  const canManage = can("manage_systems");
+  const canSync = can("trigger_sync");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [connectOpen, setConnectOpen] = useState(false);
   const [connectType, setConnectType] = useState<SystemType>("ecc");
@@ -144,12 +153,15 @@ export default function SystemsPage() {
   });
   const register = useMutation({
     mutationFn: registerSystem,
-    onSuccess: () => {
-      toast.success("System registered");
+    onSuccess: (created) => {
+      toast.success("System registered — next, discover its design");
       setConnectOpen(false);
       setConnectType("ecc");
       setConnectAuthType("oauth2_client_credentials");
       qc.invalidateQueries({ queryKey: ["systems.list"] });
+      qc.invalidateQueries({ queryKey: ["systems"] });
+      // Step 2 of the journey (discover, download, analyse) lives on the system page.
+      router.push(`/systems/${created.id}`);
     },
     onError: () => toast.error("Could not register system"),
   });
@@ -174,7 +186,7 @@ export default function SystemsPage() {
   if (isLoading) {
     return (
       <>
-        <PageHead title="Systems" route="Connect · /systems" sub="Loading systems…" />
+        <PageHead title="Systems" route="Systems & data · /systems" sub="Loading systems…" />
         <div className="mn-row" style={{ gridTemplateColumns: "repeat(5, 1fr)", marginBottom: 18 }}>
           {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} className="h-20 rounded-[10px]" />
@@ -192,7 +204,7 @@ export default function SystemsPage() {
   if (error) {
     return (
       <>
-        <PageHead title="Systems" route="Connect · /systems" sub="Failed to load systems." />
+        <PageHead title="Systems" route="Systems & data · /systems" sub="Failed to load systems." />
         <div className="mn-card mn-card-pad" style={{ color: "var(--mn-neg)" }}>
           Could not reach <code>/api/v1/systems</code>.
         </div>
@@ -212,7 +224,7 @@ export default function SystemsPage() {
     <>
       <PageHead
         title="Systems"
-        route="Connect · /systems"
+        route="Systems & data · /systems"
         sub={
           <>
             <strong style={{ color: "var(--mn-ink-700)" }}>{list.length} systems</strong> connected ·{" "}
@@ -224,180 +236,187 @@ export default function SystemsPage() {
         }
         actions={
           <>
-            <button
-              type="button"
-              className="mn-btn mn-btn-ghost"
-              onClick={() => {
-                const ids = list.map((s) => s.id);
-                if (ids.length === 0) {
-                  toast.info("No systems to sync");
-                  return;
-                }
-                syncAll.mutate(ids);
-              }}
-              disabled={syncAll.isPending || list.length === 0}
-            >
-              {syncAll.isPending ? "Syncing…" : "Sync all"}
-            </button>
-            <Dialog open={connectOpen} onOpenChange={setConnectOpen}>
-              <DialogTrigger type="button" className="mn-btn mn-btn-primary">
-                Connect system
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Connect SAP system</DialogTitle>
-                </DialogHeader>
-                <form
-                  ref={connectFormRef}
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const fd = new FormData(e.currentTarget);
-                    register.mutate(buildConnectBody(fd, connectType, connectAuthType));
-                  }}
-                >
-                  <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 8 }}>
-                    <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
-                      <span style={{ color: "var(--mn-ink-500)" }}>System type</span>
-                      <select
-                        className="mn-input"
-                        value={connectType}
-                        onChange={(e) => {
-                          setConnectType(e.target.value as SystemType);
-                          setConnectAuthType("oauth2_client_credentials");
-                        }}
-                      >
-                        {SYSTEM_TYPE_OPTIONS.map((o) => (
-                          <option key={o.value} value={o.value}>{o.label}</option>
-                        ))}
-                      </select>
-                    </label>
-                    <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
-                      <span style={{ color: "var(--mn-ink-500)" }}>System name</span>
-                      <input name="name" required className="mn-input" placeholder="e.g. ECC Production" />
-                    </label>
+            <Link href="/connectivity" className="mn-btn mn-btn-ghost">
+              Connectivity
+            </Link>
+            {canSync && (
+              <button
+                type="button"
+                className="mn-btn mn-btn-ghost"
+                onClick={() => {
+                  const ids = list.map((s) => s.id);
+                  if (ids.length === 0) {
+                    toast.info("No systems to sync");
+                    return;
+                  }
+                  syncAll.mutate(ids);
+                }}
+                disabled={syncAll.isPending || list.length === 0}
+              >
+                {syncAll.isPending ? "Syncing…" : "Sync all"}
+              </button>
+            )}
+            {canManage && (
+              <Dialog open={connectOpen} onOpenChange={setConnectOpen}>
+                <DialogTrigger type="button" className="mn-btn mn-btn-primary">
+                  Connect system
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Connect SAP system</DialogTitle>
+                  </DialogHeader>
+                  <form
+                    ref={connectFormRef}
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const fd = new FormData(e.currentTarget);
+                      register.mutate(buildConnectBody(fd, connectType, connectAuthType));
+                    }}
+                  >
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 8 }}>
+                      <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                        <span style={{ color: "var(--mn-ink-500)" }}>System type</span>
+                        <select
+                          className="mn-input"
+                          value={connectType}
+                          onChange={(e) => {
+                            setConnectType(e.target.value as SystemType);
+                            setConnectAuthType("oauth2_client_credentials");
+                          }}
+                        >
+                          {SYSTEM_TYPE_OPTIONS.map((o) => (
+                            <option key={o.value} value={o.value}>{o.label}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                        <span style={{ color: "var(--mn-ink-500)" }}>System name</span>
+                        <input name="name" required className="mn-input" placeholder="e.g. ECC Production" />
+                      </label>
 
-                    {isRfcType(connectType) ? (
-                      <>
-                        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 12 }}>
-                          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
-                            <span style={{ color: "var(--mn-ink-500)" }}>Host</span>
-                            <input name="host" required className="mn-input" placeholder="sap.example.com" />
-                          </label>
-                          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
-                            <span style={{ color: "var(--mn-ink-500)" }}>Client</span>
-                            <input name="client" required className="mn-input" placeholder="100" />
-                          </label>
-                          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
-                            <span style={{ color: "var(--mn-ink-500)" }}>Sysnr</span>
-                            <input name="sysnr" required className="mn-input" placeholder="00" />
-                          </label>
-                        </div>
-                        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
-                          <span style={{ color: "var(--mn-ink-500)" }}>Username (optional)</span>
-                          <input
-                            name="username"
-                            className="mn-input"
-                            placeholder="Falls back to SAP_RFC_USER if left blank"
-                          />
-                        </label>
-                        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
-                          <span style={{ color: "var(--mn-ink-500)" }}>Password</span>
-                          <input name="password" type="password" required className="mn-input" placeholder="••••••••" />
-                        </label>
-                      </>
-                    ) : (
-                      <>
-                        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
-                          <span style={{ color: "var(--mn-ink-500)" }}>Base URL</span>
-                          <input name="base_url" type="url" required className="mn-input" placeholder="https://api.successfactors.eu" />
-                        </label>
-                        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
-                          <span style={{ color: "var(--mn-ink-500)" }}>Company ID (optional)</span>
-                          <input name="company_id" className="mn-input" placeholder="ACME_CORP" />
-                        </label>
-                        {AUTH_SELECTABLE_TYPES.includes(connectType) && (
-                          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
-                            <span style={{ color: "var(--mn-ink-500)" }}>Auth method</span>
-                            <select
-                              className="mn-input"
-                              value={connectAuthType}
-                              onChange={(e) =>
-                                setConnectAuthType(e.target.value as "oauth2_client_credentials" | "basic")
-                              }
-                            >
-                              <option value="oauth2_client_credentials">OAuth2 (client credentials)</option>
-                              <option value="basic">Basic auth</option>
-                            </select>
-                          </label>
-                        )}
-                        {AUTH_SELECTABLE_TYPES.includes(connectType) && connectAuthType === "basic" ? (
-                          <>
+                      {isRfcType(connectType) ? (
+                        <>
+                          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 12 }}>
                             <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
-                              <span style={{ color: "var(--mn-ink-500)" }}>Username</span>
-                              <input name="username" required className="mn-input" placeholder="SF username" />
+                              <span style={{ color: "var(--mn-ink-500)" }}>Host</span>
+                              <input name="host" required className="mn-input" placeholder="sap.example.com" />
                             </label>
                             <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
-                              <span style={{ color: "var(--mn-ink-500)" }}>Password</span>
-                              <input name="password" type="password" required className="mn-input" placeholder="••••••••" />
-                            </label>
-                          </>
-                        ) : (
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                            <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
-                              <span style={{ color: "var(--mn-ink-500)" }}>Client ID</span>
-                              <input name="client_id" required className="mn-input" placeholder="OAuth client ID" />
+                              <span style={{ color: "var(--mn-ink-500)" }}>Client</span>
+                              <input name="client" required className="mn-input" placeholder="100" />
                             </label>
                             <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
-                              <span style={{ color: "var(--mn-ink-500)" }}>Client secret</span>
-                              <input name="client_secret" type="password" required className="mn-input" placeholder="••••••••" />
+                              <span style={{ color: "var(--mn-ink-500)" }}>Sysnr</span>
+                              <input name="sysnr" required className="mn-input" placeholder="00" />
                             </label>
                           </div>
-                        )}
-                        {connectType === "ariba" && (
                           <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
-                            <span style={{ color: "var(--mn-ink-500)" }}>API key (optional)</span>
-                            <input name="api_key" className="mn-input" placeholder="Ariba API key" />
+                            <span style={{ color: "var(--mn-ink-500)" }}>Username (optional)</span>
+                            <input
+                              name="username"
+                              className="mn-input"
+                              placeholder="Falls back to SAP_RFC_USER if left blank"
+                            />
                           </label>
-                        )}
-                      </>
-                    )}
+                          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                            <span style={{ color: "var(--mn-ink-500)" }}>Password</span>
+                            <input name="password" type="password" required className="mn-input" placeholder="••••••••" />
+                          </label>
+                        </>
+                      ) : (
+                        <>
+                          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                            <span style={{ color: "var(--mn-ink-500)" }}>Base URL</span>
+                            <input name="base_url" type="url" required className="mn-input" placeholder="https://api.successfactors.eu" />
+                          </label>
+                          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                            <span style={{ color: "var(--mn-ink-500)" }}>Company ID (optional)</span>
+                            <input name="company_id" className="mn-input" placeholder="ACME_CORP" />
+                          </label>
+                          {AUTH_SELECTABLE_TYPES.includes(connectType) && (
+                            <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                              <span style={{ color: "var(--mn-ink-500)" }}>Auth method</span>
+                              <select
+                                className="mn-input"
+                                value={connectAuthType}
+                                onChange={(e) =>
+                                  setConnectAuthType(e.target.value as "oauth2_client_credentials" | "basic")
+                                }
+                              >
+                                <option value="oauth2_client_credentials">OAuth2 (client credentials)</option>
+                                <option value="basic">Basic auth</option>
+                              </select>
+                            </label>
+                          )}
+                          {AUTH_SELECTABLE_TYPES.includes(connectType) && connectAuthType === "basic" ? (
+                            <>
+                              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                                <span style={{ color: "var(--mn-ink-500)" }}>Username</span>
+                                <input name="username" required className="mn-input" placeholder="SF username" />
+                              </label>
+                              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                                <span style={{ color: "var(--mn-ink-500)" }}>Password</span>
+                                <input name="password" type="password" required className="mn-input" placeholder="••••••••" />
+                              </label>
+                            </>
+                          ) : (
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                                <span style={{ color: "var(--mn-ink-500)" }}>Client ID</span>
+                                <input name="client_id" required className="mn-input" placeholder="OAuth client ID" />
+                              </label>
+                              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                                <span style={{ color: "var(--mn-ink-500)" }}>Client secret</span>
+                                <input name="client_secret" type="password" required className="mn-input" placeholder="••••••••" />
+                              </label>
+                            </div>
+                          )}
+                          {connectType === "ariba" && (
+                            <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                              <span style={{ color: "var(--mn-ink-500)" }}>API key (optional)</span>
+                              <input name="api_key" className="mn-input" placeholder="Ariba API key" />
+                            </label>
+                          )}
+                        </>
+                      )}
 
-                    <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
-                      <span style={{ color: "var(--mn-ink-500)" }}>Environment</span>
-                      <select name="environment" className="mn-input" defaultValue="DEV">
-                        <option value="DEV">DEV</option>
-                        <option value="QAS">QAS</option>
-                        <option value="PRD">PRD</option>
-                      </select>
-                    </label>
-                    <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
-                      <span style={{ color: "var(--mn-ink-500)" }}>Description (optional)</span>
-                      <input name="description" className="mn-input" placeholder="Notes about this connection" />
-                    </label>
-                  </div>
-                  <DialogFooter>
-                    <button type="button" className="mn-btn mn-btn-ghost" onClick={() => setConnectOpen(false)}>
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      className="mn-btn mn-btn-ghost"
-                      disabled={testDraft.isPending}
-                      onClick={() => {
-                        if (!connectFormRef.current) return;
-                        const fd = new FormData(connectFormRef.current);
-                        testDraft.mutate(buildConnectBody(fd, connectType, connectAuthType));
-                      }}
-                    >
-                      {testDraft.isPending ? "Testing…" : "Test connection"}
-                    </button>
-                    <button type="submit" className="mn-btn mn-btn-primary" disabled={register.isPending}>
-                      {register.isPending ? "Connecting…" : "Connect"}
-                    </button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
+                      <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                        <span style={{ color: "var(--mn-ink-500)" }}>Environment</span>
+                        <select name="environment" className="mn-input" defaultValue="DEV">
+                          <option value="DEV">DEV</option>
+                          <option value="QAS">QAS</option>
+                          <option value="PRD">PRD</option>
+                        </select>
+                      </label>
+                      <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                        <span style={{ color: "var(--mn-ink-500)" }}>Description (optional)</span>
+                        <input name="description" className="mn-input" placeholder="Notes about this connection" />
+                      </label>
+                    </div>
+                    <DialogFooter>
+                      <button type="button" className="mn-btn mn-btn-ghost" onClick={() => setConnectOpen(false)}>
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        className="mn-btn mn-btn-ghost"
+                        disabled={testDraft.isPending}
+                        onClick={() => {
+                          if (!connectFormRef.current) return;
+                          const fd = new FormData(connectFormRef.current);
+                          testDraft.mutate(buildConnectBody(fd, connectType, connectAuthType));
+                        }}
+                      >
+                        {testDraft.isPending ? "Testing…" : "Test connection"}
+                      </button>
+                      <button type="submit" className="mn-btn mn-btn-primary" disabled={register.isPending}>
+                        {register.isPending ? "Connecting…" : "Connect"}
+                      </button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            )}
           </>
         }
       />
@@ -410,10 +429,13 @@ export default function SystemsPage() {
         <KPI label="Total" value={list.length} hint="active connections" />
       </div>
 
-      <SectionHeader title="Connected systems" caption="Cards link to deep system view · select one to inspect" />
+      <SectionHeader
+        title="Connected systems"
+        caption="Open a system to discover its design, download objects and analyse them"
+      />
       {list.length === 0 ? (
         <div className="mn-card mn-card-pad" style={{ textAlign: "center", color: "var(--mn-ink-400)" }}>
-          No systems connected yet.
+          {canManage ? "No systems connected yet — use Connect system to add one." : "No systems connected yet. Ask an admin to connect one."}
         </div>
       ) : (
         <div className="mn-syscard-grid">
@@ -421,11 +443,10 @@ export default function SystemsPage() {
             const status = statusToDot(s.last_sync_status);
             const color = envColor(s.environment);
             return (
-              <button
-                type="button"
+              <Link
                 key={s.id}
+                href={`/systems/${s.id}`}
                 className={`mn-syscard ${s.id === active?.id ? "active" : ""}`}
-                onClick={() => setActiveId(s.id)}
               >
                 <div className="mn-syscard-head">
                   <span className="mn-syscard-swatch" style={{ background: color }}>
@@ -505,7 +526,7 @@ export default function SystemsPage() {
                     {s.last_sync_at ? relativeTime(s.last_sync_at) : "never"}
                   </span>
                 </div>
-              </button>
+              </Link>
             );
           })}
         </div>
@@ -521,9 +542,23 @@ export default function SystemsPage() {
                 : `${active.environment} · ${active.base_url} · ${active.auth_type ?? ""}`
             }
             right={
-              <a href={`/systems/${active.id}`} className="mn-link">
-                Open system <ArrowRight size={12} />
-              </a>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                {list.length > 1 && (
+                  <select
+                    className="mn-input"
+                    aria-label="System to inspect"
+                    value={active.id}
+                    onChange={(e) => setActiveId(e.target.value)}
+                  >
+                    {list.map((s) => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                )}
+                <Link href={`/systems/${active.id}`} className="mn-link">
+                  Open system <ArrowRight size={12} />
+                </Link>
+              </div>
             }
           />
           <div className="mn-row mn-row-12">
@@ -545,35 +580,41 @@ export default function SystemsPage() {
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: 6 }}>
-                    <button
-                      type="button"
-                      className="mn-btn mn-btn-ghost"
-                      onClick={() => test.mutate(active.id)}
-                      disabled={test.isPending}
-                    >
-                      {test.isPending ? "Testing…" : "Test connection"}
-                    </button>
-                    <button
-                      type="button"
-                      className="mn-btn mn-btn-primary"
-                      onClick={() => sync.mutate(active.id)}
-                      disabled={sync.isPending}
-                    >
-                      {sync.isPending ? "Triggering…" : "Trigger sync"}
-                    </button>
-                    <button
-                      type="button"
-                      className="mn-btn mn-btn-ghost"
-                      style={{ color: "var(--mn-neg)" }}
-                      onClick={() => {
-                        if (window.confirm(`Delete "${active.name}"? This removes its credentials and sync profiles too.`)) {
-                          remove.mutate(active.id);
-                        }
-                      }}
-                      disabled={remove.isPending}
-                    >
-                      {remove.isPending ? "Deleting…" : "Delete"}
-                    </button>
+                    {canManage && (
+                      <button
+                        type="button"
+                        className="mn-btn mn-btn-ghost"
+                        onClick={() => test.mutate(active.id)}
+                        disabled={test.isPending}
+                      >
+                        {test.isPending ? "Testing…" : "Test connection"}
+                      </button>
+                    )}
+                    {canSync && (
+                      <button
+                        type="button"
+                        className="mn-btn mn-btn-primary"
+                        onClick={() => sync.mutate(active.id)}
+                        disabled={sync.isPending}
+                      >
+                        {sync.isPending ? "Triggering…" : "Trigger sync"}
+                      </button>
+                    )}
+                    {canManage && (
+                      <button
+                        type="button"
+                        className="mn-btn mn-btn-ghost"
+                        style={{ color: "var(--mn-neg)" }}
+                        onClick={() => {
+                          if (window.confirm(`Delete "${active.name}"? This removes its credentials and sync profiles too.`)) {
+                            remove.mutate(active.id);
+                          }
+                        }}
+                        disabled={remove.isPending}
+                      >
+                        {remove.isPending ? "Deleting…" : "Delete"}
+                      </button>
+                    )}
                   </div>
                 </div>
                 {test.data && (

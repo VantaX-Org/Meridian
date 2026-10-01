@@ -143,7 +143,7 @@ export default function ProcessPage() {
   if (versionsQ.isLoading) {
     return (
       <>
-        <PageHead title="Process" route="Aurora · /process" sub="Loading…" />
+        <PageHead title="Process map" route="Process & impact · /process" sub="Loading…" />
         <Skeleton className="h-[420px] rounded-[10px]" />
       </>
     );
@@ -151,7 +151,7 @@ export default function ProcessPage() {
   if (!latest) {
     return (
       <>
-        <PageHead title="Process" route="Aurora · /process" sub="Mining runs against a completed version." />
+        <PageHead title="Process map" route="Process & impact · /process" sub="Mining runs against a completed version." />
         <div className="mn-card mn-card-pad" style={{ textAlign: "center", color: "var(--mn-ink-400)" }}>
           Run an analysis from <code>/run-sync</code> to populate process mining.
         </div>
@@ -170,8 +170,8 @@ export default function ProcessPage() {
   return (
     <>
       <PageHead
-        title="Process"
-        route="Aurora · /process"
+        title="Process map"
+        route="Process & impact · /process"
         sub={
           <>
             Mining version{" "}

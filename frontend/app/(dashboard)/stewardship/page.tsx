@@ -62,6 +62,8 @@ function slaLabel(item: StewardshipQueueItem): string {
 
 export default function StewardshipPage() {
   const qc = useQueryClient();
+  // Reference time for age/SLA maths, fixed per mount (Date.now() is impure in render).
+  const [now] = useState(() => Date.now());
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [overrideOpen, setOverrideOpen] = useState(false);
@@ -167,7 +169,7 @@ export default function StewardshipPage() {
   if (queueQ.isLoading || metricsQ.isLoading || usersQ.isLoading) {
     return (
       <>
-        <PageHead title="Steward Workbench" route="Steward · /stewardship" sub="Loading team…" />
+        <PageHead title="Team workload" route="Fix · /stewardship" sub="Loading team…" />
         <Skeleton className="h-[420px] rounded-[10px]" />
       </>
     );
@@ -175,7 +177,7 @@ export default function StewardshipPage() {
   if (queueQ.error || metricsQ.error || usersQ.error) {
     return (
       <>
-        <PageHead title="Steward Workbench" route="Steward · /stewardship" sub="Failed to load." />
+        <PageHead title="Team workload" route="Fix · /stewardship" sub="Failed to load." />
         <div className="mn-card mn-card-pad" style={{ color: "var(--mn-neg)" }}>
           Could not reach the stewardship or users endpoints.
         </div>
@@ -187,14 +189,14 @@ export default function StewardshipPage() {
   const stewards = allUsers.filter((u) => u.is_active && STEWARD_ROLES.has(u.role));
 
   const slaBreaches7d = items.filter(
-    (t) => t.sla_hours !== null && t.due_at && new Date(t.due_at).getTime() < Date.now(),
+    (t) => t.sla_hours !== null && t.due_at && new Date(t.due_at).getTime() < now,
   ).length;
 
   return (
     <>
       <PageHead
-        title="Steward Workbench"
-        route="Steward · /stewardship"
+        title="Team workload"
+        route="Fix · /stewardship"
         sub={
           <>
             Team view of stewardship —{" "}
@@ -213,7 +215,7 @@ export default function StewardshipPage() {
               <kbd>A</kbd> approve · <kbd>R</kbd> reject · <kbd>N</kbd> next · <kbd>E</kbd> escalate
             </span>
             <Link href="/workbench" className="mn-btn mn-btn-ghost">
-              Open my workbench <ArrowRight size={13} />
+              Open my queue <ArrowRight size={13} />
             </Link>
             <Link href="/workbench" className="mn-btn mn-btn-primary">Assign tasks</Link>
           </>
@@ -252,11 +254,11 @@ export default function StewardshipPage() {
                 {topUser.name} carries {topLoad} open task{topLoad === 1 ? "" : "s"} — above the {avg.toFixed(1)}-task team average.
               </div>
               <div className="mn-narrative-detail">
-                Reassign tasks in the workbench to keep everyone within the SLA window.
+                Reassign tasks in My queue to keep everyone within the SLA window.
               </div>
             </div>
             <Link href="/workbench" className="mn-btn mn-btn-ghost" style={{ background: "white" }}>
-              Open workbench <ArrowRight size={13} />
+              Open my queue <ArrowRight size={13} />
             </Link>
           </div>
         );
@@ -316,7 +318,7 @@ export default function StewardshipPage() {
         }
         right={
           <Link href="/workbench" className="mn-link">
-            Open in workbench <ArrowRight size={11} />
+            Open in my queue <ArrowRight size={11} />
           </Link>
         }
       />

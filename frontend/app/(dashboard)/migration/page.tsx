@@ -653,7 +653,7 @@ export default function MigrationPage() {
     <div data-theme="light" className="space-y-6">
       <PageHead
         title="Migration"
-        route="/migration"
+        route="Systems & data · /migration"
         sub="Analyse the source system's data record by record against the target — a connected S/4HANA system's own dictionary and configuration, or the SAP S/4HANA standard before it exists — then export load files for the records that are ready."
       />
 

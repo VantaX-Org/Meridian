@@ -177,7 +177,7 @@ function VersionsWorkspace() {
   if (isLoading) {
     return (
       <>
-        <PageHead title="Versions" route="Report · /versions" sub="Loading runs…" />
+        <PageHead title="Versions" route="Quality · /versions" sub="Loading versions…" />
         <Skeleton className="h-40 rounded-[10px]" />
         <Skeleton className="h-20 rounded-[10px] mt-4" />
         <Skeleton className="h-[420px] rounded-[10px] mt-4" />
@@ -188,7 +188,7 @@ function VersionsWorkspace() {
   if (error) {
     return (
       <>
-        <PageHead title="Versions" route="Report · /versions" sub="Failed to load runs." />
+        <PageHead title="Versions" route="Quality · /versions" sub="Failed to load versions." />
         <div className="mn-card mn-card-pad" style={{ color: "var(--mn-neg)" }}>
           Could not reach <code>/api/v1/versions</code>.
         </div>
@@ -200,10 +200,10 @@ function VersionsWorkspace() {
     <>
       <PageHead
         title="Versions"
-        route="Report · /versions"
+        route="Quality · /versions"
         sub={
           <>
-            <strong style={{ color: "var(--mn-ink-700)" }}>{versions.length} runs</strong> in history ·{" "}
+            <strong style={{ color: "var(--mn-ink-700)" }}>{versions.length} versions</strong> in history ·{" "}
             <strong style={{ color: "var(--mn-pos)" }}>{completed.length} complete</strong>.
           </>
         }
@@ -214,14 +214,14 @@ function VersionsWorkspace() {
                 <Chip onDismiss={() => replace({ system_id: undefined })}>system · {systemId.slice(0, 8)}</Chip>
               </span>
             )}
-            <SearchField value={search} onChange={setSearch} placeholder="Filter runs…" />
+            <SearchField value={search} onChange={setSearch} placeholder="Filter versions…" />
           </>
         }
       />
 
       <div className="mn-card mn-card-pad" style={{ marginBottom: 18 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-          <span className="mn-eyebrow">Compare runs · {pair.length} selected</span>
+          <span className="mn-eyebrow">Compare versions · {pair.length} selected</span>
           <span data-theme="light">
             <Select aria-label="Object" value={object ?? ""} onValueChange={(v) => replace({ module: v || undefined })}
               options={[{ value: "", label: "All objects" }, ...objects.map((o) => ({ value: o, label: formatModuleName(o) }))]} />
@@ -235,7 +235,7 @@ function VersionsWorkspace() {
           </div>
         ) : (
           <p style={{ color: "var(--mn-ink-500)", marginTop: 12 }}>
-            {cmp.error ? errorText(cmp.error) : "Tick two completed runs below to compare."}
+            {cmp.error ? errorText(cmp.error) : "Tick two analysed versions below to compare."}
           </p>
         )}
       </div>
@@ -249,8 +249,8 @@ function VersionsWorkspace() {
       {trend.length >= 2 && (
         <div className="mn-card mn-card-pad" style={{ marginBottom: 18 }}>
           <SectionHeader
-            title={object ? `${formatModuleName(object)} DQS across runs` : "DQS across runs"}
-            caption={`Last ${trend.length} completed runs · mean ${(trend.reduce((x, y) => x + y, 0) / trend.length).toFixed(1)}`}
+            title={object ? `${formatModuleName(object)} DQS across versions` : "DQS across versions"}
+            caption={`Last ${trend.length} analysed versions · mean ${(trend.reduce((x, y) => x + y, 0) / trend.length).toFixed(1)}`}
           />
           <div style={{ marginTop: 8 }}>
             <Sparkline data={trend} width={1100} height={120} stroke="var(--mn-primary)" pulse />
@@ -259,10 +259,10 @@ function VersionsWorkspace() {
       )}
 
       <SectionHeader
-        title="Run history"
+        title="Version history"
         caption={
           search.trim()
-            ? `${versions.filter((v) => matchesSearch(v, search)).length} of ${versions.length} runs match`
+            ? `${versions.filter((v) => matchesSearch(v, search)).length} of ${versions.length} versions match`
             : "Click two rows to compare"
         }
       />
@@ -273,14 +273,14 @@ function VersionsWorkspace() {
               <tr>
                 <th style={{ paddingLeft: 20, width: 80 }}>Compare</th>
                 <th>Version</th>
-                <th>Run</th>
+                <th>Label</th>
                 <th>Status</th>
                 <th className="right">DQS</th>
                 <th className="right">Critical</th>
                 <th className="right">High</th>
                 <th className="right">Checks</th>
                 <th>Duration</th>
-                <th>Modules</th>
+                <th>Objects</th>
               </tr>
             </thead>
             <tbody>
@@ -321,7 +321,7 @@ function VersionsWorkspace() {
                     </td>
                     <td>
                       <div style={{ fontWeight: 500, color: "var(--mn-ink-900)" }}>
-                        {v.label ?? "Unlabelled run"}
+                        {v.label ?? "Unlabelled version"}
                       </div>
                       <div
                         className="mn-tabular"
@@ -358,7 +358,7 @@ function VersionsWorkspace() {
               {versions.filter((v) => matchesSearch(v, search)).length === 0 && (
                 <tr>
                   <td colSpan={10} style={{ padding: 32, textAlign: "center", color: "var(--mn-ink-400)" }}>
-                    {versions.length === 0 ? "No analysis versions yet." : "No runs match this filter."}
+                    {versions.length === 0 ? "No analysis versions yet." : "No versions match this filter."}
                   </td>
                 </tr>
               )}
@@ -383,13 +383,13 @@ function CompareSide({ v, module }: { v: Version; module?: string }) {
         </span>
         <StatusBadge status={mapStatus(v.status)} />
       </div>
-      <div className="mn-compare-title">{v.label ?? "Unlabelled run"}</div>
+      <div className="mn-compare-title">{v.label ?? "Unlabelled version"}</div>
       <div className="mn-compare-date">{new Date(v.run_at).toLocaleString()}</div>
       <div className="mn-compare-stats">
         <div><span className="mn-eyebrow">DQS</span><span className="v mn-tabular">{dqs?.toFixed(1) ?? "—"}</span></div>
         <div><span className="mn-eyebrow">Checks</span><span className="v mn-tabular">{checks.toLocaleString()}</span></div>
         <div><span className="mn-eyebrow">Critical</span><span className="v mn-tabular" style={{ color: "var(--mn-neg)" }}>{critical}</span></div>
-        <div><span className="mn-eyebrow">Modules</span><span className="v mn-tabular">{Object.keys(summary ?? {}).length}</span></div>
+        <div><span className="mn-eyebrow">Objects</span><span className="v mn-tabular">{Object.keys(summary ?? {}).length}</span></div>
       </div>
     </div>
   );
@@ -516,7 +516,7 @@ function ObjectCompare({
               {checkList("Fixed checks", data.checks.fixed, olderId, "success")}
             </div>
             <Text variant="text-small" tone="secondary">
-              A check counts only when it ran cleanly in both runs; a check that errored or was not run in either is left out.
+              A check counts only when it ran cleanly in both versions; a check that errored or was not run in either is left out.
             </Text>
           </Stack>
         )}
@@ -542,7 +542,7 @@ function RecordCompare({ older, newer, module }: { older: Version; newer: Versio
   });
   const pin = useMutation({
     mutationFn: () => pinBaseline(older.id),
-    onSuccess: () => { toast.success("Pinned as baseline — later runs of this system compare against it by default"); qc.invalidateQueries({ queryKey: ["versions.list"] }); },
+    onSuccess: () => { toast.success("Pinned as baseline — later versions of this system compare against it by default"); qc.invalidateQueries({ queryKey: ["versions.list"] }); },
     onError: (e) => toast.error((e as Error).message || "Could not pin the baseline"),
   });
   const isBaseline = older.metadata?.baseline === true;
@@ -557,7 +557,7 @@ function RecordCompare({ older, newer, module }: { older: Version; newer: Versio
     <div data-theme="light" style={{ marginBottom: 18 }}>
       <Panel title="Record-level change"
         action={isBaseline ? <Chip tone="info">baseline</Chip> : (
-          <Button size="sm" variant="secondary" disabled={pin.isPending} onClick={() => pin.mutate()}>Pin older run as baseline</Button>
+          <Button size="sm" variant="secondary" disabled={pin.isPending} onClick={() => pin.mutate()}>Pin older version as baseline</Button>
         )}>
         {error ? <Banner tone="danger">{errorText(error)}</Banner> : !data ? <Text tone="muted">Comparing failing records…</Text> : (
           <Stack gap={4}>
@@ -567,13 +567,13 @@ function RecordCompare({ older, newer, module }: { older: Version; newer: Versio
               <Stat label="Still failing" value={data.totals.persisting.toLocaleString()} tone={data.totals.persisting ? "warning" : "neutral"} />
             </KpiRail>
             <Text variant="text-small" tone="secondary">
-              Checks marked &ldquo;not comparable&rdquo; did not run cleanly in both runs (skipped, errored, or more than
+              Checks marked &ldquo;not comparable&rdquo; did not run cleanly in both versions (skipped, errored, or more than
               100,000 failing keys) — their counts are shown but excluded from the totals.
             </Text>
             <div className="max-h-[420px] overflow-auto">
               <table className="w-full text-[13px]">
                 <thead className="sticky top-0 bg-[var(--aurora-elev-1-bg)] text-left text-[var(--aurora-fg-tertiary)]">
-                  <tr><th className="py-1.5">Check</th><th>Module</th><th>Severity</th>
+                  <tr><th className="py-1.5">Check</th><th>Object</th><th>Severity</th>
                     <th className="text-right">New</th><th className="text-right">Resolved</th><th className="text-right">Persisting</th><th /></tr>
                 </thead>
                 <tbody>
@@ -601,13 +601,13 @@ function RecordCompare({ older, newer, module }: { older: Version; newer: Versio
                     // resolved records failed in the older run; new and persisting ones fail in the newer
                     version_id: open.change === "resolved" ? older.id : newer.id,
                   })}`}>
-                    Open in Issues
+                    Open in Failing records
                   </Link>
                 </Stack>
                 <Stack direction="row" gap={1} wrap>
                   {keys.record_keys.map((k) => <Chip key={k}><span className="font-mono">{k}</span></Chip>)}
                 </Stack>
-                {keys.record_keys.length === 200 && <Text variant="text-small" tone="muted">First 200 shown — the Issues work list has all of them.</Text>}
+                {keys.record_keys.length === 200 && <Text variant="text-small" tone="muted">First 200 shown — the Failing records list has all of them.</Text>}
               </Stack>
             )}
           </Stack>

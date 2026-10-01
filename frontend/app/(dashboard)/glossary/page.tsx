@@ -59,7 +59,7 @@ export default function GlossaryPage() {
   if (isLoading) {
     return (
       <>
-        <PageHead title="Glossary" route="Govern · /glossary" sub="Loading terms…" />
+        <PageHead title="Glossary" route="Master data · /glossary" sub="Loading terms…" />
         <Skeleton className="h-[420px] rounded-[10px]" />
       </>
     );
@@ -67,7 +67,7 @@ export default function GlossaryPage() {
   if (error) {
     return (
       <>
-        <PageHead title="Glossary" route="Govern · /glossary" sub="Failed to load." />
+        <PageHead title="Glossary" route="Master data · /glossary" sub="Failed to load." />
         <div className="mn-card mn-card-pad" style={{ color: "var(--mn-neg)" }}>
           Could not reach <code>/api/v1/glossary</code>.
         </div>
@@ -79,7 +79,7 @@ export default function GlossaryPage() {
     <>
       <PageHead
         title="Glossary"
-        route="Govern · /glossary"
+        route="Master data · /glossary"
         sub={
           <>
             <strong style={{ color: "var(--mn-ink-700)" }}>{total} business terms</strong> across{" "}
