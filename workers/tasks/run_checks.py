@@ -211,6 +211,8 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanaly
                                  "rules": len(material_rules)}] if "material_master" in modules else []))})
             session.commit()
             fs_rules = fs_rules + material_rules
+            from checks.field_status_rules import suppressed_fields
+            fs_suppressed = suppressed_fields(fs_resolutions, fs_material)
         # misplaced values, placeholders, swaps, dead-in-text records (checks/value_placement.py)
         from checks import value_placement
         from checks.runner import _find_module_yaml
@@ -243,7 +245,7 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanaly
                 total_rows=row_count,
             )
             results = execute_checks(module_name, frames, tenant_id, reference_values=live_refs,
-                                     overrides=rule_overrides, extra_rules=fs_rules)
+                                     overrides=rule_overrides, extra_rules=fs_rules, suppressed=fs_suppressed)
             all_results.extend(results)
             from checks.outliers import find as find_outliers
             outliers.update(find_outliers(module_name, frames))  # reported, never scored

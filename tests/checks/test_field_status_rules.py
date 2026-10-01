@@ -104,3 +104,26 @@ def test_material_field_selection_by_type_and_industry_sector():
     _, ean = run_rule(rules["FS-MARA-EAN11-REQ"], f)
     assert ean.failing_record_keys == ["MATNR=1"] and ean.total_count == 1  # FERT|M is hidden, not required
     assert resolve_material({"T130F": config["T130F"]}, D) == {}  # nothing without the whole customizing
+
+
+def test_fields_hidden_by_field_status_are_not_demanded_by_shipped_rules():
+    from checks.field_status_rules import suppressed_fields
+    hidden = suppressed_fields(resolve_all(CONFIG), {})
+    assert hidden["LFA1.TELF1"] == (["LFA1.KTOKK"], {"KRED"})
+    lfa1 = pd.DataFrame({"LFA1.LIFNR": ["1", "2"], "LFA1.KTOKK": ["KRED", "LIEF"], "LFA1.TELF1": ["", ""]})
+    f = TableFrames({"LFA1": lfa1}, D, module="accounts_payable")
+    rule = {"id": "AP022", "field": "LFA1.TELF1", "check_class": "null_check", "module": "accounts_payable"}
+    _, r = run_rule(rule, f, None, hidden)
+    assert r.failing_record_keys == ["LIFNR=2"] and r.details["population_excluded"] == {"hidden_by_field_status": 1}
+    _, sup = run_rule(next(x for x in generate(resolve_all(CONFIG), ["accounts_payable"]) if x["id"] == "FS-LFA1-TELF1-SUP"),
+                      f, None, hidden)
+    assert sup.total_count == 1  # the field-status rule itself still sees the KRED record
+
+
+def test_equipment_flagged_for_deletion_by_status_is_out_of_the_population():
+    equi = pd.DataFrame({"EQUI.EQUNR": ["E1", "E2", "E3"], "EQUI.OBJNR": ["IE1", "IE2", "IE3"], "EQUI.HERST": ["", "", ""]})
+    jest = pd.DataFrame({"JEST.OBJNR": ["IE1", "IE2", "IE2", "IE3"], "JEST.STAT": ["I0099", "I0076", "I0099", "I0076"],
+                         "JEST.INACT": ["", "", "", "X"]})  # E3's deletion flag was reset (inactive)
+    f = TableFrames({"EQUI": equi, "JEST": jest}, D, module="plant_maintenance")
+    _, r = run_rule({"id": "X", "field": "EQUI.HERST", "check_class": "null_check", "module": "plant_maintenance"}, f)
+    assert sorted(r.failing_record_keys) == ["EQUNR=E1", "EQUNR=E3"] and r.details["population_excluded"] == {"deleted": 1}

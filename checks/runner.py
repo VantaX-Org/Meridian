@@ -132,8 +132,8 @@ def get_required_columns(module_name: str) -> set[str]:
     return cols | {f"{t}.{f}" for t in tables_of(cols) for f in fields_for(t)}
 
 
-def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[str]] | None = None
-             ) -> tuple[dict, CheckResult | None]:
+def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[str]] | None = None,
+             suppressed: dict[str, tuple[list[str], set[str]]] | None = None) -> tuple[dict, CheckResult | None]:
     """Evaluate one rule at its grain: (rule as evaluated, result or None when not applicable)."""
     check_cls = REGISTRY[rule["check_class"]]
     if rule.get("check_class") in ("referential_check", "domain_value_check"):
@@ -145,14 +145,18 @@ def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[st
         frame, grain, key_cols = built
         cols = rule_columns(rule)
         excl = exclusions(rule, [grain] if grain else tables_of(cols), cols)
-        need = [x["field"] for x in excl if x["field"] not in frame.columns]
+        hidden = (suppressed or {}).get(rule.get("field", ""))
+        if hidden and rule.get("check_class") != "field_status_check":
+            # the system's own field status hides this field for these groups: nothing to fill there
+            excl = excl + [{"id": "hidden_by_field_status", "fields": hidden[0], "values": sorted(hidden[1])}]
+        need = [c for x in excl for c in (x.get("fields") or [x["field"]]) if c not in frame.columns]
         if need and grain:
             try:  # parent-table flags (LFA1.LOEVM for an LFB1 rule) join at the same grain
                 wider = frames.frame_for(cols + need, grain=grain)
                 frame = wider[0] if wider is not None else frame
             except ValueError:
                 pass
-        frame, excluded = exclude(frame, excl)
+        frame, excluded = exclude(frame, excl, frames)
         scoped = apply_context(frame, rule.get("applies_when"))
         if len(scoped) == 0:
             return rule, None  # no records in the rule's population
@@ -172,6 +176,7 @@ def run_checks(
     reference_values: dict[str, set[str]] | None = None,
     overrides: dict[str, dict] | None = None,
     extra_rules: list[dict] | None = None,
+    suppressed: dict[str, tuple[list[str], set[str]]] | None = None,
 ) -> list[CheckResult]:
     """Load a module's YAML rules and evaluate each at its correct record grain.
 
@@ -210,7 +215,7 @@ def run_checks(
             result_rules.append(rule)
             continue
 
-        rule, result = run_rule(rule, frames, reference_values)
+        rule, result = run_rule(rule, frames, reference_values, suppressed)
         if result is None:
             skipped += 1
             continue

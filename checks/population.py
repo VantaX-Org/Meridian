@@ -41,17 +41,39 @@ def exclusions(rule: dict, tables: list[str], columns: list[str]) -> list[dict]:
     return out
 
 
-def exclude(frame: pd.DataFrame, rules: list[dict]) -> tuple[pd.DataFrame, dict[str, int]]:
+def _status_values(x: dict, frames) -> set[str]:
+    """Objects carrying a status in a status table (JEST: OBJNR with STAT I0076, INACT blank)."""
+    spec = x["in_table"]
+    t = getattr(frames, "frames", {}).get(spec["table"]) if frames is not None else None
+    if t is None:
+        return set()
+    mask = pd.Series(True, index=t.index)
+    for f, allowed in spec.get("where", {}).items():
+        col = f"{spec['table']}.{f}"
+        if col not in t.columns:
+            return set()
+        mask &= t[col].astype("string").str.strip().fillna("").isin([str(a) for a in allowed])
+    return set(t.loc[mask, f"{spec['table']}.{spec['column']}"].astype("string").str.strip())
+
+
+def exclude(frame: pd.DataFrame, rules: list[dict], frames=None) -> tuple[pd.DataFrame, dict[str, int]]:
     """Drop excluded records; count each once, under its first reason."""
     if not rules:
         return frame, {}
     out = pd.Series(False, index=frame.index)
     counts: dict[str, int] = {}
     for x in rules:
-        if x["field"] not in frame.columns:
+        cols = x.get("fields") or [x["field"]]
+        if any(c not in frame.columns for c in cols):
             continue
-        v = frame[x["field"]].astype("string").str.strip().fillna("")
-        hit = v.isin([str(a) for a in x["values"]]) if x.get("values") else v.ne("") & v.ne("00000000")
+        parts = [frame[c].astype("string").str.strip().fillna("") for c in cols]
+        v = parts[0]
+        for p in parts[1:]:  # composite key, e.g. material type | industry sector
+            v = v + "|" + p
+        if x.get("in_table"):
+            hit = v.isin(_status_values(x, frames))
+        else:
+            hit = v.isin([str(a) for a in x["values"]]) if x.get("values") else v.ne("") & v.ne("00000000")
         hit &= ~out
         if hit.any():
             counts[x["id"]] = counts.get(x["id"], 0) + int(hit.sum())

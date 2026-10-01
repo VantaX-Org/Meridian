@@ -84,6 +84,25 @@ def generate_material(material: dict[str, dict[str, str]], modules: list[str]) -
     return rules
 
 
+def suppressed_fields(resolutions: list[Resolution], material: dict[str, dict[str, str]]
+                      ) -> dict[str, tuple[list[str], set[str]]]:
+    """{TABLE.FIELD: (group fields, groups that hide it)} — shipped rules then leave
+    those records alone (a hidden field cannot be maintained)."""
+    out: dict[str, tuple[list[str], set[str]]] = {}
+    for res in resolutions:
+        if res.fauna is None:
+            continue
+        for group, statuses in res.groups.items():
+            for col, st in statuses.items():
+                if st == "suppressed":
+                    out.setdefault(col, ([res.segment.group_source], set()))[1].add(group)
+    for col, by_group in material.items():
+        for group, st in by_group.items():
+            if st == "suppressed":
+                out.setdefault(col, (["MARA.MTART", "MARA.MBRSH"], set()))[1].add(group)
+    return out
+
+
 def material_fields(material: dict[str, dict[str, str]]) -> dict[str, set[str]]:
     out: dict[str, set[str]] = {"MARA": {"MTART", "MBRSH"}} if material else {}
     for col in material:
