@@ -112,6 +112,7 @@ IMAGES=(
     "ghcr.io/vantax-org/meridian-worker"
     "ghcr.io/vantax-org/meridian-frontend"
     "ghcr.io/vantax-org/meridian-nginx"
+    "ghcr.io/vantax-org/meridian-minio"
 )
 
 # Locally built RFC overlay images (scripts/build-rfc-overlay.sh) are

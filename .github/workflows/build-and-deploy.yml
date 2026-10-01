@@ -136,6 +136,20 @@ jobs:
             ${{ env.IMAGE_PREFIX }}-worker:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Build and push MinIO
+        # object storage built from MinIO's source (quay.io no longer serves anonymous pulls)
+        uses: docker/build-push-action@v6
+        with:
+          context: docker
+          file: docker/Dockerfile.minio
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}-minio:${{ steps.version.outputs.VERSION }}
+            ${{ env.IMAGE_PREFIX }}-minio:latest
+          cache-from: type=gha,scope=minio
+          cache-to: type=gha,mode=max,scope=minio
       
       - name: Create GitHub Release
         uses: actions/create-release@v1
@@ -152,6 +166,7 @@ jobs:
             ghcr.io/vantax-org/meridian-api:${{ steps.version.outputs.VERSION }}
             ghcr.io/vantax-org/meridian-frontend:${{ steps.version.outputs.VERSION }}
             ghcr.io/vantax-org/meridian-worker:${{ steps.version.outputs.VERSION }}
+            ghcr.io/vantax-org/meridian-minio:${{ steps.version.outputs.VERSION }}
             ```
 
             ### Installation

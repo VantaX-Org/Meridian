@@ -38,6 +38,7 @@ IMAGES=(
   "${REGISTRY}/meridian-api:${VERSION}"
   "${REGISTRY}/meridian-frontend:${VERSION}"
   "${REGISTRY}/meridian-worker:${VERSION}"
+  "${REGISTRY}/meridian-minio:${VERSION}"
 )
 
 if [[ "$TIER" == "2" ]]; then

@@ -42,7 +42,7 @@ services:
       retries: 5
 
   minio:
-    image: quay.io/minio/minio:RELEASE.2024-11-07T00-52-20Z
+    image: ghcr.io/vantax-org/meridian-minio:latest  # docker/Dockerfile.minio (RELEASE.2024-11-07T00-52-20Z)
     container_name: meridian-minio
     command: server /data --console-address ":9001"
     environment:

@@ -11,7 +11,7 @@ docker pull ghcr.io/vantax-org/meridian-frontend:latest
 docker pull postgres:16-alpine
 docker pull redis:7-alpine
 docker pull ollama/ollama:latest
-docker pull quay.io/minio/minio:RELEASE.2024-11-07T00-52-20Z
+docker pull ghcr.io/vantax-org/meridian-minio:latest
 
 # Save to tarballs
 docker save ghcr.io/vantax-org/meridian-api:latest | gzip > vantax-api.tar.gz
@@ -19,7 +19,7 @@ docker save ghcr.io/vantax-org/meridian-frontend:latest | gzip > vantax-frontend
 docker save postgres:16-alpine | gzip > postgres.tar.gz
 docker save redis:7-alpine | gzip > redis.tar.gz
 docker save ollama/ollama:latest | gzip > ollama.tar.gz
-docker save quay.io/minio/minio:RELEASE.2024-11-07T00-52-20Z | gzip > minio.tar.gz
+docker save ghcr.io/vantax-org/meridian-minio:latest | gzip > minio.tar.gz
 ```
 
 ## Step 2: Transfer to Air-Gapped Server

@@ -58,6 +58,13 @@ jobs:
             -t ghcr.io/vantax-org/meridian-frontend:local-test \
             .
 
+      - name: Build MinIO image
+        run: |
+          docker build \
+            -f docker/Dockerfile.minio \
+            -t ghcr.io/vantax-org/meridian-minio:local-test \
+            docker
+
       - name: Build Nginx image
         run: |
           if [ -f docker/Dockerfile.nginx ]; then

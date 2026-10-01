@@ -35,7 +35,7 @@ redis:
 
 minio:
   enabled: true
-  image: quay.io/minio/minio:RELEASE.2024-11-07T00-52-20Z
+  image: ghcr.io/vantax-org/meridian-minio:latest  # docker/Dockerfile.minio
   storageSize: 100Gi
 
 ingress:
