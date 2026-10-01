@@ -46,7 +46,7 @@ The product includes:
 │  │  │Frontend │ │ Backend │ │  + RLS │ │Workers │  │    │
 │  │  └─────────┘ └─────────┘ └────────┘ └────────┘  │    │
 │  │  ┌─────────┐ ┌─────────┐                         │    │
-│  │  │ Ollama  │ │ MinIO   │  (Tier 2 only)           │    │
+│  │  │ Ollama  │ │ Garage  │  (Ollama: Tier 2 only)   │    │
 │  │  └─────────┘ └─────────┘                         │    │
 │  │  All SAP data stays HERE — never leaves           │    │
 │  └──────────────────────────────────────────────────┘    │

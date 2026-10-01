@@ -75,6 +75,12 @@ CONFIG_TABLES = {
     "T582A": ["INFTY", "ZEITB"],
 }
 
+# Reference lists the customer uploads (licensed data that never comes from SAP):
+# stored as config snapshots with source 'reference' (api/routes/system_objects.py).
+REFERENCE_TABLES = {
+    "REF_POSTAL": ["COUNTRY", "POSTCODE"],  # official postal codes per country (SAP country key)
+}
+
 
 def conversion_maps(config: dict[str, list[dict]]) -> dict[str, dict[str, str]]:
     """{conversion exit: {external: internal}} from this system's own tables. English

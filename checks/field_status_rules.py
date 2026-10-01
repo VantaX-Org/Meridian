@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from sqlalchemy import text
 
-from sap.field_status_config import CONFIG_TABLES, Resolution, resolve_all
+from sap.field_status_config import CONFIG_TABLES, REFERENCE_TABLES, Resolution, resolve_all
 
 
 def load_config(session, system_id: str | None) -> dict[str, list[dict]]:
@@ -19,8 +19,8 @@ def load_config(session, system_id: str | None) -> dict[str, list[dict]]:
         return {}
     rows = session.execute(
         text("SELECT config_table, config_data FROM config_snapshots WHERE system_id = :sid "
-             "AND source = 'live' AND config_table = ANY(:tables)"),
-        {"sid": str(system_id), "tables": list(CONFIG_TABLES)},
+             "AND source IN ('live', 'reference') AND config_table = ANY(:tables)"),
+        {"sid": str(system_id), "tables": list(CONFIG_TABLES) + list(REFERENCE_TABLES)},
     ).fetchall()
     return {t: list(d or []) for t, d in rows}
 

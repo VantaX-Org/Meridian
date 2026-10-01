@@ -94,7 +94,7 @@ sudo chmod +x /opt/meridian/update.sh
 sudo bash /opt/meridian/update.sh
 ```
 
-This will pull the new images, run any pending database migrations, restart only the containers whose images changed (Postgres, Redis, and MinIO stay untouched), and run a health check.
+This will pull the new images, run any pending database migrations, restart only the containers whose images changed (Postgres, Redis and object storage stay untouched; the one exception is the first update onto Garage, which copies MinIO's files over and verifies each one — see `docs/ops/komatsu-upgrade-runbook.md`), and run a health check.
 
 ## Step 5: Verify the Update
 

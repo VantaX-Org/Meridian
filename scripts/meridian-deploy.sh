@@ -761,6 +761,15 @@ esac
 # =============================================================================
 # Start services & run migrations
 # =============================================================================
+# An install still on MinIO moves its files to Garage through update.sh (copy +
+# verify); starting Garage beside it here would leave those files behind.
+_project=$(docker compose "${COMPOSE_FILES[@]}" config --format json 2>/dev/null \
+    | python3 -c 'import json,sys; print(json.load(sys.stdin)["name"])' 2>/dev/null || true)
+if [[ -n "$_project" && -n "$(docker ps -aq --filter "label=com.docker.compose.project=${_project}" \
+        --filter label=com.docker.compose.service=minio)" ]]; then
+    error "This install still keeps its files in MinIO. Run: sudo bash scripts/update.sh — it copies them to Garage and verifies every object."
+fi
+
 section "Starting database and Redis"
 docker compose "${COMPOSE_FILES[@]}" up -d db redis \
     || error "Failed to start db/redis"
@@ -897,7 +906,7 @@ chk api      $C exec -T api      curl -sf http://localhost:8000/health
 chk frontend $C exec -T frontend wget -qO- http://localhost:3000/ >/dev/null
 chk postgres $C exec -T db       pg_isready -U meridian
 chk redis    $C exec -T redis    redis-cli ping
-chk minio    $C exec -T minio    curl -sf http://localhost:9000/minio/health/live
+chk storage  $C exec -T storage  sh -c 'test -f /tmp/storage-ready && curl -sf http://127.0.0.1:3903/health'
 if $C ps --services --status=running 2>/dev/null | grep -qx ollama; then
     chk ollama $C exec -T ollama curl -sf http://localhost:11434/api/tags
 fi

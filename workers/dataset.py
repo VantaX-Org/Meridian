@@ -68,8 +68,10 @@ def load_dataset(path: str, dictionary: Dictionary, modules: Optional[list[str]]
             from checks.config_rules import fields_for as config_fields
             from checks.country_rules import fields_for as country_fields
             from checks.value_placement import fields_for
+            from checks.config_rules import live_tables
             for mod in modules:
                 needed |= get_required_columns(mod)
+                needed |= {f"{t}.{f}" for t, fs in live_tables(mod, dictionary).items() for f in fs}
             needed |= set(extra or ())
             needed |= {f"{t}.{f}" for t in tables_of(needed)
                        for f in fields_for(t, dictionary) | country_fields(t, dictionary) | config_fields(t, dictionary)}

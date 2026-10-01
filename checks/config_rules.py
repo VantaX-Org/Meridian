@@ -108,10 +108,43 @@ def _time_constraints(module: str, config: dict[str, list[dict]], dictionary) ->
     return out
 
 
+# S/4HANA tables judged only when the connected system's own (live) dictionary has
+# every field the rule reads — the bundle never defines them, so nothing is assumed.
+LIVE_ONLY = {"ACDOCA": ("RLDNR", "RBUKRS", "GJAHR", "BELNR", "HSL", "BUDAT")}
+
+
+def live_tables(module: str, dictionary) -> dict[str, tuple[str, ...]]:
+    """LIVE_ONLY tables this module judges on this system (all their fields present)."""
+    wanted = {"ACDOCA": "fi_gl"}
+    return {t: f for t, f in LIVE_ONLY.items()
+            if wanted.get(t) == module and all(dictionary.field(t, x) is not None for x in f)}
+
+
+def _universal_journal(module: str, dictionary) -> list[dict]:
+    if "ACDOCA" not in live_tables(module, dictionary):
+        return []
+    return [{"module": module, "id": "LJ-ACDOCA", "check_class": "balance_check", "grain": "ACDOCA",
+             "field": "ACDOCA.HSL", "group_by": ["ACDOCA.RLDNR", "ACDOCA.RBUKRS", "ACDOCA.GJAHR", "ACDOCA.BELNR"],
+             "amount": "ACDOCA.HSL", "rule_authority": "sap_hard_constraint", "severity": "critical",
+             "dimension": "accuracy",
+             "message": "Universal journal entry does not balance in company-code currency (ACDOCA, per ledger)",
+             "why_it_matters": "Every journal entry nets to zero per ledger in company-code currency. One that "
+                               "does not means lines are missing from the extract or were written outside the "
+                               "posting logic.",
+             "sap_impact": "Trial balance and financial statements of the ledger do not reconcile.",
+             "fix_map": {"__other__": "Compare the entry in FB03 / the journal-entry app with the extract; if SAP "
+                                      "shows the imbalance too, raise an SAP incident."},
+             "record_fix_template": "Entry {ACDOCA.BELNR}/{ACDOCA.GJAHR} (company code {ACDOCA.RBUKRS}, ledger "
+                                    "{ACDOCA.RLDNR}) does not balance."}]
+
+
 def generate(module: str, config: dict[str, list[dict]], dictionary) -> list[dict]:
-    return _pricing(module, config) + _time_constraints(module, config, dictionary)
+    return _pricing(module, config) + _time_constraints(module, config, dictionary) + \
+        _universal_journal(module, dictionary)
 
 
 def fields_for(table: str, dictionary) -> set[str]:
     """Fields these rules read on ``table`` (extraction and column pruning)."""
+    if table in LIVE_ONLY:
+        return set(LIVE_ONLY[table])
     return {"KAPPL", "KSCHL", "KBETR", "KRECH"} if table == "KONP" else set()

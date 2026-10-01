@@ -417,3 +417,72 @@ def test_versions_and_trends_per_object(app_engine):
         asyncio.run(main())
     finally:
         os.environ.pop("MERIDIAN_DEV_ROLE_HEADER", None)
+
+
+def test_postal_code_reference_upload_feeds_the_rules(app_engine):
+    """Upload an official postal-code list → stored per system under RLS → loaded with the
+    system's configuration → PX- rules generated for the countries it covers."""
+    import asyncio
+
+    from fastapi import FastAPI
+    from httpx import ASGITransport, AsyncClient
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+    from sqlalchemy.orm import Session
+
+    from api.deps import Tenant, get_db, get_tenant
+    from api.routes.system_objects import router as objects_router
+    from checks.country_rules import generate
+    from checks.field_status_rules import load_config
+
+    owner, app_eng = app_engine
+    tid, sid = str(uuid.uuid4()), str(uuid.uuid4())
+    with owner.begin() as c:
+        c.execute(text("INSERT INTO tenants (id, name) VALUES (:a, 'T7')"), {"a": tid})
+    with app_eng.begin() as c:
+        c.execute(text("SET LOCAL app.tenant_id = :t"), {"t": tid})
+        c.execute(text("INSERT INTO sap_systems (id, tenant_id, name) VALUES (:s, :t, 'PRD')"), {"s": sid, "t": tid})
+    aeng = create_async_engine(app_eng.url.set(drivername="postgresql+asyncpg"))
+    factory = async_sessionmaker(aeng, expire_on_commit=False)
+
+    async def _db():
+        async with factory() as s:
+            yield s
+
+    api = FastAPI()
+    api.include_router(objects_router)
+    api.dependency_overrides[get_db] = _db
+    api.dependency_overrides[get_tenant] = lambda: Tenant(uuid.UUID(tid), "T7", [])
+
+    async def scenario():
+        async with AsyncClient(transport=ASGITransport(app=api), base_url="http://t") as c:
+            csv = "country,postcode\nZA,2196\nza,0700\nZA,=CMD()\nGB,SW1A 1AA\n"
+            r = await c.post(f"/api/v1/systems/{sid}/reference/postal-codes", content=csv.encode(),
+                             headers={"X-User-Role": "analyst"})
+            assert r.status_code == 403  # managing a system's reference data is an admin action
+            r = await c.post(f"/api/v1/systems/{sid}/reference/postal-codes", content=csv.encode(),
+                             headers={"X-User-Role": "admin"})
+            assert r.status_code == 200 and r.json() == {"kind": "postal-codes", "records": 3,
+                                                         "countries": ["GB", "ZA"]}  # formula row rejected
+            lists = (await c.get(f"/api/v1/systems/{sid}/reference", headers={"X-User-Role": "analyst"})).json()
+            assert lists == [{"kind": "postal-codes", "records": 3, "countries": ["GB", "ZA"]}]
+
+    async def main():
+        try:
+            await scenario()
+        finally:
+            await aeng.dispose()
+
+    os.environ["MERIDIAN_DEV_ROLE_HEADER"] = "1"
+    try:
+        asyncio.run(main())
+    finally:
+        os.environ.pop("MERIDIAN_DEV_ROLE_HEADER", None)
+    with Session(app_eng) as s:
+        s.execute(text("SET app.tenant_id = :t"), {"t": tid})
+        config = load_config(s, sid)
+    assert len(config["REF_POSTAL"]) == 3
+    rules = generate("accounts_payable", [{"field": "LFA1.LIFNR", "check_class": "null_check"}], config,
+                     get_dictionary("ecc6"))
+    px = next(r for r in rules if r["id"] == "PX-LFA1-PSTLZ")
+    assert px["countries"] == ["GB", "ZA"] and "ZA|0700" in px["keys"]

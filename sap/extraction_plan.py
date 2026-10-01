@@ -178,6 +178,12 @@ def plan_modules(modules: list[str], dictionary: Dictionary, scope: Optional[dic
                 if ref and _is_config_table(dictionary, ref.split(".")[0]):
                     add(ref.split(".")[0], {ref.split(".")[1]}, module, purpose="config")
 
+    # S/4 tables judged only when the live dictionary has their fields (checks/config_rules.py)
+    from checks.config_rules import live_tables
+    for module in modules:
+        for t, fields in live_tables(module, dictionary).items():
+            add(t, set(fields), module)
+
     # keys, join fields, filters
     for t, p in plans.items():
         p.keys = list(dictionary.keys(t))

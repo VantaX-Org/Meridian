@@ -375,7 +375,7 @@ sudo ufw allow 22/tcp    # SSH (already allowed)
 │         │                                               │
 │         ↓                                               │
 │  ┌─────────────┐     ┌──────────┐    ┌──────────┐     │
-│  │   Workers   │────→│  MinIO   │    │  Ollama  │     │
+│  │   Workers   │────→│  Garage  │    │  Ollama  │     │
 │  │  (Celery)   │     │ (Storage)│    │  (AI)    │     │
 │  └─────────────┘     └──────────┘    └──────────┘     │
 │                                                         │

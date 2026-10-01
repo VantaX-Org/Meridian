@@ -187,3 +187,6 @@ tables:
   ZMERIDIAN_PAYRT:
     - {id: superseded, field: HRPY_RGDIR.SRTZA, values: [O, P], label: "superseded by a recalculation"}
     - {id: voided, field: HRPY_RGDIR.VOID, values: [X], label: "voided result"}
+  # bank directory: a bank flagged for deletion is not used for new bank details
+  BNKA:
+    - {id: deleted, field: BNKA.LOEVM, label: *deleted_label}

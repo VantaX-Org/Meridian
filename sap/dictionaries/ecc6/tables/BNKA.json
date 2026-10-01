@@ -1,0 +1,302 @@
+{
+ "table": "BNKA",
+ "description": "Bank master record",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "BANKS",
+   "key": true,
+   "data_element": "BANKS",
+   "domain": "LAND1",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Bank country key",
+   "check_table": "T005"
+  },
+  {
+   "pos": 3,
+   "name": "BANKL",
+   "key": true,
+   "data_element": "BANKK",
+   "domain": "BANKK",
+   "type": "CHAR",
+   "length": 15,
+   "decimals": 0,
+   "description": "Bank Keys",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "ERDAT",
+   "key": false,
+   "data_element": "ERDAT_BF",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date on which the record was created",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "ERNAM",
+   "key": false,
+   "data_element": "ERNAM_BF",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of person who created the object",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "BANKA",
+   "key": false,
+   "data_element": "BANKA",
+   "domain": "TEXT60",
+   "type": "CHAR",
+   "length": 60,
+   "decimals": 0,
+   "description": "Name of bank",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "PROVZ",
+   "key": false,
+   "data_element": "REGIO",
+   "domain": "REGIO",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Region (State, Province, County)",
+   "check_table": "T005S"
+  },
+  {
+   "pos": 8,
+   "name": "STRAS",
+   "key": false,
+   "data_element": "STRAS_GP",
+   "domain": "TEXT35",
+   "type": "CHAR",
+   "length": 35,
+   "decimals": 0,
+   "description": "House number and street",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "ORT01",
+   "key": false,
+   "data_element": "ORT01_GP",
+   "domain": "TEXT35",
+   "type": "CHAR",
+   "length": 35,
+   "decimals": 0,
+   "description": "City",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "SWIFT",
+   "key": false,
+   "data_element": "SWIFT",
+   "domain": "SWIFT",
+   "type": "CHAR",
+   "length": 11,
+   "decimals": 0,
+   "description": "SWIFT/BIC for International Payments",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "BGRUP",
+   "key": false,
+   "data_element": "BGRUP",
+   "domain": "BGRUP",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Bank group (bank network)",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "XPGRO",
+   "key": false,
+   "data_element": "XPGRO",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Post Office Bank Current Account",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "LOEVM",
+   "key": false,
+   "data_element": "LOEVM",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Deletion Indicator",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "BNKLZ",
+   "key": false,
+   "data_element": "BANKL",
+   "domain": "BANKL",
+   "type": "CHAR",
+   "length": 15,
+   "decimals": 0,
+   "description": "Bank number",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "PSKTO",
+   "key": false,
+   "data_element": "PSKTO_CH",
+   "domain": "PSKTO",
+   "type": "CHAR",
+   "length": 16,
+   "decimals": 0,
+   "description": "Post office bank current account number",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "ADRNR",
+   "key": false,
+   "data_element": "AD_ADDRNUM",
+   "domain": "AD_ADDRNUM",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Address number",
+   "check_table": "*"
+  },
+  {
+   "pos": 17,
+   "name": "BRNCH",
+   "key": false,
+   "data_element": "BRNCH",
+   "domain": "TEXT40",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Bank Branch",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "CHKME",
+   "key": false,
+   "data_element": "CHECKMETH",
+   "domain": "CHECKMETH",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Check digit calculation method",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "VERS",
+   "key": false,
+   "data_element": "VERS_BF",
+   "domain": "VERS_BF",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Format of File with Bank Data",
+   "check_table": "*"
+  },
+  {
+   "pos": 21,
+   "name": "IBAN_RULE",
+   "key": false,
+   "data_element": "IBAN_RULE",
+   "domain": "IBAN_RULE",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "IBAN Rule",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "SDD_B2B",
+   "key": false,
+   "data_element": "SDD_B2B",
+   "domain": "SDD_B2B",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Support of SEPA B2B Direct Debit",
+   "check_table": null
+  },
+  {
+   "pos": 23,
+   "name": "SDD_COR1",
+   "key": false,
+   "data_element": "SDD_COR1",
+   "domain": "SDD_COR1",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Support of SEPA COR1 Direct Debit",
+   "check_table": null
+  },
+  {
+   "pos": 24,
+   "name": "SDD_RTRANS",
+   "key": false,
+   "data_element": "SDD_RTRANS",
+   "domain": "SDD_RTRANS",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Support of SEPA Returned Debits (R Transactions)",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "BANKS",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "PROVZ",
+   "foreign_table": "T005S",
+   "foreign_field": "BLAND"
+  }
+ ]
+}

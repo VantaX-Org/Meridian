@@ -5,7 +5,7 @@
 #
 # Produces a timestamped bundle with:
 #   - Postgres dump (pg_dump --format=custom — small, restorable with --clean)
-#   - MinIO buckets (uploads + reports) as tar.gz
+#   - Object storage (all buckets) as objects.tar
 #   - .env file (encrypted with GPG if --encrypt is passed)
 #   - A manifest.json pinning image tags + migration head
 #
@@ -13,7 +13,7 @@
 #   sudo bash scripts/backup.sh                      # defaults: ./backups/<ts>
 #   sudo bash scripts/backup.sh --output /data/bak   # custom dir
 #   sudo bash scripts/backup.sh --encrypt            # GPG-encrypt .env
-#   sudo bash scripts/backup.sh --database-only      # skip MinIO (useful in CI drills)
+#   sudo bash scripts/backup.sh --database-only      # skip object storage (useful in CI drills)
 #
 # Exit codes:
 #   0  success
@@ -77,23 +77,14 @@ MIGRATION_HEAD=$($DC exec -T db psql -U meridian -d meridian -tAc \
     "SELECT version_num FROM alembic_version LIMIT 1" 2>/dev/null | tr -d '\r' || echo "unknown")
 info "Migration head: $MIGRATION_HEAD"
 
-# ─── 2. MinIO buckets ───────────────────────────────────────────────────────
+# ─── 2. Object storage (every bucket, exported over S3 as one tar) ─────────
 if [[ "$DATABASE_ONLY" != "true" ]]; then
-    for bucket in meridian-uploads meridian-reports; do
-        info "Backing up MinIO bucket: $bucket"
-        if $DC exec -T minio sh -c "[ -d /data/$bucket ]" 2>/dev/null; then
-            $DC exec -T minio sh -c \
-                "cd /data && tar -czf /tmp/${bucket}.tar.gz ${bucket} 2>/dev/null" 2>/dev/null || \
-                warn "tar failed for $bucket (may be empty)"
-            $DC cp "minio:/tmp/${bucket}.tar.gz" "${BACKUP_DIR}/${bucket}.tar.gz" 2>/dev/null || \
-                warn "copy from MinIO failed for $bucket"
-            if [[ -f "${BACKUP_DIR}/${bucket}.tar.gz" ]]; then
-                info "  ${bucket}: $(du -h "${BACKUP_DIR}/${bucket}.tar.gz" | cut -f1)"
-            fi
-        else
-            warn "Bucket $bucket does not exist — skipping"
-        fi
-    done
+    info "Exporting object storage..."
+    if ! $DC run --rm --no-deps -T --entrypoint python api -m api.services.storage_migration --export > "${BACKUP_DIR}/objects.tar"; then
+        rm -f "${BACKUP_DIR}/objects.tar"
+        fail "Object storage export failed (database dump kept at $DB_FILE)"
+    fi
+    info "Object storage: ${BACKUP_DIR}/objects.tar ($(du -h "${BACKUP_DIR}/objects.tar" | cut -f1))"
 fi
 
 # ─── 3. .env file ───────────────────────────────────────────────────────────
@@ -120,8 +111,7 @@ cat > "${BACKUP_DIR}/manifest.json" <<MANIFEST
   "encrypted_env": ${ENCRYPT},
   "files": {
     "database": "meridian.dump",
-    "uploads": "meridian-uploads.tar.gz",
-    "reports": "meridian-reports.tar.gz",
+    "objects": "objects.tar",
     "env": "$(if [[ "$ENCRYPT" == "true" ]]; then echo 'env.gpg'; else echo 'env.txt'; fi)"
   }
 }

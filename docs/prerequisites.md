@@ -34,7 +34,7 @@
 
 ## Cloud deployment — AWS
 
-Meridian ships as a Docker Compose stack (`db`, `redis`, `minio`, `api`,
+Meridian ships as a Docker Compose stack (`db`, `redis`, `storage`, `api`,
 `worker`, `beat`, `frontend`, and an optional `ollama` under the
 `llm-bundled` profile). It runs unchanged on a single EC2 instance, or you
 can offload the stateful services to AWS managed equivalents.
@@ -51,7 +51,7 @@ Closest to the delivered package: one VM, one `docker compose up -d`.
 
 - **OS**: Ubuntu 22.04 LTS AMI.
 - **Storage**: 500 GB `gp3` EBS (≥3,000 IOPS) for the Docker volumes
-  (`db_data`, `redis_data`, `minio_data`, and `ollama_data` ~40 GB for the
+  (`db_data`, `redis_data`, `storage_data`, and `ollama_data` ~40 GB for the
   `llama3.1:70b` weights on Tier 2).
 - **Networking**: place in a private subnet; only outbound NAT is needed
   (see Network section). Expose port 3000 to the workstation network via a
@@ -69,7 +69,7 @@ stateful containers with managed AWS services:
 |---|---|---|
 | `db` (postgres:16 + RLS) | RDS for PostgreSQL 16, Multi-AZ | `db.m6i.large`, 100 GB gp3 |
 | `redis` (redis:7) | ElastiCache for Redis 7 | `cache.t4g.medium` |
-| `minio` | S3 bucket (S3-compatible API) | standard bucket |
+| `storage` (Garage, S3 API) | S3 bucket | standard bucket |
 | `api` + `frontend` + `worker` + `beat` | EC2 `m6i.xlarge`, or Fargate tasks | api 4 vCPU/16 GB; worker task 2 vCPU/8 GB |
 
 RLS tenant isolation relies on `SET app.tenant_id` per session — RDS
@@ -79,13 +79,13 @@ with SSL enabled.
 ### Pattern C — EKS (Helm chart in `helm/meridian/`)
 
 The chart provisions api (2 replicas), worker (HPA 2–10), frontend (1), and
-StatefulSets for postgres/redis/minio. Per-pod resource **requests** are
+StatefulSets for postgres/redis/storage (Garage). Per-pod resource **requests** are
 small (api `100m`/`256Mi`, worker `200m`/`512Mi`, frontend `100m`/`256Mi`),
 so node sizing is driven by replica count, not per-pod load.
 
 - **Cluster**: EKS with a managed node group of 2–3× `m6i.xlarge`.
 - **Storage**: EBS CSI driver (`gp3`) for the StatefulSet PVCs
-  (postgres 50 Gi, redis 5 Gi, minio 100 Gi per `values.yaml`).
+  (postgres 50 Gi, redis 5 Gi, storage 100 Gi per `values.yaml`).
 - **Ingress**: enable `ingress.yaml` behind an ALB via the AWS Load Balancer
   Controller.
 - **LLM**: `values.yaml` defaults to bundled Ollama with `llama3.1:70b`

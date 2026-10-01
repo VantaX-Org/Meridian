@@ -47,6 +47,9 @@ jobs:
           - image: meridian-nginx
             dockerfile: docker/Dockerfile.nginx
             context: .
+          - image: meridian-garage
+            dockerfile: docker/Dockerfile.garage
+            context: docker
 
     steps:
       - uses: actions/checkout@v4

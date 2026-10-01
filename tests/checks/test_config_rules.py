@@ -75,3 +75,37 @@ def test_time_constraint_one_needs_unbroken_history():
     _, r = run_rule(tc, TableFrames.from_flat(df, D, module="employee_central"))
     assert (r.total_count, r.affected_count) == (5, 1)
     assert r.details["population_excluded"] == {"locked": 1}
+
+
+def _live_s4():
+    """An S/4 system's own DDIC as discovery reads it (the bundle has no ACDOCA)."""
+    f = lambda pos, name, key, typ, ln, dec=0: {"pos": pos, "name": name, "key": key, "data_element": name,  # noqa: E731
+                                                "domain": name, "type": typ, "length": ln, "decimals": dec,
+                                                "description": name, "check_table": None}
+    acdoca = {"table": "ACDOCA", "description": "Universal Journal Entry Line Items", "category": "TRANSP",
+              "delivery_class": "A", "fields": [f(1, "RCLNT", True, "CLNT", 3), f(2, "RLDNR", True, "CHAR", 2),
+                                                f(3, "RBUKRS", True, "CHAR", 4), f(4, "GJAHR", True, "NUMC", 4),
+                                                f(5, "BELNR", True, "CHAR", 10), f(6, "DOCLN", True, "CHAR", 6),
+                                                f(7, "HSL", False, "CURR", 23, 2), f(8, "BUDAT", False, "DATS", 8)],
+              "foreign_keys": []}
+    return get_dictionary("s4hana").overlay({"ACDOCA": acdoca})
+
+
+def test_universal_journal_only_from_the_live_dictionary():
+    from sap.extraction_plan import plan_modules
+
+    assert not any(r["id"] == "LJ-ACDOCA" for r in config_rules.generate("fi_gl", {}, D))   # bundle: nothing
+    assert "ACDOCA" not in plan_modules(["fi_gl"], D)
+    live = _live_s4()
+    rule = next(r for r in config_rules.generate("fi_gl", {}, live) if r["id"] == "LJ-ACDOCA")
+    plan = plan_modules(["fi_gl"], live)["ACDOCA"]
+    assert plan.where.startswith("BUDAT >= ") and {"HSL", "RLDNR", "BELNR"} <= plan.fields
+    rows = [("0L", "1000", "2026", "100", "000001", "500.00"), ("0L", "1000", "2026", "100", "000002", "500.00-"),
+            ("0L", "1000", "2026", "101", "000001", "120.00"), ("0L", "1000", "2026", "101", "000002", "-100.00"),
+            ("2L", "1000", "2026", "100", "000001", "500.00")]  # same document number, other ledger
+    df = pd.DataFrame([dict(zip(["ACDOCA.RLDNR", "ACDOCA.RBUKRS", "ACDOCA.GJAHR", "ACDOCA.BELNR", "ACDOCA.DOCLN",
+                                 "ACDOCA.HSL"], r)) for r in rows])
+    _, r = run_rule(rule, TableFrames({"ACDOCA": df}, live, module="fi_gl"))
+    assert (r.total_count, r.affected_count) == (3, 2) and r.details["largest_imbalance"] == 500.0
+    verdict, detail = prove(rule, live)
+    assert verdict == "proven", detail

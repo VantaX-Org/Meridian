@@ -1,46 +1,48 @@
-{{- if .Values.minio.enabled }}
+{{- if .Values.storage.enabled }}
+# Object storage: Garage (S3-compatible), one node, configured on first start
+# (docker/garage/entrypoint.sh). Only the S3 API port is exposed.
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "meridian.fullname" . }}-minio
+  name: {{ include "meridian.fullname" . }}-storage
   labels:
     {{- include "meridian.labels" . | nindent 4 }}
-    app.kubernetes.io/component: minio
+    app.kubernetes.io/component: storage
 spec:
-  serviceName: {{ include "meridian.fullname" . }}-minio
+  serviceName: {{ include "meridian.fullname" . }}-storage
   replicas: 1
   selector:
     matchLabels:
       {{- include "meridian.selectorLabels" . | nindent 6 }}
-      app.kubernetes.io/component: minio
+      app.kubernetes.io/component: storage
   template:
     metadata:
       labels:
         {{- include "meridian.selectorLabels" . | nindent 8 }}
-        app.kubernetes.io/component: minio
+        app.kubernetes.io/component: storage
     spec:
       containers:
-        - name: minio
-          image: {{ .Values.minio.image }}
-          args: ["server", "/data", "--console-address", ":9001"]
+        - name: storage
+          image: {{ .Values.storage.image }}
           ports:
             - containerPort: 9000
-            - containerPort: 9001
+              name: s3
           env:
-            - name: MINIO_ROOT_USER
+            - name: MINIO_ACCESS_KEY
               value: "meridian"
-            - name: MINIO_ROOT_PASSWORD
+            - name: MINIO_SECRET_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ include "meridian.fullname" . }}-secret
                   key: MINIO_SECRET_KEY
+            - name: STORAGE_CAPACITY
+              value: {{ .Values.storage.capacity | quote }}
           volumeMounts:
             - name: data
-              mountPath: /data
+              mountPath: /var/lib/garage
           readinessProbe:
-            httpGet:
-              path: /minio/health/live
-              port: 9000
+            exec:
+              command: ["sh", "-c", "test -f /tmp/storage-ready && curl -fsS http://127.0.0.1:3903/health >/dev/null"]
             initialDelaySeconds: 10
             periodSeconds: 15
   volumeClaimTemplates:
@@ -50,12 +52,12 @@ spec:
         accessModes: ["ReadWriteOnce"]
         resources:
           requests:
-            storage: {{ .Values.minio.storageSize }}
+            storage: {{ .Values.storage.storageSize }}
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "meridian.fullname" . }}-minio
+  name: {{ include "meridian.fullname" . }}-storage
   labels:
     {{- include "meridian.labels" . | nindent 4 }}
 spec:
@@ -63,11 +65,8 @@ spec:
   ports:
     - port: 9000
       targetPort: 9000
-      name: api
-    - port: 9001
-      targetPort: 9001
-      name: console
+      name: s3
   selector:
     {{- include "meridian.selectorLabels" . | nindent 4 }}
-    app.kubernetes.io/component: minio
+    app.kubernetes.io/component: storage
 {{- end }}

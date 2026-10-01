@@ -58,6 +58,13 @@ jobs:
             -t ghcr.io/vantax-org/meridian-frontend:local-test \
             .
 
+      - name: Build object storage (Garage) image
+        run: |
+          docker build \
+            -f docker/Dockerfile.garage \
+            -t ghcr.io/vantax-org/meridian-garage:local-test \
+            docker
+
       - name: Build Nginx image
         run: |
           if [ -f docker/Dockerfile.nginx ]; then
@@ -123,7 +130,7 @@ jobs:
       - name: Boot the stack
         working-directory: smoke
         run: |
-          docker compose up -d db redis minio
+          docker compose up -d db redis storage
           # Wait for postgres
           for i in $(seq 1 30); do
             if docker compose exec -T db pg_isready -U meridian -q 2>/dev/null; then

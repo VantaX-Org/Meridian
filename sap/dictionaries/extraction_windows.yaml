@@ -39,3 +39,5 @@ A017:  {where: "DATBI >= '{months_ago:0}'"}
 A018:  {where: "DATBI >= '{months_ago:0}'"}
 HRPY_RGDIR: {where: "FPEND >= '{months_ago:24}'"}
 ZMERIDIAN_PAYRT: {via: HRPY_RGDIR}  # read through the customer's RFC function, not RFC_READ_TABLE
+# S/4HANA universal journal (read only when the live dictionary has it): last quarter, like BKPF
+ACDOCA: {where: "BUDAT >= '{months_ago:3}'"}

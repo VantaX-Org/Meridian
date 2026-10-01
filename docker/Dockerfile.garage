@@ -1,0 +1,24 @@
+# Meridian object storage, published as ghcr.io/vantax-org/meridian-garage.
+# Garage (https://garagehq.deuxfleurs.fr) is an S3-compatible store; this image
+# ships its official static release binary, pinned by SHA-256, unmodified.
+# Garage is AGPL-3.0: the licence is shipped under /licenses.
+FROM alpine:3.22
+ARG GARAGE_VERSION=v2.4.1
+ARG GARAGE_SHA256=ae49f8de4aaee6b5ca305f7cbdccc8cd8a29b2804aac074649f18bfb83d0a2b6
+LABEL org.opencontainers.image.title="meridian-garage" \
+      org.opencontainers.image.source="https://git.deuxfleurs.fr/Deuxfleurs/garage" \
+      org.opencontainers.image.version="${GARAGE_VERSION}" \
+      org.opencontainers.image.licenses="AGPL-3.0-only"
+# curl + jq: first-start setup through the admin API and the health check
+RUN apk add --no-cache ca-certificates curl jq \
+ && curl -fsSL -o /usr/local/bin/garage \
+      "https://garagehq.deuxfleurs.fr/_releases/${GARAGE_VERSION}/x86_64-unknown-linux-musl/garage" \
+ && echo "${GARAGE_SHA256}  /usr/local/bin/garage" | sha256sum -c - \
+ && chmod 0755 /usr/local/bin/garage \
+ && mkdir -p /var/lib/garage /licenses
+COPY garage/garage.toml /etc/garage.toml
+COPY garage/entrypoint.sh /usr/local/bin/meridian-storage
+COPY garage/GARAGE-LICENSE /licenses/GARAGE-LICENSE
+EXPOSE 9000
+VOLUME ["/var/lib/garage"]
+ENTRYPOINT ["/usr/local/bin/meridian-storage"]

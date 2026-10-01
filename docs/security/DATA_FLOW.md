@@ -6,7 +6,7 @@ _Companion to THREAT_MODEL.md. Describes every network hop, what travels over it
 
 ```
 Browser → (nginx TLS 1.3) → Next.js frontend → FastAPI → Postgres
-                                          └→ MinIO
+                                          └→ Garage (S3)
                                           └→ Redis
                                           └→ Celery queue
                                           └→ SAP connector → customer SAP
@@ -19,7 +19,7 @@ Browser → (nginx TLS 1.3) → Next.js frontend → FastAPI → Postgres
 | nginx → Next.js | HTTP (docker network) | — | n/a — internal only |
 | Next.js → FastAPI | HTTP (docker network) | Bearer JWT | n/a — internal only |
 | FastAPI → Postgres | Postgres wire | `meridian_app` non-superuser role | Customer-configurable (`sslmode=require` via env) |
-| FastAPI → MinIO | S3 HTTPS | MinIO access/secret key (from `.env`) | Customer-configurable |
+| FastAPI → Garage | S3 HTTPS | S3 access/secret key (from `.env`) | Customer-configurable |
 | FastAPI → Redis | Redis resp | No auth on internal network (tested at install time) | n/a |
 | Worker → SAP | OData/REST/RFC | Stored per-system in `system_credentials` (encrypted at rest) | Customer-controlled cert pinning |
 | Worker → LLM | HTTPS | API key per provider | Provider-managed |
@@ -65,15 +65,15 @@ Operator browser → (Cloudflare Pages TLS) → Portal (Next.js) → (CF network
 | Licence keys on the customer | Not stored — only submitted at runtime | — |
 | Licence keys in HQ D1 | SHA-256 hash only | Key material never at rest |
 | Audit logs | Customer Postgres `audit_log` + HQ D1 `admin_audit` | Native DB-level encryption if enabled at filesystem/cluster level |
-| Findings / SAP extracts | Customer Postgres + MinIO | Plain (customer's storage encryption applies) |
-| Reports (JSON + PDF) | Customer Postgres / MinIO | Same as findings |
+| Findings / SAP extracts | Customer Postgres + object storage (Garage) | Plain (customer's storage encryption applies) |
+| Reports (JSON + PDF) | Customer Postgres / object storage | Same as findings |
 | Backups | Customer filesystem | Optional GPG-symmetric (AES-256) via `backup.sh --encrypt` |
 
 Volume-level encryption (LUKS / ebs-encryption / cloud provider) is a customer responsibility; it's called out in the pre-install checklist.
 
 ## 5. In-flight encryption
 
-All external hops use TLS 1.2 or 1.3. Internal docker-network hops (api ↔ db, api ↔ minio, etc.) are unencrypted by design — they never leave the host. Customers running on a multi-host Swarm / Kubernetes are expected to configure network-level TLS (mesh, cilium, etc.).
+All external hops use TLS 1.2 or 1.3. Internal docker-network hops (api ↔ db, api ↔ storage, etc.) are unencrypted by design — they never leave the host. Customers running on a multi-host Swarm / Kubernetes are expected to configure network-level TLS (mesh, cilium, etc.).
 
 ## 6. PII in logs
 

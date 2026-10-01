@@ -11,7 +11,7 @@ data:
   DATABASE_URL: "postgresql+asyncpg://{{ .Values.postgres.user }}:$(DB_PASSWORD)@{{ include "meridian.fullname" . }}-postgres:5432/{{ .Values.postgres.database }}"
   DATABASE_URL_SYNC: "postgresql://{{ .Values.postgres.user }}:$(DB_PASSWORD)@{{ include "meridian.fullname" . }}-postgres:5432/{{ .Values.postgres.database }}"
   REDIS_URL: "redis://{{ include "meridian.fullname" . }}-redis:6379/0"
-  MINIO_ENDPOINT: "{{ include "meridian.fullname" . }}-minio:9000"
+  MINIO_ENDPOINT: "{{ include "meridian.fullname" . }}-storage:9000"
   MINIO_ACCESS_KEY: "meridian"
   MINIO_BUCKET_UPLOADS: "meridian-uploads"
   MINIO_BUCKET_REPORTS: "meridian-reports"

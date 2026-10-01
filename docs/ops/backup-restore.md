@@ -10,8 +10,7 @@ A backup bundle produced by `scripts/backup.sh` is a directory:
 backups/20260424_031500/
 ├── manifest.json            # timestamp, migration_head, inventory
 ├── meridian.dump            # pg_dump --format=custom (restorable with pg_restore)
-├── meridian-uploads.tar.gz  # MinIO uploads bucket
-├── meridian-reports.tar.gz  # MinIO reports bucket
+├── objects.tar              # every object-storage bucket, exported over S3
 └── env.txt | env.gpg        # .env file (optionally GPG-encrypted)
 ```
 
@@ -68,7 +67,7 @@ Steps it performs:
 2. Drops `meridian` database and recreates it empty.
 3. `pg_restore` the dump.
 4. Verifies the `alembic_version` row matches the manifest — if not, exits with code 3 and a warning telling you to `alembic upgrade head`.
-5. Restores MinIO buckets.
+5. Imports `objects.tar` into object storage (objects added after the backup are left in place).
 6. Restores (or decrypts) the `.env` file.
 
 After restore completes successfully, restart the stack:
@@ -113,7 +112,7 @@ Things have broken badly — the DB is gone, the volume is corrupt, the host die
    ```bash
    docker compose -f docker/docker-compose.customer.yml stop api worker frontend beat
    ```
-   Leave `db`, `redis`, `minio` running — the restore targets them.
+   Leave `db`, `redis`, `storage` running — the restore targets them.
 3. **Copy the backup** to the host (e.g. `/tmp/restore-bundle`).
 4. **Run restore**:
    ```bash
@@ -140,7 +139,8 @@ Expected recovery time on a warm host: ~10 minutes for a typical customer (<1 GB
 
 - **Redis** — contains ephemeral data only (task queue, response cache). A restored system will rebuild it as jobs run.
 - **Celery beat state** — rescheduled automatically from `workers/scheduler.py` on first beat start.
-- **Docker volumes other than `postgres_data` and `minio_data`** — intentional; logs are not backed up.
+- **Docker volumes themselves** — the database and objects are exported logically (`pg_dump`, S3), so a backup restores onto any host; logs are not backed up.
+- **Backups taken before the Garage release** hold MinIO's raw data files (`meridian-*.tar.gz`), which Garage cannot load. `restore.sh` restores their database and says so for the objects; to recover those objects, start the old MinIO on an empty volume, untar into `/data`, and run `python -m api.services.storage_migration --source-endpoint <that-minio>:9000` in the api image.
 
 ## Testing the runbook
 

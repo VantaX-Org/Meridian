@@ -1,0 +1,20 @@
+# Meridian object storage: one Garage node inside the customer's Docker network.
+# Secrets (rpc_secret, admin_token) are generated on first start and kept in the
+# data volume — see entrypoint.sh. Only the S3 API is reachable by the stack.
+metadata_dir = "/var/lib/garage/meta"
+data_dir = "/var/lib/garage/data"
+db_engine = "sqlite"
+replication_factor = 1
+
+rpc_bind_addr = "0.0.0.0:3901"
+rpc_public_addr = "127.0.0.1:3901"
+
+[s3_api]
+# us-east-1 is what S3 clients (minio-py, boto3) assume without a region setting
+s3_region = "us-east-1"
+api_bind_addr = "0.0.0.0:9000"
+root_domain = ".s3.storage.internal"
+
+[admin]
+# health only; the admin API is not published outside the container
+api_bind_addr = "127.0.0.1:3903"

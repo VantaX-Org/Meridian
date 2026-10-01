@@ -26,7 +26,7 @@ RUN mkdir -p /etc/nginx/certs && \
     chmod 750 /etc/nginx/certs
 
 # Note: nginx -t cannot run at build time because upstream hosts
-# (api, frontend, minio) only resolve inside the Docker network.
+# (api, frontend) only resolve inside the Docker network.
 # Config syntax is validated by CI via a standalone nginx -t with
 # the config mounted as a volume (no upstream resolution needed).
 

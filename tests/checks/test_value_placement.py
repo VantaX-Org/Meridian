@@ -201,7 +201,13 @@ def test_vat_check_digits():
     # published valid examples: BE 0428759497, DE 136695976, IT 00743110157, FR 40303265045
     assert [vat_status(v) for v in ("BE0428759497", "DE136695976", "IT00743110157", "FR40303265045")] == ["ok"] * 4
     assert [vat_status(v) for v in ("BE0428759498", "DE136695977", "IT00743110158", "FR41303265045")] == ["bad"] * 4
-    assert vat_status("DE12345") == "n/a" and vat_status("NL123456789B01") == "n/a"  # malformed / not checked
+    assert vat_status("DE12345") == "n/a" and vat_status("ES12345678Z") == "n/a"  # malformed / not checked
+    ok = ("ATU13585627", "NL004495445B01", "PL5260250995", "DK13585628", "FI20774740", "SE556016068001",
+          "PT501964843", "GB980780684")
+    assert [vat_status(v) for v in ok] == ["ok"] * len(ok)
+    bad = ("ATU13585628", "NL004495446B01", "PL5260250996", "DK13585629", "FI20774741", "SE556016068101",
+           "PT501964844", "GB980780685")
+    assert [vat_status(v) for v in bad] == ["bad"] * len(bad)
 
 
 def test_near_duplicate_names():

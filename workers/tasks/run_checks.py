@@ -255,6 +255,15 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanaly
             all_results.extend(results)
             from checks.outliers import find as find_outliers
             outliers.update(find_outliers(module_name, frames))  # reported, never scored
+            # Field profile + candidate hidden rules of the module's tables
+            # (checks/profiling.py, ≤ 200k rows per table). Best-effort: a
+            # profiling failure is logged and never fails the analysis.
+            try:
+                from api.services.field_profiles import profile_and_store
+                prof = profile_and_store(engine, str(tenant_id), str(version_id), module_name, frames, dictionary)
+                logger.info(f"field profile for {module_name}: {prof}")
+            except Exception as e:
+                logger.error(f"field profiling failed for {module_name}, continuing: {e}", exc_info=True)
             # Post-module tick so users see movement between modules.
             rows_done_after = int(((idx + 1) / module_count) * row_count)
             update_task_progress(

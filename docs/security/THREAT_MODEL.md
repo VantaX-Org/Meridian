@@ -58,7 +58,7 @@ Ranked by blast radius of a compromise:
 
 | Rank | Asset | Where | Impact of exposure |
 |---|---|---|---|
-| A1 | Customer SAP data (findings, extracts, config) | Customer Postgres + MinIO | Disclosure of operational data; competitive harm |
+| A1 | Customer SAP data (findings, extracts, config) | Customer Postgres + object storage (Garage) | Disclosure of operational data; competitive harm |
 | A2 | `CREDENTIAL_MASTER_KEY` | Customer `.env` | Decrypts every stored SAP system password |
 | A3 | Customer SAP system credentials (encrypted) | Customer Postgres `system_credentials` | Direct access to customer SAP |
 | A4 | HQ portal admin credentials | D1 `admins` | Cross-tenant access to every licensed customer |
@@ -72,7 +72,7 @@ Ranked by blast radius of a compromise:
 1. **Public internet ↔ Cloudflare (HQ)** — enforced by Cloudflare TLS + WAF.
 2. **Cloudflare (HQ) ↔ Customer deployment** — only a single `POST /validate` call from the customer → HQ. Customer → HQ is outbound-only. No reverse traffic.
 3. **Customer external network ↔ Customer Meridian stack** — enforced by customer-provided nginx / reverse proxy + TLS.
-4. **Customer Meridian containers ↔ Customer Postgres / MinIO** — docker network, only reachable from within the compose stack.
+4. **Customer Meridian containers ↔ Customer Postgres / object storage** — docker network, only reachable from within the compose stack.
 5. **Customer Meridian stack ↔ Customer SAP** — outbound connections initiated by the connectivity manager.
 6. **Meridian containers ↔ LLM provider** — outbound only; Tier 2 keeps it inside the docker network.
 

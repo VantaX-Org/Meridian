@@ -36,7 +36,7 @@ services:
       # ── MinIO ───────────────────────────────────────────────
       - MINIO_ENDPOINT=minio:9000
       - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-meridian}
-      - MINIO_SECRET_KEY=${MINIO_PASSWORD:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_PASSWORD:-meridian-dev-storage-secret}
       - MINIO_BUCKET_UPLOADS=${MINIO_BUCKET_UPLOADS:-meridian-uploads}
       - MINIO_BUCKET_REPORTS=${MINIO_BUCKET_REPORTS:-meridian-reports}
       # ── CORS (permissive — API port is internal-only) ─────

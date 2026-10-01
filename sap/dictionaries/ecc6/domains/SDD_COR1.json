@@ -1,0 +1,27 @@
+{
+ "domain": "SDD_COR1",
+ "type": "NUMC",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "0",
+   "high": null,
+   "text": "Unknown"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "SDD COR1 Supported"
+  },
+  {
+   "low": "9",
+   "high": null,
+   "text": "SDD COR1 Not Supported"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}
