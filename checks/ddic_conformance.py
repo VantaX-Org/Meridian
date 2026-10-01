@@ -15,8 +15,10 @@ One result per (table, kind): population = populated cells of the checked
 fields, failing = cells that violate; record keys identify every failing
 record, details break the violations down per field. Blank cells are out of
 scope (null detection is null_check's job). Fields a module rule already checks
-against their allowed values (``value_checked``) are not value-checked again
-here: the same record would be reported twice.
+against their allowed values (``value_checked``) are not value-checked again,
+and a cell a specific rule already reports on that record (``reported``:
+TABLE.FIELD → record keys) is not reported again: the same record would show
+up twice.
 """
 
 from __future__ import annotations
@@ -71,11 +73,14 @@ def _violations(values: pd.Series, f, check_values: set[str] | None) -> dict[str
 
 def run_conformance(table: str, df: pd.DataFrame, dictionary: Dictionary, module: str,
                     key_cols: list[str], reference_values: dict[str, set[str]] | None = None,
-                    value_checked: set[str] | None = None) -> list[CheckResult]:
+                    value_checked: set[str] | None = None,
+                    reported: dict[str, set[str]] | None = None) -> list[CheckResult]:
     t = dictionary.table(table)
     if t is None or t.category == "VIEW" or df.empty:
         return []
     reference_values = reference_values or {}
+    keys = [k for k in key_cols if k in df.columns]
+    row_keys = record_keys(df, keys) if reported else None
     cells = {k: 0 for k in _KINDS}
     failing_rows = {k: pd.Series(False, index=df.index) for k in _KINDS}
     per_field: dict[str, dict[str, int]] = {k: {} for k in _KINDS}
@@ -92,6 +97,8 @@ def run_conformance(table: str, df: pd.DataFrame, dictionary: Dictionary, module
             if kind in ("fixed_value", "check_table") and col in (value_checked or ()):
                 continue
             bad = bad.fillna(True).astype(bool) & populated
+            if reported and col in reported:
+                bad &= ~row_keys.isin(reported[col])
             cells[kind] += int(populated.sum())
             n = int(bad.sum())
             if n:
@@ -99,7 +106,6 @@ def run_conformance(table: str, df: pd.DataFrame, dictionary: Dictionary, module
                 failing_rows[kind] |= bad
 
     results = []
-    keys = [k for k in key_cols if k in df.columns]
     for kind, (severity, message) in _KINDS.items():
         if not cells[kind]:
             continue

@@ -23,3 +23,11 @@ def test_value_missing_from_the_check_table_is_found():
 def test_field_a_rule_already_checks_is_not_reported_twice():
     # AP042 checks LFM1.ZTERM against T052: the same record must not come back as a second issue
     assert _check_table(value_checked={"LFM1.ZTERM"}) is None
+
+
+def test_cell_a_specific_rule_already_reports_is_not_reported_again():
+    kna1 = pd.DataFrame({"KNA1.KUNNR": ["C1", "C2"], "KNA1.PSTLZ": ["Durban", "durban"]})
+    res = run_conformance("KNA1", kna1, D, "accounts_receivable", ["KNA1.KUNNR"],
+                          reported={"KNA1.PSTLZ": {"KUNNR=C1"}})  # e.g. SW-KNA1-PSTLZ-ORT01 on C1
+    case = next(r for r in res if r.check_id == "DDIC-KNA1-CASE")
+    assert case.failing_record_keys == ["KUNNR=C2"] and case.affected_count == 1
