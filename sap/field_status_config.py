@@ -70,6 +70,9 @@ CONFIG_TABLES = {
     # country settings and bank directory (checks/country_rules.py)
     "T005": ["LAND1", "LNPLZ", "PRPLZ", "XPLZS", "LNST1", "PRST1", "LNST2", "PRST2", "LNBKN", "PRBKN", "LNBLZ", "PRBLZ"],
     "BNKA": ["BANKS", "BANKL"],
+    # pricing condition types and HR infotype time constraints (checks/config_rules.py)
+    "T685A": ["KAPPL", "KSCHL", "KNEGA", "KRECH", "KOAID"],
+    "T582A": ["INFTY", "ZEITB"],
 }
 
 

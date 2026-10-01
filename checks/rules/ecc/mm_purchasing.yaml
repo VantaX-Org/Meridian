@@ -1931,3 +1931,335 @@ rules:
       create it in customizing (OX08) if it is genuinely needed.'
   record_fix_template: 'Source list {EORD.MATNR} plant {EORD.WERKS} record {EORD.ZEORD}: purchasing organisation (source
     list) ''{actual_value}'' is not configured (T024E).'
+- id: PUR117
+  check_class: aggregate_check
+  grain: EKBE
+  field: EKBE.MENGE
+  group_by:
+  - EKBE.EBELN
+  - EKBE.EBELP
+  amount: EKBE.MENGE
+  sign_field: EKBE.SHKZG
+  debit_value: S
+  split_field: EKBE.VGABE
+  left_values:
+  - '1'
+  right_values:
+  - '2'
+  compare: unequal
+  applies_when:
+    EKPO.WEPOS:
+    - X
+    EKPO.REPOS:
+    - X
+    EKPO.PSTYP:
+      not_in:
+      - '1'
+      - '2'
+      - '9'
+    EKPO.EREKZ:
+    - X
+  severity: high
+  dimension: consistency
+  message: Final invoice posted but received and invoiced quantities differ (GR/IR will not clear)
+  why_it_matters: The final-invoice indicator tells SAP no further invoice will come. If the quantity received (goods receipts
+    net of returns) still differs from the quantity invoiced (invoices net of credit memos), the difference stays on the GR/IR
+    clearing account forever.
+  rule_authority: sap_hard_constraint
+  sap_impact: An uncleared GR/IR balance overstates liabilities or accruals at period end; it has to be cleared manually (MR11)
+    and explained to audit.
+  fix_map:
+    __other__: 'Check the PO history (ME23N > PO history): post the missing goods receipt or invoice / credit memo, or clear
+      the difference with MR11 (GR/IR account maintenance).'
+  record_fix_template: 'PO {EKBE.EBELN} item {EKBE.EBELP}: final invoice posted, received and invoiced quantities differ.'
+- id: PUR118
+  check_class: aggregate_check
+  grain: EKBE
+  field: EKBE.MENGE
+  group_by:
+  - EKBE.EBELN
+  - EKBE.EBELP
+  amount: EKBE.MENGE
+  sign_field: EKBE.SHKZG
+  debit_value: S
+  split_field: EKBE.VGABE
+  left_values:
+  - '1'
+  right_values:
+  - '2'
+  compare: right_gt_left
+  applies_when:
+    EKPO.WEPOS:
+    - X
+    EKPO.REPOS:
+    - X
+    EKPO.PSTYP:
+      not_in:
+      - '1'
+      - '2'
+      - '9'
+    EKPO.ELIKZ:
+    - X
+  severity: high
+  dimension: accuracy
+  message: Delivery completed but more was invoiced than received
+  why_it_matters: Once delivery is complete no more goods are expected, so invoicing above the quantity received is paying
+    for goods that never arrived (or a goods receipt that was reversed after invoicing).
+  rule_authority: best_practice
+  sap_impact: Overpayment to the vendor; the GR/IR account carries a debit balance that will not clear.
+  fix_map:
+    __other__: Compare the PO history with the vendor's delivery notes; request a credit memo for the excess, or post the
+      missing goods receipt if the goods did arrive.
+  record_fix_template: 'PO {EKBE.EBELN} item {EKBE.EBELP}: invoiced quantity exceeds the quantity received.'
+- id: PUR119
+  check_class: aggregate_check
+  grain: EKBE
+  field: EKBE.MENGE
+  group_by:
+  - EKBE.EBELN
+  - EKBE.EBELP
+  amount: EKBE.MENGE
+  sign_field: EKBE.SHKZG
+  debit_value: S
+  split_field: EKBE.VGABE
+  left_values:
+  - '1'
+  right_values:
+  - '2'
+  compare: unequal
+  applies_when:
+    EKPO.WEPOS:
+    - X
+    EKPO.REPOS:
+    - X
+    EKPO.PSTYP:
+      not_in:
+      - '1'
+      - '2'
+      - '9'
+    EKPO.LOEKZ:
+    - L
+  severity: medium
+  dimension: consistency
+  message: PO item deleted with goods receipts and invoices that do not match
+  why_it_matters: Deleting a PO item stops further receipts and invoices, but it does not clear what was already posted. A
+    deleted item whose received and invoiced quantities differ leaves a GR/IR balance with no open document to settle it against.
+  rule_authority: best_practice
+  sap_impact: Orphaned GR/IR balance; the item cannot be archived.
+  fix_map:
+    __other__: Undelete the item, post the missing invoice or credit memo (or reverse the goods receipt), then delete it again;
+      or clear the balance with MR11.
+  record_fix_template: PO {EKBE.EBELN} item {EKBE.EBELP} is deleted with unmatched receipts and invoices.
+- id: PUR120
+  field: RBKP.XBLNR
+  check_class: uniqueness_check
+  grain: RBKP
+  fields:
+  - RBKP.BUKRS
+  - RBKP.LIFNR
+  - RBKP.XBLNR
+  - RBKP.RMWWR
+  - RBKP.WAERS
+  normalize: alnum
+  applies_when:
+    RBKP.XRECH:
+    - X
+    RBKP.RBSTAT:
+    - '4'
+    - '5'
+    RBKP.STBLG:
+      blank: true
+  severity: critical
+  dimension: uniqueness
+  message: 'Possible duplicate logistics invoice: same vendor, reference, gross amount and currency posted twice'
+  why_it_matters: Two posted, un-reversed invoices from one vendor with the same reference and gross amount are almost always
+    one invoice entered twice. SAP's duplicate-invoice check compares the reference exactly and only when it is switched on
+    per vendor; this check ignores spaces, dashes and punctuation in the reference.
+  rule_authority: best_practice
+  sap_impact: The vendor is paid twice; recovery needs a credit memo and a manual chase.
+  fix_map:
+    __other__: Block the later invoice for payment, confirm against the vendor statement, and reverse the duplicate (MR8M).
+      Switch on the vendor's duplicate-invoice check (LFB1.REPRF).
+  record_fix_template: 'Invoice {RBKP.BELNR}/{RBKP.GJAHR} of vendor {RBKP.LIFNR}: reference {RBKP.XBLNR}, {RBKP.RMWWR} {RBKP.WAERS}
+    is posted more than once.'
+- id: PUR121
+  field: RBKP.BLDAT
+  check_class: cross_field_check
+  grain: RBKP
+  fail_when: '`RBKP.BLDAT` > `RBKP.BUDAT`'
+  applies_when:
+    RBKP.RBSTAT:
+    - '4'
+    - '5'
+  severity: medium
+  dimension: consistency
+  message: Invoice is dated after the date it was posted
+  why_it_matters: An invoice cannot be posted before the vendor issued it. An invoice date after the posting date is a keying
+    error in one of the two dates.
+  rule_authority: best_practice
+  sap_impact: Payment terms run from the wrong baseline date (early or late payment, lost discount); the tax period of input
+    VAT may be wrong.
+  fix_map:
+    __other__: Correct the invoice date against the vendor's invoice; if the posting date is wrong, reverse (MR8M) and re-post.
+  record_fix_template: 'Invoice {RBKP.BELNR}/{RBKP.GJAHR}: dated {RBKP.BLDAT}, posted {RBKP.BUDAT}.'
+- id: PUR122
+  field: RBKP.STJAH
+  check_class: cross_field_check
+  grain: RBKP
+  fail_when: '`RBKP.STBLG`.notna() & `RBKP.STJAH`.isna()'
+  severity: medium
+  dimension: completeness
+  message: Reversed invoice names its reversal document without the reversal's fiscal year
+  why_it_matters: A reversal document is identified by number and fiscal year together; the number alone does not lead to
+    the document.
+  rule_authority: sap_hard_constraint
+  sap_impact: The audit trail from the invoice to its reversal is broken; MIR4 cannot navigate to it.
+  fix_map:
+    __other__: 'The record was changed outside MIRO/MR8M: raise an SAP incident.'
+  record_fix_template: 'Invoice {RBKP.BELNR}/{RBKP.GJAHR}: reversal {RBKP.STBLG} has no fiscal year.'
+- id: PUR123
+  field: A017.DATAB
+  check_class: interval_check
+  grain: A017
+  group_by:
+  - A017.KAPPL
+  - A017.KSCHL
+  - A017.LIFNR
+  - A017.MATNR
+  - A017.EKORG
+  - A017.WERKS
+  - A017.ESOKZ
+  start: A017.DATAB
+  end: A017.DATBI
+  severity: high
+  dimension: consistency
+  message: Condition records for the same key (vendor / material / purchasing org / plant / info category) have overlapping
+    validity periods
+  why_it_matters: 'For one condition type and key SAP keeps at most one record valid on any day: maintaining a new record
+    delimits the old one. Overlapping records were loaded around that logic (direct loads, interfaces, condition-table copies),
+    and pricing then picks whichever record it reads first.'
+  rule_authority: sap_hard_constraint
+  sap_impact: Documents dated inside the overlap get an unpredictable price; the price shown in the condition maintenance
+    screen may not be the one used.
+  fix_map:
+    __other__: Display the records for the key (VK13 / MEK3), keep the intended one and delimit or delete the other (VK12
+      / MEK2).
+  record_fix_template: Condition {A017.KAPPL}/{A017.KSCHL}/{A017.LIFNR}/{A017.MATNR}/{A017.EKORG}/{A017.WERKS}/{A017.ESOKZ}
+    valid from {A017.DATAB} to {A017.DATBI} overlaps another record.
+- id: PUR124
+  field: A018.DATAB
+  check_class: interval_check
+  grain: A018
+  group_by:
+  - A018.KAPPL
+  - A018.KSCHL
+  - A018.LIFNR
+  - A018.MATNR
+  - A018.EKORG
+  - A018.ESOKZ
+  start: A018.DATAB
+  end: A018.DATBI
+  severity: high
+  dimension: consistency
+  message: Condition records for the same key (vendor / material / purchasing org / info category) have overlapping validity
+    periods
+  why_it_matters: 'For one condition type and key SAP keeps at most one record valid on any day: maintaining a new record
+    delimits the old one. Overlapping records were loaded around that logic (direct loads, interfaces, condition-table copies),
+    and pricing then picks whichever record it reads first.'
+  rule_authority: sap_hard_constraint
+  sap_impact: Documents dated inside the overlap get an unpredictable price; the price shown in the condition maintenance
+    screen may not be the one used.
+  fix_map:
+    __other__: Display the records for the key (VK13 / MEK3), keep the intended one and delimit or delete the other (VK12
+      / MEK2).
+  record_fix_template: Condition {A018.KAPPL}/{A018.KSCHL}/{A018.LIFNR}/{A018.MATNR}/{A018.EKORG}/{A018.ESOKZ} valid from
+    {A018.DATAB} to {A018.DATBI} overlaps another record.
+- id: PUR125
+  field: KONH.DATAB
+  check_class: cross_field_check
+  grain: KONH
+  fail_when: '`KONH.DATAB` > `KONH.DATBI`'
+  applies_when:
+    KONH.KAPPL:
+    - M
+  severity: high
+  dimension: consistency
+  message: Purchasing condition record is valid to a date before it is valid from
+  why_it_matters: A condition record whose validity ends before it starts is never valid; pricing never finds it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Documents fall back to another record or get no price at all.
+  fix_map:
+    __other__: Correct the validity period (VK12 / MEK2) or delete the record.
+  record_fix_template: Condition record {KONH.KNUMH} ({KONH.KSCHL}) is valid from {KONH.DATAB} to {KONH.DATBI}.
+- id: PUR126
+  field: KONP.KPEIN
+  check_class: cross_field_check
+  grain: KONH
+  fail_when: (`KONP.KRECH` == 'C') & ((`KONP.KPEIN` == 0) | `KONP.KPEIN`.isna())
+  applies_when:
+    KONH.KAPPL:
+    - M
+  severity: high
+  dimension: validity
+  message: Quantity-based purchasing condition has no pricing unit
+  why_it_matters: A quantity-based rate is 'amount per pricing unit'. Without a pricing unit the condition value cannot be
+    computed (division by zero).
+  rule_authority: sap_hard_constraint
+  sap_impact: Pricing errors or a zero condition value in every document that uses the record.
+  fix_map:
+    __other__: Maintain the pricing unit (for example 1 or 100) on the record (VK12 / MEK2).
+  record_fix_template: Condition record {KONH.KNUMH} ({KONH.KSCHL}) has rate {KONP.KBETR} with pricing unit {KONP.KPEIN}.
+- id: PUR127
+  field: KONP.KMEIN
+  check_class: cross_field_check
+  grain: KONH
+  fail_when: (`KONP.KRECH` == 'C') & `KONP.KMEIN`.isna()
+  applies_when:
+    KONH.KAPPL:
+    - M
+  severity: high
+  dimension: completeness
+  message: Quantity-based purchasing condition has no unit of measure
+  why_it_matters: '''Amount per pricing unit'' needs the unit it is quoted in; without it the document quantity cannot be
+    converted to the condition''s unit.'
+  rule_authority: sap_hard_constraint
+  sap_impact: The condition is ignored or priced against the wrong unit.
+  fix_map:
+    __other__: Maintain the condition unit on the record (VK12 / MEK2).
+  record_fix_template: Condition record {KONH.KNUMH} ({KONH.KSCHL}) has no condition unit.
+- id: PUR128
+  field: KONP.KONWA
+  check_class: cross_field_check
+  grain: KONH
+  fail_when: ((`KONP.KRECH` == 'B') | (`KONP.KRECH` == 'C')) & `KONP.KONWA`.isna()
+  applies_when:
+    KONH.KAPPL:
+    - M
+  severity: high
+  dimension: completeness
+  message: Amount-based purchasing condition has no currency
+  why_it_matters: A fixed or quantity-based rate is an amount and needs its currency (percentages carry '%').
+  rule_authority: sap_hard_constraint
+  sap_impact: Currency translation of the condition is impossible; the document is priced wrongly.
+  fix_map:
+    __other__: Maintain the rate currency on the record (VK12 / MEK2).
+  record_fix_template: Condition record {KONH.KNUMH} ({KONH.KSCHL}) has rate {KONP.KBETR} without a currency.
+- id: PUR129
+  field: KONH.KSCHL
+  check_class: referential_check
+  grain: KONH
+  applies_when:
+    KONH.KAPPL:
+    - M
+  reference_table: T685
+  reference_field: KSCHL
+  severity: high
+  dimension: validity
+  message: Purchasing condition record uses a condition type that is not defined (T685)
+  why_it_matters: A record for a condition type that no longer exists (or never existed in this client) is never read by a
+    pricing procedure.
+  rule_authority: sap_hard_constraint
+  sap_impact: Dead price data that looks valid in reports and migrations.
+  fix_map:
+    __other__: Delete the record, or recreate it under a defined condition type.
+  record_fix_template: 'Condition record {KONH.KNUMH} ({KONH.KSCHL}): condition type ''{actual_value}'' is not defined.'

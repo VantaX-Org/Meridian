@@ -1192,3 +1192,476 @@ rules:
   applies_when:
     PERADDRESS.COUNTRY:
     - JPN
+- id: HCM001
+  field: PA0000.MASSN
+  check_class: null_check
+  grain: PA0000
+  severity: high
+  dimension: completeness
+  message: Action type is missing
+  why_it_matters: The action (hire, transfer, leave) explains every change of employment status.
+  rule_authority: sap_hard_constraint
+  sap_impact: Employment history cannot be reconstructed; status-driven processes (payroll, benefits) see no reason.
+  fix_map:
+    __blank__: Maintain action type in the infotype record (PA30, infotype 0000).
+  record_fix_template: 'Employee {PA0000.PERNR} ({PA0000.BEGDA}-{PA0000.ENDDA}): action type is missing.'
+- id: HCM002
+  field: PA0000.MASSN
+  check_class: referential_check
+  grain: PA0000
+  severity: high
+  dimension: validity
+  message: Action type is not defined in configuration (T529A)
+  why_it_matters: Infotype values are checked against T529A on entry; a value that is not there was loaded around the check
+    or its configuration was deleted afterwards.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll, time evaluation and HR reporting cannot interpret the value; the employee drops out of every selection
+    on it.
+  fix_map:
+    __other__: Replace the value with one defined in T529A, or configure it.
+  record_fix_template: 'Employee {PA0000.PERNR} ({PA0000.BEGDA}-{PA0000.ENDDA}): action type is not defined in configuration
+    (T529A).'
+- id: HCM003
+  field: PA0001.BUKRS
+  check_class: null_check
+  grain: PA0001
+  severity: high
+  dimension: completeness
+  message: Company code is missing
+  why_it_matters: 'The company code is the legal employer: it decides the payroll posting and statutory reporting.'
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll results cannot be posted to accounting.
+  fix_map:
+    __blank__: Maintain company code in the infotype record (PA30, infotype 0001).
+  record_fix_template: 'Employee {PA0001.PERNR} ({PA0001.BEGDA}-{PA0001.ENDDA}): company code is missing.'
+- id: HCM004
+  field: PA0001.WERKS
+  check_class: null_check
+  grain: PA0001
+  severity: high
+  dimension: completeness
+  message: Personnel area is missing
+  why_it_matters: Personnel area drives the country grouping, public holidays and every personnel-area-dependent setting.
+  rule_authority: sap_hard_constraint
+  sap_impact: The employee falls out of payroll and time evaluation.
+  fix_map:
+    __blank__: Maintain personnel area in the infotype record (PA30, infotype 0001).
+  record_fix_template: 'Employee {PA0001.PERNR} ({PA0001.BEGDA}-{PA0001.ENDDA}): personnel area is missing.'
+- id: HCM005
+  field: PA0001.BTRTL
+  check_class: null_check
+  grain: PA0001
+  severity: high
+  dimension: completeness
+  message: Personnel subarea is missing
+  why_it_matters: Personnel subarea drives work schedules, pay scales and wage-type permissibility.
+  rule_authority: sap_hard_constraint
+  sap_impact: Work schedule and pay-scale determination fail.
+  fix_map:
+    __blank__: Maintain personnel subarea in the infotype record (PA30, infotype 0001).
+  record_fix_template: 'Employee {PA0001.PERNR} ({PA0001.BEGDA}-{PA0001.ENDDA}): personnel subarea is missing.'
+- id: HCM006
+  field: PA0001.PERSG
+  check_class: null_check
+  grain: PA0001
+  severity: high
+  dimension: completeness
+  message: Employee group is missing
+  why_it_matters: Employee group decides the employment relationship (active, pensioner, external).
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll and benefits cannot classify the employee.
+  fix_map:
+    __blank__: Maintain employee group in the infotype record (PA30, infotype 0001).
+  record_fix_template: 'Employee {PA0001.PERNR} ({PA0001.BEGDA}-{PA0001.ENDDA}): employee group is missing.'
+- id: HCM007
+  field: PA0001.PERSK
+  check_class: null_check
+  grain: PA0001
+  severity: high
+  dimension: completeness
+  message: Employee subgroup is missing
+  why_it_matters: Employee subgroup drives the payroll rule grouping and collective agreement.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll calculation rules are not determined.
+  fix_map:
+    __blank__: Maintain employee subgroup in the infotype record (PA30, infotype 0001).
+  record_fix_template: 'Employee {PA0001.PERNR} ({PA0001.BEGDA}-{PA0001.ENDDA}): employee subgroup is missing.'
+- id: HCM008
+  field: PA0001.KOSTL
+  check_class: null_check
+  grain: PA0001
+  severity: medium
+  dimension: completeness
+  message: Cost centre is missing
+  why_it_matters: Payroll postings and HR cost reporting use the employee's master cost centre.
+  rule_authority: sap_hard_constraint
+  sap_impact: Personnel costs post to a default or suspense account.
+  fix_map:
+    __blank__: Maintain cost centre in the infotype record (PA30, infotype 0001).
+  record_fix_template: 'Employee {PA0001.PERNR} ({PA0001.BEGDA}-{PA0001.ENDDA}): cost centre is missing.'
+- id: HCM009
+  field: PA0001.PLANS
+  check_class: cross_field_check
+  grain: PA0001
+  fail_when: '`PA0001.PLANS` == ''99999999'''
+  applies_when:
+    PA0001.ENDDA:
+    - '99991231'
+    PA0000.STAT2:   # the leaving action moves a withdrawn employee to 99999999
+      not_in:
+      - '0'
+  severity: medium
+  dimension: consistency
+  message: Employee sits on the default position 99999999
+  why_it_matters: With organisational-management integration active, 99999999 is SAP's placeholder for 'no position'. An employee
+    left there has no manager, no org unit and no job.
+  rule_authority: best_practice
+  sap_impact: Workflow approvals, ESS/MSS and org reporting skip the employee.
+  fix_map:
+    __other__: Assign the employee to a real position (PA40 organisational reassignment / PPOME).
+  record_fix_template: 'Employee {PA0001.PERNR} ({PA0001.BEGDA}-{PA0001.ENDDA}): employee sits on the default position 99999999.'
+- id: HCM010
+  field: PA0001.WERKS
+  check_class: referential_check
+  grain: PA0001
+  severity: high
+  dimension: validity
+  message: Personnel area is not defined in configuration (T500P)
+  why_it_matters: Infotype values are checked against T500P on entry; a value that is not there was loaded around the check
+    or its configuration was deleted afterwards.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll, time evaluation and HR reporting cannot interpret the value; the employee drops out of every selection
+    on it.
+  fix_map:
+    __other__: Replace the value with one defined in T500P, or configure it.
+  record_fix_template: 'Employee {PA0001.PERNR} ({PA0001.BEGDA}-{PA0001.ENDDA}): personnel area is not defined in configuration
+    (T500P).'
+- id: HCM011
+  field: PA0001.PERSG
+  check_class: referential_check
+  grain: PA0001
+  severity: high
+  dimension: validity
+  message: Employee group is not defined in configuration (T501)
+  why_it_matters: Infotype values are checked against T501 on entry; a value that is not there was loaded around the check
+    or its configuration was deleted afterwards.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll, time evaluation and HR reporting cannot interpret the value; the employee drops out of every selection
+    on it.
+  fix_map:
+    __other__: Replace the value with one defined in T501, or configure it.
+  record_fix_template: 'Employee {PA0001.PERNR} ({PA0001.BEGDA}-{PA0001.ENDDA}): employee group is not defined in configuration
+    (T501).'
+- id: HCM012
+  field: PA0001.PERSK
+  check_class: referential_check
+  grain: PA0001
+  severity: high
+  dimension: validity
+  message: Employee subgroup is not defined in configuration (T503K)
+  why_it_matters: Infotype values are checked against T503K on entry; a value that is not there was loaded around the check
+    or its configuration was deleted afterwards.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll, time evaluation and HR reporting cannot interpret the value; the employee drops out of every selection
+    on it.
+  fix_map:
+    __other__: Replace the value with one defined in T503K, or configure it.
+  record_fix_template: 'Employee {PA0001.PERNR} ({PA0001.BEGDA}-{PA0001.ENDDA}): employee subgroup is not defined in configuration
+    (T503K).'
+- id: HCM013
+  field: PA0001.ABKRS
+  check_class: referential_check
+  grain: PA0001
+  severity: high
+  dimension: validity
+  message: Payroll area is not defined in configuration (T549A)
+  why_it_matters: Infotype values are checked against T549A on entry; a value that is not there was loaded around the check
+    or its configuration was deleted afterwards.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll, time evaluation and HR reporting cannot interpret the value; the employee drops out of every selection
+    on it.
+  fix_map:
+    __other__: Replace the value with one defined in T549A, or configure it.
+  record_fix_template: 'Employee {PA0001.PERNR} ({PA0001.BEGDA}-{PA0001.ENDDA}): payroll area is not defined in configuration
+    (T549A).'
+- id: HCM014
+  field: PA0001.BTRTL
+  check_class: referential_check
+  grain: PA0001
+  severity: high
+  dimension: validity
+  message: Personnel subarea is not defined in configuration (T001P)
+  why_it_matters: Infotype values are checked against T001P on entry; a value that is not there was loaded around the check
+    or its configuration was deleted afterwards.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll, time evaluation and HR reporting cannot interpret the value; the employee drops out of every selection
+    on it.
+  fix_map:
+    __other__: Replace the value with one defined in T001P, or configure it.
+  record_fix_template: 'Employee {PA0001.PERNR} ({PA0001.BEGDA}-{PA0001.ENDDA}): personnel subarea is not defined in configuration
+    (T001P).'
+- id: HCM015
+  field: PA0002.GBDAT
+  check_class: null_check
+  grain: PA0002
+  severity: high
+  dimension: completeness
+  message: Date of birth is missing
+  why_it_matters: Age drives statutory deductions, pensions, minimum-wage and youth rules.
+  rule_authority: sap_hard_constraint
+  sap_impact: Age-dependent payroll and benefits rules mis-calculate.
+  fix_map:
+    __blank__: Maintain date of birth in the infotype record (PA30, infotype 0002).
+  record_fix_template: 'Employee {PA0002.PERNR} ({PA0002.BEGDA}-{PA0002.ENDDA}): date of birth is missing.'
+- id: HCM016
+  field: PA0002.NACHN
+  check_class: null_check
+  grain: PA0002
+  severity: high
+  dimension: completeness
+  message: Last name is missing
+  why_it_matters: The legal name appears on payslips, tax certificates and bank payments.
+  rule_authority: sap_hard_constraint
+  sap_impact: Statutory reporting and bank transfers are rejected.
+  fix_map:
+    __blank__: Maintain last name in the infotype record (PA30, infotype 0002).
+  record_fix_template: 'Employee {PA0002.PERNR} ({PA0002.BEGDA}-{PA0002.ENDDA}): last name is missing.'
+- id: HCM017
+  field: PA0002.VORNA
+  check_class: null_check
+  grain: PA0002
+  severity: medium
+  dimension: completeness
+  message: First name is missing
+  why_it_matters: The legal name appears on payslips, tax certificates and bank payments.
+  rule_authority: sap_hard_constraint
+  sap_impact: Statutory reporting may be rejected.
+  fix_map:
+    __blank__: Maintain first name in the infotype record (PA30, infotype 0002).
+  record_fix_template: 'Employee {PA0002.PERNR} ({PA0002.BEGDA}-{PA0002.ENDDA}): first name is missing.'
+- id: HCM018
+  field: PA0002.GBDAT
+  check_class: cross_field_check
+  grain: PA0002
+  fail_when: '`PA0002.GBDAT` > `PA0002.BEGDA`'
+  severity: high
+  dimension: consistency
+  message: Personal data record starts before the employee was born
+  why_it_matters: A personal-data period that begins before the date of birth means the birth date or the record start is
+    wrong.
+  rule_authority: sap_hard_constraint
+  sap_impact: Age calculations and every date-dependent rule use a wrong age.
+  fix_map:
+    __other__: Correct the date of birth or the record's start date.
+  record_fix_template: 'Employee {PA0002.PERNR} ({PA0002.BEGDA}-{PA0002.ENDDA}): personal data record starts before the employee
+    was born.'
+- id: HCM019
+  field: PA0002.NATIO
+  check_class: referential_check
+  grain: PA0002
+  severity: medium
+  dimension: validity
+  message: Nationality is not defined in configuration (T005)
+  why_it_matters: Infotype values are checked against T005 on entry; a value that is not there was loaded around the check
+    or its configuration was deleted afterwards.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll, time evaluation and HR reporting cannot interpret the value; the employee drops out of every selection
+    on it.
+  fix_map:
+    __other__: Replace the value with one defined in T005, or configure it.
+  record_fix_template: 'Employee {PA0002.PERNR} ({PA0002.BEGDA}-{PA0002.ENDDA}): nationality is not defined in configuration
+    (T005).'
+- id: HCM020
+  field: PA0002.NACHN
+  check_class: uniqueness_check
+  grain: PA0002
+  fields:
+  - PA0002.NACHN
+  - PA0002.VORNA
+  - PA0002.GBDAT
+  normalize: name
+  applies_when:
+    PA0002.ENDDA:
+    - '99991231'
+  severity: medium
+  dimension: uniqueness
+  message: 'Possible duplicate person: two personnel numbers with the same name and date of birth'
+  why_it_matters: Rehires and transfers created as new hires leave one person under two personnel numbers. (Concurrent employment
+    uses several personnel numbers on purpose; confirm before merging.)
+  rule_authority: best_practice
+  sap_impact: Duplicate payments, split year-to-date tax and leave balances.
+  fix_map:
+    __other__: Compare both personnel numbers; if they are one person, reactivate the original (rehire action) and leave the
+      other.
+  record_fix_template: 'Employee {PA0002.PERNR} ({PA0002.BEGDA}-{PA0002.ENDDA}): possible duplicate person: two personnel
+    numbers with the same name and date of birth.'
+- id: HCM021
+  field: PA0002.PERID
+  check_class: uniqueness_check
+  grain: PA0002
+  fields:
+  - PA0002.PERID
+  normalize: alnum
+  applies_when:
+    PA0002.ENDDA:
+    - '99991231'
+  severity: high
+  dimension: uniqueness
+  message: The same national ID number is held by two personnel numbers
+  why_it_matters: A national identity number belongs to one person. Two current personnel numbers sharing it are a duplicate
+    person or a keying error (concurrent employment excepted).
+  rule_authority: best_practice
+  sap_impact: Tax and social-security filings combine or reject the two employees.
+  fix_map:
+    __other__: Verify the ID against the employee's documents and correct the wrong record.
+  record_fix_template: 'Employee {PA0002.PERNR} ({PA0002.BEGDA}-{PA0002.ENDDA}): the same national ID number is held by two
+    personnel numbers.'
+- id: HCM022
+  field: PA0006.LAND1
+  check_class: null_check
+  grain: PA0006
+  applies_when:
+    PA0006.SUBTY:
+    - '1'
+  severity: high
+  dimension: completeness
+  message: Country of the permanent residence is missing
+  why_it_matters: Tax residence and statutory reporting follow the permanent-residence country.
+  rule_authority: sap_hard_constraint
+  sap_impact: Tax jurisdiction and payslip delivery are wrong.
+  fix_map:
+    __blank__: Maintain country of the permanent residence in the infotype record (PA30, infotype 0006).
+  record_fix_template: 'Employee {PA0006.PERNR} ({PA0006.BEGDA}-{PA0006.ENDDA}): country of the permanent residence is missing.'
+- id: HCM023
+  field: PA0006.ORT01
+  check_class: null_check
+  grain: PA0006
+  applies_when:
+    PA0006.SUBTY:
+    - '1'
+  severity: medium
+  dimension: completeness
+  message: City of the permanent residence is missing
+  why_it_matters: Statutory reporting and correspondence need the address.
+  rule_authority: sap_hard_constraint
+  sap_impact: Tax certificates and letters are undeliverable.
+  fix_map:
+    __blank__: Maintain city of the permanent residence in the infotype record (PA30, infotype 0006).
+  record_fix_template: 'Employee {PA0006.PERNR} ({PA0006.BEGDA}-{PA0006.ENDDA}): city of the permanent residence is missing.'
+- id: HCM024
+  field: PA0007.SCHKZ
+  check_class: null_check
+  grain: PA0007
+  severity: high
+  dimension: completeness
+  message: Work schedule rule is missing
+  why_it_matters: The work schedule rule defines planned hours per day.
+  rule_authority: sap_hard_constraint
+  sap_impact: Time evaluation and hourly payroll valuation fail.
+  fix_map:
+    __blank__: Maintain work schedule rule in the infotype record (PA30, infotype 0007).
+  record_fix_template: 'Employee {PA0007.PERNR} ({PA0007.BEGDA}-{PA0007.ENDDA}): work schedule rule is missing.'
+- id: HCM025
+  field: PA0007.EMPCT
+  check_class: cross_field_check
+  grain: PA0007
+  fail_when: (`PA0007.EMPCT` <= 0) | (`PA0007.EMPCT` > 100)
+  severity: high
+  dimension: validity
+  message: Employment percentage is not between 0 and 100
+  why_it_matters: Employment percentage scales salary and leave entitlement for part-timers; it cannot be zero or above 100.
+  rule_authority: sap_hard_constraint
+  sap_impact: Part-time pay and leave quotas are wrong.
+  fix_map:
+    __other__: Correct the employment percentage (PA30, infotype 0007).
+  record_fix_template: 'Employee {PA0007.PERNR} ({PA0007.BEGDA}-{PA0007.ENDDA}): employment percentage is not between 0 and
+    100.'
+- id: HCM026
+  field: PA0007.WOSTD
+  check_class: cross_field_check
+  grain: PA0007
+  fail_when: '`PA0007.WOSTD` > 168'
+  severity: high
+  dimension: validity
+  message: Weekly working hours exceed the hours in a week
+  why_it_matters: 'More than 168 weekly hours is impossible: a decimal or unit error.'
+  rule_authority: sap_hard_constraint
+  sap_impact: Hourly rates and overtime are mis-calculated.
+  fix_map:
+    __other__: Correct the weekly hours (PA30, infotype 0007).
+  record_fix_template: 'Employee {PA0007.PERNR} ({PA0007.BEGDA}-{PA0007.ENDDA}): weekly working hours exceed the hours in
+    a week.'
+- id: HCM027
+  field: PA0009.IBAN
+  check_class: format_check
+  grain: PA0009
+  format: iban
+  severity: high
+  dimension: validity
+  message: Employee IBAN fails the ISO 13616 check digits
+  why_it_matters: A mistyped IBAN fails its check digits; the bank rejects the transfer.
+  rule_authority: sap_hard_constraint
+  sap_impact: Net pay is returned by the bank; the employee is paid late.
+  fix_map:
+    __other__: Correct the IBAN against the employee's bank confirmation (PA30, infotype 0009).
+  record_fix_template: 'Employee {PA0009.PERNR} ({PA0009.BEGDA}-{PA0009.ENDDA}): employee IBAN fails the ISO 13616 check digits.'
+- id: HCM028
+  field: PA0105.USRID
+  check_class: uniqueness_check
+  grain: PA0105
+  fields:
+  - PA0105.USRID
+  case_insensitive: true
+  applies_when:
+    PA0105.SUBTY:
+    - '0001'
+    PA0105.ENDDA:
+    - '99991231'
+  severity: high
+  dimension: uniqueness
+  message: One SAP user is assigned to two employees
+  why_it_matters: Communication subtype 0001 links the SAP user to the employee. ESS/MSS, workflow and time recording resolve
+    the user to exactly one personnel number.
+  rule_authority: sap_hard_constraint
+  sap_impact: Self-service and approvals act on the wrong employee or fail.
+  fix_map:
+    __other__: Remove the user from the employee it does not belong to (PA30, infotype 0105, subtype 0001).
+  record_fix_template: 'Employee {PA0105.PERNR} ({PA0105.BEGDA}-{PA0105.ENDDA}): one SAP user is assigned to two employees.'
+- id: HCM029
+  field: PA0105.USRID_LONG
+  check_class: regex_check
+  grain: PA0105
+  pattern: ^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$
+  applies_when:
+    PA0105.SUBTY:
+    - '0010'
+  severity: medium
+  dimension: validity
+  message: Employee e-mail address is not a valid address
+  why_it_matters: Payslips, workflow notifications and ESS mails go to the e-mail communication record.
+  rule_authority: best_practice
+  sap_impact: Mails bounce; payslips are not delivered.
+  fix_map:
+    __other__: Correct the e-mail address (PA30, infotype 0105, subtype 0010).
+  record_fix_template: 'Employee {PA0105.PERNR} ({PA0105.BEGDA}-{PA0105.ENDDA}): employee e-mail address is not a valid address.'
+- id: HCM030
+  field: PA0185.ICNUM
+  check_class: uniqueness_check
+  grain: PA0185
+  fields:
+  - PA0185.ICTYP
+  - PA0185.ICNUM
+  normalize: alnum
+  applies_when:
+    PA0185.ENDDA:
+    - '99991231'
+  severity: high
+  dimension: uniqueness
+  message: The same identity document number is held by two personnel numbers
+  why_it_matters: An identity document of one type belongs to one person.
+  rule_authority: best_practice
+  sap_impact: Statutory filings combine or reject the two employees.
+  fix_map:
+    __other__: Verify the document against the employee's records and correct the wrong one.
+  record_fix_template: 'Employee {PA0185.PERNR} ({PA0185.BEGDA}-{PA0185.ENDDA}): the same identity document number is held
+    by two personnel numbers.'

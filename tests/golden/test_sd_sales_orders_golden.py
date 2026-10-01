@@ -136,6 +136,59 @@ ITEMS = [
 ]
 
 
+# Sales conditions (KAPPL V): KONH header, KONP item 01 carries the rate, the A table holds the key.
+#   PR00 price (A304 material / A305 customer-material, with release status KFRST), K004 material
+#   discount (A004), K005 customer-material discount (A005)
+#   clean:  M1 list price 2025 ending 20251231 and 2026 from 20260101 (adjoining, no overlap); an
+#           overlapping M1 record flagged for deletion (KONP.LOEVM_KO: out of the population); customer
+#           prices; a price per 10 pieces; K004 / K005 discounts per piece
+#   seeded: one defect each (see the expected findings in the test)
+CONDITIONS = [
+    # A table, KNUMH, KSCHL, customer, material, valid from, valid to, rate, KRECH, currency, unit, KPEIN, deleted
+    ("A304", "0000520001", "PR00", "", M1, "20250101", "20251231", "1890.00", "C", "ZAR", "ST", "1", ""),
+    ("A304", "0000520002", "PR00", "", M1, "20260101", "99991231", "1950.00", "C", "ZAR", "ST", "1", ""),
+    ("A304", "0000520003", "PR00", "", M1, "20250701", "20260630", "1920.00", "C", "ZAR", "ST", "1", "X"),
+    ("A304", "0000520004", "PR00", "", M4, "20240101", "99991231", "650.00", "C", "ZAR", "ST", "10", ""),
+    ("A305", "0000520005", "PR00", K1, M1, "20260101", "99991231", "1850.00", "C", "ZAR", "ST", "1", ""),
+    ("A305", "0000520006", "PR00", K2, M2, "20260101", "20261231", "1820.00", "C", "EUR", "ST", "1", ""),
+    ("A004", "0000520007", "K004", "", M2, "20260101", "99991231", "25.00-", "C", "ZAR", "ST", "1", ""),
+    ("A005", "0000520008", "K005", K1, M2, "20260101", "20261231", "40.00-", "C", "ZAR", "ST", "1", ""),
+    # seeded defects
+    ("A004", "0000520010", "K004", "", M4, "20260101", "99991231", "5.00-", "C", "ZAR", "ST", "1", ""),
+    ("A004", "0000520011", "K004", "", M4, "20260601", "20261231", "6.00-", "C", "ZAR", "ST", "1", ""),  # 046
+    ("A005", "0000520012", "K005", K3, M1, "20260101", "20261231", "50.00-", "C", "ZAR", "ST", "1", ""),
+    ("A005", "0000520013", "K005", K3, M1, "20261001", "99991231", "60.00-", "C", "ZAR", "ST", "1", ""),  # 047
+    ("A304", "0000520014", "PR00", "", M2, "20260101", "99991231", "1790.00", "C", "ZAR", "ST", "1", ""),
+    ("A304", "0000520015", "PR00", "", M2, "20260401", "99991231", "1840.00", "C", "ZAR", "ST", "1", ""),  # 048
+    ("A305", "0000520016", "PR00", K3, M2, "20250101", "20261231", "1760.00", "C", "ZAR", "ST", "1", ""),
+    ("A305", "0000520017", "PR00", K3, M2, "20260301", "20270228", "1775.00", "C", "ZAR", "ST", "1", ""),  # 049
+    ("A305", "0000520018", "PR00", K1, M4, "20260901", "20260831", "640.00", "C", "ZAR", "ST", "1", ""),  # 050
+    ("A305", "0000520019", "PR00", K2, M4, "20260101", "99991231", "34.50", "C", "EUR", "ST", "0", ""),  # 051
+    ("A305", "0000520020", "PR00", K3, M4, "20260101", "99991231", "655.00", "C", "ZAR", "", "1", ""),  # 052
+    ("A305", "0000520021", "PR00", KPST, M1, "20260101", "99991231", "1900.00", "C", "", "ST", "1", ""),  # 053
+    ("A305", "0000520022", "ZPR9", K1, M2, "20260101", "99991231", "1810.00", "C", "ZAR", "ST", "1", ""),  # 054
+]
+
+
+def _conditions() -> dict[str, pd.DataFrame]:
+    konh, konp, atab = [], [], {"A004": [], "A005": [], "A304": [], "A305": []}
+    for a, knumh, kschl, kunnr, matnr, datab, datbi, kbetr, krech, konwa, kmein, kpein, loevm in CONDITIONS:
+        konh.append({"KONH.KNUMH": knumh, "KONH.ERNAM": "PRC_NZULU", "KONH.ERDAT": "20241120", "KONH.KVEWE": "A",
+                     "KONH.KOTABNR": a[1:], "KONH.KAPPL": "V", "KONH.KSCHL": kschl, "KONH.DATAB": datab,
+                     "KONH.DATBI": datbi})
+        konp.append({"KONP.KNUMH": knumh, "KONP.KOPOS": "01", "KONP.KAPPL": "V", "KONP.KSCHL": kschl,
+                     "KONP.KRECH": krech, "KONP.KBETR": kbetr, "KONP.KONWA": konwa, "KONP.KPEIN": kpein,
+                     "KONP.KMEIN": kmein, "KONP.LOEVM_KO": loevm})
+        row = {"KAPPL": "V", "KSCHL": kschl, "VKORG": "1000", "VTWEG": "10", "KUNNR": kunnr, "MATNR": matnr,
+               "KFRST": "", "DATBI": datbi, "DATAB": datab, "KNUMH": knumh}
+        if a in ("A004", "A304"):
+            del row["KUNNR"]
+        if a in ("A004", "A005"):
+            del row["KFRST"]
+        atab[a].append({f"{a}.{k}": v for k, v in row.items()})
+    return {"KONH": pd.DataFrame(konh), "KONP": pd.DataFrame(konp), **{a: pd.DataFrame(r) for a, r in atab.items()}}
+
+
 def _frames() -> TableFrames:
     hdr = pd.DataFrame(HEADERS, columns=H)
     itm = pd.DataFrame(ITEMS, columns=I)
@@ -185,14 +238,16 @@ def _frames() -> TableFrames:
                        "OBSOLETE - globe valve DN50 PN40"],
     })
     return TableFrames({"VBAK": vbak, "VBUK": vbuk, "VBAP": vbap, "VBUP": vbup, "KNA1": kna1, "MARA": mara,
-                        "MAKT": makt}, D, module="sd_sales_orders")
+                        "MAKT": makt, **_conditions()}, D, module="sd_sales_orders")
 
 
 def _live_config(rules) -> dict[str, set[str]]:
     """The system's own check tables, as discovery would read them (internal codes)."""
     values = {"AUART": {"TA", "SO", "FD", "KB", "KE", "RE", "G2", "L2", "CS", "AF", "AG"},
               "PSTYV": {"TAN", "TANN", "TATX", "TAS", "TAB", "TAD", "TAQ", "REN", "KBN", "KEN", "G2N", "L2N"},
-              "LIFSK": {"01", "02", "03", "08", "10"}, "FAKSK": {"01", "02", "08"}}
+              "LIFSK": {"01", "02", "03", "08", "10"}, "FAKSK": {"01", "02", "08"},
+              "KSCHL": {"PR00", "PR01", "K004", "K005", "K007", "K020", "KF00", "HA00", "HB00", "RB00", "SKTO",
+                        "MWST", "VPRS"}}                             # T685 (condition types)
     out = {}
     for r in rules:
         if r.get("check_class") in ("referential_check", "domain_value_check") and r["field"].split(".")[1] in values:
@@ -224,9 +279,25 @@ def test_sd_sales_orders_golden():
         "SDSO041": {f"VBELN={D_UNIT}|POSNR=000010"},             # sales-to-base unit numerator 0
         "SDSO045": {f"VBELN={D_PSTBLK}"},                        # open order, customer blocked for posting
         "ST-MARA": {f"MATNR={M5}"},                              # "OBSOLETE" in the description, no material status
+        # overlapping validity for one condition key: the later of the two records is found
+        "SDSO046": {f"KAPPL=V|KSCHL=K004|VKORG=1000|VTWEG=10|MATNR={M4}|DATBI=20261231"},
+        "SDSO047": {f"KAPPL=V|KSCHL=K005|VKORG=1000|VTWEG=10|KUNNR={K3}|MATNR={M1}|DATBI=99991231"},
+        "SDSO048": {f"KAPPL=V|KSCHL=PR00|VKORG=1000|VTWEG=10|MATNR={M2}|KFRST=|DATBI=99991231"},
+        "SDSO049": {f"KAPPL=V|KSCHL=PR00|VKORG=1000|VTWEG=10|KUNNR={K3}|MATNR={M2}|KFRST=|DATBI=20270228"},
+        "SDSO050": {"KNUMH=0000520018"},                         # valid 20260901 to 20260831
+        "SDSO051": {"KNUMH=0000520019"},                         # price per 0 pieces
+        "SDSO052": {"KNUMH=0000520020"},                         # quantity-based price without a unit
+        "SDSO053": {"KNUMH=0000520021"},                         # price without a currency
+        "SDSO054": {"KNUMH=0000520022"},                         # ZPR9 is not in T685
     }, found
     # rejected items (reason for rejection set) are out of every item rule's population, counted
     deleted_mat = next(r for r in results if r.check_id == "XO2C003")
     assert deleted_mat.details["population_excluded"] == {"rejected": 3}   # O4/20 (deleted M3), O5/10, D_REJ/10
     route = next(r for r in results if r.check_id == "SDSO026")
     assert route.details["population_excluded"] == {"rejected": 3}         # O4/20, O5/10, D_REJ/10
+    # M1's 2025 and 2026 list prices adjoin (20251231 / 20260101): judged, no overlap; the record flagged for
+    # deletion overlapping both is out of the population, counted
+    price = next(r for r in results if r.check_id == "SDSO048")
+    assert (price.total_count, price.details["population_excluded"]) == (5, {"deleted": 1})
+    header = next(r for r in results if r.check_id == "SDSO054")
+    assert (header.total_count, header.details["population_excluded"]) == (20, {"deleted": 1})

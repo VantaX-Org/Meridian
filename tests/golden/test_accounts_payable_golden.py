@@ -71,8 +71,64 @@ def _frames() -> TableFrames:
         "LFM1.EKGRP": ["001"] * 7, "LFM1.KALSK": ["01"] * 7, "LFM1.SPERM": [""] * 7, "LFM1.LOEVM": [""] * 7,
         "LFM1.WEBRE": ["X"] * 7, "LFM1.XERSY": [""] * 7,
     })
+    # open items (BSIK) in company code 1000 (local currency ZAR)
+    #   clean:  V1 invoices (2%/14, net 30 and 3%/10, 2%/20, net 30), a payment-blocked invoice (block A),
+    #           a credit memo carrying the reference and amount of the invoice it credits (SHKZG S: not a
+    #           duplicate invoice), a down payment (special G/L A on its own reconciliation account 160100) and a
+    #           down-payment request (noted item, F / BSTAT S); V2 a EUR invoice translated into ZAR
+    #   seeded: one defect each (see the expected findings in the test)
+    def item(lifnr, belnr, xblnr, shkzg, dmbtr, wrbtr, waers="ZAR", budat="20260904", zfbdt="20260904",
+             days=("14", "30", "0"), zterm="ZB14", umskz="", bstat="", hkont="0000160000", zlspr="",
+             augdt="00000000", augbl="", blart="RE", buzei="001") -> dict:
+        return {"BUKRS": "1000", "LIFNR": lifnr, "UMSKS": "", "UMSKZ": umskz, "AUGDT": augdt, "AUGBL": augbl,
+                "ZUONR": xblnr, "GJAHR": "2026", "BELNR": belnr, "BUZEI": buzei, "BUDAT": budat, "BLDAT": budat,
+                "WAERS": waers, "XBLNR": xblnr, "BLART": blart, "SHKZG": shkzg, "DMBTR": dmbtr, "WRBTR": wrbtr,
+                "HKONT": hkont, "ZFBDT": zfbdt, "ZTERM": zterm, "ZBD1T": days[0], "ZBD2T": days[1],
+                "ZBD3T": days[2], "ZLSPR": zlspr, "BSTAT": bstat}
+    bsik = pd.DataFrame([{f"BSIK.{k}": x for k, x in r.items()} for r in [
+        item("V1", "5100000101", "SI-77810", "H", "11500.00", "11500.00"),
+        item("V1", "5100000102", "SI-77904", "H", "4600.00", "4600.00", days=("10", "20", "30"), zterm="ZB10"),
+        item("V1", "5100000103", "SI-77955", "H", "2875.00", "2875.00", zlspr="A"),   # blocked: price query
+        # credit memo for the whole of SI-77810, same reference and amount: both open until cleared together
+        item("V1", "5100000104", "SI-77810", "S", "11500.00", "11500.00", blart="KG"),
+        item("V1", "1700000011", "DP-2026-04", "S", "25000.00", "25000.00", umskz="A", hkont="0000160100",
+             blart="KA", days=("0", "0", "0"), zterm=""),
+        item("V1", "1700000012", "DP-2026-05", "S", "40000.00", "40000.00", umskz="F", bstat="S",
+             hkont="0000160100", blart="KA", days=("0", "0", "0"), zterm=""),
+        item("V2", "5100000105", "RE-2026-0815", "H", "47600.00", "2380.00", waers="EUR"),
+        # seeded defects
+        item("V1", "5100000110", "SI-78001", "H", "3450.00", "3450.00", augdt="20260915",
+             augbl="1500000220"),                                                      # AP072
+        item("V2", "5100000111", "RE-2026-0902", "H", "0.00", "1190.00", waers="EUR"),  # AP073
+        item("V1", "5100000112", "SI-78007", "H", "6900.00", "6900.00", hkont="0000160090"),  # AP074
+        item("V6", "5100000113", "TX-55120", "H", "1840.00", "1840.00"),               # AP075: vendor deleted
+        item("V1", "5100000114", "SI-78011", "H", "2300.00", "2300.00", zfbdt="00000000"),  # AP076
+        item("V1", "5100000115", "SI-78013", "H", "920.00-", "920.00-"),                # AP077
+        item("V1", "5100000116", "SI-78019", "H", "5750.00", "5750.00", days=("30", "14", "0")),  # AP078
+        item("V1", "5100000117", "SI-78023", "H", "1380.00", "1380.00", zlspr="Z"),     # AP079
+        item("V1", "1700000013", "BG-2026-01", "S", "15000.00", "15000.00", umskz="Q", hkont="0000160100",
+             blart="KA", days=("0", "0", "0"), zterm=""),                              # AP080
+        item("V2", "5100000118", "INV-1001", "H", "47600.00", "2380.00", waers="EUR"),  # AP083
+        item("V2", "5100000119", "INV1001", "H", "47600.00", "2380.00", waers="EUR"),   # AP083
+    ]])
+    # cleared items (BSAK): invoices cleared by payment run documents, the payments themselves
+    def cleared(lifnr, belnr, budat, augdt, augbl, shkzg="H", blart="RE") -> dict:
+        return {"BSAK.BUKRS": "1000", "BSAK.LIFNR": lifnr, "BSAK.UMSKS": "", "BSAK.UMSKZ": "",
+                "BSAK.AUGDT": augdt, "BSAK.AUGBL": augbl, "BSAK.ZUONR": "", "BSAK.GJAHR": "2026",
+                "BSAK.BELNR": belnr, "BSAK.BUZEI": "001", "BSAK.BUDAT": budat, "BSAK.BLDAT": budat,
+                "BSAK.WAERS": "ZAR", "BSAK.SHKZG": shkzg, "BSAK.BLART": blart, "BSAK.DMBTR": "8050.00",
+                "BSAK.WRBTR": "8050.00"}
+    bsak = pd.DataFrame([
+        cleared("V1", "5100000090", "20260803", "20260902", "1500000210"),
+        cleared("V1", "1500000210", "20260902", "20260902", "1500000210", shkzg="S", blart="KZ"),  # payment
+        cleared("V2", "5100000091", "20260810", "20260810", "5100000092"),  # cleared by a credit memo same day
+        cleared("V2", "5100000092", "20260810", "20260810", "5100000092", shkzg="S", blart="KG"),
+        # seeded defects
+        cleared("V1", "5100000093", "20260820", "20260818", "1500000211"),        # AP081: cleared before posting
+        cleared("V1", "5100000094", "20260821", "00000000", ""),                  # AP082: no clearing reference
+    ])
     return TableFrames({"LFA1": lfa1, "LFB1": lfb1, "LFBK": lfbk, "LFB5": lfb5, "ADR6": adr6, "SKB1": skb1,
-                        "LFM1": lfm1}, D, module="accounts_payable")
+                        "LFM1": lfm1, "BSIK": bsik, "BSAK": bsak}, D, module="accounts_payable")
 
 
 def _live_config(rules) -> dict[str, set[str]]:
@@ -80,7 +136,8 @@ def _live_config(rules) -> dict[str, set[str]]:
     values = {"KTOKK": {"KRED", "CPD"}, "ZTERM": {"0001"}, "ZWELS": {"C", "T"}, "MAHNA": {"0001"},
               "WAERS": {"ZAR", "EUR", "USD"}, "INCO1": {"EXW", "FCA", "CIP", "DAP"}, "EKORG": {"1000"},
               "EKGRP": {"001", "002"}, "KALSK": {"01"}, "BUKRS": {"1000"}, "LAND1": {"ZA", "DE"},
-              "BANKS": {"ZA", "DE"}, "ZAHLS": {"A", "B"}, "REGIO": {"GP", "WC"}}
+              "BANKS": {"ZA", "DE"}, "ZAHLS": {"*", "A", "B", "R", "V"}, "ZLSPR": {"*", "A", "B", "R", "V"},  # T008
+              "UMSKZ": {"A", "F", "I", "P", "W"}, "REGIO": {"GP", "WC"}}                         # T074U (vendors)
     out = {}
     for r in rules:
         if r.get("check_class") in ("referential_check", "domain_value_check") and r["field"].split(".")[1] in values:
@@ -88,6 +145,16 @@ def _live_config(rules) -> dict[str, set[str]]:
             if key:
                 out[key] = values[r["field"].split(".")[1]]
     return out
+
+
+def _open(lifnr: str, belnr: str, zuonr: str, augdt: str = "00000000", augbl: str = "", umskz: str = "") -> str:
+    """BSIK key: company code, vendor, special G/L, clearing, assignment, document, line."""
+    return (f"BUKRS=1000|LIFNR={lifnr}|UMSKS=|UMSKZ={umskz}|AUGDT={augdt}|AUGBL={augbl}|ZUONR={zuonr}"
+            f"|GJAHR=2026|BELNR={belnr}|BUZEI=001")
+
+
+def _cleared(lifnr: str, belnr: str, augdt: str, augbl: str) -> str:
+    return f"BUKRS=1000|LIFNR={lifnr}|UMSKS=|UMSKZ=|AUGDT={augdt}|AUGBL={augbl}|ZUONR=|GJAHR=2026|BELNR={belnr}|BUZEI=001"
 
 
 def test_accounts_payable_golden():
@@ -109,6 +176,20 @@ def test_accounts_payable_golden():
         "AP059": {"LIFNR=V5|BUKRS=1000"},                      # clearing with customer, no customer linked
         "AP063": {"LIFNR=V3|BUKRS=1000"},                      # reconciliation account blocked for posting
         "AP066": {"LIFNR=V2|BANKS=DE|BANKL=60050101|BANKN=0532013000"},  # bank details end before they start
+        "AP072": {_open("V1", "5100000110", "SI-78001", augdt="20260915", augbl="1500000220")},  # open, yet cleared
+        "AP073": {_open("V2", "5100000111", "RE-2026-0902")},     # EUR 1 190.00 translated to ZAR 0.00
+        "AP074": {_open("V1", "5100000112", "SI-78007")},         # still on the old reconciliation account
+        "AP075": {_open("V6", "5100000113", "TX-55120")},         # open item on a vendor flagged for deletion
+        "AP076": {_open("V1", "5100000114", "SI-78011")},         # no baseline date for payment
+        "AP077": {_open("V1", "5100000115", "SI-78013")},         # amount stored negative (RFC "920.00-")
+        "AP078": {_open("V1", "5100000116", "SI-78019")},         # discount days 30, then 14
+        "AP079": {_open("V1", "5100000117", "SI-78023")},         # payment block Z is not in T008
+        "AP080": {_open("V1", "1700000013", "BG-2026-01", umskz="Q")},  # special G/L Q is not in T074U
+        "AP081": {_cleared("V1", "5100000093", "20260818", "1500000211")},  # cleared two days before posting
+        "AP082": {_cleared("V1", "5100000094", "00000000", "")},  # cleared item without a clearing reference
+        # 'INV-1001' and 'INV1001': one EUR 2 380.00 invoice entered twice; the credit memo on SI-77810
+        # (same reference and amount as its invoice, SHKZG S) is no duplicate invoice
+        "AP083": {_open("V2", "5100000118", "INV-1001"), _open("V2", "5100000119", "INV1001")},
     }, found
     # V6 is flagged for deletion and V7 is a one-time account: out of the population, counted
     name = next(r for r in results if r.check_id == "AP003")
@@ -117,6 +198,12 @@ def test_accounts_payable_golden():
     assert tax.details["population_excluded"] == {"deleted": 1, "one_time_account": 1}
     currency = next(r for r in results if r.check_id == "AP040")  # V6's purchasing data: central deletion flag
     assert currency.details["population_excluded"] == {"deleted": 1}
+    # only invoices (SHKZG H) without a special G/L indicator are compared for duplicates: 14 of 18 open items
+    duplicate = next(r for r in results if r.check_id == "AP083")
+    assert duplicate.total_count == 14
+    # down payments and down-payment requests sit on their own reconciliation account by design
+    recon = next(r for r in results if r.check_id == "AP074")
+    assert recon.total_count == 15
 
 
 def test_branch_accounts_share_their_head_offices_vat_number():

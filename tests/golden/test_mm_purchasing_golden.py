@@ -8,8 +8,11 @@ Clean documents (a senior MM consultant would sign them off):
   4500012001  NB  steel bar for stock + cost-centre consumables without material
   4500012002  NB  seal kits from a German supplier, EUR, released (release strategy)
   4500012003  UB  stock transport order 1000 → 1100: supplying plant, no vendor, no payment terms
-  4500012004  NB  bearings, open; item 00020 deleted in the live PO (out of the population)
-  4500011500  NB  delivered and invoiced long ago (completed: no longer "open")
+  4500012004  NB  bearings, open; item 00020 deleted in the live PO (out of the population) after its
+                  goods receipt was reversed (102): its GR/IR nets to zero
+  4500011500  NB  delivered and invoiced long ago (completed: no longer "open"); PO history nets a return
+                  delivery (122, SHKZG H) and its replacement: received 100 = invoiced 100; a freight
+                  subsequent debit (VGABE 3) is not an invoiced quantity
   5500000101  LP  scheduling agreement signed 20 months ago, valid until next year
   4600000201  MK  cross-plant quantity contract signed two years ago, valid three years
 One seeded defect each:
@@ -24,6 +27,24 @@ One seeded defect each:
   4500012017  open item, vendor blocked in purchasing org (LFM1)    PUR063  cross-object (EKPO → LFM1)
   info record 5300000003 / 1000  price unit 0                       PUR080  cross-field (EINE)
   source list 300010 / 1000 / 00002  valid to before valid from     PUR084  date range (EORD)
+  4500011510  final invoice for 80 of 100 received                     PUR117  aggregate (EKBE GR vs IR)
+  4500011511  delivery complete at 380 kg, 400 kg invoiced            PUR118  aggregate (EKBE GR vs IR)
+  4500012004/00030  deleted after its goods receipt, never invoiced   PUR119  aggregate (EKBE GR vs IR)
+Logistics invoices (RBKP), clean: an invoice and the credit memo returning it under the same reference
+(a credit memo is no duplicate invoice), an invoice reversed (MR8M) and entered again; seeded:
+  5105600310 / 5105600311  'RD-2026/0815' and 'RD 2026 0815', EUR 3 260.15  PUR120  uniqueness (alnum)
+  5105600312  invoice dated ten days after it was posted               PUR121  cross-field
+  5105600313  reversal document without its fiscal year               PUR122  cross-field
+Purchasing conditions (KONH / KONP / A017 / A018, KAPPL M), clean: PB00 prices with adjoining validity
+(20251231 → 20260101), an overlapping record flagged for deletion (KONP.LOEVM_KO, out of the population),
+a price per 100 pieces with a percentage discount and a fixed freight as supplements (KOPOS 02/03); seeded:
+  A017 bearings / 1000 / 1000  two open-ended records overlap          PUR123  interval
+  A018 bar / steel              2024–2026 record overlaps 2026–9999    PUR124  interval
+  0000412014  valid to before valid from                              PUR125  cross-field
+  0000412015  quantity-based price with pricing unit 0                PUR126  cross-field
+  0000412016  quantity-based price without a condition unit           PUR127  cross-field
+  0000412017  amount without a currency                               PUR128  cross-field
+  0000412018  condition type ZPB9 not in T685                         PUR129  referential (live config)
 Population:
   4500011990  PO flagged for deletion (LOEKZ L) — and incomplete: excluded, counted
 """
@@ -147,6 +168,8 @@ def _frames() -> TableFrames:
         _ekko("4600000202", "MK", bearings, "ZAR", "0001", _ago(30), bstyp="K", inco2="Germiston",
               kdatb=_ago(30), kdate=_ago(60)),
         _ekko("4500012017", "NB", umgeni, "ZAR", "0001", recent, inco2="Durban"),
+        _ekko("4500011510", "NB", bearings, "ZAR", "0001", _ago(200), inco2="Germiston"),
+        _ekko("4500011511", "NB", steel, "ZAR", "0001", _ago(90)),
         # flagged for deletion — and incomplete (no purchasing group): out of the population
         _ekko("4500011990", "NB", steel, "ZAR", "0001", older, ekgrp="", loekz="L"),
     ])
@@ -162,7 +185,9 @@ def _frames() -> TableFrames:
         _ekpo("4500012004", "00010", "Deep groove ball bearing 6205-2RSH", bearing, "1000", "BEARINGS",
               "100.000", "ST", "86.40", "8640.00"),
         _ekpo("4500012004", "00020", "", bearing, "1000", "", "50.000", "ST", "86.40", "4320.00",
-              loekz="L"),  # deleted item, never completed: out of the population
+              loekz="L"),  # goods receipt reversed, then deleted: out of the population
+        _ekpo("4500012004", "00030", "Deep groove ball bearing 6205-2RSH", bearing, "1000", "BEARINGS",
+              "30.000", "ST", "86.40", "2592.00", loekz="L"),  # deleted after its goods receipt, never invoiced
         _ekpo("4500011500", "00010", "Deep groove ball bearing 6205-2RSH", bearing, "1000", "BEARINGS",
               "100.000", "ST", "84.10", "8410.00", elikz="X", erekz="X"),
         _ekpo("5500000101", "00010", "Round bar 316L 50mm", bar, "1000", "STEEL", "12000.000", "KG", "61.00",
@@ -187,6 +212,10 @@ def _frames() -> TableFrames:
               "69.00", "1380.00"),  # open, vendor blocked in purchasing org 1000
         _ekpo("4500011990", "00010", "Round bar 316L 50mm", bar, "1000", "", "300.000", "KG", "62.50",
               "18750.00", loekz="L"),
+        _ekpo("4500011510", "00010", "Deep groove ball bearing 6205-2RSH", bearing, "1000", "BEARINGS",
+              "100.000", "ST", "85.20", "8520.00", elikz="X", erekz="X"),  # final invoice for 80 of 100
+        _ekpo("4500011511", "00010", "Round bar 316L 50mm", bar, "1000", "STEEL", "400.000", "KG", "62.50",
+              "25000.00", elikz="X"),  # delivery completed at 380 kg, invoiced 400 kg
     ])
     # purchasing info records: 5300000003 / 1000 has price unit 0 (defect)
     eina = _table("EINA", [
@@ -215,15 +244,109 @@ def _frames() -> TableFrames:
                                          (bearing, "00001", "20200115", "99991231", bearings, "X", "", "00000"),
                                          (bar, "00002", "20250101", "20241231", umgeni, "", "", "00000")]
     ])
+    # PO history: goods receipts (VGABE 1, BEWTP E), invoices (VGABE 2, BEWTP Q), subsequent debits (VGABE 3);
+    # SHKZG S adds, H subtracts (return delivery 122, GR reversal 102, credit memo)
+    def hist(ebeln, ebelp, vgabe, belnr, buzei, bwart, menge, shkzg, days, dmbtr, matnr):
+        return {"EBELN": ebeln, "EBELP": ebelp, "ZEKKN": "00", "VGABE": vgabe, "GJAHR": _ago(days)[:4],
+                "BELNR": belnr, "BUZEI": buzei, "BEWTP": {"1": "E", "2": "Q", "3": "N"}[vgabe], "BWART": bwart,
+                "BUDAT": _ago(days), "MENGE": menge, "DMBTR": dmbtr, "WRBTR": dmbtr, "WAERS": "ZAR",
+                "SHKZG": shkzg, "MATNR": matnr, "WERKS": "1000", "CPUDT": _ago(days), "ERNAM": "WH_SNDLOVU"}
+    ekbe = _table("EKBE", [
+        # completed: 100 received, 10 returned damaged, 10 replaced; 100 invoiced; freight subsequent debit
+        hist("4500011500", "00010", "1", "5000081001", "0001", "101", "100.000", "S", 480, "8410.00", bearing),
+        hist("4500011500", "00010", "1", "5000081044", "0001", "122", "10.000", "H", 476, "841.00", bearing),
+        hist("4500011500", "00010", "1", "5000081090", "0001", "101", "10.000", "S", 470, "841.00", bearing),
+        hist("4500011500", "00010", "2", "5105600101", "0001", "", "100.000", "S", 465, "8410.00", bearing),
+        hist("4500011500", "00010", "3", "5105600140", "0001", "", "100.000", "S", 450, "350.00", bearing),
+        # open, partly received and invoiced: neither delivery-complete nor finally invoiced
+        hist("4500012001", "00010", "1", "5000093002", "0001", "101", "300.000", "S", 8, "18750.00", bar),
+        hist("4500012001", "00010", "2", "5105600220", "0001", "", "200.000", "S", 3, "12500.00", bar),
+        # deleted item whose goods receipt was reversed (102) before deletion: nothing left on GR/IR
+        hist("4500012004", "00020", "1", "5000093011", "0001", "101", "50.000", "S", 10, "4320.00", bearing),
+        hist("4500012004", "00020", "1", "5000093015", "0001", "102", "50.000", "H", 9, "4320.00", bearing),
+        # seeded defects
+        hist("4500011510", "00010", "1", "5000088020", "0001", "101", "100.000", "S", 190, "8520.00", bearing),
+        hist("4500011510", "00010", "2", "5105600160", "0001", "", "80.000", "S", 180, "6816.00", bearing),
+        hist("4500011511", "00010", "1", "5000091230", "0001", "101", "380.000", "S", 80, "23750.00", bar),
+        hist("4500011511", "00010", "2", "5105600190", "0001", "", "400.000", "S", 75, "25000.00", bar),
+        hist("4500012004", "00030", "1", "5000093012", "0001", "101", "30.000", "S", 10, "2592.00", bearing),
+    ])
+    # logistics invoices (MIRO): RBSTAT 5 posted; XRECH X invoice, blank credit memo; STBLG/STJAH reversal
+    def inv(belnr, lifnr, xblnr, rmwwr, waers="ZAR", xrech="X", bldat=None, budat=None, stblg="", stjah="",
+            rbstat="5"):
+        return {"BELNR": belnr, "GJAHR": "2026", "BLART": "RE", "BLDAT": bldat or "20260910",
+                "BUDAT": budat or "20260914", "USNAM": "AP_LMOLOI", "TCODE": "MIRO", "VGART": "RD", "XBLNR": xblnr,
+                "BUKRS": "1000", "LIFNR": lifnr, "WAERS": waers, "RMWWR": rmwwr, "ZTERM": "0001", "XRECH": xrech,
+                "STBLG": stblg, "STJAH": stjah, "IVTYP": "", "RBSTAT": rbstat}
+    rbkp = _table("RBKP", [
+        inv("5105600301", steel, "SM-INV-44120", "35937.50"),
+        # credit memo returning the whole of SM-INV-44120 under the same reference: not a duplicate invoice
+        inv("5105600302", steel, "SM-INV-44120", "35937.50", xrech=""),
+        # entered with the wrong tax code, reversed (MR8M) and entered again: one live invoice
+        inv("5105600303", bearings, "HB/26/1187", "9936.00", stblg="5105600304", stjah="2026"),
+        inv("5105600304", bearings, "HB/26/1187", "9936.00", xrech="", stblg="5105600303", stjah="2026",
+            budat="20260915"),
+        inv("5105600305", bearings, "HB/26/1187", "9936.00", budat="20260915"),
+        inv("5105600306", metals, "RD-2026/0790", "3150.40", waers="EUR", bldat="20260914"),  # dated = posted
+        # seeded defects
+        inv("5105600310", metals, "RD-2026/0815", "3260.15", waers="EUR"),             # PUR120
+        inv("5105600311", metals, "RD 2026 0815", "3260.15", waers="EUR", budat="20260921"),  # PUR120
+        inv("5105600312", steel, "SM-INV-44388", "18400.00", bldat="20260924"),       # PUR121
+        inv("5105600313", bearings, "HB/26/1201", "4320.00", stblg="5105600314"),     # PUR122
+    ])
+    # purchasing conditions (KAPPL M): PB00 gross price in info records, per plant (A017) or not (A018);
+    # info-record supplements (discount RA01, freight FRB1) are further KONP items of the same record
+    def cond(knumh, kschl, datab, datbi, kbetr, krech="C", konwa="ZAR", kpein="1", kmein="ST", loevm=""):
+        konh = {"KNUMH": knumh, "ERNAM": "BUY_TMOKOENA", "ERDAT": "20231115", "KVEWE": "A",
+                "KOTABNR": "017", "KAPPL": "M", "KSCHL": kschl, "DATAB": datab, "DATBI": datbi}
+        konp = {"KNUMH": knumh, "KOPOS": "01", "KAPPL": "M", "KSCHL": kschl, "KRECH": krech, "KBETR": kbetr,
+                "KONWA": konwa, "KPEIN": kpein, "KMEIN": kmein, "LOEVM_KO": loevm}
+        return konh, konp
+    conds = [  # (A table, vendor, material, plant, record)
+        ("A017", steel, bar, "1000", cond("0000412001", "PB00", "20240101", "20251231", "59.80", kmein="KG")),
+        ("A017", steel, bar, "1000", cond("0000412002", "PB00", "20260101", "99991231", "62.50", kmein="KG")),
+        # overlapping both, but flagged for deletion: pricing ignores it
+        ("A017", steel, bar, "1000", cond("0000412003", "PB00", "20250601", "20261231", "61.00", kmein="KG",
+                                          loevm="X")),
+        ("A018", metals, seal, "", cond("0000412004", "PB00", "20200115", "99991231", "68.50", konwa="EUR")),
+        ("A018", bearings, bearing, "", cond("0000412005", "PB00", "20240101", "99991231", "8640.00",
+                                             kpein="100")),
+        # seeded defects
+        ("A017", bearings, bearing, "1000", cond("0000412010", "PB00", "20250101", "99991231", "86.40")),
+        ("A017", bearings, bearing, "1000", cond("0000412011", "PB00", "20260301", "99991231", "84.90")),  # PUR123
+        ("A018", steel, bar, "", cond("0000412012", "PB00", "20240101", "20261231", "61.40", kmein="KG")),
+        ("A018", steel, bar, "", cond("0000412013", "PB00", "20260601", "99991231", "62.10", kmein="KG")),  # PUR124
+        ("A018", umgeni, seal, "", cond("0000412014", "PB00", "20260901", "20260831", "69.00")),           # PUR125
+        ("A018", umgeni, bearing, "", cond("0000412015", "PB00", "20260101", "99991231", "87.00", kpein="0")),  # 126
+        ("A018", umgeni, pump, "", cond("0000412016", "PB00", "20260101", "99991231", "18450.00", kmein="")),  # 127
+        ("A018", umgeni, plate, "", cond("0000412017", "PB00", "20260101", "99991231", "71.20", konwa="",
+                                         kmein="KG")),                                                      # 128
+        ("A018", castings, bearing, "", cond("0000412018", "ZPB9", "20260101", "99991231", "85.00")),      # 129
+    ]
+    konh = _table("KONH", [{**c[0], "KOTABNR": a[1:]} for a, _, _, _, c in conds])
+    konp = _table("KONP", [c[1] for *_, c in conds] + [
+        # supplements of 0000412005: 2% discount and a fixed freight amount — KOPOS 01 carries the price
+        {"KNUMH": "0000412005", "KOPOS": "02", "KAPPL": "M", "KSCHL": "RA01", "KRECH": "A", "KBETR": "20.000-",
+         "KONWA": "%", "KPEIN": "0", "KMEIN": "", "LOEVM_KO": ""},
+        {"KNUMH": "0000412005", "KOPOS": "03", "KAPPL": "M", "KSCHL": "FRB1", "KRECH": "B", "KBETR": "150.00",
+         "KONWA": "ZAR", "KPEIN": "0", "KMEIN": "", "LOEVM_KO": ""},
+    ])
+    key = lambda a, v, m, w, c: {"KAPPL": "M", "KSCHL": c[0]["KSCHL"], "LIFNR": v, "MATNR": m, "EKORG": "1000",
+                                 **({"WERKS": w} if a == "A017" else {}), "ESOKZ": "0", "DATBI": c[0]["DATBI"],
+                                 "DATAB": c[0]["DATAB"], "KNUMH": c[0]["KNUMH"]}
+    a017 = _table("A017", [key(*x) for x in conds if x[0] == "A017"])
+    a018 = _table("A018", [key(*x) for x in conds if x[0] == "A018"])
     return TableFrames({"EKKO": ekko, "EKPO": ekpo, "LFA1": lfa1, "LFM1": lfm1, "MARA": mara, "MAKT": makt,
-                        "MARC": marc, "EINA": eina, "EINE": eine, "EORD": eord}, D, module="mm_purchasing")
+                        "MARC": marc, "EINA": eina, "EINE": eine, "EORD": eord, "EKBE": ekbe, "RBKP": rbkp,
+                        "KONH": konh, "KONP": konp, "A017": a017, "A018": a018}, D, module="mm_purchasing")
 
 
 def _live_config(rules) -> dict[str, set[str]]:
     """The system's own check tables, as discovery would read them."""
     values = {"BSART": {"NB", "FO", "UB", "LP", "LPA", "MK", "WK", "AN"},
               "PSTYP": {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"},
-              "KNTTP": {"A", "F", "K", "P", "U", "X"}}
+              "KNTTP": {"A", "F", "K", "P", "U", "X"},
+              "KSCHL": {"PB00", "PBXX", "RA00", "RA01", "RB00", "RC00", "FRA1", "FRB1", "FRC1", "SKTO", "NAVS"}}
     out = {}
     for r in rules:
         if r.get("check_class") in ("referential_check", "domain_value_check") and r["field"].split(".")[1] in values:
@@ -231,6 +354,11 @@ def _live_config(rules) -> dict[str, set[str]]:
             if key:
                 out[key] = values[r["field"].split(".")[1]]
     return out
+
+
+def _hist(ebeln: str, ebelp: str, belnr: str, days: int) -> str:
+    """EKBE key of a goods-receipt line posted ``days`` ago (material document year)."""
+    return f"EBELN={ebeln}|EBELP={ebelp}|ZEKKN=00|VGABE=1|GJAHR={_ago(days)[:4]}|BELNR={belnr}|BUZEI=0001"
 
 
 def test_mm_purchasing_golden():
@@ -252,10 +380,37 @@ def test_mm_purchasing_golden():
         "PUR063": {"EBELN=4500012017|EBELP=00010"},              # open item, vendor blocked in purchasing org
         "PUR080": {"INFNR=5300000003|EKORG=1000|ESOKZ=0|WERKS="},  # info record price unit 0
         "PUR084": {"MATNR=000000000000300010|WERKS=1000|ZEORD=00002"},  # source valid to before valid from
+        # GR/IR per PO item: the group's first history line carries the result
+        "PUR117": {_hist("4500011510", "00010", "5000088020", 190)},  # final invoice, 100 received / 80 invoiced
+        "PUR118": {_hist("4500011511", "00010", "5000091230", 80)},  # delivery complete, 380 received / 400 invoiced
+        "PUR119": {_hist("4500012004", "00030", "5000093012", 10)},  # deleted with 30 received, nothing invoiced
+        "PUR120": {"BELNR=5105600310|GJAHR=2026", "BELNR=5105600311|GJAHR=2026"},  # one invoice posted twice
+        "PUR121": {"BELNR=5105600312|GJAHR=2026"},               # dated after it was posted
+        "PUR122": {"BELNR=5105600313|GJAHR=2026"},               # reversal without its fiscal year
+        # the later of two overlapping records is the one found
+        "PUR123": {"KAPPL=M|KSCHL=PB00|LIFNR=0000100030|MATNR=000000000000500075|EKORG=1000|WERKS=1000|ESOKZ=0"
+                   "|DATBI=99991231"},
+        "PUR124": {"KAPPL=M|KSCHL=PB00|LIFNR=0000100010|MATNR=000000000000300010|EKORG=1000|ESOKZ=0"
+                   "|DATBI=99991231"},
+        "PUR125": {"KNUMH=0000412014"},                          # valid 20260901 to 20260831
+        "PUR126": {"KNUMH=0000412015"},                          # quantity-based rate, pricing unit 0
+        "PUR127": {"KNUMH=0000412016"},                          # quantity-based rate, no unit
+        "PUR128": {"KNUMH=0000412017"},                          # rate without a currency
+        "PUR129": {"KNUMH=0000412018"},                          # ZPB9 is not in T685
     }, found
-    # 4500011990 is flagged for deletion: out of header and item rules, counted; item 4500012004/00020 is
-    # deleted in a live PO
+    # 4500011990 is flagged for deletion: out of header and item rules, counted; items 4500012004/00020 and
+    # /00030 are deleted in a live PO
     group = next(r for r in results if r.check_id == "PUR007")
     assert group.details["population_excluded"] == {"deleted": 1}
     matkl = next(r for r in results if r.check_id == "PUR020")
-    assert matkl.details["population_excluded"] == {"deleted": 2}
+    assert matkl.details["population_excluded"] == {"deleted": 3}
+    # GR/IR scope: finally invoiced items (4500011500, 4500011510); delivery-complete items (those two and
+    # 4500011511); deleted items with history (4500012004/00020 nets to zero, /00030 does not)
+    assert {c: next(r for r in results if r.check_id == c).total_count for c in ("PUR117", "PUR118", "PUR119")} \
+        == {"PUR117": 2, "PUR118": 3, "PUR119": 2}
+    # duplicate scope: posted invoices not reversed — credit memos and the reversed original are not compared
+    assert next(r for r in results if r.check_id == "PUR120").total_count == 6
+    # the record flagged for deletion overlaps both clean A017 records but is not judged, and is counted
+    overlap = next(r for r in results if r.check_id == "PUR123")
+    assert overlap.details["population_excluded"] == {"deleted": 1}
+    assert next(r for r in results if r.check_id == "PUR129").details["population_excluded"] == {"deleted": 1}

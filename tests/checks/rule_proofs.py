@@ -233,6 +233,8 @@ def prove(rule: dict, dictionary) -> tuple[str, str]:
         rows = [{**g, s: "20200101", e: "20201231"}, {**g, s: "20210101", e: "99991231"},
                 {**g, s: "20200601", e: "20200630"}]
         return _verify(rule, dictionary, rows, (3, 1), live)
+    if rule.get("check_class") == "aggregate_check":
+        return _prove_aggregate(rule, dictionary, cand, live)
     combos = itertools.product(*(cand[c] for c in cols))
     values = [dict(zip(cols, combo)) for combo in itertools.islice(combos, MAX_ROWS)]
     df = _rows(rule, dictionary, values)
@@ -268,3 +270,30 @@ def _verify(rule, dictionary, rows, expected, live=None) -> tuple[str, str]:
         return "error", r.error
     got = (r.total_count, r.affected_count)
     return ("proven", f"good={rows[0]} bad={rows[-1]}") if got == expected else ("unproven", f"{got} != {expected}")
+
+
+def _prove_aggregate(rule, dictionary, cand, live) -> tuple[str, str]:
+    """Two groups in the rule's scope: one whose totals agree, one whose totals differ
+    the way the rule looks for (expected: 2 groups, 1 failing)."""
+    aw = rule.get("applies_when") or {}
+    row = {c: cand[c][0] for c in cand if c in aw}
+    if rule.get("sign_field"):
+        row[rule["sign_field"]] = rule.get("debit_value", "S")
+    left, right, amt = rule["left_values"][0], rule["right_values"][0], rule["amount"]
+    off = "16" if rule.get("compare") == "right_gt_left" else "4"
+    rows = [{**row, rule["split_field"]: left, amt: "10"}, {**row, rule["split_field"]: right, amt: "10"},
+            {**row, rule["split_field"]: left, amt: "10"}, {**row, rule["split_field"]: right, amt: off}]
+    df = _rows(rule, dictionary, rows)
+    edges, _ = _graph()
+    for c in rule["group_by"]:  # each pair of rows is one group, on both sides of every join
+        same = {c} | {f"{e.parent}.{p}" for e in edges for ch, p in e.on if f"{e.child}.{ch}" == c} | \
+               {f"{e.child}.{ch}" for e in edges for ch, p in e.on if f"{e.parent}.{p}" == c}
+        for col in same & set(df.columns):
+            df[col] = ["G1", "G1", "G2", "G2"]
+    _, r = run_rule(rule, TableFrames.from_flat(df, dictionary, module=rule.get("module")), live or {})
+    if r is None:
+        return "not_applicable", "no result on the proof records"
+    if r.error:
+        return "error", r.error
+    got = (r.total_count, r.affected_count)
+    return ("proven", f"groups={rows}") if got == (2, 1) else ("unproven", f"{got} != (2, 1)")

@@ -134,3 +134,26 @@ def test_extraction_reconciles_row_counts_with_sap(monkeypatch):
     cov = {c["table"]: c for c in coverage}
     assert cov["LFA1"]["source_rows"] == 3 and cov["LFA1"]["complete"] is False
     assert cov["LFB1"]["source_rows"] == 1 and cov["LFB1"]["complete"] is True
+
+
+def test_payroll_totals_through_the_customer_function():
+    from api.services.connectivity_manager import ConnectivityManager
+
+    rgdir = pd.DataFrame({"PERNR": ["00001001", "00001001", "00001002"], "SEQNR": ["00001", "00002", "00001"]})
+    conn = FakeRFCConnector({})
+    df, entry = ConnectivityManager._payroll_totals(conn, rgdir)
+    assert df is None and entry["status"] == "not_installed" and "docs/payroll-rfc.md" in entry["detail"]
+
+    def fm(fm, **p):  # the installed function: one employee the RFC user may not read
+        if fm != "Z_MERIDIAN_PAYROLL_TOTALS":
+            raise AssertionError(fm)
+        rows = [{"PERNR": r["PERNR"], "SEQNR": r["SEQNR"], "FPPER": "202601", "INPER": "202601", "PAYDT": "20260125",
+                 "LGART": "/560", "BETRG": 15000.5, "ANZHL": 0, "WAERS": "ZAR"}
+                for r in p["IT_RESULTS"] if r["PERNR"] == "00001001"]
+        return {"ET_TOTALS": rows, "EV_SKIPPED": 1}
+
+    conn._conn.call = fm
+    df, entry = ConnectivityManager._payroll_totals(conn, rgdir)
+    assert len(df) == 2 and df["BETRG"].tolist() == ["15000.5", "15000.5"]
+    assert entry == {"table": "ZMERIDIAN_PAYRT", "purpose": "data", "status": "live", "rows": 2, "results": 3,
+                     "unauthorised": 1, "complete": False}

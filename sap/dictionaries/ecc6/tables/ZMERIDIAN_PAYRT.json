@@ -1,0 +1,130 @@
+{
+ "table": "ZMERIDIAN_PAYRT",
+ "description": "Meridian: payroll wage-type totals per result (Z_MERIDIAN_PAYROLL_TOTALS)",
+ "category": "",
+ "delivery_class": "",
+ "source": "Meridian (sap/abap/Z_MERIDIAN_PAYROLL_TOTALS.abap)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": null
+  },
+  {
+   "pos": 2,
+   "name": "PERNR",
+   "key": true,
+   "data_element": "PERNR_D",
+   "domain": "PERSNO",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Personnel Number",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "SEQNR",
+   "key": true,
+   "data_element": "CDSEQ",
+   "domain": "CDSEQ",
+   "type": "NUMC",
+   "length": 5,
+   "decimals": 0,
+   "description": "Sequence Number of Payroll Result",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "LGART",
+   "key": true,
+   "data_element": "LGART",
+   "domain": "LGART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Wage Type",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "FPPER",
+   "key": false,
+   "data_element": "FAPER",
+   "domain": "FAPER",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "For-Period for Payroll",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "INPER",
+   "key": false,
+   "data_element": "IPERI",
+   "domain": "FAPER",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "In-Period for Payroll",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "PAYDT",
+   "key": false,
+   "data_element": "PAY_DATE",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Payment Date",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "BETRG",
+   "key": false,
+   "data_element": "MAXBT",
+   "domain": "WERTV7",
+   "type": "CURR",
+   "length": 13,
+   "decimals": 2,
+   "description": "Amount",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "ANZHL",
+   "key": false,
+   "data_element": "PRANZ",
+   "domain": "PRANZ",
+   "type": "DEC",
+   "length": 15,
+   "decimals": 2,
+   "description": "Number",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "WAERS",
+   "key": false,
+   "data_element": "WAERS",
+   "domain": "WAERS",
+   "type": "CUKY",
+   "length": 5,
+   "decimals": 0,
+   "description": "Currency Key",
+   "check_table": "TCURC"
+  }
+ ],
+ "foreign_keys": []
+}

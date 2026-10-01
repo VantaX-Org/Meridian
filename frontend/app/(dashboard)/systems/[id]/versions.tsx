@@ -46,6 +46,14 @@ const FLAG_LABEL: Record<TrendFlag, string> = {
   volume_shift: "record count moved >20 %",
 };
 
+const COVERAGE_LABEL: Record<string, string> = {
+  live: "read incompletely",
+  failed: "read failed",
+  not_in_system: "not in this system",
+  not_installed: "function not installed",
+  no_rule_mapping: "no rules for this system type",
+};
+
 const STATUS_TONE: Record<string, ChipTone> = {
   extracted: "info", pending: "info", running: "info", complete: "success", failed: "danger",
 };
@@ -227,6 +235,24 @@ export function VersionsTab({ id, canAnalyse }: { id: string; canAnalyse: boolea
               )}
               {v.extraction_complete === false && (
                 <div className="text-[12px] text-[var(--aurora-status-warning-500)]">extraction incomplete — see coverage</div>
+              )}
+              {v.coverage && v.coverage.issues.length > 0 && (
+                <details className="text-[12px]">
+                  <summary className="cursor-pointer text-[var(--aurora-fg-tertiary)]">
+                    coverage · {v.coverage.read} tables read, {v.coverage.issues.length} not complete
+                  </summary>
+                  {v.coverage.issues.map((c) => (
+                    <div key={c.table} title={c.detail ?? undefined}>
+                      <span className="font-mono">{c.table}</span>{" "}
+                      <span className="text-[var(--aurora-fg-tertiary)]">
+                        {COVERAGE_LABEL[c.status] ?? c.status}
+                        {c.source_rows != null && c.rows != null && c.source_rows !== c.rows
+                          ? ` · ${c.rows.toLocaleString()} of ${c.source_rows.toLocaleString()} rows` : ""}
+                        {c.detail ? ` · ${c.detail}` : ""}
+                      </span>
+                    </div>
+                  ))}
+                </details>
               )}
               {Object.values(v.outliers ?? {}).some((o) => o.outliers > 0) && (
                 <details className="text-[12px]">

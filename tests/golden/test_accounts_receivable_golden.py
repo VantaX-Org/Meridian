@@ -165,8 +165,71 @@ def _frames() -> TableFrames:
         "KNBK.BANKL": ["250655", "60050101", "", ""], "KNBK.BANKN": ["62012345678", "0532013000", "62087654321", ""],
         "KNBK.KOVON": ["20170622", "20120514", "20170622", ""], "KNBK.KOBIS": ["99991231", "99991231", "99991231", ""],
     })
+    # open items (BSID), company code 1000 in ZAR, 2000 for C5's second company code
+    #   clean:  invoices on 30 days net (Z030) and on ZB30 (3% 14 / 2% 30 / net 45), a EUR invoice translated
+    #           into ZAR, a payment on account (SHKZG H), an invoice under dunning block R (in dispute), a
+    #           one-time customer's invoice, a down payment (special G/L A on its own reconciliation account
+    #           170000) and a down-payment request (noted item, F / BSTAT S)
+    #   seeded: one defect each (see the expected findings in the test)
+    open_items = [
+        _open_item(C1, "0090012001", "S", "48750.00", "48750.00"),
+        _open_item(C2, "0090012002", "S", "364000.00", "18200.00", waers="EUR", days=("14", "30", "45"),
+                   zterm="ZB30"),
+        _open_item(C1, "1400000301", "H", "10000.00", "10000.00", blart="DZ", days=("0", "0", "0"),
+                   zterm=""),                                                       # payment on account
+        _open_item(C3, "0090012003", "S", "196000.00", "9800.00", waers="EUR", days=("14", "30", "45"),
+                   zterm="ZB30", mansp="R"),                                         # disputed: dunning block
+        _open_item(OT, "0090012004", "S", "3250.00", "3250.00", days=("0", "0", "0"), zterm="0001"),
+        _open_item(C5, "0090012005", "S", "21400.00", "21400.00", bukrs="2000"),
+        _open_item(C6, "0090012006", "S", "1890.00", "1890.00", zlspr="A"),         # payment block (direct debit)
+        _open_item(C1, "1800000041", "H", "15000.00", "15000.00", umskz="A", hkont="0000170000", blart="DA",
+                   days=("0", "0", "0"), zterm=""),
+        _open_item(C1, "1800000042", "S", "20000.00", "20000.00", umskz="F", bstat="S", hkont="0000170000",
+                   blart="DA", days=("0", "0", "0"), zterm=""),
+        # seeded defects
+        _open_item(C1, "0090012010", "S", "5200.00", "5200.00", augdt="20260910", augbl="1400000310"),  # AR056
+        _open_item(C2, "0090012011", "S", "0.00", "4100.00", waers="EUR", days=("14", "30", "45"),
+                   zterm="ZB30"),                                                   # AR057
+        _open_item(C1, "0090012012", "S", "7300.00", "7300.00", hkont="0000140090"),  # AR058
+        _open_item(DEL, "0090012013", "S", "6600.00", "6600.00"),        # AR059
+        _open_item(C1, "0090012014", "S", "2600.00", "2600.00", zfbdt="00000000"),    # AR060
+        _open_item(C1, "0090012015", "S", "1450.00-", "1450.00-"),                    # AR061
+        _open_item(C2, "0090012016", "S", "120000.00", "6000.00", waers="EUR", days=("30", "14", "45"),
+                   zterm="ZB30"),                                                   # AR062
+        _open_item(C1, "0090012017", "S", "3900.00", "3900.00", zlspr="Z"),           # AR063
+        _open_item(C1, "1800000043", "H", "8000.00", "8000.00", umskz="Q", hkont="0000170000", blart="DA",
+                   days=("0", "0", "0"), zterm=""),                                 # AR064
+        _open_item(C1, "0090012018", "S", "4400.00", "4400.00", mansp="9"),           # AR067
+    ]
+    bsid = pd.DataFrame([{f"BSID.{k}": x for k, x in r.items()} for r in open_items])
+    # cleared items (BSAD): invoices cleared by incoming payments, the payment lines themselves
+    bsad = pd.DataFrame([{f"BSAD.{k}": x for k, x in r.items()} for r in [
+        _open_item(C1, "0090011901", "S", "12500.00", "12500.00", budat="20260715", augdt="20260812",
+                   augbl="1400000290"),
+        _open_item(C1, "1400000290", "H", "12500.00", "12500.00", budat="20260812", augdt="20260812",
+                   augbl="1400000290", blart="DZ"),
+        _open_item(C5, "0090011902", "S", "8800.00", "8800.00", bukrs="2000", budat="20260801", augdt="20260801",
+                   augbl="0090011903"),                                              # credited the same day
+        _open_item(C5, "0090011903", "H", "8800.00", "8800.00", bukrs="2000", budat="20260801", augdt="20260801",
+                   augbl="0090011903", blart="DG"),
+        # seeded defects
+        _open_item(C1, "0090011904", "S", "3100.00", "3100.00", budat="20260820", augdt="20260817",
+                   augbl="1400000291"),                                              # AR065
+        _open_item(C1, "0090011905", "S", "2200.00", "2200.00", budat="20260821"),   # AR066
+    ]])
     return TableFrames({"KNA1": kna1, "KNB1": knb1, "KNB5": knb5, "KNKK": knkk, "ADR6": adr6, "SKB1": skb1,
-                        "KNBK": knbk}, D, module="accounts_receivable")
+                        "KNBK": knbk, "BSID": bsid, "BSAD": bsad}, D, module="accounts_receivable")
+
+
+def _open_item(kunnr, belnr, shkzg, dmbtr, wrbtr, waers="ZAR", bukrs="1000", budat="20260904", zfbdt="20260904",
+               days=("30", "0", "0"), zterm="Z030", umskz="", bstat="", hkont="0000140000", zlspr="", mansp="",
+               augdt="00000000", augbl="", blart="RV") -> dict:
+    """One customer line item (BSID / BSAD layout)."""
+    return {"BUKRS": bukrs, "KUNNR": kunnr, "UMSKS": "", "UMSKZ": umskz, "AUGDT": augdt, "AUGBL": augbl,
+            "ZUONR": belnr, "GJAHR": "2026", "BELNR": belnr, "BUZEI": "001", "BUDAT": budat, "BLDAT": budat,
+            "WAERS": waers, "XBLNR": "", "BLART": blart, "SHKZG": shkzg, "DMBTR": dmbtr, "WRBTR": wrbtr,
+            "HKONT": hkont, "ZFBDT": zfbdt, "ZTERM": zterm, "ZBD1T": days[0], "ZBD2T": days[1], "ZBD3T": days[2],
+            "ZLSPR": zlspr, "MANSP": mansp, "BSTAT": bstat}
 
 
 def _live_config(rules) -> dict[str, set[str]]:
@@ -175,7 +238,10 @@ def _live_config(rules) -> dict[str, set[str]]:
               "AUFSD": {"01", "02", "03", "08", "10"}, "LIFSD": {"01", "02", "03", "08"},
               "FAKSD": {"01", "02", "08"}, "BUKRS": {"1000", "2000"}, "ZTERM": {"0001", "Z030", "ZB30"},
               "ZWELS": {"C", "E"}, "MAHNA": {"0001"}, "KKBER": {"1000"}, "CTLPC": {"001", "002", "003"},
-              "LAND1": {"ZA", "DE", "NL", "FR"}, "BANKS": {"ZA", "DE", "NL", "FR"}}
+              "LAND1": {"ZA", "DE", "NL", "FR"}, "BANKS": {"ZA", "DE", "NL", "FR"},
+              "ZLSPR": {"*", "A", "B", "R", "V"},                  # T008 payment block reasons
+              "UMSKZ": {"A", "F", "I", "W"},                       # T074U special G/L (customers)
+              "MANSP": {"A", "B", "R"}}                            # T040S dunning block reasons
     out = {}
     for r in rules:
         if r.get("check_class") in ("referential_check", "domain_value_check") and r["field"].split(".")[1] in values:
@@ -183,6 +249,12 @@ def _live_config(rules) -> dict[str, set[str]]:
             if key:
                 out[key] = values[r["field"].split(".")[1]]
     return out
+
+
+def _key(kunnr: str, belnr: str, augdt: str = "00000000", augbl: str = "", umskz: str = "") -> str:
+    """BSID / BSAD key: company code, customer, special G/L, clearing, assignment, document, line."""
+    return (f"BUKRS=1000|KUNNR={kunnr}|UMSKS=|UMSKZ={umskz}|AUGDT={augdt}|AUGBL={augbl}|ZUONR={belnr}"
+            f"|GJAHR=2026|BELNR={belnr}|BUZEI=001")
 
 
 def test_accounts_receivable_golden():
@@ -210,6 +282,18 @@ def test_accounts_receivable_golden():
         "AR045": {f"KUNNR={D_DUNN}"},                             # credit limit without risk category
         "AR047": {f"KUNNR={D_NAME2}"},                            # next credit review before the last one
         "AR049": {f"KUNNR={D_DNU}"},                              # bank details without a bank key
+        "AR056": {_key(C1, "0090012010", augdt="20260910", augbl="1400000310")},  # open item with clearing data
+        "AR057": {_key(C2, "0090012011")},                        # EUR 4 100.00 translated to ZAR 0.00
+        "AR058": {_key(C1, "0090012012")},                        # still on the old reconciliation account
+        "AR059": {_key(DEL, "0090012013")},                       # open item on a customer flagged for deletion
+        "AR060": {_key(C1, "0090012014")},                        # no baseline date for payment
+        "AR061": {_key(C1, "0090012015")},                        # amount stored negative (RFC "1450.00-")
+        "AR062": {_key(C2, "0090012016")},                        # discount days 30, then 14
+        "AR063": {_key(C1, "0090012017")},                        # payment block Z is not in T008
+        "AR064": {_key(C1, "1800000043", umskz="Q")},             # special G/L Q is not in T074U
+        "AR065": {_key(C1, "0090011904", augdt="20260817", augbl="1400000291")},  # cleared before it was posted
+        "AR066": {_key(C1, "0090011905")},                        # cleared item without a clearing reference
+        "AR067": {_key(C1, "0090012018")},                        # dunning block 9 is not in T040S
     }, found
     # DEL is flagged for deletion and OT is a one-time account: out of the population, counted
     name = next(r for r in results if r.check_id == "AR003")
@@ -224,3 +308,6 @@ def test_accounts_receivable_golden():
     assert bank.details["population_excluded"] == {"deleted": 1}
     terms = next(r for r in results if r.check_id == "AR021")   # central deletion flag covers company code 1000
     assert terms.details["population_excluded"] == {"deleted": 1}
+    # down payments and down-payment requests sit on their own reconciliation account by design: 16 of 19
+    recon = next(r for r in results if r.check_id == "AR058")
+    assert recon.total_count == 16

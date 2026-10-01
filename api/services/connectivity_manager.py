@@ -22,6 +22,7 @@ from sap.base import (
     CloudConnectionParams,
     SAPConnectorError,
 )
+from sap.rfc import PAYROLL_FUNCTION, PAYROLL_TABLE
 from sap.extraction_registry import (
     get_extraction_targets,
     get_available_modules,
@@ -233,6 +234,13 @@ class ConnectivityManager:
                     if t is None or not cols:
                         coverage.append({"table": table, "status": "not_in_system", "purpose": plan.purpose})
                         continue
+                    if table == PAYROLL_TABLE:  # payroll cluster: only through the customer's read-only function
+                        df, entry = self._payroll_totals(connector, raw.get("HRPY_RGDIR"))
+                        coverage.append(entry)
+                        if df is not None:
+                            raw[table] = df
+                            frames[table] = df.rename(columns={c: f"{table}.{c}" for c in df.columns})
+                        continue
                     try:
                         if plan.via:
                             wheres = via_filters(table, plan.via, raw.get(plan.via))
@@ -273,6 +281,27 @@ class ConnectivityManager:
         finally:
             connector.close()
         return frames, coverage
+
+    @staticmethod
+    def _payroll_totals(connector, rgdir: Optional[pd.DataFrame]) -> tuple[Optional[pd.DataFrame], dict]:
+        """ZMERIDIAN_PAYRT for the extracted payroll results, or why it is not available."""
+        entry = {"table": PAYROLL_TABLE, "purpose": "data"}
+        if not hasattr(connector, "payroll_totals"):
+            return None, {**entry, "status": "not_in_system"}
+        if rgdir is None or not len(rgdir):
+            return None, {**entry, "status": "live", "rows": 0, "complete": True}
+        keys = sorted({(str(p).strip(), str(q).strip()) for p, q in zip(rgdir["PERNR"], rgdir["SEQNR"])})
+        try:
+            df, skipped = connector.payroll_totals(keys)
+        except SAPConnectorError as e:
+            if "FU_NOT_FOUND" in str(e) or PAYROLL_FUNCTION in str(e):
+                return None, {**entry, "status": "not_installed",
+                              "detail": f"{PAYROLL_FUNCTION} is not installed: payroll amounts are not checked "
+                                        "(see docs/payroll-rfc.md)"}
+            return None, {**entry, "status": "failed", "detail": str(e)[:300]}
+        # a result the RFC user may not read is a gap in the data, not a clean result
+        return df, {**entry, "status": "live", "rows": len(df), "results": len(keys), "unauthorised": skipped,
+                    "complete": skipped == 0}
 
     def _extract_successfactors(self, connector, modules, dictionary, system_id):
         """Assemble SF canonical tables from their source entities (see canonical/successfactors.yaml)."""

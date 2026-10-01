@@ -30,6 +30,8 @@ TARGETS = (
     ("LFBK", "BANKN", "LFBK.BANKS", "bank_account", None), ("LFBK", "BANKL", "LFBK.BANKS", "bank_number", None),
     ("KNBK", "BANKN", "KNBK.BANKS", "bank_account", None), ("KNBK", "BANKL", "KNBK.BANKS", "bank_number", None),
     ("BUT0BK", "BANKN", "BUT0BK.BANKS", "bank_account", None), ("BUT0BK", "BANKL", "BUT0BK.BANKS", "bank_number", None),
+    ("PA0006", "PSTLZ", "PA0006.LAND1", "postal", "PA0006.STRAS"),
+    ("PA0009", "BANKN", "PA0009.BANKS", "bank_account", None), ("PA0009", "BANKL", "PA0009.BANKS", "bank_number", None),
 )
 LABELS = {"postal": "postal code", "tax1": "tax number 1", "tax2": "tax number 2",
           "bank_account": "bank account number", "bank_number": "bank key"}
@@ -65,7 +67,7 @@ def fields_for(table: str, dictionary) -> set[str]:
     for t, f, country, _, street in TARGETS:
         if t == table:
             out |= {f, country.split(".")[1]} | ({street.split(".")[1]} if street else set())
-            if t in ("LFBK", "KNBK", "BUT0BK"):
+            if t in ("LFBK", "KNBK", "BUT0BK", "PA0009"):
                 out.add("BANKL")
     return {f for f in out if dictionary.field(table, f) is not None}
 

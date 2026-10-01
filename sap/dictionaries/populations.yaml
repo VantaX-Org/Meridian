@@ -157,3 +157,33 @@ tables:
     - {id: deleted, field: KONP.LOEVM_KO, label: *deleted_label}
   A018:
     - {id: deleted, field: KONP.LOEVM_KO, label: *deleted_label}
+  # HR infotypes: a locked record (SPRPS) is pending release and not yet valid for payroll
+  PA0000:
+    - {id: locked, field: PA0000.SPRPS, values: [X], label: "locked (not yet released)"}
+  PA0001:
+    - {id: locked, field: PA0001.SPRPS, values: [X], label: "locked (not yet released)"}
+  PA0002:
+    - {id: locked, field: PA0002.SPRPS, values: [X], label: "locked (not yet released)"}
+  PA0006:
+    - {id: locked, field: PA0006.SPRPS, values: [X], label: "locked (not yet released)"}
+  PA0007:
+    - {id: locked, field: PA0007.SPRPS, values: [X], label: "locked (not yet released)"}
+  PA0008:
+    - {id: locked, field: PA0008.SPRPS, values: [X], label: "locked (not yet released)"}
+  PA0009:
+    - {id: locked, field: PA0009.SPRPS, values: [X], label: "locked (not yet released)"}
+  PA0014:
+    - {id: locked, field: PA0014.SPRPS, values: [X], label: "locked (not yet released)"}
+  PA0015:
+    - {id: locked, field: PA0015.SPRPS, values: [X], label: "locked (not yet released)"}
+  PA0105:
+    - {id: locked, field: PA0105.SPRPS, values: [X], label: "locked (not yet released)"}
+  PA0185:
+    - {id: locked, field: PA0185.SPRPS, values: [X], label: "locked (not yet released)"}
+  # payroll: only the current, non-voided result of a period counts (older ones were recalculated)
+  HRPY_RGDIR:
+    - {id: superseded, field: HRPY_RGDIR.SRTZA, values: [O, P], label: "superseded by a recalculation"}
+    - {id: voided, field: HRPY_RGDIR.VOID, values: [X], label: "voided result"}
+  ZMERIDIAN_PAYRT:
+    - {id: superseded, field: HRPY_RGDIR.SRTZA, values: [O, P], label: "superseded by a recalculation"}
+    - {id: voided, field: HRPY_RGDIR.VOID, values: [X], label: "voided result"}

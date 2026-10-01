@@ -24,8 +24,8 @@ def test_received_equals_invoiced_after_reversal():
     r = AggregateCheck(GRIR).run(df)
     assert (r.total_count, r.affected_count) == (3, 2)
     assert r.details["largest_difference"] == 2.0
-    assert AggregateCheck({**GRIR, "fail_when": "right_gt_left"}).run(df).affected_count == 1
-    assert AggregateCheck({**GRIR, "fail_when": "left_gt_right"}).run(df).affected_count == 1
+    assert AggregateCheck({**GRIR, "compare": "right_gt_left"}).run(df).affected_count == 1
+    assert AggregateCheck({**GRIR, "compare": "left_gt_right"}).run(df).affected_count == 1
 
 
 IT = {"id": "T", "module": "employee_central", "field": "PA0001.BEGDA", "check_class": "interval_check",

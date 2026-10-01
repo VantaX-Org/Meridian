@@ -216,7 +216,7 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanaly
             from checks.field_status_rules import suppressed_fields
             fs_suppressed = suppressed_fields(fs_resolutions, fs_material)
         # misplaced values, placeholders, swaps, dead-in-text records (checks/value_placement.py)
-        from checks import country_rules, value_placement
+        from checks import config_rules, country_rules, value_placement
         from checks.runner import _find_module_yaml
         vp_rules = []
         for m in modules:
@@ -226,6 +226,7 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanaly
                 continue
             vp_rules += value_placement.generate(m, static, dictionary)
             vp_rules += country_rules.generate(m, static, fs_config, dictionary)  # T005 / BNKA
+            vp_rules += config_rules.generate(m, fs_config, dictionary)  # T685A / T582A
         fs_rules = fs_rules + vp_rules
         module_count = max(len(modules), 1)
         outliers: dict[str, dict] = {}

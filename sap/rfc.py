@@ -18,6 +18,11 @@ from .base import BAPICall, SAPConnectionParams, SAPConnector, SAPConnectorError
 logger = logging.getLogger("meridian.sap.rfc")
 
 
+PAYROLL_FUNCTION = "Z_MERIDIAN_PAYROLL_TOTALS"
+PAYROLL_TABLE = "ZMERIDIAN_PAYRT"
+PAYROLL_FIELDS = ["PERNR", "SEQNR", "FPPER", "INPER", "PAYDT", "LGART", "BETRG", "ANZHL", "WAERS"]
+
+
 class RFCConnector(SAPConnector):
     """SAP connector backed by pyrfc / SAP NW RFC SDK."""
 
@@ -178,6 +183,19 @@ class RFCConnector(SAPConnector):
         for t in tables:
             out.update(self.count_rows([t]))
         return out
+
+    def payroll_totals(self, keys: list[tuple[str, str]], chunk: int = 2000) -> tuple[pd.DataFrame, int]:
+        """Wage-type totals per payroll result (PERNR, SEQNR) from the customer-installed,
+        read-only Z_MERIDIAN_PAYROLL_TOTALS (sap/abap/, docs/payroll-rfc.md). Returns
+        (ZMERIDIAN_PAYRT rows, results the caller was not authorised to read)."""
+        rows: list[dict] = []
+        skipped = 0
+        for i in range(0, len(keys), chunk):
+            r = self.call(PAYROLL_FUNCTION, IT_RESULTS=[{"PERNR": p, "SEQNR": q} for p, q in keys[i:i + chunk]])
+            rows += r.get("ET_TOTALS") or []
+            skipped += int(r.get("EV_SKIPPED") or 0)
+        df = pd.DataFrame(rows, columns=PAYROLL_FIELDS) if rows else pd.DataFrame(columns=PAYROLL_FIELDS)
+        return df[PAYROLL_FIELDS].astype(str).apply(lambda c: c.str.strip()), skipped
 
     def execute_bapi(self, call: BAPICall) -> dict:
         if self._conn is None:

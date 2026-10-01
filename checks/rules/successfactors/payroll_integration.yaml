@@ -386,3 +386,302 @@ rules:
       __other__: Company '{invalid_value}' is not a company code. Map the legal entity to its FI company code in the payroll
         export.
     record_fix_template: 'Payroll result {PAYRESULT.USERID}: company ''{actual_value}'' is not a company code.'
+  - id: HPY001
+    field: PA0008.BSGRD
+    check_class: cross_field_check
+    grain: PA0008
+    fail_when: (`PA0008.BSGRD` <= 0) | (`PA0008.BSGRD` > 100)
+    severity: high
+    dimension: validity
+    message: Capacity utilisation level is not between 0 and 100
+    why_it_matters: The capacity utilisation level scales basic pay; 0 or more than 100 % pays nothing or more than full time.
+    rule_authority: sap_hard_constraint
+    sap_impact: Basic pay is wrong for every period of the record.
+    fix_map:
+      __other__: Correct the capacity utilisation (PA30, infotype 0008).
+    record_fix_template: 'Employee {PA0008.PERNR} ({PA0008.BEGDA}-{PA0008.ENDDA}): capacity utilisation level is not between
+      0 and 100.'
+  - id: HPY002
+    field: PA0008.TRFAR
+    check_class: null_check
+    grain: PA0008
+    severity: medium
+    dimension: completeness
+    message: Pay scale type is missing
+    why_it_matters: Pay scale type and area select the collective agreement and the indirect valuation of wage types.
+    rule_authority: sap_hard_constraint
+    sap_impact: Indirectly valuated wage types get no amount.
+    fix_map:
+      __blank__: Maintain pay scale type in the infotype record (PA30, infotype 0008).
+    record_fix_template: 'Employee {PA0008.PERNR} ({PA0008.BEGDA}-{PA0008.ENDDA}): pay scale type is missing.'
+  - id: HPY003
+    field: PA0008.WAERS
+    check_class: cross_field_check
+    grain: PA0008
+    fail_when: '`PA0008.WAERS`.isna() & (`PA0008.BET01` > 0)'
+    severity: high
+    dimension: completeness
+    message: Basic pay has an amount but no currency
+    why_it_matters: Wage-type amounts are meaningless without their currency.
+    rule_authority: sap_hard_constraint
+    sap_impact: Payroll cannot valuate the wage type.
+    fix_map:
+      __other__: Maintain the currency (PA30, infotype 0008).
+    record_fix_template: 'Employee {PA0008.PERNR} ({PA0008.BEGDA}-{PA0008.ENDDA}): basic pay has an amount but no currency.'
+  - id: HPY004
+    field: PA0008.TRFAR
+    check_class: referential_check
+    grain: PA0008
+    severity: medium
+    dimension: validity
+    message: Pay scale type is not defined in configuration (T510A)
+    why_it_matters: Infotype values are checked against T510A on entry; a value that is not there was loaded around the check
+      or its configuration was deleted afterwards.
+    rule_authority: sap_hard_constraint
+    sap_impact: Payroll, time evaluation and HR reporting cannot interpret the value; the employee drops out of every selection
+      on it.
+    fix_map:
+      __other__: Replace the value with one defined in T510A, or configure it.
+    record_fix_template: 'Employee {PA0008.PERNR} ({PA0008.BEGDA}-{PA0008.ENDDA}): pay scale type is not defined in configuration
+      (T510A).'
+  - id: HPY005
+    field: PA0008.LGA01
+    check_class: referential_check
+    grain: PA0008
+    severity: high
+    dimension: validity
+    message: Basic pay wage type is not defined in configuration (T512Z)
+    why_it_matters: Infotype values are checked against T512Z on entry; a value that is not there was loaded around the check
+      or its configuration was deleted afterwards.
+    rule_authority: sap_hard_constraint
+    sap_impact: Payroll, time evaluation and HR reporting cannot interpret the value; the employee drops out of every selection
+      on it.
+    fix_map:
+      __other__: Replace the value with one defined in T512Z, or configure it.
+    record_fix_template: 'Employee {PA0008.PERNR} ({PA0008.BEGDA}-{PA0008.ENDDA}): basic pay wage type is not defined in configuration
+      (T512Z).'
+  - id: HPY006
+    field: PA0014.LGART
+    check_class: null_check
+    grain: PA0014
+    severity: high
+    dimension: completeness
+    message: Wage type of the recurring payment/deduction is missing
+    why_it_matters: The wage type decides how the amount is paid, taxed and posted.
+    rule_authority: sap_hard_constraint
+    sap_impact: The record is ignored by payroll.
+    fix_map:
+      __blank__: Maintain wage type of the recurring payment/deduction in the infotype record (PA30, infotype 0014).
+    record_fix_template: 'Employee {PA0014.PERNR} ({PA0014.BEGDA}-{PA0014.ENDDA}): wage type of the recurring payment/deduction
+      is missing.'
+  - id: HPY007
+    field: PA0015.LGART
+    check_class: null_check
+    grain: PA0015
+    severity: high
+    dimension: completeness
+    message: Wage type of the additional payment is missing
+    why_it_matters: The wage type decides how the amount is paid, taxed and posted.
+    rule_authority: sap_hard_constraint
+    sap_impact: The record is ignored by payroll.
+    fix_map:
+      __blank__: Maintain wage type of the additional payment in the infotype record (PA30, infotype 0015).
+    record_fix_template: 'Employee {PA0015.PERNR} ({PA0015.BEGDA}-{PA0015.ENDDA}): wage type of the additional payment is missing.'
+  - id: HPY008
+    field: PA0014.WAERS
+    check_class: cross_field_check
+    grain: PA0014
+    fail_when: '`PA0014.WAERS`.isna() & (`PA0014.BETRG` > 0)'
+    severity: high
+    dimension: completeness
+    message: Recurring payment has an amount but no currency
+    why_it_matters: Wage-type amounts are meaningless without their currency.
+    rule_authority: sap_hard_constraint
+    sap_impact: Payroll cannot valuate the wage type.
+    fix_map:
+      __other__: Maintain the currency (PA30, infotype 0014).
+    record_fix_template: 'Employee {PA0014.PERNR} ({PA0014.BEGDA}-{PA0014.ENDDA}): recurring payment has an amount but no currency.'
+  - id: HPY009
+    field: PA0015.WAERS
+    check_class: cross_field_check
+    grain: PA0015
+    fail_when: '`PA0015.WAERS`.isna() & (`PA0015.BETRG` > 0)'
+    severity: high
+    dimension: completeness
+    message: Additional payment has an amount but no currency
+    why_it_matters: Wage-type amounts are meaningless without their currency.
+    rule_authority: sap_hard_constraint
+    sap_impact: Payroll cannot valuate the wage type.
+    fix_map:
+      __other__: Maintain the currency (PA30, infotype 0015).
+    record_fix_template: 'Employee {PA0015.PERNR} ({PA0015.BEGDA}-{PA0015.ENDDA}): additional payment has an amount but no currency.'
+  - id: HPY010
+    field: PA0014.LGART
+    check_class: referential_check
+    grain: PA0014
+    severity: high
+    dimension: validity
+    message: Recurring wage type is not defined in configuration (T512Z)
+    why_it_matters: Infotype values are checked against T512Z on entry; a value that is not there was loaded around the check
+      or its configuration was deleted afterwards.
+    rule_authority: sap_hard_constraint
+    sap_impact: Payroll, time evaluation and HR reporting cannot interpret the value; the employee drops out of every selection
+      on it.
+    fix_map:
+      __other__: Replace the value with one defined in T512Z, or configure it.
+    record_fix_template: 'Employee {PA0014.PERNR} ({PA0014.BEGDA}-{PA0014.ENDDA}): recurring wage type is not defined in configuration
+      (T512Z).'
+  - id: HPY011
+    field: PA0015.LGART
+    check_class: referential_check
+    grain: PA0015
+    severity: high
+    dimension: validity
+    message: Additional-payment wage type is not defined in configuration (T512Z)
+    why_it_matters: Infotype values are checked against T512Z on entry; a value that is not there was loaded around the check
+      or its configuration was deleted afterwards.
+    rule_authority: sap_hard_constraint
+    sap_impact: Payroll, time evaluation and HR reporting cannot interpret the value; the employee drops out of every selection
+      on it.
+    fix_map:
+      __other__: Replace the value with one defined in T512Z, or configure it.
+    record_fix_template: 'Employee {PA0015.PERNR} ({PA0015.BEGDA}-{PA0015.ENDDA}): additional-payment wage type is not defined
+      in configuration (T512Z).'
+  - id: HPY012
+    field: HRPY_RGDIR.FPBEG
+    check_class: cross_field_check
+    grain: HRPY_RGDIR
+    fail_when: '`HRPY_RGDIR.FPBEG` > `HRPY_RGDIR.FPEND`'
+    severity: high
+    dimension: consistency
+    message: Payroll result's for-period starts after it ends
+    why_it_matters: A payroll period runs from its start to its end date; an inverted period cannot be valuated or reported.
+    rule_authority: sap_hard_constraint
+    sap_impact: Period-based payroll reporting and postings misplace the result.
+    fix_map:
+      __other__: 'Raise an SAP incident: payroll directories are never edited.'
+    record_fix_template: 'Payroll result {HRPY_RGDIR.PERNR}/{HRPY_RGDIR.SEQNR}: period {HRPY_RGDIR.FPBEG}-{HRPY_RGDIR.FPEND}.'
+  - id: HPY013
+    field: HRPY_RGDIR.PAYDT
+    check_class: null_check
+    grain: HRPY_RGDIR
+    applies_when:
+      HRPY_RGDIR.VOID:
+        blank: true
+    severity: medium
+    dimension: completeness
+    message: Payroll result has no payment date
+    why_it_matters: The payment date drives the bank transfer and the tax period of the payment.
+    rule_authority: sap_hard_constraint
+    sap_impact: Bank transfer and tax reporting date are unknown.
+    fix_map:
+      __blank__: Re-run payroll for the period, or raise an SAP incident.
+    record_fix_template: 'Payroll result {HRPY_RGDIR.PERNR}/{HRPY_RGDIR.SEQNR}: no payment date.'
+  - id: HPY014
+    field: HRPY_RGDIR.FPPER
+    check_class: uniqueness_check
+    grain: HRPY_RGDIR
+    fields:
+    - HRPY_RGDIR.PERNR
+    - HRPY_RGDIR.FPPER
+    - HRPY_RGDIR.INPER
+    applies_when:
+      HRPY_RGDIR.SRTZA:
+      - A
+      HRPY_RGDIR.VOID:
+        blank: true
+      HRPY_RGDIR.PAYTY:
+        blank: true
+    severity: critical
+    dimension: uniqueness
+    message: Two current regular payroll results for the same employee and period
+    why_it_matters: Each regular payroll period has exactly one current ('A') result per in-period. Two mean the period was
+      paid twice or the directory is corrupt.
+    rule_authority: sap_hard_constraint
+    sap_impact: Double payment; year-to-date totals and tax are wrong.
+    fix_map:
+      __other__: Check the payroll log (PC_PAYRESULT); reverse the duplicate result (PU01) and recover the overpayment.
+    record_fix_template: 'Employee {HRPY_RGDIR.PERNR}: period {HRPY_RGDIR.FPPER} (in {HRPY_RGDIR.INPER}) has two current results.'
+  - id: HPY015
+    field: ZMERIDIAN_PAYRT.BETRG
+    check_class: cross_field_check
+    grain: ZMERIDIAN_PAYRT
+    fail_when: '`ZMERIDIAN_PAYRT.BETRG` < 0'
+    applies_when:
+      ZMERIDIAN_PAYRT.LGART:
+      - /560
+    severity: critical
+    dimension: accuracy
+    message: Amount paid (/560) is negative
+    why_it_matters: When deductions exceed earnings, SAP payroll carries the shortfall forward as a claim (/561) and pays zero.
+      A negative amount paid means the result was produced or changed outside the standard schema.
+    rule_authority: sap_hard_constraint
+    sap_impact: A negative bank transfer or a payment file the bank rejects.
+    fix_map:
+      __other__: Check the payroll schema / personal calculation rules for the employee's grouping; re-run payroll for the period.
+    record_fix_template: 'Employee {ZMERIDIAN_PAYRT.PERNR} result {ZMERIDIAN_PAYRT.SEQNR} (period {ZMERIDIAN_PAYRT.FPPER}):
+      /560 = {ZMERIDIAN_PAYRT.BETRG} {ZMERIDIAN_PAYRT.WAERS}.'
+  - id: HPY016
+    field: ZMERIDIAN_PAYRT.BETRG
+    check_class: cross_field_check
+    grain: ZMERIDIAN_PAYRT
+    fail_when: '`ZMERIDIAN_PAYRT.BETRG` < 0'
+    applies_when:
+      ZMERIDIAN_PAYRT.LGART:
+      - /101
+    severity: high
+    dimension: accuracy
+    message: Total gross (/101) is negative
+    why_it_matters: Total gross sums the employee's earnings; a negative gross means a reversal or retro correction exceeded
+      the period's earnings, which normally points to a keying error in a recurring or additional payment.
+    rule_authority: sap_hard_constraint
+    sap_impact: Tax and social-security bases are negative; statutory reports for the period are wrong.
+    fix_map:
+      __other__: Review the period's infotype 0014 / 0015 / 2010 entries and retro changes; correct and re-run payroll.
+    record_fix_template: 'Employee {ZMERIDIAN_PAYRT.PERNR} result {ZMERIDIAN_PAYRT.SEQNR} (period {ZMERIDIAN_PAYRT.FPPER}):
+      /101 = {ZMERIDIAN_PAYRT.BETRG} {ZMERIDIAN_PAYRT.WAERS}.'
+  - id: HPY017
+    field: ZMERIDIAN_PAYRT.BETRG
+    check_class: cross_field_check
+    grain: ZMERIDIAN_PAYRT
+    fail_when: '`ZMERIDIAN_PAYRT.BETRG` != 0'
+    applies_when:
+      ZMERIDIAN_PAYRT.LGART:
+      - /561
+    severity: medium
+    dimension: accuracy
+    message: 'Payroll result carries a claim (/561): the employee owes money'
+    why_it_matters: A claim arises when deductions exceed earnings. It is recovered from later pay only while the employee keeps
+      earning; for leavers it has to be recovered manually.
+    rule_authority: best_practice
+    sap_impact: Unrecovered overpayment; for leavers, a receivable nobody chases.
+    fix_map:
+      __other__: Agree recovery with the employee (infotype 0015 deduction or manual repayment) and document it.
+    record_fix_template: 'Employee {ZMERIDIAN_PAYRT.PERNR} result {ZMERIDIAN_PAYRT.SEQNR} (period {ZMERIDIAN_PAYRT.FPPER}):
+      /561 = {ZMERIDIAN_PAYRT.BETRG} {ZMERIDIAN_PAYRT.WAERS}.'
+  - id: HPY018
+    field: ZMERIDIAN_PAYRT.BETRG
+    check_class: aggregate_check
+    grain: ZMERIDIAN_PAYRT
+    group_by:
+    - ZMERIDIAN_PAYRT.PERNR
+    - ZMERIDIAN_PAYRT.SEQNR
+    amount: ZMERIDIAN_PAYRT.BETRG
+    split_field: ZMERIDIAN_PAYRT.LGART
+    left_values:
+    - /559
+    right_values:
+    - /560
+    compare: left_gt_right
+    severity: high
+    dimension: accuracy
+    message: Bank transfer (/559) exceeds the amount paid (/560)
+    why_it_matters: The bank transfer pays out (part of) the amount paid; it can never exceed it. More transferred than paid
+      is a payment-split error in the bank-details infotype or the schema.
+    rule_authority: sap_hard_constraint
+    sap_impact: The employee is overpaid by the difference.
+    fix_map:
+      __other__: 'Check the employee''s bank details (infotype 0009: main and other banks, fixed amounts) and the result''s
+        payment wage types; correct and re-run payroll.'
+    record_fix_template: 'Employee {ZMERIDIAN_PAYRT.PERNR} result {ZMERIDIAN_PAYRT.SEQNR} (period {ZMERIDIAN_PAYRT.FPPER}):
+      bank transfer exceeds amount paid.'

@@ -2,7 +2,7 @@
 quantity received (EKBE.VGABE 1) against the quantity invoiced (VGABE 2).
 Rows are split by ``split_field`` into ``left_values`` / ``right_values``;
 amounts are signed by ``sign_field`` (``debit_value`` positive). The group
-fails when ``fail_when`` holds on (left - right): ``unequal``, ``left_gt_right``
+fails when ``compare`` holds on (left - right): ``unequal``, ``left_gt_right``
 or ``right_gt_left``, beyond ``tolerance``. One record per group (its first
 row) carries the result, like balance_check."""
 
@@ -34,7 +34,7 @@ class AggregateCheck(BaseCheck):
         diff = left.groupby(by).transform("sum") - right.groupby(by).transform("sum")
         tol = float(r.get("tolerance", 0.0005))
         first = ~keys.duplicated()
-        mode = r.get("fail_when", "unequal")
+        mode = r.get("compare", "unequal")
         bad = diff > tol if mode == "left_gt_right" else diff < -tol if mode == "right_gt_left" else diff.abs() > tol
         off = first & bad
         return Evaluation(first, off, {"groups": int(first.sum()), "failing_groups": int(off.sum()),

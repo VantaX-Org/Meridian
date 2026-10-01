@@ -15,9 +15,9 @@ EXPECTED_COUNTS = {
     "accounts_payable": 79,
     "accounts_receivable": 66,
     "asset_accounting": 27,
-    "mm_purchasing": 113,  # PUR031 removed (no ECC field); XP2P001-002 moved in from cross_module
+    "mm_purchasing": 126,  # PUR031 removed (no ECC field); XP2P001-002 moved in from cross_module
     "sd_customer_master": 48,
-    "sd_sales_orders": 45,
+    "sd_sales_orders": 54,
     "production_planning": 57,
     "plant_maintenance": 50,
 }
@@ -135,7 +135,7 @@ def test_total_new_ecc_rule_count():
     for module_name in EXPECTED_COUNTS:
         rules = _load_rules(module_name)
         total += len(rules)
-    assert total == 485, f"Expected 485 total ECC rules, got {total}"
+    assert total == 507, f"Expected 507 total ECC rules, got {total}"
 
 
 # ---- Test 6: domain_value_check rules have valid_values_with_labels ----

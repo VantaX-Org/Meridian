@@ -38,3 +38,4 @@ A305:  {where: "DATBI >= '{months_ago:0}'"}
 A017:  {where: "DATBI >= '{months_ago:0}'"}
 A018:  {where: "DATBI >= '{months_ago:0}'"}
 HRPY_RGDIR: {where: "FPEND >= '{months_ago:24}'"}
+ZMERIDIAN_PAYRT: {via: HRPY_RGDIR}  # read through the customer's RFC function, not RFC_READ_TABLE
