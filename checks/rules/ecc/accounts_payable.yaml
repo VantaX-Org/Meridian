@@ -634,3 +634,22 @@ rules:
   fix_map:
     __other__: Verify each vendor's bank details with the supplier (call-back to a known number); remove the account from vendors it does not belong to (XK02 / BP).
   record_fix_template: 'Record {LFBK.BANKS} shares LFBK.BANKS, LFBK.BANKL, LFBK.BANKN with another record.'
+- id: XLNK001
+  field: LFA1.KUNNR
+  check_class: cross_field_check
+  grain: LFA1
+  fail_when: '`KNA1.KUNNR`.isna() | `KNA1.LIFNR`.isna() | (`KNA1.LIFNR` != `LFA1.LIFNR`)'
+  applies_when:
+    LFA1.KUNNR: {populated: true}
+  severity: medium
+  dimension: consistency
+  message: The vendor's linked customer does not exist or does not link back to this vendor
+  why_it_matters: A vendor linked to a customer (LFA1.KUNNR) is offset against it in payment and dunning runs (with
+    clearing flags LFB1.XVERR / KNB1.XVERR). A link to a customer that does not exist, or that points to a different
+    vendor, makes that clearing act on the wrong account or not at all.
+  rule_authority: best_practice
+  sap_impact: Vendor/customer clearing in F110 and dunning offsets against the wrong account or silently not at all.
+  fix_map:
+    __other__: Maintain the link on both sides — customer in the vendor (XK02 > Control) and vendor in the customer
+      (XD02 > Control) — or remove it (BP relationship in S/4HANA).
+  record_fix_template: 'Vendor {LFA1.LIFNR}: linked customer {LFA1.KUNNR} is missing or links to vendor {KNA1.LIFNR}.'

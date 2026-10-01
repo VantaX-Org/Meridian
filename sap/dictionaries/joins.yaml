@@ -20,6 +20,8 @@
 edges:
   # ── Vendor master ──────────────────────────────────────────────────────
   - {parent: LFA1, child: LFB1,  join: {LIFNR: LIFNR}, cardinality: many}
+  # the customer account a vendor is linked to (clearing between vendor and customer)
+  - {parent: KNA1, child: LFA1,  join: {KUNNR: KUNNR}, cardinality: many}
   - {parent: LFB1, child: LFB5,  join: {LIFNR: LIFNR, BUKRS: BUKRS}, cardinality: one}
   - {parent: LFA1, child: LFBK,  join: {LIFNR: LIFNR}, cardinality: one}
   - {parent: LFA1, child: LFM1,  join: {LIFNR: LIFNR}, cardinality: many}

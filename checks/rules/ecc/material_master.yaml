@@ -622,10 +622,10 @@ rules:
     or Fiori F1602 (S/4HANA).'
 - id: MM039
   field: MARM.UMREZ
-  check_class: null_check
+  check_class: cross_field_check
   severity: high
   dimension: completeness
-  message: UoM conversion numerator is required for alternative units of measure
+  message: UoM conversion numerator must be a positive number
   why_it_matters: UMREZ is the numerator in the unit of measure conversion formula. Without it, quantity conversions between
     base UoM and alternative UoMs fail. This affects all purchasing, sales, and warehouse transactions that use alternative
     units. Maintained in MM02 > Additional Data (ECC) or Fiori F1602 (S/4HANA).
@@ -637,12 +637,13 @@ rules:
       = 12 pieces, UMREZ = 12, UMREN = 1.'
   record_fix_template: 'Material {MARA.MATNR}: UMREZ is {actual_value}. Set conversion numerator via MM02 > Additional Data
     (ECC) or Fiori F1602 (S/4HANA).'
+  fail_when: '`MARM.UMREZ`.isna() | (`MARM.UMREZ` <= 0)'
 - id: MM040
   field: MARM.UMREN
-  check_class: null_check
+  check_class: cross_field_check
   severity: high
   dimension: completeness
-  message: UoM conversion denominator is required for alternative units of measure
+  message: UoM conversion denominator must be a positive number (0 divides by zero)
   why_it_matters: UMREN is the denominator in the unit of measure conversion formula. Together with UMREZ, it defines the
     conversion ratio. Missing denominator causes division-by-zero errors in quantity conversion across all logistics processes.
   rule_authority: sap_hard_constraint
@@ -653,6 +654,7 @@ rules:
       = 12 pieces, UMREZ = 12, UMREN = 1.'
   record_fix_template: 'Material {MARA.MATNR}: UMREN is {actual_value}. Set conversion denominator via MM02 > Additional Data
     (ECC) or Fiori F1602 (S/4HANA).'
+  fail_when: '`MARM.UMREN`.isna() | (`MARM.UMREN` <= 0)'
 - id: MM041
   field: MARA.NTGEW
   check_class: cross_field_check
@@ -1284,3 +1286,19 @@ rules:
   applies_when:
     MBEW.BWKEY:
       populated: true
+- id: MM150
+  field: MARM.MEINH
+  check_class: cross_field_check
+  grain: MARM
+  fail_when: (`MARM.MEINH` == `MARA.MEINS`) & ((`MARM.UMREZ` != 1) | (`MARM.UMREN` != 1))
+  severity: critical
+  dimension: consistency
+  message: The base unit's own conversion is not 1:1
+  why_it_matters: SAP converts every alternative unit through the base unit, whose MARM entry must be 1 = 1. Any other
+    factor silently scales every quantity posted in the base unit — stock, valuation and MRP are all off by that factor.
+  rule_authority: sap_hard_constraint
+  sap_impact: Quantities in the base unit are multiplied by the wrong factor across inventory, valuation and planning.
+  fix_map:
+    __other__: Correct the base unit's conversion to 1/1 (MM02 > Additional data > Units of measure); if stock exists,
+      check the impact with the controller first.
+  record_fix_template: 'Material {MARM.MATNR}: base unit {MARM.MEINH} converts {MARM.UMREZ}/{MARM.UMREN} instead of 1/1.'

@@ -109,6 +109,11 @@ def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
     cols = rule_columns(rule)
     expr = rule.get("fail_when") or rule.get("condition") or ""
     literals = [a or b for a, b in re.findall(r"'([^']*)'|\"([^\"]*)\"", expr)]
+    # columns compared with each other: also try "the same value as the other side"
+    paired: dict[str, list[str]] = {}
+    for a, b in re.findall(r"`([^`]+)`\s*(?:==|!=|<=|>=|<|>)\s*`([^`]+)`", expr):
+        paired.setdefault(a, []).append(f"@={b}")
+        paired.setdefault(b, []).append(f"@={a}")
     numbers = re.findall(r"(?<![\w.`])(-?\d+(?:\.\d+)?)(?![\w`])", expr)
     out = {}
     for c in cols:
@@ -141,7 +146,7 @@ def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
                 vals.append(str(float(aw["gt"]) + 1))
         if f"`{c}`" in expr:
             vals += literals[:4] + numbers[:4]
-        vals += _PROBES[_kind(dictionary, c)]
+        vals += paired.get(c, [])[:1] + _PROBES[_kind(dictionary, c)]
         out[c] = list(dict.fromkeys(vals))[:10]
     return out
 
@@ -165,8 +170,10 @@ def _rows(rule: dict, dictionary, values: list[dict[str, str]]) -> pd.DataFrame:
                     r[f"{e.child}.{c}"] = r[f"{e.parent}.{p}"] = r.get(f"{e.parent}.{p}", f"K{i}")
                 for f, fv in e.filter + e.prefer:
                     r[f"{e.child}.{f}"] = fv
+        same = {k: x[2:] for k, x in v.items() if isinstance(x, str) and x.startswith("@=")}
+        v = {k: x for k, x in v.items() if k not in same}
         for k, x in v.items():  # a join field keeps its partner in step, so records still link
-            if x and k in joined and len(values) > 3:
+            if x and k in joined:
                 x = f"{x}{i}"
             r[k] = x
             for e in edges:
@@ -176,6 +183,8 @@ def _rows(rule: dict, dictionary, values: list[dict[str, str]]) -> pd.DataFrame:
                             r[f"{e.parent}.{p}"] = x
                         elif k == f"{e.parent}.{p}":
                             r[f"{e.child}.{c}"] = x
+        for k, other in same.items():  # "the same value as the other side", after every other value is set
+            r[k] = r.get(other, "")
         recs.append(r)
     return pd.DataFrame(recs)
 
@@ -226,11 +235,14 @@ def prove(rule: dict, dictionary) -> tuple[str, str]:
     failing = _failing_rows(result, df, dictionary)
     if not failing:
         return "never_fails", f"no candidate record fails ({len(values)} tried)"
-    passing = [i for i in range(len(values)) if i not in failing]
-    for p in passing[:600]:
-        verdict = _verify(rule, dictionary, [values[p], values[min(failing)]], (2, 1), live)
-        if verdict[0] == "proven":
-            return verdict
+    blanks = lambda i: sum(1 for x in values[i].values() if x == "")  # noqa: E731 — populated records first
+    passing = sorted((i for i in range(len(values)) if i not in failing), key=blanks)
+    bad = sorted(failing, key=blanks)
+    for tries, p in enumerate(passing[:600]):
+        for f in bad[: 1 if tries >= 50 else 4]:  # the first failing record may sit outside the population
+            verdict = _verify(rule, dictionary, [values[p], values[f]], (2, 1), live)
+            if verdict[0] == "proven":
+                return verdict
     return ("never_passes" if len(failing) >= result.total_count else "not_applicable",
             f"{len(failing)}/{result.total_count} fail; no passing record in the population")
 
