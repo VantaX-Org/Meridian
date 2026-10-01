@@ -318,7 +318,7 @@ async def list_rules(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
-    """List all 12 Z-rule templates and any custom rules."""
+    """List the Z-rule templates and any custom rules."""
     tid = str(tenant.id)
 
     # Templates from the rule builder

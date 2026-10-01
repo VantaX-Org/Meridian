@@ -65,16 +65,6 @@ class ZRuleBuilder:
             evaluate=self._eval_002_account_determination,
         )
 
-        self.templates["Z-RULE-003"] = ZRuleTemplate(
-            template_id="Z-RULE-003",
-            name="Z Order Type Must Have Settlement Rule",
-            description=(
-                "Z order types (PM/CO/PP) must have settlement parameters configured"
-            ),
-            default_severity="high",
-            applicable_to="config_value",
-            evaluate=self._eval_003_settlement_rule,
-        )
 
         self.templates["Z-RULE-004"] = ZRuleTemplate(
             template_id="Z-RULE-004",
@@ -157,29 +147,7 @@ class ZRuleBuilder:
             evaluate=self._eval_010_lifecycle,
         )
 
-        self.templates["Z-RULE-011"] = ZRuleTemplate(
-            template_id="Z-RULE-011",
-            name="Z Condition Type Must Be in Pricing Procedure",
-            description=(
-                "Z pricing conditions must be assigned to at least one active "
-                "pricing procedure"
-            ),
-            default_severity="medium",
-            applicable_to="config_value",
-            evaluate=self._eval_011_pricing_procedure,
-        )
 
-        self.templates["Z-RULE-012"] = ZRuleTemplate(
-            template_id="Z-RULE-012",
-            name="Z Enhancement Outcome Deviation",
-            description=(
-                "If a Z config value produces significantly different outcomes "
-                "than its standard equivalent, flag for investigation"
-            ),
-            default_severity="medium",
-            applicable_to="config_value",
-            evaluate=self._eval_012_enhancement_deviation,
-        )
 
     # ------------------------------------------------------------------
     # Public evaluation API
@@ -339,22 +307,6 @@ class ZRuleBuilder:
                     ),
                 )
             ]
-        return []
-
-    def _eval_003_settlement_rule(
-        self,
-        z_obj: ZDetectedObject,
-        profile: ZObjectProfile | None,
-        baseline: ZBaseline | None,
-        records: list[dict],
-        ctx: dict,
-    ) -> list[ZRuleFinding]:
-        """Z order types must have settlement parameters configured."""
-        # TODO: Requires AUFK + COBRB settlement rule data. Only flags when
-        # AUART is the source field and no settlement indicators are present.
-        if z_obj.source_field != "AUART":
-            return []
-        # Without settlement data we can only flag as informational
         return []
 
     def _eval_004_null_threshold(
@@ -640,34 +592,3 @@ class ZRuleBuilder:
             ]
         return []
 
-    def _eval_011_pricing_procedure(
-        self,
-        z_obj: ZDetectedObject,
-        profile: ZObjectProfile | None,
-        baseline: ZBaseline | None,
-        records: list[dict],
-        ctx: dict,
-    ) -> list[ZRuleFinding]:
-        """Z pricing conditions must be assigned to a pricing procedure."""
-        # TODO: Requires T685A/T683S pricing procedure data. Only applicable
-        # when source_field is KSCHL. Needs additional SAP configuration data
-        # beyond a single CSV upload.
-        if z_obj.source_field != "KSCHL":
-            return []
-        return []
-
-    def _eval_012_enhancement_deviation(
-        self,
-        z_obj: ZDetectedObject,
-        profile: ZObjectProfile | None,
-        baseline: ZBaseline | None,
-        records: list[dict],
-        ctx: dict,
-    ) -> list[ZRuleFinding]:
-        """Flag Z config values with significantly different outcomes vs standard."""
-        # TODO: Requires paired analysis comparing Z value outcomes against
-        # the standard equivalent's outcomes (e.g. Z61 vs 261 for BWART).
-        # Needs more contextual data to determine deviation significance.
-        if not profile or not profile.standard_equivalent:
-            return []
-        return []

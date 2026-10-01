@@ -72,6 +72,7 @@ CONFIG_TABLES = {
     "BNKA": ["BANKS", "BANKL"],
     # pricing condition types and HR infotype time constraints (checks/config_rules.py)
     "T685A": ["KAPPL", "KSCHL", "KNEGA", "KRECH", "KOAID"],
+    "T683S": ["KVEWE", "KAPPL", "KALSM", "KSCHL"],   # pricing procedure steps
     "T582A": ["INFTY", "ZEITB"],
 }
 
