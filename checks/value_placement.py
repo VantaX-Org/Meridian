@@ -252,6 +252,12 @@ def kind_of(dictionary, table: str, field: str) -> str | None:
     return KIND_BY_DATA_ELEMENT.get((f.data_element or "").upper()) if f is not None else None
 
 
+# near-duplicate detection: name compared within a block (checks/types/similarity_check.py)
+NEAR_DUPLICATE = {"LFA1": ("LFA1.NAME1", ("LFA1.LAND1", "LFA1.PSTLZ"), "LFA1"),
+                  "KNA1": ("KNA1.NAME1", ("KNA1.LAND1", "KNA1.PSTLZ"), "KNA1"),
+                  "MAKT": ("MAKT.MAKTX", ("MARA.MTART", "MARA.MATKL"), "MARA")}
+
+
 def fields_for(table: str, dictionary) -> set[str]:
     """Fields of ``table`` these rules read (for extraction and column pruning)."""
     t = dictionary.table(table)
@@ -260,6 +266,8 @@ def fields_for(table: str, dictionary) -> set[str]:
     out = {f.name for f in t.fields.values()
            if KIND_BY_DATA_ELEMENT.get((f.data_element or "").upper()) or (f.data_element or "").upper() in CREATED_DE | CHANGED_DE}
     out |= set(BLOCK_FIELDS.get(table, ()))
+    out |= {c.split(".")[1] for name, block, _ in NEAR_DUPLICATE.values() for c in (name, *block)
+            if c.startswith(table + ".")}
     for grain, (text_table, fields) in STATUS_TEXT.items():
         if text_table == table:
             out |= set(fields)
@@ -327,6 +335,16 @@ def generate(module: str, static_rules: list[dict], dictionary) -> list[dict]:
                                      f"postal code and country ({t})",
                           "why_it_matters": "The same business created twice splits its history, limits and open "
                                             "items across accounts and defeats duplicate-invoice and credit checks."})
+        if t in NEAR_DUPLICATE and all(dictionary.resolve(c) for c in (NEAR_DUPLICATE[t][0], *NEAR_DUPLICATE[t][1])):
+            name, block, grain = NEAR_DUPLICATE[t]
+            rules.append({**base, "check_class": "similarity_check", "id": f"FZ-{t}", "field": name,
+                          "block_by": list(block), "grain": grain, "threshold": 0.9,
+                          "severity": "medium", "dimension": "uniqueness",
+                          "message": f"Possible duplicate: near-identical name ({name}) within the same "
+                                     f"{' / '.join(b.split('.')[1] for b in block)}",
+                          "why_it_matters": "Records keyed in twice with a typo or different word order escape "
+                                            "exact duplicate checks; the business ends up with two accounts or two "
+                                            "materials, splitting history, stock, limits and open items."})
         if t in SWAP_PAIRS and all(dictionary.field(t, x) for x in SWAP_PAIRS[t]):
             pc, city = SWAP_PAIRS[t]
             rules.append({**base, "id": f"SW-{t}-{pc}-{city}", "family": "swap", "field": f"{t}.{city}",

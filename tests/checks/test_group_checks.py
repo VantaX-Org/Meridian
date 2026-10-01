@@ -70,3 +70,27 @@ def test_exists_check_against_live_partial_and_missing_targets():
     assert r.error and "not read in full" in r.error
     _, r = run_rule(rule, TableFrames({"LFB1": lfb1}, d, module="accounts_payable"))
     assert r is None
+
+
+def test_similarity_check_finds_typos_not_variants():
+    from checks.types.similarity_check import SimilarityCheck
+
+    rule = {"id": "T", "module": "material_master", "field": "MAKT.MAKTX", "block_by": ["MARA.MATKL"],
+            "check_class": "similarity_check", "severity": "medium", "message": "m"}
+    names = [("BOLT HEX M10X20 ZINC", "001"), ("BOLT HEX M10X25 ZINC", "001"),   # different size: distinct
+             ("HYDRAULIC FILTER ELEMENT", "002"), ("HYDRAULC FILTER ELEMENT", "002"),  # typo: near-duplicate
+             ("ELEMENT FILTER HYDRAULIC", "003"), ("HYDRAULIC FILTER ELEMENT", "004"),  # other blocks: never paired
+             ("GEAR PUMP", "005"), ("GEAR PUMP", "005"),                    # exact: the uniqueness rule's job
+             ("PUMP", "006"), ("PUMPS", "006")]                             # too short to judge
+    df = pd.DataFrame({"MAKT.MAKTX": [n for n, _ in names], "MARA.MATKL": [g for _, g in names]})
+    r = SimilarityCheck(rule).run(df)
+    assert r.affected_count == 2 and r.details["near_duplicate_pairs"] == [
+        ["HYDRAULIC FILTER ELEMENT", "HYDRAULC FILTER ELEMENT"]]
+    # word order alone is a near-duplicate within one block
+    df2 = pd.DataFrame({"MAKT.MAKTX": ["FILTER ELEMENT HYDRAULIC", "HYDRAULIC FILTER ELEMENT"],
+                        "MARA.MATKL": ["002", "002"]})
+    assert SimilarityCheck(rule).run(df2).affected_count == 2
+    # an oversized block is skipped and counted, not silently judged
+    big = pd.DataFrame({"MAKT.MAKTX": [f"PART NUMBER {i}" for i in range(5)], "MARA.MATKL": ["9"] * 5})
+    r = SimilarityCheck({**rule, "max_block": 4}).run(big)
+    assert r.affected_count == 0 and r.details["blocks_skipped_too_large"] == 1
