@@ -11,12 +11,12 @@
     "test": "vitest run"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20241205.0",
+    "@cloudflare/workers-types": "^5.20261002.1",
     "@tsndr/cloudflare-worker-jwt": "^3.2.3",
     "itty-router": "^4.2.2",
     "jose": "^5.10.0",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8",
-    "wrangler": "^4.0.0"
+    "wrangler": "^4.146.0"
   }
 }
