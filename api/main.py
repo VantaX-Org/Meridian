@@ -50,6 +50,7 @@ from api.routes.spro_config import router as spro_config_router
 from api.routes.config_impact import router as config_impact_router
 from api.routes.business_process import router as business_process_router
 from api.routes.events import router as events_router
+from api.routes.jobs import router as jobs_router
 from api.routes.mining import router as mining_router
 from api.routes.process_mining import router as process_mining_router
 from api.routes.admin_doctor import router as admin_doctor_router
@@ -297,6 +298,7 @@ app.include_router(spro_config_router)
 app.include_router(config_impact_router)
 app.include_router(business_process_router)
 app.include_router(events_router)
+app.include_router(jobs_router)
 app.include_router(mining_router)
 app.include_router(process_mining_router)
 app.include_router(admin_doctor_router)

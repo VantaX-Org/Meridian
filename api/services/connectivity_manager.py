@@ -11,7 +11,7 @@ Coordinates:
 import json
 import logging
 import uuid
-from typing import Optional
+from typing import Callable, Optional
 
 import pandas as pd
 from sqlalchemy import text
@@ -186,13 +186,18 @@ class ConnectivityManager:
     # -- Extraction (rules-driven, per-table) -----------------------------------
 
     def extract(self, system_id: str, modules: list[str], max_rows: int = 0,
-                scope: Optional[dict] = None) -> tuple[dict[str, pd.DataFrame], list[dict]]:
+                scope: Optional[dict] = None,
+                progress: Optional[Callable[[list[dict], int, int], None]] = None,
+                ) -> tuple[dict[str, pd.DataFrame], list[dict]]:
         """Extract everything the rules of ``modules`` need from one system.
 
         Returns ``({TABLE: frame with TABLE.FIELD columns}, coverage)``. The
         coverage list says, per table, whether it was read live, how many rows,
         whether the transactional window truncated it, or why it failed —
-        nothing is silently skipped.
+        nothing is silently skipped. ``progress(tables, rows_done, rows_total)``
+        is called once the read plan is known and after every table, with one
+        ``{table, status, rows, expected}`` entry per planned table (status
+        queued · running · live · failed · …) so a caller can show a bar.
         """
         import os
 
@@ -227,8 +232,26 @@ class ConnectivityManager:
                 # reconciliation: an unfiltered read must return exactly SAP's own row count
                 counts = connector.count_rows([t for t, p in plans.items() if not p.where and not p.via]) \
                     if hasattr(connector, "count_rows") else {}
-                for table in read_order(plans):
+                order = read_order(plans)
+                progress_rows = {t: {"table": t, "status": "queued", "rows": 0, "expected": counts.get(t)}
+                                 for t in order}
+
+                def _report(table: Optional[str] = None) -> None:
+                    if progress is None:
+                        return
+                    if table is not None:
+                        progress_rows[table]["status"] = "running"
+                    for c in coverage:
+                        if c["table"] in progress_rows:
+                            progress_rows[c["table"]].update(status=c["status"], rows=c.get("rows", 0))
+                    progress([dict(r) for r in progress_rows.values()],  # snapshots, not the live dicts
+                             sum(r["rows"] for r in progress_rows.values()),
+                             sum(r["expected"] or 0 for r in progress_rows.values()))
+
+                _report()
+                for table in order:
                     plan = plans[table]
+                    _report(table)
                     t = dictionary.table(table)
                     cols = [c for c in plan.columns() if t is not None and c in t.fields]
                     if t is None or not cols:
@@ -273,6 +296,7 @@ class ConnectivityManager:
                     if dup_keys:
                         entry["duplicate_keys"] = dup_keys
                     coverage.append(entry)
+                _report()
             elif system_type == "successfactors":
                 frames, coverage = self._extract_successfactors(connector, modules, dictionary, system_id)
             else:

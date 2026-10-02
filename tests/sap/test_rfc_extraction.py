@@ -130,10 +130,21 @@ def test_extraction_reconciles_row_counts_with_sap(monkeypatch):
             return fake
 
     monkeypatch.setattr("api.services.source_design.dictionary_for", lambda s, sid, st=None: get_dictionary("ecc6"))
-    _, coverage = Mgr().extract("sys", ["accounts_payable"])
+    reports = []
+    _, coverage = Mgr().extract("sys", ["accounts_payable"], progress=lambda t, d, n: reports.append((t, d, n)))
     cov = {c["table"]: c for c in coverage}
     assert cov["LFA1"]["source_rows"] == 3 and cov["LFA1"]["complete"] is False
     assert cov["LFB1"]["source_rows"] == 1 and cov["LFB1"]["complete"] is True
+
+    # progress: the plan first (all queued, SAP's counts as the expected rows), one report per
+    # table as it starts, and the final state after the last table
+    first, last = reports[0], reports[-1]
+    assert {t["table"] for t in first[0]} >= {"LFA1", "LFB1"} and all(t["status"] == "queued" for t in first[0])
+    assert {t["table"]: t["expected"] for t in first[0]}["LFA1"] == 3 and first[1] == 0
+    assert any(any(t["status"] == "running" for t in r[0]) for r in reports[1:-1])
+    done = {t["table"]: t for t in last[0]}
+    assert done["LFA1"]["status"] == "live" and done["LFA1"]["rows"] == 2 and last[1] == 3  # 2 + 1 rows read
+    assert len(reports) == len(first[0]) + 2
 
 
 def test_payroll_totals_through_the_customer_function():

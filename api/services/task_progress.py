@@ -131,6 +131,9 @@ def update_task_progress(
         )
     except Exception as exc:
         logger.warning("Failed to write task progress for %s: %s", version_id, exc)
+    from api.services.jobs import mirror_progress  # deferred: jobs imports the Redis client from here
+
+    mirror_progress(version_id, payload)
 
 
 def get_task_progress(version_id: str) -> Optional[dict]:

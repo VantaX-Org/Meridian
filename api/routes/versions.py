@@ -10,6 +10,7 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
+from api.services import jobs
 from db.schema import AnalysisVersion
 
 router = APIRouter(prefix="/api/v1", tags=["versions"])
@@ -270,8 +271,10 @@ async def analyse_version(version_id: str, db: AsyncSession = Depends(get_db), t
         raise HTTPException(status_code=409, detail="An analysis of this version is already running.")
     await db.execute(text("UPDATE analysis_versions SET status = 'pending' WHERE id = :v"), {"v": vid})
     await db.commit()
+    jobs.start_job(str(tenant.id), version_id, "analysis", "Analysis" if row[0] == "extracted" else "Re-analysis",
+                   status="queued", progress_key=version_id, version_id=version_id)
     job = run_checks.delay(version_id, str(tenant.id), row[1], reanalyse=row[0] != "extracted")
-    return {"version_id": version_id, "task_id": job.id, "status": "pending"}
+    return {"version_id": version_id, "task_id": job.id, "job_id": version_id, "status": "pending"}
 
 
 @router.post("/versions/{version_id}/baseline", dependencies=[Depends(require_permission("analyse"))])

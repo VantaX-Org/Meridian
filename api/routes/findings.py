@@ -13,6 +13,111 @@ router = APIRouter(prefix="/api/v1", tags=["findings"])
 logger = logging.getLogger("meridian.findings")
 
 
+_COMPLETE = "status IN ('complete', 'agents_running', 'agents_complete', 'agents_failed', 'ai_enriching', 'ai_enriched')"
+
+
+async def _latest_version_ids(db: AsyncSession, tenant: Tenant) -> list[uuid.UUID]:
+    """Current state: the latest complete run of each system (uploads count as one
+    lineage) — never the same check counted once per historical run."""
+    return list((await db.execute(text(f"""
+        SELECT DISTINCT ON (COALESCE(metadata->>'system_id', 'upload')) id FROM analysis_versions
+         WHERE tenant_id = :tid AND {_COMPLETE}
+         ORDER BY COALESCE(metadata->>'system_id', 'upload'), run_at DESC
+    """), {"tid": str(tenant.id)})).scalars().all())
+
+
+def composite_dqs(summaries: list[dict]) -> dict:
+    """One DQS over several modules/versions: module scores weighted by the number of
+    checks behind them (``dqs_summary`` = {module: DQSResult}). Pure — tested directly."""
+    mods: dict[str, dict] = {}
+    for s in summaries:
+        for module, r in (s or {}).items():
+            if isinstance(r, dict) and r.get("composite_score") is not None:
+                mods[module] = r
+    weight = {m: max(1, int(r.get("total_checks") or 1)) for m, r in mods.items()}
+    total = sum(weight.values())
+    if not total:
+        return {"composite": None, "dimension_scores": {}, "modules": {}}
+    dims: dict[str, float] = {}
+    for d in ("completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity"):
+        have = [(m, r["dimension_scores"][d]) for m, r in mods.items() if d in (r.get("dimension_scores") or {})]
+        if have:
+            dims[d] = round(sum(v * weight[m] for m, v in have) / sum(weight[m] for m, _ in have), 2)
+    return {"composite": round(sum(r["composite_score"] * weight[m] for m, r in mods.items()) / total, 2),
+            "dimension_scores": dims,
+            "modules": {m: round(float(r["composite_score"]), 2) for m, r in mods.items()},
+            "capped": any(r.get("capped") for r in mods.values())}
+
+
+@router.get("/findings/aggregate")
+async def aggregate_findings(
+    version_id: Optional[str] = Query(None, description="One version; default = latest complete run per system"),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Severity, module and dimension totals plus the composite DQS, computed server-side
+    over the whole result set — the figures the Command Centre headline is built from."""
+    await db.execute(text("SELECT set_config('app.tenant_id', :tid, true)"), {"tid": str(tenant.id)})
+    ids = [uuid.UUID(version_id)] if version_id else await _latest_version_ids(db, tenant)
+    if not ids:
+        return {"version_ids": [], "total": 0, "affected_records": 0,
+                "severity": {"critical": 0, "high": 0, "medium": 0, "low": 0}, "by_module": [], "by_dimension": [],
+                "dqs": composite_dqs([]), "previous_dqs": None}
+    p = {"ids": [str(i) for i in ids]}
+    rows = (await db.execute(text("""
+        SELECT module, severity, dimension, count(*) AS n, COALESCE(sum(affected_count), 0) AS affected,
+               avg(pass_rate) AS avg_pass
+          FROM findings WHERE version_id = ANY(CAST(:ids AS uuid[]))
+         GROUP BY module, severity, dimension
+    """), p)).mappings().all()
+    sev = {"critical": 0, "high": 0, "medium": 0, "low": 0}
+    by_module: dict[str, dict] = {}
+    by_dim: dict[str, dict] = {}
+    for r in rows:
+        n = int(r["n"])
+        sev[r["severity"]] = sev.get(r["severity"], 0) + n
+        m = by_module.setdefault(r["module"], {"module": r["module"], "findings": 0, "affected": 0,
+                                               "critical": 0, "high": 0, "medium": 0, "low": 0, "_pass": []})
+        m["findings"] += n
+        m["affected"] += int(r["affected"])
+        m[r["severity"]] = m.get(r["severity"], 0) + n
+        d = by_dim.setdefault(r["dimension"], {"dimension": r["dimension"], "findings": 0, "_pass": []})
+        d["findings"] += n
+        if r["avg_pass"] is not None:
+            m["_pass"].append((float(r["avg_pass"]), n))
+            d["_pass"].append((float(r["avg_pass"]), n))
+
+    def _avg(entry: dict) -> dict:
+        pairs = entry.pop("_pass")
+        entry["avg_pass_rate"] = round(sum(v * n for v, n in pairs) / sum(n for _, n in pairs), 2) if pairs else None
+        return entry
+
+    summaries = (await db.execute(text(
+        "SELECT dqs_summary FROM analysis_versions WHERE id = ANY(CAST(:ids AS uuid[]))"), p)).scalars().all()
+    # the run before each of these in its own lineage, for the delta
+    previous = (await db.execute(text(f"""
+        SELECT DISTINCT ON (lineage) dqs_summary FROM (
+            SELECT av.dqs_summary, av.run_at, COALESCE(av.metadata->>'system_id', 'upload') AS lineage
+              FROM analysis_versions av
+              JOIN analysis_versions cur ON cur.id = ANY(CAST(:ids AS uuid[]))
+               AND COALESCE(cur.metadata->>'system_id', 'upload') = COALESCE(av.metadata->>'system_id', 'upload')
+             WHERE av.tenant_id = :tid AND av.{_COMPLETE} AND av.run_at < cur.run_at AND av.id <> cur.id
+        ) x ORDER BY lineage, run_at DESC
+    """), {**p, "tid": str(tenant.id)})).scalars().all()
+    prev = composite_dqs(list(previous))
+    return {
+        "version_ids": p["ids"],
+        "total": sum(sev.values()),
+        "affected_records": sum(m["affected"] for m in by_module.values()),
+        "severity": sev,
+        "by_module": sorted((_avg(m) for m in by_module.values()),
+                            key=lambda m: (-m["critical"], -m["high"], -m["findings"])),
+        "by_dimension": sorted((_avg(d) for d in by_dim.values()), key=lambda d: d["dimension"]),
+        "dqs": composite_dqs(list(summaries)),
+        "previous_dqs": prev["composite"],
+    }
+
+
 @router.get("/findings")
 async def list_findings(
     version_id: Optional[str] = Query(None),
@@ -35,14 +140,7 @@ async def list_findings(
         base = base.where(Finding.version_id == vid)
         filters_applied["version_id"] = version_id
     else:
-        # Current state: the latest complete run of each system (uploads count as one
-        # lineage) — never the same check counted once per historical run.
-        latest = (await db.execute(text("""
-            SELECT DISTINCT ON (COALESCE(metadata->>'system_id', 'upload')) id FROM analysis_versions
-             WHERE tenant_id = :tid AND status = 'complete'
-             ORDER BY COALESCE(metadata->>'system_id', 'upload'), run_at DESC
-        """), {"tid": str(tenant.id)})).scalars().all()
-        base = base.where(Finding.version_id.in_(latest))
+        base = base.where(Finding.version_id.in_(await _latest_version_ids(db, tenant)))
         filters_applied["version_id"] = "latest"
     if check_id:
         base = base.where(Finding.check_id == check_id)

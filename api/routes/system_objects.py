@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.concurrency import run_in_threadpool
 
 from api.deps import Tenant, get_db, get_tenant
+from api.services import jobs
 from api.services.rbac import require_permission
 
 router = APIRouter(prefix="/api/v1/systems", tags=["system-objects"])
@@ -125,9 +126,13 @@ async def start_download(system_id: uuid.UUID, body: DownloadBody, request: Requ
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     enforce_licensed_modules(request, body.objects)
-    job = run_extraction.delay(str(tenant.id), str(system_id), body.objects, True, "both",
-                               scope, body.analyse, body.label)
-    return {"job_id": job.id, "status": "queued", "objects": body.objects, "scope": scope, "analyse": body.analyse}
+    version_id = str(uuid.uuid4())
+    jobs.start_job(str(tenant.id), f"dl-{version_id}", "extraction", body.label or ", ".join(body.objects),
+                   status="queued", system_id=str(system_id), modules=body.objects, version_id=version_id)
+    run_extraction.delay(str(tenant.id), str(system_id), body.objects, True, "both",
+                         scope, body.analyse, body.label, version_id)
+    return {"job_id": f"dl-{version_id}", "version_id": version_id, "status": "queued", "objects": body.objects,
+            "scope": scope, "analyse": body.analyse}
 
 
 @router.get("/{system_id}/versions", dependencies=[Depends(require_permission("view"))])
