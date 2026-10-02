@@ -79,9 +79,24 @@ _CHECKS_LIMIT = int(os.getenv("MERIDIAN_CHECKS_TIME_LIMIT", "21600"))
                  soft_time_limit=_CHECKS_LIMIT, time_limit=_CHECKS_LIMIT + 60)
 def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanalyse: bool = False):
     """Execute the full check suite against a dataset (``reanalyse``: again, on the same version)."""
-    logger.info(f"run_checks started: version_id={version_id}, tenant_id={tenant_id}")
-
     engine = get_sync_engine()
+    # One run per version: concurrent runs each load the full dataset and exhaust memory.
+    # A session-level advisory lock is freed by Postgres if the worker is killed mid-run.
+    lock = engine.connect()
+    try:
+        if not lock.execute(text("SELECT pg_try_advisory_lock(hashtext(:v))"), {"v": version_id}).scalar():
+            logger.warning(f"run_checks already running for version_id={version_id}, skipping")
+            return {"version_id": version_id, "status": "already_running"}
+        try:
+            return _run_checks(self, engine, version_id, tenant_id, parquet_path, reanalyse)
+        finally:
+            lock.execute(text("SELECT pg_advisory_unlock(hashtext(:v))"), {"v": version_id})
+    finally:
+        lock.close()
+
+
+def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str, reanalyse: bool):
+    logger.info(f"run_checks started: version_id={version_id}, tenant_id={tenant_id}")
 
     with Session(engine) as session:
         # Step 1: Set RLS context
