@@ -17,7 +17,7 @@
   --aurora-ink-100: #e7ecf2;
   --aurora-ink-200: #c7d0dc;
   --aurora-ink-300: #99a5b8;
-  --aurora-ink-400: #6b7a90;
+  --aurora-ink-400: #748399;
   --aurora-ink-500: #4a5669;
   --aurora-ink-600: #2e3847;
   --aurora-ink-700: #1a2230;
@@ -26,11 +26,11 @@
   --aurora-ink-950: #05070f;
 
   /* §5.1.2 Canvas — dark defaults */
-  --aurora-canvas-base: #0a0e1a;
-  --aurora-canvas-raised: #111726;
-  --aurora-canvas-elevated: #172034;
-  --aurora-canvas-overlay: #1e2a42;
-  --aurora-canvas-line: #2a3654;
+  --aurora-canvas-base: #060910;
+  --aurora-canvas-raised: #0b1019;
+  --aurora-canvas-elevated: #111827;
+  --aurora-canvas-overlay: #16203a;
+  --aurora-canvas-line: #1f2b45;
 
   /* Foreground mapping for the dark theme */
   --aurora-fg-primary: var(--aurora-ink-50);
@@ -41,37 +41,42 @@
   --aurora-fg-inverse: var(--aurora-ink-900);
 
   /* §5.1.3 Accent — SAP Fiori Horizon blue, one shade deeper */
-  --aurora-accent-50: #eaf3fe;
-  --aurora-accent-100: #cae0fc;
-  --aurora-accent-200: #8fc1f8;
-  --aurora-accent-300: #549ff2;
-  --aurora-accent-400: #2980e8;
-  --aurora-accent-500: #0057d2;
-  --aurora-accent-600: #0048ad;
-  --aurora-accent-700: #003a8c;
-  --aurora-accent-800: #002d6f;
-  --aurora-accent-900: #001f50;
+  --aurora-accent-50: #eaf2ff;
+  --aurora-accent-100: #ccdfff;
+  --aurora-accent-200: #99bfff;
+  --aurora-accent-300: #7fb0ff;
+  --aurora-accent-400: #4f93ff;
+  --aurora-accent-500: #2b7bff;
+  --aurora-accent-600: #1e5fd6;
+  --aurora-accent-700: #174aae;
+  --aurora-accent-800: #12397f;
+  --aurora-accent-900: #0c2756;
   /* Selected-state fills derived from accent-500 — chips, filter pills,
      any `data-selected="true"` surface. Keeps raw rgba() out of call sites. */
-  --aurora-accent-selected-bg: rgba(0, 87, 210, 0.18);
-  --aurora-accent-selected-border: rgba(0, 87, 210, 0.32);
+  --aurora-accent-selected-bg: rgba(43, 123, 255, 0.18);
+  --aurora-accent-selected-border: rgba(43, 123, 255, 0.36);
 
   /* §5.1.4 Semantic status — used exclusively for status */
-  --aurora-status-success-500: #0b7341;
-  --aurora-status-success-bg: rgba(11, 115, 65, 0.12);
-  --aurora-status-success-border: rgba(11, 115, 65, 0.32);
+  --aurora-status-success-500: #27c281;
+  --aurora-status-success-bg: rgba(39, 194, 129, 0.12);
+  --aurora-status-success-border: rgba(39, 194, 129, 0.34);
 
-  --aurora-status-warning-500: #c78420;
-  --aurora-status-warning-bg: rgba(199, 132, 32, 0.12);
-  --aurora-status-warning-border: rgba(199, 132, 32, 0.32);
+  --aurora-status-warning-500: #f2b134;
+  --aurora-status-warning-bg: rgba(242, 177, 52, 0.12);
+  --aurora-status-warning-border: rgba(242, 177, 52, 0.34);
 
-  --aurora-status-danger-500: #bb0000;
-  --aurora-status-danger-bg: rgba(187, 0, 0, 0.14);
-  --aurora-status-danger-border: rgba(187, 0, 0, 0.36);
+  --aurora-status-danger-500: #ff4d4f;
+  --aurora-status-danger-bg: rgba(255, 77, 79, 0.14);
+  --aurora-status-danger-border: rgba(255, 77, 79, 0.38);
 
-  --aurora-status-info-500: #0057d2;
-  --aurora-status-info-bg: rgba(0, 87, 210, 0.1);
-  --aurora-status-info-border: rgba(0, 87, 210, 0.3);
+  --aurora-status-info-500: #2b7bff;
+  --aurora-status-info-bg: rgba(43, 123, 255, 0.1);
+  --aurora-status-info-border: rgba(43, 123, 255, 0.3);
+
+  /* Signal — in-flight state only (running job, live stream). Not a status. */
+  --aurora-signal-500: #22d3ee;
+  --aurora-signal-bg: rgba(34, 211, 238, 0.12);
+  --aurora-signal-border: rgba(34, 211, 238, 0.36);
 
   /* §5.1.5 Data visualisation — categorical (iterate in order) */
   --aurora-viz-1: #54a0ff;
@@ -115,9 +120,9 @@
   /* §5.2 The only gradient in the product */
   --aurora-verdict-halo: radial-gradient(
     ellipse at center,
-    rgba(0, 87, 210, 0.24) 0%,
-    rgba(106, 230, 245, 0.14) 35%,
-    rgba(248, 122, 196, 0.08) 60%,
+    rgba(43, 123, 255, 0.26) 0%,
+    rgba(34, 211, 238, 0.14) 35%,
+    rgba(167, 125, 255, 0.08) 60%,
     transparent 80%
   );
 
@@ -221,7 +226,7 @@
   --aurora-elev-2-shadow: 0 2px 8px rgba(10, 14, 26, 0.08);
   --aurora-elev-3-shadow: 0 8px 24px rgba(10, 14, 26, 0.12);
   --aurora-elev-4-shadow: 0 16px 40px rgba(10, 14, 26, 0.16),
-    0 0 0 1px rgba(0, 87, 210, 0.4), 0 0 48px rgba(0, 87, 210, 0.24);
+    0 0 0 1px rgba(43, 123, 255, 0.4), 0 0 48px rgba(43, 123, 255, 0.24);
 
   color-scheme: light;
 }

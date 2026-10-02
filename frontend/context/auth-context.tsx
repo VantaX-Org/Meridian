@@ -28,6 +28,13 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 const TOKEN_KEY = "mn_auth_token";
 
+/** Signed-in marker for middleware.ts (the token itself never leaves localStorage). */
+function setSessionCookie(on: boolean): void {
+  document.cookie = on
+    ? "mn_session=1; Path=/; SameSite=Lax; Max-Age=2592000"
+    : "mn_session=; Path=/; SameSite=Lax; Max-Age=0";
+}
+
 export function LocalAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -37,29 +44,27 @@ export function LocalAuthProvider({ children }: { children: ReactNode }) {
   // On mount, check for stored token and validate it
   useEffect(() => {
     const stored = localStorage.getItem(TOKEN_KEY);
-    if (!stored) {
-      setIsLoading(false);
-      return;
-    }
-    apiClient
-      .get("/api/v1/auth/me", {
-        headers: { Authorization: `Bearer ${stored}` },
-      })
-      .then((res) => {
-        setToken(stored);
-        setUser(res.data.user);
-        setMustChangePassword(Boolean(res.data.must_change_password));
-      })
-      .catch(() => {
-        localStorage.removeItem(TOKEN_KEY);
-      })
-      .finally(() => setIsLoading(false));
+    const validate = stored
+      ? apiClient
+          .get("/api/v1/auth/me", { headers: { Authorization: `Bearer ${stored}` } })
+          .then((res) => {
+            setToken(stored);
+            setUser(res.data.user);
+            setMustChangePassword(Boolean(res.data.must_change_password));
+          })
+          .catch(() => {
+            localStorage.removeItem(TOKEN_KEY);
+            setSessionCookie(false);
+          })
+      : Promise.resolve();
+    validate.finally(() => setIsLoading(false));
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
     const res = await apiClient.post("/api/v1/auth/login", { email, password });
     const { token: newToken, user: newUser, must_change_password } = res.data;
     localStorage.setItem(TOKEN_KEY, newToken);
+    setSessionCookie(true);
     setToken(newToken);
     setUser(newUser);
     setMustChangePassword(Boolean(must_change_password));
@@ -67,6 +72,7 @@ export function LocalAuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
+    setSessionCookie(false);
     setToken(null);
     setUser(null);
     setMustChangePassword(false);

@@ -250,15 +250,20 @@ Aurora is the authoritative design system. Source of truth: `PLAN_AURORA.md`
 at repo root and the Aurora Experience Spec (Parts I–V). Tokens live in
 `frontend/lib/aurora/` and CSS variables in `frontend/app/styles/aurora.css`.
 
-- **Theme**: dark-first. `:root` / `[data-theme="dark"]` render canvas
-  `#0A0E1A` with raised `#111726` cards. `[data-theme="light"]` is a working
-  alternative — never the default. On dark canvas, elevation is expressed by
-  brightening the surface; on light canvas it uses shadow. Never mix.
-- **Accent**: `#0057D2` (SAP Fiori Horizon blue, one shade deeper than the
-  legacy `#0070F2`). `--aurora-accent-500`. Used for primary actions,
-  selected state, focus ring, and the verdict halo.
-- **Status**: success `#0B7341`, warning `#C78420`, danger `#BB0000`, info
-  `#0057D2`. Used exclusively for status — never for decoration or branding.
+- **Theme**: dark-first, engineering register. `:root` / `[data-theme="dark"]`
+  render a graphite-navy canvas `#060910` with raised `#0B1019` cards,
+  hairline `#1F2B45` lines and a 24 px grid texture on the content area.
+  `[data-theme="light"]` is a working alternative — never the default.
+  On dark canvas, elevation is expressed by brightening the surface; on light
+  canvas it uses shadow. Never mix.
+- **Accent**: `#2B7BFF` electric blue (`--aurora-accent-500`; `400` `#4F93FF`
+  for selected/active on dark). Used for primary actions, selected state,
+  focus ring, and the verdict halo.
+- **Signal**: `#22D3EE` cyan (`--aurora-signal-500`) is reserved for
+  *in-flight* state only — a running job, a live stream, a connection test
+  under way. Never for outcomes, never for decoration.
+- **Status**: success `#27C281`, warning `#F2B134`, danger `#FF4D4F`, info
+  `#2B7BFF`. Used exclusively for status — never for decoration or branding.
 - **Viz palette**: twelve-colour ordinal categorical tuned for dark canvas;
   sequential blue + amber ramps; diverging red/green for trend deltas.
   `--aurora-viz-1..12`.
@@ -292,6 +297,12 @@ at repo root and the Aurora Experience Spec (Parts I–V). Tokens live in
 - **Imports**: components pull tokens via `import { … } from "@/lib/aurora"`
   — never reach into individual token modules. Application pages read CSS
   via the `--aurora-*` variables.
+- **Shell**: `app/(dashboard)/layout.tsx` is the Aurora AppShell — 48 px
+  workspace rail (⌘1–⌘5), 48 px top bar (breadcrumb, live job rail, ⌘K,
+  notifications, density/theme, user). Five workspaces in
+  `frontend/lib/workspaces.ts` (Command Centre, Data, Workbench, Process,
+  Admin); each tab is a page, gated by the matching `lib/nav.ts` entry.
+  Pages not yet rebuilt render inside `.mn-legacy-host` (light sheet).
 - **Token reference**: `/_design-playground/aurora` renders every token for
   visual regression. Removed at the WS8 cutover in favour of Storybook (WS2).
 

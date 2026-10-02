@@ -1323,7 +1323,7 @@ textarea.mn-input { resize: vertical; min-height: 64px; font-family: 'Inter', sa
   padding: 12px 18px;
   border-radius: 8px;
   border: 0;
-  background: var(--mn-primary);
+  background: #c2410c; /* white on the 500/600 oranges is 2.8–3.4:1 — fails AA; this shade passes */
   color: white;
   font: 600 14px/1 "Inter", sans-serif;
   cursor: pointer;
@@ -1332,7 +1332,7 @@ textarea.mn-input { resize: vertical; min-height: 64px; font-family: 'Inter', sa
     0 6px 14px -6px color-mix(in srgb, var(--mn-primary) 60%, transparent);
   transition: background 120ms ease, transform 100ms ease;
 }
-.login-submit:hover { background: var(--mn-primary-600); }
+.login-submit:hover { background: #9a3412; }
 .login-submit:active { transform: translateY(0.5px); }
 .login-submit:disabled { opacity: 0.6; cursor: not-allowed; }
 

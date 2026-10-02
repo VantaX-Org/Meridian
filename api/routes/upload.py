@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.config import settings
 from api.deps import Tenant, get_db, get_tenant
+from api.services import jobs
 from api.services.rbac import require_permission
 from api.services.column_mapper import (
     apply_column_mapping,
@@ -259,6 +260,8 @@ async def upload_file(
     # mapping), so we report step 2 as finished and mark the task as queued
     # for the worker.
     parse_step_num, parse_step_name = STEP_PARSE
+    jobs.start_job(str(tenant.id), str(version.id), "upload", file.filename or "Upload", status="queued",
+                   progress_key=str(version.id), version_id=str(version.id))
     update_task_progress(
         str(version.id),
         status="queued",

@@ -20,6 +20,7 @@ export type WorkspaceId =
   | "command-centre"
   | "workbench"
   | "process"
+  | "data"
   | "admin";
 
 export interface WorkspaceSwitcherItem {

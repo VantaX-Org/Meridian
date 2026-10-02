@@ -218,3 +218,58 @@ def test_drilldown_routes(app_engine):
         asyncio.run(main())
     finally:
         os.environ.pop("MERIDIAN_DEV_ROLE_HEADER", None)
+
+
+def test_findings_aggregate(app_engine):
+    """Server-side totals + composite DQS over the latest run per lineage, with the previous run's DQS."""
+    import asyncio
+
+    from fastapi import FastAPI
+    from httpx import ASGITransport, AsyncClient
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+    from api.deps import Tenant, get_db, get_tenant
+    from api.routes.findings import router as findings_router
+
+    owner, app_eng = app_engine
+    tid = str(uuid.uuid4())
+    with owner.begin() as c:
+        c.execute(text("INSERT INTO tenants (id, name) VALUES (:a, 'D3')"), {"a": tid})
+    sid, v1, v2, vx, vu = _seed(app_eng, tid)
+    aeng = create_async_engine(app_eng.url.set(drivername="postgresql+asyncpg"))
+    factory = async_sessionmaker(aeng, expire_on_commit=False)
+
+    async def _db():
+        async with factory() as s:
+            yield s
+
+    api = FastAPI()
+    api.include_router(findings_router)
+    api.dependency_overrides[get_db] = _db
+    api.dependency_overrides[get_tenant] = lambda: Tenant(uuid.UUID(tid), "D", [])
+
+    async def scenario():
+        h = {"X-User-Role": "analyst"}
+        async with AsyncClient(transport=ASGITransport(app=api), base_url="http://t") as c:
+            latest = (await c.get("/api/v1/findings/aggregate", headers=h)).json()
+            assert set(latest["version_ids"]) == {v2, vx, vu}          # one per system + the upload lineage
+            assert latest["total"] == 5 and latest["severity"] == {"critical": 0, "high": 5, "medium": 0, "low": 0}
+            assert latest["affected_records"] == 4
+            assert [(m["module"], m["findings"], m["affected"]) for m in latest["by_module"]] == [
+                ("accounts_payable", 4, 3), ("business_partner", 1, 1)]
+            assert latest["by_dimension"] == [{"dimension": "completeness", "findings": 5, "avg_pass_rate": None}]
+            assert latest["dqs"]["composite"] == 77.75                   # (85.5 + 70) / 2, one check each
+            assert latest["dqs"]["modules"] == {"accounts_payable": 85.5, "business_partner": 70.0}
+            assert latest["dqs"]["dimension_scores"] == {"completeness": 80.0, "validity": 88.0}
+            assert latest["previous_dqs"] == 80.0                        # v1, the run before v2 on the same system
+
+            one = (await c.get("/api/v1/findings/aggregate", headers=h, params={"version_id": v1})).json()
+            assert one["version_ids"] == [v1] and one["total"] == 5 and one["dqs"]["composite"] == 80.0
+            assert one["previous_dqs"] is None                           # nothing before v1 on that system
+
+            none = (await c.get("/api/v1/findings/aggregate", headers=h, params={"version_id": str(uuid.uuid4())})).json()
+            assert none["total"] == 0 and none["dqs"]["composite"] is None
+        await aeng.dispose()
+
+    asyncio.run(scenario())

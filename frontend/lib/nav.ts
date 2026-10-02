@@ -78,7 +78,7 @@ export interface NavGroup {
 }
 
 /** Any permission that opens at least one settings page or admin tool. */
-const SETTINGS_PERMISSIONS = [
+export const SETTINGS_PERMISSIONS = [
   "manage_rules",
   "manage_field_mappings",
   "manage_llm",
@@ -166,6 +166,10 @@ export const NAV_GROUPS: readonly NavGroup[] = [
 /** Header titles for routes that are not in the nav. */
 const OFF_NAV_TITLES: Record<string, string> = {
   "/command-centre": "Live operations",
+  "/executive-report": "Executive report",
+  "/match-rules": "Match rules",
+  "/settings/scoring": "Scoring & alerts",
+  "/workbench/report": "Record report",
   "/connectivity": "Connectivity",
   "/run-sync": "Run Sync",
   "/stewardship/metrics": "Stewardship metrics",

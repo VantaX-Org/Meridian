@@ -22,7 +22,8 @@ export default function SignInPage() {
     setLoading(true);
     try {
       await login(email, password);
-      router.push("/");
+      const next = new URLSearchParams(window.location.search).get("next");
+      router.push(next && next.startsWith("/") && !next.startsWith("//") ? next : "/");
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { detail?: string } } };
       setError(axiosErr.response?.data?.detail || "Login failed");

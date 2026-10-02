@@ -14,8 +14,9 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from "@/components/ui/command";
-import { useVisibleNav } from "@/hooks/use-nav";
+import { useNavGate, useVisibleNav } from "@/hooks/use-nav";
 import { flattenNav } from "@/lib/nav";
+import { visibleWorkspaces } from "@/lib/workspaces";
 
 type QuickAction = {
   id: string;
@@ -47,6 +48,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   const router = useRouter();
   // Same nav as the sidebar (lib/nav.ts), with the same role + licence filters.
   const groups = useVisibleNav();
+  const workspaces = visibleWorkspaces(useNavGate());
   const visibleHrefs = new Set(groups.flatMap((g) => flattenNav(g.items).map((i) => i.href)));
   const quickActions = QUICK_ACTIONS.filter((a) => visibleHrefs.has(a.page));
 
@@ -74,9 +76,17 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
             <CommandInput placeholder="Jump to… (try 'findings', 'systems')" autoFocus />
             <CommandList>
               <CommandEmpty>No matches.</CommandEmpty>
-              {groups.map((group, gi) => (
+              <CommandGroup heading="Workspaces">
+                {workspaces.map((w) => (
+                  <CommandItem key={w.id} value={`${w.label} workspace`} onSelect={() => go(w.href)}>
+                    <span className="flex-1 truncate">{w.label}</span>
+                    <CommandShortcut>{w.shortcut}</CommandShortcut>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+              {groups.map((group) => (
                 <React.Fragment key={group.group}>
-                  {gi > 0 ? <CommandSeparator /> : null}
+                  <CommandSeparator />
                   <CommandGroup heading={group.group}>
                     {flattenNav(group.items).map((item) => (
                       <CommandItem

@@ -24,3 +24,32 @@ export async function getFindingReportContext(
   );
   return data;
 }
+
+/** GET /api/v1/findings/aggregate — server-side totals + composite DQS (see api/routes/findings.py). */
+export interface FindingsAggregate {
+  version_ids: string[];
+  total: number;
+  affected_records: number;
+  severity: { critical: number; high: number; medium: number; low: number };
+  by_module: { module: string; findings: number; affected: number; critical: number; high: number; medium: number;
+    low: number; avg_pass_rate: number | null }[];
+  by_dimension: { dimension: string; findings: number; avg_pass_rate: number | null }[];
+  dqs: { composite: number | null; dimension_scores: Record<string, number>; modules: Record<string, number>; capped?: boolean };
+  previous_dqs: number | null;
+}
+
+export async function getFindingsAggregate(versionId?: string): Promise<FindingsAggregate> {
+  const { data } = await apiClient.get<FindingsAggregate>("/api/v1/findings/aggregate", {
+    params: versionId ? { version_id: versionId } : undefined,
+  });
+  return data;
+}
+
+/** Same weighting as the backend composite: module scores weighted by their check count. */
+export function compositeDqs(summary: Record<string, { composite_score: number; total_checks?: number }> | null | undefined): number | null {
+  const mods = Object.values(summary ?? {}).filter((m) => typeof m?.composite_score === "number");
+  if (!mods.length) return null;
+  const w = mods.map((m) => Math.max(1, m.total_checks ?? 1));
+  const total = w.reduce((a, b) => a + b, 0);
+  return Math.round((mods.reduce((a, m, i) => a + m.composite_score * w[i], 0) / total) * 100) / 100;
+}

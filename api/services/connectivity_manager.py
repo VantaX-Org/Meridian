@@ -193,8 +193,11 @@ class ConnectivityManager:
         Returns ``({TABLE: frame with TABLE.FIELD columns}, coverage)``. The
         coverage list says, per table, whether it was read live, how many rows,
         whether the transactional window truncated it, or why it failed —
-        nothing is silently skipped. ``progress`` receives the table being read
-        and an overall percent after every page.
+        nothing is silently skipped. ``progress`` receives, after every page of
+        every table, ``{table, tables_done, tables_total, rows_read, table_rows,
+        percent, tables}`` — ``tables`` being one ``{table, status, rows,
+        expected}`` snapshot per planned table (status queued · running · live ·
+        failed · …) so a caller can draw one bar per table and one overall.
         """
         import os
 
@@ -233,16 +236,28 @@ class ConnectivityManager:
                 # ponytail: tables without a SAP row count (filtered reads) weigh 1000 rows
                 weight = {tb: counts.get(tb) or 1000 for tb in order}
                 total_weight, done_weight = sum(weight.values()) or 1, 0
+                table_rows = {tb: {"table": tb, "status": "queued", "rows": 0, "expected": counts.get(tb)}
+                              for tb in order}
 
-                def report(table: str, groups_done: int = 0, groups: int = 1, rows: int = 0) -> None:
+                def report(table: Optional[str] = None, groups_done: int = 0, groups: int = 1, rows: int = 0) -> None:
                     if not progress:
                         return
-                    w = weight[table]
-                    within = (groups_done + min(1.0, rows / w)) / max(groups, 1)
+                    for c in coverage:  # tables already read carry their final status and row count
+                        if c["table"] in table_rows:
+                            table_rows[c["table"]].update(status=c["status"], rows=c.get("rows", 0))
+                    if table is not None and table_rows[table]["status"] == "queued":
+                        table_rows[table].update(status="running", rows=rows)
+                    elif table is not None and table_rows[table]["status"] == "running":
+                        table_rows[table]["rows"] = rows
+                    w = weight[table] if table else 0
+                    within = (groups_done + min(1.0, rows / w)) / max(groups, 1) if table else 0
                     progress({"table": table, "tables_done": i, "tables_total": len(order),
-                              "rows_read": rows, "table_rows": counts.get(table),
-                              "percent": min(99, int(100 * (done_weight + w * within) / total_weight))})
+                              "rows_read": rows, "table_rows": counts.get(table) if table else None,
+                              "percent": min(99, int(100 * (done_weight + w * within) / total_weight)),
+                              "tables": [dict(r) for r in table_rows.values()]})  # snapshots, not the live dicts
 
+                i = 0
+                report()  # the plan, before the first read
                 for i, table in enumerate(order):
                     done_weight = sum(weight[x] for x in order[:i])
                     report(table)
@@ -296,6 +311,8 @@ class ConnectivityManager:
                         entry["duplicate_keys"] = dup_keys
                     coverage.append(entry)
                     logger.info(f"extract {system_id}: {table} {len(df)} rows, complete={entry['complete']}")
+                i = len(order)
+                report()  # final state of every table
             elif system_type == "successfactors":
                 frames, coverage = self._extract_successfactors(connector, modules, dictionary, system_id)
             else:

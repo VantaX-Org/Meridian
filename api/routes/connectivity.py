@@ -1,6 +1,7 @@
 """Connectivity Management API -- module-aware extraction, config sync, health."""
 
 import logging
+import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
@@ -10,6 +11,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
+from api.services import jobs
 
 router = APIRouter(prefix="/api/v1/connectivity", tags=["connectivity"])
 logger = logging.getLogger("meridian.connectivity")
@@ -88,11 +90,12 @@ async def extract_modules(
 
     enforce_licensed_modules(request, body.modules)
 
-    job = run_extraction.delay(
-        str(tenant.id), body.system_id, body.modules,
-        body.include_config, body.sync_type,
-    )
-    return {"job_id": job.id, "status": "queued", "modules": body.modules}
+    version_id = str(uuid.uuid4())
+    jobs.start_job(str(tenant.id), f"dl-{version_id}", "extraction", ", ".join(body.modules), status="queued",
+                   system_id=body.system_id, modules=body.modules, version_id=version_id)
+    run_extraction.delay(str(tenant.id), body.system_id, body.modules, body.include_config, body.sync_type,
+                         None, True, None, version_id)
+    return {"job_id": f"dl-{version_id}", "version_id": version_id, "status": "queued", "modules": body.modules}
 
 
 @router.post("/config-sync", dependencies=[Depends(require_permission("trigger_sync"))])
@@ -108,8 +111,11 @@ async def sync_config(
 
     enforce_licensed_modules(request, body.modules)
 
-    job = run_config_sync.delay(str(tenant.id), body.system_id, body.modules)
-    return {"job_id": job.id, "status": "queued"}
+    task_id = str(uuid.uuid4())
+    jobs.start_job(str(tenant.id), f"cfg-{task_id}", "config_sync", f"Configuration: {', '.join(body.modules)}",
+                   status="queued", system_id=body.system_id, modules=body.modules)
+    run_config_sync.apply_async(args=(str(tenant.id), body.system_id, body.modules), task_id=task_id)
+    return {"job_id": f"cfg-{task_id}", "status": "queued"}
 
 
 @router.post("/health-check/{system_id}", dependencies=[Depends(require_permission("trigger_sync"))])

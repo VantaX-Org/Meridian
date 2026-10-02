@@ -66,11 +66,11 @@ export function resolveChartTokens(element?: Element | null): ChartTokens {
   const light = resolveThemeForElement(element) === "light";
 
   return {
-    axisLine: light ? ink[200] : "#2A3654",
+    axisLine: light ? ink[200] : "#1F2B45",
     axisInk: light ? ink[500] : ink[300],
     gridInk: light ? "rgba(10, 14, 26, 0.06)" : "rgba(255, 255, 255, 0.06)",
-    tooltipBg: light ? ink[0] : "#172034",
-    tooltipLine: light ? ink[200] : "#2A3654",
+    tooltipBg: light ? ink[0] : "#111827",
+    tooltipLine: light ? ink[200] : "#1F2B45",
     tooltipInk: light ? ink[900] : ink[50],
     categorical: viz.categorical.slice(),
     sequentialBlue: viz.sequential.blue.slice(),

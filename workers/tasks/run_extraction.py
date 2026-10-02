@@ -18,6 +18,7 @@ from celery.exceptions import SoftTimeLimitExceeded
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from api.services import jobs
 from workers.celery_app import celery_app
 from workers.db import get_sync_engine, tenant_session
 
@@ -41,22 +42,30 @@ def progress_key(system_id) -> str:
     reject_on_worker_lost=True,
 )
 def run_extraction(self, tenant_id, system_id, modules, include_config=True, sync_type="both",
-                   scope=None, analyse=True, label=None):
+                   scope=None, analyse=True, label=None, version_id=None):
     """Download ``modules`` (business objects) from ``system_id`` into a new version.
 
     The version is stored as ``extracted`` with its objects, scope and per-object
     record counts; analysis runs now when ``analyse`` else on request
     (POST /api/v1/versions/{id}/analyse). Every download is a new version.
+    Progress is reported to the job registry as job ``dl-<version_id>``
+    (api/services/jobs.py); the caller may pre-register it as queued.
     """
     from api.services.task_progress import publish_progress
 
     engine = get_sync_engine()
-    version_id = str(uuid.uuid4())
-    started = {"job_id": self.request.id, "label": label, "objects": modules,
+    version_id = version_id or str(uuid.uuid4())
+    job_id = f"dl-{version_id}"
+    if jobs.get_job(tenant_id, job_id) is None:
+        jobs.start_job(tenant_id, job_id, "extraction", label or ", ".join(modules), system_id=system_id,
+                       modules=modules, version_id=version_id)
+    jobs.update_job(tenant_id, job_id, stage="connect", message="Connecting to the system")
+    # the system page's download bar reads this per-system key; the Runs tab reads the job
+    started = {"job_id": job_id, "label": label, "objects": modules,
                "started_at": datetime.now(timezone.utc).isoformat()}
 
     def progress(p: dict, ttl: int = EXTRACT_TIME_LIMIT + 60) -> None:
-        publish_progress(progress_key(system_id), {**started, "status": "running", **p}, ttl)
+        publish_progress(progress_key(system_id), {**started, "status": "running", **{k: v for k, v in p.items() if k != "tables"}}, ttl)
 
     progress({"step": "connecting", "percent": 0})
     try:
@@ -65,11 +74,20 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
 
             manager = ConnectivityManager(session, tenant_id)
             if sync_type == "config":
-                return manager.sync_config(system_id, modules)
+                result = manager.sync_config(system_id, modules)
+                jobs.finish_job(tenant_id, job_id, result=result)
+                return result
 
-            frames, coverage = manager.extract(system_id, modules, scope=scope,
-                                               progress=lambda p: progress({"step": "reading", **p}))
+            def _progress(p: dict) -> None:
+                progress({"step": "reading", **p})
+                tables = p.get("tables") or []
+                jobs.update_job(tenant_id, job_id, stage="read", tables=tables,
+                                rows_done=sum(t["rows"] for t in tables), rows_total=sum(t["expected"] or 0 for t in tables),
+                                message=f"Reading {p['table']}" if p.get("table") else "Reading tables")
+
+            frames, coverage = manager.extract(system_id, modules, scope=scope, progress=_progress)
             progress({"step": "saving", "percent": 99})
+            jobs.update_job(tenant_id, job_id, stage="store", message="Storing data")
             # refresh the live configuration the value rules compare against
             from workers.tasks.run_discovery import _store_config
             for c in coverage:
@@ -82,6 +100,8 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
             if not data_tables:
                 _mark_modules(session, tenant_id, system_id, modules, "failed", 0)
                 progress({"status": "failed", "error": "No data tables were read"}, 3600)
+                jobs.finish_job(tenant_id, job_id, "failed", error="No data table could be read",
+                                result={"coverage": coverage})
                 logger.error(f"Extraction from {system_id} produced no data tables: {coverage}")
                 return {"status": "failed", "coverage": coverage}
 
@@ -89,12 +109,18 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
             from api.services.storage import upload_file
 
             prefix = f"staging/{tenant_id}/{version_id}/"
+            total_rows = int(sum(len(d) for d in data_tables.values()))
+            stored = 0
             for table, df in data_tables.items():
                 buf = io.BytesIO()
                 df.astype("string").to_parquet(buf, index=False)
                 # Upload failure fails the extraction — never report success
                 # for data the checks cannot read.
                 upload_file(settings.minio_bucket_uploads, f"{prefix}{table}.parquet", buf.getvalue())
+                stored += len(df)
+                jobs.update_job(tenant_id, job_id, stage="store", rows_done=stored, rows_total=total_rows,
+                                message=f"Stored {table}")
+            jobs.update_job(tenant_id, job_id, stage="register", message="Registering version")
 
             from checks.frames import _graph
             anchors = _graph()[1]
@@ -124,7 +150,12 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
         progress({"status": "complete", "percent": 100, "version_id": version_id}, 300)
         if analyse:
             from workers.tasks.run_checks import run_checks
+            jobs.start_job(tenant_id, version_id, "analysis", label or ", ".join(modules), status="queued",
+                           progress_key=version_id, system_id=system_id, version_id=version_id)
             run_checks.delay(version_id, tenant_id, prefix)
+        jobs.finish_job(tenant_id, job_id, result={"version_id": version_id, "coverage": coverage,
+                                                   "analysis": "queued" if analyse else "on_request"},
+                        message="Download complete" + (" — analysis queued" if analyse else ""))
         logger.info(f"Extraction {version_id}: {len(data_tables)} tables, analysis {'enqueued' if analyse else 'on request'}")
         return {"status": "success", "version_id": version_id, "coverage": coverage}
 
@@ -134,9 +165,11 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
         with Session(engine) as session:
             session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
             _mark_modules(session, tenant_id, system_id, modules, "failed", 0)
+        jobs.finish_job(tenant_id, job_id, "failed", error="Timed out")
         return {"status": "failed", "error": "timeout"}
     except Exception as e:
         progress({"status": "failed", "error": str(e)[:300]}, 3600)
+        jobs.finish_job(tenant_id, job_id, "failed", error=str(e) or e.__class__.__name__)
         raise
 
 
