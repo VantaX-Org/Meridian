@@ -173,7 +173,10 @@ export function ExecutiveReport() {
       body: !sprint ? <EmptyState title="No actions planned." body="The planner ranks open findings by impact per hour once an analysis is complete." /> : (
         <Stack gap={3}>
           <Text variant="text-small" tone="secondary">
-            {sprint.name}: {sprint.actions.length} actions · {sprint.total_effort_hours.toFixed(0)} h estimated effort, ranked by records affected per hour.
+            {sprint.name}: {sprint.actions.length} actions · {sprint.total_effort_hours.toFixed(0)} h estimated effort · {sprint.records_fixed.toLocaleString()} records corrected
+            {sprint.dqs_now !== null && sprint.dqs_projected !== null ? ` · DQS ${sprint.dqs_now.toFixed(1)} → ${sprint.dqs_projected.toFixed(1)} once these findings pass` : ""}
+            {sprint.estimated_cost !== null ? ` · ${sprint.currency} ${Math.round(sprint.estimated_cost).toLocaleString()} at your cost per record` : ""}.
+            Ranked by severity-weighted records per hour{sprints.data ? `, at ${sprints.data.assumptions.minutes_per_record} min per record plus ${sprints.data.assumptions.investigation_hours} h per finding` : ""}.
           </Text>
           <table className="aurora-exec__table">
             <thead><tr><th>#</th><th>Action</th><th>Records</th><th>Effort</th><th>Owner</th></tr></thead>
@@ -195,7 +198,7 @@ export function ExecutiveReport() {
     {
       id: "outlook", label: "Outlook", count: predictive.data?.early_warnings.length,
       body: !predictive.data || (!predictive.data.forecasts.length && !predictive.data.early_warnings.length)
-        ? <EmptyState title="Not enough history to forecast." body="Forecasts start after three recorded runs per object." />
+        ? <EmptyState title="Not enough history to forecast." body="Forecasts start after three recorded runs per object, one per day at most." />
         : (
           <Stack gap={4}>
             {predictive.data.early_warnings.length ? (
@@ -220,7 +223,7 @@ export function ExecutiveReport() {
                       <td className="aurora-number">{f.forecast_30d.toFixed(1)}</td>
                       <td className="aurora-number">{f.forecast_90d.toFixed(1)}</td>
                       <td><Chip tone={f.trend === "improving" ? "success" : f.trend === "stable" ? "neutral" : f.trend === "declining" ? "warning" : "danger"}>{f.trend}</Chip></td>
-                      <td className="aurora-number">{Math.round(f.confidence * 100)}%</td>
+                      <td className="aurora-number">{f.confidence}% <Text variant="text-micro" tone="muted" as="span">({f.points} runs)</Text></td>
                     </tr>
                   ))}
                 </tbody>

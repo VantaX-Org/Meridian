@@ -13,14 +13,15 @@ import { toast } from "sonner";
 import { Banner, Button, Chip, Field, Input, KpiRail, Stack, Stat, Text } from "@/components/aurora";
 import { useRole } from "@/hooks/use-role";
 import { getFindingsAggregate } from "@/lib/api/findings";
-import { getSettings, saveNotificationSettings, updateAlertThresholds, updateDqsWeights } from "@/lib/api/settings";
-import type { DimensionScores, TenantSettings } from "@/types/api";
+import { getSettings, saveNotificationSettings, savePlannerConfig, updateAlertThresholds, updateDqsWeights } from "@/lib/api/settings";
+import type { DimensionScores, PlannerConfig, TenantSettings } from "@/types/api";
 
 const DIMS = ["completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity"] as const;
 type Dim = (typeof DIMS)[number];
 const DEFAULT: DimensionScores = { completeness: 0.25, accuracy: 0.25, consistency: 0.2, timeliness: 0.1, uniqueness: 0.1, validity: 0.1 };
 const DEFAULT_THRESHOLDS = { critical_threshold: 1, high_threshold: 10, dqs_drop_threshold: 5 };
 const DEFAULT_NOTIFY = { email: "", teams_webhook: "", daily_digest: false, weekly_summary: true, monthly_report: true };
+const DEFAULT_PLANNER: PlannerConfig = { minutes_per_record: 3, investigation_hours: 1, cleaning_item_hours: 0.25, exception_hours: 2, sprint_hours: 40, cost_per_record: null, currency: "ZAR" };
 
 /** Weighted composite over the measured dimensions, normalising the weights like the backend does. */
 function composite(scores: Record<string, number>, weights: DimensionScores): number | null {
@@ -46,6 +47,7 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
   const [weights, setWeights] = useState<DimensionScores>(initial.dqs_weights ?? DEFAULT);
   const [thresholds, setThresholds] = useState(initial.alert_thresholds ?? DEFAULT_THRESHOLDS);
   const [notify, setNotify] = useState(initial.notification_config ?? DEFAULT_NOTIFY);
+  const [planner, setPlanner] = useState<PlannerConfig>(initial.planner_config ?? DEFAULT_PLANNER);
 
   const sum = DIMS.reduce((a, d) => a + (Number(weights[d]) || 0), 0);
   const normalised = useMemo(() => {
@@ -67,6 +69,11 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
     mutationFn: () => updateAlertThresholds(thresholds),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["settings"] }); toast.success("Alert thresholds saved"); },
     onError: (e) => toast.error((e as Error).message || "Thresholds not saved"),
+  });
+  const savePlanner = useMutation({
+    mutationFn: () => savePlannerConfig(planner),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["settings"] }); qc.invalidateQueries({ queryKey: ["analytics.prescriptive"] }); toast.success("Planner assumptions saved"); },
+    onError: (e) => toast.error((e as Error).message || "Assumptions not saved"),
   });
   const saveNotify = useMutation({
     mutationFn: () => saveNotificationSettings(notify),
@@ -133,6 +140,41 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
           </Field>
         </Stack>
         {write ? <div style={{ marginTop: "var(--aurora-space-3)" }}><Button onClick={() => saveThresholds.mutate()} disabled={saveThresholds.isPending}>Save thresholds</Button></div> : null}
+      </section>
+
+      <section aria-labelledby="scoring-planner">
+        <Text as="h2" id="scoring-planner" variant="text-lead" className="aurora-runs__h">Planner assumptions</Text>
+        <Text variant="text-small" tone="secondary" as="p" className="aurora-runs__sub">
+          The next-sprint planner ranks open work by severity-weighted records per hour. Effort comes from these figures;
+          money appears only when you state what one failing record costs you.
+        </Text>
+        <Stack direction="row" gap={4} wrap className="aurora-filters">
+          <Field label="Minutes per record" helper="Steward time to correct one failing record">
+            {({ controlId }) => <Input id={controlId} type="number" min="0" step="0.5" value={planner.minutes_per_record} disabled={!write}
+              onChange={(e) => setPlanner({ ...planner, minutes_per_record: Number(e.target.value) })} />}
+          </Field>
+          <Field label="Hours per finding" helper="Investigation before the first record">
+            {({ controlId }) => <Input id={controlId} type="number" min="0" step="0.25" value={planner.investigation_hours} disabled={!write}
+              onChange={(e) => setPlanner({ ...planner, investigation_hours: Number(e.target.value) })} />}
+          </Field>
+          <Field label="Hours per exception" helper="Resolving one open exception">
+            {({ controlId }) => <Input id={controlId} type="number" min="0" step="0.5" value={planner.exception_hours} disabled={!write}
+              onChange={(e) => setPlanner({ ...planner, exception_hours: Number(e.target.value) })} />}
+          </Field>
+          <Field label="Sprint capacity (h)" helper="Steward hours per sprint bucket">
+            {({ controlId }) => <Input id={controlId} type="number" min="1" step="1" value={planner.sprint_hours} disabled={!write}
+              onChange={(e) => setPlanner({ ...planner, sprint_hours: Number(e.target.value) })} />}
+          </Field>
+          <Field label="Cost per failing record" helper="Optional. Leave blank and no monetary figure is shown anywhere.">
+            {({ controlId }) => <Input id={controlId} type="number" min="0" step="1" value={planner.cost_per_record ?? ""} disabled={!write} placeholder="not set"
+              onChange={(e) => setPlanner({ ...planner, cost_per_record: e.target.value === "" ? null : Number(e.target.value) })} />}
+          </Field>
+          <Field label="Currency" helper="ISO code shown next to costs">
+            {({ controlId }) => <Input id={controlId} value={planner.currency} maxLength={3} disabled={!write} className="aurora-number"
+              onChange={(e) => setPlanner({ ...planner, currency: e.target.value.toUpperCase() })} />}
+          </Field>
+        </Stack>
+        {write ? <div style={{ marginTop: "var(--aurora-space-3)" }}><Button onClick={() => savePlanner.mutate()} disabled={savePlanner.isPending}>Save assumptions</Button></div> : null}
       </section>
 
       <section aria-labelledby="scoring-notify">

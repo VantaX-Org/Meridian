@@ -13,6 +13,28 @@ from sklearn.linear_model import LinearRegression
 logger = logging.getLogger("meridian.analytics")
 
 
+def _days_since_first(stamps: list) -> list[float]:
+    """Calendar days from the first point; falls back to the run index when the
+    stamps are missing or all on one day."""
+    from datetime import datetime
+
+    parsed = []
+    for t in stamps:
+        if isinstance(t, datetime):
+            parsed.append(t.timestamp())
+        elif isinstance(t, str) and t:
+            try:
+                parsed.append(datetime.fromisoformat(t.replace("Z", "+00:00")).timestamp())
+            except ValueError:
+                parsed.append(None)
+        else:
+            parsed.append(None)
+    if any(v is None for v in parsed) or len(set(parsed)) < 2:
+        return [float(i) for i in range(len(stamps))]
+    first = parsed[0]
+    return [(v - first) / 86400 for v in parsed]
+
+
 # ── Predictive Analytics ─────────────────────────────────────────────────────
 
 
@@ -27,7 +49,7 @@ class PredictiveAnalytics:
 
         forecasts: list[dict] = []
         for module_id, history in modules.items():
-            history.sort(key=lambda h: h.get("recorded_at", ""))
+            history.sort(key=lambda h: str(h.get("recorded_at") or ""))
 
             if len(history) < 3:
                 logger.warning(
@@ -38,18 +60,20 @@ class PredictiveAnalytics:
                 continue
 
             scores = [float(h["dqs_score"]) for h in history]
-            X = np.arange(len(scores)).reshape(-1, 1)
+            # regress on calendar days so "7 days" means seven days, whatever the run cadence
+            days = _days_since_first([h.get("recorded_at") for h in history])
+            X = np.array(days, dtype=float).reshape(-1, 1)
             y = np.array(scores)
 
             model = LinearRegression()
             model.fit(X, y)
-            slope = float(model.coef_[0])
+            slope = float(model.coef_[0])  # DQS points per day
 
             current_score = scores[-1]
-            next_idx = len(scores)
-            forecast_7d = float(np.clip(model.predict([[next_idx + 7]])[0], 0, 100))
-            forecast_30d = float(np.clip(model.predict([[next_idx + 30]])[0], 0, 100))
-            forecast_90d = float(np.clip(model.predict([[next_idx + 90]])[0], 0, 100))
+            last_day = days[-1]
+            forecast_7d = float(np.clip(model.predict([[last_day + 7]])[0], 0, 100))
+            forecast_30d = float(np.clip(model.predict([[last_day + 30]])[0], 0, 100))
+            forecast_90d = float(np.clip(model.predict([[last_day + 90]])[0], 0, 100))
 
             if slope > 0.1:
                 trend = "improving"
@@ -74,6 +98,8 @@ class PredictiveAnalytics:
                     "forecast_90d": round(forecast_90d, 1),
                     "trend": trend,
                     "confidence": confidence,
+                    "points": len(history),
+                    "span_days": round(days[-1] - days[0], 1),
                     "contributing_factors": contributing_factors,
                 }
             )
@@ -163,139 +189,160 @@ class PredictiveAnalytics:
 
 SEVERITY_WEIGHTS = {"critical": 40, "high": 30, "medium": 20, "low": 10}
 
+# Every figure the planner emits is derived from these stated assumptions (the
+# tenant can change them under Admin → Scoring & alerts) and from the findings
+# themselves. Nothing is expressed in money unless the tenant supplies a rate.
+DEFAULT_PLANNER = {
+    "minutes_per_record": 3.0,     # steward time to correct one failing record
+    "investigation_hours": 1.0,    # per finding, before the first record
+    "cleaning_item_hours": 0.25,   # review one cleaning proposal
+    "exception_hours": 2.0,        # resolve one open exception
+    "sprint_hours": 40.0,          # capacity per sprint bucket
+    "cost_per_record": None,       # optional: the tenant's own cost of one bad record
+    "currency": "ZAR",
+}
+
+
+def planner_config(overrides: dict | None) -> dict:
+    cfg = dict(DEFAULT_PLANNER)
+    for k, v in (overrides or {}).items():
+        if k in cfg and v is not None and v != "":
+            cfg[k] = v
+    return cfg
+
+
+def project_dqs(findings: list[dict], fixed_ids: set[str], tenant_weights: dict | None) -> dict:
+    """DQS now and DQS once ``fixed_ids`` pass, through the real scoring engine.
+
+    ``findings`` are finding rows (module, check_id, dimension, severity,
+    affected_count, total_count, pass_rate); fixed ones are rescored at a 100%
+    pass rate so the critical caps, dimension weights and check-count weighting
+    all apply exactly as in an analysis run."""
+    from api.routes.findings import composite_dqs
+    from api.services.scoring import score_module
+    from checks.base import CheckResult
+
+    def to_results(fix: bool) -> dict[str, list[CheckResult]]:
+        by_module: dict[str, list[CheckResult]] = {}
+        for f in findings:
+            fixed = fix and str(f.get("id", "")) in fixed_ids
+            affected = 0 if fixed else int(f.get("affected_count") or 0)
+            total = int(f.get("total_count") or 0)
+            pass_rate = 100.0 if fixed else float(f.get("pass_rate") if f.get("pass_rate") is not None
+                                                  else (100.0 * (1 - affected / total) if total else 100.0))
+            by_module.setdefault(str(f.get("module", "")), []).append(CheckResult(
+                check_id=str(f.get("check_id", "")), module=str(f.get("module", "")), field="",
+                severity=str(f.get("severity", "medium")), dimension=str(f.get("dimension", "completeness")),
+                passed=affected == 0, affected_count=affected, total_count=total, pass_rate=pass_rate,
+                message="", details={}))
+        return by_module
+
+    def composite(by_module: dict[str, list[CheckResult]]) -> float | None:
+        summary = {m: score_module(rs, tenant_weights or {}).model_dump() for m, rs in by_module.items() if rs}
+        return composite_dqs([summary]).get("composite")
+
+    return {"now": composite(to_results(False)), "projected": composite(to_results(True))}
+
 
 class PrescriptiveAnalytics:
-    """Next-best-action ranking and sprint planning."""
+    """Next-best-action ranking and sprint planning from stated assumptions."""
 
-    def generate_next_best_actions(
-        self,
-        findings: list[dict],
-        cleaning_queue: list[dict],
-        exceptions: list[dict],
-    ) -> list[dict]:
-        """Score and rank actionable items by ROI per hour."""
+    def __init__(self, config: dict | None = None):
+        self.cfg = planner_config(config)
+
+    def _action(self, *, type_: str, id_: str, title: str, severity: str, affected: int, total: int,
+                effort: float, steward: str | None, cost: float | None, extra: dict | None = None) -> dict:
+        weight = SEVERITY_WEIGHTS.get(severity, 10)
+        effort = max(0.25, float(effort))
+        impact_points = weight * max(1, affected)        # severity-weighted records
+        share = affected / total if total else 1.0
+        return {
+            "type": type_, "id": id_, "title": title, "severity": severity,
+            "affected_count": affected, "total_count": total,
+            "effort_hours": round(effort, 2),
+            "impact_points": impact_points,
+            "value_per_hour": round(impact_points / effort, 1),
+            "priority_score": round(weight + 30 * min(1.0, share) + max(0.0, 30 - effort * 5), 1),
+            "estimated_cost": round(cost, 2) if cost is not None else None,
+            "currency": self.cfg["currency"],
+            "recommended_steward": steward,
+            **(extra or {}),
+        }
+
+    def generate_next_best_actions(self, findings: list[dict], cleaning_queue: list[dict],
+                                   exceptions: list[dict], limit: int = 50) -> list[dict]:
+        """Rank open work by severity-weighted records per hour of effort."""
+        cfg = self.cfg
+        rate = cfg.get("cost_per_record")
         items: list[dict] = []
 
         for f in findings:
-            severity = f.get("severity", "medium")
-            affected = f.get("affected_count", 0)
-            total = f.get("total_count", 1)
-            estimated_impact = float(f.get("estimated_impact_zar", affected * 5000))
-            effort = max(0.5, affected / max(1, total) * 8)
-
-            sev_score = SEVERITY_WEIGHTS.get(severity, 10)
-            impact_score = min(30, estimated_impact / 10000 * 30)
-            effort_score = max(0, 30 - effort * 5)
-            priority_score = sev_score + impact_score + effort_score
-            roi_per_hour = (sev_score + impact_score) / max(1, effort)
-
-            items.append(
-                {
-                    "type": "finding",
-                    "id": f.get("id", ""),
-                    "title": f.get("check_id", "") + ": " + f.get("module", ""),
-                    "priority_score": round(priority_score, 1),
-                    "estimated_impact_zar": round(estimated_impact, 2),
-                    "effort_hours": round(effort, 1),
-                    "roi_per_hour": round(roi_per_hour, 1),
-                    "recommended_steward": f.get("assigned_to"),
-                    "affected_count": affected,
-                    "total_count": total,
-                }
-            )
+            affected = int(f.get("affected_count") or 0)
+            if affected <= 0:
+                continue
+            total = int(f.get("total_count") or 0)
+            effort = float(cfg["investigation_hours"]) + affected * float(cfg["minutes_per_record"]) / 60
+            items.append(self._action(
+                type_="finding", id_=str(f.get("id", "")),
+                title=f"{f.get('check_id', '')}: {f.get('module', '')}",
+                severity=str(f.get("severity", "medium")), affected=affected, total=total, effort=effort,
+                steward=f.get("assigned_to"), cost=affected * float(rate) if rate else None,
+                extra={"module": f.get("module"), "check_id": f.get("check_id"), "dimension": f.get("dimension")}))
 
         for q in cleaning_queue:
-            effort = 0.5
-            impact = 2000.0
-            sev_score = 20
-            impact_score = min(30, impact / 10000 * 30)
-            effort_score = max(0, 30 - effort * 5)
-            priority_score = sev_score + impact_score + effort_score
-            roi_per_hour = (sev_score + impact_score) / max(1, effort)
-
-            items.append(
-                {
-                    "type": "cleaning",
-                    "id": str(q.get("id", "")),
-                    "title": f"Clean: {q.get('object_type', '')} — {q.get('record_key', '')}",
-                    "priority_score": round(priority_score, 1),
-                    "estimated_impact_zar": impact,
-                    "effort_hours": effort,
-                    "roi_per_hour": round(roi_per_hour, 1),
-                    "recommended_steward": q.get("assigned_to"),
-                    "affected_count": 1,
-                    "total_count": 1,
-                }
-            )
+            items.append(self._action(
+                type_="cleaning", id_=str(q.get("id", "")),
+                title=f"Clean: {q.get('object_type', '')} — {q.get('record_key', '')}",
+                severity="medium", affected=1, total=1, effort=float(cfg["cleaning_item_hours"]),
+                steward=q.get("assigned_to"), cost=float(rate) if rate else None))
 
         for ex in exceptions:
-            severity = ex.get("severity", "medium")
-            impact = float(ex.get("estimated_impact_zar", 5000) or 5000)
-            effort = 2.0
-            sev_score = SEVERITY_WEIGHTS.get(severity, 10)
-            impact_score = min(30, impact / 10000 * 30)
-            effort_score = max(0, 30 - effort * 5)
-            priority_score = sev_score + impact_score + effort_score
-            roi_per_hour = (sev_score + impact_score) / max(1, effort)
+            affected = int(ex.get("affected_count") or 1)
+            declared = ex.get("estimated_impact_zar")
+            items.append(self._action(
+                type_="exception", id_=str(ex.get("id", "")), title=str(ex.get("title") or "Exception"),
+                severity=str(ex.get("severity", "medium")), affected=affected, total=affected,
+                effort=float(cfg["exception_hours"]), steward=ex.get("assigned_to"),
+                cost=float(declared) if declared else (affected * float(rate) if rate else None)))
 
-            items.append(
-                {
-                    "type": "exception",
-                    "id": str(ex.get("id", "")),
-                    "title": ex.get("title", "Exception"),
-                    "priority_score": round(priority_score, 1),
-                    "estimated_impact_zar": round(impact, 2),
-                    "effort_hours": effort,
-                    "roi_per_hour": round(roi_per_hour, 1),
-                    "recommended_steward": ex.get("assigned_to"),
-                    "affected_count": 1,
-                    "total_count": 1,
-                }
-            )
+        items.sort(key=lambda x: (x["value_per_hour"], x["impact_points"]), reverse=True)
+        return items[:limit]
 
-        items.sort(key=lambda x: x["roi_per_hour"], reverse=True)
-        return items[:20]
-
-    def generate_sprints(
-        self, actions: list[dict], max_hours_per_sprint: int = 40
-    ) -> list[dict]:
-        """Group actions into sprint buckets, highest ROI first."""
-        sorted_actions = sorted(actions, key=lambda a: a["roi_per_hour"], reverse=True)
+    def generate_sprints(self, actions: list[dict], max_hours_per_sprint: float | None = None,
+                         findings: list[dict] | None = None, weights: dict | None = None) -> list[dict]:
+        """Fill sprint buckets highest value first; project DQS per bucket when findings are given."""
+        cap = float(max_hours_per_sprint or self.cfg["sprint_hours"])
+        sorted_actions = sorted(actions, key=lambda a: a["value_per_hour"], reverse=True)
         sprints: list[dict] = []
-        current_sprint: list[dict] = []
-        current_hours = 0.0
-        sprint_number = 1
-
+        current: list[dict] = []
+        hours = 0.0
         for action in sorted_actions:
-            effort = action.get("effort_hours", 0)
-            if current_hours + effort > max_hours_per_sprint and current_sprint:
-                sprints.append(self._build_sprint(sprint_number, current_sprint, current_hours))
-                sprint_number += 1
-                current_sprint = []
-                current_hours = 0.0
-            current_sprint.append(action)
-            current_hours += effort
-
-        if current_sprint:
-            sprints.append(self._build_sprint(sprint_number, current_sprint, current_hours))
-
+            effort = float(action.get("effort_hours", 0))
+            if current and hours + effort > cap:
+                sprints.append(self._build_sprint(len(sprints) + 1, current, hours, findings, weights))
+                current, hours = [], 0.0
+            current.append(action)
+            hours += effort
+        if current:
+            sprints.append(self._build_sprint(len(sprints) + 1, current, hours, findings, weights))
         return sprints
 
-    def _build_sprint(
-        self, number: int, actions: list[dict], total_hours: float
-    ) -> dict:
-        total_impact = sum(a.get("estimated_impact_zar", 0) for a in actions)
-        dqs_improvement = sum(
-            (a.get("affected_count", 0) / max(1, a.get("total_count", 1))) * 100 * 0.1
-            for a in actions
-        )
+    def _build_sprint(self, number: int, actions: list[dict], total_hours: float,
+                      findings: list[dict] | None, weights: dict | None) -> dict:
+        costs = [a["estimated_cost"] for a in actions if a.get("estimated_cost") is not None]
+        fixed = {a["id"] for a in actions if a["type"] == "finding"}
+        dqs = project_dqs(findings, fixed, weights) if findings and fixed else {"now": None, "projected": None}
         return {
             "sprint_number": number,
             "name": f"Sprint {number}",
             "actions": actions,
             "total_effort_hours": round(total_hours, 1),
-            "total_impact_zar": round(total_impact, 2),
-            "projected_dqs_improvement": round(dqs_improvement, 1),
+            "records_fixed": sum(a["affected_count"] for a in actions),
+            "critical_cleared": sum(1 for a in actions if a["severity"] == "critical"),
+            "estimated_cost": round(sum(costs), 2) if costs else None,
+            "currency": self.cfg["currency"],
+            "dqs_now": dqs["now"],
+            "dqs_projected": dqs["projected"],
         }
 
 

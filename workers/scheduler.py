@@ -601,9 +601,15 @@ def daily_digest():
                 if history_points >= 3:
                     try:
                         from api.services.analytics_engine import PredictiveAnalytics
-                        pa = PredictiveAnalytics(session, tid)
-                        predictions = pa.predict_all()
-                        early_warnings = predictions.get("early_warnings", [])
+                        rows = session.execute(
+                            text("SELECT module_id, dqs_score, recorded_at, completeness, accuracy, consistency, "
+                                 "timeliness, uniqueness, validity FROM dqs_history WHERE tenant_id = :tid "
+                                 "ORDER BY recorded_at"),
+                            {"tid": tid},
+                        ).mappings().all()
+                        pa = PredictiveAnalytics()
+                        forecasts = pa.forecast_dqs([dict(r) for r in rows])
+                        early_warnings = pa.generate_early_warnings(forecasts, {})
                     except Exception as e:
                         logger.warning(f"  tenant={tid}: predictive analytics failed: {e}")
 

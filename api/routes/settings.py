@@ -32,6 +32,17 @@ class AlertThresholds(BaseModel):
     dqs_drop_threshold: int = 5
 
 
+class PlannerConfig(BaseModel):
+    """Assumptions behind the prescriptive planner's effort and value figures."""
+    minutes_per_record: float = 3.0
+    investigation_hours: float = 1.0
+    cleaning_item_hours: float = 0.25
+    exception_hours: float = 2.0
+    sprint_hours: float = 40.0
+    cost_per_record: Optional[float] = None
+    currency: str = "ZAR"
+
+
 class NotificationConfig(BaseModel):
     email: str = ""
     teams_webhook: str = ""
@@ -46,6 +57,7 @@ class TenantSettingsResponse(BaseModel):
     dqs_weights: Optional[DimensionWeights] = None
     alert_thresholds: Optional[AlertThresholds] = None
     notification_config: Optional[NotificationConfig] = None
+    planner_config: Optional[PlannerConfig] = None
     stripe_customer_id: Optional[str] = None
 
 
@@ -72,7 +84,8 @@ async def get_settings(
         name=row[0],
         licensed_modules=row[1] or [],
         dqs_weights=DimensionWeights(**dqs_weights_raw) if dqs_weights_raw and "completeness" in dqs_weights_raw else None,
-        alert_thresholds=AlertThresholds(**row[3]) if row[3] else None,
+        alert_thresholds=AlertThresholds(**{k: v for k, v in row[3].items() if k != "planner"}) if row[3] else None,
+        planner_config=PlannerConfig(**row[3]["planner"]) if row[3] and isinstance(row[3].get("planner"), dict) else PlannerConfig(),
         notification_config=NotificationConfig(**nc) if nc else None,
         stripe_customer_id=row[4],
     )
@@ -119,7 +132,7 @@ async def update_alert_thresholds(
 ):
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
     await db.execute(
-        text("UPDATE tenants SET alert_thresholds = CAST(:t AS jsonb) WHERE id = :tid"),
+        text("UPDATE tenants SET alert_thresholds = COALESCE(alert_thresholds, '{}'::jsonb) || CAST(:t AS jsonb) WHERE id = :tid"),
         {"t": json.dumps(thresholds.model_dump()), "tid": str(tenant.id)},
     )
     await db.commit()
@@ -142,6 +155,28 @@ async def save_notifications(
             WHERE id = :tid
         """),
         {"nc": config.model_dump_json(), "tid": str(tenant.id)},
+    )
+    await db.commit()
+    return {"status": "ok"}
+
+
+# ─── POST /settings/planner ─────────────────────────────────────────
+
+@router.post("/planner", dependencies=[Depends(require_permission("manage_settings"))])
+async def save_planner_config(
+    config: PlannerConfig,
+    db: AsyncSession = Depends(get_db),
+    tenant: TenantDep = Depends(get_tenant),
+):
+    """Planner assumptions live beside the alert thresholds (no new column)."""
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
+    await db.execute(
+        text("""
+            UPDATE tenants
+            SET alert_thresholds = COALESCE(alert_thresholds, '{}'::jsonb) || jsonb_build_object('planner', CAST(:p AS jsonb))
+            WHERE id = :tid
+        """),
+        {"p": config.model_dump_json(), "tid": str(tenant.id)},
     )
     await db.commit()
     return {"status": "ok"}
