@@ -70,8 +70,9 @@ def rule_set_fingerprint(modules: list[str], overrides: dict, generated: list[di
     return h.hexdigest()[:16]
 
 
-# A full extract (e.g. a quarter of BSEG) needs far more than the old 5 minutes.
-_CHECKS_LIMIT = int(os.getenv("MERIDIAN_CHECKS_TIME_LIMIT", "1800"))
+# A full extract (e.g. a quarter of BSEG) needs far more than the old 5 minutes;
+# checks on a capped material master (~21M rows) run past 30. Same ceiling as extraction.
+_CHECKS_LIMIT = int(os.getenv("MERIDIAN_CHECKS_TIME_LIMIT", "21600"))
 
 
 @celery_app.task(bind=True, name="workers.tasks.run_checks.run_checks",
