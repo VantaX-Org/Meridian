@@ -8,7 +8,7 @@ from sap.ddic import get_dictionary
 from sap.extraction_plan import plan_modules, read_order, via_filters
 from sap.rfc import where_options
 
-from tests.sap.fake_rfc import FakeRFCConnector
+from tests.sap.fake_rfc import FakeRFCConnector, FakeRFCError
 
 
 def _mara(n):
@@ -52,6 +52,20 @@ def test_read_table_full_pages_by_key_ranges_without_deep_skips():
     assert len(out) == len(df) and not out.duplicated(["MATNR", "WERKS"]).any()
     skips = [p.get("ROWSKIPS", 0) for fm, p in conn._conn.calls if fm == "RFC_READ_TABLE"]
     assert max(skips) <= 10  # only inside the one oversized key value
+
+
+def test_read_table_full_halves_page_size_when_sap_runs_out_of_memory():
+    df = pd.DataFrame({"MATNR": [f"{i:018d}" for i in range(30)], "WERKS": "0001", "PSTAT": "K"})
+    conn = FakeRFCConnector({"MARC": df.sample(frac=1, random_state=1)})
+    call = conn._conn.call
+
+    def limited(fm, **p):  # SAP's per-call memory holds 2000 rows of this width
+        if fm == "RFC_READ_TABLE" and p.get("ROWCOUNT", 0) > 2000:
+            raise FakeRFCError("TSV_TNEW_PAGE_ALLOC_FAILED")
+        return call(fm, **p)
+    conn._conn.call = limited
+    out = conn.read_table_full("MARC", ["MATNR", "WERKS", "PSTAT"], ["MATNR", "WERKS"], page_size=8000)
+    assert len(out) == len(df) and not out.duplicated(["MATNR", "WERKS"]).any()
 
 
 def test_live_snapshot_reads_dictionary_and_customer_tables():
