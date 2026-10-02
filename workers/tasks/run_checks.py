@@ -617,6 +617,16 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanaly
         except Exception as e:
             logger.warning(f"Failed to enqueue run_cleaning (non-fatal): {e}")
 
+        # Config Intelligence + Z-object profiling on this version's data
+        # (non-blocking). Nothing called these engines before, so the Process
+        # workspace's config pages stayed empty.
+        try:
+            from workers.tasks.run_config_intelligence import run_config_intelligence
+            run_config_intelligence.delay(version_id, tenant_id, parquet_path)
+            logger.info(f"Enqueued run_config_intelligence for version_id={version_id}")
+        except Exception as e:
+            logger.warning(f"Failed to enqueue run_config_intelligence (non-fatal): {e}")
+
         # Data contracts (quality / volume / schema) against this run
         try:
             from workers.tasks.evaluate_contracts import evaluate_contracts

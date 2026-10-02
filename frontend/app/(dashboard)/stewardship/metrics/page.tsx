@@ -285,7 +285,7 @@ export default function StewardshipMetricsPage() {
                 {metrics.steward_breakdown.map((s) => (
                   <div
                     key={s.steward_name}
-                    className="flex items-center justify-between rounded-lg border border-black/[0.08] px-3 py-2"
+                    className="flex items-center justify-between rounded-lg border border-border px-3 py-2"
                   >
                     <div>
                       <p className="text-sm font-medium text-foreground">

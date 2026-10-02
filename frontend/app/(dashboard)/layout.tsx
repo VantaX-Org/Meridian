@@ -132,7 +132,7 @@ function Shell({ children }: { children: React.ReactNode }) {
     >
       {isAurora ? children : (
         <div className="aurora-hub">
-          <div className="mn-legacy-host" data-theme="light">{children}</div>
+          <div className="mn-legacy-host">{children}</div>
         </div>
       )}
     </AppShell>

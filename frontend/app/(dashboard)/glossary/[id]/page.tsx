@@ -219,7 +219,7 @@ export default function GlossaryDetailPage() {
         </CardHeader>
         <CardContent>
           <textarea
-            className="w-full min-h-[80px] p-3 border border-black/[0.08] rounded-md text-sm
+            className="w-full min-h-[80px] p-3 border border-border rounded-md text-sm
                        focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary
                        resize-y"
             value={currentDef}
@@ -359,7 +359,7 @@ export default function GlossaryDetailPage() {
             ) : (
               <div className="space-y-3">
                 {term.change_history.map((entry) => (
-                  <div key={entry.id} className="flex items-start gap-3 border-l-2 border-black/[0.08] pl-3">
+                  <div key={entry.id} className="flex items-start gap-3 border-l-2 border-border pl-3">
                     <Clock className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
                     <div className="text-sm">
                       <div className="flex items-center gap-2">

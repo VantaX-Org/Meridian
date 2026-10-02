@@ -85,7 +85,7 @@ function ConnectivityGraph({ systems }: { systems: SAPSystemExtended[] }) {
           <circle cx="1" cy="1" r="0.8" fill="rgba(15,23,42,0.10)" />
         </pattern>
         <mask id="conn-bg-mask">
-          <rect x="0" y="0" width={w} height={h} fill="white" />
+          <rect x="0" y="0" width={w} height={h} fill="var(--mn-card)" />
           <circle cx={cx} cy={cy} r={r + 50} fill="black" />
         </mask>
       </defs>
@@ -202,7 +202,7 @@ function ConnectivityGraph({ systems }: { systems: SAPSystemExtended[] }) {
               strokeOpacity="0.18"
               strokeWidth="1"
             />
-            <rect x={x} y={y} rx="10" width={nodeW} height={nodeH} fill="white" stroke="var(--mn-line)" strokeWidth="1" />
+            <rect x={x} y={y} rx="10" width={nodeW} height={nodeH} fill="var(--mn-card-2)" stroke="var(--mn-line)" strokeWidth="1" />
             <rect x={x} y={y} rx="10" width="3" height={nodeH} fill={c} />
             <circle cx={x + 16} cy={y + 18} r="4" fill={c} />
             <circle cx={x + 16} cy={y + 18} r="4" fill="none" stroke={c} strokeOpacity="0.25" strokeWidth="6" />
@@ -385,7 +385,7 @@ export default function ConnectivityPage() {
         style={{
           padding: "12px 12px 4px",
           overflow: "hidden",
-          background: "linear-gradient(180deg, #FAFAFB, #FFFFFF 80%)",
+          background: "var(--mn-card)",
         }}
       >
         {list.length > 0 ? (

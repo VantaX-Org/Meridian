@@ -3445,13 +3445,8 @@
 }
 .mn-legacy-host {
   flex: 1;
-  margin: var(--aurora-space-4) var(--aurora-space-6) var(--aurora-space-6);
-  padding: var(--aurora-space-6);
-  border-radius: 12px;
-  border: 1px solid var(--aurora-canvas-line);
-  background: var(--aurora-canvas-base);
+  padding: var(--aurora-space-4) var(--aurora-space-6) var(--aurora-space-6);
   color: var(--aurora-fg-primary);
-  box-shadow: var(--aurora-elev-1-shadow);
 }
 @media (max-width: 720px) {
   .aurora-hub__bar { padding: var(--aurora-space-2) var(--aurora-space-3) 0; gap: var(--aurora-space-3); }

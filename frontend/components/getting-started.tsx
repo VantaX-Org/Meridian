@@ -34,7 +34,7 @@ export function GettingStarted({ hasAnalysis }: { hasAnalysis: boolean }) {
 
   if (!isLoading && systems.length === 0 && !can("manage_systems")) {
     return (
-      <div data-theme="light" style={{ marginBottom: 18 }}>
+      <div style={{ marginBottom: 18 }}>
         <Panel title="Getting to go-live">
           <Text className="font-semibold">Ask an admin to connect a system</Text>
           <Text variant="text-small" tone="secondary" className="mt-1 block">
@@ -48,7 +48,7 @@ export function GettingStarted({ hasAnalysis }: { hasAnalysis: boolean }) {
 
   const next = steps.findIndex((s) => !s.done);
   return (
-    <div data-theme="light" style={{ marginBottom: 18 }}>
+    <div style={{ marginBottom: 18 }}>
       <Panel title="Getting to go-live">
         <ol className="grid grid-cols-1 gap-3 md:grid-cols-4">
           {steps.map((s, i) => (

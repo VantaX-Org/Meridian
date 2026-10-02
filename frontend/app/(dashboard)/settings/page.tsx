@@ -67,7 +67,7 @@ function Doctor() {
   const { data, refetch } = useQuery({ queryKey: ["admin.doctor"], queryFn: getDoctor, refetchInterval: 30_000 });
   if (!data) return null;
   return (
-    <div data-theme="light" className="mt-6">
+    <div className="mt-6">
       <AdminDoctorCard items={data.items} lastChecked={new Date(data.last_checked).toLocaleTimeString()} onRefresh={() => refetch()} />
     </div>
   );

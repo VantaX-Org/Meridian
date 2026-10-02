@@ -62,8 +62,82 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* ─── Meridian Fiori Horizon Theme — flat surfaces, glass only on hero rails ─── */
-:root {
+/* ─── Legacy token bridge ───
+ * Pages not yet rebuilt on Aurora consume the shadcn semantic tokens, the
+ * --mn-* direct tokens and the .vx-* surfaces. Dark (the default) maps every
+ * one of them onto Aurora's canvas so legacy surfaces read as part of the
+ * same product; [data-theme="light"] below keeps the Fiori Horizon values. */
+[data-theme="dark"] {
+  --background: var(--aurora-canvas-base);
+  --foreground: var(--aurora-fg-primary);
+  --card: var(--aurora-canvas-raised);
+  --card-foreground: var(--aurora-fg-primary);
+  --popover: var(--aurora-canvas-elevated);
+  --popover-foreground: var(--aurora-fg-primary);
+
+  --primary: var(--aurora-accent-500);
+  --primary-foreground: #ffffff;
+  --secondary: var(--aurora-canvas-elevated);
+  --secondary-foreground: var(--aurora-fg-secondary);
+  --muted: var(--aurora-canvas-elevated);
+  --muted-foreground: var(--aurora-fg-muted);
+  --accent: var(--aurora-accent-selected-bg);
+  --accent-foreground: var(--aurora-accent-300);
+
+  --destructive: var(--aurora-status-danger-500);
+
+  --border: var(--aurora-canvas-line);
+  --input: var(--aurora-canvas-line);
+  --ring: var(--aurora-accent-500);
+
+  --chart-1: var(--aurora-viz-1);
+  --chart-2: var(--aurora-viz-2);
+  --chart-3: var(--aurora-viz-3);
+  --chart-4: var(--aurora-viz-5);
+  --chart-5: var(--aurora-viz-10);
+
+  --radius: 0.75rem;
+
+  --sidebar: var(--aurora-canvas-raised);
+  --sidebar-foreground: var(--aurora-fg-secondary);
+  --sidebar-primary: var(--aurora-accent-500);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--aurora-accent-selected-bg);
+  --sidebar-accent-foreground: var(--aurora-accent-300);
+  --sidebar-border: var(--aurora-canvas-line);
+  --sidebar-ring: var(--aurora-accent-500);
+
+  --mn-bg-base: var(--aurora-canvas-base);
+  --mn-bg-card: var(--aurora-canvas-raised);
+  --mn-bg-card-hover: var(--aurora-canvas-elevated);
+  --mn-border: var(--aurora-canvas-line);
+  --mn-border-hover: var(--aurora-accent-selected-border);
+  --mn-green-dark: var(--aurora-accent-300);
+  --mn-green-mid: var(--aurora-accent-500);
+  --mn-green-light: var(--aurora-accent-400);
+  --mn-green-dim: var(--aurora-accent-selected-bg);
+  --mn-blue-bright: var(--aurora-viz-5);
+  --mn-blue-mid: var(--aurora-viz-5);
+  --mn-amber: var(--aurora-status-warning-500);
+  --mn-red: var(--aurora-status-danger-500);
+  --mn-teal: var(--aurora-status-success-500);
+  --mn-text-primary: var(--aurora-fg-primary);
+  --mn-text-secondary: var(--aurora-fg-secondary);
+  --mn-text-tertiary: var(--aurora-fg-tertiary);
+  --mn-sidebar-bg: var(--aurora-canvas-raised);
+  --mn-sidebar-text: var(--aurora-fg-secondary);
+
+  --glass-bg: rgba(11, 16, 25, 0.78);
+  --glass-bg-hover: rgba(17, 24, 39, 0.92);
+  --glass-border: var(--aurora-canvas-line);
+  --glass-border-hover: var(--aurora-accent-selected-border);
+  --glass-blur: 14px;
+}
+
+/* ─── Meridian Fiori Horizon Theme (light) — flat surfaces, glass only on hero rails ─── */
+:root,
+[data-theme="light"] {
+  --mn-border-hover: #BCC3CA;
   /* Surfaces */
   --background: #F5F6F7;
   --foreground: #1A1F2B;
@@ -194,7 +268,7 @@
     radial-gradient(ellipse 80% 60% at 10% 20%, rgba(0,112,242,0.045), transparent 60%),
     radial-gradient(ellipse 60% 50% at 85% 15%, rgba(120,88,255,0.035), transparent 55%),
     radial-gradient(ellipse 50% 40% at 50% 90%, rgba(8,157,227,0.035), transparent 50%),
-    #F5F6F7;
+    var(--mn-bg-base);
   background-attachment: fixed;
 }
 
@@ -300,7 +374,7 @@
 
 /* ─── Flat card (default — Fiori tile) ─── */
 .vx-card {
-  background: #FFFFFF;
+  background: var(--mn-bg-card);
   border: 1px solid var(--mn-border);
   border-radius: 12px;
   padding: 20px;
@@ -310,7 +384,7 @@
 }
 
 .vx-card:hover {
-  border-color: #BCC3CA;
+  border-color: var(--mn-border-hover);
   box-shadow: 0 1px 0 rgba(16,24,40,0.03), 0 4px 12px rgba(16,24,40,0.06);
 }
 
@@ -327,7 +401,7 @@
 }
 
 .vx-glass-elevated {
-  background: rgba(255,255,255,0.90);
+  background: var(--glass-bg-hover);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--glass-border);

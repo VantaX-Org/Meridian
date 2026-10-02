@@ -54,7 +54,7 @@ export function WorkspaceHub({ id, landing = false }: { id: WorkspaceId; landing
         />
       </div>
       {AURORA_TABS.has(active.href) ? (Body ? <Body /> : null) : (
-        <div className="mn-legacy-host" data-theme="light">
+        <div className="mn-legacy-host">
           {Body ? <Body /> : null}
         </div>
       )}

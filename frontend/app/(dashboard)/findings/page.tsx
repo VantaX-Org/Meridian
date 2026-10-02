@@ -337,7 +337,7 @@ function FindingsWorkspace() {
       {/* Filter chips */}
       <div className="mn-findings-layout">
         <div className="mn-findings-filter">
-          <div className="mn-chip-row" data-theme="light">
+          <div className="mn-chip-row">
             {active.map((k) => (
               <Chip key={k} onDismiss={() => set({ [k]: undefined })}>
                 {FILTER_LABEL[k]} · {k === "version_id" ? filter[k]?.slice(0, 8) : k === "module" ? formatModuleName(filter[k] ?? "") : filter[k]}
@@ -430,7 +430,7 @@ function FindingsWorkspace() {
                 </tbody>
               </table>
             </div>
-            <div data-theme="light" style={{ padding: "10px 20px" }}>
+            <div style={{ padding: "10px 20px" }}>
               <Pager offset={offset} total={total} pageSize={PAGE} noun="findings"
                 onChange={(o) => { setOffset(o); setSelectedId(null); }} />
             </div>
@@ -545,7 +545,7 @@ function ObjectScores({
   const { data: v, error } = useQuery({ queryKey: ["version", versionId], queryFn: () => getVersion(versionId) });
   const s = v?.dqs_summary?.[module];
   return (
-    <div data-theme="light" style={{ marginBottom: 14 }}>
+    <div style={{ marginBottom: 14 }}>
       <Panel
         title={`${formatModuleName(module)} · ${v ? new Date(v.run_at).toLocaleString() : versionId.slice(0, 8)}`}
         action={v?.label ? <Text variant="text-small" tone="secondary">{v.label}</Text> : undefined}
@@ -609,7 +609,7 @@ function FindingEvidence({ finding }: { finding: Finding }) {
         </div>
       )}
       {invalid.length > 0 && (
-        <div className="mn-detail-section" data-theme="light">
+        <div className="mn-detail-section">
           <div className="mn-eyebrow">Invalid values</div>
           <Stack direction="row" gap={1} wrap className="mt-2">
             {invalid.slice(0, 20).map(([val, n]) => (
@@ -633,7 +633,7 @@ function VersionRecords({ versionId, checkId }: { versionId: string; checkId: st
     placeholderData: keepPreviousData,
   });
   return (
-    <div className="mn-detail-section" data-theme="light">
+    <div className="mn-detail-section">
       <div className="mn-eyebrow">Records in this version</div>
       {!data ? (
         <Text variant="text-small" tone="muted">Reading record keys…</Text>

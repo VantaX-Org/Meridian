@@ -210,7 +210,7 @@ function VersionsWorkspace() {
         actions={
           <>
             {systemId && (
-              <span data-theme="light">
+              <span>
                 <Chip onDismiss={() => replace({ system_id: undefined })}>system · {systemId.slice(0, 8)}</Chip>
               </span>
             )}
@@ -222,7 +222,7 @@ function VersionsWorkspace() {
       <div className="mn-card mn-card-pad" style={{ marginBottom: 18 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
           <span className="mn-eyebrow">Compare versions · {pair.length} selected</span>
-          <span data-theme="light">
+          <span>
             <Select aria-label="Object" value={object ?? ""} onValueChange={(v) => replace({ module: v || undefined })}
               options={[{ value: "", label: "All objects" }, ...objects.map((o) => ({ value: o, label: formatModuleName(o) }))]} />
           </span>
@@ -480,7 +480,7 @@ function ObjectCompare({
     </Stack>
   );
   return (
-    <div data-theme="light" style={{ marginBottom: 18 }}>
+    <div style={{ marginBottom: 18 }}>
       <Panel title="Object scores">
         {error ? <Banner tone="danger">{errorText(error)}</Banner> : !data ? <Text tone="muted">Comparing scores…</Text> : (
           <Stack gap={5}>
@@ -554,7 +554,7 @@ function RecordCompare({ older, newer, module }: { older: Version; newer: Versio
     ) : <span className="text-[var(--aurora-fg-muted)]">0</span>;
 
   return (
-    <div data-theme="light" style={{ marginBottom: 18 }}>
+    <div style={{ marginBottom: 18 }}>
       <Panel title="Record-level change"
         action={isBaseline ? <Chip tone="info">baseline</Chip> : (
           <Button size="sm" variant="secondary" disabled={pin.isPending} onClick={() => pin.mutate()}>Pin older version as baseline</Button>

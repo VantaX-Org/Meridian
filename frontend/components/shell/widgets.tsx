@@ -56,7 +56,7 @@ export function LocalUserButton() {
       </PopoverTrigger>
       <PopoverContent align="end" className="w-60 overflow-hidden rounded-2xl p-0 shadow-xl" sideOffset={8}>
         {user && (
-          <div className="border-b border-black/[0.06] px-4 py-3">
+          <div className="border-b border-border px-4 py-3">
             <p className="text-sm font-semibold text-foreground truncate">{user.name}</p>
             <p className="text-xs text-muted-foreground truncate">{user.email}</p>
           </div>
@@ -65,7 +65,7 @@ export function LocalUserButton() {
           <button
             type="button"
             onClick={handleSignOut}
-            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-black/[0.04] hover:text-foreground transition-colors"
+            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-foreground/[0.04] hover:text-foreground transition-colors"
           >
             <LogOut className="h-4 w-4" />
             Sign out
@@ -265,7 +265,7 @@ export function NotificationBell() {
             type="button"
             title="Notifications"
             aria-label="Notifications"
-            className="relative flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-all hover:bg-black/[0.04] hover:text-foreground"
+            className="relative flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-all hover:bg-foreground/[0.04] hover:text-foreground"
           />
         }
       >
@@ -277,7 +277,7 @@ export function NotificationBell() {
         )}
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 overflow-hidden rounded-2xl p-0 shadow-xl" sideOffset={8}>
-        <div className="flex items-center justify-between border-b border-black/[0.06] px-4 py-3">
+        <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <span className="font-display text-sm font-semibold text-foreground">Notifications</span>
           {unreadCount > 0 && (
             <button
@@ -300,7 +300,7 @@ export function NotificationBell() {
                 key={notif.id}
                 type="button"
                 onClick={() => handleClick(notif)}
-                className={`flex w-full gap-3 px-4 py-3 text-left transition-colors hover:bg-black/[0.03] ${
+                className={`flex w-full gap-3 px-4 py-3 text-left transition-colors hover:bg-foreground/[0.03] ${
                   notif.is_read ? "opacity-50" : ""
                 }`}
               >
@@ -319,7 +319,7 @@ export function NotificationBell() {
             ))
           )}
         </div>
-        <div className="border-t border-black/[0.06] px-4 py-2.5">
+        <div className="border-t border-border px-4 py-2.5">
           <button
             type="button"
             onClick={() => {

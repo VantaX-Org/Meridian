@@ -19,6 +19,9 @@ import { ConfirmDialog } from "@/components/meridian/controls";
 import { relativeTime } from "@/lib/format";
 import { useRole } from "@/hooks/use-role";
 
+
+/** Confidence is 0..1 from the detector and 0..100 once stored; show one scale. */
+const pct = (c: number): number => (c <= 1 ? c * 100 : c);
 function previewLine(item: CleaningQueueItem): string {
   if (item.merge_preview && typeof item.merge_preview === "object") {
     const entries = Object.entries(item.merge_preview);
@@ -171,7 +174,7 @@ export default function CleaningPage() {
         <KPI label="In queue" value={summary.queued} hint={`${summary.review} need review`} />
         <KPI label="Auto-approved" value={summary.auto} tone="pos" />
         <KPI label="Needs review" value={summary.review} tone="warn" />
-        <KPI label="Mean confidence" value={items.length ? `${Math.round((items.reduce((a, i) => a + i.confidence, 0) / items.length) * 100)}%` : "—"} />
+        <KPI label="Mean confidence" value={items.length ? `${Math.round(items.reduce((a, i) => a + pct(i.confidence), 0) / items.length)}%` : "—"} />
       </div>
 
       <div className="mn-segment" style={{ marginBottom: 12 }}>
@@ -206,7 +209,7 @@ export default function CleaningPage() {
                       letterSpacing: "0.04em",
                     }}
                   >
-                    confidence {Math.round(j.confidence * 100)}%
+                    confidence {Math.round(pct(j.confidence))}%
                   </span>
                 </div>
                 <button
