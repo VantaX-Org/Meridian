@@ -96,6 +96,26 @@ forged/replayed/cross-node `valid:true` is rejected (becomes `signature_invalid`
 → HTTP 402). **Roll out the key only after Step 3 is confirmed live**, else the
 client rejects the (then-unsigned) responses.
 
+## Automatic release publishing (CI → HQ → "Update now")
+
+Installed systems offer **Update now** to their admin when HQ's `latest_version`
+is newer than what they run. The release workflow (`.github/workflows/build-and-deploy.yml`,
+job `publish-release`) sets it after every image of a release is pushed, using a
+token that works for `PUT /api/admin/release` only and can never move the release
+backwards (an admin can still set any version by hand, e.g. to withdraw one).
+
+One-time setup, after deploying this worker version (Step 3):
+
+```bash
+TOKEN=$(openssl rand -hex 32)
+echo -n "$TOKEN" | npx wrangler secret put RELEASE_PUBLISH_TOKEN      # the worker
+gh secret set RELEASE_PUBLISH_TOKEN --repo VantaX-Org/Meridian --body "$TOKEN"   # CI
+# or: GitHub → Settings → Secrets and variables → Actions → New repository secret
+```
+
+Until both are set, the job only logs a warning and nothing is published. To
+rotate, repeat both commands with a new value.
+
 ## Soft node-lock (observe-only)
 
 The client fingerprint is `sha256(hostname + MAC)`, which changes on every Docker

@@ -59,6 +59,11 @@ interface Env {
    * header. Set via wrangler secret put LICENCE_ADMIN_SECRET; must match
    * the portal's LICENCE_ADMIN_SECRET. */
   LICENCE_ADMIN_SECRET?: string;
+  /** Narrow CI credential: accepted by PUT /api/admin/release only (header
+   * X-Release-Token), so the release workflow can publish a new version
+   * without holding full admin. It can only move latest_version forward.
+   * Set via wrangler secret put RELEASE_PUBLISH_TOKEN. */
+  RELEASE_PUBLISH_TOKEN?: string;
   /** RSA-PKCS8 private key PEM for offline JWT signing (set as Worker secret) */
   OFFLINE_JWT_PRIVATE_KEY?: string;
   /** Comma-separated list of allowed CORS origins. Falls back to `*`
@@ -1943,8 +1948,16 @@ async function handleGetRelease(request: Request, env: Env): Promise<Response> {
 }
 
 async function handleUpdateRelease(request: Request, env: Env): Promise<Response> {
-  const authErr = await requireAdmin(request, env);
-  if (authErr) return authErr;
+  const releaseToken = request.headers.get("X-Release-Token");
+  const viaReleaseToken = !!(
+    releaseToken &&
+    env.RELEASE_PUBLISH_TOKEN &&
+    timingSafeEqualStr(releaseToken, env.RELEASE_PUBLISH_TOKEN)
+  );
+  if (!viaReleaseToken) {
+    const authErr = await requireAdmin(request, env);
+    if (authErr) return authErr;
+  }
 
   const body = (await request.json()) as Partial<{
     latest_version: string;
@@ -1961,6 +1974,19 @@ async function handleUpdateRelease(request: Request, env: Env): Promise<Response
   }
   const latestVersion = versionMatch[1];
   const releaseNotes = body.release_notes ?? "";
+
+  // CI never moves customers backwards (a re-run of an old release job);
+  // an admin can still set any version by hand, e.g. to withdraw a release.
+  if (viaReleaseToken) {
+    const current = await env.DB.prepare("SELECT latest_version FROM platform_releases WHERE id = 1")
+      .first<{ latest_version: string }>();
+    const parse = (v: string) => v.split(".").map((n) => parseInt(n, 10) || 0);
+    const [a, b] = [parse(latestVersion), parse(current?.latest_version || "0.0.0")];
+    const cmp = a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
+    if (cmp < 0) {
+      return json({ error: "conflict", message: `latest_version ${current?.latest_version} is newer than ${latestVersion}` }, 409);
+    }
+  }
 
   await env.DB.prepare(
     "UPDATE platform_releases SET latest_version = ?, release_notes = ?, released_at = datetime('now'), updated_at = datetime('now') WHERE id = 1"

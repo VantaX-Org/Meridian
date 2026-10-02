@@ -396,6 +396,40 @@ describe("Admin Platform Release", () => {
   });
 });
 
+describe("Release publishing token (CI)", () => {
+  const put = (version: string, headers: Record<string, string>) =>
+    callWorker("/api/admin/release", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...headers },
+      body: JSON.stringify({ latest_version: version, release_notes: `Release ${version}` }),
+    });
+
+  it("publishes a newer release with the release token", async () => {
+    const resp = await put("v9.0.0", { "X-Release-Token": "test-release-token" });
+    expect(resp.status).toBe(200);
+    expect(((await resp.json()) as { latest_version: string }).latest_version).toBe("9.0.0");
+    expect((await put("9.0.0", { "X-Release-Token": "test-release-token" })).status).toBe(200); // re-run
+  });
+
+  it("never moves the release backwards with the token", async () => {
+    expect((await put("8.9.9", { "X-Release-Token": "test-release-token" })).status).toBe(409);
+  });
+
+  it("rejects a wrong token", async () => {
+    expect((await put("9.1.0", { "X-Release-Token": "nope" })).status).toBe(401);
+  });
+
+  it("grants nothing beyond the release endpoint", async () => {
+    const resp = await callWorker("/api/admin/tenants", { headers: { "X-Release-Token": "test-release-token" } });
+    expect(resp.status).toBe(401);
+  });
+
+  it("still lets an admin set an older release by hand", async () => {
+    const resp = await put("3.1.0", await adminHeaders());
+    expect(resp.status).toBe(200);
+  });
+});
+
 // ─── Manifest includes rules ──────────────────────────────────────────────────
 
 describe("Licence manifest includes rules from D1", () => {
