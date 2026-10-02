@@ -10,6 +10,155 @@ from __future__ import annotations
 from api.models.config_intelligence import ConfigElement, ConfigStatus, SAPVersion
 
 
+# (SAP field, element_type, reference table) per module. One table so other
+# services can translate an element_type back to the field it was read from
+# (checks/root_cause.py matches findings by field).
+_FI_MAP: list[tuple[str, str, str]] = [
+        ("BUKRS",  "company_code",     "T001"),
+        ("BLART",  "document_type",    "T003"),
+        ("BSCHL",  "posting_key",      "TBSL"),
+        ("HKONT",  "gl_account",       "SKA1"),
+        ("KOSTL",  "cost_centre",      "CSKS"),
+        ("PRCTR",  "profit_centre",    "CEPC"),
+        ("MWSKZ",  "tax_code",         "T007A"),
+        ("ZLSCH",  "payment_method",   "T042Z"),
+        ("WAERS",  "currency",         "TCURC"),
+        ("VBUND",  "trading_partner",  "T880"),
+        ("AUFNR",  "internal_order",   "AUFK"),
+        ("HBKID",  "house_bank",       "T012"),
+]
+
+_MM_MAP: list[tuple[str, str, str]] = [
+        ("WERKS",  "plant",                "T001W"),
+        ("LGORT",  "storage_location",     "T001L"),
+        ("EKORG",  "purchasing_org",       "T024E"),
+        ("BSART",  "po_document_type",     "T161"),
+        ("MTART",  "material_type",        "T134"),
+        ("DISMM",  "mrp_type",             "T399D"),
+        ("DISLS",  "lot_size_procedure",   "T440"),
+        ("BESCHP", "procurement_type",     ""),
+        ("BKLAS",  "valuation_class",      "T025"),
+        ("BWART",  "movement_type",        "T156"),
+        ("EKGRP",  "purchasing_group",     "T024"),
+        ("VPRSV",  "price_control",        ""),
+        ("FRGKE",  "release_indicator",    "T16FK"),
+        ("MEINS",  "base_uom",             "T006"),
+]
+
+_SD_MAP: list[tuple[str, str, str]] = [
+        ("VKORG", "sales_org",              "TVKO"),
+        ("VTWEG", "distribution_channel",   "TVTW"),
+        ("SPART", "division",               "TSPA"),
+        ("AUART", "sales_order_type",       "TVAK"),
+        ("PSTYV", "item_category",          "TVCPA"),
+        ("KSCHL", "condition_type",         "T685"),
+        ("VSTEL", "shipping_point",         "TVST"),
+        ("LFART", "delivery_type",          "TVLK"),
+        ("FKART", "billing_type",           "TVFK"),
+        ("ROUTE", "route",                  "TVRO"),
+        ("INCO1", "incoterms",              "TINCT"),
+        ("KTOKD", "customer_account_group", "T077D"),
+        ("PARVW", "partner_function",       "TPAR"),
+        ("KKBER", "credit_control_area",    "T014"),
+]
+
+_PM_MAP: list[tuple[str, str, str]] = [
+        ("SWERK", "maintenance_plant",        "T001W"),
+        ("EQTYP", "equipment_category",       "T370T"),
+        ("INGRP", "planner_group",            "T024I"),
+        ("QMART", "notification_type",        "TQ80"),
+        ("PRIOK", "priority",                 "T356"),
+        ("FLTYP", "func_location_category",   "T370F"),
+        ("AUART", "pm_order_type",            "T003O"),
+        ("STRAT", "maintenance_strategy",     "TCVS"),
+]
+
+_PP_MAP: list[tuple[str, str, str]] = [
+        ("PLNTY", "task_list_type",       "PLKO"),
+        ("STLAN", "bom_usage",            "STKO"),
+        ("VERWE", "work_centre_category", "CRHD"),
+        ("DISPO", "mrp_controller",       "T399D"),
+]
+
+_INT_MAP: list[tuple[str, str, str]] = [
+        ("IDOCTP", "idoc_type",         "EDIDC"),
+        ("MESTYP", "message_type",      "EDIMSG"),
+        ("SNDPRN", "sender_partner",    "EDPP1"),
+        ("RCVPRN", "receiver_partner",  "EDPP1"),
+        ("DIRECT", "direction",         "EDIDC"),
+        ("STATUS", "idoc_status",       "EDIDC"),
+]
+
+_HR_MAP: list[tuple[str, str, str]] = [
+        ("PERSG", "employee_group",    "T501"),
+        ("PERSK", "employee_subgroup", "T503"),
+        ("ABKRS", "payroll_area",      "T549A"),
+        ("ORGEH", "org_unit",          "T527X"),
+        ("PLANS", "position",          "T528T"),
+        ("WERKS", "personnel_area",    "T001P"),
+]
+
+_SF_MAP: list[tuple[str, str, str]] = [
+        ("LEGAL_ENTITY",   "legal_entity",      "FOCompany"),
+        ("COMPANY",        "company",            "FOCompany"),
+        ("BUSINESS_UNIT",  "business_unit",      "FOBusinessUnit"),
+        ("DIVISION",       "sf_division",        "FODivision"),
+        ("DEPARTMENT",     "department",         "FODepartment"),
+        ("LOCATION",       "location",           "FOLocation"),
+        ("COST_CENTER",    "sf_cost_centre",     "FOCostCenter"),
+        ("JOB_CODE",       "job_classification", "FOJobCode"),
+        ("JOB_LEVEL",      "job_level",          "FOJobLevel"),
+        ("PAY_GROUP",      "pay_group",          "FOPayGroup"),
+        ("PAY_GRADE",      "pay_grade",          "FOPayGrade"),
+        ("EMPLOYEE_CLASS", "employee_class",     "FOEmployeeClass"),
+        ("EVENT_REASON",   "event_reason",       "FOEventReason"),
+        ("EMP_STATUS",     "employment_status",  "EmpEmployment"),
+        ("HIRE_DATE",      "hire_activity",      "EmpEmployment"),
+        ("COUNTRY",        "sf_country",         "FOLocation"),
+]
+
+_CONCUR_MAP: list[tuple[str, str, str]] = [
+        ("EXPENSE_TYPE",    "expense_type",             "ExpenseType"),
+        ("EXPENSE_CATEGORY", "expense_category",        "ExpenseCategory"),
+        ("PAYMENT_TYPE",    "payment_type",             "PaymentType"),
+        ("POLICY_NAME",     "expense_policy",           "Policy"),
+        ("REPORT_STATUS",   "report_workflow_status",   "ReportStatus"),
+        ("APPROVAL_STATUS", "approval_config",          "ApprovalStatus"),
+        ("CURRENCY_CODE",   "concur_currency",          "Currency"),
+        ("COUNTRY_CODE",    "concur_country",           "Country"),
+        ("COST_CENTER",     "concur_cost_centre",       "Allocation"),
+        ("DEPARTMENT",      "concur_department",        "Allocation"),
+        ("ACCOUNT_CODE",    "gl_account_mapping",       "AccountCode"),
+        ("PROJECT_CODE",    "project_allocation",       "Project"),
+]
+
+_EWMS_MAP: list[tuple[str, str, str]] = [
+        ("LGNUM",           "warehouse_number",       "/SCWM/T300"),
+        ("LGTYP",           "storage_type",           "/SCWM/T301"),
+        ("LGBER",           "storage_section",        "/SCWM/T302"),
+        ("LGPLA",           "storage_bin",            "/SCWM/LAGP"),
+        ("NLTYP",           "dest_storage_type",      "/SCWM/T301"),
+        ("NLPLA",           "dest_storage_bin",       "/SCWM/LAGP"),
+        ("PRESSION_TYPE",   "warehouse_process_type", "/SCWM/TPROCESS"),
+        ("WAVE_TYPE",       "wave_type",              "/SCWM/TWAVE"),
+        ("WAVE_STATUS",     "wave_status",            "/SCWM/WAVE"),
+        ("TANUM",           "warehouse_task",         "/SCWM/ORDIM_C"),
+        ("PROCTY",          "process_type",           "/SCWM/T346"),
+        ("WHO_TYPE",        "warehouse_order_type",   "/SCWM/WHO"),
+        ("CAT",             "stock_category",         "/SCWM/QUAN"),
+        ("STOCK_TYPE",      "stock_type",             "/SCWM/QUAN"),
+        ("ENTITLED",        "stock_owner",            "/SCWM/QUAN"),
+        ("RSRC",            "resource_id",            "/SCWM/RSRC"),
+        ("RSRC_TYPE",       "resource_type",          "/SCWM/TRSRC_TYP"),
+        ("QUEUE",           "resource_queue",         "/SCWM/RSRC_QUE"),
+        ("AESSION_AREA",    "activity_area",          "/SCWM/T306"),
+        ("CHARG",           "batch_number",           "/SCWM/QUAN"),
+]
+
+ALL_FIELD_MAPS: list[tuple[str, str, str]] = [t for m in (_FI_MAP, _MM_MAP, _SD_MAP, _PM_MAP, _PP_MAP, _INT_MAP, _HR_MAP, _SF_MAP, _CONCUR_MAP, _EWMS_MAP) for t in m]
+ELEMENT_TYPE_FIELD: dict[str, str] = {etype: field for field, etype, _ in ALL_FIELD_MAPS}
+
+
 class ConfigDiscovery:
     """Extract configuration elements from SAP transactional records."""
 
@@ -144,20 +293,7 @@ class ConfigDiscovery:
 
     def _discover_fi(self, records: list[dict]) -> list[ConfigElement]:
         m = "FI"
-        mappings = [
-            ("BUKRS",  "company_code",     "T001"),
-            ("BLART",  "document_type",    "T003"),
-            ("BSCHL",  "posting_key",      "TBSL"),
-            ("HKONT",  "gl_account",       "SKA1"),
-            ("KOSTL",  "cost_centre",      "CSKS"),
-            ("PRCTR",  "profit_centre",    "CEPC"),
-            ("MWSKZ",  "tax_code",         "T007A"),
-            ("ZLSCH",  "payment_method",   "T042Z"),
-            ("WAERS",  "currency",         "TCURC"),
-            ("VBUND",  "trading_partner",  "T880"),
-            ("AUFNR",  "internal_order",   "AUFK"),
-            ("HBKID",  "house_bank",       "T012"),
-        ]
+        mappings = _FI_MAP
         elements: list[ConfigElement] = []
         for field, etype, ref in mappings:
             elements.extend(self._extract_distinct(records, field, etype, m, ref))
@@ -176,22 +312,7 @@ class ConfigDiscovery:
 
     def _discover_mm(self, records: list[dict]) -> list[ConfigElement]:
         m = "MM"
-        mappings = [
-            ("WERKS",  "plant",                "T001W"),
-            ("LGORT",  "storage_location",     "T001L"),
-            ("EKORG",  "purchasing_org",       "T024E"),
-            ("BSART",  "po_document_type",     "T161"),
-            ("MTART",  "material_type",        "T134"),
-            ("DISMM",  "mrp_type",             "T399D"),
-            ("DISLS",  "lot_size_procedure",   "T440"),
-            ("BESCHP", "procurement_type",     ""),
-            ("BKLAS",  "valuation_class",      "T025"),
-            ("BWART",  "movement_type",        "T156"),
-            ("EKGRP",  "purchasing_group",     "T024"),
-            ("VPRSV",  "price_control",        ""),
-            ("FRGKE",  "release_indicator",    "T16FK"),
-            ("MEINS",  "base_uom",             "T006"),
-        ]
+        mappings = _MM_MAP
         elements: list[ConfigElement] = []
         for field, etype, ref in mappings:
             elements.extend(self._extract_distinct(records, field, etype, m, ref))
@@ -203,22 +324,7 @@ class ConfigDiscovery:
 
     def _discover_sd(self, records: list[dict]) -> list[ConfigElement]:
         m = "SD"
-        mappings = [
-            ("VKORG", "sales_org",              "TVKO"),
-            ("VTWEG", "distribution_channel",   "TVTW"),
-            ("SPART", "division",               "TSPA"),
-            ("AUART", "sales_order_type",       "TVAK"),
-            ("PSTYV", "item_category",          "TVCPA"),
-            ("KSCHL", "condition_type",         "T685"),
-            ("VSTEL", "shipping_point",         "TVST"),
-            ("LFART", "delivery_type",          "TVLK"),
-            ("FKART", "billing_type",           "TVFK"),
-            ("ROUTE", "route",                  "TVRO"),
-            ("INCO1", "incoterms",              "TINCT"),
-            ("KTOKD", "customer_account_group", "T077D"),
-            ("PARVW", "partner_function",       "TPAR"),
-            ("KKBER", "credit_control_area",    "T014"),
-        ]
+        mappings = _SD_MAP
         elements: list[ConfigElement] = []
         for field, etype, ref in mappings:
             elements.extend(self._extract_distinct(records, field, etype, m, ref))
@@ -230,16 +336,7 @@ class ConfigDiscovery:
 
     def _discover_pm(self, records: list[dict]) -> list[ConfigElement]:
         m = "PM"
-        mappings = [
-            ("SWERK", "maintenance_plant",        "T001W"),
-            ("EQTYP", "equipment_category",       "T370T"),
-            ("INGRP", "planner_group",            "T024I"),
-            ("QMART", "notification_type",        "TQ80"),
-            ("PRIOK", "priority",                 "T356"),
-            ("FLTYP", "func_location_category",   "T370F"),
-            ("AUART", "pm_order_type",            "T003O"),
-            ("STRAT", "maintenance_strategy",     "TCVS"),
-        ]
+        mappings = _PM_MAP
         elements: list[ConfigElement] = []
         for field, etype, ref in mappings:
             elements.extend(self._extract_distinct(records, field, etype, m, ref))
@@ -251,12 +348,7 @@ class ConfigDiscovery:
 
     def _discover_pp(self, records: list[dict]) -> list[ConfigElement]:
         m = "PP"
-        mappings = [
-            ("PLNTY", "task_list_type",       "PLKO"),
-            ("STLAN", "bom_usage",            "STKO"),
-            ("VERWE", "work_centre_category", "CRHD"),
-            ("DISPO", "mrp_controller",       "T399D"),
-        ]
+        mappings = _PP_MAP
         elements: list[ConfigElement] = []
         for field, etype, ref in mappings:
             elements.extend(self._extract_distinct(records, field, etype, m, ref))
@@ -268,14 +360,7 @@ class ConfigDiscovery:
 
     def _discover_int(self, records: list[dict]) -> list[ConfigElement]:
         m = "INT"
-        mappings = [
-            ("IDOCTP", "idoc_type",         "EDIDC"),
-            ("MESTYP", "message_type",      "EDIMSG"),
-            ("SNDPRN", "sender_partner",    "EDPP1"),
-            ("RCVPRN", "receiver_partner",  "EDPP1"),
-            ("DIRECT", "direction",         "EDIDC"),
-            ("STATUS", "idoc_status",       "EDIDC"),
-        ]
+        mappings = _INT_MAP
         elements: list[ConfigElement] = []
         for field, etype, ref in mappings:
             elements.extend(self._extract_distinct(records, field, etype, m, ref))
@@ -287,14 +372,7 @@ class ConfigDiscovery:
 
     def _discover_hr(self, records: list[dict]) -> list[ConfigElement]:
         m = "HR"
-        mappings = [
-            ("PERSG", "employee_group",    "T501"),
-            ("PERSK", "employee_subgroup", "T503"),
-            ("ABKRS", "payroll_area",      "T549A"),
-            ("ORGEH", "org_unit",          "T527X"),
-            ("PLANS", "position",          "T528T"),
-            ("WERKS", "personnel_area",    "T001P"),
-        ]
+        mappings = _HR_MAP
         elements: list[ConfigElement] = []
         for field, etype, ref in mappings:
             elements.extend(self._extract_distinct(records, field, etype, m, ref))
@@ -306,24 +384,7 @@ class ConfigDiscovery:
 
     def _discover_sf(self, records: list[dict]) -> list[ConfigElement]:
         m = "SF"
-        mappings = [
-            ("LEGAL_ENTITY",   "legal_entity",      "FOCompany"),
-            ("COMPANY",        "company",            "FOCompany"),
-            ("BUSINESS_UNIT",  "business_unit",      "FOBusinessUnit"),
-            ("DIVISION",       "sf_division",        "FODivision"),
-            ("DEPARTMENT",     "department",         "FODepartment"),
-            ("LOCATION",       "location",           "FOLocation"),
-            ("COST_CENTER",    "sf_cost_centre",     "FOCostCenter"),
-            ("JOB_CODE",       "job_classification", "FOJobCode"),
-            ("JOB_LEVEL",      "job_level",          "FOJobLevel"),
-            ("PAY_GROUP",      "pay_group",          "FOPayGroup"),
-            ("PAY_GRADE",      "pay_grade",          "FOPayGrade"),
-            ("EMPLOYEE_CLASS", "employee_class",     "FOEmployeeClass"),
-            ("EVENT_REASON",   "event_reason",       "FOEventReason"),
-            ("EMP_STATUS",     "employment_status",  "EmpEmployment"),
-            ("HIRE_DATE",      "hire_activity",      "EmpEmployment"),
-            ("COUNTRY",        "sf_country",         "FOLocation"),
-        ]
+        mappings = _SF_MAP
         elements: list[ConfigElement] = []
         for field, etype, ref in mappings:
             elements.extend(self._extract_distinct(records, field, etype, m, ref))
@@ -396,20 +457,7 @@ class ConfigDiscovery:
 
     def _discover_concur(self, records: list[dict]) -> list[ConfigElement]:
         m = "CONCUR"
-        mappings = [
-            ("EXPENSE_TYPE",    "expense_type",             "ExpenseType"),
-            ("EXPENSE_CATEGORY", "expense_category",        "ExpenseCategory"),
-            ("PAYMENT_TYPE",    "payment_type",             "PaymentType"),
-            ("POLICY_NAME",     "expense_policy",           "Policy"),
-            ("REPORT_STATUS",   "report_workflow_status",   "ReportStatus"),
-            ("APPROVAL_STATUS", "approval_config",          "ApprovalStatus"),
-            ("CURRENCY_CODE",   "concur_currency",          "Currency"),
-            ("COUNTRY_CODE",    "concur_country",           "Country"),
-            ("COST_CENTER",     "concur_cost_centre",       "Allocation"),
-            ("DEPARTMENT",      "concur_department",        "Allocation"),
-            ("ACCOUNT_CODE",    "gl_account_mapping",       "AccountCode"),
-            ("PROJECT_CODE",    "project_allocation",       "Project"),
-        ]
+        mappings = _CONCUR_MAP
         elements: list[ConfigElement] = []
         for field, etype, ref in mappings:
             elements.extend(self._extract_distinct(records, field, etype, m, ref))
@@ -470,28 +518,7 @@ class ConfigDiscovery:
 
     def _discover_ewms(self, records: list[dict]) -> list[ConfigElement]:
         m = "EWMS"
-        mappings = [
-            ("LGNUM",           "warehouse_number",       "/SCWM/T300"),
-            ("LGTYP",           "storage_type",           "/SCWM/T301"),
-            ("LGBER",           "storage_section",        "/SCWM/T302"),
-            ("LGPLA",           "storage_bin",            "/SCWM/LAGP"),
-            ("NLTYP",           "dest_storage_type",      "/SCWM/T301"),
-            ("NLPLA",           "dest_storage_bin",       "/SCWM/LAGP"),
-            ("PRESSION_TYPE",   "warehouse_process_type", "/SCWM/TPROCESS"),
-            ("WAVE_TYPE",       "wave_type",              "/SCWM/TWAVE"),
-            ("WAVE_STATUS",     "wave_status",            "/SCWM/WAVE"),
-            ("TANUM",           "warehouse_task",         "/SCWM/ORDIM_C"),
-            ("PROCTY",          "process_type",           "/SCWM/T346"),
-            ("WHO_TYPE",        "warehouse_order_type",   "/SCWM/WHO"),
-            ("CAT",             "stock_category",         "/SCWM/QUAN"),
-            ("STOCK_TYPE",      "stock_type",             "/SCWM/QUAN"),
-            ("ENTITLED",        "stock_owner",            "/SCWM/QUAN"),
-            ("RSRC",            "resource_id",            "/SCWM/RSRC"),
-            ("RSRC_TYPE",       "resource_type",          "/SCWM/TRSRC_TYP"),
-            ("QUEUE",           "resource_queue",         "/SCWM/RSRC_QUE"),
-            ("AESSION_AREA",    "activity_area",          "/SCWM/T306"),
-            ("CHARG",           "batch_number",           "/SCWM/QUAN"),
-        ]
+        mappings = _EWMS_MAP
         elements: list[ConfigElement] = []
         for field, etype, ref in mappings:
             elements.extend(self._extract_distinct(records, field, etype, m, ref))

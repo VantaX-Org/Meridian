@@ -65,8 +65,16 @@ def load_tenant_config_values(engine: Any, tenant_id: str) -> dict[str, set[str]
                 ),
                 {"tid": tenant_id, "rid": run_id},
             ).fetchall()
+            # Discovery stores semantic types ("document_type", "z_blart");
+            # findings carry SAP fields ("BKPF.BLART"). Index both names.
+            from api.services.config_intelligence.discovery import ELEMENT_TYPE_FIELD
+
             for etype, eval_ in rows:
-                index.setdefault(str(etype), set()).add(str(eval_))
+                etype, value = str(etype), str(eval_)
+                index.setdefault(etype, set()).add(value)
+                field = ELEMENT_TYPE_FIELD.get(etype) or (etype[2:].upper() if etype.startswith("z_") else None)
+                if field:
+                    index.setdefault(field, set()).add(value)
     except Exception as e:
         # Config Intelligence table may not exist on older deployments;
         # never fail the analysis over root-cause enrichment.
