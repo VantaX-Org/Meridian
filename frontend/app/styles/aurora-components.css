@@ -3667,3 +3667,88 @@
   .aurora-runs__live { grid-template-columns: 1fr; }
   .aurora-stepper__label { display: none; }
 }
+
+/* ------------------------------------------------------------------ *\
+ * Command Centre overview + executive report.
+\* ------------------------------------------------------------------ */
+.aurora-cc,
+.aurora-exec {
+  padding: var(--aurora-space-6);
+}
+.aurora-exec__grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) 2fr;
+  gap: var(--aurora-space-6);
+  align-items: start;
+}
+.aurora-exec__eyebrow {
+  display: block;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.aurora-exec__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.aurora-exec__table th {
+  text-align: left;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--aurora-fg-muted);
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--aurora-canvas-line);
+  white-space: nowrap;
+}
+.aurora-exec__table td {
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--aurora-canvas-line);
+  vertical-align: top;
+}
+.aurora-exec__table td:last-child {
+  min-width: 120px;
+}
+.aurora-exec__bar {
+  display: block;
+  height: 6px;
+  min-width: 100px;
+  border-radius: 3px;
+  background: var(--aurora-canvas-overlay);
+  overflow: hidden;
+  margin-top: 5px;
+}
+.aurora-exec__bar > span {
+  display: block;
+  height: 100%;
+  background: var(--aurora-accent-500);
+}
+.aurora-exec__bar[data-tone="success"] > span { background: var(--aurora-status-success-500); }
+.aurora-exec__bar[data-tone="warning"] > span { background: var(--aurora-status-warning-500); }
+.aurora-exec__bar[data-tone="danger"] > span { background: var(--aurora-status-danger-500); }
+.aurora-exec__finding {
+  display: block;
+  font-family: var(--aurora-font-mono);
+  font-size: 12px;
+}
+.aurora-exec__warnings {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--aurora-space-2);
+}
+.aurora-exec__warnings li {
+  display: flex;
+  gap: var(--aurora-space-3);
+  align-items: flex-start;
+  font-size: 13px;
+}
+@media (max-width: 720px) {
+  .aurora-cc, .aurora-exec { padding: var(--aurora-space-3); }
+  .aurora-exec__grid { grid-template-columns: 1fr; }
+}
+@media print {
+  .aurora-app-shell__rail, .aurora-app-shell__topbar, .aurora-hub__bar { display: none !important; }
+  .aurora-app-shell { display: block; background: #fff; color: #000; }
+}

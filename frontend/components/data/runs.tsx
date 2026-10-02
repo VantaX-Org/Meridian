@@ -8,7 +8,7 @@
  */
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
@@ -17,22 +17,13 @@ import {
 import { getSystems } from "@/lib/api/systems";
 import { getSystemVersions, type SystemVersion } from "@/lib/api/system-objects";
 import { useJobs } from "@/hooks/use-jobs";
+import { useNowSec } from "@/hooks/use-now";
 import { formatModuleName, relativeTime } from "@/lib/format";
 import type { Job } from "@/types/jobs";
 import { JobCard, KIND_LABEL, STATUS_TONE, fmtDuration, fmtInt, jobTiming } from "./job-card";
 
 const DAY = 24 * 3600;
 const meta = (m: AuroraColumnMeta) => m;
-
-function useNowSec(active: boolean): number {
-  const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
-  useEffect(() => {
-    if (!active) return;
-    const id = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000);
-    return () => clearInterval(id);
-  }, [active]);
-  return now;
-}
 
 type VersionRow = SystemVersion & { systemId: string; systemName: string };
 

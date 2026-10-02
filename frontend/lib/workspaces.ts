@@ -38,6 +38,7 @@ export const WORKSPACES: readonly Workspace[] = [
     id: "command-centre", label: "Command Centre", href: "/", shortcut: "⌘1",
     tabs: [
       { id: "overview", label: "Overview", href: "/" },
+      { id: "report", label: "Executive report", href: "/executive-report" },
       { id: "live", label: "Live operations", href: "/command-centre" },
       { id: "analytics", label: "Trends", href: "/analytics" },
       { id: "findings", label: "Findings", href: "/findings" },

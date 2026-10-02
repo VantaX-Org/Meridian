@@ -166,6 +166,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
 /** Header titles for routes that are not in the nav. */
 const OFF_NAV_TITLES: Record<string, string> = {
   "/command-centre": "Live operations",
+  "/executive-report": "Executive report",
   "/connectivity": "Connectivity",
   "/run-sync": "Run Sync",
   "/stewardship/metrics": "Stewardship metrics",
