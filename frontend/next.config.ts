@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // Next would otherwise write AGENTS.md/CLAUDE.md into frontend/ on every dev start.
+  agentRules: false,
 
   async rewrites() {
     // INTERNAL_API_URL is a server-side-only env var.

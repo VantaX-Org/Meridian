@@ -789,7 +789,7 @@ def weekly_archive():
                           -- findings still referenced by exceptions / write-back audit stay live
                           AND NOT EXISTS (SELECT 1 FROM findings f JOIN exceptions e ON e.linked_finding_id = f.id
                                           WHERE f.version_id = v.id)
-                          AND NOT EXISTS (SELECT 1 FROM findings f JOIN writeback_log w ON w.finding_id = f.id
+                          AND NOT EXISTS (SELECT 1 FROM findings f JOIN write_back_log w ON w.finding_id = f.id
                                           WHERE f.version_id = v.id)
                     """),
                     {"tid": tid, "days": retention_days},

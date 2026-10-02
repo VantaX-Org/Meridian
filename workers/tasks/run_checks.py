@@ -438,7 +438,7 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanaly
                     DELETE FROM findings f
                      WHERE f.version_id = :vid AND NOT (f.check_id = ANY(:ids))
                        AND NOT EXISTS (SELECT 1 FROM exceptions e WHERE e.linked_finding_id = f.id)
-                       AND NOT EXISTS (SELECT 1 FROM writeback_log w WHERE w.finding_id = f.id)
+                       AND NOT EXISTS (SELECT 1 FROM write_back_log w WHERE w.finding_id = f.id)
                 """), {"vid": version_id, "ids": [r.check_id for r in all_results]})
 
             # Step 9b: record-level findings + cross-run issue lifecycle

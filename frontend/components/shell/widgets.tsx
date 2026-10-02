@@ -1,50 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useState, useEffect, useCallback, useMemo, useSyncExternalStore } from "react";
-import {
-  Bell,
-  Download,
-  FileText,
-  FileJson,
-  FileSpreadsheet,
-  List,
-  LogOut
-} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { Bell, Download, FileText, FileJson, FileSpreadsheet, List, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { useAuth } from "@/context/auth-context";
 import { ForcePasswordChange } from "@/components/force-password-change";
 import { UpdateAvailableModal } from "@/components/update-available-modal";
 import { UpdateModalProvider } from "@/context/update-modal-context";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger
-} from "@/components/ui/popover";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getVersions } from "@/lib/api/versions";
-import {
-  getReportDownloadUrl,
-  getReportJsonExportUrl
-} from "@/lib/api/reports";
+import { getReportDownloadUrl, getReportJsonExportUrl } from "@/lib/api/reports";
 import { getConfigMatchesExportUrl } from "@/lib/api/config-matches";
-import {
-  getNotifications,
-  getUnreadCount,
-  markNotificationRead,
-  markAllNotificationsRead
-} from "@/lib/api/notifications";
+import { getNotifications, getUnreadCount, markNotificationRead, markAllNotificationsRead } from "@/lib/api/notifications";
 import { relativeTime } from "@/lib/format";
 import type { Notification as NotifType } from "@/types/api";
 
@@ -140,7 +112,7 @@ export function HeaderExportMenu() {
         render={
           <button
             type="button"
-            className="hidden sm:flex items-center gap-1.5 rounded-[8px] bg-[var(--mn-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--mn-primary-600)] transition-colors shadow-[0_0_12px_rgba(249,115,22,0.20)]"
+            className="aurora-topbar__cmdk aurora-focus-ring hidden sm:inline-flex"
           />
         }
       >
