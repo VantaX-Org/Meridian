@@ -68,5 +68,25 @@
     "name": "dedup",
     "path": "/workbench?tab=dedup",
     "heading": "Workbench"
+  },
+  {
+    "name": "golden",
+    "path": "/workbench?tab=golden",
+    "heading": "Workbench"
+  },
+  {
+    "name": "glossary",
+    "path": "/workbench?tab=glossary",
+    "heading": "Workbench"
+  },
+  {
+    "name": "reports",
+    "path": "/workbench?tab=reports",
+    "heading": "Workbench"
+  },
+  {
+    "name": "notifications",
+    "path": "/?tab=notifications",
+    "heading": "Command Centre"
   }
 ]

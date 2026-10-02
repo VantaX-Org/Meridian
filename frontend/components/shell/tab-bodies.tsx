@@ -16,7 +16,7 @@ const named = <K extends string>(load: () => Promise<Record<K, ComponentType>>, 
 
 /** Tabs whose body is an Aurora surface — rendered on the canvas, not in the light sheet. */
 export const AURORA_TABS: ReadonlySet<string> = new Set(["/", "/executive-report", "/sync", "/issues", "/match-rules", "/business-process", "/settings/scoring", "/settings/field-mapping",
-  "/systems", "/upload", "/versions", "/admin", "/findings", "/cleaning", "/exceptions", "/dedup"]);
+  "/systems", "/upload", "/versions", "/admin", "/findings", "/cleaning", "/exceptions", "/dedup", "/golden-records", "/glossary", "/reports", "/notifications"]);
 
 export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
   "/": named(() => import("@/components/command-centre/overview"), "CommandCentreOverview"),
@@ -25,7 +25,7 @@ export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
   "/analytics": page(() => import("@/app/(dashboard)/analytics/page")),
   "/findings": named(() => import("@/components/command-centre/findings"), "FindingsSurface"),
   "/issues": page(() => import("@/app/(dashboard)/issues/page")),
-  "/notifications": page(() => import("@/app/(dashboard)/notifications/page")),
+  "/notifications": named(() => import("@/components/command-centre/notifications"), "NotificationsSurface"),
 
   "/systems": named(() => import("@/components/data/systems"), "SystemsSurface"),
   "/sync": named(() => import("@/components/data/runs"), "RunsSurface"),
@@ -42,10 +42,10 @@ export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
   "/exceptions": named(() => import("@/components/workbench/exceptions"), "ExceptionsSurface"),
   "/dedup": named(() => import("@/components/workbench/dedup"), "DedupSurface"),
   "/ai/rules": page(() => import("@/app/(dashboard)/ai/rules/page")),
-  "/golden-records": page(() => import("@/app/(dashboard)/golden-records/page")),
+  "/golden-records": named(() => import("@/components/workbench/golden-records"), "GoldenRecordsSurface"),
   "/match-rules": named(() => import("@/components/workbench/match-rules"), "MatchRulesSurface"),
-  "/glossary": page(() => import("@/app/(dashboard)/glossary/page")),
-  "/reports": page(() => import("@/app/(dashboard)/reports/page")),
+  "/glossary": named(() => import("@/components/workbench/glossary"), "GlossarySurface"),
+  "/reports": named(() => import("@/components/workbench/reports"), "ReportsSurface"),
 
   "/process": named(() => import("@/app/(dashboard)/process/map"), "ProcessMapPage"),
   "/business-process": named(() => import("@/components/process/readiness"), "ProcessReadiness"),
