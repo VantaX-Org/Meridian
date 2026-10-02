@@ -36,7 +36,7 @@ export function RunsSurface() {
   const systems = useMemo(() => systemsQ.data ?? [], [systemsQ.data]);
   const systemName = useMemo(() => new Map(systems.map((s) => [s.id, s.name])), [systems]);
   const versionQs = useQueries({
-    queries: systems.map((s) => ({ queryKey: ["systems.versions", s.id], queryFn: () => getSystemVersions(s.id) })),
+    queries: systems.map((s) => ({ queryKey: ["systems.versions", s.id], queryFn: () => getSystemVersions(s.id).then((d) => d.versions) })),
   });
   const versions = useMemo<VersionRow[]>(
     () => systems.flatMap((s, i) => (versionQs[i]?.data ?? []).map((v) => ({ ...v, systemId: s.id, systemName: s.name })))

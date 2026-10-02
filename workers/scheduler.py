@@ -873,6 +873,15 @@ def sync_profile_scheduler():
             with Session(engine) as session:
                 _set_rls(session, tid)
 
+                # run_sync's hard time_limit is 660s; a run still 'running' after an
+                # hour was killed (time limit, worker restart) and will never finish.
+                session.execute(text("""
+                    UPDATE sync_runs SET status = 'failed', completed_at = now(),
+                        error_detail = 'Interrupted: worker stopped before the run finished'
+                    WHERE tenant_id = :tid AND status = 'running'
+                      AND started_at < now() - interval '1 hour'
+                """), {"tid": tid})
+
                 # Find due profiles: active, with a schedule, and next_run_at <= now
                 result = session.execute(text("""
                     SELECT id, schedule_cron, next_run_at

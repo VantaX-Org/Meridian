@@ -11,6 +11,7 @@ import io
 from datetime import datetime, timezone
 import json
 import logging
+import os
 import uuid
 
 from celery.exceptions import SoftTimeLimitExceeded
@@ -23,12 +24,20 @@ from workers.db import get_sync_engine
 
 logger = logging.getLogger("meridian.workers.extraction")
 
+# A full live read of a large object takes hours over RFC_READ_TABLE.
+EXTRACT_TIME_LIMIT = int(os.getenv("MERIDIAN_EXTRACT_TIME_LIMIT", "21600"))
+
+
+def progress_key(system_id) -> str:
+    """Redis key of the running download's progress (GET /systems/{id}/versions)."""
+    return f"extract:{system_id}"
+
 
 @celery_app.task(
     bind=True,
     name="workers.tasks.run_extraction.run_extraction",
-    soft_time_limit=3000,
-    time_limit=3060,
+    soft_time_limit=EXTRACT_TIME_LIMIT,
+    time_limit=EXTRACT_TIME_LIMIT + 60,
     acks_late=True,
     reject_on_worker_lost=True,
 )
@@ -42,6 +51,8 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
     Progress is reported to the job registry as job ``dl-<version_id>``
     (api/services/jobs.py); the caller may pre-register it as queued.
     """
+    from api.services.task_progress import publish_progress
+
     engine = get_sync_engine()
     version_id = version_id or str(uuid.uuid4())
     job_id = f"dl-{version_id}"
@@ -49,6 +60,14 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
         jobs.start_job(tenant_id, job_id, "extraction", label or ", ".join(modules), system_id=system_id,
                        modules=modules, version_id=version_id)
     jobs.update_job(tenant_id, job_id, stage="connect", message="Connecting to the system")
+    # the system page's download bar reads this per-system key; the Runs tab reads the job
+    started = {"job_id": job_id, "label": label, "objects": modules,
+               "started_at": datetime.now(timezone.utc).isoformat()}
+
+    def progress(p: dict, ttl: int = EXTRACT_TIME_LIMIT + 60) -> None:
+        publish_progress(progress_key(system_id), {**started, "status": "running", **{k: v for k, v in p.items() if k != "tables"}}, ttl)
+
+    progress({"step": "connecting", "percent": 0})
     try:
         with Session(engine) as session:
             session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
@@ -60,13 +79,15 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
                 jobs.finish_job(tenant_id, job_id, result=result)
                 return result
 
-            def _progress(tables, rows_done, rows_total):
-                running = [t["table"] for t in tables if t["status"] == "running"]
-                jobs.update_job(tenant_id, job_id, stage="read", tables=tables, rows_done=rows_done,
-                                rows_total=rows_total,
-                                message=f"Reading {running[0]}" if running else "Reading tables")
+            def _progress(p: dict) -> None:
+                progress({"step": "reading", **p})
+                tables = p.get("tables") or []
+                jobs.update_job(tenant_id, job_id, stage="read", tables=tables,
+                                rows_done=sum(t["rows"] for t in tables), rows_total=sum(t["expected"] or 0 for t in tables),
+                                message=f"Reading {p['table']}" if p.get("table") else "Reading tables")
 
             frames, coverage = manager.extract(system_id, modules, scope=scope, progress=_progress)
+            progress({"step": "saving", "percent": 99})
             jobs.update_job(tenant_id, job_id, stage="store", message="Storing data")
             # refresh the live configuration the value rules compare against
             from workers.tasks.run_discovery import _store_config
@@ -79,9 +100,10 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
                            if any(c["table"] == t and c.get("purpose", "data") == "data" for c in coverage)}
             if not data_tables:
                 _mark_modules(session, tenant_id, system_id, modules, "failed", 0)
-                logger.error(f"Extraction from {system_id} produced no data tables: {coverage}")
+                progress({"status": "failed", "error": "No data tables were read"}, 3600)
                 jobs.finish_job(tenant_id, job_id, "failed", error="No data table could be read",
                                 result={"coverage": coverage})
+                logger.error(f"Extraction from {system_id} produced no data tables: {coverage}")
                 return {"status": "failed", "coverage": coverage}
 
             from api.config import settings
@@ -126,6 +148,7 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
             _mark_modules(session, tenant_id, system_id, modules, "partial" if failed else "success",
                           int(sum(len(d) for d in data_tables.values())))
 
+        progress({"status": "complete", "percent": 100, "version_id": version_id}, 300)
         if analyse:
             from workers.tasks.run_checks import run_checks
             jobs.start_job(tenant_id, version_id, "analysis", label or ", ".join(modules), status="queued",
@@ -139,12 +162,14 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
 
     except SoftTimeLimitExceeded:
         logger.error("Extraction task timed out")
+        progress({"status": "failed", "error": f"Timed out after {EXTRACT_TIME_LIMIT // 60} minutes"}, 3600)
         with Session(engine) as session:
             session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
             _mark_modules(session, tenant_id, system_id, modules, "failed", 0)
         jobs.finish_job(tenant_id, job_id, "failed", error="Timed out")
         return {"status": "failed", "error": "timeout"}
     except Exception as e:
+        progress({"status": "failed", "error": str(e)[:300]}, 3600)
         jobs.finish_job(tenant_id, job_id, "failed", error=str(e) or e.__class__.__name__)
         raise
 

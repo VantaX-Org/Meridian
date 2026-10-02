@@ -35,6 +35,11 @@ def test_read_table_full_pages_and_splits_wide_tables():
               if fm == "RFC_READ_TABLE" and p.get("NO_DATA") != "X"}
     assert len(groups) > 1  # split into several column groups
     assert out.set_index("MATNR").loc["000000000000000003", "BISMT"] == "V3"[: d.field("MARA", "BISMT").length]
+    # progress is reported per page, per column group, ending on the full row count
+    seen = []
+    conn.read_table_full("MARA", cols, ["MATNR"], page_size=7, on_progress=lambda *a: seen.append(a))
+    assert seen[-1][2] == 20
+    assert {g for g, n, _ in seen} == set(range(seen[0][1]))
 
 
 def test_live_snapshot_reads_dictionary_and_customer_tables():
@@ -131,20 +136,23 @@ def test_extraction_reconciles_row_counts_with_sap(monkeypatch):
 
     monkeypatch.setattr("api.services.source_design.dictionary_for", lambda s, sid, st=None: get_dictionary("ecc6"))
     reports = []
-    _, coverage = Mgr().extract("sys", ["accounts_payable"], progress=lambda t, d, n: reports.append((t, d, n)))
+    _, coverage = Mgr().extract("sys", ["accounts_payable"], progress=reports.append)
     cov = {c["table"]: c for c in coverage}
     assert cov["LFA1"]["source_rows"] == 3 and cov["LFA1"]["complete"] is False
     assert cov["LFB1"]["source_rows"] == 1 and cov["LFB1"]["complete"] is True
 
-    # progress: the plan first (all queued, SAP's counts as the expected rows), one report per
-    # table as it starts, and the final state after the last table
+    # progress: the plan first (every table queued, SAP's counts as the expected rows), then a
+    # report per table as it starts and per page as it reads, then the final state of every table
     first, last = reports[0], reports[-1]
-    assert {t["table"] for t in first[0]} >= {"LFA1", "LFB1"} and all(t["status"] == "queued" for t in first[0])
-    assert {t["table"]: t["expected"] for t in first[0]}["LFA1"] == 3 and first[1] == 0
-    assert any(any(t["status"] == "running" for t in r[0]) for r in reports[1:-1])
-    done = {t["table"]: t for t in last[0]}
-    assert done["LFA1"]["status"] == "live" and done["LFA1"]["rows"] == 2 and last[1] == 3  # 2 + 1 rows read
-    assert len(reports) == len(first[0]) + 2
+    assert first["table"] is None and first["tables_done"] == 0 and first["percent"] == 0
+    assert {t["table"] for t in first["tables"]} >= {"LFA1", "LFB1"} and all(t["status"] == "queued" for t in first["tables"])
+    assert {t["table"]: t["expected"] for t in first["tables"]}["LFA1"] == 3
+    assert any(any(t["status"] == "running" for t in r["tables"]) for r in reports[1:-1])
+    assert any(r["table"] == "LFA1" and r["rows_read"] == 2 for r in reports)  # page-level rows for the table being read
+    done = {t["table"]: t for t in last["tables"]}
+    assert done["LFA1"]["status"] == "live" and done["LFA1"]["rows"] == 2 and done["LFB1"]["rows"] == 1
+    assert last["table"] is None and last["tables_done"] == len(first["tables"])
+    assert [r["percent"] for r in reports] == sorted(r["percent"] for r in reports)  # the bar never goes backwards
 
 
 def test_payroll_totals_through_the_customer_function():

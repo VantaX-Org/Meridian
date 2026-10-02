@@ -160,3 +160,14 @@ def clear_task_progress(version_id: str) -> None:
         client.delete(f"{PROGRESS_KEY_PREFIX}{version_id}")
     except Exception:
         pass
+
+
+def publish_progress(key: str, payload: dict, ttl: int = PROGRESS_TTL_SECONDS) -> None:
+    """Store a free-form progress payload; read back with ``get_task_progress(key)``."""
+    client = _redis_client()
+    if client is None:
+        return
+    try:
+        client.setex(f"{PROGRESS_KEY_PREFIX}{key}", ttl, json.dumps(payload))
+    except Exception as exc:
+        logger.warning("Failed to write progress for %s: %s", key, exc)

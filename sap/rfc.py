@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Optional
+from typing import Callable, Optional
 
 import pandas as pd
 
@@ -104,6 +104,7 @@ class RFCConnector(SAPConnector):
         where: Optional[str] = None,
         max_rows: int = 0,
         page_size: int = 50_000,
+        on_progress: Optional[Callable[[int, int, int], None]] = None,
     ) -> pd.DataFrame:
         """Read any number of fields and rows.
 
@@ -111,6 +112,7 @@ class RFCConnector(SAPConnector):
         order, so wide tables are read in column groups that each carry the
         key fields and are joined back on the key; each group is paged with
         ROWSKIPS/ROWCOUNT. Groups that still overflow are split in half.
+        ``on_progress(groups_done, groups, rows_read_in_group)`` is called after every page.
         """
         if self._conn is None:
             raise SAPConnectorError("read_table_full called before connect()")
@@ -118,8 +120,10 @@ class RFCConnector(SAPConnector):
         rest = [f for f in dict.fromkeys(fields) if f not in keys]
         groups = self._groups(table, keys, rest)
         merged: Optional[pd.DataFrame] = None
-        for group in groups:
-            part = self._read_paged(table, keys + group, where, max_rows, page_size)
+        report = on_progress or (lambda done, n, rows: None)
+        for i, group in enumerate(groups):
+            part = self._read_paged(table, keys + group, where, max_rows, page_size,
+                                    lambda rows: report(i, len(groups), rows))
             merged = part if merged is None else merged.merge(part, on=keys, how="outer") if keys \
                 else pd.concat([merged, part], axis=1)
         if merged is None:
@@ -145,7 +149,7 @@ class RFCConnector(SAPConnector):
         return self._groups(table, keys, rest[:mid]) + self._groups(table, keys, rest[mid:])
 
     def _read_paged(self, table: str, fields: list[str], where: Optional[str],
-                    max_rows: int, page_size: int) -> pd.DataFrame:
+                    max_rows: int, page_size: int, on_page: Callable[[int], None] = lambda rows: None) -> pd.DataFrame:
         pages, skip = [], 0
         while True:
             want = page_size if not max_rows else min(page_size, max_rows - skip)
@@ -163,6 +167,7 @@ class RFCConnector(SAPConnector):
                 page = pd.DataFrame(columns=[f["FIELDNAME"].strip() for f in result.get("FIELDS", [])] or fields)
             pages.append(page)
             skip += len(page)
+            on_page(skip)
             if len(page) < want:
                 break
         return pd.concat(pages, ignore_index=True) if pages else pd.DataFrame(columns=fields)

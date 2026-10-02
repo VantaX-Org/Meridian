@@ -21,6 +21,9 @@ celery_app.conf.update(
     worker_prefetch_multiplier=1,
     task_soft_time_limit=1800,   # 30 minutes — raises SoftTimeLimitExceeded
     task_hard_time_limit=2100,   # 35 minutes — kills the task
+    # acks_late tasks unacked past the visibility timeout (Redis default 1 h) are
+    # redelivered while still running; keep it above the longest task (extraction).
+    broker_transport_options={"visibility_timeout": int(os.getenv("MERIDIAN_EXTRACT_TIME_LIMIT", "21600")) + 3600},
 )
 
 # Auto-discover tasks in workers/tasks/

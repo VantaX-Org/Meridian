@@ -187,17 +187,17 @@ class ConnectivityManager:
 
     def extract(self, system_id: str, modules: list[str], max_rows: int = 0,
                 scope: Optional[dict] = None,
-                progress: Optional[Callable[[list[dict], int, int], None]] = None,
-                ) -> tuple[dict[str, pd.DataFrame], list[dict]]:
+                progress: Optional[Callable[[dict], None]] = None) -> tuple[dict[str, pd.DataFrame], list[dict]]:
         """Extract everything the rules of ``modules`` need from one system.
 
         Returns ``({TABLE: frame with TABLE.FIELD columns}, coverage)``. The
         coverage list says, per table, whether it was read live, how many rows,
         whether the transactional window truncated it, or why it failed —
-        nothing is silently skipped. ``progress(tables, rows_done, rows_total)``
-        is called once the read plan is known and after every table, with one
-        ``{table, status, rows, expected}`` entry per planned table (status
-        queued · running · live · failed · …) so a caller can show a bar.
+        nothing is silently skipped. ``progress`` receives, after every page of
+        every table, ``{table, tables_done, tables_total, rows_read, table_rows,
+        percent, tables}`` — ``tables`` being one ``{table, status, rows,
+        expected}`` snapshot per planned table (status queued · running · live ·
+        failed · …) so a caller can draw one bar per table and one overall.
         """
         import os
 
@@ -232,26 +232,36 @@ class ConnectivityManager:
                 # reconciliation: an unfiltered read must return exactly SAP's own row count
                 counts = connector.count_rows([t for t, p in plans.items() if not p.where and not p.via]) \
                     if hasattr(connector, "count_rows") else {}
-                order = read_order(plans)
-                progress_rows = {t: {"table": t, "status": "queued", "rows": 0, "expected": counts.get(t)}
-                                 for t in order}
+                order = list(read_order(plans))
+                # ponytail: tables without a SAP row count (filtered reads) weigh 1000 rows
+                weight = {tb: counts.get(tb) or 1000 for tb in order}
+                total_weight, done_weight = sum(weight.values()) or 1, 0
+                table_rows = {tb: {"table": tb, "status": "queued", "rows": 0, "expected": counts.get(tb)}
+                              for tb in order}
 
-                def _report(table: Optional[str] = None) -> None:
-                    if progress is None:
+                def report(table: Optional[str] = None, groups_done: int = 0, groups: int = 1, rows: int = 0) -> None:
+                    if not progress:
                         return
-                    if table is not None:
-                        progress_rows[table]["status"] = "running"
-                    for c in coverage:
-                        if c["table"] in progress_rows:
-                            progress_rows[c["table"]].update(status=c["status"], rows=c.get("rows", 0))
-                    progress([dict(r) for r in progress_rows.values()],  # snapshots, not the live dicts
-                             sum(r["rows"] for r in progress_rows.values()),
-                             sum(r["expected"] or 0 for r in progress_rows.values()))
+                    for c in coverage:  # tables already read carry their final status and row count
+                        if c["table"] in table_rows:
+                            table_rows[c["table"]].update(status=c["status"], rows=c.get("rows", 0))
+                    if table is not None and table_rows[table]["status"] == "queued":
+                        table_rows[table].update(status="running", rows=rows)
+                    elif table is not None and table_rows[table]["status"] == "running":
+                        table_rows[table]["rows"] = rows
+                    w = weight[table] if table else 0
+                    within = (groups_done + min(1.0, rows / w)) / max(groups, 1) if table else 0
+                    progress({"table": table, "tables_done": i, "tables_total": len(order),
+                              "rows_read": rows, "table_rows": counts.get(table) if table else None,
+                              "percent": min(99, int(100 * (done_weight + w * within) / total_weight)),
+                              "tables": [dict(r) for r in table_rows.values()]})  # snapshots, not the live dicts
 
-                _report()
-                for table in order:
+                i = 0
+                report()  # the plan, before the first read
+                for i, table in enumerate(order):
+                    done_weight = sum(weight[x] for x in order[:i])
+                    report(table)
                     plan = plans[table]
-                    _report(table)
                     t = dictionary.table(table)
                     cols = [c for c in plan.columns() if t is not None and c in t.fields]
                     if t is None or not cols:
@@ -264,18 +274,22 @@ class ConnectivityManager:
                             raw[table] = df
                             frames[table] = df.rename(columns={c: f"{table}.{c}" for c in df.columns})
                         continue
+                    logger.info(f"extract {system_id}: reading {table} ({len(cols)} fields)")
                     try:
                         if plan.via:
                             wheres = via_filters(table, plan.via, raw.get(plan.via))
                             parts = [connector.read_table_full(table, cols, list(t.keys),
-                                     where=" AND ".join(x for x in (w, plan.where) if x), max_rows=max_rows)
+                                     where=" AND ".join(x for x in (w, plan.where) if x), max_rows=max_rows,
+                                     on_progress=lambda g, n, rows: report(table, g, n, rows))
                                      for w in wheres]
                             df = pd.concat(parts, ignore_index=True) if parts else pd.DataFrame(columns=cols)
                         else:
                             df = connector.read_table_full(table, cols, list(t.keys), where=plan.where,
-                                                           max_rows=max_rows)
+                                                           max_rows=max_rows,
+                                                           on_progress=lambda g, n, rows: report(table, g, n, rows))
                     except SAPConnectorError as e:
                         coverage.append({"table": table, "status": "failed", "detail": str(e)[:300]})
+                        logger.warning(f"extract {system_id}: {table} failed: {str(e)[:300]}")
                         continue
                     # RFC_READ_TABLE pages without a sort order: pages can overlap. Repeated
                     # rows are dropped; a key that still repeats means the read is inconsistent.
@@ -296,7 +310,9 @@ class ConnectivityManager:
                     if dup_keys:
                         entry["duplicate_keys"] = dup_keys
                     coverage.append(entry)
-                _report()
+                    logger.info(f"extract {system_id}: {table} {len(df)} rows, complete={entry['complete']}")
+                i = len(order)
+                report()  # final state of every table
             elif system_type == "successfactors":
                 frames, coverage = self._extract_successfactors(connector, modules, dictionary, system_id)
             else:

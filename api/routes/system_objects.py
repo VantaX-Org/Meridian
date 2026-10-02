@@ -168,7 +168,10 @@ async def system_versions(system_id: uuid.UUID, limit: int = Query(50, le=200),
                               "reason": f.get("reason"), "rules": f.get("rules", 0)}
                              for f in meta.get("field_status") or [] if isinstance(f, dict)],
         })
-    return {"versions": out}
+    from api.services.task_progress import get_task_progress
+    from workers.tasks.run_extraction import progress_key
+    # the download in flight (or just finished/failed) — drives the progress bar
+    return {"versions": out, "download": get_task_progress(progress_key(system_id))}
 
 
 @router.get("/{system_id}/trends", dependencies=[Depends(require_permission("view"))])
