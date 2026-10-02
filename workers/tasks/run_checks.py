@@ -253,8 +253,11 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanaly
             results = execute_checks(module_name, frames, tenant_id, reference_values=live_refs,
                                      overrides=rule_overrides, extra_rules=fs_rules, suppressed=fs_suppressed)
             all_results.extend(results)
+            # joined frames are cached per pass; at millions of rows holding them all runs out of memory
+            frames._cache.clear()
             from checks.outliers import find as find_outliers
             outliers.update(find_outliers(module_name, frames))  # reported, never scored
+            frames._cache.clear()
             # Field profile + candidate hidden rules of the module's tables
             # (checks/profiling.py, ≤ 200k rows per table). Best-effort: a
             # profiling failure is logged and never fails the analysis.
