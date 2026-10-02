@@ -14,6 +14,9 @@ const page = (load: () => Promise<{ default: ComponentType }>) => dynamic(load, 
 const named = <K extends string>(load: () => Promise<Record<K, ComponentType>>, key: K) =>
   dynamic(() => load().then((m) => ({ default: m[key] })), { ssr: false, loading });
 
+/** Tabs whose body is an Aurora surface — rendered on the canvas, not in the light sheet. */
+export const AURORA_TABS: ReadonlySet<string> = new Set(["/sync"]);
+
 export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
   "/": named(() => import("@/app/(dashboard)/command-centre/overview"), "OverviewPage"),
   "/command-centre": named(() => import("@/app/(dashboard)/command-centre/live"), "LiveOperationsPage"),
@@ -23,7 +26,7 @@ export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
   "/notifications": page(() => import("@/app/(dashboard)/notifications/page")),
 
   "/systems": page(() => import("@/app/(dashboard)/systems/page")),
-  "/sync": page(() => import("@/app/(dashboard)/sync/page")),
+  "/sync": named(() => import("@/components/data/runs"), "RunsSurface"),
   "/upload": page(() => import("@/app/(dashboard)/upload/page")),
   "/versions": page(() => import("@/app/(dashboard)/versions/page")),
   "/connectivity": page(() => import("@/app/(dashboard)/connectivity/page")),

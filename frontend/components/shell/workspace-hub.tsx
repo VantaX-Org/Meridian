@@ -8,7 +8,7 @@ import { useNavGate } from "@/hooks/use-nav";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import { LANDING, visibleWorkspaces, type WorkspaceId } from "@/lib/workspaces";
-import { TAB_BODIES } from "./tab-bodies";
+import { AURORA_TABS, TAB_BODIES } from "./tab-bodies";
 
 const LANDED_KEY = "mn_landed";
 
@@ -52,9 +52,11 @@ export function WorkspaceHub({ id, landing = false }: { id: WorkspaceId; landing
           onValueChange={setTab}
         />
       </div>
-      <div className="mn-legacy-host" data-theme="light">
-        {Body ? <Body /> : null}
-      </div>
+      {AURORA_TABS.has(active.href) ? (Body ? <Body /> : null) : (
+        <div className="mn-legacy-host" data-theme="light">
+          {Body ? <Body /> : null}
+        </div>
+      )}
     </div>
   );
 }
