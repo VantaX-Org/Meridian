@@ -127,8 +127,9 @@ class RFCConnector(SAPConnector):
         ranges = None  # found by the first group, reused by the others
         for i, group in enumerate(groups):
             on_page = lambda rows: report(i, len(groups), rows)
-            if keys and not max_rows:
-                part, ranges = self._read_ranges(table, keys + group, keys[0], where, page_size, on_page, ranges)
+            if keys:
+                part, ranges = self._read_ranges(table, keys + group, keys[0], where, page_size, on_page, ranges,
+                                                 max_rows)
             else:
                 part = self._read_paged(table, keys + group, where, max_rows, page_size, on_page)
             merged = part if merged is None else merged.merge(part, on=keys, how="outer") if keys \
@@ -156,18 +157,21 @@ class RFCConnector(SAPConnector):
         return self._groups(table, keys, rest[:mid]) + self._groups(table, keys, rest[mid:])
 
     def _read_ranges(self, table: str, fields: list[str], key: str, where: Optional[str], page_size: int,
-                     on_page: Callable[[int], None], ranges: Optional[list] = None) -> tuple[pd.DataFrame, list]:
+                     on_page: Callable[[int], None], ranges: Optional[list] = None,
+                     max_rows: int = 0) -> tuple[pd.DataFrame, list]:
         """Read in ranges of ``key`` that each fit one call of ``page_size`` rows.
 
         A range that comes back full is split at the quartiles of the rows it
         returned and read again; a single key value that fills a page on its
-        own is paged with ROWSKIPS. Returns the rows and the ranges used.
+        own is paged with ROWSKIPS. Ranges are read in key order and reading
+        stops once ``max_rows`` (0 = no limit) is reached, so a capped read is
+        the lowest keys. Returns the rows and the ranges used.
         Ranges are (op, lo, hi): ``key op lo AND key < hi``, None = open.
         """
         # ponytail: an overflowing range costs one discarded page; seed ranges from SAP
         # row counts if that ever dominates
         todo, done, pages, rows = list(ranges or [(">=", None, None)]), [], [], 0
-        while todo:
+        while todo and not (max_rows and rows >= max_rows):
             op, lo, hi = todo.pop(0)
             cond = " AND ".join(c for c in (
                 where, lo is not None and f"{key} {op} {_literal(lo)}",
