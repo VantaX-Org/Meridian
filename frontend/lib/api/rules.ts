@@ -28,6 +28,8 @@ export interface RulesSummaryItem {
   category: string;
   severity: string;
   enabled: boolean;
+  /** "yaml" = shipped with Meridian; anything else was defined by the customer or HQ. */
+  source: string;
   count: number;
 }
 

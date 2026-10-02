@@ -204,6 +204,10 @@ def test_issue_and_diff_api(app_engine):
             d = (await c.get(f"/api/v1/issues/{open_id}", headers=analyst)).json()
             assert d["issue"]["status"] == "accepted"
             assert [e["action"] for e in d["events"]] == ["comment", "status"]
+            with app_eng.begin() as conn:
+                conn.execute(text("SET LOCAL app.tenant_id = :t"), {"t": tid})
+                assert conn.execute(text("SELECT steward_verdict FROM record_issues WHERE id = :i"),
+                                    {"i": open_id}).scalar() == "real"
             assert [run["failing"] for run in d["runs"]] == [True, True]
 
             diff = (await c.get("/api/v1/versions/compare/records", headers=analyst, params={"v2": v2})).json()
@@ -522,8 +526,9 @@ def test_pilot_scorecard_precision_and_recall(app_engine):
         c.execute(text("SET LOCAL app.tenant_id = :t"), {"t": tid})
         for k, res in [("1", "false_positive"), ("2", "false_positive")] + [(str(i), "fixed_in_source")
                                                                            for i in range(3, 12)]:
-            c.execute(text("UPDATE record_issues SET status = 'resolved', resolution = :r WHERE record_key = :k"),
-                      {"r": res, "k": f"LIFNR={k}"})
+            c.execute(text("UPDATE record_issues SET status = 'resolved', resolution = :r, steward_verdict = "
+                           "CASE WHEN :r = 'false_positive' THEN 'false_positive' ELSE 'real' END "
+                           "WHERE record_key = :k"), {"r": res, "k": f"LIFNR={k}"})
     aeng = create_async_engine(app_eng.url.set(drivername="postgresql+asyncpg"))
     factory = async_sessionmaker(aeng, expire_on_commit=False)
 
@@ -554,6 +559,10 @@ def test_pilot_scorecard_precision_and_recall(app_engine):
             rec = card["recall"]
             assert (rec["known"], rec["caught"], rec["missed_total"]) == (4, 2, 2)
             assert {m["record_ref"] for m in rec["missed"]} == {"99", "7"} and rec["objects_not_analysed"] == ["fi_gl"]
+            # the next run still finds the 'fixed' vendors: their issues re-open, the verdicts stay
+            _run(app_eng, tid, sid, [_result("CHK-A", vendors, total=12)], vendors)
+            again = (await c.get(f"{url}/scorecard", headers={"X-User-Role": "analyst"})).json()
+            assert again["rules"][0]["open"] == 12 and again["precision"] == card["precision"]  # all 11 re-opened
             who["tenant"] = other   # another tenant sees neither the system nor its lists
             r = await c.get(f"{url}/scorecard", headers={"X-User-Role": "admin"})
             assert r.status_code == 404
@@ -569,3 +578,26 @@ def test_pilot_scorecard_precision_and_recall(app_engine):
         asyncio.run(main())
     finally:
         os.environ.pop("MERIDIAN_DEV_ROLE_HEADER", None)
+
+
+def test_tenant_catalogues_seeded_and_kept_in_step(app_engine):
+    """A tenant created after the migrations gets the rule catalogue and standard fields;
+    a re-run adds nothing and keeps the customer's rule toggle."""
+    from sqlalchemy import text
+
+    from api.services.tenant_seed import rule_catalogue, seed_tenant, standard_fields
+
+    owner, app_eng = app_engine
+    tid = str(uuid.uuid4())
+    with owner.begin() as c:
+        c.execute(text("INSERT INTO tenants (id, name) VALUES (:a, 'T10')"), {"a": tid})
+    with app_eng.begin() as c:
+        got = seed_tenant(c, tid)
+    assert got == {"rules": len(rule_catalogue()), "field_mappings": len(standard_fields())} and got["rules"] > 1000
+    with app_eng.begin() as c:
+        c.execute(text("SET LOCAL app.tenant_id = :t"), {"t": tid})
+        c.execute(text("UPDATE rules SET enabled = false WHERE name LIKE 'AP016:%'"))
+    with app_eng.begin() as c:
+        assert seed_tenant(c, tid) == {"rules": 0, "field_mappings": 0}
+        c.execute(text("SET LOCAL app.tenant_id = :t"), {"t": tid})
+        assert c.execute(text("SELECT enabled FROM rules WHERE name LIKE 'AP016:%'")).scalar() is False

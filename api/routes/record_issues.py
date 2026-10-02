@@ -201,7 +201,10 @@ async def bulk_update(
             WITH old AS (SELECT id, status FROM record_issues WHERE id = ANY(CAST(:ids AS uuid[])) FOR UPDATE),
                  upd AS (
                     UPDATE record_issues ri SET status = :st, resolution = :res, updated_at = now(),
-                           resolved_at = CASE WHEN :st IN ('resolved', 'accepted') THEN now() END
+                           resolved_at = CASE WHEN :st IN ('resolved', 'accepted') THEN now() END,
+                           -- a steward's judgement; re-opening by hand withdraws it
+                           steward_verdict = CASE WHEN :res = 'false_positive' THEN 'false_positive'
+                                                  WHEN :res IS NOT NULL THEN 'real' END
                       FROM old WHERE ri.id = old.id AND old.status <> :st
                     RETURNING ri.id, old.status AS prev)
             INSERT INTO record_issue_events (tenant_id, issue_id, user_id, user_label, action, from_value, to_value, note)

@@ -82,11 +82,11 @@ async def scorecard(system_id: uuid.UUID, db: AsyncSession = Depends(get_db), te
                  ORDER BY f.created_at DESC LIMIT 1) AS message,
                count(*) AS flagged,
                count(*) FILTER (WHERE ri.status IN ('open', 'in_progress')) AS open,
-               count(*) FILTER (WHERE ri.resolution = 'false_positive') AS false_positive,
-               count(*) FILTER (WHERE ri.resolution = ANY(CAST(:real AS text[]))) AS real
+               count(*) FILTER (WHERE ri.steward_verdict = 'false_positive') AS false_positive,
+               count(*) FILTER (WHERE ri.steward_verdict = 'real') AS real
           FROM record_issues ri WHERE ri.scope = :s
          GROUP BY ri.check_id, ri.module
-    """), {"s": scope, "real": [r for r in sc.REVIEWED if r != "false_positive"]})).mappings().all()
+    """), {"s": scope})).mappings().all()
     rules = sc.rate_rules(dict(r) for r in agg)
     reviewed = sum(r["reviewed"] for r in rules)
     real = sum(r["real"] for r in rules)

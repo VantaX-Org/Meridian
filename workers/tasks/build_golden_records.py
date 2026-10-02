@@ -15,7 +15,6 @@ Operates only on uploaded rows — no seed data.
 from __future__ import annotations
 
 import asyncio
-import io
 import logging
 import os
 from datetime import datetime, timezone
@@ -87,26 +86,6 @@ def _rows_to_incoming(group: pd.DataFrame, source_system: str) -> list[dict]:
     return records
 
 
-def _load_parquet(parquet_path: str) -> pd.DataFrame:
-    """Download an uploaded parquet from MinIO into a DataFrame."""
-    from minio import Minio
-
-    client = Minio(
-        endpoint=os.getenv("MINIO_ENDPOINT", "minio:9000"),
-        access_key=os.getenv("MINIO_ACCESS_KEY", "meridian"),
-        secret_key=os.getenv("MINIO_SECRET_KEY") or os.getenv("MINIO_PASSWORD") or "",
-        secure=False,
-    )
-    bucket = os.getenv("MINIO_BUCKET_UPLOADS", "meridian-uploads")
-    response = client.get_object(bucket, parquet_path)
-    try:
-        data = response.read()
-    finally:
-        response.close()
-        response.release_conn()
-    return pd.read_parquet(io.BytesIO(data))
-
-
 async def _build_for_module(
     version_id: str,
     tenant_id: str,
@@ -132,8 +111,9 @@ async def _build_for_module(
         async with maker() as db:
             # Commit the RLS GUC in its own transaction so it survives the
             # engine's per-object internal commits/rollbacks.
+            # asyncpg cannot bind a parameter into SET; set_config takes one
             await db.execute(
-                text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)}
+                text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant_id)}
             )
             await db.commit()
 
@@ -168,7 +148,10 @@ def build_golden_records(
         "build_golden_records started: version=%s tenant=%s module=%s",
         version_id, tenant_id, module,
     )
-    df = _load_parquet(parquet_path)
+    from workers.dataset import load_module_frame
+
+    # upload (one parquet) or live extraction (per-table bundle): one row per business object
+    df = load_module_frame(parquet_path, module)
 
     key_col = _find_key_column(df)
     if not key_col:

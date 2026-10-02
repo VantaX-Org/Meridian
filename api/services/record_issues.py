@@ -138,6 +138,7 @@ def track(session, tenant_id: str, version_id: str, scope: str, results, frames)
         ), fixed AS (
             UPDATE record_issues ri
                SET status = 'resolved', resolution = 'verified_fixed', resolved_version = :vid,
+                   steward_verdict = COALESCE(ri.steward_verdict, 'real'),
                    resolved_at = now(), updated_at = now()
              WHERE ri.tenant_id = :tid AND ri.scope = :scope AND ri.status <> 'resolved'
                AND NOT EXISTS (SELECT 1 FROM finding_records fr WHERE fr.version_id = :vid

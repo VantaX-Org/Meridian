@@ -855,6 +855,7 @@ class RecordIssue(Base):
     severity = Column(Text, nullable=False)
     status = Column(Text, nullable=False, server_default="open")  # open|in_progress|accepted|resolved
     resolution = Column(Text, nullable=True)  # verified_fixed|accepted_risk|false_positive
+    steward_verdict = Column(Text, nullable=True)  # real|false_positive — survives a re-open (migration 053)
     assigned_to = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     first_seen_version = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id"), nullable=False)
     last_seen_version = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id"), nullable=False)
