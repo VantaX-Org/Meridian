@@ -18,7 +18,7 @@ import routes from "./routes.json";
 
 export const HAR = path.join(__dirname, "fixtures", "api.har");
 /** The instant the HAR was recorded; Date.now() in the page returns this. */
-export const RECORDED_AT = new Date("2026-10-02T06:56:00Z");
+export const RECORDED_AT = new Date("2026-10-02T14:13:00Z");
 export const ROUTES: ReadonlyArray<{ name: string; path: string; heading: string }> = routes;
 
 /** The recording is stored against http://localhost:3000; replay it on whatever origin the suite runs. */

@@ -290,10 +290,11 @@ class PrescriptiveAnalytics:
                 extra={"module": f.get("module"), "check_id": f.get("check_id"), "dimension": f.get("dimension")}))
 
         for q in cleaning_queue:
+            # a proposed fix for one record that a finding already counts: low weight, quick review
             items.append(self._action(
                 type_="cleaning", id_=str(q.get("id", "")),
                 title=f"Clean: {q.get('object_type', '')} — {q.get('record_key', '')}",
-                severity="medium", affected=1, total=1, effort=float(cfg["cleaning_item_hours"]),
+                severity="low", affected=1, total=1, effort=float(cfg["cleaning_item_hours"]),
                 steward=q.get("assigned_to"), cost=float(rate) if rate else None))
 
         for ex in exceptions:
