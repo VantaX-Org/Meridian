@@ -54,6 +54,17 @@ def test_read_table_full_pages_by_key_ranges_without_deep_skips():
     assert max(skips) <= 10  # only inside the one oversized key value
 
 
+def test_read_table_full_with_row_cap_still_pages_by_key_ranges():
+    # extraction always passes a row cap: it must not fall back to deep ROWSKIPS
+    df = pd.DataFrame({"MATNR": [f"{i:018d}" for i in range(40)], "WERKS": "0001", "LABST": "1"})
+    conn = FakeRFCConnector({"MARD": df.sample(frac=1, random_state=1)})
+    out = conn.read_table_full("MARD", ["MATNR", "WERKS", "LABST"], ["MATNR", "WERKS"], max_rows=1000, page_size=5)
+    assert len(out) == len(df) and not out.duplicated(["MATNR", "WERKS"]).any()
+    assert not any(p.get("ROWSKIPS", 0) for fm, p in conn._conn.calls if fm == "RFC_READ_TABLE")
+    capped = conn.read_table_full("MARD", ["MATNR", "WERKS", "LABST"], ["MATNR", "WERKS"], max_rows=10, page_size=5)
+    assert 10 <= len(capped) < 40 and set(capped["MATNR"]) == set(sorted(df["MATNR"])[:len(capped)])
+
+
 def test_read_table_full_halves_page_size_when_sap_runs_out_of_memory():
     df = pd.DataFrame({"MATNR": [f"{i:018d}" for i in range(30)], "WERKS": "0001", "PSTAT": "K"})
     conn = FakeRFCConnector({"MARC": df.sample(frac=1, random_state=1)})
