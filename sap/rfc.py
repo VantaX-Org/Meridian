@@ -172,20 +172,26 @@ class RFCConnector(SAPConnector):
             cond = " AND ".join(c for c in (
                 where, lo is not None and f"{key} {op} {_literal(lo)}",
                 hi is not None and f"{key} < {_literal(hi)}") if c)
-            if op == "=":
-                page = self._read_paged(table, fields, cond, 0, page_size)
-            else:
-                page = self._read_paged(table, fields, cond, page_size, page_size)
-                if len(page) >= page_size:
-                    values = sorted(set(page[key]))
-                    cuts = sorted({values[len(values) * j // 4] for j in (1, 2, 3)} | {values[-1]})
-                    cuts = [c for c in cuts if lo is None or c > lo]
-                    if not cuts:  # every row returned has key == lo
-                        todo[:0] = [("=", lo, None), (">", lo, hi)]
-                        continue
-                    edges = [lo, *cuts, hi]
-                    todo[:0] = [(op if a == lo else ">=", a, b) for a, b in zip(edges, edges[1:])]
+            try:
+                page = self._read_paged(table, fields, cond, 0 if op == "=" else page_size, page_size)
+            except SAPConnectorError as e:
+                # SAP's memory quota per call can hold fewer rows than page_size
+                if "TSV_TNEW_PAGE_ALLOC_FAILED" not in str(e) or page_size <= 1000:
+                    raise
+                page_size //= 2
+                logger.warning("%s: SAP out of memory, page size now %d", table, page_size)
+                todo.insert(0, (op, lo, hi))
+                continue
+            if op != "=" and len(page) >= page_size:
+                values = sorted(set(page[key]))
+                cuts = sorted({values[len(values) * j // 4] for j in (1, 2, 3)} | {values[-1]})
+                cuts = [c for c in cuts if lo is None or c > lo]
+                if not cuts:  # every row returned has key == lo
+                    todo[:0] = [("=", lo, None), (">", lo, hi)]
                     continue
+                edges = [lo, *cuts, hi]
+                todo[:0] = [(op if a == lo else ">=", a, b) for a, b in zip(edges, edges[1:])]
+                continue
             pages.append(page)
             done.append((op, lo, hi))
             rows += len(page)
