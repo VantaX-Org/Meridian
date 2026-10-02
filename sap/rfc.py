@@ -331,7 +331,7 @@ def _parse_rfc_result(result: dict) -> pd.DataFrame:
     ]
 
     rows = [
-        [row.get("WA", "")[start:end].strip() for start, end in field_offsets]
+        [row.get("WA", "")[start:end].strip(" ") for start, end in field_offsets]
         for row in data_rows
     ]
 
