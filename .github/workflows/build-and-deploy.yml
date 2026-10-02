@@ -30,6 +30,8 @@ jobs:
     permissions:
       contents: write
       packages: write
+    outputs:
+      version: ${{ steps.version.outputs.VERSION }}
     
     steps:
       - name: Checkout code
@@ -268,3 +270,33 @@ jobs:
             ghcr.io/vantax-org/meridian-updater:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # Tell Meridian HQ about the release once every image a customer's update pulls
+  # exists. Installed systems read latest_version from HQ (licence manifest) and
+  # offer "Update now" to their admin. RELEASE_PUBLISH_TOKEN works for this one
+  # endpoint only and can never move the release backwards (licence-worker).
+  publish-release:
+    name: Publish release to Meridian HQ
+    runs-on: ubuntu-latest
+    needs: [build-and-push, build-nginx, build-updater]
+    permissions: {}
+    steps:
+      - name: Set latest_version in HQ
+        env:
+          TOKEN: ${{ secrets.RELEASE_PUBLISH_TOKEN }}
+          VERSION: ${{ needs.build-and-push.outputs.version }}
+          HQ: ${{ vars.LICENCE_SERVER_URL || 'https://licence.meridian.vantax.co.za' }}
+          NOTES: "Release ${{ needs.build-and-push.outputs.version }} — https://github.com/${{ github.repository }}/releases/tag/${{ needs.build-and-push.outputs.version }}"
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::warning::RELEASE_PUBLISH_TOKEN is not set — $VERSION was not published to HQ; installed systems won't offer it."
+            exit 0
+          fi
+          body=$(jq -n --arg v "$VERSION" --arg n "$NOTES" '{latest_version: $v, release_notes: $n}')
+          code=$(curl -sS -o resp.json -w '%{http_code}' -X PUT "$HQ/api/admin/release" \
+                 -H "Content-Type: application/json" -H "X-Release-Token: $TOKEN" --data "$body")
+          cat resp.json; echo
+          if [ "$code" != "200" ]; then
+            echo "::error::HQ did not accept release $VERSION (HTTP $code)"
+            exit 1
+          fi

@@ -19,6 +19,7 @@ export default defineWorkersConfig({
           bindings: {
             LICENCE_ADMIN_SECRET: "test-admin-secret",
             LICENCE_SECRET: "test-licence-secret",
+            RELEASE_PUBLISH_TOKEN: "test-release-token",
           },
         },
       },
