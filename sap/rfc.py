@@ -110,8 +110,11 @@ class RFCConnector(SAPConnector):
 
         RFC_READ_TABLE returns rows in a 512-byte work area and in no defined
         order, so wide tables are read in column groups that each carry the
-        key fields and are joined back on the key; each group is paged with
-        ROWSKIPS/ROWCOUNT. Groups that still overflow are split in half.
+        key fields and are joined back on the key. Groups that still overflow
+        are split in half. Keyed reads page by ranges of the leading key
+        (``_read_ranges``); ROWSKIPS paging makes SAP hold every skipped row,
+        which fails with TSV_TNEW_PAGE_ALLOC_FAILED deep into large tables and
+        can repeat or miss rows because the reads have no sort order.
         ``on_progress(groups_done, groups, rows_read_in_group)`` is called after every page.
         """
         if self._conn is None:
@@ -121,9 +124,13 @@ class RFCConnector(SAPConnector):
         groups = self._groups(table, keys, rest)
         merged: Optional[pd.DataFrame] = None
         report = on_progress or (lambda done, n, rows: None)
+        ranges = None  # found by the first group, reused by the others
         for i, group in enumerate(groups):
-            part = self._read_paged(table, keys + group, where, max_rows, page_size,
-                                    lambda rows: report(i, len(groups), rows))
+            on_page = lambda rows: report(i, len(groups), rows)
+            if keys and not max_rows:
+                part, ranges = self._read_ranges(table, keys + group, keys[0], where, page_size, on_page, ranges)
+            else:
+                part = self._read_paged(table, keys + group, where, max_rows, page_size, on_page)
             merged = part if merged is None else merged.merge(part, on=keys, how="outer") if keys \
                 else pd.concat([merged, part], axis=1)
         if merged is None:
@@ -147,6 +154,43 @@ class RFCConnector(SAPConnector):
                 raise SAPConnectorError(self._mask_password(str(e), self._password)) from e
         mid = len(rest) // 2
         return self._groups(table, keys, rest[:mid]) + self._groups(table, keys, rest[mid:])
+
+    def _read_ranges(self, table: str, fields: list[str], key: str, where: Optional[str], page_size: int,
+                     on_page: Callable[[int], None], ranges: Optional[list] = None) -> tuple[pd.DataFrame, list]:
+        """Read in ranges of ``key`` that each fit one call of ``page_size`` rows.
+
+        A range that comes back full is split at the quartiles of the rows it
+        returned and read again; a single key value that fills a page on its
+        own is paged with ROWSKIPS. Returns the rows and the ranges used.
+        Ranges are (op, lo, hi): ``key op lo AND key < hi``, None = open.
+        """
+        # ponytail: an overflowing range costs one discarded page; seed ranges from SAP
+        # row counts if that ever dominates
+        todo, done, pages, rows = list(ranges or [(">=", None, None)]), [], [], 0
+        while todo:
+            op, lo, hi = todo.pop(0)
+            cond = " AND ".join(c for c in (
+                where, lo is not None and f"{key} {op} {_literal(lo)}",
+                hi is not None and f"{key} < {_literal(hi)}") if c)
+            if op == "=":
+                page = self._read_paged(table, fields, cond, 0, page_size)
+            else:
+                page = self._read_paged(table, fields, cond, page_size, page_size)
+                if len(page) >= page_size:
+                    values = sorted(set(page[key]))
+                    cuts = sorted({values[len(values) * j // 4] for j in (1, 2, 3)} | {values[-1]})
+                    cuts = [c for c in cuts if lo is None or c > lo]
+                    if not cuts:  # every row returned has key == lo
+                        todo[:0] = [("=", lo, None), (">", lo, hi)]
+                        continue
+                    edges = [lo, *cuts, hi]
+                    todo[:0] = [(op if a == lo else ">=", a, b) for a, b in zip(edges, edges[1:])]
+                    continue
+            pages.append(page)
+            done.append((op, lo, hi))
+            rows += len(page)
+            on_page(rows)
+        return pd.concat(pages, ignore_index=True), done
 
     def _read_paged(self, table: str, fields: list[str], where: Optional[str],
                     max_rows: int, page_size: int, on_page: Callable[[int], None] = lambda rows: None) -> pd.DataFrame:
@@ -222,6 +266,10 @@ class RFCConnector(SAPConnector):
 
 
 # ── RFC_READ_TABLE helpers ─────────────────────────────────────────────────────
+
+
+def _literal(value) -> str:
+    return "'" + str(value).replace("'", "''") + "'"
 
 
 def where_options(where: Optional[str]) -> list[dict]:
