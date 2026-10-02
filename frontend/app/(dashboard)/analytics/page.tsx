@@ -625,8 +625,10 @@ function PredictivePanel() {
 }
 
 /* ── Prescriptive ──────────────────────────────────────────────── */
-const zar = (n: number) =>
-  "R" + Math.round(n).toLocaleString("en-ZA");
+const money = (n: number, currency: string) =>
+  `${currency} ${Math.round(n).toLocaleString("en-ZA")}`;
+// the Impact lens still reports the backend's rand-denominated risk model
+const zar = (n: number) => money(n, "ZAR");
 
 function PrescriptivePanel() {
   const rxQ = useQuery({
@@ -663,22 +665,29 @@ function PrescriptivePanel() {
     );
   }
 
-  const totalImpact = actions.reduce((s, a) => s + a.estimated_impact_zar, 0);
+  const assumptions = rxQ.data?.assumptions;
+  const totalRecords = actions.reduce((s, a) => s + a.affected_count, 0);
   const totalEffort = actions.reduce((s, a) => s + a.effort_hours, 0);
+  const totalCost = actions.some((a) => a.estimated_cost !== null)
+    ? actions.reduce((s, a) => s + (a.estimated_cost ?? 0), 0) : null;
+  const first = sprints[0];
+  const currency = assumptions?.currency ?? "ZAR";
+  const projected = first && first.dqs_now !== null && first.dqs_projected !== null ? { now: first.dqs_now, next: first.dqs_projected } : null;
 
   return (
     <>
       <div className="mn-row mn-stagger" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))", marginBottom: 18 }}>
-        <KPI label="Ranked plays" value={actions.length} hint="by ROI per hour" />
-        <KPI label="Total impact" value={zar(totalImpact)} tone="pos" />
-        <KPI label="Total effort" value={`${totalEffort.toFixed(1)}h`} />
-        <KPI label="Sprints" value={sprints.length} hint="40h buckets" />
+        <KPI label="Ranked plays" value={actions.length} hint="by weighted records per hour" />
+        <KPI label="Records to correct" value={totalRecords.toLocaleString()} hint={totalCost !== null ? money(totalCost, currency) + " at your rate" : "no cost rate configured"} />
+        <KPI label="Total effort" value={`${totalEffort.toFixed(1)}h`} hint={assumptions ? `${assumptions.minutes_per_record} min / record + ${assumptions.investigation_hours} h / finding` : undefined} />
+        <KPI label="Sprint 1 DQS" value={projected ? `${projected.now.toFixed(1)} → ${projected.next.toFixed(1)}` : "—"}
+             hint={assumptions ? `${sprints.length} sprints of ${assumptions.sprint_hours} h` : undefined} tone={projected && projected.next > projected.now ? "pos" : undefined} />
       </div>
 
       <div className="mn-card mn-card-pad">
         <SectionHeader
           title="Next-best actions"
-          caption="Findings, cleaning and exceptions ranked deterministically by ROI per hour"
+          caption="Findings, cleaning and exceptions ranked by severity-weighted records per hour of effort; change the assumptions under Admin → Scoring & alerts"
         />
         <div style={{ marginTop: 10, overflowX: "auto" }}>
           <table className="mn-table" style={{ width: "100%", fontSize: 12.5 }}>
@@ -686,9 +695,10 @@ function PrescriptivePanel() {
               <tr>
                 <th style={{ textAlign: "left" }}>Action</th>
                 <th style={{ textAlign: "left" }}>Type</th>
-                <th>Impact</th>
+                <th>Records</th>
                 <th>Effort</th>
-                <th>ROI / h</th>
+                <th>Value / h</th>
+                {totalCost !== null ? <th>Cost</th> : null}
                 <th>Priority</th>
               </tr>
             </thead>
@@ -697,9 +707,10 @@ function PrescriptivePanel() {
                 <tr key={`${a.type}-${a.id}`}>
                   <td style={{ textAlign: "left" }}>{a.title || "(untitled)"}</td>
                   <td style={{ textAlign: "left" }}>{a.type}</td>
-                  <td className="aurora-number">{zar(a.estimated_impact_zar)}</td>
+                  <td className="aurora-number">{a.affected_count.toLocaleString()}</td>
                   <td className="aurora-number">{a.effort_hours.toFixed(1)}h</td>
-                  <td className="aurora-number" style={{ fontWeight: 600 }}>{a.roi_per_hour.toFixed(1)}</td>
+                  <td className="aurora-number" style={{ fontWeight: 600 }}>{a.value_per_hour.toFixed(1)}</td>
+                  {totalCost !== null ? <td className="aurora-number">{a.estimated_cost !== null ? money(a.estimated_cost, a.currency) : "—"}</td> : null}
                   <td className="aurora-number">{a.priority_score.toFixed(1)}</td>
                 </tr>
               ))}

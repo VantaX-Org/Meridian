@@ -15,21 +15,22 @@ const named = <K extends string>(load: () => Promise<Record<K, ComponentType>>, 
   dynamic(() => load().then((m) => ({ default: m[key] })), { ssr: false, loading });
 
 /** Tabs whose body is an Aurora surface — rendered on the canvas, not in the light sheet. */
-export const AURORA_TABS: ReadonlySet<string> = new Set(["/", "/executive-report", "/sync", "/issues", "/match-rules", "/business-process", "/settings/scoring", "/settings/field-mapping"]);
+export const AURORA_TABS: ReadonlySet<string> = new Set(["/", "/executive-report", "/sync", "/issues", "/match-rules", "/business-process", "/settings/scoring", "/settings/field-mapping",
+  "/systems", "/upload", "/versions", "/admin", "/findings", "/cleaning", "/exceptions", "/dedup", "/golden-records", "/glossary", "/reports", "/notifications"]);
 
 export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
   "/": named(() => import("@/components/command-centre/overview"), "CommandCentreOverview"),
   "/executive-report": named(() => import("@/components/command-centre/executive-report"), "ExecutiveReport"),
   "/command-centre": named(() => import("@/app/(dashboard)/command-centre/live"), "LiveOperationsPage"),
   "/analytics": page(() => import("@/app/(dashboard)/analytics/page")),
-  "/findings": page(() => import("@/app/(dashboard)/findings/page")),
+  "/findings": named(() => import("@/components/command-centre/findings"), "FindingsSurface"),
   "/issues": page(() => import("@/app/(dashboard)/issues/page")),
-  "/notifications": page(() => import("@/app/(dashboard)/notifications/page")),
+  "/notifications": named(() => import("@/components/command-centre/notifications"), "NotificationsSurface"),
 
-  "/systems": page(() => import("@/app/(dashboard)/systems/page")),
+  "/systems": named(() => import("@/components/data/systems"), "SystemsSurface"),
   "/sync": named(() => import("@/components/data/runs"), "RunsSurface"),
-  "/upload": page(() => import("@/app/(dashboard)/upload/page")),
-  "/versions": page(() => import("@/app/(dashboard)/versions/page")),
+  "/upload": named(() => import("@/components/data/import"), "ImportSurface"),
+  "/versions": named(() => import("@/components/data/analyses"), "AnalysesSurface"),
   "/connectivity": page(() => import("@/app/(dashboard)/connectivity/page")),
   "/run-sync": page(() => import("@/app/(dashboard)/run-sync/page")),
   "/migration": page(() => import("@/app/(dashboard)/migration/page")),
@@ -37,14 +38,14 @@ export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
   "/workbench": named(() => import("@/app/(dashboard)/workbench/queue"), "MyQueuePage"),
   "/stewardship": page(() => import("@/app/(dashboard)/stewardship/page")),
   "/stewardship/metrics": page(() => import("@/app/(dashboard)/stewardship/metrics/page")),
-  "/cleaning": page(() => import("@/app/(dashboard)/cleaning/page")),
-  "/exceptions": page(() => import("@/app/(dashboard)/exceptions/page")),
-  "/dedup": page(() => import("@/app/(dashboard)/dedup/page")),
+  "/cleaning": named(() => import("@/components/workbench/cleaning"), "CleaningSurface"),
+  "/exceptions": named(() => import("@/components/workbench/exceptions"), "ExceptionsSurface"),
+  "/dedup": named(() => import("@/components/workbench/dedup"), "DedupSurface"),
   "/ai/rules": page(() => import("@/app/(dashboard)/ai/rules/page")),
-  "/golden-records": page(() => import("@/app/(dashboard)/golden-records/page")),
+  "/golden-records": named(() => import("@/components/workbench/golden-records"), "GoldenRecordsSurface"),
   "/match-rules": named(() => import("@/components/workbench/match-rules"), "MatchRulesSurface"),
-  "/glossary": page(() => import("@/app/(dashboard)/glossary/page")),
-  "/reports": page(() => import("@/app/(dashboard)/reports/page")),
+  "/glossary": named(() => import("@/components/workbench/glossary"), "GlossarySurface"),
+  "/reports": named(() => import("@/components/workbench/reports"), "ReportsSurface"),
 
   "/process": named(() => import("@/app/(dashboard)/process/map"), "ProcessMapPage"),
   "/business-process": named(() => import("@/components/process/readiness"), "ProcessReadiness"),
@@ -52,7 +53,7 @@ export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
   "/mining": page(() => import("@/app/(dashboard)/mining/page")),
   "/relationships": page(() => import("@/app/(dashboard)/relationships/page")),
 
-  "/admin": named(() => import("@/app/(dashboard)/admin/users"), "UsersAuditPage"),
+  "/admin": named(() => import("@/components/admin/users"), "UsersSurface"),
   "/settings": page(() => import("@/app/(dashboard)/settings/page")),
   "/settings/rules": page(() => import("@/app/(dashboard)/settings/rules/page")),
   "/settings/scoring": named(() => import("@/components/admin/scoring"), "ScoringSettings"),

@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import Tenant, get_db, get_tenant
 from api.services.rbac import has_permission
 from api.services.analytics_engine import (
+    planner_config,
     BusinessImpactAnalytics,
     OperationalAnalytics,
     PredictiveAnalytics,
@@ -145,15 +146,33 @@ async def get_prescriptive_analytics(
     )
     exc_data = [_row_to_dict(r) for r in exc_result.all()]
 
-    actions = prescriptive.generate_next_best_actions(findings_data, queue_data, exc_data)
+    cfg, weights = await _planner_inputs(db, tenant)
+    planner = PrescriptiveAnalytics(cfg)
+    actions = planner.generate_next_best_actions(findings_data, queue_data, exc_data)
 
     if type:
         actions = [a for a in actions if a["type"] == type]
 
     actions = actions[:limit]
-    sprints = prescriptive.generate_sprints(actions)
+    sprints = planner.generate_sprints(actions, findings=findings_data, weights=weights)
 
-    return {"actions": actions, "sprints": sprints}
+    return {
+        "actions": actions,
+        "sprints": sprints,
+        "assumptions": cfg,
+        "basis": {"version_id": str(version_row[0].id) if version_row else None,
+                  "findings": len(findings_data), "cleaning_items": len(queue_data), "exceptions": len(exc_data)},
+    }
+
+
+async def _planner_inputs(db: AsyncSession, tenant: Tenant) -> tuple[dict, dict]:
+    """The tenant's planner assumptions (Admin → Scoring & alerts) and DQS weights."""
+    row = (await db.execute(
+        text("SELECT dqs_weights, alert_thresholds FROM tenants WHERE id = :tid"), {"tid": str(tenant.id)}
+    )).fetchone()
+    weights = {k: v for k, v in ((row[0] if row and row[0] else {}) or {}).items() if k != "notification_config"}
+    planner = ((row[1] if row and row[1] else {}) or {}).get("planner") or {}
+    return planner_config(planner), weights
 
 
 # ── 3. GET /analytics/impact ─────────────────────────────────────────────────
@@ -441,10 +460,12 @@ async def get_sprints(
         )
         findings_data = [_row_to_dict(r) for r in findings_result.all()]
 
-    actions = prescriptive.generate_next_best_actions(findings_data, [], [])
-    sprints = prescriptive.generate_sprints(actions, max_hours)
+    cfg, weights = await _planner_inputs(db, tenant)
+    planner = PrescriptiveAnalytics(cfg)
+    actions = planner.generate_next_best_actions(findings_data, [], [])
+    sprints = planner.generate_sprints(actions, max_hours, findings=findings_data, weights=weights)
 
-    return {"sprints": sprints, "total_actions": len(actions)}
+    return {"sprints": sprints, "total_actions": len(actions), "assumptions": cfg}
 
 
 # ── 10. GET /analytics/bottlenecks ───────────────────────────────────────────

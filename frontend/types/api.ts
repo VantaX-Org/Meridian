@@ -238,9 +238,21 @@ export interface ReportJson {
 }
 
 /* ─── Settings ─── */
+/** Assumptions behind the prescriptive planner's effort and value figures. */
+export interface PlannerConfig {
+  minutes_per_record: number;
+  investigation_hours: number;
+  cleaning_item_hours: number;
+  exception_hours: number;
+  sprint_hours: number;
+  cost_per_record: number | null;
+  currency: string;
+}
+
 export interface TenantSettings {
   name: string;
   licensed_modules: string[];
+  planner_config: PlannerConfig | null;
   dqs_weights: DimensionScores | null;
   alert_thresholds: {
     critical_threshold: number;

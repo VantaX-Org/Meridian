@@ -201,3 +201,28 @@ def test_enrich_no_config_does_nothing():
 
     # No root_cause attached when there's no config data
     assert "root_cause" not in (results[0].details or {})
+
+
+def test_load_indexes_values_under_the_sap_field_too():
+    """Discovery writes semantic element types; findings carry SAP fields.
+    A finding on BKPF.BLART must see the discovered document types."""
+    try:
+        import sqlalchemy  # noqa: F401
+    except ImportError:
+        pytest.skip("sqlalchemy not installed")
+
+    engine = MagicMock()
+    with patch("sqlalchemy.orm.Session") as mock_session_cls:
+        mock_session = mock_session_cls.return_value.__enter__.return_value
+        mock_session.execute.return_value.fetchone.return_value = ("run-1",)
+        mock_session.execute.return_value.fetchall.return_value = [
+            ("document_type", "SA"), ("document_type", "ZK"), ("z_blart", "ZK"), ("company_code", "1000"),
+        ]
+        values = load_tenant_config_values(engine, "tenant-abc")
+    assert values["BLART"] == {"SA", "ZK"} and values["document_type"] == {"SA", "ZK"}
+    assert values["BUKRS"] == {"1000"}
+
+    finding = {"field": "BKPF.BLART", "check_type": "domain_check",
+               "details": {"distinct_invalid_values": ["ZK"]}}
+    assert classify_root_cause(finding, values)["root_cause_type"] == "bad_data"
+

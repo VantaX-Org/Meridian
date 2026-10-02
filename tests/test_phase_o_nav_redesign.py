@@ -182,31 +182,31 @@ def test_ai_rules_page_approve_confirmation():
 # index page that delegates user management to /admin).
 def test_settings_has_ai_reviewer_role():
     """Admin page includes ai_reviewer in the invitable roles."""
-    path = Path("frontend/app/(dashboard)/admin/users.tsx")
+    path = Path("frontend/components/admin/users.tsx")
     content = path.read_text(encoding="utf-8")
     assert "ai_reviewer" in content
     assert "AI Reviewer" in content
 
 
-def test_settings_ai_reviewer_purple_badge():
-    """ai_reviewer role uses purple badge colour."""
-    path = Path("frontend/app/(dashboard)/admin/users.tsx")
+def test_settings_ai_reviewer_distinct_badge():
+    """ai_reviewer role has its own badge tone (Aurora status tones, not hex)."""
+    path = Path("frontend/components/admin/users.tsx")
     content = path.read_text(encoding="utf-8")
-    assert "#7C3AED" in content
+    assert "ai_reviewer: \"warning\"" in content
 
 
 def test_settings_ai_reviewer_tooltip():
     """ai_reviewer has descriptive tooltip."""
-    path = Path("frontend/app/(dashboard)/admin/users.tsx")
+    path = Path("frontend/components/admin/users.tsx")
     content = path.read_text(encoding="utf-8")
     assert "approve proposed rules" in content
 
 
-def test_settings_permissions_table_has_ai_review_column():
-    """Role capabilities table includes AI Review column."""
-    path = Path("frontend/app/(dashboard)/admin/users.tsx")
+def test_settings_permissions_table_comes_from_the_api():
+    """Role capabilities table is the server's matrix (GET /auth/roles), never a local copy."""
+    path = Path("frontend/components/admin/users.tsx")
     content = path.read_text(encoding="utf-8")
-    assert "AI Review" in content
+    assert "getRoleMatrix" in content and "ai_feedback" not in content
 
 
 # ── O.5 Upload page — connected systems banner ─────────────────────────────
@@ -214,8 +214,8 @@ def test_settings_permissions_table_has_ai_review_column():
 
 def test_upload_page_connected_systems_banner():
     """Upload page shows banner when SAP systems are connected."""
-    path = Path("frontend/app/(dashboard)/upload/page.tsx")
+    path = Path("frontend/components/data/import.tsx")
     content = path.read_text(encoding="utf-8")
-    assert "Connected SAP systems detected" in content
+    assert "connected" in content and "Download from the source" in content
     assert "one-off assessments" in content
     assert "getSystems" in content

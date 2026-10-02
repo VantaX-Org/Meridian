@@ -7,7 +7,10 @@ export interface DqsForecast {
   forecast_30d: number;
   forecast_90d: number;
   trend: "improving" | "stable" | "declining" | "critical";
+  /** 50–95: a heuristic that grows with the number of runs, not a statistical interval. */
   confidence: number;
+  points: number;
+  span_days: number;
   contributing_factors: string[];
 }
 
@@ -23,17 +26,36 @@ export interface PredictiveResponse {
   early_warnings: EarlyWarning[];
 }
 
+/** The tenant's own assumptions behind every planner figure (Admin → Scoring & alerts). */
+export interface PlannerAssumptions {
+  minutes_per_record: number;
+  investigation_hours: number;
+  cleaning_item_hours: number;
+  exception_hours: number;
+  sprint_hours: number;
+  cost_per_record: number | null;
+  currency: string;
+}
+
 export interface NextBestAction {
   type: "finding" | "cleaning" | "exception";
   id: string;
   title: string;
-  priority_score: number;
-  estimated_impact_zar: number;
-  effort_hours: number;
-  roi_per_hour: number;
-  recommended_steward: string | null;
+  severity: "critical" | "high" | "medium" | "low";
   affected_count: number;
   total_count: number;
+  effort_hours: number;
+  /** Severity weight × records affected. */
+  impact_points: number;
+  value_per_hour: number;
+  priority_score: number;
+  /** Records × the tenant's cost per record; null until a rate is configured. */
+  estimated_cost: number | null;
+  currency: string;
+  recommended_steward: string | null;
+  module?: string;
+  check_id?: string;
+  dimension?: string;
 }
 
 export interface Sprint {
@@ -41,13 +63,20 @@ export interface Sprint {
   name: string;
   actions: NextBestAction[];
   total_effort_hours: number;
-  total_impact_zar: number;
-  projected_dqs_improvement: number;
+  records_fixed: number;
+  critical_cleared: number;
+  estimated_cost: number | null;
+  currency: string;
+  /** Composite DQS now and once this sprint's findings pass, through the scoring engine. */
+  dqs_now: number | null;
+  dqs_projected: number | null;
 }
 
 export interface PrescriptiveResponse {
   actions: NextBestAction[];
   sprints: Sprint[];
+  assumptions: PlannerAssumptions;
+  basis: { version_id: string | null; findings: number; cleaning_items: number; exceptions: number };
 }
 
 export interface ImpactBucket {
