@@ -15,7 +15,8 @@ const named = <K extends string>(load: () => Promise<Record<K, ComponentType>>, 
   dynamic(() => load().then((m) => ({ default: m[key] })), { ssr: false, loading });
 
 /** Tabs whose body is an Aurora surface — rendered on the canvas, not in the light sheet. */
-export const AURORA_TABS: ReadonlySet<string> = new Set(["/", "/executive-report", "/sync", "/issues", "/match-rules", "/business-process", "/settings/scoring", "/settings/field-mapping"]);
+export const AURORA_TABS: ReadonlySet<string> = new Set(["/", "/executive-report", "/sync", "/issues", "/match-rules", "/business-process", "/settings/scoring", "/settings/field-mapping",
+  "/systems", "/upload", "/versions", "/admin"]);
 
 export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
   "/": named(() => import("@/components/command-centre/overview"), "CommandCentreOverview"),
@@ -26,10 +27,10 @@ export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
   "/issues": page(() => import("@/app/(dashboard)/issues/page")),
   "/notifications": page(() => import("@/app/(dashboard)/notifications/page")),
 
-  "/systems": page(() => import("@/app/(dashboard)/systems/page")),
+  "/systems": named(() => import("@/components/data/systems"), "SystemsSurface"),
   "/sync": named(() => import("@/components/data/runs"), "RunsSurface"),
-  "/upload": page(() => import("@/app/(dashboard)/upload/page")),
-  "/versions": page(() => import("@/app/(dashboard)/versions/page")),
+  "/upload": named(() => import("@/components/data/import"), "ImportSurface"),
+  "/versions": named(() => import("@/components/data/analyses"), "AnalysesSurface"),
   "/connectivity": page(() => import("@/app/(dashboard)/connectivity/page")),
   "/run-sync": page(() => import("@/app/(dashboard)/run-sync/page")),
   "/migration": page(() => import("@/app/(dashboard)/migration/page")),
@@ -52,7 +53,7 @@ export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
   "/mining": page(() => import("@/app/(dashboard)/mining/page")),
   "/relationships": page(() => import("@/app/(dashboard)/relationships/page")),
 
-  "/admin": named(() => import("@/app/(dashboard)/admin/users"), "UsersAuditPage"),
+  "/admin": named(() => import("@/components/admin/users"), "UsersSurface"),
   "/settings": page(() => import("@/app/(dashboard)/settings/page")),
   "/settings/rules": page(() => import("@/app/(dashboard)/settings/rules/page")),
   "/settings/scoring": named(() => import("@/components/admin/scoring"), "ScoringSettings"),

@@ -1,0 +1,194 @@
+"use client";
+
+/**
+ * Data → Import: drop a file, see how its columns match a module's standard
+ * fields, pick the module, run the import and follow the analysis to the end.
+ * Every import is a version; recent ones are listed with their DQS.
+ */
+
+import Link from "next/link";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { ColumnDef } from "@tanstack/react-table";
+import { toast } from "sonner";
+import {
+  Banner, Button, Chip, DataTable, EmptyState, KpiRail, Stack, Stat, Text, type AuroraColumnMeta, type ChipTone,
+} from "@/components/aurora";
+import { useRole } from "@/hooks/use-role";
+import { getSystems } from "@/lib/api/systems";
+import { matchColumns, pollAnalysisStatus, uploadFile, type MatchResponse } from "@/lib/api/upload";
+import { getVersions } from "@/lib/api/versions";
+import { formatModuleName, relativeTime } from "@/lib/format";
+import { formatSize, readHeaderSample } from "@/lib/upload-preview";
+import type { Version } from "@/types/api";
+import { ProgressBar, StageStepper } from "./job-card";
+
+const meta = (m: AuroraColumnMeta) => m;
+const ACCEPT = ".csv,.tsv,.txt,.xlsx,.xls,.json,.parquet";
+const TERMINAL = new Set(["complete", "agents_complete", "ai_enriched", "failed", "agents_failed"]);
+
+type Job = { versionId: string; status: "queued" | "processing" | "completed" | "failed"; percent: number; step: string; error: string | null };
+
+function versionDqs(v: Version): number | null {
+  const scores = Object.values(v.dqs_summary ?? {}).map((m) => m.composite_score);
+  return scores.length ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10 : null;
+}
+const STATUS_TONE = (s: string): ChipTone => s === "failed" || s === "agents_failed" ? "danger" : TERMINAL.has(s) ? "success" : "info";
+
+export function ImportSurface() {
+  const qc = useQueryClient();
+  const { can } = useRole();
+  const canUpload = can("upload");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [match, setMatch] = useState<MatchResponse | null>(null);
+  const [module, setModule] = useState<string | null>(null);
+  const [uploadPct, setUploadPct] = useState(0);
+  const [job, setJob] = useState<Job | null>(null);
+  const [dragging, setDragging] = useState(false);
+
+  const systemsQ = useQuery({ queryKey: ["systems.list"], queryFn: getSystems, staleTime: 60_000 });
+  const recent = useQuery({
+    queryKey: ["versions.list", { limit: 8 }], queryFn: () => getVersions({ limit: 8 }),
+    refetchInterval: (q) => (q.state.data?.versions.some((v) => !TERMINAL.has(v.status)) ? 5000 : false),
+  });
+
+  const matchMut = useMutation({
+    mutationFn: async (f: File) => {
+      const { headers, sample } = await readHeaderSample(f);
+      return { res: await matchColumns(headers, sample, f.name), parsed: headers.length > 0 };
+    },
+    onSuccess: ({ res, parsed }) => { setMatch(res); setModule(parsed ? res.detected_module : null); },
+    onError: (e) => toast.error((e as Error).message || "Could not read the file"),
+  });
+  useEffect(() => {
+    if (!file) return;
+    setMatch(null); setModule(null); setJob(null); setUploadPct(0);
+    matchMut.mutate(file);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [file]);
+
+  const run = useMutation({
+    mutationFn: async () => {
+      if (!file || !module) throw new Error("Pick a file and a module first");
+      const up = await uploadFile(file, module, null, setUploadPct);
+      setJob({ versionId: up.version_id, status: "queued", percent: 0, step: "Queued", error: null });
+      const final = await pollAnalysisStatus(up.version_id, (s) => setJob({
+        versionId: up.version_id, status: s.status, percent: s.progress?.percent_complete ?? 0,
+        step: s.progress?.current_step || s.status, error: s.error ?? null,
+      }));
+      return final;
+    },
+    onSuccess: (s) => {
+      qc.invalidateQueries({ queryKey: ["versions.list"] }); qc.invalidateQueries({ queryKey: ["reports.versions"] });
+      if (s.status === "completed") toast.success("Import analysed"); else toast.error(s.error || "Analysis failed");
+    },
+    onError: (e) => { toast.error((e as Error).message || "Import failed"); setJob((j) => j ? { ...j, status: "failed", error: (e as Error).message } : null); },
+  });
+
+  const stage = job ? "run" : match ? "mapping" : file ? "preview" : "source";
+  const order = ["source", "preview", "mapping", "run"] as const;
+  const stages = order.map((id) => ({
+    id, label: { source: "Source", preview: "Preview", mapping: "Mapping", run: "Run" }[id],
+    status: (job?.status === "completed" ? "done" : job?.status === "failed" && id === "run" ? "failed"
+      : order.indexOf(id) < order.indexOf(stage) ? "done" : id === stage ? (job ? "running" : "running") : "queued") as "done" | "failed" | "running" | "queued",
+  }));
+  const noHeaders = !!match && match.mappings.length === 0;
+  const mapped = match?.mappings.filter((m) => m.target_field).length ?? 0;
+  const canRun = !!file && !!match && !!module && !matchMut.isPending && !run.isPending && !job;
+
+  const pick = (f: File | null) => { if (f) setFile(f); };
+  const clear = () => { setFile(null); setMatch(null); setModule(null); setJob(null); setUploadPct(0); if (inputRef.current) inputRef.current.value = ""; };
+
+  const columns = useMemo<ColumnDef<Version, unknown>[]>(() => [
+    { id: "file", header: "File", meta: meta({ sticky: "start", width: 240 }), cell: ({ row }) => (
+      <Link href={`/findings?version_id=${row.original.id}`} className="aurora-link">{row.original.metadata?.file_name ?? row.original.label ?? row.original.id.slice(0, 8)}</Link>) },
+    { id: "modules", header: "Objects", cell: ({ row }) => (row.original.metadata?.modules ?? []).map(formatModuleName).join(" · ") || "—" },
+    { id: "rows", header: "Rows", meta: meta({ width: 90, align: "end", numeric: true }), cell: ({ row }) => row.original.metadata?.row_count?.toLocaleString() ?? "—" },
+    { id: "dqs", header: "DQS", meta: meta({ width: 80, align: "end", numeric: true }), cell: ({ row }) => { const d = versionDqs(row.original); return d === null ? "—" : d.toFixed(1); } },
+    { id: "status", header: "Status", meta: meta({ width: 140 }), cell: ({ row }) => <Chip tone={STATUS_TONE(row.original.status)}>{row.original.status.replace(/_/g, " ")}</Chip> },
+    { id: "when", header: "Imported", meta: meta({ width: 110 }), cell: ({ row }) => relativeTime(row.original.run_at) },
+  ], []);
+  const versions = recent.data?.versions ?? [];
+  const completed = versions.filter((v) => TERMINAL.has(v.status) && !v.status.includes("failed"));
+
+  return (
+    <Stack gap={5} className="aurora-page">
+      {systemsQ.data?.length ? (
+        <Banner tone="info" title={`${systemsQ.data.length} SAP ${systemsQ.data.length === 1 ? "system is" : "systems are"} connected`}
+          action={<Link href="/data?tab=systems" className="aurora-link">Download from the source →</Link>}>
+          Pulling objects straight from a connected system keeps versions comparable run to run. File imports suit one-off assessments.
+        </Banner>
+      ) : null}
+      <KpiRail>
+        <Stat label="Imports" value={versions.length} />
+        <Stat label="Analysed" value={completed.length} tone={completed.length ? "success" : "neutral"} />
+        <Stat label="Latest DQS" value={completed[0] ? (versionDqs(completed[0]) ?? "—") : "—"} />
+        <Stat label="In progress" value={versions.filter((v) => !TERMINAL.has(v.status)).length} />
+      </KpiRail>
+
+      <div className="aurora-import">
+        <label className={`aurora-import__drop${dragging ? " is-over" : ""}${file ? " has-file" : ""}`}
+          onDragOver={(e) => { e.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)}
+          onDrop={(e) => { e.preventDefault(); setDragging(false); if (canUpload) pick(e.dataTransfer.files?.[0] ?? null); }}>
+          <input ref={inputRef} type="file" accept={ACCEPT} disabled={!canUpload} onChange={(e) => pick(e.target.files?.[0] ?? null)} style={{ display: "none" }} />
+          {file ? (
+            <Stack gap={1} align="center">
+              <Text variant="text-lead">{file.name}</Text>
+              <Text variant="text-small" tone="secondary">{formatSize(file.size)} · {matchMut.isPending ? "reading columns…" : match ? `${match.module_label} · ${Math.round(match.module_confidence * 100)}% · ${mapped} columns mapped` : ""}</Text>
+            </Stack>
+          ) : (
+            <Stack gap={1} align="center">
+              <Text variant="text-lead">{canUpload ? "Drop a file to begin" : "Importing needs the upload permission"}</Text>
+              <Text variant="text-small" tone="secondary">CSV · TSV · XLSX · XLS · JSON · Parquet, up to 2 GB</Text>
+            </Stack>
+          )}
+        </label>
+        <div className="aurora-import__side">
+          <Text variant="text-micro" tone="muted" className="aurora-exec__eyebrow">Pipeline</Text>
+          <StageStepper stages={stages} />
+          {job ? <ProgressBar percent={job.status === "completed" ? 100 : job.percent} live={job.status === "processing" || job.status === "queued"} label={job.step} /> :
+            run.isPending ? <ProgressBar percent={uploadPct} live label={`Uploading ${uploadPct}%`} /> : null}
+          {job?.error ? <Banner tone="danger" title="Analysis failed">{job.error}</Banner> : null}
+          {job?.status === "completed" ? <Link href={`/findings?version_id=${job.versionId}`} className="aurora-link">Open the findings →</Link> : null}
+        </div>
+      </div>
+
+      {match ? (
+        <Stack gap={3}>
+          <Stack direction="row" gap={2} wrap align="center">
+            <Text variant="text-small" tone="secondary">Object:</Text>
+            {match.available_modules.map((m) => (
+              <Chip key={m.value} tone={module === m.value ? "info" : "neutral"} selected={module === m.value} onClick={() => setModule(m.value)}>{m.label}</Chip>
+            ))}
+          </Stack>
+          {noHeaders ? <Banner tone="warning" title="Columns cannot be previewed for this format">Pick the object above; the backend reads the schema from the file when it imports.</Banner> : null}
+          {match.unmapped_required.length ? <Banner tone="warning" title={`${match.unmapped_required.length} required fields have no column`}>{match.unmapped_required.join(", ")}. Checks that need them are skipped.</Banner> : null}
+          {match.mappings.length ? (
+            <table className="aurora-exec__table">
+              <thead><tr><th>Your column</th><th>Standard field</th><th>Confidence</th><th>Match</th></tr></thead>
+              <tbody>
+                {match.mappings.slice(0, 14).map((m) => (
+                  <tr key={m.source_column}>
+                    <td className="aurora-number">{m.source_column}</td>
+                    <td className="aurora-number">{m.target_field ?? <Text tone="muted" as="span">unmapped</Text>}{m.is_required ? " *" : ""}</td>
+                    <td className="aurora-number">{Math.round(m.confidence * 100)}%</td>
+                    <td><Chip tone={m.confidence >= 0.85 ? "success" : m.confidence >= 0.6 ? "info" : "warning"}>{m.match_type}</Chip></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : null}
+          <Stack direction="row" gap={2}>
+            <Button onClick={() => run.mutate()} disabled={!canRun}>{run.isPending ? `Uploading ${uploadPct}%` : job ? "Imported" : "Run import"}</Button>
+            <Button variant="ghost" onClick={clear}>Clear</Button>
+          </Stack>
+        </Stack>
+      ) : null}
+
+      <Text as="h2" variant="text-lead" className="aurora-runs__h">Recent imports</Text>
+      {versions.length ? <DataTable columns={columns} data={versions} getRowId={(v) => v.id} ariaLabel="Recent imports" maxHeight="48vh" />
+        : <EmptyState title="Nothing imported yet." body="Every import becomes a version you can analyse, compare and set as a baseline." />}
+    </Stack>
+  );
+}

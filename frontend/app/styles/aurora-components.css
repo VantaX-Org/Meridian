@@ -3780,3 +3780,22 @@
   outline: 2px solid var(--aurora-accent-500);
   outline-offset: 2px;
 }
+
+/* Import: drop zone beside the pipeline stepper */
+.aurora-import { display: grid; grid-template-columns: minmax(0, 7fr) minmax(260px, 5fr); gap: var(--aurora-space-4); }
+.aurora-import__drop {
+  display: flex; align-items: center; justify-content: center; min-height: 220px; padding: var(--aurora-space-6);
+  border: 1px dashed var(--aurora-canvas-line); border-radius: 12px; background: var(--aurora-canvas-raised);
+  cursor: pointer; transition: border-color var(--aurora-motion-fast, 160ms), background var(--aurora-motion-fast, 160ms);
+}
+.aurora-import__drop:hover, .aurora-import__drop.is-over { border-color: var(--aurora-accent-500); background: var(--aurora-accent-selected-bg); }
+.aurora-import__drop.has-file { border-style: solid; }
+.aurora-import__side { display: flex; flex-direction: column; gap: var(--aurora-space-3); padding: var(--aurora-space-4); border: 1px solid var(--aurora-canvas-line); border-radius: 12px; background: var(--aurora-canvas-raised); }
+@media (max-width: 900px) { .aurora-import { grid-template-columns: 1fr; } }
+
+/* Analyses: two versions and the delta between them */
+.aurora-compare { display: grid; grid-template-columns: minmax(0, 1fr) 200px minmax(0, 1fr); gap: var(--aurora-space-4); align-items: stretch; }
+.aurora-compare__side, .aurora-compare__delta { display: flex; flex-direction: column; gap: var(--aurora-space-2); padding: var(--aurora-space-4); border: 1px solid var(--aurora-canvas-line); border-radius: 12px; background: var(--aurora-canvas-raised); }
+.aurora-compare__delta { align-items: center; justify-content: center; text-align: center; background: var(--aurora-canvas-elevated); }
+.aurora-compare__lists { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--aurora-space-4); margin-top: var(--aurora-space-4); }
+@media (max-width: 900px) { .aurora-compare { grid-template-columns: 1fr; } }

@@ -1,8 +1,12 @@
 [
   { "name": "command-centre", "path": "/", "heading": "Command Centre" },
   { "name": "executive-report", "path": "/?tab=report", "heading": "Command Centre" },
+  { "name": "systems", "path": "/data?tab=systems", "heading": "Data" },
   { "name": "runs", "path": "/data?tab=runs", "heading": "Data" },
+  { "name": "import", "path": "/data?tab=import", "heading": "Data" },
+  { "name": "analyses", "path": "/data?tab=analyses", "heading": "Data" },
   { "name": "workbench", "path": "/workbench", "heading": "Workbench" },
   { "name": "process", "path": "/process?tab=readiness", "heading": "Process" },
-  { "name": "admin", "path": "/admin?tab=scoring", "heading": "Admin" }
+  { "name": "admin", "path": "/admin?tab=scoring", "heading": "Admin" },
+  { "name": "users", "path": "/admin?tab=users", "heading": "Admin" }
 ]
