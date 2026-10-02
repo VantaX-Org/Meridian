@@ -19,7 +19,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from workers.celery_app import celery_app
-from workers.db import get_sync_engine
+from workers.db import get_sync_engine, tenant_session
 
 logger = logging.getLogger("meridian.workers.extraction")
 
@@ -60,8 +60,7 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
 
     progress({"step": "connecting", "percent": 0})
     try:
-        with Session(engine) as session:
-            session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        with tenant_session(engine, tenant_id) as session:
             from api.services.connectivity_manager import ConnectivityManager
 
             manager = ConnectivityManager(session, tenant_id)
