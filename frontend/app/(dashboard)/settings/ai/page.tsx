@@ -22,14 +22,14 @@ export default function AISettingsPage() {
 
   if (!can("manage_llm")) {
     return (
-      <div data-theme="light" className="space-y-6">
+      <div className="space-y-6">
         <PageHead title="AI settings" route="/settings/ai" />
         <Banner tone="info" title="Admins only">Ask an administrator to change the language-model provider.</Banner>
       </div>
     );
   }
   return (
-    <div data-theme="light" className="space-y-6">
+    <div className="space-y-6">
       <PageHead
         title="AI settings"
         route="/settings/ai"

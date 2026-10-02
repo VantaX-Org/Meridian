@@ -98,7 +98,7 @@ export function CommandCentreOverview() {
   return (
     <div className="aurora-cc">
       {empty ? (
-        <div className="mn-legacy-host" data-theme="light" style={{ margin: "0 0 var(--aurora-space-6)" }}>
+        <div className="mn-legacy-host" style={{ margin: "0 0 var(--aurora-space-6)" }}>
           <GettingStarted hasAnalysis={false} />
         </div>
       ) : null}

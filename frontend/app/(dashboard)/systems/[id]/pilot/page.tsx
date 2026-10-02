@@ -56,7 +56,7 @@ export default function PilotScorecardPage() {
   const tuning = data?.rules.filter((r) => r.needs_tuning).length ?? 0;
 
   return (
-    <div data-theme="light" className="space-y-6">
+    <div className="space-y-6">
       <Link href={`/systems/${id}`}
         className="inline-flex items-center gap-1 text-[13px] text-[var(--aurora-fg-secondary)] hover:underline">
         <ArrowLeft size={14} /> System

@@ -650,7 +650,7 @@ export default function MigrationPage() {
     });
 
   return (
-    <div data-theme="light" className="space-y-6">
+    <div className="space-y-6">
       <PageHead
         title="Migration"
         route="Systems & data · /migration"

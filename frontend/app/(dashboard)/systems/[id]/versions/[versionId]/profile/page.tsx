@@ -192,7 +192,7 @@ export default function VersionProfilePage() {
     .map((o) => ({ value: o, label: formatModuleName(o) }));
 
   return (
-    <div data-theme="light" className="space-y-6">
+    <div className="space-y-6">
       <Link href={`/systems/${id}?tab=versions`}
         className="inline-flex items-center gap-1 text-[13px] text-[var(--aurora-fg-secondary)] hover:underline">
         <ArrowLeft size={14} /> Versions

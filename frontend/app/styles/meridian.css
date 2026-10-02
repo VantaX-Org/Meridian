@@ -50,6 +50,44 @@
   --mn-shadow-3: 0 2px 4px rgba(15,23,42,0.05), 0 16px 32px -10px rgba(15,23,42,0.14);
   --mn-ring:     0 0 0 4px color-mix(in srgb, var(--mn-primary) 16%, transparent);
 }
+/* Dark (the shell's default): the same tokens on Aurora's canvas, so every
+   .mn-* surface reads as part of the product. Pages outside the shell keep
+   the light values above. */
+[data-theme="dark"] {
+  --mn-primary: var(--aurora-accent-500);
+  --mn-primary-600: var(--aurora-accent-400);
+  --mn-primary-700: var(--aurora-accent-300);
+  --mn-primary-50:  rgba(43, 123, 255, 0.10);
+  --mn-primary-100: rgba(43, 123, 255, 0.16);
+  --mn-primary-200: rgba(43, 123, 255, 0.30);
+
+  --mn-bg:        var(--aurora-canvas-base);
+  --mn-bg-tint:   var(--aurora-canvas-raised);
+  --mn-card:      var(--aurora-canvas-raised);
+  --mn-card-2:    var(--aurora-canvas-elevated);
+  --mn-line:      var(--aurora-canvas-line);
+  --mn-line-2:    rgba(255, 255, 255, 0.05);
+  --mn-line-3:    rgba(255, 255, 255, 0.14);
+
+  --mn-ink-900: var(--aurora-fg-primary);
+  --mn-ink-700: var(--aurora-fg-secondary);
+  --mn-ink-500: var(--aurora-fg-tertiary);
+  --mn-ink-400: var(--aurora-fg-muted);
+  --mn-ink-300: var(--aurora-fg-muted);
+  --mn-ink-200: var(--aurora-fg-disabled);
+
+  --mn-pos:    var(--aurora-status-success-500);
+  --mn-pos-bg: rgba(39, 194, 129, 0.14);
+  --mn-warn:   var(--aurora-status-warning-500);
+  --mn-warn-bg: rgba(242, 177, 52, 0.14);
+  --mn-neg:    var(--aurora-status-danger-500);
+  --mn-neg-bg: rgba(255, 77, 79, 0.14);
+
+  --mn-shadow-0: 0 0 0 1px var(--mn-line);
+  --mn-shadow-1: none;
+  --mn-shadow-2: 0 1px 0 rgba(255,255,255,0.03) inset;
+  --mn-shadow-3: 0 16px 32px -10px rgba(0,0,0,0.5);
+}
 
 /* ── Utilities ───────────────────────────────────────────────────────── */
 .mn-tabular { font-variant-numeric: tabular-nums; font-feature-settings: "tnum", "zero"; }
@@ -171,7 +209,7 @@
   padding: 8px 10px;
   border-radius: 6px;
   border: 1px solid var(--mn-line-2);
-  background: white;
+  background: var(--mn-card);
   font: 500 13px/1.4 'Inter', sans-serif;
   color: var(--mn-ink-900);
   outline: none;
@@ -208,7 +246,7 @@ textarea.mn-input { resize: vertical; min-height: 64px; font-family: 'Inter', sa
 .mn-hero {
   position: relative; overflow: hidden;
   padding: 22px 24px 16px;
-  background: linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 60%, #FAFBFD 100%);
+  background: var(--card);
   border: 1px solid var(--mn-line);
   border-radius: var(--mn-radius);
   box-shadow: var(--mn-shadow-1);
@@ -332,7 +370,7 @@ textarea.mn-input { resize: vertical; min-height: 64px; font-family: 'Inter', sa
   padding: 13px 16px;
   border: 1px solid var(--mn-line);
   border-left: 3px solid var(--mn-primary);
-  background: #FFFFFF;
+  background: var(--mn-card);
   border-radius: var(--mn-radius);
   box-shadow: var(--mn-shadow-1);
 }
@@ -425,7 +463,7 @@ textarea.mn-input { resize: vertical; min-height: 64px; font-family: 'Inter', sa
 .mn-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
 .mn-table thead th {
   position: sticky; top: 0; z-index: 1;
-  background: #FBFCFE;
+  background: var(--mn-card-2);
   text-align: left;
   font: 600 10.5px/1 "JetBrains Mono", ui-monospace, monospace; letter-spacing: 0.08em; text-transform: uppercase;
   color: var(--mn-ink-400);
@@ -632,7 +670,7 @@ textarea.mn-input { resize: vertical; min-height: 64px; font-family: 'Inter', sa
   border-left: 3px solid var(--mn-primary);
   border-radius: 6px;
 }
-.mn-suggested .ico { width: 24px; height: 24px; border-radius: 5px; background: white; color: var(--mn-primary); display: grid; place-items: center; flex-shrink: 0; }
+.mn-suggested .ico { width: 24px; height: 24px; border-radius: 5px; background: var(--mn-card); color: var(--mn-primary); display: grid; place-items: center; flex-shrink: 0; }
 .mn-detail-actions { display: flex; gap: 6px; margin-top: 14px; }
 
 @media (max-width: 1280px) {
@@ -806,7 +844,7 @@ textarea.mn-input { resize: vertical; min-height: 64px; font-family: 'Inter', sa
 .mn-report-preview { margin-top: 12px; padding: 16px; background: var(--mn-bg-tint); border-radius: 8px; display: flex; justify-content: center; }
 .mn-report-page {
   width: 100%; max-width: 240px; aspect-ratio: 0.78;
-  background: #FFFFFF;
+  background: var(--mn-card);
   box-shadow: 0 6px 18px -8px rgba(15,23,42,0.18), 0 0 0 1px var(--mn-line);
   padding: 16px 16px 18px;
   display: flex; flex-direction: column; gap: 12px;
@@ -843,7 +881,7 @@ textarea.mn-input { resize: vertical; min-height: 64px; font-family: 'Inter', sa
   padding: 14px 12px;
   border: 1px dashed var(--mn-line-3);
   border-radius: 10px;
-  background: white;
+  background: var(--mn-card);
 }
 .mn-compare-delta { font: 600 36px/1 "Inter Tight"; letter-spacing: -0.025em; font-variant-numeric: tabular-nums; }
 .mn-compare-row { display: flex; justify-content: space-between; width: 100%; padding: 4px 6px; font-size: 11.5px; color: var(--mn-ink-500); margin-top: 2px; }
@@ -853,7 +891,7 @@ textarea.mn-input { resize: vertical; min-height: 64px; font-family: 'Inter', sa
   width: 18px; height: 18px;
   border-radius: 4px;
   border: 1.5px solid var(--mn-line-3);
-  background: white;
+  background: var(--mn-card);
   transition: background 120ms ease, border-color 120ms ease;
 }
 .mn-checkbox.on { background: var(--mn-primary); border-color: var(--mn-primary); }
@@ -876,7 +914,7 @@ textarea.mn-input { resize: vertical; min-height: 64px; font-family: 'Inter', sa
 .mn-toggle .thumb {
   position: absolute; top: 2px; left: 2px;
   width: 16px; height: 16px; border-radius: 50%;
-  background: white;
+  background: var(--mn-card);
   box-shadow: 0 1px 3px rgba(15,23,42,0.18);
   transition: transform 200ms cubic-bezier(.2,.7,.2,1);
 }
@@ -973,7 +1011,7 @@ textarea.mn-input { resize: vertical; min-height: 64px; font-family: 'Inter', sa
 .mn-import-drop:hover { border-color: var(--mn-primary); }
 .mn-import-drop-icon {
   width: 56px; height: 56px; border-radius: 14px;
-  background: white; color: var(--mn-primary);
+  background: var(--mn-card); color: var(--mn-primary);
   display: grid; place-items: center;
   box-shadow: 0 6px 14px -6px color-mix(in srgb, var(--mn-primary) 40%, transparent);
 }
@@ -1141,7 +1179,7 @@ textarea.mn-input { resize: vertical; min-height: 64px; font-family: 'Inter', sa
 .mn-tab:last-child { border-right: 0; }
 .mn-tab:hover { background: rgba(15,23,42,0.025); }
 .mn-tab.active {
-  background: linear-gradient(180deg, var(--mn-primary-50), white);
+  background: var(--mn-card);
   border-bottom-color: var(--mn-primary);
 }
 .mn-tab-l { font: 600 14px/1.2 "Inter Tight"; letter-spacing: -0.01em; color: var(--mn-ink-900); }
@@ -1504,7 +1542,7 @@ textarea.mn-input { resize: vertical; min-height: 64px; font-family: 'Inter', sa
 .mn-runsync-check {
   width: 18px; height: 18px; border-radius: 4px;
   border: 1.5px solid var(--mn-line-3);
-  background: white;
+  background: var(--mn-card);
   display: grid; place-items: center;
   transition: background 120ms ease, border-color 120ms ease;
 }

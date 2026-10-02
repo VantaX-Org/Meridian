@@ -86,7 +86,7 @@ function ProcessGraph({
         const colour = statusColour(a.step_status);
         return (
           <g key={a.id}>
-            <rect x={a._x} y={a._y} rx="9" width="80" height="44" fill="white" stroke={colour} strokeWidth="1.5" />
+            <rect x={a._x} y={a._y} rx="9" width="80" height="44" fill="var(--mn-card)" stroke={colour} strokeWidth="1.5" />
             <text
               x={a._x + 40}
               y={a._y + 18}
@@ -253,7 +253,7 @@ export function ProcessMapPage() {
                         {b.finding_count} findings
                       </div>
                     </div>
-                    <div style={{ flex: 1, height: 10, background: "rgba(15,23,42,0.06)", borderRadius: 5, overflow: "hidden" }}>
+                    <div style={{ flex: 1, height: 10, background: "var(--mn-line)", borderRadius: 5, overflow: "hidden" }}>
                       <div
                         style={{
                           width: `${Math.min(100, Math.max(5, 100 - passRate * 100))}%`,

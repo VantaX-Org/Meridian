@@ -302,7 +302,11 @@ at repo root and the Aurora Experience Spec (Parts I–V). Tokens live in
   notifications, density/theme, user). Five workspaces in
   `frontend/lib/workspaces.ts` (Command Centre, Data, Workbench, Process,
   Admin); each tab is a page, gated by the matching `lib/nav.ts` entry.
-  Pages not yet rebuilt render inside `.mn-legacy-host` (light sheet).
+  Pages not yet rebuilt render inside `.mn-legacy-host` on the same canvas:
+  `app/globals.css` and `app/styles/meridian.css` map the shadcn, `--mn-*`
+  and `.vx-*` tokens onto Aurora under `[data-theme="dark"]`, so legacy
+  surfaces read as part of the product. Never pin `data-theme="light"` on
+  a page subtree.
 - **Token reference**: `/_design-playground/aurora` renders every token for
   visual regression. Removed at the WS8 cutover in favour of Storybook (WS2).
 

@@ -85,9 +85,9 @@ function FieldRow({
   const hasAi = showAi && contribution?.ai_recommendation;
 
   return (
-    <div className="border-b border-black/[0.06] last:border-0">
+    <div className="border-b border-border last:border-0">
       <div
-        className={`flex items-center justify-between px-4 py-3 ${hasAi ? "cursor-pointer hover:bg-black/[0.03]" : ""}`}
+        className={`flex items-center justify-between px-4 py-3 ${hasAi ? "cursor-pointer hover:bg-foreground/[0.03]" : ""}`}
         onClick={() => hasAi && setExpanded(!expanded)}
       >
         <div className="flex items-center gap-3">
@@ -193,7 +193,7 @@ function HistoryPanel({ recordId }: { recordId: string }) {
       {history.map((entry: MasterRecordHistoryEntry) => (
         <div
           key={entry.id}
-          className="flex items-start gap-3 rounded-lg border border-black/[0.06] px-3 py-2"
+          className="flex items-start gap-3 rounded-lg border border-border px-3 py-2"
         >
           <div className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-white/[0.60]">
             {entry.change_type === "promoted" ? (
@@ -286,7 +286,7 @@ function RelationshipsPanel({
               className={`flex items-center justify-between rounded-lg border px-3 py-2 ${
                 rel.ai_inferred
                   ? "border-dashed border-[#3B82F6]/30 bg-[#2563EB]/5"
-                  : "border-black/[0.06]"
+                  : "border-border"
               }`}
             >
               <div className="flex items-center gap-3">
@@ -500,7 +500,7 @@ export default function GoldenRecordDetailPage() {
       </div>
 
       {/* Confidence overview */}
-      <Card className="border-black/[0.08] bg-white/[0.70]">
+      <Card className="border-border bg-white/[0.70]">
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
             <div>
@@ -538,9 +538,9 @@ export default function GoldenRecordDetailPage() {
       )}
 
       {/* Field-level detail */}
-      <Card className="border-black/[0.08] bg-white/[0.70]">
+      <Card className="border-border bg-white/[0.70]">
         <CardContent className="p-0">
-          <div className="flex items-center justify-between border-b border-black/[0.06] px-4 py-3">
+          <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <h2 className="text-sm font-semibold text-foreground">
               Field Values ({fieldNames.length})
             </h2>
@@ -571,11 +571,11 @@ export default function GoldenRecordDetailPage() {
       </Card>
 
       {/* Relationships tab */}
-      <Card className="border-black/[0.08] bg-white/[0.70]">
+      <Card className="border-border bg-white/[0.70]">
         <CardContent className="p-0">
           <button
             onClick={() => setShowRelationships(!showRelationships)}
-            className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-black/[0.03]"
+            className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-foreground/[0.03]"
           >
             <div className="flex items-center gap-2">
               <GitBranch className="h-4 w-4 text-[#2563EB]" />
@@ -590,7 +590,7 @@ export default function GoldenRecordDetailPage() {
             )}
           </button>
           {showRelationships && (
-            <div className="border-t border-black/[0.06] px-4 py-3">
+            <div className="border-t border-border px-4 py-3">
               <RelationshipsPanel
                 domain={record.domain}
                 objectKey={record.sap_object_key}
@@ -601,11 +601,11 @@ export default function GoldenRecordDetailPage() {
       </Card>
 
       {/* History toggle */}
-      <Card className="border-black/[0.08] bg-white/[0.70]">
+      <Card className="border-border bg-white/[0.70]">
         <CardContent className="p-0">
           <button
             onClick={() => setShowHistory(!showHistory)}
-            className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-black/[0.03]"
+            className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-foreground/[0.03]"
           >
             <div className="flex items-center gap-2">
               <History className="h-4 w-4 text-muted-foreground" />
@@ -620,7 +620,7 @@ export default function GoldenRecordDetailPage() {
             )}
           </button>
           {showHistory && (
-            <div className="border-t border-black/[0.06] px-4 py-3">
+            <div className="border-t border-border px-4 py-3">
               <HistoryPanel recordId={recordId} />
             </div>
           )}
