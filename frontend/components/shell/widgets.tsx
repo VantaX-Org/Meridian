@@ -48,7 +48,7 @@ export function LocalUserButton() {
             type="button"
             title="Account"
             aria-label="Account"
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground"
+            className="aurora-topbar__avatar"
           />
         }
       >

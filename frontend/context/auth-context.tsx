@@ -44,24 +44,20 @@ export function LocalAuthProvider({ children }: { children: ReactNode }) {
   // On mount, check for stored token and validate it
   useEffect(() => {
     const stored = localStorage.getItem(TOKEN_KEY);
-    if (!stored) {
-      setIsLoading(false);
-      return;
-    }
-    apiClient
-      .get("/api/v1/auth/me", {
-        headers: { Authorization: `Bearer ${stored}` },
-      })
-      .then((res) => {
-        setToken(stored);
-        setUser(res.data.user);
-        setMustChangePassword(Boolean(res.data.must_change_password));
-      })
-      .catch(() => {
-        localStorage.removeItem(TOKEN_KEY);
-        setSessionCookie(false);
-      })
-      .finally(() => setIsLoading(false));
+    const validate = stored
+      ? apiClient
+          .get("/api/v1/auth/me", { headers: { Authorization: `Bearer ${stored}` } })
+          .then((res) => {
+            setToken(stored);
+            setUser(res.data.user);
+            setMustChangePassword(Boolean(res.data.must_change_password));
+          })
+          .catch(() => {
+            localStorage.removeItem(TOKEN_KEY);
+            setSessionCookie(false);
+          })
+      : Promise.resolve();
+    validate.finally(() => setIsLoading(false));
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {

@@ -3765,3 +3765,23 @@
   flex: 0 1 220px;
   min-width: 160px;
 }
+
+/* Account button: monogram on a raised surface, hairline ring (AA on the top bar) */
+.aurora-topbar__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: var(--aurora-elev-3-bg);
+  color: var(--aurora-fg-primary);
+  box-shadow: inset 0 0 0 1px var(--aurora-canvas-line);
+  font: 600 11px/1 var(--aurora-font-ui, inherit);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+.aurora-topbar__avatar:focus-visible {
+  outline: 2px solid var(--aurora-accent-500);
+  outline-offset: 2px;
+}

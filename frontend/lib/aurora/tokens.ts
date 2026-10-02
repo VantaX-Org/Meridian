@@ -13,7 +13,7 @@ export const ink = {
   100: "#E7ECF2", // body text on dark canvas
   200: "#C7D0DC", // secondary text on dark canvas
   300: "#99A5B8", // tertiary / muted
-  400: "#6B7A90", // subdued metadata
+  400: "#748399", // subdued metadata (4.9:1 on elev-1)
   500: "#4A5669", // disabled
   600: "#2E3847", // borders on light canvas
   700: "#1A2230", // light-canvas body text

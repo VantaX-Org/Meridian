@@ -1,0 +1,8 @@
+[
+  { "name": "command-centre", "path": "/", "heading": "Command Centre" },
+  { "name": "executive-report", "path": "/?tab=report", "heading": "Command Centre" },
+  { "name": "runs", "path": "/data?tab=runs", "heading": "Data" },
+  { "name": "workbench", "path": "/workbench", "heading": "Workbench" },
+  { "name": "process", "path": "/process?tab=readiness", "heading": "Process" },
+  { "name": "admin", "path": "/admin?tab=scoring", "heading": "Admin" }
+]
