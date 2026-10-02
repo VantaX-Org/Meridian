@@ -264,6 +264,14 @@ class TestLargeTableParsing:
         assert df.iloc[0]["PARTNER"] == "0000000000"
         assert df.iloc[0]["BU_TYPE"] == "0001"
 
+    def test_parse_rfc_result_keeps_non_breaking_spaces(self):
+        """Only the ASCII padding is removed: 'A\\xa0' and 'A' are different SAP keys."""
+        from sap.rfc import _parse_rfc_result
+
+        result = {"FIELDS": [{"FIELDNAME": "MATNR", "OFFSET": "0", "LENGTH": "8"}],
+                  "DATA": [{"WA": "A       "}, {"WA": "A\xa0\xa0     "}, {"WA": "   7    "}]}
+        assert list(_parse_rfc_result(result)["MATNR"]) == ["A", "A\xa0\xa0", "7"]
+
 
 class TestRateLimiting:
     """5. Rate limiting blocks a second call within 5 minutes from same tenant."""
