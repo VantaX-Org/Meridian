@@ -711,6 +711,32 @@ async def list_cleaning_audit(
     return {"items": items, "total": total, "page": page, "per_page": per_page}
 
 
+# ── GET /api/v1/dedup/candidates ─────────────────────────────────────────────
+
+
+@router.get("/dedup/candidates")
+async def list_all_dedup_candidates(
+    object_type: Optional[str] = None,
+    min_score: int = Query(default=60, ge=0, le=100),
+    status: str = "pending",
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Candidate pairs across every object type (the matcher keys them by SAP module)."""
+    await _set_rls(db, tenant.id)
+    where = "tenant_id = :tid AND match_score >= :ms AND status = :st"
+    params: dict[str, object] = {"tid": str(tenant.id), "ms": min_score, "st": status}
+    if object_type:
+        where += " AND object_type = :ot"
+        params["ot"] = object_type
+    result = await db.execute(
+        text(f"SELECT * FROM dedup_candidates WHERE {where} ORDER BY match_score DESC, object_type"),
+        params,
+    )
+    items = [_row_to_dict(r) for r in result.fetchall()]
+    return {"items": items, "total": len(items)}
+
+
 # ── GET /api/v1/dedup/candidates/{object_type} ───────────────────────────────
 
 

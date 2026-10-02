@@ -127,14 +127,13 @@ export async function getCleaningAudit(params: {
 
 // ── Dedup ────────────────────────────────────────────────────────────────────
 
+/** Candidate pairs across every object type (the matcher keys them by SAP module); `match_score` is 0..100. */
 export async function getDedupCandidates(params: {
-  object_type: string;
+  object_type?: string;
   min_score?: number;
   status?: string;
-}): Promise<{ items: DedupCandidate[]; total: number }> {
-  const { data } = await apiClient.get(`/api/v1/dedup/candidates/${params.object_type}`, {
-    params: { min_score: params.min_score, status: params.status },
-  });
+} = {}): Promise<{ items: DedupCandidate[]; total: number }> {
+  const { data } = await apiClient.get("/api/v1/dedup/candidates", { params });
   return data;
 }
 

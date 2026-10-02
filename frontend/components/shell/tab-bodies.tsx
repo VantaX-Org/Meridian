@@ -16,14 +16,14 @@ const named = <K extends string>(load: () => Promise<Record<K, ComponentType>>, 
 
 /** Tabs whose body is an Aurora surface — rendered on the canvas, not in the light sheet. */
 export const AURORA_TABS: ReadonlySet<string> = new Set(["/", "/executive-report", "/sync", "/issues", "/match-rules", "/business-process", "/settings/scoring", "/settings/field-mapping",
-  "/systems", "/upload", "/versions", "/admin"]);
+  "/systems", "/upload", "/versions", "/admin", "/findings", "/cleaning", "/exceptions", "/dedup"]);
 
 export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
   "/": named(() => import("@/components/command-centre/overview"), "CommandCentreOverview"),
   "/executive-report": named(() => import("@/components/command-centre/executive-report"), "ExecutiveReport"),
   "/command-centre": named(() => import("@/app/(dashboard)/command-centre/live"), "LiveOperationsPage"),
   "/analytics": page(() => import("@/app/(dashboard)/analytics/page")),
-  "/findings": page(() => import("@/app/(dashboard)/findings/page")),
+  "/findings": named(() => import("@/components/command-centre/findings"), "FindingsSurface"),
   "/issues": page(() => import("@/app/(dashboard)/issues/page")),
   "/notifications": page(() => import("@/app/(dashboard)/notifications/page")),
 
@@ -38,9 +38,9 @@ export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
   "/workbench": named(() => import("@/app/(dashboard)/workbench/queue"), "MyQueuePage"),
   "/stewardship": page(() => import("@/app/(dashboard)/stewardship/page")),
   "/stewardship/metrics": page(() => import("@/app/(dashboard)/stewardship/metrics/page")),
-  "/cleaning": page(() => import("@/app/(dashboard)/cleaning/page")),
-  "/exceptions": page(() => import("@/app/(dashboard)/exceptions/page")),
-  "/dedup": page(() => import("@/app/(dashboard)/dedup/page")),
+  "/cleaning": named(() => import("@/components/workbench/cleaning"), "CleaningSurface"),
+  "/exceptions": named(() => import("@/components/workbench/exceptions"), "ExceptionsSurface"),
+  "/dedup": named(() => import("@/components/workbench/dedup"), "DedupSurface"),
   "/ai/rules": page(() => import("@/app/(dashboard)/ai/rules/page")),
   "/golden-records": page(() => import("@/app/(dashboard)/golden-records/page")),
   "/match-rules": named(() => import("@/components/workbench/match-rules"), "MatchRulesSurface"),
