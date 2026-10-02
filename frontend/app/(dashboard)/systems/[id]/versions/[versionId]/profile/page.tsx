@@ -178,7 +178,11 @@ export default function VersionProfilePage() {
     queryKey: ["version-profile", id, versionId, objectParam],
     queryFn: () => getVersionProfile(id, versionId, objectParam || undefined),
   });
-  const { data: versions = [] } = useQuery({ queryKey: ["system-versions", id], queryFn: () => getSystemVersions(id) });
+  const { data: versions = [] } = useQuery({
+    queryKey: ["system-versions", id],
+    queryFn: () => getSystemVersions(id),
+    select: (d) => d.versions,
+  });
   const version = versions.find((v) => v.id === versionId);
   const object = data?.object ?? (objectParam || null);
   const tables = data?.tables ?? [];
