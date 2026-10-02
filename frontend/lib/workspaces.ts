@@ -92,6 +92,7 @@ export const WORKSPACES: readonly Workspace[] = [
     tabs: [
       { id: "users", label: "Users & audit", href: "/admin" },
       { id: "settings", label: "Settings", href: "/settings" },
+      { id: "scoring", label: "Scoring & alerts", href: "/settings/scoring", anyOf: ["view"] },
       { id: "rules", label: "Rules", href: "/settings/rules" },
       { id: "field-mapping", label: "Field mapping", href: "/settings/field-mapping" },
       { id: "ai", label: "AI", href: "/settings/ai" },

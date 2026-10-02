@@ -15,7 +15,7 @@ const named = <K extends string>(load: () => Promise<Record<K, ComponentType>>, 
   dynamic(() => load().then((m) => ({ default: m[key] })), { ssr: false, loading });
 
 /** Tabs whose body is an Aurora surface — rendered on the canvas, not in the light sheet. */
-export const AURORA_TABS: ReadonlySet<string> = new Set(["/", "/executive-report", "/sync", "/issues", "/match-rules", "/business-process"]);
+export const AURORA_TABS: ReadonlySet<string> = new Set(["/", "/executive-report", "/sync", "/issues", "/match-rules", "/business-process", "/settings/scoring", "/settings/field-mapping"]);
 
 export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
   "/": named(() => import("@/components/command-centre/overview"), "CommandCentreOverview"),
@@ -55,7 +55,8 @@ export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
   "/admin": named(() => import("@/app/(dashboard)/admin/users"), "UsersAuditPage"),
   "/settings": page(() => import("@/app/(dashboard)/settings/page")),
   "/settings/rules": page(() => import("@/app/(dashboard)/settings/rules/page")),
-  "/settings/field-mapping": page(() => import("@/app/(dashboard)/settings/field-mapping/page")),
+  "/settings/scoring": named(() => import("@/components/admin/scoring"), "ScoringSettings"),
+  "/settings/field-mapping": named(() => import("@/components/admin/field-mapping"), "FieldMappingSettings"),
   "/settings/ai": page(() => import("@/app/(dashboard)/settings/ai/page")),
   "/settings/licence": page(() => import("@/app/(dashboard)/settings/licence/page")),
   "/contracts": page(() => import("@/app/(dashboard)/contracts/page")),

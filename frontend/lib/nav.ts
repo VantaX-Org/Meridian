@@ -168,6 +168,7 @@ const OFF_NAV_TITLES: Record<string, string> = {
   "/command-centre": "Live operations",
   "/executive-report": "Executive report",
   "/match-rules": "Match rules",
+  "/settings/scoring": "Scoring & alerts",
   "/workbench/report": "Record report",
   "/connectivity": "Connectivity",
   "/run-sync": "Run Sync",
