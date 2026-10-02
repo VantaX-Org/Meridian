@@ -11,7 +11,7 @@ Coordinates:
 import json
 import logging
 import uuid
-from typing import Optional
+from typing import Callable, Optional
 
 import pandas as pd
 from sqlalchemy import text
@@ -186,13 +186,15 @@ class ConnectivityManager:
     # -- Extraction (rules-driven, per-table) -----------------------------------
 
     def extract(self, system_id: str, modules: list[str], max_rows: int = 0,
-                scope: Optional[dict] = None) -> tuple[dict[str, pd.DataFrame], list[dict]]:
+                scope: Optional[dict] = None,
+                progress: Optional[Callable[[dict], None]] = None) -> tuple[dict[str, pd.DataFrame], list[dict]]:
         """Extract everything the rules of ``modules`` need from one system.
 
         Returns ``({TABLE: frame with TABLE.FIELD columns}, coverage)``. The
         coverage list says, per table, whether it was read live, how many rows,
         whether the transactional window truncated it, or why it failed —
-        nothing is silently skipped.
+        nothing is silently skipped. ``progress`` receives the table being read
+        and an overall percent after every page.
         """
         import os
 
@@ -227,7 +229,23 @@ class ConnectivityManager:
                 # reconciliation: an unfiltered read must return exactly SAP's own row count
                 counts = connector.count_rows([t for t, p in plans.items() if not p.where and not p.via]) \
                     if hasattr(connector, "count_rows") else {}
-                for table in read_order(plans):
+                order = list(read_order(plans))
+                # ponytail: tables without a SAP row count (filtered reads) weigh 1000 rows
+                weight = {tb: counts.get(tb) or 1000 for tb in order}
+                total_weight, done_weight = sum(weight.values()) or 1, 0
+
+                def report(table: str, groups_done: int = 0, groups: int = 1, rows: int = 0) -> None:
+                    if not progress:
+                        return
+                    w = weight[table]
+                    within = (groups_done + min(1.0, rows / w)) / max(groups, 1)
+                    progress({"table": table, "tables_done": i, "tables_total": len(order),
+                              "rows_read": rows, "table_rows": counts.get(table),
+                              "percent": min(99, int(100 * (done_weight + w * within) / total_weight))})
+
+                for i, table in enumerate(order):
+                    done_weight = sum(weight[x] for x in order[:i])
+                    report(table)
                     plan = plans[table]
                     t = dictionary.table(table)
                     cols = [c for c in plan.columns() if t is not None and c in t.fields]
@@ -241,18 +259,22 @@ class ConnectivityManager:
                             raw[table] = df
                             frames[table] = df.rename(columns={c: f"{table}.{c}" for c in df.columns})
                         continue
+                    logger.info(f"extract {system_id}: reading {table} ({len(cols)} fields)")
                     try:
                         if plan.via:
                             wheres = via_filters(table, plan.via, raw.get(plan.via))
                             parts = [connector.read_table_full(table, cols, list(t.keys),
-                                     where=" AND ".join(x for x in (w, plan.where) if x), max_rows=max_rows)
+                                     where=" AND ".join(x for x in (w, plan.where) if x), max_rows=max_rows,
+                                     on_progress=lambda g, n, rows: report(table, g, n, rows))
                                      for w in wheres]
                             df = pd.concat(parts, ignore_index=True) if parts else pd.DataFrame(columns=cols)
                         else:
                             df = connector.read_table_full(table, cols, list(t.keys), where=plan.where,
-                                                           max_rows=max_rows)
+                                                           max_rows=max_rows,
+                                                           on_progress=lambda g, n, rows: report(table, g, n, rows))
                     except SAPConnectorError as e:
                         coverage.append({"table": table, "status": "failed", "detail": str(e)[:300]})
+                        logger.warning(f"extract {system_id}: {table} failed: {str(e)[:300]}")
                         continue
                     # RFC_READ_TABLE pages without a sort order: pages can overlap. Repeated
                     # rows are dropped; a key that still repeats means the read is inconsistent.
@@ -273,6 +295,7 @@ class ConnectivityManager:
                     if dup_keys:
                         entry["duplicate_keys"] = dup_keys
                     coverage.append(entry)
+                    logger.info(f"extract {system_id}: {table} {len(df)} rows, complete={entry['complete']}")
             elif system_type == "successfactors":
                 frames, coverage = self._extract_successfactors(connector, modules, dictionary, system_id)
             else:

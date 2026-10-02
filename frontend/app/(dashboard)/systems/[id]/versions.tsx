@@ -24,10 +24,12 @@ import {
   getSystemVersions,
   getTrends,
   startDownload,
+  type DownloadProgress,
   type DownloadScope,
   type ScopeKey,
   type TrendFlag,
 } from "@/lib/api/system-objects";
+import { Progress } from "@/components/ui/progress";
 import { formatModuleName, relativeTime } from "@/lib/format";
 
 const th = "px-3 py-2 text-left font-medium text-[var(--aurora-fg-tertiary)]";
@@ -190,18 +192,28 @@ export function ObjectsPanel({ id, onDownloaded }: { id: string; onDownloaded: (
 
 export function VersionsTab({ id, canAnalyse }: { id: string; canAnalyse: boolean }) {
   const qc = useQueryClient();
-  const { data: versions = [] } = useQuery({
+  const { data } = useQuery({
     queryKey: ["system-versions", id],
     queryFn: () => getSystemVersions(id),
-    refetchInterval: (q) => ((q.state.data ?? []).some((v) => ["pending", "running"].includes(v.status)) ? 4000 : false),
+    refetchInterval: (q) => {
+      const d = q.state.data;
+      const busy = ["queued", "running"].includes(d?.download?.status ?? "") ||
+        (d?.versions ?? []).some((v) => ["pending", "running"].includes(v.status));
+      return busy ? 4000 : false;
+    },
   });
+  const versions = data?.versions ?? [];
+  const download = data?.download ?? null;
   const analyse = useMutation({
     mutationFn: analyseVersion,
     onSuccess: () => { toast.success("Analysis started"); qc.invalidateQueries({ queryKey: ["system-versions", id] }); },
     onError: (e) => toast.error((e as Error).message || "Analysis refused"),
   });
-  if (!versions.length) return <Text tone="muted">No versions yet — choose objects above and download them.</Text>;
+  const bar = download && download.status !== "complete" ? <DownloadBar d={download} /> : null;
+  if (!versions.length) return bar ?? <Text tone="muted">No versions yet — choose objects above and download them.</Text>;
   return (
+    <>
+    {bar}
     <table className="w-full text-[13px]">
       <thead><tr>
         <th className={th}>Downloaded</th><th className={th}>Label</th><th className={th}>Objects · records</th>
@@ -301,6 +313,27 @@ export function VersionsTab({ id, canAnalyse }: { id: string; canAnalyse: boolea
         ))}
       </tbody>
     </table>
+    </>
+  );
+}
+
+function DownloadBar({ d }: { d: DownloadProgress }) {
+  if (d.status === "failed")
+    return <Banner tone="danger" title="Download failed">{d.error ?? "The extraction stopped."}</Banner>;
+  const pct = d.percent ?? 0;
+  const detail =
+    d.step === "reading" && d.table
+      ? `Reading ${d.table} (table ${(d.tables_done ?? 0) + 1} of ${d.tables_total})` +
+        (d.rows_read ? ` · ${d.rows_read.toLocaleString()}${d.table_rows ? ` of ${d.table_rows.toLocaleString()}` : ""} rows` : "")
+      : d.step === "saving" ? "Saving the downloaded tables" : "Connecting to SAP";
+  return (
+    <div className="mb-4 rounded border border-[var(--aurora-canvas-line)] p-3">
+      <Stack direction="row" justify="between">
+        <Text>Downloading {d.label ?? d.objects.map(formatModuleName).join(", ")} — {detail}</Text>
+        <Text tone="muted">{pct}% · started {relativeTime(d.started_at)}</Text>
+      </Stack>
+      <Progress value={pct} className="mt-2" />
+    </div>
   );
 }
 

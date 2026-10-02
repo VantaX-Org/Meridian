@@ -11,6 +11,7 @@ import io
 from datetime import datetime, timezone
 import json
 import logging
+import os
 import uuid
 
 from celery.exceptions import SoftTimeLimitExceeded
@@ -22,12 +23,20 @@ from workers.db import get_sync_engine
 
 logger = logging.getLogger("meridian.workers.extraction")
 
+# A full live read of a large object takes hours over RFC_READ_TABLE.
+EXTRACT_TIME_LIMIT = int(os.getenv("MERIDIAN_EXTRACT_TIME_LIMIT", "21600"))
+
+
+def progress_key(system_id) -> str:
+    """Redis key of the running download's progress (GET /systems/{id}/versions)."""
+    return f"extract:{system_id}"
+
 
 @celery_app.task(
     bind=True,
     name="workers.tasks.run_extraction.run_extraction",
-    soft_time_limit=3000,
-    time_limit=3060,
+    soft_time_limit=EXTRACT_TIME_LIMIT,
+    time_limit=EXTRACT_TIME_LIMIT + 60,
     acks_late=True,
     reject_on_worker_lost=True,
 )
@@ -39,8 +48,17 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
     record counts; analysis runs now when ``analyse`` else on request
     (POST /api/v1/versions/{id}/analyse). Every download is a new version.
     """
+    from api.services.task_progress import publish_progress
+
     engine = get_sync_engine()
     version_id = str(uuid.uuid4())
+    started = {"job_id": self.request.id, "label": label, "objects": modules,
+               "started_at": datetime.now(timezone.utc).isoformat()}
+
+    def progress(p: dict, ttl: int = EXTRACT_TIME_LIMIT + 60) -> None:
+        publish_progress(progress_key(system_id), {**started, "status": "running", **p}, ttl)
+
+    progress({"step": "connecting", "percent": 0})
     try:
         with Session(engine) as session:
             session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
@@ -50,7 +68,9 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
             if sync_type == "config":
                 return manager.sync_config(system_id, modules)
 
-            frames, coverage = manager.extract(system_id, modules, scope=scope)
+            frames, coverage = manager.extract(system_id, modules, scope=scope,
+                                               progress=lambda p: progress({"step": "reading", **p}))
+            progress({"step": "saving", "percent": 99})
             # refresh the live configuration the value rules compare against
             from workers.tasks.run_discovery import _store_config
             for c in coverage:
@@ -62,6 +82,7 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
                            if any(c["table"] == t and c.get("purpose", "data") == "data" for c in coverage)}
             if not data_tables:
                 _mark_modules(session, tenant_id, system_id, modules, "failed", 0)
+                progress({"status": "failed", "error": "No data tables were read"}, 3600)
                 logger.error(f"Extraction from {system_id} produced no data tables: {coverage}")
                 return {"status": "failed", "coverage": coverage}
 
@@ -101,6 +122,7 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
             _mark_modules(session, tenant_id, system_id, modules, "partial" if failed else "success",
                           int(sum(len(d) for d in data_tables.values())))
 
+        progress({"status": "complete", "percent": 100, "version_id": version_id}, 300)
         if analyse:
             from workers.tasks.run_checks import run_checks
             run_checks.delay(version_id, tenant_id, prefix)
@@ -109,10 +131,14 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
 
     except SoftTimeLimitExceeded:
         logger.error("Extraction task timed out")
+        progress({"status": "failed", "error": f"Timed out after {EXTRACT_TIME_LIMIT // 60} minutes"}, 3600)
         with Session(engine) as session:
             session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
             _mark_modules(session, tenant_id, system_id, modules, "failed", 0)
         return {"status": "failed", "error": "timeout"}
+    except Exception as e:
+        progress({"status": "failed", "error": str(e)[:300]}, 3600)
+        raise
 
 
 def _mark_modules(session, tenant_id, system_id, modules, status, rows) -> None:

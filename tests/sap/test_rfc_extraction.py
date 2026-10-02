@@ -35,6 +35,11 @@ def test_read_table_full_pages_and_splits_wide_tables():
               if fm == "RFC_READ_TABLE" and p.get("NO_DATA") != "X"}
     assert len(groups) > 1  # split into several column groups
     assert out.set_index("MATNR").loc["000000000000000003", "BISMT"] == "V3"[: d.field("MARA", "BISMT").length]
+    # progress is reported per page, per column group, ending on the full row count
+    seen = []
+    conn.read_table_full("MARA", cols, ["MATNR"], page_size=7, on_progress=lambda *a: seen.append(a))
+    assert seen[-1][2] == 20
+    assert {g for g, n, _ in seen} == set(range(seen[0][1]))
 
 
 def test_live_snapshot_reads_dictionary_and_customer_tables():

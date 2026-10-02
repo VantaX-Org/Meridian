@@ -91,8 +91,28 @@ export async function startDownload(
   return (await apiClient.post(`${base(id)}/downloads`, body)).data;
 }
 
-export async function getSystemVersions(id: string): Promise<SystemVersion[]> {
-  return (await apiClient.get(`${base(id)}/versions`)).data.versions;
+/** The download in flight for a system (or one that just finished or failed). */
+export interface DownloadProgress {
+  status: "queued" | "running" | "complete" | "failed";
+  job_id: string;
+  label: string | null;
+  objects: string[];
+  started_at: string;
+  step?: "connecting" | "reading" | "saving";
+  table?: string;
+  tables_done?: number;
+  tables_total?: number;
+  rows_read?: number;
+  table_rows?: number | null;
+  percent?: number;
+  error?: string;
+  version_id?: string;
+}
+
+export async function getSystemVersions(
+  id: string
+): Promise<{ versions: SystemVersion[]; download: DownloadProgress | null }> {
+  return (await apiClient.get(`${base(id)}/versions`)).data;
 }
 
 export async function getTrends(

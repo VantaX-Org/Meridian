@@ -51,11 +51,14 @@ def check_all_systems(self):
     """Check health of all active systems across all tenants."""
     engine = get_sync_engine()
 
+    # sap_systems is under forced RLS: enumerate tenants, then read each one's systems.
+    systems = []
     with Session(engine) as session:
-        result = session.execute(
-            text("SELECT id, tenant_id FROM sap_systems WHERE is_active = true")
-        )
-        systems = result.fetchall()
+        for (tid,) in session.execute(text("SELECT id FROM tenants")).fetchall():
+            session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tid)})
+            systems += session.execute(
+                text("SELECT id, tenant_id FROM sap_systems WHERE is_active = true")
+            ).fetchall()
 
     for system_id, tenant_id in systems:
         try:
