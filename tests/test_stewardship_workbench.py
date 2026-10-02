@@ -313,7 +313,7 @@ def test_frontend_stewardship_metrics_page_exists():
 # on the workbench where tasks are actually resolved.
 def test_frontend_stewardship_keyboard_shortcuts():
     """Workbench page implements keyboard shortcuts A, R, N, E."""
-    path = Path("frontend/app/(dashboard)/workbench/page.tsx")
+    path = Path("frontend/app/(dashboard)/workbench/queue.tsx")
     content = path.read_text()
     for key in ['"a"', '"r"', '"n"', '"e"', '"A"', '"R"', '"N"', '"E"']:
         assert key in content, f"Missing keyboard shortcut: {key}"
@@ -323,7 +323,7 @@ def test_frontend_stewardship_override_modal():
     """Workbench page has an override dialog that rejects an AI recommendation
     with a required correction reason. Implemented inline as a Dialog gated by
     `overrideOpen` rather than a separate OverrideModal component."""
-    path = Path("frontend/app/(dashboard)/workbench/page.tsx")
+    path = Path("frontend/app/(dashboard)/workbench/queue.tsx")
     content = path.read_text()
     assert "overrideOpen" in content
     assert "Reject with reason" in content
