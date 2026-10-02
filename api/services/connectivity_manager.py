@@ -241,6 +241,7 @@ class ConnectivityManager:
                             raw[table] = df
                             frames[table] = df.rename(columns={c: f"{table}.{c}" for c in df.columns})
                         continue
+                    logger.info(f"extract {system_id}: reading {table} ({len(cols)} fields)")
                     try:
                         if plan.via:
                             wheres = via_filters(table, plan.via, raw.get(plan.via))
@@ -253,6 +254,7 @@ class ConnectivityManager:
                                                            max_rows=max_rows)
                     except SAPConnectorError as e:
                         coverage.append({"table": table, "status": "failed", "detail": str(e)[:300]})
+                        logger.warning(f"extract {system_id}: {table} failed: {str(e)[:300]}")
                         continue
                     # RFC_READ_TABLE pages without a sort order: pages can overlap. Repeated
                     # rows are dropped; a key that still repeats means the read is inconsistent.
@@ -273,6 +275,7 @@ class ConnectivityManager:
                     if dup_keys:
                         entry["duplicate_keys"] = dup_keys
                     coverage.append(entry)
+                    logger.info(f"extract {system_id}: {table} {len(df)} rows, complete={entry['complete']}")
             elif system_type == "successfactors":
                 frames, coverage = self._extract_successfactors(connector, modules, dictionary, system_id)
             else:
