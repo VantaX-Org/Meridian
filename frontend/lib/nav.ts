@@ -78,7 +78,7 @@ export interface NavGroup {
 }
 
 /** Any permission that opens at least one settings page or admin tool. */
-const SETTINGS_PERMISSIONS = [
+export const SETTINGS_PERMISSIONS = [
   "manage_rules",
   "manage_field_mappings",
   "manage_llm",

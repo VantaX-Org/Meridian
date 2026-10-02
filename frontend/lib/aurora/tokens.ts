@@ -25,11 +25,11 @@ export const ink = {
 /** §5.1.2 — Canvas (backgrounds). Dark is default; light is alternative. */
 export const canvas = {
   dark: {
-    base: "#0A0E1A", // product canvas — matches ink.900
-    raised: "#111726", // cards, drawers
-    elevated: "#172034", // popovers, command palette
-    overlay: "#1E2A42", // hover / selected
-    line: "#2A3654", // dividers
+    base: "#060910", // product canvas — graphite-navy, one stop below ink.900
+    raised: "#0B1019", // cards, drawers
+    elevated: "#111827", // popovers, command palette
+    overlay: "#16203A", // hover / selected
+    line: "#1F2B45", // hairline dividers
   },
   light: {
     base: "#F7F8FA", // matches ink.50
@@ -46,21 +46,32 @@ export const canvas = {
  * and the verdict halo gradient.
  */
 export const accent = {
-  50: "#EAF3FE",
-  100: "#CAE0FC",
-  200: "#8FC1F8",
-  300: "#549FF2",
-  400: "#2980E8",
-  500: "#0057D2", // primary
-  600: "#0048AD",
-  700: "#003A8C",
-  800: "#002D6F",
-  900: "#001F50",
+  50: "#EAF2FF",
+  100: "#CCDFFF",
+  200: "#99BFFF",
+  300: "#7FB0FF",
+  400: "#4F93FF",
+  500: "#2B7BFF", // primary — electric blue, reads as live on graphite
+  600: "#1E5FD6",
+  700: "#174AAE",
+  800: "#12397F",
+  900: "#0C2756",
   /** Selected-state fills derived from accent.500 — used by chips,
       filter pills, and any data-selected="true" surface. Separate
       variables keep call sites free of raw rgba() drift. */
-  selectedBg: "rgba(0, 87, 210, 0.18)",
-  selectedBorder: "rgba(0, 87, 210, 0.32)",
+  selectedBg: "rgba(43, 123, 255, 0.18)",
+  selectedBorder: "rgba(43, 123, 255, 0.36)",
+} as const;
+
+/**
+ * Signal — the one colour reserved for *in-flight* state: a running job,
+ * a live stream, a connection test under way. Never for status outcomes
+ * (that is `status`), never for branding. Cyan on graphite reads as live.
+ */
+export const signal = {
+  500: "#22D3EE",
+  bg: "rgba(34, 211, 238, 0.12)",
+  border: "rgba(34, 211, 238, 0.36)",
 } as const;
 
 /**
@@ -70,24 +81,24 @@ export const accent = {
  */
 export const status = {
   success: {
-    500: "#0B7341",
-    bg: "rgba(11, 115, 65, 0.12)",
-    border: "rgba(11, 115, 65, 0.32)",
+    500: "#27C281",
+    bg: "rgba(39, 194, 129, 0.12)",
+    border: "rgba(39, 194, 129, 0.34)",
   },
   warning: {
-    500: "#C78420",
-    bg: "rgba(199, 132, 32, 0.12)",
-    border: "rgba(199, 132, 32, 0.32)",
+    500: "#F2B134",
+    bg: "rgba(242, 177, 52, 0.12)",
+    border: "rgba(242, 177, 52, 0.34)",
   },
   danger: {
-    500: "#BB0000",
-    bg: "rgba(187, 0, 0, 0.14)",
-    border: "rgba(187, 0, 0, 0.36)",
+    500: "#FF4D4F",
+    bg: "rgba(255, 77, 79, 0.14)",
+    border: "rgba(255, 77, 79, 0.38)",
   },
   info: {
-    500: "#0057D2",
-    bg: "rgba(0, 87, 210, 0.10)",
-    border: "rgba(0, 87, 210, 0.30)",
+    500: "#2B7BFF",
+    bg: "rgba(43, 123, 255, 0.10)",
+    border: "rgba(43, 123, 255, 0.30)",
   },
 } as const;
 
