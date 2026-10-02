@@ -42,6 +42,18 @@ def test_read_table_full_pages_and_splits_wide_tables():
     assert {g for g, n, _ in seen} == set(range(seen[0][1]))
 
 
+def test_read_table_full_pages_by_key_ranges_without_deep_skips():
+    # one material with more rows than a page, many with a few: every row once, no deep ROWSKIPS
+    matnr = ["000000000000000001"] * 12 + [f"{i:018d}" for i in range(2, 40) for _ in range(3)]
+    df = pd.DataFrame({"MATNR": matnr, "WERKS": [f"{i:04d}" for i in range(len(matnr))], "LABST": "1"})
+    conn = FakeRFCConnector({"MARD": df.sample(frac=1, random_state=1)})  # no sort order, like SAP
+    out = conn.read_table_full("MARD", ["MATNR", "WERKS", "LABST"], ["MATNR", "WERKS"], where="LABST = '1'",
+                               page_size=5)
+    assert len(out) == len(df) and not out.duplicated(["MATNR", "WERKS"]).any()
+    skips = [p.get("ROWSKIPS", 0) for fm, p in conn._conn.calls if fm == "RFC_READ_TABLE"]
+    assert max(skips) <= 10  # only inside the one oversized key value
+
+
 def test_live_snapshot_reads_dictionary_and_customer_tables():
     tadir = pd.DataFrame({"PGMID": ["R3TR", "R3TR"], "OBJECT": ["TABL", "TABL"], "OBJ_NAME": ["ZMM_EXT", "LFA1"]})
     dd02l = pd.DataFrame({"TABNAME": ["ZMM_EXT", "LFA1"], "AS4LOCAL": ["A", "A"], "TABCLASS": ["TRANSP", "TRANSP"],
