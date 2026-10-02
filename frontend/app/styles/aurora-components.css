@@ -3752,3 +3752,16 @@
   .aurora-app-shell__rail, .aurora-app-shell__topbar, .aurora-hub__bar { display: none !important; }
   .aurora-app-shell { display: block; background: #fff; color: #000; }
 }
+
+.aurora-page {
+  padding: var(--aurora-space-6);
+}
+@media (max-width: 720px) {
+  .aurora-page { padding: var(--aurora-space-3); }
+}
+
+/* Filter rows: controls share the line instead of each taking the full width. */
+.aurora-filters > * {
+  flex: 0 1 220px;
+  min-width: 160px;
+}

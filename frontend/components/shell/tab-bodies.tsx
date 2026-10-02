@@ -15,7 +15,7 @@ const named = <K extends string>(load: () => Promise<Record<K, ComponentType>>, 
   dynamic(() => load().then((m) => ({ default: m[key] })), { ssr: false, loading });
 
 /** Tabs whose body is an Aurora surface — rendered on the canvas, not in the light sheet. */
-export const AURORA_TABS: ReadonlySet<string> = new Set(["/", "/executive-report", "/sync"]);
+export const AURORA_TABS: ReadonlySet<string> = new Set(["/", "/executive-report", "/sync", "/issues", "/match-rules"]);
 
 export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
   "/": named(() => import("@/components/command-centre/overview"), "CommandCentreOverview"),
@@ -42,6 +42,7 @@ export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
   "/dedup": page(() => import("@/app/(dashboard)/dedup/page")),
   "/ai/rules": page(() => import("@/app/(dashboard)/ai/rules/page")),
   "/golden-records": page(() => import("@/app/(dashboard)/golden-records/page")),
+  "/match-rules": named(() => import("@/components/workbench/match-rules"), "MatchRulesSurface"),
   "/glossary": page(() => import("@/app/(dashboard)/glossary/page")),
   "/reports": page(() => import("@/app/(dashboard)/reports/page")),
 

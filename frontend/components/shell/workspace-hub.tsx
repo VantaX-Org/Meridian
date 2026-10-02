@@ -23,7 +23,8 @@ export function WorkspaceHub({ id, landing = false }: { id: WorkspaceId; landing
   const gate = useNavGate();
   const workspace = visibleWorkspaces(gate).find((w) => w.id === id);
   const [tabParam, setTab] = useUrlState("tab", "");
-  const active = workspace?.tabs.find((t) => t.id === tabParam) ?? workspace?.tabs[0];
+  const tabs = workspace?.tabs.filter((t) => !t.hidden) ?? [];
+  const active = tabs.find((t) => t.id === tabParam) ?? tabs[0];
 
   // First arrival at "/" in this browser session goes to the role's own workspace.
   useEffect(() => {
@@ -47,7 +48,7 @@ export function WorkspaceHub({ id, landing = false }: { id: WorkspaceId; landing
         <Text as="h1" variant="display-sm" className="aurora-hub__title">{workspace.label}</Text>
         <Tabs
           ariaLabel={`${workspace.label} tabs`}
-          items={workspace.tabs.map((t) => ({ id: t.id, label: t.label }))}
+          items={tabs.map((t) => ({ id: t.id, label: t.label }))}
           value={active.id}
           onValueChange={setTab}
         />

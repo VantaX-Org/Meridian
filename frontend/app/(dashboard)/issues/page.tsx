@@ -23,7 +23,6 @@ import {
   type AuroraColumnMeta,
   type ChipTone,
 } from "@/components/aurora";
-import { PageHead } from "@/components/meridian/atoms";
 import {
   commentIssue,
   exportIssues,
@@ -164,12 +163,12 @@ function IssuesWorkList() {
   const modules = Array.from(new Set((data?.items ?? []).map((i) => i.module).concat(filter.module ? [filter.module] : [])));
 
   return (
-    <div data-theme="light" className="space-y-6">
-      <PageHead
-        title="Failing records"
-        route="Quality · /issues"
-        sub="Every failing SAP record, per check, tracked across versions. A later version that evaluates the record and finds it passing resolves it automatically; if it fails again it re-opens."
-        actions={can("export") ? (
+    <div className="aurora-page space-y-6">
+      <Stack direction="row" gap={3} align="center" className="justify-between">
+        <Text variant="text-small" tone="secondary">
+          Every failing SAP record, per check, tracked across versions. A later version that evaluates the record and finds it passing resolves it automatically; if it fails again it re-opens.
+        </Text>
+        {can("export") ? (
           <Stack direction="row" gap={2}>
             {(["xlsx", "csv"] as const).map((f) => (
               <Button key={f} size="sm" variant="secondary" leadingIcon={<Download size={14} />} disabled={exporting.isPending}
@@ -178,14 +177,14 @@ function IssuesWorkList() {
               </Button>
             ))}
           </Stack>
-        ) : undefined}
-      />
+        ) : null}
+      </Stack>
 
       <Panel>
         <Stack gap={4}>
           <Tabs<IssueStatus> ariaLabel="Failing record status" value={filter.status ?? "open"} onValueChange={(s) => set({ status: s })}
             items={STATUSES.map((s) => ({ id: s.id, label: s.label, count: counts[s.id] ?? 0 }))} />
-          <Stack direction="row" gap={2} wrap align="center">
+          <Stack direction="row" gap={2} wrap align="center" className="aurora-filters">
             <Select placeholder="All objects" value={filter.module ?? ""} aria-label="Object"
               options={modules.map((m) => ({ value: m, label: formatModuleName(m) }))} onValueChange={(v) => set({ module: v || undefined })} />
             <Select placeholder="All severities" value={filter.severity ?? ""} aria-label="Severity"
@@ -273,9 +272,12 @@ function IssueDrawer({ id, onClose, canComment }: { id: string | null; onClose: 
             <Text variant="text-small" tone="muted">
               {formatModuleName(i.module)}{i.grain ? ` · evaluated on ${i.grain}` : ""} · first seen {relativeTime(i.first_seen_at)} · last failing {relativeTime(i.last_seen_at)}
             </Text>
-            <Link className="text-[13px] underline" href={`/findings?${new URLSearchParams({ check_id: i.check_id, version_id: i.last_seen_version, module: i.module })}`}>
-              Open the finding
-            </Link>
+            <Stack direction="row" gap={3}>
+              <Link className="aurora-link text-[13px]" href={`/workbench/report?issue=${i.id}`}>Open the record report</Link>
+              <Link className="aurora-link text-[13px]" href={`/findings?${new URLSearchParams({ check_id: i.check_id, version_id: i.last_seen_version, module: i.module })}`}>
+                Open the finding
+              </Link>
+            </Stack>
           </Stack>
           <Stack gap={2}>
             <Text className="font-semibold">Version by version</Text>

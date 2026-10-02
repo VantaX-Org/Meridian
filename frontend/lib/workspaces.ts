@@ -23,6 +23,8 @@ export interface WorkspaceTab {
   href: string;
   /** Only for pages that have no nav entry. */
   anyOf?: readonly string[];
+  /** A full page under the workspace (deep-linked, not a tab button). */
+  hidden?: boolean;
 }
 
 export interface Workspace {
@@ -42,7 +44,6 @@ export const WORKSPACES: readonly Workspace[] = [
       { id: "live", label: "Live operations", href: "/command-centre" },
       { id: "analytics", label: "Trends", href: "/analytics" },
       { id: "findings", label: "Findings", href: "/findings" },
-      { id: "issues", label: "Failing records", href: "/issues" },
       { id: "notifications", label: "Notifications", href: "/notifications" },
     ],
   },
@@ -61,6 +62,8 @@ export const WORKSPACES: readonly Workspace[] = [
   {
     id: "workbench", label: "Workbench", href: "/workbench", shortcut: "⌘3",
     tabs: [
+      { id: "triage", label: "Triage", href: "/issues" },
+      { id: "record", label: "Record report", href: "/workbench/report", hidden: true },
       { id: "queue", label: "My queue", href: "/workbench" },
       { id: "team", label: "Team workload", href: "/stewardship" },
       { id: "metrics", label: "Steward metrics", href: "/stewardship/metrics", anyOf: ["assign"] },
@@ -70,6 +73,7 @@ export const WORKSPACES: readonly Workspace[] = [
       { id: "ai-rules", label: "AI rule review", href: "/ai/rules" },
       { id: "golden", label: "Golden records", href: "/golden-records" },
       { id: "glossary", label: "Glossary", href: "/glossary" },
+      { id: "match-rules", label: "Match rules", href: "/match-rules" },
       { id: "reports", label: "Reports", href: "/reports" },
     ],
   },
@@ -98,6 +102,9 @@ export const WORKSPACES: readonly Workspace[] = [
 ];
 
 export const HUB_ROUTES: ReadonlySet<string> = new Set(WORKSPACES.map((w) => w.href).concat("/command-centre"));
+
+/** Non-hub pages built on Aurora — rendered on the canvas, not in the light sheet. */
+export const AURORA_PAGES: readonly string[] = ["/workbench/report"];
 
 /** Where each role lands after sign-in — the workspace built for their job. */
 export const LANDING: Readonly<Record<Role, string>> = {

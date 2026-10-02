@@ -155,7 +155,7 @@ export function ExecutiveReport() {
                       <td className="aurora-number">{r.blocked_transactions.join(", ") || "—"}</td>
                       <td>
                         {r.blocking_findings.slice(0, 3).map((f) => (
-                          <Link key={f.check_id} className="aurora-link aurora-exec__finding" href={`/?tab=issues&check_id=${encodeURIComponent(f.check_id)}`}>
+                          <Link key={f.check_id} className="aurora-link aurora-exec__finding" href={`/workbench?tab=triage&check_id=${encodeURIComponent(f.check_id)}`}>
                             {f.check_id} · {f.affected_count.toLocaleString()}
                           </Link>
                         ))}

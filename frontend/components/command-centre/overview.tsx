@@ -118,7 +118,7 @@ export function CommandCentreOverview() {
           </>
         }
         inbox={inbox}
-        onInboxActivate={(item) => router.push(`/?tab=issues&check_id=${encodeURIComponent(item.id)}`)}
+        onInboxActivate={(item) => router.push(`/workbench?tab=triage&check_id=${encodeURIComponent(item.id)}`)}
         trend={trend}
         issues={issues}
       />

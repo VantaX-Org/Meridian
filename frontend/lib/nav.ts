@@ -167,6 +167,8 @@ export const NAV_GROUPS: readonly NavGroup[] = [
 const OFF_NAV_TITLES: Record<string, string> = {
   "/command-centre": "Live operations",
   "/executive-report": "Executive report",
+  "/match-rules": "Match rules",
+  "/workbench/report": "Record report",
   "/connectivity": "Connectivity",
   "/run-sync": "Run Sync",
   "/stewardship/metrics": "Stewardship metrics",
