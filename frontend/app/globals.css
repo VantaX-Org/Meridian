@@ -76,7 +76,7 @@
   --popover-foreground: var(--aurora-fg-primary);
 
   --primary: var(--aurora-accent-500);
-  --primary-foreground: #ffffff;
+  --primary-foreground: var(--aurora-ink-900);
   --secondary: var(--aurora-canvas-elevated);
   --secondary-foreground: var(--aurora-fg-secondary);
   --muted: var(--aurora-canvas-elevated);
@@ -101,7 +101,7 @@
   --sidebar: var(--aurora-canvas-raised);
   --sidebar-foreground: var(--aurora-fg-secondary);
   --sidebar-primary: var(--aurora-accent-500);
-  --sidebar-primary-foreground: #ffffff;
+  --sidebar-primary-foreground: var(--aurora-ink-900);
   --sidebar-accent: var(--aurora-accent-selected-bg);
   --sidebar-accent-foreground: var(--aurora-accent-300);
   --sidebar-border: var(--aurora-canvas-line);

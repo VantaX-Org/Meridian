@@ -226,10 +226,11 @@
   font-size: 14px;
   line-height: 20px;
 }
-/* Primary — solid accent, ink-0 text */
+/* Primary — solid accent with ink-900 text: white on accent-500 is 3.9:1,
+   below AA for 14 px; dark ink reads 5.2:1 on 500 and 6.7:1 on the 400 hover. */
 .aurora-button[data-variant="primary"] {
   background: var(--aurora-accent-500);
-  color: var(--aurora-ink-0);
+  color: var(--aurora-ink-900);
   border-color: var(--aurora-accent-500);
 }
 .aurora-button[data-variant="primary"]:hover:not(:disabled):not([aria-disabled="true"]) {
