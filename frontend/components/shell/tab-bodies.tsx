@@ -15,7 +15,7 @@ const named = <K extends string>(load: () => Promise<Record<K, ComponentType>>, 
   dynamic(() => load().then((m) => ({ default: m[key] })), { ssr: false, loading });
 
 /** Tabs whose body is an Aurora surface — rendered on the canvas, not in the light sheet. */
-export const AURORA_TABS: ReadonlySet<string> = new Set(["/", "/executive-report", "/sync", "/issues", "/match-rules"]);
+export const AURORA_TABS: ReadonlySet<string> = new Set(["/", "/executive-report", "/sync", "/issues", "/match-rules", "/business-process"]);
 
 export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
   "/": named(() => import("@/components/command-centre/overview"), "CommandCentreOverview"),
@@ -47,7 +47,7 @@ export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
   "/reports": page(() => import("@/app/(dashboard)/reports/page")),
 
   "/process": named(() => import("@/app/(dashboard)/process/map"), "ProcessMapPage"),
-  "/business-process": page(() => import("@/app/(dashboard)/business-process/page")),
+  "/business-process": named(() => import("@/components/process/readiness"), "ProcessReadiness"),
   "/config-impact": page(() => import("@/app/(dashboard)/config-impact/page")),
   "/mining": page(() => import("@/app/(dashboard)/mining/page")),
   "/relationships": page(() => import("@/app/(dashboard)/relationships/page")),
