@@ -1,0 +1,32 @@
+{
+ "domain": "ONVBA",
+ "type": "NUMC",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "0",
+   "high": null,
+   "text": "No cumulation"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Cumulation of confirmed quantity when created and changed"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Required quantity when created, no cumulation when changed"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Required quantity when created, conf. qty when changed"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

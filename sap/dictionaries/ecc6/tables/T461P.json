@@ -1,0 +1,176 @@
+{
+ "table": "T461P",
+ "description": "Planning strategy group",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "STRGR",
+   "key": true,
+   "data_element": "STRGR",
+   "domain": "STRGR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Planning strategy group",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "HPTST",
+   "key": false,
+   "data_element": "HPTST",
+   "domain": "STRAT",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Main planning strategy",
+   "check_table": "T461S"
+  },
+  {
+   "pos": 4,
+   "name": "STRA2",
+   "key": false,
+   "data_element": "STRA1",
+   "domain": "STRAT",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Planning strategy",
+   "check_table": "T461S"
+  },
+  {
+   "pos": 5,
+   "name": "STRA3",
+   "key": false,
+   "data_element": "STRA1",
+   "domain": "STRAT",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Planning strategy",
+   "check_table": "T461S"
+  },
+  {
+   "pos": 6,
+   "name": "STRA4",
+   "key": false,
+   "data_element": "STRA1",
+   "domain": "STRAT",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Planning strategy",
+   "check_table": "T461S"
+  },
+  {
+   "pos": 7,
+   "name": "STRA5",
+   "key": false,
+   "data_element": "STRA1",
+   "domain": "STRAT",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Planning strategy",
+   "check_table": "T461S"
+  },
+  {
+   "pos": 8,
+   "name": "STRA6",
+   "key": false,
+   "data_element": "STRA1",
+   "domain": "STRAT",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Planning strategy",
+   "check_table": "T461S"
+  },
+  {
+   "pos": 9,
+   "name": "STRA7",
+   "key": false,
+   "data_element": "STRA1",
+   "domain": "STRAT",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Planning strategy",
+   "check_table": "T461S"
+  },
+  {
+   "pos": 10,
+   "name": "STRA8",
+   "key": false,
+   "data_element": "STRA1",
+   "domain": "STRAT",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Planning strategy",
+   "check_table": "T461S"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "HPTST",
+   "foreign_table": "T461S",
+   "foreign_field": "STRA1"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "STRA2",
+   "foreign_table": "T461S",
+   "foreign_field": "STRA1"
+  },
+  {
+   "field": "STRA3",
+   "foreign_table": "T461S",
+   "foreign_field": "STRA1"
+  },
+  {
+   "field": "STRA4",
+   "foreign_table": "T461S",
+   "foreign_field": "STRA1"
+  },
+  {
+   "field": "STRA5",
+   "foreign_table": "T461S",
+   "foreign_field": "STRA1"
+  },
+  {
+   "field": "STRA6",
+   "foreign_table": "T461S",
+   "foreign_field": "STRA1"
+  },
+  {
+   "field": "STRA7",
+   "foreign_table": "T461S",
+   "foreign_field": "STRA1"
+  },
+  {
+   "field": "STRA8",
+   "foreign_table": "T461S",
+   "foreign_field": "STRA1"
+  }
+ ]
+}

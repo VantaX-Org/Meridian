@@ -1,0 +1,42 @@
+{
+ "domain": "BDENR",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "1",
+   "high": null,
+   "text": "Labor time"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Setup time"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Machine time"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Variable activity"
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "Teardown time"
+  },
+  {
+   "low": "6",
+   "high": null,
+   "text": "Not currently in use"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

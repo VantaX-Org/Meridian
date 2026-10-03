@@ -1,0 +1,81 @@
+{
+ "table": "T149D",
+ "description": "Global Valuation Types",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "BWTAR",
+   "key": true,
+   "data_element": "BWTAR_D",
+   "domain": "BWTAR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Valuation type",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "KKREF",
+   "key": false,
+   "data_element": "KKREF",
+   "domain": "KKREF",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Account category reference",
+   "check_table": "T025K"
+  },
+  {
+   "pos": 4,
+   "name": "BSEXT",
+   "key": false,
+   "data_element": "BSEXT",
+   "domain": "BSEXT",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "External Purchase Orders Allowed",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "BSINT",
+   "key": false,
+   "data_element": "BSINT",
+   "domain": "BSINT",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Internal purchase orders allowed",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "KKREF",
+   "foreign_table": "T025K",
+   "foreign_field": "KKREF"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

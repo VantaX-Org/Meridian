@@ -1,0 +1,52 @@
+{
+ "table": "TFKTAXNUMTYPE_C",
+ "description": "Customer Selection: Business Partner Tax Number Categories",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "CLIENT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "TAXTYPE",
+   "key": true,
+   "data_element": "BPTAXTYPE",
+   "domain": "BPTAXTYPE",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Tax Number Category",
+   "check_table": "TFKTAXNUMTYPE"
+  },
+  {
+   "pos": 3,
+   "name": "CHECKDUPL",
+   "key": false,
+   "data_element": "BPTAXCHECKDUPL",
+   "domain": "CHECKDUPL",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Tax Number Duplicate Check",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "TAXTYPE",
+   "foreign_table": "TFKTAXNUMTYPE",
+   "foreign_field": "TAXTYPE"
+  }
+ ]
+}

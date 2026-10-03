@@ -1,0 +1,27 @@
+{
+ "domain": "SOBLO",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "O",
+   "high": null,
+   "text": "Material provided to vendor"
+  },
+  {
+   "low": "V",
+   "high": null,
+   "text": "Returnable packaging at customer"
+  },
+  {
+   "low": "W",
+   "high": null,
+   "text": "Consignment stock at customer"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

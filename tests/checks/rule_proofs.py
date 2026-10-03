@@ -176,7 +176,7 @@ def _rows(rule: dict, dictionary, values: list[dict[str, str]]) -> pd.DataFrame:
         same = {k: x[2:] for k, x in v.items() if isinstance(x, str) and x.startswith("@=")}
         v = {k: x for k, x in v.items() if k not in same}
         for k, x in v.items():  # a join field keeps its partner in step, so records still link
-            if x and k in joined:
+            if x and k in joined and x != rule.get("_live_value"):  # the live code must stay as the reference has it
                 x = f"{x}{i}"
             r[k] = x
             for e in edges:

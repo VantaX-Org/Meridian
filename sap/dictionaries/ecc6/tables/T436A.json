@@ -1,0 +1,100 @@
+{
+ "table": "T436A",
+ "description": "Floats for scheduling",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "WERKS",
+   "key": true,
+   "data_element": "WERKS_D",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Plant",
+   "check_table": "T001W"
+  },
+  {
+   "pos": 3,
+   "name": "FHORI",
+   "key": true,
+   "data_element": "FHORI",
+   "domain": "FHORI",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Scheduling Margin Key for Floats",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "ERHOR",
+   "key": false,
+   "data_element": "ERHOR",
+   "domain": "ERHOR",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Opening period",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "SICHZ",
+   "key": false,
+   "data_element": "SICHZ",
+   "domain": "NUM3",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Float after production (in days)",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "VORGZ",
+   "key": false,
+   "data_element": "VORGZ",
+   "domain": "NUM3",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Float before production (in days)",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "FREIZ",
+   "key": false,
+   "data_element": "FREIZ",
+   "domain": "NUM3",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Release period (in days)",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "WERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  }
+ ]
+}

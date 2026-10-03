@@ -1,0 +1,130 @@
+{
+ "table": "TMVF",
+ "description": "Availability Check Control",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "MTVFP",
+   "key": true,
+   "data_element": "MTVFP",
+   "domain": "MTVFP",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Checking Group for Availability Check",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "SUMAU",
+   "key": false,
+   "data_element": "SUMAU",
+   "domain": "SUMBD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Total sales order requirements",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "SUMLF",
+   "key": false,
+   "data_element": "SUMLF",
+   "domain": "SUMBD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Total delivery requirements",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "SWBZT",
+   "key": false,
+   "data_element": "SWBZT",
+   "domain": "DEC3",
+   "type": "DEC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Replenishment lead time",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "ACENQ",
+   "key": false,
+   "data_element": "ACENQ",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Material block in availability check with transfer of qties",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "VERPN",
+   "key": false,
+   "data_element": "VERPN",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "No availability check",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "ONVBA",
+   "key": false,
+   "data_element": "ONVBA",
+   "domain": "ONVBA",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Availability check with cumulative, confirmed quantities",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "RELRE",
+   "key": false,
+   "data_element": "RELRE",
+   "domain": "RELRE",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Availability with cum. quantities: Response to shortfall",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "KZRVP",
+   "key": false,
+   "data_element": "KZRVP",
+   "domain": "KZRVP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator for relevance during check against planning",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": []
+}

@@ -1,0 +1,22 @@
+{
+ "domain": "INTKA",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "1",
+   "high": null,
+   "text": "Delivery date"
+  },
+  {
+   "low": "",
+   "high": null,
+   "text": ""
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

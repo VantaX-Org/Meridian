@@ -1,0 +1,32 @@
+{
+ "domain": "BORGR_EXID_ERRTYP",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "W",
+   "high": null,
+   "text": "Warning"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Error"
+  },
+  {
+   "low": "I",
+   "high": null,
+   "text": "Information"
+  },
+  {
+   "low": "",
+   "high": null,
+   "text": "Undefined"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

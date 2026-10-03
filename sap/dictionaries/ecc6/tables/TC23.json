@@ -1,0 +1,40 @@
+{
+ "table": "TC23",
+ "description": "Key for use of the work center in the task lists",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "PLANV",
+   "key": true,
+   "data_element": "AP_PLANV",
+   "domain": "AP_PLANV",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Key for task list usage",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

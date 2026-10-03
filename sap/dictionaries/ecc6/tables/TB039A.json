@@ -1,0 +1,105 @@
+{
+ "table": "TB039A",
+ "description": "BP ID Types",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "CLIENT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "TYPE",
+   "key": true,
+   "data_element": "BU_ID_TYPE",
+   "domain": "BU_ID_TYPE",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Identification Type",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "CATEGORY",
+   "key": false,
+   "data_element": "BU_ID_CATEGORY",
+   "domain": "BU_ID_CATEGORY",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "BP Identification Category",
+   "check_table": "TB039"
+  },
+  {
+   "pos": 4,
+   "name": "XPROPOSE",
+   "key": false,
+   "data_element": "BU_ID_XPROPOSE",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Propose ID Type",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "XPERSON",
+   "key": false,
+   "data_element": "BU_ID_XPERSON",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: ID Type Relevant for Persons",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "XORGANISATION",
+   "key": false,
+   "data_element": "BU_ID_XORGANISATION",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: ID Type Relevant for Organizations",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "XGROUP",
+   "key": false,
+   "data_element": "BU_ID_XGROUP",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: ID Type Relevant for Groups",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "CATEGORY",
+   "foreign_table": "TB039",
+   "foreign_field": "CATEGORY"
+  },
+  {
+   "field": "CLIENT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

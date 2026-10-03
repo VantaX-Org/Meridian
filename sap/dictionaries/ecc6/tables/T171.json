@@ -1,0 +1,34 @@
+{
+ "table": "T171",
+ "description": "Customers: Sales Districts",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "BZIRK",
+   "key": true,
+   "data_element": "BZIRK",
+   "domain": "BZIRK",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Sales district",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": []
+}

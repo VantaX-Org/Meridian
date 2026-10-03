@@ -1,0 +1,22 @@
+{
+ "domain": "SA_BCKFL",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Using standard cost estimate for material"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Using preliminary cost estimate for product cost collector"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

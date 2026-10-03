@@ -1,0 +1,32 @@
+{
+ "domain": "SOBVO",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "E",
+   "high": null,
+   "text": "Sales order stock"
+  },
+  {
+   "low": "Q",
+   "high": null,
+   "text": "Project stock"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "BOM explosion number stock"
+  },
+  {
+   "low": "T",
+   "high": null,
+   "text": "Stock in Transit"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

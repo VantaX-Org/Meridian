@@ -1,0 +1,52 @@
+{
+ "table": "T040S",
+ "description": "Blocking reasons for dunning notices",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "MANSP",
+   "key": true,
+   "data_element": "MANSP",
+   "domain": "MANSP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Dunning block",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "CHAR1",
+   "key": false,
+   "data_element": "CHAR1",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Single-Character Flag",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

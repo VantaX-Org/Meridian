@@ -1,0 +1,194 @@
+{
+ "table": "T460A",
+ "description": "Special procurement key",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "WERKS",
+   "key": true,
+   "data_element": "WERKS_D",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Plant",
+   "check_table": "T001W"
+  },
+  {
+   "pos": 3,
+   "name": "SOBSL",
+   "key": true,
+   "data_element": "SOBSL",
+   "domain": "SOBSL",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Special procurement type",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "BESKZ",
+   "key": false,
+   "data_element": "BESCH",
+   "domain": "BESCH",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Procurement type",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "SOBES",
+   "key": false,
+   "data_element": "ESOBS",
+   "domain": "ESOBS",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Special procurement - external display",
+   "check_table": "*"
+  },
+  {
+   "pos": 6,
+   "name": "WRK02",
+   "key": false,
+   "data_element": "WERKS_D",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Plant",
+   "check_table": "T001W"
+  },
+  {
+   "pos": 7,
+   "name": "CLCOR",
+   "key": false,
+   "data_element": "CLCOR",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator for direct production (collective order)",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "DUMPS",
+   "key": false,
+   "data_element": "DUMPS",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Phantom item indicator",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "REWFG",
+   "key": false,
+   "data_element": "REWFG",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Withdrawal from an alternative plant",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "REWRK",
+   "key": false,
+   "data_element": "REWRK",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Issuing plant for the dependent reqmts/reservation",
+   "check_table": "T001W"
+  },
+  {
+   "pos": 11,
+   "name": "DIRPR",
+   "key": false,
+   "data_element": "DIRPR",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Direct procurement indicator",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "UMLDB",
+   "key": false,
+   "data_element": "MD_UMLDB",
+   "domain": "MD_UMLDB",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator for Stock Transfer with MRP Areas",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "ADDIN",
+   "key": false,
+   "data_element": "MD_ADDIN",
+   "domain": "CHAR20",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "Additional Information on BAdI MD_EXT_SUP",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "MLSCR",
+   "key": false,
+   "data_element": "MLSC_RELEVANT",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Multilevel Subcontracting Indicator",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "REWRK",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  },
+  {
+   "field": "WRK02",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  }
+ ]
+}

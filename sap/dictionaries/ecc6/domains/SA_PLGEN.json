@@ -1,0 +1,27 @@
+{
+ "domain": "SA_PLGEN",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No planned order creation"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Create planned order for GR reversal amount on current day"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Planned order created via asynchronous MRP"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

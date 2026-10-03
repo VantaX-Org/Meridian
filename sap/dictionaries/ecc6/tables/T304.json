@@ -1,0 +1,52 @@
+{
+ "table": "T304",
+ "description": "Storage Section Indicators",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "LGNUM",
+   "key": true,
+   "data_element": "LGNUM",
+   "domain": "LGNUM",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Warehouse Number / Warehouse Complex",
+   "check_table": "T300"
+  },
+  {
+   "pos": 3,
+   "name": "LGBKZ",
+   "key": true,
+   "data_element": "LVS_LGBKZ",
+   "domain": "LVS_LGBKZ",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Storage Section Indicators",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "LGNUM",
+   "foreign_table": "T300",
+   "foreign_field": "LGNUM"
+  }
+ ]
+}

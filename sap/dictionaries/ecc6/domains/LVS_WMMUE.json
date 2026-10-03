@@ -1,0 +1,32 @@
+{
+ "domain": "LVS_WMMUE",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Do not copy WM quantity as delivery quantity into delivery"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Copy WM quantity as delivery quantity into delivery"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Copy WM quantity as delivery quantity and post GR/GI"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Do not take WM qty as delivery qty, but post GR/GI"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

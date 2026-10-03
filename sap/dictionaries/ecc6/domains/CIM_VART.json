@@ -1,0 +1,22 @@
+{
+ "domain": "CIM_VART",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "1",
+   "high": null,
+   "text": "Processing via operation"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Processing via sub-operation"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

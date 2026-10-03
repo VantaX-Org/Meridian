@@ -1,0 +1,27 @@
+{
+ "domain": "COWIPB_CTRL",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "WIP Batch Allowed"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "WIP Batch Necessary"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "WIP Batch not Allowed"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

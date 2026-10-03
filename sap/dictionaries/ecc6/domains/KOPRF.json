@@ -1,0 +1,27 @@
+{
+ "domain": "KOPRF",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Shipment completion only for full picking"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Warning regarding shipment completion with incompl. picking"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "No check regarding full picking"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

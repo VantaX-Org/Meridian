@@ -1,0 +1,67 @@
+{
+ "domain": "LOSKZ",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "W",
+   "high": null,
+   "text": "Period lot size: weekly lot/dyn. lot-sizing: least unit cost"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Fixed lot size"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Lot-for-lot order quantity"
+  },
+  {
+   "low": "H",
+   "high": null,
+   "text": "Replenish to maximum stock level"
+  },
+  {
+   "low": "T",
+   "high": null,
+   "text": "Daily lot size"
+  },
+  {
+   "low": "M",
+   "high": null,
+   "text": "Monthly lot size"
+  },
+  {
+   "low": "P",
+   "high": null,
+   "text": "Period lot sizes according to posting periods"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Dynamic lot size creation"
+  },
+  {
+   "low": "G",
+   "high": null,
+   "text": "Groff reorder procedure"
+  },
+  {
+   "low": "S",
+   "high": null,
+   "text": "Stat.lot size: fixed w. splitting/dyn.lot size: part pd bal."
+  },
+  {
+   "low": "K",
+   "high": null,
+   "text": "Period lot size as in PPC planning calendar"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

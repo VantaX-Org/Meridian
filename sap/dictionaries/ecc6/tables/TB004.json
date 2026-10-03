@@ -1,0 +1,124 @@
+{
+ "table": "TB004",
+ "description": "BP types",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "CLIENT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "BPKIND",
+   "key": true,
+   "data_element": "BU_BPKIND",
+   "domain": "BU_KIND",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Business Partner Type",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "FELDSTLST1",
+   "key": false,
+   "data_element": "BU_FLDSTLS",
+   "domain": "CHAR250",
+   "type": "CHAR",
+   "length": 250,
+   "decimals": 0,
+   "description": "Field status definition",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "FELDSTLST2",
+   "key": false,
+   "data_element": "BU_FLDSTLS",
+   "domain": "CHAR250",
+   "type": "CHAR",
+   "length": 250,
+   "decimals": 0,
+   "description": "Field status definition",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "FELDSTLST3",
+   "key": false,
+   "data_element": "BU_FLDSTLS",
+   "domain": "CHAR250",
+   "type": "CHAR",
+   "length": 250,
+   "decimals": 0,
+   "description": "Field status definition",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "FELDSTLST4",
+   "key": false,
+   "data_element": "BU_FLDSTLS",
+   "domain": "CHAR250",
+   "type": "CHAR",
+   "length": 250,
+   "decimals": 0,
+   "description": "Field status definition",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "FELDSTLST5",
+   "key": false,
+   "data_element": "BU_FLDSTLS",
+   "domain": "CHAR250",
+   "type": "CHAR",
+   "length": 250,
+   "decimals": 0,
+   "description": "Field status definition",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "FELDSTLST6",
+   "key": false,
+   "data_element": "BU_FLDSTLS",
+   "domain": "CHAR250",
+   "type": "CHAR",
+   "length": 250,
+   "decimals": 0,
+   "description": "Field status definition",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "FELDSTLST7",
+   "key": false,
+   "data_element": "BU_FLDSTLS",
+   "domain": "CHAR250",
+   "type": "CHAR",
+   "length": 250,
+   "decimals": 0,
+   "description": "Field status definition",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "CLIENT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

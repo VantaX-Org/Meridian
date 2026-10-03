@@ -1,0 +1,22 @@
+{
+ "domain": "BORGR_PROCTYP",
+ "type": "CHAR",
+ "length": 2,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Normal"
+  },
+  {
+   "low": "WE",
+   "high": null,
+   "text": "Shipment Relevant to GR"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

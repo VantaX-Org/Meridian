@@ -1,0 +1,81 @@
+{
+ "table": "T035",
+ "description": "Planning groups",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "GRUPP",
+   "key": true,
+   "data_element": "FDGRP",
+   "domain": "FDGRP",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Planning Group",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "DATYP",
+   "key": false,
+   "data_element": "FDDTY",
+   "domain": "CHAR02",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Cash Management: Control Planning Date for Planning Groups",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "EBENE",
+   "key": false,
+   "data_element": "FDLEV",
+   "domain": "FDLEV",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Planning Level",
+   "check_table": "T036"
+  },
+  {
+   "pos": 5,
+   "name": "BILD1",
+   "key": false,
+   "data_element": "BST01",
+   "domain": "YESNO",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Screen control 1",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "EBENE",
+   "foreign_table": "T036",
+   "foreign_field": "EBENE"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

@@ -1,0 +1,296 @@
+{
+ "table": "TTDS",
+ "description": "Organizational Unit: Transportation Scheduling Point",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "TPLST",
+   "key": true,
+   "data_element": "TPLST",
+   "domain": "TPLST",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Transportation planning point",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "FABKL",
+   "key": false,
+   "data_element": "FABKL",
+   "domain": "WFCID",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Factory calendar key",
+   "check_table": "TFACD"
+  },
+  {
+   "pos": 4,
+   "name": "ADRNR",
+   "key": false,
+   "data_element": "ADRNR",
+   "domain": "ADRNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Address",
+   "check_table": "*"
+  },
+  {
+   "pos": 5,
+   "name": "TPSID",
+   "key": false,
+   "data_element": "TPSID",
+   "domain": "COMMN",
+   "type": "CHAR",
+   "length": 5,
+   "decimals": 0,
+   "description": "ID for external transport system",
+   "check_table": "TQCOM"
+  },
+  {
+   "pos": 6,
+   "name": "VTPARN",
+   "key": false,
+   "data_element": "EDI_VTPARN",
+   "domain": "EDI_PARNUM",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Partner number of external transportation planning system",
+   "check_table": "*"
+  },
+  {
+   "pos": 7,
+   "name": "VTPART",
+   "key": false,
+   "data_element": "EDI_VTPART",
+   "domain": "EDI_RCVPRT",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Partner type of external transportation planning system",
+   "check_table": "*"
+  },
+  {
+   "pos": 8,
+   "name": "KSCHL",
+   "key": false,
+   "data_element": "NA_KSCHL_T",
+   "domain": "KSCHL",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Output type for transportation planning systems",
+   "check_table": "T685"
+  },
+  {
+   "pos": 9,
+   "name": "NKETP",
+   "key": false,
+   "data_element": "NKETP",
+   "domain": "NUMKR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "External no.range for external transporation planning system",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "TRAEND",
+   "key": false,
+   "data_element": "TRAEND",
+   "domain": "TRAEND",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Controlling for changes to externally planned shipments",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "STTRG",
+   "key": false,
+   "data_element": "STTRG_TPS",
+   "domain": "STTRG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Overall status of a shipment for which plan. end is set",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "TPSSF",
+   "key": false,
+   "data_element": "TPSSF",
+   "domain": "TPSSF",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Status filtering mode for TPS",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "TPSTX1",
+   "key": false,
+   "data_element": "VTPS_LFTX",
+   "domain": "TDID",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Delivery header text ID for transferral to ext. trans.pl.sys",
+   "check_table": "*"
+  },
+  {
+   "pos": 14,
+   "name": "TPSTX2",
+   "key": false,
+   "data_element": "VTPS_LFTX",
+   "domain": "TDID",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Delivery header text ID for transferral to ext. trans.pl.sys",
+   "check_table": "*"
+  },
+  {
+   "pos": 15,
+   "name": "TPSTX3",
+   "key": false,
+   "data_element": "VTPS_LFTX",
+   "domain": "TDID",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Delivery header text ID for transferral to ext. trans.pl.sys",
+   "check_table": "*"
+  },
+  {
+   "pos": 16,
+   "name": "BUKRS",
+   "key": false,
+   "data_element": "BUKRS",
+   "domain": "BUKRS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Company Code",
+   "check_table": "T001"
+  },
+  {
+   "pos": 17,
+   "name": "STAGEW",
+   "key": false,
+   "data_element": "STAGEW",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Weight unit for statistics update",
+   "check_table": "T006"
+  },
+  {
+   "pos": 18,
+   "name": "STAVOL",
+   "key": false,
+   "data_element": "STAVOL",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Volume unit for statistics update",
+   "check_table": "T006"
+  },
+  {
+   "pos": 19,
+   "name": "STADIS",
+   "key": false,
+   "data_element": "STADIS",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Distance unit for statistics update",
+   "check_table": "T006"
+  },
+  {
+   "pos": 20,
+   "name": "STACUR",
+   "key": false,
+   "data_element": "STACUR",
+   "domain": "WAERS",
+   "type": "CUKY",
+   "length": 5,
+   "decimals": 0,
+   "description": "Currency Unit for Statistical Update",
+   "check_table": "TCURC"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "BUKRS",
+   "foreign_table": "T001",
+   "foreign_field": "BUKRS"
+  },
+  {
+   "field": "FABKL",
+   "foreign_table": "TFACD",
+   "foreign_field": "IDENT"
+  },
+  {
+   "field": "KSCHL",
+   "foreign_table": "T685",
+   "foreign_field": "KSCHL"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "STACUR",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  },
+  {
+   "field": "STADIS",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "STAGEW",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "STAVOL",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "TPSID",
+   "foreign_table": "TQCOM",
+   "foreign_field": "COMMN"
+  }
+ ]
+}

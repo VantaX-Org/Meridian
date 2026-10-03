@@ -1,0 +1,81 @@
+{
+ "table": "T307",
+ "description": "Storage Unit Types",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "LGNUM",
+   "key": true,
+   "data_element": "LGNUM",
+   "domain": "LGNUM",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Warehouse Number / Warehouse Complex",
+   "check_table": "T300"
+  },
+  {
+   "pos": 3,
+   "name": "LETYP",
+   "key": true,
+   "data_element": "LVS_LETYP",
+   "domain": "LVS_LETYP",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Storage Unit Type",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "KKAPV",
+   "key": false,
+   "data_element": "LVS_KKAPV",
+   "domain": "DEC8_3",
+   "type": "DEC",
+   "length": 11,
+   "decimals": 3,
+   "description": "Capacity usage of storage unit type",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "METYP",
+   "key": false,
+   "data_element": "METYP",
+   "domain": "MEITY",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Unit-of-measure load category according to workload criteria",
+   "check_table": "TMET"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "LGNUM",
+   "foreign_table": "T300",
+   "foreign_field": "LGNUM"
+  },
+  {
+   "field": "METYP",
+   "foreign_table": "TMET",
+   "foreign_field": "METYP"
+  }
+ ]
+}

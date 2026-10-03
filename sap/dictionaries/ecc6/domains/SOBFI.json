@@ -1,0 +1,42 @@
+{
+ "domain": "SOBFI",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "B",
+   "high": null,
+   "text": "Material provided by customer"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "At customer's disposal"
+  },
+  {
+   "low": "K",
+   "high": null,
+   "text": "Consignment goods from vendor"
+  },
+  {
+   "low": "L",
+   "high": null,
+   "text": "Returnable packaging from vendor"
+  },
+  {
+   "low": "M",
+   "high": null,
+   "text": "Returnable transport packaging from vendor"
+  },
+  {
+   "low": "P",
+   "high": null,
+   "text": "Pipeline material from vendor"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}
