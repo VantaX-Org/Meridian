@@ -20,7 +20,7 @@ logger = logging.getLogger("meridian.worker.cleaning")
 
 
 @celery_app.task(bind=True, name="workers.tasks.run_cleaning.run_cleaning",
-                 soft_time_limit=300, time_limit=360)
+                 soft_time_limit=1800, time_limit=2100)
 def run_cleaning(self, version_id: str, tenant_id: str, object_type: str, parquet_path: str):
     """Detect cleaning candidates for a completed analysis run."""
     logger.info(f"run_cleaning started: version_id={version_id}, object_type={object_type}")
