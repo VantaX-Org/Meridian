@@ -137,8 +137,9 @@ async def _build_for_module(
 @celery_app.task(
     bind=True,
     name="workers.tasks.build_golden_records.build_golden_records",
-    soft_time_limit=900,
-    time_limit=1020,
+    # One object at a time (~40/s): a 300k-material master needs about 2.5 hours.
+    soft_time_limit=4 * 3600,
+    time_limit=4 * 3600 + 300,
 )
 def build_golden_records(
     self, version_id: str, tenant_id: str, module: str, parquet_path: str

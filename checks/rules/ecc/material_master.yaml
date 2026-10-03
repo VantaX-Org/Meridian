@@ -20,23 +20,24 @@ rules:
 - id: MM002
   field: MARA.MATNR
   check_class: regex_check
-  pattern: ^[A-Z0-9\-_/\.]{1,40}$
+  pattern: '^[!-`{-~]([ -`{-~]{0,38}[!-`{-~])?$'
   severity: critical
   dimension: validity
-  message: 'Material number must be 1-40 chars: uppercase alphanumeric, hyphens, underscores, slashes, dots'
+  message: 'Material number must be 1-40 printable ASCII characters, no lowercase, no leading or trailing space'
   why_it_matters: In ECC, MATNR is limited to 18 characters. In S/4HANA, the field was extended to 40 characters to support
-    longer material numbering schemes. This rule uses the S/4HANA-compatible length. Only uppercase alphanumeric characters,
-    hyphens, underscores, forward slashes, and dots are permitted. Lowercase or special characters are rejected by MM01 (ECC)
-    and Fiori F1602 (S/4HANA).
+    longer material numbering schemes. This rule uses the S/4HANA-compatible length. MM01 converts input to uppercase and
+    accepts printable special characters (such as caret, at sign, hash, plus and inner spaces) in externally assigned numbers, so those
+    are not flagged. Lowercase, non-ASCII characters (e.g. non-breaking spaces, typographic dashes) and leading or trailing
+    spaces only arrive through direct loads and break lookups, interfaces and migration key mapping.
   rule_authority: sap_hard_constraint
-  sap_impact: Material cannot be created. All BOMs, purchase orders, production orders, and sales orders referencing an invalid
-    number will fail.
+  sap_impact: The material cannot be entered in MM01/MM02 or searched reliably. Interfaces and migration tools that key on
+    the number fail to match it.
   fix_map:
-    __other__: 'Material number ''{invalid_value}'' does not conform to the required format. In ECC: convert to uppercase,
-      remove special characters, max 18 chars (MM02). In S/4HANA: max 40 chars, same character restrictions (Fiori F1602).
-      Use LSMW or migration cockpit for bulk reformatting.'
+    __other__: 'Material number ''{invalid_value}'' does not conform to the required format. Convert to uppercase, replace
+      non-ASCII characters and trim leading or trailing spaces (MM02 in ECC, max 18 chars; Fiori F1602 in S/4HANA, max 40
+      chars). Use LSMW or migration cockpit for bulk reformatting.'
   record_fix_template: 'Material {MARA.MATNR}: number format is invalid (value: ''{actual_value}''). Reformat to uppercase
-    alphanumeric (max 40 chars for S/4HANA) and update references.'
+    printable ASCII without leading or trailing spaces (max 40 chars for S/4HANA) and update references.'
 - id: MM003
   field: MARA.MTART
   check_class: null_check
@@ -526,6 +527,8 @@ rules:
     MARC.BESKZ:
     - E
     - X
+    MARC.SOBSL:
+      not_in: ['10', '20', '30', '40', '41', '42', '45', '70', '80']
 - id: MM033
   field: MBEW.VPRSV
   check_class: domain_value_check
@@ -610,13 +613,15 @@ rules:
 - id: MM038
   field: MVKE.DWERK
   check_class: null_check
-  severity: high
+  severity: low
   dimension: completeness
-  message: Delivering plant is required for materials with sales views
-  why_it_matters: Delivering plant (DWERK) determines which plant fulfils sales orders. Without it, delivery creation (VL01N
-    in ECC, Fiori F5765 in S/4HANA) fails because SAP cannot determine the source of goods.
-  rule_authority: sap_hard_constraint
-  sap_impact: Delivery creation fails. Sales orders cannot be fulfilled without a delivering plant assignment.
+  message: Delivering plant is recommended for materials with sales views
+  why_it_matters: Delivering plant (DWERK) is one source of the plant proposed on a sales order item. SAP proposes the plant
+    from the customer-material info record first, then the customer master (KNVV-VWERK), then the material master (MVKE-DWERK).
+    Many companies maintain it on the customer only, so a blank DWERK is a gap only where neither of the others supplies it.
+  rule_authority: best_practice
+  sap_impact: Where no customer-material info record or customer master supplies a plant, the user must enter the plant on
+    each sales order item manually.
   fix_map:
     __blank__: 'In ECC: set via MM02 > Sales Org 1 view. In S/4HANA: use Fiori F1602. Assign the plant that will physically
       ship the material.'
@@ -916,6 +921,8 @@ rules:
     MARC.BESKZ:
     - E
     - X
+    MARC.SOBSL:
+      not_in: ['10', '20', '30', '40', '41', '42', '45', '70', '80']
 - id: MM085
   field: MARC.BSTFE
   check_class: cross_field_check
