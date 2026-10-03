@@ -57,8 +57,9 @@ def _find_potential_duplicates(df: pd.DataFrame, module: str) -> list[dict]:
     df = df.copy()
     df["_blocking_hash"] = blocking_hash
     
-    # Find groups with multiple records (potential duplicates)
-    duplicate_groups = df.groupby("_blocking_hash").filter(lambda x: len(x) > 1)
+    # Find groups with multiple records (potential duplicates); groupby().filter()
+    # calls Python once per group, which on 300k+ unique keys outlasts the task limit.
+    duplicate_groups = df[df["_blocking_hash"].duplicated(keep=False)]
     
     if len(duplicate_groups) == 0:
         return []
@@ -122,7 +123,7 @@ def _get_matched_fields(record_a: dict, record_b: dict) -> list[str]:
 
 
 @celery_app.task(bind=True, name="workers.tasks.mining.dedup.run_dedup",
-                 soft_time_limit=600, time_limit=720)
+                 soft_time_limit=1800, time_limit=2100)
 def run_dedup(self, version_id: str, tenant_id: str, module: str, parquet_path: str, *,
               id_column: Optional[str] = None):
     """Find and record potential duplicate records.
