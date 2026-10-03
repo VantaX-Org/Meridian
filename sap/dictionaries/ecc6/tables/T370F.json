@@ -1,0 +1,197 @@
+{
+ "table": "T370F",
+ "description": "Functional Location Category",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "FLTYP",
+   "key": true,
+   "data_element": "FLTYP",
+   "domain": "FLTYP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Functional Location Category",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "STSMA",
+   "key": false,
+   "data_element": "J_STSMA",
+   "domain": "J_STSMA",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Status Profile",
+   "check_table": "TJ20"
+  },
+  {
+   "pos": 4,
+   "name": "PARGR",
+   "key": false,
+   "data_element": "PARGR",
+   "domain": "PARGR",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Partner Determination Procedure",
+   "check_table": "TVPG"
+  },
+  {
+   "pos": 5,
+   "name": "SALES",
+   "key": false,
+   "data_element": "ILOM_SALES",
+   "domain": "X",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: customer object",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "ELSE_KNZ",
+   "key": false,
+   "data_element": "ELSE_KNZ",
+   "domain": "X",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Other Data Active",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "MPTYP",
+   "key": false,
+   "data_element": "IMRC_MPTYP",
+   "domain": "IMRC_MPTYP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Measuring Point Category",
+   "check_table": "T370P"
+  },
+  {
+   "pos": 8,
+   "name": "CHDOC",
+   "key": false,
+   "data_element": "ILOM_CHDOC",
+   "domain": "X",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Generate change documents",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "INFOW",
+   "key": false,
+   "data_element": "I_INFOWIND",
+   "domain": "I_INFOWIND",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Parameter ID Object Info",
+   "check_table": "TQ80O"
+  },
+  {
+   "pos": 10,
+   "name": "TSEGTP",
+   "key": false,
+   "data_element": "TSEGTEMPLA",
+   "domain": "TSEGTEMPLA",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Template",
+   "check_table": "*"
+  },
+  {
+   "pos": 11,
+   "name": "VIEW_PROF",
+   "key": false,
+   "data_element": "ITOBVIEW_PROFILE",
+   "domain": "ITOBVIEW_PROFILE",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "View profile for tab index Customizing",
+   "check_table": "TITOBPROF"
+  },
+  {
+   "pos": 12,
+   "name": "CHDOC_INS",
+   "key": false,
+   "data_element": "CHDOC_INS",
+   "domain": "X",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Functional Location with Change Docs During Creation",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "LFE_IND",
+   "key": false,
+   "data_element": "EAML_LFE_IND",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Object Belongs to Linear Asset Management",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "INFOW",
+   "foreign_table": "TQ80O",
+   "foreign_field": "INFO_WIND"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MPTYP",
+   "foreign_table": "T370P",
+   "foreign_field": "MPTYP"
+  },
+  {
+   "field": "PARGR",
+   "foreign_table": "TVPG",
+   "foreign_field": "PARGR"
+  },
+  {
+   "field": "STSMA",
+   "foreign_table": "TJ20",
+   "foreign_field": "STSMA"
+  },
+  {
+   "field": "VIEW_PROF",
+   "foreign_table": "TITOBPROF",
+   "foreign_field": "PROFILE"
+  }
+ ]
+}

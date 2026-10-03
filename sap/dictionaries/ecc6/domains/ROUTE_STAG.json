@@ -1,0 +1,27 @@
+{
+ "domain": "ROUTE_STAG",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Adopt all stages"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Only stages with leg indicator of shipment header"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Do not adopt stages"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

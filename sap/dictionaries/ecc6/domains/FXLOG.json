@@ -1,0 +1,32 @@
+{
+ "domain": "FXLOG",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "0",
+   "high": null,
+   "text": "Do not firm"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Always firm"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Firm within the planning time fence"
+  },
+  {
+   "low": "",
+   "high": null,
+   "text": "Always firm"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,79 @@
+{
+ "table": "TVKWZ",
+ "description": "Org.Unit: Allowed Plants per Sales Organization",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "VKORG",
+   "key": true,
+   "data_element": "VKORG",
+   "domain": "VKORG",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Sales Organization",
+   "check_table": "TVKO"
+  },
+  {
+   "pos": 3,
+   "name": "VTWEG",
+   "key": true,
+   "data_element": "VTWKU",
+   "domain": "VTWEG",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Reference distrib.channel for cust.and material masters",
+   "check_table": "TVKOV"
+  },
+  {
+   "pos": 4,
+   "name": "WERKS",
+   "key": true,
+   "data_element": "WERKS_EXT",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Plant (Own or External)",
+   "check_table": "T001W"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "VKORG",
+   "foreign_table": "TVKO",
+   "foreign_field": "VKORG"
+  },
+  {
+   "field": "VTWEG",
+   "foreign_table": "TVKOV",
+   "foreign_field": "VTWEG"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  }
+ ]
+}

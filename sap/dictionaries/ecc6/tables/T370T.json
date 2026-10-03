@@ -1,0 +1,505 @@
+{
+ "table": "T370T",
+ "description": "Equipment categories",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "EQTYP",
+   "key": true,
+   "data_element": "EQTYP",
+   "domain": "EQTYP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Equipment Category",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "REFTP",
+   "key": false,
+   "data_element": "REFTP",
+   "domain": "REFTP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Equipment reference category",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "NUMKI",
+   "key": false,
+   "data_element": "NUMKI",
+   "domain": "NUMKR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Number range in the case of internal number assignment",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "NUMKE",
+   "key": false,
+   "data_element": "NUMKE",
+   "domain": "NUMKR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Number range in the case of external number assignment",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "ZEIIN",
+   "key": false,
+   "data_element": "DZEIIN",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Record usage history for equipment",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "TPEIN",
+   "key": false,
+   "data_element": "TPEIN",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Installation at functional location permitted",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "MSTKZ",
+   "key": false,
+   "data_element": "MSTKZ",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator for maintaining multi-lingual texts",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "AEBKZ",
+   "key": false,
+   "data_element": "AEBKZ",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator showing equipment category with change documents",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "PUEMA",
+   "key": false,
+   "data_element": "PUEMA",
+   "domain": "X",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "No Alphanumeric Equipment Numbers",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "STADY",
+   "key": false,
+   "data_element": "STADY",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator for a fixed screen sequence",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "STSMA",
+   "key": false,
+   "data_element": "J_STSMA",
+   "domain": "J_STSMA",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Status Profile",
+   "check_table": "TJ20"
+  },
+  {
+   "pos": 13,
+   "name": "SDEQT",
+   "key": false,
+   "data_element": "SDEQT",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Equipment Category for Serial Numbers",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "PARGR",
+   "key": false,
+   "data_element": "PARGR",
+   "domain": "PARGR",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Partner Determination Procedure",
+   "check_table": "TVPG"
+  },
+  {
+   "pos": 15,
+   "name": "PARK1",
+   "key": false,
+   "data_element": "PARK1",
+   "domain": "PARVW",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Partner Function for Current Customer in Serial Number",
+   "check_table": "TPAR"
+  },
+  {
+   "pos": 16,
+   "name": "PARK2",
+   "key": false,
+   "data_element": "PARK2",
+   "domain": "PARVW",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Partner Function for Equipment Vendor",
+   "check_table": "TPAR"
+  },
+  {
+   "pos": 17,
+   "name": "PARK3",
+   "key": false,
+   "data_element": "PARK3",
+   "domain": "PARVW",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Partner Function for Customer in Equipment Usage Period",
+   "check_table": "TPAR"
+  },
+  {
+   "pos": 18,
+   "name": "PARK4",
+   "key": false,
+   "data_element": "PARK4",
+   "domain": "PARVW",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Partner Function for Endcustomer in Equipment Usage Period",
+   "check_table": "TPAR"
+  },
+  {
+   "pos": 19,
+   "name": "PARK5",
+   "key": false,
+   "data_element": "PARK5",
+   "domain": "PARVW",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Partner Function for Operator in Equipment Usage Period",
+   "check_table": "TPAR"
+  },
+  {
+   "pos": 20,
+   "name": "INFOW",
+   "key": false,
+   "data_element": "I_INFOWIND",
+   "domain": "I_INFOWIND",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Parameter ID Object Info",
+   "check_table": "TQ80O"
+  },
+  {
+   "pos": 21,
+   "name": "AMKNZ",
+   "key": false,
+   "data_element": "AMKNZ",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Asset relevant indicator",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "WFKNZ",
+   "key": false,
+   "data_element": "WFKNZ",
+   "domain": "X",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Generate Event for Workflow",
+   "check_table": null
+  },
+  {
+   "pos": 23,
+   "name": "PASYN",
+   "key": false,
+   "data_element": "PASYN",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Partner synchronization activated",
+   "check_table": null
+  },
+  {
+   "pos": 24,
+   "name": "KZKSD",
+   "key": false,
+   "data_element": "KZKSD",
+   "domain": "X",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Serial data when maintaining equipment",
+   "check_table": null
+  },
+  {
+   "pos": 25,
+   "name": "KONFKNZ",
+   "key": false,
+   "data_element": "KONFKNZ",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Configuration supported",
+   "check_table": null
+  },
+  {
+   "pos": 26,
+   "name": "SDKNZ",
+   "key": false,
+   "data_element": "SDKNZ",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Sales equipment",
+   "check_table": null
+  },
+  {
+   "pos": 27,
+   "name": "FHMKZ",
+   "key": false,
+   "data_element": "FHMKZ",
+   "domain": "XFLAG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Equip. category relevant to production resources and tools",
+   "check_table": null
+  },
+  {
+   "pos": 28,
+   "name": "ELSE_KNZ",
+   "key": false,
+   "data_element": "ELSE_KNZ",
+   "domain": "X",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Other Data Active",
+   "check_table": null
+  },
+  {
+   "pos": 29,
+   "name": "ISU_KNZ",
+   "key": false,
+   "data_element": "ISU_KNZ",
+   "domain": "X",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "IS-U data",
+   "check_table": null
+  },
+  {
+   "pos": 30,
+   "name": "TSEGTP",
+   "key": false,
+   "data_element": "TSEGTEMPLA",
+   "domain": "TSEGTEMPLA",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Template",
+   "check_table": "*"
+  },
+  {
+   "pos": 31,
+   "name": "VIEW_PROF",
+   "key": false,
+   "data_element": "ITOBVIEW_PROFILE",
+   "domain": "ITOBVIEW_PROFILE",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "View profile for tab index Customizing",
+   "check_table": "TITOBPROF"
+  },
+  {
+   "pos": 32,
+   "name": "NO_SER_ENQ",
+   "key": false,
+   "data_element": "NO_SER_ENQ",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "No Block when Assigning Serial Numbers",
+   "check_table": null
+  },
+  {
+   "pos": 33,
+   "name": "BTMNS",
+   "key": false,
+   "data_element": "BTMNS",
+   "domain": "BTMNS",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Keep construction type and material number synchronous",
+   "check_table": null
+  },
+  {
+   "pos": 34,
+   "name": "CC_KNZ",
+   "key": false,
+   "data_element": "CCC_KNZ",
+   "domain": "X",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Configuration Control Data",
+   "check_table": null
+  },
+  {
+   "pos": 35,
+   "name": "AEBKZ_INS",
+   "key": false,
+   "data_element": "AEBKZ_INS",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Equipment Type with Change Documents During Creation",
+   "check_table": null
+  },
+  {
+   "pos": 36,
+   "name": "LFE_IND",
+   "key": false,
+   "data_element": "EAML_LFE_IND",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Object Belongs to Linear Asset Management",
+   "check_table": null
+  },
+  {
+   "pos": 39,
+   "name": "J_3GBAUKNZ",
+   "key": false,
+   "data_element": "J_3GBAUKNZ",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "CEM Equipment",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "INFOW",
+   "foreign_table": "TQ80O",
+   "foreign_field": "INFO_WIND"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "PARGR",
+   "foreign_table": "TVPG",
+   "foreign_field": "PARGR"
+  },
+  {
+   "field": "PARK1",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  },
+  {
+   "field": "PARK2",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  },
+  {
+   "field": "PARK3",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  },
+  {
+   "field": "PARK4",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  },
+  {
+   "field": "PARK5",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  },
+  {
+   "field": "STSMA",
+   "foreign_table": "TJ20",
+   "foreign_field": "STSMA"
+  },
+  {
+   "field": "VIEW_PROF",
+   "foreign_table": "TITOBPROF",
+   "foreign_field": "PROFILE"
+  }
+ ]
+}

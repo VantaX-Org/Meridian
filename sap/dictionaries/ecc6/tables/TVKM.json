@@ -1,0 +1,40 @@
+{
+ "table": "TVKM",
+ "description": "Materials: Account Assignment Groups",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "KTGRM",
+   "key": true,
+   "data_element": "KTGRM",
+   "domain": "KTGRM",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Account assignment group for this material",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

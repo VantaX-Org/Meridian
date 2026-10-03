@@ -1,0 +1,134 @@
+{
+ "table": "USMD110C",
+ "description": "Type of Change Request",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "USMD_CREQ_TYPE",
+   "key": true,
+   "data_element": "USMD_CREQUEST_TYPE",
+   "domain": "USMD_CREQUEST_TYPE",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Type of Change Request",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "USMD_EDTN_TYPE",
+   "key": false,
+   "data_element": "USMD_EDITION_TYPE",
+   "domain": "USMD_EDITION_TYPE",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Edition Type",
+   "check_table": "USMD010C"
+  },
+  {
+   "pos": 4,
+   "name": "USMD_MODEL",
+   "key": false,
+   "data_element": "USMD_MODEL",
+   "domain": "USMD_MODEL",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Data Model",
+   "check_table": "USMD001C"
+  },
+  {
+   "pos": 5,
+   "name": "USMD_OBJLIST_REQ",
+   "key": false,
+   "data_element": "USMD_OBJLIST_REQ",
+   "domain": "USMD_FLG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Objects to Be Changed Need to Be Specified",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "USMD_SINGLE_OBJ",
+   "key": false,
+   "data_element": "USMD_SINGLE_OBJ",
+   "domain": "USMD_FLG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Change Request Contains One Entity Only",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "USMD_ENTITY_MAIN",
+   "key": false,
+   "data_element": "USMD_ENTITY_MAIN",
+   "domain": "USMD_ENTITY",
+   "type": "CHAR",
+   "length": 9,
+   "decimals": 0,
+   "description": "Main Entity Type",
+   "check_table": "*"
+  },
+  {
+   "pos": 8,
+   "name": "USMD_CREQUEST_WF",
+   "key": false,
+   "data_element": "USMD_WORKFLOW",
+   "domain": "HROBJEC_14",
+   "type": "CHAR",
+   "length": 14,
+   "decimals": 0,
+   "description": "Workflow",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "USMD_TARGET_SYS",
+   "key": false,
+   "data_element": "USMD_TARGET_SYSTEMS",
+   "domain": "USMD_FLG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Display Target Systems on Maintenance Screens",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "USMD_EDTN_TYPE",
+   "foreign_table": "USMD010C",
+   "foreign_field": "USMD_EDTN_TYPE"
+  },
+  {
+   "field": "USMD_MODEL",
+   "foreign_table": "USMD001C",
+   "foreign_field": "USMD_MODEL"
+  }
+ ]
+}

@@ -2,7 +2,7 @@
  "table": "ANKA",
  "description": "Asset classes:  general data",
  "category": "",
- "delivery_class": "",
+ "delivery_class": "C",
  "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
  "fields": [
   {

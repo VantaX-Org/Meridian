@@ -1,0 +1,34 @@
+{
+ "table": "TLGR",
+ "description": "Routes: Loading Groups",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "LADGR",
+   "key": true,
+   "data_element": "LADGR",
+   "domain": "LADGR",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Loading Group",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": []
+}

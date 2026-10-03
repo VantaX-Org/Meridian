@@ -1,0 +1,27 @@
+{
+ "domain": "LOSVF",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "S",
+   "high": null,
+   "text": "Static lot-sizing procedure"
+  },
+  {
+   "low": "P",
+   "high": null,
+   "text": "Period lot-sizing procedure"
+  },
+  {
+   "low": "O",
+   "high": null,
+   "text": "Optimum lot-sizing procedure"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

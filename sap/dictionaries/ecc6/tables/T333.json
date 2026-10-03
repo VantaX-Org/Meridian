@@ -1,0 +1,556 @@
+{
+ "table": "T333",
+ "description": "WM Movement Types",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "LGNUM",
+   "key": true,
+   "data_element": "LGNUM",
+   "domain": "LGNUM",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Warehouse Number / Warehouse Complex",
+   "check_table": "T300"
+  },
+  {
+   "pos": 3,
+   "name": "BWLVS",
+   "key": true,
+   "data_element": "BWLVS",
+   "domain": "BWLVS",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Movement Type for Warehouse Management",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "TRART",
+   "key": false,
+   "data_element": "LVS_TRART",
+   "domain": "LVS_TRART",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Shipment Type",
+   "check_table": "T333A"
+  },
+  {
+   "pos": 5,
+   "name": "VLTYP",
+   "key": false,
+   "data_element": "T333_VLTYP",
+   "domain": "LGTYP",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Source Storage Type",
+   "check_table": "T301"
+  },
+  {
+   "pos": 6,
+   "name": "VLPLA",
+   "key": false,
+   "data_element": "T333_VLPLA",
+   "domain": "LGPLA",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Source storage bin",
+   "check_table": "LAGP"
+  },
+  {
+   "pos": 7,
+   "name": "NLTYP",
+   "key": false,
+   "data_element": "T333_NLTYP",
+   "domain": "LGTYP",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Destination Storage Type",
+   "check_table": "T301"
+  },
+  {
+   "pos": 8,
+   "name": "NLPLA",
+   "key": false,
+   "data_element": "T333_NLPLA",
+   "domain": "LGPLA",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Destination Storage Bin",
+   "check_table": "LAGP"
+  },
+  {
+   "pos": 9,
+   "name": "RLTYP",
+   "key": false,
+   "data_element": "T333_RLTYP",
+   "domain": "LGTYP",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Return storage type",
+   "check_table": "T301"
+  },
+  {
+   "pos": 10,
+   "name": "RLPLA",
+   "key": false,
+   "data_element": "T333_RLPLA",
+   "domain": "LGPLA",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Return storage bin",
+   "check_table": "LAGP"
+  },
+  {
+   "pos": 11,
+   "name": "BETYP",
+   "key": false,
+   "data_element": "LVS_BETYP",
+   "domain": "LVS_BETYP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Requirement Type",
+   "check_table": "T308"
+  },
+  {
+   "pos": 12,
+   "name": "TBOBL",
+   "key": false,
+   "data_element": "T333_TBOBL",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: manual creation of transfer order not allowed",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "DRUKZ",
+   "key": false,
+   "data_element": "LVS_DRUKZ",
+   "domain": "LVS_DRUKZ",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Indicator: form and sort code for printing transfer orders",
+   "check_table": "T329F"
+  },
+  {
+   "pos": 14,
+   "name": "SQUIT",
+   "key": false,
+   "data_element": "T333_SQUIT",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Ind: The transfer order item may be confirmed immediately.",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "TBMAN",
+   "key": false,
+   "data_element": "T333_TBMAN",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Ind: manual creation of a transfer requirement is allowed",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "DUNKL",
+   "key": false,
+   "data_element": "LVS_DUNKL",
+   "domain": "LVS_DUNKL",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Foreground/Background Processing - Control of Screens",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "VQUIT",
+   "key": false,
+   "data_element": "T333_VQUIT",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Ind: Propose confirmation upon creation of TO item.",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "TBPRI",
+   "key": false,
+   "data_element": "TBPRI",
+   "domain": "TBPRI",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Transfer Priority",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "WEDAT",
+   "key": false,
+   "data_element": "T333_WEDAT",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: set goods receipt data in quant",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "LPMAN",
+   "key": false,
+   "data_element": "T333_LPMAN",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: manual input of storage bins during TO creation",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "VKDYN",
+   "key": false,
+   "data_element": "T333_VKDYN",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: dynamic source bin",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "NKDYN",
+   "key": false,
+   "data_element": "T333_NKDYN",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: dynamic destination bin",
+   "check_table": null
+  },
+  {
+   "pos": 23,
+   "name": "ABILD",
+   "key": false,
+   "data_element": "T333_ABILD",
+   "domain": "T333_ABILD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Screen for creation of transfer orders",
+   "check_table": null
+  },
+  {
+   "pos": 24,
+   "name": "FEHLT",
+   "key": false,
+   "data_element": "T333_FEHLT",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: pre-allocated stock to be considered",
+   "check_table": null
+  },
+  {
+   "pos": 25,
+   "name": "VFIXP",
+   "key": false,
+   "data_element": "T333_VFIXP",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "1nd: use fixed bin as source bin",
+   "check_table": null
+  },
+  {
+   "pos": 26,
+   "name": "NFIXP",
+   "key": false,
+   "data_element": "T333_NFIXP",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: use fixed bin as destination bin",
+   "check_table": null
+  },
+  {
+   "pos": 27,
+   "name": "KZUAP",
+   "key": false,
+   "data_element": "LVS_KZUAP",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: post and leave materials in same storage bin",
+   "check_table": null
+  },
+  {
+   "pos": 28,
+   "name": "BWREF",
+   "key": false,
+   "data_element": "LVS_BWREF",
+   "domain": "LVS_BWREF",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Reference to movement type during storage type search",
+   "check_table": null
+  },
+  {
+   "pos": 29,
+   "name": "UELIE",
+   "key": false,
+   "data_element": "T333_UELIE",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Overdeliveries required",
+   "check_table": null
+  },
+  {
+   "pos": 30,
+   "name": "AUTTA",
+   "key": false,
+   "data_element": "LVS_AUTTA",
+   "domain": "AUTTA",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Automatic Transfer Order Creation",
+   "check_table": "T333N"
+  },
+  {
+   "pos": 31,
+   "name": "ZUSTE",
+   "key": false,
+   "data_element": "LVS_ZUSTE",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Transfer of batches with status 'restricted' allowed",
+   "check_table": null
+  },
+  {
+   "pos": 32,
+   "name": "CHSWM",
+   "key": false,
+   "data_element": "KALSMA_CH",
+   "domain": "KALSM",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Search procedure for batch determination",
+   "check_table": "T683"
+  },
+  {
+   "pos": 33,
+   "name": "QBILD",
+   "key": false,
+   "data_element": "T333_QBILD",
+   "domain": "T333_QBILD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Screen for transfer order confirmation",
+   "check_table": null
+  },
+  {
+   "pos": 34,
+   "name": "RULES",
+   "key": false,
+   "data_element": "T333_RULES",
+   "domain": "BF_RULES",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Stock determination rule",
+   "check_table": "T434R"
+  },
+  {
+   "pos": 35,
+   "name": "VEPST",
+   "key": false,
+   "data_element": "T333_VEPST",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Packaging control in WM",
+   "check_table": null
+  },
+  {
+   "pos": 36,
+   "name": "DBILD",
+   "key": false,
+   "data_element": "T333_DBILD",
+   "domain": "T333_DBILD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Standard View for Display of TO Items",
+   "check_table": null
+  },
+  {
+   "pos": 37,
+   "name": "NO2ST",
+   "key": false,
+   "data_element": "T333_NO2ST",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "No two-step confirmation",
+   "check_table": null
+  },
+  {
+   "pos": 38,
+   "name": "PIKTA",
+   "key": false,
+   "data_element": "T333_PIKTA",
+   "domain": "T333_PIKTA",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Control for HU pick",
+   "check_table": null
+  },
+  {
+   "pos": 39,
+   "name": "WMMUE",
+   "key": false,
+   "data_element": "T333_WMMUE",
+   "domain": "LVS_WMMUE",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Post WM quantity as delivery quantity and goods movement",
+   "check_table": null
+  },
+  {
+   "pos": 41,
+   "name": "XDREL",
+   "key": false,
+   "data_element": "LXDCK_XDREL",
+   "domain": "YESNO",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Relevant for Cross-Docking",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "AUTTA",
+   "foreign_table": "T333N",
+   "foreign_field": "AUTTA"
+  },
+  {
+   "field": "BETYP",
+   "foreign_table": "T308",
+   "foreign_field": "BETYP"
+  },
+  {
+   "field": "CHSWM",
+   "foreign_table": "T683",
+   "foreign_field": "KALSM"
+  },
+  {
+   "field": "DRUKZ",
+   "foreign_table": "T329F",
+   "foreign_field": "DRUKZ"
+  },
+  {
+   "field": "LGNUM",
+   "foreign_table": "T300",
+   "foreign_field": "LGNUM"
+  },
+  {
+   "field": "NLPLA",
+   "foreign_table": "LAGP",
+   "foreign_field": "LGPLA"
+  },
+  {
+   "field": "NLTYP",
+   "foreign_table": "T301",
+   "foreign_field": "LGTYP"
+  },
+  {
+   "field": "RLPLA",
+   "foreign_table": "LAGP",
+   "foreign_field": "LGPLA"
+  },
+  {
+   "field": "RLTYP",
+   "foreign_table": "T301",
+   "foreign_field": "LGTYP"
+  },
+  {
+   "field": "RULES",
+   "foreign_table": "T434R",
+   "foreign_field": "RULES"
+  },
+  {
+   "field": "TRART",
+   "foreign_table": "T333A",
+   "foreign_field": "TRART"
+  },
+  {
+   "field": "VLPLA",
+   "foreign_table": "LAGP",
+   "foreign_field": "LGPLA"
+  },
+  {
+   "field": "VLTYP",
+   "foreign_table": "T301",
+   "foreign_field": "LGTYP"
+  }
+ ]
+}

@@ -1,0 +1,47 @@
+{
+ "domain": "GRAC_ROLE_CAT",
+ "type": "CHAR",
+ "length": 2,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "TR",
+   "high": null,
+   "text": "Technical role"
+  },
+  {
+   "low": "BR",
+   "high": null,
+   "text": "Business role"
+  },
+  {
+   "low": "PF",
+   "high": null,
+   "text": "Profile"
+  },
+  {
+   "low": "GP",
+   "high": null,
+   "text": "Group"
+  },
+  {
+   "low": "TP",
+   "high": null,
+   "text": "Template"
+  },
+  {
+   "low": "CU",
+   "high": null,
+   "text": "CUA Composite role"
+  },
+  {
+   "low": "PD",
+   "high": null,
+   "text": "PD Profile"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,585 @@
+{
+ "table": "TC21",
+ "description": "Standard value key",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "VGWTS",
+   "key": true,
+   "data_element": "VORGSCHL",
+   "domain": "VORGSCHL",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Standard value key",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "PAR01",
+   "key": false,
+   "data_element": "PARAMID",
+   "domain": "PARAMID",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Parameter ID",
+   "check_table": "TC20"
+  },
+  {
+   "pos": 4,
+   "name": "BDE01",
+   "key": false,
+   "data_element": "BDENR",
+   "domain": "BDENR",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Transfer activity types to incentive wages",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "PAR02",
+   "key": false,
+   "data_element": "PARAMID",
+   "domain": "PARAMID",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Parameter ID",
+   "check_table": "TC20"
+  },
+  {
+   "pos": 6,
+   "name": "BDE02",
+   "key": false,
+   "data_element": "BDENR",
+   "domain": "BDENR",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Transfer activity types to incentive wages",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "PAR03",
+   "key": false,
+   "data_element": "PARAMID",
+   "domain": "PARAMID",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Parameter ID",
+   "check_table": "TC20"
+  },
+  {
+   "pos": 8,
+   "name": "BDE03",
+   "key": false,
+   "data_element": "BDENR",
+   "domain": "BDENR",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Transfer activity types to incentive wages",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "PAR04",
+   "key": false,
+   "data_element": "PARAMID",
+   "domain": "PARAMID",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Parameter ID",
+   "check_table": "TC20"
+  },
+  {
+   "pos": 10,
+   "name": "BDE04",
+   "key": false,
+   "data_element": "BDENR",
+   "domain": "BDENR",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Transfer activity types to incentive wages",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "PAR05",
+   "key": false,
+   "data_element": "PARAMID",
+   "domain": "PARAMID",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Parameter ID",
+   "check_table": "TC20"
+  },
+  {
+   "pos": 12,
+   "name": "BDE05",
+   "key": false,
+   "data_element": "BDENR",
+   "domain": "BDENR",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Transfer activity types to incentive wages",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "PAR06",
+   "key": false,
+   "data_element": "PARAMID",
+   "domain": "PARAMID",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Parameter ID",
+   "check_table": "TC20"
+  },
+  {
+   "pos": 14,
+   "name": "BDE06",
+   "key": false,
+   "data_element": "BDENR",
+   "domain": "BDENR",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Transfer activity types to incentive wages",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "PARN1",
+   "key": false,
+   "data_element": "PARAMID",
+   "domain": "PARAMID",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Parameter ID",
+   "check_table": "TC20"
+  },
+  {
+   "pos": 16,
+   "name": "GENER",
+   "key": false,
+   "data_element": "CR_GENER",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Internal indicator: Coding generated",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "SAKL_01",
+   "key": false,
+   "data_element": "SA_KLASSE",
+   "domain": "SA_KLASSE",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Record type group",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "RKRCFR_01",
+   "key": false,
+   "data_element": "AP_FORMEL",
+   "domain": "AP_FORMEL",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Formula key",
+   "check_table": "TC25"
+  },
+  {
+   "pos": 19,
+   "name": "RKRCZT_01",
+   "key": false,
+   "data_element": "RKRECN_ZT",
+   "domain": "SA_KLASSE",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Retrograde calculation time",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "RKMLZT_01",
+   "key": false,
+   "data_element": "RKMELD_ZT",
+   "domain": "RKMELD_ZT",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Confirmation time",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "SAKL_02",
+   "key": false,
+   "data_element": "SA_KLASSE",
+   "domain": "SA_KLASSE",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Record type group",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "RKRCFR_02",
+   "key": false,
+   "data_element": "AP_FORMEL",
+   "domain": "AP_FORMEL",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Formula key",
+   "check_table": "TC25"
+  },
+  {
+   "pos": 23,
+   "name": "RKRCZT_02",
+   "key": false,
+   "data_element": "RKRECN_ZT",
+   "domain": "SA_KLASSE",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Retrograde calculation time",
+   "check_table": null
+  },
+  {
+   "pos": 24,
+   "name": "RKMLZT_02",
+   "key": false,
+   "data_element": "RKMELD_ZT",
+   "domain": "RKMELD_ZT",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Confirmation time",
+   "check_table": null
+  },
+  {
+   "pos": 25,
+   "name": "SAKL_03",
+   "key": false,
+   "data_element": "SA_KLASSE",
+   "domain": "SA_KLASSE",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Record type group",
+   "check_table": null
+  },
+  {
+   "pos": 26,
+   "name": "RKRCFR_03",
+   "key": false,
+   "data_element": "AP_FORMEL",
+   "domain": "AP_FORMEL",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Formula key",
+   "check_table": "TC25"
+  },
+  {
+   "pos": 27,
+   "name": "RKRCZT_03",
+   "key": false,
+   "data_element": "RKRECN_ZT",
+   "domain": "SA_KLASSE",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Retrograde calculation time",
+   "check_table": null
+  },
+  {
+   "pos": 28,
+   "name": "RKMLZT_03",
+   "key": false,
+   "data_element": "RKMELD_ZT",
+   "domain": "RKMELD_ZT",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Confirmation time",
+   "check_table": null
+  },
+  {
+   "pos": 29,
+   "name": "SAKL_04",
+   "key": false,
+   "data_element": "SA_KLASSE",
+   "domain": "SA_KLASSE",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Record type group",
+   "check_table": null
+  },
+  {
+   "pos": 30,
+   "name": "RKRCFR_04",
+   "key": false,
+   "data_element": "AP_FORMEL",
+   "domain": "AP_FORMEL",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Formula key",
+   "check_table": "TC25"
+  },
+  {
+   "pos": 31,
+   "name": "RKRCZT_04",
+   "key": false,
+   "data_element": "RKRECN_ZT",
+   "domain": "SA_KLASSE",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Retrograde calculation time",
+   "check_table": null
+  },
+  {
+   "pos": 32,
+   "name": "RKMLZT_04",
+   "key": false,
+   "data_element": "RKMELD_ZT",
+   "domain": "RKMELD_ZT",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Confirmation time",
+   "check_table": null
+  },
+  {
+   "pos": 33,
+   "name": "SAKL_05",
+   "key": false,
+   "data_element": "SA_KLASSE",
+   "domain": "SA_KLASSE",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Record type group",
+   "check_table": null
+  },
+  {
+   "pos": 34,
+   "name": "RKRCFR_05",
+   "key": false,
+   "data_element": "AP_FORMEL",
+   "domain": "AP_FORMEL",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Formula key",
+   "check_table": "TC25"
+  },
+  {
+   "pos": 35,
+   "name": "RKRCZT_05",
+   "key": false,
+   "data_element": "RKRECN_ZT",
+   "domain": "SA_KLASSE",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Retrograde calculation time",
+   "check_table": null
+  },
+  {
+   "pos": 36,
+   "name": "RKMLZT_05",
+   "key": false,
+   "data_element": "RKMELD_ZT",
+   "domain": "RKMELD_ZT",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Confirmation time",
+   "check_table": null
+  },
+  {
+   "pos": 37,
+   "name": "SAKL_06",
+   "key": false,
+   "data_element": "SA_KLASSE",
+   "domain": "SA_KLASSE",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Record type group",
+   "check_table": null
+  },
+  {
+   "pos": 38,
+   "name": "RKRCFR_06",
+   "key": false,
+   "data_element": "AP_FORMEL",
+   "domain": "AP_FORMEL",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Formula key",
+   "check_table": "TC25"
+  },
+  {
+   "pos": 39,
+   "name": "RKRCZT_06",
+   "key": false,
+   "data_element": "RKRECN_ZT",
+   "domain": "SA_KLASSE",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Retrograde calculation time",
+   "check_table": null
+  },
+  {
+   "pos": 40,
+   "name": "RKMLZT_06",
+   "key": false,
+   "data_element": "RKMELD_ZT",
+   "domain": "RKMELD_ZT",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Confirmation time",
+   "check_table": null
+  },
+  {
+   "pos": 41,
+   "name": "BDEP1",
+   "key": false,
+   "data_element": "BDENR",
+   "domain": "BDENR",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Transfer activity types to incentive wages",
+   "check_table": null
+  },
+  {
+   "pos": 42,
+   "name": "SAKL_P1",
+   "key": false,
+   "data_element": "SA_KLASSE",
+   "domain": "SA_KLASSE",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Record type group",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "PAR01",
+   "foreign_table": "TC20",
+   "foreign_field": "PARID"
+  },
+  {
+   "field": "PAR02",
+   "foreign_table": "TC20",
+   "foreign_field": "PARID"
+  },
+  {
+   "field": "PAR03",
+   "foreign_table": "TC20",
+   "foreign_field": "PARID"
+  },
+  {
+   "field": "PAR04",
+   "foreign_table": "TC20",
+   "foreign_field": "PARID"
+  },
+  {
+   "field": "PAR05",
+   "foreign_table": "TC20",
+   "foreign_field": "PARID"
+  },
+  {
+   "field": "PAR06",
+   "foreign_table": "TC20",
+   "foreign_field": "PARID"
+  },
+  {
+   "field": "PARN1",
+   "foreign_table": "TC20",
+   "foreign_field": "PARID"
+  },
+  {
+   "field": "RKRCFR_01",
+   "foreign_table": "TC25",
+   "foreign_field": "IDENT"
+  },
+  {
+   "field": "RKRCFR_02",
+   "foreign_table": "TC25",
+   "foreign_field": "IDENT"
+  },
+  {
+   "field": "RKRCFR_03",
+   "foreign_table": "TC25",
+   "foreign_field": "IDENT"
+  },
+  {
+   "field": "RKRCFR_04",
+   "foreign_table": "TC25",
+   "foreign_field": "IDENT"
+  },
+  {
+   "field": "RKRCFR_05",
+   "foreign_table": "TC25",
+   "foreign_field": "IDENT"
+  },
+  {
+   "field": "RKRCFR_06",
+   "foreign_table": "TC25",
+   "foreign_field": "IDENT"
+  }
+ ]
+}

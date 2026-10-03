@@ -1,0 +1,168 @@
+{
+ "table": "T024D",
+ "description": "MRP controllers",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "WERKS",
+   "key": true,
+   "data_element": "WERKS_D",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Plant",
+   "check_table": "T001W"
+  },
+  {
+   "pos": 3,
+   "name": "DISPO",
+   "key": true,
+   "data_element": "DISPO",
+   "domain": "DISPO",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "MRP controller",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "DSNAM",
+   "key": false,
+   "data_element": "DSNAM",
+   "domain": "TEXT18",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Name of MRP controller",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "DSTEL",
+   "key": false,
+   "data_element": "DSTEL",
+   "domain": "CHAR12",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "MRP controller's telephone number",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "EKGRP",
+   "key": false,
+   "data_element": "EKGRP",
+   "domain": "EKGRP",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Purchasing group",
+   "check_table": "T024"
+  },
+  {
+   "pos": 7,
+   "name": "MEMPF",
+   "key": false,
+   "data_element": "SO_REC_NAM",
+   "domain": "USERNAME",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Recipient Name",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "GSBER",
+   "key": false,
+   "data_element": "GSBER",
+   "domain": "GSBER",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Business Area",
+   "check_table": "TGSB"
+  },
+  {
+   "pos": 9,
+   "name": "PRCTR",
+   "key": false,
+   "data_element": "PRCTR",
+   "domain": "PRCTR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Profit Center",
+   "check_table": "CEPC"
+  },
+  {
+   "pos": 10,
+   "name": "USRTYP",
+   "key": false,
+   "data_element": "MDUSRTYP",
+   "domain": "OTYPE",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Recipient type",
+   "check_table": "T779O"
+  },
+  {
+   "pos": 11,
+   "name": "USRKEY",
+   "key": false,
+   "data_element": "MDUSRKEY",
+   "domain": "CHAR70",
+   "type": "CHAR",
+   "length": 70,
+   "decimals": 0,
+   "description": "Object ID for recipient",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "EKGRP",
+   "foreign_table": "T024",
+   "foreign_field": "EKGRP"
+  },
+  {
+   "field": "GSBER",
+   "foreign_table": "TGSB",
+   "foreign_field": "GSBER"
+  },
+  {
+   "field": "PRCTR",
+   "foreign_table": "CEPC",
+   "foreign_field": "PRCTR"
+  },
+  {
+   "field": "USRTYP",
+   "foreign_table": "T779O",
+   "foreign_field": "OTYPE"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  }
+ ]
+}

@@ -1,0 +1,27 @@
+{
+ "domain": "SA_RPKANBAN",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Reporting Point Confirmation Without Kanban Cards"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "RP Confirmation w. Kanban Cards, Correction in MFBF Allowed"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "RP Conf. with Kanban Cards, Correction in MFBF Not Allowed"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

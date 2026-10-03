@@ -1,0 +1,27 @@
+{
+ "domain": "AWDEG",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "K",
+   "high": null,
+   "text": "Category"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Debit Cost Element"
+  },
+  {
+   "low": "S",
+   "high": null,
+   "text": "Cost Component Split"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

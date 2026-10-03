@@ -1,0 +1,27 @@
+{
+ "domain": "SA_RRETR",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "1",
+   "high": null,
+   "text": "Do not create postprocessing records"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Create cumulated postprocessing records"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "As 2, plus create individual postprocessing records"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

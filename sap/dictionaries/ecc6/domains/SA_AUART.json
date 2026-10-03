@@ -1,0 +1,22 @@
+{
+ "domain": "SA_AUART",
+ "type": "CHAR",
+ "length": 4,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "PKMN",
+   "high": null,
+   "text": "Repetitive manufacturing with production cost collector"
+  },
+  {
+   "low": "SA",
+   "high": null,
+   "text": "Repetitive mfg with partial orders --> no longer supported"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,141 @@
+{
+ "table": "TNTP",
+ "description": "International Article Number (EAN) Categories",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "NUMTP",
+   "key": true,
+   "data_element": "NUMTP",
+   "domain": "NUMTP",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Category of International Article Number (EAN)",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "PRFZA",
+   "key": false,
+   "data_element": "PRFZA",
+   "domain": "PRFZA",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Check-digit algorithm for EAN category",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "NKOBJ",
+   "key": false,
+   "data_element": "NKOBJ",
+   "domain": "NROBJ",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Number range object",
+   "check_table": "TNRO"
+  },
+  {
+   "pos": 5,
+   "name": "NMKRS",
+   "key": false,
+   "data_element": "NMKRS",
+   "domain": "CHAR2",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Number range for internal number assignment",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "NMKRE",
+   "key": false,
+   "data_element": "NMKRE",
+   "domain": "CHAR2",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Number range for external number assignment",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "PGEAN",
+   "key": false,
+   "data_element": "PGEAN",
+   "domain": "CHAR2",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Prefix of EAN category for fresh produce EANs",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "RZEAN",
+   "key": false,
+   "data_element": "RZEAN",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: EAN category allowed only for referencing EANs",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "ANEAN",
+   "key": false,
+   "data_element": "ANEAN",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Allow alphanumeric EANs",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "LNEAN",
+   "key": false,
+   "data_element": "LEN_EAN",
+   "domain": "NUMC2",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Length of an EAN with leading zeros",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "NKOBJ",
+   "foreign_table": "TNRO",
+   "foreign_field": "OBJECT"
+  }
+ ]
+}

@@ -1,0 +1,57 @@
+{
+ "table": "T691A",
+ "description": "Credit management risk categories",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "CTLPC",
+   "key": true,
+   "data_element": "CTLPC_CM",
+   "domain": "CTLPC_CM",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Credit management: Risk category",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "KKBER",
+   "key": true,
+   "data_element": "KKBER",
+   "domain": "KKBER",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Credit control area",
+   "check_table": "T014"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "KKBER",
+   "foreign_table": "T014",
+   "foreign_field": "KKBER"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

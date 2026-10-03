@@ -1,0 +1,32 @@
+{
+ "domain": "RUEK",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "1",
+   "high": null,
+   "text": "Milestone confirmation (not PS/PM)"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Confirmation required"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Confirmation not possible"
+  },
+  {
+   "low": "",
+   "high": null,
+   "text": "Confirmation possible but not necessary"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,62 @@
+{
+ "table": "TVBVK",
+ "description": "Organizational Unit: Sales Groups per Sales Office",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "VKBUR",
+   "key": true,
+   "data_element": "VKBUR",
+   "domain": "VKBUR",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Sales office",
+   "check_table": "TVBUR"
+  },
+  {
+   "pos": 3,
+   "name": "VKGRP",
+   "key": true,
+   "data_element": "VKGRP",
+   "domain": "VKGRP",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Sales group",
+   "check_table": "TVKGR"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "VKBUR",
+   "foreign_table": "TVBUR",
+   "foreign_field": "VKBUR"
+  },
+  {
+   "field": "VKGRP",
+   "foreign_table": "TVKGR",
+   "foreign_field": "VKGRP"
+  }
+ ]
+}

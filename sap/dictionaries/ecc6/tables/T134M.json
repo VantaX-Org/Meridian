@@ -1,0 +1,110 @@
+{
+ "table": "T134M",
+ "description": "Control of Qty/Value Update",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "BWKEY",
+   "key": true,
+   "data_element": "BWKEY",
+   "domain": "BWKEY",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Valuation area",
+   "check_table": "T001K"
+  },
+  {
+   "pos": 3,
+   "name": "MTART",
+   "key": true,
+   "data_element": "MTART",
+   "domain": "MTART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Material type",
+   "check_table": "T134"
+  },
+  {
+   "pos": 4,
+   "name": "MENGU",
+   "key": false,
+   "data_element": "MENGU",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Quantity Updating in Material Master Record",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "WERTU",
+   "key": false,
+   "data_element": "WERTU",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Value Updating in Material Master Record",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "KZPIP",
+   "key": false,
+   "data_element": "KZPIP",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Pipeline Handling Mandatory",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "XPIZU",
+   "key": false,
+   "data_element": "XPIZU",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Pipeline handling allowed",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "BWKEY",
+   "foreign_table": "T001K",
+   "foreign_field": "BWKEY"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MTART",
+   "foreign_table": "T134",
+   "foreign_field": "MTART"
+  }
+ ]
+}

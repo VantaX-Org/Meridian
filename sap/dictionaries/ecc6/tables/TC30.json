@@ -1,0 +1,127 @@
+{
+ "table": "TC30",
+ "description": "Work center category",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "VERWE",
+   "key": true,
+   "data_element": "AP_VERWE",
+   "domain": "AP_VERWE",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Work Center Category",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "MDCUA",
+   "key": false,
+   "data_element": "AP_MDCUA",
+   "domain": "AP_VERWE",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Reference category for CUA status",
+   "check_table": "*"
+  },
+  {
+   "pos": 4,
+   "name": "MDFAW",
+   "key": false,
+   "data_element": "AP_MDFAW",
+   "domain": "AP_VERWE",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Work center category for field selection",
+   "check_table": "TC30"
+  },
+  {
+   "pos": 5,
+   "name": "VSCHL",
+   "key": false,
+   "data_element": "AP_VERWEV",
+   "domain": "AP_VERWE",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Reference category for screen sequence and verification",
+   "check_table": "TC30"
+  },
+  {
+   "pos": 6,
+   "name": "AEBLG",
+   "key": false,
+   "data_element": "CR_AEND",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Change document per work center category",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "STSMA",
+   "key": false,
+   "data_element": "J_STSMA",
+   "domain": "J_STSMA",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Status Profile",
+   "check_table": "TJ20"
+  },
+  {
+   "pos": 8,
+   "name": "COLOR",
+   "key": false,
+   "data_element": "LD_COLOR",
+   "domain": "W_COLOR",
+   "type": "CHAR",
+   "length": 11,
+   "decimals": 0,
+   "description": "Color work center category for graphics",
+   "check_table": "TWCOL"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "COLOR",
+   "foreign_table": "TWCOL",
+   "foreign_field": "COLOR"
+  },
+  {
+   "field": "MDFAW",
+   "foreign_table": "TC30",
+   "foreign_field": "VERWE"
+  },
+  {
+   "field": "STSMA",
+   "foreign_table": "TJ20",
+   "foreign_field": "STSMA"
+  },
+  {
+   "field": "VSCHL",
+   "foreign_table": "TC30",
+   "foreign_field": "VERWE"
+  }
+ ]
+}

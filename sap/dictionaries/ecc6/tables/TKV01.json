@@ -1,0 +1,148 @@
+{
+ "table": "TKV01",
+ "description": "Variance Keys: Cost Centers/Costing",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "AWOBA",
+   "key": true,
+   "data_element": "AWOBA",
+   "domain": "J_OBART",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Variances: Object Type",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "AWSLS",
+   "key": true,
+   "data_element": "AWSLS",
+   "domain": "AWSLS",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Variance Key",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "AWKUM",
+   "key": false,
+   "data_element": "AWKUM",
+   "domain": "AWKUM",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Variances: Cumulation",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "AWDEG",
+   "key": false,
+   "data_element": "AWDEG",
+   "domain": "AWDEG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Level of Detail for Variances",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "AWEPS",
+   "key": false,
+   "data_element": "AWEPS",
+   "domain": "AWEPS",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Variances: Write Line Items",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "AWESO",
+   "key": false,
+   "data_element": "AWESO",
+   "domain": "AWEKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Calculate Target Costs",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "AWESP",
+   "key": false,
+   "data_element": "AWESP",
+   "domain": "AWEPS",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Calculate Cost Split",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "AWEAU",
+   "key": false,
+   "data_element": "AWEAU",
+   "domain": "AWEKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Calculate Scrap",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "AWEAB",
+   "key": false,
+   "data_element": "AWEAB",
+   "domain": "AWEKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Calculate Variances",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "AWEWP",
+   "key": false,
+   "data_element": "AWEWP",
+   "domain": "AWEKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Calculate Work in Process",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

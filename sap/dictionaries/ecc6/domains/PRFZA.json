@@ -1,0 +1,47 @@
+{
+ "domain": "PRFZA",
+ "type": "CHAR",
+ "length": 2,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "1",
+   "high": null,
+   "text": "Standard EAN check digit algorithm"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Check digit alg. for fresh produce EANs with indl art. no."
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Check digit algorithm for fresh produce EANs with SAN"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Ck digit alg. for fresh produce EANs w/ indl art. no. 5-fig."
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "Ck digit algorithm for FP EANs with SAN + trading unit digit"
+  },
+  {
+   "low": "6",
+   "high": null,
+   "text": "Check digit algorithm for UPC version E (UPC contraction)"
+  },
+  {
+   "low": "",
+   "high": null,
+   "text": ""
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

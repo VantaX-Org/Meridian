@@ -2344,3 +2344,246 @@ rules:
       Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OX09).'
   record_fix_template: 'Material {MARD.MATNR}, plant {MARD.WERKS}: storage location ''{actual_value}'' is not configured
     (T001L).'
+- id: MM212
+  field: MARC.WERKS
+  check_class: referential_check
+  severity: high
+  dimension: validity
+  message: Plant (MARC.WERKS) is not defined in the system's configuration (T001W)
+  why_it_matters: The plant view of a material is keyed by the plant. A plant that is not defined in T001W has no company
+    code, valuation area or factory calendar, so nothing posted against this plant view can be processed.
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP, goods movements and purchasing for the material in this plant fail; the plant view is dead data that
+    blocks archiving of the material.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T001W. Remove the plant view (flag for deletion via MM06 and archive) or create
+      the plant in customizing (OX10) if it is genuinely needed.'
+  record_fix_template: 'Material {MARC.MATNR}: plant ''{actual_value}'' is not configured (T001W).'
+- id: MM213
+  field: MBEW.BWKEY
+  check_class: referential_check
+  severity: critical
+  dimension: validity
+  message: Valuation area (MBEW.BWKEY) is not defined in the system's configuration (T001K)
+  why_it_matters: The valuation record is keyed by the valuation area, which links stock value to a company code and its
+    G/L accounts. A valuation area missing from T001K leaves the stock value with no company code to post to.
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods movements and price changes cannot post to FI; the stock value is missing from the balance sheet.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T001K. Correct the valuation data or create the valuation area in customizing
+      (OX14) and assign it to its company code (OX18).'
+  record_fix_template: 'Material {MBEW.MATNR}: valuation area ''{actual_value}'' is not configured (T001K).'
+- id: MM214
+  field: MVKE.VKORG
+  check_class: referential_check
+  severity: high
+  dimension: validity
+  message: Sales organisation (MVKE.VKORG) is not defined in the system's configuration (TVKO)
+  why_it_matters: The sales view of a material is keyed by sales organisation. A sales organisation that is not defined
+    in TVKO has no company code assignment, so the sales view can never be used in an order.
+  rule_authority: sap_hard_constraint
+  sap_impact: Sales orders for the material in this sales organisation fail; the sales view is dead data.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in TVKO. Remove the sales view or create the sales organisation in customizing
+      (OVX5).'
+  record_fix_template: 'Material {MVKE.MATNR}: sales organisation ''{actual_value}'' is not configured (TVKO).'
+- id: MM215
+  field: MVKE.VTWEG
+  check_class: referential_check
+  severity: high
+  dimension: validity
+  message: Distribution channel (MVKE.VTWEG) is not defined in the system's configuration (TVTW)
+  why_it_matters: The sales view of a material is keyed by distribution channel. A channel that is not defined in TVTW can
+    never be part of a sales area, so the sales view can never be used in an order.
+  rule_authority: sap_hard_constraint
+  sap_impact: Sales orders for the material in this distribution channel fail; the sales view is dead data.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in TVTW. Remove the sales view or create the distribution channel in customizing
+      (OVXI).'
+  record_fix_template: 'Material {MVKE.MATNR}: distribution channel ''{actual_value}'' is not configured (TVTW).'
+- id: MM216
+  field: MARC.PRCTR
+  check_class: exists_check
+  target_table: CEPC
+  target_fields:
+  - PRCTR
+  severity: high
+  dimension: consistency
+  message: Profit center on the plant view does not exist in the profit center master (CEPC)
+  why_it_matters: Every goods movement, production order and billing document for the material in this plant takes its
+    profit center from MARC.PRCTR. A profit center that is not in the master data cannot receive postings.
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods movements and billing post with an error or to the dummy profit center; profit center reporting misstates
+    revenue and inventory by segment.
+  fix_map:
+    __other__: Enter an existing profit center in the plant view (MM02 > Costing 1 or Sales General/Plant) or create the profit
+      center (KE51).
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: profit center {actual_value} is not in CEPC.'
+- id: MM217
+  field: MBEW.SALK3
+  check_class: cross_field_check
+  applies_when:
+    MBEW.VPRSV: [S]
+    MBEW.LBKUM: {gt: 0}
+    MBEW.PEINH: {gt: 0}
+  fail_when: abs(`MBEW.SALK3` - `MBEW.LBKUM` * `MBEW.STPRS` / `MBEW.PEINH`) > 1 + 0.01 * abs(`MBEW.SALK3`)
+  severity: high
+  dimension: accuracy
+  message: Stock value does not equal quantity times standard price for a standard-priced material
+  why_it_matters: Under standard price control SAP values every unit of stock at the standard price, so the total stock
+    value (SALK3) must equal total valuated stock (LBKUM) times standard price per price unit. A difference means the value
+    was loaded or changed outside goods movements and price changes.
+  rule_authority: sap_hard_constraint
+  sap_impact: The stock account in FI no longer matches the material valuation; the next price change (MR21 / CK24) posts
+    the hidden difference as a revaluation, and the balance sheet inventory value is wrong until then.
+  fix_map:
+    __other__: Reconcile the valuation (MB5L stock-to-G/L, MR51 valuation history); correct with a price change (MR21) or
+      a debit/credit of the material (MR22) agreed with the controller.
+  record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}: stock value {actual_value} does not equal quantity
+    {MBEW.LBKUM} at standard price {MBEW.STPRS} per {MBEW.PEINH}.'
+- id: MM218
+  field: MBEW.VERPR
+  check_class: cross_field_check
+  fail_when: (`MBEW.VPRSV` == 'S') & (`MBEW.LBKUM` > 0) & (`MBEW.STPRS` > 0) & (`MBEW.VERPR` > 0) & (abs(`MBEW.VERPR` - `MBEW.STPRS`)
+    > 0.5 * `MBEW.STPRS`)
+  severity: medium
+  dimension: accuracy
+  message: Standard price differs from the moving average (periodic) price by more than 50 percent
+  why_it_matters: For standard-priced materials SAP still tracks the moving average of actual receipts in VERPR. When the
+    standard is more than half off from what the material actually costs, the standard is out of date or was entered with
+    the wrong price unit.
+  rule_authority: best_practice
+  sap_impact: Every receipt posts a large price difference; inventory, cost of goods sold and product costing run on a price
+    that does not reflect reality.
+  fix_map:
+    __other__: Review the standard price (MM03 Accounting 1, CK13N) against recent purchase prices and costing; roll a new
+      standard via costing run (CK40N/CK24) or MR21.
+  record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}: moving average price {actual_value} against standard
+    price {MBEW.STPRS}.'
+- id: MM219
+  field: MBEW.LAEPR
+  check_class: freshness_check
+  max_age_hours: 26280
+  applies_when:
+    MBEW.VPRSV:
+    - S
+    MBEW.LBKUM:
+      gt: 0
+  severity: low
+  dimension: timeliness
+  message: Standard price of a material with stock has not changed in more than 3 years
+  why_it_matters: Standard prices are meant to be re-costed at least yearly. A standard unchanged for three years on a
+    material that still holds stock almost always no longer reflects purchase or production cost.
+  rule_authority: best_practice
+  sap_impact: Purchase and production price variances accumulate on every receipt; inventory and margin reporting use a stale
+    cost.
+  fix_map:
+    __other__: Include the material in the next costing run (CK40N) or update the price via MR21 after review.
+  record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}: last price change {actual_value}.'
+- id: MM220
+  field: MVKE.MATNR
+  check_class: exists_check
+  target_table: MLAN
+  target_fields:
+  - MATNR
+  severity: high
+  dimension: completeness
+  message: Material with a sales view has no tax classification (MLAN)
+  why_it_matters: Output tax in SD is determined from the material's tax classification per country (MLAN-TAXM1). A material
+    sold without any tax classification gets no tax condition in the order.
+  rule_authority: sap_hard_constraint
+  sap_impact: Sales orders and billing documents are incomplete or carry no output tax; invoices are blocked or under-taxed.
+  fix_map:
+    __other__: Maintain the tax classification for the departure country in MM02 > Sales Org. 1.
+  record_fix_template: 'Material {MVKE.MATNR}, sales organisation {MVKE.VKORG}: no tax classification.'
+- id: MM221
+  field: MARM.EAN11
+  check_class: exists_check
+  fields:
+  - MARM.MATNR
+  - MARM.MEINH
+  - MARM.EAN11
+  target_table: MEAN
+  target_fields:
+  - MATNR
+  - MEINH
+  - EAN11
+  severity: medium
+  dimension: consistency
+  message: GTIN/EAN on a unit of measure is missing from the EAN table (MEAN)
+  why_it_matters: SAP keeps every GTIN of a material in MEAN, with the main one copied to MARM-EAN11. A GTIN that is in MARM
+    but not in MEAN was loaded directly and is invisible to EAN lookups.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scanning or EDI lookups by GTIN (goods receipt, sales orders, IDocs) do not find the material.
+  fix_map:
+    __other__: Re-save the GTIN via MM02 > Additional data > Units of measure / EANs so MEAN is rebuilt.
+  record_fix_template: 'Material {MARM.MATNR}, unit {MARM.MEINH}: GTIN {actual_value} is not in MEAN.'
+- id: MM222
+  field: MARD.LABST
+  check_class: cross_field_check
+  fail_when: (`MARC.LVORM` == 'X') & ((`MARD.LABST` > 0) | (`MARD.INSME` > 0) | (`MARD.SPEME` > 0))
+  severity: medium
+  dimension: consistency
+  message: Plant view is flagged for deletion but the material still holds stock in the plant
+  why_it_matters: A deletion flag says the material is no longer used in the plant, yet stock is still there. Either the
+    flag is wrong or the stock has to be used up, scrapped or moved before the plant view can be archived.
+  rule_authority: best_practice
+  sap_impact: Archiving of the material fails; stock stays on the balance sheet for a material nobody plans or sells any more.
+  fix_map:
+    __other__: Remove the deletion flag (MM06) if the material is still in use; otherwise issue, scrap or transfer the stock
+      first.
+  record_fix_template: 'Material {MARD.MATNR}, plant {MARD.WERKS}, storage location {MARD.LGORT}: flagged for deletion with
+    stock {actual_value}.'
+- id: MM223
+  field: MARC.PLIFZ
+  check_class: cross_field_check
+  fail_when: '`MARC.PLIFZ` > 365'
+  severity: low
+  dimension: accuracy
+  message: Planned delivery time is longer than a year
+  why_it_matters: The planned delivery time drives the order date MRP proposes. Lead times above 365 days are almost always
+    a unit mistake (weeks or hours keyed as days) or a placeholder.
+  rule_authority: best_practice
+  sap_impact: MRP proposes purchase requisitions a year or more ahead, tying up working capital and swamping buyers with
+    early exception messages.
+  fix_map:
+    __other__: Correct the planned delivery time in MM02 > MRP 2 from the purchasing info record or the supplier's quote.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: planned delivery time {actual_value} days.'
+- id: MM224
+  field: MARC.EISBE
+  check_class: cross_field_check
+  fail_when: (`MARC.MABST` > 0) & (`MARC.EISBE` > `MARC.MABST`)
+  severity: medium
+  dimension: consistency
+  message: Safety stock is above the maximum stock level
+  why_it_matters: Safety stock is the floor MRP keeps; the maximum stock level is the ceiling it replenishes to. A floor above
+    the ceiling cannot be satisfied.
+  rule_authority: best_practice
+  sap_impact: MRP proposes receipts it then caps at the maximum, leaving the material permanently below safety stock and
+    triggering exception messages on every run.
+  fix_map:
+    __other__: Correct safety stock or maximum stock level in MM02 > MRP 1/2.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: safety stock {actual_value} above maximum stock {MARC.MABST}.'
+- id: MM225
+  field: MARM.GEWEI
+  check_class: cross_field_check
+  applies_when:
+    MARM.BRGEW: {gt: 0}
+    MARA.BRGEW: {gt: 0}
+    MARM.UMREN: {gt: 0}
+  # the base unit's own row has UMREZ = UMREN = 1 and passes; written so the scoped weights come last
+  fail_when: (`MARM.GEWEI` == `MARA.GEWEI`) & ((`MARM.UMREZ` * `MARA.BRGEW` / `MARM.UMREN` > 2 * `MARM.BRGEW`) | (`MARM.UMREZ`
+    * `MARA.BRGEW` / `MARM.UMREN` < 0.5 * `MARM.BRGEW`))
+  severity: medium
+  dimension: accuracy
+  message: Gross weight of an alternative unit does not fit the base unit's weight times the conversion factor
+  why_it_matters: An alternative unit holds a fixed number of base units, so its weight should be close to the base weight
+    times the conversion factor (packaging aside). Less than half or more than double points to a wrong conversion factor
+    or a weight keyed for the wrong unit.
+  rule_authority: best_practice
+  sap_impact: Delivery and shipment weights, freight costs and loading capacity checks are wrong; a wrong conversion factor
+    also mis-states every quantity entered in the alternative unit.
+  fix_map:
+    __other__: Check the conversion factor and both weights in MM02 > Additional data > Units of measure.
+  record_fix_template: 'Material {MARM.MATNR}, unit {MARM.MEINH}: gross weight {MARM.BRGEW} {MARM.GEWEI} against base weight {MARA.BRGEW}
+    x {MARM.UMREZ}/{MARM.UMREN}.'
