@@ -165,11 +165,16 @@ rules:
   check_class: null_check
   severity: high
   dimension: completeness
-  message: "Profit centre missing \u2014 asset cannot be included in profit centre reporting"
+  applies_when:
+    ANLZ.KOSTL:
+      blank: true
+  message: "Profit centre missing and no cost centre to derive it from \u2014 asset cannot be included in profit centre reporting"
   why_it_matters: PRCTR (profit centre) is required for segment reporting and profit centre accounting. Without it, the asset's
     depreciation and book values cannot be allocated to a profit centre, causing gaps in management reporting and potentially
     in segment disclosures under IFRS 8.
   rule_authority: best_practice
+  # ECC derives the profit centre of asset postings from the cost centre (CSKS-PRCTR); an empty
+  # ANLZ-PRCTR is a gap only when there is no cost centre either
   sap_impact: Profit centre reporting excludes this asset. Segment reporting under IFRS 8 is incomplete. Transfer pricing
     for inter-company asset usage is not possible.
   fix_map:
