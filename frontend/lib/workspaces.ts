@@ -70,6 +70,7 @@ export const WORKSPACES: readonly Workspace[] = [
       { id: "cleaning", label: "Cleaning", href: "/cleaning" },
       { id: "exceptions", label: "Exceptions", href: "/exceptions" },
       { id: "dedup", label: "Duplicates", href: "/dedup" },
+      { id: "remediation", label: "Remediation", href: "/remediation", anyOf: ["view"] },
       { id: "ai-rules", label: "AI rule review", href: "/ai/rules" },
       { id: "golden", label: "Golden records", href: "/golden-records" },
       { id: "glossary", label: "Glossary", href: "/glossary" },

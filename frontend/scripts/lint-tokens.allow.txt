@@ -6,7 +6,6 @@ app/(dashboard)/glossary/[id]/page.tsx
 app/(dashboard)/golden-records/[id]/page.tsx
 app/(dashboard)/process/map.tsx
 app/(dashboard)/relationships/page.tsx
-app/(dashboard)/stewardship/metrics/page.tsx
 app/accept-invite/page.tsx
 app/forgot-password/page.tsx
 app/licence-error/page.tsx

@@ -1,461 +1,159 @@
 "use client";
 
+/**
+ * Workbench, Team workload: who holds which open tasks, how fast each
+ * steward resolves, and the whole team queue. A task opens in the drawer
+ * with the same actions and keys as My queue.
+ */
+
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import type { ColumnDef } from "@tanstack/react-table";
 import {
-  PageHead,
-  KPI,
-  SectionHeader,
-  PriorityChip,
-  ModChip,
-  OwnerChip,
-} from "@/components/meridian/atoms";
-import { ArrowRight, MoreH, SparklesIcon } from "@/components/meridian/icons";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  escalateItem,
-  getMetrics,
-  getQueueItems,
-  resolveItem,
-} from "@/lib/api/stewardship";
+  Banner, DataTable, DetailDrawer, EmptyState, FilterBar, Metric, MetricStrip, Mono, PageHeader, SectionCard,
+  StatusBadge, TableSkeleton, useDrawerParam, type AuroraColumnMeta,
+} from "@/components/ui-core";
+import { prioritySeverity, slaLabel, TaskDetail, typeLabel, useTaskActions, useTaskKeys } from "../workbench/queue";
+import { useRole } from "@/hooks/use-role";
+import { getMetrics, getQueueItems } from "@/lib/api/stewardship";
 import { getUsers } from "@/lib/api/users";
-import { copyToClipboard } from "@/components/meridian/actions";
-import { SearchField, matchesSearch } from "@/components/meridian/controls";
 import { relativeTime } from "@/lib/format";
-import type { StewardBreakdown, StewardshipQueueItem, User } from "@/types/api";
+import type { StewardshipQueueItem } from "@/types/api";
 
 const STEWARD_ROLES = new Set(["steward", "admin", "approver", "ai_reviewer"]);
-
-function initials(name: string): string {
-  const parts = name.split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "—";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
-
-function loadChipClass(n: number): "low" | "med" | "high" {
-  if (n >= 6) return "high";
-  if (n >= 4) return "med";
-  return "low";
-}
-
-function priorityChip(p: number): "P1" | "P2" | "P3" {
-  if (p === 1) return "P1";
-  if (p === 2) return "P2";
-  return "P3";
-}
-
-function slaLabel(item: StewardshipQueueItem): string {
-  if (!item.sla_hours) return "—";
-  return item.sla_hours < 24 ? `${item.sla_hours}h` : `${Math.round(item.sla_hours / 24)}d`;
-}
+const meta = (m: AuroraColumnMeta) => m;
+const pct = (r: number | null | undefined) => (r == null ? null : Math.round(r * 100));
 
 export default function StewardshipPage() {
-  const qc = useQueryClient();
-  // Reference time for age/SLA maths, fixed per mount (Date.now() is impure in render).
+  const canApprove = useRole().can("approve");
+  // Reference time for SLA maths, fixed per mount (Date.now() is impure in render).
   const [now] = useState(() => Date.now());
   const [search, setSearch] = useState("");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [overrideOpen, setOverrideOpen] = useState(false);
-  const [correctionReason, setCorrectionReason] = useState("");
-  const queueQ = useQuery({
-    queryKey: ["stewardship.queue", { status: "open", limit: 200 }],
-    queryFn: () => getQueueItems({ status: "open", limit: 200 }),
-  });
-  const metricsQ = useQuery({
-    queryKey: ["stewardship.metrics"],
-    queryFn: getMetrics,
-  });
-  const usersQ = useQuery({
-    queryKey: ["users.list"],
-    queryFn: getUsers,
-  });
+  const [rejecting, setRejecting] = useState(false);
+  const drawer = useDrawerParam("task");
 
-  // All hooks must run before any conditional return. Pull the underlying
-  // arrays defensively so the derived memos don't crash on an in-flight query.
-  const items: StewardshipQueueItem[] = queueQ.data?.items ?? [];
-  const allUsers: User[] = usersQ.data?.users ?? [];
+  const queueQ = useQuery({ queryKey: ["stewardship.queue", { status: "open", limit: 200 }], queryFn: () => getQueueItems({ status: "open", limit: 200 }) });
+  const metricsQ = useQuery({ queryKey: ["stewardship.metrics"], queryFn: getMetrics });
+  const usersQ = useQuery({ queryKey: ["users.list"], queryFn: getUsers });
+  const actions = useTaskActions(() => setRejecting(false));
 
-  const loadByUser = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const item of items) {
-      if (item.assigned_to) counts.set(item.assigned_to, (counts.get(item.assigned_to) ?? 0) + 1);
-    }
-    return counts;
-  }, [items]);
-
-  const breakdownByName = useMemo(() => {
-    const m = new Map<string, StewardBreakdown>();
-    const breakdown = metricsQ.data?.steward_breakdown;
-    if (breakdown) {
-      for (const row of breakdown) m.set(row.steward_name, row);
-    }
+  const items = useMemo(() => queueQ.data?.items ?? [], [queueQ.data]);
+  const users = useMemo(() => usersQ.data?.users ?? [], [usersQ.data]);
+  const nameOf = useMemo(() => new Map(users.map((u) => [u.id, u.name])), [users]);
+  const stewards = users.filter((u) => u.is_active && STEWARD_ROLES.has(u.role));
+  const load = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const t of items) if (t.assigned_to) m.set(t.assigned_to, (m.get(t.assigned_to) ?? 0) + 1);
     return m;
-  }, [metricsQ.data]);
+  }, [items]);
+  const stats = new Map((metricsQ.data?.steward_breakdown ?? []).map((s) => [s.steward_name, s]));
 
-  const visibleItems = useMemo(
-    () => items.filter((t) => matchesSearch(t, search)),
-    [items, search],
-  );
+  const needle = search.trim().toLowerCase();
+  const visible = needle
+    ? items.filter((t) => `${t.item_type} ${t.source_id} ${t.domain} ${nameOf.get(t.assigned_to ?? "") ?? ""}`.toLowerCase().includes(needle))
+    : items;
+  const selected = drawer.value ? items.find((t) => t.id === drawer.value) ?? null : null;
 
-  const refresh = useCallback(() => {
-    qc.invalidateQueries({ queryKey: ["stewardship.queue"] });
-    qc.invalidateQueries({ queryKey: ["stewardship.metrics"] });
-  }, [qc]);
-
-  const resolveMut = useMutation({
-    mutationFn: ({ id, action, notes }: { id: string; action: "approve" | "reject"; notes?: string }) =>
-      resolveItem(id, action, notes),
-    onSuccess: (_d, v) => {
-      toast.success(v.action === "approve" ? "Task approved" : "Task rejected");
-      setOverrideOpen(false);
-      setCorrectionReason("");
-      refresh();
+  const keys = useMemo(() => ({
+    approve: () => selected && actions.approve.mutate(selected.id),
+    reject: () => setRejecting(true),
+    escalate: () => selected && actions.escalate.mutate(selected.id),
+    next: () => {
+      if (!selected || !visible.length) return;
+      setRejecting(false);
+      drawer.open(visible[(visible.indexOf(selected) + 1) % visible.length].id);
     },
-    onError: () => toast.error("Could not resolve task — AI Reviewers cannot approve data actions"),
-  });
+  }), [selected, visible, actions.approve, actions.escalate, drawer]);
+  useTaskKeys(selected, canApprove, keys);
 
-  const escalateMut = useMutation({
-    mutationFn: (id: string) => escalateItem(id),
-    onSuccess: () => {
-      toast.success("Task escalated");
-      refresh();
-    },
-    onError: () => toast.error("Could not escalate task"),
-  });
+  const columns = useMemo<ColumnDef<StewardshipQueueItem, unknown>[]>(() => [
+    { id: "priority", header: "Priority", meta: meta({ sticky: "start", width: 104 }), cell: ({ row }) => (
+      <StatusBadge status={prioritySeverity(row.original.priority)}>P{row.original.priority}</StatusBadge>) },
+    { id: "task", header: "Task", meta: meta({ minWidth: 220 }), cell: ({ row }) => (
+      <span>{typeLabel(row.original.item_type)} <Mono>{row.original.source_id}</Mono></span>) },
+    { id: "domain", header: "Domain", meta: meta({ width: 130 }), cell: ({ row }) => row.original.domain },
+    { id: "assignee", header: "Assignee", meta: meta({ width: 170 }), cell: ({ row }) =>
+      row.original.assigned_to ? nameOf.get(row.original.assigned_to) ?? row.original.assigned_to : <span className="ui-micro">Unassigned</span> },
+    { id: "sla", header: "SLA", meta: meta({ width: 72, align: "end", numeric: true }), cell: ({ row }) => slaLabel(row.original) },
+    { id: "age", header: "Opened", meta: meta({ width: 110, align: "end" }), cell: ({ row }) => relativeTime(row.original.created_at) },
+  ], [nameOf]);
 
-  // Keyboard triage: A approve · R reject-with-reason · N next · E escalate.
-  // Ignored while typing in an input or while the override modal is open.
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || overrideOpen) return;
-      // Accept both lower- and upper-case (caps lock / shift) for each action.
-      const approve = e.key === "a" || e.key === "A";
-      const reject = e.key === "r" || e.key === "R";
-      const next = e.key === "n" || e.key === "N";
-      const escalate = e.key === "e" || e.key === "E";
-      if (!approve && !reject && !next && !escalate) return;
-      const list = visibleItems;
-      if (list.length === 0) return;
-      const idx = list.findIndex((t) => t.id === selectedId);
-      const current = idx >= 0 ? list[idx] : list[0];
-      if (next) {
-        const nextItem = list[(idx + 1) % list.length] ?? list[0];
-        setSelectedId(nextItem.id);
-      } else if (approve) {
-        resolveMut.mutate({ id: current.id, action: "approve" });
-      } else if (reject) {
-        setSelectedId(current.id);
-        setOverrideOpen(true);
-      } else if (escalate) {
-        escalateMut.mutate(current.id);
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [visibleItems, selectedId, overrideOpen, resolveMut, escalateMut]);
-
-  if (queueQ.isLoading || metricsQ.isLoading || usersQ.isLoading) {
-    return (
-      <>
-        <PageHead title="Team workload" route="Fix · /stewardship" sub="Loading team…" />
-        <Skeleton className="h-[420px] rounded-[10px]" />
-      </>
-    );
-  }
-  if (queueQ.error || metricsQ.error || usersQ.error) {
-    return (
-      <>
-        <PageHead title="Team workload" route="Fix · /stewardship" sub="Failed to load." />
-        <div className="mn-card mn-card-pad" style={{ color: "var(--mn-neg)" }}>
-          Could not reach the stewardship or users endpoints.
-        </div>
-      </>
-    );
-  }
-
-  const metrics = metricsQ.data!;
-  const stewards = allUsers.filter((u) => u.is_active && STEWARD_ROLES.has(u.role));
-
-  const slaBreaches7d = items.filter(
-    (t) => t.sla_hours !== null && t.due_at && new Date(t.due_at).getTime() < now,
-  ).length;
+  const m = metricsQ.data;
+  const breaches = items.filter((t) => t.sla_hours !== null && t.due_at && new Date(t.due_at).getTime() < now).length;
+  const avg = items.length / Math.max(stewards.length, 1);
+  const [topId, topLoad] = [...load.entries()].sort((a, b) => b[1] - a[1])[0] ?? [null, 0];
+  const top = stewards.find((u) => u.id === topId);
+  const error = queueQ.error ?? metricsQ.error ?? usersQ.error;
 
   return (
-    <>
-      <PageHead
-        title="Team workload"
-        route="Fix · /stewardship"
-        sub={
-          <>
-            Team view of stewardship —{" "}
-            <strong style={{ color: "var(--mn-ink-700)" }}>{items.length} open tasks</strong> across{" "}
-            <strong style={{ color: "var(--mn-ink-700)" }}>{stewards.length} stewards</strong>.{" "}
-            <strong style={{ color: "var(--mn-warn)" }}>
-              {Math.round(metrics.sla_compliance_rate * 100)}% SLA
-            </strong>
-            .
-          </>
-        }
-        actions={
-          <>
-            <SearchField value={search} onChange={setSearch} placeholder="Filter tasks…" />
-            <span className="mn-kbd-hint" style={{ fontSize: 11, color: "var(--mn-ink-400)" }}>
-              <kbd>A</kbd> approve · <kbd>R</kbd> reject · <kbd>N</kbd> next · <kbd>E</kbd> escalate
-            </span>
-            <Link href="/workbench" className="mn-btn mn-btn-ghost">
-              Open my queue <ArrowRight size={13} />
-            </Link>
-            <Link href="/workbench" className="mn-btn mn-btn-primary">Assign tasks</Link>
-          </>
-        }
-      />
+    <div className="ui-page">
+      <PageHeader title="Team workload"
+        summary={queueQ.data && usersQ.data ? `${items.length} open task${items.length === 1 ? "" : "s"} across ${stewards.length} steward${stewards.length === 1 ? "" : "s"}.` : undefined} />
+      <MetricStrip label="Team health">
+        <Metric label="Open tasks" value={queueQ.data ? items.length : null} />
+        <Metric label="Backlog" value={m?.backlog_total ?? null} />
+        <Metric label="SLA compliance" value={pct(m?.sla_compliance_rate)} unit="%" tone={m && m.sla_compliance_rate < 0.95 ? "warning" : "default"} />
+        <Metric label="Suggestions accepted" value={pct(m?.ai_acceptance_rate)} unit="%" />
+        <Metric label="Past due" value={queueQ.data ? breaches : null} tone={breaches ? "danger" : "default"} />
+      </MetricStrip>
+      {top && topLoad >= avg * 1.4 ? (
+        <p className="ui-notice">
+          <span>{top.name} holds {topLoad} open task{topLoad === 1 ? "" : "s"}, against a team average of {avg.toFixed(1)}. Reassign some to keep everyone inside the SLA.</span>
+          <Link href="/workbench" className="ui-link">Open my queue</Link>
+        </p>
+      ) : null}
+      {error ? <Banner tone="danger" title="Team workload could not be read">{(error as Error).message}</Banner> : null}
 
-      <div className="mn-row mn-stagger" style={{ gridTemplateColumns: "repeat(5, minmax(0, 1fr))", marginBottom: 18 }}>
-        <KPI label="Open tasks" value={items.length} hint={`${stewards.length} stewards`} tone="warn" />
-        <KPI label="Backlog" value={metrics.backlog_total} />
-        <KPI
-          label="SLA compliance"
-          value={`${Math.round(metrics.sla_compliance_rate * 100)}%`}
-          tone={metrics.sla_compliance_rate >= 0.95 ? "pos" : "warn"}
-        />
-        <KPI
-          label="Suggestion acceptance"
-          value={metrics.ai_acceptance_rate !== null ? `${Math.round(metrics.ai_acceptance_rate * 100)}%` : "—"}
-          tone="pos"
-        />
-        <KPI label="SLA breaches" value={slaBreaches7d} tone={slaBreaches7d > 0 ? "neg" : "pos"} />
-      </div>
-
-      {/* Auto-rebalance suggestion when one steward has a notably higher load */}
-      {(() => {
-        if (stewards.length === 0 || loadByUser.size === 0) return null;
-        const sorted = [...loadByUser.entries()].sort((a, b) => b[1] - a[1]);
-        const [topId, topLoad] = sorted[0];
-        const topUser = stewards.find((u) => u.id === topId);
-        const avg = items.length / Math.max(stewards.length, 1);
-        if (!topUser || topLoad < avg * 1.4) return null;
-        return (
-          <div className="mn-narrative" style={{ marginBottom: 18 }}>
-            <div className="ico"><SparklesIcon size={15} /></div>
-            <div style={{ flex: 1 }}>
-              <div className="mn-narrative-headline">
-                {topUser.name} carries {topLoad} open task{topLoad === 1 ? "" : "s"} — above the {avg.toFixed(1)}-task team average.
-              </div>
-              <div className="mn-narrative-detail">
-                Reassign tasks in My queue to keep everyone within the SLA window.
-              </div>
-            </div>
-            <Link href="/workbench" className="mn-btn mn-btn-ghost" style={{ background: "white" }}>
-              Open my queue <ArrowRight size={13} />
-            </Link>
-          </div>
-        );
-      })()}
-
-      <SectionHeader title="Team" caption="Workload, throughput, accuracy" />
-      <div
-        className="mn-row"
-        style={{
-          gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-          marginBottom: 18,
-        }}
-      >
-        {stewards.map((u) => {
-          const load = loadByUser.get(u.id) ?? 0;
-          const stats = breakdownByName.get(u.name);
-          return (
-            <div key={u.id} className="mn-steward-card">
-              <div className="mn-steward-head">
-                <span className="mn-steward-avatar">{initials(u.name)}</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="mn-steward-name">{u.name}</div>
-                  <div className="mn-steward-role">{u.role}</div>
-                </div>
-                <span className={`mn-load-chip ${loadChipClass(load)}`}>{load} open</span>
-              </div>
-              <div className="mn-steward-stats">
-                <div>
-                  <span className="mn-eyebrow">Resolved · 30d</span>
-                  <span className="v mn-tabular">{stats?.resolved ?? 0}</span>
-                </div>
-                <div>
-                  <span className="mn-eyebrow">Avg resolve</span>
-                  <span className="v mn-tabular">
-                    {stats?.avg_resolution_hours !== null && stats?.avg_resolution_hours !== undefined
-                      ? `${stats.avg_resolution_hours.toFixed(1)}h`
-                      : "—"}
-                  </span>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-        {stewards.length === 0 && (
-          <div className="mn-card mn-card-pad" style={{ textAlign: "center", color: "var(--mn-ink-400)" }}>
-            No active stewards.
-          </div>
-        )}
-      </div>
-
-      <SectionHeader
-        title="Team queue"
-        caption={
-          search.trim()
-            ? `${visibleItems.length} of ${items.length} tasks match`
-            : `${items.length} tasks across the team`
-        }
-        right={
-          <Link href="/workbench" className="mn-link">
-            Open in my queue <ArrowRight size={11} />
-          </Link>
-        }
-      />
-      <div className="mn-card" style={{ padding: 0, overflow: "hidden" }}>
-        <div className="mn-table-wrap">
-          <table className="mn-table">
-            <thead>
-              <tr>
-                <th style={{ paddingLeft: 20 }}>Task</th>
-                <th>Domain</th>
-                <th>Priority</th>
-                <th>Assignee</th>
-                <th>SLA</th>
-                <th>Age</th>
-                <th style={{ width: 36 }}></th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleItems.map((t) => {
-                const assignee = allUsers.find((u) => u.id === t.assigned_to);
+      <SectionCard title="Stewards" meta={usersQ.data ? stewards.length : undefined} flush>
+        {usersQ.isLoading ? <TableSkeleton rows={4} label="Loading stewards" />
+          : stewards.length ? (
+            <div className="ui-matrix-scroll"><table className="ui-mini-table">
+              <thead><tr>
+                <th scope="col">Steward</th><th scope="col">Role</th>
+                <th scope="col" className="aurora-number">Open</th>
+                <th scope="col" className="aurora-number">Resolved in 30 days</th>
+                <th scope="col" className="aurora-number">Average resolve</th>
+              </tr></thead>
+              <tbody>{stewards.map((u) => {
+                const s = stats.get(u.name);
                 return (
-                  <tr
-                    key={t.id}
-                    onClick={() => setSelectedId(t.id)}
-                    style={t.id === selectedId ? { background: "var(--mn-primary-50)" } : undefined}
-                  >
-                    <td style={{ paddingLeft: 20 }}>
-                      <span
-                        className="mn-tabular"
-                        style={{ font: "600 11px/1 'JetBrains Mono', monospace", color: "var(--mn-ink-500)" }}
-                      >
-                        {t.id.slice(0, 8)}
-                      </span>
-                      <div style={{ fontWeight: 500, color: "var(--mn-ink-900)", marginTop: 3, fontSize: 13 }}>
-                        {t.item_type.replace(/_/g, " ")}
-                      </div>
-                      <div
-                        style={{
-                          font: "500 11.5px/1 'JetBrains Mono', monospace",
-                          color: "var(--mn-ink-400)",
-                          marginTop: 3,
-                        }}
-                      >
-                        {t.source_id}
-                      </div>
-                    </td>
-                    <td><ModChip>{t.domain}</ModChip></td>
-                    <td><PriorityChip p={priorityChip(t.priority)} /></td>
-                    <td>
-                      {assignee ? (
-                        <span className="ico-cell">
-                          <OwnerChip owner={initials(assignee.name)} />
-                          <span>{assignee.name.split(" ")[0]}</span>
-                        </span>
-                      ) : (
-                        <span style={{ color: "var(--mn-ink-300)" }}>Unassigned</span>
-                      )}
-                    </td>
-                    <td
-                      className="mn-tabular"
-                      style={{ font: "500 11.5px/1 'JetBrains Mono', monospace", color: "var(--mn-warn)" }}
-                    >
-                      {slaLabel(t)}
-                    </td>
-                    <td
-                      className="mn-tabular"
-                      style={{ font: "500 11.5px/1 'JetBrains Mono', monospace", color: "var(--mn-ink-500)" }}
-                    >
-                      {relativeTime(t.created_at)}
-                    </td>
-                    <td>
-                      <button
-                        type="button"
-                        className="mn-icon-btn"
-                        style={{ width: 26, height: 26 }}
-                        aria-label="Copy task ID"
-                        onClick={() => copyToClipboard(t.id, "Task ID copied")}
-                      >
-                        <MoreH size={14} />
-                      </button>
-                    </td>
+                  <tr key={u.id}>
+                    <td>{u.name}</td>
+                    <td>{u.role.replace(/_/g, " ")}</td>
+                    <td className="aurora-number">{load.get(u.id) ?? 0}</td>
+                    <td className="aurora-number">{s?.resolved ?? 0}</td>
+                    <td className="aurora-number">{s?.avg_resolution_hours != null ? `${s.avg_resolution_hours.toFixed(1)}h` : "—"}</td>
                   </tr>
                 );
-              })}
-              {visibleItems.length === 0 && (
-                <tr>
-                  <td colSpan={7} style={{ padding: 32, textAlign: "center", color: "var(--mn-ink-400)" }}>
-                    {items.length === 0 ? "No open tasks." : "No tasks match this filter."}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+              })}</tbody>
+            </table></div>
+          ) : <EmptyState>No active stewards. Give a user the steward or approver role in Settings.</EmptyState>}
+      </SectionCard>
 
-      <Dialog open={overrideOpen} onOpenChange={setOverrideOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Reject with reason</DialogTitle>
-            <DialogDescription>
-              Override the AI recommendation for this task. A correction reason is
-              required and feeds back into rule tuning.
-            </DialogDescription>
-          </DialogHeader>
-          <label className="block text-xs font-medium text-[var(--mn-ink-500)]">
-            Correction reason
-            <textarea
-              className="mt-1 w-full rounded-md border border-[var(--mn-line)] p-2 text-sm"
-              rows={3}
-              value={correctionReason}
-              onChange={(e) => setCorrectionReason(e.target.value)}
-              placeholder="Why is the AI recommendation wrong?"
-            />
-          </label>
-          <DialogFooter>
-            <button
-              type="button"
-              className="rounded-md border border-[var(--mn-line)] px-3 py-1.5 text-xs font-medium"
-              onClick={() => setOverrideOpen(false)}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              className="rounded-md bg-[var(--mn-neg)] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
-              disabled={!correctionReason.trim() || !selectedId || resolveMut.isPending}
-              onClick={() =>
-                selectedId &&
-                resolveMut.mutate({ id: selectedId, action: "reject", notes: correctionReason.trim() })
-              }
-            >
-              Reject task
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+      <SectionCard title="Team queue" meta={needle ? `${visible.length} of ${items.length}` : items.length} flush>
+        <FilterBar search={{ value: search, onChange: setSearch, placeholder: "Search tasks, sources, stewards" }} />
+        {queueQ.isLoading ? <TableSkeleton rows={8} label="Loading the team queue" />
+          : visible.length ? <DataTable columns={columns} data={visible} getRowId={(t) => t.id} onRowActivate={(t) => { setRejecting(false); drawer.open(t.id); }}
+              ariaLabel="Team queue. Use j and k to move, Enter to open." maxHeight="62vh" />
+          : <EmptyState action={needle ? <button type="button" className="ui-link-button" onClick={() => setSearch("")}>Clear search</button> : undefined}>
+              {needle ? "No tasks match this search." : "No open tasks across the team."}
+            </EmptyState>}
+      </SectionCard>
+
+      <DetailDrawer open={!!selected} onClose={drawer.close} ariaLabel="Task details"
+        header={selected ? (
+          <div className="ui-drawer-head">
+            <StatusBadge status={prioritySeverity(selected.priority)}>P{selected.priority}</StatusBadge>
+            <h2 className="ui-drawer-head__title">{typeLabel(selected.item_type)} <Mono>{selected.source_id}</Mono></h2>
+          </div>) : null}>
+        {selected ? (
+          <TaskDetail task={selected} assignee={selected.assigned_to ? nameOf.get(selected.assigned_to) : undefined}
+            canApprove={canApprove} busy={actions.busy} rejecting={rejecting} setRejecting={setRejecting}
+            onApprove={keys.approve} onEscalate={keys.escalate}
+            onReject={(reason) => actions.reject.mutate({ item: selected, reason })} />
+        ) : null}
+      </DetailDrawer>
+    </div>
   );
 }

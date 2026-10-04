@@ -1,60 +1,36 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+/**
+ * Workbench, My queue: open stewardship tasks with a detail pane beside the
+ * register. Keyboard: A approve, R reject with a reason, E escalate, N next.
+ * TaskDetail and useTaskActions are shared with the team workload page.
+ */
+
+import { useEffect, useId, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  PageHead,
-  KPI,
-  SectionHeader,
-  SevTag,
-  PriorityChip,
-  ModChip,
-} from "@/components/meridian/atoms";
-import { ArrowRight, MoreH, SparklesIcon } from "@/components/meridian/icons";
-import { Skeleton } from "@/components/ui/skeleton";
+import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
-  bulkApprove,
-  escalateItem,
-  getQueueItems,
-  getMetrics,
-  resolveItem,
-  submitAiFeedback,
-} from "@/lib/api/stewardship";
-import { copyToClipboard } from "@/components/meridian/actions";
-import { ConfirmDialog } from "@/components/meridian/controls";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { relativeTime } from "@/lib/format";
+  Banner, Button, Chip, DataTable, EmptyState, Input, KeyValue, Metric, MetricStrip, Mono, PageHeader,
+  SectionCard, StatusBadge, TableSkeleton, type AuroraColumnMeta, type Status,
+} from "@/components/ui-core";
 import { useRole } from "@/hooks/use-role";
+import { useAuth } from "@/context/auth-context";
+import { bulkApprove, escalateItem, getMetrics, getQueueItems, resolveItem, submitAiFeedback } from "@/lib/api/stewardship";
+import { relativeTime } from "@/lib/format";
 import type { StewardshipQueueItem } from "@/types/api";
 
-function priorityChip(p: number): "P1" | "P2" | "P3" {
-  if (p === 1) return "P1";
-  if (p === 2) return "P2";
-  return "P3";
-}
+const meta = (m: AuroraColumnMeta) => m;
+const pct = (r: number | null | undefined) => (r == null ? null : Math.round(r * 100));
 
-function severityFromPriority(p: number): "critical" | "high" | "medium" | "low" {
-  if (p === 1) return "critical";
-  if (p === 2) return "high";
-  if (p === 3) return "medium";
-  return "low";
+export function prioritySeverity(p: number): Status {
+  return p === 1 ? "critical" : p === 2 ? "high" : p === 3 ? "medium" : "low";
 }
-
-function slaLabel(item: StewardshipQueueItem): string {
-  if (!item.sla_hours) return "—";
-  const h = item.sla_hours;
-  if (h < 24) return `${h}h`;
-  return `${Math.round(h / 24)}d`;
+export function slaLabel(t: StewardshipQueueItem): string {
+  if (!t.sla_hours) return "—";
+  return t.sla_hours < 24 ? `${t.sla_hours}h` : `${Math.round(t.sla_hours / 24)}d`;
 }
-
-const ITEM_TYPE_LABEL: Record<string, string> = {
+const TYPE_LABEL: Record<string, string> = {
   merge_decision: "Merge",
   golden_record_review: "Golden review",
   exception: "Exception",
@@ -62,406 +38,228 @@ const ITEM_TYPE_LABEL: Record<string, string> = {
   contract_breach: "Contract",
   glossary_review: "Glossary",
 };
+export const typeLabel = (t: string) => TYPE_LABEL[t] ?? t.charAt(0).toUpperCase() + t.slice(1).replace(/_/g, " ");
 
-export function MyQueuePage() {
+/** Approve, reject with a reason, escalate. A rejection also feeds the
+ * reason to the rule engine, so the same mistake is not proposed again. */
+export function useTaskActions(onDone?: () => void) {
   const qc = useQueryClient();
-  // Approve / reject / bulk approve need `approve` (api/routes/stewardship.py).
-  const canApprove = useRole().can("approve");
-  // Reference time for age/SLA maths, fixed per mount (Date.now() is impure in render).
-  const [now] = useState(() => Date.now());
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [sortMode, setSortMode] = useState<"sla" | "priority" | "age">("sla");
-  const [bulkOpen, setBulkOpen] = useState(false);
-  const [overrideOpen, setOverrideOpen] = useState(false);
-  const [overrideReason, setOverrideReason] = useState("");
-
-  const queueQ = useQuery({
-    queryKey: ["stewardship.queue", { status: "open", limit: 200 }],
-    queryFn: () => getQueueItems({ status: "open", limit: 200 }),
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ["stewardship.queue"] });
+    qc.invalidateQueries({ queryKey: ["stewardship.metrics"] });
+    onDone?.();
+  };
+  const fail = (e: unknown) => toast.error((e as Error).message || "The task did not change");
+  const approve = useMutation({
+    mutationFn: (id: string) => resolveItem(id, "approve"),
+    onSuccess: () => { toast.success("Task approved"); refresh(); },
+    onError: fail,
   });
-  const metricsQ = useQuery({
-    queryKey: ["stewardship.metrics"],
-    queryFn: getMetrics,
-  });
-
-  const resolve = useMutation({
-    mutationFn: ({ id, action }: { id: string; action: "approve" | "reject" }) =>
-      resolveItem(id, action),
-    onSuccess: (_d, vars) => {
-      toast.success(vars.action === "approve" ? "Task approved" : "Task rejected");
-      qc.invalidateQueries({ queryKey: ["stewardship.queue"] });
-    },
-    onError: () => toast.error("Could not resolve task"),
-  });
-
-  // Rejecting an AI recommendation captures a correction reason — this both
-  // records the rejection and feeds the AI-feedback loop that proposes new
-  // match rules (see /ai/rules). Reject without context teaches the engine
-  // nothing, so the reason is required.
-  const override = useMutation({
+  const reject = useMutation({
     mutationFn: async ({ item, reason }: { item: StewardshipQueueItem; reason: string }) => {
       await resolveItem(item.id, "reject", reason);
-      await submitAiFeedback({
-        queue_item_id: item.id,
-        steward_decision: "reject",
-        correction_reason: reason,
-        domain: item.domain,
-      });
+      await submitAiFeedback({ queue_item_id: item.id, steward_decision: "reject", correction_reason: reason, domain: item.domain });
     },
-    onSuccess: () => {
-      toast.success("Rejected — correction sent to the rule engine");
-      qc.invalidateQueries({ queryKey: ["stewardship.queue"] });
-      setOverrideOpen(false);
-      setOverrideReason("");
-    },
-    onError: () => toast.error("Could not reject task"),
+    onSuccess: () => { toast.success("Task rejected. The reason goes to the rule engine."); refresh(); },
+    onError: fail,
   });
-
   const escalate = useMutation({
     mutationFn: (id: string) => escalateItem(id),
-    onSuccess: () => {
-      toast.success("Task escalated");
-      qc.invalidateQueries({ queryKey: ["stewardship.queue"] });
-    },
-    onError: () => toast.error("Could not escalate task"),
+    onSuccess: () => { toast.success("Task escalated"); refresh(); },
+    onError: fail,
   });
+  return { approve, reject, escalate, busy: approve.isPending || reject.isPending || escalate.isPending };
+}
 
+/** A/R/E/N on the current task. Ignored while typing. */
+export function useTaskKeys(task: StewardshipQueueItem | null, canApprove: boolean, h: {
+  approve: () => void; reject: () => void; escalate: () => void; next: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (!task || e.metaKey || e.ctrlKey || e.altKey || t?.closest("input,textarea,select,[contenteditable=true]")) return;
+      const k = e.key.toLowerCase();
+      if (k === "a" && canApprove) h.approve();
+      else if (k === "r" && canApprove) h.reject();
+      else if (k === "e") h.escalate();
+      else if (k === "n") h.next();
+      else return;
+      e.preventDefault();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [task, canApprove, h]);
+}
+
+export function TaskDetail({ task, assignee, canApprove, busy, rejecting, setRejecting, onApprove, onReject, onEscalate }: {
+  task: StewardshipQueueItem;
+  assignee?: string;
+  canApprove: boolean;
+  busy: boolean;
+  rejecting: boolean;
+  setRejecting: (v: boolean) => void;
+  onApprove: () => void;
+  onReject: (reason: string) => void;
+  onEscalate: () => void;
+}) {
+  const [reason, setReason] = useState("");
+  const id = useId();
+  const conf = pct(task.ai_confidence);
+  return (
+    <div className="ui-detail">
+      {task.ai_recommendation ? (
+        <div className="ui-notice">
+          <span>
+            Suggested{conf != null ? ` with ${conf}% confidence` : ""}: {task.ai_recommendation}
+          </span>
+          {canApprove ? <Button size="sm" variant="ghost" onClick={onApprove} disabled={busy}>Apply suggestion</Button> : null}
+        </div>
+      ) : null}
+      <KeyValue rows={[
+        { k: "Type", v: typeLabel(task.item_type) },
+        { k: "Source", v: task.source_id, mono: true },
+        { k: "Domain", v: task.domain },
+        { k: "Priority", v: <StatusBadge status={prioritySeverity(task.priority)}>P{task.priority}</StatusBadge> },
+        { k: "Assignee", v: assignee ?? (task.assigned_to ? "Another steward" : "Unassigned") },
+        { k: "SLA", v: slaLabel(task) },
+        { k: "Due", v: task.due_at ? relativeTime(task.due_at) : "—" },
+        { k: "Opened", v: relativeTime(task.created_at) },
+        { k: "Task ID", v: task.id, mono: true },
+      ]} />
+      {rejecting ? (
+        <form className="ui-reason" onSubmit={(e) => { e.preventDefault(); if (reason.trim()) { onReject(reason.trim()); setReason(""); } }}>
+          <label htmlFor={id} className="ui-reason__label">Why is the suggestion wrong? The rule engine learns from this.</label>
+          <Input id={id} autoFocus required maxLength={2000} value={reason} onChange={(e) => setReason(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Escape") setRejecting(false); }} />
+          <Button size="sm" type="submit" disabled={!reason.trim() || busy}>Reject</Button>
+          <Button size="sm" variant="ghost" type="button" onClick={() => setRejecting(false)}>Keep as is</Button>
+        </form>
+      ) : (
+        <div className="ui-page-header__actions">
+          {canApprove ? <Button onClick={onApprove} disabled={busy}>Approve</Button> : null}
+          {canApprove ? <Button variant="ghost" onClick={() => setRejecting(true)} disabled={busy}>Reject</Button> : null}
+          <Button variant="ghost" onClick={onEscalate} disabled={busy}>Escalate</Button>
+        </div>
+      )}
+      <p className="ui-micro">
+        Keys: <kbd className="ui-kbd">A</kbd> approve, <kbd className="ui-kbd">R</kbd> reject, <kbd className="ui-kbd">E</kbd> escalate, <kbd className="ui-kbd">N</kbd> next task.
+      </p>
+    </div>
+  );
+}
+
+const SORTS = [["sla", "SLA"], ["priority", "Priority"], ["age", "Oldest"]] as const;
+type Sort = (typeof SORTS)[number][0];
+
+export function MyQueuePage() {
+  // Approve, reject and bulk approve need `approve` (api/routes/stewardship.py).
+  const canApprove = useRole().can("approve");
+  const me = useAuth().user?.id;
+  // Reference time for SLA maths, fixed per mount (Date.now() is impure in render).
+  const [now] = useState(() => Date.now());
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [sort, setSort] = useState<Sort>("sla");
+  const [confirmBulk, setConfirmBulk] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
+
+  const queueQ = useQuery({ queryKey: ["stewardship.queue", { status: "open", limit: 200 }], queryFn: () => getQueueItems({ status: "open", limit: 200 }) });
+  const metricsQ = useQuery({ queryKey: ["stewardship.metrics"], queryFn: getMetrics });
+  const actions = useTaskActions(() => setRejecting(false));
+  const qc = useQueryClient();
   const bulk = useMutation({
     mutationFn: (ids: string[]) => bulkApprove(ids, 0.85),
     onSuccess: (d) => {
       toast.success(`Approved ${d.approved} task${d.approved === 1 ? "" : "s"}`);
+      setConfirmBulk(false);
       qc.invalidateQueries({ queryKey: ["stewardship.queue"] });
     },
-    onError: () => toast.error("Could not bulk approve"),
+    onError: (e) => toast.error((e as Error).message || "Bulk approval did not run"),
   });
 
-  const rawItems: StewardshipQueueItem[] = queueQ.data?.items ?? [];
   const items = useMemo(() => {
-    const arr = [...rawItems];
-    if (sortMode === "sla") {
-      arr.sort((a, b) => (a.sla_hours ?? Infinity) - (b.sla_hours ?? Infinity));
-    } else if (sortMode === "priority") {
-      arr.sort((a, b) => a.priority - b.priority);
-    } else {
-      arr.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-    }
+    const arr = [...(queueQ.data?.items ?? [])];
+    if (sort === "sla") arr.sort((a, b) => (a.sla_hours ?? Infinity) - (b.sla_hours ?? Infinity));
+    else if (sort === "priority") arr.sort((a, b) => a.priority - b.priority);
+    else arr.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
     return arr;
-  }, [rawItems, sortMode]);
+  }, [queueQ.data, sort]);
+  const selected = items.find((t) => t.id === activeId) ?? items[0] ?? null;
 
-  // Steward keyboard shortcuts on the focused task: A approve · R reject
-  // (opens the correction-reason override) · N next · E escalate. Ignored
-  // while typing in a field or when a dialog is open.
-  const focused = items.find((t) => t.id === activeId) ?? items[0];
-  const onKey = useCallback(
-    (ev: KeyboardEvent) => {
-      if (overrideOpen || bulkOpen) return;
-      const el = ev.target as HTMLElement | null;
-      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
-      if (!focused) return;
-      const k = ev.key;
-      if ((k === "a" || k === "A") && canApprove) {
-        resolve.mutate({ id: focused.id, action: "approve" });
-      } else if ((k === "r" || k === "R") && canApprove) {
-        setOverrideReason("");
-        setOverrideOpen(true);
-      } else if (k === "e" || k === "E") {
-        escalate.mutate(focused.id);
-      } else if (k === "n" || k === "N") {
-        const idx = items.findIndex((t) => t.id === focused.id);
-        const next = items[(idx + 1) % items.length];
-        if (next) setActiveId(next.id);
-      } else {
-        return;
-      }
-      ev.preventDefault();
+  const keys = useMemo(() => ({
+    approve: () => selected && actions.approve.mutate(selected.id),
+    reject: () => setRejecting(true),
+    escalate: () => selected && actions.escalate.mutate(selected.id),
+    next: () => {
+      if (!selected) return;
+      const next = items[(items.indexOf(selected) + 1) % items.length];
+      setRejecting(false);
+      setActiveId(next.id);
     },
-    [focused, items, overrideOpen, bulkOpen, resolve, escalate, canApprove],
-  );
-  useEffect(() => {
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onKey]);
+  }), [selected, items, actions.approve, actions.escalate]);
+  useTaskKeys(confirmBulk ? null : selected, canApprove, keys);
 
-  if (queueQ.isLoading || metricsQ.isLoading) {
-    return (
-      <>
-        <PageHead title="My queue" route="Fix · /workbench" sub="Loading queue…" />
-        <Skeleton className="h-[420px] rounded-[10px]" />
-      </>
-    );
-  }
-  if (queueQ.error || metricsQ.error) {
-    return (
-      <>
-        <PageHead title="My queue" route="Fix · /workbench" sub="Failed to load." />
-        <div className="mn-card mn-card-pad" style={{ color: "var(--mn-neg)" }}>
-          Could not reach <code>/api/v1/stewardship</code>.
-        </div>
-      </>
-    );
-  }
+  const columns = useMemo<ColumnDef<StewardshipQueueItem, unknown>[]>(() => [
+    { id: "priority", header: "Priority", meta: meta({ sticky: "start", width: 104 }), cell: ({ row }) => (
+      <StatusBadge status={prioritySeverity(row.original.priority)}>P{row.original.priority}</StatusBadge>) },
+    { id: "task", header: "Task", meta: meta({ minWidth: 220 }), cell: ({ row }) => (
+      <span>{typeLabel(row.original.item_type)} <Mono>{row.original.source_id}</Mono></span>) },
+    { id: "domain", header: "Domain", meta: meta({ width: 130 }), cell: ({ row }) => row.original.domain },
+    { id: "sla", header: "SLA", meta: meta({ width: 72, align: "end", numeric: true }), cell: ({ row }) => slaLabel(row.original) },
+    { id: "age", header: "Opened", meta: meta({ width: 110, align: "end" }), cell: ({ row }) => relativeTime(row.original.created_at) },
+  ], []);
 
-  const metrics = metricsQ.data!;
-  const selected = items.find((t) => t.id === activeId) ?? items[0];
-
-  const assignedToMe = items.filter((t) => t.assigned_to).length;
-  const slaAtRisk = items.filter(
-    (t) => t.sla_hours !== null && t.due_at && new Date(t.due_at).getTime() - now < (t.sla_hours * 0.5) * 3600 * 1000,
-  ).length;
+  const m = metricsQ.data;
+  const assigned = items.filter((t) => t.assigned_to).length;
+  const atRisk = items.filter((t) => t.sla_hours !== null && t.due_at && new Date(t.due_at).getTime() - now < t.sla_hours * 0.5 * 3600_000).length;
+  const bulkCount = Math.min(items.length, 25);
 
   return (
-    <>
-      <PageHead
-        title="My queue"
-        route="Fix · /workbench"
-        sub={
-          <>
-            You have <strong style={{ color: "var(--mn-ink-700)" }}>{items.length} open tasks</strong>.{" "}
-            <strong style={{ color: "var(--mn-warn)" }}>{slaAtRisk} at risk</strong>. Median resolution accuracy:{" "}
-            <strong style={{ color: "var(--mn-pos)" }}>
-              {metrics.ai_acceptance_rate !== null ? `${Math.round(metrics.ai_acceptance_rate * 100)}%` : "—"}
-            </strong>
-            .
-          </>
-        }
-        actions={
-          <>
-            <span className="mn-pill"><span className="pdot" />Live queue</span>
-            {canApprove && (
-              <button
-                type="button"
-                className="mn-btn mn-btn-primary"
-                onClick={() => {
-                  if (items.length === 0) {
-                    toast.info("Nothing to approve");
-                    return;
-                  }
-                  setBulkOpen(true);
-                }}
-                disabled={bulk.isPending || items.length === 0}
-              >
-                {bulk.isPending ? "Approving…" : "Bulk approve"}
-              </button>
-            )}
-          </>
-        }
-      />
-
-      <ConfirmDialog
-        open={bulkOpen}
-        onOpenChange={setBulkOpen}
-        title="Bulk approve queue tasks"
-        confirmLabel={`Approve ${Math.min(items.length, 25)} task${Math.min(items.length, 25) === 1 ? "" : "s"}`}
-        body={
-          <>
-            This approves the top {Math.min(items.length, 25)} task
-            {Math.min(items.length, 25) === 1 ? "" : "s"} in the current sort order whose
-            model confidence is 85% or higher. Lower-confidence tasks are skipped and stay
-            in the queue for manual review.
-          </>
-        }
-        onConfirm={() => bulk.mutate(items.slice(0, 25).map((t) => t.id))}
-      />
-
-      {/* Reject with reason — overrides the AI recommendation and feeds the
-          correction back into the rule-proposal engine. */}
-      <Dialog open={overrideOpen} onOpenChange={(o) => !o && setOverrideOpen(false)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Reject with reason</DialogTitle>
-          </DialogHeader>
-          <div style={{ padding: "8px 0" }}>
-            <label
-              htmlFor="correction-reason"
-              style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--mn-ink-700)", marginBottom: 6 }}
-            >
-              Correction reason
-            </label>
-            <textarea
-              id="correction-reason"
-              className="mn-input"
-              style={{ width: "100%", minHeight: 96, resize: "vertical" }}
-              placeholder="Why is the recommendation wrong? This trains the match-rule engine."
-              value={overrideReason}
-              onChange={(e) => setOverrideReason(e.target.value)}
-              autoFocus
-            />
+    <div className="ui-page">
+      <PageHeader title="My queue"
+        summary={queueQ.data ? `${items.length} open task${items.length === 1 ? "" : "s"}. ${atRisk} at risk of missing the SLA.` : undefined}
+        actions={canApprove ? <Button onClick={() => setConfirmBulk(true)} disabled={!items.length || bulk.isPending || confirmBulk}>Approve confident tasks</Button> : null} />
+      <MetricStrip label="Queue health">
+        <Metric label="Assigned" value={queueQ.data ? assigned : null} />
+        <Metric label="Unassigned" value={queueQ.data ? items.length - assigned : null} tone={items.length - assigned ? "warning" : "default"} />
+        <Metric label="Backlog" value={m?.backlog_total ?? null} />
+        <Metric label="SLA compliance" value={pct(m?.sla_compliance_rate)} unit="%" tone={m && m.sla_compliance_rate < 0.95 ? "warning" : "default"} />
+        <Metric label="Suggestions accepted" value={pct(m?.ai_acceptance_rate)} unit="%" />
+      </MetricStrip>
+      {confirmBulk ? (
+        <Banner tone="info" title={`Approve up to ${bulkCount} task${bulkCount === 1 ? "" : "s"}?`} action={
+          <div className="ui-page-header__actions">
+            <Button size="sm" onClick={() => bulk.mutate(items.slice(0, 25).map((t) => t.id))} disabled={bulk.isPending}>{bulk.isPending ? "Approving" : "Approve tasks"}</Button>
+            <Button size="sm" variant="ghost" onClick={() => setConfirmBulk(false)}>Not now</Button>
+          </div>}>
+          The top {bulkCount} in the current order are approved when the suggestion confidence is 85% or higher. The rest stay here for review.
+        </Banner>
+      ) : null}
+      {queueQ.isLoading ? <TableSkeleton rows={8} label="Loading your queue" />
+        : queueQ.error ? <Banner tone="danger" title="Your queue could not be read">{(queueQ.error as Error).message}</Banner>
+        : !items.length ? <EmptyState>Your queue is empty. New tasks arrive as rules and matches need a decision.</EmptyState>
+        : (
+          <div className="ui-split">
+            <div className="ui-stack" style={{ gap: "var(--aurora-space-3)" }}>
+              <div className="ui-filterbar__chips" role="group" aria-label="Sort by">
+                {SORTS.map(([k, l]) => <Chip key={k} selected={sort === k} onClick={() => setSort(k)}>{l}</Chip>)}
+              </div>
+              <DataTable columns={columns} data={items} getRowId={(t) => t.id}
+                onRowActivate={(t) => { setRejecting(false); setActiveId(t.id); }}
+                ariaLabel="My queue. Use j and k to move, Enter to open." maxHeight="62vh" />
+            </div>
+            {selected ? (
+              <div className="ui-split__pane">
+                <SectionCard title={typeLabel(selected.item_type)} meta={<Mono>{selected.source_id}</Mono>}>
+                  <TaskDetail task={selected} assignee={selected.assigned_to && selected.assigned_to === me ? "You" : undefined} canApprove={canApprove} busy={actions.busy}
+                    rejecting={rejecting} setRejecting={setRejecting}
+                    onApprove={keys.approve} onEscalate={keys.escalate}
+                    onReject={(reason) => actions.reject.mutate({ item: selected, reason })} />
+                </SectionCard>
+              </div>
+            ) : null}
           </div>
-          <DialogFooter>
-            <button type="button" className="mn-btn mn-btn-ghost" onClick={() => setOverrideOpen(false)}>
-              Cancel
-            </button>
-            <button
-              type="button"
-              className="mn-btn mn-btn-primary"
-              disabled={!overrideReason.trim() || override.isPending || !selected}
-              onClick={() => selected && override.mutate({ item: selected, reason: overrideReason.trim() })}
-            >
-              {override.isPending ? "Rejecting…" : "Reject & correct"}
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <div className="mn-row mn-stagger" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))", marginBottom: 18 }}>
-        <KPI label="Assigned" value={assignedToMe} hint={`${items.length - assignedToMe} unassigned`} tone="warn" />
-        <KPI label="Backlog" value={metrics.backlog_total} tone={metrics.backlog_total > 0 ? "warn" : "pos"} />
-        <KPI
-          label="SLA compliance"
-          value={`${Math.round(metrics.sla_compliance_rate * 100)}%`}
-          tone={metrics.sla_compliance_rate >= 0.95 ? "pos" : "warn"}
-        />
-        <KPI
-          label="Suggestion acceptance"
-          value={metrics.ai_acceptance_rate !== null ? `${Math.round(metrics.ai_acceptance_rate * 100)}%` : "—"}
-          tone="pos"
-        />
-      </div>
-
-      <div className="mn-row mn-row-12">
-        <div className="mn-col-4">
-          <div className="mn-card" style={{ padding: 0, overflow: "hidden", height: "100%", display: "flex", flexDirection: "column" }}>
-            <div className="mn-queue-head">
-              <span className="mn-eyebrow">Queue · {items.length} tasks</span>
-              <button
-                type="button"
-                className="mn-link"
-                onClick={() =>
-                  setSortMode((m) => (m === "sla" ? "priority" : m === "priority" ? "age" : "sla"))
-                }
-              >
-                Sort: {sortMode === "sla" ? "SLA" : sortMode === "priority" ? "Priority" : "Age"}
-              </button>
-            </div>
-            <div className="mn-queue-list">
-              {items.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  className={`mn-queue-item ${t.id === selected?.id ? "active" : ""}`}
-                  onClick={() => setActiveId(t.id)}
-                >
-                  <div className="mn-queue-row">
-                    <PriorityChip p={priorityChip(t.priority)} />
-                    <span className="mn-queue-id mn-tabular">{t.id.slice(0, 8)}</span>
-                    <span className="mn-queue-mod">{t.domain}</span>
-                    <span className="mn-queue-sla mn-tabular">SLA · {slaLabel(t)}</span>
-                  </div>
-                  <div className="mn-queue-title">{ITEM_TYPE_LABEL[t.item_type] ?? t.item_type}</div>
-                  <div className="mn-queue-record">{t.source_id}</div>
-                </button>
-              ))}
-              {items.length === 0 && (
-                <div style={{ padding: 32, textAlign: "center", color: "var(--mn-ink-400)" }}>
-                  No open queue items.
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="mn-col-8">
-          {selected ? (
-            <div className="mn-card mn-card-pad" style={{ height: "100%" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <SevTag sev={severityFromPriority(selected.priority)} />
-                    <PriorityChip p={priorityChip(selected.priority)} />
-                    <span style={{ font: "500 11.5px/1 'JetBrains Mono', monospace", color: "var(--mn-ink-400)" }}>
-                      {selected.id.slice(0, 8)} · {ITEM_TYPE_LABEL[selected.item_type] ?? selected.item_type}
-                    </span>
-                  </div>
-                  <h2 className="mn-detail-title" style={{ marginTop: 8 }}>{selected.source_id}</h2>
-                </div>
-                <button
-                  type="button"
-                  className="mn-icon-btn"
-                  aria-label="Copy task ID"
-                  onClick={() => copyToClipboard(selected.id, "Task ID copied")}
-                >
-                  <MoreH size={14} />
-                </button>
-              </div>
-
-              {selected.ai_recommendation && (
-                <div className="mn-narrative" style={{ marginTop: 14 }}>
-                  <div className="ico"><SparklesIcon size={15} /></div>
-                  <div style={{ flex: 1 }}>
-                    <div className="mn-narrative-headline">
-                      Model suggests action — confidence{" "}
-                      {selected.ai_confidence !== null ? `${Math.round(selected.ai_confidence * 100)}%` : "—"}.
-                    </div>
-                    <div className="mn-narrative-detail">{selected.ai_recommendation}</div>
-                  </div>
-                  <button
-                    type="button"
-                    className="mn-btn"
-                    style={{
-                      background: "white",
-                      color: "var(--mn-primary)",
-                      border: "1px solid var(--mn-primary-200)",
-                    }}
-                    onClick={() => resolve.mutate({ id: selected.id, action: "approve" })}
-                    disabled={resolve.isPending}
-                  >
-                    Apply
-                  </button>
-                </div>
-              )}
-
-              <SectionHeader title="Task detail" caption="Source + assignment" />
-              <div className="mn-detail-meta">
-                <div><span className="k">Source</span><span className="v mn-tabular">{selected.source_id}</span></div>
-                <div><span className="k">Domain</span><ModChip>{selected.domain}</ModChip></div>
-                <div><span className="k">Type</span><span className="v">{ITEM_TYPE_LABEL[selected.item_type] ?? selected.item_type}</span></div>
-                <div><span className="k">Assignee</span><span className="v">{selected.assigned_to ?? "Unassigned"}</span></div>
-                <div><span className="k">SLA</span><span className="v mn-tabular">{slaLabel(selected)}</span></div>
-                <div><span className="k">Age</span><span className="v mn-tabular">{relativeTime(selected.created_at)}</span></div>
-              </div>
-
-              <div className="mn-wb-actions">
-                {canApprove && (
-                  <button
-                    type="button"
-                    className="mn-btn mn-btn-ghost"
-                    onClick={() => {
-                      setOverrideReason("");
-                      setOverrideOpen(true);
-                    }}
-                    disabled={resolve.isPending || override.isPending}
-                  >
-                    Reject
-                  </button>
-                )}
-                <button
-                  type="button"
-                  className="mn-btn mn-btn-ghost"
-                  onClick={() => escalate.mutate(selected.id)}
-                  disabled={escalate.isPending}
-                >
-                  {escalate.isPending ? "Escalating…" : "Escalate"}
-                </button>
-                <div style={{ flex: 1 }} />
-                {canApprove && (
-                  <button
-                    type="button"
-                    className="mn-btn mn-btn-primary"
-                    onClick={() => resolve.mutate({ id: selected.id, action: "approve" })}
-                    disabled={resolve.isPending}
-                  >
-                    {resolve.isPending ? "Approving…" : "Approve"} <ArrowRight size={13} />
-                  </button>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="mn-card mn-card-pad" style={{ color: "var(--mn-ink-400)" }}>
-              No task selected.
-            </div>
-          )}
-        </div>
-      </div>
-    </>
+        )}
+    </div>
   );
 }
