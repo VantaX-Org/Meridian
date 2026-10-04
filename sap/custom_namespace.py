@@ -21,7 +21,8 @@ The rules (SE80 / DDIC customer namespace):
     customer-owned.
   * **Reserved/partner namespaces** take the form ``/NAMESPACE/OBJECT`` (a name
     beginning with ``/``). These are also non-standard from our baseline's point
-    of view, so we treat a leading ``/`` as custom too.
+    of view, so we treat a leading ``/`` as custom too — except the
+    SAP-delivered namespaces in ``SAP_NAMESPACES`` (e.g. ``/SCWM/`` for EWM).
   * **Customer config tables** additionally include the ``T900``–``T999`` range
     (``T9*``), historically reserved for customer customizing.
 
@@ -36,6 +37,10 @@ from dataclasses import dataclass, field as dataclass_field
 
 # Customer-namespace leading letters for repository objects and transactions.
 _CUSTOMER_PREFIXES = ("Z", "Y")
+
+# SAP-delivered /NAMESPACE/s (EWM, APO, SCM basis, TM, GTS, event management):
+# standard objects, not customer ones. Any other /NS/ stays custom.
+SAP_NAMESPACES = ("/SCWM/", "/SAPAPO/", "/SCMB/", "/SCDL/", "/SAPSLL/", "/SPE/", "/SCMTMS/", "/SAPTRX/")
 
 
 def _normalise(name: object) -> str:
@@ -75,8 +80,8 @@ def _is_customer_token(token: str) -> bool:
     """True when a bare object name sits in the SAP customer namespace."""
     if not token:
         return False
-    if token.startswith("/"):  # /NAMESPACE/OBJECT — reserved/partner namespace
-        return True
+    if token.startswith("/"):  # /NAMESPACE/OBJECT — partner/customer unless SAP-delivered
+        return not token.startswith(SAP_NAMESPACES)
     return token.startswith(_CUSTOMER_PREFIXES)
 
 

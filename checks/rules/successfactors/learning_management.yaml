@@ -335,3 +335,19 @@ rules:
       __blank__: Correct the credit hours on the learning history record via Learning Administration.
     record_fix_template: 'Learning history {LEARNINGCOMPLETION.USERID}/{LEARNINGCOMPLETION.COURSE_ID}: credit hours {LEARNINGCOMPLETION.CREDIT_HOURS}
       are negative.'
+  - id: LMS022
+    field: LEARNINGCOMPLETION.COMPLETION_DATE
+    check_class: cross_field_check
+    fail_when: '`LEARNINGCOMPLETION.COMPLETION_DATE`.dt.normalize() > @today'
+    severity: medium
+    dimension: validity
+    message: Learning completion is dated in the future
+    why_it_matters: A course can only be completed on or before today. A future completion date is a typing error or a
+      record entered in advance.
+    rule_authority: best_practice
+    sap_impact: Compliance reports count training that has not happened; certification expiry dates are calculated from
+      the wrong date.
+    fix_map:
+      __other__: Correct the completion date in the learning history (Record Learning).
+    record_fix_template: 'Employee {LEARNINGCOMPLETION.USERID}: course {LEARNINGCOMPLETION.COURSE_ID} completed
+      {LEARNINGCOMPLETION.COMPLETION_DATE}, which is in the future.'

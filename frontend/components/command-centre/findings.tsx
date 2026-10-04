@@ -18,7 +18,7 @@ import {
 import { toast } from "sonner";
 import { copyToClipboard, downloadCsv } from "@/components/meridian/actions";
 import { useRole } from "@/hooks/use-role";
-import { deleteSavedView, getFindings, listSavedViews, saveNamedView } from "@/lib/api/findings";
+import { deleteSavedView, getFindings, getFindingsAggregate, listSavedViews, saveNamedView } from "@/lib/api/findings";
 import { getFindingRecords, getVersion, type FindingRecord } from "@/lib/api/versions";
 import { formatModuleName } from "@/lib/format";
 import type { Dimension, Finding } from "@/types/api";
@@ -73,15 +73,15 @@ export function FindingsSurface() {
   const total = q.data?.total ?? findings.length;
   const visible = findings.filter((f) => matches(f, search));
   const selected = drawer.value ? findings.find((f) => f.id === drawer.value) ?? null : null;
-  const counts = useMemo(() => {
-    const c: Record<Sev, number> = { critical: 0, high: 0, medium: 0, low: 0 };
-    const mod: Record<string, number> = {};
-    for (const f of findings) { c[sev(f.severity)] += 1; mod[f.module] = (mod[f.module] ?? 0) + 1; }
-    return { sev: c, modules: Object.entries(mod).sort((a, b) => b[1] - a[1]) };
-  }, [findings]);
-  const affected = findings.reduce((a, f) => a + f.affected_count, 0);
-  const rated = findings.filter((f) => f.pass_rate !== null);
-  const meanPass = rated.length ? Math.round(rated.reduce((a, f) => a + (f.pass_rate ?? 0), 0) / rated.length) : null;
+  // headline figures over every matching finding, not the page on screen
+  const agg = useQuery({
+    queryKey: ["findings.aggregate", filter],
+    queryFn: () => getFindingsAggregate(filter),
+    placeholderData: keepPreviousData,
+  }).data;
+  const counts = { sev: agg?.severity ?? { critical: 0, high: 0, medium: 0, low: 0 }, modules: (agg?.by_module ?? []).map((m) => [m.module, m.findings] as const) };
+  const affected = agg?.affected_records ?? 0;
+  const meanPass = agg?.avg_pass_rate == null ? null : Math.round(agg.avg_pass_rate);
 
   const columns = useMemo<ColumnDef<Finding, unknown>[]>(() => [
     { id: "severity", header: "Severity", meta: meta({ sticky: "start", width: 100 }),
@@ -111,7 +111,7 @@ export function FindingsSurface() {
         <ObjectScores versionId={filter.version_id} module={filter.module} dimension={filter.dimension} onDimension={(d) => set({ dimension: d })} />
       ) : null}
 
-      <SeverityBar counts={counts.sev} total={findings.length} active={filter.severity} onPick={(s) => set({ severity: filter.severity === s ? undefined : s })} />
+      <SeverityBar counts={counts.sev} total={agg?.total ?? 0} active={filter.severity} onPick={(s) => set({ severity: filter.severity === s ? undefined : s })} />
 
       <Stack direction="row" gap={2} wrap align="center">
         {!filter.module ? counts.modules.slice(0, 10).map(([m, n]) => (

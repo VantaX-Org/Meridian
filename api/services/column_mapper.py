@@ -6,7 +6,7 @@ import yaml
 logger = logging.getLogger("meridian.column_mapper")
 
 RULES_DIR = Path(__file__).parent.parent.parent / "checks" / "rules"
-CATEGORIES = ["ecc", "successfactors", "warehouse"]
+CATEGORIES = ["ecc", "successfactors", "warehouse", "concur", "ariba"]
 
 
 def load_column_map(module_name: str) -> dict[str, str]:
