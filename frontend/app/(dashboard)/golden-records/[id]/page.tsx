@@ -1,631 +1,242 @@
 "use client";
 
-import { useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+/**
+ * One golden record: the consolidated value of every field, which source it
+ * came from and how sure the merge is, plus related records and the audit
+ * trail. Promote makes it golden; write-back explains the route to SAP.
+ */
+
+import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
-  ArrowLeft,
-  Crown,
-  Loader2,
-  AlertTriangle,
-  Send,
-  Clock,
-  Brain,
-  History,
-  ChevronDown,
-  ChevronUp,
-  GitBranch,
-} from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  getMasterRecord,
-  getMasterRecordHistory,
-  promoteMasterRecord,
-  writebackMasterRecord,
-} from "@/lib/api/master-records";
+  Banner, Button, DataTable, DetailDrawer, EmptyState, KeyValue, Metric, MetricStrip, Mono, PageHeader, SectionCard,
+  StatusBadge, TableSkeleton, type AuroraColumnMeta, type Status,
+} from "@/components/ui-core";
 import { batchLookupGlossary } from "@/lib/api/glossary";
+import { getMasterRecord, getMasterRecordHistory, promoteMasterRecord, writebackMasterRecord } from "@/lib/api/master-records";
 import { getRelationships } from "@/lib/api/relationships";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { formatModuleName, relativeTime } from "@/lib/format";
-import type {
-  MasterRecordDetail,
-  MasterRecordHistoryEntry,
-  SourceContribution,
-  RecordRelationship,
-} from "@/types/api";
+import type { SourceContribution } from "@/types/api";
 
-function ConfidenceBar({
-  confidence,
-  size = "md",
-}: {
-  confidence: number;
-  size?: "sm" | "md";
-}) {
-  const pct = Math.round(confidence * 100);
-  const color =
-    pct >= 85 ? "bg-[#256F3A]" : pct >= 60 ? "bg-[#E76500]" : "bg-destructive";
-  const height = size === "sm" ? "h-1" : "h-2";
-  const width = size === "sm" ? "w-16" : "w-24";
-  return (
-    <div className="flex items-center gap-2">
-      <div className={`${height} ${width} rounded-full bg-white/[0.60]`}>
-        <div
-          className={`${height} rounded-full ${color}`}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      <span className="text-xs font-medium text-foreground">{pct}%</span>
-    </div>
-  );
-}
+const meta = (m: AuroraColumnMeta) => m;
+const pct = (c: number) => Math.round(c * 100);
+const STATUS: Record<string, { badge: Status; label: string }> = {
+  candidate: { badge: "idle", label: "Candidate" },
+  pending_review: { badge: "medium", label: "Pending review" },
+  golden: { badge: "ok", label: "Golden" },
+  superseded: { badge: "idle", label: "Superseded" },
+};
+const CHANGE: Record<string, string> = { created: "Record created", updated: "Fields updated", promoted: "Promoted to golden" };
+const show = (v: unknown) => (v == null || v === "" ? "" : typeof v === "object" ? JSON.stringify(v) : String(v));
 
-function FieldRow({
-  fieldName,
-  goldenValue,
-  contribution,
-  showAi,
-  businessName,
-}: {
-  fieldName: string;
-  goldenValue: unknown;
-  contribution: SourceContribution | undefined;
-  showAi: boolean;
-  businessName?: string | null;
-}) {
-  const [expanded, setExpanded] = useState(false);
-  const hasAi = showAi && contribution?.ai_recommendation;
+interface FieldRow { field: string; name: string | null; value: unknown; source?: SourceContribution }
 
-  return (
-    <div className="border-b border-border last:border-0">
-      <div
-        className={`flex items-center justify-between px-4 py-3 ${hasAi ? "cursor-pointer hover:bg-foreground/[0.03]" : ""}`}
-        onClick={() => hasAi && setExpanded(!expanded)}
-      >
-        <div className="flex items-center gap-3">
-          {hasAi && (
-            expanded ? (
-              <ChevronUp className="h-3.5 w-3.5 text-[#E76500]" />
-            ) : (
-              <ChevronDown className="h-3.5 w-3.5 text-[#E76500]" />
-            )
-          )}
-          <div>
-            <span className="text-sm font-medium text-foreground">
-              {businessName || fieldName}
-            </span>
-            {businessName && (
-              <span className="block text-xs font-mono text-muted-foreground">{fieldName}</span>
-            )}
-            <p className="text-xs text-muted-foreground">
-              {contribution
-                ? `From ${contribution.source_system} · ${relativeTime(contribution.extracted_at)}`
-                : "No source"}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-4">
-          <span className="font-mono text-sm text-foreground">
-            {String(goldenValue ?? "—")}
-          </span>
-          {contribution && (
-            <ConfidenceBar confidence={contribution.confidence} size="sm" />
-          )}
-          {hasAi && (
-            <Badge
-              variant="outline"
-              className="gap-1 bg-[#E76500]/10 text-[#E76500] border-[#E76500]/20 text-xs"
-            >
-              <Brain className="h-3 w-3" />
-              Suggested
-            </Badge>
-          )}
-        </div>
-      </div>
-
-      {/* Suggestion panel */}
-      {expanded && hasAi && contribution && (
-        <div className="mx-4 mb-3 rounded-lg border border-[#E76500]/20 bg-[#E76500]/5 p-3">
-          <div className="flex items-center gap-2 text-xs font-medium text-[#E76500]">
-            <Brain className="h-3.5 w-3.5" />
-            Suggested merge
-          </div>
-          <div className="mt-2 space-y-1 text-xs text-foreground">
-            <p>
-              <span className="text-muted-foreground">Recommended source:</span>{" "}
-              {contribution.ai_recommendation}
-            </p>
-            <p>
-              <span className="text-muted-foreground">Confidence:</span>{" "}
-              {Math.round((contribution.ai_confidence ?? 0) * 100)}%
-            </p>
-            {contribution.ai_reasoning && (
-              <p>
-                <span className="text-muted-foreground">Reasoning:</span>{" "}
-                {contribution.ai_reasoning}
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function HistoryPanel({ recordId }: { recordId: string }) {
-  const { data: history, isLoading } = useQuery({
-    queryKey: ["master-record-history", recordId],
-    queryFn: () => getMasterRecordHistory(recordId),
-  });
-
-  if (isLoading) {
-    return (
-      <div className="flex justify-center py-8">
-        <Loader2 className="h-5 w-5 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (!history || history.length === 0) {
-    return (
-      <p className="py-4 text-center text-sm text-muted-foreground">
-        No history entries
-      </p>
-    );
-  }
-
-  const changeTypeLabels: Record<string, string> = {
-    created: "Record created",
-    updated: "Fields updated",
-    promoted: "Promoted to golden",
-  };
-
-  return (
-    <div className="space-y-2">
-      {history.map((entry: MasterRecordHistoryEntry) => (
-        <div
-          key={entry.id}
-          className="flex items-start gap-3 rounded-lg border border-border px-3 py-2"
-        >
-          <div className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-white/[0.60]">
-            {entry.change_type === "promoted" ? (
-              <Crown className="h-3 w-3 text-[#256F3A]" />
-            ) : (
-              <Clock className="h-3 w-3 text-muted-foreground" />
-            )}
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-foreground">
-                {changeTypeLabels[entry.change_type] ?? entry.change_type}
-              </span>
-              {entry.ai_was_involved && (
-                <Badge
-                  variant="outline"
-                  className="gap-1 text-xs bg-[#E76500]/10 text-[#E76500] border-[#E76500]/20"
-                >
-                  <Brain className="h-2.5 w-2.5" />
-                  Suggested
-                </Badge>
-              )}
-              {entry.ai_recommendation_accepted !== null && (
-                <Badge
-                  variant="outline"
-                  className={`text-xs ${
-                    entry.ai_recommendation_accepted
-                      ? "bg-[#256F3A]/10 text-[#256F3A] border-[#256F3A]/20"
-                      : "bg-destructive/10 text-destructive border-destructive/20"
-                  }`}
-                >
-                  Suggestion {entry.ai_recommendation_accepted ? "accepted" : "rejected"}
-                </Badge>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {relativeTime(entry.changed_at)}
-              {entry.changed_by && ` · by ${entry.changed_by}`}
-            </p>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function RelationshipsPanel({
-  domain,
-  objectKey,
-}: {
-  domain: string;
-  objectKey: string;
-}) {
-  const { data, isLoading } = useQuery({
-    queryKey: ["relationships", domain, objectKey],
-    queryFn: () => getRelationships({ domain, key: objectKey }),
-  });
-
-  if (isLoading) {
-    return (
-      <div className="flex justify-center py-8">
-        <Loader2 className="h-5 w-5 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  const relationships = data?.relationships ?? [];
-
-  if (relationships.length === 0) {
-    return (
-      <p className="py-4 text-center text-sm text-muted-foreground">
-        No cross-domain relationships found
-      </p>
-    );
-  }
-
-  return (
-    <TooltipProvider>
-      <div className="space-y-2">
-        {relationships.map((rel: RecordRelationship) => {
-          // Show the "other" side of the relationship
-          const isFrom = rel.from_domain === domain && rel.from_key === objectKey;
-          const otherDomain = isFrom ? rel.to_domain : rel.from_domain;
-          const otherKey = isFrom ? rel.to_key : rel.from_key;
-          const impactPct = rel.impact_score != null ? Math.round(rel.impact_score * 100) : null;
-
-          return (
-            <div
-              key={rel.id}
-              className={`flex items-center justify-between rounded-lg border px-3 py-2 ${
-                rel.ai_inferred
-                  ? "border-dashed border-[#3B82F6]/30 bg-[#2563EB]/5"
-                  : "border-border"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#2563EB]/10">
-                  <GitBranch className="h-4 w-4 text-[#2563EB]" />
-                </div>
-                <div>
-                  <Link
-                    href={`/golden-records?domain=${otherDomain}`}
-                    className="text-sm font-medium text-foreground hover:text-primary/80"
-                  >
-                    {formatModuleName(otherDomain)} / {otherKey}
-                  </Link>
-                  <p className="text-xs text-muted-foreground">
-                    {rel.relationship_type.replace(/_/g, " ")}
-                    {rel.sap_link_table && ` · via ${rel.sap_link_table}`}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                {impactPct !== null && (
-                  <div className="flex items-center gap-1">
-                    <div className="h-1.5 w-12 rounded-full bg-white/[0.60]">
-                      <div
-                        className={`h-1.5 rounded-full ${
-                          impactPct >= 70
-                            ? "bg-destructive"
-                            : impactPct >= 40
-                              ? "bg-[#E76500]"
-                              : "bg-[#256F3A]"
-                        }`}
-                        style={{ width: `${impactPct}%` }}
-                      />
-                    </div>
-                    <span className="text-xs font-medium text-foreground">
-                      {impactPct}%
-                    </span>
-                  </div>
-                )}
-                {rel.ai_inferred && (
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <Badge
-                        variant="outline"
-                        className="gap-1 bg-[#2563EB]/10 text-[#2563EB] border-[#3B82F6]/20 text-xs"
-                      >
-                        <Brain className="h-2.5 w-2.5" />
-                        Probable
-                      </Badge>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p className="text-xs">
-                        Probable — not confirmed in SAP
-                        {rel.ai_confidence != null &&
-                          ` (${Math.round(rel.ai_confidence * 100)}% confidence)`}
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </TooltipProvider>
-  );
-}
+const columns: ColumnDef<FieldRow, unknown>[] = [
+  {
+    id: "field", header: "Field", meta: meta({ sticky: "start", width: 260 }),
+    cell: ({ row }) => row.original.name ? (
+      <span className="ui-cell-stack">
+        <span className="ui-cell-stack__main">{row.original.name}</span>
+        <span className="ui-cell-stack__sub"><Mono>{row.original.field}</Mono></span>
+      </span>
+    ) : <Mono>{row.original.field}</Mono>,
+  },
+  { id: "value", header: "Golden value", meta: meta({ minWidth: 220 }), cell: ({ row }) => <Mono>{show(row.original.value)}</Mono> },
+  { id: "source", header: "Source", meta: meta({ width: 160 }), cell: ({ row }) => row.original.source?.source_system ?? <span className="ui-micro">No source</span> },
+  { id: "extracted", header: "Extracted", meta: meta({ width: 130 }), cell: ({ row }) => (row.original.source ? relativeTime(row.original.source.extracted_at) : "") },
+  { id: "conf", header: "Confidence", meta: meta({ width: 110, align: "end", numeric: true }), cell: ({ row }) => (row.original.source ? `${pct(row.original.source.confidence)}%` : "") },
+  { id: "suggest", header: "Suggestion", meta: meta({ width: 170 }), cell: ({ row }) => (row.original.source?.ai_recommendation ? `Use ${row.original.source.ai_recommendation}` : "") },
+];
 
 export default function GoldenRecordDetailPage() {
-  const params = useParams();
-  const router = useRouter();
+  const recordId = useParams().id as string;
   const qc = useQueryClient();
-  const recordId = params.id as string;
-  const [showHistory, setShowHistory] = useState(false);
-  const [showRelationships, setShowRelationships] = useState(false);
+  const [openField, setOpenField] = useState<string | null>(null);
 
-  const { data: record, isLoading } = useQuery({
-    queryKey: ["master-record", recordId],
-    queryFn: () => getMasterRecord(recordId),
+  const { data: record, isLoading, error } = useQuery({ queryKey: ["master-record", recordId], queryFn: () => getMasterRecord(recordId) });
+  const fieldKeys = useMemo(() => (record ? Object.keys(record.golden_fields) : []), [record]);
+  const { data: glossary } = useQuery({
+    queryKey: ["glossary-lookup", fieldKeys], queryFn: () => batchLookupGlossary(fieldKeys), enabled: fieldKeys.length > 0, staleTime: 5 * 60_000,
   });
 
-  // Glossary lookup for field business names
-  const fieldKeys = record ? Object.keys(record.golden_fields) : [];
-  const { data: glossaryLookup } = useQuery({
-    queryKey: ["glossary-lookup", fieldKeys],
-    queryFn: () => batchLookupGlossary(fieldKeys),
-    enabled: fieldKeys.length > 0,
-    staleTime: 5 * 60_000,
-  });
-
-  const promoteMutation = useMutation({
+  const promote = useMutation({
     mutationFn: () => promoteMasterRecord(recordId, true),
     onSuccess: () => {
+      toast.success("Promoted to golden");
       qc.invalidateQueries({ queryKey: ["master-record", recordId] });
-      qc.invalidateQueries({ queryKey: ["master-records"] });
+      qc.invalidateQueries({ queryKey: ["master-records.list"] });
     },
-    onError: () => toast.error("Could not promote to golden — please try again"),
+    onError: (e) => toast.error((e as Error).message || "The record was not promoted"),
   });
-
-  const writebackMutation = useMutation({
+  const writeback = useMutation({
     mutationFn: () => writebackMasterRecord(recordId),
-    onError: () => toast.error("Could not check write-back status — please try again"),
+    onError: (e) => toast.error((e as Error).message || "The write-back route could not be read"),
   });
 
-  if (isLoading) {
+  if (isLoading) return <div className="ui-page"><TableSkeleton rows={10} label="Loading the record" /></div>;
+  if (error || !record) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      <div className="ui-page">
+        <PageHeader title="Golden record" />
+        {error ? <Banner tone="danger" title="The record could not be read">{(error as Error).message}</Banner>
+          : <EmptyState action={<Link className="ui-link" href="/golden-records">Back to golden records</Link>}>No master record has this ID.</EmptyState>}
       </div>
     );
   }
 
-  if (!record) {
-    return (
-      <div className="py-20 text-center">
-        <p className="text-muted-foreground">Record not found</p>
-      </div>
-    );
-  }
-
-  const fieldNames = Object.keys(record.golden_fields);
-  const contributions = record.source_contributions as Record<
-    string,
-    SourceContribution
-  >;
-
-  // Check if any field has a suggestion
-  const hasAiFields = Object.values(contributions).some(
-    (c) => c && typeof c === "object" && "ai_recommendation" in c
-  );
-
-  // Unique source systems
-  const sources = new Set<string>();
-  Object.values(contributions).forEach((c) => {
-    if (c && typeof c === "object" && "source_system" in c) {
-      sources.add(c.source_system);
-    }
-  });
-
-  const statusClasses: Record<string, string> = {
-    candidate: "bg-primary/10 text-primary border-primary/20",
-    pending_review: "bg-[#E76500]/10 text-[#E76500] border-[#E76500]/20",
-    golden: "bg-[#256F3A]/10 text-[#256F3A] border-[#256F3A]/20",
-    superseded: "bg-muted-foreground/10 text-muted-foreground border-muted-foreground/20",
-  };
+  const contributions = record.source_contributions ?? {};
+  const rows: FieldRow[] = fieldKeys.map((f) => ({
+    field: f, name: glossary?.lookup?.[f]?.business_name ?? null, value: record.golden_fields[f], source: contributions[f],
+  }));
+  const sources = Array.from(new Set(Object.values(contributions).map((c) => c?.source_system).filter(Boolean)));
+  const suggestions = rows.filter((r) => r.source?.ai_recommendation).length;
+  const status = STATUS[record.status] ?? { badge: "idle" as Status, label: record.status.replace(/_/g, " ") };
+  const open = rows.find((r) => r.field === openField) ?? null;
 
   return (
-    <div className="space-y-6">
-      {/* Back nav */}
-      <Link
-        href="/golden-records"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary/80"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to Golden Records
-      </Link>
+    <div className="ui-page">
+      <Link href="/golden-records" className="ui-link">Golden records</Link>
+      <PageHeader
+        title={<Mono>{record.sap_object_key}</Mono>}
+        summary={`${formatModuleName(record.domain)}, consolidated from ${sources.length} source system${sources.length === 1 ? "" : "s"}${sources.length ? `: ${sources.join(", ")}` : ""}.`}
+        actions={
+          <>
+            <StatusBadge status={status.badge}>{status.label}</StatusBadge>
+            {record.status !== "golden" && record.status !== "superseded" ? (
+              <Button onClick={() => promote.mutate()} disabled={promote.isPending}>{promote.isPending ? "Promoting" : "Promote to golden"}</Button>
+            ) : null}
+            {record.status === "golden" ? (
+              <Button variant="secondary" onClick={() => writeback.mutate()} disabled={writeback.isPending}>Write back to SAP</Button>
+            ) : null}
+          </>
+        }
+      />
 
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="font-display text-xl font-bold text-foreground">
-              {record.sap_object_key}
-            </h1>
-            <Badge
-              variant="outline"
-              className={`gap-1 ${statusClasses[record.status] ?? ""}`}
-            >
-              {record.status === "golden" && <Crown className="h-3 w-3" />}
-              {record.status.replace("_", " ").replace(/\b\w/g, (c) => c.toUpperCase())}
-            </Badge>
-          </div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {formatModuleName(record.domain)} &middot; {sources.size} source
-            system{sources.size !== 1 ? "s" : ""}: {Array.from(sources).join(", ")}
-          </p>
-        </div>
+      {/* Write-back does not write to SAP: changes reach SAP through the
+          finding-driven four-eyes flow, so the message routes the steward there. */}
+      {writeback.data ? (
+        <Banner tone="warning" title="Changes reach SAP through findings">
+          {writeback.data.message} <Link href="/findings" className="ui-link">Open findings</Link>
+        </Banner>
+      ) : null}
 
-        <div className="flex items-center gap-2">
-          {record.status !== "golden" && record.status !== "superseded" && (
-            <Button
-              onClick={() => promoteMutation.mutate()}
-              disabled={promoteMutation.isPending}
-              className="gap-2 bg-[#256F3A] hover:bg-[#256F3A]/80 text-white"
-            >
-              {promoteMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Crown className="h-4 w-4" />
-              )}
-              Promote to Golden
-            </Button>
-          )}
-          {record.status === "golden" && (
-            <Button
-              onClick={() => writebackMutation.mutate()}
-              disabled={writebackMutation.isPending}
-              variant="outline"
-              className="gap-2 border-primary text-primary hover:bg-primary/5"
-            >
-              {writebackMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-              Write Back to SAP
-            </Button>
-          )}
-        </div>
+      <MetricStrip label="Record">
+        <Metric label="Overall confidence" value={pct(record.overall_confidence)} unit="%" tone={pct(record.overall_confidence) < 60 ? "warning" : "default"} />
+        <Metric label="Fields" value={rows.length} />
+        <Metric label="Source systems" value={sources.length} />
+        <Metric label="Suggestions" value={suggestions} />
+        <Metric label={record.promoted_at ? "Promoted" : "Updated"} value={relativeTime(record.promoted_at ?? record.updated_at)} />
+      </MetricStrip>
+
+      <SectionCard title="Field values" meta={rows.length} flush>
+        {rows.length ? (
+          <DataTable columns={columns} data={rows} getRowId={(r) => r.field} onRowActivate={(r) => setOpenField(r.field)}
+            ariaLabel="Field values. Enter opens the field's source and suggestion." maxHeight="56vh" />
+        ) : <EmptyState>This record has no fields yet.</EmptyState>}
+      </SectionCard>
+
+      <div className="ui-columns">
+        <SectionCard title="Related records">
+          <Relationships domain={record.domain} objectKey={record.sap_object_key} />
+        </SectionCard>
+        <SectionCard title="Audit history">
+          <History recordId={recordId} />
+        </SectionCard>
       </div>
 
-      {/* Confidence overview */}
-      <Card className="border-border bg-white/[0.70]">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-muted-foreground">
-                Overall Confidence
-              </p>
-              <p className="text-3xl font-bold text-foreground">
-                {Math.round(record.overall_confidence * 100)}%
-              </p>
-            </div>
-            <ConfidenceBar confidence={record.overall_confidence} />
+      <DetailDrawer open={Boolean(open)} onClose={() => setOpenField(null)} ariaLabel="Field detail"
+        header={open ? <div className="ui-drawer-head"><h2 className="ui-drawer-head__title">{open.name ?? <Mono>{open.field}</Mono>}</h2></div> : null}>
+        {open ? (
+          <div className="ui-detail">
+            <KeyValue rows={[
+              { k: "Field", v: open.field, mono: true },
+              { k: "Golden value", v: show(open.value), mono: true },
+              { k: "Source", v: open.source?.source_system ?? "No source" },
+              ...(open.source ? [
+                { k: "Source value", v: show(open.source.value), mono: true },
+                { k: "Extracted", v: relativeTime(open.source.extracted_at) },
+                { k: "Confidence", v: `${pct(open.source.confidence)}%` },
+              ] : []),
+            ]} />
+            {open.source?.ai_recommendation ? (
+              <section className="ui-detail-part">
+                <h3 className="ui-detail-part__title">Suggested merge</h3>
+                <KeyValue rows={[
+                  { k: "Use the value from", v: open.source.ai_recommendation },
+                  { k: "Confidence", v: `${pct(open.source.ai_confidence ?? 0)}%` },
+                ]} />
+                {open.source.ai_reasoning ? <p className="ui-note">{open.source.ai_reasoning}</p> : null}
+                <p className="ui-micro">A suggestion, not a confirmed value. A steward decides.</p>
+              </section>
+            ) : null}
           </div>
-          {record.promoted_at && (
-            <p className="mt-2 text-xs text-muted-foreground">
-              Promoted {relativeTime(record.promoted_at)}
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Writeback guidance — this does NOT write to SAP. SAP write-back is
-          finding-driven via the 4-eyes flow; route the steward there. */}
-      {writebackMutation.isSuccess && writebackMutation.data && (
-        <Card className="border-[#E76500]/20 bg-[#E76500]/5">
-          <CardContent className="flex items-start gap-2 p-4 text-sm text-[#E76500]">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-            <span>
-              {writebackMutation.data.message}{" "}
-              <Link href="/findings" className="font-medium underline">
-                Open findings
-              </Link>
-            </span>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Field-level detail */}
-      <Card className="border-border bg-white/[0.70]">
-        <CardContent className="p-0">
-          <div className="flex items-center justify-between border-b border-border px-4 py-3">
-            <h2 className="text-sm font-semibold text-foreground">
-              Field Values ({fieldNames.length})
-            </h2>
-            {hasAiFields && (
-              <div className="flex items-center gap-1 text-xs text-[#E76500]">
-                <Brain className="h-3.5 w-3.5" />
-                Suggestions available — click to expand
-              </div>
-            )}
-          </div>
-          {fieldNames.length === 0 ? (
-            <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-              No fields yet
-            </p>
-          ) : (
-            fieldNames.map((field) => (
-              <FieldRow
-                key={field}
-                fieldName={field}
-                goldenValue={record.golden_fields[field]}
-                contribution={contributions[field]}
-                showAi={hasAiFields}
-                businessName={glossaryLookup?.lookup?.[field]?.business_name}
-              />
-            ))
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Relationships tab */}
-      <Card className="border-border bg-white/[0.70]">
-        <CardContent className="p-0">
-          <button
-            onClick={() => setShowRelationships(!showRelationships)}
-            className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-foreground/[0.03]"
-          >
-            <div className="flex items-center gap-2">
-              <GitBranch className="h-4 w-4 text-[#2563EB]" />
-              <span className="text-sm font-semibold text-foreground">
-                Relationships
-              </span>
-            </div>
-            {showRelationships ? (
-              <ChevronUp className="h-4 w-4 text-muted-foreground" />
-            ) : (
-              <ChevronDown className="h-4 w-4 text-muted-foreground" />
-            )}
-          </button>
-          {showRelationships && (
-            <div className="border-t border-border px-4 py-3">
-              <RelationshipsPanel
-                domain={record.domain}
-                objectKey={record.sap_object_key}
-              />
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* History toggle */}
-      <Card className="border-border bg-white/[0.70]">
-        <CardContent className="p-0">
-          <button
-            onClick={() => setShowHistory(!showHistory)}
-            className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-foreground/[0.03]"
-          >
-            <div className="flex items-center gap-2">
-              <History className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-semibold text-foreground">
-                Audit History
-              </span>
-            </div>
-            {showHistory ? (
-              <ChevronUp className="h-4 w-4 text-muted-foreground" />
-            ) : (
-              <ChevronDown className="h-4 w-4 text-muted-foreground" />
-            )}
-          </button>
-          {showHistory && (
-            <div className="border-t border-border px-4 py-3">
-              <HistoryPanel recordId={recordId} />
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        ) : null}
+      </DetailDrawer>
     </div>
+  );
+}
+
+function Relationships({ domain, objectKey }: { domain: string; objectKey: string }) {
+  const { data, isLoading, error } = useQuery({ queryKey: ["relationships", domain, objectKey], queryFn: () => getRelationships({ domain, key: objectKey }) });
+  if (isLoading) return <TableSkeleton rows={3} label="Loading related records" />;
+  if (error) return <p className="ui-note">Related records could not be read: {(error as Error).message}</p>;
+  const rels = data?.relationships ?? [];
+  if (!rels.length) return <p className="ui-note">No related records in other domains.</p>;
+  return (
+    <table className="ui-mini-table">
+      <thead><tr><th scope="col">Record</th><th scope="col">Relationship</th><th scope="col">Impact</th></tr></thead>
+      <tbody>
+        {rels.map((r) => {
+          const from = r.from_domain === domain && r.from_key === objectKey;
+          const d = from ? r.to_domain : r.from_domain;
+          const k = from ? r.to_key : r.from_key;
+          return (
+            <tr key={r.id}>
+              <td>
+                <Link className="ui-link" href={`/golden-records?domain=${encodeURIComponent(d)}`}>{formatModuleName(d)}</Link>{" "}
+                <Mono>{k}</Mono>
+              </td>
+              <td>
+                {r.relationship_type.replace(/_/g, " ")}
+                {r.sap_link_table ? <> via <Mono>{r.sap_link_table}</Mono></> : null}
+                {r.ai_inferred ? (
+                  <div className="ui-micro">
+                    Probable, not confirmed in SAP{r.ai_confidence != null ? ` (${pct(r.ai_confidence)}% confidence)` : ""}
+                  </div>
+                ) : null}
+              </td>
+              <td className="aurora-number">{r.impact_score != null ? `${pct(r.impact_score)}%` : ""}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
+function History({ recordId }: { recordId: string }) {
+  const { data, isLoading, error } = useQuery({ queryKey: ["master-record-history", recordId], queryFn: () => getMasterRecordHistory(recordId) });
+  if (isLoading) return <TableSkeleton rows={3} label="Loading the audit history" />;
+  if (error) return <p className="ui-note">The audit history could not be read: {(error as Error).message}</p>;
+  if (!data?.length) return <p className="ui-note">No changes recorded yet.</p>;
+  return (
+    <ol className="ui-plain-list">
+      {data.map((e) => (
+        <li key={e.id}>
+          {CHANGE[e.change_type] ?? e.change_type.replace(/_/g, " ")}
+          {e.changed_by ? ` by ${e.changed_by}` : ""}, {relativeTime(e.changed_at)}
+          {e.ai_was_involved ? (
+            <div className="ui-micro">
+              {e.ai_recommendation_accepted == null ? "A suggestion was involved."
+                : e.ai_recommendation_accepted ? "The suggestion was accepted." : "The suggestion was rejected."}
+            </div>
+          ) : null}
+        </li>
+      ))}
+    </ol>
   );
 }

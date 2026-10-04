@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Data → Analyses: every analysed version, two of them compared object by
+ * Analyses: every analysed version, two of them compared object by
  * object (score, dimensions, checks that started or stopped failing) and
  * record by record (new, resolved, persisting failures), the DQS trend, and
  * the baseline pin. Pair, object and system live in the URL.
@@ -13,10 +13,11 @@ import { useCallback, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
+import { LineChart, Select } from "@/components/aurora";
 import {
-  Banner, Button, Chip, DataTable, Drawer, EmptyState, KpiRail, LineChart, Select, Stack, Stat, Text,
-  type AuroraColumnMeta, type ChipTone,
-} from "@/components/aurora";
+  Banner, Button, Chip, DataTable, DetailDrawer, EmptyState, FilterBar, Metric, MetricStrip, Mono, PageHeader,
+  SectionCard, StatusBadge, TableSkeleton, type AuroraColumnMeta, type Status,
+} from "@/components/ui-core";
 import { useRole } from "@/hooks/use-role";
 import { compareRecordKeys, compareRecords, compareVersions, getVersions, pinBaseline } from "@/lib/api/versions";
 import { formatModuleName, relativeTime } from "@/lib/format";
@@ -31,7 +32,15 @@ function displayStatus(s: Version["status"]): Display {
   if (s === "running" || s === "agents_running" || s === "ai_enriching" || s === "agents_enqueued") return "running";
   return "scheduled";
 }
-const STATUS_TONE: Record<Display, ChipTone> = { complete: "success", failed: "danger", running: "info", scheduled: "neutral" };
+const STATUS_BADGE: Record<Display, { badge: Status; label: string }> = {
+  complete: { badge: "ok", label: "Complete" }, failed: { badge: "failed", label: "Failed" },
+  running: { badge: "running", label: "Running" }, scheduled: { badge: "idle", label: "Scheduled" },
+};
+const VersionStatus = ({ v }: { v: Version }) => {
+  const s = STATUS_BADGE[displayStatus(v.status)];
+  return <StatusBadge status={s.badge}>{s.label}</StatusBadge>;
+};
+const versionName = (v: Version) => v.label ?? v.metadata?.file_name ?? v.id.slice(0, 8);
 const isComplete = (v: Version) => displayStatus(v.status) === "complete" && !!v.dqs_summary;
 const scoped = (s: Record<string, DQSSummary> | null, object?: string) => !s ? null : object ? (s[object] ? { [object]: s[object] } : {}) : s;
 function averageDqs(s: Record<string, DQSSummary> | null): number | null {
@@ -40,14 +49,14 @@ function averageDqs(s: Record<string, DQSSummary> | null): number | null {
 }
 const sumCounts = (s: Record<string, DQSSummary> | null, key: "critical_count" | "high_count" | "total_checks") =>
   Object.values(s ?? {}).reduce((a, m) => a + m[key], 0);
-const signed = (n: number | null) => (n === null ? "—" : `${n > 0 ? "+" : ""}${n.toFixed(1)}`);
-const deltaTone = (n: number | null, lowerIsBetter = false): ChipTone =>
-  n === null || n === 0 ? "neutral" : (n > 0) !== lowerIsBetter ? "success" : "danger";
+const signed = (n: number | null, digits = 1) => (n === null ? "" : n === 0 ? "0" : `${n > 0 ? "+" : "−"}${Math.abs(n).toFixed(digits)}`);
 function errorText(e: unknown): string {
   const detail = (e as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail;
   return typeof detail === "string" ? detail : (e as Error)?.message || "Comparison failed";
 }
 const findingsHref = (p: Record<string, string>) => `/findings?${new URLSearchParams(p)}`;
+
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export function AnalysesSurface() {
   const router = useRouter();
@@ -88,43 +97,49 @@ export function AnalysesSurface() {
   });
   const objects = useMemo(() => Array.from(new Set([...Object.keys(older?.dqs_summary ?? {}), ...Object.keys(newer?.dqs_summary ?? {}), ...(object ? [object] : [])])).sort(), [older, newer, object]);
   const trend = useMemo(() => completed.slice(0, 20).reverse().map((v) => ({ run: relativeTime(v.run_at), id: v.id, dqs: averageDqs(scoped(v.dqs_summary, object || undefined)) ?? 0 })), [completed, object]);
+  const baseline = versions.find((v) => v.metadata?.baseline);
 
   const columns = useMemo<ColumnDef<Version, unknown>[]>(() => [
     { id: "pick", header: "", meta: meta({ width: 44, align: "center" }), cell: ({ row }) => (
-      <input type="checkbox" aria-label={`Compare ${row.original.label ?? row.original.id.slice(0, 8)}`} checked={pair.includes(row.original.id)} onChange={() => toggle(row.original.id)} onClick={(e) => e.stopPropagation()} />) },
-    { id: "when", header: "Run", meta: meta({ sticky: "start", width: 220 }), cell: ({ row }) => (
-      <span><strong>{row.original.label ?? row.original.metadata?.file_name ?? row.original.id.slice(0, 8)}</strong>
-        <Text variant="text-micro" tone="muted" as="div">{relativeTime(row.original.run_at)} · <span className="aurora-number">{row.original.id.slice(0, 8)}</span>{row.original.metadata?.baseline ? " · baseline" : ""}</Text></span>) },
-    { id: "status", header: "Status", meta: meta({ width: 110 }), cell: ({ row }) => <Chip tone={STATUS_TONE[displayStatus(row.original.status)]}>{displayStatus(row.original.status)}</Chip> },
-    { id: "dqs", header: "DQS", meta: meta({ width: 80, align: "end", numeric: true }), cell: ({ row }) => { const d = averageDqs(scoped(row.original.dqs_summary, object || undefined)); return d === null ? "—" : d.toFixed(1); } },
+      <input type="checkbox" aria-label={`Compare ${versionName(row.original)}`} checked={pair.includes(row.original.id)} onChange={() => toggle(row.original.id)} onClick={(e) => e.stopPropagation()} />) },
+    { id: "when", header: "Version", meta: meta({ sticky: "start", width: 240 }), cell: ({ row }) => (
+      <div className="ui-cell-stack">
+        <span className="ui-cell-stack__main">{versionName(row.original)}</span>
+        <span className="ui-cell-stack__sub">
+          <span>{relativeTime(row.original.run_at)}</span>
+          <Mono>{row.original.id.slice(0, 8)}</Mono>
+          {row.original.metadata?.baseline ? <span>Baseline</span> : null}
+        </span>
+      </div>) },
+    { id: "status", header: "Status", meta: meta({ width: 120 }), cell: ({ row }) => <VersionStatus v={row.original} /> },
+    { id: "dqs", header: "DQS", meta: meta({ width: 80, align: "end", numeric: true }), cell: ({ row }) => { const d = averageDqs(scoped(row.original.dqs_summary, object || undefined)); return d === null ? "" : d.toFixed(1); } },
     { id: "crit", header: "Critical", meta: meta({ width: 90, align: "end", numeric: true }), cell: ({ row }) => sumCounts(row.original.dqs_summary, "critical_count") },
     { id: "high", header: "High", meta: meta({ width: 80, align: "end", numeric: true }), cell: ({ row }) => sumCounts(row.original.dqs_summary, "high_count") },
     { id: "checks", header: "Checks", meta: meta({ width: 90, align: "end", numeric: true }), cell: ({ row }) => sumCounts(row.original.dqs_summary, "total_checks") },
-    { id: "objects", header: "Objects", cell: ({ row }) => (row.original.metadata?.modules ?? []).map(formatModuleName).join(" · ") || "—" },
+    { id: "objects", header: "Objects", meta: meta({ minWidth: 200 }), cell: ({ row }) => (row.original.metadata?.modules ?? []).map(formatModuleName).join(", ") },
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [pair, object, versions]);
 
   return (
-    <Stack gap={5} className="aurora-page">
-      <KpiRail>
-        <Stat label="Versions" value={versions.length} />
-        <Stat label="Analysed" value={completed.length} tone={completed.length ? "success" : "neutral"} />
-        <Stat label="Latest DQS" value={completed[0] ? (averageDqs(completed[0].dqs_summary) ?? "—") : "—"} />
-        <Stat label="Baseline" value={versions.find((v) => v.metadata?.baseline)?.label ?? (versions.some((v) => v.metadata?.baseline) ? "set" : "none")} />
-      </KpiRail>
-      <Stack direction="row" gap={3} align="center" wrap className="aurora-filters">
+    <div className="ui-page">
+      <PageHeader
+        title="Analyses"
+        summary="Tick two versions to compare them. The older one is always on the left; the pin makes it the baseline later runs are measured against."
+      />
+      <MetricStrip label="Versions">
+        <Metric label="Versions" value={versions.length} />
+        <Metric label="Analysed" value={completed.length} />
+        <Metric label="Latest DQS" value={completed[0] ? averageDqs(completed[0].dqs_summary) : null} />
+        <Metric label="Baseline" value={baseline ? versionName(baseline) : "None set"} />
+      </MetricStrip>
+      <FilterBar onClear={object || systemId ? () => setParams({ module: null, system_id: null }) : undefined}>
         <Select aria-label="Object" placeholder="All objects" value={object} options={objects.map((o) => ({ value: o, label: formatModuleName(o) }))} onValueChange={(v) => setParams({ module: v || null })} />
-        {systemId ? <Chip tone="info" onDismiss={() => setParams({ system_id: null })}>system · {systemId.slice(0, 8)}</Chip> : null}
-        <Text variant="text-small" tone="secondary">Tick two versions to compare them; the older is always on the left.</Text>
-      </Stack>
+        {systemId ? <Chip selected onDismiss={() => setParams({ system_id: null })}>System <Mono>{systemId.slice(0, 8)}</Mono></Chip> : null}
+      </FilterBar>
 
-      {older && newer ? (
-        <div className="aurora-compare">
-          <Side v={older} object={object} />
-          <Delta older={older} newer={newer} object={object} />
-          <Side v={newer} object={object} />
-        </div>
-      ) : <Banner tone="info" title="Pick two analysed versions">The comparison, object scores and record-level change appear once two versions are ticked.</Banner>}
+      {older && newer ? <PairSummary older={older} newer={newer} object={object} /> : (
+        <Banner tone="info" title="Pick two analysed versions">The comparison, object scores and record-level change appear once two versions are ticked.</Banner>
+      )}
       {cmp.isError ? <Banner tone="danger" title="These versions cannot be compared">{errorText(cmp.error)}</Banner> : null}
 
       {cmp.data && older && newer ? <ObjectCompare data={cmp.data} newer={newer} older={older} /> : null}
@@ -132,97 +147,116 @@ export function AnalysesSurface() {
         onPinned={() => qc.invalidateQueries({ queryKey: ["versions.list"] })} /> : null}
 
       {trend.length >= 2 ? (
-        <section>
-          <Text as="h2" variant="text-lead" className="aurora-runs__h">DQS across the last {trend.length} analysed versions{object ? ` · ${formatModuleName(object)}` : ""}</Text>
+        <SectionCard title="DQS trend" meta={`Last ${trend.length} analysed versions${object ? `, ${formatModuleName(object)}` : ""}`}>
           <LineChart data={trend} xKey="run" series={[{ key: "dqs", label: "DQS" }]} height={180} ariaLabel="DQS trend" yFormatter={(v) => v.toFixed(0)} />
-        </section>
+        </SectionCard>
       ) : null}
 
-      <Text as="h2" variant="text-lead" className="aurora-runs__h">Version history</Text>
-      {list.isLoading ? <Text tone="muted">Reading versions.</Text> : versions.length ? (
-        <DataTable columns={columns} data={versions} getRowId={(v) => v.id} onRowActivate={(v) => toggle(v.id)} ariaLabel="Version history" maxHeight="56vh" />
-      ) : <EmptyState title="No versions yet." body="Import a file or download objects from a connected system to create the first one." />}
-    </Stack>
-  );
-}
-
-function Side({ v, object }: { v: Version; object: string }) {
-  const s = scoped(v.dqs_summary, object || undefined);
-  return (
-    <div className="aurora-compare__side">
-      <Stack direction="row" gap={2} align="center"><span className="aurora-number">{v.id.slice(0, 8)}</span><Chip tone={STATUS_TONE[displayStatus(v.status)]}>{displayStatus(v.status)}</Chip>{v.metadata?.baseline ? <Chip tone="info">baseline</Chip> : null}</Stack>
-      <Text variant="text-lead">{v.label ?? v.metadata?.file_name ?? "Version"}</Text>
-      <Text variant="text-small" tone="secondary">{new Date(v.run_at).toLocaleString()}</Text>
-      <KpiRail>
-        <Stat label="DQS" value={averageDqs(s) ?? "—"} />
-        <Stat label="Checks" value={sumCounts(s, "total_checks")} />
-        <Stat label="Critical" value={sumCounts(s, "critical_count")} tone={sumCounts(s, "critical_count") ? "danger" : "neutral"} />
-        <Stat label="Objects" value={Object.keys(s ?? {}).length} />
-      </KpiRail>
+      <SectionCard title="Version history" meta={versions.length || undefined} flush>
+        {list.isLoading ? <TableSkeleton rows={6} label="Loading versions" /> : versions.length ? (
+          <DataTable columns={columns} data={versions} getRowId={(v) => v.id} onRowActivate={(v) => toggle(v.id)} ariaLabel="Version history" maxHeight="56vh" />
+        ) : <EmptyState action={<Link href="/upload" className="ui-link">Import a file</Link>}>No versions yet. Import a file or download objects from a connected system to create the first one.</EmptyState>}
+      </SectionCard>
     </div>
   );
 }
 
-function Delta({ older, newer, object }: { older: Version; newer: Version; object: string }) {
+/** The pair side by side in one table: older, newer, change. */
+function PairSummary({ older, newer, object }: { older: Version; newer: Version; object: string }) {
   const a = scoped(older.dqs_summary, object || undefined), b = scoped(newer.dqs_summary, object || undefined);
-  const dqs = averageDqs(a) !== null && averageDqs(b) !== null ? Math.round(((averageDqs(b) as number) - (averageDqs(a) as number)) * 10) / 10 : null;
-  const crit = sumCounts(b, "critical_count") - sumCounts(a, "critical_count");
-  const high = sumCounts(b, "high_count") - sumCounts(a, "high_count");
+  const da = averageDqs(a), db = averageDqs(b);
+  const rows: Array<{ k: string; a: number | null; b: number | null; digits?: number }> = [
+    { k: "DQS", a: da, b: db },
+    { k: "Critical failures", a: sumCounts(a, "critical_count"), b: sumCounts(b, "critical_count"), digits: 0 },
+    { k: "High failures", a: sumCounts(a, "high_count"), b: sumCounts(b, "high_count"), digits: 0 },
+    { k: "Checks run", a: sumCounts(a, "total_checks"), b: sumCounts(b, "total_checks"), digits: 0 },
+    { k: "Objects", a: Object.keys(a ?? {}).length, b: Object.keys(b ?? {}).length, digits: 0 },
+  ];
+  const head = (v: Version) => (
+    <th scope="col">
+      <div className="ui-cell-stack">
+        <span className="ui-cell-stack__main">{versionName(v)}{v.metadata?.baseline ? " (baseline)" : ""}</span>
+        <span className="ui-cell-stack__sub"><span>{new Date(v.run_at).toLocaleString()}</span><Mono>{v.id.slice(0, 8)}</Mono></span>
+      </div>
+    </th>
+  );
   return (
-    <div className="aurora-compare__delta">
-      <Text variant="text-micro" tone="muted" className="aurora-exec__eyebrow">Δ newer − older</Text>
-      <Text variant="display-sm" className="aurora-number" tone={dqs === null ? "muted" : dqs >= 0 ? "primary" : "danger"}>{signed(dqs)}</Text>
-      <Text variant="text-micro" tone="muted">DQS points</Text>
-      <Stack direction="row" gap={2} wrap>
-        <Chip tone={deltaTone(crit, true)}>{signed(crit)} critical</Chip>
-        <Chip tone={deltaTone(high, true)}>{signed(high)} high</Chip>
-      </Stack>
-    </div>
+    <SectionCard title="Comparison" meta={object ? formatModuleName(object) : "All objects"} flush>
+      <div className="ui-matrix-scroll">
+        <table className="ui-mini-table">
+          <thead><tr><th scope="col">Measure</th>{head(older)}{head(newer)}<th scope="col" className="aurora-number">Change</th></tr></thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.k}>
+                <th scope="row">{r.k}</th>
+                <td className="aurora-number">{r.a === null ? "" : r.a.toFixed(r.digits ?? 1)}</td>
+                <td className="aurora-number">{r.b === null ? "" : r.b.toFixed(r.digits ?? 1)}</td>
+                <td className="aurora-number">{r.a === null || r.b === null ? "" : signed(Math.round((r.b - r.a) * 10) / 10, r.digits ?? 1)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </SectionCard>
   );
 }
 
-function ObjectCompare({ data, newer, older }: { data: Awaited<ReturnType<typeof compareVersions>>; newer: Version; older: Version }) {
-  const dims = Array.from(new Set(Object.values(data.delta).flatMap((d) => Object.keys(d.dimensions))));
-  const list = (title: string, items: typeof data.checks.newly_failing, tone: ChipTone, versionId: string) => (
-    <div>
-      <Text variant="text-small" tone="secondary">{title} <Chip tone={items.length ? tone : "neutral"}>{items.length}</Chip></Text>
-      {items.length ? (
-        <ul className="aurora-exec__warnings">
-          {items.map((c) => (
-            <li key={`${c.module}-${c.check_id}`}>
-              <Link href={findingsHref({ version_id: versionId, module: c.module, check_id: c.check_id })} className="aurora-link aurora-number">{c.check_id}</Link>
-              <span> · {formatModuleName(c.module)} · {c.severity} · {(c.v2_affected || c.v1_affected).toLocaleString()} records</span>
-            </li>
-          ))}
-        </ul>
-      ) : <Text variant="text-small" tone="muted">None.</Text>}
-    </div>
-  );
+type CompareData = Awaited<ReturnType<typeof compareVersions>>;
+
+function CheckList({ items, versionId }: { items: CompareData["checks"]["newly_failing"]; versionId: string }) {
+  if (!items.length) return <EmptyState>None.</EmptyState>;
   return (
-    <section>
-      <Text as="h2" variant="text-lead" className="aurora-runs__h">Object scores</Text>
-      <table className="aurora-exec__table">
-        <thead><tr><th>Object</th><th>Older</th><th>Newer</th><th>Δ DQS</th>{dims.map((d) => <th key={d}>Δ {d}</th>)}</tr></thead>
-        <tbody>
-          {Object.entries(data.delta).map(([m, d]) => (
-            <tr key={m}>
-              <td><Link href={findingsHref({ version_id: newer.id, module: m })} className="aurora-link">{formatModuleName(m)}</Link></td>
-              <td className="aurora-number">{d.v1_score.toFixed(1)}</td>
-              <td className="aurora-number">{d.v2_score.toFixed(1)}</td>
-              <td><Chip tone={deltaTone(d.dqs_change)}>{signed(d.dqs_change)}</Chip></td>
-              {dims.map((dim) => <td key={dim}><Chip tone={deltaTone(d.dimensions[dim]?.change ?? null)}>{signed(d.dimensions[dim]?.change ?? null)}</Chip></td>)}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <div className="aurora-compare__lists">
-        {list("Newly failing checks", data.checks.newly_failing, "danger", newer.id)}
-        {list("Fixed checks", data.checks.fixed, "success", older.id)}
-      </div>
-      <Text variant="text-micro" tone="muted">A check counts only when it ran cleanly in both versions; one that errored or was not run in either is left out.</Text>
-    </section>
+    <ul className="ui-ranked">
+      {items.map((c) => (
+        <li key={`${c.module}-${c.check_id}`}>
+          <Link href={findingsHref({ version_id: versionId, module: c.module, check_id: c.check_id })}>
+            <Mono>{c.check_id}</Mono>
+            <span className="ui-ranked__title">{formatModuleName(c.module)}</span>
+            <span className="ui-ranked__num">{(c.v2_affected || c.v1_affected).toLocaleString()} records</span>
+            <span className="ui-ranked__meta"><StatusBadge status={c.severity as Status}>{cap(c.severity)}</StatusBadge></span>
+          </Link>
+        </li>
+      ))}
+    </ul>
   );
 }
+
+function ObjectCompare({ data, newer, older }: { data: CompareData; newer: Version; older: Version }) {
+  const dims = Array.from(new Set(Object.values(data.delta).flatMap((d) => Object.keys(d.dimensions))));
+  return (
+    <>
+      <SectionCard title="Object scores" meta="Change is newer minus older" flush>
+        <div className="ui-matrix-scroll">
+          <table className="ui-mini-table">
+            <thead><tr><th>Object</th><th className="aurora-number">Older</th><th className="aurora-number">Newer</th><th className="aurora-number">DQS change</th>{dims.map((d) => <th key={d} className="aurora-number">{cap(d)}</th>)}</tr></thead>
+            <tbody>
+              {Object.entries(data.delta).map(([m, d]) => (
+                <tr key={m}>
+                  <td><Link href={findingsHref({ version_id: newer.id, module: m })} className="ui-link">{formatModuleName(m)}</Link></td>
+                  <td className="aurora-number">{d.v1_score.toFixed(1)}</td>
+                  <td className="aurora-number">{d.v2_score.toFixed(1)}</td>
+                  <td className="aurora-number">{signed(d.dqs_change)}</td>
+                  {dims.map((dim) => <td key={dim} className="aurora-number">{signed(d.dimensions[dim]?.change ?? null)}</td>)}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </SectionCard>
+      <div className="ui-columns">
+        <SectionCard title="Newly failing checks" meta={data.checks.newly_failing.length} flush>
+          <CheckList items={data.checks.newly_failing} versionId={newer.id} />
+        </SectionCard>
+        <SectionCard title="Fixed checks" meta={data.checks.fixed.length} flush>
+          <CheckList items={data.checks.fixed} versionId={older.id} />
+        </SectionCard>
+      </div>
+      <p className="ui-micro">A check counts only when it ran cleanly in both versions; one that errored or was not run in either is left out.</p>
+    </>
+  );
+}
+
+const CHANGE_LABEL = { new: "Newly failing", resolved: "No longer failing", persisting: "Still failing" } as const;
 
 function RecordCompare({ older, newer, object, canPin, onPinned }: { older: Version; newer: Version; object?: string; canPin: boolean; onPinned: () => void }) {
   const [open, setOpen] = useState<{ check: string; module: string; change: "new" | "resolved" | "persisting" } | null>(null);
@@ -235,49 +269,56 @@ function RecordCompare({ older, newer, object, canPin, onPinned }: { older: Vers
   const d = diff.data;
   const changed = (d?.checks ?? []).filter((c) => c.new || c.resolved || c.persisting);
   return (
-    <section>
-      <Stack direction="row" gap={3} align="center" wrap>
-        <Text as="h2" variant="text-lead" className="aurora-runs__h">Record-level change</Text>
-        <span style={{ flex: 1 }} />
-        {older.metadata?.baseline ? <Chip tone="info">older version is the baseline</Chip>
-          : canPin ? <Button variant="secondary" size="sm" onClick={() => pin.mutate()} disabled={pin.isPending}>Pin older version as baseline</Button> : null}
-      </Stack>
+    <SectionCard title="Record-level change"
+      action={older.metadata?.baseline ? <span className="ui-note">The older version is the baseline</span>
+        : canPin ? <Button variant="secondary" size="sm" onClick={() => pin.mutate()} disabled={pin.isPending}>Pin older version as baseline</Button> : null}>
       {diff.isError ? <Banner tone="warning" title="Record-level comparison unavailable">{errorText(diff.error)}</Banner> : d ? (
-        <Stack gap={3}>
-          <KpiRail>
-            <Stat label="Newly failing records" value={d.totals.new} tone={d.totals.new ? "danger" : "neutral"} />
-            <Stat label="No longer failing" value={d.totals.resolved} tone={d.totals.resolved ? "success" : "neutral"} />
-            <Stat label="Still failing" value={d.totals.persisting} tone={d.totals.persisting ? "warning" : "neutral"} />
-          </KpiRail>
+        <div className="ui-stack">
+          <MetricStrip label="Records that changed">
+            <Metric label="Newly failing records" value={d.totals.new.toLocaleString()} tone={d.totals.new ? "danger" : "default"} />
+            <Metric label="No longer failing" value={d.totals.resolved.toLocaleString()} />
+            <Metric label="Still failing" value={d.totals.persisting.toLocaleString()} />
+          </MetricStrip>
           {changed.length ? (
-            <table className="aurora-exec__table">
-              <thead><tr><th>Check</th><th>Object</th><th>Severity</th><th>New</th><th>Resolved</th><th>Persisting</th></tr></thead>
-              <tbody>
-                {changed.map((c) => (
-                  <tr key={`${c.module}-${c.check_id}`}>
-                    <td className="aurora-number">{c.check_id}{c.comparable ? "" : <Chip tone="neutral"> not comparable</Chip>}</td>
-                    <td>{formatModuleName(c.module)}</td>
-                    <td>{c.severity}</td>
-                    {(["new", "resolved", "persisting"] as const).map((k) => (
-                      <td key={k}>{c[k] ? <Chip tone={k === "new" ? "danger" : k === "resolved" ? "success" : "warning"} onClick={() => setOpen({ check: c.check_id, module: c.module, change: k })}>{c[k].toLocaleString()}</Chip> : "0"}</td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : <Text variant="text-small" tone="muted">No record moved between these versions.</Text>}
-        </Stack>
-      ) : <Text tone="muted">Comparing records.</Text>}
-      <Drawer open={!!open} onClose={() => setOpen(null)} ariaLabel="Record keys"
-        header={open ? <Text variant="text-lead">{open.change} records · <span className="aurora-number">{open.check}</span></Text> : null}>
+            <div className="ui-matrix-scroll">
+              <table className="ui-mini-table">
+                <thead><tr><th>Check</th><th>Object</th><th>Severity</th><th className="aurora-number">New</th><th className="aurora-number">Resolved</th><th className="aurora-number">Persisting</th></tr></thead>
+                <tbody>
+                  {changed.map((c) => (
+                    <tr key={`${c.module}-${c.check_id}`}>
+                      <td><Mono>{c.check_id}</Mono>{c.comparable ? null : <span className="ui-micro"> Not comparable</span>}</td>
+                      <td>{formatModuleName(c.module)}</td>
+                      <td><StatusBadge status={c.severity as Status}>{cap(c.severity)}</StatusBadge></td>
+                      {(["new", "resolved", "persisting"] as const).map((k) => (
+                        <td key={k} className="aurora-number">
+                          {c[k] ? <button type="button" className="ui-link-button" onClick={() => setOpen({ check: c.check_id, module: c.module, change: k })}
+                            aria-label={`${CHANGE_LABEL[k]} records for ${c.check_id}`}>{c[k].toLocaleString()}</button> : "0"}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : <EmptyState>No record moved between these versions.</EmptyState>}
+        </div>
+      ) : <TableSkeleton rows={4} label="Comparing records" />}
+      <DetailDrawer open={!!open} onClose={() => setOpen(null)} ariaLabel="Record keys"
+        header={open ? (
+          <div className="ui-drawer-head">
+            <h2 className="ui-drawer-head__title">{CHANGE_LABEL[open.change]} records for <Mono>{open.check}</Mono></h2>
+          </div>
+        ) : null}>
         {open ? (
-          <Stack gap={3}>
-            <Link className="aurora-link" href={`/issues?${new URLSearchParams({ check_id: open.check, module: open.module, status: open.change === "resolved" ? "resolved" : "open", version_id: open.change === "resolved" ? older.id : newer.id })}`}>Open in Failing records →</Link>
-            <Stack direction="row" gap={1} wrap>{(keys.data?.record_keys ?? []).map((k) => <Chip key={k}><span className="aurora-number">{k}</span></Chip>)}</Stack>
-            {(keys.data?.record_keys.length ?? 0) >= 200 ? <Text variant="text-micro" tone="muted">First 200 shown.</Text> : null}
-          </Stack>
+          <div className="ui-detail">
+            <Link className="ui-link" href={`/issues?${new URLSearchParams({ check_id: open.check, module: open.module, status: open.change === "resolved" ? "resolved" : "open", version_id: open.change === "resolved" ? older.id : newer.id })}`}>Open these in failing records</Link>
+            {keys.isLoading ? <TableSkeleton rows={4} label="Loading record keys" /> : (
+              <ul className="ui-keys">{(keys.data?.record_keys ?? []).map((k) => <li key={k}><Mono>{k}</Mono></li>)}</ul>
+            )}
+            {(keys.data?.record_keys.length ?? 0) >= 200 ? <p className="ui-micro">The first 200 records are shown.</p> : null}
+          </div>
         ) : null}
-      </Drawer>
-    </section>
+      </DetailDrawer>
+    </SectionCard>
   );
 }

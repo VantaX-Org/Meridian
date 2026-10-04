@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Data → Import: drop a file, see how its columns match a module's standard
- * fields, pick the module, run the import and follow the analysis to the end.
+ * Import: drop a file, see how its columns match an object's standard
+ * fields, pick the object, run the import and follow the analysis to the end.
  * Every import is a version; recent ones are listed with their DQS.
  */
 
@@ -12,8 +12,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
-  Banner, Button, Chip, DataTable, EmptyState, KpiRail, Stack, Stat, Text, type AuroraColumnMeta, type ChipTone,
-} from "@/components/aurora";
+  Banner, Button, Chip, DataTable, EmptyState, Metric, MetricStrip, Mono, PageHeader, SectionCard, StatusBadge,
+  type AuroraColumnMeta, type Status,
+} from "@/components/ui-core";
 import { useRole } from "@/hooks/use-role";
 import { getSystems } from "@/lib/api/systems";
 import { matchColumns, pollAnalysisStatus, uploadFile, type MatchResponse } from "@/lib/api/upload";
@@ -33,7 +34,8 @@ function versionDqs(v: Version): number | null {
   const scores = Object.values(v.dqs_summary ?? {}).map((m) => m.composite_score);
   return scores.length ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10 : null;
 }
-const STATUS_TONE = (s: string): ChipTone => s === "failed" || s === "agents_failed" ? "danger" : TERMINAL.has(s) ? "success" : "info";
+const versionStatus = (s: string): Status => s === "failed" || s === "agents_failed" ? "failed" : TERMINAL.has(s) ? "ok" : "running";
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export function ImportSurface() {
   const qc = useQueryClient();
@@ -102,93 +104,101 @@ export function ImportSurface() {
 
   const columns = useMemo<ColumnDef<Version, unknown>[]>(() => [
     { id: "file", header: "File", meta: meta({ sticky: "start", width: 240 }), cell: ({ row }) => (
-      <Link href={`/findings?version_id=${row.original.id}`} className="aurora-link">{row.original.metadata?.file_name ?? row.original.label ?? row.original.id.slice(0, 8)}</Link>) },
-    { id: "modules", header: "Objects", cell: ({ row }) => (row.original.metadata?.modules ?? []).map(formatModuleName).join(" · ") || "—" },
-    { id: "rows", header: "Rows", meta: meta({ width: 90, align: "end", numeric: true }), cell: ({ row }) => row.original.metadata?.row_count?.toLocaleString() ?? "—" },
-    { id: "dqs", header: "DQS", meta: meta({ width: 80, align: "end", numeric: true }), cell: ({ row }) => { const d = versionDqs(row.original); return d === null ? "—" : d.toFixed(1); } },
-    { id: "status", header: "Status", meta: meta({ width: 140 }), cell: ({ row }) => <Chip tone={STATUS_TONE(row.original.status)}>{row.original.status.replace(/_/g, " ")}</Chip> },
+      <Link href={`/findings?version_id=${row.original.id}`} className="ui-link">{row.original.metadata?.file_name ?? row.original.label ?? row.original.id.slice(0, 8)}</Link>) },
+    { id: "modules", header: "Objects", cell: ({ row }) => (row.original.metadata?.modules ?? []).map(formatModuleName).join(", ") },
+    { id: "rows", header: "Rows", meta: meta({ width: 90, align: "end", numeric: true }), cell: ({ row }) => row.original.metadata?.row_count?.toLocaleString() ?? "" },
+    { id: "dqs", header: "DQS", meta: meta({ width: 80, align: "end", numeric: true }), cell: ({ row }) => { const d = versionDqs(row.original); return d === null ? "" : d.toFixed(1); } },
+    { id: "status", header: "Status", meta: meta({ width: 140 }), cell: ({ row }) => <StatusBadge status={versionStatus(row.original.status)}>{cap(row.original.status.replace(/_/g, " "))}</StatusBadge> },
     { id: "when", header: "Imported", meta: meta({ width: 110 }), cell: ({ row }) => relativeTime(row.original.run_at) },
   ], []);
   const versions = recent.data?.versions ?? [];
   const completed = versions.filter((v) => TERMINAL.has(v.status) && !v.status.includes("failed"));
 
+  const fileNote = matchMut.isPending ? "Reading the columns"
+    : match ? `${formatSize(file?.size ?? 0)}, looks like ${match.module_label} (${Math.round(match.module_confidence * 100)}% sure), ${mapped} columns mapped`
+    : file ? formatSize(file.size) : "";
+  const latestDqs = completed[0] ? versionDqs(completed[0]) : null;
+
   return (
-    <Stack gap={5} className="aurora-page">
+    <div className="ui-page">
+      <PageHeader
+        title="Import a file"
+        summary="Drop an extract, check how its columns map to standard SAP fields, then run the analysis. Every import becomes a version."
+      />
       {systemsQ.data?.length ? (
         <Banner tone="info" title={`${systemsQ.data.length} SAP ${systemsQ.data.length === 1 ? "system is" : "systems are"} connected`}
-          action={<Link href="/data?tab=systems" className="aurora-link">Download from the source →</Link>}>
+          action={<Link href="/data?tab=systems" className="ui-link">Download from the source</Link>}>
           Pulling objects straight from a connected system keeps versions comparable run to run. File imports suit one-off assessments.
         </Banner>
       ) : null}
-      <KpiRail>
-        <Stat label="Imports" value={versions.length} />
-        <Stat label="Analysed" value={completed.length} tone={completed.length ? "success" : "neutral"} />
-        <Stat label="Latest DQS" value={completed[0] ? (versionDqs(completed[0]) ?? "—") : "—"} />
-        <Stat label="In progress" value={versions.filter((v) => !TERMINAL.has(v.status)).length} />
-      </KpiRail>
+      <MetricStrip label="Imports">
+        <Metric label="Imports" value={versions.length} />
+        <Metric label="Analysed" value={completed.length} />
+        <Metric label="Latest DQS" value={latestDqs} />
+        <Metric label="In progress" value={versions.filter((v) => !TERMINAL.has(v.status)).length} />
+      </MetricStrip>
 
       <div className="aurora-import">
         <label className={`aurora-import__drop${dragging ? " is-over" : ""}${file ? " has-file" : ""}`}
           onDragOver={(e) => { e.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)}
           onDrop={(e) => { e.preventDefault(); setDragging(false); if (canUpload) pick(e.dataTransfer.files?.[0] ?? null); }}>
-          <input ref={inputRef} type="file" accept={ACCEPT} disabled={!canUpload} onChange={(e) => pick(e.target.files?.[0] ?? null)} style={{ display: "none" }} />
-          {file ? (
-            <Stack gap={1} align="center">
-              <Text variant="text-lead">{file.name}</Text>
-              <Text variant="text-small" tone="secondary">{formatSize(file.size)} · {matchMut.isPending ? "reading columns…" : match ? `${match.module_label} · ${Math.round(match.module_confidence * 100)}% · ${mapped} columns mapped` : ""}</Text>
-            </Stack>
-          ) : (
-            <Stack gap={1} align="center">
-              <Text variant="text-lead">{canUpload ? "Drop a file to begin" : "Importing needs the upload permission"}</Text>
-              <Text variant="text-small" tone="secondary">CSV · TSV · XLSX · XLS · JSON · Parquet, up to 2 GB</Text>
-            </Stack>
-          )}
+          <input ref={inputRef} type="file" accept={ACCEPT} disabled={!canUpload} onChange={(e) => pick(e.target.files?.[0] ?? null)} hidden />
+          <div className="ui-stack">
+            <strong>{file ? file.name : canUpload ? "Drop a file here, or click to choose one" : "Importing needs the upload permission"}</strong>
+            <span className="ui-note">{file ? fileNote : "CSV, TSV, XLSX, XLS, JSON or Parquet, up to 2 GB"}</span>
+          </div>
         </label>
         <div className="aurora-import__side">
-          <Text variant="text-micro" tone="muted" className="aurora-exec__eyebrow">Pipeline</Text>
           <StageStepper stages={stages} />
           {job ? <ProgressBar percent={job.status === "completed" ? 100 : job.percent} live={job.status === "processing" || job.status === "queued"} label={job.step} /> :
             run.isPending ? <ProgressBar percent={uploadPct} live label={`Uploading ${uploadPct}%`} /> : null}
           {job?.error ? <Banner tone="danger" title="Analysis failed">{job.error}</Banner> : null}
-          {job?.status === "completed" ? <Link href={`/findings?version_id=${job.versionId}`} className="aurora-link">Open the findings →</Link> : null}
+          {job?.status === "completed" ? <Link href={`/findings?version_id=${job.versionId}`} className="ui-link">Open the findings</Link> : null}
         </div>
       </div>
 
       {match ? (
-        <Stack gap={3}>
-          <Stack direction="row" gap={2} wrap align="center">
-            <Text variant="text-small" tone="secondary">Object:</Text>
-            {match.available_modules.map((m) => (
-              <Chip key={m.value} tone={module === m.value ? "info" : "neutral"} selected={module === m.value} onClick={() => setModule(m.value)}>{m.label}</Chip>
-            ))}
-          </Stack>
-          {noHeaders ? <Banner tone="warning" title="Columns cannot be previewed for this format">Pick the object above; the backend reads the schema from the file when it imports.</Banner> : null}
-          {match.unmapped_required.length ? <Banner tone="warning" title={`${match.unmapped_required.length} required fields have no column`}>{match.unmapped_required.join(", ")}. Checks that need them are skipped.</Banner> : null}
-          {match.mappings.length ? (
-            <table className="aurora-exec__table">
-              <thead><tr><th>Your column</th><th>Standard field</th><th>Confidence</th><th>Match</th></tr></thead>
-              <tbody>
-                {match.mappings.slice(0, 14).map((m) => (
-                  <tr key={m.source_column}>
-                    <td className="aurora-number">{m.source_column}</td>
-                    <td className="aurora-number">{m.target_field ?? <Text tone="muted" as="span">unmapped</Text>}{m.is_required ? " *" : ""}</td>
-                    <td className="aurora-number">{Math.round(m.confidence * 100)}%</td>
-                    <td><Chip tone={m.confidence >= 0.85 ? "success" : m.confidence >= 0.6 ? "info" : "warning"}>{m.match_type}</Chip></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : null}
-          <Stack direction="row" gap={2}>
-            <Button onClick={() => run.mutate()} disabled={!canRun}>{run.isPending ? `Uploading ${uploadPct}%` : job ? "Imported" : "Run import"}</Button>
+        <SectionCard title="Column mapping" meta={match.mappings.length ? `${mapped} of ${match.mappings.length} mapped` : undefined}
+          action={<div className="ui-page-header__actions">
             <Button variant="ghost" onClick={clear}>Clear</Button>
-          </Stack>
-        </Stack>
+            <Button onClick={() => run.mutate()} disabled={!canRun}>{run.isPending ? `Uploading ${uploadPct}%` : job ? "Imported" : "Run import"}</Button>
+          </div>}>
+          <div className="ui-stack">
+            <div className="ui-filterbar" role="group" aria-label="Object">
+              <div className="ui-filterbar__chips">
+                {match.available_modules.map((m) => (
+                  <Chip key={m.value} selected={module === m.value} onClick={() => setModule(m.value)}>{m.label}</Chip>
+                ))}
+              </div>
+            </div>
+            {noHeaders ? <Banner tone="warning" title="Columns cannot be previewed for this format">Pick the object above; the columns are read from the file when it imports.</Banner> : null}
+            {match.unmapped_required.length ? <Banner tone="warning" title={`${match.unmapped_required.length} required fields have no column`}>{match.unmapped_required.join(", ")}. Checks that need them are skipped.</Banner> : null}
+            {match.mappings.length ? (
+              <div className="ui-matrix-scroll">
+                <table className="ui-mini-table">
+                  <thead><tr><th>Your column</th><th>Standard field</th><th className="aurora-number">Confidence</th><th>Match</th></tr></thead>
+                  <tbody>
+                    {match.mappings.slice(0, 14).map((m) => (
+                      <tr key={m.source_column}>
+                        <td>{m.source_column}</td>
+                        <td>{m.target_field ? <Mono>{m.target_field}</Mono> : <span className="ui-note">Not mapped</span>}{m.is_required ? " (required)" : ""}</td>
+                        <td className="aurora-number">{Math.round(m.confidence * 100)}%</td>
+                        <td><StatusBadge status={m.confidence >= 0.85 ? "ok" : m.confidence >= 0.6 ? "low" : "medium"}>{cap(m.match_type)}</StatusBadge></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+          </div>
+        </SectionCard>
       ) : null}
 
-      <Text as="h2" variant="text-lead" className="aurora-runs__h">Recent imports</Text>
-      {versions.length ? <DataTable columns={columns} data={versions} getRowId={(v) => v.id} ariaLabel="Recent imports" maxHeight="48vh" />
-        : <EmptyState title="Nothing imported yet." body="Every import becomes a version you can analyse, compare and set as a baseline." />}
-    </Stack>
+      <SectionCard title="Recent imports" meta={versions.length || undefined} flush>
+        {versions.length || recent.isLoading
+          ? <DataTable columns={columns} data={versions} getRowId={(v) => v.id} ariaLabel="Recent imports" maxHeight="48vh" empty="Loading imports" />
+          : <EmptyState>Nothing imported yet. Every import becomes a version you can analyse, compare and set as a baseline.</EmptyState>}
+      </SectionCard>
+    </div>
   );
 }
