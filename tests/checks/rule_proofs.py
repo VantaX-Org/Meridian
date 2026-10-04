@@ -144,9 +144,9 @@ def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
             vals += [str(v) for v in aw[:3]]
         elif isinstance(aw, dict):
             vals += [str(v) for v in (aw.get("contains_any") or [])[:2]]
-            vals += [""] if aw.get("blank") else ["N0"] if "not_in" in aw else ["X"]  # inside the scope
             if "gt" in aw:
                 vals.append(str(float(aw["gt"]) + 1))
+            vals += [""] if aw.get("blank") else ["N0"] if "not_in" in aw else ["X"]  # inside the scope
         if f"`{c}`" in expr:
             vals += literals[:4] + numbers[:4]
         vals += paired.get(c, [])[:1] + _PROBES[_kind(dictionary, c)]

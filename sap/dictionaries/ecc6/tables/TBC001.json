@@ -1,0 +1,74 @@
+{
+ "table": "TBC001",
+ "description": "Business Partner: Assignment of Account Groups and Grouping",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "CLIENT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "BU_GROUP",
+   "key": true,
+   "data_element": "BU_GROUP",
+   "domain": "BU_GROUP",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Business Partner Grouping",
+   "check_table": "TB001"
+  },
+  {
+   "pos": 3,
+   "name": "KTOKK",
+   "key": false,
+   "data_element": "KTOKK",
+   "domain": "KTOKK",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Vendor account group",
+   "check_table": "T077K"
+  },
+  {
+   "pos": 4,
+   "name": "XSAMENUMBER",
+   "key": false,
+   "data_element": "BC_SAMENUMBER",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Create Vendor with Same Number",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "BU_GROUP",
+   "foreign_table": "TB001",
+   "foreign_field": "BU_GROUP"
+  },
+  {
+   "field": "CLIENT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "KTOKK",
+   "foreign_table": "T077K",
+   "foreign_field": "KTOKK"
+  }
+ ]
+}

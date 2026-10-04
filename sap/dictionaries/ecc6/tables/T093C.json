@@ -1,0 +1,419 @@
+{
+ "table": "T093C",
+ "description": "Company codes in Asset Accounting",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "BUKRS",
+   "key": true,
+   "data_element": "BUKRS",
+   "domain": "BUKRS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Company Code",
+   "check_table": "T001"
+  },
+  {
+   "pos": 3,
+   "name": "BUKRSN",
+   "key": false,
+   "data_element": "BUKRSN",
+   "domain": "BUKRSN",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Company code for number assignment",
+   "check_table": "T093N"
+  },
+  {
+   "pos": 4,
+   "name": "PERIV",
+   "key": false,
+   "data_element": "PERIV",
+   "domain": "PERIV",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Fiscal Year Variant",
+   "check_table": "T009"
+  },
+  {
+   "pos": 5,
+   "name": "MONMIT",
+   "key": false,
+   "data_element": "MONMIT",
+   "domain": "AMDAY",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "First day of the second half of the month",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "XRUMPF",
+   "key": false,
+   "data_element": "XRUMPF",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Shortened fiscal year",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "DATUM",
+   "key": false,
+   "data_element": "DATE_T093C",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Value date for legacy asset data transferred",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "AFAPL",
+   "key": false,
+   "data_element": "AFAPL",
+   "domain": "AFAPL",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Chart of depreciaton for asset valuation",
+   "check_table": "T096"
+  },
+  {
+   "pos": 9,
+   "name": "VRMAFB",
+   "key": false,
+   "data_element": "VRMAFB",
+   "domain": "AFABE",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Depreciation area for net worth tax valuation",
+   "check_table": "T093"
+  },
+  {
+   "pos": 10,
+   "name": "BKRAKT",
+   "key": false,
+   "data_element": "BKRAKT",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Cost center check across company codes",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "XREBUW",
+   "key": false,
+   "data_element": "XREBUW",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Ind: Enter net book value during legacy data transfer",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "XANUEB",
+   "key": false,
+   "data_element": "XANUEB",
+   "domain": "XANUEB",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Staus of asset data transfer in the company code",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "LGJAHR",
+   "key": false,
+   "data_element": "LGJAHR",
+   "domain": "GJAHR",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Last fiscal year opened by the fiscal year change",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "AFBLRT",
+   "key": false,
+   "data_element": "AFBLRT",
+   "domain": "BLART",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Document type for depreciation posting",
+   "check_table": "T003"
+  },
+  {
+   "pos": 15,
+   "name": "XVRSKU",
+   "key": false,
+   "data_element": "XVRSKU",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Recalculate cumulative insurance base value",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "MWSKZVA",
+   "key": false,
+   "data_element": "MWSKZVA",
+   "domain": "MWSKZ",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Input tax code - Assets without input tax",
+   "check_table": "T007A"
+  },
+  {
+   "pos": 17,
+   "name": "MWSKZAA",
+   "key": false,
+   "data_element": "MWSKZAA",
+   "domain": "MWSKZ",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Output tax code - asset is exempt from tax  (unused)",
+   "check_table": "T007A"
+  },
+  {
+   "pos": 18,
+   "name": "KZRBWB",
+   "key": false,
+   "data_element": "KZRBWB",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator post net book value for retirement",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "APROF",
+   "key": false,
+   "data_element": "AM_APROF",
+   "domain": "APROF",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Settlement profile for assets under construction",
+   "check_table": "TKB1A"
+  },
+  {
+   "pos": 20,
+   "name": "TTECH",
+   "key": false,
+   "data_element": "TTECH",
+   "domain": "INT1",
+   "type": "INT1",
+   "length": 3,
+   "decimals": 0,
+   "description": "Min. retention period of assets and asset values",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "TKUND",
+   "key": false,
+   "data_element": "TKUND",
+   "domain": "INT1",
+   "type": "INT1",
+   "length": 3,
+   "decimals": 0,
+   "description": "Retention period of asset and asset values (cust. specific)",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "XANLE",
+   "key": false,
+   "data_element": "IM_XANLE",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Original line item for proof of origin",
+   "check_table": null
+  },
+  {
+   "pos": 23,
+   "name": "VARBZD",
+   "key": false,
+   "data_element": "VARBZDAT",
+   "domain": "VARBZDAT",
+   "type": "CHAR",
+   "length": 14,
+   "decimals": 0,
+   "description": "Variant for determining asset value date",
+   "check_table": "TABVA"
+  },
+  {
+   "pos": 24,
+   "name": "J_1AAOFFCL",
+   "key": false,
+   "data_element": "J_1AAOFFCL",
+   "domain": "J_1ADOCCLS",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Official document class for Asset Movements",
+   "check_table": "*"
+  },
+  {
+   "pos": 25,
+   "name": "XZORG",
+   "key": false,
+   "data_element": "XZORG",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Time-independent management of organiz. units",
+   "check_table": null
+  },
+  {
+   "pos": 26,
+   "name": "APERBLRT",
+   "key": false,
+   "data_element": "APERBLRT",
+   "domain": "BLART",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Document Type for Periodic Posting of APC Values",
+   "check_table": "T003"
+  },
+  {
+   "pos": 27,
+   "name": "XNOSKONTO",
+   "key": false,
+   "data_element": "XNOSKONTO",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Subsequent Capitalization of Discount Not Allowed",
+   "check_table": null
+  },
+  {
+   "pos": 28,
+   "name": "XDFYV",
+   "key": false,
+   "data_element": "XDFYV",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Allow Different Fiscal Year Variants",
+   "check_table": null
+  },
+  {
+   "pos": 29,
+   "name": "REVDMETH",
+   "key": false,
+   "data_element": "REVDMETH",
+   "domain": "REVDMETH",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Method for Revenue Distribution at Asset Retirement",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "AFAPL",
+   "foreign_table": "T096",
+   "foreign_field": "AFAPL"
+  },
+  {
+   "field": "AFBLRT",
+   "foreign_table": "T003",
+   "foreign_field": "BLART"
+  },
+  {
+   "field": "APERBLRT",
+   "foreign_table": "T003",
+   "foreign_field": "BLART"
+  },
+  {
+   "field": "APROF",
+   "foreign_table": "TKB1A",
+   "foreign_field": "APROF"
+  },
+  {
+   "field": "BUKRS",
+   "foreign_table": "T001",
+   "foreign_field": "BUKRS"
+  },
+  {
+   "field": "BUKRSN",
+   "foreign_table": "T093N",
+   "foreign_field": "BUKRSN"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MWSKZAA",
+   "foreign_table": "T007A",
+   "foreign_field": "MWSKZ"
+  },
+  {
+   "field": "MWSKZVA",
+   "foreign_table": "T007A",
+   "foreign_field": "MWSKZ"
+  },
+  {
+   "field": "PERIV",
+   "foreign_table": "T009",
+   "foreign_field": "PERIV"
+  },
+  {
+   "field": "VARBZD",
+   "foreign_table": "TABVA",
+   "foreign_field": "VARIANTE"
+  },
+  {
+   "field": "VRMAFB",
+   "foreign_table": "T093",
+   "foreign_field": "AFABER"
+  }
+ ]
+}

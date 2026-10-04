@@ -1,0 +1,266 @@
+{
+ "table": "UKMBP_CMS_SGM",
+ "description": "SAP Credit Management: Master Data for Credit Account",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "CLIENT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "PARTNER",
+   "key": true,
+   "data_element": "BU_PARTNER",
+   "domain": "BU_PARTNER",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Business Partner Number",
+   "check_table": "*"
+  },
+  {
+   "pos": 3,
+   "name": "CREDIT_SGMNT",
+   "key": true,
+   "data_element": "UKM_CREDIT_SGMNT",
+   "domain": "UKM_CREDIT_SGMNT",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Credit Segment",
+   "check_table": "UKMCRED_SGM0C"
+  },
+  {
+   "pos": 5,
+   "name": "CREDIT_LIMIT",
+   "key": false,
+   "data_element": "UKM_CREDIT_LIMIT",
+   "domain": "UKM_CREDIT_LIMIT",
+   "type": "CURR",
+   "length": 15,
+   "decimals": 2,
+   "description": "Credit Limit",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "XBLOCKED",
+   "key": false,
+   "data_element": "UKM_XBLOCKED",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Blocked by Credit Management",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "LIMIT_VALID_DATE",
+   "key": false,
+   "data_element": "UKM_VALID_DATE",
+   "domain": "DATS",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Valid To Date",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "LIMIT_CHG_DATE",
+   "key": false,
+   "data_element": "UKM_CHG_DATE",
+   "domain": "DATS",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Change Date for Credit Limit",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "COORDINATOR",
+   "key": false,
+   "data_element": "UKM_COORDINATOR",
+   "domain": "XUBNAME",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Credit Analyst",
+   "check_table": "USR02"
+  },
+  {
+   "pos": 10,
+   "name": "CUST_GROUP",
+   "key": false,
+   "data_element": "UKM_CUST_GROUP",
+   "domain": "CHAR10",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Customer Credit Group",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "FOLLOW_UP_DT",
+   "key": false,
+   "data_element": "UKM_FOLLOW_UP_DT",
+   "domain": "DATS",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Resubmission Date",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "CRED_LIM_CALC",
+   "key": false,
+   "data_element": "UKM_CREDIT_LIMIT_CALC",
+   "domain": "UKM_CREDIT_LIMIT",
+   "type": "CURR",
+   "length": 15,
+   "decimals": 2,
+   "description": "Calculated Credit Limit",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "XCRITICAL",
+   "key": false,
+   "data_element": "UKM_CRITICAL_ACCOUNT",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Special Attention Required",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "X_LIMIT_ZERO",
+   "key": false,
+   "data_element": "UKM_LIMIT_ZERO",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Limit is Zero",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "BLOCK_REASON",
+   "key": false,
+   "data_element": "UKM_BLOCK_REASON",
+   "domain": "UKM_BLOCK_REASON",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Reason for Block in Credit Management",
+   "check_table": "UKM_BL_REASON"
+  },
+  {
+   "pos": 16,
+   "name": "CRED_LIM_REQ",
+   "key": false,
+   "data_element": "UKM_CREDIT_LIMIT_REQ",
+   "domain": "UKM_CREDIT_LIMIT",
+   "type": "CURR",
+   "length": 15,
+   "decimals": 2,
+   "description": "Credit Limit Requested",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "AUTOMATIC_REQ",
+   "key": false,
+   "data_element": "UKM_AUTOMATIC_REQUEST",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Limit Request from Automatic Calculation",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "LIM_VAL_DATE_REQ",
+   "key": false,
+   "data_element": "UKM_VALID_DATE_REQ",
+   "domain": "DATS",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Valid To Date (Requested)",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "REQ_DATE",
+   "key": false,
+   "data_element": "UKM_REQ_DATE",
+   "domain": "DATS",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Request Date",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "ITEM_ERROR",
+   "key": false,
+   "data_element": "UKM_ITEM_ERROR",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Error Occurred in Liability Update",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "LOG_HNDL",
+   "key": false,
+   "data_element": "BALLOGHNDL",
+   "domain": "SYSUUID_22",
+   "type": "CHAR",
+   "length": 22,
+   "decimals": 0,
+   "description": "Application Log: Log Handle",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "BLOCK_REASON",
+   "foreign_table": "UKM_BL_REASON",
+   "foreign_field": "BLOCK_REASON"
+  },
+  {
+   "field": "COORDINATOR",
+   "foreign_table": "USR02",
+   "foreign_field": "BNAME"
+  },
+  {
+   "field": "CREDIT_SGMNT",
+   "foreign_table": "UKMCRED_SGM0C",
+   "foreign_field": "CREDIT_SGMNT"
+  }
+ ]
+}

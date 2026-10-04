@@ -1,0 +1,92 @@
+{
+ "domain": "KATYP",
+ "type": "CHAR",
+ "length": 2,
+ "decimals": 0,
+ "conversion_exit": "ALPHA",
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "01",
+   "high": null,
+   "text": "Primary costs/cost-reducing revenues"
+  },
+  {
+   "low": "03",
+   "high": null,
+   "text": "Accrual/deferral per surcharge"
+  },
+  {
+   "low": "04",
+   "high": null,
+   "text": "Accrual/deferral per debit = actual"
+  },
+  {
+   "low": "11",
+   "high": null,
+   "text": "Revenues"
+  },
+  {
+   "low": "12",
+   "high": null,
+   "text": "Sales deduction"
+  },
+  {
+   "low": "21",
+   "high": null,
+   "text": "Internal settlement"
+  },
+  {
+   "low": "22",
+   "high": null,
+   "text": "External settlement"
+  },
+  {
+   "low": "31",
+   "high": null,
+   "text": "Order/project results analysis"
+  },
+  {
+   "low": "41",
+   "high": null,
+   "text": "Overhead Rates"
+  },
+  {
+   "low": "42",
+   "high": null,
+   "text": "Assessment"
+  },
+  {
+   "low": "43",
+   "high": null,
+   "text": "Internal activity allocation"
+  },
+  {
+   "low": "90",
+   "high": null,
+   "text": "Statistical cost element for balance sheet account"
+  },
+  {
+   "low": "50",
+   "high": null,
+   "text": "Project-related incoming orders: Sales revenue"
+  },
+  {
+   "low": "51",
+   "high": null,
+   "text": "Project-related incoming orders: Other revenues"
+  },
+  {
+   "low": "52",
+   "high": null,
+   "text": "Project-related incoming orders: Costs"
+  },
+  {
+   "low": "61",
+   "high": null,
+   "text": "Earned value"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -496,3 +496,29 @@ rules:
     __other__: Depreciation area '{invalid_value}' is not defined. Define it in the chart of depreciation
       (OADB) or remove the orphaned terms through SAP support.
   record_fix_template: 'Asset {ANLB.ANLN1}-{ANLB.ANLN2}: depreciation area ''{actual_value}'' is not defined in T093.'
+- id: S4-AA-PERIODIC-APC
+  field: T093.AFAPL
+  check_class: exists_check
+  negate: true
+  grain: T093
+  applies_when:
+    T093.BUHBKT: ['2']
+  target_table: T093C
+  target_fields:
+  - AFAPL
+  baseline: s4_target
+  severity: high
+  dimension: consistency
+  message: 'S/4HANA readiness: depreciation area of a chart of depreciation in use posts APC periodically (posting indicator
+    2) - simplification item S4TWL Asset Accounting, SAP Note 2270388'
+  why_it_matters: New Asset Accounting in S/4HANA posts acquisition and production costs of every depreciation area in real
+    time; periodic APC posting to the general ledger is no longer supported. Only charts of depreciation assigned to a
+    company code (T093C) are judged.
+  rule_authority: sap_hard_constraint
+  sap_impact: The Asset Accounting pre-check of the S/4HANA conversion reports the depreciation area; the conversion cannot
+    continue until the posting indicator is changed.
+  fix_map:
+    __other__: Change the depreciation area to post APC in real time (posting indicator 1 or 4, OADB / EC08 in the
+      chart of depreciation) before the conversion.
+  record_fix_template: 'Chart of depreciation {T093.AFAPL}, area {T093.AFABER}: APC is posted periodically (posting indicator
+    2).'
