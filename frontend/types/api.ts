@@ -119,6 +119,8 @@ export interface RecordFixEntry {
   sql_statement: string | null;
 }
 
+export interface AnomalySample { record_key: string; value?: string | null }
+
 export interface Finding {
   id: string;
   version_id: string;
@@ -137,6 +139,13 @@ export interface Finding {
     distinct_invalid_values?: Record<string, number>;
     id_field_used?: string;
     field_checked?: string;
+    /* Anomaly findings (checks/anomaly.py detect) */
+    metric?: "volume" | "null_rate" | "new_values" | "vanished_values";
+    table?: string;
+    field?: string | null;
+    expected?: { low: number | null; high: number | null; method: string; history: unknown };
+    observed?: unknown;
+    samples?: { good: AnomalySample[]; bad: AnomalySample[] };
     [key: string]: unknown;
   };
   remediation_text: string | null;
@@ -148,6 +157,8 @@ export interface Finding {
   cost_formula?: string | null;
   /** $ at risk × blocked SAP features × severity — the "impact" sort. */
   impact_score?: number | null;
+  /** 'anomaly' = deviation from the system's previous extractions (checks/anomaly.py). */
+  finding_type?: "rule" | "anomaly";
   created_at: string;
   /* Glossary enrichment (Phase K) */
   business_name?: string | null;

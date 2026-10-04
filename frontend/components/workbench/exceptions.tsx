@@ -1,19 +1,20 @@
 "use client";
 
 /**
- * Workbench → Exceptions: cases a check cannot settle on its own — raised by
- * stewards or by exception rules, investigated, escalated and resolved with a
- * typed root cause so trends can learn from them.
+ * Workbench, Exceptions: cases a check cannot settle on its own. Stewards or
+ * exception rules raise them; they are investigated, escalated and resolved
+ * with a typed root cause so trends can learn from them.
  */
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
+import { Field, Select, Textarea } from "@/components/aurora";
 import {
-  Banner, Button, Chip, DataTable, Drawer, EmptyState, Field, Input, KpiRail, Select, Stack, Stat, Text, Textarea, useDrawerParam,
-  type AuroraColumnMeta, type ChipTone,
-} from "@/components/aurora";
+  Banner, Button, Chip, DataTable, DetailDrawer, EmptyState, FilterBar, Input, KeyValue, Metric, MetricStrip, Mono,
+  PageHeader, StatusBadge, TableSkeleton, useDrawerParam, type AuroraColumnMeta, type Status,
+} from "@/components/ui-core";
 import { copyToClipboard } from "@/components/meridian/actions";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
@@ -22,18 +23,22 @@ import { relativeTime } from "@/lib/format";
 import type { Exception, ExceptionStatus } from "@/types/api";
 
 const meta = (m: AuroraColumnMeta) => m;
-const STATUS_TONE: Record<ExceptionStatus, ChipTone> = { open: "info", investigating: "warning", pending_approval: "warning", resolved: "success", verified: "success", closed: "neutral" };
+const STATUS: Record<ExceptionStatus, Status> = { open: "medium", investigating: "running", pending_approval: "running", resolved: "ok", verified: "ok", closed: "idle" };
 const STATUSES: ("all" | ExceptionStatus)[] = ["all", "open", "investigating", "pending_approval", "resolved", "closed"];
-const sev = (s: string) => (s === "critical" || s === "high" || s === "low" ? s : "medium");
-const label = (s: string) => s.replace(/_/g, " ");
+const sev = (s: string): Status => (s === "critical" || s === "high" || s === "low" ? s : "medium");
+const label = (s: string) => { const t = s.replace(/_/g, " "); return t.charAt(0).toUpperCase() + t.slice(1); };
 const RESOLUTION_TYPES = [
-  { value: "steward", label: "Steward resolved" }, { value: "dedup", label: "Resolved via dedup" }, { value: "complex", label: "Complex / multi-step" },
+  { value: "steward", label: "Steward resolved" }, { value: "dedup", label: "Resolved by merging duplicates" }, { value: "complex", label: "Complex, several steps" },
   { value: "custom_rule", label: "New rule created" }, { value: "auto_resolved", label: "Auto-resolved" },
 ];
 const ROOT_CAUSES = ["missing_data", "incorrect_data", "duplicate_record", "configuration_gap", "process_gap", "source_system_error", "other"].map((v) => ({ value: v, label: label(v) }));
 const TYPES = [{ value: "data_quality", label: "Data quality" }, { value: "business_rule", label: "Business rule" }, { value: "configuration", label: "Configuration" }];
-const SEVERITIES = ["low", "medium", "high", "critical"].map((v) => ({ value: v, label: v }));
+const SEVERITIES = ["low", "medium", "high", "critical"].map((v) => ({ value: v, label: label(v) }));
 const DONE = new Set<ExceptionStatus>(["resolved", "verified", "closed"]);
+
+const Part = ({ title, children }: { title: string; children: ReactNode }) => (
+  <section className="ui-detail-part"><h3 className="ui-detail-part__title">{title}</h3>{children}</section>
+);
 
 export function ExceptionsSurface() {
   const qc = useQueryClient();
@@ -44,11 +49,14 @@ export function ExceptionsSurface() {
   const [status, setStatus] = useUrlState("status", "all");
   const drawer = useDrawerParam("exception");
   const [requesting, setRequesting] = useState(false);
+  const [search, setSearch] = useState("");
 
   const q = useQuery({ queryKey: ["exceptions.list", { status }], queryFn: () => getExceptions({ per_page: 100, status: status === "all" ? undefined : status }) });
   const items = useMemo(() => q.data?.exceptions ?? [], [q.data]);
   const total = q.data?.total ?? items.length;
   const refresh = () => qc.invalidateQueries({ queryKey: ["exceptions.list"] });
+  const needle = search.trim().toLowerCase();
+  const visible = needle ? items.filter((e) => `${e.title} ${e.category} ${e.source_system ?? ""} ${e.assigned_to ?? ""}`.toLowerCase().includes(needle)) : items;
   const selected = drawer.value ? items.find((e) => e.id === drawer.value) ?? null : null;
   const counts = {
     open: items.filter((e) => e.status === "open").length,
@@ -57,43 +65,53 @@ export function ExceptionsSurface() {
   };
 
   const columns = useMemo<ColumnDef<Exception, unknown>[]>(() => [
-    { id: "status", header: "Status", meta: meta({ sticky: "start", width: 130 }), cell: ({ row }) => <Chip tone={STATUS_TONE[row.original.status]}>{label(row.original.status)}</Chip> },
-    { id: "title", header: "Exception", cell: ({ row }) => (
-      <span><strong>{row.original.title}</strong>
-        <Text variant="text-micro" tone="muted" as="div">{row.original.source_system ?? "no source"} · {label(row.original.type)} · {row.original.category}</Text></span>) },
-    { id: "severity", header: "Severity", meta: meta({ width: 100 }), cell: ({ row }) => <span className="aurora-workbench__severity" data-severity={sev(row.original.severity)}>{row.original.severity}</span> },
+    { id: "status", header: "Status", meta: meta({ sticky: "start", width: 150 }), cell: ({ row }) => <StatusBadge status={STATUS[row.original.status]}>{label(row.original.status)}</StatusBadge> },
+    { id: "title", header: "Exception", meta: meta({ minWidth: 280 }), cell: ({ row }) => (
+      <span className="ui-cell-stack">
+        <span className="ui-cell-stack__main">{row.original.title}</span>
+        <span className="ui-cell-stack__sub"><span>{label(row.original.type)}</span><span>{row.original.category}</span>{row.original.source_system ? <Mono>{row.original.source_system}</Mono> : null}</span>
+      </span>) },
+    { id: "severity", header: "Severity", meta: meta({ width: 110 }), cell: ({ row }) => <StatusBadge status={sev(row.original.severity)}>{label(sev(row.original.severity))}</StatusBadge> },
     { id: "tier", header: "Tier", meta: meta({ width: 70, align: "end", numeric: true }), cell: ({ row }) => row.original.escalation_tier },
-    { id: "assignee", header: "Assigned", meta: meta({ width: 140 }), cell: ({ row }) => row.original.assigned_to ?? "—" },
-    { id: "age", header: "Raised", meta: meta({ width: 110 }), cell: ({ row }) => relativeTime(row.original.created_at) },
+    { id: "assignee", header: "Assigned", meta: meta({ width: 150 }), cell: ({ row }) => row.original.assigned_to ?? "—" },
+    { id: "age", header: "Raised", meta: meta({ width: 110, align: "end" }), cell: ({ row }) => relativeTime(row.original.created_at) },
   ], []);
 
   return (
-    <Stack gap={5} className="aurora-page">
-      <KpiRail>
-        <Stat label="Exceptions" value={total} />
-        <Stat label="Open" value={counts.open} tone={counts.open ? "info" : "neutral"} />
-        <Stat label="Investigating" value={counts.investigating} tone={counts.investigating ? "warning" : "neutral"} />
-        <Stat label="Escalated" value={counts.escalated} tone={counts.escalated ? "danger" : "neutral"} />
-      </KpiRail>
-      <Stack direction="row" gap={2} wrap align="center">
+    <div className="ui-page">
+      <PageHeader title="Exceptions"
+        summary={q.data ? `${total.toLocaleString()} cases a check could not settle on its own.` : undefined}
+        actions={canRequest ? <Button onClick={() => setRequesting(true)}>Request exception</Button> : null} />
+      <MetricStrip label="Exceptions">
+        <Metric label="Exceptions" value={total} />
+        <Metric label="Open" value={counts.open} />
+        <Metric label="Investigating" value={counts.investigating} tone={counts.investigating ? "warning" : "default"} />
+        <Metric label="Escalated" value={counts.escalated} tone={counts.escalated ? "danger" : "default"} />
+      </MetricStrip>
+      <FilterBar search={{ value: search, onChange: setSearch, placeholder: "Search exceptions" }}>
         {STATUSES.map((s) => <Chip key={s} selected={status === s} onClick={() => setStatus(s)}>{s === "all" ? "All" : label(s)}</Chip>)}
-        <span style={{ flex: 1 }} />
-        {canRequest ? <Button onClick={() => setRequesting(true)}>Request exception</Button> : null}
-      </Stack>
-      {q.isLoading ? <Text tone="muted">Reading exceptions.</Text>
+      </FilterBar>
+      {q.isLoading ? <TableSkeleton rows={8} label="Loading exceptions" />
         : q.error ? <Banner tone="danger" title="Exceptions could not be read">{(q.error as Error).message}</Banner>
-        : items.length ? <DataTable columns={columns} data={items} getRowId={(e) => e.id} onRowActivate={(e) => drawer.open(e.id)} ariaLabel="Exceptions" maxHeight="60vh" />
-        : <EmptyState title={status === "all" ? "No exceptions raised." : "No exceptions in this state."}
-            body="Raise one when a finding needs a decision a check cannot make; exception rules raise them automatically." />}
+        : visible.length ? <DataTable columns={columns} data={visible} getRowId={(e) => e.id} onRowActivate={(e) => drawer.open(e.id)}
+            ariaLabel="Exceptions. Use j and k to move, Enter to open." maxHeight="62vh" />
+        : <EmptyState action={canRequest && !needle ? <button type="button" className="ui-link-button" onClick={() => setRequesting(true)}>Request exception</button> : undefined}>
+            {needle || status !== "all" ? "No exceptions match this view." : "No exceptions raised. Raise one when a finding needs a decision a check cannot make."}
+          </EmptyState>}
 
-      <Drawer open={!!selected} onClose={drawer.close} ariaLabel="Exception details"
-        header={selected ? <Stack direction="row" gap={2} align="center"><Chip tone={STATUS_TONE[selected.status]}>{label(selected.status)}</Chip><Text variant="text-lead">{selected.title}</Text></Stack> : null}>
+      <DetailDrawer open={!!selected} onClose={drawer.close} ariaLabel="Exception details"
+        header={selected ? (
+          <div className="ui-drawer-head">
+            <StatusBadge status={STATUS[selected.status]}>{label(selected.status)}</StatusBadge>
+            <h2 className="ui-drawer-head__title">{selected.title}</h2>
+          </div>) : null}>
         {selected ? <ExceptionDetail exception={selected} canApprove={canApprove} onChanged={refresh} /> : null}
-      </Drawer>
-      <Drawer open={requesting} onClose={() => setRequesting(false)} ariaLabel="Request an exception" header={<Text variant="text-lead">Request an exception</Text>}>
+      </DetailDrawer>
+      <DetailDrawer open={requesting} onClose={() => setRequesting(false)} ariaLabel="Request an exception"
+        header={<div className="ui-drawer-head"><h2 className="ui-drawer-head__title">Request an exception</h2></div>}>
         {requesting ? <RequestForm onDone={() => { setRequesting(false); refresh(); }} /> : null}
-      </Drawer>
-    </Stack>
+      </DetailDrawer>
+    </div>
   );
 }
 
@@ -110,66 +128,64 @@ function ExceptionDetail({ exception: e, canApprove, onChanged }: { exception: E
     onSuccess: (d) => { toast.success(`Escalated to tier ${d.escalation_tier}`); onChanged(); },
     onError: (err) => toast.error((err as Error).message || "Not escalated"),
   });
-  const rows: [string, string][] = [
-    ["Type", label(e.type)], ["Category", e.category], ["Severity", e.severity], ["Source", e.source_system ?? "—"], ["Reference", e.source_reference ?? "—"],
-    ["Assigned", e.assigned_to ?? "—"], ["Escalation tier", String(e.escalation_tier)], ["SLA", e.sla_deadline ? new Date(e.sla_deadline).toLocaleString() : "—"],
-    ["Raised", relativeTime(e.created_at)], ["Resolved", e.resolved_at ? relativeTime(e.resolved_at) : "—"],
-    ["Root cause", e.root_cause_category ? label(e.root_cause_category) : "—"], ["Resolution", e.resolution_type ? label(e.resolution_type) : "—"],
-  ];
   return (
-    <Stack gap={4}>
-      <Text variant="text-small" tone="secondary">{e.description}</Text>
-      <table className="aurora-exec__table"><tbody>{rows.map(([k, v]) => <tr key={k}><td>{k}</td><td className="aurora-number">{v}</td></tr>)}</tbody></table>
-      {e.resolution_notes ? <Stack gap={1}><Text variant="text-micro" tone="muted" className="aurora-exec__eyebrow">Resolution notes</Text><Text variant="text-small" tone="secondary">{e.resolution_notes}</Text></Stack> : null}
+    <div className="ui-detail">
+      <p className="ui-note">{e.description}</p>
+      <KeyValue rows={[
+        { k: "Type", v: label(e.type) }, { k: "Category", v: e.category }, { k: "Severity", v: label(e.severity) },
+        { k: "Source", v: e.source_system ?? "—", mono: !!e.source_system }, { k: "Reference", v: e.source_reference ?? "—", mono: !!e.source_reference },
+        { k: "Assigned", v: e.assigned_to ?? "—" }, { k: "Escalation tier", v: String(e.escalation_tier) },
+        { k: "SLA", v: e.sla_deadline ? new Date(e.sla_deadline).toLocaleString() : "—" },
+        { k: "Raised", v: relativeTime(e.created_at) }, { k: "Resolved", v: e.resolved_at ? relativeTime(e.resolved_at) : "—" },
+        { k: "Root cause", v: e.root_cause_category ? label(e.root_cause_category) : "—" }, { k: "Resolution", v: e.resolution_type ? label(e.resolution_type) : "—" },
+      ]} />
+      {e.resolution_notes ? <Part title="Resolution notes"><p className="ui-note">{e.resolution_notes}</p></Part> : null}
       {e.comments?.length ? (
-        <Stack gap={1}>
-          <Text variant="text-micro" tone="muted" className="aurora-exec__eyebrow">Comments</Text>
-          {e.comments.map((c, i) => <Text key={i} variant="text-small" tone="secondary">{c.user_name ?? "someone"} · {relativeTime(c.created_at)} — {c.text}</Text>)}
-        </Stack>
+        <Part title="Comments">
+          <ul className="ui-plain-list">{e.comments.map((c, i) => (
+            <li key={i}>{c.text} <span className="ui-micro">{c.user_name ?? "Someone"}, {relativeTime(c.created_at)}</span></li>
+          ))}</ul>
+        </Part>
       ) : null}
       {resolving ? (
-        <form onSubmit={(ev) => { ev.preventDefault(); if (r.resolution_notes.trim()) resolve.mutate(); }}>
-          <Stack gap={3}>
-            <Stack direction="row" gap={3} wrap className="aurora-filters">
-              <Field label="Resolution type">{({ controlId }) => <Select id={controlId} options={RESOLUTION_TYPES} value={r.resolution_type} onValueChange={(v) => setR({ ...r, resolution_type: v })} />}</Field>
-              <Field label="Root cause">{({ controlId }) => <Select id={controlId} options={ROOT_CAUSES} value={r.root_cause_category} onValueChange={(v) => setR({ ...r, root_cause_category: v })} />}</Field>
-            </Stack>
-            <Field label="Resolution notes" required helper="Resolution type sets the billing tier; root cause feeds the trend analytics.">
-              {({ controlId }) => <Textarea id={controlId} value={r.resolution_notes} onChange={(ev) => setR({ ...r, resolution_notes: ev.target.value })} placeholder="What was done to resolve this exception?" required />}
-            </Field>
-            <Stack direction="row" gap={2}>
-              <Button type="submit" disabled={!r.resolution_notes.trim() || resolve.isPending}>{resolve.isPending ? "Resolving…" : "Resolve exception"}</Button>
-              <Button type="button" variant="ghost" onClick={() => setResolving(false)}>Keep open</Button>
-            </Stack>
-          </Stack>
+        <form className="ui-stack" style={{ gap: "var(--aurora-space-3)" }} onSubmit={(ev) => { ev.preventDefault(); if (r.resolution_notes.trim()) resolve.mutate(); }}>
+          <div className="ui-fields">
+            <Field label="Resolution type">{({ controlId }) => <Select id={controlId} options={RESOLUTION_TYPES} value={r.resolution_type} onValueChange={(v) => setR({ ...r, resolution_type: v })} />}</Field>
+            <Field label="Root cause">{({ controlId }) => <Select id={controlId} options={ROOT_CAUSES} value={r.root_cause_category} onValueChange={(v) => setR({ ...r, root_cause_category: v })} />}</Field>
+          </div>
+          <Field label="Resolution notes" required helper="Resolution type sets the billing tier. Root cause feeds the trend analytics.">
+            {({ controlId }) => <Textarea id={controlId} value={r.resolution_notes} onChange={(ev) => setR({ ...r, resolution_notes: ev.target.value })} placeholder="What was done to resolve this exception?" required />}
+          </Field>
+          <div className="ui-page-header__actions">
+            <Button type="submit" disabled={!r.resolution_notes.trim() || resolve.isPending}>{resolve.isPending ? "Resolving" : "Resolve exception"}</Button>
+            <Button type="button" variant="ghost" onClick={() => setResolving(false)}>Keep open</Button>
+          </div>
         </form>
       ) : (
-        <Stack direction="row" gap={2} wrap>
+        <div className="ui-page-header__actions">
           {canApprove && !DONE.has(e.status) ? <Button onClick={() => setResolving(true)}>Resolve</Button> : null}
-          {canApprove && !DONE.has(e.status) ? <Button variant="secondary" onClick={() => escalate.mutate()} disabled={escalate.isPending}>{escalate.isPending ? "Escalating…" : "Escalate"}</Button> : null}
+          {canApprove && !DONE.has(e.status) ? <Button variant="secondary" onClick={() => escalate.mutate()} disabled={escalate.isPending}>{escalate.isPending ? "Escalating" : "Escalate"}</Button> : null}
           <Button variant="ghost" onClick={() => copyToClipboard(e.id, "Exception ID copied")}>Copy ID</Button>
-        </Stack>
+        </div>
       )}
-    </Stack>
+    </div>
   );
 }
 
 function RequestForm({ onDone }: { onDone: () => void }) {
   const [d, setD] = useState({ title: "", description: "", type: "data_quality", category: "general", severity: "medium" });
-  const create = useMutation({ mutationFn: () => createException(d), onSuccess: () => { toast.success("Exception submitted"); onDone(); }, onError: (e) => toast.error((e as Error).message || "Not submitted") });
+  const create = useMutation({ mutationFn: () => createException(d), onSuccess: () => { toast.success("Exception raised"); onDone(); }, onError: (e) => toast.error((e as Error).message || "Not raised") });
   const valid = d.title.trim() && d.description.trim();
   return (
-    <form onSubmit={(e) => { e.preventDefault(); if (valid) create.mutate(); }}>
-      <Stack gap={3}>
-        <Field label="Title" required>{({ controlId }) => <Input id={controlId} value={d.title} onChange={(e) => setD({ ...d, title: e.target.value })} placeholder="Brief summary" required />}</Field>
-        <Field label="Description" required>{({ controlId }) => <Textarea id={controlId} value={d.description} onChange={(e) => setD({ ...d, description: e.target.value })} placeholder="What needs an exception, and why?" required />}</Field>
-        <Stack direction="row" gap={3} wrap className="aurora-filters">
-          <Field label="Type">{({ controlId }) => <Select id={controlId} options={TYPES} value={d.type} onValueChange={(v) => setD({ ...d, type: v })} />}</Field>
-          <Field label="Category">{({ controlId }) => <Input id={controlId} value={d.category} onChange={(e) => setD({ ...d, category: e.target.value })} />}</Field>
-          <Field label="Severity">{({ controlId }) => <Select id={controlId} options={SEVERITIES} value={d.severity} onValueChange={(v) => setD({ ...d, severity: v })} />}</Field>
-        </Stack>
-        <Stack direction="row" gap={2}><Button type="submit" disabled={!valid || create.isPending}>{create.isPending ? "Raising…" : "Raise exception"}</Button></Stack>
-      </Stack>
+    <form className="ui-stack" style={{ gap: "var(--aurora-space-3)" }} onSubmit={(e) => { e.preventDefault(); if (valid) create.mutate(); }}>
+      <Field label="Title" required>{({ controlId }) => <Input id={controlId} value={d.title} onChange={(e) => setD({ ...d, title: e.target.value })} placeholder="Brief summary" required />}</Field>
+      <Field label="Description" required>{({ controlId }) => <Textarea id={controlId} value={d.description} onChange={(e) => setD({ ...d, description: e.target.value })} placeholder="What needs an exception, and why?" required />}</Field>
+      <div className="ui-fields">
+        <Field label="Type">{({ controlId }) => <Select id={controlId} options={TYPES} value={d.type} onValueChange={(v) => setD({ ...d, type: v })} />}</Field>
+        <Field label="Category">{({ controlId }) => <Input id={controlId} value={d.category} onChange={(e) => setD({ ...d, category: e.target.value })} />}</Field>
+        <Field label="Severity">{({ controlId }) => <Select id={controlId} options={SEVERITIES} value={d.severity} onValueChange={(v) => setD({ ...d, severity: v })} />}</Field>
+      </div>
+      <div className="ui-page-header__actions"><Button type="submit" disabled={!valid || create.isPending}>{create.isPending ? "Raising" : "Raise exception"}</Button></div>
     </form>
   );
 }
