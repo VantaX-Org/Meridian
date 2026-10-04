@@ -1,13 +1,12 @@
-from datetime import datetime, timezone
-
 import pandas as pd
 
-from checks.base import BaseCheck, Evaluation, is_blank
+from checks.base import BaseCheck, Evaluation, as_of_time, is_blank
 from checks.types.domain_value_check import _parse_dates
 
 
 class FreshnessCheck(BaseCheck):
-    """Populated dates must be newer than ``max_age_hours``.
+    """Populated dates must be newer than ``max_age_hours`` before the run's
+    as-of (snapshot) date, or now when the run has none.
 
     Blank dates are out of scope (null_check owns them); a populated value
     that is not a date fails. Optional ``time_field`` (SAP TIMS hhmmss) is
@@ -32,9 +31,9 @@ class FreshnessCheck(BaseCheck):
             ok = d.str.fullmatch(r"\d{8}").fillna(False) & times.str.fullmatch(r"\d{6}").fillna(False)
             dates = d.where(~ok, d + times)  # malformed time: fall back to the date alone
         parsed = _parse_dates(dates)
-        # ponytail: compares SAP system-local date/time with UTC now; skew = system UTC offset.
+        # ponytail: compares SAP system-local date/time with the UTC as-of time; skew = system UTC offset.
         # Fine for day-scale thresholds; read TZONE from the system profile if hour precision matters.
-        cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - pd.Timedelta(hours=max_age_hours)
+        cutoff = as_of_time(self.rule.get("_as_of")) - pd.Timedelta(hours=max_age_hours)
         failing = parsed.isna() | (parsed < cutoff)
         valid = parsed.dropna()
         return Evaluation(~is_blank(df[field]), failing, {

@@ -1068,3 +1068,20 @@ rules:
       duplicates.
   record_fix_template: 'BP {BUT0BK.PARTNER}: bank account {BUT0BK.BANKS}/{BUT0BK.BANKL}/{BUT0BK.BANKN} is also held by another
     partner.'
+- id: BP200
+  field: BUT0BK.IBAN
+  check_class: cross_field_check
+  fail_when: '`BUT0BK.IBAN`.notna() & `BUT0BK.BANKS`.notna() & (`BUT0BK.IBAN`.str.slice(0, 2).str.upper() != `BUT0BK.BANKS`)'
+  severity: high
+  dimension: consistency
+  message: IBAN country prefix does not match the bank country of the bank details
+  why_it_matters: The first two characters of an IBAN are the ISO country code of the account's bank. When they differ from
+    the bank country (BANKS) the IBAN belongs to another account, or the bank key was entered in the wrong country.
+  rule_authority: iso_standard
+  sap_impact: Payment media are created for the wrong country format or rejected by the bank; payments can reach the wrong
+    account.
+  fix_map:
+    __other__: Verify the bank details with the business partner and correct the IBAN or the bank country in BP > Payment
+      Transactions.
+  record_fix_template: 'Business partner {BUT0BK.PARTNER} bank details {BUT0BK.BKVID}: IBAN country does not match bank country
+    {BUT0BK.BANKS}.'

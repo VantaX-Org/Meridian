@@ -1258,3 +1258,106 @@ rules:
     __other__: Maintain the external processing data on the operation (CA02 > External processing) or assign a
       purchasing info record.
   record_fix_template: 'Routing {PLPO.PLNTY}/{PLPO.PLNNR} node {PLPO.PLNKN}: external processing data incomplete.'
+- id: PP200
+  field: MAST.STLNR
+  check_class: exists_check
+  fields:
+  - MAST.STLNR
+  - MAST.STLAL
+  target_table: STKO
+  target_fields:
+  - STLNR
+  - STLAL
+  target_when:
+    STLTY:
+    - M
+  severity: high
+  dimension: consistency
+  message: Material is assigned to a BOM alternative that has no BOM header
+  why_it_matters: MAST links a material and plant to a BOM number and alternative. If the header (STKO) for that alternative
+    does not exist, BOM explosion finds an assignment but no BOM, so MRP and costing see no components.
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP creates no dependent requirements; product costing and production orders explode an empty BOM.
+  fix_map:
+    __other__: Recreate the BOM alternative in CS02 or remove the broken material assignment (CS02 / CS20).
+  record_fix_template: 'Material {MAST.MATNR} plant {MAST.WERKS}: BOM {MAST.STLNR} alternative {MAST.STLAL} has no header.'
+- id: PP201
+  field: CRHD.ENDDA
+  check_class: freshness_check
+  max_age_hours: 0
+  applies_when:
+    CRHD.OBJTY:
+    - A
+    CRHD.LVORM:
+      blank: true
+  severity: low
+  dimension: timeliness
+  message: Work centre validity has ended but the work centre is not flagged for deletion
+  why_it_matters: A work centre whose validity has ended can no longer be used in new routings or orders, yet it still shows
+    up in selections and capacity reports. It should be either extended or flagged for deletion.
+  rule_authority: best_practice
+  sap_impact: Routing maintenance and order creation fail with an invalid work centre; capacity reports carry dead resources.
+  fix_map:
+    __other__: Extend the validity in CR02, or set the deletion flag once no task list uses the work centre.
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: validity ended {age_days} days ago.'
+- id: PP202
+  field: MAST.WERKS
+  check_class: exists_check
+  fields:
+  - MAST.MATNR
+  - MAST.WERKS
+  target_table: MARC
+  target_fields:
+  - MATNR
+  - WERKS
+  severity: high
+  dimension: consistency
+  message: BOM is assigned to a material in a plant where the material has no plant view
+  why_it_matters: A plant-specific material BOM is only used when the header material exists in that plant. Without the plant
+    view the BOM can never be exploded by MRP, costing or production orders in that plant.
+  rule_authority: sap_hard_constraint
+  sap_impact: The BOM is dead data; planners maintain components that no process reads.
+  fix_map:
+    __other__: Extend the material to the plant (MM01) or delete the BOM assignment for that plant (CS02).
+  record_fix_template: 'Material {MAST.MATNR}: BOM assigned in plant {MAST.WERKS} without a plant view.'
+- id: PP203
+  field: PLPO.PLNNR
+  check_class: exists_check
+  fields:
+  - PLPO.PLNTY
+  - PLPO.PLNNR
+  target_table: PLKO
+  target_fields:
+  - PLNTY
+  - PLNNR
+  severity: medium
+  dimension: consistency
+  message: Task list operation belongs to a task list group with no header
+  why_it_matters: Operations (PLPO) are read through their task list header (PLKO). An operation whose group has no header
+    is orphaned - no order, cost estimate or maintenance plan can reach it - and usually remains after an incomplete deletion
+    or load.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orphaned operations inflate task list counts and break where-used and mass-change reports (CA85).
+  fix_map:
+    __other__: Recreate the task list header in CA02 / IA05 or delete the orphaned operations in a correction run.
+  record_fix_template: 'Task list {PLPO.PLNTY}/{PLPO.PLNNR} operation {PLPO.VORNR}: no task list header.'
+- id: PP204
+  field: STPO.STLNR
+  check_class: exists_check
+  fields:
+  - STPO.STLTY
+  - STPO.STLNR
+  target_table: STKO
+  target_fields:
+  - STLTY
+  - STLNR
+  severity: medium
+  dimension: consistency
+  message: BOM item belongs to a BOM number with no BOM header
+  why_it_matters: BOM items (STPO) are only exploded through a BOM header (STKO). Items without a header are orphaned and
+    never reach MRP or costing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Components are missing from explosions; where-used lists (CS15) show items that no BOM uses.
+  fix_map:
+    __other__: Recreate the BOM header in CS02 or delete the orphaned items.
+  record_fix_template: 'BOM {STPO.STLTY}/{STPO.STLNR} item {STPO.STLKN}: no BOM header.'

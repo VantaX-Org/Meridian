@@ -1380,3 +1380,42 @@ rules:
     __other__: Compare the orders (VA05). Reject the duplicate (VA02 > Reason for rejection).
   record_fix_template: 'Sales order {VBAK.VBELN}: sold-to {VBAK.KUNNR}, {VBAK.AUDAT}, {VBAK.NETWR} {VBAK.WAERK} matches another
     order.'
+- id: SDSO200
+  field: VBAP.VRKME
+  check_class: referential_check
+  severity: high
+  dimension: validity
+  message: Order item sales unit (VBAP.VRKME) is not defined in the system's configuration (T006)
+  why_it_matters: The sales unit is a key into the units of measure configuration (T006). A value that is not configured there
+    cannot be converted or printed; SAP's own screens never accept it, so it comes from direct loads, interfaces or configuration
+    deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Delivery and billing cannot convert the quantity; output forms print an unknown unit.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T006. Correct the sales unit in VA02, or create the unit in customizing (CUNI)
+      if it is genuinely needed.'
+  record_fix_template: 'Order {VBAP.VBELN} item {VBAP.POSNR}: sales unit ''{actual_value}'' is not configured (T006).'
+- id: SDSO201
+  field: KONP.KBETR
+  check_class: cross_field_check
+  fail_when: (`KONP.KBETR` == 0) | `KONP.KBETR`.isna()
+  applies_when:
+    KONH.KAPPL:
+    - V
+    KONP.KRECH:
+    - C
+    KONP.LOEVM_KO:
+      blank: true
+  severity: medium
+  dimension: accuracy
+  message: Active quantity-based sales condition record has a zero rate
+  why_it_matters: A quantity-dependent condition (calculation type C) with rate zero is found by pricing and contributes nothing.
+    For a price condition this yields an order item with no price; for a surcharge it silently waives it. Real free-of-charge
+    pricing is normally done with a 100% discount or a free-goods item, not a zero rate.
+  rule_authority: best_practice
+  sap_impact: Orders are priced at zero or miss a surcharge; the item may pass the incompletion check because a condition
+    was found.
+  fix_map:
+    __other__: Maintain the correct rate in VK12, or set the deletion indicator on the condition record if it is no longer
+      valid.
+  record_fix_template: 'Condition record {KONP.KNUMH} ({KONP.KSCHL}): rate is zero.'

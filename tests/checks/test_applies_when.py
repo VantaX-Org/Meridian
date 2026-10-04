@@ -65,6 +65,16 @@ def test_missing_context_field_returns_empty():
     assert len(out) == 0
 
 
+def test_older_than_days_keeps_only_old_dates():
+    """`older_than_days` scopes to dates before today minus N days; blank and
+    unparseable dates are out of scope."""
+    old = (pd.Timestamp.now() - pd.Timedelta(days=400)).strftime("%Y%m%d")
+    new = (pd.Timestamp.now() - pd.Timedelta(days=10)).strftime("%Y%m%d")
+    df = pd.DataFrame({"EKKO.EBELN": ["1", "2", "3", "4"], "EKKO.BEDAT": [old, new, "", "00000000"]})
+    out = apply_context(df, {"EKKO.BEDAT": {"older_than_days": 180}})
+    assert out["EKKO.EBELN"].tolist() == ["1"]
+
+
 def test_values_coerced_to_string():
     """Rule authors can list allowed values as ints; extract values may
     be str-typed — comparison is string-based via `str(v)`."""

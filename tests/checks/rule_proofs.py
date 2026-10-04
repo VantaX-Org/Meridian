@@ -153,6 +153,8 @@ def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
             vals += [f"{p}1" for p in (aw.get("startswith") or [])[:2]]
             if "older_than_days" in aw or "within_days" in aw:
                 vals += ["20000101", pd.Timestamp.today().strftime("%Y%m%d")]
+            if "older_than_days" in aw:
+                vals.insert(0, "20000101")  # first candidate: in scope for the proof rows
         if f"`{c}`" in expr:
             vals += literals[:4] + numbers[:4]
         vals += paired.get(c, [])[:1] + _PROBES[_kind(dictionary, c)]
@@ -310,8 +312,12 @@ def _prove_aggregate(rule, dictionary, cand, live) -> tuple[str, str]:
     df = _rows(rule, dictionary, rows)
     edges, _ = _graph()
     for c in rule["group_by"]:  # each pair of rows is one group, on both sides of every join
-        same = {c} | {f"{e.parent}.{p}" for e in edges for ch, p in e.on if f"{e.child}.{ch}" == c} | \
-               {f"{e.child}.{ch}" for e in edges for ch, p in e.on if f"{e.parent}.{p}" == c}
+        same, grown = {c}, True
+        while grown:  # follow the join keys transitively (EKBE.EBELN -> EKPO.EBELN -> EKKO.EBELN)
+            more = {f"{e.parent}.{p}" for e in edges for ch, p in e.on if f"{e.child}.{ch}" in same} | \
+                   {f"{e.child}.{ch}" for e in edges for ch, p in e.on if f"{e.parent}.{p}" in same}
+            grown = not more <= same
+            same |= more
         for col in same & set(df.columns):
             df[col] = ["G1", "G1", "G2", "G2"]
     _, r = run_rule(rule, TableFrames.from_flat(df, dictionary, module=rule.get("module")), live or {})

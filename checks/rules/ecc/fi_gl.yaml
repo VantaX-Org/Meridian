@@ -1212,3 +1212,97 @@ rules:
     fix_map:
       __other__: Clear "Recon. account ready for input" in FS00 > Create/bank/interest (S/4 F0731), after confirming no migration is running.
     record_fix_template: 'GL Account {SKB1.SAKNR} in company code {SKB1.BUKRS}: reconciliation account ({SKB1.MITKZ}) is open for input.'
+  - id: GL200
+    field: SKA1.XLOEV
+    check_class: cross_field_check
+    fail_when: (`SKA1.XLOEV` == 'X') & `SKA1.XSPEB`.isna()
+    severity: medium
+    dimension: consistency
+    message: G/L account flagged for deletion in the chart of accounts but not blocked for posting
+    why_it_matters: The deletion flag only marks the account for archiving. Postings are stopped only by the posting block,
+      so a deleted account without the block still accepts postings in every company code.
+    rule_authority: best_practice
+    sap_impact: Documents keep landing on a retired account and archiving of the account fails.
+    fix_map:
+      __other__: Set the posting block in the chart of accounts segment (FS00 > Block) together with the deletion flag.
+    record_fix_template: 'G/L account {SKA1.SAKNR} (chart {SKA1.KTOPL}): flagged for deletion but not blocked for posting.'
+  - id: GL201
+    field: SKB1.XLOEB
+    check_class: cross_field_check
+    fail_when: (`SKB1.XLOEB` == 'X') & `SKB1.XSPEB`.isna()
+    severity: medium
+    dimension: consistency
+    message: G/L account flagged for deletion in the company code but not blocked for posting
+    why_it_matters: The company-code deletion flag only marks the segment for archiving. Without the company-code posting block
+      the account still accepts postings.
+    rule_authority: best_practice
+    sap_impact: Documents keep landing on a retired account and archiving of the company-code segment fails.
+    fix_map:
+      __other__: Set the company-code posting block (FS00 > Block) together with the deletion flag.
+    record_fix_template: 'G/L account {SKB1.SAKNR} in company code {SKB1.BUKRS}: flagged for deletion but not blocked for posting.'
+  - id: GL203
+    field: SKB1.XOPVW
+    check_class: cross_field_check
+    fail_when: (`SKB1.XOPVW` == 'X') & `SKA1.SAKNR`.notna() & `SKA1.XBILK`.isna()
+    severity: medium
+    dimension: consistency
+    message: Profit and loss account is managed on an open item basis
+    why_it_matters: Open item management is meant for balance-sheet clearing accounts (GR/IR, bank clearing, salaries payable).
+      On a P&L account the balance is carried forward to retained earnings at year end while the items stay open, so they can
+      never be cleared against the new year's balance.
+    rule_authority: best_practice
+    sap_impact: Open item lists of the account grow forever; automatic clearing finds nothing to clear against.
+    fix_map:
+      __other__: Remove open item management from the P&L account once its open items are cleared (FS00 > Control data); move
+        genuine clearing postings to a balance-sheet clearing account.
+    record_fix_template: 'G/L account {SKB1.SAKNR} in company code {SKB1.BUKRS}: P&L account managed on an open item basis.'
+  - id: GL204
+    field: SKB1.XGKON
+    check_class: cross_field_check
+    fail_when: (`SKB1.XGKON` == 'X') & `SKA1.SAKNR`.notna() & `SKA1.XBILK`.isna()
+    severity: medium
+    dimension: consistency
+    message: Profit and loss account is flagged as relevant to cash flow
+    why_it_matters: The cash-relevant flag (XGKON) marks bank and cash accounts for the cash flow statement and cash management.
+      A P&L account with the flag puts expense and revenue postings into cash reporting.
+    rule_authority: best_practice
+    sap_impact: The cash position and the direct cash flow statement include non-cash P&L postings.
+    fix_map:
+      __other__: Remove the 'relevant to cash flow' flag from the P&L account (FS00 > Create/bank/interest).
+    record_fix_template: 'G/L account {SKB1.SAKNR} in company code {SKB1.BUKRS}: P&L account flagged as cash relevant.'
+  - id: GL205
+    field: SKB1.XKRES
+    check_class: cross_field_check
+    fail_when: (`SKB1.XKRES` == 'X')
+    applies_when:
+      SKB1.MITKZ:
+      - A
+      - D
+      - K
+    severity: low
+    dimension: consistency
+    message: Reconciliation account has line item display switched on
+    why_it_matters: The line items of a reconciliation account are displayed in the sub-ledger (FBL1N, FBL5N, AW01N). SAP recommends
+      switching line item display off on reconciliation accounts because it duplicates every sub-ledger line in the G/L index
+      tables.
+    rule_authority: best_practice
+    sap_impact: Large secondary index tables (BSIS/BSAS) and slower period-end processing without any reporting benefit.
+    fix_map:
+      __other__: Switch off line item display on the reconciliation account (FS00) and reorganise the index (RFSEPA02).
+    record_fix_template: 'G/L account {SKB1.SAKNR} in company code {SKB1.BUKRS}: reconciliation account ({SKB1.MITKZ}) with
+      line item display.'
+  - id: GL206
+    field: SKB1.XLOEB
+    check_class: cross_field_check
+    fail_when: (`SKA1.XLOEV` == 'X') & `SKB1.XLOEB`.isna()
+    severity: low
+    dimension: consistency
+    message: G/L account is deleted in the chart of accounts but still active in a company code
+    why_it_matters: An account retired at chart-of-accounts level should be retired in every company code that uses it. A live
+      company-code segment means one entity still uses an account the group has retired.
+    rule_authority: best_practice
+    sap_impact: Group reporting maps postings to an account that no longer exists in the group chart.
+    fix_map:
+      __other__: Flag the company-code segment for deletion and block it (FS00), or remove the chart-level deletion flag.
+    record_fix_template: 'G/L account {SKB1.SAKNR} in company code {SKB1.BUKRS}: deleted in the chart of accounts but active
+      here.'

@@ -146,6 +146,15 @@ def sap_number(series: pd.Series) -> pd.Series:
     return n.where(~neg, -n)
 
 
+def as_of_time(as_of: Any = None) -> pd.Timestamp:
+    """The date that date-relative rules measure age against, as tz-naive UTC.
+
+    A run passes the version's snapshot date so that ageing rules do not age a
+    stale extract by the wall clock; without one it is now."""
+    t = pd.Timestamp.now(tz="UTC") if as_of is None else pd.Timestamp(as_of)
+    return t.tz_convert("UTC").tz_localize(None) if t.tzinfo else t
+
+
 def pass_rate_of(total: int, affected: int) -> float:
     """Percentage of passing records, never rounded up to 100 while failures exist."""
     if total <= 0:
