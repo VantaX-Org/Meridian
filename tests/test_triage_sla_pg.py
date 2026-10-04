@@ -289,6 +289,13 @@ def test_routes(engines):
             bad = await c.post(f"{base}/teams", headers=steward,
                                json={"name": "X", "member_ids": [str(uuid.uuid4())]})
             assert bad.status_code == 422
+            # renaming: own name is fine, another team's name is 409, an explicit null is 422
+            ap = f"{base}/teams/{team['id']}"
+            other = (await c.post(f"{base}/teams", headers=steward, json={"name": "AR"})).json()
+            assert (await c.patch(ap, headers=steward, json={"name": "AP"})).status_code == 200
+            assert (await c.patch(ap, headers=steward, json={"name": "AR"})).status_code == 409
+            assert (await c.patch(ap, headers=steward, json={"name": None})).status_code == 422
+            assert (await c.delete(f"{base}/teams/{other['id']}", headers=steward)).status_code == 204
             r1 = (await c.post(f"{base}/rules", headers=steward, json={
                 "name": "all to AP", "assign_team_id": team["id"]})).json()
             r0 = (await c.post(f"{base}/rules", headers=steward, json={

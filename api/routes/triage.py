@@ -83,6 +83,13 @@ class TeamPatch(BaseModel):
     strategy: Optional[Strategy] = None
     lead_user_id: Optional[uuid.UUID] = None
 
+    @field_validator("name", "strategy")
+    @classmethod
+    def _not_null(cls, v: Any) -> Any:
+        if v is None:
+            raise ValueError("may be omitted but not null")
+        return v
+
 
 class MembersIn(BaseModel):
     user_ids: list[uuid.UUID] = Field(max_length=500)
@@ -305,13 +312,14 @@ async def update_team(team_id: uuid.UUID, body: TeamPatch, db: AsyncSession = De
     await _team_exists(db, tid, team_id)
     fields = body.model_dump(exclude_unset=True)
     await _active_users(db, tid, [fields.get("lead_user_id")])
+    if "name" in fields and (await db.execute(text(
+            "SELECT 1 FROM triage_teams WHERE tenant_id = CAST(:tid AS uuid) AND name = :n AND id <> :id"),
+            {"tid": tid, "n": fields["name"], "id": team_id})).scalar():
+        raise HTTPException(status_code=409, detail="A team with this name exists")
     if fields:
         sets = ", ".join(f"{k} = :{k}" for k in fields)
-        try:
-            await db.execute(text(f"UPDATE triage_teams SET {sets} WHERE id = :id AND tenant_id = CAST(:tid AS uuid)"),
-                             {**fields, "id": team_id, "tid": tid})
-        except Exception as e:  # unique name
-            raise HTTPException(status_code=409, detail="A team with this name exists") from e
+        await db.execute(text(f"UPDATE triage_teams SET {sets} WHERE id = :id AND tenant_id = CAST(:tid AS uuid)"),
+                         {**fields, "id": team_id, "tid": tid})
     await db.commit()
     return (await _team_out(db, tid, team_id))[0]
 
