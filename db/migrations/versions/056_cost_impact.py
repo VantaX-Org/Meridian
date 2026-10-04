@@ -5,7 +5,7 @@ risk and how it was computed (checks/cost.py); findings.impact_score — $ at ri
 blocked SAP features × severity, the "impact" sort of GET /api/v1/findings.
 tenants.cost_model — the tenant's overrides of checks/cost_model.yaml.
 
-Revision ID: 054
+Revision ID: 056
 Revises: 053
 Create Date: 2026-10-04
 """
@@ -16,8 +16,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects.postgresql import JSONB
 
-revision: str = "054"
-down_revision: Union[str, None] = "053"
+revision: str = "056"
+down_revision: Union[str, None] = "055"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
