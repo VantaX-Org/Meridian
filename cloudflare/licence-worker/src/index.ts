@@ -1122,13 +1122,17 @@ async function handleValidate(request: Request, env: Env): Promise<Response> {
   // fail an otherwise-valid licence check, so this is best-effort only.
   let latestVersion = "";
   let releaseNotes = "";
+  let minVersion = "";
+  let forceNow = false;
   try {
     const releaseRow = await env.DB.prepare(
-      "SELECT latest_version, release_notes FROM platform_releases WHERE id = 1"
-    ).first<{ latest_version: string; release_notes: string }>();
+      "SELECT latest_version, release_notes, min_version, force_now FROM platform_releases WHERE id = 1"
+    ).first<{ latest_version: string; release_notes: string; min_version: string; force_now: number }>();
     if (releaseRow) {
       latestVersion = releaseRow.latest_version || "";
       releaseNotes = releaseRow.release_notes || "";
+      minVersion = releaseRow.min_version || "";
+      forceNow = !!releaseRow.force_now;
     }
   } catch (e) {
     console.warn("platform release lookup failed (non-fatal):", e);
@@ -1156,6 +1160,9 @@ async function handleValidate(request: Request, env: Env): Promise<Response> {
     // Advisory only — outside the signed canonical, see comment above.
     latest_version: latestVersion,
     release_notes: releaseNotes,
+    // Forced update: deployments below min_version update themselves.
+    min_version: minVersion,
+    force_update_now: forceNow,
   });
 }
 
@@ -1935,6 +1942,8 @@ interface PlatformReleaseRow {
   id: number;
   latest_version: string;
   release_notes: string;
+  min_version: string;
+  force_now: number;
   released_at: string | null;
   updated_at: string;
 }
@@ -1968,6 +1977,8 @@ async function handleUpdateRelease(request: Request, env: Env): Promise<Response
   const body = (await request.json()) as Partial<{
     latest_version: string;
     release_notes: string;
+    min_version: string;
+    force_now: boolean;
   }>;
 
   const rawVersion = (body.latest_version ?? "").trim();
@@ -1980,6 +1991,24 @@ async function handleUpdateRelease(request: Request, env: Env): Promise<Response
   }
   const latestVersion = versionMatch[1];
   const releaseNotes = body.release_notes ?? "";
+
+  // Forcing an update is an admin decision: the CI token can publish a
+  // release but never force one. Omitted fields keep their stored value.
+  if (viaReleaseToken && (body.min_version !== undefined || body.force_now !== undefined)) {
+    return json({ error: "forbidden", message: "min_version and force_now need an admin session" }, 403);
+  }
+  const stored = await env.DB.prepare("SELECT min_version, force_now FROM platform_releases WHERE id = 1")
+    .first<{ min_version: string; force_now: number }>();
+  let minVersion = stored?.min_version ?? "";
+  if (body.min_version !== undefined) {
+    const raw = body.min_version.trim();
+    const m = raw.match(VERSION_RE);
+    if (raw && !m) {
+      return json({ error: "bad_request", message: "min_version must be empty or look like MAJOR.MINOR.PATCH" }, 400);
+    }
+    minVersion = m ? m[1] : "";
+  }
+  const forceNow = body.force_now !== undefined ? (body.force_now ? 1 : 0) : (stored?.force_now ?? 0);
 
   // CI never moves customers backwards (a re-run of an old release job);
   // an admin can still set any version by hand, e.g. to withdraw a release.
@@ -1995,9 +2024,9 @@ async function handleUpdateRelease(request: Request, env: Env): Promise<Response
   }
 
   await env.DB.prepare(
-    "UPDATE platform_releases SET latest_version = ?, release_notes = ?, released_at = datetime('now'), updated_at = datetime('now') WHERE id = 1"
+    "UPDATE platform_releases SET latest_version = ?, release_notes = ?, min_version = ?, force_now = ?, released_at = datetime('now'), updated_at = datetime('now') WHERE id = 1"
   )
-    .bind(latestVersion, releaseNotes)
+    .bind(latestVersion, releaseNotes, minVersion, forceNow)
     .run();
 
   const updated = await env.DB.prepare("SELECT * FROM platform_releases WHERE id = 1")
