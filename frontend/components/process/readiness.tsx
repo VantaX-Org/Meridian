@@ -11,8 +11,10 @@
 
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
+import { EmptyState, FilterBar, TableSkeleton } from "@/components/ui-core";
 import {
-  EmptyState, ProcessReport, Select, Stack, Text, type ProcessReportBlockingFinding, type ProcessReportHierarchyNode,
+  ProcessReport, Select, type ProcessReportBlockingFinding, type ProcessReportHierarchyNode,
   type ProcessReportReadiness, type ProcessReportRecommendation,
 } from "@/components/aurora";
 import { getBusinessProcess, getConfigImpact } from "@/lib/api/connectivity";
@@ -45,9 +47,32 @@ export function ProcessReadiness() {
   const processes = bp.data ?? [];
   const l1 = processes.find((p) => p.l1_id === l1Choice) ?? processes[0];
 
-  if (versions.isLoading || bp.isLoading) return <EmptyState title="Loading process readiness…" />;
-  if (!latest) return <EmptyState title="No analysed version yet." body="Readiness is read from the latest completed analysis. Download an object or import a file and run the checks." />;
-  if (!l1) return <EmptyState title={`No process definition for ${formatModuleName(object)}.`} body="Process readiness covers the objects with an L1–L5 definition (procure-to-pay, order-to-cash)." />;
+  if (versions.isLoading || bp.isLoading) return <div className="ui-page"><TableSkeleton rows={8} label="Loading process readiness" /></div>;
+  if (!latest) {
+    return (
+      <div className="ui-page">
+        <EmptyState action={<Link className="ui-link" href="/sync">Open sync</Link>}>
+          Readiness is read from the latest completed analysis. Download an object or import a file and run the checks.
+        </EmptyState>
+      </div>
+    );
+  }
+
+  const objectPicker = (
+    <Select aria-label="Object" value={object} options={modules.map((m) => ({ value: m, label: formatModuleName(m) }))}
+      onValueChange={(m) => { setObject(m); setL1(""); }} />
+  );
+  const versionNote = <span className="ui-micro">Version {latest.label ?? latest.id.slice(0, 8)}, run {new Date(latest.run_at).toLocaleString()}</span>;
+  if (!l1) {
+    return (
+      <div className="ui-page">
+        <FilterBar actions={versionNote}>{objectPicker}</FilterBar>
+        <EmptyState>
+          {formatModuleName(object)} has no process definition. Readiness covers the objects with an L1 to L5 definition, such as procure to pay and order to cash.
+        </EmptyState>
+      </div>
+    );
+  }
 
   const all = fields(l1);
   const pct = score(all);
@@ -63,11 +88,11 @@ export function ProcessReadiness() {
         children: l2.l3_processes.map((l3) => {
           const f3 = l3.l4_steps.flatMap((l4) => l4.l5_fields);
           return {
-            level: 3 as const, id: l3.l3_id, label: `${l3.l3_name} · ${l3.tcode}`, score: score(f3), blocking: red(f3),
+            level: 3 as const, id: l3.l3_id, label: `${l3.l3_name} (${l3.tcode})`, score: score(f3), blocking: red(f3),
             children: l3.l4_steps.map((l4) => ({
               level: 4 as const, id: l4.l4_id, label: l4.l4_name, score: score(l4.l5_fields), blocking: red(l4.l5_fields),
               children: l4.l5_fields.map((f) => ({
-                level: 5 as const, id: `${l4.l4_id}-${f.field}`, label: `${f.field}${f.mandatory ? " · mandatory" : ""}`,
+                level: 5 as const, id: `${l4.l4_id}-${f.field}`, label: `${f.field}${f.mandatory ? ", mandatory" : ""}`,
                 module: f.config_source, score: f.pass_rate ?? (f.dq_status === "green" ? 100 : 0), blocking: f.dq_status === "red" ? 1 : 0,
               })),
             })),
@@ -111,15 +136,13 @@ export function ProcessReadiness() {
     : pct >= 90 ? `${l1.l1_name} is ready: ${pct}% of its fields pass.` : `${l1.l1_name} is ${pct}% ready with no blocking fields.`;
 
   return (
-    <div className="aurora-page">
-      <Stack direction="row" gap={3} align="center" wrap className="aurora-filters" style={{ marginBottom: "var(--aurora-space-4)" }}>
-        <Select aria-label="Object" value={object} options={modules.map((m) => ({ value: m, label: formatModuleName(m) }))}
-          onValueChange={(m) => { setObject(m); setL1(""); }} />
+    <div className="ui-page">
+      <FilterBar actions={versionNote}>
+        {objectPicker}
         {processes.length > 1 ? (
           <Select aria-label="Process" value={l1.l1_id} options={processes.map((p) => ({ value: p.l1_id, label: p.l1_name }))} onValueChange={setL1} />
         ) : null}
-        <Text variant="text-small" tone="muted">Version {latest.label ?? latest.id.slice(0, 8)} · {new Date(latest.run_at).toLocaleString()}</Text>
-      </Stack>
+      </FilterBar>
       <ProcessReport
         processSlug={l1.l1_id}
         processName={l1.l1_name}

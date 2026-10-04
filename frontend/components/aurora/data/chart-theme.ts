@@ -9,7 +9,7 @@
  * `[data-theme="dark"]` vs `[data-theme="light"]` without a consumer re-wire.
  */
 
-import { accent, ink, status, viz } from "@/lib/aurora";
+import { accent, canvas, ink, status, viz } from "@/lib/aurora";
 
 export interface ChartTokens {
   /** Axis lines, grid lines. */
@@ -44,7 +44,7 @@ export interface ChartTokens {
  * so charts pick up scoped themes instead of only the root.
  */
 function resolveThemeForElement(element?: Element | null): "dark" | "light" {
-  if (typeof document === "undefined") return "dark";
+  if (typeof document === "undefined") return "light";
   let node: Element | null = element ?? null;
   while (node) {
   const value = node.getAttribute?.("data-theme");
@@ -52,7 +52,7 @@ function resolveThemeForElement(element?: Element | null): "dark" | "light" {
     node = node.parentElement;
   }
   const root = document.documentElement.getAttribute("data-theme");
-  return root === "light" ? "light" : "dark";
+  return root === "dark" ? "dark" : "light";
 }
 
 /**
@@ -66,21 +66,21 @@ export function resolveChartTokens(element?: Element | null): ChartTokens {
   const light = resolveThemeForElement(element) === "light";
 
   return {
-    axisLine: light ? ink[200] : "#1F2B45",
-    axisInk: light ? ink[500] : ink[300],
-    gridInk: light ? "rgba(10, 14, 26, 0.06)" : "rgba(255, 255, 255, 0.06)",
-    tooltipBg: light ? ink[0] : "#111827",
-    tooltipLine: light ? ink[200] : "#1F2B45",
-    tooltipInk: light ? ink[900] : ink[50],
+    axisLine: light ? canvas.light.line : canvas.dark.line,
+    axisInk: light ? ink[500] : ink[400],
+    gridInk: light ? canvas.light.line : canvas.dark.line,
+    tooltipBg: light ? canvas.light.raised : canvas.dark.elevated,
+    tooltipLine: light ? canvas.light.line : canvas.dark.line,
+    tooltipInk: light ? ink[900] : ink[100],
     categorical: viz.categorical.slice(),
     sequentialBlue: viz.sequential.blue.slice(),
     diverging: viz.diverging.redGreen.slice(),
-    accent: accent[500],
+    accent: light ? accent[500] : accent.dark500,
     status: {
-      success: status.success[500],
-      warning: status.warning[500],
-      danger: status.danger[500],
-      info: status.info[500],
+      success: light ? status.success[500] : status.success.dark500,
+      warning: light ? status.warning[500] : status.warning.dark500,
+      danger: light ? status.danger[500] : status.danger.dark500,
+      info: light ? status.info[500] : status.info.dark500,
     },
   };
 }
@@ -98,7 +98,7 @@ export function auroraEChartsTheme(): Record<string, unknown> {
     backgroundColor: "transparent",
     textStyle: {
       fontFamily:
-        'var(--aurora-font-ui), "Inter", system-ui, -apple-system, sans-serif',
+        "var(--aurora-font-ui)",
       color: t.axisInk,
     },
     title: {

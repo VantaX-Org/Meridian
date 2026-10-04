@@ -14,9 +14,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
-  Banner, Button, Chip, DataTable, Drawer, EmptyState, Field, Input, KpiRail, Select, Stack, Stat, Text,
-  useDrawerParam, type AuroraColumnMeta, type ChipTone,
+  Banner, Button, Chip, DataTable, Drawer, Field, Input, Select, Stack, Text, useDrawerParam, type AuroraColumnMeta,
 } from "@/components/aurora";
+import { EmptyState, Metric, MetricStrip, Mono, PageHeader, StatusBadge, TableSkeleton, type Status } from "@/components/ui-core";
 import { useRole } from "@/hooks/use-role";
 import { deleteSystem, getSystems, registerSystem, testConnection, testDraftConnection, triggerSync } from "@/lib/api/systems";
 import { relativeTime } from "@/lib/format";
@@ -38,8 +38,9 @@ const TYPE_LABEL = Object.fromEntries(TYPE_OPTIONS.map((o) => [o.value, o.label]
 const isRfc = (t: SystemType) => RFC_TYPES.includes(t);
 
 type Health = "healthy" | "down" | "awaiting";
-const HEALTH_TONE: Record<Health, ChipTone> = { healthy: "success", down: "danger", awaiting: "neutral" };
-const HEALTH_LABEL: Record<Health, string> = { healthy: "healthy", down: "last sync failed", awaiting: "awaiting first sync" };
+const HEALTH_STATUS: Record<Health, Status> = { healthy: "ok", down: "failed", awaiting: "idle" };
+const HEALTH_LABEL: Record<Health, string> = { healthy: "Healthy", down: "Last sync failed", awaiting: "Awaiting first sync" };
+const HealthBadge = ({ s }: { s: SAPSystem }) => <StatusBadge status={HEALTH_STATUS[health(s)]}>{HEALTH_LABEL[health(s)]}</StatusBadge>;
 function health(s: SAPSystem): Health {
   const st = s.last_sync_status;
   if (!st) return "awaiting";
@@ -47,7 +48,6 @@ function health(s: SAPSystem): Health {
   if (st === "running" || st === "completed" || st === "complete") return "healthy";
   return "awaiting";
 }
-const ENV_TONE: Record<SAPSystem["environment"], ChipTone> = { PRD: "success", QAS: "warning", DEV: "neutral" };
 
 type Draft = {
   name: string; system_type: SystemType; environment: string; description: string;
@@ -106,45 +106,55 @@ export function SystemsSurface() {
 
   const columns = useMemo<ColumnDef<SAPSystem, unknown>[]>(() => [
     { id: "name", header: "System", meta: meta({ sticky: "start", width: 220 }),
-      cell: ({ row }) => <span><strong>{row.original.name}</strong><Text variant="text-micro" tone="muted" as="div">{TYPE_LABEL[row.original.system_type] ?? row.original.system_type}</Text></span> },
-    { id: "env", header: "Env", meta: meta({ width: 80 }), cell: ({ row }) => <Chip tone={ENV_TONE[row.original.environment]}>{row.original.environment}</Chip> },
-    { id: "endpoint", header: "Endpoint", cell: ({ row }) => <span className="aurora-number">{row.original.host ?? row.original.base_url ?? "—"}
-        {isRfc(row.original.system_type) && row.original.client ? ` · client ${row.original.client} · sysnr ${row.original.sysnr ?? "—"}` : ""}</span> },
-    { id: "sync", header: "Last sync", meta: meta({ width: 130 }), cell: ({ row }) => row.original.last_sync_at ? relativeTime(row.original.last_sync_at) : "never" },
-    { id: "health", header: "Health", meta: meta({ width: 170 }), cell: ({ row }) => <Chip tone={HEALTH_TONE[health(row.original)]}>{HEALTH_LABEL[health(row.original)]}</Chip> },
-    { id: "active", header: "Active", meta: meta({ width: 80 }), cell: ({ row }) => (row.original.is_active ? "yes" : "no") },
+      cell: ({ row }) => <span className="ui-cell-stack"><span className="ui-cell-stack__main">{row.original.name}</span><span className="ui-cell-stack__sub">{TYPE_LABEL[row.original.system_type] ?? row.original.system_type}</span></span> },
+    { id: "env", header: "Env", meta: meta({ width: 80 }), cell: ({ row }) => <Mono>{row.original.environment}</Mono> },
+    { id: "endpoint", header: "Endpoint", cell: ({ row }) => {
+      const r = row.original;
+      return <span className="ui-cell-stack"><Mono>{r.host ?? r.base_url ?? "Not set"}</Mono>
+        {isRfc(r.system_type) && r.client ? <span className="ui-cell-stack__sub">{`Client ${r.client}, system number ${r.sysnr ?? "00"}`}</span> : null}</span>;
+    } },
+    { id: "sync", header: "Last sync", meta: meta({ width: 130 }), cell: ({ row }) => row.original.last_sync_at ? relativeTime(row.original.last_sync_at) : "Never" },
+    { id: "health", header: "Health", meta: meta({ width: 180 }), cell: ({ row }) => <HealthBadge s={row.original} /> },
+    { id: "active", header: "State", meta: meta({ width: 90 }), cell: ({ row }) => (row.original.is_active ? "Active" : "Inactive") },
   ], []);
 
   return (
-    <Stack gap={5} className="aurora-page">
-      <KpiRail>
-        <Stat label="Systems" value={systems.length} />
-        <Stat label="Healthy" value={counts.healthy} tone={counts.healthy ? "success" : "neutral"} />
-        <Stat label="Last sync failed" value={counts.down} tone={counts.down ? "danger" : "neutral"} />
-        <Stat label="Awaiting first sync" value={counts.awaiting} tone={counts.awaiting ? "warning" : "neutral"} />
-      </KpiRail>
-      <Stack direction="row" gap={2} align="center" wrap>
-        <Link href="/connectivity" className="aurora-link">Connectivity map</Link>
-        <span style={{ flex: 1 }} />
-        {canSync ? <Button variant="secondary" onClick={() => syncAll.mutate()} disabled={syncAll.isPending || !systems.length}>Sync all</Button> : null}
-        {canManage ? <Button onClick={() => setConnectOpen(true)}>Connect system</Button> : null}
-      </Stack>
-      {systemsQ.isLoading ? <Text tone="muted">Reading connected systems.</Text> : systems.length ? (
-        <DataTable columns={columns} data={systems} getRowId={(s) => s.id} onRowActivate={(s) => drawer.open(s.id)} ariaLabel="Connected systems" maxHeight="60vh" />
+    <div className="ui-page">
+      <PageHeader
+        title="Systems"
+        summary={systemsQ.isLoading ? undefined : <>{systems.length} connected SAP system{systems.length === 1 ? "" : "s"}. Health is from the last sync; probe connections on <Link href="/connectivity" className="ui-link">Connectivity</Link>.</>}
+        actions={<>
+          {canSync ? <Button variant="secondary" onClick={() => syncAll.mutate()} disabled={syncAll.isPending || !systems.length}>Sync all</Button> : null}
+          {canManage ? <Button onClick={() => setConnectOpen(true)}>Connect system</Button> : null}
+        </>}
+      />
+      {systemsQ.isLoading ? <TableSkeleton rows={6} label="Loading connected systems" /> : systemsQ.error ? (
+        <Banner tone="danger" title="Systems could not be read">{(systemsQ.error as Error).message}</Banner>
+      ) : systems.length ? (
+        <>
+          <MetricStrip label="System health">
+            <Metric label="Systems" value={systems.length} />
+            <Metric label="Healthy" value={counts.healthy} />
+            <Metric label="Last sync failed" value={counts.down} tone={counts.down ? "danger" : "default"} />
+            <Metric label="Awaiting first sync" value={counts.awaiting} />
+          </MetricStrip>
+          <div className="ui-table-stacked"><DataTable columns={columns} data={systems} getRowId={(s) => s.id} onRowActivate={(s) => drawer.open(s.id)} ariaLabel="Connected systems" maxHeight="60vh" /></div>
+        </>
       ) : (
-        <EmptyState title="No systems connected." body={canManage ? "Connect an SAP system to discover its design, download objects and analyse them." : "An administrator connects SAP systems here."}
-          actions={canManage ? <Button onClick={() => setConnectOpen(true)}>Connect system</Button> : undefined} />
+        <EmptyState action={canManage ? <Button onClick={() => setConnectOpen(true)}>Connect system</Button> : undefined}>
+          {canManage ? "No systems connected. Connect an SAP system to discover its design, download objects and analyse them." : "No systems connected. An administrator connects SAP systems here."}
+        </EmptyState>
       )}
 
       <Drawer open={!!selected} onClose={drawer.close} ariaLabel="System details"
-              header={selected ? <Text variant="text-lead">{selected.name} · {TYPE_LABEL[selected.system_type] ?? selected.system_type}</Text> : null}>
+              header={selected ? <Text variant="text-lead">{selected.name}</Text> : null}>
         {selected ? <SystemDetail system={selected} canManage={canManage} canSync={canSync} onChanged={refresh} onDeleted={() => { drawer.close(); refresh(); }} /> : null}
       </Drawer>
 
       <Drawer open={connectOpen} onClose={() => setConnectOpen(false)} ariaLabel="Connect a system" header={<Text variant="text-lead">Connect a system</Text>}>
         {connectOpen ? <ConnectForm onDone={(id) => { setConnectOpen(false); refresh(); router.push(`/systems/${id}`); }} /> : null}
       </Drawer>
-    </Stack>
+    </div>
   );
 }
 
@@ -165,19 +175,20 @@ function SystemDetail({ system, canManage, canSync, onChanged, onDeleted }: {
   return (
     <Stack gap={4}>
       <Stack direction="row" gap={2} wrap>
-        <Chip tone={ENV_TONE[system.environment]}>{system.environment}</Chip>
-        <Chip tone={HEALTH_TONE[health(system)]}>{HEALTH_LABEL[health(system)]}</Chip>
-        <Chip tone={system.is_active ? "success" : "neutral"}>{system.is_active ? "active" : "inactive"}</Chip>
+        <HealthBadge s={system} />
+        <Chip>{TYPE_LABEL[system.system_type] ?? system.system_type}</Chip>
+        <Chip>{system.environment}</Chip>
+        <Chip>{system.is_active ? "Active" : "Inactive"}</Chip>
       </Stack>
       <table className="aurora-exec__table"><tbody>
         {rows.map(([k, v]) => <tr key={k}><td>{k}</td><td className="aurora-number">{v}</td></tr>)}
-        <tr><td>Last sync</td><td>{system.last_sync_at ? `${relativeTime(system.last_sync_at)} · ${system.last_sync_status}` : "never"}</td></tr>
+        <tr><td>Last sync</td><td>{system.last_sync_at ? `${relativeTime(system.last_sync_at)}, ${system.last_sync_status}` : "never"}</td></tr>
         <tr><td>Registered</td><td>{relativeTime(system.created_at)}</td></tr>
         {system.description ? <tr><td>Description</td><td>{system.description}</td></tr> : null}
       </tbody></table>
       {result ? <Banner tone={result.connected ? "success" : "danger"} title={result.connected ? "Connection succeeded" : "Connection failed"}>{result.message}</Banner> : null}
       <Stack direction="row" gap={2} wrap>
-        <Link href={`/systems/${system.id}`} className="aurora-link">Open system: design, objects, versions →</Link>
+        <Link href={`/systems/${system.id}`} className="ui-link">Open system design, objects and versions</Link>
       </Stack>
       <Stack direction="row" gap={2} wrap>
         {canManage ? <Button variant="secondary" onClick={() => test.mutate()} disabled={test.isPending}>{test.isPending ? "Testing…" : "Test connection"}</Button> : null}

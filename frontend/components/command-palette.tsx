@@ -63,9 +63,9 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Backdrop className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-sm data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0" />
+        <DialogPrimitive.Backdrop className="fixed inset-0 z-[60] bg-[var(--aurora-scrim)] data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0" />
         <DialogPrimitive.Popup
-          className="fixed left-1/2 top-[15vh] z-[61] w-[min(640px,calc(100vw-2rem))] -translate-x-1/2 overflow-hidden rounded-2xl border border-black/10 bg-white/95 shadow-[0_0_0_1px_rgba(255,255,255,0.6)_inset,0_24px_64px_rgba(16,24,40,0.18)] backdrop-blur-xl data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95"
+          className="fixed left-1/2 top-[15vh] z-[61] w-[min(640px,calc(100vw-2rem))] -translate-x-1/2 overflow-hidden rounded-[var(--aurora-radius-sheet)] border border-[var(--aurora-canvas-line)] bg-[var(--aurora-elev-3-bg)] text-[var(--aurora-fg-primary)] shadow-[var(--aurora-elev-3-shadow)] data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95"
           aria-label="Command palette"
         >
           <DialogPrimitive.Title className="sr-only">Command palette</DialogPrimitive.Title>

@@ -1,157 +1,120 @@
 /**
- * Aurora design tokens — single source of truth.
- *
- * These values are fixed by the Aurora Experience Spec §5. Never invent,
- * tweak, or compute new colour / size / spacing values in components.
- * Token drift is a CI-enforceable violation (§D3).
+ * Meridian design tokens — single source of truth, mirrored in
+ * app/styles/aurora.css. See frontend/DESIGN.md. Never invent colour,
+ * size or spacing values in components; `npm run lint:tokens` enforces it.
  */
 
-/** §5.1.1 — Ink (text and foreground). Twelve stops. */
+/** Ink — neutral scale shared by both themes. */
 export const ink = {
-  0: "#FFFFFF", // pure white — used rarely, only on luminous overlays
-  50: "#F7F8FA", // highest-contrast text on deep canvas
-  100: "#E7ECF2", // body text on dark canvas
-  200: "#C7D0DC", // secondary text on dark canvas
-  300: "#99A5B8", // tertiary / muted
-  400: "#748399", // subdued metadata (4.9:1 on elev-1)
-  500: "#4A5669", // disabled
-  600: "#2E3847", // borders on light canvas
-  700: "#1A2230", // light-canvas body text
-  800: "#101622", // near-ink
-  900: "#0A0E1A", // ink, headlines on light canvas
-  950: "#05070F", // deepest, rarely used
+  0: "#FFFFFF",
+  50: "#F3F4F2", // paper
+  100: "#E8EAE7", // primary text on dark
+  200: "#DADDD8", // rule on paper
+  300: "#B9BDB7",
+  400: "#8A908B", // muted text on dark
+  500: "#646B67", // muted text on paper (5.2:1)
+  600: "#4A504D",
+  700: "#333836",
+  800: "#222628",
+  900: "#15181A", // ink: text and primary buttons on paper
+  950: "#0C0E0F",
 } as const;
 
-/** §5.1.2 — Canvas (backgrounds). Dark is default; light is alternative. */
+/** Canvas. Light (paper) is the default; dark is the alternative. */
 export const canvas = {
-  dark: {
-    base: "#060910", // product canvas — graphite-navy, one stop below ink.900
-    raised: "#0B1019", // cards, drawers
-    elevated: "#111827", // popovers, command palette
-    overlay: "#16203A", // hover / selected
-    line: "#1F2B45", // hairline dividers
-  },
   light: {
-    base: "#F7F8FA", // matches ink.50
-    raised: "#FFFFFF",
+    base: "#F3F4F2", // paper
+    raised: "#FFFFFF", // sheet: tables, matrix, drawers
     elevated: "#FFFFFF",
-    overlay: "#EEF2F7",
-    line: "#D5DADD",
+    overlay: "#E8EAE7",
+    line: "#DADDD8", // rule
+  },
+  dark: {
+    base: "#141617",
+    raised: "#1B1E20",
+    elevated: "#222628",
+    overlay: "#2A2F32",
+    line: "#2C3134",
   },
 } as const;
 
 /**
- * §5.1.3 — Accent (SAP Fiori Horizon blue, one shade deeper for composure
- * on dark canvases). Used for primary actions, selected state, focus ring,
- * and the verdict halo gradient.
+ * Accent: petrol. Selection, focus and links only. Primary actions are
+ * ink-solid (`--aurora-action-*`), never the accent.
  */
 export const accent = {
-  50: "#EAF2FF",
-  100: "#CCDFFF",
-  200: "#99BFFF",
-  300: "#7FB0FF",
-  400: "#4F93FF",
-  500: "#2B7BFF", // primary — electric blue, reads as live on graphite
-  600: "#1E5FD6",
-  700: "#174AAE",
-  800: "#12397F",
-  900: "#0C2756",
-  /** Selected-state fills derived from accent.500 — used by chips,
-      filter pills, and any data-selected="true" surface. Separate
-      variables keep call sites free of raw rgba() drift. */
-  selectedBg: "rgba(43, 123, 255, 0.18)",
-  selectedBorder: "rgba(43, 123, 255, 0.36)",
+  50: "#E6F1F3",
+  100: "#C4DDE2",
+  200: "#93C2CC",
+  300: "#5FA3B2",
+  400: "#2F8295",
+  500: "#0E5A6B",
+  600: "#0B4A58",
+  700: "#093C48",
+  800: "#072E37",
+  900: "#052128",
+  dark500: "#4FB3C4",
+  selectedBg: "rgba(14, 90, 107, 0.09)",
+  selectedBorder: "rgba(14, 90, 107, 0.36)",
 } as const;
 
-/**
- * Signal — the one colour reserved for *in-flight* state: a running job,
- * a live stream, a connection test under way. Never for status outcomes
- * (that is `status`), never for branding. Cyan on graphite reads as live.
- */
+/** In-flight state (running job). Same petrol; never an outcome. */
 export const signal = {
-  500: "#22D3EE",
-  bg: "rgba(34, 211, 238, 0.12)",
-  border: "rgba(34, 211, 238, 0.36)",
+  500: "#0E5A6B",
+  bg: "rgba(14, 90, 107, 0.09)",
+  border: "rgba(14, 90, 107, 0.36)",
 } as const;
 
 /**
- * §5.1.4 — Semantic status. Used exclusively for status. Never for
- * decoration or brand emphasis. A button is never danger-coloured unless
- * it performs a destructive action.
+ * Status = severity. The only colour besides petrol, so a screen's colour
+ * count is its defect count. danger = critical, high = high,
+ * warning = medium, success = OK.
  */
 export const status = {
-  success: {
-    500: "#27C281",
-    bg: "rgba(39, 194, 129, 0.12)",
-    border: "rgba(39, 194, 129, 0.34)",
-  },
-  warning: {
-    500: "#F2B134",
-    bg: "rgba(242, 177, 52, 0.12)",
-    border: "rgba(242, 177, 52, 0.34)",
-  },
-  danger: {
-    500: "#FF4D4F",
-    bg: "rgba(255, 77, 79, 0.14)",
-    border: "rgba(255, 77, 79, 0.38)",
-  },
-  info: {
-    500: "#2B7BFF",
-    bg: "rgba(43, 123, 255, 0.10)",
-    border: "rgba(43, 123, 255, 0.30)",
-  },
+  danger: { 500: "#B42318", dark500: "#F0705F", bg: "rgba(180, 35, 24, 0.08)", border: "rgba(180, 35, 24, 0.32)" },
+  high: { 500: "#C4500B", dark500: "#F08A4B", bg: "rgba(196, 80, 11, 0.08)", border: "rgba(196, 80, 11, 0.32)" },
+  warning: { 500: "#A86A00", dark500: "#E0B04A", bg: "rgba(168, 106, 0, 0.09)", border: "rgba(168, 106, 0, 0.32)" },
+  success: { 500: "#23794A", dark500: "#5CC48A", bg: "rgba(35, 121, 74, 0.08)", border: "rgba(35, 121, 74, 0.30)" },
+  info: { 500: "#0E5A6B", dark500: "#4FB3C4", bg: "rgba(14, 90, 107, 0.09)", border: "rgba(14, 90, 107, 0.36)" },
 } as const;
 
-/**
- * §5.1.5 — Data visualisation palette. Twelve-colour ordinal categorical,
- * tuned for dark canvases. Never invent or substitute — iterate in order.
- */
+/** Data visualisation (light values; aurora.css carries the dark set). */
 export const viz = {
   categorical: [
-    "#54A0FF", // luminous blue
-    "#E76500", // Fiori orange (brand link)
-    "#30D5A8", // mint
-    "#FFBA6B", // peach
-    "#A77DFF", // violet
-    "#F87AC4", // rose
-    "#6AE6F5", // cyan
-    "#F5D76E", // gold
-    "#7BD389", // fern
-    "#FF8A65", // coral
-    "#96B6FF", // periwinkle
-    "#D8A2DC", // orchid
+    "#0E5A6B",
+    "#C4500B",
+    "#5B6F8A",
+    "#A86A00",
+    "#6D5A8E",
+    "#23794A",
+    "#8E4B5F",
+    "#4F8A8B",
+    "#7A6A3A",
+    "#3D6FA3",
+    "#9A5B2E",
+    "#646B67",
   ],
   sequential: {
-    blue: ["#0F1D3D", "#1A3E85", "#2D5FC8", "#5488F1", "#8FB4FF", "#D0E2FF"],
-    amber: ["#2A1A00", "#4F3100", "#7F5200", "#B57A1D", "#E8A656", "#FFCE99"],
+    blue: ["#E6F1F3", "#C4DDE2", "#93C2CC", "#5FA3B2", "#2F8295", "#0E5A6B"],
+    amber: ["#F7EEDC", "#ECD5A6", "#DBB76A", "#C4952F", "#A86A00", "#7A4D00"],
   },
   diverging: {
-    redGreen: [
-      "#BB0000",
-      "#E87272",
-      "#F5BABA",
-      "#D5DADD",
-      "#B8E4C6",
-      "#5DC488",
-      "#0B7341",
-    ],
+    redGreen: ["#B42318", "#D9776D", "#EFC4BF", "#DADDD8", "#B9DCC7", "#5FA67D", "#23794A"],
   },
 } as const;
 
-/**
- * §5.2 — The only gradient in Aurora. Rendered behind the verdict sentence
- * on the Command Centre at 15% opacity. Any other gradient anywhere is a bug.
- */
-export const verdictHalo =
-  "radial-gradient(ellipse at center, rgba(0, 87, 210, 0.24) 0%, rgba(106, 230, 245, 0.14) 35%, rgba(248, 122, 196, 0.08) 60%, transparent 80%)";
+/** Retired. The product has no gradients. Kept so old imports resolve. */
+export const verdictHalo = "none";
 
-/** §5.3.1 — Type faces. Söhne is preferred; Inter is the open-source fallback. */
+/** Type faces: Atkinson Hyperlegible Next (UI), Atkinson Hyperlegible Mono (SAP identifiers only). */
 export const faces = {
-  display:
-    "var(--aurora-font-display), Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-  ui: "var(--aurora-font-ui), Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-  mono: "var(--aurora-font-mono), 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace",
+  display: "var(--aurora-font-display)",
+  ui: "var(--aurora-font-ui)",
+  mono: "var(--aurora-font-mono)",
 } as const;
+
+/** Two radii: controls and sheets. */
+export const radius = { control: 4, sheet: 6 } as const;
 
 /**
  * §5.3.2 — Type scale. Six sizes. Not seven. Not ten. New sizes require a
@@ -159,7 +122,7 @@ export const faces = {
  * the `type` keyword in import/export contexts.
  */
 export const typography = {
-  "text-micro": { size: 11, lineHeight: 14, tracking: "0.08em" },
+  "text-micro": { size: 11, lineHeight: 14, tracking: "0.01em" },
   "text-small": { size: 13, lineHeight: 18, tracking: "0.02em" },
   "text-body": { size: 14, lineHeight: 20, tracking: "0" },
   "text-lead": { size: 17, lineHeight: 24, tracking: "0" },
@@ -168,7 +131,7 @@ export const typography = {
 } as const;
 
 /** §5.3.3 — Numerical formatting. Tabular, lining, stylistic set 02. */
-export const numberFontFeatures = '"tnum" 1, "lnum" 1, "ss02" 1';
+export const numberFontFeatures = '"tnum" 1, "lnum" 1';
 
 /** §5.4 — Four-pixel base spacing grid. Every value is a multiple of 4. */
 export const space = {
@@ -184,34 +147,13 @@ export const space = {
   "space-24": 96,
 } as const;
 
-/** §5.6 — Elevation. Five levels. Dark = brightness shift, light = shadow. */
+/** Elevation. Sheets sit flat on paper; shadow only on overlays (2, 3). */
 export const elevation = {
-  0: {
-    dark: "var(--aurora-canvas-base)",
-    light: "var(--aurora-canvas-base)",
-    shadow: "none",
-  },
-  1: {
-    dark: "var(--aurora-canvas-raised)",
-    light: "var(--aurora-canvas-raised)",
-    shadow: "0 1px 2px rgba(10, 14, 26, 0.06)",
-  },
-  2: {
-    dark: "var(--aurora-canvas-elevated)",
-    light: "var(--aurora-canvas-elevated)",
-    shadow: "0 2px 8px rgba(10, 14, 26, 0.08)",
-  },
-  3: {
-    dark: "var(--aurora-canvas-elevated)",
-    light: "var(--aurora-canvas-elevated)",
-    shadow: "0 8px 24px rgba(10, 14, 26, 0.12)",
-  },
-  4: {
-    dark: "var(--aurora-canvas-elevated)",
-    light: "var(--aurora-canvas-elevated)",
-    shadow: "0 16px 40px rgba(10, 14, 26, 0.16)",
-    glow: "0 0 0 1px rgba(0, 87, 210, 0.40), 0 0 48px rgba(0, 87, 210, 0.24)",
-  },
+  0: { dark: "var(--aurora-canvas-base)", light: "var(--aurora-canvas-base)", shadow: "none" },
+  1: { dark: "var(--aurora-canvas-raised)", light: "var(--aurora-canvas-raised)", shadow: "none" },
+  2: { dark: "var(--aurora-canvas-elevated)", light: "var(--aurora-canvas-elevated)", shadow: "0 4px 12px rgba(21, 24, 26, 0.08)" },
+  3: { dark: "var(--aurora-canvas-elevated)", light: "var(--aurora-canvas-elevated)", shadow: "0 12px 32px rgba(21, 24, 26, 0.16)" },
+  4: { dark: "var(--aurora-canvas-raised)", light: "var(--aurora-canvas-raised)", shadow: "none" },
 } as const;
 
 /** §5.8 — Icon size tokens. Aurora icons render at exactly these sizes. */
