@@ -16,7 +16,7 @@ const named = <K extends string>(load: () => Promise<Record<K, ComponentType>>, 
 
 /** Tabs whose body is an Aurora surface — rendered on the canvas, not in the light sheet. */
 export const AURORA_TABS: ReadonlySet<string> = new Set(["/", "/executive-report", "/sync", "/issues", "/match-rules", "/business-process", "/settings/scoring", "/settings/field-mapping",
-  "/systems", "/upload", "/versions", "/admin", "/findings", "/cleaning", "/exceptions", "/dedup", "/golden-records", "/glossary", "/reports", "/notifications",
+  "/systems", "/upload", "/versions", "/admin", "/findings", "/cleaning", "/exceptions", "/dedup", "/golden-records", "/glossary", "/reports", "/notifications", "/settings", "/settings/rules", "/settings/ai", "/settings/licence", "/contracts",
   "/relationships", "/mining", "/ai/rules"]);
 
 export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
@@ -55,11 +55,11 @@ export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
   "/relationships": named(() => import("@/components/process/graph"), "GraphSurface"),
 
   "/admin": named(() => import("@/components/admin/users"), "UsersSurface"),
-  "/settings": page(() => import("@/app/(dashboard)/settings/page")),
-  "/settings/rules": page(() => import("@/app/(dashboard)/settings/rules/page")),
+  "/settings": named(() => import("@/components/admin/settings"), "SettingsSurface"),
+  "/settings/rules": named(() => import("@/components/admin/rules"), "RulesSurface"),
   "/settings/scoring": named(() => import("@/components/admin/scoring"), "ScoringSettings"),
   "/settings/field-mapping": named(() => import("@/components/admin/field-mapping"), "FieldMappingSettings"),
-  "/settings/ai": page(() => import("@/app/(dashboard)/settings/ai/page")),
-  "/settings/licence": page(() => import("@/app/(dashboard)/settings/licence/page")),
-  "/contracts": page(() => import("@/app/(dashboard)/contracts/page")),
+  "/settings/ai": named(() => import("@/components/admin/ai"), "AISurface"),
+  "/settings/licence": named(() => import("@/components/admin/licence"), "LicenceSurface"),
+  "/contracts": named(() => import("@/components/admin/contracts"), "ContractsSurface"),
 };

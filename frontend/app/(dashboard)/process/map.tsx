@@ -237,7 +237,8 @@ export function ProcessMapPage() {
             <SectionHeader title="Bottlenecks" caption="Steps with the highest affected-records counts" />
             <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 12 }}>
               {bottlenecks.map((b) => {
-                const passRate = b.avg_pass_rate ?? 0;
+                // avg_pass_rate is 0-100; null means no rated checks, so no bar.
+                const passRate = b.avg_pass_rate;
                 return (
                   <div key={b.id} className="mn-bottleneck">
                     <div style={{ minWidth: 140 }}>
@@ -254,15 +255,15 @@ export function ProcessMapPage() {
                       </div>
                     </div>
                     <div style={{ flex: 1, height: 10, background: "var(--mn-line)", borderRadius: 5, overflow: "hidden" }}>
-                      <div
+                      {passRate !== null && <div
                         style={{
-                          width: `${Math.min(100, Math.max(5, 100 - passRate * 100))}%`,
+                          width: `${Math.min(100, Math.max(5, 100 - passRate))}%`,
                           height: "100%",
                           background: "linear-gradient(90deg, var(--mn-warn), var(--mn-neg))",
                           borderRadius: 5,
                           transition: "width 900ms cubic-bezier(.2,.7,.2,1)",
                         }}
-                      />
+                      />}
                     </div>
                     <div style={{ minWidth: 80, textAlign: "right" }}>
                       <span

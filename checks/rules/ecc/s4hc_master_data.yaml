@@ -1,0 +1,217 @@
+# S/4HANA-specific master data rules: Business Partner roles, customer/vendor
+# integration (CVI) and product valuation. Read live from S/4HANA Cloud OData
+# (sap/s4hana_cloud.S4HC_TABLE_MAP maps A_BusinessPartner, A_BusinessPartnerRole,
+# A_Supplier, A_Customer, A_Product, A_ProductPlant, A_ProductValuation onto the
+# ECC tables below) or from an S/4HANA on-premise extract / upload.
+# Rules that ECC modules already run (BP grouping / role values, PARTNER_GUID
+# uniqueness, material type, price control values) are not repeated here.
+module: s4hc_master_data
+target_state: S4HANA
+rules:
+- id: S4C001
+  field: BUT000.PARTNER
+  check_class: exists_check
+  target_table: BUT100
+  target_fields:
+  - PARTNER
+  grain: BUT000
+  severity: high
+  dimension: completeness
+  message: Business partner has no BP role
+  why_it_matters: In S/4HANA every business function is reached through a BP role (FLVN00 / FLVN01 supplier, FLCU00 / FLCU01
+    customer, BUP001 contact person). A partner without any role is a general record that no purchasing, sales or finance
+    process can select, so it is either an incomplete conversion or an orphan.
+  rule_authority: sap_hard_constraint
+  sap_impact: The partner cannot be used in any purchase order, sales order, invoice or payment. CVI synchronisation creates
+    no supplier or customer for it.
+  fix_map:
+    __other__: Assign the role the partner needs in transaction BP (S/4HANA on-premise) or Fiori app F3163 Manage Business
+      Partner Master Data, or flag the partner for archiving if it is not needed.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: no BP role is assigned. Add the supplier, customer or contact role
+    in BP / Fiori app F3163.'
+- id: S4C002
+  field: LFA1.LIFNR
+  check_class: exists_check
+  target_table: CVI_VEND_LINK
+  target_fields:
+  - VENDOR
+  grain: LFA1
+  severity: critical
+  dimension: consistency
+  message: Supplier has no linked business partner (CVI vendor link missing)
+  why_it_matters: S/4HANA maintains suppliers only through the Business Partner. CVI_VEND_LINK ties each supplier account
+    to its partner; a supplier without that link cannot be changed through BP, is skipped by CVI synchronisation and blocks
+    the system conversion check (CVI_PRECHECK).
+  rule_authority: sap_hard_constraint
+  sap_impact: Supplier master changes fail in BP / Fiori. The S/4HANA conversion simplification check reports the supplier
+    as not converted. Partner-based functions (credit, compliance screening, Ariba / Business Network sync) skip it.
+  fix_map:
+    __other__: Run CVI synchronisation (transaction MDS_LOAD_COCKPIT, direction vendor to BP) for the supplier, or create
+      the business partner with supplier role and link it in transaction BP.
+  record_fix_template: 'Supplier {LFA1.LIFNR}: no business partner is linked through CVI_VEND_LINK. Synchronise it with
+    MDS_LOAD_COCKPIT.'
+- id: S4C003
+  field: KNA1.KUNNR
+  check_class: exists_check
+  target_table: CVI_CUST_LINK
+  target_fields:
+  - CUSTOMER
+  grain: KNA1
+  severity: critical
+  dimension: consistency
+  message: Customer has no linked business partner (CVI customer link missing)
+  why_it_matters: S/4HANA maintains customers only through the Business Partner. CVI_CUST_LINK ties each customer account
+    to its partner; a customer without that link cannot be changed through BP, is skipped by CVI synchronisation and blocks
+    the system conversion check.
+  rule_authority: sap_hard_constraint
+  sap_impact: Customer master changes fail in BP / Fiori. Credit management (UKM_BP), sales and dunning functions that read
+    the partner do not find the customer.
+  fix_map:
+    __other__: Run CVI synchronisation (transaction MDS_LOAD_COCKPIT, direction customer to BP) for the customer, or create
+      the business partner with customer role and link it in transaction BP.
+  record_fix_template: 'Customer {KNA1.KUNNR}: no business partner is linked through CVI_CUST_LINK. Synchronise it with
+    MDS_LOAD_COCKPIT.'
+- id: S4C004
+  field: CVI_VEND_LINK.VENDOR
+  check_class: exists_check
+  target_table: LFA1
+  target_fields:
+  - LIFNR
+  grain: CVI_VEND_LINK
+  severity: high
+  dimension: consistency
+  message: Business partner points to a supplier account that does not exist
+  why_it_matters: A CVI link to a supplier number that is not in LFA1 is a broken half of the BP / supplier pair, usually
+    left by a deleted or archived supplier or an interrupted conversion. Every process that reads the supplier through the
+    partner fails.
+  rule_authority: sap_hard_constraint
+  sap_impact: Purchasing and invoice verification for the partner fail with supplier-not-found errors; CVI synchronisation
+    reports the inconsistency.
+  fix_map:
+    __other__: Re-run CVI synchronisation for the partner (MDS_LOAD_COCKPIT) to recreate the supplier, or remove the
+      obsolete link with the CVI consistency report (CVI_UPGRADE_CHECK_RESOLVE).
+  record_fix_template: 'CVI link to supplier {CVI_VEND_LINK.VENDOR}: the supplier does not exist. Re-synchronise or remove
+    the link.'
+- id: S4C005
+  field: CVI_CUST_LINK.CUSTOMER
+  check_class: exists_check
+  target_table: KNA1
+  target_fields:
+  - KUNNR
+  grain: CVI_CUST_LINK
+  severity: high
+  dimension: consistency
+  message: Business partner points to a customer account that does not exist
+  why_it_matters: A CVI link to a customer number that is not in KNA1 is a broken half of the BP / customer pair. Sales,
+    billing and receivables processes that read the customer through the partner fail.
+  rule_authority: sap_hard_constraint
+  sap_impact: Sales orders and billing for the partner fail with customer-not-found errors; CVI synchronisation reports
+    the inconsistency.
+  fix_map:
+    __other__: Re-run CVI synchronisation for the partner (MDS_LOAD_COCKPIT) to recreate the customer, or remove the obsolete
+      link with the CVI consistency report (CVI_UPGRADE_CHECK_RESOLVE).
+  record_fix_template: 'CVI link to customer {CVI_CUST_LINK.CUSTOMER}: the customer does not exist. Re-synchronise or remove
+    the link.'
+- id: S4C006
+  field: BUT000.PARTNER_GUID
+  check_class: exists_check
+  target_table: CVI_VEND_LINK
+  target_fields:
+  - PARTNER_GUID
+  grain: BUT100
+  applies_when:
+    BUT100.RLTYP: [FLVN00, FLVN01]
+  severity: critical
+  dimension: consistency
+  message: Business partner has a supplier role but no supplier account
+  why_it_matters: The supplier roles FLVN00 / FLVN01 create the supplier account through CVI. A partner carrying the role
+    without a linked supplier means synchronisation failed or was switched off, so the partner looks like a supplier in
+    BP but cannot be ordered from or paid.
+  rule_authority: sap_hard_constraint
+  sap_impact: ME21N / Manage Purchase Orders cannot select the partner; MIRO and the payment run F110 have no supplier account
+    to post to.
+  fix_map:
+    __other__: Re-save the partner in BP with the supplier role so CVI creates the supplier, or process the failed record
+      in MDS_LOAD_COCKPIT / the CVI synchronisation monitor (MDS_PPO2).
+  record_fix_template: 'Business partner {BUT000.PARTNER}: supplier role {BUT100.RLTYP} without a linked supplier account.
+    Re-synchronise through CVI.'
+- id: S4C007
+  field: BUT000.PARTNER_GUID
+  check_class: exists_check
+  target_table: CVI_CUST_LINK
+  target_fields:
+  - PARTNER_GUID
+  grain: BUT100
+  applies_when:
+    BUT100.RLTYP: [FLCU00, FLCU01]
+  severity: critical
+  dimension: consistency
+  message: Business partner has a customer role but no customer account
+  why_it_matters: The customer roles FLCU00 / FLCU01 create the customer account through CVI. A partner carrying the role
+    without a linked customer means synchronisation failed, so the partner looks like a customer in BP but cannot be sold
+    to or invoiced.
+  rule_authority: sap_hard_constraint
+  sap_impact: VA01 / Manage Sales Orders cannot select the partner; billing and receivables have no customer account to post
+    to.
+  fix_map:
+    __other__: Re-save the partner in BP with the customer role so CVI creates the customer, or process the failed record
+      in MDS_LOAD_COCKPIT / the CVI synchronisation monitor (MDS_PPO2).
+  record_fix_template: 'Business partner {BUT000.PARTNER}: customer role {BUT100.RLTYP} without a linked customer account.
+    Re-synchronise through CVI.'
+- id: S4C008
+  field: BUT000.BU_GROUP
+  check_class: null_check
+  grain: BUT000
+  severity: high
+  dimension: completeness
+  message: Business partner has no grouping
+  why_it_matters: The BP grouping drives the partner number range and, through CVI, the supplier / customer account group.
+    A partner without grouping cannot be synchronised to a supplier or customer account and has no defined number range.
+  rule_authority: sap_hard_constraint
+  sap_impact: CVI synchronisation fails for the partner; number range and field control derived from the grouping do not
+    apply.
+  fix_map:
+    __blank__: Assign the grouping in BP / Fiori app F3163 (grouping is chosen at creation; a missing value usually points
+      to a migration load that bypassed it).
+  record_fix_template: 'Business partner {BUT000.PARTNER}: BU_GROUP is {actual_value}. Assign the grouping.'
+- id: S4C009
+  field: MBEW.BWKEY
+  check_class: null_check
+  grain: MARC
+  applies_when:
+    MARA.MTART:
+      not_in: [UNBW, NLAG, LEIH, DIEN]
+  severity: high
+  dimension: completeness
+  message: Product is extended to a plant but has no valuation data there
+  why_it_matters: Valuated product types need accounting data (valuation class, price control, price) for each valuation
+    area they are stocked in. A plant view without valuation means the first goods movement fails, and in S/4HANA the
+    material ledger has nothing to value.
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods receipts, issues and inventory postings at the plant fail with missing-accounting-view errors (M7 / M8).
+    Product costing cannot cost the product.
+  fix_map:
+    __blank__: Create the accounting view for the plant's valuation area in Fiori app F1602 Manage Product Master Data (or
+      MM01 / MM02, Accounting 1 view).
+  record_fix_template: 'Product {MARC.MATNR} in plant {MARC.WERKS}: no valuation (MBEW) record. Create the accounting view.'
+- id: S4C010
+  field: MBEW.VPRSV
+  check_class: cross_field_check
+  grain: MBEW
+  applies_when:
+    MARA.MTART: [FERT, HALB]
+  fail_when: "`MBEW.VPRSV` != 'S'"
+  severity: medium
+  dimension: consistency
+  message: Finished or semi-finished product is not valued at standard price
+  why_it_matters: Produced goods are normally valued at standard price so production variances are visible against the cost
+    estimate. Moving average price on FERT / HALB lets production order settlement move the price, hides variances and
+    distorts the actual costing run of the S/4HANA material ledger.
+  rule_authority: best_practice
+  sap_impact: Production variances (KKS1 / KKS2) are not reported; inventory value follows each settlement; product cost
+    estimates cannot be released to the price.
+  fix_map:
+    __other__: Change price control to S in the accounting view (F1602 / MM02) after a cost estimate is released, or document
+      why the product is moving-average valued.
+  record_fix_template: 'Product {MBEW.MATNR} in valuation area {MBEW.BWKEY}: price control is ''{actual_value}'', expected
+    S for finished / semi-finished products.'

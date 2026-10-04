@@ -3839,3 +3839,11 @@
 .aurora-notifs__row:not([data-unread="true"]) { opacity: 0.75; }
 .aurora-notifs__body { display: flex; flex-direction: column; gap: 2px; min-width: 0; text-align: left; background: none; border: 0; padding: 0; color: inherit; cursor: pointer; font: inherit; }
 .aurora-notifs__body > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Settings: ways into each settings tab */
+.aurora-linkcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--aurora-space-4); }
+.aurora-linkcard { display: flex; flex-direction: column; gap: var(--aurora-space-1); padding: var(--aurora-space-4); border: 1px solid var(--aurora-canvas-line); border-radius: 12px; background: var(--aurora-canvas-raised); color: inherit; text-decoration: none; transition: border-color var(--aurora-motion-fast, 160ms), background var(--aurora-motion-fast, 160ms); }
+.aurora-linkcard:hover { border-color: var(--aurora-accent-500); background: var(--aurora-accent-selected-bg); }
+
+/* Structured terms and conditions shown as they are stored */
+.aurora-code { margin: 0; padding: var(--aurora-space-3); border: 1px solid var(--aurora-canvas-line); border-radius: 8px; background: var(--aurora-canvas-base); font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 12px; line-height: 18px; overflow: auto; max-height: 320px; color: var(--aurora-fg-secondary); }

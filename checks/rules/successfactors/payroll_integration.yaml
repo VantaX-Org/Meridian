@@ -685,3 +685,67 @@ rules:
         payment wage types; correct and re-run payroll.'
     record_fix_template: 'Employee {ZMERIDIAN_PAYRT.PERNR} result {ZMERIDIAN_PAYRT.SEQNR} (period {ZMERIDIAN_PAYRT.FPPER}):
       bank transfer exceeds amount paid.'
+  - id: PAY020
+    field: PAYRESULT.PAY_DATE
+    check_class: cross_field_check
+    fail_when: (`PAYRESULT.PAY_DATE` - `EMPEMPLOYMENT.END_DATE`).dt.days > 90
+    require_populated: true
+    applies_when:
+      PAYRESULT.GROSS_PAY:
+        gt: 0
+    severity: high
+    dimension: consistency
+    message: Employee was paid more than 90 days after the employment ended
+    why_it_matters: Final pay, leave payout and late bonuses are normally settled within a few pay periods of leaving.
+      Gross pay more than 90 days later suggests the leaver is still on the payroll.
+    rule_authority: best_practice
+    sap_impact: Overpayment to a leaver that must be recovered; payroll cost and headcount reports include a leaver.
+    fix_map:
+      __other__: Confirm the payment with payroll. If it is not a planned late payment, stop pay for the employee and
+        recover the overpayment.
+    record_fix_template: 'Employee {PAYRESULT.USERID}: paid on {PAYRESULT.PAY_DATE}, employment ended
+      {EMPEMPLOYMENT.END_DATE}.'
+  - id: PAY021
+    field: PAYRESULT.PAY_DATE
+    check_class: cross_field_check
+    fail_when: '`PAYRESULT.PAY_DATE` < `EMPEMPLOYMENT.START_DATE`'
+    require_populated: true
+    severity: medium
+    dimension: consistency
+    message: Payroll result is dated before the employment started
+    why_it_matters: An employee cannot be paid for a period before the hire date. A pay date before hire means the hire
+      date in Employee Central does not match payroll, or the result belongs to an earlier employment.
+    rule_authority: best_practice
+    sap_impact: Service dates, statutory year-to-date totals and payroll reconciliation are wrong.
+    fix_map:
+      __other__: Check the hire date in Employee Central against the payroll system and correct the wrong one.
+    record_fix_template: 'Employee {PAYRESULT.USERID}: paid on {PAYRESULT.PAY_DATE}, hired {EMPEMPLOYMENT.START_DATE}.'
+  - id: PAY022
+    field: PAYRESULT.NET_PAY
+    check_class: cross_field_check
+    fail_when: '`PAYRESULT.NET_PAY` < 0'
+    severity: medium
+    dimension: validity
+    message: Net pay is negative
+    why_it_matters: Negative net pay means deductions are larger than gross pay. It happens after overpayment recovery or
+      retroactive changes, but it creates a debt the employee owes and needs follow-up.
+    rule_authority: best_practice
+    sap_impact: Bank transfer cannot be made; the employee owes money that must be recovered in a later period.
+    fix_map:
+      __other__: Review the deductions and retroactive changes for the period with payroll and agree a recovery plan.
+    record_fix_template: 'Employee {PAYRESULT.USERID}: net pay {PAYRESULT.NET_PAY} on {PAYRESULT.PAY_DATE}.'
+  - id: PAY023
+    field: PAYRESULT.CURRENCY
+    check_class: cross_field_check
+    fail_when: '`PAYRESULT.CURRENCY` != `FOCOMPANY.CURRENCY`'
+    require_populated: true
+    severity: low
+    dimension: consistency
+    message: Payroll result currency differs from the legal entity's default currency
+    why_it_matters: Payroll normally runs in the currency of the legal entity. A different currency often means the
+      employee is in the wrong legal entity in Employee Central or the payroll mapping is wrong.
+    rule_authority: best_practice
+    sap_impact: Payroll posting to finance and cost reports convert amounts at the wrong rate or fail.
+    fix_map:
+      __other__: Confirm the employee's legal entity and the payroll currency mapping; correct the wrong one.
+    record_fix_template: 'Employee {PAYRESULT.USERID}: paid in {PAYRESULT.CURRENCY}, legal entity uses {FOCOMPANY.CURRENCY}.'

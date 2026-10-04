@@ -1,0 +1,57 @@
+{
+ "table": "/SCWM/T331",
+ "description": "Storage type control",
+ "category": "TRANSP",
+ "delivery_class": "C",
+ "source": "SAP EWM standard DDIC (key fields and selected fields; see note)",
+ "foreign_keys": [
+  {
+   "field": "LGNUM",
+   "foreign_table": "/SCWM/T300",
+   "foreign_field": "LGNUM"
+  },
+  {
+   "field": "LGTYP",
+   "foreign_table": "/SCWM/T301",
+   "foreign_field": "LGTYP"
+  }
+ ],
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": null,
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "LGNUM",
+   "key": true,
+   "data_element": null,
+   "domain": null,
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Warehouse Number/Warehouse Complex",
+   "check_table": "/SCWM/T300"
+  },
+  {
+   "pos": 3,
+   "name": "LGTYP",
+   "key": true,
+   "data_element": null,
+   "domain": null,
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Storage Type",
+   "check_table": "/SCWM/T301"
+  }
+ ]
+}

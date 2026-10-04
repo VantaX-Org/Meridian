@@ -88,5 +88,30 @@
     "name": "notifications",
     "path": "/?tab=notifications",
     "heading": "Command Centre"
+  },
+  {
+    "name": "settings",
+    "path": "/admin?tab=settings",
+    "heading": "Admin"
+  },
+  {
+    "name": "rules",
+    "path": "/admin?tab=rules",
+    "heading": "Admin"
+  },
+  {
+    "name": "ai",
+    "path": "/admin?tab=ai",
+    "heading": "Admin"
+  },
+  {
+    "name": "licence",
+    "path": "/admin?tab=licence",
+    "heading": "Admin"
+  },
+  {
+    "name": "contracts",
+    "path": "/admin?tab=contracts",
+    "heading": "Admin"
   }
 ]
