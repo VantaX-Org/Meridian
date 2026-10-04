@@ -224,6 +224,50 @@ def test_s4hc_extractor_maps_odata_to_ecc_tables():
     assert status["BUT100"] == "live" and status["BUT000"] == "live"
 
 
+class _Resp:
+    def __init__(self, status, body):
+        self.status_code, self._body = status, body
+
+    def json(self):
+        return self._body
+
+    def raise_for_status(self):
+        assert self.status_code == 200
+
+
+class _ConcurHTTP:
+    """Fake httpx client: records each GET; refuses user=ALL when ``grant_all`` is False."""
+    def __init__(self, grant_all):
+        self.grant_all, self.calls = grant_all, []
+
+    def get(self, url, params=None):
+        self.calls.append((url, dict(params or {})))
+        if (params or {}).get("user") == "ALL" and not self.grant_all:
+            return _Resp(403, {})
+        return _Resp(200, {"Items": [{"ID": "R1", "OwnerLoginID": "U1"}], "NextPage": None})
+
+
+@pytest.mark.parametrize("grant_all", [True, False])
+def test_concur_requests_all_users_reports(grant_all):
+    from sap.concur import ConcurConnector
+    conn = ConcurConnector()
+    conn._client, conn._token_expiry = _ConcurHTTP(grant_all), float("inf")
+    d = dictionary_for_system("concur")
+    frames, coverage = ConnectivityManager._extract_rest(
+        object.__new__(ConnectivityManager), conn, ["concur_expense", "concur_users"], d, "concur")
+    calls = conn._client.calls
+    for path in ("/api/v3.0/expense/reports", "/api/v3.0/expense/entries"):
+        assert (path, {"limit": 100, "user": "ALL"}) in calls
+    assert all("user" not in p for u, p in calls if u == "/api/v3.0/common/users")
+    report = next(c for c in coverage if c["table"] == "CONCUR_REPORT")
+    assert report["status"] == "live" and report["rows"] == 1
+    if grant_all:
+        assert "partial" not in report
+    else:  # refused: fell back to own reports, flagged as partial coverage
+        assert report["partial"] is True and report["complete"] is False and "user=ALL" in report["detail"]
+        assert ("/api/v3.0/expense/reports", {"limit": 100}) in calls
+
+
 @pytest.mark.parametrize("system,module,table,payload,expect", [
     ("concur", "concur_users", "CONCUR_USER",
      {"LoginID": "U1", "Active": True, "EmployeeID": "E1"},

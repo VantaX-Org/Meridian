@@ -504,8 +504,13 @@ class ConnectivityManager:
                         s = s.map(lambda v: str(v).lower() if v is not None and v == v else v)
                     out[f"{table}.{name}"] = s
             frames[table] = out
-            coverage.append({"table": table, "status": "live", "rows": len(out),
-                             "unavailable_fields": sorted(n for n, p in props.items() if p not in df.columns)})
+            entry = {"table": table, "status": "live", "rows": len(out),
+                     "unavailable_fields": sorted(n for n, p in props.items() if p not in df.columns)}
+            if t.note in getattr(connector, "own_reports_only", ()):
+                entry.update(partial=True, complete=False,
+                             detail="Concur refused user=ALL; only the API user's own reports were read. "
+                                    "Grant the connection company-wide expense access.")
+            coverage.append(entry)
         return frames, coverage
 
     # -- Extraction ------------------------------------------------------------

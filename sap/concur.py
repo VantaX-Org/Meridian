@@ -80,6 +80,11 @@ CONCUR_MODULE_ENDPOINTS: dict[str, list[dict[str, Any]]] = {
 }
 
 
+# v3.0 expense endpoints default to the calling user's own reports; ``user=ALL``
+# asks for every user (needs a company-level / Web Services Admin grant).
+ALL_USERS_PATHS = ("/api/v3.0/expense/reports", "/api/v3.0/expense/entries")
+
+
 class ConcurConnector(CloudSAPConnector):
     """SAP Concur REST connector.
 
@@ -92,6 +97,8 @@ class ConcurConnector(CloudSAPConnector):
         self._params: CloudConnectionParams | None = None
         self._access_token: str = ""
         self._token_expiry: float = 0.0
+        # paths read without ``user=ALL`` because the token was refused company-wide access
+        self.own_reports_only: set[str] = set()
 
     # ------------------------------------------------------------------
     # CloudSAPConnector interface
@@ -295,14 +302,23 @@ class ConcurConnector(CloudSAPConnector):
         page_size = 100
         collected = 0
         url: str | None = path
+        all_users = path in ALL_USERS_PATHS
 
         while url is not None:
             params: dict[str, Any] = {"limit": page_size}
             if filter_expr:
                 params["filter"] = filter_expr
+            if all_users:
+                params["user"] = "ALL"
 
             try:
                 resp = self._client.get(url, params=params)
+                if all_users and url == path and resp.status_code in (401, 403):
+                    # No company-wide grant: fall back to the API user's own reports and say so.
+                    logger.warning("Concur refused user=ALL on %s; reading own reports only", path)
+                    self.own_reports_only.add(path)
+                    all_users = False
+                    continue
                 resp.raise_for_status()
                 body = resp.json()
             except httpx.HTTPStatusError as exc:
