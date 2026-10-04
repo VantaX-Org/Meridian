@@ -83,6 +83,22 @@ def test_values_coerced_to_string():
 # ---------------------------------------------------------------------------
 
 
+def test_startswith_operator():
+    df = pd.DataFrame({"EQUI.EQTYP": ["M1", "MX", "S", None]})
+    out = apply_context(df, {"EQUI.EQTYP": {"startswith": ["M"]}})
+    assert out.index.tolist() == [0, 1]
+
+
+def test_today_relative_date_operators():
+    today = pd.Timestamp.today().normalize()
+    day = lambda n: (today - pd.Timedelta(days=n)).strftime("%Y%m%d")
+    df = pd.DataFrame({"EKKO.BEDAT": [day(10), day(200), "00000000", None,
+                                      (today - pd.Timedelta(days=400)).strftime("%Y-%m-%d")]})
+    assert apply_context(df, {"EKKO.BEDAT": {"older_than_days": 90}}).index.tolist() == [1, 4]
+    assert apply_context(df, {"EKKO.BEDAT": {"within_days": 90}}).index.tolist() == [0]
+    assert apply_context(df, {"EKKO.BEDAT": {"older_than_days": 90, "within_days": 365}}).index.tolist() == [1]
+
+
 def test_runner_respects_applies_when(tmp_path, monkeypatch):
     """Load a synthetic YAML rule with applies_when; verify total_count
     reflects only matching rows."""

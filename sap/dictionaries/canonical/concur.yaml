@@ -1,0 +1,71 @@
+# Meridian canonical views over SAP Concur Expense (REST v3.0).
+#
+# Rules address Concur data as TABLE.FIELD (e.g. CONCUR_REPORT.REPORT_ID).
+# A table's `source` is the REST path the Concur connector reads; a field's
+# `source` is the JSON property of each item. Properties come from
+# sap/concur.py (CONCUR_MODULE_ENDPOINTS) or SAP Concur's published v3.0
+# Expense Report / Entry / User reference; the connector drops properties a
+# tenant does not return, so the rules that need them are not applicable.
+# Booleans are delivered as "true" / "false".
+# Types: STRING, DATETIME, DECIMAL, BOOLEAN. length 0 = not fixed.
+
+system: concur
+tables:
+  CONCUR_REPORT:
+    description: Expense report header
+    source: /api/v3.0/expense/reports
+    keys: [REPORT_ID]
+    fields:
+      REPORT_ID:             {source: ID, type: STRING, description: Report ID}
+      NAME:                  {source: Name, type: STRING, description: Report name}
+      OWNER_LOGIN_ID:        {source: OwnerLoginID, type: STRING, description: Report owner login ID}
+      OWNER_NAME:            {source: OwnerName, type: STRING, description: Report owner name}
+      APPROVAL_STATUS:       {source: ApprovalStatusName, type: STRING, description: Approval status (text)}
+      APPROVAL_STATUS_CODE:  {source: ApprovalStatusCode, type: STRING, description: "Approval status code (A_NOTF, A_PEND, A_RESU, A_APPR, ...)"}
+      APPROVER_LOGIN_ID:     {source: ApproverLoginID, type: STRING, description: Current approver login ID}
+      PAYMENT_STATUS:        {source: PaymentStatusName, type: STRING, description: Payment status (text)}
+      PAYMENT_STATUS_CODE:   {source: PaymentStatusCode, type: STRING, description: Payment status code}
+      POLICY_ID:             {source: PolicyID, type: STRING, description: Expense policy ID}
+      TOTAL:                 {source: Total, type: DECIMAL, description: Report total in report currency}
+      CURRENCY_CODE:         {source: CurrencyCode, type: STRING, description: Report currency (ISO 4217)}
+      SUBMIT_DATE:           {source: SubmitDate, type: DATETIME, description: Submitted on}
+      APPROVED_DATE:         {source: ApprovedDate, type: DATETIME, description: Approved on}
+      RECEIPTS_RECEIVED:     {source: ReceiptsReceived, type: BOOLEAN, description: Paper receipts received}
+      HAS_EXCEPTION:         {source: HasException, type: BOOLEAN, description: Report carries an audit exception}
+      ORG_UNIT_1:            {source: OrgUnit1, type: STRING, description: Org unit 1}
+      ORG_UNIT_2:            {source: OrgUnit2, type: STRING, description: Org unit 2}
+      CUSTOM_1:              {source: Custom1, type: STRING, description: Custom field 1}
+  CONCUR_ENTRY:
+    description: Expense entry (line of an expense report)
+    source: /api/v3.0/expense/entries
+    keys: [ENTRY_ID]
+    fields:
+      ENTRY_ID:              {source: ID, type: STRING, description: Entry ID}
+      REPORT_ID:             {source: ReportID, type: STRING, description: Report ID}
+      EXPENSE_TYPE_CODE:     {source: ExpenseTypeCode, type: STRING, description: Expense type code}
+      EXPENSE_TYPE_NAME:     {source: ExpenseTypeName, type: STRING, description: Expense type name}
+      TRANSACTION_DATE:      {source: TransactionDate, type: DATETIME, description: Transaction date}
+      TRANSACTION_AMOUNT:    {source: TransactionAmount, type: DECIMAL, description: Amount in transaction currency}
+      TRANSACTION_CURRENCY_CODE: {source: TransactionCurrencyCode, type: STRING, description: Transaction currency (ISO 4217)}
+      EXCHANGE_RATE:         {source: ExchangeRate, type: DECIMAL, description: Transaction to report currency rate}
+      POSTED_AMOUNT:         {source: PostedAmount, type: DECIMAL, description: Amount in report currency}
+      VENDOR_DESCRIPTION:    {source: VendorDescription, type: STRING, description: Merchant}
+      LOCATION_NAME:         {source: LocationName, type: STRING, description: Location}
+      IS_BILLABLE:           {source: IsBillable, type: BOOLEAN, description: Billable to a client}
+      IS_PERSONAL:           {source: IsPersonal, type: BOOLEAN, description: Personal (not reimbursable)}
+      RECEIPT_RECEIVED:      {source: ReceiptReceived, type: BOOLEAN, description: Paper receipt received}
+      HAS_IMAGE:             {source: HasImage, type: BOOLEAN, description: Receipt image attached}
+      IS_IMAGE_REQUIRED:     {source: IsImageRequired, type: BOOLEAN, description: Policy requires a receipt image}
+  CONCUR_USER:
+    description: Concur user profile
+    source: /api/v3.0/common/users
+    keys: [LOGIN_ID]
+    fields:
+      LOGIN_ID:              {source: LoginID, type: STRING, description: Login ID}
+      FIRST_NAME:            {source: FirstName, type: STRING, description: First name}
+      LAST_NAME:             {source: LastName, type: STRING, description: Last name}
+      EMAIL:                 {source: EmailAddress, type: STRING, lowercase: true, description: E-mail address}
+      ACTIVE:                {source: Active, type: BOOLEAN, description: User is active}
+      EMPLOYEE_ID:           {source: EmployeeID, type: STRING, description: Employee ID}
+      ORG_UNIT:              {source: OrganizationUnit, type: STRING, description: Organisation unit}
+      COST_CENTER:           {source: CostCenter, type: STRING, description: Cost centre}

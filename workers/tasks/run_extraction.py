@@ -107,6 +107,7 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
 
             from api.config import settings
             from api.services.storage import upload_file
+            from workers.dataset import parquet_name
 
             prefix = f"staging/{tenant_id}/{version_id}/"
             total_rows = int(sum(len(d) for d in data_tables.values()))
@@ -116,7 +117,7 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
                 df.astype("string").to_parquet(buf, index=False)
                 # Upload failure fails the extraction — never report success
                 # for data the checks cannot read.
-                upload_file(settings.minio_bucket_uploads, f"{prefix}{table}.parquet", buf.getvalue())
+                upload_file(settings.minio_bucket_uploads, f"{prefix}{parquet_name(table)}", buf.getvalue())
                 stored += len(df)
                 jobs.update_job(tenant_id, job_id, stage="store", rows_done=stored, rows_total=total_rows,
                                 message=f"Stored {table}")

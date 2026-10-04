@@ -103,7 +103,8 @@ async def lifespan(app: FastAPI):
                             "'learning_management','time_attendance',"
                             "'ewms_stock','ewms_transfer_orders','batch_management','mdg_master_data',"
                             "'grc_compliance','fleet_management','transport_management','wm_interface',"
-                            "'cross_system_integration'])"
+                            "'cross_system_integration','s4hc_master_data','concur_expense',"
+                            "'concur_users','ariba_supplier','ariba_contracts','ariba_procurement'])"
                         )
                     )
                     await session.commit()
