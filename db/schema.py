@@ -13,6 +13,7 @@ See: docs/ARCHITECTURE.md for detailed design rationale.
 import uuid
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     Column,
     Date,
@@ -115,6 +116,7 @@ class Finding(Base):
     rule_context = Column(JSONB, nullable=True)
     value_fix_map = Column(JSONB, nullable=True)
     record_fixes = Column(JSONB, nullable=True)
+    finding_type = Column(Text, nullable=False, server_default="rule")  # rule | anomaly (migration 054)
     created_at = Column(
         DateTime(timezone=True),
         nullable=False,
@@ -923,6 +925,25 @@ class FieldProfile(Base):
     __table_args__ = (
         UniqueConstraint("version_id", "module", "table_name", "field", name="uq_field_profiles"),
         Index("ix_field_profiles_tenant_version_module", "tenant_id", "version_id", "module"),
+    )
+
+
+class TableProfile(Base):
+    """Profile of one extracted table in one version — the anomaly baseline (migration 054)."""
+    __tablename__ = "table_profiles"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    version_id = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id", ondelete="CASCADE"), nullable=False)
+    system_id = Column(Text, nullable=True)
+    table_name = Column(Text, nullable=False)
+    row_count = Column(BigInteger, nullable=False)
+    profile = Column(JSONB, nullable=False, server_default="{}")  # checks/anomaly.py:profile_table
+    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
+
+    __table_args__ = (
+        UniqueConstraint("version_id", "table_name", name="uq_table_profiles"),
+        Index("ix_table_profiles_baseline", "tenant_id", "system_id", "table_name", "created_at"),
     )
 
 
