@@ -1,10 +1,15 @@
 """Rule studio: draft validation, expression whitelist, DDIC check and dry-run evaluation."""
 
+import asyncio
+import uuid
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock
+
 import pandas as pd
 import pytest
 from fastapi import HTTPException
 
-from api.routes.rules import CustomRuleIn, _build_rule, _missing_fields, _safe_expression, evaluate_rule
+from api.routes.rules import (CustomRuleIn, VersionCreate, _build_rule, create_version, _missing_fields, _safe_expression, evaluate_rule)
 from checks.frames import TableFrames
 from sap.ddic import get_dictionary
 
@@ -45,3 +50,30 @@ def test_dry_run_counts_failing_records():
     df = pd.DataFrame({"LFA1.LIFNR": ["1", "2", "3"], "LFA1.LAND1": ["ZA", None, "DE"]})
     out = evaluate_rule(_build_rule(draft(check_class="null_check", field="LFA1.LAND1")), TableFrames.from_flat(df, d))
     assert (out["population"], out["failing"], out["sample_keys"]) == (3, 1, ["LIFNR=0000000002"])
+
+
+def _post_version(body: dict):
+    db = AsyncMock()
+    db.execute.return_value = MagicMock(mappings=lambda: MagicMock(one=lambda: {"version": 1, "body": body}))
+    out = asyncio.run(create_version("CR-TEST0001", VersionCreate(body=body), db=db,
+                                     tenant=SimpleNamespace(id=uuid.uuid4())))
+    return out, db
+
+
+def test_version_rejects_unsafe_expression():
+    base = {"module": "accounts_payable", "check_class": "cross_field_check", "field": "LFA1.LAND1",
+            "severity": "high", "message": "m"}
+    for key in ("fail_when", "condition"):
+        with pytest.raises(HTTPException) as e:
+            _post_version({**base, key: "__import__('os').system('id')"})
+        assert e.value.status_code == 422 and "Expression may use only" in e.value.detail
+    with pytest.raises(HTTPException) as e:
+        _post_version({**base, "fail_when": ["`LFA1.LAND1` == 'ZA'"]})
+    assert e.value.status_code == 422
+
+
+def test_version_accepts_safe_expression():
+    body = {"module": "accounts_payable", "check_class": "cross_field_check", "field": "LFA1.LAND1",
+            "severity": "high", "message": "m", "fail_when": "`LFA1.LAND1` == 'ZA' & `LFA1.STCD1`.isna()"}
+    out, db = _post_version(body)
+    assert out["body"] == body and db.commit.await_count == 1
