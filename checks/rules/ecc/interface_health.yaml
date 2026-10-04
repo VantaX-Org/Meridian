@@ -2,7 +2,7 @@ module: interface_health
 target_state: ECC_AND_S4HANA
 # IDoc status codes are SAP standard (check table TEDS1, transaction WE47).
 # EDIDC.DIRECT fixed values (domain EDI_DIRECT): 1 = outbound, 2 = inbound.
-# Ages are measured against the current date: the runner has no as-of date yet.
+# Ages are measured against the run's as-of date (snapshot download time), not the wall clock.
 rules:
 
   - id: IDH001
