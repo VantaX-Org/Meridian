@@ -106,6 +106,13 @@ def test_plan_reads_children_by_parent_keys():
     assert len(wheres) == 3 and all(len(o["TEXT"]) <= 72 for w in wheres for o in where_options(w))
 
 
+def test_plan_reads_the_check_table_of_every_field():
+    # SKB1.BUKRS is value-checked against T001 even though no fi_gl rule names T001
+    plans = plan_modules(["fi_gl"], get_dictionary("ecc6"))
+    assert plans["T001"].purpose == "config" and "BUKRS" in plans["T001"].fields
+    assert all(p.purpose == "data" for t, p in plans.items() if t in ("SKA1", "SKB1"))
+
+
 def test_extract_end_to_end_evaluates_at_grain(monkeypatch):
     """Vendors across two company codes: vendor rules once per vendor, bank rules via LFBK."""
     from api.services import connectivity_manager as cm

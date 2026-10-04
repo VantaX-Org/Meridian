@@ -921,11 +921,15 @@ rules:
   check_class: cross_field_check
   require_populated: true
   fail_when: '`EKPO.PEINH` <= 0'
+  applies_when:
+    EKPO.NETPR:
+      gt: 0
   severity: high
   dimension: consistency
   message: Price unit of the purchasing document item is zero
   why_it_matters: The item value is quantity x net price / price unit. A zero price unit divides by zero; ME21N never accepts
-    it.
+    it. Items without a price (stock transport, free of charge) carry no price unit and are judged by the zero-price rule
+    instead.
   rule_authority: sap_hard_constraint
   sap_impact: Item value, goods receipt valuation and invoice matching cannot be computed.
   fix_map:

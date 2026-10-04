@@ -205,6 +205,19 @@ def plan_modules(modules: list[str], dictionary: Dictionary, scope: Optional[dic
         p.partial = bool(w.get("where") or w.get("via") or scoped)
         p.where = " AND ".join(filters) or None
         p.via = w.get("via") if w.get("via") in plans else None
+
+    # the check table of every field read: the DDIC conformance check value-checks each one
+    # against the live configuration, which exists only once some extraction has read it
+    for t, p in list(plans.items()):
+        if p.purpose != "data":
+            continue
+        for f in sorted(p.fields):
+            ref = getattr(dictionary.field(t, f), "check_ref", None) or ""
+            rt, _, rf = ref.partition(".")
+            if rt and rt not in plans and dictionary.field(rt, rf) is not None and _is_config_table(dictionary, rt) \
+                    and dictionary.table(rt).category != "VIEW":
+                plans[rt] = TablePlan(table=rt, fields={rf}, keys=list(dictionary.keys(rt)), purpose="config",
+                                      modules=set(p.modules))
     return plans
 
 

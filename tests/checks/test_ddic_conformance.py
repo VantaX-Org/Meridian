@@ -31,3 +31,11 @@ def test_cell_a_specific_rule_already_reports_is_not_reported_again():
                           reported={"KNA1.PSTLZ": {"KUNNR=C1"}})  # e.g. SW-KNA1-PSTLZ-ORT01 on C1
     case = next(r for r in res if r.check_id == "DDIC-KNA1-CASE")
     assert case.failing_record_keys == ["KUNNR=C2"] and case.affected_count == 1
+
+
+def test_percentage_condition_rate_unit_is_valid():
+    # KONP.KONWA holds a currency, or '%' for a percentage condition; '%' is never in TCURC
+    konp = pd.DataFrame({"KONP.KNUMH": ["1", "2"], "KONP.KOPOS": ["01", "01"], "KONP.KONWA": ["%", "XXX"]})
+    res = run_conformance("KONP", konp, D, "mm_purchasing", ["KONP.KNUMH", "KONP.KOPOS"], {"TCURC.WAERS": {"EUR"}})
+    r = next(r for r in res if r.check_id == "DDIC-KONP-CHECK_TABLE")
+    assert r.failing_record_keys == ["KNUMH=2|KOPOS=01"]
