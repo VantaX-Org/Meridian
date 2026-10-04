@@ -1,0 +1,225 @@
+{
+ "table": "/SCWM/LAGP",
+ "description": "Storage bins",
+ "category": "TRANSP",
+ "delivery_class": "A",
+ "source": "SAP EWM standard DDIC (key fields and selected fields; see note)",
+ "foreign_keys": [
+  {
+   "field": "LGNUM",
+   "foreign_table": "/SCWM/T300",
+   "foreign_field": "LGNUM"
+  },
+  {
+   "field": "LGTYP",
+   "foreign_table": "/SCWM/T301",
+   "foreign_field": "LGTYP"
+  }
+ ],
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": null,
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "LGNUM",
+   "key": true,
+   "data_element": null,
+   "domain": null,
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Warehouse Number/Warehouse Complex",
+   "check_table": "/SCWM/T300"
+  },
+  {
+   "pos": 3,
+   "name": "LGPLA",
+   "key": true,
+   "data_element": null,
+   "domain": null,
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Storage Bin",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "LGTYP",
+   "key": false,
+   "data_element": null,
+   "domain": null,
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Storage Type",
+   "check_table": "/SCWM/T301"
+  },
+  {
+   "pos": 5,
+   "name": "LGBER",
+   "key": false,
+   "data_element": null,
+   "domain": null,
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Storage Section",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "LPTYP",
+   "key": false,
+   "data_element": null,
+   "domain": null,
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Storage Bin Type",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "SKZUA",
+   "key": false,
+   "data_element": null,
+   "domain": null,
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Blocking Indicator: Stock Removal (User)",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "SKZUE",
+   "key": false,
+   "data_element": null,
+   "domain": null,
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Blocking Indicator: Putaway (User)",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "SKZSI",
+   "key": false,
+   "data_element": null,
+   "domain": null,
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Blocking Indicator: Current Inventory Active",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "KZLER",
+   "key": false,
+   "data_element": null,
+   "domain": null,
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Storage Bin Empty",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "KZVOL",
+   "key": false,
+   "data_element": null,
+   "domain": null,
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Storage Bin Full",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "ANZLE",
+   "key": false,
+   "data_element": "/SCWM/LAGP_ANZLE",
+   "domain": null,
+   "type": "DEC",
+   "length": 6,
+   "decimals": 0,
+   "description": "Number of Handling Units in Storage Bin",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "WEIGHT",
+   "key": false,
+   "data_element": null,
+   "domain": null,
+   "type": "QUAN",
+   "length": 15,
+   "decimals": 3,
+   "description": "Loading Weight",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "MAX_WEIGHT",
+   "key": false,
+   "data_element": null,
+   "domain": null,
+   "type": "QUAN",
+   "length": 15,
+   "decimals": 3,
+   "description": "Maximum Weight",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "UNIT_W",
+   "key": false,
+   "data_element": null,
+   "domain": null,
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Weight Unit",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "FCAPA",
+   "key": false,
+   "data_element": null,
+   "domain": null,
+   "type": "DEC",
+   "length": 15,
+   "decimals": 3,
+   "description": "Remaining (Free) Capacity",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "MAX_CAPA",
+   "key": false,
+   "data_element": null,
+   "domain": null,
+   "type": "DEC",
+   "length": 15,
+   "decimals": 3,
+   "description": "Total Capacity of Storage Bin",
+   "check_table": null
+  }
+ ]
+}

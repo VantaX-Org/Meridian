@@ -80,6 +80,8 @@ CREATE TABLE IF NOT EXISTS platform_releases (
     id INTEGER PRIMARY KEY CHECK (id = 1),
     latest_version TEXT NOT NULL DEFAULT '',
     release_notes TEXT NOT NULL DEFAULT '',
+    min_version TEXT NOT NULL DEFAULT '',
+    force_now INTEGER NOT NULL DEFAULT 0,
     released_at TEXT,
     updated_at TEXT NOT NULL
 );

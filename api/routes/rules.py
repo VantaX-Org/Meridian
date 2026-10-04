@@ -6,10 +6,16 @@ Customer admins can view rules but cannot create, edit, or delete them.
 One exception: the `enabled` flag is mutable per-tenant so a steward can
 silence a noisy rule without waiting for the next HQ push. The toggle
 writes to the tenant's own rules row; the next HQ sync may overwrite it.
+
+Second exception: a steward can accept a dependency mined from profiled data
+("A determines B", field_dependencies) as a check. It is stored with
+source='mined', which HQ sync does not own.
 """
 
+import hashlib
+import json
 import uuid
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -232,3 +238,45 @@ async def patch_rule(
         if rule.get(dt_field):
             rule[dt_field] = rule[dt_field].isoformat()
     return rule
+
+
+# ── POST /api/v1/rules/mined ─────────────────────────────────────────────────
+
+
+class MinedRuleIn(BaseModel):
+    module: str
+    determinant: str
+    dependent: str
+    severity: Literal["critical", "high", "medium", "low"] = "medium"
+
+
+@router.post("/rules/mined", status_code=201, dependencies=[Depends(require_permission("manage_rules"))])
+async def accept_mined_rule(
+    body: MinedRuleIn,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Turn a mined dependency into a check run on every later analysis."""
+    await _set_rls(db, tenant.id)
+    dep = (await db.execute(text(
+        "SELECT table_name FROM field_dependencies WHERE tenant_id = :tid AND module = :m "
+        "AND determinant = :a AND dependent = :b LIMIT 1"),
+        {"tid": str(tenant.id), "m": body.module, "a": body.determinant, "b": body.dependent})).fetchone()
+    if not dep:
+        raise HTTPException(status_code=404, detail="No such mined dependency")
+    rid = "HR-" + hashlib.sha1(f"{body.module}|{body.determinant}|{body.dependent}".encode()).hexdigest()[:8].upper()
+    row = (await db.execute(text(
+        """
+        INSERT INTO rules (tenant_id, name, description, module, category, severity, enabled, conditions, source)
+        VALUES (:tid, :name, :desc, :m, 'consistency', :sev, true, CAST(:cond AS jsonb), 'mined')
+        ON CONFLICT (tenant_id, name, module) DO UPDATE SET enabled = true, severity = EXCLUDED.severity,
+                                                            updated_at = now()
+        RETURNING id, name, module, severity, enabled
+        """),
+        {"tid": str(tenant.id), "name": f"{rid}: {body.determinant} determines {body.dependent}",
+         "desc": f"{body.dependent} differs from the value {body.determinant} decides on the other records",
+         "m": body.module, "sev": body.severity,
+         "cond": json.dumps({"check_class": "dependency_check", "determinant": body.determinant,
+                             "field": body.dependent, "grain": dep.table_name})})).fetchone()
+    await db.commit()
+    return {**_row_to_dict(row), "id": str(row.id)}

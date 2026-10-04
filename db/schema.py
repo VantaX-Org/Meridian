@@ -839,8 +839,24 @@ class FindingRecord(Base):
     module = Column(Text, nullable=False)
     grain = Column(Text, nullable=True)
     record_key = Column(Text, primary_key=True)
+    field_values = Column(JSONB, nullable=True)  # rule columns, sensitive ones masked (migration 054)
 
     __table_args__ = (Index("ix_finding_records_tenant_record", "tenant_id", "record_key"),)
+
+
+class SavedView(Base):
+    """A user's named filter set for one page (migration 054)."""
+    __tablename__ = "saved_views"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    user_id = Column(Text, nullable=False)
+    route = Column(Text, nullable=False)
+    name = Column(Text, nullable=False)
+    filters = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (UniqueConstraint("tenant_id", "user_id", "route", "name", name="uq_saved_views_user_route_name"),)
 
 
 class RecordIssue(Base):

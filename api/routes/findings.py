@@ -1,12 +1,15 @@
+import json
 import logging
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pydantic import BaseModel, Field
 from sqlalchemy import case, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
+from api.services.rbac import current_user_id, require_permission
 from db.schema import Finding, Report
 
 router = APIRouter(prefix="/api/v1", tags=["findings"])
@@ -52,24 +55,32 @@ def composite_dqs(summaries: list[dict]) -> dict:
 @router.get("/findings/aggregate")
 async def aggregate_findings(
     version_id: Optional[str] = Query(None, description="One version; default = latest complete run per system"),
+    module: Optional[str] = Query(None),
+    severity: Optional[str] = Query(None),
+    dimension: Optional[str] = Query(None),
+    check_id: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
     """Severity, module and dimension totals plus the composite DQS, computed server-side
-    over the whole result set — the figures the Command Centre headline is built from."""
+    over the whole result set — the figures the Command Centre headline is built from.
+    The same filters as GET /findings narrow the totals (not the DQS, a version figure)."""
     await db.execute(text("SELECT set_config('app.tenant_id', :tid, true)"), {"tid": str(tenant.id)})
     ids = [uuid.UUID(version_id)] if version_id else await _latest_version_ids(db, tenant)
     if not ids:
         return {"version_ids": [], "total": 0, "affected_records": 0,
-                "severity": {"critical": 0, "high": 0, "medium": 0, "low": 0}, "by_module": [], "by_dimension": [],
+                "severity": {"critical": 0, "high": 0, "medium": 0, "low": 0}, "by_module": [], "by_dimension": [], "avg_pass_rate": None,
                 "dqs": composite_dqs([]), "previous_dqs": None}
     p = {"ids": [str(i) for i in ids]}
-    rows = (await db.execute(text("""
+    narrow = {k: v for k, v in (("module", module), ("severity", severity), ("dimension", dimension),
+                                ("check_id", check_id)) if v}
+    where = "".join(f" AND {k} = :{k}" for k in narrow)
+    rows = (await db.execute(text(f"""
         SELECT module, severity, dimension, count(*) AS n, COALESCE(sum(affected_count), 0) AS affected,
                avg(pass_rate) AS avg_pass
-          FROM findings WHERE version_id = ANY(CAST(:ids AS uuid[]))
+          FROM findings WHERE version_id = ANY(CAST(:ids AS uuid[])){where}
          GROUP BY module, severity, dimension
-    """), p)).mappings().all()
+    """), {**p, **narrow})).mappings().all()
     sev = {"critical": 0, "high": 0, "medium": 0, "low": 0}
     by_module: dict[str, dict] = {}
     by_dim: dict[str, dict] = {}
@@ -105,6 +116,7 @@ async def aggregate_findings(
         ) x ORDER BY lineage, run_at DESC
     """), {**p, "tid": str(tenant.id)})).scalars().all()
     prev = composite_dqs(list(previous))
+    overall = _avg({"_pass": [pair for d in by_dim.values() for pair in d["_pass"]]})
     return {
         "version_ids": p["ids"],
         "total": sum(sev.values()),
@@ -113,6 +125,7 @@ async def aggregate_findings(
         "by_module": sorted((_avg(m) for m in by_module.values()),
                             key=lambda m: (-m["critical"], -m["high"], -m["findings"])),
         "by_dimension": sorted((_avg(d) for d in by_dim.values()), key=lambda d: d["dimension"]),
+        "avg_pass_rate": overall["avg_pass_rate"],
         "dqs": composite_dqs(list(summaries)),
         "previous_dqs": prev["composite"],
     }
@@ -306,3 +319,72 @@ async def get_finding_report_context(
         "module": finding.module,
         "report_context": report_context,
     }
+
+
+# ── saved views: a user's named filter sets per page ─────────────────────────
+
+
+class SavedViewIn(BaseModel):
+    route: str = Field(min_length=1, max_length=64)
+    name: str = Field(min_length=1, max_length=80)
+    filters: dict[str, str] = Field(default_factory=dict)
+
+
+def _view_owner(request: Request) -> str:
+    # AUTH_MODE=local without a login: one shared owner per tenant
+    return current_user_id(request) or "local"
+
+
+@router.get("/saved-views")
+async def list_saved_views(
+    request: Request,
+    route: str = Query(..., min_length=1, max_length=64),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """The current user's saved views for one page, by name."""
+    await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
+    rows = await db.execute(text("""
+        SELECT id::text, name, filters, created_at FROM saved_views
+         WHERE tenant_id = :tid AND user_id = :uid AND route = :route ORDER BY lower(name)
+    """), {"tid": str(tenant.id), "uid": _view_owner(request), "route": route})
+    return {"views": [dict(r._mapping) for r in rows.fetchall()]}
+
+
+@router.post("/saved-views", dependencies=[Depends(require_permission("view"))])
+async def save_view(
+    body: SavedViewIn,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Create, or overwrite by name, one of the current user's views."""
+    await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
+    name = body.name.strip()
+    if not name:
+        raise HTTPException(status_code=422, detail="Name is required")
+    row = (await db.execute(text("""
+        INSERT INTO saved_views (tenant_id, user_id, route, name, filters)
+        VALUES (:tid, :uid, :route, :name, CAST(:filters AS jsonb))
+        ON CONFLICT (tenant_id, user_id, route, name) DO UPDATE SET filters = EXCLUDED.filters
+        RETURNING id::text, name, filters, created_at
+    """), {"tid": str(tenant.id), "uid": _view_owner(request), "route": body.route,
+           "name": name, "filters": json.dumps(body.filters)})).fetchone()
+    await db.commit()
+    return dict(row._mapping)
+
+
+@router.delete("/saved-views/{view_id}", status_code=204, dependencies=[Depends(require_permission("view"))])
+async def delete_saved_view(
+    view_id: uuid.UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Delete one of the current user's views (another user's view is a 404)."""
+    await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
+    gone = (await db.execute(text("DELETE FROM saved_views WHERE id = :id AND tenant_id = :tid AND user_id = :uid"),
+                             {"id": view_id, "tid": str(tenant.id), "uid": _view_owner(request)})).rowcount
+    if not gone:
+        raise HTTPException(status_code=404, detail="View not found")
+    await db.commit()
