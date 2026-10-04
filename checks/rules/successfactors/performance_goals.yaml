@@ -242,3 +242,20 @@ rules:
     - '3'
     - Completed
     - COMPLETED
+- id: PERF018
+  field: PMREVIEWRESULT.REVIEW_PERIOD
+  check_class: cross_field_check
+  fail_when: '`PMREVIEWRESULT.REVIEW_PERIOD` > `EMPEMPLOYMENT.END_DATE`'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Performance review period starts after the employment ended
+  why_it_matters: A leaver cannot be reviewed for a period they did not work. Such forms are usually created by a mass
+    launch that did not exclude terminated employees.
+  rule_authority: best_practice
+  sap_impact: Managers get review forms for leavers; completion rates and calibration include people who left.
+  fix_map:
+    __other__: Delete or cancel the review form in Performance Management, and exclude terminated employees from future
+      form launches.
+  record_fix_template: 'Employee {PMREVIEWRESULT.USERID}: review from {PMREVIEWRESULT.REVIEW_PERIOD}, employment ended
+    {EMPEMPLOYMENT.END_DATE}.'

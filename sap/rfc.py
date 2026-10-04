@@ -139,13 +139,17 @@ class RFCConnector(SAPConnector):
         return merged
 
     def _groups(self, table: str, keys: list[str], rest: list[str]) -> list[list[str]]:
-        """Split non-key fields into groups whose RFC work area fits 512 bytes."""
+        """Split non-key fields into groups whose RFC work area fits 512 bytes.
+
+        Packs by the field widths the NO_DATA probe returns: some systems do not
+        raise DATA_BUFFER_EXCEEDED on a NO_DATA call, only on the real read.
+        Probes that do raise it are split in half.
+        """
         if not rest:
             return []
         try:
-            self._conn.call("RFC_READ_TABLE", QUERY_TABLE=table, NO_DATA="X",
-                            FIELDS=[{"FIELDNAME": f} for f in keys + rest])
-            return [rest]
+            meta = self._conn.call("RFC_READ_TABLE", QUERY_TABLE=table, NO_DATA="X",
+                                   FIELDS=[{"FIELDNAME": f} for f in keys + rest]).get("FIELDS") or []
         except Exception as e:
             if "DATA_BUFFER_EXCEEDED" not in str(e) or len(rest) == 1:
                 if len(rest) == 1:
@@ -153,8 +157,18 @@ class RFCConnector(SAPConnector):
                         self._mask_password(f"{table}: cannot read field {rest[0]}: {e}", self._password)
                     ) from e
                 raise SAPConnectorError(self._mask_password(str(e), self._password)) from e
-        mid = len(rest) // 2
-        return self._groups(table, keys, rest[:mid]) + self._groups(table, keys, rest[mid:])
+            mid = len(rest) // 2
+            return self._groups(table, keys, rest[:mid]) + self._groups(table, keys, rest[mid:])
+        width = {str(m.get("FIELDNAME", "")).strip(): int(m.get("LENGTH") or 0) for m in meta}
+        if not all(f in width for f in rest):
+            return [rest]  # no widths to pack by: the probe accepted the fields together
+        free = _WORK_AREA - sum(width.get(k, 0) for k in keys)
+        groups: list[list[str]] = [[]]
+        for f in rest:
+            if groups[-1] and sum(width[g] for g in groups[-1]) + width[f] > free:
+                groups.append([])
+            groups[-1].append(f)
+        return groups
 
     def _read_ranges(self, table: str, fields: list[str], key: str, where: Optional[str], page_size: int,
                      on_page: Callable[[int], None], ranges: Optional[list] = None,
@@ -310,6 +324,9 @@ def where_options(where: Optional[str]) -> list[dict]:
 # ── RFC_READ_TABLE parser ──────────────────────────────────────────────────────
 # Single canonical implementation — replaces the duplicates in connect.py
 # and run_sync.py.
+
+_WORK_AREA = 512  # bytes in RFC_READ_TABLE's DATA-WA
+
 
 def _parse_rfc_result(result: dict) -> pd.DataFrame:
     """Parse RFC_READ_TABLE result into a pandas DataFrame.

@@ -6,12 +6,14 @@ interface PlatformRelease {
   id: number;
   latest_version: string;
   release_notes: string;
+  min_version: string;
+  force_now: number;
   released_at: string | null;
   updated_at: string;
 }
 
 export default function ReleasesPage() {
-  const [form, setForm] = useState({ latest_version: "", release_notes: "" });
+  const [form, setForm] = useState({ latest_version: "", release_notes: "", min_version: "", force_now: false });
   const [release, setRelease] = useState<PlatformRelease | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -41,6 +43,8 @@ export default function ReleasesPage() {
         setForm({
           latest_version: data.latest_version || "",
           release_notes: data.release_notes || "",
+          min_version: data.min_version || "",
+          force_now: !!data.force_now,
         });
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to load release info");
@@ -69,6 +73,8 @@ export default function ReleasesPage() {
       setForm({
         latest_version: data.latest_version || "",
         release_notes: data.release_notes || "",
+        min_version: data.min_version || "",
+        force_now: !!data.force_now,
       });
       showMsg("Saved successfully");
     } catch (e) {
@@ -123,6 +129,35 @@ export default function ReleasesPage() {
                 style={inputStyle}
               />
             </div>
+
+            <div className="space-y-1">
+              <label className="block text-xs font-medium" style={{ color: "var(--muted)" }}>
+                Minimum version (forces update)
+              </label>
+              <input
+                type="text"
+                placeholder="Empty = no forced update"
+                value={form.min_version}
+                onChange={(e) => setForm({ ...form, min_version: e.target.value })}
+                className="w-full rounded-md px-3 py-1.5 text-sm text-white outline-none"
+                style={inputStyle}
+              />
+              <p className="text-xs" style={{ color: "var(--muted)" }}>
+                Deployments below this version update themselves when no jobs are
+                running, inside their update window. Data and volumes are kept.
+              </p>
+            </div>
+
+            <label className="flex items-start gap-2 text-xs" style={{ color: "var(--muted)" }}>
+              <input
+                type="checkbox"
+                checked={form.force_now}
+                onChange={(e) => setForm({ ...form, force_now: e.target.checked })}
+                className="mt-0.5"
+              />
+              Security release: update immediately, ignore the update window
+              (still waits for running jobs).
+            </label>
 
             {release?.released_at && (
               <p className="text-xs" style={{ color: "var(--muted)" }}>

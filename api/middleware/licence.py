@@ -296,6 +296,8 @@ def _update_manifest_cache(result: dict) -> None:
         # /api/v1/system/update-status can compare it against APP_VERSION.
         "latest_version": result.get("latest_version"),
         "release_notes": result.get("release_notes"),
+        "min_version": result.get("min_version") or "",
+        "force_update_now": bool(result.get("force_update_now")),
         "last_validated": (
             datetime.fromtimestamp(_last_checked_at, tz=timezone.utc).isoformat()
             if _last_checked_at

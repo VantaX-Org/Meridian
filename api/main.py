@@ -23,6 +23,9 @@ from api.routes.migration import router as migration_router
 from api.routes.exceptions import router as exceptions_router
 from api.routes.source_design import router as source_design_router
 from api.routes.record_issues import router as record_issues_router
+from api.routes.triage import router as triage_router
+from api.routes.remediation import router as remediation_router
+from api.routes.rule_authoring import router as rule_authoring_router
 from api.routes.system_objects import router as system_objects_router
 from api.routes.field_profiles import router as field_profiles_router
 from api.routes.pilot import router as pilot_router
@@ -98,13 +101,14 @@ async def lifespan(app: FastAPI):
                             "VALUES ('00000000-0000-0000-0000-000000000001', 'Dev Tenant', "
                             "ARRAY['business_partner','material_master','fi_gl','accounts_payable',"
                             "'accounts_receivable','asset_accounting','mm_purchasing','plant_maintenance',"
-                            "'production_planning','sd_customer_master','sd_sales_orders',"
+                            "'production_planning','sd_customer_master','sd_sales_orders','interface_health',"
                             "'employee_central','compensation','benefits','payroll_integration',"
                             "'performance_goals','succession_planning','recruiting_onboarding',"
                             "'learning_management','time_attendance',"
                             "'ewms_stock','ewms_transfer_orders','batch_management','mdg_master_data',"
                             "'grc_compliance','fleet_management','transport_management','wm_interface',"
-                            "'cross_system_integration'])"
+                            "'cross_system_integration','s4hc_master_data','concur_expense',"
+                            "'concur_users','ariba_supplier','ariba_contracts','ariba_procurement'])"
                         )
                     )
                     await session.commit()
@@ -272,6 +276,9 @@ app.include_router(migration_router)
 app.include_router(exceptions_router)
 app.include_router(source_design_router)
 app.include_router(record_issues_router)
+app.include_router(triage_router)
+app.include_router(remediation_router)
+app.include_router(rule_authoring_router)
 app.include_router(system_objects_router)
 app.include_router(field_profiles_router)
 app.include_router(pilot_router)

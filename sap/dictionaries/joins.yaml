@@ -138,6 +138,8 @@ edges:
   # material/plant settings of stock and TO items (batch management, …)
   - {parent: MARC, child: LQUA, join: {MATNR: MATNR, WERKS: WERKS}, cardinality: many}
   - {parent: MARC, child: LTAP, join: {MATNR: MATNR, WERKS: WERKS}, cardinality: many}
+  # embedded / decentralised EWM (/SCWM/ namespace)
+  - {parent: /SCWM/LAGP, child: /SCWM/AQUA, join: {LGNUM: LGNUM, LGPLA: LGPLA}, cardinality: many}
   - {parent: VTTK, child: VTTP, join: {TKNUM: TKNUM}, cardinality: many}
   - {parent: VTTK, child: TVRO, join: {ROUTE: ROUTE}, cardinality: one}
 
@@ -146,6 +148,7 @@ edges:
   - {parent: GRACSODRISK, child: GRACSODRISKT, join: {RISKID: RISKID}, cardinality: one, prefer: {LANG: "E"}}
   - {parent: USMD120C, child: USMD1213, join: {USMD_CREQUEST: USMD_CREQUEST}, cardinality: many}
   - {parent: CDHDR, child: CDPOS, join: {OBJECTCLAS: OBJECTCLAS, OBJECTID: OBJECTID, CHANGENR: CHANGENR}, cardinality: many}
+  - {parent: EDIDC, child: EDIDS, join: {DOCNUM: DOCNUM}, cardinality: many}
 
   # ── SuccessFactors canonical views ─────────────────────────────────────
   - {parent: PERINFO, child: EMPEMPLOYMENT, join: {PERSON_ID: PERSON_ID}, cardinality: many}
@@ -162,6 +165,15 @@ edges:
   - {parent: EMPEMPLOYMENT, child: LEARNINGCOMPLETION, join: {USERID: USERID}, cardinality: many}
   - {parent: EMPEMPLOYMENT, child: ONBOARDINGCANDIDATEINFO, join: {USERID: USERID}, cardinality: one}
   - {parent: JOBREQUISITION, child: JOBAPPLICATION, join: {JOB_REQ_ID: JOB_REQ_ID}, cardinality: many}
+  # foundation objects and the position an employment points at (attributes of the employment)
+  - {parent: EMPEMPLOYMENT, child: POSITION, join: {CODE: POSITION}, cardinality: one}
+  - {parent: EMPEMPLOYMENT, child: FOCOMPANY, join: {EXTERNAL_CODE: COMPANY}, cardinality: one}
+  - {parent: EMPEMPLOYMENT, child: FODEPARTMENT, join: {EXTERNAL_CODE: DEPARTMENT}, cardinality: one}
+
+  # Concur Expense and SAP Ariba (canonical views, sap/dictionaries/canonical)
+  - {parent: CONCUR_USER, child: CONCUR_REPORT, join: {OWNER_LOGIN_ID: LOGIN_ID}, cardinality: many}
+  - {parent: CONCUR_REPORT, child: CONCUR_ENTRY, join: {REPORT_ID: REPORT_ID}, cardinality: many}
+  - {parent: ARIBA_PO, child: ARIBA_INVOICE, join: {PURCHASE_ORDER_ID: ORDER_ID}, cardinality: many}
 
 # Default grain per module when a rule names only attribute tables.
 anchors:
@@ -183,4 +195,11 @@ anchors:
   transport_management: VTTK
   grc_compliance: GRACUSERROLE
   mdg_master_data: USMD120C
+  interface_health: EDIDC
   employee_central: EMPEMPLOYMENT
+  s4hc_master_data: BUT000
+  concur_expense: CONCUR_REPORT
+  concur_users: CONCUR_USER
+  ariba_supplier: ARIBA_SUPPLIER
+  ariba_contracts: ARIBA_CONTRACT
+  ariba_procurement: ARIBA_PO

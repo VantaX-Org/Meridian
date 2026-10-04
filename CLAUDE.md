@@ -101,6 +101,7 @@ meridian/
 │   ├── concur.py                    ← Concur REST v4
 │   ├── ariba.py                     ← Ariba REST
 │   ├── s4hana_cloud.py              ← S/4HANA Cloud OData V4
+│   ├── btp.py                       ← SAP BTP OData (XSUAA OAuth, Business Partner)
 │   ├── data_dictionary.py           ← field metadata for 33 SAP tables
 │   ├── baseline_config.py           ← baseline SPRO config (5 system types)
 │   ├── extraction_registry.py       ← module-to-table mapping for all systems
@@ -173,6 +174,7 @@ df = conn.read_entity_set("EmpEmployment", select=["userId", "startDate"])
 |--------|-----------|----------|------|
 | ECC/S4 On-Prem | `sap/rfc.py` | RFC | User/Password |
 | S/4HANA Cloud | `sap/s4hana_cloud.py` | OData V4 | OAuth 2.0 |
+| SAP BTP | `sap/btp.py` | OData V2/V4 | OAuth 2.0 (XSUAA) |
 | SuccessFactors | `sap/successfactors.py` | OData V2 | Basic/OAuth 2.0 |
 | Concur | `sap/concur.py` | REST v4 | OAuth 2.0 |
 | Ariba | `sap/ariba.py` | REST | OAuth 2.0 + API Key |

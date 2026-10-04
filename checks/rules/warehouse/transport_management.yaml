@@ -597,3 +597,66 @@ rules:
     fix_map:
       __other__: Correct the shipment type configuration (TVTK) and recreate the shipment.
     record_fix_template: 'Shipment {VTTK.TKNUM}: completion type ''{actual_value}'' is not valid.'
+
+  - id: TM035
+    field: VTTK.TKNUM
+    check_class: exists_check
+    fields:
+    - VTTK.TKNUM
+    target_table: VTTP
+    target_fields:
+    - TKNUM
+    applies_when:
+      VTTK.STTRG: {not_in: ['0', '1', '2']}
+    severity: high
+    dimension: consistency
+    message: Shipment in loading or later status has no deliveries
+    why_it_matters: Once loading has started (VTTK.STTRG 3 or higher) a shipment must carry the deliveries being
+      transported (VTTP). A shipment without items has nothing to load, so freight costs and status updates cannot
+      be tied to any delivery.
+    rule_authority: best_practice
+    sap_impact: Shipment cost settlement has no delivery to allocate to; delivery tracking shows no shipment.
+    fix_map:
+      __other__: Assign the deliveries in VT02N, or reset and delete the empty shipment.
+    record_fix_template: 'Shipment {VTTK.TKNUM}: status {VTTK.STTRG} but no deliveries assigned.'
+
+  - id: TM036
+    field: VTTP.VBELN
+    check_class: exists_check
+    fields:
+    - VTTP.VBELN
+    target_table: LIKP
+    target_fields:
+    - VBELN
+    severity: high
+    dimension: consistency
+    message: Shipment item points to a delivery that does not exist
+    why_it_matters: Each shipment item (VTTP.VBELN) refers to a delivery header (LIKP). A reference to a missing
+      delivery is an orphan left after deletion or archiving, and the shipment can no longer be completed or settled.
+    rule_authority: sap_hard_constraint
+    sap_impact: Shipment completion and cost settlement fail; transport reporting counts a delivery that is gone.
+    fix_map:
+      __other__: Remove the item from the shipment in VT02N, or recreate the delivery if it was deleted in error.
+    record_fix_template: 'Shipment {VTTP.TKNUM} item {VTTP.TPNUM}: delivery {VTTP.VBELN} not found.'
+
+  - id: TM037
+    field: VTTK.TDLNR
+    check_class: exists_check
+    fields:
+    - VTTK.TDLNR
+    target_table: LFA1
+    target_fields:
+    - LIFNR
+    target_when:
+      LOEVM: {blank: true}
+    severity: high
+    dimension: consistency
+    message: Shipment carrier does not exist or is flagged for deletion
+    why_it_matters: The forwarding agent (VTTK.TDLNR) is a vendor account. A carrier that does not exist or is flagged
+      for deletion centrally (LFA1.LOEVM) cannot receive freight purchase orders or payments.
+    rule_authority: sap_hard_constraint
+    sap_impact: Shipment cost documents cannot be transferred to purchasing; carrier invoices cannot be matched.
+    fix_map:
+      __other__: Assign an active carrier in VT02N, or remove the deletion flag on the vendor (XK06) if it is still
+        used.
+    record_fix_template: 'Shipment {VTTK.TKNUM}: carrier {VTTK.TDLNR} missing or flagged for deletion.'
