@@ -18,7 +18,7 @@ import {
 import { copyToClipboard } from "@/components/meridian/actions";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
-import { createException, escalateException, getExceptions, resolveException } from "@/lib/api/exceptions";
+import { createException, escalateException, getExceptionMetrics, getExceptions, resolveException } from "@/lib/api/exceptions";
 import { relativeTime } from "@/lib/format";
 import type { Exception, ExceptionStatus } from "@/types/api";
 
@@ -54,15 +54,17 @@ export function ExceptionsSurface() {
   const q = useQuery({ queryKey: ["exceptions.list", { status }], queryFn: () => getExceptions({ per_page: 100, status: status === "all" ? undefined : status }) });
   const items = useMemo(() => q.data?.exceptions ?? [], [q.data]);
   const total = q.data?.total ?? items.length;
-  const refresh = () => qc.invalidateQueries({ queryKey: ["exceptions.list"] });
+  // Tenant-wide KPIs from the server, independent of the status filter and the 100-row page.
+  const mq = useQuery({ queryKey: ["exceptions.metrics"], queryFn: () => getExceptionMetrics() });
+  const m = mq.data;
+  const resolvedAny = !!m?.avg_resolution_hours;
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ["exceptions.list"] });
+    qc.invalidateQueries({ queryKey: ["exceptions.metrics"] });
+  };
   const needle = search.trim().toLowerCase();
   const visible = needle ? items.filter((e) => `${e.title} ${e.category} ${e.source_system ?? ""} ${e.assigned_to ?? ""}`.toLowerCase().includes(needle)) : items;
   const selected = drawer.value ? items.find((e) => e.id === drawer.value) ?? null : null;
-  const counts = {
-    open: items.filter((e) => e.status === "open").length,
-    investigating: items.filter((e) => e.status === "investigating").length,
-    escalated: items.filter((e) => e.escalation_tier > 0).length,
-  };
 
   const columns = useMemo<ColumnDef<Exception, unknown>[]>(() => [
     { id: "status", header: "Status", meta: meta({ sticky: "start", width: 150 }), cell: ({ row }) => <StatusBadge status={STATUS[row.original.status]}>{label(row.original.status)}</StatusBadge> },
@@ -82,12 +84,17 @@ export function ExceptionsSurface() {
       <PageHeader title="Exceptions"
         summary={q.data ? `${total.toLocaleString()} cases a check could not settle on its own.` : undefined}
         actions={canRequest ? <Button onClick={() => setRequesting(true)}>Request exception</Button> : null} />
-      <MetricStrip label="Exceptions">
-        <Metric label="Exceptions" value={total} />
-        <Metric label="Open" value={counts.open} />
-        <Metric label="Investigating" value={counts.investigating} tone={counts.investigating ? "warning" : "default"} />
-        <Metric label="Escalated" value={counts.escalated} tone={counts.escalated ? "danger" : "default"} />
-      </MetricStrip>
+      {mq.error ? <Banner tone="warning" title="Exception metrics could not be read">{(mq.error as Error).message}</Banner> : (
+        <MetricStrip label="Exception metrics">
+          <Metric label="Open" value={m ? m.open_count : null} />
+          <Metric label="Past SLA" value={m ? m.overdue_count : null} tone={m?.overdue_count ? "danger" : "default"} />
+          <Metric label="Resolved, last 7 days" value={m ? m.resolved_count : null} />
+          {/* With nothing resolved yet the endpoint returns 0 h and 100 %; show dashes, not made-up figures. */}
+          <Metric label="Mean time to resolve" value={resolvedAny ? m.avg_resolution_hours : null} unit="h" />
+          <Metric label="Resolved within SLA" value={resolvedAny ? m.sla_compliance_pct : null} unit="%"
+            tone={resolvedAny && m.sla_compliance_pct < 90 ? "warning" : "default"} />
+        </MetricStrip>
+      )}
       <FilterBar search={{ value: search, onChange: setSearch, placeholder: "Search exceptions" }}>
         {STATUSES.map((s) => <Chip key={s} selected={status === s} onClick={() => setStatus(s)}>{s === "all" ? "All" : label(s)}</Chip>)}
       </FilterBar>
