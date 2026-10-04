@@ -327,7 +327,8 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
             )
             results = execute_checks(module_name, frames, tenant_id, reference_values=live_refs,
                                      overrides=rule_overrides, extra_rules=fs_rules, suppressed=fs_suppressed,
-                                     cost_model=cost_model, as_of=as_of)
+                                     cost_model=cost_model, as_of=as_of,
+                                     sap_utc_offset_seconds=metadata.get("sap_utc_offset_seconds"))
             all_results.extend(results)
             # joined frames are cached per pass; at millions of rows holding them all runs out of memory
             frames._cache.clear()
@@ -367,6 +368,8 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
                 for rule in zt_rules:
                     if as_of:
                         rule = {**rule, "_as_of": as_of}
+                    if metadata.get("sap_utc_offset_seconds") is not None:
+                        rule = {**rule, "_sap_utc_offset_seconds": metadata["sap_utc_offset_seconds"]}
                     check_cls = CHECK_REGISTRY.get(rule.get("check_class", ""))
                     if check_cls is None:
                         continue
