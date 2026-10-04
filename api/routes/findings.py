@@ -1,12 +1,15 @@
+import json
 import logging
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pydantic import BaseModel, Field
 from sqlalchemy import case, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
+from api.services.rbac import current_user_id, require_permission
 from db.schema import Finding, Report
 
 router = APIRouter(prefix="/api/v1", tags=["findings"])
@@ -301,3 +304,72 @@ async def get_finding_report_context(
         "module": finding.module,
         "report_context": report_context,
     }
+
+
+# ── saved views: a user's named filter sets per page ─────────────────────────
+
+
+class SavedViewIn(BaseModel):
+    route: str = Field(min_length=1, max_length=64)
+    name: str = Field(min_length=1, max_length=80)
+    filters: dict[str, str] = Field(default_factory=dict)
+
+
+def _view_owner(request: Request) -> str:
+    # AUTH_MODE=local without a login: one shared owner per tenant
+    return current_user_id(request) or "local"
+
+
+@router.get("/saved-views")
+async def list_saved_views(
+    request: Request,
+    route: str = Query(..., min_length=1, max_length=64),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """The current user's saved views for one page, by name."""
+    await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
+    rows = await db.execute(text("""
+        SELECT id::text, name, filters, created_at FROM saved_views
+         WHERE tenant_id = :tid AND user_id = :uid AND route = :route ORDER BY lower(name)
+    """), {"tid": str(tenant.id), "uid": _view_owner(request), "route": route})
+    return {"views": [dict(r._mapping) for r in rows.fetchall()]}
+
+
+@router.post("/saved-views", dependencies=[Depends(require_permission("view"))])
+async def save_view(
+    body: SavedViewIn,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Create, or overwrite by name, one of the current user's views."""
+    await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
+    name = body.name.strip()
+    if not name:
+        raise HTTPException(status_code=422, detail="Name is required")
+    row = (await db.execute(text("""
+        INSERT INTO saved_views (tenant_id, user_id, route, name, filters)
+        VALUES (:tid, :uid, :route, :name, CAST(:filters AS jsonb))
+        ON CONFLICT (tenant_id, user_id, route, name) DO UPDATE SET filters = EXCLUDED.filters
+        RETURNING id::text, name, filters, created_at
+    """), {"tid": str(tenant.id), "uid": _view_owner(request), "route": body.route,
+           "name": name, "filters": json.dumps(body.filters)})).fetchone()
+    await db.commit()
+    return dict(row._mapping)
+
+
+@router.delete("/saved-views/{view_id}", status_code=204, dependencies=[Depends(require_permission("view"))])
+async def delete_saved_view(
+    view_id: uuid.UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Delete one of the current user's views (another user's view is a 404)."""
+    await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
+    gone = (await db.execute(text("DELETE FROM saved_views WHERE id = :id AND tenant_id = :tid AND user_id = :uid"),
+                             {"id": view_id, "tid": str(tenant.id), "uid": _view_owner(request)})).rowcount
+    if not gone:
+        raise HTTPException(status_code=404, detail="View not found")
+    await db.commit()

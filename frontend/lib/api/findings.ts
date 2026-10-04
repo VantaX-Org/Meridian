@@ -53,3 +53,26 @@ export function compositeDqs(summary: Record<string, { composite_score: number; 
   const total = w.reduce((a, b) => a + b, 0);
   return Math.round((mods.reduce((a, m, i) => a + m.composite_score * w[i], 0) / total) * 100) / 100;
 }
+
+/** A user's named filter set for one page, stored server-side. */
+export interface SavedView {
+  id: string;
+  name: string;
+  filters: Record<string, string>;
+  created_at: string;
+}
+
+export async function listSavedViews(route: string): Promise<SavedView[]> {
+  const { data } = await apiClient.get<{ views: SavedView[] }>("/api/v1/saved-views", { params: { route } });
+  return data.views;
+}
+
+/** Create, or overwrite by name. */
+export async function saveNamedView(route: string, name: string, filters: Record<string, string>): Promise<SavedView> {
+  const { data } = await apiClient.post<SavedView>("/api/v1/saved-views", { route, name, filters });
+  return data;
+}
+
+export async function deleteSavedView(id: string): Promise<void> {
+  await apiClient.delete(`/api/v1/saved-views/${id}`);
+}
