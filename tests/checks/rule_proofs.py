@@ -100,7 +100,7 @@ def _kind(dictionary, col: str) -> str:
 _PLACEMENT_SAMPLES = {"misplaced": ["ap@example.co.za", "www.acme.com", "0115551234", "GB82WEST12345698765432", "Acme"], "placeholder": ["N/A", "Acme"],
                       "swap": ["2196", "JOHANNESBURG"], "status_text": ["DO NOT USE", "Acme"],
                       "date_range": ["20991231", "20200101"], "change_before_create": ["20200101", "20210101"],
-                      "vat_checksum": ["DE136695977", "DE136695976"]}
+                      "vat_checksum": ["DE136695977", "DE136695976", "AU", "51824753557", "51824753556"]}
 _FORMAT_SAMPLES = {"gtin": "4006381333931", "ean": "4006381333931", "iban": "GB82WEST12345698765432",
                    "luhn": "4539148803436467", "email": "ap@example.co.za", "date": TODAY}
 
@@ -144,9 +144,12 @@ def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
             vals += [str(v) for v in aw[:3]]
         elif isinstance(aw, dict):
             vals += [str(v) for v in (aw.get("contains_any") or [])[:2]]
-            vals += [""] if aw.get("blank") else ["N0"] if "not_in" in aw else ["X"]  # inside the scope
             if "gt" in aw:
                 vals.append(str(float(aw["gt"]) + 1))
+            vals += [""] if aw.get("blank") else ["N0"] if "not_in" in aw else ["X"]  # inside the scope
+            vals += [f"{p}1" for p in (aw.get("startswith") or [])[:2]]
+            if "older_than_days" in aw or "within_days" in aw:
+                vals += ["20000101", pd.Timestamp.today().strftime("%Y%m%d")]
         if f"`{c}`" in expr:
             vals += literals[:4] + numbers[:4]
         vals += paired.get(c, [])[:1] + _PROBES[_kind(dictionary, c)]
@@ -243,6 +246,9 @@ def prove(rule: dict, dictionary) -> tuple[str, str]:
         rows = [{**block, rule["field"]: n} for n in ("ACME ENGINEERING WORKS", "ACME ENGINERING WORKS",
                                                        "ZULU FREIGHT SERVICES")]
         return _verify(rule, dictionary, rows, (3, 2), live)
+    # the scope's own values first: with many conditions, MAX_ROWS would never reach a second checked value
+    aw = rule.get("applies_when") or {}
+    cand = {c: v[:2] if c in aw and c != rule.get("field") and len(cols) > 5 else v for c, v in cand.items()}
     combos = itertools.product(*(cand[c] for c in cols))
     values = [dict(zip(cols, combo)) for combo in itertools.islice(combos, MAX_ROWS)]
     df = _rows(rule, dictionary, values)
@@ -312,17 +318,26 @@ def _prove_exists(rule, dictionary, cand, live) -> tuple[str, str]:
     is not there (expected: 2 in scope, 1 failing). A third target record is inactive."""
     aw = rule.get("applies_when") or {}
     refs = list(rule.get("fields") or [rule["field"]])
-    row = {c: cand[c][0] for c in cand if c in aw}
-    rows = [{**row, **{c: f"T1{i}" for i, c in enumerate(refs)}},
-            {**row, **{c: f"T9{i}" for i, c in enumerate(refs)}}]
+
+    def ref(c, i, tag):  # a reference value inside the rule's own scope on that column
+        cond = aw.get(c)
+        if isinstance(cond, list):
+            return str(cond[0])
+        if isinstance(cond, dict) and cond.get("contains_any"):
+            return f"{cond['contains_any'][0]}{tag}{i}"
+        return f"{tag}{i}"
+
+    row = {c: str(aw[c][0]) if isinstance(aw[c], list) else cand[c][0] for c in cand if c in aw}
+    rows = [{**row, **{c: ref(c, i, "T1") for i, c in enumerate(refs)}},
+            {**row, **{c: ref(c, i, "T9") for i, c in enumerate(refs)}}]
     df = _rows(rule, dictionary, rows)
     frames = TableFrames.from_flat(df, dictionary, module=rule.get("module"))
     t = rule["target_table"]
     target = {f"{t}.{k}": ["TK1"] for k in dictionary.keys(t)}
     for i, f in enumerate(rule["target_fields"]):
-        target[f"{t}.{f}"] = [f"T1{i}"]
+        target[f"{t}.{f}"] = [df.loc[0, refs[i]]]  # as placed: a join field carries a row suffix
     for f, cond in (rule.get("target_when") or {}).items():
-        target[f"{t}.{f}"] = ["" if isinstance(cond, dict) and cond.get("blank") else str((cond or [""])[0])]
+        target[f"{t}.{f}"] = ["" if cond.get("blank") else "X"] if isinstance(cond, dict) else [str((cond or [""])[0])]
     extra = pd.DataFrame(target)
     have = frames.frames.get(t)
     frames.frames[t] = extra if have is None else pd.concat([have, extra], ignore_index=True)

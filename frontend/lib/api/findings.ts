@@ -34,14 +34,17 @@ export interface FindingsAggregate {
   by_module: { module: string; findings: number; affected: number; critical: number; high: number; medium: number;
     low: number; avg_pass_rate: number | null }[];
   by_dimension: { dimension: string; findings: number; avg_pass_rate: number | null }[];
+  avg_pass_rate: number | null;
   dqs: { composite: number | null; dimension_scores: Record<string, number>; modules: Record<string, number>; capped?: boolean };
   previous_dqs: number | null;
 }
 
-export async function getFindingsAggregate(versionId?: string): Promise<FindingsAggregate> {
-  const { data } = await apiClient.get<FindingsAggregate>("/api/v1/findings/aggregate", {
-    params: versionId ? { version_id: versionId } : undefined,
-  });
+export type FindingsFilter = { version_id?: string; module?: string; severity?: string; dimension?: string; check_id?: string };
+
+/** Totals over every matching finding (not one page); a string is a version id. */
+export async function getFindingsAggregate(filter?: string | FindingsFilter): Promise<FindingsAggregate> {
+  const params = typeof filter === "string" ? { version_id: filter } : filter;
+  const { data } = await apiClient.get<FindingsAggregate>("/api/v1/findings/aggregate", { params });
   return data;
 }
 

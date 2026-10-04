@@ -41,10 +41,23 @@ def exclusions(rule: dict, tables: list[str], columns: list[str]) -> list[dict]:
     return out
 
 
+def _lookup(table: str, frames) -> pd.DataFrame | None:
+    """An extracted table, else the live configuration table read with it (T370T)."""
+    if frames is None:
+        return None
+    t = getattr(frames, "frames", {}).get(table)
+    return t if t is not None else (getattr(frames, "config", None) or {}).get(table)
+
+
+def lookup_tables() -> set[str]:
+    """Tables the ``in_table`` exclusions look values up in."""
+    return {x["in_table"]["table"] for xs in policy().values() for x in xs if x.get("in_table")}
+
+
 def _status_values(x: dict, frames) -> set[str]:
     """Objects carrying a status in a status table (JEST: OBJNR with STAT I0076, INACT blank)."""
     spec = x["in_table"]
-    t = getattr(frames, "frames", {}).get(spec["table"]) if frames is not None else None
+    t = _lookup(spec["table"], frames)
     if t is None:
         return set()
     mask = pd.Series(True, index=t.index)
@@ -72,7 +85,7 @@ def exclude(frame: pd.DataFrame, rules: list[dict], frames=None) -> tuple[pd.Dat
             v = v + "|" + p
         if x.get("in_table"):
             spec = x["in_table"]
-            t = getattr(frames, "frames", {}).get(spec["table"]) if frames is not None else None
+            t = _lookup(spec["table"], frames)
             if t is None or any(f"{spec['table']}.{f}" not in t.columns for f in [spec["column"], *spec.get("where", {})]):
                 counts[f"unverified_{x['id']}"] = int((~out).sum())  # status not extracted: cannot tell, say so
                 continue

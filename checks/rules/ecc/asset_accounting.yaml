@@ -89,6 +89,8 @@ rules:
       DEGR (declining balance), 0000 (no depreciation).'
   record_fix_template: 'Asset {ANLA.ANLN1}: AFASL is {actual_value}. Assign the correct depreciation key via AS02 > Depreciation
     Areas tab or Fiori app F2747.'
+# AA006 catches only a blank NDJAR; NUMC '000' is not blank. AA041 supersedes it for zero useful life
+# (NDJAR and NDPER both 0, scoped to depreciating keys). Kept for extracts that deliver the field empty.
 - id: AA006
   field: ANLB.NDJAR
   check_class: null_check
@@ -496,8 +498,155 @@ rules:
     __other__: Depreciation area '{invalid_value}' is not defined. Define it in the chart of depreciation
       (OADB) or remove the orphaned terms through SAP support.
   record_fix_template: 'Asset {ANLB.ANLN1}-{ANLB.ANLN2}: depreciation area ''{actual_value}'' is not defined in T093.'
+- id: AA043
+  field: ANLC.KANSW
+  check_class: cross_field_check
+  grain: ANLC
+  fail_when: >-
+    ((`ANLC.KANSW`.fillna(0) + `ANLC.ANSWL`.fillna(0)) == 0) &
+    ((`ANLC.KNAFA`.fillna(0) + `ANLC.NAFAG`.fillna(0) + `ANLC.NAFAV`.fillna(0) + `ANLC.NAFAL`.fillna(0) + `ANLC.ZUSNA`.fillna(0)
+    + `ANLC.KSAFA`.fillna(0) + `ANLC.SAFAG`.fillna(0) + `ANLC.SAFAV`.fillna(0) + `ANLC.SAFAL`.fillna(0) + `ANLC.ZUSSA`.fillna(0)
+    + `ANLC.KAAFA`.fillna(0) + `ANLC.AAFAG`.fillna(0) + `ANLC.AAFAV`.fillna(0) + `ANLC.AAFAL`.fillna(0) + `ANLC.ZUSAA`.fillna(0)).abs() > 0.01)
+  severity: critical
+  dimension: accuracy
+  message: Asset has zero acquisition value but still carries accumulated depreciation
+  why_it_matters: >-
+    When an asset is fully retired or transferred, its APC and its accumulated depreciation both go
+    to zero. Depreciation left behind with no APC means a retirement or transfer was posted
+    incompletely, or the values were loaded inconsistently. The balance sheet then carries a book
+    value with no underlying asset.
+  rule_authority: sap_hard_constraint
+  sap_impact: Asset history sheet does not reconcile to G/L (ABST2); year-end closing (AJAB) and fiscal year change carry forward a phantom value.
+  fix_map:
+    __other__: Review the asset in AW01N (S/4 Asset Explorer); post the missing retirement/transfer depreciation via ABAVN/ABUMN or correct with ABNAN/ABMA, then rerun AFAB.
+  record_fix_template: 'Asset {ANLC.ANLN1}-{ANLC.ANLN2} (company code {ANLC.BUKRS}, area {ANLC.AFABE}, year {ANLC.GJAHR}): APC is zero but depreciation is {actual_value}.'
+
+- id: AA042
+  field: ANLC.KANSW
+  check_class: cross_field_check
+  grain: ANLC
+  fail_when: >-
+    ((`ANLC.NAFAG`.fillna(0) + `ANLC.NAFAV`.fillna(0) + `ANLC.NAFAL`.fillna(0) + `ANLC.ZUSNA`.fillna(0) + `ANLC.KSAFA`.fillna(0)
+    + `ANLC.SAFAG`.fillna(0) + `ANLC.SAFAV`.fillna(0) + `ANLC.SAFAL`.fillna(0) + `ANLC.ZUSSA`.fillna(0) + `ANLC.KAAFA`.fillna(0)
+    + `ANLC.AAFAG`.fillna(0) + `ANLC.AAFAV`.fillna(0) + `ANLC.AAFAL`.fillna(0) + `ANLC.ZUSAA`.fillna(0) + `ANLC.KMAFA`.fillna(0)
+    + `ANLC.MAFAG`.fillna(0) + `ANLC.MAFAV`.fillna(0) + `ANLC.MAFAL`.fillna(0) + `ANLC.ZUSMA`.fillna(0) + `ANLC.KAUFW`.fillna(0)
+    + `ANLC.AUFWB`.fillna(0) + `ANLC.AUFWV`.fillna(0) + `ANLC.AUFWL`.fillna(0) + `ANLC.KAUFN`.fillna(0) + `ANLC.AUFNG`.fillna(0)
+    + `ANLC.AUFNV`.fillna(0) + `ANLC.AUFNL`.fillna(0) + `ANLC.KINVZ`.fillna(0) + `ANLC.INVZM`.fillna(0) + `ANLC.INVZV`.fillna(0)
+    + `ANLC.INVZL`.fillna(0) + `ANLC.KNAFA`.fillna(0) + `ANLC.KANSW`.fillna(0) + `ANLC.ANSWL`.fillna(0)) < -0.01) &
+    ((`ANLC.KANSW`.fillna(0) + `ANLC.ANSWL`.fillna(0)) > 0)
+  severity: high
+  dimension: accuracy
+  message: Asset net book value is negative (depreciated beyond acquisition cost)
+  why_it_matters: >-
+    Depreciation cannot exceed acquisition cost unless the depreciation area explicitly allows a
+    negative book value, which it normally does not. A negative NBV comes from a changed useful life,
+    unplanned depreciation posted twice, or values migrated without matching depreciation.
+  rule_authority: sap_hard_constraint
+  sap_impact: Balance sheet overstates accumulated depreciation; AFAB may log errors (ANLC.XAFAR) and the asset cannot be retired cleanly.
+  fix_map:
+    __other__: Check the area settings (OADB "negative book value allowed") and the asset values in AW01N; reverse the excess depreciation (ABMA/ABNAN) and recalculate (AFAR).
+  record_fix_template: 'Asset {ANLC.ANLN1}-{ANLC.ANLN2} (company code {ANLC.BUKRS}, area {ANLC.AFABE}, year {ANLC.GJAHR}) has a negative net book value.'
+
+- id: AA041
+  field: ANLB.NDJAR
+  check_class: cross_field_check
+  grain: ANLB
+  fail_when: (`ANLB.NDJAR`.fillna('').str.lstrip('0') == '') & (`ANLB.NDPER`.fillna('').str.lstrip('0') == '')
+  applies_when:
+    ANLB.AFASL: {not_in: ['0000', 'GWG', 'LVA', 'NULL']}
+  severity: high
+  dimension: validity
+  message: Depreciation key is set but useful life is zero years and zero periods
+  why_it_matters: >-
+    Life-based depreciation keys divide the APC by the useful life. With 0 years and 0 periods,
+    AFAB either depreciates the whole value at once or posts nothing, depending on the key. Both
+    misstate the asset and the P&L.
+  rule_authority: sap_hard_constraint
+  sap_impact: Planned depreciation is wrong or missing; depreciation run (AFAB) logs errors or expenses the full value immediately.
+  fix_map:
+    __other__: Enter the useful life in AS02 > Deprec. areas (S/4 Manage Fixed Assets F3425), or switch the area to key 0000 if it must not depreciate; then recalculate (AFAR).
+  record_fix_template: 'Asset {ANLB.ANLN1}-{ANLB.ANLN2} (company code {ANLB.BUKRS}, area {ANLB.AFABE}): depreciation key {ANLB.AFASL} with zero useful life.'
+
+- id: AA044
+  field: ANLZ.KOSTL
+  check_class: exists_check
+  target_table: CSKS
+  target_fields:
+  - KOSTL
+  target_when:
+    BKZKP:
+      blank: true
+  applies_when:
+    ANLZ.KOSTL: {populated: true}
+  severity: high
+  dimension: consistency
+  message: Asset's cost centre does not exist or is locked for primary postings
+  why_it_matters: >-
+    Depreciation is posted to the cost centre in the asset's time-dependent data. A cost centre that
+    does not exist or is locked for actual primary costs makes the depreciation run error out for
+    that asset, or forces a manual workaround.
+  rule_authority: sap_hard_constraint
+  sap_impact: AFAB ends with errors for the asset; depreciation for the period is not posted to CO.
+  fix_map:
+    __other__: Assign a valid cost centre in AS02 > Time-dependent (S/4 Manage Fixed Assets F3425), or remove the lock in KS02.
+  record_fix_template: 'Asset {ANLA.ANLN1}-{ANLA.ANLN2} (company code {ANLA.BUKRS}): cost centre {ANLZ.KOSTL} is missing or locked.'
 
 - id: AA040
+  field: ANLB.AFABG
+  check_class: cross_field_check
+  grain: ANLB
+  fail_when: (`ANLA.AKTIV` - `ANLB.AFABG`).dt.days.abs() > 366
+  require_populated: true
+  applies_when:
+    ANLB.AFASL: {not_in: ['0000']}
+  severity: medium
+  dimension: consistency
+  message: Ordinary depreciation start date is more than a year from the capitalisation date
+  why_it_matters: >-
+    SAP derives the depreciation start from the capitalisation date and the period control. The
+    two can differ by period rules, but by less than a year. A larger gap means a manual override
+    or a migration error, which shifts a year or more of depreciation expense.
+  rule_authority: best_practice
+  sap_impact: Depreciation expense misstated across fiscal years; catch-up depreciation posted on recalculation.
+  fix_map:
+    __other__: Check AS03 > Deprec. areas; correct the start date (AS02) or the capitalisation date, then recalculate (AFAR).
+  record_fix_template: 'Asset {ANLB.ANLN1}-{ANLB.ANLN2} (area {ANLB.AFABE}): depreciation start {ANLB.AFABG}, capitalised {ANLA.AKTIV}.'
+
+- id: AA046
+  field: ANLA.ZUGDT
+  check_class: freshness_check
+  max_age_hours: 8760
+  applies_when:
+    ANLA.ANLKL: ['4000', '00004000', '4001', '00004001']
+  severity: medium
+  dimension: timeliness
+  message: Asset under construction has had first acquisition more than 12 months ago
+  why_it_matters: >-
+    AuC carries no depreciation. Projects finished but never settled to final assets understate
+    depreciation and overstate CIP, which is a recurring audit adjustment.
+  rule_authority: best_practice
+  sap_impact: Depreciation not started; CIP balance overstated; AIBU/AIAB settlement backlog.
+  fix_map:
+    __other__: Review in AW01N; settle to final assets with AIAB/AIBU (S/4 Settle AuC F3471) or confirm the project is still running.
+  record_fix_template: 'AuC {ANLA.ANLN1}-{ANLA.ANLN2} (class {ANLA.ANLKL}, company code {ANLA.BUKRS}) first acquired {ANLA.ZUGDT}.'
+
+- id: AA045
+  field: ANLA.IVDAT
+  check_class: freshness_check
+  max_age_hours: 26280
+  severity: low
+  dimension: timeliness
+  message: Last physical inventory of the asset is more than 3 years old
+  why_it_matters: >-
+    Physical verification proves the asset exists. Assets never counted for three years may be
+    gone, which overstates the balance sheet.
+  rule_authority: best_practice
+  sap_impact: Existence assertion unsupported; ghost assets carry depreciation.
+  fix_map:
+    __other__: Count the asset and record the date in AS02 > General > Inventory (S/4 F3425).
+  record_fix_template: 'Asset {ANLA.ANLN1}-{ANLA.ANLN2} (company code {ANLA.BUKRS}) last inventoried {ANLA.IVDAT}.'
+
+- id: AA047
   field: ANLA.INVNR
   check_class: regex_check
   # a tag carries a digit and is not a run of words: room names, project names and
