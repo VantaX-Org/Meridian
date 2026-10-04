@@ -7,10 +7,14 @@ For each candidate pair, applies each active match_rule for the domain:
   - numeric_range: within tolerance
   - semantic: delegates to ai_semantic_matcher.py
 
-Sums weighted scores to total_score. Routes:
+Sums weighted scores to total_score. Routes (merge_explain.AUTO_MERGE / REVIEW_FLOOR):
   - 95+ → auto-merge
   - below 30 → auto-dismiss
   - 30-95 → route to stewardship_queue as merge_decision items
+
+SAP comparators (name_legal, address_tokens, tax_exact, phone_e164, bank_exact) and
+the per-attribute explanation live in api/services/merge_explain.py. A steward
+do_not_match / always_match pair overrides the band.
 """
 
 import logging
@@ -138,84 +142,51 @@ def score_candidate_pair(
             "ai_semantic_score": None,
         }
 
+    from api.services.merge_explain import AUTO_MERGE, REVIEW_FLOOR, explain_pair, pair_key
+
+    lo, hi = pair_key(candidate_a_key, candidate_b_key)
+    constraint = session.execute(
+        text("SELECT kind FROM mdm_pair_constraints WHERE tenant_id = :tid AND domain = :d "
+             "AND key_lo = :lo AND key_hi = :hi"),
+        {"tid": tenant_id, "d": domain, "lo": lo, "hi": hi},
+    ).scalar()
+
+    semantic_scores: list[float] = []
+
+    def _semantic(field: str, va: str, vb: str) -> Optional[float]:
+        r = compute_semantic_score(tenant_id, domain, field, va, vb)
+        if r is not None:
+            semantic_scores.append(r)
+        return r
+
+    explanation = explain_pair(
+        [{"id": str(r[0]), "field": r[1], "match_type": r[2], "weight": r[3], "threshold": r[4]} for r in rows],
+        candidate_a, candidate_b, auto_merge=AUTO_MERGE, review_floor=REVIEW_FLOOR,
+        constraint=constraint, semantic=_semantic,
+    )
     field_scores: dict = {}
-    weighted_sum = 0.0
-    weight_total = 0
-    ai_semantic_score: Optional[float] = None
-
-    for rule_id, field, match_type, weight, threshold in rows:
-        value_a = candidate_a.get(field)
-        value_b = candidate_b.get(field)
-
-        # Skip if either value is missing
-        if value_a is None or value_b is None:
-            field_scores[field] = {
-                "match_type": match_type,
-                "score": 0.0,
-                "weight": weight,
-                "skipped": True,
-            }
-            continue
-
-        # Compute score based on match type
-        score: float = 0.0
-
-        if match_type == "semantic":
-            semantic_result = compute_semantic_score(
-                tenant_id, domain, field, str(value_a), str(value_b)
-            )
-            if semantic_result is not None:
-                score = semantic_result
-                ai_semantic_score = semantic_result
-            else:
-                # Semantic scoring failed — skip this rule
-                field_scores[field] = {
-                    "match_type": match_type,
-                    "score": 0.0,
-                    "weight": weight,
-                    "skipped": True,
-                    "reason": "semantic_scoring_failed",
-                }
-                continue
-        else:
-            scorer = SCORERS.get(match_type)
-            if scorer is None:
-                logger.warning(f"Unknown match_type '{match_type}' for rule {rule_id}")
-                continue
-            score = scorer(str(value_a), str(value_b))
-
-        field_scores[field] = {
-            "match_type": match_type,
-            "score": score,
-            "weight": weight,
-        }
-
-        weighted_sum += score * weight
-        weight_total += weight
-
-    # Compute total weighted score
-    total_score = weighted_sum / weight_total if weight_total > 0 else 0.0
-
-    # Determine auto action
-    if total_score >= 0.95:
-        auto_action = "merged"
-    elif total_score < 0.30:
-        auto_action = "dismissed"
-    else:
-        auto_action = "queued"
+    for x in explanation["attributes"]:
+        fs = {"match_type": x["comparator"], "score": x["similarity"] or 0.0, "weight": x["weight"]}
+        if x["skipped"]:
+            fs.update(skipped=True, reason=x["reason"])
+        field_scores[x["field"]] = fs
+    total_score = explanation["total"]
+    auto_action = explanation["auto_action"]
+    ai_semantic_score: Optional[float] = semantic_scores[-1] if semantic_scores else None
 
     result = {
         "total_score": round(total_score, 4),
         "field_scores": field_scores,
         "auto_action": auto_action,
         "ai_semantic_score": round(ai_semantic_score, 4) if ai_semantic_score is not None else None,
+        "explanation": explanation,
     }
 
     if not dry_run:
         _persist_score(
             session, tenant_id, domain,
             candidate_a_key, candidate_b_key,
-            total_score, field_scores, ai_semantic_score, auto_action,
+            total_score, field_scores, ai_semantic_score, auto_action, explanation,
         )
 
     return result
@@ -231,6 +202,7 @@ def _persist_score(
     field_scores: dict,
     ai_semantic_score: Optional[float],
     auto_action: str,
+    explanation: Optional[dict] = None,
 ) -> None:
     """Write match_scores row and optionally a cleaning_queue entry for review."""
     import json
@@ -241,9 +213,9 @@ def _persist_score(
         text(
             "INSERT INTO match_scores "
             "(id, tenant_id, candidate_a_key, candidate_b_key, domain, "
-            " total_score, field_scores, ai_semantic_score, auto_action) "
+            " total_score, field_scores, ai_semantic_score, auto_action, explanation) "
             "VALUES (:id, :tid, :a_key, :b_key, :domain, "
-            " :total, CAST(:fs AS jsonb), :ai_score, :action)"
+            " :total, CAST(:fs AS jsonb), :ai_score, :action, CAST(:ex AS jsonb))"
         ),
         {
             "id": score_id,
@@ -255,6 +227,7 @@ def _persist_score(
             "fs": json.dumps(field_scores),
             "ai_score": ai_semantic_score,
             "action": auto_action,
+            "ex": json.dumps(explanation) if explanation is not None else None,
         },
     )
 

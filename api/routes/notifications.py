@@ -1,13 +1,16 @@
 """Notification centre API routes."""
 
+import re
 import uuid
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
+from api.services.rbac import require_permission
 
 router = APIRouter(prefix="/api/v1", tags=["notifications"])
 
@@ -134,3 +137,65 @@ async def unread_count(
     count = result.scalar() or 0
 
     return {"count": count}
+
+
+
+# ── Alert channels (outbound webhook / Slack / Teams / email) ────────────────
+# Delivery lives in workers/tasks/send_notifications.py. The HMAC secret is
+# write-only: it is never returned by the API.
+
+_CHANNEL_COLS = "id, kind, digest, immediate_critical, enabled, created_at, (secret IS NOT NULL) AS has_secret"
+
+
+class AlertChannelCreate(BaseModel):
+    kind: Literal["webhook", "slack", "teams", "email"]
+    target: str = Field(min_length=3, max_length=2048)
+    secret: Optional[str] = Field(default=None, min_length=16, max_length=256)
+    digest: Literal["daily", "weekly", "off"] = "daily"
+    immediate_critical: bool = False
+
+
+def _redact(kind: str, target: str) -> str:
+    """Webhook URLs embed tokens: show the host only."""
+    return target if kind == "email" else target.split("/")[2] if target.count("/") >= 2 else "?"
+
+
+@router.get("/alert-channels", dependencies=[Depends(require_permission("view"))])
+async def list_alert_channels(db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+    await _set_rls(db, tenant.id)
+    rows = (await db.execute(text(f"SELECT {_CHANNEL_COLS}, target FROM alert_channels ORDER BY created_at")
+                             )).mappings().all()
+    return {"channels": [{**{k: v for k, v in r.items() if k != "target"},
+                          "target": _redact(r["kind"], r["target"])} for r in rows]}
+
+
+@router.post("/alert-channels", status_code=201, dependencies=[Depends(require_permission("manage_settings"))])
+async def create_alert_channel(body: AlertChannelCreate, db: AsyncSession = Depends(get_db),
+                               tenant: Tenant = Depends(get_tenant)):
+    target = body.target.strip()
+    if body.kind == "email":
+        if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", target):
+            raise HTTPException(status_code=400, detail="target must be an email address")
+    elif not target.startswith("https://"):
+        raise HTTPException(status_code=400, detail="target must be an https:// URL")
+    if body.digest == "off" and not body.immediate_critical:
+        raise HTTPException(status_code=400, detail="channel would never fire: set a digest or immediate_critical")
+    await _set_rls(db, tenant.id)
+    row = (await db.execute(text(f"""
+        INSERT INTO alert_channels (tenant_id, kind, target, secret, digest, immediate_critical)
+        VALUES (:tid, :k, :t, :s, :d, :i) RETURNING {_CHANNEL_COLS}
+    """), {"tid": str(tenant.id), "k": body.kind, "t": target, "s": body.secret, "d": body.digest,
+           "i": body.immediate_critical})).mappings().one()
+    await db.commit()
+    return {**row, "target": _redact(body.kind, target)}
+
+
+@router.delete("/alert-channels/{channel_id}", status_code=204,
+               dependencies=[Depends(require_permission("manage_settings"))])
+async def delete_alert_channel(channel_id: uuid.UUID, db: AsyncSession = Depends(get_db),
+                               tenant: Tenant = Depends(get_tenant)):
+    await _set_rls(db, tenant.id)
+    res = await db.execute(text("DELETE FROM alert_channels WHERE id = :id"), {"id": str(channel_id)})
+    if not res.rowcount:
+        raise HTTPException(status_code=404, detail="Alert channel not found")
+    await db.commit()

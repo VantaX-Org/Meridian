@@ -148,15 +148,13 @@ def _vat_be(d: str) -> bool:
     return len(d) == 10 and 97 - int(d[:8]) % 97 == int(d[8:])
 
 
-def _vat_de(d: str) -> bool:  # ISO 7064 MOD 11,10
-    if len(d) != 9:
-        return False
+def _vat_de(d: str) -> bool:  # ISO 7064 MOD 11,10 (DE 9 digits, HR OIB 11 digits)
     product = 10
-    for c in d[:8]:
+    for c in d[:-1]:
         total = (int(c) + product) % 10 or 10
         product = (2 * total) % 11
     check = 11 - product
-    return (0 if check == 10 else check) == int(d[8])
+    return (0 if check == 10 else check) == int(d[-1])
 
 
 def _vat_it(d: str) -> bool:  # Luhn over the 11 digits
@@ -225,11 +223,47 @@ def _vat_gb(d: str) -> bool:  # 9 digits: MOD 97, or MOD 9755 (numbers issued si
     return total % 97 == 0 or (total + 55) % 97 == 0
 
 
+def _vat_cz(d: str) -> bool:  # legal entities (8 digits); individuals' birth numbers are not judged
+    c = 11 - _weighted(d, range(8, 1, -1)) % 11
+    return {10: 0, 11: 1}.get(c, c) == int(d[7])
+
+
+def _vat_ee(d: str) -> bool:
+    return (10 - _weighted(d, (3, 7, 1, 3, 7, 1, 3, 7)) % 10) % 10 == int(d[8])
+
+
+def _vat_el(d: str) -> bool:
+    return _weighted(d, (256, 128, 64, 32, 16, 8, 4, 2)) % 11 % 10 == int(d[8])
+
+
+def _vat_hu(d: str) -> bool:
+    return (10 - _weighted(d, (9, 7, 3, 1, 9, 7, 3)) % 10) % 10 == int(d[7])
+
+
+def _vat_si(d: str) -> bool:
+    c = 11 - _weighted(d, range(8, 1, -1)) % 11
+    return c != 11 and (0 if c == 10 else c) == int(d[7])
+
+
+def _vat_mt(d: str) -> bool:
+    return (_weighted(d, (3, 4, 6, 7, 8, 9)) + int(d[6:])) % 37 == 0
+
+
+def _abn_au(d: str) -> bool:  # Australian Business Number: first digit minus 1, weighted, mod 89
+    return d[0] != "0" and _weighted(str(int(d[0]) - 1) + d[1:], (10, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19)) % 89 == 0
+
+
 VAT_CHECKS = {"BE": (_vat_be, r"^\d{10}$"), "DE": (_vat_de, r"^\d{9}$"), "IT": (_vat_it, r"^\d{11}$"),
               "FR": (_vat_fr, r"^\d{11}$"), "AT": (lambda b: _vat_at(b[1:]), r"^U\d{8}$"),
               "NL": (_vat_nl, r"^\d{9}B\d{2}$"), "PL": (_vat_pl, r"^\d{10}$"), "DK": (_vat_dk, r"^\d{8}$"),
               "FI": (_vat_fi, r"^\d{8}$"), "SE": (_vat_se, r"^\d{12}$"), "PT": (_vat_pt, r"^\d{9}$"),
-              "GB": (_vat_gb, r"^\d{9}$")}
+              "GB": (_vat_gb, r"^\d{9}$"), "CZ": (_vat_cz, r"^\d{8}$"), "EE": (_vat_ee, r"^\d{9}$"),
+              "EL": (_vat_el, r"^\d{9}$"), "HU": (_vat_hu, r"^\d{8}$"), "SI": (_vat_si, r"^\d{8}$"),
+              "HR": (_vat_de, r"^\d{11}$"), "LU": (lambda d: int(d[:6]) % 89 == int(d[6:]), r"^\d{8}$"),
+              "MT": (_vat_mt, r"^\d{8}$"), "SK": (lambda d: int(d) % 11 == 0, r"^\d{10}$"),
+              "AU": (_abn_au, r"^\d{11}$")}
+# Tax number 1 (STCD1) holds these identifiers without a country prefix; judged by the record's country
+TAX1_CHECKS = ("AU",)
 
 
 def vat_status(v: str) -> str:
@@ -382,6 +416,15 @@ def generate(module: str, static_rules: list[dict], dictionary) -> list[dict]:
                           "message": f"VAT registration number ({t}.STCEG) has wrong check digits",
                           "why_it_matters": "A VAT number with wrong check digits is not a registered number: "
                                             "EC sales lists and input-VAT claims citing it are rejected."})
+        if t in ("LFA1", "KNA1") and dictionary.field(t, "STCD1") and dictionary.field(t, "LAND1"):
+            rules.append({**base, "id": f"VT-{t}-STCD1", "family": "vat_checksum", "field": f"{t}.STCD1",
+                          "fields": [f"{t}.STCD1", f"{t}.LAND1"], "countries": list(TAX1_CHECKS),
+                          "severity": "high", "dimension": "validity",
+                          "message": f"Tax number 1 ({t}.STCD1) has wrong check digits for its country "
+                                     f"(Australian ABN)",
+                          "why_it_matters": "A business number with wrong check digits belongs to no registered "
+                                            "business: tax invoices citing it are invalid and payments to the "
+                                            "supplier attract withholding."})
         if t in ("LFA1", "KNA1") and all(dictionary.field(t, x) for x in ("NAME1", "PSTLZ", "LAND1")):
             rules.append({**base, "check_class": "uniqueness_check", "id": f"ND-{t}", "normalize": "name",
                           "field": f"{t}.NAME1", "fields": [f"{t}.NAME1", f"{t}.PSTLZ", f"{t}.LAND1"],

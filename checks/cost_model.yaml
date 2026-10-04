@@ -1,0 +1,23 @@
+# Cost of poor data quality — default model (checks/cost.py).
+#
+# A cost spec is one of:
+#   {per_record: 50}                   fixed amount per failing record
+#   {field: EKPO.NETWR, factor: 0.05}  sum of a field of the failing records, scaled
+# ``factor`` (default 1) scales either form.
+#
+# Precedence, most specific first: tenant ``rules`` > rule YAML ``cost:`` >
+# ``modules`` > ``severity``. The tenant model (PUT /api/v1/settings/cost-model)
+# overlays these defaults key by key. A field spec whose field is not in the
+# failing records' frame falls back to the severity amount, and the formula says so.
+#
+# The amounts are starting assumptions, not benchmarks: each customer sets its own.
+currency: ZAR
+severity:
+  critical: {per_record: 500}
+  high: {per_record: 150}
+  medium: {per_record: 40}
+  low: {per_record: 10}
+modules:
+  # PO line net value (document currency) of each failing item; 5 % of that spend at risk
+  mm_purchasing: {field: EKPO.NETWR, factor: 0.05}
+rules: {}

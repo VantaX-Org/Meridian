@@ -54,6 +54,7 @@ tables:
       NATIONALITY:    {source: PerPersonal.nationality, type: STRING, length: 128, check_table: Country, description: Nationality}
       DATE_OF_BIRTH:  {source: PerPerson.dateOfBirth, type: DATE, description: Date of birth}
       NATIONAL_ID:    {source: PerNationalId.nationalId, type: STRING, length: 256, description: National ID (primary)}
+      NATIONAL_ID_COUNTRY: {source: PerNationalId.country, type: STRING, length: 128, description: Country that issued the national ID}
 
   PEREMAIL:
     description: E-mail addresses
@@ -95,6 +96,7 @@ tables:
       USERID:              {source: EmpCompensation.userId, type: STRING, length: 100}
       EFFECTIVE_DATE:      {source: EmpCompensation.startDate, type: DATE}
       EFFECTIVE_DATE_COMP: {source: EmpPayCompRecurring.startDate, type: DATE, description: Pay component effective date}
+      PAY_GROUP:           {source: EmpCompensation.payGroup, type: STRING, length: 128, description: Pay group}
       PAY_GRADE:           {source: EmpJob.payGrade, type: STRING, length: 128, check_table: FOPayGrade}
       PAY_TYPE:            {source: EmpPayCompRecurring.payComponent, type: STRING, length: 32, check_table: FOPayComponent, description: Pay component}
       SALARY:              {source: EmpPayCompRecurring.paycompvalue, type: DECIMAL, description: Pay component amount}
@@ -254,3 +256,35 @@ tables:
       STATUS:          {source: learningHistory.completionStatusID, type: STRING, verify: true}
       SCORE:           {source: learningHistory.score, type: DECIMAL, verify: true}
       CREDIT_HOURS:    {source: learningHistory.creditHours, type: DECIMAL, verify: true}
+
+  POSITION:
+    description: Positions (Position Management), current record
+    source: Position
+    keys: [CODE]
+    fields:
+      CODE:             {source: Position.code, type: STRING, length: 128, description: Position code}
+      COMPANY:          {source: Position.company, type: STRING, length: 128, description: Legal entity of the position}
+      DEPARTMENT:       {source: Position.department, type: STRING, length: 128, description: Department of the position}
+      JOB_CODE:         {source: Position.jobCode, type: STRING, length: 128, description: Job classification of the position}
+      COST_CENTER:      {source: Position.costCenter, type: STRING, length: 128, verify: true, description: Cost centre of the position}
+      VACANT:           {source: Position.vacant, type: BOOLEAN, description: Position flagged as vacant (to be hired)}
+      EFFECTIVE_STATUS: {source: Position.effectiveStatus, type: STRING, length: 2, description: A active / I inactive}
+
+  FOCOMPANY:
+    description: Legal entities (Foundation Object), current record
+    source: FOCompany
+    keys: [EXTERNAL_CODE]
+    fields:
+      EXTERNAL_CODE: {source: FOCompany.externalCode, type: STRING, length: 128, description: Legal entity code}
+      COUNTRY:       {source: FOCompany.country, type: STRING, length: 128, description: Country of the legal entity}
+      CURRENCY:      {source: FOCompany.currency, type: STRING, length: 20, description: Default currency of the legal entity}
+      STATUS:        {source: FOCompany.status, type: STRING, length: 2, description: A active / I inactive}
+
+  FODEPARTMENT:
+    description: Departments (Foundation Object), current record
+    source: FODepartment
+    keys: [EXTERNAL_CODE]
+    fields:
+      EXTERNAL_CODE: {source: FODepartment.externalCode, type: STRING, length: 128, description: Department code}
+      COST_CENTER:   {source: FODepartment.costCenter, type: STRING, length: 128, description: Default cost centre of the department}
+      STATUS:        {source: FODepartment.status, type: STRING, length: 2, description: A active / I inactive}

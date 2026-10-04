@@ -475,7 +475,7 @@ class SuccessFactorsConnector(CloudSAPConnector):
                     if isinstance(v, str) and v.startswith("/Date("):
                         rec[k] = odata_date(v)
 
-            rows_to_take = min(len(results), int(remaining))
+            rows_to_take = len(results) if top <= 0 else min(len(results), remaining)
             all_records.extend(results[:rows_to_take])
             remaining -= rows_to_take
 
@@ -487,7 +487,7 @@ class SuccessFactorsConnector(CloudSAPConnector):
                     base = self._params.base_url.rstrip("/") if self._params else ""
                     next_url = next_url.replace(base, "", 1)
                 url = next_url
-                params = {}  # pagination URL includes all params
+                params = None  # pagination URL includes all params; {} would make httpx drop its query
             else:
                 url = None  # type: ignore[assignment]
 
@@ -699,6 +699,14 @@ class SuccessFactorsConnector(CloudSAPConnector):
                         wait,
                     )
                     time.sleep(wait)
+                    continue
+
+                # Bearer token expired mid-extraction: fetch a new one once and retry.
+                if (resp.status_code == 401 and attempt == 1 and self._params
+                        and self._params.auth_type in ("oauth2_client_credentials", "oauth2_saml")):
+                    logger.info("SuccessFactors: 401, refreshing OAuth token")
+                    self._access_token = self._get_oauth_token(self._params)
+                    self._client.headers["Authorization"] = f"Bearer {self._access_token}"
                     continue
 
                 resp.raise_for_status()
