@@ -312,17 +312,26 @@ def _prove_exists(rule, dictionary, cand, live) -> tuple[str, str]:
     is not there (expected: 2 in scope, 1 failing). A third target record is inactive."""
     aw = rule.get("applies_when") or {}
     refs = list(rule.get("fields") or [rule["field"]])
+
+    def ref(c, i, tag):  # a reference value inside the rule's own scope on that column
+        cond = aw.get(c)
+        if isinstance(cond, list):
+            return str(cond[0])
+        if isinstance(cond, dict) and cond.get("contains_any"):
+            return f"{cond['contains_any'][0]}{tag}{i}"
+        return f"{tag}{i}"
+
     row = {c: cand[c][0] for c in cand if c in aw}
-    rows = [{**row, **{c: f"T1{i}" for i, c in enumerate(refs)}},
-            {**row, **{c: f"T9{i}" for i, c in enumerate(refs)}}]
+    rows = [{**row, **{c: ref(c, i, "T1") for i, c in enumerate(refs)}},
+            {**row, **{c: ref(c, i, "T9") for i, c in enumerate(refs)}}]
     df = _rows(rule, dictionary, rows)
     frames = TableFrames.from_flat(df, dictionary, module=rule.get("module"))
     t = rule["target_table"]
     target = {f"{t}.{k}": ["TK1"] for k in dictionary.keys(t)}
     for i, f in enumerate(rule["target_fields"]):
-        target[f"{t}.{f}"] = [f"T1{i}"]
+        target[f"{t}.{f}"] = [df.loc[0, refs[i]]]  # as placed: a join field carries a row suffix
     for f, cond in (rule.get("target_when") or {}).items():
-        target[f"{t}.{f}"] = ["" if isinstance(cond, dict) and cond.get("blank") else str((cond or [""])[0])]
+        target[f"{t}.{f}"] = ["" if cond.get("blank") else "X"] if isinstance(cond, dict) else [str((cond or [""])[0])]
     extra = pd.DataFrame(target)
     have = frames.frames.get(t)
     frames.frames[t] = extra if have is None else pd.concat([have, extra], ignore_index=True)
