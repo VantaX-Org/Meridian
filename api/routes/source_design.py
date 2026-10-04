@@ -170,6 +170,18 @@ async def design_config(system_id: uuid.UUID, table: str, limit: int = Query(500
             "source": r[3], "synced_at": r[4]}
 
 
+@router.get("/{system_id}/design/config-deviation", dependencies=[Depends(require_permission("view"))])
+async def design_config_deviation(system_id: uuid.UUID, db: AsyncSession = Depends(get_db),
+                                  tenant: Tenant = Depends(get_tenant)):
+    """Live check-table values against the SAP-standard lists the rules fall back to:
+    customer entries not in the standard list, and standard entries not configured."""
+    from checks.deviation import deviation
+    await _rls(db, tenant)
+    rows = (await db.execute(text("SELECT config_table, config_data FROM config_snapshots "
+                                  "WHERE system_id = :sid AND source = 'live'"), {"sid": system_id})).fetchall()
+    return {"tables": deviation([(r[0], r[1]) for r in rows])}
+
+
 @router.get("/{system_id}/design/snapshots", dependencies=[Depends(require_permission("view"))])
 async def design_snapshots(system_id: uuid.UUID, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     await _rls(db, tenant)

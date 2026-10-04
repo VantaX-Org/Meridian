@@ -556,15 +556,15 @@ async def update_rule(
     updates = []
     params: dict = {"rid": rule_id, "tid": str(tenant.id)}
 
-    for body_field, col_name in _ALLOWED_RULE_UPDATE_FIELDS.items():
-        val = getattr(body, body_field, None)
-        if val is not None:
-            updates.append(f"{col_name} = :{body_field}")
-            params[body_field] = val
-
-    if body.is_active is not None:
-        updates.append("is_active = :is_active")
-        params["is_active"] = body.is_active
+    # Only fields the client sent: omitted = keep, explicit null = clear (nullable columns only).
+    for body_field, col_name in {**_ALLOWED_RULE_UPDATE_FIELDS, "is_active": "is_active"}.items():
+        if body_field not in body.model_fields_set:
+            continue
+        val = getattr(body, body_field)
+        if val is None and body_field != "auto_assign_to":
+            raise HTTPException(status_code=422, detail=f"'{body_field}' cannot be null")
+        updates.append(f"{col_name} = :{body_field}")
+        params[body_field] = val
 
     if not updates:
         raise HTTPException(status_code=400, detail="No fields to update")
@@ -686,7 +686,7 @@ async def get_metrics(
 # ── 13. GET /api/v1/exceptions/billing — billing for period ─────────────────
 
 
-@router.get("/exceptions/billing")
+@router.get("/exceptions/billing", dependencies=[Depends(require_permission("manage_settings"))])
 async def get_billing(
     period: str = Query(..., description="YYYY-MM format"),
     db: AsyncSession = Depends(get_db),

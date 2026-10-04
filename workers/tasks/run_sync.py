@@ -121,10 +121,13 @@ def run_sync(self, profile_id: str, tenant_id: str):
 
     all_dfs = []
     total_rows = 0
+    sap_utc_offset = None
 
     try:
         with get_connector() as conn:
             conn.connect(params)
+            from sap.ddic_reader import utc_offset_seconds
+            sap_utc_offset = utc_offset_seconds(conn)
 
             for table_name in tables:
                 try:
@@ -231,6 +234,7 @@ def run_sync(self, profile_id: str, tenant_id: str):
         "modules": [domain],
         "parquet_path": parquet_path,
         "sync_run_id": sync_run_id,
+        "sap_utc_offset_seconds": sap_utc_offset,
     }
 
     with Session(engine) as session:

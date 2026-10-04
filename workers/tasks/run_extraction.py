@@ -136,6 +136,8 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
                     "modules": modules, "source": "extraction", "system_id": system_id,
                     "scope": scope or {}, "started_at": started["started_at"],
                     "downloaded_at": datetime.now(timezone.utc).isoformat(),
+                    # SAP system-local time vs UTC; None = unknown (checks treat it as 0)
+                    "sap_utc_offset_seconds": getattr(manager, "sap_utc_offset_seconds", None),
                     "dataset_path": prefix, "object_rows": object_rows,
                     "coverage": coverage, "row_count": int(sum(len(d) for d in data_tables.values())),
                     # every data table read completely (row count reconciled, no truncation, no paging drift)

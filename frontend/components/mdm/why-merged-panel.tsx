@@ -13,6 +13,7 @@ import {
   getMergeEvents,
   getMergeExplanation,
   revertMergeEvent,
+  setStewardOverrides,
   undoLastMerge,
   unmergeRecords,
   type PairExplanation,
@@ -74,6 +75,7 @@ export function WhyMergedPanel({ recordId }: { recordId: string }) {
   const [edgeId, setEdgeId] = useState<string | null>(null);
   const [split, setSplit] = useState<string[]>([]);
   const [reason, setReason] = useState("");
+  const [edit, setEdit] = useState<{ field: string; value: string } | null>(null);
 
   const explain = useQuery({ queryKey: ["merge-explain", recordId], queryFn: () => getMergeExplanation(recordId) });
   const graph = useQuery({ queryKey: ["cluster-graph", recordId], queryFn: () => getClusterGraph(recordId) });
@@ -112,11 +114,19 @@ export function WhyMergedPanel({ recordId }: { recordId: string }) {
     onError,
   });
 
+  // Merges into the existing overrides; null clears one field. Survivorship is recomputed server side.
+  const override = useMutation({
+    mutationFn: (v: { field: string; value: string | null }) =>
+      setStewardOverrides(recordId, { [v.field]: v.value }, reason || undefined),
+    onSuccess: (_r, v) => { toast.success(v.value == null ? `Override on ${v.field} cleared` : `${v.field} overridden`); setEdit(null); refresh(); },
+    onError,
+  });
+
   if (explain.isLoading) return <p className="text-sm" style={muted}>Loading merge explanation...</p>;
   if (!explain.data) return null;
   const d = explain.data;
   const pair = d.pairs.find((p) => p.id === edgeId) ?? d.pairs[0];
-  const busy = unmerge.isPending || undo.isPending || revert.isPending || decide.isPending;
+  const busy = unmerge.isPending || undo.isPending || revert.isPending || decide.isPending || override.isPending;
   const survivorship = Object.entries(d.survivorship).sort(([a], [b]) => a.localeCompare(b));
 
   return (
@@ -180,14 +190,23 @@ export function WhyMergedPanel({ recordId }: { recordId: string }) {
               <thead>
                 <tr style={muted} className="text-left">
                   <th className="py-1 pr-3">Field</th><th className="pr-3">Value</th><th className="pr-3">From</th>
-                  <th className="pr-3">Rule</th><th>Losing values</th>
+                  <th className="pr-3">Rule</th><th className="pr-3">Losing values</th>{canChange && <th>Override</th>}
                 </tr>
               </thead>
               <tbody>
                 {survivorship.map(([field, s]) => (
                   <tr key={field} style={{ borderTop: "1px solid var(--aurora-canvas-line)" }}>
                     <td className="py-1 pr-3" style={mono}>{field}</td>
-                    <td className="pr-3" style={mono}>{s.value || "-"}</td>
+                    <td className="pr-3" style={mono}>
+                      {edit?.field === field ? (
+                        <input
+                          aria-label={`Override value for ${field}`} value={edit.value} autoFocus
+                          onChange={(e) => setEdit({ field, value: e.target.value })}
+                          className="w-full rounded border px-2 py-1 text-sm"
+                          style={{ borderColor: "var(--aurora-canvas-line)", background: "var(--aurora-elev-1-bg)" }}
+                        />
+                      ) : s.value || "-"}
+                    </td>
                     <td className="pr-3" style={mono}>{s.winner_key ?? "-"}</td>
                     <td className="pr-3">{s.rule}</td>
                     <td>
@@ -198,6 +217,26 @@ export function WhyMergedPanel({ recordId }: { recordId: string }) {
                         </div>
                       ))}
                     </td>
+                    {canChange && (
+                      <td className="whitespace-nowrap">
+                        {edit?.field === field ? (
+                          <>
+                            <Button size="sm" variant="outline" disabled={busy || !edit.value}
+                              onClick={() => override.mutate({ field, value: edit.value })}>Save</Button>{" "}
+                            <Button size="sm" variant="ghost" onClick={() => setEdit(null)}>Discard edit</Button>
+                          </>
+                        ) : (
+                          <>
+                            <Button size="sm" variant="ghost" disabled={busy}
+                              onClick={() => setEdit({ field, value: s.value ?? "" })}>Override</Button>
+                            {field in d.steward_overrides && (
+                              <Button size="sm" variant="ghost" disabled={busy}
+                                onClick={() => override.mutate({ field, value: null })}>Clear</Button>
+                            )}
+                          </>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -209,7 +248,7 @@ export function WhyMergedPanel({ recordId }: { recordId: string }) {
           <div className="space-y-2">
             <h3 className="text-sm font-semibold">Steward actions</h3>
             <label className="block text-sm">
-              Reason (required for unmerge and pair decisions)
+              Reason (required for unmerge and pair decisions, recorded with overrides)
               <input
                 value={reason} onChange={(e) => setReason(e.target.value)} maxLength={2000}
                 className="mt-1 w-full rounded border px-2 py-1 text-sm"

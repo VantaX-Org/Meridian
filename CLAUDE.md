@@ -246,73 +246,26 @@ RLS policy on every data table — always set `app.tenant_id` before queries.
 
 ---
 
-## Frontend design system — Aurora (dark-first)
+## Frontend design system — Aurora (ui-core, light-first)
 
-> **Superseded.** The current direction is light-first (paper, ink, petrol accent) and is recorded in `frontend/DESIGN.md`. The token names below are unchanged, but the values, fonts and theme default described here are out of date. Migrated pages use `components/ui-core`.
+Source of truth: `frontend/DESIGN.md`. When this summary and DESIGN.md
+disagree, follow DESIGN.md.
 
-Aurora is the authoritative design system. Source of truth: `PLAN_AURORA.md`
-at repo root and the Aurora Experience Spec (Parts I–V). Tokens live in
-`frontend/lib/aurora/` and CSS variables in `frontend/app/styles/aurora.css`.
-
-- **Theme**: dark-first, engineering register. `:root` / `[data-theme="dark"]`
-  render a graphite-navy canvas `#060910` with raised `#0B1019` cards,
-  hairline `#1F2B45` lines and a 24 px grid texture on the content area.
-  `[data-theme="light"]` is a working alternative — never the default.
-  On dark canvas, elevation is expressed by brightening the surface; on light
-  canvas it uses shadow. Never mix.
-- **Accent**: `#2B7BFF` electric blue (`--aurora-accent-500`; `400` `#4F93FF`
-  for selected/active on dark). Used for primary actions, selected state,
-  focus ring, and the verdict halo.
-- **Signal**: `#22D3EE` cyan (`--aurora-signal-500`) is reserved for
-  *in-flight* state only — a running job, a live stream, a connection test
-  under way. Never for outcomes, never for decoration.
-- **Status**: success `#27C281`, warning `#F2B134`, danger `#FF4D4F`, info
-  `#2B7BFF`. Used exclusively for status — never for decoration or branding.
-- **Viz palette**: twelve-colour ordinal categorical tuned for dark canvas;
-  sequential blue + amber ramps; diverging red/green for trend deltas.
-  `--aurora-viz-1..12`.
-- **Gradient budget**: one gradient in the entire product — the verdict halo
-  (`--aurora-verdict-halo`) rendered at 15% opacity behind the Command Centre
-  verdict sentence. Any other gradient anywhere is a bug.
-- **Typography**: six sizes, not seven. Display face is Söhne when licensed,
-  Inter 600 otherwise; UI face is Inter; mono is JetBrains Mono. Tokens:
-  `text-micro` (11/14 +0.08em), `text-small` (13/18 +0.02em), `text-body`
-  (14/20), `text-lead` (17/24), `display-sm` (24/30 -0.01em), `display-lg`
-  (40/44 -0.02em). Numeric values carry `.aurora-number` for tabular,
-  lining, stylistic-set-02 font-features.
-- **Spacing**: 4px base grid. `--aurora-space-1..24` = 4/8/12/16/20/24/32/48/64/96 px.
-- **Density**: three user-selectable tiers — `compact` (28 px rows, 12 px
-  card padding, 13 px table type), `default` (36/16/14), `comfortable`
-  (44/24/14). Applied via `[data-density="…"]`. Affects padding only — IA
-  is invariant.
-- **Motion**: four durations (`instant` 80 ms, `fast` 160 ms, `medium`
-  240 ms, `slow` 360 ms), three easings (`standard`/`enter`/`exit`), two
-  springs (`drawer`, `kanban`). `prefers-reduced-motion` disables verdict
-  entrance, process-graph materialisation, drawer spring, kanban drops —
-  never focus rings or state toggles.
-- **Elevation**: five levels (0 base / 1 cards / 2 popovers / 3 command
-  palette + modal / 4 verdict card with accent glow). Read via
-  `var(--aurora-elev-{N}-bg)` and `var(--aurora-elev-{N}-shadow)`.
-- **Iconography**: Lucide base plus twelve hand-drawn SAP icons (Business
-  Partner, Material Master, Finance Ledger, Sales Distribution, HR,
-  GL Account, Company Code, Plant, Storage Location, Sales Area, Purchasing
-  Org, Workflow Node) in `frontend/lib/aurora/icons/` at 24×24, 1.5 px
-  stroke, `currentColor`.
-- **Imports**: components pull tokens via `import { … } from "@/lib/aurora"`
-  — never reach into individual token modules. Application pages read CSS
-  via the `--aurora-*` variables.
-- **Shell**: `app/(dashboard)/layout.tsx` is the Aurora AppShell — 48 px
-  workspace rail (⌘1–⌘5), 48 px top bar (breadcrumb, live job rail, ⌘K,
-  notifications, density/theme, user). Five workspaces in
-  `frontend/lib/workspaces.ts` (Command Centre, Data, Workbench, Process,
-  Admin); each tab is a page, gated by the matching `lib/nav.ts` entry.
-  Pages not yet rebuilt render inside `.mn-legacy-host` on the same canvas:
-  `app/globals.css` and `app/styles/meridian.css` map the shadcn, `--mn-*`
-  and `.vx-*` tokens onto Aurora under `[data-theme="dark"]`, so legacy
-  surfaces read as part of the product. Never pin `data-theme="light"` on
-  a page subtree.
-- **Token reference**: `/_design-playground/aurora` renders every token for
-  visual regression. Removed at the WS8 cutover in favour of Storybook (WS2).
+- **Direction**: a well-set ledger. Paper-grey canvas `#F3F4F2`, white
+  sheets, ink type. Light is the default. Dark is a full alternative under
+  `[data-theme="dark"]`.
+- **Accent**: one petrol accent `#0E5A6B` (`--aurora-accent-500`), for
+  selection, focus and links only. Hue means defect state. No gradients,
+  glass or backdrop blur.
+- **Type**: Atkinson Hyperlegible Next for UI, Atkinson Hyperlegible Mono
+  for SAP identifiers only. Both are loaded with `next/font`. Numbers use
+  tabular figures. Use sentence case.
+- **Components**: build pages from `components/ui-core` (CSS in
+  `app/styles/ui-core.css`) on top of Aurora primitives. Import tokens from
+  `@/lib/aurora`. Pages read CSS through the `--aurora-*` variables. Token
+  names are unchanged, so legacy pages pick up the new values.
+- **Guardrail**: `npm run lint:tokens` rejects raw hex, gradients and blur
+  outside the token files. Never add lines to its allowlist.
 
 ### Frontend design system — Legacy (pre-Aurora)
 
