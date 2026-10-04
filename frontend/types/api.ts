@@ -47,6 +47,8 @@ export interface Version {
     parquet_path?: string;
     system_id?: string;
     baseline?: boolean;
+    /** "extraction" when the run was read from a system. */
+    source?: string;
     /** Records downloaded per object (system downloads). */
     object_rows?: Record<string, number>;
   } | null;

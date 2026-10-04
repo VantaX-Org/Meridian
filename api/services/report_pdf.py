@@ -14,8 +14,7 @@ import io
 import logging
 import os
 
-from jinja2 import Environment, FileSystemLoader
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger("meridian.report_pdf")
@@ -36,12 +35,6 @@ class ReportNotAssembled(Exception):
     Indicates the agent pipeline hasn't produced (or failed to persist) a
     report yet — the analysis must be re-run before a PDF can be generated.
     """
-
-
-def _get_sync_engine():
-    url = os.getenv("DATABASE_URL_SYNC", os.getenv("DATABASE_URL", ""))
-    url = url.replace("postgresql+asyncpg://", "postgresql://")
-    return create_engine(url)
 
 
 def _get_minio_client():
@@ -202,19 +195,17 @@ def _load_supplementary(session: Session, version_id: str, tenant_id: str) -> di
     }
 
 
-def _render_pdf(report_json: dict, supplementary: dict) -> bytes:
-    """Render the executive report template and convert to PDF bytes."""
-    env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
-    template = env.get_template("executive_report.html")
-    html_content = template.render(
-        report=report_json,
-        **supplementary,
-    )
+def _render_pdf(session: Session, report_json: dict, supplementary: dict, version_id: str, tenant_id: str) -> bytes:
+    """Render the executive report. Figures come from the run's findings, not from report_json."""
+    from api.services import pdf_reports
 
-    # Imported lazily — WeasyPrint pulls in a lot of native libs.
-    from weasyprint import HTML
-
-    return HTML(string=html_content, base_url=TEMPLATE_DIR).write_pdf()
+    data = pdf_reports.load_analysis(session, tenant_id, version_id)
+    if not data:
+        raise ReportNotAssembled(f"Version {version_id} not found")
+    tenant_name = session.execute(text("SELECT name FROM tenants WHERE id = :t"), {"t": tenant_id}).scalar() or ""
+    ctx = pdf_reports.executive_context(report_json, supplementary, data["version"], data["findings"],
+                                        tenant_name=tenant_name, system=data["system"])
+    return pdf_reports.render("executive_report.html", ctx)
 
 
 def _store_pdf_in_minio(pdf_bytes: bytes, version_id: str, tenant_id: str) -> str:
@@ -254,32 +245,25 @@ def build_and_store_pdf(version_id: str, tenant_id: str) -> tuple[bytes, str]:
         ReportNotAssembled: If there is no ``report_json`` for this version.
             The agent pipeline must run successfully before a PDF can exist.
     """
+    from workers.db import get_sync_engine, tenant_session
+
     logger.info(f"build_and_store_pdf: version_id={version_id}")
-    engine = _get_sync_engine()
-
-    try:
-        with Session(engine) as session:
-            report_json = _load_report_json(session, version_id, tenant_id)
-
+    with tenant_session(get_sync_engine(), tenant_id) as session:
+        report_json = _load_report_json(session, version_id, tenant_id)
         if not report_json:
             raise ReportNotAssembled(
                 f"No report_json found for version {version_id} — agent pipeline did not persist a report"
             )
+        supplementary = _load_supplementary(session, version_id, tenant_id)
+        session.rollback()  # a failed optional query above must not poison the reads below
+        pdf_bytes = _render_pdf(session, report_json, supplementary, version_id, tenant_id)
 
-        with Session(engine) as session:
-            supplementary = _load_supplementary(session, version_id, tenant_id)
+    object_path = _store_pdf_in_minio(pdf_bytes, version_id, tenant_id)
+    with tenant_session(get_sync_engine(), tenant_id) as session:
+        _update_pdf_path(session, version_id, tenant_id, object_path)
 
-        pdf_bytes = _render_pdf(report_json, supplementary)
-
-        object_path = _store_pdf_in_minio(pdf_bytes, version_id, tenant_id)
-
-        with Session(engine) as session:
-            _update_pdf_path(session, version_id, tenant_id, object_path)
-
-        logger.info(
-            f"build_and_store_pdf complete: version_id={version_id} "
-            f"path={object_path} size={len(pdf_bytes)} bytes"
-        )
-        return pdf_bytes, object_path
-    finally:
-        engine.dispose()
+    logger.info(
+        f"build_and_store_pdf complete: version_id={version_id} "
+        f"path={object_path} size={len(pdf_bytes)} bytes"
+    )
+    return pdf_bytes, object_path

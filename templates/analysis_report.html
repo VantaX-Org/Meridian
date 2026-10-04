@@ -1,0 +1,36 @@
+{% extends "_base.html" %}
+{% block body %}
+{% include "_analysis_body.html" %}
+
+<h2>Top failing checks</h2>
+{% if failing_checks %}
+<table class="data">
+<thead><tr><th>Check</th><th>Module</th><th>Severity</th><th>Dimension</th><th class="r">Failing records</th><th class="r">Of records</th><th class="r">Fail rate</th></tr></thead>
+<tbody>
+{% for f in failing_checks %}
+<tr><td>{{ f.message or f.check_id }}<span class="sub"><span class="mono">{{ f.check_id }}</span>{% if f.field %} · <span class="mono">{{ f.field }}</span>{% endif %}</span></td>
+    <td>{{ f.module | module }}</td><td><span class="st {{ f.severity | st }}">{{ f.severity | capitalize }}</span></td>
+    <td>{{ f.dimension | module }}</td><td class="r">{{ f.affected | n }}</td><td class="r">{{ f.total | n }}</td><td class="r">{{ f.fail_pct | pct }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+{% if failing_more %}<p class="note">{{ failing_more | n }} more failing checks are not listed. The full list is in the findings export.</p>{% endif %}
+{% else %}
+<div class="empty">No check found failing records in this run.</div>
+{% endif %}
+
+<h2>Checks that could not be evaluated</h2>
+{% if errored %}
+<p class="note">These checks raised an error, usually because a table or field they need was not in the data. They are excluded from every score above.</p>
+<table class="data">
+<thead><tr><th>Check</th><th>Module</th><th>Reason</th></tr></thead>
+<tbody>
+{% for f in errored %}
+<tr><td>{{ f.message or f.check_id }}<span class="sub mono">{{ f.check_id }}</span></td><td>{{ f.module | module }}</td><td>{{ f.details.error | redact | truncate(160) }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}
+<div class="empty">Every check in this run was evaluated.</div>
+{% endif %}
+{% endblock %}
