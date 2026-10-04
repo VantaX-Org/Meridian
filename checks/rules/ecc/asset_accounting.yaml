@@ -496,3 +496,26 @@ rules:
     __other__: Depreciation area '{invalid_value}' is not defined. Define it in the chart of depreciation
       (OADB) or remove the orphaned terms through SAP support.
   record_fix_template: 'Asset {ANLB.ANLN1}-{ANLB.ANLN2}: depreciation area ''{actual_value}'' is not defined in T093.'
+
+- id: AA040
+  field: ANLA.INVNR
+  check_class: regex_check
+  # a tag carries a digit and is not a run of words: room names, project names and
+  # custodians' names written into the tag field fail
+  pattern: ^(?!.*[A-Za-z]{3,}\s+[A-Za-z]{3,})(?=.*[0-9])
+  severity: medium
+  dimension: validity
+  message: Inventory number holds a description, location or person's name instead of an asset tag
+  why_it_matters: >-
+    The inventory number is meant to carry the physical tag or barcode on the asset. When it is used
+    for a room, a project or the custodian's name, many assets share the same value, the physical
+    inventory cannot match tag to record, and personal names end up in a field that is printed on
+    inventory lists and exported to scanners.
+  rule_authority: best_practice
+  sap_impact: Physical inventory (AR31/AR32) cannot confirm assets by tag; asset-tag uniqueness (AA037)
+    is meaningless; personal data sits in a non-personal field.
+  fix_map:
+    __other__: Inventory number '{invalid_value}' is not a tag. Move the location to ANLZ-RAUMN or
+      ANLZ-STORT, the custodian to ANLZ-PERNR, and write the physical tag number into INVNR (AS02 or
+      mass change AR31).
+  record_fix_template: 'Asset {ANLA.ANLN1}-{ANLA.ANLN2}: inventory number ''{actual_value}'' is not an asset tag.'
