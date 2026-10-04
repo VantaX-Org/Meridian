@@ -3,8 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Banner, Button, Chip, Field, Input, Panel, Select, Stack, Text } from "@/components/aurora";
-import { PageHead } from "@/components/meridian/atoms";
+import { Banner, Button, Field, Input, KeyValue, PageHeader, SectionCard, Select, TableSkeleton } from "@/components/ui-core";
 import {
   getLLMConfig,
   getLLMProviders,
@@ -14,6 +13,7 @@ import {
   type LLMConfigUpdate,
 } from "@/lib/api/llm-settings";
 import { useRole } from "@/hooks/use-role";
+import { apiErrorMessage } from "@/lib/api/optional";
 
 export default function AISettingsPage() {
   const { can } = useRole();
@@ -22,20 +22,17 @@ export default function AISettingsPage() {
 
   if (!can("manage_llm")) {
     return (
-      <div className="space-y-6">
-        <PageHead title="AI settings" route="/settings/ai" />
-        <Banner tone="info" title="Admins only">Ask an administrator to change the language-model provider.</Banner>
+      <div className="ui-page">
+        <PageHeader title="AI" />
+        <Banner tone="info" title="Administrators only">Ask an administrator to change the language model provider.</Banner>
       </div>
     );
   }
   return (
-    <div className="space-y-6">
-      <PageHead
-        title="AI settings"
-        route="/settings/ai"
-        sub="The language model only ever receives aggregated finding summaries — never SAP records. Every number in Meridian comes from deterministic checks; the model writes narrative and proposals."
-      />
-      {providers && config && <LLMForm key={config.updated_at ?? "env"} providers={providers} config={config} />}
+    <div className="ui-page">
+      <PageHeader title="AI"
+        summary="The language model receives field names and aggregated finding summaries, never SAP records. Every number comes from deterministic checks; the model writes narrative and rule proposals." />
+      {providers && config ? <LLMForm key={config.updated_at ?? "env"} providers={providers} config={config} /> : <TableSkeleton rows={6} label="Loading AI settings" />}
     </div>
   );
 }
@@ -52,17 +49,18 @@ function LLMForm({ providers, config }: { providers: Awaited<ReturnType<typeof g
   const body = (): LLMConfigUpdate => ({ ...form, ...(apiKey ? { api_key: apiKey } : {}) });
   const save = useMutation({
     mutationFn: () => updateLLMConfig(body()),
-    onSuccess: () => { toast.success("Language-model settings saved"); setApiKey(""); qc.invalidateQueries({ queryKey: ["llm.config"] }); },
-    onError: (e) => toast.error((e as Error).message || "Settings not saved"),
+    onSuccess: () => { toast.success("AI settings saved"); setApiKey(""); qc.invalidateQueries({ queryKey: ["llm.config"] }); },
+    onError: (e) => toast.error(`Settings not saved. ${apiErrorMessage(e)}`),
   });
   const test = useMutation({ mutationFn: () => testLLMConnection(body()) });
   const set = (patch: Partial<LLMConfigUpdate>) => setForm({ ...form, ...patch });
   const num = (v: string) => (v === "" ? undefined : Number(v));
 
   return (
-    <Panel title="Provider" action={<Chip>{config.source === "database" ? "set here" : "from environment"}</Chip>}>
-      <Stack gap={4}>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <div className="ui-columns">
+    <SectionCard title="Provider" meta={config.source === "database" ? "Set on this page" : "Read from the server environment"}>
+      <div className="ui-form">
+        <div className="ui-form__grid">
           <Field label="Provider" helper={p?.description}>
             {({ controlId }) => (
               <Select id={controlId} value={form.provider}
@@ -79,7 +77,7 @@ function LLMForm({ providers, config }: { providers: Awaited<ReturnType<typeof g
             </Field>
           )}
           {p?.requires_api_key && (
-            <Field label="API key" helper={config.has_api_key ? `Stored (${config.api_key_preview}) — leave blank to keep it` : "Not set"}>
+            <Field label="API key" helper={config.has_api_key ? `Stored as ${config.api_key_preview}. Leave blank to keep it. The key is never shown again.` : "Not set. Stored encrypted once saved."}>
               {({ controlId }) => <Input id={controlId} type="password" autoComplete="off" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />}
             </Field>
           )}
@@ -108,17 +106,28 @@ function LLMForm({ providers, config }: { providers: Awaited<ReturnType<typeof g
             {test.data.message}
           </Banner>
         )}
-        {test.error && <Banner tone="danger" title="Test refused">{(test.error as Error).message}</Banner>}
-        <Stack direction="row" gap={2}>
+        {test.error && <Banner tone="danger" title="Test refused">{apiErrorMessage(test.error)}</Banner>}
+        <div className="ui-form__actions">
           <Button variant="secondary" disabled={test.isPending} onClick={() => test.mutate()}>
-            {test.isPending ? "Testing…" : "Test connection"}
+            {test.isPending ? "Testing" : "Test connection"}
           </Button>
           <Button disabled={save.isPending} onClick={() => save.mutate()}>Save settings</Button>
-        </Stack>
-        {config.updated_at && (
-          <Text variant="text-small" tone="muted">Last changed {new Date(config.updated_at).toLocaleString()} by {config.updated_by ?? "—"}</Text>
-        )}
-      </Stack>
-    </Panel>
+        </div>
+      </div>
+    </SectionCard>
+    <div className="ui-stack">
+      <SectionCard title="Current">
+        <KeyValue rows={[
+          { k: "Provider", v: providers[config.provider]?.label ?? config.provider },
+          { k: "Model", v: config.model ?? "—", mono: true },
+          { k: "API key", v: config.has_api_key ? `Stored as ${config.api_key_preview}` : "Not set" },
+          { k: "Last changed", v: config.updated_at ? `${new Date(config.updated_at).toLocaleString("en-ZA")} by ${config.updated_by ?? "—"}` : "Never, values come from the environment" },
+        ]} />
+      </SectionCard>
+      <SectionCard title="What the model sees">
+        <p className="ui-note">Field names, check names and aggregate counts or rates. It never receives record values, document numbers or names. Every score and count is computed by deterministic checks before the model is asked anything.</p>
+      </SectionCard>
+    </div>
+    </div>
   );
 }
