@@ -28,6 +28,7 @@ import {
   Route,
   ShieldAlert,
   Sliders,
+  Timer,
   UserCog,
   Zap,
 } from "lucide-react";
@@ -87,6 +88,7 @@ export const SETTINGS_PERMISSIONS = [
 
 export const SETTINGS_ITEMS: readonly NavItem[] = [
   { href: "/settings/rules", label: "Rules engine", icon: Sliders, anyOf: ["manage_rules"], licenceKey: "rules_engine", keywords: "checks triggers schedule" },
+  { href: "/admin/triage", label: "Triage", icon: Timer, anyOf: ["manage_rules", "manage_settings"], keywords: "teams assignment rules sla business hours holidays" },
   { href: "/settings/field-mapping", label: "Field mapping", icon: MapIcon, anyOf: ["manage_field_mappings"], licenceKey: "field_mapping", keywords: "sap fields columns" },
   { href: "/settings/ai", label: "AI settings", icon: Brain, anyOf: ["manage_llm"], keywords: "ollama model provider llm" },
   { href: "/settings/licence", label: "Licence", icon: Key, anyOf: ["view"], licenceKey: "licence", keywords: "seats modules tier" },
@@ -169,6 +171,7 @@ const OFF_NAV_TITLES: Record<string, string> = {
   "/match-rules": "Match rules",
   "/settings/scoring": "Scoring & alerts",
   "/workbench/report": "Record report",
+  "/workbench/triage": "My queue",
   "/connectivity": "Connectivity",
   "/run-sync": "Run Sync",
   "/notifications": "Notifications",

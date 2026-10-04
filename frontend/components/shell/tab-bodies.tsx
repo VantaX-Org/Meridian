@@ -15,7 +15,7 @@ const named = <K extends string>(load: () => Promise<Record<K, ComponentType>>, 
   dynamic(() => load().then((m) => ({ default: m[key] })), { ssr: false, loading });
 
 /** Tabs whose body is an Aurora surface — rendered on the canvas, not in the light sheet. */
-export const AURORA_TABS: ReadonlySet<string> = new Set(["/", "/executive-report", "/sync", "/issues", "/match-rules", "/business-process", "/settings/scoring", "/settings/field-mapping",
+export const AURORA_TABS: ReadonlySet<string> = new Set(["/", "/executive-report", "/sync", "/issues", "/match-rules", "/business-process", "/settings/scoring", "/workbench/triage", "/admin/triage", "/settings/field-mapping",
   "/systems", "/upload", "/versions", "/admin", "/findings", "/cleaning", "/exceptions", "/dedup", "/golden-records", "/glossary", "/reports", "/notifications", "/settings", "/settings/rules", "/settings/ai", "/settings/licence", "/contracts",
   "/relationships", "/mining", "/ai/rules", "/workbench"]);
 
@@ -56,6 +56,8 @@ export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
   "/settings": named(() => import("@/components/admin/settings"), "SettingsSurface"),
   "/settings/rules": named(() => import("@/components/admin/rules"), "RulesSurface"),
   "/settings/scoring": named(() => import("@/components/admin/scoring"), "ScoringSettings"),
+  "/workbench/triage": named(() => import("@/components/workbench/triage-queue"), "TriageQueueSurface"),
+  "/admin/triage": named(() => import("@/components/admin/triage"), "TriageAdminSurface"),
   "/settings/field-mapping": named(() => import("@/components/admin/field-mapping"), "FieldMappingSettings"),
   "/settings/ai": named(() => import("@/components/admin/ai"), "AISurface"),
   "/settings/licence": named(() => import("@/components/admin/licence"), "LicenceSurface"),
