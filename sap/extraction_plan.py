@@ -35,10 +35,12 @@ _SF = ["employee_central", "compensation", "benefits", "payroll_integration", "p
 # Modules whose rules can be evaluated on data from each system type.
 MODULES_BY_SYSTEM: dict[str, list[str]] = {
     "ecc": _ECC + _LOGISTICS,
-    "s4hana_onprem": _ECC + _LOGISTICS,
+    "s4hana_onprem": _ECC + _LOGISTICS + ["s4hc_master_data"],
     "ewm": ["batch_management", "ewms_stock", "ewms_transfer_orders", "wm_interface"],
-    "s4hana_cloud": _ECC,
+    "s4hana_cloud": _ECC + ["s4hc_master_data"],
     "successfactors": _SF,
+    "concur": ["concur_expense", "concur_users"],
+    "ariba": ["ariba_supplier", "ariba_contracts", "ariba_procurement"],
 }
 ABAP_SYSTEM_TYPES = ("ecc", "s4hana_onprem", "ewm")
 _CONFIG_DELIVERY_CLASSES = {"C", "G", "E", "S"}

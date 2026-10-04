@@ -316,6 +316,10 @@ class ConnectivityManager:
                 report()  # final state of every table
             elif system_type == "successfactors":
                 frames, coverage = self._extract_successfactors(connector, modules, dictionary, system_id)
+            elif system_type == "s4hana_cloud":
+                frames, coverage = self._extract_s4hc(connector, modules, dictionary)
+            elif system_type in ("concur", "ariba"):
+                frames, coverage = self._extract_rest(connector, modules, dictionary, system_type)
             elif system_type == "btp":
                 frames, coverage = self._extract_mapped(connector, system_type, modules)
             else:
@@ -455,6 +459,97 @@ class ConnectivityManager:
             frames[table] = merged
             coverage.append({"table": table, "status": "live", "rows": len(merged),
                              "entities": sorted(by_entity), "unavailable_fields": sorted(unavailable)})
+        return frames, coverage
+
+    @staticmethod
+    def _rule_tables(modules) -> set[str]:
+        """Tables the rules of ``modules`` read, exists-check targets included."""
+        from checks.frames import tables_of
+        from checks.runner import _find_module_yaml, rule_columns, target_columns
+        import yaml as _yaml
+
+        wanted: set[str] = set()
+        for m in modules:
+            try:
+                for r in _yaml.safe_load(_find_module_yaml(m).read_text()).get("rules", []):
+                    wanted |= set(tables_of(rule_columns(r) + target_columns(r)))
+            except FileNotFoundError:
+                continue
+        return wanted
+
+    def _extract_s4hc(self, connector, modules, dictionary):
+        """ECC tables from S/4HANA Cloud OData entities (sap/s4hana_cloud.S4HC_TABLE_MAP), in the
+        internal format RFC delivers: dates YYYYMMDD, flags 'X' / ''."""
+        from checks.types.domain_value_check import _parse_dates
+        from sap.s4hana_cloud import S4HC_TABLE_MAP
+
+        frames, coverage, reads = {}, [], {}
+        for table in sorted(self._rule_tables(modules)):
+            if table not in S4HC_TABLE_MAP:
+                coverage.append({"table": table, "status": "upload_required",
+                                 "detail": "no S/4HANA Cloud OData mapping for this table"})
+                continue
+            entity, fields, required = S4HC_TABLE_MAP[table]
+            if entity not in reads:
+                props = sorted({p for e, f, _ in S4HC_TABLE_MAP.values() if e == entity for p in f.values()})
+                try:
+                    reads[entity] = connector.read_entity_set(entity, select=props)
+                except Exception:
+                    # a property the tenant's API version lacks fails $select: read all, keep what exists
+                    try:
+                        reads[entity] = connector.read_entity_set(entity)
+                    except Exception as e:
+                        reads[entity] = e
+            df = reads[entity]
+            if isinstance(df, Exception):
+                coverage.append({"table": table, "status": "failed", "entity": entity, "detail": str(df)[:300]})
+                continue
+            out = pd.DataFrame(index=df.index)
+            for name, prop in fields.items():
+                if prop not in df.columns:
+                    continue
+                s = df[prop].map(lambda v: ("X" if v else "") if isinstance(v, bool) else v)
+                f = dictionary.field(table, name)
+                if f is not None and (f.type or "").upper() == "DATS":
+                    s = _parse_dates(s).dt.strftime("%Y%m%d").where(s.notna() & s.astype("string").ne(""), "")
+                out[f"{table}.{name}"] = s
+            if required and f"{table}.{required}" in out.columns:
+                out = out[out[f"{table}.{required}"].astype("string").str.strip().fillna("").ne("")]
+            out = out.drop_duplicates()
+            frames[table] = out
+            coverage.append({"table": table, "status": "live", "rows": len(out), "entity": entity,
+                             "unavailable_fields": sorted(n for n, p in fields.items() if p not in df.columns)})
+        return frames, coverage
+
+    def _extract_rest(self, connector, modules, dictionary, system_type):
+        """Concur / Ariba canonical tables (sap/dictionaries/canonical/<system>.yaml): one REST path per
+        table, JSON properties renamed to TABLE.FIELD, booleans as 'true' / 'false'."""
+        frames, coverage = {}, []
+        for table in sorted(self._rule_tables(modules)):
+            t = dictionary.table(table)
+            if t is None or t.provenance != f"canonical:{system_type}":
+                continue
+            props = {f.name: f.source for f in t.fields.values() if f.source}
+            try:
+                df = connector.read_entity_set(t.note, select=sorted(set(props.values())))
+            except Exception as e:
+                coverage.append({"table": table, "status": "failed", "detail": str(e)[:300]})
+                continue
+            out = pd.DataFrame(index=df.index)
+            for name, prop in props.items():
+                if prop in df.columns:
+                    s = df[prop]
+                    if (t.fields[name].type or "").upper() == "BOOLEAN":
+                        s = s.map(lambda v: str(v).lower() if v is not None and v == v else v)
+                    out[f"{table}.{name}"] = s
+            frames[table] = out
+            entry = {"table": table, "status": "live", "rows": len(out),
+                     "unavailable_fields": sorted(n for n, p in props.items() if p not in df.columns)}
+            if t.note in getattr(connector, "own_reports_only", ()):
+                entry.update(partial=True, complete=False,
+                             detail="Concur refused user=ALL; only the API user's own reports were read. "
+                                    "Grant the connection company-wide expense access.")
+            coverage.append(entry)
         return frames, coverage
 
     # -- Extraction ------------------------------------------------------------

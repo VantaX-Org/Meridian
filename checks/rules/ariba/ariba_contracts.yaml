@@ -1,0 +1,130 @@
+# SAP Ariba contracts (canonical view ARIBA_CONTRACT in
+# sap/dictionaries/canonical/ariba.yaml). POs carry no contract reference in
+# the connector's fields, so "expired contract with open PO" is not checked.
+module: ariba_contracts
+target_state: ARIBA
+rules:
+- id: ARC001
+  field: ARIBA_CONTRACT.CONTRACT_ID
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Ariba contract has no contract ID
+  why_it_matters: The contract ID is how releases, compliance and renewals refer to the contract.
+  rule_authority: sap_hard_constraint
+  sap_impact: Contract compliance cannot match spend to the contract.
+  fix_map:
+    __blank__: Re-extract the contracts; a blank ID points to an incomplete page.
+  record_fix_template: 'Ariba contract {ARIBA_CONTRACT.TITLE}: contract ID is {actual_value}.'
+- id: ARC002
+  field: ARIBA_CONTRACT.CONTRACT_ID
+  check_class: uniqueness_check
+  fields:
+  - ARIBA_CONTRACT.CONTRACT_ID
+  severity: critical
+  dimension: uniqueness
+  message: Contract ID appears on more than one contract
+  why_it_matters: Duplicate contract IDs make release orders and compliance reporting ambiguous.
+  rule_authority: sap_hard_constraint
+  sap_impact: Spend is attributed to the wrong contract; contract consumption is overstated.
+  fix_map:
+    __other__: Re-extract; if the duplicate persists, close the copy in Contract Management.
+  record_fix_template: 'Ariba contract {ARIBA_CONTRACT.CONTRACT_ID}: ID is not unique.'
+- id: ARC003
+  field: ARIBA_CONTRACT.EXPIRATION_DATE
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Contract has no expiration date
+  why_it_matters: Without an expiration date the contract never triggers renewal or expiry, so purchasing keeps releasing
+    against terms that may no longer be valid.
+  rule_authority: best_practice
+  sap_impact: Expired terms and prices stay in use; renewal negotiations are missed.
+  fix_map:
+    __blank__: Set the expiration date, or mark the contract as perpetual with a review date.
+  record_fix_template: 'Ariba contract {ARIBA_CONTRACT.CONTRACT_ID}: expiration date is {actual_value}.'
+- id: ARC004
+  field: ARIBA_CONTRACT.EXPIRATION_DATE
+  check_class: cross_field_check
+  grain: ARIBA_CONTRACT
+  fail_when: "`ARIBA_CONTRACT.EXPIRATION_DATE` < `ARIBA_CONTRACT.EFFECTIVE_DATE`"
+  severity: high
+  dimension: consistency
+  message: Contract expires before it becomes effective
+  why_it_matters: A contract whose expiration precedes its effective date has no valid period, so every release against it
+    is out of compliance.
+  rule_authority: sap_hard_constraint
+  sap_impact: Releases fail or are reported as non-compliant spend.
+  fix_map:
+    __other__: Correct the effective or expiration date in Contract Management.
+  record_fix_template: 'Ariba contract {ARIBA_CONTRACT.CONTRACT_ID}: expires {ARIBA_CONTRACT.EXPIRATION_DATE} before it is
+    effective ({ARIBA_CONTRACT.EFFECTIVE_DATE}).'
+- id: ARC005
+  field: ARIBA_CONTRACT.SUPPLIER
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Contract has no supplier
+  why_it_matters: A contract is an agreement with a supplier. Without one no PO can be released against it.
+  rule_authority: sap_hard_constraint
+  sap_impact: The contract cannot be used for releases; its spend never counts as compliant.
+  fix_map:
+    __blank__: Assign the supplier in Contract Management.
+  record_fix_template: 'Ariba contract {ARIBA_CONTRACT.CONTRACT_ID}: supplier is {actual_value}.'
+- id: ARC006
+  field: ARIBA_CONTRACT.SUPPLIER
+  check_class: exists_check
+  target_table: ARIBA_SUPPLIER
+  target_fields:
+  - VENDOR_ID
+  grain: ARIBA_CONTRACT
+  severity: high
+  dimension: consistency
+  message: Contract supplier is not an Ariba supplier
+  why_it_matters: A contract pointing to a supplier that is not in the supplier list is orphaned, usually after a supplier
+    was merged or deleted.
+  rule_authority: sap_hard_constraint
+  sap_impact: Releases cannot be ordered from the supplier; compliance and spend reports lose the contract.
+  fix_map:
+    __other__: Reassign the contract to the surviving supplier, or close it.
+  record_fix_template: 'Ariba contract {ARIBA_CONTRACT.CONTRACT_ID}: supplier {ARIBA_CONTRACT.SUPPLIER} does not exist.'
+- id: ARC007
+  field: ARIBA_CONTRACT.CONTRACT_AMOUNT
+  check_class: cross_field_check
+  grain: ARIBA_CONTRACT
+  fail_when: "`ARIBA_CONTRACT.CONTRACT_AMOUNT` <= 0"
+  severity: medium
+  dimension: accuracy
+  message: Contract amount is zero or negative
+  why_it_matters: The contract amount is the commitment that consumption is measured against. Zero or negative means
+    over-consumption is never flagged.
+  rule_authority: best_practice
+  sap_impact: Spend beyond the agreed value is not detected.
+  fix_map:
+    __other__: Maintain the agreed contract value.
+  record_fix_template: 'Ariba contract {ARIBA_CONTRACT.CONTRACT_ID}: amount is {actual_value}.'
+- id: ARC008
+  field: ARIBA_CONTRACT.CURRENCY_CODE
+  check_class: regex_check
+  pattern: ^[A-Z]{3}$
+  severity: medium
+  dimension: validity
+  message: Contract currency is not an ISO 4217 code
+  why_it_matters: The currency is needed to compare consumption against the contract amount.
+  rule_authority: iso_standard
+  sap_impact: Consumption cannot be converted; compliance reports are wrong.
+  fix_map:
+    __other__: Replace the value with the ISO 4217 code.
+  record_fix_template: 'Ariba contract {ARIBA_CONTRACT.CONTRACT_ID}: currency ''{actual_value}'' is not an ISO code.'
+- id: ARC009
+  field: ARIBA_CONTRACT.OWNER
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Contract has no owner
+  why_it_matters: The owner receives expiry and compliance alerts. An unowned contract expires unnoticed.
+  rule_authority: best_practice
+  sap_impact: Renewals and compliance issues are not followed up.
+  fix_map:
+    __blank__: Assign a contract owner in Contract Management.
+  record_fix_template: 'Ariba contract {ARIBA_CONTRACT.CONTRACT_ID}: owner is {actual_value}.'

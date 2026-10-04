@@ -165,6 +165,11 @@ edges:
   - {parent: EMPEMPLOYMENT, child: ONBOARDINGCANDIDATEINFO, join: {USERID: USERID}, cardinality: one}
   - {parent: JOBREQUISITION, child: JOBAPPLICATION, join: {JOB_REQ_ID: JOB_REQ_ID}, cardinality: many}
 
+  # Concur Expense and SAP Ariba (canonical views, sap/dictionaries/canonical)
+  - {parent: CONCUR_USER, child: CONCUR_REPORT, join: {OWNER_LOGIN_ID: LOGIN_ID}, cardinality: many}
+  - {parent: CONCUR_REPORT, child: CONCUR_ENTRY, join: {REPORT_ID: REPORT_ID}, cardinality: many}
+  - {parent: ARIBA_PO, child: ARIBA_INVOICE, join: {PURCHASE_ORDER_ID: ORDER_ID}, cardinality: many}
+
 # Default grain per module when a rule names only attribute tables.
 anchors:
   accounts_payable: LFA1
@@ -186,3 +191,9 @@ anchors:
   grc_compliance: GRACUSERROLE
   mdg_master_data: USMD120C
   employee_central: EMPEMPLOYMENT
+  s4hc_master_data: BUT000
+  concur_expense: CONCUR_REPORT
+  concur_users: CONCUR_USER
+  ariba_supplier: ARIBA_SUPPLIER
+  ariba_contracts: ARIBA_CONTRACT
+  ariba_procurement: ARIBA_PO
