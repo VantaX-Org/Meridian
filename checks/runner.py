@@ -24,6 +24,7 @@ from checks.types.country_format_check import CountryFormatCheck
 from checks.types.aggregate_check import AggregateCheck
 from checks.types.interval_check import IntervalCheck
 from checks.types.exists_check import ExistsCheck, key_of
+from checks.types.dependency_check import DependencyCheck
 from checks.types.similarity_check import SimilarityCheck
 
 logger = logging.getLogger("meridian.checks")
@@ -89,6 +90,7 @@ REGISTRY: dict[str, type[BaseCheck]] = {
     "interval_check": IntervalCheck,
     "exists_check": ExistsCheck,
     "similarity_check": SimilarityCheck,
+    "dependency_check": DependencyCheck,
 }
 
 # check types judging a group of rows together: only sound on a complete extract
