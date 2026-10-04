@@ -531,8 +531,8 @@ function RuleSource({ checkId, module }: { checkId: string; module: string }) {
               { k: "Rule severity", v: cap(rule.severity) },
               { k: "Enabled", v: rule.enabled ? "Yes" : "No" },
             ]} />
-            {rule.conditions.length ? (
-              <pre className="ui-code" aria-label="Rule conditions">{rule.conditions.map((c) =>
+            {asConditionList(rule.conditions).length ? (
+              <pre className="ui-code" aria-label="Rule conditions">{asConditionList(rule.conditions).map((c) =>
                 Object.entries(c as Record<string, unknown>).filter(([, v]) => v !== null && v !== undefined)
                   .map(([k, v]) => `${k}: ${typeof v === "object" ? JSON.stringify(v) : String(v)}`).join("\n")).join("\n---\n")}</pre>
             ) : null}
@@ -607,4 +607,9 @@ function VersionRecords({ versionId, checkId }: { versionId: string; checkId: st
         )}
     </Part>
   );
+}
+
+/** Shipped rules carry a list of conditions; mined and custom rules carry one rule object. */
+function asConditionList(c: Record<string, unknown>[] | Record<string, unknown> | null): Record<string, unknown>[] {
+  return c == null ? [] : Array.isArray(c) ? c : [c];
 }

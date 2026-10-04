@@ -36,6 +36,9 @@ edges:
   - {parent: KNA1, child: KNBK,  join: {KUNNR: KUNNR}, cardinality: one}
   - {parent: KNA1, child: ADRC,  join: {ADDRNUMBER: ADRNR}, cardinality: one}
   - {parent: KNA1, child: ADR6,  join: {ADDRNUMBER: ADRNR}, cardinality: one, prefer: {FLGDEFAULT: "X"}}
+  # contact persons (KNVK holds both customer and vendor contacts)
+  - {parent: KNA1, child: KNVK,  join: {KUNNR: KUNNR}, cardinality: many}
+  - {parent: LFA1, child: KNVK,  join: {LIFNR: LIFNR}, cardinality: many}
 
   # ── Business partner ───────────────────────────────────────────────────
   - {parent: BUT000, child: BUT020, join: {PARTNER: PARTNER}, cardinality: one}
@@ -65,6 +68,8 @@ edges:
   # ── General ledger ─────────────────────────────────────────────────────
   - {parent: SKA1, child: SKAT, join: {KTOPL: KTOPL, SAKNR: SAKNR}, cardinality: one, prefer: {SPRAS: "E"}}
   - {parent: SKA1, child: SKB1, join: {SAKNR: SAKNR}, cardinality: many}
+  # cost elements under their controlling area (chart of accounts of the CO area)
+  - {parent: TKA01, child: CSKB, join: {KOKRS: KOKRS}, cardinality: many}
   - {parent: BKPF, child: BSEG, join: {BUKRS: BUKRS, BELNR: BELNR, GJAHR: GJAHR}, cardinality: many}
   - {parent: SKB1, child: BSEG, join: {BUKRS: BUKRS, HKONT: SAKNR}, cardinality: many}
 

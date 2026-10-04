@@ -1,0 +1,62 @@
+{
+ "table": "UKM_KKBER2SGM",
+ "description": "Assignment of Credit Control Area to Credit Segment",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "CLIENT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T014"
+  },
+  {
+   "pos": 2,
+   "name": "KKBER",
+   "key": true,
+   "data_element": "KKBER",
+   "domain": "KKBER",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Credit control area",
+   "check_table": "T014"
+  },
+  {
+   "pos": 3,
+   "name": "CREDIT_SGMNT",
+   "key": false,
+   "data_element": "UKM_PI_CREDIT_SGMNT",
+   "domain": "CHAR10",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Credit Segment",
+   "check_table": "UKM_PI_SGM0C"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "CLIENT",
+   "foreign_table": "T014",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "CREDIT_SGMNT",
+   "foreign_table": "UKM_PI_SGM0C",
+   "foreign_field": "CREDIT_SGMNT"
+  },
+  {
+   "field": "KKBER",
+   "foreign_table": "T014",
+   "foreign_field": "KKBER"
+  }
+ ]
+}

@@ -1,0 +1,69 @@
+{
+ "table": "CVIC_VEND_TO_BP1",
+ "description": "Setting for Numbering for Vendor According to BP",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "CLIENT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "ACCOUNT_GROUP",
+   "key": true,
+   "data_element": "KTOKK",
+   "domain": "KTOKK",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Vendor account group",
+   "check_table": "T077K"
+  },
+  {
+   "pos": 3,
+   "name": "GROUPING",
+   "key": false,
+   "data_element": "BU_GROUP",
+   "domain": "BU_GROUP",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Business Partner Grouping",
+   "check_table": "TB001"
+  },
+  {
+   "pos": 4,
+   "name": "SAME_NUMBER",
+   "key": false,
+   "data_element": "CVI_SAME_NUMBER",
+   "domain": "BOOLE",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Use Same Number from Customer/Vendor When Creating BP",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "ACCOUNT_GROUP",
+   "foreign_table": "T077K",
+   "foreign_field": "KTOKK"
+  },
+  {
+   "field": "GROUPING",
+   "foreign_table": "TB001",
+   "foreign_field": "BU_GROUP"
+  }
+ ]
+}

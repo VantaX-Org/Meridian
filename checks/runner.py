@@ -1,6 +1,7 @@
 import logging
 from typing import Any
 from dataclasses import asdict
+from functools import lru_cache
 from pathlib import Path
 
 import pandas as pd
@@ -133,6 +134,21 @@ def _find_module_yaml(module_name: str) -> Path:
     )
 
 
+@lru_cache(maxsize=None)
+def is_overlay(module_name: str) -> bool:
+    """An overlay module (``overlay: true``) re-judges tables other modules extract,
+    e.g. S/4HANA readiness: it runs its rules only, with no generated rules, profiling,
+    cleaning, dedup, mining or golden records of its own."""
+    try:
+        with open(_find_module_yaml(module_name), "r") as f:
+            return bool((yaml.safe_load(f) or {}).get("overlay"))
+    except FileNotFoundError:
+        return False
+
+
+S4_KEYS = ("s4_area", "s4_impact", "simplification_item")
+
+
 def _with_reference(rule: dict, dictionary, reference_values: dict[str, set[str]]) -> dict:
     """Attach the source system's live allowed values to a value-list rule.
 
@@ -156,6 +172,11 @@ def _with_reference(rule: dict, dictionary, reference_values: dict[str, set[str]
     if key and key in reference_values and rule.get("live_reference") is not False:
         out["_live_reference"] = reference_values[key]
     return out
+
+
+def target_of(rule: dict) -> str:
+    """The system the data is judged fit for: ``s4hana`` for S/4HANA readiness rules, else ``ecc``."""
+    return "s4hana" if baseline_of(rule) == "s4_target" else "ecc"
 
 
 def baseline_of(rule: dict) -> str:
@@ -287,6 +308,7 @@ def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[st
             result.details["population_excluded"] = excluded
         if result is not None:
             result.details["baseline"] = baseline_of(rule)
+            result.details.update({"target": target_of(rule), **{k: rule[k] for k in S4_KEYS if rule.get(k)}})
         return rule, result
     except Exception as e:
         logger.error(f"Exception in check {rule.get('id')}: {e}", exc_info=True)
@@ -369,9 +391,12 @@ def run_checks(
 
             # Build rule_context from YAML fields
             rule_context: dict = {}
-            for key in ("why_it_matters", "rule_authority", "sap_impact", "valid_values_with_labels"):
+            for key in ("why_it_matters", "rule_authority", "sap_impact", "valid_values_with_labels",
+                        *S4_KEYS):
                 if rule.get(key):
                     rule_context[key] = rule[key]
+            if target_of(rule) == "s4hana":
+                rule_context["target"] = "s4hana"
 
             fix_map = rule.get("fix_map", {})
             if not fix_map:

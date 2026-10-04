@@ -1605,3 +1605,98 @@ rules:
     fix_map:
       __other__: Record the review and schedule the next one in FD32 > Status.
     record_fix_template: 'Customer {KNKK.KUNNR} (credit area {KNKK.KKBER}): credit limit {KNKK.KLIMK} without any review date.'
+  - id: S4-CVI-KNVK-CUST
+    field: KNVK.PARNR
+    check_class: exists_check
+    grain: KNVK
+    applies_when:
+      KNVK.KUNNR:
+        populated: true
+      KNA1.LOEVM:
+        blank: true
+    target_table: CVI_CUST_CT_LINK
+    target_fields:
+    - CUSTOMER_CONT
+    baseline: s4_target
+    severity: high
+    dimension: consistency
+    message: 'S/4HANA readiness: contact person of an active customer has no Business Partner relationship (CVI_CUST_CT_LINK) - simplification item S4TWL Business Partner Approach, SAP Note 2265093'
+    why_it_matters: In S/4HANA contact persons are Business Partners in a contact-person relationship with the customer's Business
+      Partner. Customer/Vendor Integration converts KNVK contacts and records the link in CVI_CUST_CT_LINK; a contact without the link is
+      not carried over.
+    rule_authority: sap_hard_constraint
+    sap_impact: The contact person is lost or must be recreated by hand after the S/4HANA conversion; the CVI pre-checks report
+      the customer as not fully synchronised.
+    fix_map:
+      __other__: Activate contact-person synchronisation for the customer direction in CVI customizing and synchronise the customer
+        with MDS_LOAD_COCKPIT, or delete the obsolete contact.
+    record_fix_template: 'Contact person {KNVK.PARNR} of customer {KNVK.KUNNR} has no Business Partner relationship in CVI_CUST_CT_LINK.'
+  - id: S4-CVI-KTOKD-NUM
+    field: KNA1.KTOKD
+    check_class: exists_check
+    grain: KNA1
+    applies_when:
+      KNA1.LOEVM:
+        blank: true
+    target_table: CVIC_CUST_TO_BP1
+    target_fields:
+    - ACCOUNT_GROUP
+    baseline: s4_target
+    severity: high
+    dimension: consistency
+    message: 'S/4HANA readiness: account group of an active customer has no Business Partner grouping (number assignment) assigned in CVI customizing (CVIC_CUST_TO_BP1) - simplification item S4TWL Business Partner Approach, SAP Note 2265093'
+    why_it_matters: Customer/Vendor Integration derives each customer's Business Partner from its account group. Without an
+      entry in CVIC_CUST_TO_BP1 for the account group, the synchronisation cannot create a Business Partner number and the customer cannot be converted.
+    rule_authority: sap_hard_constraint
+    sap_impact: The CVI synchronisation of every customer in this account group fails, which blocks the S/4HANA conversion.
+    fix_map:
+      __other__: Assign a Business Partner grouping (number assignment) to the account group in CVI customizing (SPRO > Cross-Application Components > Master Data Synchronization > Customer/Vendor Integration > Business Partner Settings > Settings for Customer Integration) before synchronising.
+    record_fix_template: 'Customer {KNA1.KUNNR}: account group {KNA1.KTOKD} has no Business Partner grouping (number assignment) in CVIC_CUST_TO_BP1.'
+  - id: S4-CVI-KTOKD-ROLE
+    field: KNA1.KTOKD
+    check_class: exists_check
+    grain: KNA1
+    applies_when:
+      KNA1.LOEVM:
+        blank: true
+    target_table: CVIC_CUST_TO_BP2
+    target_fields:
+    - ACCOUNT_GROUP
+    baseline: s4_target
+    severity: high
+    dimension: consistency
+    message: 'S/4HANA readiness: account group of an active customer has no Business Partner role assigned in CVI customizing (CVIC_CUST_TO_BP2) - simplification item S4TWL Business Partner Approach, SAP Note 2265093'
+    why_it_matters: Customer/Vendor Integration derives each customer's Business Partner from its account group. Without an
+      entry in CVIC_CUST_TO_BP2 for the account group, the synchronisation cannot create the Business Partner in its role and the customer cannot be converted.
+    rule_authority: sap_hard_constraint
+    sap_impact: The CVI synchronisation of every customer in this account group fails, which blocks the S/4HANA conversion.
+    fix_map:
+      __other__: Assign a Business Partner role to the account group in CVI customizing (SPRO > Cross-Application Components > Master Data Synchronization > Customer/Vendor Integration > Business Partner Settings > Settings for Customer Integration) before synchronising.
+    record_fix_template: 'Customer {KNA1.KUNNR}: account group {KNA1.KTOKD} has no Business Partner role in CVIC_CUST_TO_BP2.'
+  - id: S4-CRM-KKBER
+    field: KNKK.KKBER
+    check_class: exists_check
+    grain: KNKK
+    applies_when:
+      KNKK.KLIMK:
+        gt: 0
+    target_table: UKM_KKBER2SGM
+    target_fields:
+    - KKBER
+    baseline: s4_target
+    severity: high
+    dimension: consistency
+    message: 'S/4HANA readiness: credit control area with credit limits has no credit segment assigned (UKM_KKBER2SGM) -
+      simplification item S4TWL Credit Management, SAP Note 2270544'
+    why_it_matters: S/4HANA replaces FI-AR credit management (KNKK) with SAP Credit Management (FIN-FSCM-CR). The credit
+      limits of each credit control area are migrated into the credit segment assigned to it; a credit control area without
+      that assignment has nowhere to migrate to.
+    rule_authority: sap_hard_constraint
+    sap_impact: The credit master data migration of the S/4HANA conversion cannot carry the credit limit over; credit checks
+      on sales orders stop after the conversion.
+    fix_map:
+      __other__: Define the credit segment and assign the credit control area to it (SPRO > Financial Supply Chain Management
+        > Credit Management > Integration with Accounts Receivable Accounting and Sales and Distribution > Assign Credit
+        Control Area and Credit Segment) before migrating credit data.
+    record_fix_template: 'Customer {KNKK.KUNNR}: credit limit in credit control area {KNKK.KKBER}, which has no credit segment
+      in UKM_KKBER2SGM.'

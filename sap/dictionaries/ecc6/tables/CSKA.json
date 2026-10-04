@@ -1,0 +1,129 @@
+{
+ "table": "CSKA",
+ "description": "Cost Elements (Data Dependent on Chart of Accounts)",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "KTOPL",
+   "key": true,
+   "data_element": "KTOPL",
+   "domain": "KTOPL",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Chart of Accounts",
+   "check_table": "T004"
+  },
+  {
+   "pos": 3,
+   "name": "KSTAR",
+   "key": true,
+   "data_element": "KSTAR",
+   "domain": "KSTAR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Cost Element",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "ERSDA",
+   "key": false,
+   "data_element": "ERFDT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Created on",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "USNAM",
+   "key": false,
+   "data_element": "ERFNM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Entered by",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "STEKZ",
+   "key": false,
+   "data_element": "STEUK",
+   "domain": "YNFLG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Cost element is tax-relevant",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "ZAHKZ",
+   "key": false,
+   "data_element": "KZZAH",
+   "domain": "YNFLG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Cost element affecting payment",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "KSTSN",
+   "key": false,
+   "data_element": "KSTSN",
+   "domain": "CHAR10",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Cost element",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "FUNC_AREA",
+   "key": false,
+   "data_element": "FKBER",
+   "domain": "FKBER",
+   "type": "CHAR",
+   "length": 16,
+   "decimals": 0,
+   "description": "Functional Area",
+   "check_table": "TFKB"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "FUNC_AREA",
+   "foreign_table": "TFKB",
+   "foreign_field": "FKBER"
+  },
+  {
+   "field": "KTOPL",
+   "foreign_table": "T004",
+   "foreign_field": "KTOPL"
+  }
+ ]
+}
