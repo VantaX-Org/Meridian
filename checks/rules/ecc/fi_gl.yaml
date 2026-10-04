@@ -7,7 +7,7 @@ rules:
     pattern: ^[A-Z0-9]{1,10}$
     severity: critical
     dimension: validity
-    message: GL account number must be 1-10 digit numeric
+    message: GL account number must be 1-10 alphanumeric characters (A-Z, 0-9)
     why_it_matters: GL account numbers must be numeric only, up to 10 digits. Alphanumeric account numbers from legacy systems
       are not supported in standard SAP charts of accounts and will be rejected during S/4HANA migration. In ECC, non-numeric
       accounts cause issues with account determination and reporting in transactions FS00 and F.01.
@@ -1043,6 +1043,7 @@ rules:
     fail_when: (`SKB1.WAERS` != `BKPF.HWAER`) & (`BKPF.WAERS` != `SKB1.WAERS`)
     applies_when:
       BSEG.KOART: [S]
+      SKB1.WAERS: {populated: true}
     severity: high
     dimension: consistency
     message: G/L account kept in a foreign currency was posted in a different currency
@@ -1064,9 +1065,11 @@ rules:
     field: BSEG.MWSKZ
     check_class: cross_field_check
     grain: BSEG
-    fail_when: (`BSEG.MWSKZ` != `SKB1.MWSKZ`) & `SKB1.MWSKZ`.str.fullmatch('[A-Za-z0-9]{1,2}')
+    fail_when: '`BSEG.MWSKZ` != `SKB1.MWSKZ`'
     applies_when:
       BSEG.KOART: [S]
+      BSEG.MWSKZ: {populated: true}
+      SKB1.MWSKZ: {populated: true, not_in: ['*', '<', '>', '+', '-']}
     severity: high
     dimension: consistency
     message: G/L line uses a tax code other than the one its account allows
@@ -1105,24 +1108,204 @@ rules:
     record_fix_template: 'Document {BSEG.BELNR}/{BSEG.GJAHR} line {BSEG.BUZEI}: local amount {BSEG.DMBTR} but
       document amount {BSEG.WRBTR} in the same currency {BKPF.WAERS}.'
 
-  - id: GL055
-    field: BSEG.DMBTR
-    check_class: cross_field_check
-    fail_when: (`BSEG.SHKZG` == 'S') & ((`BSEG.DMBTR` < 0) | (`BSEG.WRBTR` < 0))
-    severity: high
+  - id: GL058
+    field: BSEG.WRBTR
+    check_class: balance_check
+    grain: BSEG
+    group_by: [BSEG.BUKRS, BSEG.BELNR, BSEG.GJAHR]
+    amount: BSEG.WRBTR
+    sign_field: BSEG.SHKZG
+    debit_value: S
+    tolerance: 0.01
+    applies_when:
+      BKPF.BSTAT: {not_in: [D, M, S, V, W, Z]}
+    severity: critical
     dimension: accuracy
-    message: Debit line item carries a negative amount
+    message: Posted FI document does not balance in document currency (debits ≠ credits in WRBTR)
     why_it_matters: >-
-      SAP stores line item amounts without sign; the debit/credit indicator carries the sign. A
-      negative amount on a debit line reverses its effect in every total that adds the amount by the
-      indicator, so the line was built outside the posting logic.
+      SAP posts a document only when its lines net to zero in document currency and in company-code
+      currency. A document that balances in DMBTR but not in WRBTR has lines that were changed or lost
+      outside the posting logic, so foreign-currency valuation and open-item clearing will be wrong.
     rule_authority: sap_hard_constraint
-    sap_impact: Balances and the document balance are wrong by twice the amount of the line.
+    sap_impact: Foreign-currency valuation (FAGL_FCV / F.05) and clearing in document currency produce wrong differences.
     fix_map:
-      __other__: Compare the document in FB03 with the extract; re-extract if FB03 shows a positive amount,
-        otherwise raise the corrupt line item with SAP support.
-    record_fix_template: 'Document {BSEG.BELNR}/{BSEG.GJAHR} line {BSEG.BUZEI}: debit line with negative amount
-      {actual_value}.'
+      __other__: Compare the document in FB03 (S/4 Manage Journal Entries F0717) with the extract; re-extract if they differ, otherwise raise with SAP support.
+    record_fix_template: 'Document {BSEG.BELNR}/{BSEG.GJAHR} (company code {BSEG.BUKRS}) does not balance in document currency.'
+
+  - id: GL057
+    field: SKB1.XKRES
+    check_class: cross_field_check
+    grain: SKB1
+    fail_when: (`SKB1.XOPVW` == 'X') & `SKB1.XKRES`.isna()
+    severity: high
+    dimension: consistency
+    message: G/L account is managed on an open-item basis but line-item display is off
+    why_it_matters: >-
+      Open-item management relies on individual line items being available for clearing (F.13,
+      F-03) and for open-item lists (FBL3N). In ECC, line-item display is a separate switch. Leaving
+      it off on an OI-managed account makes the open items invisible in standard reports.
+    rule_authority: sap_hard_constraint
+    sap_impact: FBL3N cannot list the open items; automatic clearing and GR/IR analysis fail on the account.
+    fix_map:
+      __blank__: 'Set "Line item display" in FS00 > Control data and run RFSEPA01 to build the line-item index (S/4: always on, F0731 Manage G/L Account Master Data).'
+    record_fix_template: 'GL Account {SKB1.SAKNR} in company code {SKB1.BUKRS}: open-item managed without line-item display.'
+
+  - id: GL060
+    field: BKPF.BUDAT
+    check_class: cross_field_check
+    grain: BKPF
+    fail_when: (`BKPF.CPUDT` - `BKPF.BUDAT`).dt.days > 45
+    require_populated: true
+    applies_when:
+      BKPF.BSTAT: {not_in: [D, M, S, V, W, Z]}
+      BKPF.MONAT: {not_in: ['13', '14', '15', '16']}
+    severity: medium
+    dimension: timeliness
+    message: Journal entry posted more than 45 days before it was entered (backdated)
+    why_it_matters: >-
+      Auditors test journals entered long after their posting date, because that is how results get
+      adjusted after the period closed. A large gap between entry date (CPUDT) and posting date (BUDAT)
+      means the posting-period controls (OB52) were open far longer than the close calendar allows.
+    rule_authority: regulatory
+    sap_impact: Closed-period figures change after reporting; OB52 period controls are not effective.
+    fix_map:
+      __other__: Review the document (FB03 / S/4 F0717) and its approval; tighten OB52 period opening to the close calendar.
+    record_fix_template: 'Document {BKPF.BELNR}/{BKPF.GJAHR} (company code {BKPF.BUKRS}) entered {BKPF.CPUDT}, posted to {BKPF.BUDAT}.'
+
+  - id: GL059
+    field: BSEG.HKONT
+    check_class: cross_field_check
+    grain: BSEG
+    fail_when: (`SKB1.XSPEB` == 'X') | (`SKB1.XLOEB` == 'X')
+    applies_when:
+      BKPF.BSTAT: {not_in: [D, M, S, V, W, Z]}
+    severity: medium
+    dimension: consistency
+    message: Recent posting to a G/L account that is blocked for posting or flagged for deletion
+    why_it_matters: >-
+      A blocked or deletion-flagged account should receive no postings. Postings in the current
+      window mean the account was blocked too late (balances not moved), unblocked temporarily without
+      control, or reached through a direct update. Its balance then falls outside the chart of
+      accounts governance.
+    rule_authority: best_practice
+    sap_impact: Balance on an account excluded from planning/reporting; archiving of the account blocked.
+    fix_map:
+      __other__: Check change history (FS04 / S/4 F0731); repost to the active account and transfer the balance before blocking.
+    record_fix_template: 'Document {BSEG.BELNR}/{BSEG.GJAHR} line {BSEG.BUZEI} posts to blocked/deleted account {BSEG.HKONT} (company code {BSEG.BUKRS}).'
+
+  - id: GL056
+    field: SKB1.XMITK
+    check_class: cross_field_check
+    grain: SKB1
+    fail_when: '`SKB1.XMITK` == ''X'''
+    applies_when:
+      SKB1.MITKZ: [D, K, A]
+    severity: medium
+    dimension: consistency
+    message: Reconciliation account is open for direct input
+    why_it_matters: >-
+      Reconciliation accounts are posted only through their sub-ledger. Making them ready for input
+      lets users post to the G/L account directly, so the G/L balance and the AP/AR/AA sub-ledger
+      drift apart.
+    rule_authority: sap_hard_constraint
+    sap_impact: Sub-ledger to G/L reconciliation (F.03 / FAGLF03) shows differences.
+    fix_map:
+      __other__: Clear "Recon. account ready for input" in FS00 > Create/bank/interest (S/4 F0731), after confirming no migration is running.
+    record_fix_template: 'GL Account {SKB1.SAKNR} in company code {SKB1.BUKRS}: reconciliation account ({SKB1.MITKZ}) is open for input.'
+  - id: GL200
+    field: SKA1.XLOEV
+    check_class: cross_field_check
+    fail_when: (`SKA1.XLOEV` == 'X') & `SKA1.XSPEB`.isna()
+    severity: medium
+    dimension: consistency
+    message: G/L account flagged for deletion in the chart of accounts but not blocked for posting
+    why_it_matters: The deletion flag only marks the account for archiving. Postings are stopped only by the posting block,
+      so a deleted account without the block still accepts postings in every company code.
+    rule_authority: best_practice
+    sap_impact: Documents keep landing on a retired account and archiving of the account fails.
+    fix_map:
+      __other__: Set the posting block in the chart of accounts segment (FS00 > Block) together with the deletion flag.
+    record_fix_template: 'G/L account {SKA1.SAKNR} (chart {SKA1.KTOPL}): flagged for deletion but not blocked for posting.'
+  - id: GL201
+    field: SKB1.XLOEB
+    check_class: cross_field_check
+    fail_when: (`SKB1.XLOEB` == 'X') & `SKB1.XSPEB`.isna()
+    severity: medium
+    dimension: consistency
+    message: G/L account flagged for deletion in the company code but not blocked for posting
+    why_it_matters: The company-code deletion flag only marks the segment for archiving. Without the company-code posting block
+      the account still accepts postings.
+    rule_authority: best_practice
+    sap_impact: Documents keep landing on a retired account and archiving of the company-code segment fails.
+    fix_map:
+      __other__: Set the company-code posting block (FS00 > Block) together with the deletion flag.
+    record_fix_template: 'G/L account {SKB1.SAKNR} in company code {SKB1.BUKRS}: flagged for deletion but not blocked for posting.'
+  - id: GL203
+    field: SKB1.XOPVW
+    check_class: cross_field_check
+    fail_when: (`SKB1.XOPVW` == 'X') & `SKA1.SAKNR`.notna() & `SKA1.XBILK`.isna()
+    severity: medium
+    dimension: consistency
+    message: Profit and loss account is managed on an open item basis
+    why_it_matters: Open item management is meant for balance-sheet clearing accounts (GR/IR, bank clearing, salaries payable).
+      On a P&L account the balance is carried forward to retained earnings at year end while the items stay open, so they can
+      never be cleared against the new year's balance.
+    rule_authority: best_practice
+    sap_impact: Open item lists of the account grow forever; automatic clearing finds nothing to clear against.
+    fix_map:
+      __other__: Remove open item management from the P&L account once its open items are cleared (FS00 > Control data); move
+        genuine clearing postings to a balance-sheet clearing account.
+    record_fix_template: 'G/L account {SKB1.SAKNR} in company code {SKB1.BUKRS}: P&L account managed on an open item basis.'
+  - id: GL204
+    field: SKB1.XGKON
+    check_class: cross_field_check
+    fail_when: (`SKB1.XGKON` == 'X') & `SKA1.SAKNR`.notna() & `SKA1.XBILK`.isna()
+    severity: medium
+    dimension: consistency
+    message: Profit and loss account is flagged as relevant to cash flow
+    why_it_matters: The cash-relevant flag (XGKON) marks bank and cash accounts for the cash flow statement and cash management.
+      A P&L account with the flag puts expense and revenue postings into cash reporting.
+    rule_authority: best_practice
+    sap_impact: The cash position and the direct cash flow statement include non-cash P&L postings.
+    fix_map:
+      __other__: Remove the 'relevant to cash flow' flag from the P&L account (FS00 > Create/bank/interest).
+    record_fix_template: 'G/L account {SKB1.SAKNR} in company code {SKB1.BUKRS}: P&L account flagged as cash relevant.'
+  - id: GL205
+    field: SKB1.XKRES
+    check_class: cross_field_check
+    fail_when: (`SKB1.XKRES` == 'X')
+    applies_when:
+      SKB1.MITKZ:
+      - A
+      - D
+      - K
+    severity: low
+    dimension: consistency
+    message: Reconciliation account has line item display switched on
+    why_it_matters: The line items of a reconciliation account are displayed in the sub-ledger (FBL1N, FBL5N, AW01N). SAP recommends
+      switching line item display off on reconciliation accounts because it duplicates every sub-ledger line in the G/L index
+      tables.
+    rule_authority: best_practice
+    sap_impact: Large secondary index tables (BSIS/BSAS) and slower period-end processing without any reporting benefit.
+    fix_map:
+      __other__: Switch off line item display on the reconciliation account (FS00) and reorganise the index (RFSEPA02).
+    record_fix_template: 'G/L account {SKB1.SAKNR} in company code {SKB1.BUKRS}: reconciliation account ({SKB1.MITKZ}) with
+      line item display.'
+  - id: GL206
+    field: SKB1.XLOEB
+    check_class: cross_field_check
+    fail_when: (`SKA1.XLOEV` == 'X') & `SKB1.XLOEB`.isna()
+    severity: low
+    dimension: consistency
+    message: G/L account is deleted in the chart of accounts but still active in a company code
+    why_it_matters: An account retired at chart-of-accounts level should be retired in every company code that uses it. A live
+      company-code segment means one entity still uses an account the group has retired.
+    rule_authority: best_practice
+    sap_impact: Group reporting maps postings to an account that no longer exists in the group chart.
+    fix_map:
+      __other__: Flag the company-code segment for deletion and block it (FS00), or remove the chart-level deletion flag.
+    record_fix_template: 'G/L account {SKB1.SAKNR} in company code {SKB1.BUKRS}: deleted in the chart of accounts but active
+      here.'
 
   - id: S4-CE-PRIMARY-GL
     field: CSKB.KSTAR

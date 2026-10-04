@@ -15,8 +15,9 @@ const named = <K extends string>(load: () => Promise<Record<K, ComponentType>>, 
   dynamic(() => load().then((m) => ({ default: m[key] })), { ssr: false, loading });
 
 /** Tabs whose body is an Aurora surface — rendered on the canvas, not in the light sheet. */
-export const AURORA_TABS: ReadonlySet<string> = new Set(["/", "/executive-report", "/sync", "/issues", "/match-rules", "/business-process", "/settings/scoring", "/settings/field-mapping",
-  "/systems", "/upload", "/versions", "/admin", "/findings", "/cleaning", "/exceptions", "/dedup", "/golden-records", "/glossary", "/reports", "/notifications"]);
+export const AURORA_TABS: ReadonlySet<string> = new Set(["/", "/executive-report", "/sync", "/issues", "/match-rules", "/match-rules/tuning", "/match-rules/constraints", "/business-process", "/settings/scoring", "/workbench/triage", "/admin/triage", "/settings/field-mapping",
+  "/systems", "/upload", "/versions", "/admin", "/findings", "/cleaning", "/exceptions", "/dedup", "/golden-records", "/glossary", "/reports", "/notifications", "/settings", "/settings/rules", "/settings/ai", "/settings/licence", "/contracts",
+  "/relationships", "/mining", "/ai/rules", "/workbench"]);
 
 export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
   "/": named(() => import("@/components/command-centre/overview"), "CommandCentreOverview"),
@@ -35,30 +36,32 @@ export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
   "/run-sync": page(() => import("@/app/(dashboard)/run-sync/page")),
   "/migration": page(() => import("@/app/(dashboard)/migration/page")),
 
-  "/workbench": named(() => import("@/app/(dashboard)/workbench/queue"), "MyQueuePage"),
-  "/stewardship": page(() => import("@/app/(dashboard)/stewardship/page")),
-  "/stewardship/metrics": page(() => import("@/app/(dashboard)/stewardship/metrics/page")),
+  "/workbench": named(() => import("@/components/workbench/inbox"), "StewardInboxSurface"),
   "/cleaning": named(() => import("@/components/workbench/cleaning"), "CleaningSurface"),
   "/exceptions": named(() => import("@/components/workbench/exceptions"), "ExceptionsSurface"),
   "/dedup": named(() => import("@/components/workbench/dedup"), "DedupSurface"),
-  "/ai/rules": page(() => import("@/app/(dashboard)/ai/rules/page")),
+  "/ai/rules": named(() => import("@/components/workbench/ai-rules"), "AiRulesSurface"),
   "/golden-records": named(() => import("@/components/workbench/golden-records"), "GoldenRecordsSurface"),
   "/match-rules": named(() => import("@/components/workbench/match-rules"), "MatchRulesSurface"),
+  "/match-rules/tuning": named(() => import("@/components/workbench/match-tuning"), "MatchTuningSurface"),
+  "/match-rules/constraints": named(() => import("@/components/workbench/match-tuning"), "PairConstraintsSurface"),
   "/glossary": named(() => import("@/components/workbench/glossary"), "GlossarySurface"),
   "/reports": named(() => import("@/components/workbench/reports"), "ReportsSurface"),
 
   "/process": named(() => import("@/app/(dashboard)/process/map"), "ProcessMapPage"),
   "/business-process": named(() => import("@/components/process/readiness"), "ProcessReadiness"),
   "/config-impact": page(() => import("@/app/(dashboard)/config-impact/page")),
-  "/mining": page(() => import("@/app/(dashboard)/mining/page")),
-  "/relationships": page(() => import("@/app/(dashboard)/relationships/page")),
+  "/mining": named(() => import("@/components/process/graph"), "GraphSurface"),
+  "/relationships": named(() => import("@/components/process/graph"), "GraphSurface"),
 
   "/admin": named(() => import("@/components/admin/users"), "UsersSurface"),
-  "/settings": page(() => import("@/app/(dashboard)/settings/page")),
-  "/settings/rules": page(() => import("@/app/(dashboard)/settings/rules/page")),
+  "/settings": named(() => import("@/components/admin/settings"), "SettingsSurface"),
+  "/settings/rules": named(() => import("@/components/admin/rules"), "RulesSurface"),
   "/settings/scoring": named(() => import("@/components/admin/scoring"), "ScoringSettings"),
+  "/workbench/triage": named(() => import("@/components/workbench/triage-queue"), "TriageQueueSurface"),
+  "/admin/triage": named(() => import("@/components/admin/triage"), "TriageAdminSurface"),
   "/settings/field-mapping": named(() => import("@/components/admin/field-mapping"), "FieldMappingSettings"),
-  "/settings/ai": page(() => import("@/app/(dashboard)/settings/ai/page")),
-  "/settings/licence": page(() => import("@/app/(dashboard)/settings/licence/page")),
-  "/contracts": page(() => import("@/app/(dashboard)/contracts/page")),
+  "/settings/ai": named(() => import("@/components/admin/ai"), "AISurface"),
+  "/settings/licence": named(() => import("@/components/admin/licence"), "LicenceSurface"),
+  "/contracts": named(() => import("@/components/admin/contracts"), "ContractsSurface"),
 };

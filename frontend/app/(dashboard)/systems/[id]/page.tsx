@@ -24,7 +24,7 @@ import {
 } from "@/components/aurora";
 import { PageHead } from "@/components/meridian/atoms";
 import { getSystems, testConnection } from "@/lib/api/connectivity";
-import { ObjectsPanel, TrendsTab, VersionsTab } from "./versions";
+import { ObjectsPanel, SchedulesPanel, TrendsTab, VersionsTab } from "./versions";
 import { ReferencePanel } from "./reference-panel";
 import {
   discoverSystem,
@@ -149,6 +149,7 @@ export default function SystemDesignPage() {
       )}
 
       {can("trigger_sync") && <ObjectsPanel id={id} onDownloaded={() => setTab("versions")} />}
+      <SchedulesPanel id={id} canManage={can("manage_systems")} />
       {can("manage_systems") && <ReferencePanel id={id} />}
 
       <Panel>

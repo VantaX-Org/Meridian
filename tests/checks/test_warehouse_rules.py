@@ -12,15 +12,15 @@ RULES_DIR = Path(__file__).parent.parent.parent / "checks" / "rules" / "warehous
 
 # Expected rule counts per module
 EXPECTED_COUNTS = {
-    "ewms_stock": 34,
-    "ewms_transfer_orders": 31,
-    "fleet_management": 32,
-    "cross_system_integration": 19,
-    "transport_management": 32,
-    "batch_management": 14,
-    "wm_interface": 18,
-    "grc_compliance": 22,
-    "mdg_master_data": 22,
+    "ewms_stock": 53,
+    "ewms_transfer_orders": 41,
+    "fleet_management": 35,
+    "cross_system_integration": 21,
+    "transport_management": 35,
+    "batch_management": 19,
+    "wm_interface": 19,
+    "grc_compliance": 25,
+    "mdg_master_data": 23,
 }
 
 REQUIRED_ENRICHMENT_FIELDS = ["fix_map", "rule_authority", "why_it_matters", "sap_impact"]
@@ -107,7 +107,7 @@ def test_total_warehouse_rule_count():
     for module_name in EXPECTED_COUNTS:
         rules = _load_rules(module_name)
         total += len(rules)
-    assert total == 224, f"Expected 224 total warehouse rules, got {total}"
+    assert total == 271, f"Expected 271 total warehouse rules, got {total}"
 
 
 # ---- Test 6: domain_value_check rules have valid_values_with_labels ----

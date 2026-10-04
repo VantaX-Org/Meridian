@@ -47,6 +47,8 @@ export interface Version {
     parquet_path?: string;
     system_id?: string;
     baseline?: boolean;
+    /** "extraction" when the run was read from a system. */
+    source?: string;
     /** Records downloaded per object (system downloads). */
     object_rows?: Record<string, number>;
   } | null;
@@ -122,6 +124,8 @@ export interface Finding {
   version_id: string;
   module: string;
   check_id: string;
+  /** YAML rule check_class (e.g. "domain_value_check"); null for tenant custom rules. */
+  check_class?: string | null;
   severity: Severity;
   dimension: Dimension;
   affected_count: number;
@@ -141,6 +145,11 @@ export interface Finding {
   rule_context: RuleContext | null;
   value_fix_map: Record<string, ValueFixEntry> | null;
   record_fixes: RecordFixEntry[] | null;
+  /** Cost of poor data quality (checks/cost.py) and how it was computed. */
+  cost_at_risk?: number | null;
+  cost_formula?: string | null;
+  /** $ at risk × blocked SAP features × severity — the "impact" sort. */
+  impact_score?: number | null;
   created_at: string;
   /* Glossary enrichment (Phase K) */
   business_name?: string | null;
@@ -251,16 +260,20 @@ export interface PlannerConfig {
   currency: string;
 }
 
+export interface AlertThresholds {
+  critical_threshold: number;
+  high_threshold: number;
+  dqs_drop_threshold: number;
+  /** module → minimum DQS; a run scoring the module below it raises an alert */
+  module_floors?: Record<string, number>;
+}
+
 export interface TenantSettings {
   name: string;
   licensed_modules: string[];
   planner_config: PlannerConfig | null;
   dqs_weights: DimensionScores | null;
-  alert_thresholds: {
-    critical_threshold: number;
-    high_threshold: number;
-    dqs_drop_threshold: number;
-  } | null;
+  alert_thresholds: AlertThresholds | null;
   notification_config: {
     email: string;
     teams_webhook: string;
@@ -802,6 +815,15 @@ export interface StewardshipQueueItem {
   updated_at: string;
   ai_recommendation: string | null;
   ai_confidence: number | null;
+  /** Triage / SLA fields; present once migration 059 is applied. */
+  assigned_team_id?: string | null;
+  acknowledged_at?: string | null;
+  resolved_at?: string | null;
+  ack_due_at?: string | null;
+  sla_state?: "on_track" | "at_risk" | "breached" | null;
+  sla_paused_at?: string | null;
+  snoozed_until?: string | null;
+  snooze_reason?: string | null;
 }
 
 export interface StewardshipQueueListResponse {
@@ -885,7 +907,7 @@ export interface MdmHistoryResponse {
 }
 
 /* -- System Types (Extended) -- */
-export type SystemType = "ecc" | "s4hana_onprem" | "s4hana_cloud" | "successfactors" | "concur" | "ariba" | "ewm";
+export type SystemType = "ecc" | "s4hana_onprem" | "s4hana_cloud" | "successfactors" | "concur" | "ariba" | "btp" | "ewm";
 export type AuthType = "rfc" | "basic" | "oauth2_client_credentials" | "oauth2_saml" | "api_key";
 export type HealthStatus = "healthy" | "degraded" | "unreachable" | "auth_failed" | "unknown";
 

@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 import uuid
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
@@ -163,3 +164,71 @@ async def export_report_json(
             )
         },
     )
+
+
+# ── Deterministic run reports ────────────────────────────────────────────────
+# Rendered inline (worker thread) rather than via Celery: each report is a few
+# pages built from aggregate queries and renders in well under a second.
+
+_NOT_FOUND = {
+    "analysis": "Run not found.",
+    "extraction": "No extraction run found for this version. Extraction reports exist only for runs read from SAP.",
+    "cleaning": "Run not found.",
+    "comparison": "One or both runs not found.",
+}
+
+
+def _build_sync(tenant_id: str, kind: str, vid: Optional[str], vid1: Optional[str]) -> Optional[bytes]:
+    from api.services.pdf_reports import build
+    from workers.db import get_sync_engine, tenant_session
+
+    with tenant_session(get_sync_engine(), tenant_id) as session:
+        return build(session, tenant_id, kind, vid, vid1)
+
+
+async def _pdf(tenant: Tenant, kind: str, filename: str, vid: Optional[uuid.UUID] = None,
+               vid1: Optional[uuid.UUID] = None) -> Response:
+    try:
+        pdf = await asyncio.to_thread(_build_sync, str(tenant.id), kind,
+                                      str(vid) if vid else None, str(vid1) if vid1 else None)
+    except Exception:
+        logger.exception("PDF report %s failed", kind)
+        raise HTTPException(status_code=500, detail="Failed to generate PDF report")
+    if pdf is None:
+        raise HTTPException(status_code=404, detail=_NOT_FOUND[kind])
+    return Response(content=pdf, media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+
+
+@router.get("/reports/analysis/{version_id}.pdf")
+async def analysis_report_pdf(version_id: uuid.UUID, tenant: Tenant = Depends(get_tenant)) -> Response:
+    """Analysis run report: scores, readiness, what to fix first, failing checks."""
+    return await _pdf(tenant, "analysis", f"meridian_analysis_{version_id}.pdf", version_id)
+
+
+@router.get("/reports/extraction/{version_id}.pdf")
+async def extraction_report_pdf(version_id: uuid.UUID, tenant: Tenant = Depends(get_tenant)) -> Response:
+    """Extraction run report: tables read, row counts, timings and issues."""
+    return await _pdf(tenant, "extraction", f"meridian_extraction_{version_id}.pdf", version_id)
+
+
+@router.get("/reports/cleaning.pdf")
+async def cleaning_report_pdf(version_id: Optional[uuid.UUID] = None,
+                              tenant: Tenant = Depends(get_tenant)) -> Response:
+    """Cleaning and fixes report for one run, or for the whole organisation without ``version_id``."""
+    name = f"meridian_cleaning_{version_id}.pdf" if version_id else "meridian_cleaning.pdf"
+    return await _pdf(tenant, "cleaning", name, version_id)
+
+
+@router.get("/reports/compare.pdf")
+async def comparison_report_pdf(v2: str, v1: Optional[str] = None, db: AsyncSession = Depends(get_db),
+                                tenant: Tenant = Depends(get_tenant)) -> Response:
+    """Run comparison report. ``v1`` defaults to the baseline or previous run, as in /versions/compare."""
+    from api.routes.versions import _resolve_pair
+
+    await db.execute(text("SELECT set_config('app.tenant_id', :t, false)"), {"t": str(tenant.id)})
+    try:
+        vid1, vid2 = await _resolve_pair(db, v1, v2)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="Invalid run id")
+    return await _pdf(tenant, "comparison", f"meridian_comparison_{vid1}_{vid2}.pdf", vid2, vid1)

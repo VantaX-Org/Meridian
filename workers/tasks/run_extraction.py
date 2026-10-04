@@ -107,6 +107,7 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
 
             from api.config import settings
             from api.services.storage import upload_file
+            from workers.dataset import parquet_name
 
             prefix = f"staging/{tenant_id}/{version_id}/"
             total_rows = int(sum(len(d) for d in data_tables.values()))
@@ -116,7 +117,7 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
                 df.astype("string").to_parquet(buf, index=False)
                 # Upload failure fails the extraction — never report success
                 # for data the checks cannot read.
-                upload_file(settings.minio_bucket_uploads, f"{prefix}{table}.parquet", buf.getvalue())
+                upload_file(settings.minio_bucket_uploads, f"{prefix}{parquet_name(table)}", buf.getvalue())
                 stored += len(df)
                 jobs.update_job(tenant_id, job_id, stage="store", rows_done=stored, rows_total=total_rows,
                                 message=f"Stored {table}")
@@ -133,7 +134,8 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
                 {"vid": version_id, "tid": tenant_id, "st": "pending" if analyse else "extracted",
                  "label": label, "meta": json.dumps({
                     "modules": modules, "source": "extraction", "system_id": system_id,
-                    "scope": scope or {}, "downloaded_at": datetime.now(timezone.utc).isoformat(),
+                    "scope": scope or {}, "started_at": started["started_at"],
+                    "downloaded_at": datetime.now(timezone.utc).isoformat(),
                     "dataset_path": prefix, "object_rows": object_rows,
                     "coverage": coverage, "row_count": int(sum(len(d) for d in data_tables.values())),
                     # every data table read completely (row count reconciled, no truncation, no paging drift)
@@ -146,6 +148,8 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
             failed = {c["table"] for c in coverage if c["status"] == "failed" or c.get("complete") is False}
             _mark_modules(session, tenant_id, system_id, modules, "partial" if failed else "success",
                           int(sum(len(d) for d in data_tables.values())))
+            jobs.update_job(tenant_id, job_id, stage="register", message="Profiling tables for anomalies")
+            _flag_anomalies(session, tenant_id, system_id, version_id, modules, data_tables, coverage)
 
         progress({"status": "complete", "percent": 100, "version_id": version_id}, 300)
         if analyse:
@@ -186,3 +190,59 @@ def _mark_modules(session, tenant_id, system_id, modules, status, rows) -> None:
             {"tid": tenant_id, "sid": system_id, "mod": module, "st": status, "cnt": rows},
         )
     session.commit()
+
+
+_FINDING_SQL = text("""
+    INSERT INTO findings (id, version_id, tenant_id, module, check_id, severity, dimension,
+                          affected_count, total_count, pass_rate, details, finding_type)
+    VALUES (gen_random_uuid(), :vid, :tid, :module, :check_id, :severity, :dimension,
+            :affected, :total, NULL, CAST(:details AS jsonb), 'anomaly')
+    ON CONFLICT (version_id, check_id, tenant_id) DO UPDATE SET
+        module = EXCLUDED.module, severity = EXCLUDED.severity, dimension = EXCLUDED.dimension,
+        affected_count = EXCLUDED.affected_count, total_count = EXCLUDED.total_count,
+        details = EXCLUDED.details, finding_type = 'anomaly'
+""")
+
+
+def _flag_anomalies(session, tenant_id, system_id, version_id, modules, data_tables, coverage) -> None:
+    """Profile every data table (checks/anomaly.py), store the profile as the next
+    runs' baseline and record deviations from the system's previous extractions as
+    findings of type 'anomaly'. Best effort: a failure here never fails the download."""
+    from api.services.source_design import dictionary_for
+    from checks import anomaly
+
+    try:
+        dictionary = dictionary_for(session, system_id)
+        cov = {c["table"]: c for c in coverage}
+        found = 0
+        for table, df in data_tables.items():
+            c = cov.get(table, {})
+            profile = {**anomaly.profile_table(df, table, dictionary),
+                       "window": c.get("window"), "truncated": bool(c.get("truncated"))}
+            history = session.execute(text("""
+                SELECT profile FROM table_profiles
+                 WHERE tenant_id = :tid AND system_id = :sid AND table_name = :t AND version_id <> :vid
+                 ORDER BY created_at DESC LIMIT :n
+            """), {"tid": tenant_id, "sid": system_id, "t": table, "vid": version_id,
+                   "n": anomaly.HISTORY}).scalars().all()[::-1]
+            session.execute(text("""
+                INSERT INTO table_profiles (tenant_id, version_id, system_id, table_name, row_count, profile)
+                VALUES (:tid, :vid, :sid, :t, :rows, CAST(:p AS jsonb))
+                ON CONFLICT (version_id, table_name) DO UPDATE SET row_count = EXCLUDED.row_count,
+                                                                   profile = EXCLUDED.profile
+            """), {"tid": tenant_id, "vid": version_id, "sid": system_id, "t": table,
+                   "rows": profile["rows"], "p": json.dumps(profile)})
+            module = next((m for m in c.get("modules", ()) if m in modules), modules[0])
+            rows = [{"vid": version_id, "tid": tenant_id, "module": module, "check_id": anomaly.check_id(a),
+                     "severity": a["severity"], "dimension": a["dimension"], "affected": a["affected"],
+                     "total": a["total"], "details": json.dumps({k: a[k] for k in (
+                         "message", "metric", "table", "field", "expected", "observed", "samples")})}
+                    for a in anomaly.detect(table, profile, history, df, dictionary)]
+            if rows:
+                session.execute(_FINDING_SQL, rows)
+            found += len(rows)
+            session.commit()  # per table: a later failure keeps what is done
+        logger.info(f"Extraction {version_id}: {len(data_tables)} tables profiled, {found} anomalies")
+    except Exception as e:
+        session.rollback()
+        logger.warning(f"Extraction {version_id}: anomaly detection failed: {e}", exc_info=True)

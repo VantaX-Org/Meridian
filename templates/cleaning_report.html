@@ -1,0 +1,119 @@
+{% extends "_base.html" %}
+{% block body %}
+<div class="figures">
+    <div class="figure primary"><div class="v">{{ applied | n }}</div><div class="k">Cleaning actions applied</div></div>
+    <div class="figure"><div class="v">{{ queue_total | n }}</div><div class="k">Cleaning proposals, all statuses</div></div>
+    <div class="figure"><div class="v">{{ recon.fixed | n }}<small> of {{ recon.records | n }}</small></div><div class="k">Remediated records confirmed fixed</div></div>
+    <div class="figure"><div class="v">{{ record_fixes_total | n }}</div><div class="k">Record-level fixes proposed</div></div>
+</div>
+<p class="lead">
+{% if not queue_total and not recon.records and not record_fixes_total %}No cleaning or remediation activity is recorded for {{ 'this run' if version else 'this organisation' }} yet.
+{% else %}{{ applied | n }} of {{ queue_total | n }} cleaning proposals were applied.
+{% if recon.records %}Of {{ recon.records | n }} records sent back to SAP for correction, the next run confirmed {{ recon.fixed | n }} fixed and {{ recon.still_failing | n }} still failing{% if recon.unreconciled %}; {{ recon.unreconciled | n }} have not been reconciled yet{% endif %}.{% endif %}
+{% endif %}
+</p>
+<p class="note">Meridian never writes to SAP. Applied means the corrected value was accepted in Meridian; the change reaches SAP through an exported batch loaded by your team.</p>
+
+<h2>Cleaning proposals by object</h2>
+{% if matrix %}
+<table class="data">
+<thead><tr><th>Object</th>{% for s in statuses %}<th class="r">{{ s | module }}</th>{% endfor %}<th class="r">Total</th></tr></thead>
+<tbody>
+{% for row in matrix %}
+<tr><td>{{ row.object_type | module }}</td>{% for s in statuses %}<td class="r">{{ row[s] | n }}</td>{% endfor %}<td class="r">{{ row.total | n }}</td></tr>
+{% endfor %}
+</tbody>
+<tfoot><tr><td>Total</td>{% for s in statuses %}<td class="r">{{ by_status[s] | n }}</td>{% endfor %}<td class="r">{{ queue_total | n }}</td></tr></tfoot>
+</table>
+{% else %}
+<div class="empty">No cleaning rule has produced a proposal{{ ' for this run' if version else '' }}. Cleaning rules run after an analysis when they are active.</div>
+{% endif %}
+
+<h2>Rules applied</h2>
+{% if rules_applied %}
+<table class="data">
+<thead><tr><th>Rule</th><th>Object</th><th>Category</th><th>Risk</th><th class="r">Records changed</th><th>Last applied</th></tr></thead>
+<tbody>
+{% for r in rules_applied %}
+<tr><td>{{ r.name }}</td><td>{{ r.object_type | module }}</td><td>{{ r.category | module }}</td><td>{{ r.risk_level | module }}</td><td class="r">{{ r.applied | n }}</td><td>{{ r.last_at | dt }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}
+<div class="empty">No cleaning proposal has been applied yet.</div>
+{% endif %}
+
+<h2>Audit trail</h2>
+{% if audit %}
+<table class="data">
+<thead><tr><th>Action</th><th class="r">Events</th><th class="r">Distinct records</th><th>Most recent</th></tr></thead>
+<tbody>{% for a in audit %}<tr><td>{{ a.action | module }}</td><td class="r">{{ a.n | n }}</td><td class="r">{{ a.records | n }}</td><td>{{ a.last_at | dt }}</td></tr>{% endfor %}</tbody>
+</table>
+{% else %}
+<div class="empty">No cleaning action has been recorded in the audit trail.</div>
+{% endif %}
+
+<h2>Remediation batches</h2>
+{% if batches is none %}
+<div class="empty">{{ batches_reason }}</div>
+{% elif batches %}
+<table class="data">
+<thead><tr><th>Batch</th><th>Status</th><th>Exported</th><th class="r">Records</th><th class="r">Fixed</th><th class="r">Still failing</th><th class="r">Not reconciled</th></tr></thead>
+<tbody>
+{% for b in batches %}
+<tr><td>{{ b.name }}<span class="sub">Created {{ b.created_at | dt }}</span></td><td>{{ b.status | module }}</td><td>{{ b.exported_at | dt }}</td>
+    <td class="r">{{ b.records | n }}</td><td class="r">{{ b.fixed | n }}</td><td class="r">{{ b.still_failing | n }}</td><td class="r">{{ (b.records - b.fixed - b.still_failing) | n }}</td></tr>
+{% endfor %}
+</tbody>
+<tfoot><tr><td>Total</td><td></td><td></td><td class="r">{{ recon.records | n }}</td><td class="r">{{ recon.fixed | n }}</td><td class="r">{{ recon.still_failing | n }}</td><td class="r">{{ recon.unreconciled | n }}</td></tr></tfoot>
+</table>
+<p class="note">Fixed and still failing come from re-running the same checks on the next extraction. Not reconciled means no later run has checked the record yet.</p>
+{% else %}
+<div class="empty">No remediation batch has been created yet.</div>
+{% endif %}
+
+<h2>Proposed values</h2>
+{% if proposals %}
+<table class="data keep" style="width:70%">
+<thead><tr><th>Source</th><th class="r">Records</th><th class="r">With a proposed value</th></tr></thead>
+<tbody>{% for p in proposals %}<tr><td>{{ p.source | module }}</td><td class="r">{{ p.n | n }}</td><td class="r">{{ p.with_value | n }}</td></tr>{% endfor %}</tbody>
+</table>
+{% if proposal_samples %}
+<h3>Most common proposals</h3>
+<table class="data">
+<thead><tr><th>Check</th><th>Field</th><th>Current value</th><th>Proposed value</th><th class="r">Records</th></tr></thead>
+<tbody>
+{% for p in proposal_samples %}
+<tr><td class="mono">{{ p.check_id }}</td><td class="mono">{{ p.field or "—" }}</td><td class="mono">{{ p.current_value if p.current_value not in (none, '') else "(empty)" }}</td><td class="mono">{{ p.proposed_value }}</td><td class="r">{{ p.n | n }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+{% endif %}
+{% else %}
+<div class="empty">No corrected values have been proposed{{ ' for this run' if version else '' }}.</div>
+{% endif %}
+
+<h2>Record-level fixes</h2>
+{% if record_fixes %}
+<table class="data keep" style="width:60%">
+<thead><tr><th>Status</th><th class="r">Records</th></tr></thead>
+<tbody>{% for r in record_fixes %}<tr><td>{{ r.status | module }}</td><td class="r">{{ r.n | n }}</td></tr>{% endfor %}</tbody>
+<tfoot><tr><td>Total</td><td class="r">{{ record_fixes_total | n }}</td></tr></tfoot>
+</table>
+{% else %}
+<div class="empty">No record-level fix has been generated{{ ' for this run' if version else '' }}.</div>
+{% endif %}
+
+<h2>Duplicate candidates</h2>
+{% if dedup.total %}
+<table class="data keep" style="width:60%">
+<thead><tr><th>Status</th><th class="r">Pairs</th></tr></thead>
+<tbody><tr><td>Pending review</td><td class="r">{{ dedup.pending | n }}</td></tr><tr><td>Merged</td><td class="r">{{ dedup.merged | n }}</td></tr>
+<tr><td>Other</td><td class="r">{{ (dedup.total - dedup.pending - dedup.merged) | n }}</td></tr></tbody>
+<tfoot><tr><td>Total</td><td class="r">{{ dedup.total | n }}</td></tr></tfoot>
+</table>
+<p class="note">Duplicate candidates are counted across all runs for this organisation.</p>
+{% else %}
+<div class="empty">No duplicate candidates have been detected.</div>
+{% endif %}
+{% endblock %}

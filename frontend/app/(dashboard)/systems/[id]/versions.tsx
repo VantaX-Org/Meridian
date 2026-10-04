@@ -14,6 +14,7 @@ import {
   Input,
   LineChart,
   Panel,
+  Select,
   Stack,
   Text,
   type ChipTone,
@@ -28,8 +29,11 @@ import {
   type DownloadScope,
   type ScopeKey,
   type TrendFlag,
+  type TrendPoint,
 } from "@/lib/api/system-objects";
 import { Progress } from "@/components/ui/progress";
+import { createSyncProfile, getSyncProfiles, updateSyncProfile } from "@/lib/api/systems";
+import type { SyncProfile } from "@/types/api";
 import { formatModuleName, relativeTime } from "@/lib/format";
 
 const th = "px-3 py-2 text-left font-medium text-[var(--aurora-fg-tertiary)]";
@@ -337,11 +341,199 @@ function DownloadBar({ d }: { d: DownloadProgress }) {
   );
 }
 
+// ── scheduled re-evaluation (sync profiles) ──────────────────────────────────
+
+const CUSTOM = "custom";
+const PRESETS = [
+  { value: "0 2 * * *", label: "Daily at 02:00" },
+  { value: "0 2 * * 1", label: "Weekly, Monday 02:00" },
+  { value: "0 2 1 * *", label: "Monthly, 1st at 02:00" },
+  { value: "0 * * * *", label: "Hourly" },
+  { value: CUSTOM, label: "Custom cron…" },
+];
+const presetLabel = (cron: string | null) =>
+  !cron ? "Manual only" : PRESETS.find((p) => p.value === cron)?.label ?? cron;
+
+function CronPicker({ value, onChange, disabled }: { value: string; onChange: (cron: string) => void; disabled?: boolean }) {
+  const [custom, setCustom] = useState(!PRESETS.some((p) => p.value === value));
+  const [text, setText] = useState(value);
+  return (
+    <Stack direction="row" gap={2}>
+      <div style={{ width: 200 }}>
+        <Select aria-label="Schedule" disabled={disabled} options={PRESETS} value={custom ? CUSTOM : value}
+          onValueChange={(v) => { setCustom(v === CUSTOM); if (v !== CUSTOM) onChange(v); }} />
+      </div>
+      {custom && (
+        <Input aria-label="Cron expression" placeholder="min hour day month weekday" className="font-mono" disabled={disabled}
+          value={text} onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && text.trim()) onChange(text.trim()); }}
+          onBlur={() => { if (text.trim() && text.trim() !== value) onChange(text.trim()); }} />
+      )}
+    </Stack>
+  );
+}
+
+export function SchedulesPanel({ id, canManage }: { id: string; canManage: boolean }) {
+  const qc = useQueryClient();
+  const { data: profiles = [] } = useQuery({ queryKey: ["sync-profiles", id], queryFn: () => getSyncProfiles(id) });
+  const { data: catalogue } = useQuery({ queryKey: ["system-objects", id], queryFn: () => getSystemObjects(id), enabled: canManage });
+  const [adding, setAdding] = useState("");
+  const [cron, setCron] = useState(PRESETS[1].value);
+  const refresh = () => qc.invalidateQueries({ queryKey: ["sync-profiles", id] });
+  const onError = (e: unknown) => toast.error((e as Error).message || "Could not save the schedule");
+
+  const update = useMutation({
+    mutationFn: ({ p, body }: { p: SyncProfile; body: { schedule_cron?: string; active?: boolean } }) => updateSyncProfile(id, p.id, body),
+    onSuccess: () => { toast.success("Schedule saved"); refresh(); },
+    onError,
+  });
+  const create = useMutation({
+    mutationFn: () => {
+      const o = catalogue?.objects.find((x) => x.object === adding);
+      return createSyncProfile(id, { system_id: id, domain: adding, tables: o?.tables ?? [], schedule_cron: cron, active: true });
+    },
+    onSuccess: () => { toast.success("Schedule added"); setAdding(""); refresh(); },
+    onError,
+  });
+  const scheduled = new Set(profiles.map((p) => p.domain));
+  const addable = (catalogue?.objects ?? []).filter((o) => !scheduled.has(o.object));
+
+  return (
+    <Panel title="Scheduled re-evaluation">
+      <Stack gap={3}>
+        <Text variant="text-small" tone="secondary">
+          Each schedule re-downloads the object and re-runs its checks, so the trends and alert thresholds pick up every run.
+          Times are server time; the scheduler looks for due runs every 5 minutes.
+        </Text>
+        {profiles.length ? (
+          <table className="w-full text-[13px]">
+            <thead><tr>
+              <th className={th}>Object</th><th className={th}>Schedule</th><th className={th}>Last run</th>
+              <th className={th}>Next run</th><th className={th}>Status</th><th className={th} />
+            </tr></thead>
+            <tbody>
+              {profiles.map((p) => (
+                <tr key={p.id}>
+                  <td className={td}>{formatModuleName(p.domain)}</td>
+                  <td className={td}>
+                    {canManage
+                      ? <CronPicker value={p.schedule_cron ?? ""} disabled={update.isPending}
+                          onChange={(c) => update.mutate({ p, body: { schedule_cron: c } })} />
+                      : <span className="font-mono">{presetLabel(p.schedule_cron)}</span>}
+                  </td>
+                  <td className={td}>{p.last_run_at ? relativeTime(p.last_run_at) : "never"}</td>
+                  <td className={td}>{p.active && p.next_run_at ? new Date(p.next_run_at).toLocaleString() : "—"}</td>
+                  <td className={td}><Chip tone={p.active ? "success" : "neutral"}>{p.active ? "active" : "paused"}</Chip></td>
+                  <td className={td}>
+                    {canManage && (
+                      <Button variant="ghost" size="sm" disabled={update.isPending}
+                        onClick={() => update.mutate({ p, body: { active: !p.active } })}>
+                        {p.active ? "Pause" : "Resume"}
+                      </Button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : <Text tone="muted">No schedules yet — objects are only re-evaluated when someone downloads them.</Text>}
+        {canManage && addable.length > 0 && (
+          <Stack direction="row" gap={2} align="center" wrap>
+            <div style={{ width: 220 }}>
+              <Select aria-label="Object to schedule" placeholder="Schedule an object…" value={adding}
+                options={addable.map((o) => ({ value: o.object, label: formatModuleName(o.object) }))} onValueChange={setAdding} />
+            </div>
+            <CronPicker value={cron} onChange={setCron} />
+            <Button size="sm" disabled={!adding || create.isPending} onClick={() => create.mutate()}>Add schedule</Button>
+          </Stack>
+        )}
+      </Stack>
+    </Panel>
+  );
+}
+
+// ── object × version heatmap ─────────────────────────────────────────────────
+
+const HEAT_VERSIONS = 12;
+
+// status fill by score band — same bands as the DQS chips elsewhere
+const heatFill = (v: number | null | undefined) =>
+  v == null ? "transparent"
+    : v >= 90 ? "var(--aurora-status-success-bg)"
+    : v >= 75 ? "var(--aurora-status-warning-bg)"
+    : "var(--aurora-status-danger-bg)";
+
+function Heatmap({ series, onPick }: { series: Record<string, TrendPoint[]>; onPick: (versionId: string, object: string) => void }) {
+  const [metric, setMetric] = useState("dqs");
+  const objects = Object.keys(series).sort();
+  // columns: the last N versions any object appears in, oldest first
+  const runs = new Map<string, string>();
+  for (const pts of Object.values(series)) for (const p of pts) runs.set(p.version_id, p.run_at);
+  const cols = [...runs.entries()].sort((a, b) => a[1].localeCompare(b[1])).slice(-HEAT_VERSIONS);
+  if (!objects.length || !cols.length) return null;
+  const dims = [...new Set(Object.values(series).flat().flatMap((p) => Object.keys(p.dimensions)))].sort();
+  const value = (p: TrendPoint | undefined) => (p ? (metric === "dqs" ? p.dqs : p.dimensions[metric]) ?? null : null);
+
+  return (
+    <Stack gap={2}>
+      <Stack direction="row" justify="between">
+        <Text variant="text-lead">Score by object and version</Text>
+        <div style={{ width: 200 }}>
+          <Select aria-label="Heatmap metric" value={metric} onValueChange={setMetric}
+            options={[{ value: "dqs", label: "DQS" }, ...dims.map((d) => ({ value: d, label: d[0].toUpperCase() + d.slice(1) }))]} />
+        </div>
+      </Stack>
+      <div className="overflow-x-auto">
+        <table className="text-[13px]">
+          <thead><tr>
+            <th className={th}>Object</th>
+            {cols.map(([vid, at]) => <th key={vid} className={`${th} text-right`}>{new Date(at).toLocaleDateString()}</th>)}
+          </tr></thead>
+          <tbody>
+            {objects.map((m) => {
+              const byVersion = new Map(series[m].map((p) => [p.version_id, p]));
+              let prev: number | null = null;
+              return (
+                <tr key={m}>
+                  <td className={td}>{formatModuleName(m)}</td>
+                  {cols.map(([vid]) => {
+                    const p = byVersion.get(vid);
+                    const v = value(p);
+                    const d = v != null && prev != null ? v - prev : null;
+                    if (v != null) prev = v;
+                    return (
+                      <td key={vid} className={`${td} text-right aurora-number`} style={{ background: heatFill(v) }}>
+                        {p && v != null ? (
+                          <button type="button" className="w-full text-right" onClick={() => onPick(vid, m)}
+                            title={`${formatModuleName(m)} · ${v.toFixed(1)}${p.comparable ? "" : " · not like-for-like"} — open findings`}>
+                            {v.toFixed(0)}
+                            {d != null && Math.abs(d) >= 0.5 && (
+                              <span className="ml-1 text-[11px]" style={{ color: d > 0 ? "var(--aurora-status-success-500)" : "var(--aurora-status-danger-500)" }}>
+                                {d > 0 ? "+" : ""}{d.toFixed(0)}
+                              </span>
+                            )}
+                            {!p.comparable && <span className="ml-0.5 text-[var(--aurora-fg-muted)]">*</span>}
+                          </button>
+                        ) : <span className="text-[var(--aurora-fg-muted)]">·</span>}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <Text variant="text-small" tone="muted">Last {HEAT_VERSIONS} versions. Small figures are the change against the object&apos;s previous version; * marks a version that is not like-for-like. Select a cell for its findings.</Text>
+    </Stack>
+  );
+}
+
 // ── trends per object ────────────────────────────────────────────────────────
 
 export function TrendsTab({ id }: { id: string }) {
   const router = useRouter();
-  const { data: overview } = useQuery({ queryKey: ["trends", id], queryFn: () => getTrends(id) });
+  const { data: overview } = useQuery({ queryKey: ["trends", id], queryFn: () => getTrends(id, undefined, true) });
   const [object, setObject] = useState<string | null>(null);
   const active = object ?? overview?.summary[0]?.object ?? null;
   const { data: detail } = useQuery({
@@ -356,6 +548,7 @@ export function TrendsTab({ id }: { id: string }) {
   }
   return (
     <Stack gap={5}>
+      <Heatmap series={overview.series} onPick={(vid, m) => router.push(findingsHref(vid, m))} />
       <table className="w-full text-[13px]">
         <thead><tr>
           <th className={th}>Object</th><th className={`${th} text-right`}>DQS</th><th className={th}>vs previous</th>

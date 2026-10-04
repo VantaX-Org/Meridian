@@ -1,0 +1,229 @@
+module: interface_health
+target_state: ECC_AND_S4HANA
+# IDoc status codes are SAP standard (check table TEDS1, transaction WE47).
+# EDIDC.DIRECT fixed values (domain EDI_DIRECT): 1 = outbound, 2 = inbound.
+# Ages are measured against the run's as-of date (snapshot download time), not the wall clock.
+rules:
+
+  - id: IDH001
+    field: EDIDC.CREDAT
+    time_field: EDIDC.CRETIM
+    fields: [EDIDC.STATUS, EDIDC.MESTYP]
+    check_class: freshness_check
+    max_age_hours: 168
+    severity: high
+    dimension: timeliness
+    message: "Inbound IDoc in error status for more than 7 days"
+    applies_when:
+      EDIDC.DIRECT: ["2"]
+      # 51 application document not posted, 56 IDoc with errors added, 60 syntax error,
+      # 63 error passing IDoc to application, 65 error in ALE service
+      EDIDC.STATUS: ["51", "56", "60", "63", "65"]
+      EDIDC.MESTYP: {not_in: [MATMAS, DEBMAS, CREMAS, CLFMAS, ADRMAS]}
+    why_it_matters: >-
+      An inbound IDoc in an error status has not created or changed the business
+      document it carries. After a week the sending system treats the message as
+      delivered, so the gap is silent until someone reconciles the two systems.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      The posting, order or confirmation in the IDoc does not exist in SAP. Follow-on
+      documents, stock and financial figures differ from the sending system.
+    fix_map:
+      __other__: >-
+        Read the status records in BD87 or WE02, correct the cause (master data,
+        configuration or partner profile), then reprocess the IDoc with BD87. If the
+        message is obsolete, set it to status 68 (no further processing) so it stops
+        appearing as an open error.
+    record_fix_template: >-
+      Inbound IDoc {EDIDC.DOCNUM} ({EDIDC.MESTYP}) has been in status {EDIDC.STATUS}
+      since {EDIDC.CREDAT}. Fix the cause shown in BD87 and reprocess it, or set it to
+      status 68 if it is obsolete.
+
+  - id: IDH002
+    field: EDIDC.CREDAT
+    time_field: EDIDC.CRETIM
+    fields: [EDIDC.STATUS, EDIDC.MESTYP]
+    check_class: freshness_check
+    max_age_hours: 168
+    severity: high
+    dimension: timeliness
+    message: "Outbound IDoc in error status for more than 7 days"
+    applies_when:
+      EDIDC.DIRECT: ["1"]
+      # 02 error passing data to port, 04 error in EDI subsystem control information,
+      # 05 error during translation, 25 processing despite syntax error,
+      # 26 error during syntax check, 29 error in ALE service
+      EDIDC.STATUS: ["02", "04", "05", "25", "26", "29"]
+      EDIDC.MESTYP: {not_in: [MATMAS, DEBMAS, CREMAS, CLFMAS, ADRMAS]}
+    why_it_matters: >-
+      An outbound IDoc in an error status never reached the receiving system. The
+      partner works without the order, invoice or confirmation SAP believes it sent.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      The receiving system is missing the document. Partners act on stale data and
+      the two systems drift until the IDoc is resent.
+    fix_map:
+      __other__: >-
+        Check the status records in WE02 or BD87. Fix the port, RFC destination or
+        partner profile (WE20), then resend the IDoc with BD87 (or RSEOUT00 for status
+        30). Set obsolete IDocs to status 31 (error, no further processing).
+    record_fix_template: >-
+      Outbound IDoc {EDIDC.DOCNUM} ({EDIDC.MESTYP}) has been in status {EDIDC.STATUS}
+      since {EDIDC.CREDAT}. Fix the cause shown in BD87 and resend it, or set it to
+      status 31 if it is obsolete.
+
+  - id: IDH003
+    field: EDIDC.CREDAT
+    time_field: EDIDC.CRETIM
+    fields: [EDIDC.STATUS, EDIDC.MESTYP, EDIDC.DIRECT]
+    check_class: freshness_check
+    max_age_hours: 24
+    severity: critical
+    dimension: timeliness
+    message: "Master-data IDoc (MATMAS/DEBMAS/CREMAS/CLFMAS/ADRMAS) in error status for more than 24 hours"
+    applies_when:
+      EDIDC.MESTYP: [MATMAS, DEBMAS, CREMAS, CLFMAS, ADRMAS]
+      EDIDC.STATUS: ["02", "04", "05", "25", "26", "29", "51", "56", "60", "63", "65"]
+    why_it_matters: >-
+      Master-data IDocs keep materials, customers, vendors, classifications and
+      addresses aligned across systems. One failed MATMAS or DEBMAS blocks every
+      later transaction for that object in the receiving system, so these are
+      weighted above transactional IDoc errors.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      The material, customer or vendor is missing or out of date in the receiving
+      system. Orders, deliveries and invoices that reference it fail or use stale
+      values. Later master-data IDocs for the same object can also fail.
+    fix_map:
+      __other__: >-
+        Read the error in BD87 or WE02 (often a missing dependent object, number range
+        or mandatory field). Correct it, reprocess the IDoc with BD87, then reprocess
+        any later IDocs for the same object in creation order.
+    record_fix_template: >-
+      Master-data IDoc {EDIDC.DOCNUM} ({EDIDC.MESTYP}, direction {EDIDC.DIRECT}) has
+      been in status {EDIDC.STATUS} since {EDIDC.CREDAT}. Fix the cause and reprocess
+      it with BD87.
+
+  - id: IDH004
+    field: EDIDC.UPDDAT
+    time_field: EDIDC.UPDTIM
+    fields: [EDIDC.STATUS, EDIDC.MESTYP, EDIDC.DIRECT]
+    check_class: freshness_check
+    max_age_hours: 24
+    severity: medium
+    dimension: timeliness
+    message: "IDoc waiting in status 64 (inbound) or 30 (outbound) for more than 24 hours"
+    applies_when:
+      # 30 IDoc ready for dispatch (outbound), 64 IDoc ready to be transferred to application (inbound)
+      EDIDC.STATUS: ["30", "64"]
+    why_it_matters: >-
+      Status 30 and 64 are not errors: the IDoc is waiting for a scheduled job
+      (RSEOUT00 outbound, RBDAPP01 inbound). An IDoc still waiting after a day
+      usually means the job is missing, failing or selecting the wrong partner or
+      message type.
+    rule_authority: best_practice
+    sap_impact: >-
+      Documents are delayed without any error to alert users. The backlog grows
+      until the job is fixed, then posts in one burst.
+    fix_map:
+      __other__: >-
+        Check in SM37 that RSEOUT00 (status 30) or RBDAPP01 (status 64) is scheduled
+        for this partner and message type. Process the waiting IDocs with BD87, or
+        switch the partner profile (WE20) to immediate processing if batching is not
+        needed.
+    record_fix_template: >-
+      IDoc {EDIDC.DOCNUM} ({EDIDC.MESTYP}) has waited in status {EDIDC.STATUS} since
+      {EDIDC.UPDDAT}. Process it with BD87 and check the RSEOUT00/RBDAPP01 job in SM37.
+
+  - id: IDH005
+    field: EDIDC.SNDPRN
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "Inbound IDoc has no sender partner number"
+    applies_when:
+      EDIDC.DIRECT: ["2"]
+    why_it_matters: >-
+      Inbound processing finds the partner profile (WE20) by sender partner number,
+      partner type and message type. Without a sender partner number no profile
+      can be found and the IDoc cannot be processed.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      The IDoc stops with a partner profile error (typically status 56) and its
+      business document is never created.
+    fix_map:
+      __blank__: >-
+        Correct the sending system or middleware so it fills the sender partner
+        number, and make sure a matching inbound partner profile exists in WE20.
+    record_fix_template: >-
+      Inbound IDoc {EDIDC.DOCNUM} ({EDIDC.MESTYP}) has no sender partner number. Fix
+      the sender so SNDPRN is filled and check the WE20 partner profile.
+
+  - id: IDH006
+    field: EDIDC.SNDPRT
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "Inbound IDoc has no sender partner type"
+    applies_when:
+      EDIDC.DIRECT: ["2"]
+    why_it_matters: >-
+      The sender partner type (LS, KU, LI …) is part of the inbound partner profile
+      key. Without it the partner profile cannot be determined.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      The IDoc stops with a partner profile error and its business document is never
+      created.
+    fix_map:
+      __blank__: >-
+        Correct the sending system or middleware so it fills the sender partner type
+        to match the inbound partner profile in WE20.
+    record_fix_template: >-
+      Inbound IDoc {EDIDC.DOCNUM} ({EDIDC.MESTYP}) has no sender partner type. Fix the
+      sender so SNDPRT is filled.
+
+  - id: IDH007
+    field: EDIDC.RCVPRN
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "Outbound IDoc has no receiver partner number"
+    applies_when:
+      EDIDC.DIRECT: ["1"]
+    why_it_matters: >-
+      Outbound IDocs are routed through the outbound partner profile (WE20) of the
+      receiver. Without a receiver partner number the IDoc has no port or
+      destination and cannot be sent.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      The IDoc is never delivered and the receiving system does not get the document.
+    fix_map:
+      __blank__: >-
+        Check the output determination or distribution model (BD64) that created the
+        IDoc and maintain the outbound partner profile in WE20, then regenerate the
+        IDoc.
+    record_fix_template: >-
+      Outbound IDoc {EDIDC.DOCNUM} ({EDIDC.MESTYP}) has no receiver partner number.
+      Fix the distribution model or output determination and the WE20 partner profile.
+
+  - id: IDH008
+    field: EDIDC.RCVPRT
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "Outbound IDoc has no receiver partner type"
+    applies_when:
+      EDIDC.DIRECT: ["1"]
+    why_it_matters: >-
+      The receiver partner type is part of the outbound partner profile key. Without
+      it the port and output mode cannot be determined.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      The IDoc cannot be routed to its receiver and is never delivered.
+    fix_map:
+      __blank__: >-
+        Maintain the outbound partner profile in WE20 with the correct partner type,
+        then regenerate the IDoc.
+    record_fix_template: >-
+      Outbound IDoc {EDIDC.DOCNUM} ({EDIDC.MESTYP}) has no receiver partner type.
+      Maintain the WE20 partner profile and regenerate the IDoc.

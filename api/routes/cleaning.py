@@ -839,10 +839,14 @@ async def dedup_merge(
 
     # Consolidate the master records when both exist (golden-record fusion);
     # otherwise the decision is recorded and applied when golden records are built.
-    from api.services.mdm_merge import merge_master_records
+    from api.services.mdm_merge import PairConstraintError, merge_master_records
     merged_key = (keys - {body.survivor_key}).pop()
-    consolidation = await merge_master_records(db, str(tenant.id), row.get("object_type", ""), body.survivor_key,
-                                               merged_key, current_user_id(), body.field_overrides)
+    try:
+        consolidation = await merge_master_records(db, str(tenant.id), row.get("object_type", ""),
+                                                   body.survivor_key, merged_key, current_user_id(),
+                                                   body.field_overrides)
+    except PairConstraintError as e:
+        raise HTTPException(status_code=409, detail=str(e))
 
     now = datetime.now(timezone.utc)
     await db.execute(

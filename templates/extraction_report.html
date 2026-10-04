@@ -1,0 +1,82 @@
+{% extends "_base.html" %}
+{% block body %}
+<div class="figures">
+    <div class="figure primary"><div class="v">{{ rows | n }}</div><div class="k">Rows extracted, all tables</div></div>
+    <div class="figure"><div class="v">{{ live | n }}<small> of {{ coverage | length }}</small></div><div class="k">Tables read</div></div>
+    <div class="figure"><div class="v">{{ duration | dur }}</div><div class="k">Run duration, start to download</div></div>
+    <div class="figure"><div class="v"><span class="st {{ 'bad' if errors else 'warn' if warnings else 'ok' }}">{{ errors | n }} / {{ warnings | n }}</span></div><div class="k">Errors / warnings</div></div>
+</div>
+<p class="lead">
+{% if not coverage %}This run recorded no table coverage, so its completeness cannot be assessed.
+{% else %}{{ live }} of {{ coverage | length }} {{ 'table was' if coverage|length == 1 else 'tables were' }} read{% if failed %} and {{ failed }} failed{% endif %}{% if skipped %}; {{ skipped }} {{ 'was' if skipped == 1 else 'were' }} skipped{% endif %}.
+{% if complete %}The extraction is marked complete.{% elif complete is sameas false %}The extraction is marked incomplete, so checks on the missing tables did not run.{% endif %}
+{% endif %} {% if age is not none %}The data was downloaded {{ age | dur }} before this report was generated.{% endif %}
+</p>
+
+<h2>Run</h2>
+<table class="meta">
+<tr><td class="k">Started</td><td>{{ started_at | dt }}</td></tr>
+<tr><td class="k">Finished</td><td>{{ finished_at | dt }}</td></tr>
+<tr><td class="k">Duration</td><td>{% if duration is not none %}{{ duration | dur }}{% else %}Timing not recorded for this run{% endif %}</td></tr>
+<tr><td class="k">Table read time</td><td>{% if timed %}{{ table_seconds | dur }} summed over tables{% else %}Not recorded for this run{% endif %}</td></tr>
+<tr><td class="k">Data age</td><td>{% if age is not none %}{{ age | dur }} at the time of this report{% else %}Unknown{% endif %}</td></tr>
+{% for k, v in scope %}<tr><td class="k">Scope: {{ k | module }}</td><td class="mono">{{ v }}</td></tr>{% endfor %}
+</table>
+{% if not scope %}<p class="note">No scope filter was applied; every row in each table was eligible.</p>{% endif %}
+
+<h2>Modules</h2>
+{% if modules %}
+<table class="data">
+<thead><tr><th>Module</th><th class="r">Records (anchor table rows)</th></tr></thead>
+<tbody>{% for m in modules %}<tr><td>{{ m.name | module }}</td><td class="r">{{ m.records | n }}</td></tr>{% endfor %}</tbody>
+</table>
+{% else %}
+<div class="empty">The run did not record which modules it extracted.</div>
+{% endif %}
+
+<h2>Issues</h2>
+{% if issues %}
+<table class="data">
+<thead><tr><th>Level</th><th>Table</th><th>Detail</th></tr></thead>
+<tbody>
+{% for i in issues %}
+<tr><td><span class="st {{ 'bad' if i.level == 'Error' else 'warn' }}">{{ i.level }}</span></td><td class="mono">{{ i.table }}</td><td>{{ i.text }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}
+<div class="empty">No errors or warnings: every table was read in full.</div>
+{% endif %}
+
+<h2>Tables</h2>
+{% if chart %}<p class="note">Rows read per table on a shared scale{% if live > 14 %} (largest 14 shown){% endif %}.</p><div class="chart">{{ chart }}</div>{% endif %}
+{% if coverage %}
+<table class="data">
+<thead><tr><th>Table</th><th>Status</th><th class="r">Rows read</th><th class="r">Rows in SAP</th><th>Window</th><th class="r">Read time</th></tr></thead>
+<tbody>
+{% for c in coverage %}
+<tr><td class="mono">{{ c.table }}{% if c.purpose %}<span class="sub" style="font-family:Inter">{{ c.purpose }}</span>{% endif %}</td>
+    <td>{% if c.status == 'live' %}<span class="st {{ 'warn' if c.truncated or c.partial else 'ok' }}">{{ 'Truncated' if c.truncated else 'Partial' if c.partial else 'Read' }}</span>
+        {% elif c.status == 'failed' %}<span class="st bad">Failed</span>
+        {% elif c.status == 'not_in_system' %}<span class="st na">Not in system</span>
+        {% else %}<span class="st na">{{ c.status | module }}</span>{% endif %}</td>
+    <td class="r">{{ c.rows | n }}</td><td class="r">{{ c.source_rows | n }}</td>
+    <td>{{ c.window or "Full table" if c.status == 'live' else "—" }}</td><td class="r">{{ c.seconds | dur }}</td></tr>
+{% endfor %}
+</tbody>
+<tfoot><tr><td>Total</td><td></td><td class="r">{{ rows | n }}</td><td></td><td></td><td class="r">{{ table_seconds | dur }}</td></tr></tfoot>
+</table>
+<p class="note">Rows in SAP is the count SAP reported before the read, where the connector supports it. A dash means it was not reported.</p>
+{% else %}
+<div class="empty">This run recorded no table coverage. Runs created before coverage tracking was added do not have it.</div>
+{% endif %}
+
+{% if sync_run %}
+<h2>Sync run</h2>
+<table class="meta">
+<tr><td class="k">Status</td><td>{{ sync_run.status }}</td></tr>
+<tr><td class="k">Rows extracted</td><td>{{ sync_run.rows_extracted | n }}</td></tr>
+{% if sync_run.error_detail %}<tr><td class="k">Error</td><td>{{ sync_run.error_detail | redact | truncate(300) }}</td></tr>{% endif %}
+</table>
+{% endif %}
+{% endblock %}
