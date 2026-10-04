@@ -701,6 +701,14 @@ class SuccessFactorsConnector(CloudSAPConnector):
                     time.sleep(wait)
                     continue
 
+                # Bearer token expired mid-extraction: fetch a new one once and retry.
+                if (resp.status_code == 401 and attempt == 1 and self._params
+                        and self._params.auth_type in ("oauth2_client_credentials", "oauth2_saml")):
+                    logger.info("SuccessFactors: 401, refreshing OAuth token")
+                    self._access_token = self._get_oauth_token(self._params)
+                    self._client.headers["Authorization"] = f"Bearer {self._access_token}"
+                    continue
+
                 resp.raise_for_status()
                 return resp
 

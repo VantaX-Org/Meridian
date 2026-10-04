@@ -26,10 +26,12 @@ def test_next_page_token_is_sent(cls):
     c = cls()
     c._params = CloudConnectionParams(base_url=BASE, company_id="realm1", auth_type="oauth2")
     c._client = httpx.Client(base_url=BASE, transport=httpx.MockTransport(handler))
-    c._ensure_token = lambda: None
+    checks: list[int] = []
+    c._ensure_token = lambda: checks.append(1)
 
     df = c._read_endpoint("/items", filter_expr="x eq 1")
     assert list(df["id"]) == ["1", "2", "3"]
     assert len(seen) == 2 and "pageToken=p2" in seen[1]
+    assert len(checks) == 2  # token checked before every page
     if cls is AribaConnector:
         assert "realm=realm1" in seen[1]
