@@ -888,7 +888,7 @@ export interface MdmHistoryResponse {
 }
 
 /* -- System Types (Extended) -- */
-export type SystemType = "ecc" | "s4hana_onprem" | "s4hana_cloud" | "successfactors" | "concur" | "ariba" | "ewm";
+export type SystemType = "ecc" | "s4hana_onprem" | "s4hana_cloud" | "successfactors" | "concur" | "ariba" | "btp" | "ewm";
 export type AuthType = "rfc" | "basic" | "oauth2_client_credentials" | "oauth2_saml" | "api_key";
 export type HealthStatus = "healthy" | "degraded" | "unreachable" | "auth_failed" | "unknown";
 

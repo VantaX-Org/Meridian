@@ -983,6 +983,10 @@ celery_app.conf.beat_schedule = {
         "task": "revalidate_licence",
         "schedule": crontab(minute=0, hour="*/6"),  # Every 6 hours — keeps manifest fresh
     },
+    "forced-update-check-every-15min": {
+        "task": "forced_update_check",
+        "schedule": crontab(minute="3,18,33,48"),  # waits for idle workers + update window
+    },
     "contract-freshness-hourly": {
         "task": "workers.scheduler.contract_freshness",
         "schedule": crontab(minute=7),

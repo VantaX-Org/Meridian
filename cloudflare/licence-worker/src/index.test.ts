@@ -396,6 +396,28 @@ describe("Admin Platform Release", () => {
   });
 });
 
+describe("Forced update", () => {
+  it("admin sets min_version and force_now; validate returns them; omitted fields are kept", async () => {
+    const put = async (body: object) =>
+      callWorker("/api/admin/release", { method: "PUT", headers: (await adminHeaders()), body: JSON.stringify(body) });
+    expect((await put({ latest_version: "4.0.0", min_version: "v3.9.0", force_now: true })).status).toBe(200);
+    expect((await put({ latest_version: "4.0.1", release_notes: "" })).status).toBe(200);
+    expect((await put({ latest_version: "4.0.1", min_version: "nope" })).status).toBe(400);
+
+    const { licence_key } = await createTestTenant();
+    const resp = await callWorker("/api/licence/validate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ licenceKey: licence_key, machineFingerprint: "abc123" }),
+    });
+    const data = (await resp.json()) as { min_version: string; force_update_now: boolean };
+    expect(data.min_version).toBe("3.9.0");
+    expect(data.force_update_now).toBe(true);
+
+    expect((await put({ latest_version: "4.0.1", min_version: "", force_now: false })).status).toBe(200);
+  });
+});
+
 describe("Release publishing token (CI)", () => {
   const put = (version: string, headers: Record<string, string>) =>
     callWorker("/api/admin/release", {
@@ -422,6 +444,15 @@ describe("Release publishing token (CI)", () => {
   it("grants nothing beyond the release endpoint", async () => {
     const resp = await callWorker("/api/admin/tenants", { headers: { "X-Release-Token": "test-release-token" } });
     expect(resp.status).toBe(401);
+  });
+
+  it("cannot force an update with the token", async () => {
+    const resp = await callWorker("/api/admin/release", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "X-Release-Token": "test-release-token" },
+      body: JSON.stringify({ latest_version: "9.0.0", min_version: "9.0.0" }),
+    });
+    expect(resp.status).toBe(403);
   });
 
   it("still lets an admin set an older release by hand", async () => {

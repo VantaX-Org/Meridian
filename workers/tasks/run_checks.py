@@ -4,6 +4,7 @@ import logging
 import os
 import traceback
 
+import pandas as pd
 import yaml
 
 from sqlalchemy import text
@@ -44,6 +45,24 @@ def _live_reference_values(engine, tenant_id: str, metadata: dict) -> dict[str, 
                 if val not in (None, ""):
                     out.setdefault(f"{table}.{col}", set()).add(str(val).strip())
     return out
+
+
+def _live_config_frames(engine, tenant_id: str, metadata: dict, tables: set[str]) -> dict[str, pd.DataFrame]:
+    """Live configuration tables (T370T) as ``TABLE.FIELD`` frames, for the
+    population lookups of checks/population.py; the extraction stores them as
+    config snapshots, not data tables."""
+    system_id = metadata.get("system_id")
+    if not system_id or not tables:
+        return {}
+    with Session(engine) as session:
+        session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        rows = session.execute(
+            text("SELECT config_table, config_data FROM config_snapshots "
+                 "WHERE system_id = :sid AND source = 'live' AND config_table = ANY(:t) ORDER BY synced_at"),
+            {"sid": system_id, "t": sorted(tables)},
+        ).fetchall()
+    # the latest snapshot per table wins
+    return {t: pd.DataFrame(data or []).rename(columns=lambda c, t=t: f"{t}.{c}") for t, data in rows}
 
 
 def rule_set_fingerprint(modules: list[str], overrides: dict, generated: list[dict] | None = None) -> str:
@@ -212,6 +231,8 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
 
         all_results = []
         live_refs = _live_reference_values(engine, tenant_id, metadata)
+        from checks.population import lookup_tables
+        frames.config = _live_config_frames(engine, tenant_id, metadata, lookup_tables() - set(frames.frames))
         from checks.overrides import load_overrides
         with Session(engine) as session:
             session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
@@ -234,6 +255,14 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
             fs_rules = fs_rules + material_rules
             from checks.field_status_rules import suppressed_fields
             fs_suppressed = suppressed_fields(fs_resolutions, fs_material)
+            # dependencies mined from profiled data that a steward accepted as checks (profile page)
+            mined_rules = [
+                {"id": r.name.split(":", 1)[0], "module": r.module, "severity": r.severity,
+                 "dimension": "consistency", "rule_authority": "customer_configured",
+                 "message": r.description, **(r.conditions or {})}
+                for r in session.execute(text(
+                    "SELECT name, module, severity, description, conditions FROM rules "
+                    "WHERE source = 'mined' AND enabled AND module = ANY(:m)"), {"m": list(modules)})]
         # misplaced values, placeholders, swaps, dead-in-text records (checks/value_placement.py)
         from checks import config_rules, country_rules, value_placement
         from checks.runner import _find_module_yaml
@@ -246,7 +275,7 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
             vp_rules += value_placement.generate(m, static, dictionary)
             vp_rules += country_rules.generate(m, static, fs_config, dictionary)  # T005 / BNKA
             vp_rules += config_rules.generate(m, fs_config, dictionary)  # T685A / T582A
-        fs_rules = fs_rules + vp_rules
+        fs_rules = fs_rules + vp_rules + mined_rules
         module_count = max(len(modules), 1)
         outliers: dict[str, dict] = {}
         for idx, module_name in enumerate(modules):
@@ -481,7 +510,7 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
                 # unless an exception or write-back record still points at them
                 session.execute(text("""
                     DELETE FROM findings f
-                     WHERE f.version_id = :vid AND NOT (f.check_id = ANY(:ids))
+                     WHERE f.version_id = :vid AND NOT (f.check_id = ANY(:ids)) AND f.finding_type = 'rule'
                        AND NOT EXISTS (SELECT 1 FROM exceptions e WHERE e.linked_finding_id = f.id)
                        AND NOT EXISTS (SELECT 1 FROM write_back_log w WHERE w.finding_id = f.id)
                 """), {"vid": version_id, "ids": [r.check_id for r in all_results]})
