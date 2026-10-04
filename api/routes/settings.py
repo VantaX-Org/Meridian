@@ -1,12 +1,12 @@
 """Settings endpoints — tenant configuration, DQS weights, alert thresholds, notifications."""
 
 import json
-from typing import Optional
+from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 
 from api.services.rbac import require_permission
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,9 +27,11 @@ class DimensionWeights(BaseModel):
 
 
 class AlertThresholds(BaseModel):
-    critical_threshold: int = 1
-    high_threshold: int = 10
-    dqs_drop_threshold: int = 5
+    critical_threshold: int = Field(1, ge=0)
+    high_threshold: int = Field(10, ge=0)
+    dqs_drop_threshold: float = Field(5, ge=0)
+    # module -> minimum DQS; an analysis scoring a module below its floor raises an alert
+    module_floors: dict[str, Annotated[float, Field(ge=0, le=100)]] = Field(default_factory=dict)
 
 
 class PlannerConfig(BaseModel):
@@ -133,7 +135,8 @@ async def update_alert_thresholds(
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
     await db.execute(
         text("UPDATE tenants SET alert_thresholds = COALESCE(alert_thresholds, '{}'::jsonb) || CAST(:t AS jsonb) WHERE id = :tid"),
-        {"t": json.dumps(thresholds.model_dump()), "tid": str(tenant.id)},
+        # only the sent keys: a save without module_floors must not wipe them
+        {"t": json.dumps(thresholds.model_dump(exclude_unset=True)), "tid": str(tenant.id)},
     )
     await db.commit()
     return {"status": "ok"}
