@@ -13,6 +13,7 @@ import io
 import logging
 import os
 from typing import Optional
+from urllib.parse import quote, unquote
 
 import pandas as pd
 
@@ -42,6 +43,11 @@ def _read(client, bucket: str, name: str) -> bytes:
         resp.release_conn()
 
 
+def parquet_name(table: str) -> str:
+    """Bundle object name for a table; /SCWM/AQUA → %2FSCWM%2FAQUA.parquet (one object, no sub-folders)."""
+    return quote(table, safe="") + ".parquet"
+
+
 def load_dataset(path: str, dictionary: Dictionary, modules: Optional[list[str]] = None,
                  extra: Optional[set[str]] = None, conversions: Optional[dict[str, dict[str, str]]] = None) -> tuple[TableFrames, Optional[pd.DataFrame], int, int]:
     """(frames, flat_df_or_None, row_count, column_count) for a dataset path."""
@@ -52,7 +58,7 @@ def load_dataset(path: str, dictionary: Dictionary, modules: Optional[list[str]]
         for obj in client.list_objects(bucket, prefix=path):
             name = obj.object_name.rsplit("/", 1)[-1]
             if name.endswith(".parquet"):
-                tables[name[: -len(".parquet")]] = pd.read_parquet(io.BytesIO(_read(client, bucket, obj.object_name)))
+                tables[unquote(name[: -len(".parquet")])] = pd.read_parquet(io.BytesIO(_read(client, bucket, obj.object_name)))
         if not tables:
             raise ValueError(f"No table parquet files under {path}")
         return (TableFrames(tables, dictionary), None, sum(len(t) for t in tables.values()),

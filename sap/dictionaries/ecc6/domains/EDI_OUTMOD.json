@@ -1,0 +1,32 @@
+{
+ "domain": "EDI_OUTMOD",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "1",
+   "high": null,
+   "text": "Transfer IDoc immediately and start external subsystem"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Transfer IDoc immediately"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Collect IDocs, transfer and start external subsystem"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Collect IDocs and transfer"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

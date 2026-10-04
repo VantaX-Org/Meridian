@@ -20,7 +20,7 @@ import { getIssue, getIssues, updateIssues, type IssueStatus, type RecordIssue }
 import { getVersions } from "@/lib/api/versions";
 import { formatModuleName, relativeTime } from "@/lib/format";
 
-const STATUS: Record<IssueStatus, RecordReportStatus> = { open: "open", in_progress: "in_progress", accepted: "resolved", resolved: "resolved" };
+const STATUS: Record<IssueStatus, RecordReportStatus> = { open: "open", in_progress: "in_progress", waiting_sap: "in_progress", waiting_requester: "in_progress", accepted: "resolved", resolved: "resolved" };
 const SEV = (s: string): "critical" | "high" | "medium" | "low" =>
   s === "critical" || s === "high" || s === "medium" ? s : "low";
 

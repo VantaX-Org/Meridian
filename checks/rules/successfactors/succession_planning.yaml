@@ -174,3 +174,48 @@ rules:
       __blank__: Re-order the successors of the position on the succession org chart / Position Tile.
     record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for {SUCCESSIONCANDIDATE.POSITION_ID}: rank {SUCCESSIONCANDIDATE.RANKING}
       is negative.'
+  - id: SUC013
+    field: SUCCESSIONCANDIDATE.POSITION_ID
+    check_class: exists_check
+    target_table: POSITION
+    target_fields:
+    - CODE
+    target_when:
+      EFFECTIVE_STATUS:
+      - A
+    severity: medium
+    dimension: consistency
+    message: Successor is nominated for a position that is inactive or does not exist
+    why_it_matters: Succession plans are built on positions. A nomination on an inactive or deleted position is left over
+      from a reorganisation and no longer covers a real role.
+    rule_authority: best_practice
+    sap_impact: Succession org chart and bench-strength reports count nominations for roles that no longer exist, and the
+      real successor positions look better covered than they are.
+    fix_map:
+      __other__: Move the nomination to the successor position in the Succession Org Chart, or remove it.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID}: position {SUCCESSIONCANDIDATE.POSITION_ID} is not
+      active.'
+  - id: SUC014
+    field: SUCCESSIONCANDIDATE.NOMINEE_ID
+    check_class: exists_check
+    target_table: EMPEMPLOYMENT
+    target_fields:
+    - USERID
+    target_when:
+      STATUS:
+      - A
+      - U
+      - P
+      - S
+    severity: medium
+    dimension: consistency
+    message: Nominated successor is not an active employee
+    why_it_matters: Only current employees can succeed into a role. A successor who has left still counts as cover in the
+      plan, so the real risk to the position is hidden. External candidates are not employees and also fail; confirm before
+      removing them.
+    rule_authority: best_practice
+    sap_impact: Bench-strength and readiness reports overstate cover; talent reviews discuss people who have left.
+    fix_map:
+      __other__: Remove the nomination in the Succession Org Chart and nominate an active employee.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID} is not an
+      active employee.'

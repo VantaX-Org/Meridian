@@ -963,6 +963,10 @@ celery_app.conf.beat_schedule = {
         "task": "workers.scheduler.sync_profile_scheduler",
         "schedule": crontab(minute="*/5"),  # Check every 5 minutes for due sync profiles
     },
+    "triage-sla-sweep-every-5min": {
+        "task": "workers.tasks.triage_sla.sla_sweep",
+        "schedule": crontab(minute="*/5"),  # auto-assign, start SLA clocks, at-risk/breach escalation
+    },
     "stewardship-queue-populate-every-15min": {
         "task": "workers.tasks.populate_stewardship_queue.populate_queue",
         "schedule": crontab(minute="*/15"),  # Every 15 minutes — populates queue, then chains ai_triage
@@ -982,6 +986,20 @@ celery_app.conf.beat_schedule = {
     "licence-revalidation-every-6h": {
         "task": "revalidate_licence",
         "schedule": crontab(minute=0, hour="*/6"),  # Every 6 hours — keeps manifest fresh
+    },
+    "alert-digest-daily": {
+        "task": "workers.tasks.send_notifications.send_alert_digest",
+        "schedule": crontab(hour=4, minute=30),  # after the 00:00 UTC analysis
+        "args": ("daily",),
+    },
+    "alert-digest-weekly-monday": {
+        "task": "workers.tasks.send_notifications.send_alert_digest",
+        "schedule": crontab(hour=4, minute=45, day_of_week=1),
+        "args": ("weekly",),
+    },
+    "forced-update-check-every-15min": {
+        "task": "forced_update_check",
+        "schedule": crontab(minute="3,18,33,48"),  # waits for idle workers + update window
     },
     "contract-freshness-hourly": {
         "task": "workers.scheduler.contract_freshness",

@@ -47,6 +47,14 @@ class QueueItemOut(BaseModel):
     updated_at: str
     ai_recommendation: Optional[str] = None
     ai_confidence: Optional[float] = None
+    assigned_team_id: Optional[str] = None
+    acknowledged_at: Optional[str] = None
+    resolved_at: Optional[str] = None
+    ack_due_at: Optional[str] = None
+    sla_state: Optional[str] = None
+    sla_paused_at: Optional[str] = None
+    snoozed_until: Optional[str] = None
+    snooze_reason: Optional[str] = None
 
 
 class QueueListResponse(BaseModel):
@@ -103,14 +111,19 @@ def _row_to_item(row) -> QueueItemOut:
         updated_at=row[11].isoformat() if row[11] else "",
         ai_recommendation=row[12],
         ai_confidence=float(row[13]) if row[13] is not None else None,
+        **{k: (str(v) if isinstance(v, uuid_mod.UUID) else v.isoformat() if hasattr(v, "isoformat") else v)
+           for k, v in zip(_TRIAGE_COLS, row[14:])},
     )
 
 
 QUEUE_COLUMNS = (
     "id, tenant_id, item_type, source_id, domain, priority, due_at, "
     "assigned_to, status, sla_hours, created_at, updated_at, "
-    "ai_recommendation, ai_confidence"
+    "ai_recommendation, ai_confidence, assigned_team_id, acknowledged_at, resolved_at, ack_due_at, "
+    "sla_state, sla_paused_at, snoozed_until, snooze_reason"
 )
+_TRIAGE_COLS = ("assigned_team_id", "acknowledged_at", "resolved_at", "ack_due_at", "sla_state", "sla_paused_at",
+                "snoozed_until", "snooze_reason")
 
 
 async def _resolve_user_id(db: AsyncSession, tenant: Tenant, request: Request) -> str:
@@ -388,12 +401,15 @@ async def assign_queue_item(
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
 
     result = await db.execute(
-        text("UPDATE stewardship_queue SET assigned_to = :uid, status = 'in_progress', updated_at = now() WHERE id = :id AND tenant_id = :tid RETURNING id"),
+        text("UPDATE stewardship_queue SET assigned_to = :uid, status = 'in_progress', updated_at = now(), assigned_at = now(), assigned_team_id = NULL, assigned_by_rule = NULL WHERE id = :id AND tenant_id = :tid RETURNING id"),
         {"uid": body.user_id, "id": item_id, "tid": str(tenant.id)},
     )
     if not result.fetchone():
         raise HTTPException(status_code=404, detail="Queue item not found")
 
+    from api.services.triage import apply_sla
+    tid = str(tenant.id)
+    await db.run_sync(lambda s: apply_sla(s, tid, "queue", [item_id]))
     await db.commit()
     return {"id": item_id, "status": "in_progress", "assigned_to": body.user_id}
 
@@ -443,7 +459,7 @@ async def resolve_queue_item(
 
     # Mark queue item resolved
     await db.execute(
-        text("UPDATE stewardship_queue SET status = 'resolved', updated_at = now() WHERE id = :id AND tenant_id = :tid"),
+        text("UPDATE stewardship_queue SET status = 'resolved', updated_at = now(), resolved_at = now(), acknowledged_at = COALESCE(acknowledged_at, now()) WHERE id = :id AND tenant_id = :tid"),
         {"id": item_id, "tid": str(tenant.id)},
     )
 
@@ -642,7 +658,7 @@ async def bulk_approve(
 
         # Mark resolved
         await db.execute(
-            text("UPDATE stewardship_queue SET status = 'resolved', updated_at = now() WHERE id = :id"),
+            text("UPDATE stewardship_queue SET status = 'resolved', updated_at = now(), resolved_at = now(), acknowledged_at = COALESCE(acknowledged_at, now()) WHERE id = :id"),
             {"id": iid},
         )
 

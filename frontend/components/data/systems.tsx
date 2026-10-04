@@ -27,10 +27,12 @@ const meta = (m: AuroraColumnMeta) => m;
 const RFC_TYPES: SystemType[] = ["ecc", "s4hana_onprem", "ewm"];
 // concur/ariba are fixed to OAuth2 in the connector dispatch; only these two offer Basic
 const AUTH_SELECTABLE: SystemType[] = ["successfactors", "s4hana_cloud"];
+// OAuth here fetches its token from a separate endpoint (BTP: the XSUAA /oauth/token URL)
+const TOKEN_URL_TYPES: SystemType[] = ["s4hana_cloud", "btp"];
 const TYPE_OPTIONS: { value: SystemType; label: string }[] = [
   { value: "ecc", label: "ECC" }, { value: "s4hana_onprem", label: "S/4HANA On-Prem" }, { value: "ewm", label: "EWM" },
   { value: "s4hana_cloud", label: "S/4HANA Cloud" }, { value: "successfactors", label: "SuccessFactors" },
-  { value: "concur", label: "Concur" }, { value: "ariba", label: "Ariba" },
+  { value: "concur", label: "Concur" }, { value: "ariba", label: "Ariba" }, { value: "btp", label: "SAP BTP" },
 ];
 const TYPE_LABEL = Object.fromEntries(TYPE_OPTIONS.map((o) => [o.value, o.label])) as Record<SystemType, string>;
 const isRfc = (t: SystemType) => RFC_TYPES.includes(t);
@@ -50,17 +52,18 @@ const ENV_TONE: Record<SAPSystem["environment"], ChipTone> = { PRD: "success", Q
 type Draft = {
   name: string; system_type: SystemType; environment: string; description: string;
   host: string; client: string; sysnr: string; username: string; password: string;
-  base_url: string; company_id: string; auth: "oauth2_client_credentials" | "basic"; client_id: string; client_secret: string; api_key: string;
+  base_url: string; company_id: string; auth: "oauth2_client_credentials" | "basic"; client_id: string; client_secret: string; api_key: string; token_url: string;
 };
 const EMPTY: Draft = {
   name: "", system_type: "ecc", environment: "DEV", description: "", host: "", client: "", sysnr: "00", username: "", password: "",
-  base_url: "", company_id: "", auth: "oauth2_client_credentials", client_id: "", client_secret: "", api_key: "",
+  base_url: "", company_id: "", auth: "oauth2_client_credentials", client_id: "", client_secret: "", api_key: "", token_url: "",
 };
 
 /** The register / test-connection body, shaped the way the connector dispatch expects. */
 function connectBody(d: Draft) {
   const rfc = isRfc(d.system_type);
   const basic = !rfc && AUTH_SELECTABLE.includes(d.system_type) && d.auth === "basic";
+  const tokenUrl = !rfc && !basic && TOKEN_URL_TYPES.includes(d.system_type);
   const credentials: Record<string, string> = {};
   if (rfc || basic) credentials.password = d.password;
   else {
@@ -73,7 +76,7 @@ function connectBody(d: Draft) {
     host: rfc ? d.host : undefined, client: rfc ? d.client : undefined, sysnr: rfc ? d.sysnr : undefined,
     username: rfc || basic ? d.username || undefined : undefined,
     base_url: rfc ? undefined : d.base_url, company_id: rfc ? undefined : d.company_id,
-    auth_type: basic ? ("basic" as const) : undefined, credentials,
+    auth_type: basic ? ("basic" as const) : undefined, token_url: tokenUrl ? d.token_url : undefined, credentials,
   };
 }
 
@@ -201,7 +204,9 @@ function ConnectForm({ onDone }: { onDone: (id: string) => void }) {
   const rfc = isRfc(d.system_type);
   const authSelectable = !rfc && AUTH_SELECTABLE.includes(d.system_type);
   const basic = authSelectable && d.auth === "basic";
-  const valid = d.name.trim() && (rfc ? d.host && d.client && d.sysnr && d.password : d.base_url && (basic ? d.username && d.password : d.client_id && d.client_secret));
+  const needsTokenUrl = !rfc && !basic && TOKEN_URL_TYPES.includes(d.system_type);
+  const valid = d.name.trim() && (rfc ? d.host && d.client && d.sysnr && d.password
+    : d.base_url && (basic ? d.username && d.password : d.client_id && d.client_secret && (!needsTokenUrl || d.token_url)));
 
   const test = useMutation({ mutationFn: () => testDraftConnection(connectBody(d)), onSuccess: setTested, onError: (e) => toast.error((e as Error).message || "Test failed") });
   const create = useMutation({ mutationFn: () => registerSystem(connectBody(d)),
@@ -241,6 +246,7 @@ function ConnectForm({ onDone }: { onDone: (id: string) => void }) {
             {basic ? <>{text("username", "User", { required: true })}{text("password", "Password", { required: true, type: "password", autoComplete: "new-password" })}</> : <>
               {text("client_id", "Client ID", { required: true })}
               {text("client_secret", "Client secret", { required: true, type: "password", autoComplete: "new-password" })}
+              {needsTokenUrl ? text("token_url", "Token URL", { required: true, type: "url", placeholder: "https://<subdomain>.authentication.<region>.hana.ondemand.com/oauth/token" }, "OAuth token endpoint") : null}
               {d.system_type === "ariba" ? text("api_key", "API key", { type: "password" }, "Ariba application key") : null}
             </>}
           </Stack>

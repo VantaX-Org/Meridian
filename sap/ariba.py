@@ -322,7 +322,6 @@ class AribaConnector(CloudSAPConnector):
         Ariba uses ``Items`` + ``NextPage`` for pagination with a default
         page size controlled by the ``limit`` query parameter.
         """
-        self._ensure_token()
         assert self._client is not None
 
         all_items: list[dict[str, Any]] = []
@@ -330,12 +329,14 @@ class AribaConnector(CloudSAPConnector):
         collected = 0
         url: str | None = path
 
+        params: dict[str, Any] | None = {"limit": page_size}
+        if self._params and self._params.company_id:
+            params["realm"] = self._params.company_id
+        if filter_expr:
+            params["$filter"] = filter_expr
+
         while url is not None:
-            params: dict[str, Any] = {"limit": page_size}
-            if self._params and self._params.company_id:
-                params["realm"] = self._params.company_id
-            if filter_expr:
-                params["$filter"] = filter_expr
+            self._ensure_token()  # long reads outlive the token
 
             try:
                 resp = self._client.get(url, params=params)
@@ -360,8 +361,11 @@ class AribaConnector(CloudSAPConnector):
                 break
 
             url = body.get("NextPage")
-            # NextPage is a full URL; clear params so we don't double-apply.
-            filter_expr = None
+            # NextPage carries its own query (page token); passing params would
+            # make httpx replace it and re-read page 1 forever. Keep the realm.
+            if url and self._params and self._params.company_id:
+                url = str(httpx.URL(url).copy_merge_params({"realm": self._params.company_id}))
+            params = None
 
         if not all_items:
             return pd.DataFrame()
