@@ -24,7 +24,8 @@ from sap.ddic import get_dictionary  # noqa: E402
 
 _REF = re.compile(r"\b([A-Z][A-Z0-9_]{1,29})\.([A-Z][A-Z0-9_]{0,29})\b")
 _RULE_KEYS = ("field", "fields", "condition", "applies_when", "reference_field",
-              "date_field", "compare_field", "secondary_field")
+              "date_field", "compare_field", "secondary_field", "amount", "group_keys",
+              "child_when", "sign_field", "tolerance_field")
 
 
 def rule_refs(rule: dict) -> set[str]:
