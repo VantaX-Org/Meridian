@@ -25,6 +25,17 @@ _one_time_fields: &one_time_fields
    TELX1, TELTX, STCD1, STCD2, STCD3, STCD4, STCD5, STCEG, STKZN, STKZU, BANKS, BANKL, BANKN, BKONT, KOINH, IBAN,
    ADR6.SMTP_ADDR, ADR2.TEL_NUMBER, ADR3.FAX_NUMBER, ADRC.STREET, ADRC.CITY1, ADRC.POST_CODE1, ADRC.TEL_NUMBER]
 
+# customer equipment: the equipment category's reference category (T370T.REFTP) is
+# S, so the machine belongs to a customer and is serviced, not maintained in-house.
+# It has no maintenance plant, planner group, work center, cost center or asset of
+# ours; those internal maintenance-planning fields are not judged on it. Which
+# categories that covers is read from the system's own T370T, never hard-coded.
+_customer_label: &customer_label "customer equipment (category reference S)"
+_customer_category: &customer_category {table: T370T, column: EQTYP, where: {REFTP: [S]}}
+_maintenance_planning_fields: &maintenance_planning_fields
+  [EQUZ.IWERK, EQUZ.INGRP, EQUZ.GEWRK, EQUZ.WERGW, EQUZ.TIDNR, EQUZ.RBNR, ILOA.SWERK, ILOA.KOSTL, ILOA.GSBER, ILOA.ABCKZ, ILOA.ANLNR,
+   ILOA.ANLUN, ILOA.BEBER, ILOA.ARBPL]
+
 tables:
   LFA1:
     - {id: deleted, field: LFA1.LOEVM, label: *deleted_label}
@@ -137,9 +148,13 @@ tables:
   EQUI:
     - {id: deleted, field: EQUI.OBJNR, label: "flagged for deletion (status DLFL)",
        in_table: {table: JEST, column: OBJNR, where: {STAT: [I0076], INACT: [""]}}}
+    - {id: customer_equipment, field: EQUI.EQTYP, label: *customer_label, in_table: *customer_category,
+       only_fields: *maintenance_planning_fields}
   EQUZ:
     - {id: deleted, field: EQUI.OBJNR, label: "flagged for deletion (status DLFL)",
        in_table: {table: JEST, column: OBJNR, where: {STAT: [I0076], INACT: [""]}}}
+    - {id: customer_equipment, field: EQUI.EQTYP, label: *customer_label, in_table: *customer_category,
+       only_fields: *maintenance_planning_fields}
   IFLOT:
     - {id: deleted, field: IFLOT.OBJNR, label: "flagged for deletion (status DLFL)",
        in_table: {table: JEST, column: OBJNR, where: {STAT: [I0076], INACT: [""]}}}
