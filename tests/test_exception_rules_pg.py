@@ -98,6 +98,50 @@ def test_enabled_rule_fires_once_disabled_never(engines, monkeypatch):
     assert _custom_exceptions(app, other) == []
 
 
+def test_monitor_rescan_keeps_one_exception_and_resolution(engines, monkeypatch):
+    """Monitor exceptions are upserted on (tenant, type, monitor): a re-scan adds none and
+    keeps a steward's resolution; a later version that still fails re-opens the same row."""
+    from sqlalchemy import text
+
+    import workers.tasks.run_exception_scan as scan
+
+    owner, app = engines
+    tid, vid, vid2 = (str(uuid.uuid4()) for _ in range(3))
+    with owner.begin() as c:
+        c.execute(text("INSERT INTO tenants (id, name) VALUES (:t, 'E4')"), {"t": tid})
+        for v, at in ((vid, "now() - interval '1 day'"), (vid2, "now() + interval '1 day'")):
+            c.execute(text(f"INSERT INTO analysis_versions (id, tenant_id, status, run_at) "
+                           f"VALUES (:v, :t, 'complete', {at})"), {"v": v, "t": tid})
+            c.execute(text("INSERT INTO findings (version_id, tenant_id, module, check_id, severity, dimension, "
+                           "affected_count, total_count, details) VALUES (:v, :t, 'idoc', 'CHK-IDOC', 'high', "
+                           "'validity', 1, 2, CAST(:d AS jsonb))"),
+                      {"v": v, "t": tid, "d": '{"field_checked": "EDIDC.STATUS"}'})
+
+    def monitor_rows():
+        with app.begin() as c:
+            c.execute(text("SET LOCAL app.tenant_id = :t"), {"t": tid})
+            return c.execute(text("SELECT id, status FROM exceptions WHERE type = 'sap_transaction'")).fetchall()
+
+    def run(v):
+        r = scan.run_exception_scan(v, tid)
+        assert "error" not in r, r
+        return r["exceptions"]
+
+    monkeypatch.setattr(scan, "get_sync_engine", lambda: app)
+    assert run(vid) == 1
+    (first,) = monitor_rows()
+    assert run(vid) == 0
+    assert monitor_rows() == [first]
+
+    with owner.begin() as c:
+        c.execute(text("UPDATE exceptions SET status = 'resolved', resolved_at = now() WHERE id = :i"),
+                  {"i": first.id})
+    assert run(vid) == 0  # same data, scanned before the fix
+    assert monitor_rows() == [(first.id, "resolved")]
+    assert run(vid2) == 1  # fails again after the resolution
+    assert monitor_rows() == [(first.id, "open")]
+
+
 def test_rule_update_and_billing_routes(engines, monkeypatch):
     from fastapi import FastAPI
     from httpx import ASGITransport, AsyncClient
