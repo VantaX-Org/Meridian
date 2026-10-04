@@ -304,12 +304,13 @@ class ConcurConnector(CloudSAPConnector):
         url: str | None = path
         all_users = path in ALL_USERS_PATHS
 
+        params: dict[str, Any] | None = {"limit": page_size}
+        if filter_expr:
+            params["filter"] = filter_expr
+        if all_users:
+            params["user"] = "ALL"
+
         while url is not None:
-            params: dict[str, Any] = {"limit": page_size}
-            if filter_expr:
-                params["filter"] = filter_expr
-            if all_users:
-                params["user"] = "ALL"
 
             try:
                 resp = self._client.get(url, params=params)
@@ -318,6 +319,8 @@ class ConcurConnector(CloudSAPConnector):
                     logger.warning("Concur refused user=ALL on %s; reading own reports only", path)
                     self.own_reports_only.add(path)
                     all_users = False
+                    if params is not None:
+                        params.pop("user", None)
                     continue
                 resp.raise_for_status()
                 body = resp.json()
@@ -340,8 +343,9 @@ class ConcurConnector(CloudSAPConnector):
                 break
 
             url = body.get("NextPage")
-            # NextPage is a full URL; clear params so we don't double-apply.
-            filter_expr = None
+            # NextPage carries its own query (page token); passing params would
+            # make httpx replace it and re-read page 1 forever.
+            params = None
 
         if not all_items:
             return pd.DataFrame()

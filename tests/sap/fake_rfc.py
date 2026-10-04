@@ -25,6 +25,7 @@ class FakeConnection:
         self.dictionary = get_dictionary(release)
         self.calls: list[tuple[str, dict]] = []
         self.extra_rows: dict[str, int] = {}  # rows SAP counts but the read does not return
+        self.probe_checks_width = True  # some systems raise DATA_BUFFER_EXCEEDED only on the real read
 
     def close(self):
         pass
@@ -63,7 +64,7 @@ class FakeConnection:
             raise FakeRFCError("TABLE_NOT_AVAILABLE")
         names = [f["FIELDNAME"] for f in FIELDS]
         widths = [self._width(QUERY_TABLE, n) for n in names]
-        if sum(widths) > 512:
+        if sum(widths) > 512 and (NO_DATA != "X" or self.probe_checks_width):
             raise FakeRFCError("DATA_BUFFER_EXCEEDED")
         for o in OPTIONS:
             assert len(o["TEXT"]) <= 72, "OPTIONS line longer than 72 characters"

@@ -216,8 +216,14 @@ class S4HanaCloudConnector(CloudSAPConnector):
     """SAP S/4HANA Cloud OData V4 connector.
 
     Authenticates via SAP BTP OAuth 2.0 client credentials flow.
-    Handles OData V4 server-driven pagination (@odata.nextLink).
+    Handles OData V4 server-driven pagination (@odata.nextLink), OData V2
+    response bodies (d.results / __next), and client-side $skip paging when the
+    server returns a full page without a next link.
     """
+
+    _LABEL = "S/4HANA Cloud"
+    MODULE_ENTITIES: dict[str, list[dict[str, Any]]] = S4HC_MODULE_ENTITIES
+    _PING_PATH = "/sap/opu/odata4/sap/"
 
     def __init__(self) -> None:
         self._client: httpx.Client | None = None
@@ -243,7 +249,7 @@ class S4HanaCloudConnector(CloudSAPConnector):
 
         if params.auth_type != "oauth2_client_credentials":
             raise SAPConnectorError(
-                f"S/4HANA Cloud requires auth_type 'oauth2_client_credentials', "
+                f"{self._LABEL} requires auth_type 'oauth2_client_credentials', "
                 f"got '{params.auth_type}'."
             )
 
@@ -258,13 +264,13 @@ class S4HanaCloudConnector(CloudSAPConnector):
                 headers=headers,
                 timeout=120.0,
             )
-            logger.info("S/4HANA Cloud: connected via OAuth to %s", base_url)
+            logger.info(f"{self._LABEL}: connected via OAuth to %s", base_url)
 
         except httpx.HTTPError as exc:
             safe_msg = self._mask_secret(str(exc), params.client_secret)
             safe_msg = self._mask_secret(safe_msg, params.password)
             raise SAPConnectorError(
-                f"S/4HANA Cloud connection failed: {safe_msg}"
+                f"{self._LABEL} connection failed: {safe_msg}"
             ) from exc
 
     def _get_oauth_token(self, params: CloudConnectionParams) -> str:
@@ -281,7 +287,7 @@ class S4HanaCloudConnector(CloudSAPConnector):
         """
         if not params.token_url:
             raise SAPConnectorError(
-                "S/4HANA Cloud OAuth requires token_url in connection params."
+                f"{self._LABEL} OAuth requires token_url in connection params."
             )
 
         payload: dict[str, str] = {
@@ -303,10 +309,10 @@ class S4HanaCloudConnector(CloudSAPConnector):
             access_token = token_data.get("access_token")
             if not access_token:
                 raise SAPConnectorError(
-                    "S/4HANA Cloud OAuth response missing 'access_token'."
+                    f"{self._LABEL} OAuth response missing 'access_token'."
                 )
             logger.debug(
-                "S/4HANA Cloud: OAuth token obtained, expires_in=%s",
+                f"{self._LABEL}: OAuth token obtained, expires_in=%s",
                 token_data.get("expires_in"),
             )
             return access_token
@@ -315,7 +321,7 @@ class S4HanaCloudConnector(CloudSAPConnector):
             safe_msg = self._mask_secret(str(exc), params.client_secret)
             safe_msg = self._mask_secret(safe_msg, params.password)
             raise SAPConnectorError(
-                f"S/4HANA Cloud OAuth token request failed: {safe_msg}"
+                f"{self._LABEL} OAuth token request failed: {safe_msg}"
             ) from exc
 
     # ------------------------------------------------------------------
@@ -362,22 +368,32 @@ class S4HanaCloudConnector(CloudSAPConnector):
         url = f"{service_path}/{entity_set}"
         all_records: list[dict[str, Any]] = []
         remaining = top if top > 0 else float("inf")
+        page_size = int(params["$top"])
+        skip = 0
+        first_of_page: Any = None
 
         while url and remaining > 0:
             resp = self._request_with_retry("GET", url, params=params)
             body = resp.json()
 
-            # OData V4 returns results in "value" array
-            results = body.get("value", [])
-            if not results:
-                break
+            # OData V4 returns results in "value"; V2 in "d.results"
+            v2 = body.get("d") if isinstance(body.get("d"), dict) else {}
+            results = body.get("value") or v2.get("results") or []
+            if not results or (skip and results[0] == first_of_page):
+                break  # empty page, or a server that ignores $skip
+            first_of_page = results[0]
 
-            rows_to_take = min(len(results), int(remaining))
+            rows_to_take = int(min(len(results), remaining))  # int(inf) raised on every unlimited read
             all_records.extend(results[:rows_to_take])
             remaining -= rows_to_take
 
-            # Server-driven pagination via @odata.nextLink
-            next_link = body.get("@odata.nextLink")
+            # Server-driven pagination via @odata.nextLink (V4) / __next (V2)
+            next_link = body.get("@odata.nextLink") or v2.get("__next")
+            if not next_link and params and len(results) >= page_size and remaining > 0:
+                # full page, no next link: the server honoured $top, so page with $skip
+                skip += len(results)
+                params = {**params, "$skip": str(skip)}
+                continue
             if next_link and remaining > 0:
                 # nextLink may be absolute or relative
                 if next_link.startswith(("http://", "https://")):
@@ -389,7 +405,7 @@ class S4HanaCloudConnector(CloudSAPConnector):
                 url = None  # type: ignore[assignment]
 
         logger.info(
-            "S/4HANA Cloud: read %d records from %s",
+            f"{self._LABEL}: read %d records from %s",
             len(all_records),
             entity_set,
         )
@@ -403,7 +419,7 @@ class S4HanaCloudConnector(CloudSAPConnector):
         """Read all entity sets for a module and merge into one DataFrame.
 
         Args:
-            module: One of the keys in S4HC_MODULE_ENTITIES.
+            module: One of the keys in self.MODULE_ENTITIES.
 
         Returns:
             Merged DataFrame with entity set prefix on columns.
@@ -411,11 +427,11 @@ class S4HanaCloudConnector(CloudSAPConnector):
         Raises:
             SAPConnectorError: if module is unknown.
         """
-        entities = S4HC_MODULE_ENTITIES.get(module)
+        entities = self.MODULE_ENTITIES.get(module)
         if not entities:
             raise SAPConnectorError(
                 f"Unknown S/4HANA Cloud module '{module}'. "
-                f"Valid: {', '.join(S4HC_MODULE_ENTITIES.keys())}"
+                f"Valid: {', '.join(self.MODULE_ENTITIES.keys())}"
             )
 
         frames: list[pd.DataFrame] = []
@@ -429,7 +445,7 @@ class S4HanaCloudConnector(CloudSAPConnector):
                     frames.append(df)
             except SAPConnectorError:
                 logger.warning(
-                    "S/4HANA Cloud: failed to read entity set %s for module %s, skipping",
+                    f"{self._LABEL}: failed to read entity set %s for module %s, skipping",
                     entity_set,
                     module,
                     exc_info=True,
@@ -486,12 +502,12 @@ class S4HanaCloudConnector(CloudSAPConnector):
             return False
         try:
             resp = self._client.get(
-                "/sap/opu/odata4/sap/",
+                self._PING_PATH,
                 headers={"Accept": "application/json"},
             )
             return resp.status_code == 200
         except Exception:
-            logger.debug("S/4HANA Cloud ping failed", exc_info=True)
+            logger.debug(f"{self._LABEL} ping failed", exc_info=True)
             return False
 
     # ------------------------------------------------------------------
@@ -508,7 +524,7 @@ class S4HanaCloudConnector(CloudSAPConnector):
             self._client = None
         self._access_token = None
         self._params = None
-        logger.debug("S/4HANA Cloud: connection closed")
+        logger.debug(f"{self._LABEL}: connection closed")
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -518,7 +534,7 @@ class S4HanaCloudConnector(CloudSAPConnector):
         """Raise if connect() has not been called."""
         if not self._client:
             raise SAPConnectorError(
-                "S/4HANA Cloud: not connected. Call connect() first."
+                f"{self._LABEL}: not connected. Call connect() first."
             )
 
     def _resolve_service_path(self, entity_set: str) -> str:
@@ -526,7 +542,7 @@ class S4HanaCloudConnector(CloudSAPConnector):
 
         Falls back to a generic path if the entity set is not in the map.
         """
-        for module_entities in S4HC_MODULE_ENTITIES.values():
+        for module_entities in self.MODULE_ENTITIES.values():
             for spec in module_entities:
                 if spec["entity_set"] == entity_set:
                     return spec.get("service_path", "/sap/opu/odata4/sap")
@@ -550,17 +566,25 @@ class S4HanaCloudConnector(CloudSAPConnector):
 
         for attempt in range(1, retries + 1):
             try:
-                resp = self._client.request(method, url, params=params)
+                # params={} makes httpx drop the query of a nextLink (endless paging); None keeps it
+                resp = self._client.request(method, url, params=params or None)
 
                 if resp.status_code == 429:
                     wait = _RATE_LIMIT_BACKOFF_SECONDS * attempt
                     logger.warning(
-                        "S/4HANA Cloud: 429 rate limited, retry %d/%d after %.1fs",
+                        f"{self._LABEL}: 429 rate limited, retry %d/%d after %.1fs",
                         attempt,
                         retries,
                         wait,
                     )
                     time.sleep(wait)
+                    continue
+
+                # Bearer token expired mid-extraction: fetch a new one once and retry.
+                if resp.status_code == 401 and attempt == 1 and self._params and self._params.token_url:
+                    logger.info(f"{self._LABEL}: 401, refreshing OAuth token")
+                    self._access_token = self._get_oauth_token(self._params)
+                    self._client.headers["Authorization"] = f"Bearer {self._access_token}"
                     continue
 
                 resp.raise_for_status()
@@ -577,7 +601,7 @@ class S4HanaCloudConnector(CloudSAPConnector):
                 if exc.response.status_code in (500, 502, 503, 504) and attempt < retries:
                     wait = _RATE_LIMIT_BACKOFF_SECONDS * attempt
                     logger.warning(
-                        "S/4HANA Cloud: server error %d on %s, retry %d/%d after %.1fs",
+                        f"{self._LABEL}: server error %d on %s, retry %d/%d after %.1fs",
                         exc.response.status_code,
                         url,
                         attempt,
@@ -587,7 +611,7 @@ class S4HanaCloudConnector(CloudSAPConnector):
                     time.sleep(wait)
                     continue
                 raise SAPConnectorError(
-                    f"S/4HANA Cloud request failed: {safe_msg}"
+                    f"{self._LABEL} request failed: {safe_msg}"
                 ) from exc
 
             except httpx.HTTPError as exc:
@@ -601,7 +625,7 @@ class S4HanaCloudConnector(CloudSAPConnector):
                 if attempt < retries:
                     wait = _RATE_LIMIT_BACKOFF_SECONDS * attempt
                     logger.warning(
-                        "S/4HANA Cloud: request error on %s, retry %d/%d after %.1fs",
+                        f"{self._LABEL}: request error on %s, retry %d/%d after %.1fs",
                         url,
                         attempt,
                         retries,
@@ -610,9 +634,9 @@ class S4HanaCloudConnector(CloudSAPConnector):
                     time.sleep(wait)
                     continue
                 raise SAPConnectorError(
-                    f"S/4HANA Cloud request failed: {safe_msg}"
+                    f"{self._LABEL} request failed: {safe_msg}"
                 ) from exc
 
         raise SAPConnectorError(
-            f"S/4HANA Cloud request failed after {retries} retries"
+            f"{self._LABEL} request failed after {retries} retries"
         ) from last_exc

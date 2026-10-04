@@ -138,6 +138,8 @@ edges:
   # material/plant settings of stock and TO items (batch management, …)
   - {parent: MARC, child: LQUA, join: {MATNR: MATNR, WERKS: WERKS}, cardinality: many}
   - {parent: MARC, child: LTAP, join: {MATNR: MATNR, WERKS: WERKS}, cardinality: many}
+  # embedded / decentralised EWM (/SCWM/ namespace)
+  - {parent: /SCWM/LAGP, child: /SCWM/AQUA, join: {LGNUM: LGNUM, LGPLA: LGPLA}, cardinality: many}
   - {parent: VTTK, child: VTTP, join: {TKNUM: TKNUM}, cardinality: many}
   - {parent: VTTK, child: TVRO, join: {ROUTE: ROUTE}, cardinality: one}
 

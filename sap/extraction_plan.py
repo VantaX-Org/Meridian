@@ -186,6 +186,15 @@ def plan_modules(modules: list[str], dictionary: Dictionary, scope: Optional[dic
         for t, fields in live_tables(module, dictionary).items():
             add(t, set(fields), module)
 
+    # the tables population exclusions look values up in (JEST status, T370T category)
+    from checks.population import policy
+    for t, p in list(plans.items()):
+        for x in policy().get(t, []) if p.purpose == "data" else []:
+            if spec := x.get("in_table"):
+                for m in p.modules:
+                    add(spec["table"], {spec["column"], *spec.get("where", {})}, m,
+                        purpose="config" if _is_config_table(dictionary, spec["table"]) else "data")
+
     # keys, join fields, filters
     for t, p in plans.items():
         p.keys = list(dictionary.keys(t))

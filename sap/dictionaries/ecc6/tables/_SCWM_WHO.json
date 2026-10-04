@@ -1,0 +1,52 @@
+{
+ "table": "/SCWM/WHO",
+ "description": "Warehouse orders",
+ "category": "TRANSP",
+ "delivery_class": "A",
+ "source": "SAP EWM standard DDIC (key fields and selected fields; see note)",
+ "foreign_keys": [
+  {
+   "field": "LGNUM",
+   "foreign_table": "/SCWM/T300",
+   "foreign_field": "LGNUM"
+  }
+ ],
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": null,
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "LGNUM",
+   "key": true,
+   "data_element": null,
+   "domain": null,
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Warehouse Number/Warehouse Complex",
+   "check_table": "/SCWM/T300"
+  },
+  {
+   "pos": 3,
+   "name": "WHO",
+   "key": true,
+   "data_element": null,
+   "domain": null,
+   "type": "NUMC",
+   "length": 10,
+   "decimals": 0,
+   "description": "Warehouse Order Number",
+   "check_table": null
+  }
+ ]
+}

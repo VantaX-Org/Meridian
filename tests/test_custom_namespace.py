@@ -208,3 +208,11 @@ def test_partition_against_real_known_tcodes():
     part = partition_transactions([sample, "Z" + sample, "FZ99"], known)
     assert sample in part.known
     assert ("Z" + sample) in part.custom
+
+
+def test_sap_delivered_namespaces_are_standard():
+    for name in ("/SCWM/AQUA", "/SCWM/AQUA.QUAN", "/SAPAPO/MATKEY", "/SCMB/TOENTITY", "/SCDL/DB_PROCH_O",
+                 "/SAPSLL/PNTPR", "/SPE/INB_DEL", "/SCWM/MON"):
+        assert not is_custom_object(name), name
+    assert not is_custom_transaction("/SCWM/MON")
+    assert is_custom_table("/ACME/ORDERS") and is_custom_table("/SCWMX/ORDERS")
