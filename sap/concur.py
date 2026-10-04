@@ -296,10 +296,11 @@ class ConcurConnector(CloudSAPConnector):
         collected = 0
         url: str | None = path
 
+        params: dict[str, Any] | None = {"limit": page_size}
+        if filter_expr:
+            params["filter"] = filter_expr
+
         while url is not None:
-            params: dict[str, Any] = {"limit": page_size}
-            if filter_expr:
-                params["filter"] = filter_expr
 
             try:
                 resp = self._client.get(url, params=params)
@@ -324,8 +325,9 @@ class ConcurConnector(CloudSAPConnector):
                 break
 
             url = body.get("NextPage")
-            # NextPage is a full URL; clear params so we don't double-apply.
-            filter_expr = None
+            # NextPage carries its own query (page token); passing params would
+            # make httpx replace it and re-read page 1 forever.
+            params = None
 
         if not all_items:
             return pd.DataFrame()
