@@ -264,6 +264,9 @@ def test_findings_aggregate(app_engine):
             assert latest["dqs"]["dimension_scores"] == {"completeness": 80.0, "validity": 88.0}
             assert latest["previous_dqs"] == 80.0                        # v1, the run before v2 on the same system
 
+            bp = (await c.get("/api/v1/findings/aggregate", headers=h, params={"module": "business_partner"})).json()
+            assert bp["total"] == 1 and bp["affected_records"] == 1 and bp["dqs"]["composite"] == 77.75
+
             one = (await c.get("/api/v1/findings/aggregate", headers=h, params={"version_id": v1})).json()
             assert one["version_ids"] == [v1] and one["total"] == 5 and one["dqs"]["composite"] == 80.0
             assert one["previous_dqs"] is None                           # nothing before v1 on that system
