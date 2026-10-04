@@ -582,3 +582,160 @@ rules:
       __blank__: Cancel the item (LT15) and recreate the transfer order from the source document so the plant is
         derived.
     record_fix_template: 'TO {LTAP.LGNUM}/{LTAP.TANUM} item {LTAP.TAPOS}: plant is blank.'
+  - id: EWTO101
+    field: /SCWM/ORDIM_O.CREATED_AT
+    check_class: freshness_check
+    max_age_hours: 720
+    severity: medium
+    dimension: timeliness
+    message: EWM warehouse task open for more than 30 days
+    why_it_matters: An open warehouse task (/SCWM/ORDIM_O) reserves stock at its source bin and capacity at its destination.
+      Tasks created more than 30 days ago (CREATED_AT) and still open are almost always abandoned and keep stock blocked.
+    rule_authority: best_practice
+    sap_impact: Stock stays allocated to the task and is unavailable for other picks; follow-on documents (deliveries,
+      production supply) stay open.
+    fix_map:
+      __other__: Review the task in the warehouse monitor (/SCWM/MON); confirm it (/SCWM/TO_CONF) if the move happened, or
+        cancel it (/SCWM/TO_CANC).
+    record_fix_template: 'Warehouse {/SCWM/ORDIM_O.LGNUM} task {/SCWM/ORDIM_O.TANUM}: open since
+      {/SCWM/ORDIM_O.CREATED_AT}.'
+  - id: EWTO102
+    field: /SCWM/ORDIM_O.VLPLA
+    check_class: exists_check
+    fields:
+    - /SCWM/ORDIM_O.LGNUM
+    - /SCWM/ORDIM_O.VLPLA
+    target_table: /SCWM/LAGP
+    target_fields:
+    - LGNUM
+    - LGPLA
+    severity: high
+    dimension: consistency
+    message: Open EWM warehouse task picks from a source bin that does not exist
+    why_it_matters: The source bin of an open warehouse task (/SCWM/ORDIM_O.VLPLA) must exist in /SCWM/LAGP; otherwise the
+      task can never be confirmed.
+    rule_authority: sap_hard_constraint
+    sap_impact: The task cannot be confirmed; the stock and the document it serves stay blocked.
+    fix_map:
+      __other__: Cancel the task (/SCWM/TO_CANC) and recreate it from an existing bin, or recreate the bin.
+    record_fix_template: 'Warehouse {/SCWM/ORDIM_O.LGNUM} task {/SCWM/ORDIM_O.TANUM}: source bin {/SCWM/ORDIM_O.VLPLA}
+      does not exist.'
+  - id: EWTO103
+    field: /SCWM/ORDIM_O.NLPLA
+    check_class: exists_check
+    fields:
+    - /SCWM/ORDIM_O.LGNUM
+    - /SCWM/ORDIM_O.NLPLA
+    target_table: /SCWM/LAGP
+    target_fields:
+    - LGNUM
+    - LGPLA
+    severity: high
+    dimension: consistency
+    message: Open EWM warehouse task puts away to a destination bin that does not exist
+    why_it_matters: The destination bin of an open warehouse task (/SCWM/ORDIM_O.NLPLA) must exist in /SCWM/LAGP; otherwise
+      the task can never be confirmed.
+    rule_authority: sap_hard_constraint
+    sap_impact: The task cannot be confirmed; goods stay in the source or interim bin.
+    fix_map:
+      __other__: Cancel the task (/SCWM/TO_CANC) and recreate it to an existing bin, or recreate the bin.
+    record_fix_template: 'Warehouse {/SCWM/ORDIM_O.LGNUM} task {/SCWM/ORDIM_O.TANUM}: destination bin
+      {/SCWM/ORDIM_O.NLPLA} does not exist.'
+  - id: EWTO104
+    field: /SCWM/ORDIM_O.VSOLM
+    check_class: cross_field_check
+    fail_when: '`/SCWM/ORDIM_O.VSOLM` <= 0'
+    applies_when:
+      /SCWM/ORDIM_O.FLGHUTO:
+      - ''
+    severity: high
+    dimension: accuracy
+    message: Open EWM product warehouse task has no positive quantity
+    why_it_matters: A product warehouse task (not an HU task, /SCWM/ORDIM_O.FLGHUTO blank) moves a target quantity
+      (VSOLM). A zero or negative quantity is a task that can move nothing.
+    rule_authority: sap_hard_constraint
+    sap_impact: The task blocks the bins it names and cannot be confirmed meaningfully.
+    fix_map:
+      __other__: Cancel the task (/SCWM/TO_CANC) and analyse the process or interface that created it.
+    record_fix_template: 'Warehouse {/SCWM/ORDIM_O.LGNUM} task {/SCWM/ORDIM_O.TANUM}: quantity {/SCWM/ORDIM_O.VSOLM}
+      {/SCWM/ORDIM_O.MEINS}.'
+  - id: EWTO105
+    field: /SCWM/ORDIM_O.WHO
+    check_class: exists_check
+    fields:
+    - /SCWM/ORDIM_O.LGNUM
+    - /SCWM/ORDIM_O.WHO
+    target_table: /SCWM/WHO
+    target_fields:
+    - LGNUM
+    - WHO
+    severity: medium
+    dimension: consistency
+    message: Open EWM warehouse task points at a warehouse order that does not exist
+    why_it_matters: Warehouse tasks are bundled into warehouse orders (/SCWM/WHO) for execution on RF devices. A task whose
+      warehouse order (/SCWM/ORDIM_O.WHO) does not exist cannot be picked up by any worker.
+    rule_authority: sap_hard_constraint
+    sap_impact: The task never appears in an RF queue; the stock and document it serves stay open.
+    fix_map:
+      __other__: Recreate the warehouse order for the task (/SCWM/MON, warehouse order creation) or cancel and recreate the
+        task.
+    record_fix_template: 'Warehouse {/SCWM/ORDIM_O.LGNUM} task {/SCWM/ORDIM_O.TANUM}: warehouse order
+      {/SCWM/ORDIM_O.WHO} does not exist.'
+  - id: EWTO106
+    field: /SCWM/ORDIM_O.VLTYP
+    check_class: exists_check
+    fields:
+    - /SCWM/ORDIM_O.LGNUM
+    - /SCWM/ORDIM_O.VLTYP
+    target_table: /SCWM/T301
+    target_fields:
+    - LGNUM
+    - LGTYP
+    severity: high
+    dimension: consistency
+    message: Open EWM warehouse task picks from a storage type that is not configured
+    why_it_matters: The source storage type of a warehouse task (/SCWM/ORDIM_O.VLTYP) must be defined for the warehouse in
+      /SCWM/T301.
+    rule_authority: sap_hard_constraint
+    sap_impact: The task cannot be confirmed.
+    fix_map:
+      __other__: Cancel the task (/SCWM/TO_CANC); define the storage type or correct the process that created the task.
+    record_fix_template: 'Warehouse {/SCWM/ORDIM_O.LGNUM} task {/SCWM/ORDIM_O.TANUM}: source storage type
+      {/SCWM/ORDIM_O.VLTYP} not configured.'
+  - id: EWTO107
+    field: /SCWM/ORDIM_O.NLTYP
+    check_class: exists_check
+    fields:
+    - /SCWM/ORDIM_O.LGNUM
+    - /SCWM/ORDIM_O.NLTYP
+    target_table: /SCWM/T301
+    target_fields:
+    - LGNUM
+    - LGTYP
+    severity: high
+    dimension: consistency
+    message: Open EWM warehouse task puts away to a storage type that is not configured
+    why_it_matters: The destination storage type of a warehouse task (/SCWM/ORDIM_O.NLTYP) must be defined for the
+      warehouse in /SCWM/T301.
+    rule_authority: sap_hard_constraint
+    sap_impact: The task cannot be confirmed.
+    fix_map:
+      __other__: Cancel the task (/SCWM/TO_CANC); define the storage type or correct the process that created the task.
+    record_fix_template: 'Warehouse {/SCWM/ORDIM_O.LGNUM} task {/SCWM/ORDIM_O.TANUM}: destination storage type
+      {/SCWM/ORDIM_O.NLTYP} not configured.'
+  - id: EWTO108
+    field: /SCWM/ORDIM_C.CONFIRMED_AT
+    check_class: cross_field_check
+    fail_when: '(`/SCWM/ORDIM_C.CONFIRMED_AT` > 0) & (`/SCWM/ORDIM_C.CONFIRMED_AT` < `/SCWM/ORDIM_C.CREATED_AT`)'
+    require_populated: true
+    severity: medium
+    dimension: consistency
+    message: EWM warehouse task confirmed before it was created
+    why_it_matters: The confirmation time stamp of a warehouse task (/SCWM/ORDIM_C.CONFIRMED_AT) before its creation time
+      stamp (CREATED_AT) produces negative processing times in labour management and warehouse KPIs.
+    rule_authority: sap_hard_constraint
+    sap_impact: Labour management, KPIs and time-based analytics are wrong for the task.
+    fix_map:
+      __other__: Check the time zone of the warehouse and of the device or interface that confirmed the task.
+    record_fix_template: 'Warehouse {/SCWM/ORDIM_C.LGNUM} task {/SCWM/ORDIM_C.TANUM}/{/SCWM/ORDIM_C.TAPOS}: confirmed
+      {/SCWM/ORDIM_C.CONFIRMED_AT} before created {/SCWM/ORDIM_C.CREATED_AT}.'

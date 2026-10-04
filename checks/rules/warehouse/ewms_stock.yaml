@@ -742,3 +742,215 @@ rules:
         if the material is still active.
     record_fix_template: 'Quant {LQUA.LGNUM}/{LQUA.LQNUM}: {LQUA.GESME} of {LQUA.MATNR} in plant {LQUA.WERKS}
       flagged for deletion.'
+  - id: EWMS101
+    field: /SCWM/AQUA.QUAN
+    check_class: cross_field_check
+    fail_when: '(`/SCWM/AQUA.QUAN` < 0) & ~`/SCWM/AQUA.LGTYP`.str.startswith(''9'').fillna(False)'
+    severity: high
+    dimension: accuracy
+    message: Negative EWM stock outside an interim storage type
+    why_it_matters: Negative available quantity (/SCWM/AQUA.QUAN) is only expected in interim storage types (9xxx by SAP
+      convention, e.g. goods receipt or differences zone) that allow negative stock. A negative quant in a physical storage
+      type means a removal was confirmed for stock that was never put away there.
+    rule_authority: sap_hard_constraint
+    sap_impact: EWM and inventory management stock disagree; physical inventory and the warehouse monitor show stock that
+      does not exist.
+    fix_map:
+      __other__: Find the warehouse task that drove the quant negative (/SCWM/MON, /SCWM/TO_CONF), post the missing
+        putaway or correct it with a physical inventory difference (/SCWM/PI_DOC_CREATE, /SCWM/DIFF_ANALYZER).
+    record_fix_template: 'Warehouse {/SCWM/AQUA.LGNUM} bin {/SCWM/AQUA.LGTYP}/{/SCWM/AQUA.LGPLA}: negative quantity
+      {/SCWM/AQUA.QUAN} {/SCWM/AQUA.UNIT}.'
+  - id: EWMS102
+    field: /SCWM/AQUA.LGPLA
+    check_class: exists_check
+    fields:
+    - /SCWM/AQUA.LGNUM
+    - /SCWM/AQUA.LGPLA
+    target_table: /SCWM/LAGP
+    target_fields:
+    - LGNUM
+    - LGPLA
+    severity: high
+    dimension: consistency
+    message: EWM stock sits in a storage bin that does not exist
+    why_it_matters: Every EWM quant in a bin (/SCWM/AQUA.LGPLA) must point at a storage bin in /SCWM/LAGP. A quant whose bin
+      does not exist cannot be picked, counted or moved.
+    rule_authority: sap_hard_constraint
+    sap_impact: The stock is invisible to putaway and picking strategies; physical inventory cannot count it.
+    fix_map:
+      __other__: Recreate the storage bin (/SCWM/LS01) and move the stock with an ad hoc warehouse task (/SCWM/ADHU,
+        /SCWM/ADPROD), or clear it through physical inventory.
+    record_fix_template: 'Warehouse {/SCWM/AQUA.LGNUM}: stock in bin {/SCWM/AQUA.LGPLA}, which does not exist.'
+  - id: EWMS103
+    field: /SCWM/LAGP.SKZUA
+    check_class: cross_field_check
+    fail_when: '(`/SCWM/AQUA.QUAN` > 0) & (`/SCWM/LAGP.SKZUA` == ''X'')'
+    severity: medium
+    dimension: consistency
+    message: EWM stock sits in a bin blocked for stock removal
+    why_it_matters: A user stock-removal block on the bin (/SCWM/LAGP.SKZUA) keeps every quant in it out of picking. Blocks
+      set for a count or a damage check and never released leave sellable stock stranded.
+    rule_authority: best_practice
+    sap_impact: Picking strategies skip the bin; deliveries short-pick or pick from other bins while stock is on hand.
+    fix_map:
+      __other__: Confirm why the bin is blocked; release the block in /SCWM/LS02 when the reason is resolved, or move the
+        stock to an available bin.
+    record_fix_template: 'Warehouse {/SCWM/AQUA.LGNUM} bin {/SCWM/AQUA.LGPLA}: {/SCWM/AQUA.QUAN} {/SCWM/AQUA.UNIT} behind a
+      stock-removal block.'
+  - id: EWMS104
+    field: /SCWM/LAGP.FCAPA
+    check_class: cross_field_check
+    fail_when: '(`/SCWM/LAGP.MAX_CAPA` > 0) & (`/SCWM/LAGP.FCAPA` < 0)'
+    severity: medium
+    dimension: accuracy
+    message: EWM storage bin is over capacity
+    why_it_matters: When a bin's capacity is maintained (/SCWM/LAGP.MAX_CAPA), its remaining capacity (FCAPA) should never
+      fall below zero. A negative remaining capacity means stock was put away past the bin's limit, or the capacity data no
+      longer fits the products stored.
+    rule_authority: best_practice
+    sap_impact: Capacity checks in putaway reject the bin or route stock elsewhere; the bin may be physically overloaded.
+    fix_map:
+      __other__: Move excess stock out of the bin, or correct the bin's or product's capacity data (/SCWM/LS02,
+        product master warehouse data).
+    record_fix_template: 'Warehouse {/SCWM/LAGP.LGNUM} bin {/SCWM/LAGP.LGPLA}: remaining capacity {/SCWM/LAGP.FCAPA} of
+      {/SCWM/LAGP.MAX_CAPA}.'
+  - id: EWMS105
+    field: /SCWM/LAGP.WEIGHT
+    check_class: cross_field_check
+    fail_when: '(`/SCWM/LAGP.MAX_WEIGHT` > 0) & (`/SCWM/LAGP.WEIGHT` > `/SCWM/LAGP.MAX_WEIGHT`)'
+    severity: high
+    dimension: accuracy
+    message: EWM storage bin carries more weight than its maximum
+    why_it_matters: The loading weight of a bin (/SCWM/LAGP.WEIGHT) above its maximum weight (MAX_WEIGHT) is a racking
+      safety risk, or wrong weight data on the bin or the products in it.
+    rule_authority: best_practice
+    sap_impact: Weight checks in putaway are bypassed for this bin; physical racking may be overloaded.
+    fix_map:
+      __other__: Check the bin physically; move stock out or correct the bin's maximum weight or the products' gross
+        weights.
+    record_fix_template: 'Warehouse {/SCWM/LAGP.LGNUM} bin {/SCWM/LAGP.LGPLA}: weight {/SCWM/LAGP.WEIGHT} above maximum
+      {/SCWM/LAGP.MAX_WEIGHT} {/SCWM/LAGP.UNIT_W}.'
+  - id: EWMS106
+    field: /SCWM/AQUA.VFDAT
+    check_class: freshness_check
+    max_age_hours: 24
+    severity: high
+    dimension: timeliness
+    message: EWM stock is past its shelf-life expiration date
+    why_it_matters: A quant whose shelf-life expiration date (/SCWM/AQUA.VFDAT) is in the past is expired stock. Unless it
+      is blocked or moved to a quarantine area, it can still be picked and shipped.
+    rule_authority: sap_hard_constraint
+    sap_impact: Expired product can be picked for deliveries; customer safety and regulatory risk.
+    fix_map:
+      __other__: Post the stock to blocked stock (/SCWM/POST) and move it to a quarantine or scrapping area; review the
+        FEFO removal strategy of the storage type.
+    record_fix_template: 'Warehouse {/SCWM/AQUA.LGNUM} bin {/SCWM/AQUA.LGPLA}: batch {/SCWM/AQUA.CHARG} expired on
+      {/SCWM/AQUA.VFDAT}.'
+  - id: EWMS107
+    field: /SCWM/HUHDR.GUID_HU
+    check_class: exists_check
+    fields:
+    - /SCWM/HUHDR.GUID_HU
+    target_table: /SCWM/AQUA
+    target_fields:
+    - GUID_PARENT
+    applies_when:
+      /SCWM/HUHDR.BOTTOM:
+      - X
+    severity: low
+    dimension: consistency
+    message: EWM handling unit has no content
+    why_it_matters: A lowest-level handling unit (/SCWM/HUHDR.BOTTOM) holds stock directly; when no quant has it as parent
+      (/SCWM/AQUA.GUID_PARENT) the HU is empty. Empty HUs left in the system occupy bins and HU counts and confuse
+      picking and counting.
+    rule_authority: best_practice
+    sap_impact: Bin occupancy and HU counts are overstated; physical inventory and the warehouse monitor list HUs that do
+      not exist.
+    fix_map:
+      __other__: Confirm the HU is physically empty, then delete it in the packing transaction (/SCWM/PACK) or set up
+        automatic deletion of empty HUs for the packaging material type.
+    record_fix_template: 'Handling unit {/SCWM/HUHDR.HUIDENT}: no stock packed in it.'
+  - id: EWMS108
+    field: /SCWM/LAGP.KZLER
+    check_class: cross_field_check
+    fail_when: '(`/SCWM/LAGP.KZLER` == ''X'') & (`/SCWM/LAGP.ANZLE` > 0)'
+    severity: medium
+    dimension: consistency
+    message: EWM storage bin is flagged empty but holds handling units
+    why_it_matters: EWM sets the empty-bin indicator (/SCWM/LAGP.KZLER) when the last stock leaves the bin. An empty bin
+      with handling units in it (ANZLE) is a stale indicator that empty-bin putaway strategies trust.
+    rule_authority: sap_hard_constraint
+    sap_impact: Putaway proposes the bin as empty; warehouse tasks fail at the bin or stock is mixed.
+    fix_map:
+      __other__: Count the bin (physical inventory) so EWM recalculates its status, or move the stock with an ad hoc
+        warehouse task.
+    record_fix_template: 'Warehouse {/SCWM/LAGP.LGNUM} bin {/SCWM/LAGP.LGPLA}: flagged empty with {/SCWM/LAGP.ANZLE}
+      handling units.'
+  - id: EWMS109
+    field: /SCWM/LAGP.KZVOL
+    check_class: cross_field_check
+    fail_when: '(`/SCWM/LAGP.KZLER` == ''X'') & (`/SCWM/LAGP.KZVOL` == ''X'')'
+    severity: medium
+    dimension: consistency
+    message: EWM storage bin is flagged both empty and full
+    why_it_matters: A bin cannot be empty (/SCWM/LAGP.KZLER) and full (KZVOL) at the same time. The contradiction means the
+      bin status was corrupted and putaway strategies read it inconsistently.
+    rule_authority: sap_hard_constraint
+    sap_impact: Putaway may skip a usable bin or propose a full one.
+    fix_map:
+      __other__: Count the bin so EWM recalculates both indicators.
+    record_fix_template: 'Warehouse {/SCWM/LAGP.LGNUM} bin {/SCWM/LAGP.LGPLA}: flagged empty and full.'
+  - id: EWMS110
+    field: /SCWM/LAGP.LGTYP
+    check_class: exists_check
+    fields:
+    - /SCWM/LAGP.LGNUM
+    - /SCWM/LAGP.LGTYP
+    target_table: /SCWM/T301
+    target_fields:
+    - LGNUM
+    - LGTYP
+    severity: high
+    dimension: consistency
+    message: EWM storage bin belongs to a storage type that is not configured
+    why_it_matters: Every storage bin belongs to a storage type defined for its warehouse (/SCWM/T301). A bin under an
+      undefined storage type has no putaway or removal rules.
+    rule_authority: sap_hard_constraint
+    sap_impact: Warehouse tasks to or from the bin fail; the bin is unusable.
+    fix_map:
+      __other__: Define the storage type in customizing (Define Storage Type) or reassign the bin to an existing storage
+        type.
+    record_fix_template: 'Warehouse {/SCWM/LAGP.LGNUM} bin {/SCWM/LAGP.LGPLA}: storage type {/SCWM/LAGP.LGTYP} not
+      configured.'
+  - id: EWMS111
+    field: /SCWM/LAGP.LGNUM
+    check_class: exists_check
+    fields:
+    - /SCWM/LAGP.LGNUM
+    target_table: /SCWM/T300
+    target_fields:
+    - LGNUM
+    severity: high
+    dimension: consistency
+    message: EWM storage bin belongs to a warehouse number that is not configured
+    why_it_matters: A storage bin under a warehouse number missing from /SCWM/T300 is orphaned master data left over from a
+      deleted or never-activated warehouse.
+    rule_authority: sap_hard_constraint
+    sap_impact: The bin cannot be used by any warehouse process.
+    fix_map:
+      __other__: Delete the orphaned bins or define the warehouse number in customizing.
+    record_fix_template: 'Bin {/SCWM/LAGP.LGPLA}: warehouse {/SCWM/LAGP.LGNUM} not configured.'
+  - id: EWMS112
+    field: /SCWM/AQUA.UNIT
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: EWM stock quantity has no unit of measure
+    why_it_matters: The available quantity of a quant (/SCWM/AQUA.QUAN) is meaningless without its base unit
+      (/SCWM/AQUA.UNIT); conversions to alternative units and valuation fail.
+    rule_authority: sap_hard_constraint
+    sap_impact: Quantity conversions and stock comparison with inventory management fail for the quant.
+    fix_map:
+      __blank__: Analyse how the quant was created (interface or migration) and correct it through a physical inventory
+        difference; check the product's base unit.
+    record_fix_template: 'Warehouse {/SCWM/AQUA.LGNUM} bin {/SCWM/AQUA.LGPLA}: quantity {/SCWM/AQUA.QUAN} without unit.'

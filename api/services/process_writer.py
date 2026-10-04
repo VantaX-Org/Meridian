@@ -231,7 +231,7 @@ def _enrich_l5(
     if config_source and spro_config:
         # config_source may be a table name like "T052" or a compound like
         # "T077Y (field status)".  Extract the table name portion.
-        table_name = config_source.split("(")[0].strip().split("/")[0].strip()
+        table_name = config_source.split("(")[0].strip().split(" / ")[0].strip()
         config_data = spro_config.get(table_name)
         if config_data is not None:
             result["config_dependency"] = {
