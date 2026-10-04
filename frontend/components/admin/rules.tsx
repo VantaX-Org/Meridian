@@ -1,45 +1,100 @@
 "use client";
 
 /**
- * Admin → Rules: the check library — shipped YAML rules and the tenant's
- * custom ones — by category, module and severity. A tenant can enable or
- * disable a rule here; everything else about a rule changes through HQ sync
- * or the YAML it came from.
+ * Admin → Rules: the check library — shipped YAML rules, HQ rules, rules
+ * mined from profiled data and rules a steward wrote — faceted by module,
+ * check type, dimension, severity, authority and source, with each rule's
+ * last-run pass rate. A tenant can enable or disable a rule here, and a
+ * steward can author a new one from an existing check type: dry-run it on an
+ * analysed version, then save (source 'custom').
  */
 
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
+import { isAxiosError } from "axios";
 import { toast } from "sonner";
-import { Banner, Button, Chip, DataTable, Drawer, EmptyState, Input, KpiRail, Stack, Stat, Text, useDrawerParam, type AuroraColumnMeta } from "@/components/aurora";
+import { Banner, Button, Chip, DataTable, Drawer, EmptyState, Field, Input, KpiRail, Panel, Select, Stack, Stat, Text, Textarea, useDrawerParam, type AuroraColumnMeta } from "@/components/aurora";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
-import { getRules, getRulesSummary, updateRule, type Rule } from "@/lib/api/rules";
+import { createCustomRule, dryRunRule, getRules, getRulesSummary, updateRule, type CheckClass, type CustomRuleDraft, type DryRunResult, type Rule } from "@/lib/api/rules";
+import { getVersions } from "@/lib/api/versions";
 import { checkClassLabel, formatModuleName } from "@/lib/format";
 
 const meta = (m: AuroraColumnMeta) => m;
 const CATEGORIES = [["all", "All"], ["ecc", "ECC"], ["successfactors", "SuccessFactors"], ["warehouse", "Warehouse"]] as const;
 const CATEGORY_LABEL: Record<string, string> = { ecc: "ECC", successfactors: "SuccessFactors", warehouse: "Warehouse" };
+const SOURCE_LABEL: Record<string, string> = { yaml: "built-in", hq: "HQ", mined: "mined", custom: "custom" };
+const AUTHORING: CheckClass[] = ["null_check", "domain_value_check", "regex_check", "cross_field_check", "dependency_check", "uniqueness_check"];
+const SEVERITIES = ["critical", "high", "medium", "low"] as const;
+const DIMENSIONS = ["completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity"];
 const sev = (s: string) => (s === "critical" || s === "high" || s === "low" ? s : "medium");
+const authority = (r: Rule) => (r.source === "mined" || r.source === "custom" ? "customer" : "shipped");
+/** Shipped rules carry a list of conditions; mined/custom rules one rule object. */
+const conditionList = (r: Rule) => (Array.isArray(r.conditions) ? r.conditions : r.conditions ? [r.conditions] : []);
+const valuesOf = (r: Rule, key: "check_class" | "dimension") =>
+  [...new Set(conditionList(r).map((c) => c[key]).filter((v): v is string => typeof v === "string" && !!v))];
+const pct = (v: number) => `${(v * (v <= 1 ? 100 : 1)).toFixed(1)} %`;
 const matches = (r: Rule, q: string) => !q || [r.id, r.name, r.description ?? "", r.module, r.severity, ...(r.tags ?? [])].join(" ").toLowerCase().includes(q.toLowerCase());
-/** Distinct check_class ids in a rule's conditions (each condition is `{ field, check_class, … }`). */
-const checkClasses = (r: Rule) => [...new Set(r.conditions.map((c) => (c as { check_class?: unknown }).check_class).filter((c): c is string => typeof c === "string" && !!c))];
+const detail = (e: unknown) => (isAxiosError<{ detail?: unknown }>(e) && typeof e.response?.data?.detail === "string" ? e.response.data.detail : null) ?? "Request failed";
+const splitList = (s: string) => s.split(/[,\n]/).map((v) => v.trim()).filter(Boolean);
+const uniq = (xs: string[]) => [...new Set(xs)].sort();
+
+async function getAllRules(category?: string): Promise<Rule[]> {
+  const out: Rule[] = [];
+  for (let offset = 0; ; offset += 1000) {
+    const page = await getRules({ category, limit: 1000, offset });
+    out.push(...page.rules);
+    if (out.length >= page.total || page.rules.length === 0) return out;
+  }
+}
+
+function FacetRow({ label, options, value, onChange, format = (v) => v }: {
+  label: string; options: string[]; value: string; onChange: (v: string) => void; format?: (v: string) => string;
+}) {
+  if (options.length < 2) return null;
+  return (
+    <Stack direction="row" gap={2} align="center" wrap>
+      <Text variant="text-small" tone="tertiary" style={{ width: 96 }}>{label}</Text>
+      <Chip selected={!value} onClick={() => onChange("")}>All</Chip>
+      {options.map((o) => <Chip key={o} selected={value === o} onClick={() => onChange(value === o ? "" : o)}>{format(o)}</Chip>)}
+    </Stack>
+  );
+}
 
 export function RulesSurface() {
   const qc = useQueryClient();
   const canManage = useRole().can("manage_rules");
   const [category, setCategory] = useUrlState("category", "all");
+  const [module, setModule] = useUrlState("module", "");
+  const [check, setCheck] = useUrlState("check", "");
+  const [dimension, setDimension] = useUrlState("dimension", "");
+  const [severity, setSeverity] = useUrlState("severity", "");
+  const [auth, setAuth] = useUrlState("authority", "");
+  const [source, setSource] = useUrlState("source", "");
   const [search, setSearch] = useState("");
+  const [authoring, setAuthoring] = useState(false);
   const drawer = useDrawerParam("rule");
   const summary = useQuery({ queryKey: ["rules.summary"], queryFn: getRulesSummary });
-  const rulesQ = useQuery({ queryKey: ["rules.list", { category }], queryFn: () => getRules({ category: category === "all" ? undefined : category, limit: 200 }) });
-  const rules = useMemo(() => rulesQ.data?.rules ?? [], [rulesQ.data]);
-  const total = rulesQ.data?.total ?? rules.length;
-  const visible = rules.filter((r) => matches(r, search));
+  const rulesQ = useQuery({ queryKey: ["rules.list", { category }], queryFn: () => getAllRules(category === "all" ? undefined : category) });
+  const rules = useMemo(() => rulesQ.data ?? [], [rulesQ.data]);
+  const facets = useMemo(() => ({
+    modules: uniq(rules.map((r) => r.module)),
+    checks: uniq(rules.flatMap((r) => valuesOf(r, "check_class"))),
+    dimensions: uniq(rules.flatMap((r) => valuesOf(r, "dimension"))),
+    sources: uniq(rules.map((r) => r.source)),
+  }), [rules]);
+  const visible = rules.filter((r) => matches(r, search)
+    && (!module || r.module === module)
+    && (!check || valuesOf(r, "check_class").includes(check))
+    && (!dimension || valuesOf(r, "dimension").includes(dimension))
+    && (!severity || r.severity === severity)
+    && (!auth || authority(r) === auth)
+    && (!source || r.source === source));
   const selected = drawer.value ? rules.find((r) => r.id === drawer.value) ?? null : null;
   const totals = useMemo(() => {
-    const t = { yaml: 0, hq: 0, enabled: 0, disabled: 0 };
-    for (const row of summary.data?.summary ?? []) { if (row.source === "yaml") t.yaml += row.count; else t.hq += row.count; if (row.enabled) t.enabled += row.count; else t.disabled += row.count; }
+    const t = { yaml: 0, other: 0, enabled: 0, disabled: 0 };
+    for (const row of summary.data?.summary ?? []) { if (row.source === "yaml") t.yaml += row.count; else t.other += row.count; if (row.enabled) t.enabled += row.count; else t.disabled += row.count; }
     return t;
   }, [summary.data]);
   const toggle = useMutation({
@@ -57,46 +112,62 @@ export function RulesSurface() {
       <span><strong>{row.original.name}</strong>
         <Text variant="text-micro" tone="muted" as="div" className="aurora-number">{row.original.id}{row.original.description ? ` · ${row.original.description.length > 90 ? `${row.original.description.slice(0, 90)}…` : row.original.description}` : ""}</Text></span>) },
     { id: "module", header: "Object", meta: meta({ width: 170 }), cell: ({ row }) => formatModuleName(row.original.module) },
-    { id: "category", header: "System", meta: meta({ width: 120 }), cell: ({ row }) => CATEGORY_LABEL[row.original.category] ?? row.original.category },
+    { id: "check", header: "Check", meta: meta({ width: 170 }), cell: ({ row }) => valuesOf(row.original, "check_class").map(checkClassLabel).join(", ") || "—" },
     { id: "severity", header: "Severity", meta: meta({ width: 100 }), cell: ({ row }) => <span className="aurora-workbench__severity" data-severity={sev(row.original.severity)}>{row.original.severity}</span> },
-    { id: "source", header: "Source", meta: meta({ width: 90 }), cell: ({ row }) => (row.original.source === "yaml" ? "built-in" : "custom") },
+    { id: "source", header: "Source", meta: meta({ width: 90 }), cell: ({ row }) => SOURCE_LABEL[row.original.source] ?? row.original.source },
+    { id: "pass", header: "Last pass rate", meta: meta({ width: 120, align: "end" }), cell: ({ row }) => (
+      <span className="aurora-number" title={row.original.last_run_at ? `Last run ${new Date(row.original.last_run_at).toLocaleString()}` : "Not run yet"}>
+        {row.original.last_pass_rate != null ? pct(row.original.last_pass_rate) : "—"}</span>) },
   // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [canManage, toggle.isPending]);
 
   return (
     <Stack gap={5} className="aurora-page">
       <KpiRail>
-        <Stat label="Rules" value={totals.yaml + totals.hq || total} />
+        <Stat label="Rules" value={totals.yaml + totals.other || rules.length} />
         <Stat label="Built-in" value={totals.yaml} />
-        <Stat label="Custom" value={totals.hq} tone={totals.hq ? "info" : "neutral"} />
+        <Stat label="HQ, mined & custom" value={totals.other} tone={totals.other ? "info" : "neutral"} />
         <Stat label="Enabled" value={totals.enabled} tone="success" />
         <Stat label="Disabled" value={totals.disabled} tone={totals.disabled ? "warning" : "neutral"} />
+        <Stat label="Ran at least once" value={rules.filter((r) => r.last_pass_rate != null).length} />
       </KpiRail>
       <Stack direction="row" gap={2} wrap align="center">
         {CATEGORIES.map(([k, l]) => <Chip key={k} selected={category === k} onClick={() => setCategory(k)}>{l}</Chip>)}
         <span style={{ flex: 1 }} />
+        <Select aria-label="Object" value={module} options={[{ value: "", label: "All objects" }, ...facets.modules.map((m) => ({ value: m, label: formatModuleName(m) }))]} onValueChange={setModule} />
         <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Filter rules…" aria-label="Filter rules" style={{ width: 240 }} />
+        {canManage ? <Button onClick={() => setAuthoring(true)}>New rule</Button> : null}
       </Stack>
-      {!canManage ? <Text variant="text-small" tone="muted">Enabling or disabling a rule needs the manage-rules permission; the library is read-only for you.</Text> : null}
+      <Stack gap={2}>
+        <FacetRow label="Check type" options={facets.checks} value={check} onChange={setCheck} format={checkClassLabel} />
+        <FacetRow label="Dimension" options={facets.dimensions} value={dimension} onChange={setDimension} />
+        <FacetRow label="Severity" options={[...SEVERITIES]} value={severity} onChange={setSeverity} />
+        <FacetRow label="Authority" options={["shipped", "customer"]} value={auth} onChange={setAuth} format={(a) => (a === "shipped" ? "SAP standard (shipped)" : "Customer configured")} />
+        <FacetRow label="Source" options={facets.sources} value={source} onChange={setSource} format={(s) => SOURCE_LABEL[s] ?? s} />
+      </Stack>
+      {!canManage ? <Text variant="text-small" tone="muted">Enabling, disabling or writing a rule needs the manage-rules permission; the library is read-only for you.</Text> : null}
       {rulesQ.isLoading ? <Text tone="muted">Reading the rule library.</Text>
         : rulesQ.error ? <Banner tone="danger" title="Rules could not be read">{(rulesQ.error as Error).message}</Banner>
         : visible.length ? <DataTable columns={columns} data={visible} getRowId={(r) => r.id} onRowActivate={(r) => drawer.open(r.id)} ariaLabel="Rules" maxHeight="60vh" />
-        : <EmptyState title="No rules match." body="Loosen the filter or clear the search. Built-in rules ship with Meridian; custom rules arrive through HQ sync." />}
+        : <EmptyState title="No rules match." body="Loosen the filters or clear the search. Built-in rules ship with Meridian; HQ rules arrive through HQ sync; mined and custom rules are your stewards' own." />}
       <Drawer open={!!selected} onClose={drawer.close} ariaLabel="Rule details"
         header={selected ? <Stack direction="row" gap={2} align="center"><span className="aurora-workbench__severity" data-severity={sev(selected.severity)}>{selected.severity}</span><Text variant="text-lead">{selected.name}</Text></Stack> : null}>
         {selected ? (
           <Stack gap={4}>
             {selected.description ? <Text variant="text-small" tone="secondary">{selected.description}</Text> : null}
             <table className="aurora-exec__table"><tbody>
-              {([["Rule ID", selected.id], ["Object", formatModuleName(selected.module)], ["System", CATEGORY_LABEL[selected.category] ?? selected.category], ["Source", selected.source === "yaml" ? `built-in${selected.source_yaml ? ` · ${selected.source_yaml}` : ""}` : "custom (HQ)"],
-                ["State", selected.enabled ? "enabled" : "disabled"], ["Updated", new Date(selected.updated_at).toLocaleString()]] as [string, string][])
+              {([["Rule ID", selected.id], ["Object", formatModuleName(selected.module)], ["System", CATEGORY_LABEL[selected.category] ?? selected.category],
+                ["Source", selected.source === "yaml" ? `built-in${selected.source_yaml ? ` · ${selected.source_yaml}` : ""}` : SOURCE_LABEL[selected.source] ?? selected.source],
+                ["Authority", authority(selected) === "shipped" ? "SAP standard (shipped)" : "Customer configured"],
+                ["State", selected.enabled ? "enabled" : "disabled"], ["Updated", new Date(selected.updated_at).toLocaleString()],
+                ["Last run", selected.last_pass_rate != null ? `${pct(selected.last_pass_rate)} pass${selected.last_run_at ? ` · ${new Date(selected.last_run_at).toLocaleString()}` : ""}` : "not run yet"]] as [string, string][])
                 .map(([k, v]) => <tr key={k}><td>{k}</td><td className="aurora-number">{v}</td></tr>)}
-              {checkClasses(selected).length ? (
-                <tr><td>Check</td><td>{checkClasses(selected).map((c, i) => <span key={c} title={c}>{i ? ", " : ""}{checkClassLabel(c)}</span>)}</td></tr>
+              {valuesOf(selected, "check_class").length ? (
+                <tr><td>Check</td><td>{valuesOf(selected, "check_class").map((c, i) => <span key={c} title={c}>{i ? ", " : ""}{checkClassLabel(c)}</span>)}</td></tr>
               ) : null}
             </tbody></table>
             {selected.tags?.length ? <Stack direction="row" gap={1} wrap>{selected.tags.map((t) => <Chip key={t}>{t}</Chip>)}</Stack> : null}
-            {selected.conditions?.length ? (
+            {conditionList(selected).length ? (
               <Stack gap={2}><Text variant="text-micro" tone="muted" className="aurora-exec__eyebrow">Conditions</Text>
                 <pre className="aurora-code">{JSON.stringify(selected.conditions, null, 2)}</pre></Stack>
             ) : null}
@@ -114,6 +185,122 @@ export function RulesSurface() {
           </Stack>
         ) : null}
       </Drawer>
+      {canManage ? <AuthorDrawer open={authoring} onClose={() => setAuthoring(false)} modules={facets.modules} /> : null}
     </Stack>
+  );
+}
+
+const EMPTY: CustomRuleDraft = { module: "", check_class: "null_check", message: "", severity: "medium" };
+
+/** Build a rule from an existing check type; Save is enabled only after a clean dry run of the current draft. */
+function AuthorDrawer({ open, onClose, modules }: { open: boolean; onClose: () => void; modules: string[] }) {
+  const qc = useQueryClient();
+  const [draft, setDraftState] = useState(EMPTY);
+  const [values, setValues] = useState(""); // allowed values / unique fields, comma or newline separated
+  const [result, setResult] = useState<DryRunResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const setDraft = (patch: Partial<CustomRuleDraft>) => { setDraftState((d) => ({ ...d, ...patch })); setResult(null); setError(null); };
+  const versions = useQuery({
+    queryKey: ["versions", draft.module],
+    queryFn: () => getVersions({ module: draft.module, limit: 20 }),
+    enabled: open && !!draft.module,
+    select: (d) => d.versions,
+  });
+  const cls = draft.check_class;
+  const body: CustomRuleDraft = {
+    ...draft,
+    dimension: draft.dimension || undefined,
+    allowed_values: cls === "domain_value_check" ? splitList(values) : undefined,
+    fields: cls === "uniqueness_check" ? splitList(values) : undefined,
+  };
+  const dry = useMutation({
+    mutationFn: () => dryRunRule(body),
+    onSuccess: (r) => { setResult(r); setError(null); },
+    onError: (e) => { setResult(null); setError(detail(e)); },
+  });
+  const save = useMutation({
+    mutationFn: () => createCustomRule(body),
+    onSuccess: (r) => {
+      toast.success(`${r.name.split(":")[0]} saved; it runs on the next analysis`);
+      qc.invalidateQueries({ queryKey: ["rules.list"] }); qc.invalidateQueries({ queryKey: ["rules.summary"] });
+      setDraftState(EMPTY); setValues(""); setResult(null); onClose();
+    },
+    onError: (e) => setError(detail(e)),
+  });
+  const needsField = cls !== "cross_field_check" && cls !== "uniqueness_check";
+  const text = (key: "field" | "pattern" | "determinant" | "message", label: string, helper?: string) => (
+    <Field label={label} helper={helper}>
+      {({ controlId }) => <Input id={controlId} value={draft[key] ?? ""} onChange={(e) => setDraft({ [key]: e.target.value })} className={key === "message" ? undefined : "aurora-number"} />}
+    </Field>
+  );
+
+  return (
+    <Drawer open={open} onClose={onClose} ariaLabel="New rule" header={<Text variant="text-lead">New rule</Text>}
+      footer={
+        <Stack direction="row" gap={2} justify="end">
+          <Button variant="ghost" onClick={onClose}>Discard draft</Button>
+          <Button variant="secondary" disabled={!draft.version_id || dry.isPending} onClick={() => dry.mutate()}>{dry.isPending ? "Running…" : "Dry run"}</Button>
+          <Button disabled={!result || !!result.error || save.isPending} onClick={() => save.mutate()}>Save rule</Button>
+        </Stack>
+      }>
+      <Stack gap={4}>
+        <Text variant="text-small" tone="secondary">
+          Build a check from an existing check type. Fields are SAP TABLE.FIELD names and are checked against the data
+          dictionary. Dry-run it on an analysed version, then save; it runs on every later analysis of the object.
+        </Text>
+        <Field label="Object">
+          {({ controlId }) => <Select id={controlId} placeholder="Choose an object" value={draft.module}
+            options={modules.map((m) => ({ value: m, label: formatModuleName(m) }))} onValueChange={(m) => setDraft({ module: m, version_id: undefined })} />}
+        </Field>
+        <Field label="Check type">
+          {({ controlId }) => <Select<CheckClass> id={controlId} value={cls}
+            options={AUTHORING.map((c) => ({ value: c, label: checkClassLabel(c) }))} onValueChange={(c) => setDraft({ check_class: c })} />}
+        </Field>
+        {cls === "dependency_check" && text("determinant", "Determining field", "e.g. LFA1.KTOKK; its value decides the field below")}
+        {needsField && text("field", "Field", "e.g. LFA1.STCD1")}
+        {cls === "regex_check" && text("pattern", "Pattern (regular expression)", "Values that do not match fail, e.g. ^[0-9]{10}$")}
+        {(cls === "domain_value_check" || cls === "uniqueness_check") && (
+          <Field label={cls === "domain_value_check" ? "Allowed values" : "Fields that must be unique together"} helper="Comma or newline separated">
+            {({ controlId }) => <Textarea id={controlId} rows={3} className="aurora-number" value={values} onChange={(e) => { setValues(e.target.value); setResult(null); }} />}
+          </Field>
+        )}
+        {cls === "cross_field_check" && (
+          <Field label="Fails when" helper="Backtick columns; use == != < > & | ~ and .isna() / .notna(), e.g. `LFA1.LAND1` == 'ZA' & `LFA1.STCD1`.isna()">
+            {({ controlId }) => <Textarea id={controlId} rows={3} className="aurora-number" value={draft.fail_when ?? ""} onChange={(e) => setDraft({ fail_when: e.target.value })} />}
+          </Field>
+        )}
+        {text("message", "Message", "What a failing record means, shown on each finding")}
+        <Stack direction="row" gap={3}>
+          <Field label="Severity">
+            {({ controlId }) => <Select id={controlId} value={draft.severity} options={SEVERITIES.map((s) => ({ value: s, label: s }))} onValueChange={(s) => setDraft({ severity: s })} />}
+          </Field>
+          <Field label="Dimension">
+            {({ controlId }) => <Select id={controlId} value={draft.dimension ?? ""}
+              options={[{ value: "", label: "Default for the check type" }, ...DIMENSIONS.map((d) => ({ value: d, label: d }))]} onValueChange={(d) => setDraft({ dimension: d })} />}
+          </Field>
+        </Stack>
+        <Field label="Dry run against" helper={draft.module && versions.data?.length === 0 ? "No analysed version holds this object yet" : undefined}>
+          {({ controlId }) => <Select id={controlId} placeholder={draft.module ? "Choose a version" : "Choose an object first"}
+            value={draft.version_id ?? ""} disabled={!versions.data?.length}
+            options={(versions.data ?? []).map((v) => ({ value: v.id, label: `${new Date(v.run_at).toLocaleString()}${v.label ? ` · ${v.label}` : ""}` }))}
+            onValueChange={(v) => setDraft({ version_id: v })} />}
+        </Field>
+        {error ? <Banner tone="danger" title="Not valid yet">{error}</Banner> : null}
+        {result ? (result.error ? <Banner tone="danger" title="The rule errored on this data">{result.error}</Banner> : (
+          <Panel title="Dry run" action={result.grain ? <Text variant="text-small" tone="tertiary">per {result.grain} record</Text> : undefined}>
+            <Stack gap={3}>
+              <KpiRail>
+                <Stat label="Checked" value={result.population.toLocaleString()} />
+                <Stat label="Failing" value={result.failing.toLocaleString()} tone={result.failing ? "warning" : "neutral"} />
+                <Stat label="Pass rate" value={pct(result.pass_rate)} />
+              </KpiRail>
+              {result.sample_keys.length ? (
+                <pre className="aurora-code">{result.sample_keys.join("\n")}{result.failing > result.sample_keys.length ? `\n+${(result.failing - result.sample_keys.length).toLocaleString()} more` : ""}</pre>
+              ) : null}
+            </Stack>
+          </Panel>
+        )) : null}
+      </Stack>
+    </Drawer>
   );
 }

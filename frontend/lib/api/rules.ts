@@ -5,16 +5,20 @@ export interface Rule {
   name: string;
   description: string | null;
   module: string;
-  category: "ecc" | "successfactors" | "warehouse";
+  category: string;
   severity: "critical" | "high" | "medium" | "low" | "info";
   enabled: boolean;
-  conditions: object[];
+  /** Shipped rules: a list of field conditions. Mined/custom rules: one check-engine rule object. */
+  conditions: Record<string, unknown>[] | Record<string, unknown> | null;
   thresholds: object | null;
   tags: string[] | null;
   source_yaml: string | null;
-  source: "yaml" | "hq";
+  source: "yaml" | "hq" | "mined" | "custom";
   created_at: string;
   updated_at: string;
+  /** Pass rate of the rule's most recent finding; null when it has not run yet. */
+  last_pass_rate?: number | null;
+  last_run_at?: string | null;
 }
 
 export interface RulesListResponse {
@@ -39,6 +43,7 @@ export async function getRules(params?: {
   severity?: string;
   enabled?: boolean;
   search?: string;
+  source?: string;
   limit?: number;
   offset?: number;
 }): Promise<RulesListResponse> {
@@ -71,5 +76,49 @@ export async function updateRule(
     `/api/v1/rules/${ruleId}`,
     body,
   );
+  return data;
+}
+
+export type CheckClass =
+  | "null_check"
+  | "domain_value_check"
+  | "regex_check"
+  | "cross_field_check"
+  | "dependency_check"
+  | "uniqueness_check";
+
+/** A steward-authored rule. Fields are `TABLE.FIELD`; `version_id` picks the DDIC and the dry-run data. */
+export interface CustomRuleDraft {
+  module: string;
+  check_class: CheckClass;
+  message: string;
+  severity: "critical" | "high" | "medium" | "low";
+  dimension?: string;
+  field?: string;
+  allowed_values?: string[];
+  pattern?: string;
+  fail_when?: string;
+  determinant?: string;
+  fields?: string[];
+  version_id?: string;
+}
+
+export interface DryRunResult {
+  population: number;
+  failing: number;
+  pass_rate: number;
+  grain: string | null;
+  sample_keys: string[];
+  error: string | null;
+}
+
+export async function createCustomRule(body: CustomRuleDraft): Promise<{ id: string; name: string }> {
+  const { data } = await apiClient.post("/api/v1/rules/custom", body);
+  return data;
+}
+
+/** Evaluate a draft against a version's stored extract. Writes nothing. */
+export async function dryRunRule(body: CustomRuleDraft): Promise<DryRunResult> {
+  const { data } = await apiClient.post<DryRunResult>("/api/v1/rules/dry-run", body);
   return data;
 }
