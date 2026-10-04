@@ -10,6 +10,10 @@ on:
       - "tests/test_rls_integration.py"
       - "tests/test_record_issues_pg.py"
       - "tests/test_triage_sla_pg.py"
+      - "tests/test_exception_rules_pg.py"
+      - "api/routes/exceptions.py"
+      - "api/services/exception_engine.py"
+      - "workers/tasks/run_exception_scan.py"
       - "api/services/triage.py"
       - "api/routes/triage.py"
       - "api/services/record_issues.py"
@@ -67,4 +71,4 @@ jobs:
           pip install -r requirements.txt "pytest>=8.0.0" "pytest-asyncio>=0.24.0"
 
       - name: Run database integration tests
-        run: pytest -v tests/test_rls_integration.py tests/test_record_issues_pg.py tests/test_triage_sla_pg.py
+        run: pytest -v tests/test_rls_integration.py tests/test_record_issues_pg.py tests/test_triage_sla_pg.py tests/test_exception_rules_pg.py
