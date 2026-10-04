@@ -1,26 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import {
-  ArrowLeft,
-  Crown,
-  Loader2,
-  AlertTriangle,
-  Send,
-  Clock,
-  Brain,
-  History,
-  ChevronDown,
-  ChevronUp,
-  GitBranch,
-} from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Banner, Button, Chip, EmptyState, Stat, type ChipTone } from "@/components/aurora";
+import { Record360, Record360Loading, Record360Table, td } from "@/components/meridian/record-360";
+import { useRole } from "@/hooks/use-role";
 import {
   getMasterRecord,
   getMasterRecordHistory,
@@ -28,604 +14,245 @@ import {
   writebackMasterRecord,
 } from "@/lib/api/master-records";
 import { batchLookupGlossary } from "@/lib/api/glossary";
+import { getIssues } from "@/lib/api/issues";
 import { getRelationships } from "@/lib/api/relationships";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { formatModuleName, relativeTime } from "@/lib/format";
-import type {
-  MasterRecordDetail,
-  MasterRecordHistoryEntry,
-  SourceContribution,
-  RecordRelationship,
-} from "@/types/api";
+import type { MasterRecordStatus, SourceContribution } from "@/types/api";
 
-function ConfidenceBar({
-  confidence,
-  size = "md",
-}: {
-  confidence: number;
-  size?: "sm" | "md";
-}) {
-  const pct = Math.round(confidence * 100);
-  const color =
-    pct >= 85 ? "bg-[#256F3A]" : pct >= 60 ? "bg-[#E76500]" : "bg-destructive";
-  const height = size === "sm" ? "h-1" : "h-2";
-  const width = size === "sm" ? "w-16" : "w-24";
-  return (
-    <div className="flex items-center gap-2">
-      <div className={`${height} ${width} rounded-full bg-white/[0.60]`}>
-        <div
-          className={`${height} rounded-full ${color}`}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      <span className="text-xs font-medium text-foreground">{pct}%</span>
-    </div>
-  );
-}
-
-function FieldRow({
-  fieldName,
-  goldenValue,
-  contribution,
-  showAi,
-  businessName,
-}: {
-  fieldName: string;
-  goldenValue: unknown;
-  contribution: SourceContribution | undefined;
-  showAi: boolean;
-  businessName?: string | null;
-}) {
-  const [expanded, setExpanded] = useState(false);
-  const hasAi = showAi && contribution?.ai_recommendation;
-
-  return (
-    <div className="border-b border-border last:border-0">
-      <div
-        className={`flex items-center justify-between px-4 py-3 ${hasAi ? "cursor-pointer hover:bg-foreground/[0.03]" : ""}`}
-        onClick={() => hasAi && setExpanded(!expanded)}
-      >
-        <div className="flex items-center gap-3">
-          {hasAi && (
-            expanded ? (
-              <ChevronUp className="h-3.5 w-3.5 text-[#E76500]" />
-            ) : (
-              <ChevronDown className="h-3.5 w-3.5 text-[#E76500]" />
-            )
-          )}
-          <div>
-            <span className="text-sm font-medium text-foreground">
-              {businessName || fieldName}
-            </span>
-            {businessName && (
-              <span className="block text-xs font-mono text-muted-foreground">{fieldName}</span>
-            )}
-            <p className="text-xs text-muted-foreground">
-              {contribution
-                ? `From ${contribution.source_system} · ${relativeTime(contribution.extracted_at)}`
-                : "No source"}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-4">
-          <span className="font-mono text-sm text-foreground">
-            {String(goldenValue ?? "—")}
-          </span>
-          {contribution && (
-            <ConfidenceBar confidence={contribution.confidence} size="sm" />
-          )}
-          {hasAi && (
-            <Badge
-              variant="outline"
-              className="gap-1 bg-[#E76500]/10 text-[#E76500] border-[#E76500]/20 text-xs"
-            >
-              <Brain className="h-3 w-3" />
-              Suggested
-            </Badge>
-          )}
-        </div>
-      </div>
-
-      {/* Suggestion panel */}
-      {expanded && hasAi && contribution && (
-        <div className="mx-4 mb-3 rounded-lg border border-[#E76500]/20 bg-[#E76500]/5 p-3">
-          <div className="flex items-center gap-2 text-xs font-medium text-[#E76500]">
-            <Brain className="h-3.5 w-3.5" />
-            Suggested merge
-          </div>
-          <div className="mt-2 space-y-1 text-xs text-foreground">
-            <p>
-              <span className="text-muted-foreground">Recommended source:</span>{" "}
-              {contribution.ai_recommendation}
-            </p>
-            <p>
-              <span className="text-muted-foreground">Confidence:</span>{" "}
-              {Math.round((contribution.ai_confidence ?? 0) * 100)}%
-            </p>
-            {contribution.ai_reasoning && (
-              <p>
-                <span className="text-muted-foreground">Reasoning:</span>{" "}
-                {contribution.ai_reasoning}
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function HistoryPanel({ recordId }: { recordId: string }) {
-  const { data: history, isLoading } = useQuery({
-    queryKey: ["master-record-history", recordId],
-    queryFn: () => getMasterRecordHistory(recordId),
-  });
-
-  if (isLoading) {
-    return (
-      <div className="flex justify-center py-8">
-        <Loader2 className="h-5 w-5 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (!history || history.length === 0) {
-    return (
-      <p className="py-4 text-center text-sm text-muted-foreground">
-        No history entries
-      </p>
-    );
-  }
-
-  const changeTypeLabels: Record<string, string> = {
-    created: "Record created",
-    updated: "Fields updated",
-    promoted: "Promoted to golden",
-  };
-
-  return (
-    <div className="space-y-2">
-      {history.map((entry: MasterRecordHistoryEntry) => (
-        <div
-          key={entry.id}
-          className="flex items-start gap-3 rounded-lg border border-border px-3 py-2"
-        >
-          <div className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-white/[0.60]">
-            {entry.change_type === "promoted" ? (
-              <Crown className="h-3 w-3 text-[#256F3A]" />
-            ) : (
-              <Clock className="h-3 w-3 text-muted-foreground" />
-            )}
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-foreground">
-                {changeTypeLabels[entry.change_type] ?? entry.change_type}
-              </span>
-              {entry.ai_was_involved && (
-                <Badge
-                  variant="outline"
-                  className="gap-1 text-xs bg-[#E76500]/10 text-[#E76500] border-[#E76500]/20"
-                >
-                  <Brain className="h-2.5 w-2.5" />
-                  Suggested
-                </Badge>
-              )}
-              {entry.ai_recommendation_accepted !== null && (
-                <Badge
-                  variant="outline"
-                  className={`text-xs ${
-                    entry.ai_recommendation_accepted
-                      ? "bg-[#256F3A]/10 text-[#256F3A] border-[#256F3A]/20"
-                      : "bg-destructive/10 text-destructive border-destructive/20"
-                  }`}
-                >
-                  Suggestion {entry.ai_recommendation_accepted ? "accepted" : "rejected"}
-                </Badge>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {relativeTime(entry.changed_at)}
-              {entry.changed_by && ` · by ${entry.changed_by}`}
-            </p>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function RelationshipsPanel({
-  domain,
-  objectKey,
-}: {
-  domain: string;
-  objectKey: string;
-}) {
-  const { data, isLoading } = useQuery({
-    queryKey: ["relationships", domain, objectKey],
-    queryFn: () => getRelationships({ domain, key: objectKey }),
-  });
-
-  if (isLoading) {
-    return (
-      <div className="flex justify-center py-8">
-        <Loader2 className="h-5 w-5 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  const relationships = data?.relationships ?? [];
-
-  if (relationships.length === 0) {
-    return (
-      <p className="py-4 text-center text-sm text-muted-foreground">
-        No cross-domain relationships found
-      </p>
-    );
-  }
-
-  return (
-    <TooltipProvider>
-      <div className="space-y-2">
-        {relationships.map((rel: RecordRelationship) => {
-          // Show the "other" side of the relationship
-          const isFrom = rel.from_domain === domain && rel.from_key === objectKey;
-          const otherDomain = isFrom ? rel.to_domain : rel.from_domain;
-          const otherKey = isFrom ? rel.to_key : rel.from_key;
-          const impactPct = rel.impact_score != null ? Math.round(rel.impact_score * 100) : null;
-
-          return (
-            <div
-              key={rel.id}
-              className={`flex items-center justify-between rounded-lg border px-3 py-2 ${
-                rel.ai_inferred
-                  ? "border-dashed border-[#3B82F6]/30 bg-[#2563EB]/5"
-                  : "border-border"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#2563EB]/10">
-                  <GitBranch className="h-4 w-4 text-[#2563EB]" />
-                </div>
-                <div>
-                  <Link
-                    href={`/golden-records?domain=${otherDomain}`}
-                    className="text-sm font-medium text-foreground hover:text-primary/80"
-                  >
-                    {formatModuleName(otherDomain)} / {otherKey}
-                  </Link>
-                  <p className="text-xs text-muted-foreground">
-                    {rel.relationship_type.replace(/_/g, " ")}
-                    {rel.sap_link_table && ` · via ${rel.sap_link_table}`}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                {impactPct !== null && (
-                  <div className="flex items-center gap-1">
-                    <div className="h-1.5 w-12 rounded-full bg-white/[0.60]">
-                      <div
-                        className={`h-1.5 rounded-full ${
-                          impactPct >= 70
-                            ? "bg-destructive"
-                            : impactPct >= 40
-                              ? "bg-[#E76500]"
-                              : "bg-[#256F3A]"
-                        }`}
-                        style={{ width: `${impactPct}%` }}
-                      />
-                    </div>
-                    <span className="text-xs font-medium text-foreground">
-                      {impactPct}%
-                    </span>
-                  </div>
-                )}
-                {rel.ai_inferred && (
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <Badge
-                        variant="outline"
-                        className="gap-1 bg-[#2563EB]/10 text-[#2563EB] border-[#3B82F6]/20 text-xs"
-                      >
-                        <Brain className="h-2.5 w-2.5" />
-                        Probable
-                      </Badge>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p className="text-xs">
-                        Probable — not confirmed in SAP
-                        {rel.ai_confidence != null &&
-                          ` (${Math.round(rel.ai_confidence * 100)}% confidence)`}
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </TooltipProvider>
-  );
-}
+const STATUS_TONE: Record<MasterRecordStatus, ChipTone> = {
+  candidate: "info", pending_review: "warning", golden: "success", superseded: "neutral",
+};
+const CHANGE_LABEL: Record<string, string> = {
+  created: "Record created", updated: "Fields updated", promoted: "Promoted to golden",
+};
+const pct = (n: number) => Math.round(n * 100);
+const confTone = (n: number): ChipTone => (n >= 0.85 ? "success" : n >= 0.6 ? "warning" : "danger");
+const sevTone = (s: string): ChipTone => (s === "critical" || s === "high" ? "danger" : s === "medium" ? "warning" : "neutral");
 
 export default function GoldenRecordDetailPage() {
-  const params = useParams();
-  const router = useRouter();
+  const recordId = useParams<{ id: string }>().id;
   const qc = useQueryClient();
-  const recordId = params.id as string;
-  const [showHistory, setShowHistory] = useState(false);
-  const [showRelationships, setShowRelationships] = useState(false);
+  const { can } = useRole();
 
   const { data: record, isLoading } = useQuery({
     queryKey: ["master-record", recordId],
     queryFn: () => getMasterRecord(recordId),
   });
-
-  // Glossary lookup for field business names
   const fieldKeys = record ? Object.keys(record.golden_fields) : [];
-  const { data: glossaryLookup } = useQuery({
+  const { data: glossary } = useQuery({
     queryKey: ["glossary-lookup", fieldKeys],
     queryFn: () => batchLookupGlossary(fieldKeys),
     enabled: fieldKeys.length > 0,
     staleTime: 5 * 60_000,
   });
+  const history = useQuery({
+    queryKey: ["master-record-history", recordId],
+    queryFn: () => getMasterRecordHistory(recordId),
+  });
+  const relationships = useQuery({
+    queryKey: ["relationships", record?.domain, record?.sap_object_key],
+    queryFn: () => getRelationships({ domain: record!.domain, key: record!.sap_object_key }),
+    enabled: !!record,
+  });
+  // record issues are keyed "FIELD=value|…"; the object key is a substring of its own issues' keys
+  const issues = useQuery({
+    queryKey: ["issues", "record", record?.domain, record?.sap_object_key],
+    queryFn: () => getIssues({ module: record!.domain, search: record!.sap_object_key, limit: 100 }),
+    enabled: !!record,
+  });
 
-  const promoteMutation = useMutation({
+  const promote = useMutation({
     mutationFn: () => promoteMasterRecord(recordId, true),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["master-record", recordId] });
+      qc.invalidateQueries({ queryKey: ["master-record-history", recordId] });
       qc.invalidateQueries({ queryKey: ["master-records"] });
     },
     onError: () => toast.error("Could not promote to golden — please try again"),
   });
-
-  const writebackMutation = useMutation({
+  const writeback = useMutation({
     mutationFn: () => writebackMasterRecord(recordId),
     onError: () => toast.error("Could not check write-back status — please try again"),
   });
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-      </div>
-    );
-  }
-
+  if (isLoading) return <Record360Loading what="record" />;
   if (!record) {
-    return (
-      <div className="py-20 text-center">
-        <p className="text-muted-foreground">Record not found</p>
-      </div>
-    );
+    return <EmptyState title="Record not found" actions={<Link className="aurora-link" href="/golden-records">Back to golden records</Link>} />;
   }
 
-  const fieldNames = Object.keys(record.golden_fields);
-  const contributions = record.source_contributions as Record<
-    string,
-    SourceContribution
-  >;
-
-  // Check if any field has a suggestion
-  const hasAiFields = Object.values(contributions).some(
-    (c) => c && typeof c === "object" && "ai_recommendation" in c
-  );
-
-  // Unique source systems
-  const sources = new Set<string>();
-  Object.values(contributions).forEach((c) => {
-    if (c && typeof c === "object" && "source_system" in c) {
-      sources.add(c.source_system);
-    }
-  });
-
-  const statusClasses: Record<string, string> = {
-    candidate: "bg-primary/10 text-primary border-primary/20",
-    pending_review: "bg-[#E76500]/10 text-[#E76500] border-[#E76500]/20",
-    golden: "bg-[#256F3A]/10 text-[#256F3A] border-[#256F3A]/20",
-    superseded: "bg-muted-foreground/10 text-muted-foreground border-muted-foreground/20",
-  };
+  const contributions: Record<string, SourceContribution> = record.source_contributions ?? {};
+  const fields = Object.keys(record.golden_fields);
+  const contributed = Object.values(contributions).filter((c): c is SourceContribution => !!c && typeof c === "object" && "source_system" in c);
+  const bySource = new Map<string, SourceContribution[]>();
+  for (const c of contributed) bySource.set(c.source_system, [...(bySource.get(c.source_system) ?? []), c]);
+  const suggested = fields.filter((f) => contributions[f]?.ai_recommendation).length;
+  const open = (issues.data?.items ?? []).filter((i) => i.status === "open" || i.status === "in_progress");
+  const rels = relationships.data?.relationships ?? [];
+  const entries = history.data ?? [];
 
   return (
-    <div className="space-y-6">
-      {/* Back nav */}
-      <Link
-        href="/golden-records"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary/80"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to Golden Records
-      </Link>
-
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="font-display text-xl font-bold text-foreground">
-              {record.sap_object_key}
-            </h1>
-            <Badge
-              variant="outline"
-              className={`gap-1 ${statusClasses[record.status] ?? ""}`}
-            >
-              {record.status === "golden" && <Crown className="h-3 w-3" />}
-              {record.status.replace("_", " ").replace(/\b\w/g, (c) => c.toUpperCase())}
-            </Badge>
-          </div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {formatModuleName(record.domain)} &middot; {sources.size} source
-            system{sources.size !== 1 ? "s" : ""}: {Array.from(sources).join(", ")}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {record.status !== "golden" && record.status !== "superseded" && (
-            <Button
-              onClick={() => promoteMutation.mutate()}
-              disabled={promoteMutation.isPending}
-              className="gap-2 bg-[#256F3A] hover:bg-[#256F3A]/80 text-white"
-            >
-              {promoteMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Crown className="h-4 w-4" />
-              )}
-              Promote to Golden
+    <Record360
+      backHref="/golden-records"
+      backLabel="Golden records"
+      eyebrow={`GOLDEN RECORD · ${formatModuleName(record.domain).toUpperCase()}`}
+      title={<span className="aurora-number">{record.sap_object_key}</span>}
+      support={`${bySource.size} source system${bySource.size === 1 ? "" : "s"}${bySource.size ? `: ${Array.from(bySource.keys()).join(", ")}` : ""} · updated ${relativeTime(record.updated_at)}${record.promoted_at ? ` · promoted ${relativeTime(record.promoted_at)}` : ""}`}
+      chips={<Chip tone={STATUS_TONE[record.status] ?? "neutral"}>{record.status.replace("_", " ")}</Chip>}
+      actions={
+        <>
+          {record.status !== "golden" && record.status !== "superseded" && can("approve") ? (
+            <Button onClick={() => promote.mutate()} disabled={promote.isPending}>
+              {promote.isPending ? "Promoting…" : "Promote to golden"}
             </Button>
-          )}
-          {record.status === "golden" && (
-            <Button
-              onClick={() => writebackMutation.mutate()}
-              disabled={writebackMutation.isPending}
-              variant="outline"
-              className="gap-2 border-primary text-primary hover:bg-primary/5"
-            >
-              {writebackMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-              Write Back to SAP
+          ) : null}
+          {record.status === "golden" && can("apply") ? (
+            <Button variant="secondary" onClick={() => writeback.mutate()} disabled={writeback.isPending}>
+              {writeback.isPending ? "Checking…" : "Write back to SAP"}
             </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Confidence overview */}
-      <Card className="border-border bg-white/[0.70]">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-muted-foreground">
-                Overall Confidence
-              </p>
-              <p className="text-3xl font-bold text-foreground">
-                {Math.round(record.overall_confidence * 100)}%
-              </p>
-            </div>
-            <ConfidenceBar confidence={record.overall_confidence} />
-          </div>
-          {record.promoted_at && (
-            <p className="mt-2 text-xs text-muted-foreground">
-              Promoted {relativeTime(record.promoted_at)}
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Writeback guidance — this does NOT write to SAP. SAP write-back is
-          finding-driven via the 4-eyes flow; route the steward there. */}
-      {writebackMutation.isSuccess && writebackMutation.data && (
-        <Card className="border-[#E76500]/20 bg-[#E76500]/5">
-          <CardContent className="flex items-start gap-2 p-4 text-sm text-[#E76500]">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-            <span>
-              {writebackMutation.data.message}{" "}
-              <Link href="/findings" className="font-medium underline">
-                Open findings
-              </Link>
-            </span>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Field-level detail */}
-      <Card className="border-border bg-white/[0.70]">
-        <CardContent className="p-0">
-          <div className="flex items-center justify-between border-b border-border px-4 py-3">
-            <h2 className="text-sm font-semibold text-foreground">
-              Field Values ({fieldNames.length})
-            </h2>
-            {hasAiFields && (
-              <div className="flex items-center gap-1 text-xs text-[#E76500]">
-                <Brain className="h-3.5 w-3.5" />
-                Suggestions available — click to expand
-              </div>
-            )}
-          </div>
-          {fieldNames.length === 0 ? (
-            <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-              No fields yet
-            </p>
-          ) : (
-            fieldNames.map((field) => (
-              <FieldRow
-                key={field}
-                fieldName={field}
-                goldenValue={record.golden_fields[field]}
-                contribution={contributions[field]}
-                showAi={hasAiFields}
-                businessName={glossaryLookup?.lookup?.[field]?.business_name}
-              />
-            ))
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Relationships tab */}
-      <Card className="border-border bg-white/[0.70]">
-        <CardContent className="p-0">
-          <button
-            onClick={() => setShowRelationships(!showRelationships)}
-            className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-foreground/[0.03]"
-          >
-            <div className="flex items-center gap-2">
-              <GitBranch className="h-4 w-4 text-[#2563EB]" />
-              <span className="text-sm font-semibold text-foreground">
-                Relationships
-              </span>
-            </div>
-            {showRelationships ? (
-              <ChevronUp className="h-4 w-4 text-muted-foreground" />
-            ) : (
-              <ChevronDown className="h-4 w-4 text-muted-foreground" />
-            )}
-          </button>
-          {showRelationships && (
-            <div className="border-t border-border px-4 py-3">
-              <RelationshipsPanel
-                domain={record.domain}
-                objectKey={record.sap_object_key}
-              />
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* History toggle */}
-      <Card className="border-border bg-white/[0.70]">
-        <CardContent className="p-0">
-          <button
-            onClick={() => setShowHistory(!showHistory)}
-            className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-foreground/[0.03]"
-          >
-            <div className="flex items-center gap-2">
-              <History className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-semibold text-foreground">
-                Audit History
-              </span>
-            </div>
-            {showHistory ? (
-              <ChevronUp className="h-4 w-4 text-muted-foreground" />
-            ) : (
-              <ChevronDown className="h-4 w-4 text-muted-foreground" />
-            )}
-          </button>
-          {showHistory && (
-            <div className="border-t border-border px-4 py-3">
-              <HistoryPanel recordId={recordId} />
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+          ) : null}
+        </>
+      }
+      notice={
+        // Not a write: SAP write-back is finding-driven via the 4-eyes flow; route the steward there.
+        writeback.isSuccess && writeback.data ? (
+          <Banner tone="warning" action={<Link className="aurora-link" href="/findings">Open findings</Link>}>
+            {writeback.data.message}
+          </Banner>
+        ) : null
+      }
+      kpis={
+        <>
+          <Stat label="Overall confidence" value={pct(record.overall_confidence)} unit="%" tone={confTone(record.overall_confidence)} />
+          <Stat label="Fields" value={fields.length} />
+          <Stat label="Sources" value={bySource.size} />
+          <Stat label="Open findings" value={issues.isLoading ? "…" : open.length} tone={open.length ? "danger" : "success"} />
+          <Stat label="Suggested merges" value={suggested} tone={suggested ? "warning" : "neutral"} />
+        </>
+      }
+      sources={{
+        count: bySource.size,
+        empty: "No source system has contributed a field yet.",
+        body: (
+          <Record360Table head={["Source system", "Fields won", "Avg confidence", "Last extracted"]}>
+            {Array.from(bySource.entries()).map(([sys, cs]) => {
+              const avg = cs.reduce((s, c) => s + c.confidence, 0) / cs.length;
+              const last = cs.map((c) => c.extracted_at).sort().at(-1);
+              return (
+                <tr key={sys}>
+                  <td className={td}>{sys}</td>
+                  <td className={`${td} aurora-number`}>{cs.length}</td>
+                  <td className={td}><Chip tone={confTone(avg)}><span className="aurora-number">{pct(avg)}%</span></Chip></td>
+                  <td className={td}>{last ? relativeTime(last) : "—"}</td>
+                </tr>
+              );
+            })}
+          </Record360Table>
+        ),
+      }}
+      survivorship={{
+        count: fields.length,
+        empty: "No fields yet.",
+        body: (
+          <Record360Table head={["Field", "Golden value", "Survived from", "Confidence", "Suggestion"]}>
+            {fields.map((f) => {
+              const c = contributions[f];
+              const name = glossary?.lookup?.[f]?.business_name;
+              return (
+                <tr key={f}>
+                  <td className={td}>
+                    {name ?? f}
+                    {name ? <div className="font-mono text-[11px] text-[var(--aurora-fg-tertiary)]">{f}</div> : null}
+                  </td>
+                  <td className={`${td} font-mono`}>{String(record.golden_fields[f] ?? "—")}</td>
+                  <td className={td}>{c ? `${c.source_system} · ${relativeTime(c.extracted_at)}` : "No source"}</td>
+                  <td className={td}>{c ? <Chip tone={confTone(c.confidence)}><span className="aurora-number">{pct(c.confidence)}%</span></Chip> : "—"}</td>
+                  <td className={td}>
+                    {c?.ai_recommendation ? (
+                      <span title={c.ai_reasoning ?? undefined}>
+                        Use {c.ai_recommendation}
+                        {c.ai_confidence != null ? <span className="aurora-number"> ({pct(c.ai_confidence)}%)</span> : null}
+                      </span>
+                    ) : "—"}
+                  </td>
+                </tr>
+              );
+            })}
+          </Record360Table>
+        ),
+      }}
+      findings={{
+        count: open.length,
+        loading: issues.isLoading,
+        empty: "No open findings on this record.",
+        body: (
+          <Record360Table head={["Severity", "Check", "Field", "Record key", "First seen"]}>
+            {open.map((i) => (
+              <tr key={i.id}>
+                <td className={td}><Chip tone={sevTone(i.severity)}>{i.severity}</Chip></td>
+                <td className={td}>
+                  <Link className="aurora-link font-mono" href={`/workbench/report?issue=${i.id}`}>{i.check_id}</Link>
+                  {i.message ? <div className="text-[var(--aurora-fg-tertiary)]">{i.message}</div> : null}
+                </td>
+                <td className={`${td} font-mono`}>{i.field ?? "—"}</td>
+                <td className={`${td} font-mono`}>{i.record_key}</td>
+                <td className={td}>{relativeTime(i.first_seen_at)}</td>
+              </tr>
+            ))}
+          </Record360Table>
+        ),
+      }}
+      extra={[{
+        id: "relationships",
+        label: "Relationships",
+        count: relationships.isLoading ? undefined : rels.length,
+        body: rels.length === 0 ? (
+          <EmptyState title={relationships.isLoading ? "Loading…" : "No cross-domain relationships found."} />
+        ) : (
+          <Record360Table head={["Related record", "Relationship", "Impact", "Basis"]}>
+            {rels.map((r) => {
+              const isFrom = r.from_domain === record.domain && r.from_key === record.sap_object_key;
+              const [d, k] = isFrom ? [r.to_domain, r.to_key] : [r.from_domain, r.from_key];
+              return (
+                <tr key={r.id}>
+                  <td className={td}>
+                    <Link className="aurora-link" href={`/golden-records?domain=${d}`}>{formatModuleName(d)} / {k}</Link>
+                  </td>
+                  <td className={td}>{r.relationship_type.replace(/_/g, " ")}{r.sap_link_table ? ` · via ${r.sap_link_table}` : ""}</td>
+                  <td className={`${td} aurora-number`}>{r.impact_score != null ? `${pct(r.impact_score)}%` : "—"}</td>
+                  <td className={td}>
+                    {r.ai_inferred ? (
+                      <Chip tone="warning">Probable{r.ai_confidence != null ? ` · ${pct(r.ai_confidence)}%` : ""}</Chip>
+                    ) : <Chip tone="success">SAP link</Chip>}
+                  </td>
+                </tr>
+              );
+            })}
+          </Record360Table>
+        ),
+      }]}
+      history={{
+        count: entries.length,
+        loading: history.isLoading,
+        empty: "No history entries.",
+        body: (
+          <Record360Table head={["When", "Change", "By", "Suggestion"]}>
+            {entries.map((e) => (
+              <tr key={e.id}>
+                <td className={td}>{relativeTime(e.changed_at)}</td>
+                <td className={td}>{CHANGE_LABEL[e.change_type] ?? e.change_type}</td>
+                <td className={td}>{e.changed_by ?? "system"}</td>
+                <td className={td}>
+                  {e.ai_recommendation_accepted != null ? (
+                    <Chip tone={e.ai_recommendation_accepted ? "success" : "danger"}>
+                      {e.ai_recommendation_accepted ? "accepted" : "rejected"}
+                    </Chip>
+                  ) : e.ai_was_involved ? "involved" : "—"}
+                </td>
+              </tr>
+            ))}
+          </Record360Table>
+        ),
+      }}
+    />
   );
 }

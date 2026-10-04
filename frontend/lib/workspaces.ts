@@ -107,6 +107,9 @@ export const HUB_ROUTES: ReadonlySet<string> = new Set(WORKSPACES.map((w) => w.h
 /** Non-hub pages built on Aurora — rendered on the canvas, not in the light sheet. */
 export const AURORA_PAGES: readonly string[] = ["/workbench/report"];
 
+/** Record 360 detail routes (the list pages above them are still legacy). */
+export const AURORA_DETAIL = /^\/(golden-records|glossary)\/[^/]+$/;
+
 /** Where each role lands after sign-in — the workspace built for their job. */
 export const LANDING: Readonly<Record<Role, string>> = {
   admin: "/", manager: "/", viewer: "/", auditor: "/",
