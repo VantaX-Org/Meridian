@@ -139,6 +139,8 @@ export interface Finding {
     field_checked?: string;
     [key: string]: unknown;
   };
+  /** What the finding was judged against (absent on findings stored before the tag existed). */
+  baseline?: "live_config" | "sap_standard" | "s4_target";
   remediation_text: string | null;
   rule_context: RuleContext | null;
   value_fix_map: Record<string, ValueFixEntry> | null;

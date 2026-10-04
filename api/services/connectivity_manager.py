@@ -220,6 +220,9 @@ class ConnectivityManager:
                 params.pop(key, None)
         try:
             if system_type in ABAP_SYSTEM_TYPES:
+                # SAP dates/times are system-local: the freshness checks need the offset (sap/ddic_reader.py)
+                from sap.ddic_reader import utc_offset_seconds
+                self.sap_utc_offset_seconds = utc_offset_seconds(connector) if hasattr(connector, "call") else None
                 plans = plan_modules(modules, dictionary, scope)
                 # fields this system's field-status customizing controls (checks/field_status_rules.py)
                 from checks.field_status_rules import extra_fields, load_config, material_fields
