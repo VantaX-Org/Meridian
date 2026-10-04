@@ -2,8 +2,6 @@
 # Delete a line when its file is clean. Never add one.
 app/(dashboard)/analytics/page.tsx
 app/(dashboard)/connectivity/page.tsx
-app/(dashboard)/glossary/[id]/page.tsx
-app/(dashboard)/golden-records/[id]/page.tsx
 app/(dashboard)/process/map.tsx
 app/(dashboard)/relationships/page.tsx
 app/(dashboard)/stewardship/metrics/page.tsx

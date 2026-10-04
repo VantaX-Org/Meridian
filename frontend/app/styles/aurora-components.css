@@ -898,7 +898,7 @@
 \* ------------------------------------------------------------------ */
 .aurora-app-shell {
   display: grid;
-  grid-template-columns: 48px 1fr;
+  grid-template-columns: 48px minmax(0, 1fr);
   grid-template-rows: 48px 1fr;
   grid-template-areas:
     "rail topbar"

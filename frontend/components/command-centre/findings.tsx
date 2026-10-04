@@ -6,6 +6,10 @@
  * overview, trends and the executive report can deep-link a slice. j/k move,
  * Enter opens the drawer: what the check saw, the rule behind it, the SAP
  * features it blocks and every failing record key in that version.
+ *
+ * Cost at risk, impact order and anomaly findings come from newer API
+ * builds; every one of those fields is optional and the register reads
+ * the same without them.
  */
 
 import Link from "next/link";
@@ -20,19 +24,22 @@ import {
 import { copyToClipboard, saveView } from "@/components/meridian/actions";
 import { useRole } from "@/hooks/use-role";
 import { getConfigImpact } from "@/lib/api/connectivity";
-import { getFindings } from "@/lib/api/findings";
+import { getFindings, getFindingsAggregate } from "@/lib/api/findings";
 import { getRules } from "@/lib/api/rules";
 import { getFindingRecords, getVersion } from "@/lib/api/versions";
 import { formatModuleName, relativeTime } from "@/lib/format";
-import type { Dimension, Finding, RuleContext } from "@/types/api";
+import type { FindingsAggregate } from "@/lib/api/findings";
+import type { AnomalySample, Dimension, Finding, RuleContext } from "@/types/api";
 
 const meta = (m: AuroraColumnMeta) => m;
 const PAGE = 200;
 const RECORDS_PAGE = 25;
-const FILTER_KEYS = ["version_id", "module", "severity", "dimension", "check_id"] as const;
+const FILTER_KEYS = ["version_id", "module", "severity", "dimension", "check_id", "type", "sort"] as const;
 type FilterKey = (typeof FILTER_KEYS)[number];
 type Filter = Partial<Record<FilterKey, string>>;
-const FILTER_LABEL: Record<FilterKey, string> = { version_id: "Run", module: "Object", severity: "Severity", dimension: "Dimension", check_id: "Check" };
+const FILTER_LABEL: Record<FilterKey, string> = { version_id: "Run", module: "Object", severity: "Severity", dimension: "Dimension", check_id: "Check", type: "Type", sort: "Order" };
+/** Filters shown as their own chips, not as dismissible tokens. */
+const OWN_CHIPS: FilterKey[] = ["severity", "type", "sort"];
 const SEVERITIES = ["critical", "high", "medium", "low"] as const;
 type Sev = (typeof SEVERITIES)[number];
 const DIMENSIONS: Dimension[] = ["completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity"];
@@ -40,6 +47,11 @@ const sev = (s: string): Sev => ((SEVERITIES as readonly string[]).includes(s) ?
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const cellText = (v: unknown): string => (v === null || v === undefined ? "—" : typeof v === "object" ? JSON.stringify(v) : String(v));
 const title = (f: Finding) => f.business_name ?? f.details?.message ?? f.check_id;
+const isAnomaly = (f: Finding) => f.finding_type === "anomaly";
+const money = (n: number) => n.toLocaleString(undefined, { notation: n >= 100_000 ? "compact" : "standard", maximumFractionDigits: n >= 100_000 ? 1 : 0 });
+const TIER: Record<"pass" | "warn" | "fail", { word: string; tone: "default" | "warning" | "danger" }> = {
+  pass: { word: "pass", tone: "default" }, warn: { word: "warn", tone: "warning" }, fail: { word: "fail", tone: "danger" },
+};
 const matches = (f: Finding, q: string) =>
   !q || [f.check_id, f.module, title(f), f.dimension, f.details?.field_checked ?? ""].join(" ").toLowerCase().includes(q.toLowerCase());
 
@@ -51,13 +63,14 @@ const BASIS: Record<RuleContext["rule_authority"], string> = {
   best_practice: "Best practice",
 };
 
-function Basis({ ctx }: { ctx: RuleContext | null }) {
+function Basis({ ctx, anomaly }: { ctx: RuleContext | null; anomaly?: boolean }) {
+  if (anomaly) return <span className="ui-basis" data-basis="anomaly">Previous runs</span>;
   const label = ctx ? BASIS[ctx.rule_authority] : undefined;
   if (!ctx || !label) return <span className="ui-micro">—</span>;
   return <span className="ui-basis" data-basis={ctx.rule_authority}>{label}</span>;
 }
 
-/** check_id → names of SAP features it blocks, per run. */
+/** check_id to names of SAP features it blocks, per run. */
 type BlockMap = Map<string, string[]>;
 const blockKey = (versionId: string, checkId: string) => `${versionId}:${checkId}`;
 
@@ -90,10 +103,23 @@ export function FindingsSurface() {
 
   const q = useQuery({
     queryKey: ["findings.list", filter, offset],
-    queryFn: () => getFindings({ ...filter, limit: PAGE, offset }),
+    queryFn: () => getFindings({
+      ...filter,
+      type: filter.type === "anomaly" || filter.type === "rule" ? filter.type : undefined,
+      sort: filter.sort === "impact" ? "impact" : undefined,
+      limit: PAGE, offset,
+    }),
     placeholderData: keepPreviousData,
   });
   const findings = useMemo(() => q.data?.findings ?? [], [q.data]);
+  const agg = useQuery({
+    queryKey: ["findings.aggregate", filter.version_id ?? null],
+    queryFn: () => getFindingsAggregate(filter.version_id),
+    retry: false, meta: { ignoreError: true },
+  });
+  // Older API builds return neither field: the columns and metric stay hidden.
+  const hasCost = findings.some((f) => f.cost_at_risk != null);
+  const hasImpact = findings.some((f) => f.impact_score != null);
   const total = q.data?.total ?? findings.length;
   const complete = findings.length >= total;
   const visible = findings.filter((f) => matches(f, search));
@@ -132,7 +158,7 @@ export function FindingsSurface() {
 
   const columns = useMemo<ColumnDef<Finding, unknown>[]>(() => [
     { id: "severity", header: "Severity", meta: meta({ sticky: "start", width: 104 }),
-      cell: ({ row }) => <StatusBadge status={sev(row.original.severity)} /> },
+      cell: ({ row }) => <StatusBadge status={sev(row.original.severity)}>{cap(row.original.severity)}</StatusBadge> },
     { id: "finding", header: "Finding", meta: meta({ minWidth: 280 }), cell: ({ row }) => (
       <span className="ui-cell-stack">
         <span className="ui-cell-stack__main">{title(row.original)}</span>
@@ -141,10 +167,16 @@ export function FindingsSurface() {
           {row.original.details?.field_checked ? <Mono>{row.original.details.field_checked}</Mono> : null}
         </span>
       </span>) },
-    { id: "basis", header: "Basis", meta: meta({ width: 116 }), cell: ({ row }) => <Basis ctx={row.original.rule_context} /> },
+    { id: "basis", header: "Basis", meta: meta({ width: 116 }),
+      cell: ({ row }) => <Basis ctx={row.original.rule_context} anomaly={isAnomaly(row.original)} /> },
     { id: "module", header: "Object", meta: meta({ width: 160 }), cell: ({ row }) => formatModuleName(row.original.module) },
     { id: "dimension", header: "Dimension", meta: meta({ width: 116 }), cell: ({ row }) => cap(row.original.dimension) },
     { id: "records", header: "Records", meta: meta({ width: 96, align: "end", numeric: true }), cell: ({ row }) => row.original.affected_count.toLocaleString() },
+    ...(hasCost ? [{ id: "cost", header: "At risk", meta: meta({ width: 104, align: "end", numeric: true }),
+      cell: ({ row }) => (row.original.cost_at_risk == null ? <span className="ui-micro">—</span>
+        : <span title={row.original.cost_formula ?? undefined}>{money(row.original.cost_at_risk)}</span>) } as ColumnDef<Finding, unknown>] : []),
+    ...(hasImpact ? [{ id: "impact", header: "Impact", meta: meta({ width: 96, align: "end", numeric: true }),
+      cell: ({ row }) => (row.original.impact_score == null ? <span className="ui-micro">—</span> : money(row.original.impact_score)) } as ColumnDef<Finding, unknown>] : []),
     { id: "pass", header: "Pass rate", meta: meta({ width: 92, align: "end", numeric: true }),
       cell: ({ row }) => (row.original.pass_rate === null ? "—" : `${Math.round(row.original.pass_rate)}%`) },
     { id: "blocks", header: "Blocks", meta: meta({ width: 180 }), cell: ({ row }) => {
@@ -152,7 +184,7 @@ export function FindingsSurface() {
       return b?.length ? <span title={b.join("\n")}>{b[0]}{b.length > 1 ? ` and ${b.length - 1} more` : ""}</span> : <span className="ui-micro">—</span>;
     } },
     { id: "age", header: "Found", meta: meta({ width: 84, align: "end" }), cell: ({ row }) => relativeTime(row.original.created_at) },
-  ], [blocks]);
+  ], [blocks, hasCost, hasImpact]);
 
   const searching = active.length > 0 || search !== "";
 
@@ -173,6 +205,8 @@ export function FindingsSurface() {
         }
       />
 
+      <EstateStrip agg={agg.data} module={filter.module} />
+
       {filter.version_id && filter.module ? (
         <ObjectScores versionId={filter.version_id} module={filter.module} dimension={filter.dimension} hrefWith={hrefWith} />
       ) : null}
@@ -186,7 +220,13 @@ export function FindingsSurface() {
             {cap(s)}{complete ? <span className="aurora-number ui-chip-count">{counts.sev[s]}</span> : null}
           </Chip>
         ))}
-        {active.filter((k) => k !== "severity").map((k) => (
+        <Chip selected={filter.type === "anomaly"} onClick={() => set({ type: filter.type === "anomaly" ? undefined : "anomaly" })}>
+          Anomalies only
+        </Chip>
+        <Chip selected={filter.sort === "impact"} onClick={() => set({ sort: filter.sort === "impact" ? undefined : "impact" })}>
+          Highest impact first
+        </Chip>
+        {active.filter((k) => !OWN_CHIPS.includes(k)).map((k) => (
           <Chip key={k} tone="info" onDismiss={() => set({ [k]: undefined })}>
             {FILTER_LABEL[k]}: {k === "version_id" || k === "check_id" ? <Mono>{k === "version_id" ? filter[k]?.slice(0, 8) : filter[k]}</Mono>
               : k === "module" ? formatModuleName(filter[k] ?? "") : cap(filter[k] ?? "")}
@@ -211,14 +251,16 @@ export function FindingsSurface() {
           <EmptyState action={searching
             ? <button type="button" className="ui-link-button" onClick={() => { setSearch(""); clearAll(); }}>Clear filters</button>
             : <Link className="ui-link" href="/data?tab=systems">Connect a system</Link>}>
-            {searching ? "No findings match these filters." : "No findings yet. Findings appear here after the first analysis run."}
+            {filter.type === "anomaly" && active.length === 1 && !search
+              ? "No anomalies. Each download is compared with the system's previous downloads, so the first run of a system has nothing to compare."
+              : searching ? "No findings match these filters." : "No findings yet. Findings appear here after the first analysis run."}
           </EmptyState>
         )}
 
       <DetailDrawer open={!!selected} onClose={drawer.close} ariaLabel="Finding details"
         header={selected ? (
           <div className="ui-drawer-head">
-            <StatusBadge status={sev(selected.severity)} />
+            <StatusBadge status={sev(selected.severity)}>{cap(selected.severity)}</StatusBadge>
             <h2 className="ui-drawer-head__title">{title(selected)}</h2>
           </div>) : null}>
         {selected ? (
@@ -227,6 +269,28 @@ export function FindingsSurface() {
         ) : null}
       </DetailDrawer>
     </div>
+  );
+}
+
+/** Score tier and cost at risk for the slice. Renders nothing on API builds
+ * that report neither. */
+function EstateStrip({ agg, module }: { agg?: FindingsAggregate; module?: string }) {
+  if (!agg) return null;
+  const mod = module ? agg.by_module.find((m) => m.module === module) : undefined;
+  const cost = module ? mod?.cost_at_risk : agg.cost_at_risk;
+  const tier = agg.dqs.tier ? TIER[agg.dqs.tier] : undefined;
+  if (cost == null && !tier) return null;
+  const byCost = module ? [] : agg.by_module.filter((m) => (m.cost_at_risk ?? 0) > 0)
+    .sort((a, b) => (b.cost_at_risk ?? 0) - (a.cost_at_risk ?? 0)).slice(0, 3);
+  return (
+    <MetricStrip label="Score and cost at risk">
+      {tier ? <Metric label="DQS" value={agg.dqs.composite?.toFixed(1) ?? null} unit={tier.word} tone={tier.tone} /> : null}
+      {cost != null ? <Metric label={mod ? `At risk in ${formatModuleName(mod.module)}` : "Cost at risk"} value={money(cost)} /> : null}
+      {byCost.map((m) => (
+        <Metric key={m.module} label={formatModuleName(m.module)} value={money(m.cost_at_risk ?? 0)}
+          tone={m.critical > 0 ? "danger" : "default"} />
+      ))}
+    </MetricStrip>
   );
 }
 
@@ -275,9 +339,11 @@ function FindingDetail({ finding: f, blocks }: { finding: Finding; blocks: strin
     { k: "Check", v: f.check_id, mono: true },
     { k: "Field", v: f.details?.field_checked ?? "—", mono: !!f.details?.field_checked },
     { k: "Dimension", v: cap(f.dimension) },
-    { k: "Basis", v: <Basis ctx={ctx} /> },
+    { k: "Basis", v: <Basis ctx={ctx} anomaly={isAnomaly(f)} /> },
     { k: "Records", v: `${f.affected_count.toLocaleString()} of ${f.total_count.toLocaleString()}` },
     { k: "Pass rate", v: f.pass_rate === null ? "—" : `${Math.round(f.pass_rate)}%` },
+    ...(f.cost_at_risk != null ? [{ k: "Cost at risk", v: money(f.cost_at_risk) }] : []),
+    ...(f.impact_score != null ? [{ k: "Impact score", v: money(f.impact_score) }] : []),
     { k: "Run", v: f.version_id.slice(0, 8), mono: true },
     { k: "Found", v: new Date(f.created_at).toLocaleString() },
   ];
@@ -286,6 +352,8 @@ function FindingDetail({ finding: f, blocks }: { finding: Finding; blocks: strin
     <div className="ui-detail">
       <KeyValue rows={rows} />
       {f.business_definition ? <p className="ui-note">{f.business_definition}</p> : null}
+      {f.cost_formula ? <Part title="How the cost is worked out"><p className="ui-note">{f.cost_formula}</p></Part> : null}
+      {isAnomaly(f) ? <AnomalyDetail finding={f} /> : null}
       {ctx ? (
         <Part title="Why it matters">
           <p className="ui-note">{ctx.why_it_matters}</p>
@@ -319,7 +387,7 @@ function FindingDetail({ finding: f, blocks }: { finding: Finding; blocks: strin
         </Part>
       ) : null}
       {f.affected_count > 0 ? <VersionRecords key={`${f.version_id}:${f.check_id}`} versionId={f.version_id} checkId={f.check_id} /> : null}
-      <RuleSource checkId={f.check_id} module={f.module} />
+      {isAnomaly(f) ? null : <RuleSource checkId={f.check_id} module={f.module} />}
       <div className="ui-page-header__actions">
         {f.affected_count > 0 ? (
           <Button onClick={() => router.push(`/issues?${new URLSearchParams({ check_id: f.check_id, status: "open", version_id: f.version_id, module: f.module })}`)}>
@@ -329,6 +397,60 @@ function FindingDetail({ finding: f, blocks }: { finding: Finding; blocks: strin
         <Button variant="ghost" onClick={() => copyToClipboard(f.check_id, "Check ID copied")}>Copy check ID</Button>
       </div>
     </div>
+  );
+}
+
+const METRIC: Record<string, string> = {
+  volume: "Row count", null_rate: "Blank rate", new_values: "New values", vanished_values: "Values gone",
+};
+const pct = (n: unknown) => (typeof n === "number" ? `${(n * 100).toFixed(1)}%` : "—");
+const listed = (v: unknown) => (Array.isArray(v) ? v.map(String) : []);
+
+/** An anomaly: what the previous downloads led us to expect, what this one held,
+ * and record keys on either side of the line. */
+function AnomalyDetail({ finding: f }: { finding: Finding }) {
+  const d = f.details ?? {};
+  const rate = d.metric === "null_rate";
+  const fmt = (n: number | null | undefined) => (n == null ? "—" : rate ? pct(n) : n.toLocaleString());
+  const values = d.metric === "new_values" || d.metric === "vanished_values";
+  const exp = d.expected;
+  const rows: { k: string; v: ReactNode; mono?: boolean }[] = [
+    { k: "Measure", v: METRIC[d.metric ?? ""] ?? d.metric ?? "—" },
+    { k: "Where", v: d.table ? `${d.table}${d.field ? `.${d.field}` : ""}` : "—", mono: !!d.table },
+  ];
+  if (exp && !values) {
+    rows.push({ k: "Expected", v: `${fmt(exp.low)} to ${fmt(exp.high)}` });
+    rows.push({ k: "Observed", v: typeof d.observed === "number" ? fmt(d.observed) : "—" });
+  }
+  const seen = values ? listed(exp?.history) : [];
+  const odd = values ? listed(d.observed) : [];
+  const good = d.samples?.good ?? [];
+  const bad = d.samples?.bad ?? [];
+  return (
+    <Part title="Against previous downloads">
+      <KeyValue rows={rows} />
+      {values ? (
+        <>
+          <p className="ui-micro">{d.metric === "new_values" ? "Not seen before" : "In the previous download, absent now"}</p>
+          <div className="ui-filterbar__chips">{odd.slice(0, 30).map((v) => <Chip key={v}><Mono>{v || "(blank)"}</Mono></Chip>)}</div>
+          {seen.length ? <p className="ui-micro">{seen.length.toLocaleString()} values known from earlier downloads</p> : null}
+        </>
+      ) : null}
+      {bad.length || good.length ? (
+        <div className="ui-matrix-scroll">
+          <table className="ui-mini-table">
+            <thead><tr><th scope="col">Sample</th><th scope="col">Record key</th><th scope="col">Value</th></tr></thead>
+            <tbody>
+              {([["Deviating", bad], ["As usual", good]] as const).flatMap(([label, list]) =>
+                (list as AnomalySample[]).map((r, i) => (
+                  <tr key={`${label}${i}`}><td>{label}</td><td><Mono>{r.record_key}</Mono></td>
+                    <td>{"value" in r ? <Mono>{r.value ?? "(blank)"}</Mono> : <span className="ui-micro">not stored</span>}</td></tr>
+                )))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+    </Part>
   );
 }
 

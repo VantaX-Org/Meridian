@@ -1,29 +1,23 @@
 "use client";
 
-import { Suspense, useState } from "react";
+/**
+ * Failing records: every SAP record a check fails, tracked across runs. A
+ * later run that finds the record passing resolves it; failing again
+ * re-opens it. Filters live in the URL so a finding, a report or a colleague
+ * can link straight to a work list.
+ */
+
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Download } from "lucide-react";
+import { Select, Textarea } from "@/components/aurora";
 import {
-  Button,
-  Chip,
-  DataTable,
-  Drawer,
-  Input,
-  Pager,
-  Panel,
-  Select,
-  Stack,
-  Tabs,
-  Text,
-  Textarea,
-  type AuroraColumnMeta,
-  type ChipTone,
-} from "@/components/aurora";
-import { ReasonButton } from "@/components/ui-core";
+  Banner, Button, Chip, DataTable, DetailDrawer, EmptyState, FilterBar, KeyValue, Mono, PageHeader, Pager,
+  ReasonButton, StatusBadge, TableSkeleton, Tabs, type AuroraColumnMeta, type Status,
+} from "@/components/ui-core";
 import {
   commentIssue,
   exportIssues,
@@ -38,6 +32,7 @@ import { getAssignableUsers } from "@/lib/api/users";
 import { formatModuleName, relativeTime } from "@/lib/format";
 import { useRole } from "@/hooks/use-role";
 
+const meta = (m: AuroraColumnMeta) => m;
 const PAGE = 100;
 const STATUSES: { id: IssueStatus; label: string }[] = [
   { id: "open", label: "Open" },
@@ -45,12 +40,18 @@ const STATUSES: { id: IssueStatus; label: string }[] = [
   { id: "accepted", label: "Accepted" },
   { id: "resolved", label: "Resolved" },
 ];
-const SEVERITY_TONE: Record<string, ChipTone> = { critical: "danger", high: "danger", medium: "warning", low: "neutral" };
+const SEVERITIES = ["critical", "high", "medium", "low"] as const;
+const sev = (s: string): Status => ((SEVERITIES as readonly string[]).includes(s) ? (s as Status) : "medium");
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const RESOLUTION_LABEL: Record<string, string> = {
-  verified_fixed: "verified fixed by a later version",
-  fixed_in_source: "marked fixed — awaiting the next version",
-  accepted_risk: "risk accepted",
-  false_positive: "false positive",
+  verified_fixed: "Verified fixed by a later run",
+  fixed_in_source: "Marked fixed in SAP, waiting for the next run",
+  accepted_risk: "Risk accepted",
+  false_positive: "False positive",
+};
+const STATUS_BADGE: Record<IssueStatus, Status> = { open: "high", in_progress: "running", accepted: "idle", resolved: "ok" };
+const ACTION_LABEL: Record<string, string> = {
+  status: "changed status", assign: "assigned", comment: "commented", auto_resolved: "resolved by a run", reopened: "re-opened by a run",
 };
 
 const FILTER_KEYS = ["status", "module", "check_id", "severity", "assigned_to", "scope", "search", "version_id"] as const;
@@ -63,36 +64,35 @@ const columns = (selected: Set<string>, toggle: (id: string) => void): ColumnDef
       <input type="checkbox" aria-label={`Select ${row.original.record_key}`} checked={selected.has(row.original.id)}
         onClick={(e) => e.stopPropagation()} onChange={() => toggle(row.original.id)} />
     ),
-    meta: { width: 36 } satisfies AuroraColumnMeta,
+    meta: meta({ width: 36 }),
   },
+  { id: "severity", header: "Severity", meta: meta({ width: 104 }), cell: ({ row }) => <StatusBadge status={sev(row.original.severity)}>{cap(row.original.severity)}</StatusBadge> },
+  { id: "record", header: "SAP record", meta: meta({ width: 280, sticky: "start" }), cell: ({ row }) => <span title={row.original.record_key}><Mono>{row.original.record_key}</Mono></span> },
   {
-    id: "severity", header: "Severity",
-    cell: ({ row }) => <Chip tone={SEVERITY_TONE[row.original.severity] ?? "neutral"}>{row.original.severity}</Chip>,
-    meta: { width: 96 } satisfies AuroraColumnMeta,
-  },
-  {
-    id: "record", header: "SAP record",
-    cell: ({ row }) => <span className="font-mono">{row.original.record_key}</span>,
-    meta: { width: 240, sticky: "start" } satisfies AuroraColumnMeta,
-  },
-  {
-    id: "check", header: "Check",
+    id: "check", header: "Check", meta: meta({ minWidth: 300 }),
     cell: ({ row }) => (
-      <span title={row.original.message ?? undefined}>
-        <span className="font-mono">{row.original.check_id}</span>
-        {row.original.message && <span className="text-[var(--aurora-fg-tertiary)]"> · {row.original.message}</span>}
+      <span className="ui-cell-stack" title={row.original.message ?? undefined}>
+        <span className="ui-cell-stack__main">{row.original.message ?? row.original.check_id}</span>
+        <span className="ui-cell-stack__sub">
+          <Mono>{row.original.check_id}</Mono>
+          {row.original.field ? <Mono>{row.original.field}</Mono> : null}
+        </span>
       </span>
     ),
-    meta: { width: 380 } satisfies AuroraColumnMeta,
   },
-  { id: "module", header: "Object", cell: ({ row }) => formatModuleName(row.original.module), meta: { width: 160 } satisfies AuroraColumnMeta },
-  { id: "assignee", header: "Assignee", cell: ({ row }) => row.original.assignee_email ?? "—", meta: { width: 180 } satisfies AuroraColumnMeta },
+  { id: "module", header: "Object", meta: meta({ width: 160 }), cell: ({ row }) => formatModuleName(row.original.module) },
+  { id: "assignee", header: "Assignee", meta: meta({ width: 180 }), cell: ({ row }) => row.original.assignee_email ?? <span className="ui-micro">Unassigned</span> },
   {
-    id: "seen", header: "First seen",
-    cell: ({ row }) => (
-      <span>{relativeTime(row.original.first_seen_at)}{row.original.reopened_count > 0 && <Chip tone="warning">reopened ×{row.original.reopened_count}</Chip>}</span>
-    ),
-    meta: { width: 150 } satisfies AuroraColumnMeta,
+    id: "seen", header: "First seen", meta: meta({ width: 150 }),
+    cell: ({ row }) => {
+      const n = row.original.reopened_count;
+      return (
+        <span title={n > 0 ? `Re-opened ${n} time${n === 1 ? "" : "s"}` : undefined}>
+          {relativeTime(row.original.first_seen_at)}
+          {n > 0 ? <span className="ui-micro"> Re-opened</span> : null}
+        </span>
+      );
+    },
   },
 ];
 
@@ -104,7 +104,6 @@ export default function IssuesPage() {
   );
 }
 
-/** Filters live in the URL so a finding, a report or a colleague can link straight to a work list. */
 function IssuesWorkList() {
   const qc = useQueryClient();
   const { can } = useRole();
@@ -122,6 +121,7 @@ function IssuesWorkList() {
   const [offset, setOffset] = useState(0);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [openId, setOpenId] = useState<string | null>(null);
+  const [search, setSearch] = useState(filter.search ?? "");
 
   const set = (patch: IssueFilter) => {
     const next = { ...filter, ...patch };
@@ -132,7 +132,16 @@ function IssuesWorkList() {
     router.replace(`${pathname}?${q}`, { scroll: false });
   };
 
-  const { data, isFetching } = useQuery({
+  // Record keys are searched on the server; wait for a pause in typing.
+  useEffect(() => {
+    const term = search.trim() || undefined;
+    if (term === filter.search) return;
+    const t = setTimeout(() => set({ search: term }), 350);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
+
+  const { data, isLoading, error } = useQuery({
     queryKey: ["issues", filter, offset],
     queryFn: () => getIssues({ ...filter, limit: PAGE, offset }),
   });
@@ -141,16 +150,16 @@ function IssuesWorkList() {
   const bulk = useMutation({
     mutationFn: updateIssues,
     onSuccess: (r) => {
-      toast.success(`${r.updated} issue${r.updated === 1 ? "" : "s"} updated`);
+      toast.success(`${r.updated} record${r.updated === 1 ? "" : "s"} updated`);
       setSelected(new Set());
       qc.invalidateQueries({ queryKey: ["issues"] });
       qc.invalidateQueries({ queryKey: ["issue"] });
     },
-    onError: (e) => toast.error((e as Error).message || "Update refused"),
+    onError: (e) => toast.error((e as Error).message || "The update was refused"),
   });
   const exporting = useMutation({
     mutationFn: (f: "csv" | "xlsx") => exportIssues(f, filter),
-    onError: (e) => toast.error((e as Error).message || "Export failed"),
+    onError: (e) => toast.error((e as Error).message || "The export failed"),
   });
 
   const toggle = (id: string) => setSelected((prev) => {
@@ -161,158 +170,189 @@ function IssuesWorkList() {
   });
   const ids = Array.from(selected);
   const counts = data?.counts ?? {};
-  const modules = Array.from(new Set((data?.items ?? []).map((i) => i.module).concat(filter.module ? [filter.module] : [])));
+  const items = data?.items ?? [];
+  const modules = Array.from(new Set(items.map((i) => i.module).concat(filter.module ? [filter.module] : [])));
+  const status = filter.status ?? "open";
+  const narrowed = Boolean(filter.module || filter.severity || filter.assigned_to || filter.search || filter.check_id || filter.version_id);
+  const clearAll = () => {
+    setSearch("");
+    set({ module: undefined, severity: undefined, assigned_to: undefined, search: undefined, check_id: undefined, version_id: undefined, scope: undefined });
+  };
 
   return (
-    <div className="aurora-page space-y-6">
-      <Stack direction="row" gap={3} align="center" className="justify-between">
-        <Text variant="text-small" tone="secondary">
-          Every failing SAP record, per check, tracked across versions. A later version that evaluates the record and finds it passing resolves it automatically; if it fails again it re-opens.
-        </Text>
-        {can("export") ? (
-          <Stack direction="row" gap={2}>
+    <div className="ui-page">
+      <PageHeader
+        title="Failing records"
+        summary={data
+          ? `${(counts.open ?? 0).toLocaleString()} open and ${(counts.in_progress ?? 0).toLocaleString()} in progress. A record resolves itself when a later run finds it passing.`
+          : "Every SAP record a check fails, tracked from run to run."}
+        actions={can("export") ? (
+          <>
             {(["xlsx", "csv"] as const).map((f) => (
-              <Button key={f} size="sm" variant="secondary" leadingIcon={<Download size={14} />} disabled={exporting.isPending}
-                onClick={() => exporting.mutate(f)}>
-                Work list {f.toUpperCase()}
+              <Button key={f} variant="secondary" disabled={exporting.isPending} onClick={() => exporting.mutate(f)}>
+                Export {f === "xlsx" ? "Excel" : "CSV"}
               </Button>
             ))}
-          </Stack>
-        ) : null}
-      </Stack>
+          </>
+        ) : undefined}
+      />
 
-      <Panel>
-        <Stack gap={4}>
-          <Tabs<IssueStatus> ariaLabel="Failing record status" value={filter.status ?? "open"} onValueChange={(s) => set({ status: s })}
-            items={STATUSES.map((s) => ({ id: s.id, label: s.label, count: counts[s.id] ?? 0 }))} />
-          <Stack direction="row" gap={2} wrap align="center" className="aurora-filters">
+      <Tabs<IssueStatus> ariaLabel="Failing record status" value={status} onValueChange={(s) => set({ status: s })}
+        items={STATUSES.map((s) => ({ id: s.id, label: s.label, count: counts[s.id] ?? 0 }))} />
+
+      <FilterBar
+        search={{ value: search, onChange: setSearch, placeholder: "Search record keys" }}
+        onClear={narrowed ? clearAll : undefined}
+        actions={
+          <>
             <Select placeholder="All objects" value={filter.module ?? ""} aria-label="Object"
               options={modules.map((m) => ({ value: m, label: formatModuleName(m) }))} onValueChange={(v) => set({ module: v || undefined })} />
-            <Select placeholder="All severities" value={filter.severity ?? ""} aria-label="Severity"
-              options={["critical", "high", "medium", "low"].map((s) => ({ value: s, label: s }))}
-              onValueChange={(v) => set({ severity: v || undefined })} />
             <Select placeholder="Anyone" value={filter.assigned_to ?? ""} aria-label="Assignee"
               options={[{ value: "me", label: "Assigned to me" }, { value: "unassigned", label: "Unassigned" },
                 ...users.map((u) => ({ value: u.id, label: u.name || u.email }))]}
               onValueChange={(v) => set({ assigned_to: v || undefined })} />
-            <Input placeholder="Record key (Enter)" aria-label="Search record key" defaultValue={filter.search}
-              onKeyDown={(e) => e.key === "Enter" && set({ search: e.currentTarget.value || undefined })} />
-            {filter.check_id && <Chip onDismiss={() => set({ check_id: undefined })}>check {filter.check_id}</Chip>}
-            {filter.version_id && (
-              <Chip onDismiss={() => set({ version_id: undefined })}>failing in version {filter.version_id.slice(0, 8)}</Chip>
-            )}
-          </Stack>
+          </>
+        }
+      >
+        {SEVERITIES.map((s) => (
+          <Chip key={s} selected={filter.severity === s} onClick={() => set({ severity: filter.severity === s ? undefined : s })}>{cap(s)}</Chip>
+        ))}
+        {filter.check_id ? <Chip tone="info" onDismiss={() => set({ check_id: undefined })}>Check: <Mono>{filter.check_id}</Mono></Chip> : null}
+        {filter.version_id ? (
+          <Chip tone="info" onDismiss={() => set({ version_id: undefined })}>Failing in run <Mono>{filter.version_id.slice(0, 8)}</Mono></Chip>
+        ) : null}
+      </FilterBar>
 
-          {ids.length > 0 && (
-            <Stack direction="row" gap={2} align="center" wrap
-              className="rounded-md bg-[var(--aurora-accent-selected-bg)] px-3 py-2">
-              <Text variant="text-small">{ids.length} selected</Text>
-              {can("assign") && (
-                <>
-                  <Select placeholder="Assign to…" value="" aria-label="Assign selected"
-                    options={[{ value: "__none__", label: "Unassign" }, ...users.map((u) => ({ value: u.id, label: u.name || u.email }))]}
-                    onValueChange={(v) => bulk.mutate({ ids, assigned_to: v === "__none__" ? "" : v })} />
-                  <Button size="sm" variant="secondary" onClick={() => bulk.mutate({ ids, status: "in_progress" })}>Start work</Button>
-                  <Button size="sm" variant="secondary" onClick={() => bulk.mutate({ ids, status: "resolved", resolution: "fixed_in_source" })}>
-                    Mark fixed in SAP
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => bulk.mutate({ ids, status: "open" })}>Re-open</Button>
-                </>
-              )}
-              {can("approve") && (
-                <>
-                  <Button size="sm" variant="ghost" onClick={() => bulk.mutate({ ids, status: "accepted", resolution: "accepted_risk" })}>Accept risk</Button>
-                  <ReasonButton size="sm" label="False positive" prompt="Why are these not issues?"
-                    onConfirm={(note) => bulk.mutate({ ids, status: "accepted", resolution: "false_positive", note })} />
-                </>
-              )}
-            </Stack>
-          )}
+      {ids.length > 0 ? (
+        <div className="ui-notice" role="region" aria-label="Selected records">
+          <span>{ids.length} selected</span>
+          {can("assign") ? (
+            <>
+              <Select placeholder="Assign to" value="" aria-label="Assign selected"
+                options={[{ value: "__none__", label: "Unassign" }, ...users.map((u) => ({ value: u.id, label: u.name || u.email }))]}
+                onValueChange={(v) => bulk.mutate({ ids, assigned_to: v === "__none__" ? "" : v })} />
+              <Button size="sm" variant="secondary" onClick={() => bulk.mutate({ ids, status: "in_progress" })}>Start work</Button>
+              <Button size="sm" variant="secondary" onClick={() => bulk.mutate({ ids, status: "resolved", resolution: "fixed_in_source" })}>
+                Mark fixed in SAP
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => bulk.mutate({ ids, status: "open" })}>Re-open</Button>
+            </>
+          ) : null}
+          {can("approve") ? (
+            <>
+              <Button size="sm" variant="ghost" onClick={() => bulk.mutate({ ids, status: "accepted", resolution: "accepted_risk" })}>Accept risk</Button>
+              <ReasonButton size="sm" label="False positive" prompt="Why are these not issues?"
+                onConfirm={(note) => bulk.mutate({ ids, status: "accepted", resolution: "false_positive", note })} />
+            </>
+          ) : null}
+          <button type="button" className="ui-link-button" onClick={() => setSelected(new Set())}>Clear selection</button>
+        </div>
+      ) : null}
 
-          <DataTable
-            columns={columns(selected, toggle)}
-            data={data?.items ?? []}
-            getRowId={(r) => r.id}
-            onRowActivate={(r) => setOpenId(r.id)}
-            maxHeight={560}
-            ariaLabel="Failing records"
-            empty={<Text tone="muted">{isFetching ? "Fetching failing records…" : "No failing records match — analyse a version or widen the filters."}</Text>}
-          />
-          <Pager offset={offset} total={data?.total ?? 0} pageSize={PAGE} onChange={setOffset} noun="failing records" />
-        </Stack>
-      </Panel>
+      {isLoading ? <TableSkeleton rows={10} label="Loading failing records" />
+        : error ? <Banner tone="danger" title="Failing records could not be read">{(error as Error).message}</Banner>
+        : items.length ? (
+          <div className="ui-stack" style={{ gap: "var(--aurora-space-3)" }}>
+            <DataTable columns={columns(selected, toggle)} data={items} getRowId={(r) => r.id} onRowActivate={(r) => setOpenId(r.id)}
+              maxHeight="62vh" ariaLabel="Failing records. Use j and k to move, Enter to open." />
+            <Pager offset={offset} total={data?.total ?? 0} pageSize={PAGE} onChange={setOffset} noun="failing records" />
+          </div>
+        ) : (
+          <EmptyState action={narrowed
+            ? <button type="button" className="ui-link-button" onClick={clearAll}>Clear filters</button>
+            : <Link className="ui-link" href="/?tab=findings">Open findings</Link>}>
+            {narrowed ? "No failing records match these filters."
+              : status === "open" ? "No open failing records. Records appear here after a run finds them failing."
+              : `No ${STATUSES.find((s) => s.id === status)?.label.toLowerCase()} records.`}
+          </EmptyState>
+        )}
       <IssueDrawer id={openId} onClose={() => setOpenId(null)} canComment={can("analyse")} />
     </div>
   );
 }
 
+const Part = ({ title, children }: { title: string; children: React.ReactNode }) => (
+  <section className="ui-detail-part"><h3 className="ui-detail-part__title">{title}</h3>{children}</section>
+);
+
 function IssueDrawer({ id, onClose, canComment }: { id: string | null; onClose: () => void; canComment: boolean }) {
   const qc = useQueryClient();
   const [note, setNote] = useState("");
-  const { data } = useQuery({ queryKey: ["issue", id], queryFn: () => getIssue(id as string), enabled: Boolean(id) });
+  const { data, error } = useQuery({ queryKey: ["issue", id], queryFn: () => getIssue(id as string), enabled: Boolean(id) });
   const comment = useMutation({
     mutationFn: () => commentIssue(id as string, note),
     onSuccess: () => { setNote(""); qc.invalidateQueries({ queryKey: ["issue", id] }); },
-    onError: (e) => toast.error((e as Error).message || "Comment not saved"),
+    onError: (e) => toast.error((e as Error).message || "The comment was not saved"),
   });
   const i = data?.issue;
   return (
-    <Drawer open={Boolean(id)} onClose={onClose} ariaLabel="Issue"
-      header={i && <Stack gap={1}>
-        <Text variant="display-sm" className="font-mono">{i.record_key}</Text>
-        <Stack direction="row" gap={2}>
-          <Chip tone={SEVERITY_TONE[i.severity] ?? "neutral"}>{i.severity}</Chip>
-          <Chip tone={i.status === "resolved" ? "success" : i.status === "accepted" ? "info" : "warning"}>{i.status.replace("_", " ")}</Chip>
-          {i.resolution && <Chip>{RESOLUTION_LABEL[i.resolution] ?? i.resolution}</Chip>}
-        </Stack>
-      </Stack>}>
-      {i && data && (
-        <Stack gap={4}>
-          <Stack gap={1}>
-            <Text className="font-semibold">{i.check_id}{i.field ? <span className="font-mono"> · {i.field}</span> : null}</Text>
-            <Text tone="secondary">{i.message}</Text>
-            <Text variant="text-small" tone="muted">
-              {formatModuleName(i.module)}{i.grain ? ` · evaluated on ${i.grain}` : ""} · first seen {relativeTime(i.first_seen_at)} · last failing {relativeTime(i.last_seen_at)}
-            </Text>
-            <Stack direction="row" gap={3}>
-              <Link className="aurora-link text-[13px]" href={`/workbench/report?issue=${i.id}`}>Open the record report</Link>
-              <Link className="aurora-link text-[13px]" href={`/findings?${new URLSearchParams({ check_id: i.check_id, version_id: i.last_seen_version, module: i.module })}`}>
+    <DetailDrawer open={Boolean(id)} onClose={onClose} ariaLabel="Failing record"
+      header={i ? (
+        <div className="ui-drawer-head">
+          <StatusBadge status={sev(i.severity)}>{cap(i.severity)}</StatusBadge>
+          <h2 className="ui-drawer-head__title"><Mono>{i.record_key}</Mono></h2>
+        </div>
+      ) : null}>
+      {error ? <p className="ui-note">This record could not be read: {(error as Error).message}</p>
+        : !i || !data ? <TableSkeleton rows={4} label="Loading the record" />
+        : (
+          <div className="ui-detail">
+            {i.message ? <p className="ui-note">{i.message}</p> : null}
+            <KeyValue rows={[
+              { k: "Status", v: <StatusBadge status={STATUS_BADGE[i.status]}>{STATUSES.find((s) => s.id === i.status)?.label ?? i.status}</StatusBadge> },
+              ...(i.resolution ? [{ k: "Resolution", v: RESOLUTION_LABEL[i.resolution] ?? i.resolution }] : []),
+              { k: "Check", v: i.check_id, mono: true },
+              ...(i.field ? [{ k: "Field", v: i.field, mono: true }] : []),
+              { k: "Object", v: formatModuleName(i.module) },
+              ...(i.grain ? [{ k: "Evaluated on", v: i.grain, mono: true }] : []),
+              { k: "Assignee", v: i.assignee_email ?? "Unassigned" },
+              { k: "First seen", v: relativeTime(i.first_seen_at) },
+              { k: "Last failing", v: relativeTime(i.last_seen_at) },
+            ]} />
+            <div className="ui-page-header__actions">
+              <Link className="ui-link" href={`/workbench/report?issue=${i.id}`}>Open the record report</Link>
+              <Link className="ui-link" href={`/findings?${new URLSearchParams({ check_id: i.check_id, version_id: i.last_seen_version, module: i.module })}`}>
                 Open the finding
               </Link>
-            </Stack>
-          </Stack>
-          <Stack gap={2}>
-            <Text className="font-semibold">Version by version</Text>
-            <Stack direction="row" gap={1} wrap>
-              {data.runs.map((r) => (
-                <span key={r.version_id} title={new Date(r.run_at).toLocaleString()}>
-                  <Chip tone={r.failing ? "danger" : "success"}>{new Date(r.run_at).toLocaleDateString()} {r.failing ? "fails" : "passes"}</Chip>
-                </span>
-              ))}
-            </Stack>
-          </Stack>
-          <Stack gap={2}>
-            <Text className="font-semibold">Activity</Text>
-            {data.events.length === 0 && <Text tone="muted">No activity yet.</Text>}
-            {data.events.map((e, n) => (
-              <Stack key={n} gap={1} className="border-l-2 border-[var(--aurora-canvas-line)] pl-3">
-                <Text variant="text-small" tone="secondary">
-                  {e.user_label ?? "system"} · {e.action.replace("_", " ")}
-                  {e.from_value || e.to_value ? ` ${e.from_value ?? ""} → ${e.to_value ?? ""}` : ""} · {relativeTime(e.created_at)}
-                </Text>
-                {e.note && <Text>{e.note}</Text>}
-              </Stack>
-            ))}
-            {canComment && (
-              <Stack gap={2}>
-                <Textarea rows={3} value={note} aria-label="Comment" placeholder="What was found or done in SAP"
-                  onChange={(e) => setNote(e.target.value)} />
-                <div><Button size="sm" disabled={!note.trim() || comment.isPending} onClick={() => comment.mutate()}>Add comment</Button></div>
-              </Stack>
-            )}
-          </Stack>
-        </Stack>
-      )}
-    </Drawer>
+            </div>
+            <Part title="Run by run">
+              {data.runs.length ? (
+                <table className="ui-mini-table">
+                  <thead><tr><th scope="col">Run</th><th scope="col">Result</th></tr></thead>
+                  <tbody>
+                    {data.runs.map((r) => (
+                      <tr key={r.version_id}>
+                        <td>{new Date(r.run_at).toLocaleString()}</td>
+                        <td><StatusBadge status={r.failing ? "failed" : "ok"}>{r.failing ? "Fails" : "Passes"}</StatusBadge></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : <p className="ui-note">No run has evaluated this record since it was first seen.</p>}
+            </Part>
+            <Part title="Activity">
+              {data.events.length === 0 ? <p className="ui-note">No activity yet.</p> : (
+                <ol className="ui-plain-list">
+                  {data.events.map((e, n) => (
+                    <li key={n}>
+                      <span className="ui-micro">{relativeTime(e.created_at)}</span>{" "}
+                      {e.user_label ?? "Meridian"} {ACTION_LABEL[e.action] ?? e.action.replace("_", " ")}
+                      {e.from_value || e.to_value ? ` from ${e.from_value ?? "none"} to ${e.to_value ?? "none"}` : ""}
+                      {e.note ? <p className="ui-note">{e.note}</p> : null}
+                    </li>
+                  ))}
+                </ol>
+              )}
+              {canComment ? (
+                <form className="ui-stack" style={{ gap: "var(--aurora-space-2)" }} onSubmit={(e) => { e.preventDefault(); comment.mutate(); }}>
+                  <Textarea rows={3} value={note} aria-label="Comment" placeholder="What was found or done in SAP"
+                    onChange={(e) => setNote(e.target.value)} />
+                  <div><Button size="sm" type="submit" disabled={!note.trim() || comment.isPending}>Add comment</Button></div>
+                </form>
+              ) : null}
+            </Part>
+          </div>
+        )}
+    </DetailDrawer>
   );
 }
