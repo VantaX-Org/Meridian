@@ -15,7 +15,7 @@ from llm.provider import get_llm
 logger = logging.getLogger("meridian.ai_column_matcher")
 
 RULES_DIR = Path(__file__).parent.parent.parent / "checks" / "rules"
-CATEGORIES = ["ecc", "successfactors", "warehouse"]
+CATEGORIES = ["ecc", "successfactors", "warehouse", "concur", "ariba"]
 
 # Human-readable labels for modules
 MODULE_LABELS: dict[str, str] = {
@@ -48,6 +48,12 @@ MODULE_LABELS: dict[str, str] = {
     "transport_management": "Transport Management",
     "wm_interface": "WM Interface",
     "cross_system_integration": "Cross-System Integration",
+    "s4hc_master_data": "S/4HANA BP, CVI & Product",
+    "concur_expense": "Concur Expense Reports",
+    "concur_users": "Concur Users",
+    "ariba_supplier": "Ariba Suppliers",
+    "ariba_contracts": "Ariba Contracts",
+    "ariba_procurement": "Ariba POs & Invoices",
 }
 
 

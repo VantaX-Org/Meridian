@@ -78,6 +78,8 @@ export interface FindingRecord {
   record_key: string;
   grain: string | null;
   module: string;
+  /** The rule's column values ("TABLE.FIELD" → value); privacy-sensitive ones arrive masked. Null for older runs. */
+  field_values: Record<string, string> | null;
 }
 
 /** The records one check found failing in one version. */

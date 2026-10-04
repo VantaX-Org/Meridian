@@ -136,8 +136,8 @@ def test_nav_permission_gating():
 
 
 def test_settings_cards_are_gated():
-    """Settings cards use the same gate as their nav entries."""
-    content = Path("frontend/app/(dashboard)/settings/page.tsx").read_text(encoding="utf-8")
+    """Settings cards (Admin → Settings surface) use the same gate as their nav entries."""
+    content = Path("frontend/components/admin/settings.tsx").read_text(encoding="utf-8")
     assert "isItemVisible" in content
     assert "SETTINGS_ITEMS" in content
 

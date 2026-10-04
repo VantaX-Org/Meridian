@@ -3,6 +3,8 @@
 Sources, in order: HQ's catalogue (licence manifest → rules_hq_cache) sets
 enabled + severity; the tenant's own Rules Engine toggle (rules table) can
 only switch a check off. Unknown ids are ignored — HQ cannot inject logic.
+A tenant's approved (active) rule version (checks/lifecycle.py) is merged onto
+the rule as ``body``; tenant-authored rules arrive as extra rules.
 """
 
 from __future__ import annotations
@@ -24,6 +26,9 @@ def load_overrides(session) -> dict[str, dict]:
         rid = (name or "").split(":", 1)[0].strip()
         if rid and not enabled:
             out.setdefault(rid, {})["enabled"] = False
+    from checks.lifecycle import load_active_versions
+    for rid, body in load_active_versions(session).items():
+        out.setdefault(rid, {})["body"] = body
     return out
 
 
@@ -36,5 +41,6 @@ def apply(rules: list[dict], overrides: dict[str, dict] | None) -> list[dict]:
         if o is None:
             kept.append(r)
         elif o.get("enabled", True):
-            kept.append({**r, **({"severity": o["severity"]} if "severity" in o else {})})
+            kept.append({**r, **o.get("body", {}), "id": r["id"],
+                         **({"severity": o["severity"]} if "severity" in o else {})})
     return kept

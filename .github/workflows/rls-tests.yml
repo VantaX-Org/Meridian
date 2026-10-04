@@ -9,6 +9,9 @@ on:
       - "api/deps.py"
       - "tests/test_rls_integration.py"
       - "tests/test_record_issues_pg.py"
+      - "tests/test_triage_sla_pg.py"
+      - "api/services/triage.py"
+      - "api/routes/triage.py"
       - "api/services/record_issues.py"
       - "api/services/contract_compliance.py"
       - "api/services/mdm_merge.py"
@@ -64,4 +67,4 @@ jobs:
           pip install -r requirements.txt "pytest>=8.0.0" "pytest-asyncio>=0.24.0"
 
       - name: Run database integration tests
-        run: pytest -v tests/test_rls_integration.py tests/test_record_issues_pg.py
+        run: pytest -v tests/test_rls_integration.py tests/test_record_issues_pg.py tests/test_triage_sla_pg.py

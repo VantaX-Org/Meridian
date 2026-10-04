@@ -1,0 +1,305 @@
+# Downstream lineage model: SAP field -> table -> object -> config -> step -> process -> feature -> KPI.
+#
+# Curated, versioned and deterministic. api/services/lineage.py loads this file and
+# validates every TABLE / TABLE.FIELD against the shipped SAP dictionaries (ECC 6 or
+# S/4HANA). An unknown name fails the load. The loader adds edges that it derives
+# automatically from:
+#   - sap/dictionaries/joins.yaml           table -> table (master feeds document)
+#   - checks/rules/**/*.yaml                 check -> field (rule columns)
+#   - sap/process_definitions.py             PTP / OTC L1-L5 steps and their fields
+#   - db/seeds/config_impact_rules.yaml      check -> feature (impact_type)
+#   - DDIC check tables                      config -> field
+#
+# Increase `version` on every semantic change. API responses carry this version.
+
+version: 1
+
+# Customizing / organisational objects (SPRO entries). Key = DDIC table.
+configs:
+  T001: Company code
+  T001W: Plant
+  T001K: Valuation area
+  T001L: Storage location
+  T024E: Purchasing organisation
+  T024: Purchasing group
+  T024D: MRP controller
+  TVKO: Sales organisation
+  T052: Payment terms
+  T042Z: Payment methods
+  T047A: Dunning procedure
+  T077K: Vendor account group
+  T077D: Customer account group
+  T077S: G/L account group
+  T004: Chart of accounts
+  T014: Credit control area
+  T003: FI document type
+  T030: Automatic account determination
+  T093: Depreciation areas
+  T090NA: Depreciation keys
+  ANKA: Asset classes
+  T161: Purchasing document types
+  TVAK: Sales document types
+  TVRO: Routes
+  CSKS: Cost centres
+  CEPC: Profit centres
+  TKA01: Controlling area
+  T134: Material types
+  T023: Material groups
+  T025: Valuation classes
+  T006: Units of measure
+  T438A: MRP types
+  T439A: Lot-sizing procedures
+  T416: BOM usage
+  T411: Task list usage
+  T412: Task list status
+  T430: Operation control keys
+  TC30: Work centre usage
+  T370T: Equipment category
+  T370K: Technical object type
+  T370F: Functional location category
+  T005: Countries
+  TCURC: Currencies
+
+# Master and document objects. `configs` = customizing the object depends on (config feeds object).
+objects:
+  vendor:            {name: Vendor, tables: [LFA1, LFB1, LFBK, LFM1, LFB5], configs: [T077K, T052, T042Z, T024E, T001, T005]}
+  customer:          {name: Customer, tables: [KNA1, KNB1, KNVV, KNKK, KNBK, KNB5], configs: [T077D, T052, T042Z, T014, TVKO, T001, T005]}
+  material:          {name: Material, tables: [MARA, MARC, MARD, MBEW], configs: [T134, T023, T006, T001W, T001K, T025, T438A, T024D]}
+  gl_account:        {name: G/L account, tables: [SKA1, SKB1, SKAT], configs: [T004, T077S, T001, TCURC]}
+  asset:             {name: Fixed asset, tables: [ANLA, ANLB, ANLZ, ANLC, ANEP], configs: [ANKA, T093, T090NA, CSKS, T001]}
+  equipment:         {name: Equipment, tables: [EQUI, EQUZ, EQKT, ILOA], configs: [T370T, T370K, T001W, CSKS]}
+  functional_location: {name: Functional location, tables: [IFLOT, IFLOTX], configs: [T370F]}
+  work_center:       {name: Work centre, tables: [CRHD], configs: [TC30, T001W]}
+  bom:               {name: Bill of material, tables: [MAST, STKO, STPO], configs: [T416, T006]}
+  routing:           {name: Routing, tables: [MAPL, PLKO, PLPO], configs: [T411, T412, T430]}
+  info_record:       {name: Purchasing info record, tables: [EINA, EINE], configs: [T024E]}
+  source_list:       {name: Source list, tables: [EORD], configs: [T001W]}
+  purchase_requisition: {name: Purchase requisition, tables: [EBAN], configs: [T024, T001W]}
+  purchase_order:    {name: Purchase order, tables: [EKKO, EKPO, EKBE], configs: [T161, T024E, T024, T001]}
+  vendor_invoice:    {name: Logistics invoice, tables: [RBKP, RSEG], configs: [T001]}
+  material_document: {name: Material document, tables: [MKPF, MSEG], configs: [T001L]}
+  sales_order:       {name: Sales order, tables: [VBAK, VBAP, VBEP], configs: [TVAK, TVKO]}
+  delivery:          {name: Outbound delivery, tables: [LIKP, LIPS], configs: [TVRO]}
+  billing_document:  {name: Billing document, tables: [VBRK, VBRP], configs: [TVKO]}
+  journal_entry:     {name: Journal entry, tables: [BKPF, BSEG], configs: [T003, CSKS, CEPC]}
+  vendor_item:       {name: Vendor open / cleared item, tables: [BSIK, BSAK], configs: [T052, T042Z]}
+  customer_item:     {name: Customer open / cleared item, tables: [BSID, BSAD], configs: [T052, T047A]}
+
+# Processes. An L1 id that already exists in sap/process_definitions.py (PTP, OTC) is extended.
+processes:
+  - id: PTP
+    name: Procure to Pay
+    l2:
+      - id: PTP-MM
+        name: Material Master
+        steps:
+          - {id: PTP-MM-MM01-01, name: Basic data view, tcode: MM01, fields: [MARA.MTART, MARA.MATKL, MARA.MEINS], configs: [T134, T023, T006]}
+          - {id: PTP-MM-MM01-02, name: Plant / purchasing view, tcode: MM01, fields: [MARC.WERKS, MARC.EKGRP, MARC.BESKZ], configs: [T001W, T024]}
+          - {id: PTP-MM-MM01-03, name: Accounting view, tcode: MM01, fields: [MBEW.BWKEY, MBEW.BKLAS, MBEW.VPRSV, MBEW.STPRS], configs: [T001K, T025, T030]}
+      - id: PTP-PR
+        name: Requisitioning
+        steps:
+          - {id: PTP-PR-ME51N-01, name: Create purchase requisition, tcode: ME51N, fields: [EBAN.MATNR, EBAN.WERKS, EBAN.EKGRP], configs: [T001W, T024]}
+      - id: PTP-SRC
+        name: Source of Supply
+        steps:
+          - {id: PTP-SRC-ME01-01, name: Source list and info record, tcode: ME01, fields: [EORD.MATNR, EORD.WERKS, EORD.LIFNR, EINA.LIFNR, EINA.MATNR, EINE.EKORG, EINE.NETPR], configs: [T024E]}
+      - id: PTP-GR
+        name: Goods Receipt
+        steps:
+          - {id: PTP-GR-MIGO-01, name: Post goods receipt for PO, tcode: MIGO, fields: [MSEG.MATNR, MSEG.WERKS, MSEG.LGORT, MSEG.EBELN, MSEG.LIFNR, MSEG.BWART], configs: [T001L]}
+
+  - id: OTC
+    name: Order to Cash
+    l2:
+      - id: OTC-DEL
+        name: Delivery and Shipping
+        steps:
+          - {id: OTC-DEL-VL01N-01, name: Create outbound delivery, tcode: VL01N, fields: [LIKP.KUNNR, LIKP.VSTEL, LIKP.ROUTE, LIKP.LFDAT, LIKP.WADAT_IST, LIPS.MATNR, LIPS.WERKS], configs: [TVRO, T001W]}
+
+  - id: R2R
+    name: Record to Report
+    modules: [fi_gl, accounts_payable, accounts_receivable, asset_accounting]
+    l2:
+      - id: R2R-GL
+        name: General Ledger
+        steps:
+          - {id: R2R-GL-FS00-01, name: G/L account (chart of accounts), tcode: FS00, fields: [SKA1.KTOPL, SKA1.KTOKS, SKA1.XBILK], configs: [T004, T077S]}
+          - {id: R2R-GL-FS00-02, name: G/L account (company code), tcode: FS00, fields: [SKB1.BUKRS, SKB1.WAERS, SKB1.MITKZ, SKB1.XOPVW, SKB1.FSTAG], configs: [T001, TCURC]}
+          - {id: R2R-GL-FB50-01, name: Post G/L journal entry, tcode: FB50, fields: [BKPF.BLART, BKPF.BUDAT, BKPF.WAERS, BSEG.HKONT, BSEG.KOSTL, BSEG.PRCTR], configs: [T003, CSKS, CEPC]}
+          - {id: R2R-GL-CLOSE-01, name: Period close and financial statements, tcode: F.01, fields: [BSEG.HKONT, BKPF.BUDAT, SKA1.XBILK, SKB1.XOPVW], configs: [T001]}
+      - id: R2R-AP
+        name: Accounts Payable
+        steps:
+          - {id: R2R-AP-FB60-01, name: Post vendor invoice (FI), tcode: FB60, fields: [BSIK.BUKRS, BSIK.LIFNR, BSIK.ZTERM, BSIK.ZFBDT, BSIK.ZLSCH, LFB1.AKONT], configs: [T052, T042Z]}
+      - id: R2R-AR
+        name: Accounts Receivable
+        steps:
+          - {id: R2R-AR-FB70-01, name: Post customer invoice (FI), tcode: FB70, fields: [BSID.BUKRS, BSID.KUNNR, BSID.ZTERM, BSID.ZFBDT, KNB1.AKONT], configs: [T052]}
+          - {id: R2R-AR-F28-01, name: Post incoming payment, tcode: F-28, fields: [BSAD.KUNNR, BSAD.AUGDT, KNB1.ZWELS], configs: [T042Z]}
+          - {id: R2R-AR-FD32-01, name: Maintain credit limit, tcode: FD32, fields: [KNKK.KUNNR, KNKK.KKBER, KNKK.KLIMK, KNKK.CTLPC], configs: [T014]}
+      - id: R2R-AA
+        name: Asset Accounting
+        steps:
+          - {id: R2R-AA-AS01-01, name: Create asset master, tcode: AS01, fields: [ANLA.BUKRS, ANLA.ANLKL, ANLA.TXT50, ANLA.INVNR, ANLA.AKTIV], configs: [ANKA, T001]}
+          - {id: R2R-AA-AS01-02, name: Time-dependent assignment, tcode: AS01, fields: [ANLZ.KOSTL, ANLZ.WERKS, ANLZ.GSBER], configs: [CSKS, T001W]}
+          - {id: R2R-AA-AS01-03, name: Depreciation terms, tcode: AS01, fields: [ANLB.AFABE, ANLB.AFASL, ANLB.NDJAR, ANLB.AFABG], configs: [T093, T090NA]}
+          - {id: R2R-AA-AFAB-01, name: Depreciation run, tcode: AFAB, fields: [ANLB.AFASL, ANLB.NDJAR, ANLC.KANSW, ANLC.NAFAG], configs: [T093, T090NA]}
+          - {id: R2R-AA-ABAVN-01, name: Asset retirement, tcode: ABAVN, fields: [ANLA.DEAKT, ANLC.ANSWL], configs: [T093]}
+
+  - id: P2PR
+    name: Plan to Produce
+    modules: [production_planning, material_master]
+    l2:
+      - id: P2PR-MD
+        name: Production Master Data
+        steps:
+          - {id: P2PR-MD-CS01-01, name: Create bill of material, tcode: CS01, fields: [MAST.MATNR, MAST.WERKS, MAST.STLAN, STKO.BMENG, STPO.IDNRK, STPO.MENGE, STPO.MEINS], configs: [T416, T006, T001W]}
+          - {id: P2PR-MD-CA01-01, name: Create routing, tcode: CA01, fields: [MAPL.MATNR, MAPL.WERKS, PLKO.VERWE, PLKO.STATU, PLPO.VORNR, PLPO.STEUS, PLPO.ARBID], configs: [T411, T412, T430]}
+          - {id: P2PR-MD-CR01-01, name: Create work centre, tcode: CR01, fields: [CRHD.ARBPL, CRHD.WERKS, CRHD.VERWE], configs: [TC30, T001W]}
+      - id: P2PR-MRP
+        name: Material Requirements Planning
+        steps:
+          - {id: P2PR-MRP-MD01-01, name: MRP run, tcode: MD01, fields: [MARC.DISMM, MARC.DISPO, MARC.DISLS, MARC.PLIFZ, MARC.BESKZ, MARC.EISBE], configs: [T438A, T024D, T439A]}
+
+  - id: MAINT
+    name: Maintain (Plant Maintenance)
+    modules: [plant_maintenance]
+    l2:
+      - id: MAINT-TO
+        name: Technical Objects
+        steps:
+          - {id: MAINT-TO-IL01-01, name: Create functional location, tcode: IL01, fields: [IFLOT.TPLNR, IFLOT.FLTYP, IFLOT.IWERK], configs: [T370F]}
+          - {id: MAINT-TO-IE01-01, name: Create equipment, tcode: IE01, fields: [EQUI.EQTYP, EQUI.EQART, EQUI.HERST, EQUI.SERGE, EQUI.BAUJJ], configs: [T370T, T370K]}
+          - {id: MAINT-TO-IE01-02, name: Install and assign equipment, tcode: IE01, fields: [EQUZ.IWERK, EQUZ.GEWRK, ILOA.TPLNR, ILOA.SWERK, ILOA.KOSTL], configs: [T001W, CSKS]}
+      - id: MAINT-EX
+        name: Maintenance Execution
+        steps:
+          - {id: MAINT-EX-IW21-01, name: Create maintenance notification, tcode: IW21, fields: [EQUZ.IWERK, ILOA.TPLNR, EQUI.EQART]}
+          - {id: MAINT-EX-IW31-01, name: Create maintenance order, tcode: IW31, fields: [EQUZ.IWERK, EQUZ.GEWRK, EQUZ.INGRP, ILOA.KOSTL, CRHD.ARBPL], configs: [CSKS]}
+          - {id: MAINT-EX-IP10-01, name: Schedule preventive maintenance plan, tcode: IP10, fields: [EQUI.EQTYP, EQUZ.GEWRK, IFLOT.IWERK]}
+
+# SAP features (config_impact_rules target_feature) -> L4 steps they run on.
+features:
+  Vendor Master Management: [PTP-VM-FK01-01, PTP-VM-FK01-02, PTP-VM-FK01-03, PTP-VM-FK01-04]
+  Purchase Order Processing: [PTP-PO-ME21N-01, PTP-PO-ME21N-02]
+  PO Creation: [PTP-PO-ME21N-01, PTP-PO-ME21N-02, PTP-PR-ME51N-01]
+  Release Strategy: [PTP-PO-ME21N-01]
+  Source Determination: [PTP-SRC-ME01-01]
+  Vendor Evaluation: [PTP-GR-MIGO-01]
+  FI Posting / Invoice Verification: [PTP-IV-MIRO-01, R2R-AP-FB60-01]
+  Invoice Due Date Calculation: [PTP-IV-MIRO-01, R2R-AP-FB60-01]
+  F110 Automatic Payment: [PTP-PAY-F110-01]
+  Withholding Tax Processing: [PTP-PAY-F110-01]
+  Customer Master Management: [OTC-CM-FD01-01, OTC-CM-FD01-02, OTC-CM-FD01-03]
+  Customer Creation: [OTC-CM-FD01-01, OTC-CM-FD01-02]
+  Credit Management: [OTC-CM-FD01-04, R2R-AR-FD32-01]
+  Sales Order Creation: [OTC-SO-VA01-01, OTC-SO-VA01-02]
+  Pricing Determination: [OTC-SO-VA01-03]
+  Delivery Processing: [OTC-SO-VA01-04, OTC-DEL-VL01N-01]
+  Dunning: [OTC-DUN-F150-01]
+  Payment Receipt Processing: [R2R-AR-F28-01]
+  Material Creation: [PTP-MM-MM01-01, PTP-MM-MM01-02]
+  Inventory Valuation: [PTP-MM-MM01-03, PTP-GR-MIGO-01]
+  Account Determination: [PTP-MM-MM01-03]
+  MRP Planning: [P2PR-MRP-MD01-01]
+  BOM Management: [P2PR-MD-CS01-01]
+  Routing / Work Centre: [P2PR-MD-CA01-01, P2PR-MD-CR01-01]
+  Financial Posting: [R2R-GL-FB50-01]
+  Period Close: [R2R-GL-CLOSE-01]
+  Intercompany Reconciliation: [R2R-GL-CLOSE-01]
+  Asset Capitalisation: [R2R-AA-AS01-01, R2R-AA-AS01-02]
+  Depreciation Run: [R2R-AA-AS01-03, R2R-AA-AFAB-01]
+  Asset Retirement: [R2R-AA-ABAVN-01]
+  Maintenance Notification: [MAINT-EX-IW21-01]
+  Work Order Creation: [MAINT-EX-IW31-01]
+  Preventive Maintenance: [MAINT-EX-IP10-01]
+
+# Business KPIs and what drives them (features, L4 steps, L1/L2 processes).
+kpis:
+  dpo:
+    name: Days Payables Outstanding
+    definition: Average days from vendor invoice to payment.
+    features: [Invoice Due Date Calculation, F110 Automatic Payment, FI Posting / Invoice Verification]
+    steps: [R2R-AP-FB60-01]
+  payment_accuracy:
+    name: Payment accuracy
+    definition: Share of vendor payments made without rejection, return or manual rework.
+    features: [F110 Automatic Payment, Vendor Master Management, Withholding Tax Processing]
+  ftr_invoice:
+    name: First-time-right invoice rate
+    definition: Share of vendor invoices posted without a block or manual correction (3-way match).
+    features: [FI Posting / Invoice Verification, Purchase Order Processing]
+    steps: [PTP-GR-MIGO-01]
+  dso:
+    name: Days Sales Outstanding
+    definition: Average days from customer invoice to cash receipt.
+    features: [Dunning, Payment Receipt Processing, Credit Management]
+    steps: [OTC-BIL-VF01-01, R2R-AR-FB70-01]
+  otif:
+    name: On-time in-full delivery
+    definition: Share of customer order lines delivered on the requested date and quantity.
+    features: [Sales Order Creation, Delivery Processing, MRP Planning]
+  inventory_turns:
+    name: Inventory turns
+    definition: Cost of goods sold divided by average inventory value.
+    features: [Inventory Valuation, MRP Planning, Material Creation]
+  schedule_adherence:
+    name: Production schedule adherence
+    definition: Share of planned production completed on schedule.
+    features: [BOM Management, Routing / Work Centre, MRP Planning]
+  days_to_close:
+    name: Days to close
+    definition: Working days from period end to closed books.
+    features: [Financial Posting, Period Close, Intercompany Reconciliation, Account Determination]
+  asset_nbv_accuracy:
+    name: Asset NBV accuracy
+    definition: Share of assets whose net book value agrees with the depreciation plan.
+    features: [Asset Capitalisation, Depreciation Run, Asset Retirement]
+  mtbf:
+    name: Mean time between failures
+    definition: Average operating time between breakdowns of a technical object.
+    features: [Preventive Maintenance, Maintenance Notification]
+    steps: [MAINT-TO-IE01-01, MAINT-TO-IE01-02]
+  mttr:
+    name: Mean time to repair
+    definition: Average time from breakdown notification to technical completion.
+    features: [Work Order Creation, Maintenance Notification]
+
+# Blast radius: transactional tables an object's failing records reach.
+# join: {document field: object record-key field}. Fields missing from a record key are skipped.
+# where: equality filters that select open documents ("" = blank flag).
+# doc_key: the fields that identify one document (distinct count); default = every row.
+blast_radius:
+  vendor:
+    - {table: EKKO, label: Purchase orders (not deleted), join: {LIFNR: LIFNR, BUKRS: BUKRS, EKORG: EKORG}, where: {LOEKZ: ""}, step: PTP-PO-ME21N-01}
+    - {table: BSIK, label: Open vendor items, join: {LIFNR: LIFNR, BUKRS: BUKRS}, doc_key: [BUKRS, BELNR, GJAHR], step: PTP-PAY-F110-01}
+    - {table: RBKP, label: Logistics invoices, join: {LIFNR: LIFNR, BUKRS: BUKRS}, step: PTP-IV-MIRO-01}
+    - {table: EINA, label: Purchasing info records, join: {LIFNR: LIFNR}, step: PTP-SRC-ME01-01}
+    - {table: EORD, label: Source list entries, join: {LIFNR: LIFNR}, step: PTP-SRC-ME01-01}
+  customer:
+    - {table: BSID, label: Open customer items, join: {KUNNR: KUNNR, BUKRS: BUKRS}, doc_key: [BUKRS, BELNR, GJAHR], step: OTC-DUN-F150-01}
+    - {table: VBAK, label: Sales orders, join: {KUNNR: KUNNR, VKORG: VKORG}, step: OTC-SO-VA01-01}
+    - {table: LIKP, label: Outbound deliveries, join: {KUNNR: KUNNR}, step: OTC-DEL-VL01N-01}
+    - {table: VBRK, label: Billing documents, join: {KUNAG: KUNNR, VKORG: VKORG}, step: OTC-BIL-VF01-01}
+  material:
+    - {table: EKPO, label: Open PO items, join: {MATNR: MATNR, WERKS: WERKS}, where: {LOEKZ: "", ELIKZ: ""}, doc_key: [EBELN], step: PTP-PO-ME21N-02}
+    - {table: EBAN, label: Open purchase requisitions, join: {MATNR: MATNR, WERKS: WERKS}, where: {LOEKZ: "", EBAKZ: ""}, doc_key: [BANFN], step: PTP-PR-ME51N-01}
+    - {table: VBAP, label: Sales order items (not rejected), join: {MATNR: MATNR, WERKS: WERKS}, where: {ABGRU: ""}, doc_key: [VBELN], step: OTC-SO-VA01-02}
+    - {table: MAST, label: BOM assignments, join: {MATNR: MATNR, WERKS: WERKS}, step: P2PR-MD-CS01-01}
+    - {table: MAPL, label: Routing assignments, join: {MATNR: MATNR, WERKS: WERKS}, step: P2PR-MD-CA01-01}
+    - {table: EORD, label: Source list entries, join: {MATNR: MATNR, WERKS: WERKS}, step: PTP-SRC-ME01-01}
+  gl_account:
+    - {table: BSEG, label: Journal entry lines, join: {HKONT: SAKNR, BUKRS: BUKRS}, doc_key: [BUKRS, BELNR, GJAHR], step: R2R-GL-FB50-01}
+    - {table: LFB1, label: Vendors reconciled to account, join: {AKONT: SAKNR, BUKRS: BUKRS}, step: PTP-VM-FK01-03}
+    - {table: KNB1, label: Customers reconciled to account, join: {AKONT: SAKNR, BUKRS: BUKRS}, step: OTC-CM-FD01-03}
+  asset:
+    - {table: ANEP, label: Asset line items, join: {BUKRS: BUKRS, ANLN1: ANLN1, ANLN2: ANLN2}, step: R2R-AA-AFAB-01}
+    - {table: ANLC, label: Asset value records, join: {BUKRS: BUKRS, ANLN1: ANLN1, ANLN2: ANLN2}, step: R2R-AA-AFAB-01}
+  purchase_order:
+    - {table: EKBE, label: PO history records, join: {EBELN: EBELN}, step: PTP-GR-MIGO-01}
+    - {table: RSEG, label: Invoice items on PO, join: {EBELN: EBELN}, doc_key: [BELNR, GJAHR], step: PTP-IV-MIRO-01}
+  functional_location:
+    - {table: ILOA, label: Location assignments, join: {TPLNR: TPLNR}, step: MAINT-TO-IE01-02}
+  work_center:
+    - {table: PLPO, label: Routing operations, join: {ARBID: OBJID}, step: P2PR-MD-CA01-01}

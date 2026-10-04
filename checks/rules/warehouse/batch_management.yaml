@@ -313,3 +313,100 @@ rules:
       __other__: Country '{invalid_value}' is not in T005. Correct the origin in the batch master (MSC2N > Basic data 1).
     record_fix_template: 'Batch {MCH1.CHARG} (material {MCH1.MATNR}): country of origin ''{actual_value}'' is not in
       T005.'
+
+  - id: BATCH020
+    field: MCH1.CUOBJ_BM
+    check_class: null_check
+    grain: MCH1
+    applies_when:
+      MARA.MHDHB: {gt: 0}
+    severity: medium
+    dimension: completeness
+    message: Shelf-life batch has no batch classification
+    why_it_matters: Materials with a total shelf life (MARA.MHDHB) are normally selected by expiry date during batch
+      determination, which reads the batch classification (MCH1.CUOBJ_BM). A batch without a classification cannot be
+      found by characteristic-based search strategies.
+    rule_authority: best_practice
+    sap_impact: Batch determination skips the batch or picks it out of FEFO order; characteristic reports miss it.
+    fix_map:
+      __blank__: Assign the batch class and values in MSC2N; check that the material has a batch class in MM02
+        (classification view).
+    record_fix_template: 'Batch {MCH1.MATNR}/{MCH1.CHARG}: no batch classification.'
+
+  - id: BATCH021
+    field: MCH1.VFDAT
+    check_class: cross_field_check
+    fail_when: '`MCH1.VFDAT` < `MCH1.LWEDT`'
+    require_populated: true
+    severity: high
+    dimension: accuracy
+    message: Batch expired before its last goods receipt
+    why_it_matters: The shelf-life expiration date (MCH1.VFDAT) is earlier than the last goods receipt (MCH1.LWEDT).
+      Either the batch was received already expired, or one of the dates is wrong; both mean the expiry date cannot
+      be trusted.
+    rule_authority: best_practice
+    sap_impact: Expired goods enter stock; FEFO and expiry reports give wrong results.
+    fix_map:
+      __other__: Check the delivery documents and correct the expiration date in MSC2N, or block and return the batch.
+    record_fix_template: 'Batch {MCH1.MATNR}/{MCH1.CHARG}: expires {MCH1.VFDAT}, last receipt {MCH1.LWEDT}.'
+
+  - id: BATCH022
+    field: MCH1.VFDAT
+    check_class: cross_field_check
+    grain: MCH1
+    fail_when: '((`MCH1.VFDAT` - `MCH1.HSDAT`).dt.days > `MARA.MHDHB`) & (`MARA.MHDHB` > 0)'
+    require_populated: true
+    applies_when:
+      MARA.IPRKZ: {blank: true}
+    severity: high
+    dimension: accuracy
+    message: Batch shelf life is longer than the material's total shelf life
+    why_it_matters: SAP calculates the expiration date as production date plus total shelf life (MARA.MHDHB, in days
+      when the period indicator MARA.IPRKZ is blank). A batch whose expiration date (MCH1.VFDAT) lies further from its
+      production date (MCH1.HSDAT) than the total shelf life was given a longer life by hand.
+    rule_authority: best_practice
+    sap_impact: Stock stays usable in the system after it has expired physically; FEFO picks the wrong batch.
+    fix_map:
+      __other__: Recalculate and correct the expiration date in MSC2N, or correct the total shelf life on the material
+        (MM02, plant data / storage).
+    record_fix_template: 'Batch {MCH1.MATNR}/{MCH1.CHARG}: made {MCH1.HSDAT}, expires {MCH1.VFDAT}, shelf life
+      {MARA.MHDHB} days.'
+
+  - id: BATCH023
+    field: MCHB.CLABS
+    check_class: cross_field_check
+    fail_when: '`MCHB.CLABS` < 0'
+    severity: high
+    dimension: accuracy
+    message: Negative unrestricted batch stock
+    why_it_matters: Unrestricted batch stock (MCHB.CLABS) below zero means more was issued from the batch than it held.
+      Negative stock is only possible when it is allowed for the plant and storage location, and it hides which batch
+      was really consumed.
+    rule_authority: best_practice
+    sap_impact: Batch where-used and recall traceability are wrong; valuation is distorted until the stock is
+      corrected.
+    fix_map:
+      __other__: Post the missing goods receipt or a transfer from the batch actually used (MIGO), then review whether
+        negative stock should be allowed (OMJ1).
+    record_fix_template: 'Batch {MCHB.MATNR}/{MCHB.CHARG} in {MCHB.WERKS}/{MCHB.LGORT}: unrestricted stock
+      {MCHB.CLABS}.'
+
+  - id: BATCH024
+    field: MCH1.QNDAT
+    check_class: freshness_check
+    grain: MCHB
+    max_age_hours: 0
+    applies_when:
+      MCHB.CLABS: {gt: 0}
+    severity: medium
+    dimension: timeliness
+    message: Batch with unrestricted stock is past its next inspection date
+    why_it_matters: The next inspection date (MCH1.QNDAT) is when the batch must be re-inspected before further use.
+      Unrestricted stock past that date can be consumed without the required inspection.
+    rule_authority: best_practice
+    sap_impact: Uninspected stock is issued; recurring inspection (QA07) has not run or its lots are not processed.
+    fix_map:
+      __other__: Run the recurring inspection deadline job (QA07) and complete the inspection lot, or move the stock to
+        quality inspection.
+    record_fix_template: 'Batch {MCHB.MATNR}/{MCHB.CHARG}: inspection was due {actual_value}, {MCHB.CLABS}
+      unrestricted.'

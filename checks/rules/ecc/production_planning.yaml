@@ -1055,3 +1055,309 @@ rules:
   fix_map:
     __other__: Delete the BOM allocation (CS02) or extend the material to the plant.
   record_fix_template: 'BOM allocation {MAST.MATNR} plant {MAST.WERKS}: the material is not active in the plant.'
+
+- id: PP066
+  field: PLPO.ARBID
+  check_class: exists_check
+  target_table: CRHD
+  target_fields:
+  - OBJID
+  target_when:
+    OBJTY: [A]
+    LVORM: {blank: true}
+  applies_when:
+    PLPO.PLNTY: [N, R, '2', S]
+  severity: critical
+  dimension: consistency
+  message: Operation work centre does not exist or is flagged for deletion
+  why_it_matters: The work centre supplies the control key defaults, the formulas for scheduling, capacity and
+    costing, and the activity types. An operation on a dead work centre cannot be scheduled or costed.
+  rule_authority: sap_hard_constraint
+  sap_impact: Order creation (CO01) and release fail or produce unscheduled, uncosted operations; standard cost
+    estimates (CK11N) miss the activity.
+  fix_map:
+    __other__: Replace the work centre in the routing operation (CA02) with an active one.
+  record_fix_template: 'Routing {PLPO.PLNTY}/{PLPO.PLNNR} node {PLPO.PLNKN}: work centre {PLPO.ARBID} does not
+    exist or is deleted.'
+
+- id: PP067
+  field: MAPL.PLNNR
+  check_class: exists_check
+  fields:
+  - MAPL.PLNTY
+  - MAPL.PLNNR
+  - MAPL.PLNAL
+  - MAPL.WERKS
+  target_table: PLKO
+  target_fields:
+  - PLNTY
+  - PLNNR
+  - PLNAL
+  - WERKS
+  target_when:
+    LOEKZ: {blank: true}
+  applies_when:
+    MAPL.LOEKZ: {blank: true}
+  severity: high
+  dimension: consistency
+  message: Material is assigned to a routing that is deleted or belongs to another plant
+  why_it_matters: Routing selection for orders and costing reads the material assignment; an assignment to a dead
+    or foreign-plant routing selects nothing, or selects the wrong operations.
+  rule_authority: sap_hard_constraint
+  sap_impact: Production orders are created without operations; cost estimates have no activity cost.
+  fix_map:
+    __other__: Delete the stale assignment (CA02 > Material assignment) and assign the active routing of the plant.
+  record_fix_template: 'Material {MAPL.MATNR} plant {MAPL.WERKS}: assigned routing {MAPL.PLNTY}/{MAPL.PLNNR}/{MAPL.PLNAL}
+    is deleted or in another plant.'
+
+- id: PP068
+  field: MARC.MATNR
+  check_class: exists_check
+  fields:
+  - MARC.MATNR
+  - MARC.WERKS
+  target_table: MAPL
+  target_fields:
+  - MATNR
+  - WERKS
+  target_when:
+    PLNTY: [N, R, '2']
+    LOEKZ: {blank: true}
+  applies_when:
+    MARC.BESKZ: [E]
+    MARC.SOBSL: {blank: true}
+    MARC.DISMM: {populated: true, not_in: [ND]}
+  severity: high
+  dimension: completeness
+  message: In-house-produced material has no routing in the plant
+  why_it_matters: MRP plans in-house production for the material; without a routing, orders have no operations,
+    lead time comes from MARC only, and the cost estimate has no labour or machine cost.
+  rule_authority: best_practice
+  sap_impact: Planned orders convert to production orders without operations; CK11N cost estimates under-cost
+    the material.
+  fix_map:
+    __other__: Create and assign a routing (CA01) or, if the material is bought, set procurement type F (MM02 > MRP 2).
+  record_fix_template: 'Material {MARC.MATNR} plant {MARC.WERKS}: in-house production but no routing.'
+
+- id: PP069
+  field: MARC.MATNR
+  check_class: exists_check
+  fields:
+  - MARC.MATNR
+  - MARC.WERKS
+  target_table: MAST
+  target_fields:
+  - MATNR
+  - WERKS
+  target_when:
+    STLAN: ['1', '3']
+  applies_when:
+    MARC.BESKZ: [E]
+    MARC.SOBSL: {blank: true}
+    MARC.DISMM: {populated: true, not_in: [ND]}
+  severity: high
+  dimension: completeness
+  message: In-house-produced material has no production BOM in the plant
+  why_it_matters: Without a production or universal BOM, MRP creates no dependent requirements for components and
+    the order issues nothing.
+  rule_authority: best_practice
+  sap_impact: Component shortages are not planned; production orders have no reservations; costing has no material cost.
+  fix_map:
+    __other__: Create the plant BOM with usage 1 (CS01) or, if the material is bought, set procurement type F.
+  record_fix_template: 'Material {MARC.MATNR} plant {MARC.WERKS}: in-house production but no production BOM.'
+
+- id: PP070
+  field: STPO.IDNRK
+  check_class: exists_check
+  grain: STPO
+  fields:
+  - STPO.IDNRK
+  - MAST.WERKS
+  target_table: MARC
+  target_fields:
+  - MATNR
+  - WERKS
+  target_when:
+    LVORM: {blank: true}
+  applies_when:
+    STPO.POSTP: [L, R]
+  severity: high
+  dimension: consistency
+  message: BOM component is not active in the plant of the BOM
+  why_it_matters: The component is planned and issued in the BOM's plant; without an active plant record there is
+    no MRP, no storage location and no valuation for it there. PP064 only checks the client-level material.
+  rule_authority: sap_hard_constraint
+  sap_impact: BOM explosion in MRP and order creation stops with "material not maintained in plant"; costing fails.
+  fix_map:
+    __other__: Extend the component to the plant (MM01) or replace it in the BOM (CS02).
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: component {STPO.IDNRK} is not active in plant {MAST.WERKS}.'
+
+- id: PP071
+  field: PLKO.PLNNR
+  check_class: exists_check
+  fields:
+  - PLKO.PLNTY
+  - PLKO.PLNNR
+  target_table: PLPO
+  target_fields:
+  - PLNTY
+  - PLNNR
+  target_when:
+    LOEKZ: {blank: true}
+  applies_when:
+    PLKO.PLNTY: [N, R, '2']
+  severity: high
+  dimension: completeness
+  message: Routing has no active operations
+  why_it_matters: A routing without operations is selected for orders and costing but contributes nothing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orders are created without operations (no confirmation, no activity cost); cost estimates are incomplete.
+  fix_map:
+    __other__: Add the operations (CA02) or set the deletion flag on the empty routing.
+  record_fix_template: 'Routing {PLKO.PLNTY}/{PLKO.PLNNR}/{PLKO.PLNAL}: no active operations.'
+
+- id: PP072
+  field: STKO.STLNR
+  check_class: exists_check
+  target_table: STPO
+  target_fields:
+  - STLNR
+  target_when:
+    STLTY: [M]
+    LKENZ: {blank: true}
+  applies_when:
+    STKO.STLTY: [M]
+  severity: high
+  dimension: completeness
+  message: Material BOM has no active items
+  why_it_matters: An empty BOM is found by BOM selection, so MRP and costing treat the assembly as having no components.
+  rule_authority: sap_hard_constraint
+  sap_impact: No dependent requirements; production orders with no reservations; zero material cost in CK11N.
+  fix_map:
+    __other__: Add the components (CS02) or delete the empty BOM.
+  record_fix_template: 'BOM {STKO.STLNR}/{STKO.STLAL}: no active items.'
+
+- id: PP073
+  field: PLPO.EKORG
+  check_class: cross_field_check
+  fail_when: '`PLPO.MATKL`.isna() | `PLPO.EKGRP`.isna() | `PLPO.SAKTO`.isna()'
+  applies_when:
+    PLPO.EKORG: {populated: true}
+    PLPO.INFNR: {blank: true}
+    PLPO.PLNTY: [N, R, '2', S]
+  severity: medium
+  dimension: completeness
+  message: External-processing operation lacks material group, purchasing group or cost element
+  why_it_matters: Externally processed operations (subcontracted machining, rebuilds) create a purchase requisition
+    on release; without an info record, the requisition needs material group, purchasing group and cost element
+    from the operation.
+  rule_authority: sap_hard_constraint
+  sap_impact: Order release fails to create the requisition or creates one that purchasing cannot convert; the
+    external cost is not planned.
+  fix_map:
+    __other__: Maintain the external processing data on the operation (CA02 > External processing) or assign a
+      purchasing info record.
+  record_fix_template: 'Routing {PLPO.PLNTY}/{PLPO.PLNNR} node {PLPO.PLNKN}: external processing data incomplete.'
+- id: PP200
+  field: MAST.STLNR
+  check_class: exists_check
+  fields:
+  - MAST.STLNR
+  - MAST.STLAL
+  target_table: STKO
+  target_fields:
+  - STLNR
+  - STLAL
+  target_when:
+    STLTY:
+    - M
+  severity: high
+  dimension: consistency
+  message: Material is assigned to a BOM alternative that has no BOM header
+  why_it_matters: MAST links a material and plant to a BOM number and alternative. If the header (STKO) for that alternative
+    does not exist, BOM explosion finds an assignment but no BOM, so MRP and costing see no components.
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP creates no dependent requirements; product costing and production orders explode an empty BOM.
+  fix_map:
+    __other__: Recreate the BOM alternative in CS02 or remove the broken material assignment (CS02 / CS20).
+  record_fix_template: 'Material {MAST.MATNR} plant {MAST.WERKS}: BOM {MAST.STLNR} alternative {MAST.STLAL} has no header.'
+- id: PP201
+  field: CRHD.ENDDA
+  check_class: freshness_check
+  max_age_hours: 0
+  applies_when:
+    CRHD.OBJTY:
+    - A
+    CRHD.LVORM:
+      blank: true
+  severity: low
+  dimension: timeliness
+  message: Work centre validity has ended but the work centre is not flagged for deletion
+  why_it_matters: A work centre whose validity has ended can no longer be used in new routings or orders, yet it still shows
+    up in selections and capacity reports. It should be either extended or flagged for deletion.
+  rule_authority: best_practice
+  sap_impact: Routing maintenance and order creation fail with an invalid work centre; capacity reports carry dead resources.
+  fix_map:
+    __other__: Extend the validity in CR02, or set the deletion flag once no task list uses the work centre.
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: validity ended {age_days} days ago.'
+- id: PP202
+  field: MAST.WERKS
+  check_class: exists_check
+  fields:
+  - MAST.MATNR
+  - MAST.WERKS
+  target_table: MARC
+  target_fields:
+  - MATNR
+  - WERKS
+  severity: high
+  dimension: consistency
+  message: BOM is assigned to a material in a plant where the material has no plant view
+  why_it_matters: A plant-specific material BOM is only used when the header material exists in that plant. Without the plant
+    view the BOM can never be exploded by MRP, costing or production orders in that plant.
+  rule_authority: sap_hard_constraint
+  sap_impact: The BOM is dead data; planners maintain components that no process reads.
+  fix_map:
+    __other__: Extend the material to the plant (MM01) or delete the BOM assignment for that plant (CS02).
+  record_fix_template: 'Material {MAST.MATNR}: BOM assigned in plant {MAST.WERKS} without a plant view.'
+- id: PP203
+  field: PLPO.PLNNR
+  check_class: exists_check
+  fields:
+  - PLPO.PLNTY
+  - PLPO.PLNNR
+  target_table: PLKO
+  target_fields:
+  - PLNTY
+  - PLNNR
+  severity: medium
+  dimension: consistency
+  message: Task list operation belongs to a task list group with no header
+  why_it_matters: Operations (PLPO) are read through their task list header (PLKO). An operation whose group has no header
+    is orphaned - no order, cost estimate or maintenance plan can reach it - and usually remains after an incomplete deletion
+    or load.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orphaned operations inflate task list counts and break where-used and mass-change reports (CA85).
+  fix_map:
+    __other__: Recreate the task list header in CA02 / IA05 or delete the orphaned operations in a correction run.
+  record_fix_template: 'Task list {PLPO.PLNTY}/{PLPO.PLNNR} operation {PLPO.VORNR}: no task list header.'
+- id: PP204
+  field: STPO.STLNR
+  check_class: exists_check
+  fields:
+  - STPO.STLTY
+  - STPO.STLNR
+  target_table: STKO
+  target_fields:
+  - STLTY
+  - STLNR
+  severity: medium
+  dimension: consistency
+  message: BOM item belongs to a BOM number with no BOM header
+  why_it_matters: BOM items (STPO) are only exploded through a BOM header (STKO). Items without a header are orphaned and
+    never reach MRP or costing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Components are missing from explosions; where-used lists (CS15) show items that no BOM uses.
+  fix_map:
+    __other__: Recreate the BOM header in CS02 or delete the orphaned items.
+  record_fix_template: 'BOM {STPO.STLTY}/{STPO.STLNR} item {STPO.STLKN}: no BOM header.'

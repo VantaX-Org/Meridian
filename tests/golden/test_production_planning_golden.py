@@ -214,6 +214,11 @@ def test_production_planning_golden():
         "PP044": {"PLNTY=N|PLNNR=50000001|PLNKN=00000003|ZAEHL=00000001"},  # operation without control key
         "PP045": {"PLNTY=R|PLNNR=60000001|PLNKN=00000002|ZAEHL=00000001"},  # operation base quantity 0
         "PP048": {"OBJTY=A|OBJID=10000015"},                   # work centre valid to before valid from
+        "PP201": {"OBJTY=A|OBJID=10000015"},                   # the same work centre expired at the end of 2023
+        # components 100310-100350 have no MRP view at ZA01 in this extract
+        "PP070": {_stpo(101, 2), _stpo(101, 3), _stpo(102, 2), _stpo(102, 3), _stpo(104, 3)},
+        # the defect routings carry no operations in this extract
+        "PP071": {_plko("50000005"), _plko("50000006"), _plko("50000007"), _plko("50000008")},
     }, found
     # routing 50000009 (no description either) and work centre ASSY-03 are flagged for deletion,
     # material 100380 is flagged for deletion at plant ZA01: out of the population, counted

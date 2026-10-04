@@ -294,7 +294,8 @@ def get_dictionary(release: str = "ecc6") -> Dictionary:
     release = RELEASE_FOR_SYSTEM.get(release, release)
     if release not in ("ecc6", "s4hana"):
         raise ValueError(f"Unknown dictionary release: {release}")
-    tables = {p.stem: _abap_table(p, "ecc6") for p in sorted((_ROOT / "ecc6" / "tables").glob("*.json"))}
+    # keyed by the table name, not the file stem: /SCWM/AQUA lives in _SCWM_AQUA.json
+    tables = {t.name: t for t in (_abap_table(p, "ecc6") for p in sorted((_ROOT / "ecc6" / "tables").glob("*.json")))}
     if release == "s4hana":
         tables = _apply_s4_delta(tables)
     for t in _canonical_tables():

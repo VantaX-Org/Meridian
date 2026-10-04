@@ -232,6 +232,26 @@ def _codes(series: pd.Series) -> tuple[np.ndarray, np.ndarray, int]:
     return codes.astype(np.int64), (s != "").to_numpy(), len(uniques)
 
 
+_CODE_TYPES = {"CUKY", "UNIT", "LANG"}
+_SHORT_CODE = 4  # CHAR/NUMC this short is a code even without a check table (KNTTP, INCO1)
+
+
+def _is_code(dictionary: Any, col: str) -> bool:
+    """A field a business rule can be stated on: one with configured values.
+
+    Users (ERNAM), free text (INCO2), status strings (PSTAT), quantities and
+    amounts can correlate with a code in a sample, but "the creator decides the
+    material type" is not a rule anyone would enforce.
+    """
+    table, _, name = col.partition(".")
+    f = dictionary.field(table, name) if dictionary is not None else None
+    if f is None:
+        return True
+    if f.check_table or f.fixed_values or f.type in _CODE_TYPES:
+        return True
+    return f.type in ("CHAR", "NUMC") and 0 < f.length <= _SHORT_CODE
+
+
 def discover_dependencies(frame: pd.DataFrame, cols: list[str], min_support: float = 0.99,
                           min_rows: int = 50, key_cols: Optional[list[str]] = None,
                           max_candidates: int = DEP_MAX_CANDIDATES,
@@ -315,6 +335,7 @@ def profile_module(frames: TableFrames, dictionary: Any, tables: list[str],
             continue
         part, sampled = sample(df, max_rows)
         keys = [f"{table}.{k}" for k in dictionary.keys(table)] if dictionary is not None else []
-        for d in discover_dependencies(part, _fields_of(part, table), key_cols=keys):
+        cols = [c for c in _fields_of(part, table) if _is_code(dictionary, c)]
+        for d in discover_dependencies(part, cols, key_cols=keys):
             deps.append({"table": table, **d, "sampled": sampled})
     return profiles, deps

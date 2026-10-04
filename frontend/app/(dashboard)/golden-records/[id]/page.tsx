@@ -16,9 +16,10 @@ import {
   ChevronDown,
   ChevronUp,
   GitBranch,
+  GitMerge,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -467,6 +468,13 @@ export default function GoldenRecordDetailPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          <Link
+            href={`/golden-records/${recordId}/merge`}
+            className={buttonVariants({ variant: "outline", className: "gap-2" })}
+          >
+            <GitMerge className="h-4 w-4" />
+            Why merged
+          </Link>
           {record.status !== "golden" && record.status !== "superseded" && (
             <Button
               onClick={() => promoteMutation.mutate()}

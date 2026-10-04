@@ -10,21 +10,23 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, type ReactNode } from "react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
-  Banner, Button, Chip, DataTable, Drawer, EmptyState, Input, KpiRail, Pager, Panel, Stack, Stat, Text, useDrawerParam, type AuroraColumnMeta,
+  Banner, Button, Chip, DataTable, Drawer, EmptyState, Input, KpiRail, Pager, Panel, Select, Stack, Stat, Text, useDrawerParam, type AuroraColumnMeta,
 } from "@/components/aurora";
-import { copyToClipboard, saveView } from "@/components/meridian/actions";
+import { toast } from "sonner";
+import { copyToClipboard, downloadCsv } from "@/components/meridian/actions";
 import { useRole } from "@/hooks/use-role";
-import { getFindings } from "@/lib/api/findings";
-import { getFindingRecords, getVersion } from "@/lib/api/versions";
+import { deleteSavedView, getFindings, getFindingsAggregate, listSavedViews, saveNamedView } from "@/lib/api/findings";
+import { getFindingRecords, getVersion, type FindingRecord } from "@/lib/api/versions";
 import { formatModuleName } from "@/lib/format";
 import type { Dimension, Finding } from "@/types/api";
 
 const meta = (m: AuroraColumnMeta) => m;
 const PAGE = 200;
 const RECORDS_PAGE = 25;
+const EXPORT_PAGE = 1000;
 const FILTER_KEYS = ["version_id", "module", "severity", "dimension", "check_id"] as const;
 type FilterKey = (typeof FILTER_KEYS)[number];
 type Filter = Partial<Record<FilterKey, string>>;
@@ -71,15 +73,15 @@ export function FindingsSurface() {
   const total = q.data?.total ?? findings.length;
   const visible = findings.filter((f) => matches(f, search));
   const selected = drawer.value ? findings.find((f) => f.id === drawer.value) ?? null : null;
-  const counts = useMemo(() => {
-    const c: Record<Sev, number> = { critical: 0, high: 0, medium: 0, low: 0 };
-    const mod: Record<string, number> = {};
-    for (const f of findings) { c[sev(f.severity)] += 1; mod[f.module] = (mod[f.module] ?? 0) + 1; }
-    return { sev: c, modules: Object.entries(mod).sort((a, b) => b[1] - a[1]) };
-  }, [findings]);
-  const affected = findings.reduce((a, f) => a + f.affected_count, 0);
-  const rated = findings.filter((f) => f.pass_rate !== null);
-  const meanPass = rated.length ? Math.round(rated.reduce((a, f) => a + (f.pass_rate ?? 0), 0) / rated.length) : null;
+  // headline figures over every matching finding, not the page on screen
+  const agg = useQuery({
+    queryKey: ["findings.aggregate", filter],
+    queryFn: () => getFindingsAggregate(filter),
+    placeholderData: keepPreviousData,
+  }).data;
+  const counts = { sev: agg?.severity ?? { critical: 0, high: 0, medium: 0, low: 0 }, modules: (agg?.by_module ?? []).map((m) => [m.module, m.findings] as const) };
+  const affected = agg?.affected_records ?? 0;
+  const meanPass = agg?.avg_pass_rate == null ? null : Math.round(agg.avg_pass_rate);
 
   const columns = useMemo<ColumnDef<Finding, unknown>[]>(() => [
     { id: "severity", header: "Severity", meta: meta({ sticky: "start", width: 100 }),
@@ -109,7 +111,7 @@ export function FindingsSurface() {
         <ObjectScores versionId={filter.version_id} module={filter.module} dimension={filter.dimension} onDimension={(d) => set({ dimension: d })} />
       ) : null}
 
-      <SeverityBar counts={counts.sev} total={findings.length} active={filter.severity} onPick={(s) => set({ severity: filter.severity === s ? undefined : s })} />
+      <SeverityBar counts={counts.sev} total={agg?.total ?? 0} active={filter.severity} onPick={(s) => set({ severity: filter.severity === s ? undefined : s })} />
 
       <Stack direction="row" gap={2} wrap align="center">
         {!filter.module ? counts.modules.slice(0, 10).map(([m, n]) => (
@@ -123,7 +125,7 @@ export function FindingsSurface() {
         {active.length ? <Button variant="ghost" size="sm" onClick={clearAll}>Clear all</Button> : null}
         <span style={{ flex: 1 }} />
         <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Filter findings…" aria-label="Filter findings" style={{ width: 220 }} />
-        <Button variant="ghost" size="sm" onClick={() => saveView("findings", filter)}>Save view</Button>
+        <SavedViews filter={filter} onApply={(f) => set(Object.fromEntries(FILTER_KEYS.map((k) => [k, f[k]])) as Filter)} />
         {can("manage_rules") ? <Link href="/settings/rules" className="aurora-link">New rule →</Link> : null}
       </Stack>
 
@@ -148,6 +150,48 @@ export function FindingsSurface() {
         {selected ? <FindingDetail finding={selected} /> : null}
       </Drawer>
     </Stack>
+  );
+}
+
+const sameFilter = (a: Record<string, string>, b: Filter) => FILTER_KEYS.every((k) => (a[k] ?? "") === (b[k] ?? ""));
+
+/** The user's named filter sets, stored server-side: pick one to apply it, name the current filters to save them. */
+function SavedViews({ filter, onApply }: { filter: Filter; onApply: (f: Record<string, string>) => void }) {
+  const qc = useQueryClient();
+  const key = ["saved-views", "findings"];
+  const { data: views = [] } = useQuery({ queryKey: key, queryFn: () => listSavedViews("findings") });
+  const [naming, setNaming] = useState(false);
+  const [name, setName] = useState("");
+  const current = views.find((v) => sameFilter(v.filters, filter));
+  const save = useMutation({
+    mutationFn: () => saveNamedView("findings", name.trim(), filter as Record<string, string>),
+    onSuccess: (v) => { toast.success(`View \u201c${v.name}\u201d saved`); setNaming(false); setName(""); void qc.invalidateQueries({ queryKey: key }); },
+    onError: (e: Error) => toast.error("Could not save view", { description: e.message }),
+  });
+  const remove = useMutation({
+    mutationFn: deleteSavedView,
+    onSuccess: () => { toast.success("View deleted"); void qc.invalidateQueries({ queryKey: key }); },
+    onError: (e: Error) => toast.error("Could not delete view", { description: e.message }),
+  });
+  if (naming) {
+    return (
+      <form style={{ display: "contents" }} onSubmit={(e) => { e.preventDefault(); if (name.trim()) save.mutate(); }}>
+        <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="View name" aria-label="View name" maxLength={80} style={{ width: 180 }} />
+        <Button size="sm" disabled={!name.trim() || save.isPending} onClick={() => save.mutate()}>Save view</Button>
+        <Button variant="ghost" size="sm" onClick={() => setNaming(false)}>Keep unsaved</Button>
+      </form>
+    );
+  }
+  return (
+    <>
+      {views.length ? (
+        <Select aria-label="Saved views" placeholder="Saved views" style={{ width: 180 }} value={current?.id ?? ""}
+          options={views.map((v) => ({ value: v.id, label: v.name }))}
+          onValueChange={(id) => { const v = views.find((x) => x.id === id); if (v) onApply(v.filters); }} />
+      ) : null}
+      {current ? <Button variant="ghost" size="sm" disabled={remove.isPending} onClick={() => remove.mutate(current.id)}>Delete view</Button> : null}
+      <Button variant="ghost" size="sm" onClick={() => { setName(current?.name ?? ""); setNaming(true); }}>Save view</Button>
+    </>
   );
 }
 
@@ -245,21 +289,66 @@ function FindingDetail({ finding: f }: { finding: Finding }) {
   );
 }
 
-/** Every record this check found failing in the finding's version. */
+/** A failing record as one flat row: its key, then the rule's column values. */
+const flat = (r: FindingRecord): Record<string, string> => ({ record_key: r.record_key, ...(r.field_values ?? {}) });
+
+/** Rows with every column present in every row (CSV/TSV headers come from the union). */
+function square(rows: Record<string, string>[]): Record<string, string>[] {
+  const cols = Array.from(new Set(rows.flatMap((r) => Object.keys(r))));
+  return rows.map((r) => Object.fromEntries(cols.map((c) => [c, r[c] ?? ""])));
+}
+
+async function allRecords(versionId: string, checkId: string): Promise<Record<string, string>[]> {
+  const out: Record<string, string>[] = [];
+  for (let offset = 0; ; offset += EXPORT_PAGE) {
+    const page = await getFindingRecords(versionId, checkId, { limit: EXPORT_PAGE, offset });
+    out.push(...page.records.map(flat));
+    if (page.records.length < EXPORT_PAGE || out.length >= page.total) return square(out);
+  }
+}
+
+/** Every record this check found failing in the finding's version, with the values the rule judged. */
 function VersionRecords({ versionId, checkId }: { versionId: string; checkId: string }) {
   const [offset, setOffset] = useState(0);
+  const [busy, setBusy] = useState(false);
   const { data } = useQuery({
     queryKey: ["finding.records", versionId, checkId, offset],
     queryFn: () => getFindingRecords(versionId, checkId, { limit: RECORDS_PAGE, offset }),
     placeholderData: keepPreviousData,
   });
+  const rows = (data?.records ?? []).map(flat);
+  const cols = Array.from(new Set(rows.flatMap((r) => Object.keys(r))));
+  const run = async (fn: (rows: Record<string, string>[]) => void | Promise<void>) => {
+    setBusy(true);
+    try { await fn(await allRecords(versionId, checkId)); }
+    catch (e) { toast.error("Could not read the failing records", { description: (e as Error).message }); }
+    finally { setBusy(false); }
+  };
+  const copyAll = () => run((all) => {
+    const head = Object.keys(all[0] ?? {});
+    return copyToClipboard([head, ...all.map((r) => head.map((h) => r[h]))].map((l) => l.join("\t")).join("\n"),
+      `${all.length.toLocaleString()} records copied`);
+  });
+  const exportAll = () => run((all) => downloadCsv(`${checkId}-${versionId.slice(0, 8)}-failing.csv`, all));
   return (
     <Section title="Records in this version">
-      {!data ? <Text variant="text-small" tone="muted">Reading record keys…</Text>
+      {!data ? <Text variant="text-small" tone="muted">Reading failing records…</Text>
         : data.total === 0 ? <Text variant="text-small" tone="muted">No record keys were stored for this check in this version.</Text>
         : (
           <Stack gap={2}>
-            <Stack direction="row" gap={1} wrap>{data.records.map((r) => <Chip key={r.record_key}><span className="aurora-number">{r.record_key}</span></Chip>)}</Stack>
+            <Stack direction="row" gap={2} align="center">
+              <Text variant="text-small" tone="secondary">{data.total.toLocaleString()} failing</Text>
+              <span style={{ flex: 1 }} />
+              <Button variant="ghost" size="sm" disabled={busy} onClick={copyAll}>Copy all</Button>
+              <Button variant="ghost" size="sm" disabled={busy} onClick={exportAll}>Export CSV</Button>
+            </Stack>
+            <div style={{ overflowX: "auto" }}>
+              <table className="aurora-exec__table">
+                <thead><tr>{cols.map((c) => <th key={c}>{c === "record_key" ? "Record" : c}</th>)}</tr></thead>
+                <tbody>{rows.map((r) => <tr key={r.record_key}>{cols.map((c) => <td key={c} className="aurora-number">{cellText(r[c])}</td>)}</tr>)}</tbody>
+              </table>
+            </div>
+            {cols.length === 1 ? <Text variant="text-micro" tone="muted">Field values are stored from the next analysis run on.</Text> : null}
             <Pager offset={offset} total={data.total} pageSize={RECORDS_PAGE} onChange={setOffset} noun="records" />
           </Stack>
         )}

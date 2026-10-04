@@ -190,6 +190,10 @@ def test_accounts_payable_golden():
         # 'INV-1001' and 'INV1001': one EUR 2 380.00 invoice entered twice; the credit memo on SI-77810
         # (same reference and amount as its invoice, SHKZG S) is no duplicate invoice
         "AP083": {_open("V2", "5100000118", "INV-1001"), _open("V2", "5100000119", "INV1001")},
+        "AP202": {"LIFNR=V2"},                                    # bank details expired at the end of 2024
+        # the two INV-1001 lines and RE-2026-0815: same vendor, amount, currency and baseline date
+        "AP209": {_open("V2", "5100000118", "INV-1001"), _open("V2", "5100000119", "INV1001"),
+                  _open("V2", "5100000105", "RE-2026-0815")},
     }, found
     # V6 is flagged for deletion and V7 is a one-time account: out of the population, counted
     name = next(r for r in results if r.check_id == "AP003")

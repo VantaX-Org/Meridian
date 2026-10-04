@@ -194,7 +194,7 @@ router.post('/v1/chat/completions', async (request, env: Env, ctx: ExecutionCont
     // 2. Validate JWT
     let payload: JWTPayload;
     try {
-      payload = await verify(token, env.JWT_SECRET) as JWTPayload;
+      payload = (await verify<JWTPayload>(token, env.JWT_SECRET, { throwError: true }))!.payload;
     } catch (err) {
       return new Response(
         JSON.stringify({ error: 'Invalid or expired token' }),
