@@ -55,6 +55,7 @@ import workers.tasks.run_health_check  # noqa: F401 — scheduled connection hea
 import workers.tasks.run_discovery  # noqa: F401 — source-system design discovery
 import workers.tasks.run_config_intelligence  # noqa: F401 — config + Z-object intelligence per version
 import workers.tasks.revalidate_licence  # noqa: F401
+import workers.tasks.run_simulation  # noqa: F401 — fix what-if on a copy of the frames
 import workers.scheduler  # noqa: F401, E402 — registers beat schedule
 
 

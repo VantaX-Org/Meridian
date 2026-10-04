@@ -9,7 +9,7 @@ import { useJobs } from "@/hooks/use-jobs";
 import type { Job } from "@/types/jobs";
 
 const KIND_LABEL: Record<Job["kind"], string> = {
-  extraction: "Download", config_sync: "Config sync", analysis: "Analysis", upload: "Import",
+  extraction: "Download", config_sync: "Config sync", analysis: "Analysis", upload: "Import", simulation: "Simulation",
 };
 const TONE: Record<Job["status"], "neutral" | "info" | "success" | "danger"> = {
   queued: "neutral", running: "info", completed: "success", failed: "danger",

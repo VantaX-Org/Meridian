@@ -16,7 +16,7 @@ Shape of a job::
      tables: [{table, status, rows, expected, ...}],  # extraction: one row per SAP table
      error, result, started_at, updated_at, finished_at}
 
-``kind`` is one of extraction · config_sync · analysis · upload. ``status`` is
+``kind`` is one of extraction · config_sync · analysis · upload · simulation. ``status`` is
 queued · running · completed · failed.
 """
 
@@ -43,6 +43,8 @@ STAGES: dict[str, list[tuple[str, str]]] = {
                  ("report", "Building report")],
     "upload": [("parse", "Parsing file"), ("checks", "Running checks"), ("insights", "AI insights"),
                ("report", "Building report")],
+    "simulation": [("load", "Loading data"), ("before", "Checks as is"), ("patch", "Applying fixes"),
+                   ("after", "Checks after fixes"), ("score", "Scoring")],
 }
 
 # analysis progress (task_progress step numbers) → analysis job stage
