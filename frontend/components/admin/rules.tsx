@@ -15,13 +15,15 @@ import { Banner, Button, Chip, DataTable, Drawer, EmptyState, Input, KpiRail, St
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import { getRules, getRulesSummary, updateRule, type Rule } from "@/lib/api/rules";
-import { formatModuleName } from "@/lib/format";
+import { checkClassLabel, formatModuleName } from "@/lib/format";
 
 const meta = (m: AuroraColumnMeta) => m;
 const CATEGORIES = [["all", "All"], ["ecc", "ECC"], ["successfactors", "SuccessFactors"], ["warehouse", "Warehouse"]] as const;
 const CATEGORY_LABEL: Record<string, string> = { ecc: "ECC", successfactors: "SuccessFactors", warehouse: "Warehouse" };
 const sev = (s: string) => (s === "critical" || s === "high" || s === "low" ? s : "medium");
 const matches = (r: Rule, q: string) => !q || [r.id, r.name, r.description ?? "", r.module, r.severity, ...(r.tags ?? [])].join(" ").toLowerCase().includes(q.toLowerCase());
+/** Distinct check_class ids in a rule's conditions (each condition is `{ field, check_class, … }`). */
+const checkClasses = (r: Rule) => [...new Set(r.conditions.map((c) => (c as { check_class?: unknown }).check_class).filter((c): c is string => typeof c === "string" && !!c))];
 
 export function RulesSurface() {
   const qc = useQueryClient();
@@ -89,6 +91,9 @@ export function RulesSurface() {
               {([["Rule ID", selected.id], ["Object", formatModuleName(selected.module)], ["System", CATEGORY_LABEL[selected.category] ?? selected.category], ["Source", selected.source === "yaml" ? `built-in${selected.source_yaml ? ` · ${selected.source_yaml}` : ""}` : "custom (HQ)"],
                 ["State", selected.enabled ? "enabled" : "disabled"], ["Updated", new Date(selected.updated_at).toLocaleString()]] as [string, string][])
                 .map(([k, v]) => <tr key={k}><td>{k}</td><td className="aurora-number">{v}</td></tr>)}
+              {checkClasses(selected).length ? (
+                <tr><td>Check</td><td>{checkClasses(selected).map((c, i) => <span key={c} title={c}>{i ? ", " : ""}{checkClassLabel(c)}</span>)}</td></tr>
+              ) : null}
             </tbody></table>
             {selected.tags?.length ? <Stack direction="row" gap={1} wrap>{selected.tags.map((t) => <Chip key={t}>{t}</Chip>)}</Stack> : null}
             {selected.conditions?.length ? (
