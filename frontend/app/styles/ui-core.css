@@ -559,3 +559,48 @@ a.ui-link { color: var(--aurora-accent-500); text-decoration: none; }
 @media (max-width: 720px) {
   .ui-page { padding: var(--aurora-space-3); }
 }
+
+/* ── Graphs: process map and connectivity topology ─────────────────── */
+/* Lines and labels are neutral; colour on a node or edge is state only. */
+
+.ui-graph-scroll { overflow-x: auto; }
+.ui-graph { display: block; margin-inline: auto; font-family: var(--aurora-font-ui); }
+.ui-graph__edge { fill: none; stroke: var(--aurora-fg-tertiary); stroke-linecap: round; }
+.ui-graph__edge[data-status="degraded"] { stroke: var(--aurora-status-warning-500); stroke-dasharray: 5 4; }
+.ui-graph__edge[data-status="down"] { stroke: var(--aurora-status-danger-500); stroke-dasharray: 2 4; }
+.ui-graph__edge[data-status="unknown"] { stroke: var(--aurora-canvas-line-strong); stroke-dasharray: 2 4; }
+.ui-graph__arrow { fill: var(--aurora-fg-tertiary); }
+.ui-graph__weight { font-size: 11px; fill: var(--aurora-fg-tertiary); paint-order: stroke; stroke: var(--aurora-canvas-raised); stroke-width: 4px; font-variant-numeric: tabular-nums; }
+.ui-graph__node { fill: var(--aurora-canvas-raised); stroke: var(--aurora-canvas-line-strong); stroke-width: 1; }
+.ui-graph__hub { fill: var(--aurora-canvas-overlay); stroke: var(--aurora-fg-secondary); stroke-width: 1; }
+.ui-graph__title { font-size: 12px; font-weight: 600; fill: var(--aurora-fg-primary); }
+.ui-graph__sub { font-size: 11px; fill: var(--aurora-fg-secondary); font-variant-numeric: tabular-nums; }
+.ui-graph__dot { fill: var(--aurora-fg-tertiary); }
+.ui-graph__dot[data-status="ok"] { fill: var(--aurora-status-success-500); }
+.ui-graph__dot[data-status="medium"] { fill: var(--aurora-status-warning-500); }
+.ui-graph__dot[data-status="critical"], .ui-graph__dot[data-status="failed"] { fill: var(--aurora-status-danger-500); }
+.ui-graph__dot[data-status="idle"] { fill: none; stroke: var(--aurora-fg-tertiary); stroke-width: 1.5; }
+
+.ui-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--aurora-space-2) var(--aurora-space-5);
+  margin: 0;
+  padding: var(--aurora-space-3) var(--aurora-space-4);
+  list-style: none;
+  font-size: 12px;
+  color: var(--aurora-fg-secondary);
+  border-top: 1px solid var(--aurora-canvas-line);
+}
+.ui-legend li { display: inline-flex; align-items: center; gap: var(--aurora-space-2); }
+.ui-legend__line { width: 20px; height: 0; border-top: 2px solid var(--aurora-fg-tertiary); }
+.ui-legend__line[data-status="degraded"] { border-top: 2px dashed var(--aurora-status-warning-500); }
+.ui-legend__line[data-status="down"] { border-top: 2px dotted var(--aurora-status-danger-500); }
+.ui-legend__line[data-status="unknown"] { border-top: 2px dotted var(--aurora-canvas-line-strong); }
+
+/* Ranked list whose lead column holds a status badge wider than a severity word. */
+.ui-ranked--status a, .ui-ranked--status .ui-ranked__row { grid-template-columns: 112px minmax(0, 1fr) auto; }
+
+/* Table rows that hold a two-line cell stack. The virtualiser reads this height. */
+/* ponytail: fixed height ignores the density setting; derive from density if compact matters here. */
+.ui-table-stacked { --aurora-density-row: 52px; }

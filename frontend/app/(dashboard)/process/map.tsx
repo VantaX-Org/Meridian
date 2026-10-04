@@ -1,116 +1,99 @@
 "use client";
 
+/**
+ * Process map: the mined activity graph for one module of the latest complete
+ * version. Each step carries the worst state of the checks on its fields
+ * (red: a critical or high finding, or under 70% pass; amber: medium, or
+ * under 95%; green otherwise), so colour on the map is defect state only.
+ */
+
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { PageHead, KPI, SectionHeader } from "@/components/meridian/atoms";
-import { ArrowRight } from "@/components/meridian/icons";
-import { Skeleton } from "@/components/ui/skeleton";
-import { getMiningGraph } from "@/lib/api/process-mining";
+import {
+  Banner, EmptyState, Metric, MetricStrip, Mono, PageHeader, SectionCard, StatusBadge, TableSkeleton, Tabs, type Status,
+} from "@/components/ui-core";
+import { getMiningGraph, type MiningActivity, type MiningTransition, type MiningVariant } from "@/lib/api/process-mining";
 import { getVersions } from "@/lib/api/versions";
-import type {
-  MiningActivity,
-  MiningTransition,
-} from "@/lib/api/process-mining";
+import { formatModuleName } from "@/lib/format";
 import type { Version } from "@/types/api";
 
 function isComplete(v: Version): boolean {
   return (v.status === "agents_complete" || v.status === "complete" || v.status === "ai_enriched") && !!v.dqs_summary;
 }
 
-function statusColour(s: MiningActivity["step_status"]): string {
-  if (s === "green") return "var(--mn-pos)";
-  if (s === "amber") return "var(--mn-warn)";
-  return "var(--mn-neg)";
+const STEP: Record<MiningActivity["step_status"], { status: Status; label: string }> = {
+  green: { status: "ok", label: "Passing" },
+  amber: { status: "medium", label: "Some fields failing" },
+  red: { status: "critical", label: "Blocking failures" },
+};
+
+const READINESS: Record<MiningVariant["readiness"], string> = { green: "Ready", amber: "At risk", red: "Blocked" };
+
+const pct = (n: number | null | undefined) => (n == null ? null : `${Math.round(n * 100)}%`);
+const plural = (n: number, w: string, many = `${w}s`) => `${n.toLocaleString()} ${n === 1 ? w : many}`;
+
+/* Grid layout in activity order. Edges to the next node run side to side;
+   forward skips arc over the row, backward steps arc under it, and edges to
+   another row leave from the bottom and enter from the top. */
+const COLS = 5, W = 156, H = 52, GX = 56, GY = 64, PAD = 16, TOP = 64;
+
+function edgePath(a: { x: number; y: number }, b: { x: number; y: number }) {
+  let p: number[];
+  if (a.y === b.y && b.x === a.x + W + GX) {
+    p = [a.x + W, a.y + H / 2, a.x + W + GX / 3, a.y + H / 2, b.x - GX / 3, b.y + H / 2, b.x, b.y + H / 2];
+  } else if (a.y === b.y) {
+    const up = b.x > a.x, lift = Math.min(TOP, 24 + Math.abs(b.x - a.x) / 12);
+    const y = up ? a.y : a.y + H, dy = up ? -lift : lift;
+    const x1 = a.x + W / 2 + (up ? 12 : -12), x2 = b.x + W / 2 + (up ? -12 : 12);
+    p = [x1, y, x1, y + dy, x2, y + dy, x2, y];
+  } else {
+    const down = b.y > a.y;
+    const x1 = a.x + W / 2, y1 = down ? a.y + H : a.y, x2 = b.x + W / 2, y2 = down ? b.y : b.y + H;
+    const c = (y2 - y1) / 2;
+    p = [x1, y1, x1, y1 + c, x2, y2 - c, x2, y2];
+  }
+  const mid = { x: (p[0] + 3 * p[2] + 3 * p[4] + p[6]) / 8, y: (p[1] + 3 * p[3] + 3 * p[5] + p[7]) / 8 };
+  return { d: `M ${p[0]} ${p[1]} C ${p[2]} ${p[3]}, ${p[4]} ${p[5]}, ${p[6]} ${p[7]}`, mid };
 }
 
-function ProcessGraph({
-  activities,
-  transitions,
-}: {
-  activities: MiningActivity[];
-  transitions: MiningTransition[];
-}) {
-  const w = 920;
-  const h = 320;
-  if (activities.length === 0) {
-    return (
-      <div style={{ padding: 40, textAlign: "center", color: "var(--mn-ink-400)" }}>
-        No process graph data for this module.
-      </div>
-    );
-  }
-  const layout = activities.map((a, i) => {
-    const x = 60 + (i % 7) * 130;
-    const y = 60 + Math.floor(i / 7) * 100;
-    return { ...a, _x: x, _y: y };
-  });
-  const byId = Object.fromEntries(layout.map((n) => [n.id, n]));
+function ProcessGraph({ activities, transitions }: { activities: MiningActivity[]; transitions: MiningTransition[] }) {
+  const pos = new Map(activities.map((a, i) => [a.id, { x: PAD + (i % COLS) * (W + GX), y: TOP + Math.floor(i / COLS) * (H + GY) }]));
+  const rows = Math.ceil(activities.length / COLS);
+  const width = PAD * 2 + Math.min(COLS, activities.length) * (W + GX) - GX;
+  const height = TOP * 2 + rows * (H + GY) - GY;
+  const maxW = Math.max(1, ...transitions.map((t) => t.weight));
+  const showWeights = transitions.length <= 24;
 
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} width="100%" height={h} preserveAspectRatio="xMidYMid meet">
+    <svg className="ui-graph" viewBox={`0 0 ${width} ${height}`} width={width} height={height}
+         role="img" aria-label={`Process graph: ${plural(activities.length, "activity", "activities")}, ${plural(transitions.length, "transition")}`}>
+      <defs>
+        <marker id="pm-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+          <path d="M0 0 L8 4 L0 8 z" className="ui-graph__arrow" />
+        </marker>
+      </defs>
       {transitions.map((t, i) => {
-        const a = byId[t.from];
-        const b = byId[t.to];
+        const a = pos.get(t.from), b = pos.get(t.to);
         if (!a || !b) return null;
-        const x1 = a._x + 80;
-        const y1 = a._y + 22;
-        const x2 = b._x;
-        const y2 = b._y + 22;
-        const mx = (x1 + x2) / 2;
-        const path = `M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`;
-        const sw = Math.max(1.5, Math.min(6, t.weight / 600));
+        const { d, mid } = edgePath(a, b);
         return (
           <g key={i}>
-            <path
-              d={path}
-              fill="none"
-              stroke="var(--mn-primary)"
-              strokeOpacity="0.7"
-              strokeWidth={sw}
-              strokeLinecap="round"
-            />
-            <text
-              x={(x1 + x2) / 2}
-              y={(y1 + y2) / 2 - 6}
-              textAnchor="middle"
-              fontSize="9"
-              fill="var(--mn-ink-400)"
-              fontFamily="JetBrains Mono, monospace"
-            >
-              {t.weight}
-            </text>
+            <path className="ui-graph__edge" d={d} strokeWidth={1 + 3 * (t.weight / maxW)} markerEnd="url(#pm-arrow)" />
+            {showWeights ? <text className="ui-graph__weight" x={mid.x} y={mid.y - 5} textAnchor="middle">{t.weight.toLocaleString()}</text> : null}
           </g>
         );
       })}
-      {layout.map((a) => {
-        const colour = statusColour(a.step_status);
+      {activities.map((a) => {
+        const p = pos.get(a.id)!;
+        const step = STEP[a.step_status] ?? STEP.green;
         return (
-          <g key={a.id}>
-            <rect x={a._x} y={a._y} rx="9" width="80" height="44" fill="var(--mn-card)" stroke={colour} strokeWidth="1.5" />
-            <text
-              x={a._x + 40}
-              y={a._y + 18}
-              textAnchor="middle"
-              fontSize="9"
-              fontWeight="700"
-              fill="var(--mn-ink-900)"
-              fontFamily="JetBrains Mono, monospace"
-              letterSpacing="0.04em"
-            >
-              {a.label.length > 13 ? a.label.slice(0, 12) + "…" : a.label}
-            </text>
-            <text
-              x={a._x + 40}
-              y={a._y + 33}
-              textAnchor="middle"
-              fontSize="11"
-              fontWeight="700"
-              fill={colour}
-              fontFamily="Inter Tight, sans-serif"
-              style={{ fontVariantNumeric: "tabular-nums" }}
-            >
-              {a.affected_records.toLocaleString()}
-            </text>
+          <g key={a.id} transform={`translate(${p.x} ${p.y})`}>
+            <title>{`${a.label}${a.tcode ? ` (${a.tcode})` : ""}: ${step.label}, ${plural(a.affected_records, "affected record")}`}</title>
+            <rect className="ui-graph__node" width={W} height={H} rx="4" />
+            <circle className="ui-graph__dot" data-status={step.status} cx="14" cy="19" r="4" />
+            <text className="ui-graph__title" x="26" y="23">{a.label.length > 18 ? `${a.label.slice(0, 17)}…` : a.label}</text>
+            <text className="ui-graph__sub" x="26" y="40">{plural(a.affected_records, "record")}</text>
           </g>
         );
       })}
@@ -119,221 +102,122 @@ function ProcessGraph({
 }
 
 export function ProcessMapPage() {
-  const versionsQ = useQuery({
-    queryKey: ["versions.list", { limit: 10 }],
-    queryFn: () => getVersions({ limit: 10 }),
-  });
-  const latest = useMemo(
-    () => versionsQ.data?.versions.find(isComplete),
-    [versionsQ.data],
-  );
-  const availableModules = useMemo(
-    () => (latest?.dqs_summary ? Object.keys(latest.dqs_summary) : []),
-    [latest],
-  );
+  const versionsQ = useQuery({ queryKey: ["versions.list", { limit: 10 }], queryFn: () => getVersions({ limit: 10 }) });
+  const latest = useMemo(() => versionsQ.data?.versions.find(isComplete), [versionsQ.data]);
+  const modules = useMemo(() => (latest?.dqs_summary ? Object.keys(latest.dqs_summary) : []), [latest]);
   const [module, setModule] = useState<string | null>(null);
-  const effectiveModule = module ?? availableModules[0] ?? null;
+  const active = module ?? modules[0] ?? null;
 
   const graphQ = useQuery({
-    queryKey: ["process.mining-graph", latest?.id, effectiveModule],
-    queryFn: () => getMiningGraph(latest!.id, effectiveModule!),
-    enabled: !!latest && !!effectiveModule,
+    queryKey: ["process.mining-graph", latest?.id, active],
+    queryFn: () => getMiningGraph(latest!.id, active!),
+    enabled: !!latest && !!active,
   });
 
+  const activities = graphQ.data?.activities ?? [];
+  const transitions = graphQ.data?.transitions ?? [];
+  const variants = graphQ.data?.variants ?? [];
+  const bottlenecks = activities.filter((a) => a.step_status !== "green").sort((a, b) => b.affected_records - a.affected_records);
+  const affected = activities.reduce((s, a) => s + a.affected_records, 0);
+
   if (versionsQ.isLoading) {
+    return <div className="ui-page"><PageHeader title="Process map" /><TableSkeleton rows={8} label="Loading process map" /></div>;
+  }
+  if (versionsQ.error) {
     return (
-      <>
-        <PageHead title="Process map" route="Process & impact · /process" sub="Loading…" />
-        <Skeleton className="h-[420px] rounded-[10px]" />
-      </>
+      <div className="ui-page">
+        <PageHeader title="Process map" />
+        <Banner tone="danger" title="Versions could not be read">{(versionsQ.error as Error).message}</Banner>
+      </div>
     );
   }
   if (!latest) {
     return (
-      <>
-        <PageHead title="Process map" route="Process & impact · /process" sub="Mining runs against a completed version." />
-        <div className="mn-card mn-card-pad" style={{ textAlign: "center", color: "var(--mn-ink-400)" }}>
-          Run an analysis from <code>/run-sync</code> to populate process mining.
-        </div>
-      </>
+      <div className="ui-page">
+        <PageHeader title="Process map" />
+        <EmptyState action={<Link className="ui-link" href="/sync">Open sync</Link>}>
+          The map is mined from a completed analysis. Sync a system and run an analysis to see its process.
+        </EmptyState>
+      </div>
     );
   }
 
-  const graph = graphQ.data;
-  const bottlenecks = (graph?.activities ?? [])
-    .filter((a) => a.step_status !== "green")
-    .sort((a, b) => b.affected_records - a.affected_records)
-    .slice(0, 5);
-  const variants = graph?.variants ?? [];
-  const totalEvents = (graph?.activities ?? []).reduce((a, x) => a + x.affected_records, 0);
-
   return (
-    <>
-      <PageHead
+    <div className="ui-page">
+      <PageHeader
         title="Process map"
-        route="Process & impact · /process"
-        sub={
-          <>
-            Mining version{" "}
-            <span style={{ font: "500 12px/1 'JetBrains Mono', monospace", color: "var(--mn-ink-500)" }}>
-              {latest.id.slice(0, 8)}
-            </span>
-            {" "}({latest.label ?? "Unlabelled run"}).
-          </>
-        }
+        summary={`Mined from ${latest.label ?? "the latest complete version"}. ${bottlenecks.length ? `${plural(bottlenecks.length, "step")} in ${formatModuleName(active ?? "")} carry failing checks.` : "Every step passes its checks."}`}
       />
 
-      <div className="mn-row mn-stagger" style={{ gridTemplateColumns: "repeat(5, minmax(0, 1fr))", marginBottom: 18 }}>
-        <KPI label="Activities" value={graph?.activities.length ?? 0} />
-        <KPI label="Transitions" value={graph?.transitions.length ?? 0} />
-        <KPI label="Variants" value={variants.length} />
-        <KPI
-          label="Events"
-          value={totalEvents.toLocaleString()}
-          hint={effectiveModule ?? "—"}
-        />
-        <KPI
-          label="Bottlenecks"
-          value={bottlenecks.length}
-          tone={bottlenecks.length > 0 ? "warn" : "pos"}
-        />
-      </div>
+      {modules.length > 1 ? (
+        <Tabs ariaLabel="Module" items={modules.map((m) => ({ id: m, label: formatModuleName(m) }))} value={active ?? ""} onValueChange={setModule} />
+      ) : null}
 
-      <div className="mn-segment" style={{ marginBottom: 14, flexWrap: "wrap" }}>
-        {availableModules.map((m) => (
-          <button
-            key={m}
-            type="button"
-            className={effectiveModule === m ? "on" : ""}
-            onClick={() => setModule(m)}
-          >
-            {m}
-          </button>
-        ))}
-      </div>
-
-      <SectionHeader
-        title={`Active process · ${effectiveModule ?? "—"}`}
-        caption={`${graph?.activities.length ?? 0} activities · ${graph?.transitions.length ?? 0} transitions`}
-      />
-      <div className="mn-card mn-card-pad" style={{ overflowX: "auto" }}>
-        {graphQ.isLoading ? (
-          <Skeleton className="h-72 rounded-[10px]" />
-        ) : (
+      {graphQ.isLoading ? <TableSkeleton rows={8} label="Loading process graph" />
+        : graphQ.error ? <Banner tone="danger" title="Process graph could not be read">{(graphQ.error as Error).message}</Banner>
+        : (
           <>
-            <ProcessGraph activities={graph?.activities ?? []} transitions={graph?.transitions ?? []} />
-            <div className="mn-graph-legend">
-              <span><span className="ld" style={{ background: "var(--mn-pos)" }} /> Green</span>
-              <span><span className="ld" style={{ background: "var(--mn-warn)" }} /> Amber</span>
-              <span><span className="ld" style={{ background: "var(--mn-neg)" }} /> Red</span>
+            <MetricStrip label="Process figures">
+              <Metric label="Activities" value={activities.length} />
+              <Metric label="Transitions" value={transitions.length} />
+              <Metric label="Variants" value={variants.length} />
+              <Metric label="Affected records" value={affected.toLocaleString()} />
+              <Metric label="Steps failing" value={bottlenecks.length} tone={bottlenecks.length ? "warning" : "default"} />
+            </MetricStrip>
+
+            <SectionCard title={formatModuleName(active ?? "")} meta={`${plural(activities.length, "activity", "activities")}, ${plural(transitions.length, "transition")}. Line weight is transition count.`} flush>
+              {activities.length ? (
+                <>
+                  <div className="ui-graph-scroll"><ProcessGraph activities={activities} transitions={transitions} /></div>
+                  <ul className="ui-legend" aria-label="Step state">
+                    <li><StatusBadge status={STEP.green.status}>95% pass or better</StatusBadge></li>
+                    <li><StatusBadge status={STEP.amber.status}>Medium finding, or 70 to 95% pass</StatusBadge></li>
+                    <li><StatusBadge status={STEP.red.status}>Critical or high finding, or under 70% pass</StatusBadge></li>
+                  </ul>
+                </>
+              ) : <EmptyState>No mined activities for this module. Its checks may not map to process steps yet.</EmptyState>}
+            </SectionCard>
+
+            <div className="ui-columns">
+              <SectionCard title="Failing steps" meta="Ranked by affected records" flush>
+                {bottlenecks.length ? (
+                  <ol className="ui-ranked">
+                    {bottlenecks.slice(0, 8).map((b) => (
+                      <li key={b.id}>
+                        <div className="ui-ranked__row">
+                          <StatusBadge status={STEP[b.step_status].status}>{b.step_status === "red" ? "Blocking" : "Failing"}</StatusBadge>
+                          <span className="ui-ranked__title">{b.label}</span>
+                          <span className="ui-ranked__num">{plural(b.affected_records, "record")}</span>
+                          <span className="ui-ranked__meta">
+                            {b.tcode ? <><Mono>{b.tcode}</Mono>, </> : null}{plural(b.finding_count, "finding")}
+                            {pct(b.avg_pass_rate) ? `, ${pct(b.avg_pass_rate)} pass rate` : ""}
+                          </span>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                ) : <EmptyState>Every step passes its checks.</EmptyState>}
+              </SectionCard>
+
+              <SectionCard title="Variants" meta={`${plural(variants.length, "variant")} found`} flush>
+                {variants.length ? (
+                  <ul className="ui-ranked">
+                    {variants.slice(0, 8).map((v) => (
+                      <li key={v.id}>
+                        <div className="ui-ranked__row">
+                          <StatusBadge status={STEP[v.readiness]?.status ?? "idle"}>{READINESS[v.readiness] ?? v.readiness}</StatusBadge>
+                          <span className="ui-ranked__title">{v.label}</span>
+                          <span className="ui-ranked__num">{pct(v.coverage)} coverage</span>
+                          <span className="ui-ranked__meta">{plural(v.activity_count, "step")}, quality {pct(v.quality)}</span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : <EmptyState>No variants found for this module.</EmptyState>}
+              </SectionCard>
             </div>
           </>
         )}
-      </div>
-
-      <div className="mn-row mn-row-12" style={{ marginTop: 18 }}>
-        <div className="mn-col-8">
-          <div className="mn-card mn-card-pad">
-            <SectionHeader title="Bottlenecks" caption="Steps with the highest affected-records counts" />
-            <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 12 }}>
-              {bottlenecks.map((b) => {
-                const passRate = b.avg_pass_rate ?? 0;
-                return (
-                  <div key={b.id} className="mn-bottleneck">
-                    <div style={{ minWidth: 140 }}>
-                      <div style={{ fontWeight: 600, color: "var(--mn-ink-900)" }}>{b.label}</div>
-                      <div
-                        style={{
-                          font: "500 11.5px/1 'JetBrains Mono', monospace",
-                          color: "var(--mn-ink-400)",
-                          marginTop: 3,
-                          letterSpacing: "0.04em",
-                        }}
-                      >
-                        {b.finding_count} findings
-                      </div>
-                    </div>
-                    <div style={{ flex: 1, height: 10, background: "var(--mn-line)", borderRadius: 5, overflow: "hidden" }}>
-                      <div
-                        style={{
-                          width: `${Math.min(100, Math.max(5, 100 - passRate * 100))}%`,
-                          height: "100%",
-                          background: "linear-gradient(90deg, var(--mn-warn), var(--mn-neg))",
-                          borderRadius: 5,
-                          transition: "width 900ms cubic-bezier(.2,.7,.2,1)",
-                        }}
-                      />
-                    </div>
-                    <div style={{ minWidth: 80, textAlign: "right" }}>
-                      <span
-                        className="mn-tabular"
-                        style={{ font: "600 18px/1 'Inter Tight'", color: "var(--mn-ink-900)" }}
-                      >
-                        {b.affected_records.toLocaleString()}
-                      </span>
-                      <div
-                        style={{
-                          font: "500 11px/1 'JetBrains Mono', monospace",
-                          color: "var(--mn-ink-400)",
-                          marginTop: 3,
-                          letterSpacing: "0.04em",
-                        }}
-                      >
-                        records
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-              {bottlenecks.length === 0 && (
-                <div style={{ color: "var(--mn-ink-400)", padding: 12 }}>
-                  No bottlenecks surfaced — every step is green.
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-        <div className="mn-col-4">
-          <div className="mn-card mn-card-pad" style={{ height: "100%" }}>
-            <SectionHeader title="Variants" caption={`${variants.length} discovered`} />
-            <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 12 }}>
-              {variants.slice(0, 6).map((v) => {
-                const stroke =
-                  v.readiness === "green"
-                    ? "var(--mn-pos)"
-                    : v.readiness === "amber"
-                      ? "var(--mn-warn)"
-                      : "var(--mn-neg)";
-                return (
-                  <div
-                    key={v.id}
-                    style={{
-                      padding: 10,
-                      borderRadius: 8,
-                      background: "var(--mn-card-2)",
-                      borderLeft: `3px solid ${stroke}`,
-                    }}
-                  >
-                    <div style={{ fontWeight: 600, color: "var(--mn-ink-900)", fontSize: 13 }}>{v.label}</div>
-                    <div
-                      style={{
-                        font: "500 11px/1 'JetBrains Mono', monospace",
-                        color: "var(--mn-ink-400)",
-                        marginTop: 3,
-                      }}
-                    >
-                      {v.activity_count} steps · coverage {Math.round(v.coverage * 100)}% · quality {Math.round(v.quality * 100)}%
-                    </div>
-                  </div>
-                );
-              })}
-              {variants.length === 0 && (
-                <div style={{ color: "var(--mn-ink-400)" }}>No variants detected.</div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </>
+    </div>
   );
 }

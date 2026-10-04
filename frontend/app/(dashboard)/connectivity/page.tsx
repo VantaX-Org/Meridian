@@ -1,255 +1,76 @@
 "use client";
 
+/**
+ * Connectivity: every SAP connector and its last health check. The topology
+ * draws each system on a ring around Meridian; an edge's colour and dash say
+ * only how the last probe went.
+ */
+
 import Link from "next/link";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { PageHead, KPI, SectionHeader } from "@/components/meridian/atoms";
-import { ArrowRight, SparklesIcon } from "@/components/meridian/icons";
-import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Banner, Button, EmptyState, Metric, MetricStrip, Mono, PageHeader, SectionCard, StatusBadge, TableSkeleton, type Status,
+} from "@/components/ui-core";
 import { getSystems } from "@/lib/api/connectivity";
 import { testConnection } from "@/lib/api/systems";
 import { relativeTime } from "@/lib/format";
-import type { SAPSystemExtended, AuthType, HealthStatus, SystemType } from "@/types/api";
+import type { HealthStatus, SAPSystemExtended } from "@/types/api";
 
-/* ── Visual mappings ────────────────────────────────────────────── */
+type ConnKind = "RFC" | "OData" | "REST";
 
-type ConnKind = "RFC" | "OData" | "HANA" | "REST";
-
-const CONN_PALETTE: Record<ConnKind, { bg: string; fg: string; label: string }> = {
-  RFC:   { bg: "var(--mn-primary-50)",  fg: "var(--mn-primary-700)", label: "RFC" },
-  OData: { bg: "rgba(124,58,237,0.12)", fg: "#7C3AED",               label: "OData" },
-  HANA:  { bg: "var(--mn-pos-bg)",      fg: "var(--mn-pos)",         label: "HANA" },
-  REST:  { bg: "var(--mn-warn-bg)",     fg: "var(--mn-warn)",        label: "REST" },
+const KIND_NOTE: Record<ConnKind, string> = {
+  RFC: "SAP remote function calls",
+  OData: "SAP gateway services",
+  REST: "Token-based REST clients",
 };
 
 function connKindFor(sys: SAPSystemExtended): ConnKind {
-  // Prefer explicit auth_type, fall back to system_type heuristics. The
-  // mapping here matches the canonical /sap/* connector layer (see CLAUDE.md).
+  // auth_type first, then system_type; matches the /sap/* connector layer.
   if (sys.auth_type === "rfc") return "RFC";
   if (sys.system_type === "s4hana_cloud" || sys.system_type === "successfactors") return "OData";
   if (sys.system_type === "ecc" || sys.system_type === "s4hana_onprem" || sys.system_type === "ewm") return "RFC";
-  if (sys.system_type === "concur" || sys.system_type === "ariba") return "REST";
-  if (sys.auth_type === "basic" || sys.auth_type === "oauth2_client_credentials" || sys.auth_type === "oauth2_saml" || sys.auth_type === "api_key") return "REST";
   return "REST";
 }
 
-function statusColour(s: HealthStatus): string {
-  switch (s) {
-    case "healthy":     return "var(--mn-pos)";
-    case "degraded":    return "var(--mn-warn)";
-    case "unreachable": return "var(--mn-neg)";
-    case "auth_failed": return "var(--mn-neg)";
-    default:            return "var(--mn-ink-300)";
-  }
-}
+const HEALTH: Record<HealthStatus, { status: Status; edge: string; label: string }> = {
+  healthy: { status: "ok", edge: "ok", label: "Healthy" },
+  degraded: { status: "medium", edge: "degraded", label: "Degraded" },
+  unreachable: { status: "failed", edge: "down", label: "Unreachable" },
+  auth_failed: { status: "failed", edge: "down", label: "Sign-in failed" },
+  unknown: { status: "idle", edge: "unknown", label: "Not checked" },
+};
+const health = (s: HealthStatus) => HEALTH[s] ?? HEALTH.unknown;
 
-function statusToDot(s: HealthStatus): "healthy" | "degraded" | "down" | "scheduled" {
-  if (s === "healthy")     return "healthy";
-  if (s === "degraded")    return "degraded";
-  if (s === "unreachable" || s === "auth_failed") return "down";
-  return "scheduled";
-}
+/* Radial layout: Meridian in the middle, systems evenly on one ring. */
+const NW = 168, NH = 52, HW = 120, HH = 40;
 
-function shortLabel(name: string): string {
-  return name.length > 18 ? name.slice(0, 17) + "…" : name;
-}
-
-/* ── Topology graph ─────────────────────────────────────────────── */
-
-function ConnectivityGraph({ systems }: { systems: SAPSystemExtended[] }) {
-  const w = 960;
-  const h = 540;
-  const cx = w / 2;
-  const cy = h / 2;
-  const r = 220;
-
-  const positions = systems.map((s, i) => {
-    const angle = -Math.PI * 5 / 6 + i * ((Math.PI * 2) / Math.max(systems.length, 1));
-    return { ...s, _x: cx + r * Math.cos(angle), _y: cy + r * Math.sin(angle) };
+function Topology({ systems }: { systems: SAPSystemExtended[] }) {
+  const r = Math.max(150, systems.length * 34);
+  const w = 2 * r + NW + 32, h = 2 * r + NH + 32;
+  const cx = w / 2, cy = h / 2;
+  const nodes = systems.map((s, i) => {
+    const a = -Math.PI / 2 + (i * 2 * Math.PI) / systems.length;
+    return { s, x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
   });
 
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} width="100%" height={h} preserveAspectRatio="xMidYMid meet" className="mn-conn-graph">
-      <defs>
-        <radialGradient id="conn-core-glow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="var(--mn-primary)" stopOpacity="0.55" />
-          <stop offset="40%" stopColor="var(--mn-primary)" stopOpacity="0.15" />
-          <stop offset="100%" stopColor="var(--mn-primary)" stopOpacity="0" />
-        </radialGradient>
-        <radialGradient id="conn-core-fill" cx="35%" cy="30%" r="80%">
-          <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.32" />
-          <stop offset="40%" stopColor="var(--mn-primary)" stopOpacity="1" />
-          <stop offset="100%" stopColor="var(--mn-primary-700)" stopOpacity="1" />
-        </radialGradient>
-        <pattern id="conn-dotgrid" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
-          <circle cx="1" cy="1" r="0.8" fill="rgba(15,23,42,0.10)" />
-        </pattern>
-        <mask id="conn-bg-mask">
-          <rect x="0" y="0" width={w} height={h} fill="var(--mn-card)" />
-          <circle cx={cx} cy={cy} r={r + 50} fill="black" />
-        </mask>
-      </defs>
-
-      <rect x="0" y="0" width={w} height={h} fill="url(#conn-dotgrid)" mask="url(#conn-bg-mask)" />
-      <circle cx={cx} cy={cy} r="200" fill="url(#conn-core-glow)" />
-      {[120, 170, 220].map((rr, i) => (
-        <circle
-          key={rr}
-          cx={cx}
-          cy={cy}
-          r={rr}
-          fill="none"
-          stroke="var(--mn-primary)"
-          strokeOpacity="0.16"
-          strokeWidth="1"
-          strokeDasharray={i === 1 ? "0" : "3 5"}
-        >
-          <animate attributeName="r" values={`${rr};${rr + 14};${rr}`} dur={`${4 + i}s`} repeatCount="indefinite" />
-          <animate attributeName="stroke-opacity" values="0.16;0.04;0.16" dur={`${4 + i}s`} repeatCount="indefinite" />
-        </circle>
+    <svg className="ui-graph" viewBox={`0 0 ${w} ${h}`} width={w} height={h}
+         role="img" aria-label={`Topology: ${systems.length} systems connected to Meridian`}>
+      {nodes.map(({ s, x, y }) => (
+        <line key={s.id} className="ui-graph__edge" data-status={health(s.health_status).edge} x1={cx} y1={cy} x2={x} y2={y} strokeWidth="1.5" />
       ))}
-
-      {positions.map((s, i) => {
-        const c = statusColour(s.health_status);
-        const op = s.health_status === "unknown" ? 0.3 : 0.85;
-        const dx = s._x - cx;
-        const dy = s._y - cy;
-        const len = Math.hypot(dx, dy);
-        const nx = -dy / len;
-        const ny = dx / len;
-        const bow = 40 * Math.sin(i);
-        const mx = (cx + s._x) / 2;
-        const my = (cy + s._y) / 2;
-        const c1x = mx + nx * bow;
-        const c1y = my + ny * bow;
-        const path = `M ${cx} ${cy} Q ${c1x} ${c1y}, ${s._x} ${s._y}`;
-        const pathId = `conn-path-${s.id}`;
+      <rect className="ui-graph__hub" x={cx - HW / 2} y={cy - HH / 2} width={HW} height={HH} rx="4" />
+      <text className="ui-graph__title" x={cx} y={cy + 4} textAnchor="middle">Meridian</text>
+      {nodes.map(({ s, x, y }) => {
+        const hs = health(s.health_status);
         return (
-          <g key={s.id}>
-            <path
-              id={pathId}
-              d={path}
-              fill="none"
-              stroke={c}
-              strokeOpacity={op}
-              strokeWidth={s.health_status === "unknown" ? 1 : 1.8}
-              strokeDasharray={s.health_status === "degraded" ? "5 5" : s.health_status === "unknown" ? "2 5" : "0"}
-              strokeLinecap="round"
-            />
-            {s.health_status === "healthy" && (
-              <>
-                <circle r="3" fill={c}>
-                  <animateMotion dur={`${2.4 + i * 0.3}s`} repeatCount="indefinite">
-                    <mpath href={`#${pathId}`} />
-                  </animateMotion>
-                </circle>
-                <circle r="5" fill={c} opacity="0.35">
-                  <animateMotion dur={`${2.4 + i * 0.3}s`} repeatCount="indefinite" begin="-0.15s">
-                    <mpath href={`#${pathId}`} />
-                  </animateMotion>
-                </circle>
-              </>
-            )}
-          </g>
-        );
-      })}
-
-      <g>
-        <circle cx={cx} cy={cy} r="62" fill="url(#conn-core-fill)" />
-        <circle cx={cx} cy={cy} r="62" fill="none" stroke="rgba(255,255,255,0.32)" strokeWidth="1" />
-        <g transform={`translate(${cx - 18}, ${cy - 24})`}>
-          <path
-            d="M 4 38 L 4 4 L 18 16 L 32 4 L 32 38"
-            fill="none"
-            stroke="white"
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <line x1="2" y1="44" x2="34" y2="44" stroke="rgba(255,255,255,0.55)" strokeWidth="1.5" strokeLinecap="round" />
-        </g>
-        <text
-          x={cx}
-          y={cy + 38}
-          textAnchor="middle"
-          fontSize="10"
-          fontWeight="700"
-          fill="rgba(255,255,255,0.85)"
-          fontFamily="JetBrains Mono, monospace"
-          letterSpacing="0.16em"
-        >
-          MERIDIAN
-        </text>
-      </g>
-
-      {positions.map((s) => {
-        const c = statusColour(s.health_status);
-        const ct = CONN_PALETTE[connKindFor(s)];
-        const nodeW = 156;
-        const nodeH = 84;
-        const x = s._x - nodeW / 2;
-        const y = s._y - nodeH / 2;
-        return (
-          <g key={s.id}>
-            <rect
-              x={x - 6}
-              y={y - 6}
-              rx="14"
-              width={nodeW + 12}
-              height={nodeH + 12}
-              fill="none"
-              stroke={c}
-              strokeOpacity="0.18"
-              strokeWidth="1"
-            />
-            <rect x={x} y={y} rx="10" width={nodeW} height={nodeH} fill="var(--mn-card-2)" stroke="var(--mn-line)" strokeWidth="1" />
-            <rect x={x} y={y} rx="10" width="3" height={nodeH} fill={c} />
-            <circle cx={x + 16} cy={y + 18} r="4" fill={c} />
-            <circle cx={x + 16} cy={y + 18} r="4" fill="none" stroke={c} strokeOpacity="0.25" strokeWidth="6" />
-            <text
-              x={x + 28}
-              y={y + 22}
-              fontSize="12.5"
-              fontWeight="600"
-              fill="var(--mn-ink-900)"
-              fontFamily="Inter Tight, sans-serif"
-              letterSpacing="-0.01em"
-            >
-              {shortLabel(s.name)}
-            </text>
-            <rect x={x + 14} y={y + 36} rx="4" width="56" height="20" fill={ct.bg} />
-            <text
-              x={x + 42}
-              y={y + 49}
-              textAnchor="middle"
-              fontSize="10"
-              fontWeight="700"
-              fill={ct.fg}
-              fontFamily="JetBrains Mono, monospace"
-              letterSpacing="0.08em"
-            >
-              {ct.label}
-            </text>
-            <text
-              x={x + 80}
-              y={y + 50}
-              fontSize="10"
-              fontFamily="JetBrains Mono, monospace"
-              fontWeight="600"
-              fill="var(--mn-ink-300)"
-              letterSpacing="0.06em"
-            >
-              {s.environment}
-            </text>
-            <rect x={x + 14} y={y + 68} rx="2" width={nodeW - 28} height="3" fill="rgba(15,23,42,0.06)" />
-            <rect
-              x={x + 14}
-              y={y + 68}
-              rx="2"
-              width={(nodeW - 28) * (s.health_status === "healthy" ? 0.7 : s.health_status === "degraded" ? 0.38 : 0)}
-              height="3"
-              fill={c}
-            />
+          <g key={s.id} transform={`translate(${x - NW / 2} ${y - NH / 2})`}>
+            <title>{`${s.name}: ${hs.label}${s.health_message ? `. ${s.health_message}` : ""}`}</title>
+            <rect className="ui-graph__node" width={NW} height={NH} rx="4" />
+            <circle className="ui-graph__dot" data-status={hs.status} cx="14" cy="19" r="4" />
+            <text className="ui-graph__title" x="26" y="23">{s.name.length > 19 ? `${s.name.slice(0, 18)}…` : s.name}</text>
+            <text className="ui-graph__sub" x="26" y="40">{`${connKindFor(s)}, ${s.environment}`}</text>
           </g>
         );
       })}
@@ -257,247 +78,121 @@ function ConnectivityGraph({ systems }: { systems: SAPSystemExtended[] }) {
   );
 }
 
-/* ── Page ───────────────────────────────────────────────────────── */
-
 export default function ConnectivityPage() {
-  const { data: systems, isLoading, error } = useQuery({
-    queryKey: ["connectivity.systems"],
-    queryFn: getSystems,
-  });
+  const { data, isLoading, error } = useQuery({ queryKey: ["connectivity.systems"], queryFn: getSystems });
 
   const testAll = useMutation({
     mutationFn: async (ids: string[]) => {
       const results = await Promise.allSettled(ids.map((id) => testConnection(id)));
-      const ok = results.filter(
-        (r) => r.status === "fulfilled" && r.value.connected,
-      ).length;
-      return { ok, total: ids.length };
+      return { ok: results.filter((r) => r.status === "fulfilled" && r.value.connected).length, total: ids.length };
     },
-    onSuccess: (d) => {
-      toast.success(`${d.ok}/${d.total} connector${d.total === 1 ? "" : "s"} reachable`);
-    },
-    onError: () => toast.error("Could not test connectors"),
+    onSuccess: (d) => toast.success(`${d.ok} of ${d.total} connector${d.total === 1 ? "" : "s"} reachable`),
+    onError: () => toast.error("Connectors could not be tested. Check the API is reachable and try again."),
   });
 
+  const list = data ?? [];
+  const addLink = <Link href="/systems" className="aurora-button aurora-focus-ring" data-variant="primary" data-size="md"><span>Add connector</span></Link>;
+
   if (isLoading) {
-    return (
-      <>
-        <PageHead title="Connectivity" route="Systems & data · /connectivity" sub="Loading…" />
-        <Skeleton className="h-[420px] rounded-[10px]" />
-      </>
-    );
+    return <div className="ui-page"><PageHeader title="Connectivity" /><TableSkeleton rows={8} label="Loading connectors" /></div>;
   }
   if (error) {
     return (
-      <>
-        <PageHead title="Connectivity" route="Systems & data · /connectivity" sub="Failed to load." />
-        <div className="mn-card mn-card-pad" style={{ color: "var(--mn-neg)" }}>
-          Could not reach <code>/api/v1/systems</code>.
-        </div>
-      </>
+      <div className="ui-page">
+        <PageHeader title="Connectivity" />
+        <Banner tone="danger" title="Connectors could not be read">{(error as Error).message}</Banner>
+      </div>
+    );
+  }
+  if (!list.length) {
+    return (
+      <div className="ui-page">
+        <PageHeader title="Connectivity" actions={addLink} />
+        <EmptyState action={<Link className="ui-link" href="/systems">Open systems</Link>}>
+          No connectors yet. Add an SAP system to see its connection and health here.
+        </EmptyState>
+      </div>
     );
   }
 
-  const list = systems ?? [];
-
-  // Connector counts grouped by inferred protocol.
-  const counts = list.reduce(
-    (acc, sys) => {
-      const k = connKindFor(sys);
-      acc[k] = (acc[k] ?? 0) + 1;
-      return acc;
-    },
-    {} as Record<ConnKind, number>,
-  );
-  const types = Object.keys(counts).length;
-
-  const oauthCount = list.filter(
-    (s) => s.auth_type === "oauth2_client_credentials" || s.auth_type === "oauth2_saml",
-  ).length;
-
+  const counts = new Map<ConnKind, number>();
+  for (const s of list) counts.set(connKindFor(s), (counts.get(connKindFor(s)) ?? 0) + 1);
   const healthy = list.filter((s) => s.health_status === "healthy").length;
   const degraded = list.filter((s) => s.health_status === "degraded").length;
   const offline = list.filter((s) => s.health_status === "unreachable" || s.health_status === "auth_failed").length;
-
-  const recentChecks = list
+  const checks = list
     .filter((s) => s.last_health_check)
-    .sort(
-      (a, b) =>
-        new Date(b.last_health_check!).getTime() - new Date(a.last_health_check!).getTime(),
-    )
-    .slice(0, 6);
+    .sort((a, b) => new Date(b.last_health_check!).getTime() - new Date(a.last_health_check!).getTime())
+    .slice(0, 8);
 
   return (
-    <>
-      <PageHead
+    <div className="ui-page">
+      <PageHeader
         title="Connectivity"
-        route="Systems & data · /connectivity"
-        sub={
-          <>
-            <strong style={{ color: "var(--mn-ink-700)" }}>{list.length} systems</strong> wired in via{" "}
-            <strong style={{ color: "var(--mn-ink-700)" }}>{types}</strong> connector types.
-            {oauthCount > 0 && (
-              <>
-                {" "}<strong style={{ color: "var(--mn-pos)" }}>{oauthCount} use OAuth</strong>.
-              </>
-            )}
-          </>
-        }
+        summary={`${list.length} connector${list.length === 1 ? "" : "s"} over ${counts.size} protocol${counts.size === 1 ? "" : "s"}. ${
+          offline || degraded ? `${offline} unreachable, ${degraded} degraded. Test them to refresh.` : "All reachable at the last check."}`}
         actions={
           <>
-            <button
-              type="button"
-              className="mn-btn mn-btn-ghost"
-              onClick={() => {
-                if (list.length === 0) {
-                  toast.info("No connectors to test");
-                  return;
-                }
-                testAll.mutate(list.map((s) => s.id));
-              }}
-              disabled={testAll.isPending || list.length === 0}
-            >
-              {testAll.isPending ? "Testing…" : "Test all"}
-            </button>
-            <Link href="/systems" className="mn-btn mn-btn-primary">Add connector</Link>
+            <Button variant="secondary" disabled={testAll.isPending} onClick={() => testAll.mutate(list.map((s) => s.id))}>
+              {testAll.isPending ? "Testing" : "Test all"}
+            </Button>
+            {addLink}
           </>
         }
       />
 
-      <div className="mn-row mn-stagger" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))", marginBottom: 18 }}>
-        <KPI label="Connectors" value={list.length} hint={`${types} types in use`} tone="pos" />
-        <KPI label="Healthy" value={healthy} tone="pos" />
-        <KPI label="Degraded" value={degraded} tone={degraded > 0 ? "warn" : "pos"} />
-        <KPI label="Offline" value={offline} tone={offline > 0 ? "neg" : "pos"} />
-      </div>
+      <MetricStrip label="Connector health">
+        <Metric label="Connectors" value={list.length} />
+        <Metric label="Healthy" value={healthy} />
+        <Metric label="Degraded" value={degraded} tone={degraded ? "warning" : "default"} />
+        <Metric label="Unreachable" value={offline} tone={offline ? "danger" : "default"} />
+      </MetricStrip>
 
-      <SectionHeader
-        title="Topology"
-        caption="All systems connect through the Meridian core · live packet flow on healthy edges"
-        right={
-          <Link href="/systems" className="mn-link">
-            Systems <ArrowRight size={11} />
-          </Link>
-        }
-      />
-      <div
-        className="mn-card"
-        style={{
-          padding: "12px 12px 4px",
-          overflow: "hidden",
-          background: "var(--mn-card)",
-        }}
-      >
-        {list.length > 0 ? (
-          <ConnectivityGraph systems={list} />
-        ) : (
-          <div style={{ padding: 60, textAlign: "center", color: "var(--mn-ink-400)" }}>
-            No systems connected yet.
-          </div>
-        )}
-      </div>
+      <SectionCard title="Topology" meta="Every connector runs through Meridian" flush>
+        <div className="ui-graph-scroll"><Topology systems={list} /></div>
+        <ul className="ui-legend" aria-label="Edge state">
+          <li><span className="ui-legend__line" />Healthy</li>
+          <li><span className="ui-legend__line" data-status="degraded" />Degraded</li>
+          <li><span className="ui-legend__line" data-status="down" />Unreachable or sign-in failed</li>
+          <li><span className="ui-legend__line" data-status="unknown" />Not checked</li>
+        </ul>
+      </SectionCard>
 
-      <div className="mn-row mn-row-12" style={{ marginTop: 18 }}>
-        <div className="mn-col-7" style={{ gridColumn: "span 7" }}>
-          <div className="mn-card mn-card-pad">
-            <SectionHeader title="Connector types" caption="Per-protocol counts" />
-            <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 12 }}>
-              {(Object.entries(counts) as [ConnKind, number][]).map(([k, n]) => {
-                const ct = CONN_PALETTE[k];
-                return (
-                  <div
-                    key={k}
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "auto 1fr auto",
-                      alignItems: "center",
-                      gap: 14,
-                      padding: "12px 0",
-                      borderBottom: "1px dashed var(--mn-line-2)",
-                    }}
-                  >
-                    <span
-                      style={{
-                        display: "inline-flex",
-                        padding: "5px 10px",
-                        borderRadius: 5,
-                        background: ct.bg,
-                        color: ct.fg,
-                        font: "700 11px/1 'JetBrains Mono', monospace",
-                        letterSpacing: "0.06em",
-                      }}
-                    >
-                      {ct.label}
-                    </span>
-                    <span style={{ fontSize: 12.5, color: "var(--mn-ink-500)" }}>
-                      {k === "RFC" && "Native SAP remote function calls"}
-                      {k === "OData" && "Standardised REST-ful SAP gateway"}
-                      {k === "HANA" && "Direct HANA database connection"}
-                      {k === "REST" && "Token-based REST clients"}
-                    </span>
-                    <span
-                      className="mn-tabular"
-                      style={{ font: "600 16px/1 'Inter Tight'", color: "var(--mn-ink-900)" }}
-                    >
-                      {n}
-                    </span>
-                  </div>
-                );
-              })}
-              {types === 0 && (
-                <div style={{ color: "var(--mn-ink-400)" }}>No connector types detected.</div>
-              )}
-            </div>
-          </div>
-        </div>
+      <div className="ui-columns">
+        <SectionCard title="Connector types" flush>
+          <ul className="ui-ranked">
+            {[...counts.entries()].sort((a, b) => b[1] - a[1]).map(([k, n]) => (
+              <li key={k}>
+                <div className="ui-ranked__row">
+                  <Mono>{k}</Mono>
+                  <span className="ui-ranked__title">{KIND_NOTE[k]}</span>
+                  <span className="ui-ranked__num">{n}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </SectionCard>
 
-        <div className="mn-col-5" style={{ gridColumn: "span 5" }}>
-          <div className="mn-card mn-card-pad" style={{ height: "100%" }}>
-            <SectionHeader title="Recent health checks" caption={`Last ${recentChecks.length} probes`} />
-            <ul className="mn-event-list">
-              {recentChecks.map((s) => {
-                const cls =
-                  s.health_status === "healthy"
-                    ? "ok"
-                    : s.health_status === "degraded"
-                      ? "warn"
-                      : "fail";
+        <SectionCard title="Recent health checks" meta={checks.length ? "Newest first" : undefined} flush>
+          {checks.length ? (
+            <ul className="ui-ranked ui-ranked--status">
+              {checks.map((s) => {
+                const hs = health(s.health_status);
                 return (
                   <li key={s.id}>
-                    <span className="t mn-tabular">{relativeTime(s.last_health_check!)}</span>
-                    <span className={`tag ${cls}`}>
-                      {s.health_status.replace(/_/g, " ").toUpperCase()}
-                    </span>
-                    <span>{s.name} {s.health_message ? `· ${s.health_message}` : ""}</span>
+                    <Link href={`/systems/${s.id}`}>
+                      <StatusBadge status={hs.status}>{hs.label}</StatusBadge>
+                      <span className="ui-ranked__title">{s.name}</span>
+                      <span className="ui-ranked__num">{relativeTime(s.last_health_check!)}</span>
+                      {s.health_message ? <span className="ui-ranked__meta">{s.health_message}</span> : null}
+                    </Link>
                   </li>
                 );
               })}
-              {recentChecks.length === 0 && (
-                <li style={{ color: "var(--mn-ink-400)" }}>No health checks recorded yet.</li>
-              )}
             </ul>
-            {(degraded > 0 || offline > 0) && (
-              <div className="mn-narrative" style={{ marginTop: 16, padding: 10 }}>
-                <div className="ico"><SparklesIcon size={13} /></div>
-                <div style={{ flex: 1, fontSize: 12.5, color: "var(--mn-ink-700)" }}>
-                  {offline > 0 && (
-                    <>
-                      <strong style={{ color: "var(--mn-neg)" }}>{offline} unreachable</strong>
-                      {degraded > 0 ? " · " : ""}
-                    </>
-                  )}
-                  {degraded > 0 && (
-                    <>
-                      <strong style={{ color: "var(--mn-warn)" }}>{degraded} degraded</strong>
-                    </>
-                  )}
-                  . Run a connectivity test on Systems to refresh.
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+          ) : <EmptyState>No health checks recorded yet. Use Test all to probe every connector.</EmptyState>}
+        </SectionCard>
       </div>
-    </>
+    </div>
   );
 }
