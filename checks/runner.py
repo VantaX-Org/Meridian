@@ -158,6 +158,18 @@ def _with_reference(rule: dict, dictionary, reference_values: dict[str, set[str]
     return out
 
 
+def baseline_of(rule: dict) -> str:
+    """What a rule judges the data against: ``s4_target`` (S/4HANA readiness),
+    ``sap_standard`` (a value-list rule whose check table was not extracted live,
+    so it fell back to SAP's standard list) or ``live_config`` (the system's own
+    configuration and master data)."""
+    if rule.get("baseline"):
+        return rule["baseline"]
+    if rule.get("check_class") in ("referential_check", "domain_value_check") and "_live_reference" not in rule:
+        return "sap_standard"
+    return "live_config"
+
+
 def rule_columns(rule: dict) -> list[str]:
     """Every ``TABLE.FIELD`` column a rule reads (field, fields, condition, applies_when)."""
     check_cls = REGISTRY.get(rule.get("check_class", ""))
@@ -209,14 +221,17 @@ def get_required_columns(module_name: str) -> set[str]:
 
 def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[str]] | None = None,
              suppressed: dict[str, tuple[list[str], set[str]]] | None = None, *,
-             as_of: Any = None) -> tuple[dict, CheckResult | None]:
+             as_of: Any = None, sap_utc_offset_seconds: int | None = None) -> tuple[dict, CheckResult | None]:
     """Evaluate one rule at its grain: (rule as evaluated, result or None when not applicable).
 
     ``as_of`` is the date date-relative rules measure age against (the version's
-    snapshot date); None means now."""
+    snapshot date); None means now. ``sap_utc_offset_seconds`` is the source
+    system's offset from UTC (SAP dates are system-local); None means 0."""
     if as_of is not None:
         as_of = as_of_time(as_of)
         rule = {**rule, "_as_of": as_of.isoformat()}
+    if sap_utc_offset_seconds is not None:
+        rule = {**rule, "_sap_utc_offset_seconds": sap_utc_offset_seconds}
     check_cls = REGISTRY[rule["check_class"]]
     partial = sorted(set(tables_of(rule_columns(rule) + target_columns(rule))) & getattr(frames, "incomplete", set()))
     if rule.get("check_class") in _WHOLE_GROUP and partial:
@@ -270,6 +285,8 @@ def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[st
         result = check_cls(rule).run(scoped, key_cols=key_cols, grain=grain)
         if result is not None and excluded:
             result.details["population_excluded"] = excluded
+        if result is not None:
+            result.details["baseline"] = baseline_of(rule)
         return rule, result
     except Exception as e:
         logger.error(f"Exception in check {rule.get('id')}: {e}", exc_info=True)
@@ -287,6 +304,7 @@ def run_checks(
     cost_model: dict | None = None,
     *,
     as_of: Any = None,
+    sap_utc_offset_seconds: int | None = None,
 ) -> list[CheckResult]:
     """Load a module's YAML rules and evaluate each at its correct record grain.
 
@@ -328,7 +346,8 @@ def run_checks(
             result_rules.append(rule)
             continue
 
-        rule, result = run_rule(rule, frames, reference_values, suppressed, as_of=as_of)
+        rule, result = run_rule(rule, frames, reference_values, suppressed, as_of=as_of,
+                                sap_utc_offset_seconds=sap_utc_offset_seconds)
         if result is None:
             skipped += 1
             continue

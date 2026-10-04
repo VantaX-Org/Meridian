@@ -40,6 +40,20 @@ def _in_clause(field: str, values: list[str]) -> str:
     return f"{field} IN (" + ",".join(f"'{v}'" for v in values) + ")"
 
 
+def utc_offset_seconds(conn) -> Optional[int]:
+    """The ABAP system's offset from UTC in seconds (RFC_SYSTEM_INFO RFCSI_EXPORT-RFCZONE),
+    or None when the system does not say. Read-only."""
+    # ponytail: sign assumed SAP local = UTC + RFCZONE, and RFCZONE taken to already include daylight
+    # saving (RFCDAYST only flags it). Verify: RFC_SYSTEM_INFO vs SY-UZEIT against UTC on a real system;
+    # MERIDIAN_SAP_UTC_OFFSET_SECONDS overrides at check time (checks/types/freshness_check.py).
+    try:
+        zone = str(conn.call("RFC_SYSTEM_INFO").get("RFCSI_EXPORT", {}).get("RFCZONE") or "").strip()
+        return int(zone) if zone else None
+    except (SAPConnectorError, ValueError, AttributeError) as e:
+        logger.warning(f"RFC_SYSTEM_INFO time zone unavailable: {e}")
+        return None
+
+
 def system_info(conn) -> dict:
     """Release, system id and installed software components."""
     info: dict = {}

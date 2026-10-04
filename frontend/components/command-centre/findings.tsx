@@ -36,14 +36,17 @@ const meta = (m: AuroraColumnMeta) => m;
 const PAGE = 200;
 const RECORDS_PAGE = 25;
 const EXPORT_PAGE = 1000;
-const FILTER_KEYS = ["version_id", "module", "severity", "dimension", "check_id", "type", "sort"] as const;
+const FILTER_KEYS = ["version_id", "module", "severity", "dimension", "check_id", "baseline", "type", "sort"] as const;
 type FilterKey = (typeof FILTER_KEYS)[number];
 type Filter = Partial<Record<FilterKey, string>>;
-const FILTER_LABEL: Record<FilterKey, string> = { version_id: "Run", module: "Object", severity: "Severity", dimension: "Dimension", check_id: "Check", type: "Type", sort: "Order" };
-/** Filters the aggregate endpoint understands (type and order do not change totals there). */
+const FILTER_LABEL: Record<FilterKey, string> = { version_id: "Run", module: "Object", severity: "Severity", dimension: "Dimension", check_id: "Check", baseline: "Judged against", type: "Type", sort: "Order" };
+/** Filters the aggregate endpoint understands (baseline, type and order do not change totals there). */
 const AGG_KEYS = ["version_id", "module", "severity", "dimension", "check_id"] as const;
 /** Filters shown as their own chips, not as dismissible tokens. */
-const OWN_CHIPS: FilterKey[] = ["severity", "type", "sort"];
+const OWN_CHIPS: FilterKey[] = ["severity", "baseline", "type", "sort"];
+/** What a finding was judged against: the system's own config, SAP's standard lists, or S/4HANA. */
+const BASELINES = { live_config: "Live config", sap_standard: "SAP standard", s4_target: "S/4HANA target" } as const;
+const baselineLabel = (b: string | undefined) => BASELINES[(b ?? "live_config") as keyof typeof BASELINES] ?? b ?? "";
 const SEVERITIES = ["critical", "high", "medium", "low"] as const;
 type Sev = (typeof SEVERITIES)[number];
 const DIMENSIONS: Dimension[] = ["completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity"];
@@ -158,8 +161,8 @@ export function FindingsSurface() {
     sev: agg.data?.severity ?? { critical: 0, high: 0, medium: 0, low: 0 },
     modules: (agg.data?.by_module ?? []).map((m) => [m.module, m.findings] as const),
   };
-  // the aggregate ignores type, so counts only describe the slice when no type is set
-  const counted = !!agg.data && !filter.type;
+  // the aggregate ignores baseline and type, so counts only describe the slice when neither is set
+  const counted = !!agg.data && !filter.type && !filter.baseline;
 
   const columns = useMemo<ColumnDef<Finding, unknown>[]>(() => [
     { id: "severity", header: "Severity", meta: meta({ sticky: "start", width: 104 }),
@@ -224,6 +227,11 @@ export function FindingsSurface() {
         {SEVERITIES.map((s) => (
           <Chip key={s} selected={filter.severity === s} onClick={() => set({ severity: filter.severity === s ? undefined : s })}>
             {cap(s)}{counted ? <span className="aurora-number ui-chip-count">{counts.sev[s]}</span> : null}
+          </Chip>
+        ))}
+        {(Object.keys(BASELINES) as (keyof typeof BASELINES)[]).map((b) => (
+          <Chip key={b} selected={filter.baseline === b} onClick={() => set({ baseline: filter.baseline === b ? undefined : b })}>
+            {BASELINES[b]}
           </Chip>
         ))}
         <Chip selected={filter.type === "anomaly"} onClick={() => set({ type: filter.type === "anomaly" ? undefined : "anomaly" })}>
@@ -389,6 +397,7 @@ function FindingDetail({ finding: f, blocks }: { finding: Finding; blocks: strin
     { k: "Field", v: f.details?.field_checked ?? "—", mono: !!f.details?.field_checked },
     { k: "Dimension", v: cap(f.dimension) },
     { k: "Basis", v: <Basis ctx={ctx} anomaly={isAnomaly(f)} /> },
+    { k: "Judged against", v: baselineLabel(f.baseline) },
     { k: "Records", v: `${f.affected_count.toLocaleString()} of ${f.total_count.toLocaleString()}` },
     { k: "Pass rate", v: f.pass_rate === null ? "—" : `${Math.round(f.pass_rate)}%` },
     ...(f.cost_at_risk != null ? [{ k: "Cost at risk", v: money(f.cost_at_risk) }] : []),

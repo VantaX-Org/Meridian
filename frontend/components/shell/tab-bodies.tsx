@@ -15,7 +15,7 @@ const named = <K extends string>(load: () => Promise<Record<K, ComponentType>>, 
   dynamic(() => load().then((m) => ({ default: m[key] })), { ssr: false, loading });
 
 /** Tabs whose body is an Aurora surface — rendered on the canvas, not in the light sheet. */
-export const AURORA_TABS: ReadonlySet<string> = new Set(["/", "/executive-report", "/sync", "/issues", "/match-rules", "/match-rules/tuning", "/match-rules/constraints", "/business-process", "/settings/scoring", "/workbench/triage", "/admin/triage", "/settings/field-mapping",
+export const AURORA_TABS: ReadonlySet<string> = new Set(["/", "/executive-report", "/sync", "/issues", "/match-rules", "/match-rules/tuning", "/match-rules/constraints", "/business-process", "/settings/scoring", "/workbench/triage", "/admin/triage", "/settings/field-mapping", "/exceptions/rules", "/settings/exception-billing",
   "/systems", "/upload", "/versions", "/admin", "/findings", "/cleaning", "/exceptions", "/dedup", "/golden-records", "/glossary", "/reports", "/notifications", "/settings", "/settings/rules", "/settings/ai", "/settings/licence", "/contracts",
   "/relationships", "/mining", "/ai/rules", "/workbench", "/process", "/config-impact", "/connectivity"]);
 
@@ -39,6 +39,7 @@ export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
   "/workbench": named(() => import("@/components/workbench/inbox"), "StewardInboxSurface"),
   "/cleaning": named(() => import("@/components/workbench/cleaning"), "CleaningSurface"),
   "/exceptions": named(() => import("@/components/workbench/exceptions"), "ExceptionsSurface"),
+  "/exceptions/rules": named(() => import("@/components/workbench/exception-rules"), "ExceptionRulesSurface"),
   "/dedup": named(() => import("@/components/workbench/dedup"), "DedupSurface"),
   "/ai/rules": named(() => import("@/components/workbench/ai-rules"), "AiRulesSurface"),
   "/golden-records": named(() => import("@/components/workbench/golden-records"), "GoldenRecordsSurface"),
@@ -63,5 +64,6 @@ export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
   "/settings/field-mapping": named(() => import("@/components/admin/field-mapping"), "FieldMappingSettings"),
   "/settings/ai": named(() => import("@/components/admin/ai"), "AISurface"),
   "/settings/licence": named(() => import("@/components/admin/licence"), "LicenceSurface"),
+  "/settings/exception-billing": named(() => import("@/components/admin/exception-billing"), "ExceptionBillingSurface"),
   "/contracts": named(() => import("@/components/admin/contracts"), "ContractsSurface"),
 };

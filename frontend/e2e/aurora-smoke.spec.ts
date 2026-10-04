@@ -21,7 +21,7 @@ for (const r of ROUTES) {
 
 test("the Command Centre shows the verdict for the latest run", async ({ app }) => {
   await app.goto("/", { waitUntil: "load" });
-  await expect(app.locator(".aurora-verdict__sentence")).toBeVisible();
+  await expect(app.locator(".ui-verdict")).toBeVisible();
 });
 
 test("the Runs tab lists the recorded jobs with their outcome", async ({ app }) => {

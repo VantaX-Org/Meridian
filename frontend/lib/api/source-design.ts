@@ -112,6 +112,16 @@ export async function getDesignConfig(
 ): Promise<{ table: string; scope: string; rows: Record<string, unknown>[]; total: number; source: string; synced_at: string | null }> {
   return (await apiClient.get(`${base(id)}/design/config/${encodeURIComponent(table)}`)).data;
 }
+export interface ConfigDeviation {
+  reference: string;
+  live_count: number;
+  standard_count: number;
+  custom: string[];
+  missing: string[];
+}
+export async function getConfigDeviation(id: string): Promise<{ tables: ConfigDeviation[] }> {
+  return (await apiClient.get(`${base(id)}/design/config-deviation`)).data;
+}
 export async function getDesignSnapshots(id: string): Promise<DesignSnapshot[]> {
   return (await apiClient.get(`${base(id)}/design/snapshots`)).data;
 }
