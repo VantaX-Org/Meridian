@@ -37,6 +37,8 @@ _KINDS = {
     "fixed_value": ("high", "Value is not one of the domain's fixed values"),
     "check_table": ("high", "Value does not exist in the source system's check table"),
 }
+# Values SAP stores outside the check table: a condition's rate unit is a currency or '%'
+_ALSO_VALID = {"KONWA": {"%"}}
 
 
 def _violations(values: pd.Series, f, check_values: set[str] | None) -> dict[str, pd.Series]:
@@ -93,6 +95,8 @@ def run_conformance(table: str, df: pd.DataFrame, dictionary: Dictionary, module
         if not populated.any():
             continue
         check_values = reference_values.get(f.check_ref) if f.check_ref else None
+        if check_values is not None and name in _ALSO_VALID:
+            check_values = check_values | _ALSO_VALID[name]
         for kind, bad in _violations(df[col], f, check_values).items():
             if kind in ("fixed_value", "check_table") and col in (value_checked or ()):
                 continue
