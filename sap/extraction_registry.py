@@ -903,6 +903,50 @@ EWMS_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
 
 
 # ============================================================================
+# SAP BTP extractions  (OData entity sets behind a BTP destination)
+#
+# rename_map maps each OData property to the ECC "TABLE.FIELD" the rules read,
+# so BTP data is checked by the same rule pack as RFC data. One table per target.
+# ============================================================================
+
+def _btp(entity_set: str, table: str, mapping: dict[str, str], description: str) -> ExtractionTarget:
+    return ExtractionTarget(source=entity_set, fields=list(mapping), description=description,
+                            rename_map={p: f"{table}.{f}" for p, f in mapping.items()})
+
+
+BTP_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
+    "business_partner": [
+        _btp("A_BusinessPartner", "BUT000", {
+            "BusinessPartner": "PARTNER", "BusinessPartnerCategory": "TYPE",
+            "BusinessPartnerGrouping": "BU_GROUP", "BusinessPartnerType": "BPKIND",
+            "BusinessPartnerUUID": "PARTNER_GUID", "FirstName": "NAME_FIRST", "LastName": "NAME_LAST",
+            "OrganizationBPName1": "NAME_ORG1", "GroupBusinessPartnerName1": "NAME_GRP1",
+            "SearchTerm1": "BU_SORT1", "FormOfAddress": "TITLE", "CorrespondenceLanguage": "LANGU_CORR",
+            "IsNaturalPerson": "NATPERS", "IsSexUnknown": "XSEXM", "BirthDate": "BIRTHDT",
+            "OrganizationFoundationDate": "FOUND_DAT", "CreationDate": "CRDAT",
+            "BusinessPartnerIsBlocked": "XBLCK", "IsMarkedForArchiving": "XDELE",
+        }, "Business partner general data"),
+        _btp("A_BusinessPartnerAddress", "BUT020", {
+            "BusinessPartner": "PARTNER", "AddressID": "ADDRNUMBER",
+        }, "Business partner to address link"),
+        # ponytail: same entity read twice (BUT020 + ADRC); read once and split if volume matters
+        _btp("A_BusinessPartnerAddress", "ADRC", {
+            "AddressID": "ADDRNUMBER", "Country": "COUNTRY", "Region": "REGION", "CityName": "CITY1",
+            "PostalCode": "POST_CODE1", "StreetName": "STREET", "HouseNumber": "HOUSE_NUM1",
+            "Language": "LANGU",
+        }, "Business partner addresses"),
+        _btp("A_BusinessPartnerTaxNumber", "DFKKBPTAXNUM", {
+            "BusinessPartner": "PARTNER", "BPTaxType": "TAXTYPE", "BPTaxNumber": "TAXNUM",
+        }, "Business partner tax numbers"),
+        _btp("A_BusinessPartnerBank", "BUT0BK", {
+            "BusinessPartner": "PARTNER", "BankIdentification": "BKVID", "BankCountryKey": "BANKS",
+            "BankNumber": "BANKL", "IBAN": "IBAN",
+        }, "Business partner bank details"),
+    ],
+}
+
+
+# ============================================================================
 # Master mapping: system_type -> extraction dict
 # ============================================================================
 
@@ -915,6 +959,7 @@ SYSTEM_EXTRACTIONS: dict[str, dict[str, list[ExtractionTarget]]] = {
     "ariba": ARIBA_EXTRACTIONS,
     "ewms": EWMS_EXTRACTIONS,
     "ewm": EWMS_EXTRACTIONS,  # sap_systems.system_type spelling
+    "btp": BTP_EXTRACTIONS,
 }
 
 
@@ -931,7 +976,7 @@ def get_extraction_targets(
 
     Args:
         system_type: One of ecc, s4hana_onprem, s4hana_cloud, successfactors,
-                     concur, ariba, ewms.
+                     concur, ariba, ewms, btp.
         module:      Module identifier, e.g. ``"accounts_payable"``.
         include_config: If False, config-only targets (``is_config=True``)
                         are excluded from the result.
@@ -952,7 +997,7 @@ def get_available_modules(system_type: str) -> list[str]:
 
     Args:
         system_type: One of ecc, s4hana_onprem, s4hana_cloud, successfactors,
-                     concur, ariba, ewms.
+                     concur, ariba, ewms, btp.
 
     Returns:
         Sorted list of module name strings.  Empty list if unknown system type.
@@ -970,7 +1015,7 @@ def get_table_names(
 
     Args:
         system_type: One of ecc, s4hana_onprem, s4hana_cloud, successfactors,
-                     concur, ariba, ewms.
+                     concur, ariba, ewms, btp.
         module:      Module identifier.
         config_only: If True, only return sources marked ``is_config=True``.
 
