@@ -2675,3 +2675,89 @@ rules:
   record_fix_template: 'Info record {EINA.INFNR}: vendor {EINA.LIFNR} part number {EINA.IDNLF} also used on another
     info record (material {EINA.MATNR}).'
 
+- id: PUR150
+  check_class: group_sum_check
+  grain: EKPO
+  field: EKPO.NETWR
+  amount: EKBE.WRBTR
+  group_keys:
+    EKBE.EBELN: EKPO.EBELN
+    EKBE.EBELP: EKPO.EBELP
+    EKBE.WAERS: EKKO.WAERS
+  child_when:
+    EKBE.VGABE:
+    - '2'
+  sign_field: EKBE.SHKZG
+  negative_value: H
+  compare: <=
+  tolerance_field: EKPO.UEBTO
+  tolerance: 1
+  applies_when:
+    EKPO.REPOS:
+    - X
+    EKPO.PSTYP:
+      not_in:
+      - '1'
+      - '2'
+      - '9'
+    EKPO.RETPO:
+      blank: true
+    EKPO.UEBTK:
+      blank: true
+  severity: medium
+  dimension: accuracy
+  message: Net invoiced value of the PO item exceeds the item's net order value plus its over-delivery tolerance
+  why_it_matters: The PO is the approved spend. Invoices (net of credit memos, VGABE 2 in the PO history) totalling more than
+    the item's net value plus its over-delivery tolerance mean the vendor was paid above what was ordered and approved. Only
+    invoices in the PO currency are summed.
+  rule_authority: best_practice
+  sap_impact: Overpayment against the PO; the excess posts to price differences or the GR/IR account and erodes the commitment
+    and budget figures that purchasing and controlling report from the PO.
+  fix_map:
+    __other__: 'Check the PO history (ME23N > PO history): request a credit memo from the vendor (MIRO, subsequent credit), or
+      raise the PO value through an approved change (ME22N) if the extra value was agreed.'
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: net invoiced value exceeds the net order value {EKPO.NETWR} plus
+    tolerance.'
+
+- id: PUR151
+  check_class: group_sum_check
+  grain: EKPO
+  field: EKPO.MENGE
+  amount: EKBE.MENGE
+  group_keys:
+    EKBE.EBELN: EKPO.EBELN
+    EKBE.EBELP: EKPO.EBELP
+  child_when:
+    EKBE.VGABE:
+    - '1'
+  sign_field: EKBE.SHKZG
+  negative_value: H
+  compare: <=
+  tolerance_field: EKPO.UEBTO
+  tolerance: 0.001
+  applies_when:
+    EKPO.WEPOS:
+    - X
+    EKPO.PSTYP:
+      not_in:
+      - '1'
+      - '2'
+      - '9'
+    EKPO.RETPO:
+      blank: true
+    EKPO.UEBTK:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Goods received for the PO item (net of returns) exceed the ordered quantity plus the over-delivery tolerance
+  why_it_matters: SAP blocks a goods receipt above the ordered quantity plus the over-delivery tolerance (UEBTO) unless
+    unlimited over-delivery is allowed. Received quantity above that limit means the tolerance was changed after receipt, the
+    message was set to a warning, or the history was posted outside standard checks.
+  rule_authority: sap_hard_constraint
+  sap_impact: Stock and the GR/IR account carry quantity that was never ordered; the invoice for the excess either blocks in
+    invoice verification or is paid without an approved order.
+  fix_map:
+    __other__: 'Check the PO history (ME23N > PO history): return the excess to the vendor (MIGO, movement type 122), or
+      raise the order quantity through an approved change (ME22N).'
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: goods received exceed the ordered quantity {EKPO.MENGE} plus the
+    over-delivery tolerance.'

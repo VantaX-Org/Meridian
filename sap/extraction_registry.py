@@ -274,9 +274,18 @@ ECC_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
             fields=[
                 "EBELN", "EBELP", "MATNR", "WERKS", "LGORT", "MATKL",
                 "MENGE", "MEINS", "NETPR", "PEINH", "PSTYP", "KNTTP",
-                "LOEKZ", "AEDAT",
+                "LOEKZ", "AEDAT", "NETWR", "UEBTO", "UEBTK", "RETPO",
+                "WEPOS", "REPOS",
             ],
             description="Purchasing document item",
+        ),
+        ExtractionTarget(
+            source="EKBE",
+            fields=[
+                "EBELN", "EBELP", "ZEKKN", "VGABE", "GJAHR", "BELNR",
+                "BUZEI", "MENGE", "WRBTR", "WAERS", "SHKZG",
+            ],
+            description="Purchasing document history",
         ),
         ExtractionTarget(
             source="T161",
