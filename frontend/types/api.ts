@@ -122,6 +122,8 @@ export interface Finding {
   version_id: string;
   module: string;
   check_id: string;
+  /** YAML rule check_class (e.g. "domain_value_check"); null for tenant custom rules. */
+  check_class?: string | null;
   severity: Severity;
   dimension: Dimension;
   affected_count: number;

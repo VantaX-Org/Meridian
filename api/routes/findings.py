@@ -1,5 +1,7 @@
+import json
 import logging
 import uuid
+from functools import lru_cache
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -7,10 +9,23 @@ from sqlalchemy import case, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
+from api.services.tenant_seed import rule_catalogue
 from db.schema import Finding, Report
 
 router = APIRouter(prefix="/api/v1", tags=["findings"])
 logger = logging.getLogger("meridian.findings")
+
+
+@lru_cache(maxsize=1)
+def _check_classes() -> dict[tuple[str, str], str]:
+    return {(r["module"], r["rid"]): json.loads(r["conditions"])[0].get("check_class")
+            for r in rule_catalogue()}
+
+
+def check_class_of(module: str, check_id: str) -> Optional[str]:
+    """The YAML rule's check_class (e.g. ``domain_value_check``); None for rules not
+    shipped in the YAML catalogue (tenant custom rules)."""
+    return _check_classes().get((module, check_id))
 
 
 _COMPLETE = "status IN ('complete', 'agents_running', 'agents_complete', 'agents_failed', 'ai_enriching', 'ai_enriched')"
@@ -204,6 +219,7 @@ async def list_findings(
                 "version_id": str(f.version_id),
                 "module": f.module,
                 "check_id": f.check_id,
+                "check_class": check_class_of(f.module, f.check_id),
                 "severity": f.severity,
                 "dimension": f.dimension,
                 "affected_count": f.affected_count,
