@@ -8,7 +8,7 @@
 
 Built by workers/tasks/run_extraction.py after each extraction is stored.
 
-Revision ID: 054
+Revision ID: 055
 Revises: 053
 Create Date: 2026-10-04
 """
@@ -19,8 +19,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 
-revision: str = "054"
-down_revision: Union[str, None] = "053"
+revision: str = "055"
+down_revision: Union[str, None] = "054"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
