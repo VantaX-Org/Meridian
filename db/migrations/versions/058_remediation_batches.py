@@ -9,8 +9,8 @@
 
 Meridian never writes to SAP: a batch is only ever exported as a file.
 
-Revision ID: 054
-Revises: 053
+Revision ID: 058
+Revises: 057
 Create Date: 2026-10-04
 """
 
@@ -20,8 +20,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 
-revision: str = "054"
-down_revision: Union[str, None] = "053"
+revision: str = "058"
+down_revision: Union[str, None] = "057"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

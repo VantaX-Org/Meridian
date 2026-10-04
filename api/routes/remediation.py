@@ -277,6 +277,10 @@ async def export_batch(
                 sheets = remediation.cockpit_sheets(items, d) or {"EMPTY": pd.DataFrame()}
                 for table, df in sheets.items():
                     df.to_excel(xw, sheet_name=table[:31], index=False)
+                    for row in xw.sheets[table[:31]].iter_rows():
+                        for cell in row:
+                            if cell.data_type == "f":  # SAP values like "=A" stay text, never a formula
+                                cell.data_type = "s"
             data, ext = buf.getvalue(), "xlsx"
     await db.execute(text("UPDATE remediation_batches SET status = 'exported', exported_at = now() WHERE id = :id"),
                      {"id": batch_id})
