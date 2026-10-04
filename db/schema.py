@@ -380,6 +380,10 @@ class Exception_(Base):
         Index("ix_exceptions_tenant_type", "tenant_id", "type"),
         Index("ix_exceptions_tenant_severity", "tenant_id", "severity"),
         Index("ix_exceptions_sla_deadline", "sla_deadline"),
+        # Scan identity: run_exception_scan upserts on this (migration 061).
+        Index("uq_exceptions_scan_identity", "tenant_id", "type", "source_reference", unique=True,
+              postgresql_where=text("type IN ('sap_transaction', 'custom_business') "
+                                    "AND source_reference IS NOT NULL")),
     )
 
 

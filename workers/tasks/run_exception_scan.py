@@ -3,7 +3,6 @@
 import json
 import logging
 import traceback
-import uuid
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -76,17 +75,16 @@ def run_exception_scan(self, version_id: str, tenant_id: str):
         from api.services.exception_engine import CustomRuleEvaluator, SAPTransactionMonitor
 
         exceptions = SAPTransactionMonitor().evaluate_monitors(findings, tenant_id)
-        for exc in CustomRuleEvaluator().evaluate_rules(findings, rules, tenant_id):
-            # Deterministic id per (tenant, version, rule): ON CONFLICT (id) DO NOTHING makes a re-scan a no-op.
-            exc["id"] = str(uuid.uuid5(uuid.NAMESPACE_URL,
-                                       f"meridian:exception_rule:{tenant_id}:{version_id}:{exc['source_reference']}"))
-            exceptions.append(exc)
+        exceptions += CustomRuleEvaluator().evaluate_rules(findings, rules, tenant_id)
 
         if not exceptions:
             logger.info(f"run_exception_scan: no exceptions detected for version_id={version_id}")
             return {"version_id": version_id, "exceptions": 0}
 
-        # Insert exceptions into database
+        # Upsert on the scan identity (tenant, type, source_reference) — uq_exceptions_scan_identity
+        # (migration 061) — so a re-scan refreshes the existing exception instead of adding one.
+        # Steward state (status, assignee, SLA, resolution) is kept. A resolved/closed exception is
+        # left alone unless this version ran after it was resolved, i.e. it failed again: then it re-opens.
         inserted = []
         with Session(engine) as session:
             session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
@@ -94,6 +92,11 @@ def run_exception_scan(self, version_id: str, tenant_id: str):
             for exc in exceptions:
                 row = session.execute(
                     text("""
+                        WITH prev AS (
+                            SELECT status FROM exceptions
+                             WHERE tenant_id = CAST(:tid AS uuid) AND type = :type
+                               AND source_reference = :source_reference
+                        )
                         INSERT INTO exceptions (
                             id, tenant_id, type, category, severity, status,
                             title, description, source_system, source_reference,
@@ -105,8 +108,28 @@ def run_exception_scan(self, version_id: str, tenant_id: str):
                             CAST(:affected_records AS jsonb), CAST(:assigned_to AS uuid), :escalation_tier,
                             CAST(:sla_deadline AS timestamptz), :billing_tier, now()
                         )
-                        ON CONFLICT (id) DO NOTHING
-                        RETURNING id
+                        ON CONFLICT (tenant_id, type, source_reference)
+                            WHERE type IN ('sap_transaction', 'custom_business') AND source_reference IS NOT NULL
+                        DO UPDATE SET
+                            category         = EXCLUDED.category,
+                            severity         = EXCLUDED.severity,
+                            title            = EXCLUDED.title,
+                            description      = EXCLUDED.description,
+                            source_system    = EXCLUDED.source_system,
+                            affected_records = EXCLUDED.affected_records,
+                            billing_tier     = EXCLUDED.billing_tier,
+                            status      = CASE WHEN exceptions.status IN ('resolved', 'verified', 'closed')
+                                               THEN 'open' ELSE exceptions.status END,
+                            sla_deadline = CASE WHEN exceptions.status IN ('resolved', 'verified', 'closed')
+                                               THEN EXCLUDED.sla_deadline ELSE exceptions.sla_deadline END,
+                            resolved_at = CASE WHEN exceptions.status IN ('resolved', 'verified', 'closed')
+                                               THEN NULL ELSE exceptions.resolved_at END,
+                            closed_at   = CASE WHEN exceptions.status IN ('resolved', 'verified', 'closed')
+                                               THEN NULL ELSE exceptions.closed_at END
+                        WHERE exceptions.status NOT IN ('resolved', 'verified', 'closed')
+                           OR COALESCE(exceptions.resolved_at, exceptions.closed_at)
+                              < (SELECT run_at FROM analysis_versions WHERE id = CAST(:vid AS uuid))
+                        RETURNING id, (SELECT status FROM prev) AS prev_status
                     """),
                     {
                         "id": exc["id"],
@@ -124,10 +147,12 @@ def run_exception_scan(self, version_id: str, tenant_id: str):
                         "escalation_tier": exc["escalation_tier"],
                         "sla_deadline": exc["sla_deadline"],
                         "billing_tier": exc.get("billing_tier"),
+                        "vid": version_id,
                     },
                 ).fetchone()
-                if row is None:
-                    continue  # already raised by an earlier scan of this version
+                if row is None or row.prev_status not in (None, "resolved", "verified", "closed"):
+                    continue  # still resolved, or already open: refreshed, nothing newly raised
+                exc["id"] = str(row.id)
                 inserted.append(exc)
 
                 # Upsert stewardship_queue row for this exception
