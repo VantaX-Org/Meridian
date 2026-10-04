@@ -64,9 +64,7 @@ export const WORKSPACES: readonly Workspace[] = [
     tabs: [
       { id: "triage", label: "Triage", href: "/issues" },
       { id: "record", label: "Record report", href: "/workbench/report", hidden: true },
-      { id: "queue", label: "My queue", href: "/workbench" },
-      { id: "team", label: "Team workload", href: "/stewardship" },
-      { id: "metrics", label: "Steward metrics", href: "/stewardship/metrics", anyOf: ["assign"] },
+      { id: "queue", label: "Steward inbox", href: "/workbench" },
       { id: "cleaning", label: "Cleaning", href: "/cleaning" },
       { id: "exceptions", label: "Exceptions", href: "/exceptions" },
       { id: "dedup", label: "Duplicates", href: "/dedup" },

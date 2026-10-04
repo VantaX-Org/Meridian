@@ -66,6 +66,14 @@ def test_clean_counts():
     assert _counts(_frame(clean)) == {k: (0, total) for k, (_, total) in EXPECTED_DIRTY.items()}
 
 
+def test_ages_measured_against_as_of():
+    # the 30-day-old errors were 1 day old at an as-of 29 days back, so the 7-day rules pass
+    as_of = NOW - 29 * DAY
+    got = {r.check_id: r.affected_count
+           for r in run_checks("interface_health", _frame(DIRTY), "t1", as_of=as_of)}
+    assert got["IDH001"] == 0 and got["IDH002"] == 0
+
+
 def test_time_field_gives_hour_precision():
     # created 23h ago: day-only parsing would read yesterday 00:00 and fail the 24h rule
     ts = NOW - 23 * HOUR
