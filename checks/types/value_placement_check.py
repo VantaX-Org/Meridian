@@ -3,7 +3,7 @@ postal-code/city swaps, and records declared dead only in text."""
 
 import pandas as pd
 
-from checks.base import BaseCheck, Evaluation, is_blank
+from checks.base import BaseCheck, Evaluation, as_of_time, is_blank
 from checks.types.domain_value_check import _parse_dates
 from checks.value_placement import (_CITY_WITH_CODE, _POSTCODE_ONLY, DETECTORS, FOREIGN, TARGET, is_placeholder,
                                     status_markers)
@@ -62,12 +62,15 @@ class ValuePlacementCheck(BaseCheck):
         if family == "vat_checksum":
             from checks.value_placement import vat_status
             s = _text(df, self.rule["field"])
+            if self.rule.get("countries"):  # unprefixed tax number: judged by the record's country
+                country = _text(df, self.rule["fields"][1]).str.upper()
+                s = (country + s).where(country.isin(self.rule["countries"]) & s.ne(""), "")
             st = s.map(lambda v: vat_status(v) if v else "n/a")
             return Evaluation(st.ne("n/a"), st.eq("bad"), invalid_values_field=self.rule["field"])
         if family == "date_range":
             d = _parse_dates(df[self.rule["field"]])
             populated = ~is_blank(df[self.rule["field"]])
-            today = pd.Timestamp.now(tz="UTC").tz_localize(None).normalize() + pd.Timedelta(days=1)
+            today = as_of_time(self.rule.get("_as_of")).normalize() + pd.Timedelta(days=1)  # snapshot date, else now
             return Evaluation(populated & d.notna(), (d < pd.Timestamp("1970-01-01")) | (d > today),
                               invalid_values_field=self.rule["field"])
         if family == "change_before_create":

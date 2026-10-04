@@ -5,6 +5,14 @@ const nextConfig: NextConfig = {
   // Next would otherwise write AGENTS.md/CLAUDE.md into frontend/ on every dev start.
   agentRules: false,
 
+  async redirects() {
+    // The steward inbox (Workbench → Steward inbox) replaced the team workload and metrics pages.
+    return [
+      { source: "/stewardship", destination: "/workbench?tab=queue", permanent: false },
+      { source: "/stewardship/metrics", destination: "/workbench?tab=queue", permanent: false },
+    ];
+  },
+
   async rewrites() {
     // INTERNAL_API_URL is a server-side-only env var.
     // In Docker: resolves to http://api:8000 via Docker DNS.

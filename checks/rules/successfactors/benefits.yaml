@@ -201,3 +201,37 @@ rules:
     applies_when:
       BENEFITENROLLMENT.PLAN_ID:
         populated: true
+  - id: BEN015
+    field: BENEFITENROLLMENT.EFFECTIVE_DATE
+    check_class: cross_field_check
+    fail_when: '`BENEFITENROLLMENT.EFFECTIVE_DATE` < `EMPEMPLOYMENT.START_DATE`'
+    require_populated: true
+    severity: medium
+    dimension: consistency
+    message: Benefit enrolment takes effect before the employment started
+    why_it_matters: Benefit coverage starts at or after the hire date. Coverage before hire is usually a typing error or a
+      record copied from an earlier employment.
+    rule_authority: best_practice
+    sap_impact: The carrier is billed for coverage before hire; payroll may take deductions for periods the employee was
+      not employed.
+    fix_map:
+      __other__: Correct the enrolment effective date to the hire date or the plan's eligibility date.
+    record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: plan {BENEFITENROLLMENT.PLAN_ID} from
+      {BENEFITENROLLMENT.EFFECTIVE_DATE}, hired {EMPEMPLOYMENT.START_DATE}.'
+  - id: BEN016
+    field: BENEFITENROLLMENT.EFFECTIVE_DATE
+    check_class: cross_field_check
+    fail_when: '`BENEFITENROLLMENT.EFFECTIVE_DATE` > `EMPEMPLOYMENT.END_DATE`'
+    require_populated: true
+    severity: high
+    dimension: consistency
+    message: Benefit enrolment takes effect after the employment ended
+    why_it_matters: A leaver should not start new benefit coverage (continuation cover such as COBRA is handled outside
+      the active enrolment). An enrolment after the end date means the leaver was enrolled by mistake or the termination
+      date is wrong.
+    rule_authority: best_practice
+    sap_impact: The company pays premiums for a leaver; carrier files report coverage that should not exist.
+    fix_map:
+      __other__: Cancel the enrolment and notify the carrier, or correct the termination date if the employee did not leave.
+    record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: plan {BENEFITENROLLMENT.PLAN_ID} from
+      {BENEFITENROLLMENT.EFFECTIVE_DATE}, employment ended {EMPEMPLOYMENT.END_DATE}.'

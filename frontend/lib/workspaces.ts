@@ -64,9 +64,7 @@ export const WORKSPACES: readonly Workspace[] = [
     tabs: [
       { id: "triage", label: "Triage", href: "/issues" },
       { id: "record", label: "Record report", href: "/workbench/report", hidden: true },
-      { id: "queue", label: "My queue", href: "/workbench" },
-      { id: "team", label: "Team workload", href: "/stewardship" },
-      { id: "metrics", label: "Steward metrics", href: "/stewardship/metrics", anyOf: ["assign"] },
+      { id: "queue", label: "Steward inbox", href: "/workbench" },
       { id: "cleaning", label: "Cleaning", href: "/cleaning" },
       { id: "exceptions", label: "Exceptions", href: "/exceptions" },
       { id: "dedup", label: "Duplicates", href: "/dedup" },
@@ -83,8 +81,8 @@ export const WORKSPACES: readonly Workspace[] = [
       { id: "map", label: "Process map", href: "/process" },
       { id: "readiness", label: "Readiness", href: "/business-process" },
       { id: "config-impact", label: "Config impact", href: "/config-impact" },
-      { id: "patterns", label: "Patterns", href: "/mining" },
-      { id: "relationships", label: "Relationships", href: "/relationships" },
+      { id: "lineage", label: "Lineage", href: "/lineage" },
+      { id: "relationships", label: "Relationships & patterns", href: "/relationships" },
     ],
   },
   {
@@ -106,6 +104,9 @@ export const HUB_ROUTES: ReadonlySet<string> = new Set(WORKSPACES.map((w) => w.h
 
 /** Non-hub pages built on Aurora — rendered on the canvas, not in the light sheet. */
 export const AURORA_PAGES: readonly string[] = ["/workbench/report"];
+
+/** Record 360 detail routes (the list pages above them are still legacy). */
+export const AURORA_DETAIL = /^\/(golden-records|glossary)\/[^/]+$/;
 
 /** Where each role lands after sign-in — the workspace built for their job. */
 export const LANDING: Readonly<Record<Role, string>> = {

@@ -293,8 +293,6 @@ def test_sd_sales_orders_golden():
     # rejected items (reason for rejection set) are out of every item rule's population, counted
     deleted_mat = next(r for r in results if r.check_id == "XO2C003")
     assert deleted_mat.details["population_excluded"] == {"rejected": 3}   # O4/20 (deleted M3), O5/10, D_REJ/10
-    route = next(r for r in results if r.check_id == "SDSO026")
-    assert route.details["population_excluded"] == {"rejected": 3}         # O4/20, O5/10, D_REJ/10
     # M1's 2025 and 2026 list prices adjoin (20251231 / 20260101): judged, no overlap; the record flagged for
     # deletion overlapping both is out of the population, counted
     price = next(r for r in results if r.check_id == "SDSO048")

@@ -4,10 +4,15 @@ Supports triggers: critical_found, dqs_drop, scheduled_daily, scheduled_weekly, 
 Never raises — notification failures must not affect analysis results.
 """
 
+import hashlib
+import hmac
+import html
 import json
 import logging
 import os
+import time
 import traceback
+from datetime import datetime, timedelta, timezone
 
 import requests
 from sqlalchemy import text
@@ -284,7 +289,11 @@ def _send_email(config: dict, version_data: dict, trigger: str):
         return
 
     subject, body = _build_email_content(config, version_data, trigger)
+    _deliver_email(recipient, subject, body)
 
+
+def _deliver_email(recipient: str, subject: str, body: str):
+    """Microsoft Graph, else the SMTP relay (SMTP_HOST), else Resend."""
     # Try Microsoft Graph first
     graph_client = create_graph_client()
     if graph_client:
@@ -368,6 +377,9 @@ def send_notification(self, version_id: str, tenant_id: str, trigger: str):
                 logger.warning(f"Tenant {tenant_id} not found, skipping notification")
                 return
 
+            if trigger == "critical_found":  # alert channels: new critical findings go out immediately
+                _send_immediate_critical(session, tenant_id, version_id)
+
             version_data = _load_version_data(session, version_id, tenant_id)
             if not version_data:
                 logger.warning(f"Version {version_id} not found, skipping notification")
@@ -385,3 +397,176 @@ def send_notification(self, version_id: str, tenant_id: str, trigger: str):
     except Exception:
         logger.error(f"send_notification failed: {traceback.format_exc()}")
         # Never raise — notification failures must not affect analysis
+
+
+# ── Alert channels (alert_channels, migration 054) ───────────────────────────
+# Payloads carry counts, rule ids and links only — never finding messages,
+# record keys or values. Digest (daily/weekly) is the default; a channel may
+# opt into immediate delivery of new critical findings only.
+
+DIGEST_WINDOW = {"daily": timedelta(days=1), "weekly": timedelta(days=7)}
+MAX_RULE_IDS = 50
+
+
+def sign(secret: str, timestamp: str, body: bytes) -> str:
+    """X-Meridian-Signature: HMAC-SHA256 over "<timestamp>.<body>" (receivers reject stale timestamps)."""
+    return "sha256=" + hmac.new(secret.encode(), timestamp.encode() + b"." + body, hashlib.sha256).hexdigest()
+
+
+def build_alert(mode: str, version_id: str | None, score: float | None, previous_score: float | None,
+                new_critical: set[str], sla_breaches: int, drop_threshold: float, base_url: str) -> dict | None:
+    """The alert payload, or None when no trigger fires."""
+    drop = round(previous_score - score, 1) if score is not None and previous_score is not None else None
+    triggers = [t for t, hit in (("score_drop", drop is not None and drop > drop_threshold),
+                                 ("new_critical", bool(new_critical)), ("sla_breach", sla_breaches > 0)) if hit]
+    if not triggers:
+        return None
+    return {
+        "event": "meridian.dq_alert", "mode": mode, "triggers": triggers,
+        "version_id": version_id, "score": score, "previous_score": previous_score, "score_drop": drop,
+        "new_critical_count": len(new_critical), "new_critical_rules": sorted(new_critical)[:MAX_RULE_IDS],
+        "sla_breaches": sla_breaches,
+        "links": {"findings": f"{base_url}/findings", "exceptions": f"{base_url}/exceptions",
+                  "versions": f"{base_url}/versions"},
+        "sent_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+def alert_text(alert: dict) -> str:
+    parts = []
+    if "score_drop" in alert["triggers"]:
+        parts.append(f"DQS fell {alert['score_drop']} points to {alert['score']}")
+    if alert["new_critical_count"]:
+        parts.append(f"{alert['new_critical_count']} new critical rule(s) failing: "
+                     + ", ".join(alert["new_critical_rules"][:10]))
+    if alert["sla_breaches"]:
+        parts.append(f"{alert['sla_breaches']} exception SLA breach(es)")
+    return f"Meridian {alert['mode']} alert — " + "; ".join(parts) + f". {alert['links']['findings']}"
+
+
+def render(kind: str, alert: dict) -> dict:
+    if kind == "slack":
+        return {"text": alert_text(alert)}
+    if kind == "teams":
+        return {"type": "message", "attachments": [{
+            "contentType": "application/vnd.microsoft.card.adaptive",
+            "content": {
+                "$schema": "http://adaptivecards.io/schemas/adaptive-card.json", "type": "AdaptiveCard",
+                "version": "1.4",
+                "body": [{"type": "TextBlock", "wrap": True, "text": alert_text(alert)}],
+                "actions": [{"type": "Action.OpenUrl", "title": "Open findings", "url": alert["links"]["findings"]}],
+            }}]}
+    return alert
+
+
+def deliver(channel: dict, alert: dict) -> bool:
+    """Send one alert. Never logs the target (webhook URLs embed tokens) or the secret."""
+    kind = channel["kind"]
+    if kind == "email":
+        _deliver_email(channel["target"], f"Meridian DQ {alert['mode']} alert",
+                       f"<p>{html.escape(alert_text(alert))}</p>")
+        return True
+    body = json.dumps(render(kind, alert), sort_keys=True, default=str).encode()
+    headers = {"Content-Type": "application/json", "X-Meridian-Event": alert["event"]}
+    if channel.get("secret"):
+        ts = str(int(time.time()))
+        headers |= {"X-Meridian-Timestamp": ts, "X-Meridian-Signature": sign(channel["secret"], ts, body)}
+    try:
+        resp = requests.post(channel["target"], data=body, headers=headers, timeout=10)
+        logger.info(f"alert channel {channel.get('id')} ({kind}): HTTP {resp.status_code}")
+        return resp.ok
+    except requests.RequestException as e:
+        logger.error(f"alert channel {channel.get('id')} ({kind}) failed: {type(e).__name__}")
+        return False
+
+
+def _channels(session: Session, where: str, params: dict | None = None) -> list[dict]:
+    try:
+        rows = session.execute(text(f"SELECT id, kind, target, secret FROM alert_channels WHERE enabled AND {where}"),
+                               params or {}).mappings().all()
+    except Exception:  # table absent before migration 054
+        session.rollback()
+        return []
+    return [dict(r) for r in rows]
+
+
+def _overall(dqs_summary) -> float | None:
+    scores = [m.get("composite_score", 0) for m in dqs_summary.values()] if isinstance(dqs_summary, dict) else []
+    return round(sum(scores) / len(scores), 1) if scores else None
+
+
+def _critical_rules(session: Session, version_id) -> set[str]:
+    """Critical rules failing in a version, suppressed ones excluded."""
+    return {r[0] for r in session.execute(text("""
+        SELECT DISTINCT check_id FROM findings
+         WHERE version_id = :v AND severity = 'critical' AND affected_count > 0
+           AND details->>'error' IS NULL AND NOT COALESCE((details->>'suppressed')::boolean, false)
+    """), {"v": str(version_id)}).fetchall()}
+
+
+def _completed(session: Session, before: datetime | None = None, skip: str | None = None):
+    """Latest completed analysis version (id, run_at, dqs_summary) — optionally before a time / not `skip`."""
+    return session.execute(text("""
+        SELECT id, run_at, dqs_summary FROM analysis_versions
+         WHERE status IN ('complete', 'agents_complete')
+           AND (CAST(:before AS timestamptz) IS NULL OR run_at < :before)
+           AND (CAST(:skip AS uuid) IS NULL OR id <> CAST(:skip AS uuid))
+         ORDER BY run_at DESC LIMIT 1
+    """), {"before": before, "skip": skip}).fetchone()
+
+
+def _drop_threshold(session: Session, tenant_id: str) -> float:
+    row = session.execute(text("SELECT alert_thresholds FROM tenants WHERE id = :t"), {"t": tenant_id}).fetchone()
+    return float(((row[0] if row else None) or {}).get("dqs_drop_threshold", 5))
+
+
+def _send_immediate_critical(session: Session, tenant_id: str, version_id: str) -> None:
+    channels = _channels(session, "immediate_critical")
+    if not channels:
+        return
+    from workers.tasks.send_user_invitation import _resolve_app_base_url
+    prev = _completed(session, skip=version_id)
+    new = _critical_rules(session, version_id) - (_critical_rules(session, prev[0]) if prev else set())
+    alert = build_alert("immediate", version_id, None, None, new, 0, 0, _resolve_app_base_url())
+    for ch in channels if alert else []:
+        deliver(ch, alert)
+
+
+@celery_app.task(name="workers.tasks.send_notifications.send_alert_digest",
+                 soft_time_limit=600, time_limit=660)
+def send_alert_digest(period: str) -> dict:
+    """Daily / weekly digest per tenant: score drop beyond the tenant's threshold, critical
+    rules newly failing, exception SLAs breached in the window. Silent when nothing fired."""
+    from workers.tasks.send_user_invitation import _resolve_app_base_url
+
+    since = datetime.now(timezone.utc) - DIGEST_WINDOW[period]
+    base_url = _resolve_app_base_url()
+    engine = get_sync_engine()
+    sent = 0
+    with Session(engine) as session:
+        tenants = [str(r[0]) for r in session.execute(text("SELECT id FROM tenants")).fetchall()]
+    for tid in tenants:
+        try:
+            with Session(engine) as session:
+                session.execute(text("SET app.tenant_id = :tid"), {"tid": tid})
+                channels = _channels(session, "digest = :p", {"p": period})
+                if not channels:
+                    continue
+                cur = _completed(session)
+                base = _completed(session, before=since)
+                fresh = cur is not None and cur[1] >= since
+                new = (_critical_rules(session, cur[0]) - (_critical_rules(session, base[0]) if base else set())
+                       if fresh and base else set())
+                sla = session.execute(text("""
+                    SELECT count(*) FROM exceptions WHERE status NOT IN ('resolved', 'closed')
+                       AND sla_deadline > :since AND sla_deadline <= now()
+                """), {"since": since}).scalar() or 0
+                alert = build_alert(period, str(cur[0]) if fresh else None,
+                                    _overall(cur[2]) if fresh else None,
+                                    _overall(base[2]) if fresh and base else None,
+                                    new, int(sla), _drop_threshold(session, tid), base_url)
+                for ch in channels if alert else []:
+                    sent += deliver(ch, alert)
+        except Exception as e:
+            logger.error(f"alert digest failed for tenant {tid}: {type(e).__name__}: {e}")
+    return {"period": period, "sent": sent}

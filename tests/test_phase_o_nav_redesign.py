@@ -82,10 +82,10 @@ def test_sidebar_quality_items():
 
 
 def test_sidebar_fix_items():
-    """Fix has the two renamed queues plus Cleaning, Exceptions, Duplicates, AI rule review."""
+    """Fix has the steward inbox plus Cleaning, Exceptions, Duplicates, AI rule review."""
     block = _group_block(_nav(), "Fix")
-    assert 'href: "/workbench", label: "My queue"' in block
-    assert 'href: "/stewardship", label: "Team workload"' in block
+    assert 'href: "/workbench", label: "Steward inbox"' in block
+    assert '"/stewardship"' not in block
     for href in ("/cleaning", "/exceptions", "/dedup", "/ai/rules"):
         assert f'"{href}"' in block, f"{href} missing from Fix"
     assert 'label: "Workbench"' not in _nav(), "duplicate 'Workbench' labels must be gone"
@@ -153,7 +153,7 @@ def test_ai_rules_page_exists():
 
 def test_ai_rules_page_imports():
     """AI Rules page uses correct API functions."""
-    path = Path("frontend/app/(dashboard)/ai/rules/page.tsx")
+    path = Path("frontend/components/workbench/ai-rules.tsx")
     content = path.read_text(encoding="utf-8")
     assert "getProposedRules" in content
     assert "approveProposedRule" in content
@@ -162,7 +162,7 @@ def test_ai_rules_page_imports():
 
 def test_ai_rules_page_empty_state():
     """AI Rules page shows correct empty state message."""
-    path = Path("frontend/app/(dashboard)/ai/rules/page.tsx")
+    path = Path("frontend/components/workbench/ai-rules.tsx")
     content = path.read_text(encoding="utf-8")
     assert "No AI-proposed rules awaiting review" in content
     assert "steward corrections" in content
@@ -170,7 +170,7 @@ def test_ai_rules_page_empty_state():
 
 def test_ai_rules_page_approve_confirmation():
     """AI Rules page has approve confirmation dialog."""
-    path = Path("frontend/app/(dashboard)/ai/rules/page.tsx")
+    path = Path("frontend/components/workbench/ai-rules.tsx")
     content = path.read_text(encoding="utf-8")
     assert "will be added to the match engine" in content
 

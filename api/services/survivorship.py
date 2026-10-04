@@ -12,6 +12,7 @@ Rule types (in order of specificity):
   - longest_non_null: pick the longest non-empty value (description/name/address)
   - most_complete:  pick the source with fewest null fields overall
   - most_recent:    take value from source with latest extracted_at
+  - most_frequent:  take the value most sources agree on (None on a tie)
 
 A default `SurvivorshipChain` walks the first five deterministic rules in order
 and returns the first non-None result. Call `SurvivorshipChain.evaluate()` and
@@ -133,6 +134,33 @@ def apply_most_complete(
         value=winner.value,
         source_system=winner.source_system,
         rule_type="most_complete",
+        confidence=winner.confidence,
+    )
+
+
+def apply_most_frequent(
+    contributions: list[FieldContribution],
+) -> Optional[SurvivorshipResult]:
+    """Pick the value most sources agree on (trimmed, case-insensitive).
+
+    Returns None on a tie for first place so a later rule decides.
+    """
+    valid = [c for c in contributions if c.value is not None and str(c.value).strip()]
+    if not valid:
+        return None
+    counts: dict[str, int] = {}
+    for c in valid:
+        k = str(c.value).strip().lower()
+        counts[k] = counts.get(k, 0) + 1
+    ranked = sorted(counts.values(), reverse=True)
+    if len(ranked) > 1 and ranked[0] == ranked[1]:
+        return None
+    top = max(counts, key=counts.__getitem__)
+    winner = next(c for c in valid if str(c.value).strip().lower() == top)
+    return SurvivorshipResult(
+        value=winner.value,
+        source_system=winner.source_system,
+        rule_type="most_frequent",
         confidence=winner.confidence,
     )
 
@@ -370,6 +398,9 @@ def evaluate_field(
 
     if rule_type == "most_complete":
         return apply_most_complete(contributions, all_field_contributions)
+
+    if rule_type == "most_frequent":
+        return apply_most_frequent(contributions)
 
     if rule_type == "trusted_source":
         if not trusted_sources:

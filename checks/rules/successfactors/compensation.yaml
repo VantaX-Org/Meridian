@@ -391,3 +391,73 @@ rules:
     applies_when:
       COMPINFO.SALARY:
         populated: true
+  - id: COMP022
+    field: COMPINFO.EFFECTIVE_DATE
+    check_class: cross_field_check
+    fail_when: '`COMPINFO.EFFECTIVE_DATE` > `EMPEMPLOYMENT.END_DATE`'
+    require_populated: true
+    applies_when:
+      COMPINFO.SALARY:
+        gt: 0
+    severity: high
+    dimension: consistency
+    message: Compensation record starts after the employment ended
+    why_it_matters: A terminated employee should not receive new pay. A compensation record that takes effect after the
+      employment end date means a pay change was entered for a leaver, or the termination date is wrong.
+    rule_authority: best_practice
+    sap_impact: Payroll may pay a leaver; compensation planning and salary cost reports include people who no longer work
+      for the company.
+    fix_map:
+      __other__: Delete the compensation record if the employee left, or correct the termination date if they did not.
+    record_fix_template: 'Employee {COMPINFO.USERID}: compensation from {COMPINFO.EFFECTIVE_DATE}, employment ended
+      {EMPEMPLOYMENT.END_DATE}.'
+  - id: COMP023
+    field: COMPINFO.EFFECTIVE_DATE
+    check_class: cross_field_check
+    fail_when: '`COMPINFO.EFFECTIVE_DATE` < `EMPEMPLOYMENT.START_DATE`'
+    require_populated: true
+    severity: medium
+    dimension: consistency
+    message: Compensation record starts before the employment started
+    why_it_matters: Pay belongs to an employment, so it cannot take effect before the hire date. An earlier date usually
+      comes from a migration or a rehire where the old pay history was copied onto the new employment.
+    rule_authority: best_practice
+    sap_impact: Retroactive payroll may pay for days before the hire; salary history and pay-change reports start too
+      early.
+    fix_map:
+      __other__: Set the compensation start date to the hire date or later in Compensation Information.
+    record_fix_template: 'Employee {COMPINFO.USERID}: compensation from {COMPINFO.EFFECTIVE_DATE}, hired
+      {EMPEMPLOYMENT.START_DATE}.'
+  - id: COMP024
+    field: COMPINFO.CURRENCY
+    check_class: cross_field_check
+    fail_when: '`COMPINFO.CURRENCY` != `FOCOMPANY.CURRENCY`'
+    require_populated: true
+    severity: low
+    dimension: consistency
+    message: Pay component currency differs from the legal entity's default currency
+    why_it_matters: Employees are normally paid in the currency of their legal entity. Another currency can be correct
+      (expatriate or split pay) but is often a default left over from a template or a transfer.
+    rule_authority: best_practice
+    sap_impact: Payroll pays in the wrong currency or rejects the component; compensation planning converts amounts at
+      exchange rates no one intended.
+    fix_map:
+      __other__: Confirm the pay currency with payroll; if the legal entity's currency applies, correct the pay component.
+    record_fix_template: 'Employee {COMPINFO.USERID}: pay component {COMPINFO.PAY_TYPE} in {COMPINFO.CURRENCY}, legal entity
+      uses {FOCOMPANY.CURRENCY}.'
+  - id: COMP025
+    field: COMPINFO.PAY_GROUP
+    check_class: null_check
+    applies_when:
+      COMPINFO.SALARY:
+        populated: true
+    severity: high
+    dimension: completeness
+    message: Employee with pay has no pay group
+    why_it_matters: The pay group decides which payroll run pays the employee and on what calendar. Without it the
+      employee is not picked up by any payroll.
+    rule_authority: sap_hard_constraint
+    sap_impact: Employee Central Payroll and payroll integrations skip the employee; the employee is not paid.
+    fix_map:
+      __blank__: Set the pay group in Compensation Information.
+    record_fix_template: 'Employee {COMPINFO.USERID}: pay group is blank.'

@@ -1,7 +1,15 @@
 import apiClient from "./client";
 import { downloadBlob } from "./download";
 
-export type IssueStatus = "open" | "in_progress" | "accepted" | "resolved";
+export type IssueStatus =
+  | "open"
+  | "in_progress"
+  | "waiting_sap"
+  | "waiting_requester"
+  | "accepted"
+  | "resolved";
+
+export type SlaState = "on_track" | "at_risk" | "breached";
 
 export interface RecordIssue {
   id: string;
@@ -25,10 +33,34 @@ export interface RecordIssue {
   reopened_count: number;
   message: string | null;
   field: string | null;
+  /** Manual priority 1 (highest) to 5; null = derived from severity. */
+  priority: number | null;
+  assigned_team_id: string | null;
+  acknowledged_at: string | null;
+  due_at: string | null;
+  ack_due_at: string | null;
+  risk_at: string | null;
+  sla_state: SlaState | null;
+  /** Set while the item waits on SAP or the requester; the SLA clock is stopped. */
+  sla_paused_at: string | null;
+  snoozed_until: string | null;
+  snooze_reason: string | null;
 }
 
 export interface IssueEvent {
-  action: "status" | "assign" | "comment" | "auto_resolved" | "reopened";
+  action:
+    | "status"
+    | "assign"
+    | "comment"
+    | "auto_resolved"
+    | "reopened"
+    | "snooze"
+    | "unsnooze"
+    | "priority"
+    | "acknowledge"
+    | "sla_at_risk"
+    | "sla_ack_breached"
+    | "sla_breached";
   from_value: string | null;
   to_value: string | null;
   note: string | null;

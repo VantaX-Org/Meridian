@@ -371,3 +371,31 @@ rules:
       __other__: Remove the duplicate from the extract; check the object key mapping for the customer.
     record_fix_template: 'Customer {XSYS.KUNNR} / company code {XSYS.BUKRS} appears more than once in
       {XSYS.SOURCE_SYSTEM}.'
+
+  - id: XSYS026
+    field: XSYS.OBJECT_KEY
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: Cross-system record has no object key
+    why_it_matters: The object key (XSYS.OBJECT_KEY) identifies the record in the system it was read from. Without it
+      the record cannot be matched to its counterpart in another system or traced back to the source.
+    rule_authority: sap_hard_constraint
+    sap_impact: Reconciliation between systems cannot match the record; duplicates and gaps go undetected.
+    fix_map:
+      __blank__: Fix the extraction mapping so the source key is read for this object type.
+    record_fix_template: '{XSYS.OBJECT_TYPE} from {XSYS.SOURCE_SYSTEM}: object key is blank.'
+
+  - id: XSYS027
+    field: XSYS.SOURCE_SYSTEM
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: Cross-system record has no source system
+    why_it_matters: The source system (XSYS.SOURCE_SYSTEM) tells which system the record came from. Keys such as
+      material or vendor numbers are only unique within one system, so a record without a source cannot be compared.
+    rule_authority: sap_hard_constraint
+    sap_impact: Records from different systems are mixed; key comparisons give false matches.
+    fix_map:
+      __blank__: Fix the extraction so every record carries the system id it was read from.
+    record_fix_template: '{XSYS.OBJECT_TYPE} {XSYS.OBJECT_KEY}: source system is blank.'

@@ -18,7 +18,7 @@ from api.services.rbac import current_user_id, current_user_label, has_permissio
 
 router = APIRouter(prefix="/api/v1/issues", tags=["issues"])
 
-Status = Literal["open", "in_progress", "accepted", "resolved"]
+Status = Literal["open", "in_progress", "waiting_sap", "waiting_requester", "accepted", "resolved"]
 # accepted = a signed-off exception (risk accepted / false positive) → needs `approve`
 _RESOLUTIONS = {"accepted": {"accepted_risk", "false_positive"}, "resolved": {"fixed_in_source"}}
 
@@ -63,7 +63,9 @@ _SELECT = """
     SELECT ri.id, ri.scope, ri.module, ri.check_id, ri.record_key, ri.grain, ri.severity, ri.status,
            ri.resolution, ri.assigned_to, u.email AS assignee_email, ri.first_seen_version,
            ri.last_seen_version, ri.resolved_version, ri.first_seen_at, ri.last_seen_at, ri.resolved_at,
-           ri.reopened_count, f.details->>'message' AS message, f.details->>'field_checked' AS field
+           ri.reopened_count, ri.priority, ri.assigned_team_id, ri.acknowledged_at, ri.due_at, ri.ack_due_at,
+           ri.risk_at, ri.sla_state, ri.sla_paused_at, ri.snoozed_until, ri.snooze_reason,
+           f.details->>'message' AS message, f.details->>'field_checked' AS field
       FROM record_issues ri
       LEFT JOIN users u ON u.id = ri.assigned_to
       LEFT JOIN findings f ON f.version_id = ri.last_seen_version AND f.check_id = ri.check_id
@@ -183,7 +185,7 @@ async def bulk_update(
     need = {"approve"} if body.status == "accepted" else set()
     if body.status or body.assigned_to is not None:
         need.add("assign")
-    if body.note:
+    if body.note and not body.status:  # a note on a status change is that change's reason
         need.add("analyse")
     missing = [a for a in need if not has_permission(role, a)]
     if missing:
@@ -191,6 +193,8 @@ async def bulk_update(
     if body.status in _RESOLUTIONS and body.resolution not in _RESOLUTIONS[body.status]:
         raise HTTPException(status_code=400, detail=(
             f"Status '{body.status}' needs a resolution: {', '.join(sorted(_RESOLUTIONS[body.status]))}."))
+    if body.resolution == "false_positive" and not (body.note or "").strip():
+        raise HTTPException(status_code=400, detail="Say why it is not an issue: a false positive needs a note.")
 
     await _rls(db, tenant)
     ids = list(body.ids)
@@ -201,6 +205,7 @@ async def bulk_update(
             WITH old AS (SELECT id, status FROM record_issues WHERE id = ANY(CAST(:ids AS uuid[])) FOR UPDATE),
                  upd AS (
                     UPDATE record_issues ri SET status = :st, resolution = :res, updated_at = now(),
+                           acknowledged_at = COALESCE(ri.acknowledged_at, CASE WHEN :st <> 'open' THEN now() END),
                            resolved_at = CASE WHEN :st IN ('resolved', 'accepted') THEN now() END,
                            -- a steward's judgement; re-opening by hand withdraws it
                            steward_verdict = CASE WHEN :res = 'false_positive' THEN 'false_positive'
@@ -220,7 +225,8 @@ async def bulk_update(
         res = await db.execute(text("""
             WITH old AS (SELECT id, assigned_to FROM record_issues WHERE id = ANY(CAST(:ids AS uuid[])) FOR UPDATE),
                  upd AS (
-                    UPDATE record_issues ri SET assigned_to = CAST(:a AS uuid), updated_at = now()
+                    UPDATE record_issues ri SET assigned_to = CAST(:a AS uuid), updated_at = now(),
+                           assigned_at = now(), assigned_team_id = NULL, assigned_by_rule = NULL
                       FROM old WHERE ri.id = old.id AND old.assigned_to IS DISTINCT FROM CAST(:a AS uuid)
                     RETURNING ri.id, old.assigned_to AS prev)
             INSERT INTO record_issue_events (tenant_id, issue_id, user_id, user_label, action, from_value, to_value, note)
@@ -234,6 +240,10 @@ async def bulk_update(
               FROM record_issues WHERE id = ANY(CAST(:ids AS uuid[]))
         """), {"ids": ids, "tid": str(tenant.id), "note": body.note, **who})
         changed = res.rowcount
+    if body.status or body.assigned_to:
+        from api.services import triage
+        tid = str(tenant.id)
+        await db.run_sync(lambda s: (triage.sync_pause(s, tid, "issue", ids), triage.apply_sla(s, tid, "issue", ids)))
     await db.commit()
     return {"updated": changed}
 

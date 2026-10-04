@@ -3,6 +3,7 @@
 #   where: pushed down to RFC_READ_TABLE. Placeholders:
 #          {months_ago:N}  → YYYYMMDD N months before today
 #          {years_ago:N}   → YYYY N years before this year
+#          {days_ago:N}    → YYYYMMDD N days before today
 #   via:   read only rows belonging to the parent rows already extracted
 #          (IN-lists over the join keys from sap/dictionaries/joins.yaml)
 # Override per deployment with MERIDIAN_EXTRACT_MONTHS (default windows below).
@@ -16,6 +17,7 @@ BKPF:  {where: "BUDAT >= '{months_ago:3}'"}  # FI documents are high-volume: las
 BSEG:  {via: BKPF}
 LTAK:  {where: "BDATU >= '{months_ago:6}'"}
 LTAP:  {via: LTAK}
+/SCWM/ORDIM_C: {where: "CONFIRMED_AT >= '{months_ago:6}000000'"}  # EWM confirmed tasks (DEC15 timestamp)
 VTTK:  {where: "ERDAT >= '{months_ago:12}'"}
 VTTP:  {via: VTTK}
 CDHDR: {where: "UDATE >= '{months_ago:3}'"}
@@ -43,3 +45,12 @@ ZMERIDIAN_PAYRT: {via: HRPY_RGDIR}  # read through the customer's RFC function, 
 ACDOCA: {where: "BUDAT >= '{months_ago:3}'"}
 # S/4HANA document pricing conditions (live dictionary only): last quarter by pricing date
 PRCD_ELEMENTS: {where: "KDATU >= '{months_ago:3}'"}
+# IDocs: EDIDC grows without bound on busy systems, so never read in full.
+# Status records of an IDoc are logged on/after its creation, so the same
+# LOGDAT window covers EDIDS without per-IDoc IN-lists.
+EDIDC: {where: "CREDAT >= '{days_ago:90}'"}
+EDIDS: {where: "LOGDAT >= '{days_ago:90}'"}
+# qRFC/tRFC queues hold only unprocessed LUWs; a wider window keeps old stuck entries.
+TRFCQOUT:   {where: "QRFCDATUM >= '{days_ago:365}'"}
+TRFCQIN:    {where: "QRFCDATUM >= '{days_ago:365}'"}
+ARFCSSTATE: {where: "ARFCDATUM >= '{days_ago:365}'"}
