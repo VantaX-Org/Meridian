@@ -1,0 +1,117 @@
+{
+ "domain": "BERTYP",
+ "type": "CHAR",
+ "length": 2,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "01",
+   "high": null,
+   "text": "Valuation for trade bal. sheet"
+  },
+  {
+   "low": "02",
+   "high": null,
+   "text": "Special dep. reserves (special tax depreciation)"
+  },
+  {
+   "low": "03",
+   "high": null,
+   "text": "Valuation for tax bal. sheet (diff. from trade bal. sheet)"
+  },
+  {
+   "low": "04",
+   "high": null,
+   "text": "Net worth valuation"
+  },
+  {
+   "low": "05",
+   "high": null,
+   "text": "Insurance valuation"
+  },
+  {
+   "low": "06",
+   "high": null,
+   "text": "Group valuation"
+  },
+  {
+   "low": "07",
+   "high": null,
+   "text": "Cost-acc. valuation"
+  },
+  {
+   "low": "08",
+   "high": null,
+   "text": "Investment support"
+  },
+  {
+   "low": "09",
+   "high": null,
+   "text": "Manual Revaluation"
+  },
+  {
+   "low": "10",
+   "high": null,
+   "text": "US: Federal tax ACRS / MACRS"
+  },
+  {
+   "low": "11",
+   "high": null,
+   "text": "US: SMACRS - State modified MACRS"
+  },
+  {
+   "low": "12",
+   "high": null,
+   "text": "US: ALTMIN - Alternative minimum tax"
+  },
+  {
+   "low": "13",
+   "high": null,
+   "text": "US: ACE - Adjusted Current Earnings"
+  },
+  {
+   "low": "14",
+   "high": null,
+   "text": "US: E&P - Earnings & Profits"
+  },
+  {
+   "low": "15",
+   "high": null,
+   "text": "Austria:  investment incentive"
+  },
+  {
+   "low": "16",
+   "high": null,
+   "text": "Stock indicator for real estate management of insurances"
+  },
+  {
+   "low": "17",
+   "high": null,
+   "text": "Depreciation area for handling inflation (hard currency)"
+  },
+  {
+   "low": "18",
+   "high": null,
+   "text": "Balance sheet according to other guidelines (e.g. IAS)"
+  },
+  {
+   "low": "19",
+   "high": null,
+   "text": "Property Tax (Russia)"
+  },
+  {
+   "low": "20",
+   "high": null,
+   "text": "Transport Tax (Russia)"
+  },
+  {
+   "low": "21",
+   "high": null,
+   "text": "Area Posts Net Book Value for Retirement"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

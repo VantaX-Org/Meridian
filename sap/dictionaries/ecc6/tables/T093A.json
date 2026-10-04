@@ -1,0 +1,291 @@
+{
+ "table": "T093A",
+ "description": "Real depreciation area",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "AFAPL",
+   "key": true,
+   "data_element": "AFAPL",
+   "domain": "AFAPL",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Chart of depreciaton for asset valuation",
+   "check_table": "T096"
+  },
+  {
+   "pos": 3,
+   "name": "AFABE",
+   "key": true,
+   "data_element": "AFABE_D",
+   "domain": "AFABE",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Real depreciation area",
+   "check_table": "T093"
+  },
+  {
+   "pos": 4,
+   "name": "WRTAFB",
+   "key": false,
+   "data_element": "WRTAFB",
+   "domain": "AFABE",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Adoption of values from depreciation area",
+   "check_table": "T093"
+  },
+  {
+   "pos": 5,
+   "name": "PARAFB",
+   "key": false,
+   "data_element": "PARAFB",
+   "domain": "AFABE",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Transfer of Depreciation Terms from Depreciation Area",
+   "check_table": "T093"
+  },
+  {
+   "pos": 6,
+   "name": "XINDHI",
+   "key": false,
+   "data_element": "XINDHI",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Ind: Calculate replacement value historically",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "XWRTID",
+   "key": false,
+   "data_element": "XWRTID",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Identical transfer of acquisition value",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "XINDID",
+   "key": false,
+   "data_element": "XINDID",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Identical depreciation terms copied",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "AFARFO",
+   "key": false,
+   "data_element": "AFARFO",
+   "domain": "AFARFO",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Sequence for depreciation calculation",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "XZUJHR",
+   "key": false,
+   "data_element": "XZUJHR",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Ind: Manage asset values by acquisition year",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "XZUCOD",
+   "key": false,
+   "data_element": "XZUCOD",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Ind: Manage asset values according to currency codes",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "XAFABH",
+   "key": false,
+   "data_element": "XAFABH",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Dependent depreciation areas exist",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "XUMHIS",
+   "key": false,
+   "data_element": "XUMHIS",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Transfer with historical values",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "RVERS_GC",
+   "key": false,
+   "data_element": "RVERS_GC",
+   "domain": "RVERS_GC",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Consolidation version",
+   "check_table": "T858"
+  },
+  {
+   "pos": 15,
+   "name": "HS1069",
+   "key": false,
+   "data_element": "RSUBD",
+   "domain": "RSUBD",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Subgroup",
+   "check_table": "T852"
+  },
+  {
+   "pos": 16,
+   "name": "CURNO",
+   "key": false,
+   "data_element": "CURNO",
+   "domain": "NUM01",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Number of the Local Currency",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "CURTP",
+   "key": false,
+   "data_element": "CURTP",
+   "domain": "CURTP",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Currency type and valuation view",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "BERTYP",
+   "key": false,
+   "data_element": "BERTYP",
+   "domain": "BERTYP",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Standardization of deprec. area",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "VERSN",
+   "key": false,
+   "data_element": "VERSN_AIB",
+   "domain": "VERSN_AIB1",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Capitalization Version for Capital Investment Measure",
+   "check_table": "TKKAL"
+  },
+  {
+   "pos": 20,
+   "name": "XMENGE",
+   "key": false,
+   "data_element": "XMENGE_AFABE",
+   "domain": "BOOLE",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Area Is Relevant for Quantity Update",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "AFABE",
+   "foreign_table": "T093",
+   "foreign_field": "AFABER"
+  },
+  {
+   "field": "AFAPL",
+   "foreign_table": "T096",
+   "foreign_field": "AFAPL"
+  },
+  {
+   "field": "HS1069",
+   "foreign_table": "T852",
+   "foreign_field": "RSUBD"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "PARAFB",
+   "foreign_table": "T093",
+   "foreign_field": "AFABER"
+  },
+  {
+   "field": "RVERS_GC",
+   "foreign_table": "T858",
+   "foreign_field": "RVERS"
+  },
+  {
+   "field": "VERSN",
+   "foreign_table": "TKKAL",
+   "foreign_field": "VERSA"
+  },
+  {
+   "field": "WRTAFB",
+   "foreign_table": "T093",
+   "foreign_field": "AFABER"
+  }
+ ]
+}

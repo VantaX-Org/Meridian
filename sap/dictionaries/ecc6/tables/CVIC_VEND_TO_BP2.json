@@ -1,0 +1,57 @@
+{
+ "table": "CVIC_VEND_TO_BP2",
+ "description": "Role Assignment for Vendor According to Business Partner",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "CLIENT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "ACCOUNT_GROUP",
+   "key": true,
+   "data_element": "KTOKK",
+   "domain": "KTOKK",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Vendor account group",
+   "check_table": "T077K"
+  },
+  {
+   "pos": 3,
+   "name": "ROLE",
+   "key": true,
+   "data_element": "BU_PARTNERROLE",
+   "domain": "BU_ROLE",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "BP Role",
+   "check_table": "TB003"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "ACCOUNT_GROUP",
+   "foreign_table": "T077K",
+   "foreign_field": "KTOKK"
+  },
+  {
+   "field": "ROLE",
+   "foreign_table": "TB003",
+   "foreign_field": "ROLE"
+  }
+ ]
+}

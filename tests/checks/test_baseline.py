@@ -43,3 +43,20 @@ def test_deviation_from_sap_standard():
     out = deviation([("T163", [{"PSTYP": v} for v in std[1:]] + [{"PSTYP": "Z"}])])
     assert out == [{"reference": "T163.PSTYP", "live_count": len(std), "standard_count": len(std),
                     "custom": ["Z"], "missing": [std[0]]}]
+
+
+def test_cost_elements_judged_against_the_chart_of_their_controlling_area():
+    frames = TableFrames({
+        "TKA01": pd.DataFrame({"TKA01.KOKRS": ["A1"], "TKA01.KTOPL": ["INT"]}),
+        # P1 has its G/L account, P2 not; S1 is free, S2 is already a G/L account; X9 sits in an unknown CO area
+        "CSKB": pd.DataFrame({"CSKB.KOKRS": ["A1", "A1", "A1", "A1", "X9"],
+                              "CSKB.KSTAR": ["P1", "P2", "S1", "S2", "P3"],
+                              "CSKB.DATBI": ["99991231"] * 5,
+                              "CSKB.KATYP": ["01", "01", "42", "42", "01"]}),
+        "SKA1": pd.DataFrame({"SKA1.KTOPL": ["INT", "INT", "IKR"], "SKA1.SAKNR": ["P1", "S2", "P2"]}),
+    }, D, module="fi_gl")
+    res = {r.check_id: r for r in run_checks("fi_gl", frames, "t") if r.check_id.startswith("S4-CE")}
+    assert res["S4-CE-PRIMARY-GL"].total_count == 2  # the CO area without a chart is not judged
+    assert [k.split("|")[1] for k in res["S4-CE-PRIMARY-GL"].failing_record_keys] == ["KSTAR=P2"]
+    assert [k.split("|")[1] for k in res["S4-CE-SECONDARY-CLASH"].failing_record_keys] == ["KSTAR=S2"]
+    assert res["S4-CE-SECONDARY-CLASH"].details["baseline"] == "s4_target"

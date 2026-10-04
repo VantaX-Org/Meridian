@@ -1306,3 +1306,63 @@ rules:
       __other__: Flag the company-code segment for deletion and block it (FS00), or remove the chart-level deletion flag.
     record_fix_template: 'G/L account {SKB1.SAKNR} in company code {SKB1.BUKRS}: deleted in the chart of accounts but active
       here.'
+
+  - id: S4-CE-PRIMARY-GL
+    field: CSKB.KSTAR
+    fields:
+    - TKA01.KTOPL
+    - CSKB.KSTAR
+    check_class: exists_check
+    grain: CSKB
+    applies_when:
+      CSKB.KATYP: ['01', '03', '04', '11', '12', '22', '90']
+    target_table: SKA1
+    target_fields:
+    - KTOPL
+    - SAKNR
+    baseline: s4_target
+    severity: high
+    dimension: consistency
+    message: 'S/4HANA readiness: primary cost element has no G/L account in the chart of accounts of its controlling area -
+      simplification item S4TWL Cost Elements, SAP Note 2270419'
+    why_it_matters: In S/4HANA cost elements are G/L accounts; CSKB is no longer maintained. Every primary cost element
+      becomes the cost element category of the G/L account with the same number in the chart of accounts of the
+      controlling area, so a primary cost element without that G/L account has nothing to migrate into.
+    rule_authority: sap_hard_constraint
+    sap_impact: The cost element migration of the S/4HANA conversion cannot carry the cost element over; postings to it
+      have no G/L account after the conversion.
+    fix_map:
+      __other__: Create the G/L account in the chart of accounts of the controlling area (FSP0) or delete the unused
+        primary cost element (KA04) before the conversion.
+    record_fix_template: 'Cost element {CSKB.KSTAR} in controlling area {CSKB.KOKRS}: no G/L account {CSKB.KSTAR} in chart
+      of accounts {TKA01.KTOPL}.'
+
+  - id: S4-CE-SECONDARY-CLASH
+    field: CSKB.KSTAR
+    fields:
+    - TKA01.KTOPL
+    - CSKB.KSTAR
+    check_class: exists_check
+    negate: true
+    grain: CSKB
+    applies_when:
+      CSKB.KATYP: ['21', '31', '41', '42', '43', '50', '51', '52', '61']
+    target_table: SKA1
+    target_fields:
+    - KTOPL
+    - SAKNR
+    baseline: s4_target
+    severity: high
+    dimension: consistency
+    message: 'S/4HANA readiness: secondary cost element number is already a G/L account in the chart of accounts of its
+      controlling area - simplification item S4TWL Cost Elements, SAP Note 2270419'
+    why_it_matters: In S/4HANA secondary cost elements are created as G/L accounts of type secondary cost element. When a
+      G/L account with the same number already exists in the chart of accounts of the controlling area, the number cannot
+      be both.
+    rule_authority: sap_hard_constraint
+    sap_impact: The cost element migration of the S/4HANA conversion stops on the conflicting number.
+    fix_map:
+      __other__: Move the secondary cost element to a number that is not a G/L account, or resolve the G/L account with
+        the same number, before the conversion.
+    record_fix_template: 'Secondary cost element {CSKB.KSTAR} in controlling area {CSKB.KOKRS}: G/L account {CSKB.KSTAR}
+      already exists in chart of accounts {TKA01.KTOPL}.'

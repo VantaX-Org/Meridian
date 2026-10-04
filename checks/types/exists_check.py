@@ -5,7 +5,10 @@ a fixed bin (MLGT → LAGP on warehouse, storage type and bin).
 
 The runner resolves the target set from the extracted target table (read in
 full; a partial read is never judged) and passes it as ``_target_values``.
-Blank references are out of scope — null_check owns required fields."""
+Blank references are out of scope — null_check owns required fields.
+
+With ``negate: true`` the check is inverted: the key must *not* exist in the
+target (a secondary cost element whose number is already a G/L account)."""
 
 import pandas as pd
 
@@ -33,6 +36,8 @@ class ExistsCheck(BaseCheck):
         for c in cols:
             populated &= ~is_blank(df[c])
         missing = ~key_of(df, cols).isin(self.rule.get("_target_values") or set())
+        if self.rule.get("negate"):
+            missing = ~missing
         return Evaluation(populated, populated & missing,
                           {"target": f"{self.rule['target_table']}.{'+'.join(self.rule['target_fields'])}",
                            "target_records": len(self.rule.get("_target_values") or ())})
