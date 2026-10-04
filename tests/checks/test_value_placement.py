@@ -208,6 +208,24 @@ def test_vat_check_digits():
     bad = ("ATU13585628", "NL004495446B01", "PL5260250996", "DK13585629", "FI20774741", "SE556016068101",
            "PT501964844", "GB980780685")
     assert [vat_status(v) for v in bad] == ["bad"] * len(bad)
+    # published examples, one per algorithm: CZ/EE/EL/HU/SI/HR/LU/MT/SK and the ATO's ABN
+    ok = ("CZ25123891", "EE100931558", "EL094259216", "HU12892312", "SI50223054", "HR33392005961",
+          "LU15027442", "MT11679112", "SK2022749619", "AU51824753556")
+    assert [vat_status(v) for v in ok] == ["ok"] * len(ok)
+    bad = ("CZ25123892", "EE100931559", "EL094259217", "HU12892313", "SI50223055", "HR33392005962",
+           "LU15027443", "MT11679113", "SK2022749618", "AU51824753557")
+    assert [vat_status(v) for v in bad] == ["bad"] * len(bad)
+
+
+def test_abn_in_tax_number_1_judged_by_country():
+    from checks.types.value_placement_check import ValuePlacementCheck
+    rule = {"id": "VT-LFA1-STCD1", "check_class": "value_placement_check", "family": "vat_checksum",
+            "field": "LFA1.STCD1", "fields": ["LFA1.STCD1", "LFA1.LAND1"], "countries": ["AU"]}
+    df = pd.DataFrame({"LFA1.STCD1": ["51 824 753 556", "51824753557", "51824753557", ""],
+                       "LFA1.LAND1": ["AU", "AU", "DE", "AU"]})
+    ev = ValuePlacementCheck(rule).evaluate(df)
+    assert ev.population.tolist() == [True, True, False, False]
+    assert ev.failing.tolist() == [False, True, False, False]
 
 
 def test_near_duplicate_names():

@@ -408,23 +408,6 @@ rules:
   record_fix_template: 'Material {MARA.MATNR}: SERLV is ''{actual_value}''. Set to a valid serialisation level via
     MM02 (ECC) or Fiori F1602 (S/4HANA).'
   reference_values: []
-- id: MM025
-  field: MARC.WERKS
-  check_class: null_check
-  severity: critical
-  dimension: completeness
-  message: Plant is mandatory for material plant-level data
-  why_it_matters: Plant (WERKS) is a mandatory organisational level for procurement, production planning, and inventory management.
-    Without a plant assignment, the material cannot be stocked, ordered, or produced. Required in both ECC (MM01/MM02) and
-    S/4HANA (Fiori F1602).
-  rule_authority: sap_hard_constraint
-  sap_impact: 'Material cannot be used in any plant-level transaction: goods receipt (MIGO), purchase orders (ME21N), production
-    orders (CO01), MRP (MD01).'
-  fix_map:
-    __blank__: 'In ECC: extend material to plant via MM01 (extend view) or MM02. In S/4HANA: use Fiori F1602 to extend to
-      the correct plant.'
-  record_fix_template: 'Material {MARA.MATNR}: WERKS is {actual_value}. Extend the material to the correct plant via MM01
-    (ECC) or Fiori F1602 (S/4HANA).'
 - id: MM026
   field: MARC.DISPO
   check_class: null_check
@@ -473,7 +456,7 @@ rules:
 - id: MM029
   field: MARC.PRCTR
   check_class: null_check
-  severity: high
+  severity: low
   dimension: completeness
   message: Profit center is required for FI-CO integration
   why_it_matters: Profit center (PRCTR) at the plant level drives CO-PA profitability analysis and balance sheet splitting.
@@ -594,22 +577,6 @@ rules:
   applies_when:
     MBEW.BWKEY:
       populated: true
-- id: MM037
-  field: MVKE.VKORG
-  check_class: null_check
-  severity: high
-  dimension: completeness
-  message: Sales organisation is mandatory for materials sold in SD
-  why_it_matters: Sales organisation (VKORG) is a mandatory organisational key for the sales view. Without it, the material
-    cannot be used in sales orders (VA01 in ECC, Fiori F5669 in S/4HANA), deliveries, or billing.
-  rule_authority: sap_hard_constraint
-  sap_impact: Material cannot be sold. Sales orders (VA01), deliveries (VL01N), and billing documents (VF01) cannot reference
-    this material.
-  fix_map:
-    __blank__: 'In ECC: extend material to sales org via MM01 (extend view) or MM02 > Sales Org views. In S/4HANA: use Fiori
-      F1602.'
-  record_fix_template: 'Material {MARA.MATNR}: VKORG is {actual_value}. Extend material to sales organisation via MM01 (ECC)
-    or Fiori F1602 (S/4HANA).'
 - id: MM038
   field: MVKE.DWERK
   check_class: null_check
@@ -702,6 +669,9 @@ rules:
 - id: MM043
   field: MBEW.STPRS
   check_class: cross_field_check
+  applies_when:
+    MBEW.LBKUM:
+      gt: 0
   severity: critical
   dimension: consistency
   message: Standard price must be populated and non-zero when price control is S
@@ -1019,6 +989,9 @@ rules:
 - id: MM092
   field: MARC.HERKL
   check_class: null_check
+  applies_when:
+    MARC.STAWN:
+      populated: true
   severity: low
   dimension: completeness
   message: Country of origin is missing
@@ -2446,7 +2419,7 @@ rules:
   check_class: cross_field_check
   fail_when: (`MBEW.VPRSV` == 'S') & (`MBEW.LBKUM` > 0) & (`MBEW.STPRS` > 0) & (`MBEW.VERPR` > 0) & (abs(`MBEW.VERPR` - `MBEW.STPRS`)
     > 0.5 * `MBEW.STPRS`)
-  severity: medium
+  severity: low
   dimension: accuracy
   message: Standard price differs from the moving average (periodic) price by more than 50 percent
   why_it_matters: For standard-priced materials SAP still tracks the moving average of actual receipts in VERPR. When the
@@ -2587,6 +2560,223 @@ rules:
     __other__: Check the conversion factor and both weights in MM02 > Additional data > Units of measure.
   record_fix_template: 'Material {MARM.MATNR}, unit {MARM.MEINH}: gross weight {MARM.BRGEW} {MARM.GEWEI} against base weight {MARA.BRGEW}
     x {MARM.UMREZ}/{MARM.UMREN}.'
+- id: MM226
+  field: MARA.BSTME
+  check_class: exists_check
+  fields:
+  - MARA.MATNR
+  - MARA.BSTME
+  target_table: MARM
+  target_fields:
+  - MATNR
+  - MEINH
+  severity: high
+  dimension: consistency
+  message: Purchase order unit has no unit-of-measure conversion (no MARM row)
+  why_it_matters: Every PO quantity in the order unit is converted to base unit through MARM. Without the conversion,
+    receipts, stock and price per base unit cannot be computed.
+  rule_authority: sap_hard_constraint
+  sap_impact: ME21N rejects the unit, or interfaces post wrong quantities, and GR fails.
+  fix_map:
+    __other__: Add the conversion in MM02 > Additional data > Units of measure, or clear the order unit.
+  record_fix_template: 'Material {MARA.MATNR}: order unit {MARA.BSTME} has no conversion to base unit {MARA.MEINS}.'
+- id: MM227
+  field: MVKE.VRKME
+  check_class: exists_check
+  fields:
+  - MVKE.MATNR
+  - MVKE.VRKME
+  target_table: MARM
+  target_fields:
+  - MATNR
+  - MEINH
+  severity: high
+  dimension: consistency
+  message: Sales unit has no unit-of-measure conversion (no MARM row)
+  why_it_matters: Sales order quantities are converted to base unit for availability, delivery and billing through MARM.
+  rule_authority: sap_hard_constraint
+  sap_impact: The sales order cannot use the unit, and deliveries or ATP compute wrong quantities.
+  fix_map:
+    __other__: Add the conversion in MM02 (units of measure) or correct the sales unit in the sales view.
+  record_fix_template: 'Material {MVKE.MATNR} sales org {MVKE.VKORG}/{MVKE.VTWEG}: sales unit {MVKE.VRKME} has no
+    conversion.'
+- id: MM228
+  field: MARC.KORDB
+  check_class: exists_check
+  fields:
+  - MARC.MATNR
+  - MARC.WERKS
+  target_table: EORD
+  target_fields:
+  - MATNR
+  - WERKS
+  applies_when:
+    MARC.KORDB:
+    - X
+  severity: high
+  dimension: consistency
+  message: Source list is mandatory for the material at the plant, but no source list exists
+  why_it_matters: With the source-list requirement set, SAP accepts only vendors from the source list for this
+    material and plant. Without a source list, no PO or automatic source assignment is possible.
+  rule_authority: sap_hard_constraint
+  sap_impact: ME21N, ME57 and ME59 fail with "source list required". MRP requisitions cannot be converted.
+  fix_map:
+    __other__: Create the source list (ME01), or remove the source-list requirement in MM02 (purchasing view).
+  record_fix_template: 'Material {MARC.MATNR} plant {MARC.WERKS}: source list required but none exists.'
+- id: MM229
+  field: MBEW.VERPR
+  check_class: cross_field_check
+  fail_when: abs(`MBEW.SALK3` - `MBEW.LBKUM` * `MBEW.VERPR` / `MBEW.PEINH`) > 1 + 0.01 * abs(`MBEW.SALK3`)
+  applies_when:
+    MBEW.VPRSV:
+    - V
+    MBEW.LBKUM:
+      gt: 0
+    MBEW.PEINH:
+      gt: 0
+  severity: high
+  dimension: accuracy
+  message: Moving-average price does not match stock value divided by stock quantity
+  why_it_matters: For V-price materials SAP keeps the moving average equal to stock value / stock quantity. A gap
+    points to direct table loads, negative-stock history, or a corrupted valuation record.
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods issues are valued at the wrong price, and inventory value on the balance sheet is misstated.
+  fix_map:
+    __other__: Analyse with MB5L / MR51. Correct with a price change (MR21) or a debit/credit to the material (MR22).
+  record_fix_template: 'Material {MBEW.MATNR} valuation area {MBEW.BWKEY}: value {MBEW.SALK3}, quantity {MBEW.LBKUM},
+    moving price {MBEW.VERPR} per {MBEW.PEINH}.'
+- id: MM230
+  field: MBEW.SALK3
+  check_class: cross_field_check
+  fail_when: (`MBEW.LBKUM` == 0) & (abs(`MBEW.SALK3`) >= 0.01)
+  require_populated: true
+  severity: high
+  dimension: accuracy
+  message: Stock value exists with zero stock quantity
+  why_it_matters: With zero stock SAP must carry zero value. Remaining value with no quantity is a balance-sheet
+    amount no goods back.
+  rule_authority: sap_hard_constraint
+  sap_impact: Inventory GL balance overstated or understated. Big-4 inventory valuation exception.
+  fix_map:
+    __other__: Clear the residual value with MR22 (debit/credit material) after review with controlling.
+  record_fix_template: 'Material {MBEW.MATNR} valuation area {MBEW.BWKEY}: value {MBEW.SALK3} with zero stock.'
+- id: MM231
+  field: MARD.LABST
+  check_class: cross_field_check
+  fail_when: (`MARD.LABST` < 0) & `MARC.XMCNG`.isna()
+  severity: high
+  dimension: validity
+  message: Negative unrestricted stock where negative stock is not allowed for the material at the plant
+  why_it_matters: Negative stock is only possible when it is allowed for the movement, storage location and material
+    (MARC-XMCNG). Negative stock without that permission came from a load or from a setting removed afterwards.
+  rule_authority: sap_hard_constraint
+  sap_impact: Valuation and availability are wrong, and goods issues of this stock fail.
+  fix_map:
+    __other__: Post the missing goods receipt or a stock correction (MIGO / MI07). Allow negative stock only if the
+      process needs it.
+  record_fix_template: 'Material {MARD.MATNR} plant {MARD.WERKS} sloc {MARD.LGORT}: stock {MARD.LABST}, negative
+    stock not allowed.'
+- id: MM232
+  field: MARA.XCHPF
+  check_class: cross_field_check
+  fail_when: '`MARA.XCHPF`.isna()'
+  applies_when:
+    MARA.MHDHB:
+      gt: 0
+  severity: medium
+  dimension: consistency
+  message: Material has a shelf life but is not batch-managed
+  why_it_matters: Expiry dates are recorded per batch. Without batch management the shelf-life data cannot be applied
+    at goods receipt, and FEFO picking cannot work.
+  rule_authority: best_practice
+  sap_impact: Expired stock is issued, and the shelf-life check at GR is inactive.
+  fix_map:
+    __blank__: Activate batch management (MM02, before stock exists) or remove the shelf-life data.
+  record_fix_template: 'Material {MARA.MATNR}: total shelf life {MARA.MHDHB} days, not batch-managed.'
+- id: MM233
+  field: MARC.XCHPF
+  check_class: cross_field_check
+  fail_when: '`MARC.XCHPF`.fillna('''') != `MARA.XCHPF`.fillna('''')'
+  severity: medium
+  dimension: consistency
+  message: Batch management flag differs between client level and plant level
+  why_it_matters: At the standard batch level (material or client), MM02 keeps MARC-XCHPF equal to MARA-XCHPF. A
+    difference comes from loads or interfaces and makes batch handling depend on the plant.
+  rule_authority: best_practice
+  sap_impact: Batch determination and transfers between plants fail or behave inconsistently.
+  fix_map:
+    __other__: Align the flag in MM02. If batch level is plant (OMCT), mute this rule.
+  record_fix_template: 'Material {MARC.MATNR} plant {MARC.WERKS}: plant batch flag ''{MARC.XCHPF}'', client
+    ''{MARA.XCHPF}''.'
+- id: MM234
+  field: MARC.PLIFZ
+  check_class: cross_field_check
+  fail_when: '`MARC.PLIFZ` == 0'
+  applies_when:
+    MARC.BESKZ:
+    - F
+    MARC.DISMM:
+      populated: true
+      not_in:
+      - ND
+  severity: medium
+  dimension: accuracy
+  message: Externally procured MRP material has zero planned delivery time
+  why_it_matters: MRP schedules the requisition release date as the requirement date minus the planned delivery
+    time. Zero means every order is planned to arrive the day it is placed.
+  rule_authority: best_practice
+  sap_impact: Requisitions are released late, causing stock-outs and expediting.
+  fix_map:
+    __other__: Maintain the planned delivery time in the MRP 2 view (MM02), or in the info record if the plant uses it.
+  record_fix_template: 'Material {MARC.MATNR} plant {MARC.WERKS}: planned delivery time is 0 days.'
+- id: MM235
+  field: MARC.LGFSB
+  check_class: exists_check
+  fields:
+  - MARC.MATNR
+  - MARC.WERKS
+  - MARC.LGFSB
+  target_table: MARD
+  target_fields:
+  - MATNR
+  - WERKS
+  - LGORT
+  applies_when:
+    MARC.BESKZ:
+    - F
+    - X
+    MARC.LGFSB:
+      populated: true
+  severity: low
+  dimension: completeness
+  message: Default storage location for external procurement is not extended for the material
+  why_it_matters: GR and MRP propose this storage location. If MARD does not exist and automatic creation at GR is off,
+    the receipt fails.
+  rule_authority: best_practice
+  sap_impact: The goods receipt errors with "material not maintained in storage location".
+  fix_map:
+    __other__: Extend the storage location (MMSC / MM01) or correct the default in MRP 2.
+  record_fix_template: 'Material {MARC.MATNR} plant {MARC.WERKS}: default sloc {MARC.LGFSB} not extended.'
+
+- id: MM236
+  field: MAKT.MAKTX
+  check_class: uniqueness_check
+  fields:
+  - MAKT.MAKTX
+  normalize: alnum
+  severity: medium
+  dimension: uniqueness
+  message: Two materials have descriptions that differ only by spaces, punctuation or case (likely duplicate material)
+  why_it_matters: BOLT M10X50 and Bolt M10 x 50 are the same part typed twice. Exact-match duplicate checks miss
+    them, so stock, consumption history and purchasing volume split across two material numbers.
+  rule_authority: best_practice
+  sap_impact: Stock is split across duplicates; MRP reorders one while the other has stock; purchasing volume and contract
+    coverage are fragmented.
+  fix_map:
+    __other__: Confirm the duplicate, choose the surviving material, transfer stock (309), move open documents, BOM items
+      and info records, then flag the duplicate for deletion (MM06) and set a blocking material status.
+  record_fix_template: 'Material {MAKT.MATNR}: description ''{actual_value}'' matches another material once spaces and punctuation
+    are ignored.'
 - id: MM300
   field: MARC.MINBE
   check_class: cross_field_check

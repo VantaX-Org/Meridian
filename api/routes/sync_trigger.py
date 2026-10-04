@@ -17,7 +17,7 @@ logger = logging.getLogger("meridian.sync_trigger")
 
 router = APIRouter(prefix="/api/v1/sync-trigger", tags=["sync_trigger"])
 
-# All 29 modules grouped by category
+# All 35 modules grouped by category
 MODULE_REGISTRY: dict[str, dict[str, str]] = {
     # ECC
     "business_partner": {"category": "ECC", "label": "Business Partner"},
@@ -31,6 +31,7 @@ MODULE_REGISTRY: dict[str, dict[str, str]] = {
     "production_planning": {"category": "ECC", "label": "Production Planning"},
     "sd_customer_master": {"category": "ECC", "label": "SD Customer Master"},
     "sd_sales_orders": {"category": "ECC", "label": "SD Sales Orders"},
+    "interface_health": {"category": "ECC", "label": "Interface Health (IDoc)"},
     # SuccessFactors
     "employee_central": {"category": "SuccessFactors", "label": "Employee Central"},
     "compensation": {"category": "SuccessFactors", "label": "Compensation"},
@@ -51,6 +52,13 @@ MODULE_REGISTRY: dict[str, dict[str, str]] = {
     "transport_management": {"category": "Warehouse", "label": "Transport Management"},
     "wm_interface": {"category": "Warehouse", "label": "WM Interface"},
     "cross_system_integration": {"category": "Warehouse", "label": "Cross-System Integration"},
+    # S/4HANA Cloud, Concur, Ariba
+    "s4hc_master_data": {"category": "S/4HANA Cloud", "label": "BP Roles, CVI & Product Valuation"},
+    "concur_expense": {"category": "Concur", "label": "Expense Reports"},
+    "concur_users": {"category": "Concur", "label": "Users & Cost Objects"},
+    "ariba_supplier": {"category": "Ariba", "label": "Suppliers"},
+    "ariba_contracts": {"category": "Ariba", "label": "Contracts"},
+    "ariba_procurement": {"category": "Ariba", "label": "Purchase Orders & Invoices"},
 }
 
 
@@ -77,7 +85,7 @@ async def list_modules(
     tenant_id: UUID = Depends(get_tenant_id),
     db: AsyncSession = Depends(get_session),
 ) -> list[ModuleStatus]:
-    """Return all 29 modules with their latest analysis status."""
+    """Return all 35 modules with their latest analysis status."""
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
 
     # Fetch the latest version per module from analysis_versions

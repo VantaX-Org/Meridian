@@ -6,6 +6,7 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
+from checks import cost
 from checks.base import BaseCheck, CheckResult, as_of_time, sap_number
 from checks.frames import TableFrames, tables_of
 from checks.population import exclude, exclusions, fields_for
@@ -25,7 +26,10 @@ from checks.types.country_format_check import CountryFormatCheck
 from checks.types.aggregate_check import AggregateCheck
 from checks.types.interval_check import IntervalCheck
 from checks.types.exists_check import ExistsCheck, key_of
+from checks.types.dependency_check import DependencyCheck
+from checks.types.hierarchy_check import HierarchyCheck
 from checks.types.similarity_check import SimilarityCheck
+from checks.types.group_sum_check import GroupSumCheck, child_sums
 
 logger = logging.getLogger("meridian.checks")
 
@@ -60,8 +64,8 @@ def apply_context(df: pd.DataFrame, applies_when: dict | None, as_of: Any = None
         values = df[field].astype("string").str.strip()
         if isinstance(allowed, dict):
             # Operators: contains_any (multi-value code strings such as
-            # LFB1.ZWELS "CT"), not_in, populated, gt (numeric),
-            # older_than_days (a date further in the past than N days).
+            # LFB1.ZWELS "CT"), not_in, populated, gt (numeric), startswith,
+            # older_than_days / within_days (dates relative to the run's as-of date).
             if "contains_any" in allowed:
                 chars = {str(v) for v in allowed["contains_any"]}
                 mask &= values.map(lambda v: isinstance(v, str) and any(c in v for c in chars)).astype(bool)
@@ -73,10 +77,17 @@ def apply_context(df: pd.DataFrame, applies_when: dict | None, as_of: Any = None
                 mask &= values.fillna("").eq("") | values.isin(("00000000",)).fillna(False)
             if "gt" in allowed:
                 mask &= sap_number(values).gt(float(allowed["gt"])).fillna(False)
-            if "older_than_days" in allowed:
-                from checks.types.domain_value_check import _parse_dates
-                cutoff = as_of_time(as_of) - pd.Timedelta(days=float(allowed["older_than_days"]))
-                mask &= (_parse_dates(values) < cutoff).fillna(False)
+            if "startswith" in allowed:
+                prefixes = tuple(str(v) for v in allowed["startswith"])
+                mask &= values.str.startswith(prefixes).fillna(False).astype(bool)
+            if "older_than_days" in allowed or "within_days" in allowed:
+                # SAP dates (YYYYMMDD or ISO) relative to the as-of date; blank / 00000000 never match
+                age = (as_of_time(as_of).normalize() - pd.to_datetime(
+                    values.str.replace("-", "", regex=False), format="%Y%m%d", errors="coerce")).dt.days
+                if "older_than_days" in allowed:
+                    mask &= age.gt(int(allowed["older_than_days"])).fillna(False)
+                if "within_days" in allowed:
+                    mask &= age.le(int(allowed["within_days"])).fillna(False)
         else:
             mask &= values.isin({str(v).strip() for v in allowed}).fillna(False)
     return df[mask]
@@ -98,13 +109,16 @@ REGISTRY: dict[str, type[BaseCheck]] = {
     "interval_check": IntervalCheck,
     "exists_check": ExistsCheck,
     "similarity_check": SimilarityCheck,
+    "dependency_check": DependencyCheck,
+    "hierarchy_check": HierarchyCheck,
+    "group_sum_check": GroupSumCheck,
 }
 
 # check types judging a group of rows together: only sound on a complete extract
-_WHOLE_GROUP = {"balance_check", "aggregate_check", "interval_check"}
+_WHOLE_GROUP = {"balance_check", "aggregate_check", "interval_check", "hierarchy_check", "group_sum_check"}
 
 RULES_DIR = Path(__file__).parent / "rules"
-CATEGORIES = ["ecc", "successfactors", "warehouse"]
+CATEGORIES = ["ecc", "successfactors", "warehouse", "concur", "ariba"]
 
 
 def _find_module_yaml(module_name: str) -> Path:
@@ -152,7 +166,11 @@ def rule_columns(rule: dict) -> list[str]:
 
 
 def target_columns(rule: dict) -> list[str]:
-    """Columns of the table an exists_check looks references up in (read in full, not joined)."""
+    """Columns of the table an exists_check looks references up in, or a group_sum_check
+    sums (read in full, not joined)."""
+    if rule.get("check_class") == "group_sum_check":
+        return list(dict.fromkeys([rule["amount"], *rule["group_keys"], *(rule.get("child_when") or {})]
+                                  + ([rule["sign_field"]] if rule.get("sign_field") else [])))
     if rule.get("check_class") != "exists_check":
         return []
     t = rule["target_table"]
@@ -171,6 +189,14 @@ def _with_targets(rule: dict, frames: TableFrames, as_of: Any = None) -> dict | 
     when = {f"{t}.{k}": v for k, v in (rule.get("target_when") or {}).items()}
     target = apply_context(target, when, as_of)
     return {**rule, "_target_values": set(key_of(target, [f"{t}.{f}" for f in rule["target_fields"]]))}
+
+
+def _with_child_sums(rule: dict, frames: TableFrames) -> dict | None:
+    """The rule with its child totals per parent key; None when the child table was not read."""
+    child = frames.frames.get(tables_of([rule["amount"]])[0])
+    if child is None or any(c not in child.columns for c in target_columns(rule)):
+        return None
+    return {**rule, "_child_sums": child_sums(rule, apply_context(child, rule.get("child_when")))}
 
 
 def get_required_columns(module_name: str) -> set[str]:
@@ -192,7 +218,7 @@ def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[st
         as_of = as_of_time(as_of)
         rule = {**rule, "_as_of": as_of.isoformat()}
     check_cls = REGISTRY[rule["check_class"]]
-    partial = sorted(set(tables_of(rule_columns(rule))) & getattr(frames, "incomplete", set()))
+    partial = sorted(set(tables_of(rule_columns(rule) + target_columns(rule))) & getattr(frames, "incomplete", set()))
     if rule.get("check_class") in _WHOLE_GROUP and partial:
         # a group missing rows in the extract (document lines, PO history, validity
         # periods) is not an unbalanced / unmatched / interrupted group
@@ -208,6 +234,11 @@ def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[st
             return rule, check_cls(rule)._error(frames.flat if frames.flat is not None else pd.DataFrame(), resolved)
         rule = resolved
     try:
+        if rule.get("check_class") == "group_sum_check":
+            summed = _with_child_sums(rule, frames)
+            if summed is None:
+                return rule, None  # the child table is not in the extract
+            rule = summed
         built = frames.frame_for(rule_columns(rule), grain=rule.get("grain"))
         if built is None:
             return rule, None  # a table/field this rule needs is not in the extract
@@ -222,6 +253,13 @@ def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[st
         if need and grain:
             try:  # parent-table flags (LFA1.LOEVM for an LFB1 rule) join at the same grain
                 wider = frames.frame_for(cols + need, grain=grain)
+                frame = wider[0] if wider is not None else frame
+            except ValueError:
+                pass
+        cf = (rule.get("_cost") or {}).get("field")
+        if cf and cf not in frame.columns and grain:
+            try:  # the cost field (EKPO.NETWR) joins at the same grain; else cost falls back to severity
+                wider = frames.frame_for(list(dict.fromkeys(cols + need + [cf])), grain=grain)
                 frame = wider[0] if wider is not None else frame
             except ValueError:
                 pass
@@ -246,6 +284,7 @@ def run_checks(
     overrides: dict[str, dict] | None = None,
     extra_rules: list[dict] | None = None,
     suppressed: dict[str, tuple[list[str], set[str]]] | None = None,
+    cost_model: dict | None = None,
     *,
     as_of: Any = None,
 ) -> list[CheckResult]:
@@ -276,6 +315,7 @@ def run_checks(
 
     for rule in rules:
         rule["module"] = module
+        rule["_cost"] = cost.resolve(rule, cost_model)
         check_cls = REGISTRY.get(rule.get("check_class", ""))
         if check_cls is None:
             results.append(CheckResult(

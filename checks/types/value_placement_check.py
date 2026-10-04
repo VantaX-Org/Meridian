@@ -62,6 +62,9 @@ class ValuePlacementCheck(BaseCheck):
         if family == "vat_checksum":
             from checks.value_placement import vat_status
             s = _text(df, self.rule["field"])
+            if self.rule.get("countries"):  # unprefixed tax number: judged by the record's country
+                country = _text(df, self.rule["fields"][1]).str.upper()
+                s = (country + s).where(country.isin(self.rule["countries"]) & s.ne(""), "")
             st = s.map(lambda v: vat_status(v) if v else "n/a")
             return Evaluation(st.ne("n/a"), st.eq("bad"), invalid_values_field=self.rule["field"])
         if family == "date_range":

@@ -265,3 +265,38 @@ rules:
       (Onboarding > Manage Pending Hires / Onboarding Dashboard).'
   record_fix_template: 'New hire {ONBOARDINGCANDIDATEINFO.USERID}: onboarding hire date {ONBOARDINGCANDIDATEINFO.HIRE_DATE}
     differs from employment start date {EMPEMPLOYMENT.START_DATE}.'
+- id: REC021
+  field: JOBAPPLICATION.APPLICATION_DATE
+  check_class: cross_field_check
+  fail_when: '`JOBAPPLICATION.APPLICATION_DATE` < `JOBREQUISITION.OPEN_DATE`'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Application is dated before the job requisition was created
+  why_it_matters: A candidate can only apply to a requisition that exists. An earlier date usually comes from a
+    migration that kept the original application date but moved the application to a new requisition.
+  rule_authority: best_practice
+  sap_impact: Time-to-fill and time-to-hire are overstated; source and pipeline reports put the application in the wrong
+    period.
+  fix_map:
+    __other__: Check the application history; if it was moved from another requisition, record the original requisition
+      in a note and correct the reporting date where possible.
+  record_fix_template: 'Application by candidate {JOBAPPLICATION.CANDIDATE_ID} on requisition {JOBAPPLICATION.JOB_REQ_ID}:
+    applied {JOBAPPLICATION.APPLICATION_DATE}, requisition opened {JOBREQUISITION.OPEN_DATE}.'
+- id: REC022
+  field: JOBAPPLICATION.APPLICATION_DATE
+  check_class: cross_field_check
+  fail_when: '`JOBAPPLICATION.APPLICATION_DATE` > `JOBREQUISITION.CLOSE_DATE`'
+  require_populated: true
+  severity: low
+  dimension: consistency
+  message: Application is dated after the job requisition was closed
+  why_it_matters: A closed requisition should not receive applications. Late applications mean the posting stayed live
+    after closing, or a recruiter forwarded candidates to a closed requisition.
+  rule_authority: best_practice
+  sap_impact: Candidates wait on a job that is no longer open; pipeline reports count applications on closed jobs.
+  fix_map:
+    __other__: Remove the job postings of closed requisitions, and move the candidates to an open requisition or close
+      their applications with a reason.
+  record_fix_template: 'Application by candidate {JOBAPPLICATION.CANDIDATE_ID} on requisition {JOBAPPLICATION.JOB_REQ_ID}:
+    applied {JOBAPPLICATION.APPLICATION_DATE}, requisition closed {JOBREQUISITION.CLOSE_DATE}.'

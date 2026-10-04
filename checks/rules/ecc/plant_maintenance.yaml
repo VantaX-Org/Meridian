@@ -91,6 +91,8 @@ rules:
 - id: PM006
   field: EQUZ.IWERK
   check_class: null_check
+  applies_when:
+    EQUZ.DATBI: ['99991231']
   severity: high
   dimension: completeness
   message: "Planning plant missing \u2014 maintenance plans cannot be assigned"
@@ -262,6 +264,8 @@ rules:
 - id: PM017
   field: EQUZ.TIDNR
   check_class: null_check
+  applies_when:
+    EQUZ.DATBI: ['99991231']
   severity: low
   dimension: completeness
   message: Technical identification number missing — external reference for equipment
@@ -296,6 +300,8 @@ rules:
 - id: PM020
   field: EQUZ.GEWRK
   check_class: null_check
+  applies_when:
+    EQUZ.DATBI: ['99991231']
   severity: medium
   dimension: completeness
   message: "Main work centre missing \u2014 default work centre for maintenance orders not set"
@@ -321,10 +327,10 @@ rules:
   rule_authority: best_practice
   sap_impact: Missing Work center may cause incomplete data in related transactions and reports.
   fix_map:
-    __blank__: 'In ECC: Set via IE02/IL02. In S/4HANA: Use Fiori app F4283 (Manage Equipment) or F4284 (Manage Functional
-      Location).'
-  record_fix_template: 'Record is missing CRHD.ARBPL. In ECC: Set via IE02/IL02. In S/4HANA: Use Fiori app F4283 (Manage Equipment)
-    or F4284 (Manage Functional Location).'
+    __blank__: 'In ECC: maintain the work centre via CR02 (or IR02 for maintenance work centres). In S/4HANA: use the
+      Manage Work Centers app.'
+  record_fix_template: 'Record is missing CRHD.ARBPL. In ECC: maintain the work centre via CR02 (or IR02 for maintenance
+    work centres). In S/4HANA: use the Manage Work Centers app.'
 - id: PM022
   field: CRHD.WERKS
   check_class: null_check
@@ -863,6 +869,8 @@ rules:
   target_table: EQUI
   target_fields:
   - EQUNR
+  applies_when:
+    EQUZ.DATBI: ['99991231']
   severity: high
   dimension: consistency
   message: Superior equipment does not exist
@@ -900,6 +908,8 @@ rules:
     - A
     LVORM:
       blank: true
+  applies_when:
+    EQUZ.DATBI: ['99991231']
   severity: high
   dimension: consistency
   message: Equipment's main work centre does not exist or is flagged for deletion
@@ -909,6 +919,358 @@ rules:
   fix_map:
     __other__: Assign an existing work centre (IE02 > Organisation).
   record_fix_template: 'Equipment {EQUZ.EQUNR}: main work centre {EQUZ.GEWRK} does not exist or is deleted.'
+
+# ── Measuring points and counters ──────────────────────────────────────────
+- id: PM059
+  field: IMPTT.PYEAR
+  check_class: cross_field_check
+  fail_when: '`IMPTT.PYEAR`.isna() | (`IMPTT.PYEAR` <= 0)'
+  applies_when:
+    IMPTT.INDCT: [X]
+  severity: high
+  dimension: completeness
+  message: Counter has no annual estimate
+  why_it_matters: >-
+    Performance-based and multiple-counter maintenance plans (service intervals by SMU hours or
+    kilometres) convert the counter interval into a date using the counter's annual estimate. A counter
+    without one cannot be scheduled, so interval services on haul trucks, loaders and drills are never
+    called or are called on the wrong date.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling of performance-based plans (IP10, IP30 deadline monitoring) stops for plans on this
+    counter or calculates no planned date; the service order is not generated.
+  fix_map:
+    __other__: Enter the expected yearly usage (for example 6000 H) in IK02 > Annual estimate, then reschedule
+      the plans that use the counter (IP10).
+  record_fix_template: 'Measuring point {IMPTT.POINT} ({IMPTT.PTTXT}): counter has no annual estimate.'
+
+- id: PM060
+  field: IMPTT.MPOBJ
+  check_class: exists_check
+  target_table: EQUI
+  target_fields:
+  - OBJNR
+  applies_when:
+    IMPTT.MPOBJ: {contains_any: [IE]}
+  severity: high
+  dimension: consistency
+  message: Active measuring point belongs to an equipment that does not exist
+  why_it_matters: >-
+    Hour meters, oil-analysis points and condition points hang off an equipment. A point whose equipment
+    is gone (archived, deleted by direct table change, or migration with re-keyed equipment) still
+    collects readings, but no plan, notification or history can use them.
+  rule_authority: sap_hard_constraint
+  sap_impact: Readings (IK11, IK22, mobile uploads) post to an orphan point; performance-based plans and
+    condition-based notifications for the machine never trigger.
+  fix_map:
+    __other__: Flag the orphan point for deletion (IK02) and create the point on the correct equipment
+      (IK01), transferring the last counter reading.
+  record_fix_template: 'Measuring point {IMPTT.POINT}: object {IMPTT.MPOBJ} is not an existing equipment.'
+
+- id: PM061
+  field: IMPTT.MRMIN
+  check_class: cross_field_check
+  fail_when: '`IMPTT.MRMIN` > `IMPTT.MRMAX`'
+  applies_when:
+    IMPTT.MRMINI: [X]
+    IMPTT.MRMAXI: [X]
+  severity: high
+  dimension: validity
+  message: Measuring point lower limit is above its upper limit
+  why_it_matters: >-
+    The limits define the normal band of a condition point (temperature, vibration, wear) or the valid
+    range of a counter. An inverted band classes every reading as out of range, or none, so condition
+    monitoring alarms are meaningless (ISO 17359 alert limits).
+  rule_authority: sap_hard_constraint
+  sap_impact: Condition-based notifications and maintenance calls fire on every reading or never; counter
+    readings may be rejected.
+  fix_map:
+    __other__: Correct the lower and upper range limits in IK02 (swap if transposed).
+  record_fix_template: 'Measuring point {IMPTT.POINT}: lower limit {IMPTT.MRMIN} is above upper limit {IMPTT.MRMAX}.'
+
+- id: PM072
+  field: IMPTT.MPOBJ
+  check_class: exists_check
+  target_table: IFLOT
+  target_fields:
+  - OBJNR
+  applies_when:
+    IMPTT.MPOBJ: {contains_any: [IF]}
+  severity: high
+  dimension: consistency
+  message: Active measuring point belongs to a functional location that does not exist
+  why_it_matters: Readings on a functional location measuring point that has no location cannot drive plans,
+    notifications or location history.
+  rule_authority: sap_hard_constraint
+  sap_impact: Performance-based and condition-based plans on the location never trigger.
+  fix_map:
+    __other__: Flag the point for deletion (IK02) and recreate it on the correct functional location (IK01).
+  record_fix_template: 'Measuring point {IMPTT.POINT}: object {IMPTT.MPOBJ} is not an existing functional location.'
+
+# ── Machine identity and serialisation ─────────────────────────────────────
+- id: PM062
+  field: EQUI.SERGE
+  check_class: uniqueness_check
+  fields: [EQUI.HERST, EQUI.EQART, EQUI.SERGE]
+  normalize: alnum
+  case_insensitive: true
+  severity: high
+  dimension: uniqueness
+  message: Two equipment records of the same object type carry the same manufacturer and manufacturer serial number
+  why_it_matters: >-
+    For a dealer the OEM serial (PIN) is the machine's identity for warranty, product-support and
+    campaign claims. PM050 needs the free-text model to match exactly, so "793F" against "793 F" or "CAT
+    793F" slips through. Keying on the configured object type instead catches the same machine
+    registered twice.
+  rule_authority: best_practice
+  sap_impact: Service history, warranty claims and component life are split across two records; the
+    same service is planned twice and OEM campaign coverage is reported wrong.
+  fix_map:
+    __other__: Compare both records (IE03); keep the one with history and open orders, move notifications
+      and plans to it, and set the deletion flag on the duplicate (IE02).
+  record_fix_template: 'Equipment {EQUI.EQUNR}: {EQUI.HERST} serial {EQUI.SERGE} (type {EQUI.EQART}) is also
+    registered on another equipment.'
+
+- id: PM063
+  field: EQUI.SERNR
+  check_class: cross_field_check
+  fail_when: '`EQUI.SERNR`.notna() & `EQUI.MATNR`.isna()'
+  severity: high
+  dimension: consistency
+  message: Equipment carries a serial number without a material
+  why_it_matters: >-
+    An SAP serial number identifies a unit of a material: material and serial number form the key of
+    the serial number master. A serial without its material was written past the IE01/IQ01 checks
+    (legacy load), and no goods movement, delivery or stock check can find the unit.
+  rule_authority: sap_hard_constraint
+  sap_impact: The machine cannot be found by serial number in deliveries, goods movements (MIGO) or IQ09; serial
+    stock and sales history are disconnected from the equipment.
+  fix_map:
+    __other__: Enter the machine's material in IE02 > Serial data, or clear the stray serial number.
+  record_fix_template: 'Equipment {EQUI.EQUNR}: serial number {EQUI.SERNR} has no material.'
+
+- id: PM064
+  field: EQUI.MATNR
+  check_class: exists_check
+  target_table: MARC
+  target_fields:
+  - MATNR
+  target_when:
+    SERNP: {populated: true}
+  applies_when:
+    EQUI.SERNR: {populated: true}
+  severity: high
+  dimension: consistency
+  message: Serialised equipment's material has no serial number profile in any plant
+  why_it_matters: >-
+    The serial number profile on the material/plant (MARC.SERNP) makes deliveries, goods receipts and
+    issues ask for the serial number and keep the equipment's stock status. Without a profile, units are
+    sold, returned and rented without serial capture, so the installed base and warranty registration
+    drift from reality.
+  rule_authority: best_practice
+  sap_impact: Outbound deliveries and goods movements of the machine do not record the serial; the
+    equipment's stock and customer status (EQBS, OBJK) are never updated.
+  fix_map:
+    __other__: Assign the serial number profile in MM02 (Plant data / Sales general) for every plant that
+      stocks or sells the material.
+  record_fix_template: 'Equipment {EQUI.EQUNR}: material {EQUI.MATNR} (serial {EQUI.SERNR}) has no serial number
+    profile.'
+
+- id: PM067
+  field: EQUI.TYPBZ
+  check_class: null_check
+  applies_when:
+    EQUI.HERST: {populated: true}
+  severity: high
+  dimension: completeness
+  message: Equipment has a manufacturer but no manufacturer model number
+  why_it_matters: >-
+    ISO 14224 identifies equipment by manufacturer, model and serial number. Parts interchangeability,
+    OEM service bulletins, failure benchmarking (MTBF by model) and warranty claims are all keyed on the
+    model, and the manufacturer alone is not enough.
+  rule_authority: iso_standard
+  sap_impact: Reliability reporting by model (MCI-series, PMIS) and parts lookups by model return nothing for the
+    machine.
+  fix_map:
+    __blank__: Enter the manufacturer model number (IE02 > General > Manufacturer data).
+  record_fix_template: 'Equipment {EQUI.EQUNR}: manufacturer {EQUI.HERST} but no model number.'
+
+- id: PM068
+  field: EQUI.MATNR
+  check_class: exists_check
+  target_table: MARA
+  target_fields:
+  - MATNR
+  target_when:
+    LVORM: {blank: true}
+  severity: medium
+  dimension: consistency
+  message: Equipment's material is flagged for deletion
+  why_it_matters: The material behind a serialised machine drives parts lists, pricing and sales; an equipment
+    pointing at a deleted material cannot be sold, returned or re-stocked.
+  rule_authority: best_practice
+  sap_impact: Deliveries, returns and goods movements of the unit fail on the deleted material.
+  fix_map:
+    __other__: Point the equipment at the successor material (IE02 > Serial data) or remove the deletion flag.
+  record_fix_template: 'Equipment {EQUI.EQUNR}: material {EQUI.MATNR} does not exist or is flagged for deletion.'
+
+# ── Installation, structure and asset link (evaluated per equipment) ───────
+- id: PM065
+  field: ILOA.ANLNR
+  check_class: exists_check
+  grain: EQUI
+  fields:
+  - ILOA.BUKRS
+  - ILOA.ANLNR
+  target_table: ANLA
+  target_fields:
+  - BUKRS
+  - ANLN1
+  target_when:
+    XLOEV: {blank: true}
+    DEAKT: {blank: true}
+  severity: high
+  dimension: consistency
+  message: Equipment is linked to a fixed asset that does not exist, is deleted or is retired
+  why_it_matters: >-
+    ISO 55000 requires the technical register and the financial register to reconcile. An active machine
+    whose asset is retired is either sold (and should be deactivated) or capitalised on the wrong asset,
+    which affects rental-fleet depreciation and insurance values.
+  rule_authority: iso_standard
+  sap_impact: Asset-to-equipment synchronisation (AS02 / IE02) and fleet valuation reports disagree; cost
+    settlement to the asset fails.
+  fix_map:
+    __other__: Link the correct active asset in IE02 > Organisation, or set the equipment to inactive or
+      deleted if the machine was sold or scrapped.
+  record_fix_template: 'Equipment {EQUI.EQUNR}: asset {ILOA.BUKRS}/{ILOA.ANLNR} does not exist or is retired.'
+
+- id: PM066
+  field: ILOA.TPLNR
+  check_class: exists_check
+  grain: EQUI
+  target_table: IFLOT
+  target_fields:
+  - TPLNR
+  target_when:
+    IEQUI: [X]
+  severity: high
+  dimension: consistency
+  message: Equipment is installed at a functional location that does not allow equipment installation
+  why_it_matters: >-
+    Only functional locations flagged "installation allowed" may hold equipment; SAP blocks the install
+    in IE02 and IE4N. A machine sitting at a location without the flag came from a load or from the flag
+    being removed afterwards, so the structure is not what the planners see.
+  rule_authority: sap_hard_constraint
+  sap_impact: Dismantle and re-install of the machine (IE4N) fails; structure lists and location-based
+    plans and reporting omit or misplace it.
+  fix_map:
+    __other__: Set "Equipment installation allowed" on the location (IL02 > Structure), or install the
+      machine at the correct location (IE4N).
+  record_fix_template: 'Equipment {EQUI.EQUNR}: functional location {ILOA.TPLNR} does not exist or does not allow
+    installation.'
+
+- id: PM071
+  field: EQUZ.HEQUI
+  check_class: exists_check
+  fields:
+  - EQUZ.HEQUI
+  - EQUZ.IWERK
+  target_table: EQUZ
+  target_fields:
+  - EQUNR
+  - IWERK
+  target_when:
+    DATBI: ['99991231']
+  applies_when:
+    EQUZ.DATBI: ['99991231']
+  severity: medium
+  dimension: consistency
+  message: Installed component's planning plant differs from its superior equipment's
+  why_it_matters: >-
+    Engines, transmissions and final drives installed in a truck are planned with the truck. A different
+    planning plant sends component orders and plans to another planner group and storeroom, which
+    splits the machine's cost and history.
+  rule_authority: best_practice
+  sap_impact: Component orders are planned and costed in another plant; machine-level cost reports (IW39,
+    MCI8) miss them.
+  fix_map:
+    __other__: Align the planning plant on the component with its superior equipment (IE02 > Organisation),
+      or check whether the installation is wrong.
+  record_fix_template: 'Equipment {EQUZ.EQUNR}: planning plant {EQUZ.IWERK} differs from superior equipment
+    {EQUZ.HEQUI}.'
+
+- id: PM073
+  field: EQUZ.INGRP
+  check_class: null_check
+  applies_when:
+    EQUZ.DATBI: ['99991231']
+  severity: medium
+  dimension: completeness
+  message: Equipment has no planner group
+  why_it_matters: The planner group routes notifications and orders to the responsible planning team; without
+    it the work lands in no one's worklist.
+  rule_authority: best_practice
+  sap_impact: Worklists (IW28, IW38) filtered by planner group miss the machine's notifications and orders.
+  fix_map:
+    __blank__: Assign the planner group in IE02 > Organisation.
+  record_fix_template: 'Equipment {EQUZ.EQUNR}: no planner group.'
+
+- id: PM069
+  field: IFLOT.LGWID
+  check_class: exists_check
+  target_table: CRHD
+  target_fields:
+  - OBJID
+  target_when:
+    OBJTY: [A]
+    LVORM: {blank: true}
+  severity: high
+  dimension: consistency
+  message: Functional location's main work centre does not exist or is flagged for deletion
+  why_it_matters: Orders and notifications on the location take its main work centre for planning and costing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orders get no responsible work centre; capacity and cost planning skip them.
+  fix_map:
+    __other__: Assign an existing work centre (IL02 > Organisation).
+  record_fix_template: 'Functional location {IFLOT.TPLNR}: main work centre {IFLOT.LGWID} does not exist or is deleted.'
+
+- id: PM070
+  field: IFLOT.TPLKZ
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Functional location has no structure indicator
+  why_it_matters: The structure indicator defines the edit mask and hierarchy levels; SAP derives the superior
+    location from it. A location without one was loaded past IL01 and cannot be placed in the hierarchy
+    consistently.
+  rule_authority: sap_hard_constraint
+  sap_impact: Superior locations are not derived; new sub-locations cannot be created under it in the same mask.
+  fix_map:
+    __blank__: Assign the structure indicator used by the site hierarchy (IL02; changeable only in limited cases,
+      otherwise recreate via IL01 and migrate).
+  record_fix_template: 'Functional location {IFLOT.TPLNR}: no structure indicator.'
+
+- id: PM074
+  field: IFLOT.TPLMA
+  check_class: exists_check
+  fields:
+  - IFLOT.TPLMA
+  - IFLOT.IWERK
+  target_table: IFLOT
+  target_fields:
+  - TPLNR
+  - IWERK
+  severity: low
+  dimension: consistency
+  message: Functional location's planning plant differs from its superior's
+  why_it_matters: Sub-locations normally inherit the planning plant; a mismatch inside one site hierarchy sends
+    work to a different planning team.
+  rule_authority: best_practice
+  sap_impact: Orders on the location are planned in another plant; hierarchy cost roll-ups cross plants.
+  fix_map:
+    __other__: Align the planning plant with the superior location (IL02 > Organisation), or confirm the split is
+      intended.
+  record_fix_template: 'Functional location {IFLOT.TPLNR}: planning plant {IFLOT.IWERK} differs from superior
+    {IFLOT.TPLMA}.'
 - id: PM200
   field: EQUI.EQUNR
   check_class: exists_check

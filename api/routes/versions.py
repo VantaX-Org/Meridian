@@ -238,7 +238,8 @@ async def finding_records(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
-    """The SAP record keys this check found failing in this version (finding_records)."""
+    """The SAP records this check found failing in this version (finding_records): key plus
+    the rule's column values (privacy-sensitive ones masked; null for runs before 054)."""
     await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
     if await _scope_of(db, version_id) is None:
         raise HTTPException(status_code=404, detail="Version not found")
@@ -246,7 +247,7 @@ async def finding_records(
     total = (await db.execute(text("SELECT COUNT(*) FROM finding_records WHERE version_id = :v AND check_id = :cid"),
                               p)).scalar()
     rows = await db.execute(text("""
-        SELECT record_key, grain, module FROM finding_records
+        SELECT record_key, grain, module, field_values FROM finding_records
          WHERE version_id = :v AND check_id = :cid
          ORDER BY record_key LIMIT :limit OFFSET :offset
     """), {**p, "limit": limit, "offset": offset})

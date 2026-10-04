@@ -84,7 +84,7 @@ def _ekko(ebeln, bsart, lifnr, waers, zterm, bedat, bstyp="F", inco1="FCA", inco
 
 
 def _ekpo(ebeln, ebelp, txz01, matnr, werks, matkl, menge, meins, netpr, netwr, pstyp="0", knttp="",
-          elikz="", erekz="", wepos="X", repos="X", loekz="", ktmng="0.000", webre="") -> dict:
+          elikz="", erekz="", wepos="X", repos="X", loekz="", ktmng="0.000", webre="X") -> dict:
     return {"EBELN": ebeln, "EBELP": ebelp, "LOEKZ": loekz, "TXZ01": txz01, "MATNR": matnr, "WERKS": werks,
             "LGORT": "0001" if werks and not knttp else "", "MATKL": matkl, "MENGE": menge, "MEINS": meins,
             "BPRME": meins, "NETPR": netpr, "PEINH": "1", "NETWR": netwr, "PSTYP": pstyp, "KNTTP": knttp,

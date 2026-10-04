@@ -283,12 +283,13 @@ def _join(left: pd.DataFrame, right: pd.DataFrame, edge: Edge, cols: list[str],
                 if col in r.columns:
                     order -= (r[col].astype("string").str.strip() == v).astype(int)
             r = r.assign(_prefer=order).sort_values("_prefer", kind="stable").drop(columns="_prefer")
-    r = r.drop_duplicates(subset=rk)
     keep = list(dict.fromkeys(rk + [c for c in cols if c in r.columns and c not in left.columns]))
     lnorm = left[lk].astype("string").apply(lambda s: s.str.strip())
     rnorm = r[keep].copy()
     for k in rk:
         rnorm[k] = rnorm[k].astype("string").str.strip()
+    # dedup on the trimmed keys the merge uses: 'M1' and 'M1 ' would otherwise both match
+    rnorm = rnorm.drop_duplicates(subset=rk)
     merged = lnorm.merge(rnorm, how="left", left_on=lk, right_on=rk)
     merged.index = left.index
     added = [c for c in keep if c not in left.columns and c not in lk]

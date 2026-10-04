@@ -174,79 +174,6 @@ rules:
       Customer {KNA1.KUNNR}: KTOKD is {actual_value}. Assign the customer
       account group via VD02 / Fiori app F3893.
 
-  - id: SDCM009
-    field: KNVV.VKORG
-    check_class: null_check
-    severity: critical
-    dimension: completeness
-    message: "Sales organisation is mandatory — part of the required sales area triple"
-    why_it_matters: >-
-      VKORG (sales organisation) is the first element of the sales area
-      triple (sales org / distribution channel / division) that defines a
-      customer's commercial relationship. Without it, no sales area data
-      exists and the customer cannot be used in any SD transaction. The
-      sales org must be valid in the enterprise structure (T-code OVXB).
-    rule_authority: sap_hard_constraint
-    sap_impact: >-
-      Customer cannot be used in VA01. No sales area = no sales orders
-      possible. Pricing, shipping, and billing cannot be determined.
-    fix_map:
-      __blank__: >-
-        In ECC: assign the correct sales organisation via T-code VD02 >
-        Sales Area Data tab. In S/4HANA: use Fiori app F3893 (Manage
-        Business Partner) and add the sales area assignment.
-    record_fix_template: >-
-      Customer {KNA1.KUNNR}: VKORG is {actual_value}. Assign the sales
-      organisation via VD02 / Fiori app F3893.
-
-  - id: SDCM010
-    field: KNVV.VTWEG
-    check_class: null_check
-    severity: critical
-    dimension: completeness
-    message: "Distribution channel is mandatory — required for sales area definition"
-    why_it_matters: >-
-      VTWEG (distribution channel) is the second element of the sales area
-      triple. It defines how products reach the customer (e.g., direct sales,
-      wholesale, internet). Without it, the sales area is incomplete and no
-      SD transactions can be created.
-    rule_authority: sap_hard_constraint
-    sap_impact: >-
-      Sales area is incomplete — VA01 rejects the customer. Pricing procedure
-      determination fails. Material determination and listing/exclusion
-      cannot be evaluated.
-    fix_map:
-      __blank__: >-
-        In ECC: assign the correct distribution channel via T-code VD02 >
-        Sales Area Data tab. Common values: 10 (direct), 20 (wholesale),
-        30 (internet). In S/4HANA: use Fiori app F3893.
-    record_fix_template: >-
-      Customer {KNA1.KUNNR}: VTWEG is {actual_value}. Assign the distribution
-      channel via VD02 / Fiori app F3893.
-
-  - id: SDCM011
-    field: KNVV.SPART
-    check_class: null_check
-    severity: critical
-    dimension: completeness
-    message: "Division is mandatory — completes the sales area triple"
-    why_it_matters: >-
-      SPART (division) is the third element of the sales area triple. It
-      segments the product range (e.g., pumps, electronics, services). All
-      three elements must be present for any SD transaction to be created.
-      The division must be valid in the enterprise structure.
-    rule_authority: sap_hard_constraint
-    sap_impact: >-
-      Sales area is incomplete — customer cannot be used in VA01.
-      Product-specific pricing and output determination fail.
-    fix_map:
-      __blank__: >-
-        In ECC: assign the correct division via T-code VD02 > Sales Area
-        Data tab. In S/4HANA: use Fiori app F3893.
-    record_fix_template: >-
-      Customer {KNA1.KUNNR}: SPART is {actual_value}. Assign the division
-      via VD02 / Fiori app F3893.
-
   - id: SDCM012
     field: KNVV.KDGRP
     check_class: null_check
@@ -499,24 +426,6 @@ rules:
     record_fix_template: 'Customer {KNA1.KUNNR}: INCO1 and INCO2 are inconsistent — one is filled and the other is
       blank. Set both via VD02 / Fiori app F3893.'
     fail_when: '`KNVV.INCO1`.notna() != `KNVV.INCO2`.notna()'
-
-  - id: SDCM023
-    field: KNA1.KUNNR
-    check_class: cross_field_check
-    severity: critical
-    dimension: consistency
-    message: Sales area triple must be complete — VKORG, VTWEG, and SPART all required
-    why_it_matters: 'The sales area is defined by three fields: sales organisation (VKORG), distribution channel (VTWEG),
-      and division (SPART). All three must be populated for the sales area to be valid. A partial sales area renders
-      the customer unusable in all SD transactions and causes errors in partner function determination and pricing.'
-    rule_authority: sap_hard_constraint
-    sap_impact: Customer cannot be used in VA01. Sales area validation fails. Pricing, shipping, and billing determination
-      all produce errors. The customer is commercially inactive.
-    fix_map: {__other__: 'Sales area is partially filled. In ECC: complete all three fields (VKORG, VTWEG, SPART)
-        via T-code VD02 > Sales Area Data tab. In S/4HANA: use Fiori app F3893 and ensure the full sales area is assigned.'}
-    record_fix_template: 'Customer {KNA1.KUNNR}: sales area triple is incomplete. Complete all three fields (VKORG,
-      VTWEG, SPART) via VD02 / Fiori app F3893.'
-    fail_when: '`KNVV.VKORG`.notna() & (`KNVV.VTWEG`.isna() | `KNVV.SPART`.isna())'
 
   - id: SDCM024
     field: KNA1.KUNNR
@@ -971,6 +880,134 @@ rules:
       __other__: Replace the partner in the customer's sales-area partner functions (XD02 > Partner functions).
     record_fix_template: 'Customer {KNVP.KUNNR} ({KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART}): partner {KNVP.PARVW} {KNVP.KUNN2}
       does not exist or is deleted.'
+  - id: SDCM052
+    fields:
+    - KNVP.KUNNR
+    - KNVP.VKORG
+    - KNVP.VTWEG
+    - KNVP.SPART
+    check_class: exists_check
+    grain: KNVP
+    applies_when:
+      KNVP.PARVW: [AG]
+    target_table: KNVP
+    target_fields:
+    - KUNNR
+    - VKORG
+    - VTWEG
+    - SPART
+    target_when:
+      PARVW: [RG]
+    severity: high
+    dimension: completeness
+    message: Sold-to party has no payer in this sales area
+    why_it_matters: Sales documents copy their partners from the sold-to's sales-area partner functions. Without a payer (RG)
+      the order is incomplete for billing; whoever enters it must pick a payer by hand, and the receivable can land on the
+      wrong account.
+    rule_authority: sap_hard_constraint
+    sap_impact: The payer is on the incompletion log (V.02), and the order cannot be billed until a payer is entered. Credit
+      checks run against the payer, so exposure is not checked.
+    fix_map:
+      __other__: Add the payer partner function to the sales area (XD02 > Sales area data > Partner functions; BP > Customer
+        roles in S/4HANA).
+    record_fix_template: 'Customer {KNVP.KUNNR} ({KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART}) is a sold-to party but has no payer
+      partner.'
+  - id: SDCM053
+    fields:
+    - KNVP.KUNNR
+    - KNVP.VKORG
+    - KNVP.VTWEG
+    - KNVP.SPART
+    check_class: exists_check
+    grain: KNVP
+    applies_when:
+      KNVP.PARVW: [AG]
+    target_table: KNVP
+    target_fields:
+    - KUNNR
+    - VKORG
+    - VTWEG
+    - SPART
+    target_when:
+      PARVW: [RE]
+    severity: high
+    dimension: completeness
+    message: Sold-to party has no bill-to party in this sales area
+    why_it_matters: The bill-to party decides the invoice address and output. Without one, every order needs a bill-to entered
+      by hand, or it stays incomplete for billing.
+    rule_authority: sap_hard_constraint
+    sap_impact: The order is on the incompletion log for billing. Invoices cannot be printed or sent until a bill-to is maintained.
+    fix_map:
+      __other__: Add the bill-to partner function to the sales area (XD02 > Sales area data > Partner functions).
+    record_fix_template: 'Customer {KNVP.KUNNR} ({KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART}) is a sold-to party but has no bill-to
+      partner.'
+  - id: SDCM054
+    field: KNVP.KUNN2
+    check_class: exists_check
+    grain: KNVP
+    applies_when:
+      KNVP.PARVW: [RG]
+    target_table: KNB1
+    target_fields:
+    - KUNNR
+    target_when:
+      LOEVM:
+        blank: true
+    severity: high
+    dimension: consistency
+    message: Payer has no company-code data (or it is flagged for deletion)
+    why_it_matters: The payer is the account that billing posts the receivable to. A payer that exists only in sales and has
+      no company-code data, or only deleted company-code data, cannot carry a receivable.
+    rule_authority: sap_hard_constraint
+    sap_impact: The billing document is saved but not released to accounting (VFX3, "customer not created in company code").
+      Revenue and the receivable are not posted.
+    fix_map:
+      __other__: Extend the payer to the company code of the sales organisation (XD01/XD07 > Company code data; BP role FLCU00
+        in S/4HANA), or replace the payer in the partner functions.
+    record_fix_template: 'Customer {KNVP.KUNNR} ({KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART}): payer {KNVP.KUNN2} has no active
+      company-code data.'
+  - id: SDCM055
+    check_class: exists_check
+    fields:
+    - KNA1.LIFNR
+    - KNA1.KUNNR
+    target_table: LFA1
+    target_fields:
+    - LIFNR
+    - KUNNR
+    target_when:
+      LOEVM:
+        blank: true
+    severity: medium
+    dimension: consistency
+    message: Customer is linked to a vendor that does not point back to it (or the vendor is missing or deleted)
+    why_it_matters: Netting a customer against a vendor (KNB1.XVERR / LFB1.XVERR) reads both directions of the link. A link
+      that is one-sided, points to a deleted vendor, or points to a vendor linked to another customer nets the wrong balances.
+    rule_authority: sap_hard_constraint
+    sap_impact: The payment run (F110) and dunning (F150) offset open items against the wrong account, or skip offsetting.
+      In S/4HANA the CVI conversion reports an inconsistent customer-vendor link.
+    fix_map:
+      __other__: Make the link mutual (XD02 > Control data > Vendor and XK02 > Control data > Customer), or remove it.
+    record_fix_template: 'Customer {KNA1.KUNNR} points to vendor {KNA1.LIFNR}, but that vendor does not exist, is deleted, or
+      does not point back to this customer.'
+  - id: SDCM057
+    field: KNA1.ORT01
+    check_class: cross_field_check
+    fail_when: '`KNA1.ORT01`.isna() | (`KNA1.STRAS`.isna() & `KNA1.PFACH`.isna())'
+    applies_when:
+      KNA1.XCPDK:
+        blank: true
+    severity: medium
+    dimension: completeness
+    message: Customer address is incomplete (no city, or neither a street nor a PO box)
+    why_it_matters: The address prints on delivery notes and invoices, and drives tax jurisdiction and route determination.
+      Without a city, or without a street or PO box, deliveries and invoices cannot be addressed.
+    rule_authority: best_practice
+    sap_impact: Invoices may be rejected under e-invoicing and VAT rules. Carriers cannot deliver, and US tax jurisdiction
+      (TXJCD) cannot be determined.
+    fix_map:
+      __other__: Complete the address (XD02 > Address).
+    record_fix_template: 'Customer {KNA1.KUNNR}: address incomplete (city "{KNA1.ORT01}", street "{KNA1.STRAS}", PO box "{KNA1.PFACH}").'
   - id: SDCM200
     field: KNVP.KUNNR
     check_class: exists_check
@@ -1002,68 +1039,6 @@ rules:
     fix_map:
       __other__: Maintain partner function WE for the sales area (XD02 > Sales area data > Partner functions).
     record_fix_template: 'Customer {KNVP.KUNNR} ({KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART}): no ship-to partner function.'
-  - id: SDCM201
-    field: KNVP.KUNNR
-    check_class: exists_check
-    grain: KNVP
-    applies_when:
-      KNVP.PARVW:
-      - AG
-    fields:
-    - KNVP.KUNNR
-    - KNVP.VKORG
-    - KNVP.VTWEG
-    - KNVP.SPART
-    target_table: KNVP
-    target_fields:
-    - KUNNR
-    - VKORG
-    - VTWEG
-    - SPART
-    target_when:
-      PARVW:
-      - RE
-    severity: high
-    dimension: completeness
-    message: Sold-to party has no bill-to partner function in the sales area
-    why_it_matters: Billing copies the bill-to party (RE) from the order. A sold-to party without a bill-to in the sales area
-      makes the order incomplete for billing and the invoice address cannot be determined.
-    rule_authority: sap_hard_constraint
-    sap_impact: Orders and deliveries cannot be billed until the partner is added manually.
-    fix_map:
-      __other__: Maintain partner function RE for the sales area (XD02 > Sales area data > Partner functions).
-    record_fix_template: 'Customer {KNVP.KUNNR} ({KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART}): no bill-to partner function.'
-  - id: SDCM202
-    field: KNVP.KUNNR
-    check_class: exists_check
-    grain: KNVP
-    applies_when:
-      KNVP.PARVW:
-      - AG
-    fields:
-    - KNVP.KUNNR
-    - KNVP.VKORG
-    - KNVP.VTWEG
-    - KNVP.SPART
-    target_table: KNVP
-    target_fields:
-    - KUNNR
-    - VKORG
-    - VTWEG
-    - SPART
-    target_when:
-      PARVW:
-      - RG
-    severity: high
-    dimension: completeness
-    message: Sold-to party has no payer partner function in the sales area
-    why_it_matters: The payer (RG) carries the receivable, the credit check and the payment terms. A sold-to party without a
-      payer in the sales area cannot be invoiced or credit-checked.
-    rule_authority: sap_hard_constraint
-    sap_impact: Billing documents cannot be posted to FI; credit management has no account to check against.
-    fix_map:
-      __other__: Maintain partner function RG for the sales area (XD02 > Sales area data > Partner functions).
-    record_fix_template: 'Customer {KNVP.KUNNR} ({KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART}): no payer partner function.'
   - id: SDCM203
     field: KNVP.KUNN2
     check_class: uniqueness_check
