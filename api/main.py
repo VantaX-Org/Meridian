@@ -48,6 +48,7 @@ from api.routes.z_object_intelligence import router as z_object_intelligence_rou
 from api.routes.connectivity import router as connectivity_router
 from api.routes.spro_config import router as spro_config_router
 from api.routes.config_impact import router as config_impact_router
+from api.routes.lineage import router as lineage_router
 from api.routes.business_process import router as business_process_router
 from api.routes.events import router as events_router
 from api.routes.jobs import router as jobs_router
@@ -296,6 +297,7 @@ app.include_router(z_object_intelligence_router)
 app.include_router(connectivity_router)
 app.include_router(spro_config_router)
 app.include_router(config_impact_router)
+app.include_router(lineage_router)
 app.include_router(business_process_router)
 app.include_router(events_router)
 app.include_router(jobs_router)
