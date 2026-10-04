@@ -3,6 +3,7 @@ import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 from sqlalchemy import case, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -217,6 +218,10 @@ async def list_findings(
                 "pass_rate": float(f.pass_rate) if f.pass_rate is not None else None,
                 "details": f.details or {},
                 "baseline": (f.details or {}).get("baseline", "live_config"),
+                # the system the data is judged fit for: the running ECC or the S/4HANA target
+                "target": "s4hana" if (f.details or {}).get("baseline") == "s4_target" else "ecc",
+                "s4_area": (f.details or {}).get("s4_area"),
+                "s4_impact": (f.details or {}).get("s4_impact"),
                 "remediation_text": f.remediation_text,
                 "rule_context": f.rule_context,
                 "value_fix_map": f.value_fix_map,
@@ -231,6 +236,69 @@ async def list_findings(
         "total": total,
         "filters_applied": filters_applied,
     }
+
+
+class S4Check(BaseModel):
+    check_id: str
+    module: str | None
+    impact: str
+    status: str
+    affected_count: int
+    pass_rate: float | None
+
+
+class S4Area(BaseModel):
+    area: str
+    label: str
+    simplification_item: str | None
+    rules: int
+    evaluated: int
+    failing: int
+    failing_records: int
+    blocking_failing: int
+    warning_failing: int
+    status: str
+    checks: list[S4Check]
+
+
+class S4Readiness(BaseModel):
+    version_id: str | None
+    status: str
+    ready: bool
+    rules: int
+    evaluated: int
+    failing: int
+    failing_records: int
+    blocking_failing: int
+    warning_failing: int
+    areas: list[S4Area]
+
+
+@router.get("/findings/s4-readiness", response_model=S4Readiness)
+async def s4_readiness(
+    version_id: Optional[str] = Query(None),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+) -> S4Readiness:
+    """S/4HANA conversion readiness of one analysis (default: the latest), per
+    simplification area: rules, failing records, blocking vs warning, green/amber/red."""
+    from api.services.s4_readiness import membership, rollup
+
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
+    if version_id:
+        try:
+            vid = uuid.UUID(version_id)
+        except ValueError:
+            raise HTTPException(status_code=422, detail="version_id must be a UUID")
+    else:
+        vid = (await db.execute(text(f"SELECT id FROM analysis_versions WHERE tenant_id = :tid AND {_COMPLETE} "
+                                     "ORDER BY run_at DESC LIMIT 1"), {"tid": str(tenant.id)})).scalar()
+    rows = [] if vid is None else (await db.execute(
+        select(Finding.check_id, Finding.module, Finding.severity, Finding.affected_count,
+               Finding.pass_rate, Finding.details)
+        .where(Finding.tenant_id == tenant.id, Finding.version_id == vid,
+               Finding.check_id.in_(list(membership()))))).mappings().all()
+    return S4Readiness(version_id=str(vid) if vid else None, **rollup([dict(r) for r in rows]))
 
 
 @router.get("/findings/{finding_id}/report-context")

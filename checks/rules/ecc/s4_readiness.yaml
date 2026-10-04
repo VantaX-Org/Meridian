@@ -1,0 +1,397 @@
+# S/4HANA conversion readiness: ECC data judged against what an S/4HANA
+# conversion requires (baseline s4_target). Each rule names the SAP
+# Simplification Item it comes from; a note number is cited only where certain.
+#
+# overlay: the pack reads tables other modules already extract. The worker does
+# not generate value-placement / country / config rules, profile fields or run
+# cleaning, dedup, mining or golden records for it, so nothing is reported twice.
+#
+# areas: the readiness roll-up (GET /api/v1/findings/s4-readiness) groups the
+# rules below by `s4_area` and adds the existing rules of other modules that an
+# S/4HANA conversion depends on (`related`), each tagged blocking or warning.
+module: s4_readiness
+target_state: S4HANA
+overlay: true
+areas:
+  business_partner:
+    label: Business Partner / CVI
+    simplification_item: Business Partner Approach (SAP Note 2265093)
+    related:
+      blocking: [S4-CVI-LFA1, S4-CVI-KNA1, S4-CVI-KNVK-VEND, S4-CVI-KNVK-CUST, S4-CVI-KTOKK-NUM, S4-CVI-KTOKK-ROLE,
+                 S4-CVI-KTOKD-NUM, S4-CVI-KTOKD-ROLE, AP003, AP005, AR003, AR005]
+      warning: [AP026, XLNK001, XDUP002, CF-LFA1-STCD1, CF-LFA1-STCD2, CF-KNA1-STCD1, CF-KNA1-STCD2,
+                CF-LFA1-PSTLZ, CF-KNA1-PSTLZ, CR-LFA1-PSTLZ, CR-KNA1-PSTLZ]
+  material:
+    label: Material master
+    simplification_item: Material Number Field Length Extension
+    related:
+      blocking: [MM001, MM002]
+  mrp:
+    label: MRP areas
+    simplification_item: Storage Location MRP
+    related: {}
+  material_ledger:
+    label: Material Ledger
+    simplification_item: Material Ledger Obligatory for Material Valuation
+    related:
+      warning: [MM043]
+  purchasing:
+    label: Purchasing info records and source lists
+    simplification_item: Business Partner Approach (SAP Note 2265093)
+    related:
+      warning: [PUR131, PUR132]
+  credit_management:
+    label: Credit Management (FSCM)
+    simplification_item: Credit Management - FI-AR-CR replaced by FIN-FSCM-CR
+    related:
+      blocking: [S4-CRM-KKBER, AR070]
+      warning: [AR045, AR046]
+  sales:
+    label: Sales and pricing
+    simplification_item: SD Rebate Processing replaced by Settlement Management
+    related: {}
+  finance:
+    label: Universal Journal / General Ledger
+    simplification_item: Data Model Changes in Financials - Universal Journal
+    related:
+      blocking: [S4-CE-PRIMARY-GL, S4-CE-SECONDARY-CLASH]
+      warning: [AR058, AP074]
+  asset_accounting:
+    label: New Asset Accounting
+    simplification_item: Asset Accounting - new data structures
+    related:
+      blocking: [S4-AA-PERIODIC-APC]
+  production:
+    label: Production planning
+    simplification_item: Production version mandatory for BOM selection
+    related: {}
+rules:
+- id: S4R-BP-KNA1-ADRNR
+  field: KNA1.ADRNR
+  check_class: null_check
+  s4_area: business_partner
+  s4_impact: warning
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+  baseline: s4_target
+  severity: medium
+  dimension: completeness
+  message: 'S/4HANA readiness: active customer has no central address (KNA1.ADRNR) - simplification item S4TWL Business
+    Partner Approach, SAP Note 2265093'
+  why_it_matters: Customer/Vendor Integration builds the Business Partner address from the customer's central address
+    (business address services). A customer record without an address number carries its address only in the old KNA1
+    fields, which the Business Partner does not use.
+  rule_authority: s4hana_migration
+  sap_impact: The customer is reported by the CVI pre-checks and synchronises without a usable address, so documents,
+    output and tax determination for the customer have no address after the conversion.
+  fix_map:
+    __other__: Open the customer in XD02 and save it so that the address is created in central address management, then
+      re-run the CVI synchronisation for the customer.
+  record_fix_template: 'Customer {KNA1.KUNNR} has no central address number (KNA1.ADRNR).'
+- id: S4R-BP-KNVK-NAME
+  field: KNVK.NAME1
+  check_class: null_check
+  applies_when:
+    KNVK.LOEVM:
+      blank: true
+  s4_area: business_partner
+  s4_impact: blocking
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+  baseline: s4_target
+  severity: high
+  dimension: completeness
+  message: 'S/4HANA readiness: contact person has no last name (KNVK.NAME1) - simplification item S4TWL Business Partner
+    Approach, SAP Note 2265093'
+  why_it_matters: Contact persons become Business Partners of category person in S/4HANA, and a person Business Partner
+    cannot be created without a last name. CVI takes the last name from KNVK.NAME1.
+  rule_authority: s4hana_migration
+  sap_impact: The contact person cannot be synchronised to a Business Partner, so the customer or vendor it belongs to is
+    reported as not fully synchronised and the contact is lost in the conversion.
+  fix_map:
+    __other__: Enter the contact person's last name in the customer or vendor master (contact person screen), or flag
+      the obsolete contact for deletion.
+  record_fix_template: 'Contact person {KNVK.PARNR} has no last name.'
+- id: S4R-BP-NUM-OVERLAP
+  field: LFA1.LIFNR
+  check_class: exists_check
+  negate: true
+  applies_when:
+    LFA1.KUNNR:
+      blank: true
+  target_table: KNA1
+  target_fields:
+  - KUNNR
+  target_when:
+    LIFNR:
+      blank: true
+  s4_area: business_partner
+  s4_impact: warning
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+  baseline: s4_target
+  severity: medium
+  dimension: consistency
+  message: 'S/4HANA readiness: vendor number is also used by an unrelated customer - simplification item S4TWL Business
+    Partner Approach, SAP Note 2265093'
+  why_it_matters: Customers and vendors share one Business Partner number range in S/4HANA. When the conversion keeps
+    the existing numbers (same number for Business Partner and account), a vendor and an unlinked customer with the same
+    number cannot both get that Business Partner number.
+  rule_authority: s4hana_migration
+  sap_impact: One of the two records must take a different Business Partner number, which breaks a same-number CVI
+    number assignment and every interface or report that relies on the numbers matching.
+  fix_map:
+    __other__: If the vendor and the customer are the same legal entity, link them (customer in the vendor master and
+      vendor in the customer master) so they become one Business Partner; otherwise plan an internal Business Partner
+      number range for one of the two account groups.
+  record_fix_template: 'Vendor {LFA1.LIFNR} has the same number as an unlinked customer.'
+- id: S4R-BP-DUP-TAX
+  field: LFA1.STCD1
+  fields:
+  - LFA1.LAND1
+  - LFA1.STCD1
+  check_class: exists_check
+  negate: true
+  applies_when:
+    LFA1.KUNNR:
+      blank: true
+  target_table: KNA1
+  target_fields:
+  - LAND1
+  - STCD1
+  target_when:
+    LIFNR:
+      blank: true
+  s4_area: business_partner
+  s4_impact: warning
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+  baseline: s4_target
+  severity: medium
+  dimension: uniqueness
+  message: 'S/4HANA readiness: vendor has the same country and tax number as an unlinked customer and should become one
+    Business Partner - simplification item Business Partner Approach (SAP Note 2265093)'
+  why_it_matters: In S/4HANA one legal entity is one Business Partner with a customer role and a supplier role. A vendor
+    and a customer with the same tax number that are not linked are converted into two Business Partners for the same
+    entity.
+  rule_authority: s4hana_migration
+  sap_impact: Duplicate Business Partners for one legal entity split credit exposure, netting of receivables and
+    payables, tax reporting and screening across two records after the conversion.
+  fix_map:
+    __other__: Confirm the vendor and the customer are the same entity, then link them (customer in the vendor master and
+      vendor in the customer master) before the CVI synchronisation so they are converted into one Business Partner.
+  record_fix_template: 'Vendor {LFA1.LIFNR} shares its tax number with an unlinked customer.'
+- id: S4R-BP-KNA1-LIFNR
+  field: KNA1.LIFNR
+  check_class: exists_check
+  target_table: LFA1
+  target_fields:
+  - LIFNR
+  s4_area: business_partner
+  s4_impact: warning
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+  baseline: s4_target
+  severity: medium
+  dimension: consistency
+  message: 'S/4HANA readiness: customer is linked to a vendor that does not exist (KNA1.LIFNR) - simplification item
+    Business Partner Approach (SAP Note 2265093)'
+  why_it_matters: The vendor entered in the customer master is the link CVI uses to treat a customer and a vendor as one
+    Business Partner. A link to a vendor that does not exist cannot be converted.
+  rule_authority: s4hana_migration
+  sap_impact: The customer is converted without its supplier role, and clearing between the customer and the vendor
+    stops working after the conversion.
+  fix_map:
+    __other__: Correct the vendor number in the customer master (XD02, control data) or remove the link if the vendor no
+      longer exists.
+  record_fix_template: 'Customer {KNA1.KUNNR} is linked to vendor {KNA1.LIFNR}, which does not exist.'
+- id: S4R-MRP-MARD-DISKZ
+  field: MARD.DISKZ
+  check_class: cross_field_check
+  fail_when: '`MARD.DISKZ`.notna()'
+  s4_area: mrp
+  s4_impact: warning
+  simplification_item: Storage Location MRP
+  baseline: s4_target
+  severity: medium
+  dimension: consistency
+  message: 'S/4HANA readiness: storage location is planned separately with storage location MRP (MARD.DISKZ) - simplification
+    item Storage Location MRP'
+  why_it_matters: S/4HANA does not support planning a storage location separately through the storage location MRP
+    indicator. Separate planning of a storage location must be set up as an MRP area.
+  rule_authority: s4hana_migration
+  sap_impact: After the conversion MRP no longer plans the storage location separately and its stock is planned with the
+    plant until the MRP area is set up.
+  fix_map:
+    __other__: Define a storage location MRP area for the plant and storage location, assign the material to it in the
+      MRP views, then clear the storage location MRP indicator.
+  record_fix_template: 'Material {MARD.MATNR} in plant {MARD.WERKS}, storage location {MARD.LGORT} uses storage location MRP.'
+- id: S4R-ML-T001K-MLBWA
+  field: T001K.MLBWA
+  check_class: null_check
+  s4_area: material_ledger
+  s4_impact: warning
+  simplification_item: Material Ledger Obligatory for Material Valuation
+  baseline: s4_target
+  severity: low
+  dimension: completeness
+  message: 'S/4HANA readiness: material ledger is not active in the valuation area (T001K.MLBWA) - simplification item
+    Material Ledger Obligatory for Material Valuation'
+  why_it_matters: The material ledger is mandatory for inventory valuation in S/4HANA. Valuation areas without it are
+    activated during the conversion, which migrates their stock values into the material ledger.
+  rule_authority: s4hana_migration
+  sap_impact: The material ledger migration of this valuation area adds conversion work and must be reconciled; stock
+    value inconsistencies in it stop the migration.
+  fix_map:
+    __other__: Plan the material ledger migration for the valuation area (currencies and valuation of the material
+      ledger) and reconcile stock values before the conversion.
+  record_fix_template: 'Valuation area {T001K.BWKEY} has no material ledger.'
+- id: S4R-CRM-KNKLI-KKBER
+  field: KNKK.KNKLI
+  fields:
+  - KNKK.KNKLI
+  - KNKK.KKBER
+  check_class: exists_check
+  target_table: KNKK
+  target_fields:
+  - KUNNR
+  - KKBER
+  s4_area: credit_management
+  s4_impact: warning
+  simplification_item: Credit Management - FI-AR-CR replaced by FIN-FSCM-CR
+  baseline: s4_target
+  severity: medium
+  dimension: consistency
+  message: 'S/4HANA readiness: credit account of the customer has no credit data in the same credit control area - simplification
+    item Credit Management - FI-AR-CR replaced by FIN-FSCM-CR'
+  why_it_matters: SAP Credit Management (FSCM) replaces FI-AR credit management in S/4HANA. The migration turns each
+    customer's credit account into a credit segment of the credit account's Business Partner, using that account's
+    limit in the same credit control area.
+  rule_authority: s4hana_migration
+  sap_impact: The customer's credit exposure is migrated to a credit account with no credit limit, so credit checks for
+    the customer block or pass orders incorrectly after the conversion.
+  fix_map:
+    __other__: Create credit data for the credit account in this credit control area (FD32), or point the customer at a
+      credit account that has it.
+  record_fix_template: 'Customer {KNKK.KUNNR} uses credit account {KNKK.KNKLI}, which has no credit data in credit control
+    area {KNKK.KKBER}.'
+- id: S4R-SD-REBATE-AGREEMENT
+  field: KONH.KNUMA_BO
+  check_class: cross_field_check
+  fail_when: '`KONH.KNUMA_BO`.notna()'
+  applies_when:
+    KONH.KAPPL:
+    - V
+  s4_area: sales
+  s4_impact: warning
+  simplification_item: SD Rebate Processing replaced by Settlement Management
+  baseline: s4_target
+  severity: medium
+  dimension: consistency
+  message: 'S/4HANA readiness: valid sales condition belongs to an SD rebate agreement - simplification item SD Rebate
+    Processing replaced by Settlement Management'
+  why_it_matters: S/4HANA replaces SD rebate agreements with condition contracts in Settlement Management. Existing rebate
+    agreements can only be settled and closed; new ones cannot be created.
+  rule_authority: s4hana_migration
+  sap_impact: The rebate agreement has to be settled before or after the conversion and its follow-on period set up as a
+    condition contract, or rebate accruals stop for the customer.
+  fix_map:
+    __other__: Settle and close the rebate agreement before the conversion where possible, and model the next period as a
+      condition contract in Settlement Management.
+  record_fix_template: 'Condition record {KONH.KNUMH} belongs to rebate agreement {KONH.KNUMA_BO}.'
+- id: S4R-MM-REBATE-ARRANGEMENT
+  field: KONH.KNUMA_BO
+  check_class: cross_field_check
+  fail_when: '`KONH.KNUMA_BO`.notna()'
+  applies_when:
+    KONH.KAPPL:
+    - M
+  s4_area: purchasing
+  s4_impact: warning
+  simplification_item: Subsequent Settlement - Vendor Rebate Arrangements replaced by Settlement Management
+  baseline: s4_target
+  severity: medium
+  dimension: consistency
+  message: 'S/4HANA readiness: valid purchasing condition belongs to a vendor rebate arrangement - simplification item
+    Subsequent Settlement (vendor rebate arrangements) replaced by Settlement Management'
+  why_it_matters: S/4HANA replaces subsequent settlement with vendor rebate arrangements by condition contracts in
+    Settlement Management. Existing arrangements can only be settled and closed.
+  rule_authority: s4hana_migration
+  sap_impact: The arrangement has to be settled and its follow-on period set up as a condition contract, or vendor rebate
+    income is no longer accrued after the conversion.
+  fix_map:
+    __other__: Settle and close the rebate arrangement before the conversion where possible, and model the next period as a
+      condition contract in Settlement Management.
+  record_fix_template: 'Condition record {KONH.KNUMH} belongs to rebate arrangement {KONH.KNUMA_BO}.'
+- id: S4R-FI-CSKS-PRCTR
+  field: CSKS.PRCTR
+  check_class: null_check
+  s4_area: finance
+  s4_impact: warning
+  simplification_item: Data Model Changes in Financials - Universal Journal
+  baseline: s4_target
+  severity: low
+  dimension: completeness
+  message: 'S/4HANA readiness: cost centre has no profit centre (CSKS.PRCTR) - simplification item Data Model Changes in
+    Financials - Universal Journal'
+  why_it_matters: In S/4HANA profit centre accounting is part of the Universal Journal, and every journal line derives
+    its profit centre from the account assignment. Postings to a cost centre without a profit centre land on the dummy
+    profit centre or none.
+  rule_authority: s4hana_migration
+  sap_impact: Profit centre reporting and any document splitting by profit centre are incomplete for the cost centre's
+    postings after the conversion.
+  fix_map:
+    __other__: Assign the profit centre to the cost centre (KS02) for every validity period.
+  record_fix_template: 'Cost centre {CSKS.KOSTL} has no profit centre.'
+- id: S4R-AA-KTOGR
+  field: ANLA.KTOGR
+  check_class: exists_check
+  target_table: T095
+  target_fields:
+  - KTOGR
+  s4_area: asset_accounting
+  s4_impact: blocking
+  simplification_item: Asset Accounting - new data structures
+  baseline: s4_target
+  severity: high
+  dimension: consistency
+  message: 'S/4HANA readiness: asset uses an account determination with no G/L accounts (T095) - simplification item
+    Asset Accounting - new data structures'
+  why_it_matters: New Asset Accounting posts every depreciation area that is managed in the general ledger in real time
+    through the account determination of the asset. An account determination without G/L accounts cannot post the
+    asset's values.
+  rule_authority: s4hana_migration
+  sap_impact: The asset's balances cannot be migrated or posted in new Asset Accounting, which stops the Asset
+    Accounting migration and period-end depreciation runs.
+  fix_map:
+    __other__: Maintain the G/L accounts for the account determination (AO90) in every chart of accounts the asset's
+      company code uses, or move the asset to an asset class with complete account determination.
+  record_fix_template: 'Asset {ANLA.ANLN1} uses account determination {ANLA.KTOGR}, which has no G/L accounts.'
+- id: S4R-PP-PRODVER
+  field: MARC.MATNR
+  fields:
+  - MARC.MATNR
+  - MARC.WERKS
+  check_class: exists_check
+  negate: true
+  applies_when:
+    MARC.BESKZ:
+    - E
+    - X
+    MARC.VERKZ:
+      blank: true
+  target_table: MAST
+  target_fields:
+  - MATNR
+  - WERKS
+  s4_area: production
+  s4_impact: warning
+  simplification_item: Production version mandatory for BOM selection
+  baseline: s4_target
+  severity: medium
+  dimension: completeness
+  message: 'S/4HANA readiness: in-house produced material has a BOM but no production version'
+  why_it_matters: S/4HANA selects the BOM and routing for planning and production orders through the production version;
+    the alternative BOM selection methods of the material master are not used.
+  rule_authority: s4hana_migration
+  sap_impact: MRP and production order creation cannot select the material's BOM and routing until a production version
+    exists, which stops planned order explosion for the material.
+  fix_map:
+    __other__: Create a production version for the material and plant (C223 or MM02, MRP 4 view) that names the BOM
+      alternative and the routing, before the conversion.
+  record_fix_template: 'Material {MARC.MATNR} in plant {MARC.WERKS} has a BOM but no production version.'
