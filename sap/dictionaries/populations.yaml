@@ -130,6 +130,9 @@ tables:
     - {id: deleted, field: STKO.LOEKZ, values: [L, X], label: *deleted_label}
   PLKO:
     - {id: deleted, field: PLKO.LOEKZ, values: [L, X], label: *deleted_label}
+  PLPO:
+    - {id: deleted, field: PLPO.LOEKZ, values: [X], label: "routing operation deleted"}
+    - {id: deleted, field: PLKO.LOEKZ, values: [L, X], label: *deleted_label}
   # equipment / functional locations: deletion is a status (I0076 DLFL in JEST), not a field
   EQUI:
     - {id: deleted, field: EQUI.OBJNR, label: "flagged for deletion (status DLFL)",
@@ -140,6 +143,9 @@ tables:
   IFLOT:
     - {id: deleted, field: IFLOT.OBJNR, label: "flagged for deletion (status DLFL)",
        in_table: {table: JEST, column: OBJNR, where: {STAT: [I0076], INACT: [""]}}}
+  IMPTT:
+    - {id: deleted, field: IMPTT.LVORM, values: [X], label: *deleted_label}
+    - {id: inactive, field: IMPTT.INACT, values: [X], label: "measuring point inactive"}
   CRHD:
     - {id: deleted, field: CRHD.LVORM, label: *deleted_label}
   # pricing: a condition record flagged for deletion is ignored by pricing
