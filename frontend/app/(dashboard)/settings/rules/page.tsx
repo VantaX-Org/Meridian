@@ -2,271 +2,430 @@
 
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { isAxiosError } from "axios";
 import { toast } from "sonner";
-import { PageHead, KPI, SectionHeader, ModChip } from "@/components/meridian/atoms";
-import { Skeleton } from "@/components/ui/skeleton";
-import { getRules, getRulesSummary, updateRule, type Rule } from "@/lib/api/rules";
-import { SearchField, matchesSearch } from "@/components/meridian/controls";
+import {
+  Banner, Button, Chip, Drawer, Field, Input, KpiRail, Panel, Select, Stack, Stat, Text, Textarea,
+} from "@/components/aurora";
+import { PageHead } from "@/components/meridian/atoms";
+import {
+  createCustomRule, dryRunRule, getRuleHistory, getRules, updateRule,
+  type CheckClass, type CustomRuleDraft, type DryRunResult, type Rule,
+} from "@/lib/api/rules";
+import { getVersions } from "@/lib/api/versions";
+import { formatModuleName } from "@/lib/format";
+import { useRole } from "@/hooks/use-role";
+import { useUrlState } from "@/hooks/use-url-state";
 
-const CATEGORY_LABEL: Record<string, string> = {
-  ecc: "ECC",
-  successfactors: "SuccessFactors",
-  warehouse: "Warehouse",
+const th = "px-3 py-2 text-left font-medium text-[var(--aurora-fg-tertiary)]";
+const td = "px-3 py-1.5 border-t border-[var(--aurora-canvas-line)] align-top";
+
+const CHECK_LABEL: Record<CheckClass, string> = {
+  null_check: "Required",
+  domain_value_check: "Allowed values",
+  regex_check: "Format",
+  cross_field_check: "Cross-field",
+  dependency_check: "Dependency",
+  uniqueness_check: "Unique",
+};
+const SOURCE_LABEL: Record<Rule["source"], string> = {
+  yaml: "Shipped", hq: "HQ", mined: "Mined", custom: "Custom",
+};
+const SEVERITIES = ["critical", "high", "medium", "low"] as const;
+const DIMENSIONS = ["completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity"];
+const SEVERITY_TONE: Record<string, "danger" | "warning" | "info" | "neutral"> = {
+  critical: "danger", high: "warning", medium: "info",
 };
 
-const SEVERITY_TONE: Record<string, { bg: string; fg: string }> = {
-  critical: { bg: "var(--mn-neg-bg)",     fg: "var(--mn-neg)" },
-  high:     { bg: "var(--mn-warn-bg)",    fg: "var(--mn-warn)" },
-  medium:   { bg: "var(--mn-primary-50)", fg: "var(--mn-primary-700)" },
-  low:      { bg: "rgba(15,23,42,0.06)",  fg: "var(--mn-ink-500)" },
-  info:     { bg: "rgba(15,23,42,0.06)",  fg: "var(--mn-ink-500)" },
+const authority = (r: Rule) => (r.source === "mined" || r.source === "custom" ? "customer" : "shipped");
+const conditionList = (r: Rule) => (Array.isArray(r.conditions) ? r.conditions : r.conditions ? [r.conditions] : []);
+const valuesOf = (r: Rule, key: "check_class" | "dimension") =>
+  Array.from(new Set(conditionList(r).map((c) => c[key]).filter((v): v is string => typeof v === "string")));
+const pct = (v: number) => `${(v * (v <= 1 ? 100 : 1)).toFixed(1)} %`;
+const detail = (e: unknown) =>
+  (isAxiosError<{ detail?: unknown }>(e) && typeof e.response?.data?.detail === "string"
+    ? e.response.data.detail : null) ?? "Request failed";
+const splitList = (s: string) => s.split(/[,\n]/).map((v) => v.trim()).filter(Boolean);
+
+async function getAllRules(): Promise<Rule[]> {
+  const out: Rule[] = [];
+  for (let offset = 0; ; offset += 1000) {
+    const page = await getRules({ limit: 1000, offset });
+    out.push(...page.rules);
+    if (out.length >= page.total || page.rules.length === 0) return out;
+  }
+}
+
+function FacetRow<T extends string>({ label, options, value, onChange, format = (v) => v }: {
+  label: string; options: T[]; value: string; onChange: (v: string) => void; format?: (v: T) => string;
+}) {
+  if (options.length < 2) return null;
+  return (
+    <Stack direction="row" gap={2} align="center" wrap>
+      <Text variant="text-small" tone="tertiary" className="w-24">{label}</Text>
+      <Chip selected={!value} onClick={() => onChange("")}>All</Chip>
+      {options.map((o) => (
+        <Chip key={o} selected={value === o} onClick={() => onChange(value === o ? "" : o)}>{format(o)}</Chip>
+      ))}
+    </Stack>
+  );
+}
+
+function RuleDrawer({ rule, onClose }: { rule: Rule | null; onClose: () => void }) {
+  const history = useQuery({
+    queryKey: ["rules.history", rule?.id],
+    queryFn: () => getRuleHistory(rule!.id),
+    enabled: !!rule,
+  });
+  return (
+    <Drawer open={!!rule} onClose={onClose} ariaLabel="Rule detail"
+      header={rule && (
+        <Stack gap={1}>
+          <Text variant="text-small" tone="tertiary">{formatModuleName(rule.module)} · {SOURCE_LABEL[rule.source]}</Text>
+          <span className="font-medium">{rule.name}</span>
+        </Stack>
+      )}>
+      {rule && (
+        <Stack gap={4}>
+          {rule.description && <Text tone="secondary">{rule.description}</Text>}
+          <Stack direction="row" gap={2} wrap>
+            <Chip tone={SEVERITY_TONE[rule.severity] ?? "neutral"}>{rule.severity}</Chip>
+            <Chip tone={rule.enabled ? "success" : "neutral"}>{rule.enabled ? "Enabled" : "Disabled"}</Chip>
+            {rule.last_pass_rate != null && <Chip>Last run {pct(rule.last_pass_rate)} pass</Chip>}
+          </Stack>
+          <Panel title="Conditions">
+            <pre className="overflow-x-auto font-mono text-[12px] text-[var(--aurora-fg-secondary)]">
+              {JSON.stringify(rule.conditions, null, 2)}
+            </pre>
+          </Panel>
+          <Panel title="History">
+            {history.isLoading ? <Text tone="muted">Reading the change log…</Text> : !history.data?.events.length ? (
+              <Text tone="muted">No recorded changes since this rule was loaded.</Text>
+            ) : (
+              <table className="w-full text-[13px]">
+                <thead><tr><th className={th}>When</th><th className={th}>Who</th><th className={th}>Change</th></tr></thead>
+                <tbody>
+                  {history.data.events.map((e) => (
+                    <tr key={`${e.at}-${e.action}`}>
+                      <td className={`${td} aurora-number whitespace-nowrap`}>{new Date(e.at).toLocaleString()}</td>
+                      <td className={td}>{e.actor ?? "—"}</td>
+                      <td className={td}>
+                        <div>{e.action}</div>
+                        <div className="font-mono text-[12px] text-[var(--aurora-fg-tertiary)]">
+                          {Object.entries(e.changes).map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join(" · ")}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </Panel>
+        </Stack>
+      )}
+    </Drawer>
+  );
+}
+
+const EMPTY: Omit<CustomRuleDraft, "module"> & { module: string } = {
+  module: "", check_class: "null_check", message: "", severity: "medium",
 };
+
+function AuthorDrawer({ open, onClose, modules }: { open: boolean; onClose: () => void; modules: string[] }) {
+  const qc = useQueryClient();
+  const [draft, setDraftState] = useState(EMPTY);
+  const [values, setValues] = useState(""); // allowed values / unique fields, comma or newline separated
+  const [result, setResult] = useState<DryRunResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const setDraft = (patch: Partial<CustomRuleDraft>) => {
+    setDraftState((d) => ({ ...d, ...patch }));
+    setResult(null);
+    setError(null);
+  };
+  const versions = useQuery({
+    queryKey: ["versions", draft.module],
+    queryFn: () => getVersions({ module: draft.module, limit: 20 }),
+    enabled: open && !!draft.module,
+    select: (d) => d.versions,
+  });
+  const body: CustomRuleDraft = {
+    ...draft,
+    dimension: draft.dimension || undefined,
+    allowed_values: draft.check_class === "domain_value_check" ? splitList(values) : undefined,
+    fields: draft.check_class === "uniqueness_check" ? splitList(values) : undefined,
+  };
+  const dry = useMutation({
+    mutationFn: () => dryRunRule(body),
+    onSuccess: (r) => { setResult(r); setError(null); },
+    onError: (e) => { setResult(null); setError(detail(e)); },
+  });
+  const save = useMutation({
+    mutationFn: () => createCustomRule(body),
+    onSuccess: (r) => {
+      toast.success(`${r.name.split(":")[0]} saved — it runs on the next analysis`);
+      void qc.invalidateQueries({ queryKey: ["rules.list"] });
+      setDraftState(EMPTY); setValues(""); setResult(null);
+      onClose();
+    },
+    onError: (e) => setError(detail(e)),
+  });
+  const cls = draft.check_class;
+  const needsField = cls !== "cross_field_check" && cls !== "uniqueness_check";
+  const text = (key: "field" | "pattern" | "determinant" | "message", label: string, helper?: string) => (
+    <Field label={label} helper={helper}>
+      {({ controlId }) => (
+        <Input id={controlId} value={draft[key] ?? ""} onChange={(e) => setDraft({ [key]: e.target.value })}
+          className={key === "message" ? undefined : "font-mono"} />
+      )}
+    </Field>
+  );
+
+  return (
+    <Drawer open={open} onClose={onClose} ariaLabel="New rule"
+      header={<span className="font-medium">New rule</span>}
+      footer={
+        <Stack direction="row" gap={2} justify="end">
+          <Button variant="ghost" onClick={onClose}>Discard draft</Button>
+          <Button variant="secondary" disabled={!draft.version_id || dry.isPending} onClick={() => dry.mutate()}>
+            {dry.isPending ? "Running…" : "Dry run"}
+          </Button>
+          <Button disabled={!result || !!result.error || save.isPending} onClick={() => save.mutate()}>Save rule</Button>
+        </Stack>
+      }>
+      <Stack gap={4}>
+        <Text variant="text-small" tone="secondary">
+          Build a check from an existing check type. Fields are SAP <span className="font-mono">TABLE.FIELD</span> names
+          and are checked against the data dictionary. Dry-run it on an analysed version, then save — it runs on every
+          later analysis of the module.
+        </Text>
+        <Field label="Module">
+          {({ controlId }) => (
+            <Select id={controlId} placeholder="Choose a module" value={draft.module}
+              options={modules.map((m) => ({ value: m, label: formatModuleName(m) }))}
+              onValueChange={(m) => setDraft({ module: m, version_id: undefined })} />
+          )}
+        </Field>
+        <Field label="Check type">
+          {({ controlId }) => (
+            <Select<CheckClass> id={controlId} value={cls}
+              options={(Object.keys(CHECK_LABEL) as CheckClass[]).map((c) => ({ value: c, label: CHECK_LABEL[c] }))}
+              onValueChange={(c) => setDraft({ check_class: c })} />
+          )}
+        </Field>
+        {cls === "dependency_check" && text("determinant", "Determining field", "e.g. LFA1.KTOKK — its value decides the field below")}
+        {needsField && text("field", "Field", "e.g. LFA1.STCD1")}
+        {cls === "regex_check" && text("pattern", "Pattern (regular expression)", "Values that do not match fail, e.g. ^[0-9]{10}$")}
+        {(cls === "domain_value_check" || cls === "uniqueness_check") && (
+          <Field label={cls === "domain_value_check" ? "Allowed values" : "Fields that must be unique together"}
+            helper="Comma or newline separated">
+            {({ controlId }) => (
+              <Textarea id={controlId} rows={3} className="font-mono" value={values}
+                onChange={(e) => { setValues(e.target.value); setResult(null); }} />
+            )}
+          </Field>
+        )}
+        {cls === "cross_field_check" && (
+          <Field label="Fails when" helper="Backtick columns; use == != < > & | ~ and .isna() / .notna(), e.g. `LFA1.LAND1` == 'ZA' & `LFA1.STCD1`.isna()">
+            {({ controlId }) => (
+              <Textarea id={controlId} rows={3} className="font-mono" value={draft.fail_when ?? ""}
+                onChange={(e) => setDraft({ fail_when: e.target.value })} />
+            )}
+          </Field>
+        )}
+        {text("message", "Message", "What a failing record means, shown on each finding")}
+        <Stack direction="row" gap={3}>
+          <Field label="Severity" className="flex-1">
+            {({ controlId }) => (
+              <Select id={controlId} value={draft.severity} options={SEVERITIES.map((s) => ({ value: s, label: s }))}
+                onValueChange={(s) => setDraft({ severity: s })} />
+            )}
+          </Field>
+          <Field label="Dimension" className="flex-1">
+            {({ controlId }) => (
+              <Select id={controlId} value={draft.dimension ?? ""}
+                options={[{ value: "", label: "Default for the check type" }, ...DIMENSIONS.map((d) => ({ value: d, label: d }))]}
+                onValueChange={(d) => setDraft({ dimension: d })} />
+            )}
+          </Field>
+        </Stack>
+        <Field label="Dry run against" helper={draft.module && versions.data?.length === 0 ? "No analysed version holds this module yet" : undefined}>
+          {({ controlId }) => (
+            <Select id={controlId} placeholder={draft.module ? "Choose a version" : "Choose a module first"}
+              value={draft.version_id ?? ""} disabled={!versions.data?.length}
+              options={(versions.data ?? []).map((v) => ({
+                value: v.id, label: `${new Date(v.run_at).toLocaleString()}${v.label ? ` · ${v.label}` : ""}`,
+              }))}
+              onValueChange={(v) => setDraft({ version_id: v })} />
+          )}
+        </Field>
+        {error && <Banner tone="danger" title="Not valid yet">{error}</Banner>}
+        {result && (result.error ? (
+          <Banner tone="danger" title="The rule errored on this data">{result.error}</Banner>
+        ) : (
+          <Panel title="Dry run" action={<Text variant="text-small" tone="tertiary">{result.grain ? `per ${result.grain} record` : ""}</Text>}>
+            <Stack gap={3}>
+              <KpiRail>
+                <Stat label="Checked" value={result.population.toLocaleString()} />
+                <Stat label="Failing" value={result.failing.toLocaleString()} tone={result.failing ? "warning" : "neutral"} />
+                <Stat label="Pass rate" value={pct(result.pass_rate)} />
+              </KpiRail>
+              {result.sample_keys.length > 0 && (
+                <div className="font-mono text-[12px]">
+                  {result.sample_keys.map((k) => <div key={k}>{k}</div>)}
+                  {result.failing > result.sample_keys.length && (
+                    <div className="text-[var(--aurora-fg-muted)]">+{(result.failing - result.sample_keys.length).toLocaleString()} more</div>
+                  )}
+                </div>
+              )}
+            </Stack>
+          </Panel>
+        ))}
+      </Stack>
+    </Drawer>
+  );
+}
 
 export default function SettingsRulesPage() {
   const qc = useQueryClient();
-  const [category, setCategory] = useState<"all" | "ecc" | "successfactors" | "warehouse">("all");
-  const [search, setSearch] = useState("");
+  const canManage = useRole().can("manage_rules");
+  const [search, setSearch] = useUrlState("q", "");
+  const [module, setModule] = useUrlState("module", "");
+  const [check, setCheck] = useUrlState("check", "");
+  const [dimension, setDimension] = useUrlState("dimension", "");
+  const [severity, setSeverity] = useUrlState("severity", "");
+  const [auth, setAuth] = useUrlState("authority", "");
+  const [source, setSource] = useUrlState("source", "");
+  const [selected, setSelected] = useState<Rule | null>(null);
+  const [authoring, setAuthoring] = useState(false);
 
-  const summaryQ = useQuery({
-    queryKey: ["rules.summary"],
-    queryFn: getRulesSummary,
-  });
-  const rulesQ = useQuery({
-    queryKey: ["rules.list", { category }],
-    queryFn: () =>
-      getRules({
-        category: category === "all" ? undefined : category,
-        limit: 200,
-      }),
-  });
-
+  const { data: rules = [], isLoading, error } = useQuery({ queryKey: ["rules.list"], queryFn: getAllRules });
   const toggle = useMutation({
-    mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
-      updateRule(id, { enabled }),
-    onSuccess: (_d, vars) => {
-      toast.success(vars.enabled ? "Rule enabled" : "Rule disabled");
-      qc.invalidateQueries({ queryKey: ["rules.list"] });
-      qc.invalidateQueries({ queryKey: ["rules.summary"] });
+    mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) => updateRule(id, { enabled }),
+    onSuccess: (_d, v) => {
+      toast.success(v.enabled ? "Rule enabled" : "Rule disabled");
+      void qc.invalidateQueries({ queryKey: ["rules.list"] });
+      void qc.invalidateQueries({ queryKey: ["rules.history", v.id] });
     },
-    onError: () => toast.error("Could not update rule"),
+    onError: () => toast.error("Could not update the rule"),
   });
 
-  // All hooks must run before any conditional return.
-  const summary = useMemo(() => summaryQ.data?.summary ?? [], [summaryQ.data]);
-  const rules: Rule[] = rulesQ.data?.rules ?? [];
-  const total = rulesQ.data?.total ?? rules.length;
+  const facets = useMemo(() => {
+    const uniq = (xs: string[]) => Array.from(new Set(xs)).sort();
+    return {
+      modules: uniq(rules.map((r) => r.module)),
+      checks: uniq(rules.flatMap((r) => valuesOf(r, "check_class"))),
+      dimensions: uniq(rules.flatMap((r) => valuesOf(r, "dimension"))),
+      sources: uniq(rules.map((r) => r.source)) as Rule["source"][],
+    };
+  }, [rules]);
 
-  // from the summary (every rule), not the page of rules loaded below
-  const totals = useMemo(() => {
-    const t = { yaml: 0, hq: 0, enabled: 0, disabled: 0 };
-    for (const row of summary) {
-      if (row.source === "yaml") t.yaml += row.count;
-      else t.hq += row.count;
-      if (row.enabled) t.enabled += row.count;
-      else t.disabled += row.count;
-    }
-    return t;
-  }, [summary]);
+  const shown = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return rules.filter((r) =>
+      (!q || `${r.name} ${r.description ?? ""} ${JSON.stringify(r.conditions)}`.toLowerCase().includes(q))
+      && (!module || r.module === module)
+      && (!check || valuesOf(r, "check_class").includes(check))
+      && (!dimension || valuesOf(r, "dimension").includes(dimension))
+      && (!severity || r.severity === severity)
+      && (!auth || authority(r) === auth)
+      && (!source || r.source === source));
+  }, [rules, search, module, check, dimension, severity, auth, source]);
 
-  const summaryByCategory = useMemo(() => {
-    const map = new Map<string, { count: number; enabled: number }>();
-    for (const row of summary) {
-      const cur = map.get(row.category) ?? { count: 0, enabled: 0 };
-      cur.count += row.count;
-      if (row.enabled) cur.enabled += row.count;
-      map.set(row.category, cur);
-    }
-    return Array.from(map.entries());
-  }, [summary]);
-
-  if (summaryQ.isLoading || rulesQ.isLoading) {
-    return (
-      <>
-        <PageHead title="Rules Engine" route="Settings · /settings/rules" sub="Loading…" />
-        <Skeleton className="h-[420px] rounded-[10px]" />
-      </>
-    );
-  }
-  if (summaryQ.error || rulesQ.error) {
-    return (
-      <>
-        <PageHead title="Rules Engine" route="Settings · /settings/rules" sub="Failed to load." />
-        <div className="mn-card mn-card-pad" style={{ color: "var(--mn-neg)" }}>
-          Could not reach <code>/api/v1/rules</code>.
-        </div>
-      </>
-    );
-  }
+  const enabled = rules.filter((r) => r.enabled).length;
+  const ran = rules.filter((r) => r.last_pass_rate != null);
+  const customer = rules.filter((r) => authority(r) === "customer").length;
 
   return (
-    <>
+    <div className="space-y-6">
       <PageHead
-        title="Rules Engine"
-        route="Settings · /settings/rules"
-        sub={
-          <>
-            <strong style={{ color: "var(--mn-ink-700)" }}>{total} rules</strong> ·{" "}
-            <strong style={{ color: "var(--mn-pos)" }}>{totals.yaml} built-in</strong>,{" "}
-            <strong style={{ color: "var(--mn-primary-700)" }}>{totals.hq} custom</strong>,{" "}
-            <strong style={{ color: "var(--mn-pos)" }}>{totals.enabled} enabled</strong>.
-          </>
-        }
-        actions={
-          <SearchField value={search} onChange={setSearch} placeholder="Filter rules…" />
-        }
+        title="Rule library"
+        sub="Every check Meridian runs: shipped SAP-standard rules, rules mined from your data and rules your stewards wrote."
+        actions={canManage ? <Button onClick={() => setAuthoring(true)}>New rule</Button> : undefined}
       />
+      {error ? <Banner tone="danger" title="Could not load rules">{(error as Error).message}</Banner> : null}
+      {isLoading ? <Text tone="muted">Loading rules…</Text> : (
+        <>
+          <KpiRail>
+            <Stat label="Rules" value={rules.length.toLocaleString()} />
+            <Stat label="Enabled" value={enabled.toLocaleString()} />
+            <Stat label="Disabled" value={(rules.length - enabled).toLocaleString()}
+              tone={rules.length > enabled ? "warning" : "neutral"} />
+            <Stat label="Customer rules" value={customer.toLocaleString()} />
+            <Stat label="Ran at least once" value={ran.length.toLocaleString()} />
+          </KpiRail>
 
-      <div className="mn-row mn-stagger" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))", marginBottom: 18 }}>
-        <KPI label="Built-in rules" value={totals.yaml} hint="shipped" />
-        <KPI label="Custom rules" value={totals.hq} hint="defined by your team" tone="pos" />
-        <KPI label="Enabled" value={totals.enabled} tone="pos" />
-        <KPI label="Disabled" value={totals.disabled} tone={totals.disabled > 0 ? "warn" : undefined} />
-      </div>
+          <Panel>
+            <Stack gap={2}>
+              <Stack direction="row" gap={3} align="center" wrap>
+                <Input aria-label="Search rules" placeholder="Search name, message or field…" value={search}
+                  onChange={(e) => setSearch(e.target.value)} className="min-w-[280px] flex-1" />
+                <Select aria-label="Module" value={module}
+                  options={[{ value: "", label: "All modules" }, ...facets.modules.map((m) => ({ value: m, label: formatModuleName(m) }))]}
+                  onValueChange={setModule} />
+              </Stack>
+              <FacetRow label="Check type" options={facets.checks} value={check} onChange={setCheck}
+                format={(c) => CHECK_LABEL[c as CheckClass] ?? c.replace(/_check$/, "").replace(/_/g, " ")} />
+              <FacetRow label="Dimension" options={facets.dimensions} value={dimension} onChange={setDimension} />
+              <FacetRow label="Severity" options={[...SEVERITIES]} value={severity} onChange={setSeverity} />
+              <FacetRow label="Authority" options={["shipped", "customer"]} value={auth} onChange={setAuth}
+                format={(a) => (a === "shipped" ? "SAP standard (shipped)" : "Customer configured")} />
+              <FacetRow label="Source" options={facets.sources} value={source} onChange={setSource}
+                format={(s) => SOURCE_LABEL[s]} />
+            </Stack>
+          </Panel>
 
-      <div className="mn-segment" style={{ marginBottom: 14 }}>
-        {(["all", "ecc", "successfactors", "warehouse"] as const).map((k) => (
-          <button key={k} type="button" className={category === k ? "on" : ""} onClick={() => setCategory(k)}>
-            {k === "all" ? "All" : CATEGORY_LABEL[k]}
-          </button>
-        ))}
-      </div>
-
-      <SectionHeader title="Categories" caption="Counts by source system" />
-      <div className="mn-row" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", marginBottom: 18 }}>
-        {summaryByCategory.map(([cat, t]) => (
-          <div key={cat} className="mn-card mn-card-pad">
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <span
-                className="mn-tabular"
-                style={{
-                  display: "inline-flex",
-                  padding: "4px 9px",
-                  borderRadius: 4,
-                  background: "var(--mn-primary-50)",
-                  color: "var(--mn-primary-700)",
-                  font: "600 11.5px/1 'JetBrains Mono', monospace",
-                  letterSpacing: "0.06em",
-                }}
-              >
-                {CATEGORY_LABEL[cat] ?? cat}
-              </span>
-              <span
-                className="mn-tabular"
-                style={{
-                  font: "600 22px/1 'Inter Tight'",
-                  color: "var(--mn-ink-900)",
-                  letterSpacing: "-0.02em",
-                }}
-              >
-                {t.count}
-              </span>
-            </div>
-            <p style={{ marginTop: 12, fontSize: 12.5, color: "var(--mn-ink-500)" }}>
-              {t.enabled} enabled · {t.count - t.enabled} disabled
-            </p>
-          </div>
-        ))}
-        {summaryByCategory.length === 0 && (
-          <div className="mn-card mn-card-pad" style={{ color: "var(--mn-ink-400)", textAlign: "center" }}>
-            No rules surfaced.
-          </div>
-        )}
-      </div>
-
-      <SectionHeader
-        title="Rules"
-        caption={
-          search.trim()
-            ? `${rules.filter((r) => matchesSearch(r, search)).length} of ${rules.length} match`
-            : `${rules.length} of ${total}`
-        }
-      />
-      <div className="mn-card" style={{ padding: 0, overflow: "hidden" }}>
-        <div className="mn-table-wrap">
-          <table className="mn-table">
-            <thead>
-              <tr>
-                <th style={{ paddingLeft: 20 }}>Rule</th>
-                <th>Module</th>
-                <th>Category</th>
-                <th>Severity</th>
-                <th>Source</th>
-                <th>Enabled</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rules.filter((r) => matchesSearch(r, search)).map((r) => {
-                const sev = SEVERITY_TONE[r.severity] ?? SEVERITY_TONE.info;
-                return (
-                  <tr key={r.id}>
-                    <td style={{ paddingLeft: 20 }}>
-                      <div style={{ fontWeight: 500, color: "var(--mn-ink-900)", fontSize: 13 }}>{r.name}</div>
-                      {r.description && (
-                        <div
-                          style={{
-                            font: "500 11.5px/1.4 'JetBrains Mono', monospace",
-                            color: "var(--mn-ink-400)",
-                            marginTop: 3,
-                          }}
-                        >
-                          {r.description.length > 100 ? r.description.slice(0, 100) + "…" : r.description}
-                        </div>
-                      )}
-                    </td>
-                    <td><ModChip>{r.module}</ModChip></td>
-                    <td
-                      className="mn-tabular"
-                      style={{ font: "500 11.5px/1 'JetBrains Mono', monospace", color: "var(--mn-ink-700)" }}
-                    >
-                      {CATEGORY_LABEL[r.category] ?? r.category}
-                    </td>
-                    <td>
-                      <span
-                        style={{
-                          display: "inline-flex",
-                          padding: "3px 7px",
-                          borderRadius: 4,
-                          background: sev.bg,
-                          color: sev.fg,
-                          font: "700 9.5px/1 'JetBrains Mono', monospace",
-                          letterSpacing: "0.1em",
-                        }}
-                      >
-                        {r.severity.toUpperCase()}
-                      </span>
-                    </td>
-                    <td
-                      className="mn-tabular"
-                      style={{ font: "500 11.5px/1 'JetBrains Mono', monospace", color: "var(--mn-ink-500)" }}
-                    >
-                      {r.source.toUpperCase()}
-                    </td>
-                    <td>
-                      <button
-                        type="button"
-                        className={`mn-toggle ${r.enabled ? "on" : ""}`}
-                        aria-pressed={r.enabled}
-                        aria-label={r.enabled ? "Disable" : "Enable"}
-                        onClick={() => toggle.mutate({ id: r.id, enabled: !r.enabled })}
-                        disabled={toggle.isPending}
-                      >
-                        <span className="thumb" />
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-              {rules.filter((r) => matchesSearch(r, search)).length === 0 && (
-                <tr>
-                  <td colSpan={6} style={{ padding: 32, textAlign: "center", color: "var(--mn-ink-400)" }}>
-                    No rules match this filter.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </>
+          <Panel title="Rules" action={
+            <Text variant="text-small" tone="tertiary" numeric>{shown.length.toLocaleString()} of {rules.length.toLocaleString()}</Text>
+          }>
+            {shown.length === 0 ? <Text tone="muted">No rules match these filters.</Text> : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-[13px]">
+                  <thead><tr>
+                    <th className={th}>Rule</th><th className={th}>Module</th><th className={th}>Check</th>
+                    <th className={th}>Severity</th><th className={th}>Source</th>
+                    <th className={`${th} text-right`}>Last pass rate</th><th className={th}>Enabled</th>
+                  </tr></thead>
+                  <tbody>
+                    {shown.slice(0, 500).map((r) => (
+                      <tr key={r.id} className="cursor-pointer hover:bg-[var(--aurora-elev-1-bg)]" onClick={() => setSelected(r)}>
+                        <td className={td}>
+                          <div className="font-medium">{r.name}</div>
+                          {r.description && r.description !== r.name.split(": ").slice(1).join(": ") && (
+                            <div className="text-[12px] text-[var(--aurora-fg-tertiary)]">{r.description}</div>
+                          )}
+                        </td>
+                        <td className={td}>{formatModuleName(r.module)}</td>
+                        <td className={td}>{valuesOf(r, "check_class").map((c) => CHECK_LABEL[c as CheckClass] ?? c).join(", ") || "—"}</td>
+                        <td className={td}><Chip tone={SEVERITY_TONE[r.severity] ?? "neutral"}>{r.severity}</Chip></td>
+                        <td className={td}>{SOURCE_LABEL[r.source] ?? r.source}</td>
+                        <td className={`${td} text-right aurora-number`}
+                          title={r.last_run_at ? `Last run ${new Date(r.last_run_at).toLocaleString()}` : "Not run yet"}>
+                          {r.last_pass_rate != null ? pct(r.last_pass_rate) : "—"}
+                        </td>
+                        <td className={td} onClick={(e) => e.stopPropagation()}>
+                          {canManage ? (
+                            <Button size="sm" variant={r.enabled ? "secondary" : "ghost"} aria-pressed={r.enabled}
+                              disabled={toggle.isPending} onClick={() => toggle.mutate({ id: r.id, enabled: !r.enabled })}>
+                              {r.enabled ? "On" : "Off"}
+                            </Button>
+                          ) : <Chip tone={r.enabled ? "success" : "neutral"}>{r.enabled ? "On" : "Off"}</Chip>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {shown.length > 500 && (
+                  <Text variant="text-small" tone="muted" className="px-3 py-2">
+                    Showing the first 500 — narrow the filters to see the rest.
+                  </Text>
+                )}
+              </div>
+            )}
+          </Panel>
+        </>
+      )}
+      <RuleDrawer rule={selected && (rules.find((r) => r.id === selected.id) ?? selected)} onClose={() => setSelected(null)} />
+      {canManage && <AuthorDrawer open={authoring} onClose={() => setAuthoring(false)} modules={facets.modules} />}
+    </div>
   );
 }

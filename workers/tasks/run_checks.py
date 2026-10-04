@@ -233,14 +233,15 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
             fs_rules = fs_rules + material_rules
             from checks.field_status_rules import suppressed_fields
             fs_suppressed = suppressed_fields(fs_resolutions, fs_material)
-            # dependencies mined from profiled data that a steward accepted as checks (profile page)
+            # tenant rules: dependencies a steward accepted from profiled data (profile page)
+            # and checks a steward authored in the rule studio (conditions carry their dimension)
             mined_rules = [
                 {"id": r.name.split(":", 1)[0], "module": r.module, "severity": r.severity,
                  "dimension": "consistency", "rule_authority": "customer_configured",
                  "message": r.description, **(r.conditions or {})}
                 for r in session.execute(text(
                     "SELECT name, module, severity, description, conditions FROM rules "
-                    "WHERE source = 'mined' AND enabled AND module = ANY(:m)"), {"m": list(modules)})]
+                    "WHERE source IN ('mined', 'custom') AND enabled AND module = ANY(:m)"), {"m": list(modules)})]
         # misplaced values, placeholders, swaps, dead-in-text records (checks/value_placement.py)
         from checks import config_rules, country_rules, value_placement
         from checks.runner import _find_module_yaml
