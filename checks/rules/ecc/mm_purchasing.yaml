@@ -1,23 +1,6 @@
 module: mm_purchasing
 target_state: ECC_AND_S4HANA
 rules:
-- id: PUR001
-  field: EKKO.EBELN
-  check_class: null_check
-  severity: critical
-  dimension: completeness
-  message: "Purchase order number is mandatory \u2014 primary key for all PO transactions"
-  why_it_matters: EBELN is the purchase order document number and primary key for all purchasing transactions. Without it,
-    no goods receipt (MIGO), invoice verification (MIRO), or PO history can be maintained. The record is fundamentally unusable
-    in the procure-to-pay cycle.
-  rule_authority: sap_hard_constraint
-  sap_impact: PO cannot be referenced in MIGO, MIRO, or any procurement workflow. Goods receipt and invoice verification are
-    impossible. The record is orphaned.
-  fix_map:
-    __blank__: "Purchase order number is empty. This record cannot exist without EBELN. Investigate the data source \u2014\
-      \ this is likely a data load error. In ECC: create a valid PO via ME21N. In S/4HANA: use Fiori app F2229 (Create Purchase\
-      \ Order) or correct the source data."
-  record_fix_template: 'PO {EKKO.EBELN}: EBELN is {actual_value}. Create a valid PO via ME21N (ECC) or Fiori app F2229 (S/4HANA).'
 - id: PUR002
   field: EKKO.EBELN
   check_class: regex_check
@@ -189,6 +172,11 @@ rules:
 - id: PUR013
   field: EKPO.MENGE
   check_class: null_check
+  applies_when:
+    EKPO.PSTYP:
+      not_in:
+      - '1'
+      - '6'
   severity: critical
   dimension: completeness
   message: "Order quantity is mandatory \u2014 zero means PO line cannot be receipted or invoiced"
@@ -205,6 +193,11 @@ rules:
 - id: PUR014
   field: EKPO.NETPR
   check_class: null_check
+  applies_when:
+    EKPO.PSTYP:
+      not_in:
+      - '1'
+      - '6'
   severity: critical
   dimension: completeness
   message: "Net price is mandatory \u2014 invoice verification cannot confirm price match"
@@ -241,6 +234,11 @@ rules:
 - id: PUR016
   field: EKPO.MEINS
   check_class: null_check
+  applies_when:
+    EKPO.PSTYP:
+      not_in:
+      - '1'
+      - '6'
   severity: medium
   dimension: completeness
   message: "Order unit of measure missing \u2014 quantity has no unit context"
@@ -257,6 +255,11 @@ rules:
 - id: PUR017
   field: EKPO.NETWR
   check_class: null_check
+  applies_when:
+    EKPO.PSTYP:
+      not_in:
+      - '1'
+      - '6'
   severity: high
   dimension: completeness
   message: "Item net value missing \u2014 PO line has no financial value"
@@ -340,6 +343,11 @@ rules:
 - id: PUR020
   field: EKPO.MATKL
   check_class: null_check
+  applies_when:
+    EKPO.PSTYP:
+      not_in:
+      - '1'
+      - '6'
   severity: medium
   dimension: completeness
   message: "Material group missing \u2014 spend analysis and reporting by category affected"
@@ -526,20 +534,6 @@ rules:
     __blank__: 'In ECC: Set via ME22N. In S/4HANA: Use Fiori app F2229 (Create Purchase Order).'
   record_fix_template: 'Record is missing EKPO.BPRME. In ECC: Set via ME22N. In S/4HANA: Use Fiori app F2229 (Create Purchase
     Order).'
-- id: PUR036
-  field: EKPO.EBELP
-  check_class: null_check
-  severity: critical
-  dimension: completeness
-  message: PO item number is missing
-  why_it_matters: PO item number (EKPO.EBELP) is not maintained. This field supports downstream processes and reporting accuracy.
-    Missing data may result in incomplete records or processing gaps.
-  rule_authority: best_practice
-  sap_impact: Missing PO item number may cause incomplete data in related transactions and reports.
-  fix_map:
-    __blank__: 'In ECC: Set via ME22N. In S/4HANA: Use Fiori app F2229 (Create Purchase Order).'
-  record_fix_template: 'Record is missing EKPO.EBELP. In ECC: Set via ME22N. In S/4HANA: Use Fiori app F2229 (Create Purchase
-    Order).'
 - id: PUR037
   field: EKPO.ELIKZ
   check_class: domain_value_check
@@ -591,6 +585,11 @@ rules:
 - id: PUR039
   field: EKPO.PEINH
   check_class: null_check
+  applies_when:
+    EKPO.PSTYP:
+      not_in:
+      - '1'
+      - '6'
   severity: medium
   dimension: completeness
   message: Price unit is missing
@@ -672,6 +671,11 @@ rules:
   record_fix_template: PO {field} dated {age_days} days ago. Confirm delivery still expected in ME23N; set delivery-completed
     or deletion indicator if abandoned.
   applies_when:
+    EKPO.PSTYP:
+      not_in:
+      - '1'
+      - '7'
+      - '9'
     EKPO.ELIKZ:
       not_in:
       - X
@@ -903,6 +907,7 @@ rules:
       - '1'
       - '2'
       - '6'
+      - '9'
   severity: high
   dimension: accuracy
   message: Invoiced purchase order item has a net price of zero
@@ -2346,3 +2351,413 @@ rules:
   fix_map:
     __other__: Delete the source list (ME01) or extend the material to the plant (MM01).
   record_fix_template: 'Source list {EORD.MATNR} plant {EORD.WERKS}: the material is not active in the plant.'
+- id: PUR134
+  field: EKBE.BLDAT
+  check_class: cross_field_check
+  grain: EKBE
+  fail_when: '`EKBE.BLDAT` < `EKKO.AEDAT`'
+  require_populated: true
+  applies_when:
+    EKBE.VGABE:
+    - '2'
+    EKPO.PSTYP:
+      not_in:
+      - '1'
+  severity: high
+  dimension: consistency
+  message: Vendor invoice is dated before the purchase order was created (after-the-fact PO)
+  why_it_matters: An invoice issued before its PO existed means the goods or services were committed without approval
+    and the PO was raised afterwards to get the invoice paid. This bypasses the purchase approval and release controls.
+  rule_authority: best_practice
+  sap_impact: Spend committed outside the release strategy. Auditors report it as a P2P control failure (after-the-fact
+    purchasing).
+  fix_map:
+    __other__: Confirm the commitment with the requester. Record the exception, and enforce PO-before-invoice for the
+      vendor or buyer group.
+  record_fix_template: 'PO {EKBE.EBELN} item {EKBE.EBELP}: invoice {EKBE.BELNR} dated {EKBE.BLDAT}, PO created {EKKO.AEDAT}.'
+- id: PUR135
+  field: EKBE.BUDAT
+  check_class: cross_field_check
+  grain: EKBE
+  fail_when: (`EKKO.AEDAT` - `EKBE.BUDAT`).dt.days > 1
+  require_populated: true
+  applies_when:
+    EKBE.VGABE:
+    - '1'
+    EKBE.SHKZG:
+    - S
+  severity: medium
+  dimension: consistency
+  message: Goods receipt posted more than one day before the purchase order was created
+  why_it_matters: A receipt dated before the PO existed means the goods arrived unordered and the PO was created later
+    to receive them, or the receipt was backdated.
+  rule_authority: best_practice
+  sap_impact: Stock and GR/IR are posted to a period before the commitment existed. This is an after-the-fact
+    purchasing audit finding.
+  fix_map:
+    __other__: Review with the receiving plant. Ensure POs are created before delivery and restrict backdated GR posting
+      periods (OMSY / MMPV).
+  record_fix_template: 'PO {EKBE.EBELN} item {EKBE.EBELP}: GR {EKBE.BELNR} posted {EKBE.BUDAT}, PO created {EKKO.AEDAT}.'
+- id: PUR136
+  field: EKKO.FRGRL
+  check_class: cross_field_check
+  grain: EKBE
+  fail_when: '`EKKO.FRGRL` == ''X'''
+  applies_when:
+    EKBE.VGABE:
+    - '1'
+    - '2'
+  severity: high
+  dimension: consistency
+  message: Goods receipt or invoice exists on a purchase order whose release is not complete
+  why_it_matters: SAP blocks receipts on unreleased POs. A GR or IR against a PO that is now unreleased means the PO
+    was changed after receipt and fell back into release (value, vendor or quantity changed post-delivery), or the
+    receipt bypassed approval.
+  rule_authority: best_practice
+  sap_impact: Posted liability and stock against an unapproved document. This is a Big-4 "unapproved PO" exception.
+  fix_map:
+    __other__: Have the release approver release the PO (ME28/ME29N) or reverse the change, and review why it was
+      changed after receipt.
+  record_fix_template: 'PO {EKBE.EBELN} item {EKBE.EBELP}: document {EKBE.BELNR} (type {EKBE.VGABE}) posted, PO release
+    incomplete.'
+- id: PUR137
+  field: EKKO.LIFNR
+  check_class: exists_check
+  fields:
+  - EKKO.LIFNR
+  - EKKO.EKORG
+  target_table: LFM1
+  target_fields:
+  - LIFNR
+  - EKORG
+  severity: high
+  dimension: consistency
+  message: PO vendor is not created in the PO's purchasing organisation (no LFM1)
+  why_it_matters: ME21N needs the vendor's purchasing-organisation data (order currency, terms, GR-based IV default). A
+    PO without it was loaded or interfaced around that check.
+  rule_authority: sap_hard_constraint
+  sap_impact: The PO cannot be changed in ME22N, terms and currency have no default, and XP2P001/002 cannot compare.
+  fix_map:
+    __other__: Extend the vendor to the purchasing organisation (XK01/MK01; BP in S/4HANA), then re-check the PO.
+  record_fix_template: 'PO {EKKO.EBELN}: vendor {EKKO.LIFNR} has no data in purchasing organisation {EKKO.EKORG}.'
+- id: PUR138
+  field: EKKO.LIFNR
+  check_class: exists_check
+  fields:
+  - EKKO.LIFNR
+  - EKKO.BUKRS
+  target_table: LFB1
+  target_fields:
+  - LIFNR
+  - BUKRS
+  applies_when:
+    EKKO.BSTYP:
+    - F
+  severity: high
+  dimension: consistency
+  message: PO vendor is not created in the PO's company code (no LFB1)
+  why_it_matters: The invoice for this PO posts to the vendor's account in the company code. Without LFB1 there is no
+    reconciliation account, so the invoice cannot be posted.
+  rule_authority: sap_hard_constraint
+  sap_impact: MIRO fails ("vendor not defined in company code"), and the goods receipt stays on GR/IR.
+  fix_map:
+    __other__: Extend the vendor to the company code (XK01/FK01; BP in S/4HANA) with a reconciliation account and payment
+      data.
+  record_fix_template: 'PO {EKKO.EBELN}: vendor {EKKO.LIFNR} is not created in company code {EKKO.BUKRS}.'
+- id: PUR139
+  field: EKPO.MATNR
+  check_class: exists_check
+  fields:
+  - EKPO.MATNR
+  - EKPO.WERKS
+  target_table: MARC
+  target_fields:
+  - MATNR
+  - WERKS
+  severity: high
+  dimension: consistency
+  message: PO item material is not extended to the item's plant (no MARC)
+  why_it_matters: A material item needs plant data (valuation, MRP, purchasing group). An item without MARC came in
+    through an interface or migration that bypassed ME21N.
+  rule_authority: sap_hard_constraint
+  sap_impact: The goods receipt fails (no valuation data), and MRP and stock reports never see the order.
+  fix_map:
+    __other__: Extend the material to the plant (MM01 purchasing, MRP and accounting views), or correct the item's plant.
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: material {EKPO.MATNR} not extended to plant {EKPO.WERKS}.'
+- id: PUR140
+  field: EKPO.UEBTK
+  check_class: cross_field_check
+  fail_when: '`EKPO.UEBTK` == ''X'''
+  applies_when:
+    EKKO.BSTYP:
+    - F
+    EKPO.PSTYP:
+      not_in:
+      - '1'
+      - '6'
+      - '9'
+    EKPO.ELIKZ:
+      not_in:
+      - X
+  severity: high
+  dimension: validity
+  message: Open PO item allows unlimited overdelivery
+  why_it_matters: With unlimited overdelivery, any quantity can be received and then invoiced against the item. The
+    PO quantity no longer limits spend, which defeats the three-way match.
+  rule_authority: best_practice
+  sap_impact: Receipts and payments above the approved quantity post without a tolerance message.
+  fix_map:
+    __other__: Remove the unlimited indicator in ME22N and set a percentage tolerance. Check the info record (EINE-UEBTK)
+      that defaulted it.
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: unlimited overdelivery allowed.'
+- id: PUR141
+  field: EKPO.UEBTO
+  check_class: cross_field_check
+  fail_when: '`EKPO.UEBTO` > 10'
+  applies_when:
+    EKKO.BSTYP:
+    - F
+    EKPO.PSTYP:
+      not_in:
+      - '1'
+      - '6'
+      - '9'
+    EKPO.ELIKZ:
+      not_in:
+      - X
+  severity: medium
+  dimension: validity
+  message: Open PO item has an overdelivery tolerance above 10%
+  why_it_matters: The tolerance lets receipts and invoices exceed the approved quantity without a block. Above 10% the
+    approved PO value no longer bounds spend.
+  rule_authority: best_practice
+  sap_impact: Overdeliveries are received and paid silently.
+  fix_map:
+    __other__: Reduce the tolerance in ME22N (and in the info record or vendor default), or document the business reason
+      (bulk or weighed goods).
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: overdelivery tolerance {EKPO.UEBTO}%.'
+- id: PUR142
+  field: EKPO.WEBRE
+  check_class: cross_field_check
+  fail_when: '`EKPO.WEBRE`.isna()'
+  applies_when:
+    EKKO.BSTYP:
+    - F
+    EKPO.WEPOS:
+    - X
+    EKPO.REPOS:
+    - X
+    EKPO.PSTYP:
+      not_in:
+      - '1'
+      - '2'
+      - '6'
+      - '7'
+      - '9'
+  severity: medium
+  dimension: consistency
+  message: Goods-receipt-relevant PO item without GR-based invoice verification
+  why_it_matters: Without GR-based IV, an invoice can be posted for quantities not yet received. The three-way match
+    then only checks against the PO, not against the goods actually received.
+  rule_authority: best_practice
+  sap_impact: Invoices are paid ahead of delivery, and GR/IR debit balances build up.
+  fix_map:
+    __blank__: Set GR-based IV on the item (ME22N) and as the vendor default (LFM1-WEBRE via XK02/MK02).
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: GR-based invoice verification not set.'
+- id: PUR143
+  field: EKKO.BEDAT
+  check_class: cross_field_check
+  fail_when: (`EKKO.AEDAT` - `EKKO.BEDAT`).dt.days > 30
+  require_populated: true
+  applies_when:
+    EKKO.BSTYP:
+    - F
+  severity: medium
+  dimension: timeliness
+  message: PO document date is more than 30 days before the PO was created (backdated PO)
+  why_it_matters: The document date drives pricing date, delivery date proposal and spend-period reporting. Backdating
+    makes an after-the-fact order look timely.
+  rule_authority: best_practice
+  sap_impact: Spend is reported in an earlier period, and prices are determined at an earlier date.
+  fix_map:
+    __other__: Review the PO with the buyer, and restrict changing the document date (field selection / authorisation).
+  record_fix_template: 'PO {EKKO.EBELN}: document date {EKKO.BEDAT}, created {EKKO.AEDAT}.'
+- id: PUR144
+  field: EKPO.MATNR
+  check_class: uniqueness_check
+  grain: EKPO
+  fields:
+  - EKKO.LIFNR
+  - EKPO.MATNR
+  - EKPO.WERKS
+  - EKKO.BEDAT
+  - EKPO.MENGE
+  applies_when:
+    EKKO.BSTYP:
+    - F
+    EKPO.PSTYP:
+      not_in:
+      - '1'
+      - '6'
+      - '7'
+      - '9'
+  severity: medium
+  dimension: uniqueness
+  message: Same material, quantity, vendor and plant ordered more than once on the same date
+  why_it_matters: Identical lines on one day are either duplicate orders, which risk double receipt and payment, or one
+    requirement split to stay under a release threshold.
+  rule_authority: best_practice
+  sap_impact: Duplicate deliveries and payments, or release strategy circumvented.
+  fix_map:
+    __other__: Delete the duplicate item (ME22N) or consolidate. If split deliberately, review against the release
+      thresholds.
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: duplicates another line (vendor {EKKO.LIFNR}, material
+    {EKPO.MATNR}, plant {EKPO.WERKS}, date {EKKO.BEDAT}).'
+- id: PUR145
+  field: EKPO.ELIKZ
+  check_class: cross_field_check
+  fail_when: '`EKPO.ELIKZ`.isna()'
+  applies_when:
+    EKPO.EREKZ:
+    - X
+    EKPO.WEPOS:
+    - X
+    EKPO.PSTYP:
+      not_in:
+      - '1'
+      - '9'
+  severity: medium
+  dimension: consistency
+  message: Final invoice posted while the item is still open for delivery
+  why_it_matters: The final-invoice flag says no further invoice is expected. Any later goods receipt on the open item
+    then goes to GR/IR with no invoice to clear it.
+  rule_authority: best_practice
+  sap_impact: Uncleared GR/IR balances, and the item stays in open-PO and MRP lists.
+  fix_map:
+    __blank__: Set delivery completed in ME22N if nothing more is due. Otherwise remove the final-invoice flag.
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: final invoice posted, delivery not completed.'
+- id: PUR147
+  field: EINE.NETPR
+  check_class: cross_field_check
+  fail_when: '`EINE.NETPR`.isna() | (`EINE.NETPR` == 0)'
+  applies_when:
+    EINE.ESOKZ:
+    - '0'
+  severity: medium
+  dimension: completeness
+  message: Standard purchasing info record has no net price
+  why_it_matters: The info record is the price proposal for POs and the source for automatic PO creation. With no
+    price, every PO from it is created at zero or has to be priced by hand.
+  rule_authority: best_practice
+  sap_impact: Zero-value POs, missing commitments, and price variances at invoice.
+  fix_map:
+    __blank__: Maintain the price condition (ME12, condition PB00) or flag the info record for deletion (ME15).
+    __other__: Maintain the price condition (ME12, condition PB00) or flag the info record for deletion (ME15).
+  record_fix_template: 'Info record {EINE.INFNR} purchasing org {EINE.EKORG} plant {EINE.WERKS}: net price is zero.'
+- id: PUR148
+  field: EINA.IDNLF
+  check_class: uniqueness_check
+  fields:
+  - EINA.LIFNR
+  - EINA.IDNLF
+  normalize: alnum
+  case_insensitive: true
+  severity: medium
+  dimension: uniqueness
+  message: Vendor part number appears on more than one info record for the same vendor
+  why_it_matters: One vendor part number should map to one material. Two info records with the same part number
+    usually mean a duplicate material master or duplicate info records.
+  rule_authority: best_practice
+  sap_impact: Split stock and demand across duplicate materials, inconsistent prices, and duplicate orders.
+  fix_map:
+    __other__: Merge duplicate materials (flag the obsolete one for deletion, MM06) and delete the superseded info
+      record (ME15).
+  record_fix_template: 'Info record {EINA.INFNR}: vendor {EINA.LIFNR} part number {EINA.IDNLF} also used on another
+    info record (material {EINA.MATNR}).'
+
+- id: PUR150
+  check_class: group_sum_check
+  grain: EKPO
+  field: EKPO.NETWR
+  amount: EKBE.WRBTR
+  group_keys:
+    EKBE.EBELN: EKPO.EBELN
+    EKBE.EBELP: EKPO.EBELP
+    EKBE.WAERS: EKKO.WAERS
+  child_when:
+    EKBE.VGABE:
+    - '2'
+  sign_field: EKBE.SHKZG
+  negative_value: H
+  compare: <=
+  tolerance_field: EKPO.UEBTO
+  tolerance: 1
+  applies_when:
+    EKPO.REPOS:
+    - X
+    EKPO.PSTYP:
+      not_in:
+      - '1'
+      - '2'
+      - '9'
+    EKPO.RETPO:
+      blank: true
+    EKPO.UEBTK:
+      blank: true
+  severity: medium
+  dimension: accuracy
+  message: Net invoiced value of the PO item exceeds the item's net order value plus its over-delivery tolerance
+  why_it_matters: The PO is the approved spend. Invoices (net of credit memos, VGABE 2 in the PO history) totalling more than
+    the item's net value plus its over-delivery tolerance mean the vendor was paid above what was ordered and approved. Only
+    invoices in the PO currency are summed.
+  rule_authority: best_practice
+  sap_impact: Overpayment against the PO; the excess posts to price differences or the GR/IR account and erodes the commitment
+    and budget figures that purchasing and controlling report from the PO.
+  fix_map:
+    __other__: 'Check the PO history (ME23N > PO history): request a credit memo from the vendor (MIRO, subsequent credit), or
+      raise the PO value through an approved change (ME22N) if the extra value was agreed.'
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: net invoiced value exceeds the net order value {EKPO.NETWR} plus
+    tolerance.'
+
+- id: PUR151
+  check_class: group_sum_check
+  grain: EKPO
+  field: EKPO.MENGE
+  amount: EKBE.MENGE
+  group_keys:
+    EKBE.EBELN: EKPO.EBELN
+    EKBE.EBELP: EKPO.EBELP
+  child_when:
+    EKBE.VGABE:
+    - '1'
+  sign_field: EKBE.SHKZG
+  negative_value: H
+  compare: <=
+  tolerance_field: EKPO.UEBTO
+  tolerance: 0.001
+  applies_when:
+    EKPO.WEPOS:
+    - X
+    EKPO.PSTYP:
+      not_in:
+      - '1'
+      - '2'
+      - '9'
+    EKPO.RETPO:
+      blank: true
+    EKPO.UEBTK:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Goods received for the PO item (net of returns) exceed the ordered quantity plus the over-delivery tolerance
+  why_it_matters: SAP blocks a goods receipt above the ordered quantity plus the over-delivery tolerance (UEBTO) unless
+    unlimited over-delivery is allowed. Received quantity above that limit means the tolerance was changed after receipt, the
+    message was set to a warning, or the history was posted outside standard checks.
+  rule_authority: sap_hard_constraint
+  sap_impact: Stock and the GR/IR account carry quantity that was never ordered; the invoice for the excess either blocks in
+    invoice verification or is paid without an approved order.
+  fix_map:
+    __other__: 'Check the PO history (ME23N > PO history): return the excess to the vendor (MIGO, movement type 122), or
+      raise the order quantity through an approved change (ME22N).'
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: goods received exceed the ordered quantity {EKPO.MENGE} plus the
+    over-delivery tolerance.'

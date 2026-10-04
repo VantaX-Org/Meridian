@@ -1,0 +1,239 @@
+# SAP Ariba purchase orders and invoices (canonical views ARIBA_PO and
+# ARIBA_INVOICE in sap/dictionaries/canonical/ariba.yaml). Invoices join to
+# their PO through PURCHASE_ORDER_ID (sap/dictionaries/joins.yaml).
+module: ariba_procurement
+target_state: ARIBA
+rules:
+- id: ARP001
+  field: ARIBA_PO.ORDER_ID
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Purchase order has no order ID
+  why_it_matters: The order ID is what receipts, invoices and the ERP PO reference.
+  rule_authority: sap_hard_constraint
+  sap_impact: Invoices cannot be matched to the order; the ERP purchase order cannot be traced.
+  fix_map:
+    __blank__: Re-extract the orders; a blank ID points to an incomplete page.
+  record_fix_template: 'Ariba PO {ARIBA_PO.TITLE}: order ID is {actual_value}.'
+- id: ARP002
+  field: ARIBA_PO.ORDER_ID
+  check_class: uniqueness_check
+  fields:
+  - ARIBA_PO.ORDER_ID
+  severity: critical
+  dimension: uniqueness
+  message: Order ID appears on more than one purchase order
+  why_it_matters: Duplicate order IDs make invoice matching ambiguous.
+  rule_authority: sap_hard_constraint
+  sap_impact: Invoices match the wrong order; commitments are double-counted.
+  fix_map:
+    __other__: Re-extract; if the duplicate persists, cancel the copy.
+  record_fix_template: 'Ariba PO {ARIBA_PO.ORDER_ID}: ID is not unique.'
+- id: ARP003
+  field: ARIBA_PO.SUPPLIER
+  check_class: exists_check
+  target_table: ARIBA_SUPPLIER
+  target_fields:
+  - VENDOR_ID
+  grain: ARIBA_PO
+  severity: high
+  dimension: consistency
+  message: PO supplier is not an Ariba supplier
+  why_it_matters: An order to a supplier that is not in the supplier list cannot be transmitted or invoiced against a
+    known supplier.
+  rule_authority: sap_hard_constraint
+  sap_impact: Order transmission and invoice matching fail; spend is not attributed to a supplier.
+  fix_map:
+    __other__: Change the order to the correct supplier, or restore the supplier.
+  record_fix_template: 'Ariba PO {ARIBA_PO.ORDER_ID}: supplier {ARIBA_PO.SUPPLIER} does not exist.'
+- id: ARP004
+  field: ARIBA_PO.SUPPLIER
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Purchase order has no supplier
+  why_it_matters: An order without a supplier cannot be sent or invoiced.
+  rule_authority: sap_hard_constraint
+  sap_impact: The order is never transmitted; the ERP PO cannot be created.
+  fix_map:
+    __blank__: Assign the supplier to the requisition and re-approve.
+  record_fix_template: 'Ariba PO {ARIBA_PO.ORDER_ID}: supplier is {actual_value}.'
+- id: ARP005
+  field: ARIBA_PO.COMPANY_CODE
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Purchase order has no company code
+  why_it_matters: The company code decides which ERP legal entity the order, goods receipt and invoice post to.
+  rule_authority: sap_hard_constraint
+  sap_impact: The ERP purchase order cannot be created or posts to the wrong company code.
+  fix_map:
+    __blank__: Maintain the company code on the requisition (or its default on the requester's profile).
+  record_fix_template: 'Ariba PO {ARIBA_PO.ORDER_ID}: company code is {actual_value}.'
+- id: ARP006
+  field: ARIBA_PO.CURRENCY_CODE
+  check_class: regex_check
+  pattern: ^[A-Z]{3}$
+  severity: medium
+  dimension: validity
+  message: PO currency is not an ISO 4217 code
+  why_it_matters: The order currency carries into the ERP PO and the invoice match.
+  rule_authority: iso_standard
+  sap_impact: The ERP PO fails currency validation.
+  fix_map:
+    __other__: Replace the value with the ISO 4217 code.
+  record_fix_template: 'Ariba PO {ARIBA_PO.ORDER_ID}: currency ''{actual_value}'' is not an ISO code.'
+- id: ARP007
+  field: ARIBA_INVOICE.PURCHASE_ORDER_ID
+  check_class: exists_check
+  target_table: ARIBA_PO
+  target_fields:
+  - ORDER_ID
+  grain: ARIBA_INVOICE
+  severity: high
+  dimension: consistency
+  message: Invoice references a purchase order that does not exist
+  why_it_matters: A PO-based invoice is verified against its order. If the order does not exist there is nothing to match
+    and the invoice is paid without a three-way match.
+  rule_authority: sap_hard_constraint
+  sap_impact: Invoice reconciliation fails or is bypassed; the ERP invoice cannot reference the PO.
+  fix_map:
+    __other__: Correct the PO reference on the invoice, or reject it back to the supplier.
+  record_fix_template: 'Ariba invoice {ARIBA_INVOICE.INVOICE_ID}: PO {ARIBA_INVOICE.PURCHASE_ORDER_ID} does not exist.'
+- id: ARP008
+  field: ARIBA_INVOICE.SUPPLIER
+  check_class: cross_field_check
+  grain: ARIBA_INVOICE
+  fail_when: "`ARIBA_INVOICE.SUPPLIER` != `ARIBA_PO.SUPPLIER`"
+  severity: critical
+  dimension: consistency
+  message: Invoice supplier differs from the PO supplier
+  why_it_matters: Only the supplier the order was placed with may invoice it. A different supplier on the invoice is either
+    a mistake or an attempt to divert payment.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payment goes to a supplier who did not receive the order; the ERP invoice fails vendor validation against
+    the PO.
+  fix_map:
+    __other__: Reject the invoice back to the supplier or correct the PO reference.
+  record_fix_template: 'Ariba invoice {ARIBA_INVOICE.INVOICE_ID}: supplier {ARIBA_INVOICE.SUPPLIER}, PO
+    {ARIBA_INVOICE.PURCHASE_ORDER_ID} is with {ARIBA_PO.SUPPLIER}.'
+- id: ARP009
+  field: ARIBA_INVOICE.CURRENCY_CODE
+  check_class: cross_field_check
+  grain: ARIBA_INVOICE
+  fail_when: "`ARIBA_INVOICE.CURRENCY_CODE` != `ARIBA_PO.CURRENCY_CODE`"
+  severity: high
+  dimension: consistency
+  message: Invoice currency differs from the PO currency
+  why_it_matters: Amounts can only be matched in the same currency. A different currency hides price variances and can
+    pay the wrong amount.
+  rule_authority: best_practice
+  sap_impact: The price tolerance check compares unlike amounts; overpayment can pass reconciliation.
+  fix_map:
+    __other__: Reject the invoice for re-issue in the order currency, or amend the PO.
+  record_fix_template: 'Ariba invoice {ARIBA_INVOICE.INVOICE_ID}: currency {ARIBA_INVOICE.CURRENCY_CODE}, PO currency
+    {ARIBA_PO.CURRENCY_CODE}.'
+- id: ARP010
+  field: ARIBA_INVOICE.TOTAL_AMOUNT
+  check_class: cross_field_check
+  grain: ARIBA_INVOICE
+  # ponytail: compares each invoice to the whole PO total, so partial invoices that together exceed the PO pass.
+  # aggregate_check / balance_check sum one amount column of one frame; summing invoices against a PO-level total
+  # needs a check type that compares a group sum with a second column.
+  fail_when: "(`ARIBA_INVOICE.CURRENCY_CODE` == `ARIBA_PO.CURRENCY_CODE`) & (`ARIBA_INVOICE.TOTAL_AMOUNT` > `ARIBA_PO.TOTAL_AMOUNT`)"
+  severity: high
+  dimension: accuracy
+  message: Invoice total exceeds the PO total
+  why_it_matters: An invoice for more than was ordered is an over-billing that should be stopped in reconciliation.
+  rule_authority: best_practice
+  sap_impact: Overpayment to the supplier if the tolerance rules let the invoice through.
+  fix_map:
+    __other__: Reject the invoice or raise a change order for the extra quantity / price.
+  record_fix_template: 'Ariba invoice {ARIBA_INVOICE.INVOICE_ID}: total {actual_value} exceeds PO total {ARIBA_PO.TOTAL_AMOUNT}.'
+- id: ARP011
+  field: ARIBA_INVOICE.INVOICE_DATE
+  check_class: cross_field_check
+  grain: ARIBA_INVOICE
+  fail_when: "`ARIBA_INVOICE.INVOICE_DATE` < `ARIBA_PO.ORDER_DATE`"
+  severity: medium
+  dimension: consistency
+  message: Invoice is dated before its purchase order
+  why_it_matters: An invoice older than the order points to an after-the-fact PO (maverick buying) or a wrong PO reference.
+  rule_authority: best_practice
+  sap_impact: After-the-fact POs bypass approval; spend compliance is overstated.
+  fix_map:
+    __other__: Check the PO reference; report after-the-fact orders to procurement.
+  record_fix_template: 'Ariba invoice {ARIBA_INVOICE.INVOICE_ID}: dated {actual_value}, PO dated {ARIBA_PO.ORDER_DATE}.'
+- id: ARP012
+  field: ARIBA_INVOICE.INVOICE_NUMBER
+  check_class: uniqueness_check
+  fields:
+  - ARIBA_INVOICE.SUPPLIER
+  - ARIBA_INVOICE.INVOICE_NUMBER
+  normalize: alnum
+  severity: critical
+  dimension: uniqueness
+  message: Possible duplicate invoice (same supplier and invoice number)
+  why_it_matters: A supplier invoice number is unique per supplier. The same number twice, ignoring punctuation, is the
+    classic duplicate payment.
+  rule_authority: best_practice
+  sap_impact: The supplier is paid twice; recovery needs a credit memo.
+  fix_map:
+    __other__: Reject the second invoice; if both were paid, request a credit memo.
+  record_fix_template: 'Ariba invoice {ARIBA_INVOICE.INVOICE_ID}: supplier {ARIBA_INVOICE.SUPPLIER} number
+    {ARIBA_INVOICE.INVOICE_NUMBER} appears more than once.'
+- id: ARP013
+  field: ARIBA_INVOICE.INVOICE_NUMBER
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Invoice has no supplier invoice number
+  why_it_matters: The supplier's invoice number is the reference for duplicate detection, tax records and payment advice.
+  rule_authority: sap_hard_constraint
+  sap_impact: Duplicate checks miss the invoice; the ERP invoice has no reference.
+  fix_map:
+    __blank__: Reject the invoice back to the supplier for re-issue with its number.
+  record_fix_template: 'Ariba invoice {ARIBA_INVOICE.INVOICE_ID}: invoice number is {actual_value}.'
+- id: ARP014
+  field: ARIBA_INVOICE.PAYMENT_TERMS
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Invoice has no payment terms
+  why_it_matters: Payment terms decide the due date and cash discount. Without them the invoice is paid immediately or by
+    a default, losing discounts or paying early.
+  rule_authority: best_practice
+  sap_impact: Due dates and cash discounts in the ERP fall back to defaults.
+  fix_map:
+    __blank__: Maintain the payment terms on the PO / supplier so they flow to the invoice.
+  record_fix_template: 'Ariba invoice {ARIBA_INVOICE.INVOICE_ID}: payment terms are {actual_value}.'
+- id: ARP015
+  field: ARIBA_INVOICE.SUPPLIER
+  check_class: exists_check
+  target_table: ARIBA_SUPPLIER
+  target_fields:
+  - VENDOR_ID
+  grain: ARIBA_INVOICE
+  severity: high
+  dimension: consistency
+  message: Invoice supplier is not an Ariba supplier
+  why_it_matters: An invoice from an unknown supplier cannot be paid to a verified payee.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payment to an unverified payee; the ERP invoice has no vendor.
+  fix_map:
+    __other__: Reject the invoice, or onboard the supplier first.
+  record_fix_template: 'Ariba invoice {ARIBA_INVOICE.INVOICE_ID}: supplier {ARIBA_INVOICE.SUPPLIER} does not exist.'
+- id: ARP016
+  field: ARIBA_INVOICE.CURRENCY_CODE
+  check_class: regex_check
+  pattern: ^[A-Z]{3}$
+  severity: medium
+  dimension: validity
+  message: Invoice currency is not an ISO 4217 code
+  why_it_matters: The invoice currency drives the posting and payment currency.
+  rule_authority: iso_standard
+  sap_impact: The ERP invoice fails currency validation.
+  fix_map:
+    __other__: Reject the invoice for re-issue with the ISO 4217 code.
+  record_fix_template: 'Ariba invoice {ARIBA_INVOICE.INVOICE_ID}: currency ''{actual_value}'' is not an ISO code.'

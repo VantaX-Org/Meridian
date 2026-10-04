@@ -1685,3 +1685,630 @@ rules:
   fix_map:
     __other__: Assign an existing manager in the job information (Employee Central > Job Information).
   record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: manager {EMPEMPLOYMENT.MANAGER_ID} is not an employee.'
+- id: EC076
+  field: EMPEMPLOYMENT.MANAGER_ID
+  check_class: hierarchy_check
+  id_field: EMPEMPLOYMENT.USERID
+  severity: high
+  dimension: consistency
+  message: Reporting line loops back on itself (manager cycle)
+  why_it_matters: Following the manager field upward must end at the top of the organisation. When A reports to B and B
+    reports to A (or an employee is their own manager), the chain never ends. Every employee on the loop has no real line
+    manager above them.
+  rule_authority: best_practice
+  sap_impact: Org chart cannot place the employees; approval workflows escalate in a circle or stop; performance and
+    compensation forms route to the wrong person; manager-based role-based permission groups grant the wrong access.
+  fix_map:
+    __other__: Correct the manager in Job Information (Take Action > Change Job and Compensation Info) so the line ends at
+      the top of the organisation; set NO_MANAGER only for the top of the hierarchy.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: manager {EMPEMPLOYMENT.MANAGER_ID} is part of a reporting loop.'
+- id: EC077
+  field: EMPEMPLOYMENT.MANAGER_ID
+  check_class: exists_check
+  target_table: EMPEMPLOYMENT
+  target_fields:
+  - USERID
+  target_when:
+    STATUS:
+    - A
+    - U
+    - P
+    - S
+  applies_when:
+    EMPEMPLOYMENT.MANAGER_ID:
+      not_in:
+      - NO_MANAGER
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: high
+  dimension: consistency
+  message: Active employee reports to a manager who is not an active employee
+  why_it_matters: When a manager leaves, their team must move to a new manager. A team still pointing at a terminated or
+    retired manager has nobody to approve leave, time sheets, goals or pay changes. A manager ID that is not an employee at
+    all also fails this rule (EC075 reports that case on its own).
+  rule_authority: best_practice
+  sap_impact: Workflows and to-dos go to a leaver and are never actioned; the team is missing from every active manager's
+    views; performance and compensation forms cannot be routed.
+  fix_map:
+    __other__: Assign an active manager in Job Information (Take Action > Change Job and Compensation Info), or use
+      Manage Organisation to move the leaver's team in one step.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: manager {EMPEMPLOYMENT.MANAGER_ID} is not an active employee.'
+- id: EC078
+  field: EMPEMPLOYMENT.START_DATE
+  check_class: cross_field_check
+  fail_when: (`EMPEMPLOYMENT.START_DATE` - @today).dt.days > 365
+  severity: medium
+  dimension: validity
+  message: Employment start date is more than one year in the future
+  why_it_matters: Future hires are normal a few weeks or months ahead, but a hire date more than a year away is almost
+    always a typing error in the year. The employee is left out of headcount, onboarding and payroll until that date.
+  rule_authority: best_practice
+  sap_impact: Onboarding, payroll and benefit enrolment start a year late; headcount and position fill reports are wrong
+    until the date is corrected.
+  fix_map:
+    __other__: Check the hire date against the signed contract and correct it in Employment Details.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: start date {EMPEMPLOYMENT.START_DATE} is more than a year ahead.'
+- id: EC079
+  field: EMPEMPLOYMENT.START_DATE
+  check_class: cross_field_check
+  fail_when: ((`EMPEMPLOYMENT.START_DATE` - `PERINFO.DATE_OF_BIRTH`).dt.days >= 0) & ((`EMPEMPLOYMENT.START_DATE` -
+    `PERINFO.DATE_OF_BIRTH`).dt.days < 5479)
+  require_populated: true
+  severity: high
+  dimension: validity
+  message: Employee was younger than 15 on the employment start date
+  why_it_matters: Most countries set the minimum working age at 15 or higher. An age under 15 at hire usually means the
+    date of birth or the hire date is wrong (wrong century, day and month swapped, or a placeholder date).
+  rule_authority: best_practice
+  sap_impact: Age-based tax, pension and benefit eligibility is calculated on a wrong age; statutory reports on young
+    workers are wrong.
+  fix_map:
+    __other__: Verify the date of birth (Personal Information) and the hire date (Employment Details) against the ID
+      document and contract; correct the wrong one.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: born {PERINFO.DATE_OF_BIRTH}, hired {EMPEMPLOYMENT.START_DATE}
+    (under 15).'
+- id: EC080
+  field: PERINFO.DATE_OF_BIRTH
+  check_class: cross_field_check
+  fail_when: ((@today - `PERINFO.DATE_OF_BIRTH`).dt.days < 5479) | ((@today - `PERINFO.DATE_OF_BIRTH`).dt.days > 27393)
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: medium
+  dimension: validity
+  message: Active employee is younger than 15 or older than 75 today
+  why_it_matters: An active employee outside the 15 to 75 age range is rare. It usually points to a placeholder date of
+    birth (such as 1900-01-01) or a date of birth in the future.
+  rule_authority: best_practice
+  sap_impact: Pension, retirement and benefit age bands, and age-based statutory reports, use a wrong age.
+  fix_map:
+    __other__: Verify the date of birth against the employee's ID document and correct it in Personal Information.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: date of birth {PERINFO.DATE_OF_BIRTH} gives an age outside 15 to
+    75.'
+- id: EC081
+  field: EMPEMPLOYMENT.END_DATE
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.END_DATE` < @today'
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: high
+  dimension: consistency
+  message: Employment has ended but the employee status is still active
+  why_it_matters: The employment end date is set by the termination. If it is in the past while the status is still
+    active, the termination was not completed and the leaver is still treated as an employee.
+  rule_authority: best_practice
+  sap_impact: The leaver keeps system access, stays in headcount and may still be paid and given benefits.
+  fix_map:
+    __other__: Complete the termination (Take Action > Terminate) so the status changes to Terminated, or remove the end
+      date if the employee did not leave.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: status {EMPEMPLOYMENT.STATUS} but employment ended on
+    {EMPEMPLOYMENT.END_DATE}.'
+- id: EC082
+  field: EMPEMPLOYMENT.END_DATE
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.END_DATE` > @today'
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - T
+    - R
+  severity: medium
+  dimension: consistency
+  message: Employee is already terminated or retired but the employment end date is in the future
+  why_it_matters: The terminated or retired status takes effect the day after the employment end date. A current status
+    of T or R with an end date still to come means one of the two dates is wrong.
+  rule_authority: best_practice
+  sap_impact: The employee loses access and drops out of payroll and headcount too early, or the leaver date reported to
+    payroll and benefits is wrong.
+  fix_map:
+    __other__: Check the agreed last working day and correct the termination record in Employment Details.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: status {EMPEMPLOYMENT.STATUS} with end date {EMPEMPLOYMENT.END_DATE}
+    in the future.'
+- id: EC083
+  field: PERINFO.LASTNAME
+  check_class: uniqueness_check
+  fields:
+  - PERINFO.FIRSTNAME
+  - PERINFO.LASTNAME
+  - PERINFO.DATE_OF_BIRTH
+  case_insensitive: true
+  severity: high
+  dimension: uniqueness
+  message: Two persons share the same first name, last name and date of birth
+  why_it_matters: The same person was probably created twice (for example on rehire, instead of reusing the existing
+    person). Each copy has its own history, so pay, benefits and documents are split between two records.
+  rule_authority: best_practice
+  sap_impact: Duplicate payments and benefit enrolments; split employment history and service dates; headcount counted
+    twice.
+  fix_map:
+    __other__: Confirm whether both records are the same person. If they are, keep one person and move the employment to it
+      (rehire with the existing person ID), then inactivate the duplicate.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: {PERINFO.FIRSTNAME} {PERINFO.LASTNAME}, born {PERINFO.DATE_OF_BIRTH},
+    exists more than once.'
+- id: EC084
+  field: PERINFO.LASTNAME
+  check_class: similarity_check
+  block_by:
+  - PERINFO.DATE_OF_BIRTH
+  - PERINFO.FIRSTNAME
+  threshold: 0.8
+  exact_rule: true
+  severity: medium
+  dimension: uniqueness
+  message: Two persons with the same first name and date of birth have almost the same last name
+  why_it_matters: A typing error in the last name (Johnson and Jonson) hides a duplicate person from an exact comparison.
+    Exact duplicates are reported by EC083.
+  rule_authority: best_practice
+  sap_impact: Duplicate payments and benefit enrolments; split employment history; headcount counted twice.
+  fix_map:
+    __other__: Compare the two persons' ID documents. If they are the same person, keep one and move the employment to it.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: last name {PERINFO.LASTNAME} is close to another person with the same
+    first name and date of birth.'
+- id: EC085
+  field: EMPEMPLOYMENT.START_DATE
+  check_class: interval_check
+  group_by:
+  - EMPEMPLOYMENT.PERSON_ID
+  start: EMPEMPLOYMENT.START_DATE
+  end: EMPEMPLOYMENT.END_DATE
+  severity: medium
+  dimension: consistency
+  message: Two ended employments of the same person overlap in time
+  why_it_matters: A rehire normally starts after the earlier employment ended. Overlapping dates usually mean the
+    rehire was entered before the old employment was ended correctly. Concurrent employment and global assignments
+    overlap by design; confirm before changing. Employments without an end date are not compared.
+  rule_authority: best_practice
+  sap_impact: Service length, seniority and leave entitlement are counted twice for the overlap; payroll may pay both
+    employments for the same days.
+  fix_map:
+    __other__: If the overlap is not a concurrent employment or global assignment, correct the end date of the earlier
+      employment or the start date of the later one.
+  record_fix_template: 'Person {EMPEMPLOYMENT.PERSON_ID}: employment {EMPEMPLOYMENT.USERID} ({EMPEMPLOYMENT.START_DATE}
+    to {EMPEMPLOYMENT.END_DATE}) overlaps another employment.'
+- id: EC086
+  field: PERPHONE.PHONE_NUMBER
+  check_class: regex_check
+  pattern: ^\D*(\d\D*){6,15}$
+  severity: low
+  dimension: validity
+  message: Phone number has fewer than 6 or more than 15 digits
+  why_it_matters: International phone numbers have at most 15 digits (ITU-T E.164), and real numbers have at least 6. A
+    number outside this range cannot be dialled and is often a placeholder or two numbers typed into one field.
+  rule_authority: best_practice
+  sap_impact: Emergency contact, two-factor and SMS notifications fail; the number cannot be used in integrations.
+  fix_map:
+    __other__: Enter one complete number with country code (for example +27 11 555 1234) in Contact Information.
+  record_fix_template: 'Person {PERPHONE.PERSON_ID}: phone number ''{PERPHONE.PHONE_NUMBER}'' has an invalid number of
+    digits.'
+- id: EC087
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!000|666|9\d\d)\d{3}-?(?!00)\d{2}-?(?!0000)\d{4}$
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - USA
+  severity: high
+  dimension: validity
+  message: US Social Security Number is not in the 9-digit SSN format
+  why_it_matters: An SSN has 9 digits (AAA-GG-SSSS). The area cannot be 000, 666 or 900 to 999, the group cannot be 00
+    and the serial cannot be 0000 (Social Security Administration numbering rules).
+  rule_authority: sap_hard_constraint
+  sap_impact: Form W-2 and payroll tax filing are rejected; employment eligibility (E-Verify) checks fail.
+  fix_map:
+    __other__: Correct the SSN from the employee's Social Security card in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: SSN ''{PERINFO.NATIONAL_ID}'' is not a valid SSN format.'
+- id: EC088
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^\d{13}$
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - ZAF
+  severity: high
+  dimension: validity
+  message: South African ID number is not 13 digits
+  why_it_matters: A South African ID number has exactly 13 digits (YYMMDD, sequence, citizenship, check digit), with no
+    spaces or letters.
+  rule_authority: sap_hard_constraint
+  sap_impact: IRP5 and EMP501 tax certificates are rejected by SARS; UIF declarations fail.
+  fix_map:
+    __other__: Correct the ID number from the employee's ID document in National ID Information (digits only).
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: ID number ''{PERINFO.NATIONAL_ID}'' is not 13 digits.'
+- id: EC089
+  field: PERINFO.NATIONAL_ID
+  check_class: format_check
+  format: luhn
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - ZAF
+  severity: high
+  dimension: validity
+  message: South African ID number fails its check digit
+  why_it_matters: The last digit of a South African ID number is a Luhn check digit. A failed check means at least one
+    digit was typed wrongly, even when the length is right.
+  rule_authority: sap_hard_constraint
+  sap_impact: IRP5 and EMP501 tax certificates are rejected by SARS; UIF declarations fail.
+  fix_map:
+    __other__: Re-enter the ID number from the employee's ID document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: ID number ''{PERINFO.NATIONAL_ID}'' fails the check digit.'
+- id: EC090
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^\d{3}[ -]?\d{3}[ -]?\d{3}$
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - CAN
+  severity: high
+  dimension: validity
+  message: Canadian Social Insurance Number is not 9 digits
+  why_it_matters: A Social Insurance Number has 9 digits, optionally grouped as 3-3-3.
+  rule_authority: sap_hard_constraint
+  sap_impact: T4 slips and Record of Employment filings are rejected.
+  fix_map:
+    __other__: Correct the SIN from the employee's SIN confirmation letter in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: SIN ''{PERINFO.NATIONAL_ID}'' is not 9 digits.'
+- id: EC091
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!BG|GB|NK|KN|TN|NT|ZZ)[A-CEGHJ-PR-TW-Z][A-CEGHJ-NPR-TW-Z] ?\d{2} ?\d{2} ?\d{2} ?[A-D]$
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - GBR
+  severity: high
+  dimension: validity
+  message: UK National Insurance number is not in the NINO format
+  why_it_matters: A National Insurance number is two letters, six digits and a final letter A to D (for example QQ 12 34
+    56 C). HMRC does not issue certain letters and prefixes (such as D, F, I, Q, U, V and BG, GB, NK, KN, TN, NT, ZZ).
+  rule_authority: sap_hard_constraint
+  sap_impact: RTI Full Payment Submissions to HMRC are rejected or matched to the wrong person.
+  fix_map:
+    __other__: Correct the NINO from HMRC correspondence or the payslip in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: NINO ''{PERINFO.NATIONAL_ID}'' is not a valid format.'
+- id: EC092
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^\d{3}\.?\d{3}\.?\d{3}-?\d{2}$
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - BRA
+  severity: high
+  dimension: validity
+  message: Brazilian CPF is not 11 digits
+  why_it_matters: A CPF has 11 digits, usually written as 000.000.000-00.
+  rule_authority: sap_hard_constraint
+  sap_impact: eSocial events and payroll tax filings are rejected.
+  fix_map:
+    __other__: Correct the CPF from the employee's documents in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: CPF ''{PERINFO.NATIONAL_ID}'' is not 11 digits.'
+- id: EC093
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^\d{9}$
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - NLD
+  severity: high
+  dimension: validity
+  message: Dutch BSN is not 9 digits
+  why_it_matters: A burgerservicenummer (BSN) has exactly 9 digits.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll tax returns to the Belastingdienst are rejected.
+  fix_map:
+    __other__: Correct the BSN from the employee's ID document in National ID Information (digits only).
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: BSN ''{PERINFO.NATIONAL_ID}'' is not 9 digits.'
+- id: EC094
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^([0-9]{8}|[XYZ][0-9]{7})[A-HJ-NP-TV-Z]$
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - ESP
+  severity: high
+  dimension: validity
+  message: Spanish DNI or NIE is not in the official format
+  why_it_matters: A DNI is 8 digits and a control letter; a NIE is X, Y or Z, 7 digits and a control letter. The control
+    letter is never I, O or U.
+  rule_authority: sap_hard_constraint
+  sap_impact: Social security (Sistema RED) and tax (Modelo 111/190) filings are rejected.
+  fix_map:
+    __other__: Correct the DNI or NIE from the employee's ID document in National ID Information (no spaces or dashes).
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: DNI/NIE ''{PERINFO.NATIONAL_ID}'' is not a valid format.'
+- id: EC095
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^\d{17}[\dX]$
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - CHN
+  severity: high
+  dimension: validity
+  message: Chinese resident ID number is not 18 characters
+  why_it_matters: A resident identity card number has 17 digits and a final check character (a digit or X).
+  rule_authority: sap_hard_constraint
+  sap_impact: Individual income tax and social insurance filings are rejected.
+  fix_map:
+    __other__: Correct the ID number from the employee's resident identity card in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: ID number ''{PERINFO.NATIONAL_ID}'' is not 18 characters.'
+- id: EC096
+  field: EMPEMPLOYMENT.COMPANY
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.COMPANY` != `POSITION.COMPANY`'
+  require_populated: true
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: high
+  dimension: consistency
+  message: Employee's legal entity differs from the legal entity of their position
+  why_it_matters: With Position Management, job information is inherited from the position. A different legal entity
+    means the position was moved without updating the incumbent (or the reverse), so the two records disagree on who
+    employs the person.
+  rule_authority: best_practice
+  sap_impact: Payroll runs under the wrong legal entity; position-based headcount and budget reports do not match job
+    information.
+  fix_map:
+    __other__: Decide which is correct, then update the position (Position Org Chart) or the job information so both name
+      the same legal entity; use position-to-job-information synchronisation where enabled.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: legal entity {EMPEMPLOYMENT.COMPANY}, position
+    {EMPEMPLOYMENT.POSITION} has {POSITION.COMPANY}.'
+- id: EC097
+  field: EMPEMPLOYMENT.DEPARTMENT
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.DEPARTMENT` != `POSITION.DEPARTMENT`'
+  require_populated: true
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: medium
+  dimension: consistency
+  message: Employee's department differs from the department of their position
+  why_it_matters: With Position Management, job information is inherited from the position. A different department means
+    a reorganisation was applied to only one of the two records.
+  rule_authority: best_practice
+  sap_impact: Org chart and position chart show the employee in different departments; department-based permissions and
+    cost reports disagree.
+  fix_map:
+    __other__: Update the position or the job information so both name the same department.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: department {EMPEMPLOYMENT.DEPARTMENT}, position
+    {EMPEMPLOYMENT.POSITION} has {POSITION.DEPARTMENT}.'
+- id: EC098
+  field: EMPEMPLOYMENT.JOB_CODE
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.JOB_CODE` != `POSITION.JOB_CODE`'
+  require_populated: true
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: medium
+  dimension: consistency
+  message: Employee's job classification differs from the job classification of their position
+  why_it_matters: The job classification drives pay grade, pay range and job profile. If the employee and the position
+    disagree, compensation planning and job-based reports use different jobs for the same person.
+  rule_authority: best_practice
+  sap_impact: Pay range and compa-ratio are calculated against the wrong job; job architecture reports are inconsistent.
+  fix_map:
+    __other__: Update the position or the job information so both name the same job classification.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: job {EMPEMPLOYMENT.JOB_CODE}, position {EMPEMPLOYMENT.POSITION}
+    has {POSITION.JOB_CODE}.'
+- id: EC099
+  field: EMPEMPLOYMENT.COST_CENTER
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.COST_CENTER` != `POSITION.COST_CENTER`'
+  require_populated: true
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: low
+  dimension: consistency
+  message: Employee's cost centre differs from the cost centre of their position
+  why_it_matters: Where the position carries the cost centre, the incumbent's job information should match it. A
+    difference means personnel cost is posted to one cost centre while the position budget sits on another.
+  rule_authority: best_practice
+  sap_impact: Payroll cost posting and position budget reports use different cost centres.
+  fix_map:
+    __other__: Update the position or the job information so both name the same cost centre.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: cost centre {EMPEMPLOYMENT.COST_CENTER}, position
+    {EMPEMPLOYMENT.POSITION} has {POSITION.COST_CENTER}.'
+- id: EC100
+  field: POSITION.VACANT
+  check_class: cross_field_check
+  fail_when: '`POSITION.VACANT`.str.lower() == ''true'''
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: low
+  dimension: consistency
+  message: Position of an active employee is still flagged To Be Hired
+  why_it_matters: The To Be Hired flag tells recruiting the position is open. If it stays on after the position is filled,
+    the position shows as vacant. Positions with more than one FTE can legitimately stay open; confirm before changing.
+  rule_authority: best_practice
+  sap_impact: Vacancy reports overstate open positions; a new requisition may be raised for a filled position.
+  fix_map:
+    __other__: Clear To Be Hired on the position (Position Org Chart) once all FTE are filled.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: position {EMPEMPLOYMENT.POSITION} is still flagged To Be Hired.'
+- id: EC101
+  field: EMPEMPLOYMENT.POSITION
+  check_class: exists_check
+  target_table: POSITION
+  target_fields:
+  - CODE
+  target_when:
+    EFFECTIVE_STATUS:
+    - A
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: high
+  dimension: consistency
+  message: Active employee is assigned to a position that is inactive or does not exist
+  why_it_matters: The position is the employee's seat in the organisation. An inactive or missing position means the
+    incumbent sits outside the position hierarchy.
+  rule_authority: best_practice
+  sap_impact: The employee is missing from the position org chart; succession, budget and position-based permissions do
+    not include them.
+  fix_map:
+    __other__: Move the employee to an active position, or reactivate the position if it was closed by mistake.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: position {EMPEMPLOYMENT.POSITION} is not active.'
+- id: EC102
+  field: EMPEMPLOYMENT.COMPANY
+  check_class: exists_check
+  target_table: FOCOMPANY
+  target_fields:
+  - EXTERNAL_CODE
+  target_when:
+    STATUS:
+    - A
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: high
+  dimension: consistency
+  message: Active employee belongs to an inactive legal entity
+  why_it_matters: A legal entity is set inactive when it is closed or merged. Employees still assigned to it were not
+    transferred.
+  rule_authority: best_practice
+  sap_impact: Payroll and statutory reporting run under a closed entity; the legal entity cannot be selected in new
+    transactions for these employees.
+  fix_map:
+    __other__: Transfer the employees to the successor legal entity (Take Action > Change Job and Compensation Info), or
+      reactivate the legal entity if it was closed by mistake.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: legal entity {EMPEMPLOYMENT.COMPANY} is not active.'
+- id: EC103
+  field: EMPEMPLOYMENT.DEPARTMENT
+  check_class: exists_check
+  target_table: FODEPARTMENT
+  target_fields:
+  - EXTERNAL_CODE
+  target_when:
+    STATUS:
+    - A
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: medium
+  dimension: consistency
+  message: Active employee belongs to an inactive department
+  why_it_matters: A department is set inactive after a reorganisation. Employees still assigned to it were not moved.
+  rule_authority: best_practice
+  sap_impact: Org chart and department reports show employees in a closed unit; department-based permissions and cost
+    allocations are wrong.
+  fix_map:
+    __other__: Move the employees to the new department, or reactivate the department if it was closed by mistake.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: department {EMPEMPLOYMENT.DEPARTMENT} is not active.'
+- id: EC104
+  field: EMPEMPLOYMENT.COST_CENTER
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.COST_CENTER` != `FODEPARTMENT.COST_CENTER`'
+  require_populated: true
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: low
+  dimension: consistency
+  message: Employee's cost centre differs from their department's cost centre
+  why_it_matters: The department's cost centre is the default for its employees. A different cost centre can be correct
+    (shared services, project funding) but is often left over from a transfer.
+  rule_authority: best_practice
+  sap_impact: Personnel cost is posted to a cost centre outside the department; departmental cost reports are incomplete.
+  fix_map:
+    __other__: Confirm the funding with finance; if the department's cost centre applies, update the job information.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: cost centre {EMPEMPLOYMENT.COST_CENTER}, department
+    {EMPEMPLOYMENT.DEPARTMENT} uses {FODEPARTMENT.COST_CENTER}.'
+- id: EC105
+  field: FOCOMPANY.CURRENCY
+  check_class: null_check
+  grain: FOCOMPANY
+  severity: medium
+  dimension: completeness
+  message: Legal entity has no default currency
+  why_it_matters: The legal entity's currency is the default for compensation and pay ranges of its employees.
+  rule_authority: best_practice
+  sap_impact: Compensation entered without a currency; pay ranges and compensation planning cannot convert amounts.
+  fix_map:
+    __blank__: Set the default currency on the legal entity (Manage Organization, Pay and Job Structures).
+  record_fix_template: 'Legal entity {FOCOMPANY.EXTERNAL_CODE}: default currency is blank.'
+- id: EC106
+  field: FOCOMPANY.COUNTRY
+  check_class: null_check
+  grain: FOCOMPANY
+  severity: high
+  dimension: completeness
+  message: Legal entity has no country
+  why_it_matters: The country of the legal entity selects the country-specific fields, national ID types, address formats
+    and payroll localisation for its employees.
+  rule_authority: sap_hard_constraint
+  sap_impact: Country-specific job and personal information fields are not shown; payroll localisation cannot be
+    assigned.
+  fix_map:
+    __blank__: Set the country on the legal entity (Manage Organization, Pay and Job Structures).
+  record_fix_template: 'Legal entity {FOCOMPANY.EXTERNAL_CODE}: country is blank.'
+- id: EC107
+  field: POSITION.JOB_CODE
+  check_class: null_check
+  grain: POSITION
+  severity: medium
+  dimension: completeness
+  message: Position has no job classification
+  why_it_matters: The job classification of a position is copied to the incumbent's job information and drives pay grade
+    and job profile.
+  rule_authority: best_practice
+  sap_impact: New hires into the position get no job classification; pay ranges and job-based reports cannot be applied.
+  fix_map:
+    __blank__: Set the job classification on the position (Position Org Chart or Manage Positions).
+  record_fix_template: 'Position {POSITION.CODE}: job classification is blank.'

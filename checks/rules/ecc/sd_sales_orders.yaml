@@ -163,6 +163,9 @@ rules:
 - id: SDSO010
   field: VBAK.VDATU
   check_class: null_check
+  applies_when:
+    VBAK.VBTYP:
+    - C
   severity: medium
   dimension: completeness
   message: "Requested delivery date missing \u2014 delivery scheduling cannot be performed"
@@ -177,26 +180,12 @@ rules:
       F6588. Obtain the date from the customer purchase order or commercial agreement.'
   record_fix_template: 'SO {VBAK.VBELN}: VDATU is {actual_value}. Set the requested delivery date via VA02 > Shipping tab
     or Fiori app F6588.'
-- id: SDSO011
-  field: VBAK.NETWR
-  check_class: null_check
-  severity: high
-  dimension: completeness
-  message: "Order net value is zero or missing \u2014 order has no financial value"
-  why_it_matters: NETWR at the header level is the total net value of the sales order. Zero or blank indicates either all
-    line items are free of charge or pricing has not been determined. This affects revenue reporting, credit exposure calculation,
-    and order value-based approvals.
-  rule_authority: best_practice
-  sap_impact: Revenue forecast shows zero for this order. Credit exposure (FD32) is understated. Order value-based release
-    strategies do not trigger. Sales reporting by value is incorrect.
-  fix_map:
-    __blank__: 'Order net value is zero or blank. In ECC: check pricing conditions via VA02 > Conditions tab at header and
-      item level. In S/4HANA: use Fiori app F6588. Verify condition records exist for the material/customer combination.'
-  record_fix_template: 'SO {VBAK.VBELN}: NETWR is {actual_value}. Review pricing conditions via VA02 > Conditions tab or Fiori
-    app F6588.'
 - id: SDSO012
   field: VBAK.BSTNK
   check_class: null_check
+  applies_when:
+    VBAK.VBTYP:
+    - C
   severity: low
   dimension: completeness
   message: Customer PO number missing — external reference for order tracking
@@ -303,6 +292,9 @@ rules:
 - id: SDSO017
   field: VBAP.KWMENG
   check_class: null_check
+  applies_when:
+    VBAK.VBTYP:
+    - C
   severity: critical
   dimension: completeness
   message: "Order quantity is mandatory \u2014 zero means order line cannot be delivered or invoiced"
@@ -396,12 +388,17 @@ rules:
   record_fix_template: 'SO {VBAK.VBELN} item {VBAP.POSNR}: WERKS is {actual_value}. Assign the delivering plant via VA02 >
     Shipping tab or Fiori app F6588.'
   applies_when:
+    VBAK.VBTYP:
+    - C
     VBAP.PSTYV:
       not_in:
       - TATX
 - id: SDSO022
   field: VBAP.VRKME
   check_class: null_check
+  applies_when:
+    VBAK.VBTYP:
+    - C
   severity: medium
   dimension: completeness
   message: "Sales unit of measure missing \u2014 quantity has no unit context"
@@ -452,23 +449,6 @@ rules:
   record_fix_template: 'SO {VBAK.VBELN}: ABSTK is ''{actual_value}'' but ABGRU is blank. Set the rejection reason
     on each item via VA02 or Fiori app F6588.'
   fail_when: (`VBAK.ABSTK` == 'C') & `VBAP.ABGRU`.isna()
-- id: SDSO026
-  field: VBAP.ROUTE
-  check_class: null_check
-  severity: low
-  dimension: completeness
-  message: "Route missing \u2014 shipping scheduling and freight cost determination affected"
-  why_it_matters: ROUTE determines the transportation route for shipping scheduling, transit time calculation, and freight
-    cost determination. Without it, delivery scheduling uses default lead times and freight costs cannot be automatically
-    calculated from the route-based condition records.
-  rule_authority: best_practice
-  sap_impact: Shipping scheduling uses default transit times instead of route-specific values. Freight cost determination
-    from condition records fails. Transportation planning is less accurate.
-  fix_map:
-    __blank__: 'Route is empty. In ECC: set via VA02 > Item > Shipping tab > Route field. In S/4HANA: use Fiori app F6588.
-      Route is normally determined automatically from the shipping point, destination country, and transportation group.'
-  record_fix_template: 'SO {VBAK.VBELN} item {VBAP.POSNR}: ROUTE is {actual_value}. Set the route via VA02 > Shipping tab
-    or Fiori app F6588.'
 - id: SDSO027
   field: VBAK.ERNAM
   check_class: null_check
@@ -559,6 +539,8 @@ rules:
   record_fix_template: Sales order {field} dated {age_days} days ago. Confirm in VA02 whether still valid; reject
     lines or close if abandoned.
   applies_when:
+    VBAK.VBTYP:
+    - C
     VBAK.GBSTK:
       not_in: [C]
 
@@ -579,6 +561,8 @@ rules:
   fail_when: ~(`VBAP.KWMENG` > 0)
   require_populated: true
   applies_when:
+    VBAK.VBTYP:
+    - C
     VBAP.PSTYV:
       not_in:
       - TATX
@@ -1051,3 +1035,348 @@ rules:
   fix_map:
     __other__: Delete the record, or recreate it under a defined condition type.
   record_fix_template: 'Condition record {KONH.KNUMH} ({KONH.KSCHL}): condition type ''{actual_value}'' is not defined.'
+- id: SDSO055
+  check_class: exists_check
+  fields:
+  - VBAK.KUNNR
+  - VBAK.VKORG
+  - VBAK.VTWEG
+  - VBAK.SPART
+  grain: VBAK
+  applies_when:
+    VBAK.GBSTK:
+      not_in: [C]
+  target_table: KNVV
+  target_fields:
+  - KUNNR
+  - VKORG
+  - VTWEG
+  - SPART
+  target_when:
+    LOEVM:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Open sales document for a sold-to that is not maintained (or is flagged for deletion) in the document's sales
+    area
+  why_it_matters: VA01 accepts a sold-to only in a sales area the customer is extended to; pricing procedure, payment terms,
+    Incoterms and partners come from that extension. A document whose sales area does not match the customer's sales-area
+    data was loaded or created before the extension was deleted.
+  rule_authority: sap_hard_constraint
+  sap_impact: Changing, copying or billing the document fails ("customer not defined for sales area"). Pricing and partner
+    redetermination use no customer defaults.
+  fix_map:
+    __other__: Re-extend the customer to the sales area (XD01 / VD01; BP sales-area data in S/4HANA), or reject the open
+      document (VA02 > Reason for rejection).
+  record_fix_template: 'Sales document {VBAK.VBELN}: sold-to {VBAK.KUNNR} has no active sales-area data for {VBAK.VKORG}/{VBAK.VTWEG}/{VBAK.SPART}.'
+- id: SDSO056
+  field: VBAK.NETWR
+  check_class: cross_field_check
+  grain: VBAK
+  fail_when: (`VBAK.NETWR` == 0)
+  applies_when:
+    VBAK.VBTYP: [C]
+    VBAK.AUART:
+      not_in: [KB, KA]
+    VBAK.ABSTK:
+      not_in: [C]
+  severity: high
+  dimension: accuracy
+  message: Standard sales order has zero net value
+  why_it_matters: A customer order (VBTYP C) that is not fully rejected should carry revenue. A zero header value means no
+    item was priced, because condition records were missing, manual prices were zero, or every item was free of charge.
+    Zero-price sales are a standard revenue-assurance and audit test.
+  rule_authority: best_practice
+  sap_impact: Goods ship and billing creates a zero invoice. Revenue is lost, credit exposure is understated, and value-based
+    release strategies do not trigger.
+  fix_map:
+    __other__: Check pricing in VA02 > Conditions (header and items). Maintain the missing condition records (VK11) and
+      run new pricing, or document the free-of-charge approval.
+  record_fix_template: 'Sales order {VBAK.VBELN} ({VBAK.AUART}) has net value {actual_value}.'
+- id: SDSO057
+  field: VBAP.NETWR
+  check_class: cross_field_check
+  grain: VBAP
+  fail_when: (`VBAP.NETWR` == 0) & (`VBAP.KWMENG` > 0)
+  applies_when:
+    VBAK.VBTYP: [C]
+    VBAP.PSTYV:
+      not_in: [TATX, TANN, KBN, KAN, TAE]
+    VBAP.UEPOS:
+      blank: true
+  severity: high
+  dimension: accuracy
+  message: Chargeable order item has a quantity but zero net value
+  why_it_matters: A main item with an order quantity and a chargeable item category should have a price. Zero means a missing
+    condition record, a manual zero price, or 100% discount. Big-4 O2C analytics and Celonis report these as revenue leakage.
+  rule_authority: best_practice
+  sap_impact: The item delivers and bills at zero, so revenue is lost. Margin (VPRS against zero) shows full cost with no
+    revenue.
+  fix_map:
+    __other__: Check the item's conditions (VA02 > Item > Conditions). Maintain the price (VK11) and run new pricing, or
+      change the item category to a free-of-charge category with approval.
+  record_fix_template: 'Sales order {VBAP.VBELN} item {VBAP.POSNR} ({VBAP.PSTYV}): quantity {VBAP.KWMENG}, net value 0.'
+- id: SDSO058
+  field: VBAK.ERDAT
+  check_class: freshness_check
+  max_age_hours: 168
+  applies_when:
+    VBAK.CMGST: [B, C]
+    VBAK.GBSTK:
+      not_in: [C]
+  severity: high
+  dimension: timeliness
+  message: Sales document has been on credit block for more than 7 days
+  why_it_matters: A credit block (status B/C) stops delivery until a credit representative releases or rejects the document.
+    Blocks left open for weeks are lost or late revenue and unhappy customers. Credit-block ageing is a core Celonis O2C KPI.
+  rule_authority: best_practice
+  sap_impact: The document cannot be delivered, and confirmed ATP quantity stays reserved for it. VKM1/VKM3 (UKM_CASE in
+    S/4HANA) backlogs grow.
+  fix_map:
+    __other__: Release or reject the document in VKM1 / VKM3 (S/4HANA, UKM_MY_DCDS), or reject the lines if the deal is dead.
+  record_fix_template: 'Sales document {VBAK.VBELN} (created {VBAK.ERDAT}) is still credit blocked (status {VBAK.CMGST}).'
+- id: SDSO059
+  field: VBAK.BSTNK
+  check_class: uniqueness_check
+  fields:
+  - VBAK.KUNNR
+  - VBAK.BSTNK
+  normalize: alnum
+  grain: VBAK
+  applies_when:
+    VBAK.VBTYP: [C]
+  severity: medium
+  dimension: uniqueness
+  message: The same customer purchase order number appears on more than one sales order for the sold-to
+  why_it_matters: A customer PO is normally entered once. A repeat usually means a duplicate order (EDI resend, re-keyed fax).
+    Duplicate-order detection by customer reference is a standard Big-4 O2C test, and SAP's own duplicate check (TVAK.VBKLT)
+    only warns.
+  rule_authority: best_practice
+  sap_impact: Goods are shipped and billed twice. The customer short-pays or disputes, and credits and returns follow.
+  fix_map:
+    __other__: Compare the orders (VA05 by PO number). Reject the duplicate (VA02 > Reason for rejection), and switch on
+      the PO duplicate check for the order type (VOV8 > Check purchase order no.).
+  record_fix_template: 'Sales order {VBAK.VBELN}: PO "{VBAK.BSTNK}" of sold-to {VBAK.KUNNR} is also on another order.'
+- id: SDSO060
+  field: VBAK.ERDAT
+  check_class: freshness_check
+  max_age_hours: 1440
+  applies_when:
+    VBAK.LFSTK: [C]
+    VBAK.FKSTK: [A, B]
+  severity: high
+  dimension: timeliness
+  message: Sales document fully delivered but not (fully) billed more than 60 days after it was created
+  why_it_matters: Goods have left, but the delivery-related invoice was never created. Delivered-not-invoiced is the core
+    revenue-leakage and cut-off test in Big-4 O2C audits and a standard Celonis KPI.
+  rule_authority: best_practice
+  sap_impact: Revenue and receivables are understated, and the customer is never invoiced. Deliveries stay in the billing
+    due list (VF04) indefinitely.
+  fix_map:
+    __other__: Bill the deliveries (VF04 / VF01). If a billing block holds them (VBAK.FAKSK), resolve the block. Recalculate
+      status with SDVBUK00 if the document is actually billed.
+  record_fix_template: 'Sales document {VBAK.VBELN} (created {VBAK.ERDAT}) is fully delivered, billing status {VBAK.FKSTK}.'
+- id: SDSO061
+  field: VBAK.ERDAT
+  check_class: freshness_check
+  max_age_hours: 720
+  applies_when:
+    VBAK.UVALL: [A, B]
+    VBAK.GBSTK:
+      not_in: [C]
+  severity: medium
+  dimension: completeness
+  message: Sales document is still incomplete more than 30 days after it was created
+  why_it_matters: The incompletion log lists data that the document type requires before delivery or billing. A document
+    left incomplete for a month is stuck, and the data it lacks is usually missing from the master data too.
+  rule_authority: sap_hard_constraint
+  sap_impact: Depending on the incompletion procedure, the document cannot be delivered or billed (V.02 lists it). It inflates
+    the backlog.
+  fix_map:
+    __other__: Complete the document (V.02 / VA02 > Edit > Incompletion log), or reject it.
+  record_fix_template: 'Sales document {VBAK.VBELN} (created {VBAK.ERDAT}) is still incomplete (status {VBAK.UVALL}).'
+- id: SDSO062
+  field: VBAK.VDATU
+  check_class: cross_field_check
+  fail_when: (`VBAK.VDATU` < `VBAK.AUDAT`)
+  applies_when:
+    VBAK.VBTYP: [C]
+  severity: medium
+  dimension: consistency
+  message: Requested delivery date is before the order date
+  why_it_matters: A customer cannot request delivery before ordering. The date was keyed wrongly, or the document was back-dated
+    or loaded. Scheduling, ATP and on-time-delivery KPIs all start from VDATU.
+  rule_authority: best_practice
+  sap_impact: Schedule lines are created in the past, so the order shows as late from day one. ATP backorder processing and
+    OTIF reporting are distorted.
+  fix_map:
+    __other__: Correct the requested delivery date (VA02 > Header > Sales) and reschedule (V_V2).
+  record_fix_template: 'Sales order {VBAK.VBELN}: requested delivery {VBAK.VDATU} is before order date {VBAK.AUDAT}.'
+- id: SDSO063
+  field: VBAK.AUDAT
+  check_class: cross_field_check
+  fail_when: ((`VBAK.ERDAT` - `VBAK.AUDAT`).dt.days > 30) | ((`VBAK.AUDAT` - `VBAK.ERDAT`).dt.days > 30)
+  applies_when:
+    VBAK.VBTYP: [C]
+  severity: medium
+  dimension: consistency
+  message: Order date differs from the entry date by more than 30 days (back-dated or future-dated)
+  why_it_matters: The document date defaults to the entry date. Moving it by more than a month back-dates or post-dates the
+    order. This is a Big-4 cut-off and journal-integrity test, because the document date drives pricing date, period
+    reporting and SLA ageing.
+  rule_authority: best_practice
+  sap_impact: Prices can be determined from an outdated pricing date, period sales reporting (S001/VA05) is misallocated,
+    and order-age KPIs are wrong.
+  fix_map:
+    __other__: Confirm the date with the order owner. Correct the document date and pricing date (VA02 > Header > Sales),
+      or restrict changes to AUDAT via the field selection.
+  record_fix_template: 'Sales order {VBAK.VBELN}: order date {VBAK.AUDAT}, entered on {VBAK.ERDAT}.'
+- id: SDSO064
+  check_class: exists_check
+  fields:
+  - VBAP.MATNR
+  - VBAP.WERKS
+  grain: VBAP
+  applies_when:
+    VBAP.GBSTA:
+      not_in: [C]
+  target_table: MARC
+  target_fields:
+  - MATNR
+  - WERKS
+  target_when:
+    LVORM:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Open order item's delivering plant has no (active) plant data for the material
+  why_it_matters: Delivery, ATP and costing read the material's plant view. An item whose plant has no MARC record, or one
+    flagged for deletion at that plant, can neither be confirmed nor delivered.
+  rule_authority: sap_hard_constraint
+  sap_impact: ATP confirms nothing, and VL01N fails ("material not maintained in plant"). Cost (VPRS) is missing, so margin
+    is wrong.
+  fix_map:
+    __other__: Change the item's plant to one where the material is extended (VA02), or extend the material to the plant
+      (MM01) or remove its deletion flag (MM06).
+  record_fix_template: 'Sales order {VBAP.VBELN} item {VBAP.POSNR}: material {VBAP.MATNR} has no active plant data in plant
+    {VBAP.WERKS}.'
+- id: SDSO065
+  check_class: exists_check
+  fields:
+  - VBAP.MATNR
+  - VBAK.VKORG
+  - VBAK.VTWEG
+  grain: VBAP
+  applies_when:
+    VBAP.GBSTA:
+      not_in: [C]
+  target_table: MVKE
+  target_fields:
+  - MATNR
+  - VKORG
+  - VTWEG
+  target_when:
+    VMSTA:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Open order item's material is not released for sales in the order's sales organisation and channel
+  why_it_matters: The material's sales view (MVKE) for the sales org and channel holds the delivering plant, item category
+    group and sales status. An item whose material is not extended there, or has a distribution-chain status set, should
+    not be open.
+  rule_authority: sap_hard_constraint
+  sap_impact: Copying, changing or delivering the item fails or warns, depending on the sales status configuration (TVMS).
+    Pricing and item category determination run without the sales view.
+  fix_map:
+    __other__: Extend the material to the sales area (MM01 > Sales views), or review the distribution-chain status (MM02 >
+      Sales org 1 > X-distr. chain status) and reject the item if the material is withdrawn.
+  record_fix_template: 'Sales order {VBAP.VBELN} item {VBAP.POSNR}: material {VBAP.MATNR} is not released for sales in {VBAK.VKORG}/{VBAK.VTWEG}.'
+- id: SDSO066
+  field: VBAK.VDATU
+  check_class: freshness_check
+  max_age_hours: 720
+  applies_when:
+    VBAK.VBTYP: [C]
+    VBAK.LFSTK: [A]
+    VBAK.GBSTK:
+      not_in: [C]
+    VBAK.LIFSK:
+      blank: true
+    VBAK.CMGST:
+      not_in: [B, C]
+  severity: medium
+  dimension: timeliness
+  message: Unblocked sales order with nothing delivered, more than 30 days past its requested delivery date
+  why_it_matters: The order is not blocked, so it should have shipped. Nothing delivered a month after the customer's date
+    means stuck backlog, such as missing stock, a lost schedule line or an abandoned order. This is a Celonis late-order
+    and backlog KPI.
+  rule_authority: best_practice
+  sap_impact: Customers wait, while backlog and revenue forecasts overstate demand. ATP and MRP keep planning against it.
+  fix_map:
+    __other__: Review the order with its owner. Deliver it (VL10), reschedule (V_V2), or reject the items (VA02 > Reason
+      for rejection).
+  record_fix_template: 'Sales order {VBAK.VBELN}: requested delivery {VBAK.VDATU}, nothing delivered, no block.'
+- id: SDSO067
+  field: VBAK.ERDAT
+  check_class: freshness_check
+  max_age_hours: 2160
+  applies_when:
+    VBAK.VBTYP: [C]
+    VBAK.LIFSK:
+      populated: true
+    VBAK.GBSTK:
+      not_in: [C]
+  severity: medium
+  dimension: timeliness
+  message: Sales order has been on delivery block for more than 90 days
+  why_it_matters: A delivery block is meant to be temporary, for example pending a check, prepayment or export licence. Orders
+    blocked for a quarter are forgotten. They hold ATP quantity and inflate the backlog.
+  rule_authority: best_practice
+  sap_impact: Confirmed quantities stay reserved, so other customers are short. Backlog and forecasts overstate demand.
+  fix_map:
+    __other__: Release the block (VA02 > Header > Shipping > Delivery block) or reject the order.
+  record_fix_template: 'Sales order {VBAK.VBELN} (created {VBAK.ERDAT}) is still on delivery block {VBAK.LIFSK}.'
+- id: SDSO068
+  field: VBAK.KUNNR
+  check_class: cross_field_check
+  fail_when: (`KNA1.XCPDK` == 'X')
+  applies_when:
+    VBAK.VBTYP: [C]
+  severity: low
+  dimension: consistency
+  message: Sales order placed on a one-time (CPD) customer account
+  why_it_matters: One-time accounts have no credit limit, no partner functions and no master data control. The name, address
+    and bank details are typed into each document. Heavy use hides repeat customers outside credit control. The pass rate
+    of this rule is the share of orders on one-time accounts.
+  rule_authority: best_practice
+  sap_impact: Credit checks, dunning by customer and sales analytics by customer do not work. Repeat customers are invisible,
+    and address data is unvalidated.
+  fix_map:
+    __other__: Create a regular customer for repeat buyers (XD01) and use it on new orders. Restrict one-time accounts to
+      genuine walk-in or single sales.
+  record_fix_template: 'Sales order {VBAK.VBELN} uses one-time account {VBAK.KUNNR}.'
+- id: SDSO069
+  field: VBAK.VBELN
+  check_class: uniqueness_check
+  fields:
+  - VBAK.KUNNR
+  - VBAK.AUDAT
+  - VBAK.NETWR
+  - VBAK.WAERK
+  grain: VBAK
+  applies_when:
+    VBAK.VBTYP: [C]
+    VBAK.NETWR:
+      gt: 0
+  severity: low
+  dimension: uniqueness
+  message: Possible duplicate order (same sold-to, order date, net value and currency)
+  why_it_matters: Two orders for the same customer on the same day with exactly the same value are a classic duplicate-entry
+    pattern (double EDI processing, re-keyed orders). This is the Big-4 duplicate sales-order test, and it complements the
+    PO-number duplicate check, which misses orders without a PO.
+  rule_authority: best_practice
+  sap_impact: Goods are shipped and invoiced twice, followed by disputes, returns and credit memos.
+  fix_map:
+    __other__: Compare the orders (VA05). Reject the duplicate (VA02 > Reason for rejection).
+  record_fix_template: 'Sales order {VBAK.VBELN}: sold-to {VBAK.KUNNR}, {VBAK.AUDAT}, {VBAK.NETWR} {VBAK.WAERK} matches another
+    order.'
