@@ -274,9 +274,18 @@ ECC_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
             fields=[
                 "EBELN", "EBELP", "MATNR", "WERKS", "LGORT", "MATKL",
                 "MENGE", "MEINS", "NETPR", "PEINH", "PSTYP", "KNTTP",
-                "LOEKZ", "AEDAT",
+                "LOEKZ", "AEDAT", "NETWR", "UEBTO", "UEBTK", "RETPO",
+                "WEPOS", "REPOS",
             ],
             description="Purchasing document item",
+        ),
+        ExtractionTarget(
+            source="EKBE",
+            fields=[
+                "EBELN", "EBELP", "ZEKKN", "VGABE", "GJAHR", "BELNR",
+                "BUZEI", "MENGE", "WRBTR", "WAERS", "SHKZG",
+            ],
+            description="Purchasing document history",
         ),
         ExtractionTarget(
             source="T161",
@@ -809,28 +818,51 @@ ARIBA_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
 # ============================================================================
 
 EWMS_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
+    # embedded / decentralised EWM: /SCWM/ tables over RFC (namespaced names pass through unchanged)
     "ewms_stock": [
         ExtractionTarget(
-            source="/api/v1/stock",
+            source="/SCWM/AQUA",
             fields=[
-                "materialNumber", "warehouse", "storageType", "storageBin",
-                "handlingUnit", "batchNumber", "quantity", "uom",
-                "stockCategory", "lastCountDate",
+                "GUID_PARENT", "GUID_STOCK", "LGNUM", "LGTYP", "LGPLA", "HUIDENT",
+                "MATID", "BATCHID", "CHARG", "CAT", "QUAN", "UNIT", "VFDAT", "WDATU",
             ],
-            description="Extended warehouse stock",
+            description="EWM available stock (quants)",
         ),
+        ExtractionTarget(
+            source="/SCWM/LAGP",
+            fields=[
+                "LGNUM", "LGPLA", "LGTYP", "LGBER", "LPTYP", "SKZUA", "SKZUE", "SKZSI",
+                "KZLER", "KZVOL", "ANZLE", "WEIGHT", "MAX_WEIGHT", "UNIT_W", "FCAPA", "MAX_CAPA",
+            ],
+            description="EWM storage bins",
+        ),
+        ExtractionTarget(
+            source="/SCWM/HUHDR",
+            fields=["GUID_HU", "HUIDENT", "TOP", "BOTTOM"],
+            description="EWM handling units",
+        ),
+        ExtractionTarget(source="/SCWM/T300", fields=["LGNUM"], description="EWM warehouse numbers", is_config=True),
+        ExtractionTarget(source="/SCWM/T301", fields=["LGNUM", "LGTYP"], description="EWM storage types", is_config=True),
+        ExtractionTarget(source="/SCWM/T331", fields=["LGNUM", "LGTYP"], description="EWM storage type control",
+                         is_config=True),
     ],
 
     "ewms_transfer_orders": [
         ExtractionTarget(
-            source="/api/v1/transferorders",
+            source="/SCWM/ORDIM_O",
             fields=[
-                "transferOrderNumber", "warehouse", "sourceStorageType",
-                "sourceBin", "destStorageType", "destBin", "materialNumber",
-                "quantity", "status", "createdDate",
+                "LGNUM", "TANUM", "TOSTAT", "FLGHUTO", "CREATED_AT", "MATID", "CHARG", "MEINS", "VSOLM",
+                "VLTYP", "VLPLA", "VLENR", "NLTYP", "NLPLA", "NLENR", "WHO",
             ],
-            description="Transfer orders",
+            description="EWM open warehouse tasks",
         ),
+        ExtractionTarget(
+            source="/SCWM/ORDIM_C",
+            fields=["LGNUM", "TANUM", "TAPOS", "TOSTAT", "CREATED_AT", "CONFIRMED_AT", "VLPLA", "NLPLA"],
+            description="EWM confirmed warehouse tasks",
+        ),
+        ExtractionTarget(source="/SCWM/WHO", fields=["LGNUM", "WHO"], description="EWM warehouse orders"),
+        ExtractionTarget(source="/SCWM/T301", fields=["LGNUM", "LGTYP"], description="EWM storage types", is_config=True),
     ],
 
     "batch_management": [
@@ -903,6 +935,50 @@ EWMS_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
 
 
 # ============================================================================
+# SAP BTP extractions  (OData entity sets behind a BTP destination)
+#
+# rename_map maps each OData property to the ECC "TABLE.FIELD" the rules read,
+# so BTP data is checked by the same rule pack as RFC data. One table per target.
+# ============================================================================
+
+def _btp(entity_set: str, table: str, mapping: dict[str, str], description: str) -> ExtractionTarget:
+    return ExtractionTarget(source=entity_set, fields=list(mapping), description=description,
+                            rename_map={p: f"{table}.{f}" for p, f in mapping.items()})
+
+
+BTP_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
+    "business_partner": [
+        _btp("A_BusinessPartner", "BUT000", {
+            "BusinessPartner": "PARTNER", "BusinessPartnerCategory": "TYPE",
+            "BusinessPartnerGrouping": "BU_GROUP", "BusinessPartnerType": "BPKIND",
+            "BusinessPartnerUUID": "PARTNER_GUID", "FirstName": "NAME_FIRST", "LastName": "NAME_LAST",
+            "OrganizationBPName1": "NAME_ORG1", "GroupBusinessPartnerName1": "NAME_GRP1",
+            "SearchTerm1": "BU_SORT1", "FormOfAddress": "TITLE", "CorrespondenceLanguage": "LANGU_CORR",
+            "IsNaturalPerson": "NATPERS", "IsSexUnknown": "XSEXM", "BirthDate": "BIRTHDT",
+            "OrganizationFoundationDate": "FOUND_DAT", "CreationDate": "CRDAT",
+            "BusinessPartnerIsBlocked": "XBLCK", "IsMarkedForArchiving": "XDELE",
+        }, "Business partner general data"),
+        _btp("A_BusinessPartnerAddress", "BUT020", {
+            "BusinessPartner": "PARTNER", "AddressID": "ADDRNUMBER",
+        }, "Business partner to address link"),
+        # ponytail: same entity read twice (BUT020 + ADRC); read once and split if volume matters
+        _btp("A_BusinessPartnerAddress", "ADRC", {
+            "AddressID": "ADDRNUMBER", "Country": "COUNTRY", "Region": "REGION", "CityName": "CITY1",
+            "PostalCode": "POST_CODE1", "StreetName": "STREET", "HouseNumber": "HOUSE_NUM1",
+            "Language": "LANGU",
+        }, "Business partner addresses"),
+        _btp("A_BusinessPartnerTaxNumber", "DFKKBPTAXNUM", {
+            "BusinessPartner": "PARTNER", "BPTaxType": "TAXTYPE", "BPTaxNumber": "TAXNUM",
+        }, "Business partner tax numbers"),
+        _btp("A_BusinessPartnerBank", "BUT0BK", {
+            "BusinessPartner": "PARTNER", "BankIdentification": "BKVID", "BankCountryKey": "BANKS",
+            "BankNumber": "BANKL", "IBAN": "IBAN",
+        }, "Business partner bank details"),
+    ],
+}
+
+
+# ============================================================================
 # Master mapping: system_type -> extraction dict
 # ============================================================================
 
@@ -915,6 +991,7 @@ SYSTEM_EXTRACTIONS: dict[str, dict[str, list[ExtractionTarget]]] = {
     "ariba": ARIBA_EXTRACTIONS,
     "ewms": EWMS_EXTRACTIONS,
     "ewm": EWMS_EXTRACTIONS,  # sap_systems.system_type spelling
+    "btp": BTP_EXTRACTIONS,
 }
 
 
@@ -931,7 +1008,7 @@ def get_extraction_targets(
 
     Args:
         system_type: One of ecc, s4hana_onprem, s4hana_cloud, successfactors,
-                     concur, ariba, ewms.
+                     concur, ariba, ewms, btp.
         module:      Module identifier, e.g. ``"accounts_payable"``.
         include_config: If False, config-only targets (``is_config=True``)
                         are excluded from the result.
@@ -952,7 +1029,7 @@ def get_available_modules(system_type: str) -> list[str]:
 
     Args:
         system_type: One of ecc, s4hana_onprem, s4hana_cloud, successfactors,
-                     concur, ariba, ewms.
+                     concur, ariba, ewms, btp.
 
     Returns:
         Sorted list of module name strings.  Empty list if unknown system type.
@@ -970,7 +1047,7 @@ def get_table_names(
 
     Args:
         system_type: One of ecc, s4hana_onprem, s4hana_cloud, successfactors,
-                     concur, ariba, ewms.
+                     concur, ariba, ewms, btp.
         module:      Module identifier.
         config_only: If True, only return sources marked ``is_config=True``.
 

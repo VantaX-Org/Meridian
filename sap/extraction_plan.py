@@ -35,10 +35,12 @@ _SF = ["employee_central", "compensation", "benefits", "payroll_integration", "p
 # Modules whose rules can be evaluated on data from each system type.
 MODULES_BY_SYSTEM: dict[str, list[str]] = {
     "ecc": _ECC + _LOGISTICS,
-    "s4hana_onprem": _ECC + _LOGISTICS,
+    "s4hana_onprem": _ECC + _LOGISTICS + ["s4hc_master_data"],
     "ewm": ["batch_management", "ewms_stock", "ewms_transfer_orders", "wm_interface"],
-    "s4hana_cloud": _ECC,
+    "s4hana_cloud": _ECC + ["s4hc_master_data"],
     "successfactors": _SF,
+    "concur": ["concur_expense", "concur_users"],
+    "ariba": ["ariba_supplier", "ariba_contracts", "ariba_procurement"],
 }
 ABAP_SYSTEM_TYPES = ("ecc", "s4hana_onprem", "ewm")
 _CONFIG_DELIVERY_CLASSES = {"C", "G", "E", "S"}
@@ -183,6 +185,15 @@ def plan_modules(modules: list[str], dictionary: Dictionary, scope: Optional[dic
     for module in modules:
         for t, fields in live_tables(module, dictionary).items():
             add(t, set(fields), module)
+
+    # the tables population exclusions look values up in (JEST status, T370T category)
+    from checks.population import policy
+    for t, p in list(plans.items()):
+        for x in policy().get(t, []) if p.purpose == "data" else []:
+            if spec := x.get("in_table"):
+                for m in p.modules:
+                    add(spec["table"], {spec["column"], *spec.get("where", {})}, m,
+                        purpose="config" if _is_config_table(dictionary, spec["table"]) else "data")
 
     # keys, join fields, filters
     for t, p in plans.items():

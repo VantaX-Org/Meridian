@@ -1,0 +1,70 @@
+# Meridian canonical views over SAP Ariba (REST).
+#
+# Rules address Ariba data as TABLE.FIELD (e.g. ARIBA_PO.ORDER_ID). A table's
+# `source` is the REST path the Ariba connector reads; a field's `source` is
+# the JSON property of each item, exactly as sap/ariba.py
+# (ARIBA_MODULE_ENDPOINTS) requests it. SUPPLIER on contracts, orders and
+# invoices is taken to hold the supplier ID (ARIBA_SUPPLIER.VENDOR_ID).
+# Types: STRING, DATETIME, DECIMAL. length 0 = not fixed.
+
+system: ariba
+tables:
+  ARIBA_SUPPLIER:
+    description: Supplier (sourcing / supplier management)
+    source: /api/sourcing-approval/v1/prod/vendors
+    keys: [VENDOR_ID]
+    fields:
+      VENDOR_ID:             {source: VendorId, type: STRING, description: Supplier ID}
+      NAME:                  {source: Name, type: STRING, description: Supplier name}
+      COUNTRY:               {source: Country, type: STRING, description: Country}
+      REGION:                {source: Region, type: STRING, description: Region}
+      CITY:                  {source: City, type: STRING, description: City}
+      STATUS:                {source: Status, type: STRING, description: Status}
+      QUALIFICATION_STATUS:  {source: QualificationStatus, type: STRING, description: Qualification status}
+      CATEGORY:              {source: Category, type: STRING, description: Commodity category}
+      REGISTRATION_DATE:     {source: RegistrationDate, type: DATETIME, description: Registered on}
+      LAST_UPDATED:          {source: LastUpdated, type: DATETIME, description: Last updated}
+  ARIBA_CONTRACT:
+    description: Contract (contract compliance)
+    source: /api/contract-compliance/v1/prod/contracts
+    keys: [CONTRACT_ID]
+    fields:
+      CONTRACT_ID:           {source: ContractId, type: STRING, description: Contract ID}
+      TITLE:                 {source: Title, type: STRING, description: Title}
+      STATUS:                {source: Status, type: STRING, description: Status}
+      EFFECTIVE_DATE:        {source: EffectiveDate, type: DATETIME, description: Effective from}
+      EXPIRATION_DATE:       {source: ExpirationDate, type: DATETIME, description: Expires on}
+      OWNER:                 {source: Owner, type: STRING, description: Contract owner}
+      SUPPLIER:              {source: Supplier, type: STRING, description: Supplier ID}
+      CONTRACT_AMOUNT:       {source: ContractAmount, type: DECIMAL, description: Contract amount}
+      CURRENCY_CODE:         {source: CurrencyCode, type: STRING, description: Currency (ISO 4217)}
+      COMPLIANCE_STATUS:     {source: ComplianceStatus, type: STRING, description: Compliance status}
+  ARIBA_PO:
+    description: Purchase order (procurement)
+    source: /api/procurement/v2/prod/purchaseOrders
+    keys: [ORDER_ID]
+    fields:
+      ORDER_ID:              {source: OrderId, type: STRING, description: Purchase order ID}
+      TITLE:                 {source: Title, type: STRING, description: Title}
+      STATUS:                {source: Status, type: STRING, description: Status}
+      ORDER_DATE:            {source: OrderDate, type: DATETIME, description: Ordered on}
+      SUPPLIER:              {source: Supplier, type: STRING, description: Supplier ID}
+      TOTAL_AMOUNT:          {source: TotalAmount, type: DECIMAL, description: Order total}
+      CURRENCY_CODE:         {source: CurrencyCode, type: STRING, description: Currency (ISO 4217)}
+      COMPANY_CODE:          {source: CompanyCode, type: STRING, description: ERP company code}
+      PLANT:                 {source: Plant, type: STRING, description: ERP plant}
+      CREATED_BY:            {source: CreatedBy, type: STRING, description: Requester}
+  ARIBA_INVOICE:
+    description: Supplier invoice (procurement)
+    source: /api/procurement/v2/prod/invoices
+    keys: [INVOICE_ID]
+    fields:
+      INVOICE_ID:            {source: InvoiceId, type: STRING, description: Invoice ID}
+      INVOICE_NUMBER:        {source: InvoiceNumber, type: STRING, description: Supplier invoice number}
+      STATUS:                {source: Status, type: STRING, description: Status}
+      INVOICE_DATE:          {source: InvoiceDate, type: DATETIME, description: Invoice date}
+      SUPPLIER:              {source: Supplier, type: STRING, description: Supplier ID}
+      TOTAL_AMOUNT:          {source: TotalAmount, type: DECIMAL, description: Invoice total}
+      CURRENCY_CODE:         {source: CurrencyCode, type: STRING, description: Currency (ISO 4217)}
+      PAYMENT_TERMS:         {source: PaymentTerms, type: STRING, description: Payment terms}
+      PURCHASE_ORDER_ID:     {source: PurchaseOrderId, type: STRING, description: Purchase order ID}

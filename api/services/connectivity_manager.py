@@ -32,7 +32,7 @@ from sap.extraction_registry import (
 logger = logging.getLogger("meridian.connectivity_manager")
 
 RFC_SYSTEM_TYPES = ("ecc", "s4hana_onprem", "ewm")
-CLOUD_SYSTEM_TYPES = ("successfactors", "concur", "ariba", "s4hana_cloud")
+CLOUD_SYSTEM_TYPES = ("successfactors", "concur", "ariba", "s4hana_cloud", "btp")
 
 
 def baseline_key(system_type: str) -> str:
@@ -104,9 +104,10 @@ def connect_sap_system(system_type: str, params: dict):
         ))
         return connector
 
-    elif system_type == "s4hana_cloud":
+    elif system_type in ("s4hana_cloud", "btp"):  # BTP: XSUAA token URL, same OAuth flow
+        from sap.btp import BTPConnector
         from sap.s4hana_cloud import S4HanaCloudConnector
-        connector = S4HanaCloudConnector()
+        connector = BTPConnector() if system_type == "btp" else S4HanaCloudConnector()
         connector.connect(CloudConnectionParams(
             base_url=params["base_url"],
             company_id=params.get("company_id", ""),
@@ -148,7 +149,7 @@ class ConnectivityManager:
                 "password": decrypt_password(self.tenant_id, encrypted) if encrypted else "",
             })
 
-        elif system_type in ("successfactors", "s4hana_cloud", "concur", "ariba"):
+        elif system_type in CLOUD_SYSTEM_TYPES:
             params.update({
                 "base_url": system_row.base_url or "",
                 "company_id": system_row.company_id or "",
@@ -315,6 +316,12 @@ class ConnectivityManager:
                 report()  # final state of every table
             elif system_type == "successfactors":
                 frames, coverage = self._extract_successfactors(connector, modules, dictionary, system_id)
+            elif system_type == "s4hana_cloud":
+                frames, coverage = self._extract_s4hc(connector, modules, dictionary)
+            elif system_type in ("concur", "ariba"):
+                frames, coverage = self._extract_rest(connector, modules, dictionary, system_type)
+            elif system_type == "btp":
+                frames, coverage = self._extract_mapped(connector, system_type, modules)
             else:
                 coverage.append({"table": "*", "status": "no_rule_mapping",
                                  "detail": f"{system_type} data has no rule pack mapped yet; use upload or "
@@ -343,6 +350,42 @@ class ConnectivityManager:
         # a result the RFC user may not read is a gap in the data, not a clean result
         return df, {**entry, "status": "live", "rows": len(df), "results": len(keys), "unauthorised": skipped,
                     "complete": skipped == 0}
+
+    @staticmethod
+    def _extract_mapped(connector, system_type: str, modules: list[str]) -> tuple[dict[str, pd.DataFrame], list[dict]]:
+        """Read the registry's entity sets and land them as the ECC tables the rules read.
+
+        Each target's rename_map is ``{OData property: "TABLE.FIELD"}``; values are
+        normalised to RFC shape (flags 'X'/'', dates YYYYMMDD). A property the
+        service did not return is listed in ``unavailable_fields``, never filled in.
+        """
+        from sap.btp import ecc_value
+
+        frames: dict[str, pd.DataFrame] = {}
+        coverage: list[dict] = []
+        for module in modules:
+            for target in get_extraction_targets(system_type, module, include_config=False):
+                table = next(iter(target.rename_map.values())).split(".", 1)[0]
+                try:
+                    df = connector.read_entity_set(target.source, select=target.fields or None)
+                except SAPConnectorError as e:
+                    coverage.append({"table": table, "status": "failed", "entity": target.source,
+                                     "detail": str(e)[:300]})
+                    continue
+                # an empty entity set has no columns: that is zero rows, not missing fields
+                got = [p for p in target.rename_map if p in df.columns] if len(df) else list(target.rename_map)
+                if not got:
+                    coverage.append({"table": table, "status": "not_in_system", "entity": target.source})
+                    continue
+                df = df.reindex(columns=got).rename(columns=target.rename_map).map(ecc_value).drop_duplicates()
+                frames[table] = df.reset_index(drop=True)
+                coverage.append({"table": table, "status": "live", "rows": len(df), "purpose": "data",
+                                 "entity": target.source, "complete": True,
+                                 "unavailable_fields": sorted(set(target.rename_map) - set(got))})
+        if not coverage:
+            coverage.append({"table": "*", "status": "no_rule_mapping",
+                             "detail": f"no {system_type} entity mapping for {', '.join(modules)}"})
+        return frames, coverage
 
     def _extract_successfactors(self, connector, modules, dictionary, system_id):
         """Assemble SF canonical tables from their source entities (see canonical/successfactors.yaml)."""
@@ -417,6 +460,97 @@ class ConnectivityManager:
             frames[table] = merged
             coverage.append({"table": table, "status": "live", "rows": len(merged),
                              "entities": sorted(by_entity), "unavailable_fields": sorted(unavailable)})
+        return frames, coverage
+
+    @staticmethod
+    def _rule_tables(modules) -> set[str]:
+        """Tables the rules of ``modules`` read, exists-check targets included."""
+        from checks.frames import tables_of
+        from checks.runner import _find_module_yaml, rule_columns, target_columns
+        import yaml as _yaml
+
+        wanted: set[str] = set()
+        for m in modules:
+            try:
+                for r in _yaml.safe_load(_find_module_yaml(m).read_text()).get("rules", []):
+                    wanted |= set(tables_of(rule_columns(r) + target_columns(r)))
+            except FileNotFoundError:
+                continue
+        return wanted
+
+    def _extract_s4hc(self, connector, modules, dictionary):
+        """ECC tables from S/4HANA Cloud OData entities (sap/s4hana_cloud.S4HC_TABLE_MAP), in the
+        internal format RFC delivers: dates YYYYMMDD, flags 'X' / ''."""
+        from checks.types.domain_value_check import _parse_dates
+        from sap.s4hana_cloud import S4HC_TABLE_MAP
+
+        frames, coverage, reads = {}, [], {}
+        for table in sorted(self._rule_tables(modules)):
+            if table not in S4HC_TABLE_MAP:
+                coverage.append({"table": table, "status": "upload_required",
+                                 "detail": "no S/4HANA Cloud OData mapping for this table"})
+                continue
+            entity, fields, required = S4HC_TABLE_MAP[table]
+            if entity not in reads:
+                props = sorted({p for e, f, _ in S4HC_TABLE_MAP.values() if e == entity for p in f.values()})
+                try:
+                    reads[entity] = connector.read_entity_set(entity, select=props)
+                except Exception:
+                    # a property the tenant's API version lacks fails $select: read all, keep what exists
+                    try:
+                        reads[entity] = connector.read_entity_set(entity)
+                    except Exception as e:
+                        reads[entity] = e
+            df = reads[entity]
+            if isinstance(df, Exception):
+                coverage.append({"table": table, "status": "failed", "entity": entity, "detail": str(df)[:300]})
+                continue
+            out = pd.DataFrame(index=df.index)
+            for name, prop in fields.items():
+                if prop not in df.columns:
+                    continue
+                s = df[prop].map(lambda v: ("X" if v else "") if isinstance(v, bool) else v)
+                f = dictionary.field(table, name)
+                if f is not None and (f.type or "").upper() == "DATS":
+                    s = _parse_dates(s).dt.strftime("%Y%m%d").where(s.notna() & s.astype("string").ne(""), "")
+                out[f"{table}.{name}"] = s
+            if required and f"{table}.{required}" in out.columns:
+                out = out[out[f"{table}.{required}"].astype("string").str.strip().fillna("").ne("")]
+            out = out.drop_duplicates()
+            frames[table] = out
+            coverage.append({"table": table, "status": "live", "rows": len(out), "entity": entity,
+                             "unavailable_fields": sorted(n for n, p in fields.items() if p not in df.columns)})
+        return frames, coverage
+
+    def _extract_rest(self, connector, modules, dictionary, system_type):
+        """Concur / Ariba canonical tables (sap/dictionaries/canonical/<system>.yaml): one REST path per
+        table, JSON properties renamed to TABLE.FIELD, booleans as 'true' / 'false'."""
+        frames, coverage = {}, []
+        for table in sorted(self._rule_tables(modules)):
+            t = dictionary.table(table)
+            if t is None or t.provenance != f"canonical:{system_type}":
+                continue
+            props = {f.name: f.source for f in t.fields.values() if f.source}
+            try:
+                df = connector.read_entity_set(t.note, select=sorted(set(props.values())))
+            except Exception as e:
+                coverage.append({"table": table, "status": "failed", "detail": str(e)[:300]})
+                continue
+            out = pd.DataFrame(index=df.index)
+            for name, prop in props.items():
+                if prop in df.columns:
+                    s = df[prop]
+                    if (t.fields[name].type or "").upper() == "BOOLEAN":
+                        s = s.map(lambda v: str(v).lower() if v is not None and v == v else v)
+                    out[f"{table}.{name}"] = s
+            frames[table] = out
+            entry = {"table": table, "status": "live", "rows": len(out),
+                     "unavailable_fields": sorted(n for n, p in props.items() if p not in df.columns)}
+            if t.note in getattr(connector, "own_reports_only", ()):
+                entry.update(partial=True, complete=False,
+                             detail="Concur refused user=ALL; only the API user's own reports were read. "
+                                    "Grant the connection company-wide expense access.")
+            coverage.append(entry)
         return frames, coverage
 
     # -- Extraction ------------------------------------------------------------
@@ -511,7 +645,7 @@ class ConnectivityManager:
                 where=target.filter,
                 max_rows=effective_max,
             )
-        elif system_type in ("successfactors", "s4hana_cloud"):
+        elif system_type in ("successfactors", "s4hana_cloud", "btp"):
             return connector.read_entity_set(
                 target.source,
                 select=target.fields if target.fields else None,

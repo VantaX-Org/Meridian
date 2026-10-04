@@ -188,6 +188,7 @@ def test_ewms_transfer_orders_golden():
                      "LTAP.VLTYP": {"001", "002", "005", "902", "916", "999"}})
     assert found == {
         "EWMS_TO019": {"LGNUM=100|TANUM=0000001005"},           # unconfirmed for 45 days
+        "EWTO033": {"LGNUM=100|TANUM=0000001005"},              # delivery pick open for more than 7 days
         "EWTO003": {"LGNUM=100|TANUM=0000001006"},              # requirement type Z not configured
         "EWTO014": {"LGNUM=100|TANUM=0000001002|TAPOS=0002"},   # batch-managed item without batch
         "EWTO021": {"LGNUM=100|TANUM=0000001007"},              # confirmed before it was created
@@ -355,7 +356,7 @@ def test_grc_compliance_golden():
     assigns = [  # USERROLEID, USER_ID, ROLE, CONNECTOR, VALID_FROM, VALID_TO
         ("UR01", "JSMITH", "R01", "ECPCLNT100", "20240101000000", "99991231235959"),
         ("UR02", "JSMITH", "R03", "ECPCLNT100", "20240101000000", "99991231235959"),
-        ("UR03", "M.NAIDOO", "R02", "ECPCLNT100", "20250301000000", "20261231235959"),  # contractor, end-dated
+        ("UR03", "M.NAIDOO", "R02", "ECPCLNT100", "20250301000000", _stamp(-90, "235959")),  # contractor, end-dated
         ("UR04", "FF_AP_01", "R01", "ECPCLNT100", _stamp(2, "080000"), _stamp(-1, "080000")),  # firefighter, 3 days
         ("UR05", "PKHUMALO", "R04", "S4PCLNT100", "20230615000000", "99991231235959"),
         ("UR06", "PKHUMALO", "R04", "ECPCLNT100", "20230615000000", "99991231235959"),  # same role, other system
@@ -394,6 +395,7 @@ def test_grc_compliance_golden():
                      "GRACROLE.ROLE_TYPE": {"SIN", "COM", "DER", "BUS"}})
     assert found == {
         "GRC005": {f"USERROLEID=UR07{'0' * 28}"},
+        "GRC024": {f"USERROLEID=UR07{'0' * 28}"},                                    # assignment expired over a year ago
         "GRC013": {f"USERROLEID=UR08{'0' * 28}", f"USERROLEID=UR09{'0' * 28}"},
         "GRC002": {f"USERROLEID=UR10{'0' * 28}"},
         "GRC007": {"RISKID=F010"},

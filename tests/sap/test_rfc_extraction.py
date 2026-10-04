@@ -42,6 +42,24 @@ def test_read_table_full_pages_and_splits_wide_tables():
     assert {g for g, n, _ in seen} == set(range(seen[0][1]))
 
 
+def test_wide_table_splits_when_the_no_data_probe_does_not_check_width():
+    # some systems accept any field list with NO_DATA and overflow only on the real read
+    d = get_dictionary("ecc6")
+    rest = sorted((f for f in d.table("KNA1").fields if f not in ("MANDT", "KUNNR")),
+                  key=lambda f: -d.field("KNA1", f).length)
+    cols = ["KUNNR"] + rest[:33]  # 34 fields of mixed length
+    assert sum(d.field("KNA1", c).length for c in cols) > 512
+    df = pd.DataFrame({c: [f"V{i}"[: d.field("KNA1", c).length] for i in range(5)] for c in cols})
+    df["KUNNR"] = [f"{i:010d}" for i in range(5)]
+    conn = FakeRFCConnector({"KNA1": df})
+    conn._conn.probe_checks_width = False
+    out = conn.read_table_full("KNA1", cols, ["KUNNR"])
+    assert len(out) == 5 and set(out.columns) == set(cols)
+    reads = [p["FIELDS"] for fm, p in conn._conn.calls if fm == "RFC_READ_TABLE" and p.get("NO_DATA") != "X"]
+    assert len(reads) > 1
+    assert all(sum(conn._conn._width("KNA1", f["FIELDNAME"]) for f in r) <= 512 for r in reads)
+
+
 def test_read_table_full_pages_by_key_ranges_without_deep_skips():
     # one material with more rows than a page, many with a few: every row once, no deep ROWSKIPS
     matnr = ["000000000000000001"] * 12 + [f"{i:018d}" for i in range(2, 40) for _ in range(3)]

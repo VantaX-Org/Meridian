@@ -71,9 +71,9 @@ def _marc(matnr, werks, beskz, pstat, dismm="PD", dispo="101", disls="EX", sobsl
             "EISBE": eisbe, "XMCNG": ""}
 
 
-def _mbew(matnr, bwkey, vprsv, stprs, verpr, bklas, ekalr="", lvorm="", peinh="1") -> dict:
+def _mbew(matnr, bwkey, vprsv, stprs, verpr, bklas, ekalr="", lvorm="", peinh="1", lbkum="1.000") -> dict:
     return {"MATNR": matnr, "BWKEY": bwkey, "BWTAR": "", "LVORM": lvorm, "VPRSV": vprsv, "STPRS": stprs,
-            "VERPR": verpr, "PEINH": peinh, "BKLAS": bklas, "EKALR": ekalr}
+            "VERPR": verpr, "PEINH": peinh, "BKLAS": bklas, "EKALR": ekalr, "LBKUM": lbkum}
 
 
 def _frames() -> TableFrames:
@@ -174,7 +174,7 @@ def _frames() -> TableFrames:
         _mbew(dead_text, "1000", "V", "0.00", "75.30", "3000"),
         _mbew(zero_std, "1000", "S", "0.00", "0.00", "7900", ekalr="X"),
         _mbew(deleted, "1000", "V", "0.00", "60.00", "3000"),
-        _mbew(zero_peinh, "1000", "V", "0.00", "0.00", "3040", peinh="0"),
+        _mbew(zero_peinh, "1000", "V", "0.00", "0.00", "3040", peinh="0", lbkum="0.000"),
         _mbew(no_gewei, "1000", "V", "0.00", "1450.00", "3100"),
         _mbew(neg_insp, "1000", "V", "0.00", "71.20", "3000"),
         _mbew(max_below_rop, "1000", "V", "0.00", "131.00", "3040"),
@@ -206,6 +206,13 @@ def _frames() -> TableFrames:
                                 (seal, "0001", "64.000", "0.000"), (bearing, "0002", "85.000", "0.000"),
                                 (neg_insp, "0001", "300.000", "5.000-")]
     ])
+    # every default procurement storage location is extended (MM235), even where nothing is in stock yet
+    have = set(zip(mard["MARD.MATNR"], mard["MARD.WERKS"], mard["MARD.LGORT"]))
+    empty = {**mard.iloc[0].to_dict(), "MARD.LABST": "0.000", "MARD.INSME": "0.000"}
+    mard = pd.concat([mard, pd.DataFrame([
+        {**empty, "MARD.MATNR": m, "MARD.WERKS": w, "MARD.LGORT": lg}
+        for m, w, lg in zip(marc["MARC.MATNR"], marc["MARC.WERKS"], marc["MARC.LGFSB"]) if lg and (m, w, lg) not in have
+    ])], ignore_index=True)
     return TableFrames({"MARA": mara, "MAKT": makt, "MARC": marc, "MBEW": mbew, "MVKE": mvke, "MARM": marm,
                         "MARD": mard}, D,
                        module="material_master")
