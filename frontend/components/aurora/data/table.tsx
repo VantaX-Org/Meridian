@@ -11,8 +11,9 @@
  * 28 / 36 / 44 px for compact / default / comfortable.
  *
  * Consumers pass typed `columns` via `@tanstack/react-table` helpers and
- * `data` as an array. Sorting, filtering, and selection remain responsibilities
- * of the consuming page for now; group-by / tree views come in WS7.
+ * `data` as an array. Columns with an accessor sort on header click (asc,
+ * desc, off); pass `sortable={false}` to opt out when the page sorts on the
+ * server. Filtering and selection remain the consuming page's job.
  */
 
 "use client";
@@ -20,9 +21,11 @@
 import {
   flexRender,
   getCoreRowModel,
+  getSortedRowModel,
   type ColumnDef,
   type Row,
   type RowData,
+  type SortingState,
   useReactTable,
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -43,10 +46,14 @@ export type AuroraColumnMeta = {
   sticky?: "start";
   /** Fixed column width in px. Leave undefined for flex. */
   width?: number;
+  /** Floor for a flex column, so it scrolls instead of collapsing on narrow screens. */
+  minWidth?: number;
   /** Justify cell content. Numerics should be `end`. */
   align?: "start" | "center" | "end";
   /** Render numbers tabular + lining. */
   numeric?: boolean;
+  /** SAP identifiers (MATNR, BUKRS, check IDs, record keys) in the mono face. */
+  mono?: boolean;
 };
 
 declare module "@tanstack/react-table" {
@@ -70,6 +77,8 @@ export interface DataTableProps<TRow> {
   className?: string;
   /** Accessible caption for screen readers. */
   ariaLabel?: string;
+  /** Header-click sorting on accessor columns. Defaults to on. */
+  sortable?: boolean;
 }
 
 export function DataTable<TRow>({
@@ -82,7 +91,9 @@ export function DataTable<TRow>({
   empty,
   className,
   ariaLabel,
+  sortable = true,
 }: DataTableProps<TRow>) {
+  const [sorting, setSorting] = useState<SortingState>([]);
   const [focusedIndex, setFocusedIndex] = useState<number>(-1);
   // Mirror of focusedIndex kept in a ref so rapid J/K repeats read the
   // latest value before React commits the next render — otherwise the
@@ -99,6 +110,10 @@ export function DataTable<TRow>({
     columns,
     getRowId: (row, index) => getRowId(row, index),
     getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    enableSorting: sortable,
+    state: { sorting },
+    onSortingChange: setSorting,
   });
 
   const rows = table.getRowModel().rows;
@@ -196,21 +211,39 @@ export function DataTable<TRow>({
                 const meta = header.column.columnDef.meta as
                   | AuroraColumnMeta
                   | undefined;
+                const label = header.isPlaceholder
+                  ? null
+                  : flexRender(
+                      header.column.columnDef.header,
+                      header.getContext(),
+                    );
+                const canSort = header.column.getCanSort();
+                const dir = header.column.getIsSorted();
                 return (
                   <div
                     key={header.id}
                     role="columnheader"
+                    aria-sort={dir ? (dir === "asc" ? "ascending" : "descending") : undefined}
                     className="aurora-table__cell aurora-table__cell--header"
                     data-sticky={meta?.sticky}
                     data-align={meta?.align}
                     style={cellStyle(meta)}
                   >
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext(),
-                        )}
+                    {canSort ? (
+                      <button
+                        type="button"
+                        className="aurora-table__sort"
+                        data-dir={dir || undefined}
+                        onClick={header.column.getToggleSortingHandler()}
+                      >
+                        {label}
+                        <span aria-hidden className="aurora-table__sort-mark">
+                          {dir === "asc" ? "↑" : dir === "desc" ? "↓" : ""}
+                        </span>
+                      </button>
+                    ) : (
+                      label
+                    )}
                   </div>
                 );
               })}
@@ -286,6 +319,7 @@ function VirtualRow<TRow>({
             data-sticky={meta?.sticky}
             data-align={meta?.align}
             data-numeric={meta?.numeric ? "true" : undefined}
+            data-mono={meta?.mono ? "true" : undefined}
             style={cellStyle(meta)}
           >
             {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -300,7 +334,7 @@ function cellStyle(meta: AuroraColumnMeta | undefined): CSSProperties {
   if (meta?.width !== undefined) {
     return { width: meta.width, flexGrow: 0, flexShrink: 0 };
   }
-  return { flex: "1 1 0", minWidth: 0 };
+  return { flex: "1 1 0", minWidth: meta?.minWidth ?? 0 };
 }
 
 /**

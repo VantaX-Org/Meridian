@@ -1,143 +1,145 @@
 /**
- * Aurora design-system CSS variables.
+ * Meridian design tokens (CSS variables).
  *
  * Source of truth is frontend/lib/aurora/tokens.ts; every value below
- * mirrors that file. `:root` serves the dark theme (the product default);
- * `[data-theme="light"]` swaps in the light canvas and adjusts ink mapping.
+ * mirrors that file. See frontend/DESIGN.md for the reasoning.
  *
- * WS1 — tokens + surface variables only. Components, density utilities,
- * signature-moment keyframes land in WS2–WS5.
+ * Light ("paper") is the default: `:root` carries it, and so does an
+ * explicit `[data-theme="light"]`. `[data-theme="dark"]` overrides the
+ * theme-dependent values only. Variable names keep the historical
+ * `--aurora-*` prefix so existing call sites keep resolving.
  */
 
 :root,
-[data-theme="dark"] {
-  /* §5.1.1 Ink — foreground / text scale */
+[data-theme="light"] {
+  /* Ink — neutral scale, theme-independent ramp */
   --aurora-ink-0: #ffffff;
-  --aurora-ink-50: #f7f8fa;
-  --aurora-ink-100: #e7ecf2;
-  --aurora-ink-200: #c7d0dc;
-  --aurora-ink-300: #99a5b8;
-  --aurora-ink-400: #748399;
-  --aurora-ink-500: #4a5669;
-  --aurora-ink-600: #2e3847;
-  --aurora-ink-700: #1a2230;
-  --aurora-ink-800: #101622;
-  --aurora-ink-900: #0a0e1a;
-  --aurora-ink-950: #05070f;
+  --aurora-ink-50: #f3f4f2;
+  --aurora-ink-100: #e8eae7;
+  --aurora-ink-200: #dadDd8;
+  --aurora-ink-300: #b9bdb7;
+  --aurora-ink-400: #8a908b;
+  --aurora-ink-500: #646b67;
+  --aurora-ink-600: #4a504d;
+  --aurora-ink-700: #333836;
+  --aurora-ink-800: #222628;
+  --aurora-ink-900: #15181a;
+  --aurora-ink-950: #0c0e0f;
 
-  /* §5.1.2 Canvas — dark defaults */
-  --aurora-canvas-base: #060910;
-  --aurora-canvas-raised: #0b1019;
-  --aurora-canvas-elevated: #111827;
-  --aurora-canvas-overlay: #16203a;
-  --aurora-canvas-line: #1f2b45;
+  /* Canvas: paper, sheet, rule */
+  --aurora-canvas-base: #f3f4f2;
+  --aurora-canvas-raised: #ffffff;
+  --aurora-canvas-elevated: #ffffff;
+  --aurora-canvas-overlay: #e8eae7;
+  --aurora-canvas-line: #dadDd8;
+  --aurora-canvas-line-strong: #b9bdb7;
 
-  /* Foreground mapping for the dark theme */
-  --aurora-fg-primary: var(--aurora-ink-50);
-  --aurora-fg-secondary: var(--aurora-ink-200);
-  --aurora-fg-tertiary: var(--aurora-ink-300);
-  --aurora-fg-muted: var(--aurora-ink-400);
-  --aurora-fg-disabled: var(--aurora-ink-500);
-  --aurora-fg-inverse: var(--aurora-ink-900);
+  --aurora-fg-primary: var(--aurora-ink-900);
+  --aurora-fg-secondary: var(--aurora-ink-700);
+  --aurora-fg-tertiary: var(--aurora-ink-600);
+  --aurora-fg-muted: var(--aurora-ink-500);
+  --aurora-fg-disabled: var(--aurora-ink-400);
+  --aurora-fg-inverse: var(--aurora-ink-0);
 
-  /* §5.1.3 Accent — SAP Fiori Horizon blue, one shade deeper */
-  --aurora-accent-50: #eaf2ff;
-  --aurora-accent-100: #ccdfff;
-  --aurora-accent-200: #99bfff;
-  --aurora-accent-300: #7fb0ff;
-  --aurora-accent-400: #4f93ff;
-  --aurora-accent-500: #2b7bff;
-  --aurora-accent-600: #1e5fd6;
-  --aurora-accent-700: #174aae;
-  --aurora-accent-800: #12397f;
-  --aurora-accent-900: #0c2756;
-  /* Selected-state fills derived from accent-500 — chips, filter pills,
-     any `data-selected="true"` surface. Keeps raw rgba() out of call sites. */
-  --aurora-accent-selected-bg: rgba(43, 123, 255, 0.18);
-  --aurora-accent-selected-border: rgba(43, 123, 255, 0.36);
+  /* Primary action: ink-solid, never the accent */
+  --aurora-action-bg: var(--aurora-ink-900);
+  --aurora-action-bg-hover: var(--aurora-ink-700);
+  --aurora-action-fg: var(--aurora-ink-0);
 
-  /* §5.1.4 Semantic status — used exclusively for status */
-  --aurora-status-success-500: #27c281;
-  --aurora-status-success-bg: rgba(39, 194, 129, 0.12);
-  --aurora-status-success-border: rgba(39, 194, 129, 0.34);
+  /* Accent: petrol. Selection, focus and links only. */
+  --aurora-accent-50: #e6f1f3;
+  --aurora-accent-100: #c4dde2;
+  --aurora-accent-200: #93c2cc;
+  --aurora-accent-300: #5fa3b2;
+  --aurora-accent-400: #2f8295;
+  --aurora-accent-500: #0e5a6b;
+  --aurora-accent-600: #0b4a58;
+  --aurora-accent-700: #093c48;
+  --aurora-accent-800: #072e37;
+  --aurora-accent-900: #052128;
+  --aurora-accent-selected-bg: rgba(14, 90, 107, 0.09);
+  --aurora-accent-selected-border: rgba(14, 90, 107, 0.36);
 
-  --aurora-status-warning-500: #f2b134;
-  --aurora-status-warning-bg: rgba(242, 177, 52, 0.12);
-  --aurora-status-warning-border: rgba(242, 177, 52, 0.34);
+  /* Status = severity. The only colour besides petrol. */
+  --aurora-status-danger-500: #b42318;
+  --aurora-status-danger-bg: rgba(180, 35, 24, 0.08);
+  --aurora-status-danger-border: rgba(180, 35, 24, 0.32);
 
-  --aurora-status-danger-500: #ff4d4f;
-  --aurora-status-danger-bg: rgba(255, 77, 79, 0.14);
-  --aurora-status-danger-border: rgba(255, 77, 79, 0.38);
+  --aurora-status-high-500: #c4500b;
+  --aurora-status-high-bg: rgba(196, 80, 11, 0.08);
+  --aurora-status-high-border: rgba(196, 80, 11, 0.32);
 
-  --aurora-status-info-500: #2b7bff;
-  --aurora-status-info-bg: rgba(43, 123, 255, 0.1);
-  --aurora-status-info-border: rgba(43, 123, 255, 0.3);
+  --aurora-status-warning-500: #a86a00;
+  --aurora-status-warning-bg: rgba(168, 106, 0, 0.09);
+  --aurora-status-warning-border: rgba(168, 106, 0, 0.32);
 
-  /* Signal — in-flight state only (running job, live stream). Not a status. */
-  --aurora-signal-500: #22d3ee;
-  --aurora-signal-bg: rgba(34, 211, 238, 0.12);
-  --aurora-signal-border: rgba(34, 211, 238, 0.36);
+  --aurora-status-success-500: #23794a;
+  --aurora-status-success-bg: rgba(35, 121, 74, 0.08);
+  --aurora-status-success-border: rgba(35, 121, 74, 0.3);
 
-  /* §5.1.5 Data visualisation — categorical (iterate in order) */
-  --aurora-viz-1: #54a0ff;
-  --aurora-viz-2: #e76500;
-  --aurora-viz-3: #30d5a8;
-  --aurora-viz-4: #ffba6b;
-  --aurora-viz-5: #a77dff;
-  --aurora-viz-6: #f87ac4;
-  --aurora-viz-7: #6ae6f5;
-  --aurora-viz-8: #f5d76e;
-  --aurora-viz-9: #7bd389;
-  --aurora-viz-10: #ff8a65;
-  --aurora-viz-11: #96b6ff;
-  --aurora-viz-12: #d8a2dc;
+  --aurora-status-info-500: var(--aurora-accent-500);
+  --aurora-status-info-bg: var(--aurora-accent-selected-bg);
+  --aurora-status-info-border: var(--aurora-accent-selected-border);
 
-  /* Sequential — blue (low → high) */
-  --aurora-viz-seq-blue-1: #0f1d3d;
-  --aurora-viz-seq-blue-2: #1a3e85;
-  --aurora-viz-seq-blue-3: #2d5fc8;
-  --aurora-viz-seq-blue-4: #5488f1;
-  --aurora-viz-seq-blue-5: #8fb4ff;
-  --aurora-viz-seq-blue-6: #d0e2ff;
+  /* In-flight state (running job). Same petrol, never an outcome. */
+  --aurora-signal-500: var(--aurora-accent-500);
+  --aurora-signal-bg: var(--aurora-accent-selected-bg);
+  --aurora-signal-border: var(--aurora-accent-selected-border);
 
-  /* Sequential — amber (low → high) */
-  --aurora-viz-seq-amber-1: #2a1a00;
-  --aurora-viz-seq-amber-2: #4f3100;
-  --aurora-viz-seq-amber-3: #7f5200;
-  --aurora-viz-seq-amber-4: #b57a1d;
-  --aurora-viz-seq-amber-5: #e8a656;
-  --aurora-viz-seq-amber-6: #ffce99;
+  /* Data visualisation: categorical, iterate in order */
+  --aurora-viz-1: #0e5a6b;
+  --aurora-viz-2: #c4500b;
+  --aurora-viz-3: #5b6f8a;
+  --aurora-viz-4: #a86a00;
+  --aurora-viz-5: #6d5a8e;
+  --aurora-viz-6: #23794a;
+  --aurora-viz-7: #8e4b5f;
+  --aurora-viz-8: #4f8a8b;
+  --aurora-viz-9: #7a6a3a;
+  --aurora-viz-10: #3d6fa3;
+  --aurora-viz-11: #9a5b2e;
+  --aurora-viz-12: #646b67;
 
-  /* Diverging — red/green for trend deltas */
-  --aurora-viz-div-1: #bb0000;
-  --aurora-viz-div-2: #e87272;
-  --aurora-viz-div-3: #f5baba;
-  --aurora-viz-div-4: #d5dadd;
-  --aurora-viz-div-5: #b8e4c6;
-  --aurora-viz-div-6: #5dc488;
-  --aurora-viz-div-7: #0b7341;
+  /* Sequential (name kept): petrol, low to high */
+  --aurora-viz-seq-blue-1: #e6f1f3;
+  --aurora-viz-seq-blue-2: #c4dde2;
+  --aurora-viz-seq-blue-3: #93c2cc;
+  --aurora-viz-seq-blue-4: #5fa3b2;
+  --aurora-viz-seq-blue-5: #2f8295;
+  --aurora-viz-seq-blue-6: #0e5a6b;
 
-  /* §5.2 The only gradient in the product */
-  --aurora-verdict-halo: radial-gradient(
-    ellipse at center,
-    rgba(43, 123, 255, 0.26) 0%,
-    rgba(34, 211, 238, 0.14) 35%,
-    rgba(167, 125, 255, 0.08) 60%,
-    transparent 80%
-  );
+  --aurora-viz-seq-amber-1: #f7eedc;
+  --aurora-viz-seq-amber-2: #ecd5a6;
+  --aurora-viz-seq-amber-3: #dbb76a;
+  --aurora-viz-seq-amber-4: #c4952f;
+  --aurora-viz-seq-amber-5: #a86a00;
+  --aurora-viz-seq-amber-6: #7a4d00;
 
-  /* §5.3.1 Type faces. Next.js next/font loads Inter + JetBrains Mono into
-     --font-sans / --font-display / --font-mono (see app/layout.tsx). Aurora
-     display prefers Söhne when the licensed webfont is installed; falls
-     through to Inter. */
-  --aurora-font-display: "Söhne", var(--font-display), "Inter", system-ui,
-    -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --aurora-font-ui: var(--font-sans), "Inter", system-ui, -apple-system,
-    BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --aurora-font-mono: var(--font-mono), "JetBrains Mono", ui-monospace,
-    SFMono-Regular, Menlo, monospace;
+  /* Diverging: critical to OK */
+  --aurora-viz-div-1: #b42318;
+  --aurora-viz-div-2: #d9776d;
+  --aurora-viz-div-3: #efc4bf;
+  --aurora-viz-div-4: #dadDd8;
+  --aurora-viz-div-5: #b9dcc7;
+  --aurora-viz-div-6: #5fa67d;
+  --aurora-viz-div-7: #23794a;
 
-  /* §5.4 Spacing — four-pixel grid */
+  /* Retired: the verdict halo. Kept as a variable so old rules resolve. */
+  --aurora-verdict-halo: none;
+
+  /* Type: Atkinson Hyperlegible Next (UI) and Mono (SAP identifiers only) */
+  --aurora-font-display: var(--font-sans), system-ui, -apple-system,
+    "Segoe UI", sans-serif;
+  --aurora-font-ui: var(--font-sans), system-ui, -apple-system, "Segoe UI",
+    sans-serif;
+  --aurora-font-mono: var(--font-mono), ui-monospace, SFMono-Regular, Menlo,
+    monospace;
+
+  /* Radii: controls and sheets. Nothing else. */
+  --aurora-radius-control: 4px;
+  --aurora-radius-sheet: 6px;
+  --aurora-scrim: rgba(21, 24, 26, 0.32);
+
   --aurora-space-1: 4px;
   --aurora-space-2: 8px;
   --aurora-space-3: 12px;
@@ -149,12 +151,10 @@
   --aurora-space-16: 64px;
   --aurora-space-24: 96px;
 
-  /* §5.4.1 Density — default tier */
   --aurora-density-row: 36px;
   --aurora-density-card-padding: 16px;
   --aurora-density-table-size: 14px;
 
-  /* §5.5 Motion */
   --aurora-duration-instant: 80ms;
   --aurora-duration-fast: 160ms;
   --aurora-duration-medium: 240ms;
@@ -163,72 +163,104 @@
   --aurora-easing-enter: cubic-bezier(0, 0, 0.2, 1);
   --aurora-easing-exit: cubic-bezier(0.4, 0, 1, 1);
 
-  /* §5.6 Elevation — dark = brightness shift, shadow = 0 */
+  /* Elevation: sheets sit flat on paper; shadow only on overlays (2, 3). */
   --aurora-elev-0-bg: var(--aurora-canvas-base);
   --aurora-elev-1-bg: var(--aurora-canvas-raised);
   --aurora-elev-2-bg: var(--aurora-canvas-elevated);
   --aurora-elev-3-bg: var(--aurora-canvas-elevated);
-  --aurora-elev-4-bg: var(--aurora-canvas-elevated);
+  --aurora-elev-4-bg: var(--aurora-canvas-raised);
   --aurora-elev-0-shadow: none;
   --aurora-elev-1-shadow: none;
-  --aurora-elev-2-shadow: none;
-  --aurora-elev-3-shadow: none;
-  --aurora-elev-4-shadow: 0 0 0 1px rgba(0, 87, 210, 0.4),
-    0 0 48px rgba(0, 87, 210, 0.24);
+  --aurora-elev-2-shadow: 0 4px 12px rgba(21, 24, 26, 0.08);
+  --aurora-elev-3-shadow: 0 12px 32px rgba(21, 24, 26, 0.16);
+  --aurora-elev-4-shadow: none;
 
-  /* §7.3 Focus ring */
   --aurora-focus-ring-width: 2px;
   --aurora-focus-ring-offset: 2px;
   --aurora-focus-ring-colour: var(--aurora-accent-500);
 
-  /* §5.4.1 Compact / comfortable are applied by `[data-density=...]` */
+  color-scheme: light;
 }
 
-/* Browser-native UA rendering (scrollbars, <select>, <input type=date>, …)
-   follows `color-scheme`. During the WS1–WS7 transition the legacy Fiori
-   dashboard still renders on a light canvas at `<html>`, so we scope the
-   dark UA hint to explicit `[data-theme="dark"]` opt-ins (the Aurora token
-   playground today, Aurora workspaces from WS4 onwards). `:root` stays on
-   the browser default to prevent dark scrollbars / dark `<select>` drop-
-   downs bleeding into legacy light pages. */
 [data-theme="dark"] {
-  color-scheme: dark;
-}
+  --aurora-canvas-base: #141617;
+  --aurora-canvas-raised: #1b1e20;
+  --aurora-canvas-elevated: #222628;
+  --aurora-canvas-overlay: #2a2f32;
+  --aurora-canvas-line: #2c3134;
+  --aurora-canvas-line-strong: #41484c;
 
-[data-theme="light"] {
-  /* §5.1.2 Canvas — light alternative */
-  --aurora-canvas-base: #f7f8fa;
-  --aurora-canvas-raised: #ffffff;
-  --aurora-canvas-elevated: #ffffff;
-  --aurora-canvas-overlay: #eef2f7;
-  --aurora-canvas-line: #d5dadd;
-
-  /* Foreground mapping inverts for light canvas */
-  --aurora-fg-primary: var(--aurora-ink-900);
-  --aurora-fg-secondary: var(--aurora-ink-700);
-  --aurora-fg-tertiary: var(--aurora-ink-500);
+  --aurora-fg-primary: var(--aurora-ink-100);
+  --aurora-fg-secondary: var(--aurora-ink-200);
+  --aurora-fg-tertiary: var(--aurora-ink-300);
   --aurora-fg-muted: var(--aurora-ink-400);
-  --aurora-fg-disabled: var(--aurora-ink-300);
-  --aurora-fg-inverse: var(--aurora-ink-50);
+  --aurora-fg-disabled: var(--aurora-ink-500);
+  --aurora-fg-inverse: var(--aurora-ink-900);
 
-  /* §5.6 Elevation on light canvas = shadow, not brightness. Level 4 (the
-     verdict card) still carries the accent glow on both themes. The surface
-     tokens are re-declared here: a var() in a custom property resolves where
-     it is declared, so the :root mapping would keep the dark canvas inside a
-     light subtree. */
+  --aurora-action-bg: var(--aurora-ink-100);
+  --aurora-action-bg-hover: var(--aurora-ink-0);
+  --aurora-action-fg: var(--aurora-ink-900);
+
+  --aurora-accent-400: #7cc8d5;
+  --aurora-accent-500: #4fb3c4;
+  --aurora-accent-600: #3a95a5;
+  --aurora-accent-selected-bg: rgba(79, 179, 196, 0.14);
+  --aurora-accent-selected-border: rgba(79, 179, 196, 0.42);
+
+  --aurora-status-danger-500: #f0705f;
+  --aurora-status-danger-bg: rgba(240, 112, 95, 0.12);
+  --aurora-status-danger-border: rgba(240, 112, 95, 0.4);
+  --aurora-status-high-500: #f08a4b;
+  --aurora-status-high-bg: rgba(240, 138, 75, 0.12);
+  --aurora-status-high-border: rgba(240, 138, 75, 0.4);
+  --aurora-status-warning-500: #e0b04a;
+  --aurora-status-warning-bg: rgba(224, 176, 74, 0.12);
+  --aurora-status-warning-border: rgba(224, 176, 74, 0.4);
+  --aurora-status-success-500: #5cc48a;
+  --aurora-status-success-bg: rgba(92, 196, 138, 0.12);
+  --aurora-status-success-border: rgba(92, 196, 138, 0.38);
+
+  /* var() resolves where it is declared: re-declare the derived tokens */
+  --aurora-status-info-500: var(--aurora-accent-500);
+  --aurora-status-info-bg: var(--aurora-accent-selected-bg);
+  --aurora-status-info-border: var(--aurora-accent-selected-border);
+  --aurora-signal-500: var(--aurora-accent-500);
+  --aurora-signal-bg: var(--aurora-accent-selected-bg);
+  --aurora-signal-border: var(--aurora-accent-selected-border);
+  --aurora-focus-ring-colour: var(--aurora-accent-500);
+
+  --aurora-viz-1: #4fb3c4;
+  --aurora-viz-2: #f08a4b;
+  --aurora-viz-3: #9aaccb;
+  --aurora-viz-4: #e0b04a;
+  --aurora-viz-5: #b3a1d6;
+  --aurora-viz-6: #5cc48a;
+  --aurora-viz-7: #d98aa0;
+  --aurora-viz-8: #86c7c8;
+  --aurora-viz-9: #c9b77d;
+  --aurora-viz-10: #7fa9d9;
+  --aurora-viz-11: #d39a6c;
+  --aurora-viz-12: #a3a9a5;
+
+  --aurora-viz-seq-blue-1: #17363d;
+  --aurora-viz-seq-blue-2: #1f4f59;
+  --aurora-viz-seq-blue-3: #2a6c79;
+  --aurora-viz-seq-blue-4: #3a8d9d;
+  --aurora-viz-seq-blue-5: #4fb3c4;
+  --aurora-viz-seq-blue-6: #9fd7e0;
+
+  --aurora-viz-div-4: #41484c;
+
   --aurora-elev-0-bg: var(--aurora-canvas-base);
   --aurora-elev-1-bg: var(--aurora-canvas-raised);
   --aurora-elev-2-bg: var(--aurora-canvas-elevated);
   --aurora-elev-3-bg: var(--aurora-canvas-elevated);
-  --aurora-elev-4-bg: var(--aurora-canvas-elevated);
-  --aurora-elev-0-shadow: none;
-  --aurora-elev-1-shadow: 0 1px 2px rgba(10, 14, 26, 0.06);
-  --aurora-elev-2-shadow: 0 2px 8px rgba(10, 14, 26, 0.08);
-  --aurora-elev-3-shadow: 0 8px 24px rgba(10, 14, 26, 0.12);
-  --aurora-elev-4-shadow: 0 16px 40px rgba(10, 14, 26, 0.16),
-    0 0 0 1px rgba(43, 123, 255, 0.4), 0 0 48px rgba(43, 123, 255, 0.24);
+  --aurora-elev-4-bg: var(--aurora-canvas-raised);
+  --aurora-elev-2-shadow: 0 4px 12px rgba(0, 0, 0, 0.32);
+  --aurora-elev-3-shadow: 0 12px 32px rgba(0, 0, 0, 0.48);
 
-  color-scheme: light;
+  color-scheme: dark;
+  --aurora-scrim: rgba(0, 0, 0, 0.56);
 }
 
 [data-density="compact"] {
@@ -243,17 +275,10 @@
   --aurora-density-table-size: 14px;
 }
 
-/* §5.3.3 Numerical formatting — opt in on any numeric element */
 .aurora-number {
   font-variant-numeric: tabular-nums lining-nums;
-  font-feature-settings: "tnum" 1, "lnum" 1, "ss02" 1;
 }
 
-/* §5.5.1 Reduced motion — disables verdict entrance, process-graph
-   materialisation, drawer spring, kanban drops (medium + slow). Focus
-   rings, state toggles, hover, menu opens, popovers, toasts continue to
-   animate at their normal timings — per CLAUDE.md "never focus rings or
-   state toggles". */
 @media (prefers-reduced-motion: reduce) {
   :root,
   [data-theme="dark"],

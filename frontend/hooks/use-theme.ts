@@ -26,7 +26,7 @@ function subscribe(cb: () => void) {
 
 /** Theme + density, persisted per browser and applied to <html> as data-theme / data-density. */
 export function useAuroraPrefs() {
-  const theme = useSyncExternalStore(subscribe, () => read<Theme>(THEME_KEY, "dark"), () => "dark" as Theme);
+  const theme = useSyncExternalStore(subscribe, () => read<Theme>(THEME_KEY, "light"), () => "light" as Theme);
   const density = useSyncExternalStore(
     subscribe,
     () => read<DensityTier>(DENSITY_STORAGE_KEY, DEFAULT_DENSITY),

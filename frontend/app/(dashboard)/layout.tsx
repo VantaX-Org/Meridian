@@ -5,15 +5,15 @@
  * workspace underneath. Five workspaces (lib/workspaces.ts), ⌘1–⌘5 to switch,
  * ⌘K for everything else. The nav itself lives in lib/nav.ts and feeds the
  * palette and the titles here, so a page is never named differently in two
- * places. Pages that are not a workspace hub render inside a light sheet
- * until their Aurora surface lands.
+ * places. Pages not yet rebuilt on components/ui-core render inside the
+ * legacy host.
  */
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo } from "react";
 import {
-  ClipboardList, Command as CommandIcon, Database, LayoutDashboard, Moon, Rows3, Settings2, Sun, Workflow,
+  ClipboardList, Database, LayoutDashboard, Moon, Rows3, Search, Settings2, Sun, Workflow,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell, Breadcrumb, WorkspaceSwitcher } from "@/components/aurora";
@@ -97,7 +97,7 @@ function Shell({ children }: { children: React.ReactNode }) {
             href="/settings/licence"
             className="aurora-rail__licence"
             data-state={licenceOk === true ? "ok" : licenceOk === false ? "bad" : "unknown"}
-            title={licenceOk === true ? "Licensed" : licenceOk === false ? "Licence problem" : "Checking licence…"}
+            title={licenceOk === true ? "Licence valid" : licenceOk === false ? "Licence problem: open licence settings" : "Checking licence"}
             aria-label="Licence"
           />
         </>
@@ -111,8 +111,8 @@ function Shell({ children }: { children: React.ReactNode }) {
           <div className="aurora-topbar__spacer" />
           <JobRail />
           <button type="button" className="aurora-topbar__cmdk aurora-focus-ring" onClick={() => setCmdkOpen(true)}
-                  aria-label="Open command palette">
-            <CommandIcon size={13} aria-hidden /> <span>K</span>
+                  aria-label="Search and go to (Command K)">
+            <Search size={14} aria-hidden /> <span>Search and go to</span> <kbd>⌘K</kbd>
           </button>
           {can("export") ? <HeaderExportMenu /> : null}
           <NotificationBell />

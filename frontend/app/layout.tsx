@@ -1,32 +1,27 @@
 import type { Metadata } from "next";
-import { Inter, Inter_Tight, JetBrains_Mono } from "next/font/google";
+import { Atkinson_Hyperlegible_Mono, Atkinson_Hyperlegible_Next } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { Providers } from "@/lib/providers";
 import "./globals.css";
 
-const inter = Inter({
+// One family, two widths: Next for the interface, Mono for SAP identifiers.
+// Both were drawn so 0/O and 1/l/I never collide.
+const sans = Atkinson_Hyperlegible_Next({
   variable: "--font-sans",
   subsets: ["latin"],
   display: "swap",
 });
 
-const interTight = Inter_Tight({
-  variable: "--font-display",
-  subsets: ["latin"],
-  display: "swap",
-  weight: ["500", "600", "700"],
-});
-
-const jetbrainsMono = JetBrains_Mono({
+const mono = Atkinson_Hyperlegible_Mono({
   variable: "--font-mono",
   subsets: ["latin"],
   display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "Meridian — SAP Data Quality Agent",
-  description: "Analyse and improve SAP data quality for S/4HANA migration",
+  title: "Meridian",
+  description: "SAP master-data quality, scored and routed to the people who fix it",
 };
 
 export default function RootLayout({
@@ -38,7 +33,7 @@ export default function RootLayout({
     <AuthProvider>
       <html lang="en">
         <body
-          className={`${inter.variable} ${interTight.variable} ${jetbrainsMono.variable} font-sans antialiased`}
+          className={`${sans.variable} ${mono.variable} font-sans antialiased`}
         >
           <Providers>
             {children}

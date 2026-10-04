@@ -23,6 +23,7 @@ import {
   type AuroraColumnMeta,
   type ChipTone,
 } from "@/components/aurora";
+import { ReasonButton } from "@/components/ui-core";
 import {
   commentIssue,
   exportIssues,
@@ -221,7 +222,8 @@ function IssuesWorkList() {
               {can("approve") && (
                 <>
                   <Button size="sm" variant="ghost" onClick={() => bulk.mutate({ ids, status: "accepted", resolution: "accepted_risk" })}>Accept risk</Button>
-                  <Button size="sm" variant="ghost" onClick={() => bulk.mutate({ ids, status: "accepted", resolution: "false_positive" })}>False positive</Button>
+                  <ReasonButton size="sm" label="False positive" prompt="Why are these not issues?"
+                    onConfirm={(note) => bulk.mutate({ ids, status: "accepted", resolution: "false_positive", note })} />
                 </>
               )}
             </Stack>

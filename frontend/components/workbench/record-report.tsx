@@ -12,6 +12,7 @@ import { useMemo } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button, Chip, EmptyState, RecordReport, type FixStep, type RecordReportStatus } from "@/components/aurora";
+import { ReasonButton } from "@/components/ui-core";
 import { useRole } from "@/hooks/use-role";
 import { findingToRecordReport } from "@/lib/aurora";
 import { getConfigImpact } from "@/lib/api/connectivity";
@@ -56,7 +57,7 @@ export function RecordReportView({ issueId }: { issueId: string }) {
     queryFn: () => getConfigImpact(latest!.id), meta: { ignoreError: true } });
 
   const transition = useMutation({
-    mutationFn: (body: { status: IssueStatus; resolution?: string }) => updateIssues({ ids: [issueId], ...body }),
+    mutationFn: (body: { status: IssueStatus; resolution?: string; note?: string }) => updateIssues({ ids: [issueId], ...body }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["issue", issueId] }); qc.invalidateQueries({ queryKey: ["issues"] }); },
     onError: (e) => toast.error((e as Error).message || "Not saved"),
   });
@@ -81,7 +82,7 @@ export function RecordReportView({ issueId }: { issueId: string }) {
     .map((r) => ({ id: `${r.system}-${r.feature}`, feature: `${r.feature} · ${r.system}`,
       status: (r.status === "ok" ? "aligned" : r.status) as "blocked" | "degraded" | "aligned", rationale: r.opportunity_cost_summary }));
 
-  const act = (status: IssueStatus, resolution?: string) => transition.mutate({ status, resolution });
+  const act = (status: IssueStatus, resolution?: string, note?: string) => transition.mutate({ status, resolution, note });
   const canAct = can("approve") || can("apply") || can("assign");
 
   return (
@@ -117,7 +118,7 @@ export function RecordReportView({ issueId }: { issueId: string }) {
             {issue.status !== "in_progress" && issue.status !== "resolved" ? <Button variant="secondary" onClick={() => act("in_progress")} disabled={transition.isPending}>Start</Button> : null}
             {issue.status !== "resolved" ? <Button onClick={() => act("resolved", "fixed_in_source")} disabled={transition.isPending}>Fixed in SAP</Button> : null}
             {issue.status !== "accepted" ? <Button variant="ghost" onClick={() => act("accepted", "accepted_risk")} disabled={transition.isPending}>Accept risk</Button> : null}
-            {issue.status !== "accepted" ? <Button variant="ghost" onClick={() => act("accepted", "false_positive")} disabled={transition.isPending}>False positive</Button> : null}
+            {issue.status !== "accepted" ? <ReasonButton label="False positive" prompt="Why is this not an issue?" onConfirm={(note) => act("accepted", "false_positive", note)} disabled={transition.isPending} /> : null}
             {issue.status === "resolved" || issue.status === "accepted" ? <Button variant="ghost" onClick={() => act("open")} disabled={transition.isPending}>Re-open</Button> : null}
             <Chip tone={issue.status === "resolved" ? "success" : issue.status === "accepted" ? "info" : "warning"}>{issue.status.replace("_", " ")}</Chip>
           </>

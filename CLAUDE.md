@@ -246,6 +246,8 @@ RLS policy on every data table — always set `app.tenant_id` before queries.
 
 ## Frontend design system — Aurora (dark-first)
 
+> **Superseded.** The current direction is light-first (paper, ink, petrol accent) and is recorded in `frontend/DESIGN.md`. The token names below are unchanged, but the values, fonts and theme default described here are out of date. Migrated pages use `components/ui-core`.
+
 Aurora is the authoritative design system. Source of truth: `PLAN_AURORA.md`
 at repo root and the Aurora Experience Spec (Parts I–V). Tokens live in
 `frontend/lib/aurora/` and CSS variables in `frontend/app/styles/aurora.css`.

@@ -52,7 +52,7 @@ export function JobRail() {
           </span>
         ) : null}
       </PopoverTrigger>
-      <PopoverContent align="end" sideOffset={8} className="aurora-job-rail__panel" data-theme="dark">
+      <PopoverContent align="end" sideOffset={8} className="aurora-job-rail__panel">
         <div className="aurora-job-rail__head">
           <span>Jobs</span>
           <Link href="/data?tab=runs" onClick={() => setOpen(false)}>All runs →</Link>
