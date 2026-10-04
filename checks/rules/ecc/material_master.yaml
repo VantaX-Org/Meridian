@@ -2758,3 +2758,22 @@ rules:
     __other__: Extend the storage location (MMSC / MM01) or correct the default in MRP 2.
   record_fix_template: 'Material {MARC.MATNR} plant {MARC.WERKS}: default sloc {MARC.LGFSB} not extended.'
 
+- id: MM236
+  field: MAKT.MAKTX
+  check_class: uniqueness_check
+  fields:
+  - MAKT.MAKTX
+  normalize: alnum
+  severity: medium
+  dimension: uniqueness
+  message: Two materials have descriptions that differ only by spaces, punctuation or case (likely duplicate material)
+  why_it_matters: BOLT M10X50 and Bolt M10 x 50 are the same part typed twice. Exact-match duplicate checks miss
+    them, so stock, consumption history and purchasing volume split across two material numbers.
+  rule_authority: best_practice
+  sap_impact: Stock is split across duplicates; MRP reorders one while the other has stock; purchasing volume and contract
+    coverage are fragmented.
+  fix_map:
+    __other__: Confirm the duplicate, choose the surviving material, transfer stock (309), move open documents, BOM items
+      and info records, then flag the duplicate for deletion (MM06) and set a blocking material status.
+  record_fix_template: 'Material {MAKT.MATNR}: description ''{actual_value}'' matches another material once spaces and punctuation
+    are ignored.'
