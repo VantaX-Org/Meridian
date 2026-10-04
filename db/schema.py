@@ -891,6 +891,63 @@ class RecordIssueEvent(Base):
     __table_args__ = (Index("ix_record_issue_events_issue", "issue_id", "created_at"),)
 
 
+class RemediationBatch(Base):
+    """Fix batch exported as a file for a human-controlled SAP load — see migration 054."""
+    __tablename__ = "remediation_batches"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    name = Column(Text, nullable=False)
+    status = Column(Text, nullable=False, server_default="draft")  # draft|approved|exported
+    filter = Column(JSONB, nullable=False, server_default="{}")
+    created_by = Column(UUID(as_uuid=True), nullable=True)
+    created_by_label = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
+    approved_by = Column(UUID(as_uuid=True), nullable=True)
+    approved_by_label = Column(Text, nullable=True)
+    approved_at = Column(DateTime(timezone=True), nullable=True)
+    exported_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class RemediationItem(Base):
+    __tablename__ = "remediation_items"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    batch_id = Column(UUID(as_uuid=True), ForeignKey("remediation_batches.id", ondelete="CASCADE"), nullable=False)
+    issue_id = Column(UUID(as_uuid=True), ForeignKey("record_issues.id", ondelete="SET NULL"), nullable=True)
+    scope = Column(Text, nullable=False)
+    module = Column(Text, nullable=False)
+    check_id = Column(Text, nullable=False)
+    record_key = Column(Text, nullable=False)
+    grain = Column(Text, nullable=True)
+    field = Column(Text, nullable=True)
+    current_value = Column(Text, nullable=True)
+    proposed_value = Column(Text, nullable=True)
+    proposal_source = Column(Text, nullable=False, server_default="manual")  # rule|steward|manual
+    recon_status = Column(Text, nullable=True)  # fixed|still_failing after the next extraction
+    recon_version = Column(UUID(as_uuid=True), nullable=True)
+    updated_at = Column(DateTime(timezone=True), server_default=text("now()"))
+
+    __table_args__ = (UniqueConstraint("batch_id", "check_id", "record_key", name="uq_remediation_items"),)
+
+
+class RemediationEvent(Base):
+    __tablename__ = "remediation_events"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    batch_id = Column(UUID(as_uuid=True), ForeignKey("remediation_batches.id", ondelete="CASCADE"), nullable=False)
+    item_id = Column(UUID(as_uuid=True), ForeignKey("remediation_items.id", ondelete="CASCADE"), nullable=True)
+    user_id = Column(UUID(as_uuid=True), nullable=True)
+    user_label = Column(Text, nullable=True)
+    action = Column(Text, nullable=False)  # created|proposed|approved|exported|reconciled
+    from_value = Column(Text, nullable=True)
+    to_value = Column(Text, nullable=True)
+    version_id = Column(UUID(as_uuid=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
+
+
 class FieldProfile(Base):
     """Profile of one TABLE.FIELD in one analysed version and object — see migration 051."""
     __tablename__ = "field_profiles"
