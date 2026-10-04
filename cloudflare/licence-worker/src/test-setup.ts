@@ -124,6 +124,15 @@ CREATE TABLE IF NOT EXISTS platform_releases (
     updated_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS licence_nodes (
+    tenant_id TEXT NOT NULL,
+    fingerprint TEXT NOT NULL,
+    first_seen TEXT NOT NULL,
+    last_seen TEXT NOT NULL,
+    ping_count INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (tenant_id, fingerprint)
+);
+
 CREATE INDEX IF NOT EXISTS idx_tenants_key_hash ON tenants(licence_key_hash);
 CREATE INDEX IF NOT EXISTS idx_admins_email ON admins(email);
 CREATE INDEX IF NOT EXISTS idx_admin_sessions_admin ON admin_sessions(admin_id);
