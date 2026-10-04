@@ -1,19 +1,20 @@
 "use client";
 
 /**
- * Workbench → Cleaning: corrections the cleaning engine proposes for single
+ * Workbench, Cleaning: corrections the cleaning engine proposes for single
  * records. Confident ones are auto-applied and can be rolled back; the rest
- * wait for a steward's approval. The drawer shows before/after per field and
- * the job's audit trail.
+ * wait for a steward's approval. The drawer shows before and after per field
+ * and the job's audit trail.
  */
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
-  Banner, Button, Chip, DataTable, Drawer, EmptyState, KpiRail, Select, Stack, Stat, Text, useDrawerParam, type AuroraColumnMeta, type ChipTone,
-} from "@/components/aurora";
+  Banner, Button, Chip, DataTable, DetailDrawer, EmptyState, FilterBar, KeyValue, Metric, MetricStrip, Mono,
+  PageHeader, Select, StatusBadge, TableSkeleton, useDrawerParam, type AuroraColumnMeta, type Status,
+} from "@/components/ui-core";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import {
@@ -29,8 +30,8 @@ const APPLIED = new Set(["auto_approved", "applied", "verified"]);
 type Bucket = "auto" | "approved" | "review" | "closed";
 const bucket = (s: string): Bucket =>
   APPLIED.has(s) ? "auto" : s === "approved" ? "approved" : s === "rejected" || s === "rolled_back" ? "closed" : "review";
-const TONE: Record<Bucket, ChipTone> = { auto: "success", approved: "info", review: "warning", closed: "neutral" };
-const LABEL: Record<Bucket, string> = { auto: "auto-applied", approved: "approved · export", review: "needs review", closed: "closed" };
+const STATUS: Record<Bucket, Status> = { auto: "ok", approved: "low", review: "medium", closed: "idle" };
+const LABEL: Record<Bucket, string> = { auto: "Auto-applied", approved: "Approved, ready to export", review: "Needs review", closed: "Closed" };
 const VIEWS = [["all", "All"], ["review", "Needs review"], ["auto", "Auto-applied"]] as const;
 const text = (v: unknown): string => (v === null || v === undefined || v === "" ? "—" : typeof v === "object" ? JSON.stringify(v) : String(v));
 
@@ -42,10 +43,12 @@ function changedFields(i: CleaningQueueItem): [string, string, string][] {
 }
 function preview(i: CleaningQueueItem): string {
   const m = i.merge_preview ? Object.entries(i.merge_preview)[0] : undefined;
-  if (m) return `${m[0]}: ${m[1].a} | ${m[1].b} → ${m[1].survivor}`;
-  if (i.golden_field_value) return `→ ${i.golden_field_value}`;
+  if (m) return `${m[0]}: keep ${m[1].survivor}`;
+  if (i.golden_field_value) return `Set to ${i.golden_field_value}`;
   const changed = changedFields(i);
-  return changed.length ? changed.map(([k, b, a]) => `${k}: ${b} → ${a}`).join(" · ") : "—";
+  if (!changed.length) return "—";
+  const [k, b, a] = changed[0];
+  return `${k}: ${b} to ${a}${changed.length > 1 ? `, and ${changed.length - 1} more` : ""}`;
 }
 
 const FORMATS: { value: ExportFormat; label: string }[] = [
@@ -66,14 +69,14 @@ function SapExport() {
   });
   if (!statuses.length) return null;
   return (
-    <Stack direction="row" gap={2} align="center">
+    <div className="ui-page-header__actions">
       <Select aria-label="Corrections to export" value={chosen} onValueChange={setStatus}
         options={statuses.map((s) => ({ value: s.value, label: `${s.value.replace(/_/g, " ")} (${s.count.toLocaleString()})` }))} />
       <Select aria-label="File format" value={format} onValueChange={setFormat} options={FORMATS} />
       <Button variant="secondary" onClick={() => download.mutate()} disabled={!chosen || download.isPending}>
         {download.isPending ? "Preparing…" : "Export for SAP"}
       </Button>
-    </Stack>
+    </div>
   );
 }
 
@@ -90,6 +93,7 @@ export function CleaningSurface() {
   const [view, setView] = useUrlState("view", "all");
   const drawer = useDrawerParam("job");
   const [confirmAuto, setConfirmAuto] = useState(false);
+  const [search, setSearch] = useState("");
 
   const q = useQuery({
     queryKey: ["cleaning.queue", { view }],
@@ -103,64 +107,81 @@ export function CleaningSurface() {
   const rollback = useAction(rollbackCleaning, "Correction rolled back", refresh);
   const runAuto = useMutation({
     mutationFn: () => bulkApprove({ max_count: 100 }),
-    onSuccess: (d) => { toast.success(`Auto-approved ${d.approved_count} correction${d.approved_count === 1 ? "" : "s"}${d.skipped_count ? ` · ${d.skipped_count} skipped` : ""}`); setConfirmAuto(false); refresh(); },
-    onError: (e) => toast.error((e as Error).message || "Auto-jobs did not run"),
+    onSuccess: (d) => { toast.success(`Approved ${d.approved_count} correction${d.approved_count === 1 ? "" : "s"}${d.skipped_count ? `, skipped ${d.skipped_count}` : ""}`); setConfirmAuto(false); refresh(); },
+    onError: (e) => toast.error((e as Error).message || "Auto-approval did not run"),
   });
 
   const counts = items.reduce((a, i) => ({ ...a, [bucket(i.status)]: a[bucket(i.status)] + 1 }), { auto: 0, approved: 0, review: 0, closed: 0 } as Record<Bucket, number>);
   const meanConf = items.length ? Math.round(items.reduce((a, i) => a + pct(i.confidence), 0) / items.length) : null;
+  const needle = search.trim().toLowerCase();
+  const visible = needle ? items.filter((i) => `${i.record_key} ${i.object_type} ${preview(i)}`.toLowerCase().includes(needle)) : items;
   const selected = drawer.value ? items.find((i) => i.id === drawer.value) ?? null : null;
 
   const columns = useMemo<ColumnDef<CleaningQueueItem, unknown>[]>(() => [
-    { id: "status", header: "Status", meta: meta({ sticky: "start", width: 130 }), cell: ({ row }) => <Chip tone={TONE[bucket(row.original.status)]}>{LABEL[bucket(row.original.status)]}</Chip> },
-    { id: "record", header: "Record", meta: meta({ width: 200 }), cell: ({ row }) => (
-      <span><strong className="aurora-number">{row.original.record_key}</strong>
-        <Text variant="text-micro" tone="muted" as="div" className="aurora-number">{row.original.id.slice(0, 8)}</Text></span>) },
+    { id: "status", header: "Status", meta: meta({ sticky: "start", width: 140 }), cell: ({ row }) => {
+      const b = bucket(row.original.status);
+      return <StatusBadge status={STATUS[b]}>{LABEL[b]}</StatusBadge>;
+    } },
+    { id: "record", header: "Record", meta: meta({ width: 220 }), cell: ({ row }) => <Mono>{row.original.record_key}</Mono> },
     { id: "object", header: "Object", meta: meta({ width: 150 }), cell: ({ row }) => formatModuleName(row.original.object_type) },
-    { id: "change", header: "Proposed change", cell: ({ row }) => <span className="aurora-number">{preview(row.original)}</span> },
-    { id: "conf", header: "Confidence", meta: meta({ width: 100, align: "end", numeric: true }), cell: ({ row }) => `${pct(row.original.confidence)}%` },
-    { id: "when", header: "Detected", meta: meta({ width: 110 }), cell: ({ row }) => relativeTime(row.original.detected_at) },
+    { id: "change", header: "Proposed change", meta: meta({ minWidth: 260 }), cell: ({ row }) => <Mono>{preview(row.original)}</Mono> },
+    { id: "conf", header: "Confidence", meta: meta({ width: 104, align: "end", numeric: true }), cell: ({ row }) => `${pct(row.original.confidence)}%` },
+    { id: "when", header: "Detected", meta: meta({ width: 110, align: "end" }), cell: ({ row }) => relativeTime(row.original.detected_at) },
   ], []);
 
   return (
-    <Stack gap={5} className="aurora-page">
-      <KpiRail>
-        <Stat label="In queue" value={total} />
-        <Stat label="Needs review" value={counts.review} tone={counts.review ? "warning" : "neutral"} />
-        <Stat label="Auto-applied" value={counts.auto} tone={counts.auto ? "success" : "neutral"} />
-        <Stat label="Mean confidence" value={meanConf ?? "—"} unit={meanConf === null ? undefined : "%"} />
-      </KpiRail>
-      <Stack direction="row" gap={2} wrap align="center">
-        {VIEWS.map(([k, l]) => <Chip key={k} selected={view === k} onClick={() => setView(k)}>{l}</Chip>)}
-        <span style={{ flex: 1 }} />
-        {can("export") ? <SapExport /> : null}
-        {canApprove ? <Button onClick={() => setConfirmAuto(true)} disabled={runAuto.isPending || confirmAuto}>Run auto-jobs</Button> : null}
-      </Stack>
+    <div className="ui-page">
+      <PageHeader title="Cleaning"
+        summary={q.data ? `${total.toLocaleString()} corrections proposed for single records. ${counts.review} wait for review.` : undefined}
+        actions={<>
+          {can("export") ? <SapExport /> : null}
+          {canApprove ? <Button onClick={() => setConfirmAuto(true)} disabled={runAuto.isPending || confirmAuto}>Approve confident corrections</Button> : null}
+        </>} />
+      <MetricStrip label="Cleaning queue">
+        <Metric label="In queue" value={total} />
+        <Metric label="Needs review" value={counts.review} tone={counts.review ? "warning" : "default"} />
+        <Metric label="Auto-applied" value={counts.auto} />
+        <Metric label="Mean confidence" value={meanConf} unit="%" />
+      </MetricStrip>
       {confirmAuto ? (
         <Banner tone="info" title="Approve every correction above the auto-approval threshold?" action={
-          <Stack direction="row" gap={2}>
-            <Button size="sm" onClick={() => runAuto.mutate()} disabled={runAuto.isPending}>{runAuto.isPending ? "Running…" : "Run auto-jobs"}</Button>
+          <div className="ui-page-header__actions">
+            <Button size="sm" onClick={() => runAuto.mutate()} disabled={runAuto.isPending}>{runAuto.isPending ? "Approving" : "Approve corrections"}</Button>
             <Button size="sm" variant="ghost" onClick={() => setConfirmAuto(false)}>Not now</Button>
-          </Stack>}>
+          </div>}>
           Up to 100 corrections whose confidence clears the threshold are approved and applied. The rest stay in review.
         </Banner>
       ) : null}
-      {q.isLoading ? <Text tone="muted">Reading the cleaning queue.</Text>
+      <FilterBar search={{ value: search, onChange: setSearch, placeholder: "Search records" }}>
+        {VIEWS.map(([k, l]) => <Chip key={k} selected={view === k} onClick={() => setView(k)}>{l}</Chip>)}
+      </FilterBar>
+      {q.isLoading ? <TableSkeleton rows={8} label="Loading the cleaning queue" />
         : q.error ? <Banner tone="danger" title="The cleaning queue could not be read">{(q.error as Error).message}</Banner>
-        : items.length ? <DataTable columns={columns} data={items} getRowId={(i) => i.id} onRowActivate={(i) => drawer.open(i.id)} ariaLabel="Cleaning queue" maxHeight="60vh" />
-        : <EmptyState title={view === "all" ? "Nothing to clean." : "Nothing in this view."} body="The cleaning engine proposes corrections after each analysis; they appear here with their confidence." />}
+        : visible.length ? <DataTable columns={columns} data={visible} getRowId={(i) => i.id} onRowActivate={(i) => drawer.open(i.id)}
+            ariaLabel="Cleaning queue. Use j and k to move, Enter to open." maxHeight="62vh" />
+        : <EmptyState action={needle || view !== "all" ? <button type="button" className="ui-link-button" onClick={() => { setSearch(""); setView("all"); }}>Show everything</button> : undefined}>
+            {needle || view !== "all" ? "Nothing in this view." : "Nothing to clean. The cleaning engine proposes corrections after each analysis."}
+          </EmptyState>}
 
-      <Drawer open={!!selected} onClose={drawer.close} ariaLabel="Correction details"
-        header={selected ? <Stack direction="row" gap={2} align="center"><Chip tone={TONE[bucket(selected.status)]}>{LABEL[bucket(selected.status)]}</Chip><Text variant="text-lead" className="aurora-number">{selected.record_key}</Text></Stack> : null}>
+      <DetailDrawer open={!!selected} onClose={drawer.close} ariaLabel="Correction details"
+        header={selected ? (
+          <div className="ui-drawer-head">
+            <StatusBadge status={STATUS[bucket(selected.status)]}>{LABEL[bucket(selected.status)]}</StatusBadge>
+            <h2 className="ui-drawer-head__title"><Mono>{selected.record_key}</Mono></h2>
+          </div>) : null}>
         {selected ? (
           <JobDetail item={selected} canApprove={canApprove} canApply={canApply}
             busy={approve.isPending || reject.isPending || rollback.isPending}
             onApprove={() => approve.mutate(selected.id)} onReject={() => reject.mutate(selected.id)} onRollback={() => rollback.mutate(selected.id)} />
         ) : null}
-      </Drawer>
-    </Stack>
+      </DetailDrawer>
+    </div>
   );
 }
+
+const Part = ({ title, children }: { title: string; children: ReactNode }) => (
+  <section className="ui-detail-part"><h3 className="ui-detail-part__title">{title}</h3>{children}</section>
+);
 
 function JobDetail({ item: i, canApprove, canApply, busy, onApprove, onReject, onRollback }: {
   item: CleaningQueueItem; canApprove: boolean; canApply: boolean; busy: boolean; onApprove: () => void; onReject: () => void; onRollback: () => void;
@@ -169,46 +190,49 @@ function JobDetail({ item: i, canApprove, canApply, busy, onApprove, onReject, o
   const changed = changedFields(i);
   // fields that differ between the two records first; identical ones carry no decision
   const merge = Object.entries(i.merge_preview ?? {}).sort(([, x], [, y]) => Number(x.a === x.b) - Number(y.a === y.b));
-  const rows: [string, string][] = [
-    ["Object", formatModuleName(i.object_type)], ["Status", i.status.replace(/_/g, " ")], ["Confidence", `${pct(i.confidence)}%`], ["Priority", String(i.priority)],
-    ["Detected", relativeTime(i.detected_at)], ["Applied", i.applied_at ? relativeTime(i.applied_at) : "—"],
-    ["Roll back until", i.rollback_deadline ? new Date(i.rollback_deadline).toLocaleString() : "—"],
-    ["Rule", i.rule_id ?? "—"], ["Golden record", i.golden_record_exists ? i.golden_record_id ?? "exists" : "none"],
-  ];
   return (
-    <Stack gap={4}>
-      <table className="aurora-exec__table"><tbody>{rows.map(([k, v]) => <tr key={k}><td>{k}</td><td className="aurora-number">{v}</td></tr>)}</tbody></table>
+    <div className="ui-detail">
+      <KeyValue rows={[
+        { k: "Object", v: formatModuleName(i.object_type) },
+        { k: "Status", v: i.status.replace(/_/g, " ") },
+        { k: "Confidence", v: `${pct(i.confidence)}%` },
+        { k: "Priority", v: String(i.priority) },
+        { k: "Detected", v: relativeTime(i.detected_at) },
+        { k: "Applied", v: i.applied_at ? relativeTime(i.applied_at) : "—" },
+        { k: "Roll back until", v: i.rollback_deadline ? new Date(i.rollback_deadline).toLocaleString() : "—" },
+        { k: "Rule", v: i.rule_id ?? "—", mono: !!i.rule_id },
+        { k: "Golden record", v: i.golden_record_exists ? i.golden_record_id ?? "Exists" : "None", mono: !!i.golden_record_id },
+      ]} />
       {changed.length ? (
-        <Stack gap={2}>
-          <Text variant="text-micro" tone="muted" className="aurora-exec__eyebrow">Fields that change</Text>
-          <table className="aurora-exec__table">
-            <thead><tr><th>Field</th><th>Before</th><th>After</th></tr></thead>
-            <tbody>{changed.map(([k, before, after]) => <tr key={k}><td className="aurora-number">{k}</td><td className="aurora-number">{before}</td><td className="aurora-number">{after}</td></tr>)}</tbody>
-          </table>
-        </Stack>
+        <Part title="Fields that change">
+          <div className="ui-matrix-scroll"><table className="ui-mini-table">
+            <thead><tr><th scope="col">Field</th><th scope="col">Before</th><th scope="col">After</th></tr></thead>
+            <tbody>{changed.map(([k, before, after]) => <tr key={k}><td><Mono>{k}</Mono></td><td><Mono>{before}</Mono></td><td><Mono>{after}</Mono></td></tr>)}</tbody>
+          </table></div>
+        </Part>
       ) : null}
       {merge.length ? (
-        <Stack gap={2}>
-          <Text variant="text-micro" tone="muted" className="aurora-exec__eyebrow">Merge preview</Text>
-          <table className="aurora-exec__table">
-            <thead><tr><th>Field</th><th>A</th><th>B</th><th>Survivor</th></tr></thead>
-            <tbody>{merge.map(([k, m]) => <tr key={k}><td className="aurora-number">{k}</td><td className="aurora-number">{m.a}</td><td className="aurora-number">{m.b}</td><td className="aurora-number">{m.survivor}</td></tr>)}</tbody>
-          </table>
-        </Stack>
+        <Part title="Merge preview">
+          <div className="ui-matrix-scroll"><table className="ui-mini-table">
+            <thead><tr><th scope="col">Field</th><th scope="col">A</th><th scope="col">B</th><th scope="col">Survivor</th></tr></thead>
+            <tbody>{merge.map(([k, m]) => <tr key={k}><td><Mono>{k}</Mono></td><td><Mono>{m.a}</Mono></td><td><Mono>{m.b}</Mono></td><td><Mono>{m.survivor}</Mono></td></tr>)}</tbody>
+          </table></div>
+        </Part>
       ) : null}
-      {!changed.length && !merge.length && i.golden_field_value ? <Text variant="text-small" tone="secondary">Golden value: <span className="aurora-number">{i.golden_field_value}</span></Text> : null}
+      {!changed.length && !merge.length && i.golden_field_value ? <p className="ui-note">Golden value: <Mono>{i.golden_field_value}</Mono></p> : null}
       {i.audit?.length ? (
-        <Stack gap={2}>
-          <Text variant="text-micro" tone="muted" className="aurora-exec__eyebrow">Audit trail</Text>
-          {i.audit.map((a) => <Text key={a.id} variant="text-small" tone="secondary">{relativeTime(a.created_at)} · {a.actor_name} · {a.action.replace(/_/g, " ")}</Text>)}
-        </Stack>
+        <Part title="Audit trail">
+          <ul className="ui-plain-list">{i.audit.map((a) => (
+            <li key={a.id}>{a.actor_name} {a.action.replace(/_/g, " ")}, <span className="ui-micro">{relativeTime(a.created_at)}</span></li>
+          ))}</ul>
+        </Part>
       ) : null}
-      <Stack direction="row" gap={2} wrap>
+      <div className="ui-page-header__actions">
         {b === "review" && canApprove ? <><Button onClick={onApprove} disabled={busy}>Approve</Button><Button variant="ghost" onClick={onReject} disabled={busy}>Reject</Button></> : null}
         {b === "auto" && canApply ? <Button variant="danger" onClick={onRollback} disabled={busy}>Roll back</Button> : null}
-        {b === "approved" ? <Text variant="text-small" tone="muted">Approved — load it into SAP with Export for SAP.</Text> : null}
-        {b === "closed" ? <Text variant="text-small" tone="muted">This correction is closed.</Text> : null}
-      </Stack>
-    </Stack>
+        {b === "approved" ? <p className="ui-micro">Approved. Load it into SAP with Export for SAP.</p> : null}
+        {b === "closed" ? <p className="ui-micro">This correction is closed.</p> : null}
+      </div>
+    </div>
   );
 }

@@ -8,6 +8,7 @@ export async function getFindings(params: {
   dimension?: string;
   check_id?: string;
   baseline?: string;
+  type?: "rule" | "anomaly";
   sort?: "severity" | "impact";
   limit?: number;
   offset?: number;

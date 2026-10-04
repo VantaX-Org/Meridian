@@ -12,6 +12,7 @@ import { useMemo } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button, Chip, EmptyState, RecordReport, type FixStep, type RecordReportStatus } from "@/components/aurora";
+import { ReasonButton } from "@/components/ui-core";
 import { useRole } from "@/hooks/use-role";
 import { findingToRecordReport } from "@/lib/aurora";
 import { getConfigImpact } from "@/lib/api/connectivity";
@@ -56,7 +57,7 @@ export function RecordReportView({ issueId }: { issueId: string }) {
     queryFn: () => getConfigImpact(latest!.id), meta: { ignoreError: true } });
 
   const transition = useMutation({
-    mutationFn: (body: { status: IssueStatus; resolution?: string }) => updateIssues({ ids: [issueId], ...body }),
+    mutationFn: (body: { status: IssueStatus; resolution?: string; note?: string }) => updateIssues({ ids: [issueId], ...body }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["issue", issueId] }); qc.invalidateQueries({ queryKey: ["issues"] }); },
     onError: (e) => toast.error((e as Error).message || "Not saved"),
   });
@@ -72,16 +73,16 @@ export function RecordReportView({ issueId }: { issueId: string }) {
   const remediation = findings.filter((f) => f.remediation_text);
   const steps: FixStep[] = [
     ...remediation.map((f) => ({ id: f.check_id, label: f.check_id, detail: f.remediation_text, status: "pending" as const })),
-    { id: "verify", label: "Download the object again — a version that evaluates this record and finds it passing resolves it",
+    { id: "verify", label: "Download the object again. The record resolves once a new version finds it passing.",
       status: issue.status === "resolved" ? ("done" as const) : ("pending" as const) },
   ];
   const checkIds = new Set(checks);
   const configImpact = (impact.data?.results ?? [])
     .filter((r) => r.blocking_findings.some((b) => checkIds.has(b.check_id)))
-    .map((r) => ({ id: `${r.system}-${r.feature}`, feature: `${r.feature} · ${r.system}`,
+    .map((r) => ({ id: `${r.system}-${r.feature}`, feature: `${r.feature} in ${r.system}`,
       status: (r.status === "ok" ? "aligned" : r.status) as "blocked" | "degraded" | "aligned", rationale: r.opportunity_cost_summary }));
 
-  const act = (status: IssueStatus, resolution?: string) => transition.mutate({ status, resolution });
+  const act = (status: IssueStatus, resolution?: string, note?: string) => transition.mutate({ status, resolution, note });
   const canAct = can("approve") || can("apply") || can("assign");
 
   return (
@@ -90,11 +91,11 @@ export function RecordReportView({ issueId }: { issueId: string }) {
         recordId={issue.record_key}
         module={formatModuleName(issue.module)}
         verdict={verdict}
-        support={`${formatModuleName(issue.module)}${issue.grain ? ` · evaluated on ${issue.grain}` : ""} · first seen ${relativeTime(issue.first_seen_at)} · last failing ${relativeTime(issue.last_seen_at)}${issue.reopened_count ? ` · re-opened ${issue.reopened_count}×` : ""}`}
+        support={`${formatModuleName(issue.module)}${issue.grain ? `, evaluated on ${issue.grain}` : ""}. First seen ${relativeTime(issue.first_seen_at)}, last failing ${relativeTime(issue.last_seen_at)}.${issue.reopened_count ? ` Re-opened ${issue.reopened_count} time${issue.reopened_count === 1 ? "" : "s"}.` : ""}`}
         severity={SEV(worst)}
         status={STATUS[issue.status]}
         lastUpdated={relativeTime(issue.last_seen_at)}
-        actions={<Button variant="secondary" onClick={() => window.print()}>Print / PDF</Button>}
+        actions={<Button variant="secondary" onClick={() => window.print()}>Print or save as PDF</Button>}
         context={[
           { id: "object", label: "Object", value: formatModuleName(issue.module) },
           { id: "key", label: "Record key", value: <span className="aurora-number">{issue.record_key}</span> },
@@ -109,7 +110,7 @@ export function RecordReportView({ issueId }: { issueId: string }) {
           ...detail.data!.runs.map((r) => ({ id: r.version_id, timestamp: r.run_at, displayTime: new Date(r.run_at).toLocaleString(),
             actor: "Analysis", action: r.failing ? "found the record failing" : "found the record passing" })),
           ...detail.data!.events.map((e, n) => ({ id: `e${n}`, timestamp: e.created_at, displayTime: relativeTime(e.created_at),
-            actor: e.user_label ?? "system", action: `${e.action.replace(/_/g, " ")}${e.from_value || e.to_value ? ` ${e.from_value ?? ""} → ${e.to_value ?? ""}` : ""}`,
+            actor: e.user_label ?? "system", action: `${e.action.replace(/_/g, " ")}${e.from_value || e.to_value ? ` from ${e.from_value ?? "none"} to ${e.to_value ?? "none"}` : ""}`,
             body: e.note ?? undefined })),
         ].sort((a, b) => b.timestamp.localeCompare(a.timestamp))}
         actionBar={canAct ? (
@@ -117,7 +118,7 @@ export function RecordReportView({ issueId }: { issueId: string }) {
             {issue.status !== "in_progress" && issue.status !== "resolved" ? <Button variant="secondary" onClick={() => act("in_progress")} disabled={transition.isPending}>Start</Button> : null}
             {issue.status !== "resolved" ? <Button onClick={() => act("resolved", "fixed_in_source")} disabled={transition.isPending}>Fixed in SAP</Button> : null}
             {issue.status !== "accepted" ? <Button variant="ghost" onClick={() => act("accepted", "accepted_risk")} disabled={transition.isPending}>Accept risk</Button> : null}
-            {issue.status !== "accepted" ? <Button variant="ghost" onClick={() => act("accepted", "false_positive")} disabled={transition.isPending}>False positive</Button> : null}
+            {issue.status !== "accepted" ? <ReasonButton label="False positive" prompt="Why is this not an issue?" onConfirm={(note) => act("accepted", "false_positive", note)} disabled={transition.isPending} /> : null}
             {issue.status === "resolved" || issue.status === "accepted" ? <Button variant="ghost" onClick={() => act("open")} disabled={transition.isPending}>Re-open</Button> : null}
             <Chip tone={issue.status === "resolved" ? "success" : issue.status === "accepted" ? "info" : "warning"}>{issue.status.replace("_", " ")}</Chip>
           </>
