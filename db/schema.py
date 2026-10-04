@@ -1048,6 +1048,10 @@ class MasterRecord(Base):
     status = Column(Text, nullable=False, server_default="candidate")
     promoted_at = Column(DateTime(timezone=True), nullable=True)
     promoted_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    merged_into = Column(UUID(as_uuid=True), ForeignKey("master_records.id"), nullable=True)
+    own_fields = Column(JSONB, nullable=True)
+    steward_overrides = Column(JSONB, nullable=False, server_default="{}")
+    survivorship_explanation = Column(JSONB, nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
     updated_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
 
@@ -1304,11 +1308,52 @@ class MatchScore(Base):
     auto_action = Column(Text, nullable=False)
     reviewed_by = Column(UUID(as_uuid=True), nullable=True)
     reviewed_at = Column(DateTime(timezone=True), nullable=True)
+    explanation = Column(JSONB, nullable=True)
+    steward_decision = Column(Text, nullable=True)
+    steward_reason = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
 
     __table_args__ = (
         Index("ix_match_scores_tenant_domain", "tenant_id", "domain"),
         Index("ix_match_scores_tenant_action", "tenant_id", "auto_action"),
+    )
+
+
+class MdmMergeEvent(Base):
+    """Append-only merge / unmerge / undo / override / pair-decision log (migration 060)."""
+    __tablename__ = "mdm_merge_events"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    domain = Column(Text, nullable=False)
+    event_type = Column(Text, nullable=False)
+    golden_record_id = Column(UUID(as_uuid=True), ForeignKey("master_records.id"), nullable=True)
+    member_keys = Column(ARRAY(Text), nullable=False, server_default="{}")
+    actor = Column(UUID(as_uuid=True), nullable=True)
+    reason = Column(Text, nullable=True)
+    before = Column(JSONB, nullable=True)
+    after = Column(JSONB, nullable=True)
+    reverses_event_id = Column(UUID(as_uuid=True), ForeignKey("mdm_merge_events.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+
+class MdmPairConstraint(Base):
+    """do_not_match / always_match pair, key_lo < key_hi (migration 060)."""
+    __tablename__ = "mdm_pair_constraints"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    domain = Column(Text, nullable=False)
+    key_lo = Column(Text, nullable=False)
+    key_hi = Column(Text, nullable=False)
+    kind = Column(Text, nullable=False)
+    reason = Column(Text, nullable=True)
+    created_by = Column(UUID(as_uuid=True), nullable=True)
+    event_id = Column(UUID(as_uuid=True), ForeignKey("mdm_merge_events.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "domain", "key_lo", "key_hi", name="uq_mdm_pair_constraints_pair"),
     )
 
 

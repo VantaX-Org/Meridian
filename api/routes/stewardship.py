@@ -458,7 +458,10 @@ async def _apply_source_action(
     if item.item_type == "merge_decision":
         if action == "approve":
             await _execute_merge(db, item, user_id, notes)
-        # reject leaves match_score unreviewed
+        elif action == "reject":
+            # Rejected pair becomes do_not_match so a cleaning rerun does not re-queue it.
+            from api.services.mdm_merge import record_pair_decision
+            await record_pair_decision(db, item.tenant_id, item.source_id, "reject", notes, user_id)
 
     elif item.item_type == "golden_record_review":
         if action == "approve":
@@ -533,7 +536,7 @@ async def _execute_merge(
     ).fetchone()
 
     if ms is not None:
-        from api.services.mdm_merge import merge_master_records
+        from api.services.mdm_merge import PairConstraintError, merge_master_records, record_pair_decision
 
         a_key, b_key, domain = ms[0], ms[1], ms[2]
         conf = dict((await db.execute(
@@ -542,7 +545,11 @@ async def _execute_merge(
             {"tid": item.tenant_id, "d": domain, "a": a_key, "b": b_key})).fetchall())
         if len(conf) == 2:
             survivor, merged = sorted((a_key, b_key), key=lambda k: conf[k] or 0.0, reverse=True)
-            await merge_master_records(db, item.tenant_id, domain, survivor, merged, user_id)
+            try:
+                await merge_master_records(db, item.tenant_id, domain, survivor, merged, user_id, reason=notes)
+            except PairConstraintError as e:
+                raise HTTPException(status_code=409, detail=str(e))
+        await record_pair_decision(db, item.tenant_id, item.source_id, "accept", notes, user_id)
 
     # Mark the match reviewed + merged so the queue item resolves.
     await db.execute(
