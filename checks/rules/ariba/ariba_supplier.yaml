@@ -1,0 +1,103 @@
+# SAP Ariba suppliers (canonical view ARIBA_SUPPLIER in
+# sap/dictionaries/canonical/ariba.yaml). Tax IDs, bank details and the SM
+# vendor to ERP vendor link are not read by the connector, so no rule here
+# checks them.
+module: ariba_supplier
+target_state: ARIBA
+rules:
+- id: ARS001
+  field: ARIBA_SUPPLIER.VENDOR_ID
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Ariba supplier has no supplier ID
+  why_it_matters: The supplier ID is the key that contracts, purchase orders and invoices reference. A supplier without it
+    cannot be ordered from or paid.
+  rule_authority: sap_hard_constraint
+  sap_impact: Contracts, POs and invoices cannot reference the supplier; the ERP vendor replication has no key.
+  fix_map:
+    __blank__: Re-extract the supplier list; a blank ID points to an incomplete page or an unfinished registration.
+  record_fix_template: 'Ariba supplier {ARIBA_SUPPLIER.NAME}: supplier ID is {actual_value}.'
+- id: ARS002
+  field: ARIBA_SUPPLIER.VENDOR_ID
+  check_class: uniqueness_check
+  fields:
+  - ARIBA_SUPPLIER.VENDOR_ID
+  severity: critical
+  dimension: uniqueness
+  message: Supplier ID appears on more than one Ariba supplier
+  why_it_matters: Two supplier records with one ID make every reference to that ID ambiguous.
+  rule_authority: sap_hard_constraint
+  sap_impact: POs and invoices resolve to the wrong supplier record; spend and compliance reporting double-counts.
+  fix_map:
+    __other__: Re-extract; if the duplicate persists, merge the records in Supplier Management.
+  record_fix_template: 'Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID}: ID is not unique.'
+- id: ARS003
+  field: ARIBA_SUPPLIER.NAME
+  check_class: uniqueness_check
+  fields:
+  - ARIBA_SUPPLIER.NAME
+  - ARIBA_SUPPLIER.COUNTRY
+  normalize: name
+  severity: high
+  dimension: uniqueness
+  message: Possible duplicate supplier (same name and country)
+  why_it_matters: Duplicate suppliers split spend, weaken negotiating leverage and are the usual route for duplicate payments
+    and fraudulent vendors. Same normalised name in the same country is the standard duplicate signal.
+  rule_authority: best_practice
+  sap_impact: Duplicate vendors replicate to the ERP; the same invoice can be paid to both; spend analysis understates the
+    supplier.
+  fix_map:
+    __other__: Review the pair, keep one supplier and deactivate or merge the other in Supplier Management.
+  record_fix_template: 'Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID}: name ''{ARIBA_SUPPLIER.NAME}'' in {ARIBA_SUPPLIER.COUNTRY}
+    matches another supplier.'
+- id: ARS004
+  field: ARIBA_SUPPLIER.NAME
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Ariba supplier has no name
+  why_it_matters: The name is what buyers search and what is printed on POs and payment files.
+  rule_authority: sap_hard_constraint
+  sap_impact: Buyers cannot find the supplier; POs and payments show no payee name.
+  fix_map:
+    __blank__: Maintain the legal name in the supplier's registration questionnaire.
+  record_fix_template: 'Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID}: name is {actual_value}.'
+- id: ARS005
+  field: ARIBA_SUPPLIER.COUNTRY
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Ariba supplier has no country
+  why_it_matters: The country drives tax treatment, bank and address validation, sanctions screening and the ERP vendor's
+    country key.
+  rule_authority: sap_hard_constraint
+  sap_impact: The replicated ERP vendor fails country-dependent checks (tax number, bank, address); screening is incomplete.
+  fix_map:
+    __blank__: Maintain the country in the supplier's registration questionnaire.
+  record_fix_template: 'Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID}: country is {actual_value}.'
+- id: ARS006
+  field: ARIBA_SUPPLIER.COUNTRY
+  check_class: regex_check
+  pattern: ^[A-Z]{2}$
+  severity: medium
+  dimension: validity
+  message: Supplier country is not an ISO 3166 two-letter code
+  why_it_matters: The ERP country key and tax / bank validation expect the ISO 3166-1 alpha-2 code.
+  rule_authority: iso_standard
+  sap_impact: Vendor replication to the ERP fails or maps to the wrong country.
+  fix_map:
+    __other__: Replace the value with the ISO 3166-1 alpha-2 code.
+  record_fix_template: 'Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID}: country ''{actual_value}'' is not an ISO code.'
+- id: ARS007
+  field: ARIBA_SUPPLIER.CITY
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Ariba supplier has no city
+  why_it_matters: The city is part of the postal address used on POs, payment files and sanctions screening.
+  rule_authority: best_practice
+  sap_impact: Incomplete vendor address in the ERP; payment media and screening may reject the record.
+  fix_map:
+    __blank__: Maintain the address in the supplier's registration questionnaire.
+  record_fix_template: 'Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID}: city is {actual_value}.'

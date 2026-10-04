@@ -184,3 +184,21 @@ class FixGenerator:
             f"SET {fix_col} = '{safe_val}' "
             f"WHERE {id_col} = '{safe_id}';"
         )
+
+
+def proposed_value(rule: dict, current: Optional[str]) -> Optional[str]:
+    """Machine-applicable fix from the rule's optional ``fix_value`` YAML field.
+
+    ``fix_value: "X"`` proposes X for every failing record; a mapping proposes
+    by current value (``__blank__`` for an empty field, ``__other__`` as the
+    catch-all). None = no rule-defined value, a steward enters it by hand.
+    """
+    fv = rule.get("fix_value")
+    if fv is None:
+        return None
+    if not isinstance(fv, dict):
+        return str(fv)
+    cur = "" if current is None else str(current).strip()
+    hit = fv.get("__blank__") if cur == "" else fv.get(cur)
+    hit = fv.get("__other__") if hit is None else hit
+    return None if hit is None else str(hit)

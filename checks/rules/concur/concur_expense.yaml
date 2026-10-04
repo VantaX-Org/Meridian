@@ -1,0 +1,332 @@
+# SAP Concur Expense: reports and entries (canonical views in
+# sap/dictionaries/canonical/concur.yaml, read from /api/v3.0/expense/*).
+# Approval status codes: A_NOTF not submitted, A_PEND pending approval,
+# A_RESU sent back, A_APPR approved. Booleans arrive as 'true' / 'false'.
+module: concur_expense
+target_state: CONCUR
+rules:
+- id: CNE001
+  field: CONCUR_REPORT.REPORT_ID
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Expense report has no report ID
+  why_it_matters: The report ID is the key that ties entries, approvals, audit trail and the posting to the ERP together.
+    A report without it cannot be traced or reconciled.
+  rule_authority: sap_hard_constraint
+  sap_impact: Expense entries cannot be matched to their report; the financial integration (SAE / posting document) cannot
+    be reconciled to Concur.
+  fix_map:
+    __blank__: Re-extract the report; a missing ID points to an incomplete API page or a broken export, not to data Concur
+      itself allows.
+  record_fix_template: 'Expense report {CONCUR_REPORT.NAME}: report ID is {actual_value}. Re-extract the report.'
+- id: CNE002
+  field: CONCUR_REPORT.OWNER_LOGIN_ID
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Expense report has no owner
+  why_it_matters: The owner is the employee who is reimbursed and whose cost object the report is charged to. Without it the
+    report cannot be paid, approved by the right manager or charged to a cost centre.
+  rule_authority: sap_hard_constraint
+  sap_impact: Reimbursement and the employee payable in the ERP have no payee; the approval workflow has no manager to route
+    to.
+  fix_map:
+    __blank__: Identify the employee from the report's entries and reassign the report in Concur (Expense Admin / Report
+      Delegate), or delete the orphan report.
+  record_fix_template: 'Expense report {CONCUR_REPORT.REPORT_ID}: owner is {actual_value}. Reassign it to the employee.'
+- id: CNE003
+  field: CONCUR_REPORT.OWNER_LOGIN_ID
+  check_class: exists_check
+  target_table: CONCUR_USER
+  target_fields:
+  - LOGIN_ID
+  grain: CONCUR_REPORT
+  severity: high
+  dimension: consistency
+  message: Expense report owner is not a Concur user
+  why_it_matters: A report whose owner has no user profile has lost its employee data (employee ID, cost centre, approver),
+    so it cannot be routed for approval or posted to the right cost object.
+  rule_authority: sap_hard_constraint
+  sap_impact: Approval routing, cost allocation and the employee payable posting fail or fall back to defaults.
+  fix_map:
+    __other__: Restore the user (Company Admin > User Administration) or reassign the report to the current login of the
+      employee.
+  record_fix_template: 'Expense report {CONCUR_REPORT.REPORT_ID}: owner {CONCUR_REPORT.OWNER_LOGIN_ID} is not a Concur user.'
+- id: CNE004
+  field: CONCUR_USER.COST_CENTER
+  check_class: null_check
+  grain: CONCUR_REPORT
+  applies_when:
+    CONCUR_REPORT.APPROVAL_STATUS_CODE: [A_NOTF, A_PEND, A_RESU, A_APPR]
+  severity: high
+  dimension: completeness
+  message: Expense report owner has no cost centre
+  why_it_matters: Concur charges an expense to the owner's cost centre unless an entry is allocated elsewhere. A report whose
+    owner has no cost centre posts to a suspense or default account in the ERP and distorts cost centre reporting.
+  rule_authority: sap_hard_constraint
+  sap_impact: The ERP posting (SAE) fails or lands on the default cost object; cost centre budgets and actuals are wrong.
+  fix_map:
+    __blank__: Maintain the cost centre in the user's employee profile (Company Admin > User Administration, or the HR feed
+      that loads it), then re-submit or re-post the report.
+  record_fix_template: 'Expense report {CONCUR_REPORT.REPORT_ID}: owner {CONCUR_REPORT.OWNER_LOGIN_ID} has cost centre
+    {actual_value}. Maintain the cost centre in the user profile.'
+- id: CNE005
+  field: CONCUR_REPORT.APPROVER_LOGIN_ID
+  check_class: null_check
+  applies_when:
+    CONCUR_REPORT.APPROVAL_STATUS_CODE: [A_PEND]
+  severity: high
+  dimension: completeness
+  message: Report pending approval has no approver
+  why_it_matters: A submitted report waits for its current approver. Without one it sits in the workflow indefinitely, the
+    employee is not reimbursed and the expense is not accrued.
+  rule_authority: sap_hard_constraint
+  sap_impact: The report is stuck in approval; reimbursement and the ERP posting do not happen; month-end accruals miss
+    the expense.
+  fix_map:
+    __blank__: Assign an expense approver in the owner's profile (or fix the approval hierarchy) and reroute the report in
+      Process Reports.
+  record_fix_template: 'Expense report {CONCUR_REPORT.REPORT_ID}: pending approval with approver {actual_value}. Assign
+    an approver and reroute.'
+- id: CNE006
+  field: CONCUR_REPORT.APPROVER_LOGIN_ID
+  check_class: cross_field_check
+  grain: CONCUR_REPORT
+  fail_when: "`CONCUR_REPORT.APPROVER_LOGIN_ID` == `CONCUR_REPORT.OWNER_LOGIN_ID`"
+  severity: critical
+  dimension: consistency
+  message: Expense report is approved by its own owner
+  why_it_matters: Self-approval defeats the segregation of duties the approval step exists for. Auditors treat it as a
+    control failure on employee reimbursements.
+  rule_authority: best_practice
+  sap_impact: Expenses are paid without independent review; the expense control fails audit.
+  fix_map:
+    __other__: Change the approver in the owner's profile to their manager, reroute the report and review the reports already
+      self-approved.
+  record_fix_template: 'Expense report {CONCUR_REPORT.REPORT_ID}: owner {CONCUR_REPORT.OWNER_LOGIN_ID} is also its approver.'
+- id: CNE007
+  field: CONCUR_USER.ACTIVE
+  check_class: cross_field_check
+  grain: CONCUR_REPORT
+  applies_when:
+    CONCUR_REPORT.APPROVAL_STATUS_CODE: [A_NOTF, A_PEND, A_RESU]
+  fail_when: "`CONCUR_USER.ACTIVE` == 'false'"
+  severity: high
+  dimension: consistency
+  message: Inactive user still owns an open expense report
+  why_it_matters: When an employee leaves, their open reports must be submitted, approved or closed before the profile is
+    deactivated. An open report on an inactive user is a reimbursement that will never be paid, or an expense that will
+    never be posted.
+  rule_authority: best_practice
+  sap_impact: Unposted expenses and unpaid reimbursements after termination; final pay and accruals are wrong.
+  fix_map:
+    __other__: Have a delegate or the expense admin submit or close the report, then keep the user inactive.
+  record_fix_template: 'Expense report {CONCUR_REPORT.REPORT_ID}: owner {CONCUR_REPORT.OWNER_LOGIN_ID} is inactive but
+    the report is still open.'
+- id: CNE008
+  field: CONCUR_REPORT.POLICY_ID
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Expense report has no expense policy
+  why_it_matters: The policy decides which expense types, limits and audit rules apply. A report without a policy is not
+    checked against any of them.
+  rule_authority: sap_hard_constraint
+  sap_impact: Policy limits and audit rules are not applied; non-compliant spend is reimbursed.
+  fix_map:
+    __blank__: Assign the employee's group a default policy (Expense Admin > Policies) and move the report to it.
+  record_fix_template: 'Expense report {CONCUR_REPORT.REPORT_ID}: policy is {actual_value}. Assign an expense policy.'
+- id: CNE009
+  field: CONCUR_REPORT.CURRENCY_CODE
+  check_class: regex_check
+  pattern: ^[A-Z]{3}$
+  severity: high
+  dimension: validity
+  message: Report currency is not an ISO 4217 code
+  why_it_matters: The report currency is the reimbursement currency and the currency of the ERP posting. A value that is
+    not a three-letter ISO code cannot be converted or posted.
+  rule_authority: iso_standard
+  sap_impact: The ERP posting fails currency validation; reimbursement amounts cannot be converted.
+  fix_map:
+    __other__: Set the employee's reimbursement currency in the user profile to the ISO 4217 code and correct the report.
+  record_fix_template: 'Expense report {CONCUR_REPORT.REPORT_ID}: currency ''{actual_value}'' is not an ISO 4217 code.'
+- id: CNE010
+  field: CONCUR_REPORT.TOTAL
+  check_class: cross_field_check
+  grain: CONCUR_REPORT
+  applies_when:
+    CONCUR_REPORT.APPROVAL_STATUS_CODE: [A_PEND, A_APPR]
+  fail_when: "`CONCUR_REPORT.TOTAL` <= 0"
+  severity: medium
+  dimension: accuracy
+  message: Submitted expense report has a zero or negative total
+  why_it_matters: A submitted report should claim money. A zero or negative total is an empty report or credits without the
+    matching charges, and either way consumes approval effort without a payable.
+  rule_authority: best_practice
+  sap_impact: Empty or negative postings reach the ERP; approvers process reports with nothing to pay.
+  fix_map:
+    __other__: Recall the report, add the missing expenses or delete it.
+  record_fix_template: 'Expense report {CONCUR_REPORT.REPORT_ID}: total is {actual_value}.'
+- id: CNE011
+  field: CONCUR_ENTRY.REPORT_ID
+  check_class: exists_check
+  target_table: CONCUR_REPORT
+  target_fields:
+  - REPORT_ID
+  grain: CONCUR_ENTRY
+  severity: high
+  dimension: consistency
+  message: Expense entry belongs to a report that does not exist
+  why_it_matters: Entries are always part of a report. An entry pointing to a missing report is orphaned and will never be
+    approved or posted.
+  rule_authority: sap_hard_constraint
+  sap_impact: Spend is invisible in reporting and never reimbursed or posted.
+  fix_map:
+    __other__: Re-extract both reports and entries for the same period; if the report was deleted, the entries can be ignored.
+  record_fix_template: 'Expense entry {CONCUR_ENTRY.ENTRY_ID}: report {CONCUR_ENTRY.REPORT_ID} does not exist.'
+- id: CNE012
+  field: CONCUR_ENTRY.EXPENSE_TYPE_CODE
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Expense entry has no expense type
+  why_it_matters: The expense type maps the entry to a G/L account, tax treatment and policy limit. Without it the entry
+    cannot be posted or audited.
+  rule_authority: sap_hard_constraint
+  sap_impact: The ERP posting has no G/L account; VAT reclaim and policy limits are skipped.
+  fix_map:
+    __blank__: Have the employee choose the expense type, or map the card transaction to an expense type in the policy.
+  record_fix_template: 'Expense entry {CONCUR_ENTRY.ENTRY_ID}: expense type is {actual_value}.'
+- id: CNE013
+  field: CONCUR_ENTRY.EXPENSE_TYPE_CODE
+  check_class: cross_field_check
+  grain: CONCUR_ENTRY
+  fail_when: "`CONCUR_ENTRY.EXPENSE_TYPE_CODE` == 'UNDEF'"
+  severity: high
+  dimension: validity
+  message: Expense entry still has the undefined expense type
+  why_it_matters: Card transactions arrive with expense type UNDEF until the employee classifies them. An entry left at UNDEF
+    has no G/L account, tax treatment or policy limit.
+  rule_authority: sap_hard_constraint
+  sap_impact: The ERP posting goes to a suspense account or fails; policy limits are not applied.
+  fix_map:
+    __other__: Classify the entry with a real expense type before the report is submitted.
+  record_fix_template: 'Expense entry {CONCUR_ENTRY.ENTRY_ID}: expense type is UNDEF.'
+- id: CNE014
+  field: CONCUR_ENTRY.ENTRY_ID
+  check_class: uniqueness_check
+  fields:
+  - CONCUR_REPORT.OWNER_LOGIN_ID
+  - CONCUR_ENTRY.TRANSACTION_DATE
+  - CONCUR_ENTRY.TRANSACTION_AMOUNT
+  - CONCUR_ENTRY.TRANSACTION_CURRENCY_CODE
+  - CONCUR_ENTRY.EXPENSE_TYPE_CODE
+  grain: CONCUR_ENTRY
+  severity: high
+  dimension: uniqueness
+  message: Possible duplicate expense (same owner, date, amount, currency and expense type)
+  why_it_matters: The same expense claimed twice, on one report or across reports, is the most common reimbursement leak.
+    Matching owner, date, amount, currency and type is the standard duplicate signal.
+  rule_authority: best_practice
+  sap_impact: The employee is reimbursed twice and the expense is posted twice in the ERP.
+  fix_map:
+    __other__: Review the entries together; recall and remove the duplicate, or recover the overpayment if it was paid.
+  record_fix_template: 'Expense entry {CONCUR_ENTRY.ENTRY_ID}: same owner, date, amount, currency and type as another entry.'
+- id: CNE015
+  field: CONCUR_ENTRY.POSTED_AMOUNT
+  check_class: cross_field_check
+  grain: CONCUR_ENTRY
+  # ponytail: fixed 75 (report currency) threshold, the common IRS / Concur default; make it a tenant
+  # override when a customer's policy differs
+  fail_when: "(`CONCUR_ENTRY.POSTED_AMOUNT` > 75) & (`CONCUR_ENTRY.HAS_IMAGE` != 'true') & (`CONCUR_ENTRY.RECEIPT_RECEIVED`
+    != 'true')"
+  severity: high
+  dimension: completeness
+  message: Expense above 75 has no receipt image and no paper receipt
+  why_it_matters: Tax authorities and most expense policies require a receipt above a threshold (75 in the report currency
+    by default). Without it the expense is not deductible, VAT cannot be reclaimed and the claim cannot be audited.
+  rule_authority: best_practice
+  sap_impact: Input VAT on the expense cannot be reclaimed; audit finds unsupported reimbursements.
+  fix_map:
+    __other__: Ask the employee to attach the receipt image, or mark the paper receipt as received after it arrives.
+  record_fix_template: 'Expense entry {CONCUR_ENTRY.ENTRY_ID}: amount {actual_value} without a receipt.'
+- id: CNE016
+  field: CONCUR_ENTRY.HAS_IMAGE
+  check_class: cross_field_check
+  grain: CONCUR_ENTRY
+  applies_when:
+    CONCUR_ENTRY.IS_IMAGE_REQUIRED: ['true']
+  fail_when: "`CONCUR_ENTRY.HAS_IMAGE` != 'true'"
+  severity: high
+  dimension: completeness
+  message: Policy requires a receipt image but none is attached
+  why_it_matters: The expense type's policy marks this entry as needing a receipt image. Reports that pass approval without
+    it bypass the policy's own audit rule.
+  rule_authority: customer_configured
+  sap_impact: Unsupported expenses are reimbursed; VAT reclaim is lost.
+  fix_map:
+    __other__: Attach the receipt image, or have the auditor document the exception.
+  record_fix_template: 'Expense entry {CONCUR_ENTRY.ENTRY_ID}: receipt image required but not attached.'
+- id: CNE017
+  field: CONCUR_ENTRY.TRANSACTION_CURRENCY_CODE
+  check_class: cross_field_check
+  grain: CONCUR_ENTRY
+  fail_when: "(`CONCUR_ENTRY.TRANSACTION_CURRENCY_CODE` != `CONCUR_REPORT.CURRENCY_CODE`) & (`CONCUR_ENTRY.EXCHANGE_RATE`
+    == 1)"
+  severity: high
+  dimension: accuracy
+  message: Foreign-currency expense converted at an exchange rate of 1
+  why_it_matters: When the transaction currency differs from the report currency, the posted amount comes from the exchange
+    rate. A rate of exactly 1 means the amount was not converted, so the employee is reimbursed the foreign amount as if
+    it were the home currency.
+  rule_authority: best_practice
+  sap_impact: Over- or under-reimbursement by the exchange difference; the ERP posts the wrong amount.
+  fix_map:
+    __other__: Correct the exchange rate on the entry (or the company's rate feed) and recalculate the posted amount.
+  record_fix_template: 'Expense entry {CONCUR_ENTRY.ENTRY_ID}: {CONCUR_ENTRY.TRANSACTION_CURRENCY_CODE} expense on a
+    {CONCUR_REPORT.CURRENCY_CODE} report at rate 1.'
+- id: CNE018
+  field: CONCUR_ENTRY.TRANSACTION_CURRENCY_CODE
+  check_class: regex_check
+  pattern: ^[A-Z]{3}$
+  severity: high
+  dimension: validity
+  message: Transaction currency is not an ISO 4217 code
+  why_it_matters: The transaction currency drives the exchange rate lookup. A value that is not a three-letter ISO code cannot
+    be converted.
+  rule_authority: iso_standard
+  sap_impact: The posted amount cannot be calculated; the ERP posting fails currency validation.
+  fix_map:
+    __other__: Correct the currency on the entry to its ISO 4217 code.
+  record_fix_template: 'Expense entry {CONCUR_ENTRY.ENTRY_ID}: currency ''{actual_value}'' is not an ISO 4217 code.'
+- id: CNE019
+  field: CONCUR_ENTRY.IS_PERSONAL
+  check_class: cross_field_check
+  grain: CONCUR_ENTRY
+  fail_when: "(`CONCUR_ENTRY.IS_PERSONAL` == 'true') & (`CONCUR_ENTRY.IS_BILLABLE` == 'true')"
+  severity: medium
+  dimension: consistency
+  message: Expense is marked both personal and billable to a client
+  why_it_matters: A personal expense is not reimbursed and not a business cost, so it cannot be re-billed to a client. Both
+    flags together mean the client is charged for the employee's private spend.
+  rule_authority: best_practice
+  sap_impact: Private spend re-billed to customers; project billing and revenue are overstated.
+  fix_map:
+    __other__: Clear the billable flag on personal expenses, or clear the personal flag if it is a business cost.
+  record_fix_template: 'Expense entry {CONCUR_ENTRY.ENTRY_ID}: personal and billable at the same time.'
+- id: CNE020
+  field: CONCUR_ENTRY.TRANSACTION_AMOUNT
+  check_class: cross_field_check
+  grain: CONCUR_ENTRY
+  fail_when: "`CONCUR_ENTRY.TRANSACTION_AMOUNT` == 0"
+  severity: low
+  dimension: accuracy
+  message: Expense entry has a zero amount
+  why_it_matters: A zero-amount entry is usually an unfinished itemisation or a card transaction that was reversed. It adds
+    noise to approval and audit without a payable.
+  rule_authority: best_practice
+  sap_impact: Zero-value lines in the ERP posting and in spend analytics.
+  fix_map:
+    __other__: Delete the entry or complete its itemisation.
+  record_fix_template: 'Expense entry {CONCUR_ENTRY.ENTRY_ID}: amount is zero.'

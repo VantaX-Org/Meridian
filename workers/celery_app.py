@@ -56,6 +56,7 @@ import workers.tasks.run_discovery  # noqa: F401 — source-system design discov
 import workers.tasks.run_config_intelligence  # noqa: F401 — config + Z-object intelligence per version
 import workers.tasks.revalidate_licence  # noqa: F401
 import workers.tasks.triage_sla  # noqa: F401 — SLA sweep + auto-assign
+import workers.tasks.forced_update  # noqa: F401
 import workers.scheduler  # noqa: F401, E402 — registers beat schedule
 
 
