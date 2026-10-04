@@ -20,7 +20,7 @@ import { copyToClipboard, downloadCsv } from "@/components/meridian/actions";
 import { useRole } from "@/hooks/use-role";
 import { deleteSavedView, getFindings, getFindingsAggregate, listSavedViews, saveNamedView } from "@/lib/api/findings";
 import { getFindingRecords, getVersion, type FindingRecord } from "@/lib/api/versions";
-import { formatModuleName } from "@/lib/format";
+import { checkClassLabel, formatModuleName } from "@/lib/format";
 import type { Dimension, Finding } from "@/types/api";
 
 const meta = (m: AuroraColumnMeta) => m;
@@ -88,7 +88,8 @@ export function FindingsSurface() {
       cell: ({ row }) => <span className="aurora-workbench__severity" data-severity={sev(row.original.severity)}>{sev(row.original.severity)}</span> },
     { id: "finding", header: "Finding", cell: ({ row }) => (
       <span><strong>{title(row.original)}</strong>
-        <Text variant="text-micro" tone="muted" as="div" className="aurora-number">{row.original.check_id}{row.original.details?.field_checked ? ` · ${row.original.details.field_checked}` : ""}</Text></span>) },
+        <Text variant="text-micro" tone="muted" as="div" className="aurora-number">{row.original.check_id}{row.original.details?.field_checked ? ` · ${row.original.details.field_checked}` : ""}
+          {row.original.check_class ? <> · <span title={row.original.check_class}>{checkClassLabel(row.original.check_class)}</span></> : null}</Text></span>) },
     { id: "module", header: "Object", meta: meta({ width: 170 }), cell: ({ row }) => formatModuleName(row.original.module) },
     { id: "dimension", header: "Dimension", meta: meta({ width: 120 }), cell: ({ row }) => row.original.dimension },
     { id: "records", header: "Records", meta: meta({ width: 100, align: "end", numeric: true }), cell: ({ row }) => row.original.affected_count.toLocaleString() },
@@ -248,8 +249,9 @@ function FindingDetail({ finding: f }: { finding: Finding }) {
   const samples = f.details?.sample_failing_records ?? [];
   const cols = Array.from(new Set(samples.flatMap((r) => Object.keys(r))));
   const invalid = Object.entries(f.details?.distinct_invalid_values ?? {}).sort((a, b) => b[1] - a[1]);
-  const rows: [string, string][] = [
-    ["Object", formatModuleName(f.module)], ["Check", f.check_id], ["Dimension", f.dimension], ["Field", f.details?.field_checked ?? "—"],
+  const rows: [string, ReactNode][] = [
+    ["Object", formatModuleName(f.module)], ["Check", f.check_id],
+    ["Check type", f.check_class ? <span title={f.check_class}>{checkClassLabel(f.check_class)}</span> : "—"], ["Dimension", f.dimension], ["Field", f.details?.field_checked ?? "—"],
     ["Records", `${f.affected_count.toLocaleString()} of ${f.total_count.toLocaleString()}`],
     ["Pass rate", f.pass_rate === null ? "—" : `${Math.round(f.pass_rate)}%`], ["Version", f.version_id.slice(0, 8)],
   ];
