@@ -1,17 +1,20 @@
 "use client";
 
 /**
- * Admin → Field mapping: which customer column carries each standard field,
+ * Admin, Field mapping: which customer column carries each standard field,
  * per object, for file imports. Edit inline, save per row, or reset an
  * object to the shipped defaults. Saves need manage_field_mappings.
  */
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, Chip, Input, KpiRail, Select, Stack, Stat, Text } from "@/components/aurora";
+import {
+  Banner, Button, EmptyState, FilterBar, Input, Metric, MetricStrip, Mono, PageHeader, SectionCard, Select, StatusBadge, TableSkeleton,
+} from "@/components/ui-core";
 import { useRole } from "@/hooks/use-role";
 import { getFieldMappings, resetFieldMappings, updateFieldMapping, type FieldMapping } from "@/lib/api/field-mappings";
+import { apiErrorMessage } from "@/lib/api/optional";
 import { formatModuleName } from "@/lib/format";
 
 type Draft = Pick<FieldMapping, "customer_field" | "customer_label" | "notes">;
@@ -25,15 +28,15 @@ function Row({ m, write, onSaved }: { m: FieldMapping; write: boolean; onSaved: 
       notes: d.notes ?? undefined, is_mapped: !!(d.customer_field && d.customer_field.trim()),
     }),
     onSuccess: () => { onSaved(); toast.success(`${m.standard_field} saved`); },
-    onError: (e) => toast.error((e as Error).message || "Not saved"),
+    onError: (e) => toast.error(`${m.standard_field} not saved. ${apiErrorMessage(e)}`),
   });
   return (
     <tr>
-      <td><span className="aurora-number">{m.standard_field}</span><Text variant="text-micro" tone="muted" as="div">{m.standard_label}</Text></td>
-      <td className="aurora-number">{m.data_type}</td>
+      <td><Mono>{m.standard_field}</Mono><div className="ui-micro">{m.standard_label}</div></td>
+      <td className="ui-mono">{m.data_type}</td>
       <td style={{ width: 200 }}>
-        <Input value={d.customer_field ?? ""} aria-label={`${m.standard_field} customer column`} disabled={!write} className="aurora-number"
-          placeholder="column header in the file" onChange={(e) => setD({ ...d, customer_field: e.target.value.trim() || null })} />
+        <Input value={d.customer_field ?? ""} aria-label={`${m.standard_field} customer column`} disabled={!write} className="ui-mono"
+          placeholder="Column header in the file" onChange={(e) => setD({ ...d, customer_field: e.target.value.trim() || null })} />
       </td>
       <td style={{ width: 200 }}>
         <Input value={d.customer_label ?? ""} aria-label={`${m.standard_field} customer label`} disabled={!write}
@@ -43,7 +46,7 @@ function Row({ m, write, onSaved }: { m: FieldMapping; write: boolean; onSaved: 
         <Input value={d.notes ?? ""} aria-label={`${m.standard_field} notes`} disabled={!write}
           onChange={(e) => setD({ ...d, notes: e.target.value || null })} />
       </td>
-      <td><Chip tone={m.is_mapped ? "success" : "neutral"}>{m.is_mapped ? "mapped" : "unmapped"}</Chip></td>
+      <td>{m.is_mapped ? <StatusBadge status="ok">Mapped</StatusBadge> : <StatusBadge status="idle">Not mapped</StatusBadge>}</td>
       <td>{write && dirty ? <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>Save</Button> : null}</td>
     </tr>
   );
@@ -51,58 +54,72 @@ function Row({ m, write, onSaved }: { m: FieldMapping; write: boolean; onSaved: 
 
 export function FieldMappingSettings() {
   const qc = useQueryClient();
-  const { can } = useRole();
-  const write = can("manage_field_mappings");
+  const write = useRole().can("manage_field_mappings");
   const [object, setObject] = useState("");
   const [search, setSearch] = useState("");
-  const all = useQuery({ queryKey: ["field-mappings", { search }], queryFn: () => getFieldMappings(search ? { search } : undefined) });
+  const [confirmReset, setConfirmReset] = useState(false);
+  const all = useQuery({ queryKey: ["field-mappings"], queryFn: () => getFieldMappings() });
   const mappings = useMemo(() => all.data?.mappings ?? [], [all.data]);
   const objects = useMemo(() => Array.from(new Set(mappings.map((m) => m.module))).sort(), [mappings]);
-  const shown = object ? mappings.filter((m) => m.module === object) : mappings;
+  const term = search.trim().toLowerCase();
+  const shown = mappings.filter((m) => (!object || m.module === object)
+    && (!term || [m.standard_field, m.standard_label, m.customer_field, m.customer_label].some((v) => v?.toLowerCase().includes(term))));
   const mapped = shown.filter((m) => m.is_mapped).length;
   const refresh = () => qc.invalidateQueries({ queryKey: ["field-mappings"] });
+  const scope = object ? formatModuleName(object) : "every object";
   const reset = useMutation({
     mutationFn: () => resetFieldMappings(object || undefined),
-    onSuccess: (r) => { refresh(); toast.success(`${r.reset_count} mappings reset to defaults`); },
-    onError: (e) => toast.error((e as Error).message || "Reset failed"),
+    onSuccess: (r) => { refresh(); setConfirmReset(false); toast.success(`${r.reset_count} mappings reset to defaults`); },
+    onError: (e) => toast.error(`Mappings not reset. ${apiErrorMessage(e)}`),
   });
 
   return (
-    <Stack gap={5} className="aurora-page">
-      <KpiRail>
-        <Stat label="Standard fields" value={shown.length} />
-        <Stat label="Mapped" value={mapped} tone={mapped === shown.length && shown.length ? "success" : "neutral"} />
-        <Stat label="Unmapped" value={shown.length - mapped} tone={shown.length - mapped ? "warning" : "neutral"} />
-        <Stat label="Objects" value={objects.length} />
-      </KpiRail>
-      <Stack direction="row" gap={3} align="center" wrap className="aurora-filters">
-        <Select placeholder="All objects" aria-label="Object" value={object} options={objects.map((o) => ({ value: o, label: formatModuleName(o) }))}
+    <div className="ui-page">
+      <PageHeader title="Field mapping"
+        summary="Imported files are matched on these customer columns. A standard field with no customer column is skipped by every check that needs it." />
+      <MetricStrip label="Mapping coverage">
+        <Metric label="Standard fields" value={shown.length} />
+        <Metric label="Mapped" value={mapped} />
+        <Metric label="Not mapped" value={shown.length - mapped} tone={shown.length - mapped ? "warning" : "default"} />
+        <Metric label="Objects" value={object ? 1 : objects.length} />
+      </MetricStrip>
+      <FilterBar search={{ value: search, onChange: setSearch, placeholder: "Search fields" }}
+        onClear={object || search ? () => { setObject(""); setSearch(""); } : undefined}
+        actions={write ? (confirmReset ? (
+          <>
+            <span className="ui-micro">Reset {scope} to the shipped mappings?</span>
+            <Button size="sm" variant="danger" disabled={reset.isPending} onClick={() => reset.mutate()}>Reset</Button>
+            <Button size="sm" variant="ghost" onClick={() => setConfirmReset(false)}>Cancel</Button>
+          </>
+        ) : <Button size="sm" variant="secondary" onClick={() => setConfirmReset(true)}>Reset {object ? formatModuleName(object) : "all"} to defaults</Button>) : null}>
+        <Select placeholder="All objects" aria-label="Object" value={object} options={[{ value: "", label: "All objects" }, ...objects.map((o) => ({ value: o, label: formatModuleName(o) }))]}
           onValueChange={setObject} />
-        <Input placeholder="Search field (Enter)" aria-label="Search" defaultValue={search}
-          onKeyDown={(e) => e.key === "Enter" && setSearch(e.currentTarget.value)} />
-        {write ? (
-          <Button variant="secondary" disabled={reset.isPending}
-            onClick={() => { if (confirm(`Reset ${object ? formatModuleName(object) : "every object"} to the shipped mappings?`)) reset.mutate(); }}>
-            Reset {object ? formatModuleName(object) : "all"} to defaults
-          </Button>
-        ) : null}
-      </Stack>
-      <Text variant="text-small" tone="secondary">
-        Imported files are matched on these customer columns; a standard field with no customer column is skipped by every check that needs it.
-      </Text>
-      {all.isLoading ? <Text tone="muted">Reading the mapping catalogue.</Text> : (
-        <table className="aurora-exec__table">
-          <thead><tr><th>Standard field</th><th>Type</th><th>Customer column</th><th>Customer label</th><th>Notes</th><th>State</th><th /></tr></thead>
-          <tbody>
-            {(object ? [object] : objects).map((o) => (
-              <>
-                <tr key={`h-${o}`}><td colSpan={7}><Text variant="text-micro" tone="muted" className="aurora-exec__eyebrow">{formatModuleName(o)}</Text></td></tr>
-                {shown.filter((m) => m.module === o).map((m) => <Row key={m.id} m={m} write={write} onSaved={refresh} />)}
-              </>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </Stack>
+      </FilterBar>
+      {all.isLoading ? <TableSkeleton rows={10} label="Loading field mappings" />
+        : all.error ? <Banner tone="danger" title="Field mappings could not be read">{apiErrorMessage(all.error)}</Banner>
+        : !shown.length ? <EmptyState>No standard field matches this filter.</EmptyState>
+        : (
+          <SectionCard title={object ? formatModuleName(object) : "All objects"} meta={`${mapped} of ${shown.length} mapped`} flush>
+            <div style={{ overflowX: "auto" }}>
+              <table className="ui-mini-table">
+                <thead><tr><th>Standard field</th><th>Type</th><th>Customer column</th><th>Customer label</th><th>Notes</th><th>State</th>
+                  <th><span className="ui-visually-hidden">Actions</span></th></tr></thead>
+                <tbody>
+                  {(object ? [object] : objects).map((o) => {
+                    const rows = shown.filter((m) => m.module === o);
+                    if (!rows.length) return null;
+                    return (
+                      <Fragment key={o}>
+                        {!object ? <tr><th colSpan={7} scope="colgroup">{formatModuleName(o)}</th></tr> : null}
+                        {rows.map((m) => <Row key={m.id} m={m} write={write} onSaved={refresh} />)}
+                      </Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </SectionCard>
+        )}
+    </div>
   );
 }

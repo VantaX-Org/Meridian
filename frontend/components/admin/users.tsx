@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Admin → Users & audit: who has access and with which role, the role matrix
+ * Admin, Users and audit: who has access and with which role, the role matrix
  * the API enforces, the licence this deployment runs under, and the audit
  * log. Everything here needs manage_users on the API.
  */
@@ -10,10 +10,12 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
+import { AdminAuditLogTable, AdminDestructiveConfirm } from "@/components/aurora";
 import {
-  AdminAuditLogTable, AdminDestructiveConfirm, Banner, Button, Chip, DataTable, Drawer, EmptyState, Field, Input, KpiRail,
-  Select, Stack, Stat, Tabs, Text, type AuroraColumnMeta, type ChipTone,
-} from "@/components/aurora";
+  Banner, Button, DataTable, DetailDrawer, EmptyState, Field, Input, KeyValue, Metric, MetricStrip, Mono, PageHeader, SectionCard, Select,
+  StatusBadge, TableSkeleton, Tabs, type AuroraColumnMeta,
+} from "@/components/ui-core";
+import { apiErrorMessage } from "@/lib/api/optional";
 import { downloadCsv } from "@/components/meridian/actions";
 import { PlatformVersion } from "./platform-version";
 import { useRole } from "@/hooks/use-role";
@@ -28,16 +30,15 @@ import type { User, UserRole } from "@/types/api";
 const meta = (m: AuroraColumnMeta) => m;
 const ROLES: UserRole[] = ["admin", "manager", "steward", "ai_reviewer", "approver", "analyst", "viewer", "auditor"];
 const ROLE_META: Record<UserRole, { label: string; desc: string }> = {
-  admin: { label: "Admin", desc: "Full access — manage users, rules, and approve proposed rules." },
-  manager: { label: "Manager", desc: "Run the programme — connect systems, sync, analyse, approve, apply and assign work." },
-  steward: { label: "Steward", desc: "Own the data — fix, clean, approve/apply, maintain rules and assign work." },
-  ai_reviewer: { label: "AI Reviewer", desc: "Review and approve proposed rules from steward corrections." },
+  admin: { label: "Admin", desc: "Full access. Manage users and rules, approve proposed rules." },
+  manager: { label: "Manager", desc: "Run the programme. Connect systems, sync, analyse, approve, apply and assign work." },
+  steward: { label: "Steward", desc: "Own the data. Fix, clean, approve and apply, maintain rules and assign work." },
+  ai_reviewer: { label: "AI reviewer", desc: "Review and approve proposed rules from steward corrections." },
   approver: { label: "Approver", desc: "Four-eyes approval of cleaning, golden records and stewardship changes." },
   analyst: { label: "Analyst", desc: "Upload, sync and run analysis; export results. No approvals." },
   viewer: { label: "Viewer", desc: "Read-only access to dashboards and findings." },
   auditor: { label: "Auditor", desc: "Read-only access including the audit log." },
 };
-const ROLE_TONE: Record<UserRole, ChipTone> = { admin: "danger", manager: "info", steward: "info", ai_reviewer: "warning", approver: "warning", analyst: "neutral", viewer: "neutral", auditor: "neutral" };
 const ROLE_OPTIONS = ROLES.map((r) => ({ value: r, label: ROLE_META[r].label }));
 type View = "users" | "roles" | "licence" | "audit";
 
@@ -64,137 +65,146 @@ export function UsersSurface() {
     mutationFn: (u: User) => deleteUser(u.id),
     onSuccess: (_, u) => { toast.success(`${u.name} removed`); setDeleting(null); refresh(); },
     onError: (e) => toast.error((e as { response?: { status?: number } }).response?.status === 409
-      ? "This user is referenced by audit or stewardship records — deactivate them instead" : (e as Error).message || "Not removed"),
+      ? "This user is referenced by audit or stewardship records. Deactivate them instead." : `Not removed. ${apiErrorMessage(e)}`),
   });
 
   const columns = useMemo<ColumnDef<User, unknown>[]>(() => [
     { id: "user", header: "User", meta: meta({ sticky: "start", width: 260 }), cell: ({ row }) => (
-      <span><strong>{row.original.name}</strong><Text variant="text-small" tone="muted" as="div">{row.original.email}</Text></span>) },
-    { id: "role", header: "Role", meta: meta({ width: 130 }), cell: ({ row }) => <Chip tone={ROLE_TONE[row.original.role]}>{ROLE_META[row.original.role]?.label ?? row.original.role}</Chip> },
-    { id: "active", header: "Status", meta: meta({ width: 110 }), cell: ({ row }) => <Chip tone={row.original.is_active ? "success" : "neutral"}>{row.original.is_active ? "active" : "inactive"}</Chip> },
-    { id: "login", header: "Last sign-in", meta: meta({ width: 130 }), cell: ({ row }) => row.original.last_login ? relativeTime(row.original.last_login) : "never" },
+      <span><strong>{row.original.name}</strong><div className="ui-micro">{row.original.email}</div></span>) },
+    { id: "role", header: "Role", meta: meta({ width: 130 }), cell: ({ row }) => ROLE_META[row.original.role]?.label ?? row.original.role },
+    { id: "active", header: "Status", meta: meta({ width: 110 }), cell: ({ row }) => <StatusBadge status={row.original.is_active ? "ok" : "idle"}>{row.original.is_active ? "Active" : "Inactive"}</StatusBadge> },
+    { id: "login", header: "Last sign-in", meta: meta({ width: 130 }), cell: ({ row }) => row.original.last_login ? relativeTime(row.original.last_login) : "Never" },
     { id: "since", header: "Member since", meta: meta({ width: 130 }), cell: ({ row }) => relativeTime(row.original.created_at) },
     { id: "actions", header: "", meta: meta({ width: 150, align: "end" }), cell: ({ row }) => canManage ? (
-      <Stack direction="row" gap={1} justify="end">
+      <span className="ui-form__actions" style={{ justifyContent: "flex-end" }}>
         <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setEditing(row.original); }}>Edit</Button>
         <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setDeleting(row.original); }}>Remove</Button>
-      </Stack>) : null },
+      </span>) : null },
   ], [canManage]);
 
-  if (!canManage) return <Banner tone="info" title="Users & audit needs the manage_users permission" className="aurora-page">Ask an administrator to change roles or review the audit log.</Banner>;
+  if (!canManage) return <div className="ui-page"><Banner tone="info" title="Users and audit needs the manage_users permission">Ask an administrator to change roles or review the audit log.</Banner></div>;
 
   return (
-    <Stack gap={5} className="aurora-page">
-      <KpiRail>
-        <Stat label="Active users" value={active.length} unit={seats ? `/ ${seats} seats` : undefined} tone={seats && active.length >= seats ? "warning" : "neutral"} />
-        <Stat label="Roles in use" value={rolesInUse.size} />
-        <Stat label="Modules licensed" value={licence.data?.enabled_modules?.length ?? 0} unit={licence.data?.tier} />
-        <Stat label="Licence" value={licence.data?.valid === false ? "invalid" : licence.data?.days_remaining != null ? `${licence.data.days_remaining} d` : "—"}
-          tone={licence.data?.valid === false ? "danger" : licence.data?.days_remaining != null && licence.data.days_remaining < 30 ? "warning" : "neutral"} />
-      </KpiRail>
-      <Stack direction="row" gap={3} align="center" wrap>
-        <Tabs ariaLabel="Users & audit sections" value={view as View} onValueChange={(v) => setView(v)} items={[
-          { id: "users", label: "Users", count: users.length }, { id: "roles", label: "Roles" }, { id: "licence", label: "Licence & modules" }, { id: "audit", label: "Audit log" },
-        ]} />
-        <span style={{ flex: 1 }} />
-        {view === "users" ? <>
+    <div className="ui-page">
+      <PageHeader title="Users and audit" summary="Who can sign in, with which role, and what they did."
+        actions={view === "users" ? <>
           <Button variant="secondary" onClick={() => downloadCsv("meridian-users.csv", users.map((u) => ({ name: u.name, email: u.email, role: u.role, active: u.is_active, last_login: u.last_login ?? "" })))}>Export users</Button>
           <Button onClick={() => setInvite(true)}>Invite user</Button>
-        </> : null}
-      </Stack>
+        </> : null} />
+      <MetricStrip label="Access">
+        <Metric label="Active users" value={active.length} unit={seats ? `of ${seats} seats` : undefined} tone={seats && active.length >= seats ? "warning" : "default"} />
+        <Metric label="Roles in use" value={rolesInUse.size} />
+        <Metric label="Modules licensed" value={licence.data?.enabled_modules?.length ?? 0} unit={licence.data?.tier} />
+        <Metric label="Licence" value={licence.data?.valid === false ? "Not valid" : licence.data?.days_remaining ?? "—"} unit={licence.data?.valid !== false && licence.data?.days_remaining != null ? "days left" : undefined}
+          tone={licence.data?.valid === false ? "danger" : licence.data?.days_remaining != null && licence.data.days_remaining < 30 ? "warning" : "default"} />
+      </MetricStrip>
+      <div>
+        <Tabs ariaLabel="Users and audit sections" value={view as View} onValueChange={(v) => setView(v)} items={[
+          { id: "users", label: "Users", count: users.length }, { id: "roles", label: "Roles" }, { id: "licence", label: "Licence and modules" }, { id: "audit", label: "Audit log" },
+        ]} />
+      </div>
 
-      {view === "users" ? (usersQ.isLoading ? <Text tone="muted">Reading users.</Text> : users.length
+      {view === "users" ? (usersQ.isLoading ? <TableSkeleton rows={6} label="Loading users" /> : users.length
         ? <DataTable columns={columns} data={users} getRowId={(u) => u.id} onRowActivate={setEditing} ariaLabel="Users" maxHeight="60vh" />
-        : <EmptyState title="No users yet." body="Invite the first steward or analyst." actions={<Button onClick={() => setInvite(true)}>Invite user</Button>} />) : null}
+        : <EmptyState action={<Button onClick={() => setInvite(true)}>Invite user</Button>}>No users yet. Invite the first steward or analyst.</EmptyState>) : null}
 
       {view === "roles" ? <RolesView matrix={matrix.data} users={active} /> : null}
 
       {view === "licence" ? (
-        <Stack gap={4}>
-          <table className="aurora-exec__table"><tbody>
-            <tr><td>Tier</td><td>{licence.data?.tier ?? "—"}</td></tr>
-            <tr><td>Seats</td><td className="aurora-number">{active.length} / {seats || "∞"}</td></tr>
-            <tr><td>Renews</td><td>{licence.data?.expiry_date ?? "—"}{licence.data?.days_remaining != null ? ` · ${licence.data.days_remaining} days` : ""}</td></tr>
-            <tr><td>Status</td><td><Chip tone={licence.data?.valid === true ? "success" : licence.data?.valid === false ? "danger" : "neutral"}>{licence.data?.status ?? "unknown"}</Chip></td></tr>
-            <tr><td>Last validated</td><td>{licence.data?.last_validated ? relativeTime(licence.data.last_validated) : "—"}</td></tr>
-          </tbody></table>
-          <div>
-            <Text variant="text-small" tone="secondary">Modules enabled on this licence</Text>
-            <Stack direction="row" gap={1} wrap style={{ marginTop: "var(--aurora-space-2)" }}>
-              {licence.data?.enabled_menu_items?.length ? licence.data.enabled_menu_items.map((m) => <Chip key={m} tone="info">{m}</Chip>) : <Text tone="muted">None enabled.</Text>}
-            </Stack>
+        <div className="ui-columns">
+          <div className="ui-stack">
+            <SectionCard title="Licence">
+              <KeyValue rows={[
+                { k: "Tier", v: licence.data?.tier ?? "—" },
+                { k: "Seats", v: `${active.length} of ${seats || "unlimited"}` },
+                { k: "Renews", v: licence.data?.expiry_date ? `${licence.data.expiry_date}${licence.data.days_remaining != null ? `, ${licence.data.days_remaining} days` : ""}` : "—" },
+                { k: "Status", v: <StatusBadge status={licence.data?.valid === true ? "ok" : licence.data?.valid === false ? "failed" : "idle"}>{licence.data?.status ?? "Unknown"}</StatusBadge> },
+                { k: "Last validated", v: licence.data?.last_validated ? relativeTime(licence.data.last_validated) : "—" },
+              ]} />
+            </SectionCard>
+            <p className="ui-note">Plan changes and invoices are handled in Meridian HQ.</p>
           </div>
-          <Text variant="text-micro" tone="muted">Plan changes and invoices are managed centrally in Meridian HQ.</Text>
-          <PlatformVersion />
-        </Stack>
+          <div className="ui-stack">
+            <SectionCard title="Modules enabled" meta={licence.data?.enabled_menu_items?.length || undefined}>
+              {licence.data?.enabled_menu_items?.length
+                ? <ul className="ui-plain-list">{licence.data.enabled_menu_items.map((m) => <li key={m}>{m}</li>)}</ul>
+                : <p className="ui-note">None enabled.</p>}
+            </SectionCard>
+            <PlatformVersion />
+          </div>
+        </div>
       ) : null}
 
-      {view === "audit" ? (audit.isLoading ? <Text tone="muted">Reading the audit log.</Text> : (
+      {view === "audit" ? (audit.isLoading ? <TableSkeleton rows={8} label="Loading the audit log" /> : (
         <AdminAuditLogTable entries={(audit.data?.entries ?? []).map((e) => ({
           id: e.id, timestamp: e.created_at, displayTime: relativeTime(e.created_at),
           actor: e.actor_email ? e.actor_email.split("@")[0] : "system",
-          action: `${e.action} · ${e.entity_type}`, context: `${e.method} ${e.path} → ${e.status_code}${e.entity_id ? ` · ${e.entity_id.slice(0, 8)}` : ""}`,
+          action: `${e.action}, ${e.entity_type}`, context: `${e.method} ${e.path} returned ${e.status_code}${e.entity_id ? `, ${e.entity_id.slice(0, 8)}` : ""}`,
         }))} emptyLabel="No audit activity recorded yet." />)) : null}
 
-      <Drawer open={invite} onClose={() => setInvite(false)} ariaLabel="Invite a user" header={<Text variant="text-lead">Invite a user</Text>}>
+      <DetailDrawer open={invite} onClose={() => setInvite(false)} ariaLabel="Invite a user" header={<div className="ui-drawer-head"><h2 className="ui-drawer-head__title">Invite a user</h2></div>}>
         {invite ? <InviteForm onDone={() => { setInvite(false); refresh(); }} /> : null}
-      </Drawer>
-      <Drawer open={!!editing} onClose={() => setEditing(null)} ariaLabel="Edit user" header={editing ? <Text variant="text-lead">{editing.name}</Text> : null}>
+      </DetailDrawer>
+      <DetailDrawer open={!!editing} onClose={() => setEditing(null)} ariaLabel="Edit user" header={editing ? <div className="ui-drawer-head"><h2 className="ui-drawer-head__title">{editing.name}</h2></div> : null}>
         {editing ? <EditForm key={editing.id} user={editing} onDone={() => { setEditing(null); refresh(); }} /> : null}
-      </Drawer>
-      <Drawer open={!!deleting} onClose={() => setDeleting(null)} ariaLabel="Remove user">
+      </DetailDrawer>
+      <DetailDrawer open={!!deleting} onClose={() => setDeleting(null)} ariaLabel="Remove user">
         {deleting ? <AdminDestructiveConfirm title={`Remove ${deleting.name}`} expected={deleting.email}
-          body={<>Type <span className="aurora-number">{deleting.email}</span> to remove this user. Their stewardship history stays attributed to them.</>}
+          body={<>Type <Mono>{deleting.email}</Mono> to remove this user. Their stewardship history stays attributed to them.</>}
           confirmLabel="Remove user" cancelLabel="Keep" onConfirm={() => del.mutate(deleting)} onCancel={() => setDeleting(null)} /> : null}
-      </Drawer>
-    </Stack>
+      </DetailDrawer>
+    </div>
   );
 }
 
 function RolesView({ matrix, users }: { matrix: Record<string, string[]> | undefined; users: User[] }) {
   const actions = useMemo(() => Array.from(new Set(Object.values(matrix ?? {}).flat())).sort(), [matrix]);
   return (
-    <Stack gap={4}>
-      <Text variant="text-small" tone="secondary">Permissions come from the API&apos;s role matrix; the frontend never keeps its own copy.</Text>
+    <div className="ui-stack">
+      <p className="ui-note">Permissions come from the API&apos;s role matrix. The frontend never keeps its own copy.</p>
       {matrix ? (
-        <div style={{ overflowX: "auto" }}>
-          <table className="aurora-exec__table">
-            <thead><tr><th>Role</th>{actions.map((a) => <th key={a} className="aurora-number">{a}</th>)}</tr></thead>
-            <tbody>
-              {ROLES.map((r) => (
-                <tr key={r}>
-                  <td><Chip tone={ROLE_TONE[r]}>{ROLE_META[r].label}</Chip><Text variant="text-small" tone="muted" as="div">{ROLE_META[r].desc}</Text></td>
-                  {actions.map((a) => <td key={a} style={{ textAlign: "center" }}>{matrix[r]?.includes(a) ? "✓" : ""}</td>)}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : <Text tone="muted">Reading the role matrix.</Text>}
-      <div className="aurora-compare__lists">
-        {ROLES.filter((r) => users.some((u) => u.role === r)).map((r) => (
-          <div key={r}>
-            <Stack direction="row" gap={2} align="center"><Chip tone={ROLE_TONE[r]}>{ROLE_META[r].label}</Chip><Text variant="text-small" tone="secondary">{users.filter((u) => u.role === r).length}</Text></Stack>
-            <ul className="aurora-exec__warnings">{users.filter((u) => u.role === r).map((u) => <li key={u.id}><span>{u.name} <Text variant="text-micro" tone="muted" as="span" className="aurora-number">{u.email}</Text></span></li>)}</ul>
+        <SectionCard title="Role matrix" flush>
+          <div style={{ overflowX: "auto" }}>
+            <table className="ui-mini-table">
+              <thead><tr><th>Role</th>{actions.map((a) => <th key={a} className="ui-mono">{a}</th>)}</tr></thead>
+              <tbody>
+                {ROLES.map((r) => (
+                  <tr key={r}>
+                    <td><strong>{ROLE_META[r].label}</strong><div className="ui-micro">{ROLE_META[r].desc}</div></td>
+                    {actions.map((a) => <td key={a} style={{ textAlign: "center" }}>{matrix[r]?.includes(a) ? <span aria-label="Allowed">✓</span> : <span className="ui-visually-hidden">Not allowed</span>}</td>)}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        ))}
-      </div>
-    </Stack>
+        </SectionCard>
+      ) : <TableSkeleton rows={8} label="Loading the role matrix" />}
+      <SectionCard title="Who holds each role">
+        <table className="ui-mini-table">
+          <tbody>
+            {ROLES.filter((r) => users.some((u) => u.role === r)).map((r) => (
+              <tr key={r}>
+                <td style={{ width: 160 }}><strong>{ROLE_META[r].label}</strong> <span className="ui-micro">{users.filter((u) => u.role === r).length}</span></td>
+                <td>{users.filter((u) => u.role === r).map((u) => u.name).join(", ")}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </SectionCard>
+    </div>
   );
 }
 
 function InviteForm({ onDone }: { onDone: () => void }) {
   const [email, setEmail] = useState(""); const [name, setName] = useState(""); const [role, setRole] = useState<UserRole>("viewer");
   const m = useMutation({ mutationFn: () => inviteUser({ email, name: name || undefined, role }),
-    onSuccess: () => { toast.success(`Invitation sent to ${email}`); onDone(); }, onError: (e) => toast.error((e as Error).message || "Invitation not sent") });
+    onSuccess: () => { toast.success(`Invitation sent to ${email}`); onDone(); }, onError: (e) => toast.error(`Invitation not sent. ${apiErrorMessage(e)}`) });
   return (
-    <form onSubmit={(e) => { e.preventDefault(); if (email) m.mutate(); }}>
-      <Stack gap={4}>
-        <Field label="Email" required>{({ controlId }) => <Input id={controlId} type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />}</Field>
-        <Field label="Name" helper="Optional">{({ controlId }) => <Input id={controlId} value={name} onChange={(e) => setName(e.target.value)} />}</Field>
-        <Field label="Role" helper={ROLE_META[role].desc}>{({ controlId }) => <Select id={controlId} options={ROLE_OPTIONS} value={role} onValueChange={(v) => setRole(v as UserRole)} />}</Field>
-        <Stack direction="row" gap={2}><Button type="submit" disabled={!email || m.isPending}>Send invitation</Button><Button type="button" variant="ghost" onClick={onDone}>Close</Button></Stack>
-      </Stack>
+    <form className="ui-form" onSubmit={(e) => { e.preventDefault(); if (email) m.mutate(); }}>
+      <Field label="Email" required>{({ controlId }) => <Input id={controlId} type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />}</Field>
+      <Field label="Name" helper="Optional">{({ controlId }) => <Input id={controlId} value={name} onChange={(e) => setName(e.target.value)} />}</Field>
+      <Field label="Role" helper={ROLE_META[role].desc}>{({ controlId }) => <Select id={controlId} options={ROLE_OPTIONS} value={role} onValueChange={(v) => setRole(v as UserRole)} />}</Field>
+      <div className="ui-form__actions"><Button type="submit" disabled={!email || m.isPending}>Send invitation</Button><Button type="button" variant="ghost" onClick={onDone}>Close</Button></div>
     </form>
   );
 }
@@ -202,15 +212,16 @@ function InviteForm({ onDone }: { onDone: () => void }) {
 function EditForm({ user, onDone }: { user: User; onDone: () => void }) {
   const [role, setRole] = useState<UserRole>(user.role); const [isActive, setActive] = useState(user.is_active);
   const m = useMutation({ mutationFn: () => updateUser(user.id, { role, is_active: isActive }),
-    onSuccess: () => { toast.success(`${user.name} updated`); onDone(); }, onError: (e) => toast.error((e as Error).message || "Not saved") });
+    onSuccess: () => { toast.success(`${user.name} saved`); onDone(); }, onError: (e) => toast.error(`Not saved. ${apiErrorMessage(e)}`) });
   return (
-    <Stack gap={4}>
-      <Text variant="text-small" tone="secondary">{user.email}</Text>
+    <form className="ui-form" onSubmit={(e) => { e.preventDefault(); m.mutate(); }}>
+      <p className="ui-note">{user.email}</p>
       <Field label="Role" helper={ROLE_META[role].desc}>{({ controlId }) => <Select id={controlId} options={ROLE_OPTIONS} value={role} onValueChange={(v) => setRole(v as UserRole)} />}</Field>
-      <Chip tone={isActive ? "success" : "neutral"} selected={isActive} role="switch" aria-checked={isActive} onClick={() => setActive(!isActive)} style={{ cursor: "pointer" }}>
-        {isActive ? "Active — can sign in" : "Inactive — sign-in blocked"}
-      </Chip>
-      <Stack direction="row" gap={2}><Button onClick={() => m.mutate()} disabled={m.isPending}>Save</Button><Button variant="ghost" onClick={onDone}>Close</Button></Stack>
-    </Stack>
+      <label className="ui-check">
+        <input type="checkbox" checked={isActive} onChange={(e) => setActive(e.target.checked)} />
+        <span>Active. {isActive ? "This user can sign in." : "Sign-in is blocked."}</span>
+      </label>
+      <div className="ui-form__actions"><Button type="submit" disabled={m.isPending}>Save</Button><Button type="button" variant="ghost" onClick={onDone}>Close</Button></div>
+    </form>
   );
 }
