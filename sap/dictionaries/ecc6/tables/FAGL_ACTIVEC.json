@@ -1,0 +1,261 @@
+{
+ "table": "FAGL_ACTIVEC",
+ "description": "Activation of New General Ledger",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "ACTIVE",
+   "key": false,
+   "data_element": "FAGL_GLFLEX_ACTIVE",
+   "domain": "BOOLE",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: New General Ledger Accounting Is Active",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "WRITE_GLT0",
+   "key": false,
+   "data_element": "FAGL_WRITE_GLT0",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Continue to Update Classic General Ledger",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "READ_GLT0",
+   "key": false,
+   "data_element": "FAGL_READ_GLT0",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Read Classic Gen. Ledger (GLT0) Instead of New Gen. Ledger",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "SPLITMETHD",
+   "key": false,
+   "data_element": "SPLITMETHD",
+   "domain": "SPLITMETHD",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Document Splitting Method",
+   "check_table": "T8G01"
+  },
+  {
+   "pos": 6,
+   "name": "SPLITDATE_CHECK",
+   "key": false,
+   "data_element": "FAGL_SPLITDATE_CHECK",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "System Date from which Document Splitting Is Checked",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "SPLITDATE_ACTIVE",
+   "key": false,
+   "data_element": "FAGL_SPLITDATE_ACTIVE",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "System Date from which Document Splitting Is Active",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "FAREA_FROM_COBL",
+   "key": false,
+   "data_element": "FAGL_FAREA_FROM_COBL",
+   "domain": "BOOLE",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Determine Functional Area on Entry Screen",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "FAREA_DRV_ALWAYS",
+   "key": false,
+   "data_element": "FAREA_DRV_ALWAYS",
+   "domain": "BOOLE",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Always Determine Functional Area Automatically",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "FAREA_IN_CO_SUM",
+   "key": false,
+   "data_element": "FAGL_FAREA_IN_CO_SUMMTAB",
+   "domain": "BOOLE",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Update Functional Area in CO Totals Tables",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "SGMNT_IN_CO_SUM",
+   "key": false,
+   "data_element": "FAGL_SEGMENT_IN_CO_SUMMTAB",
+   "domain": "BOOLE",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Update Segment in CO Totals Tables",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "CO_SUM_DATE_FROM",
+   "key": false,
+   "data_element": "FAGL_CO_SUMMTAB_DATE_FROM",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "From Date: For Updating CO Totals Tables",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "FAREA_OBLIGATORY",
+   "key": false,
+   "data_element": "FAGL_FAREA_OBLIGATORY",
+   "domain": "FLAG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Functional Area Is Mandatory",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "SEGMENT_PRCTR_MD",
+   "key": false,
+   "data_element": "FAGL_SEGMENT_IN_PRCTR_MD",
+   "domain": "BOOLE",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator:Changes Possible to Segment in PrCtr Master Record",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "SPLIT_INHERIDITY",
+   "key": false,
+   "data_element": "FAGL_SPL_INHERIT",
+   "domain": "BOOLE",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Inheritance of Account Assignments in Document Split",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "SPLIT_DEFAULT",
+   "key": false,
+   "data_element": "FAGL_SPL_DEFAULT",
+   "domain": "BOOLE",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Standard Account Assignment in Document Splitting",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "SPLIT_DEF_CONST",
+   "key": false,
+   "data_element": "GLCONST",
+   "domain": "GLCONST",
+   "type": "CHAR",
+   "length": 5,
+   "decimals": 0,
+   "description": "Constants for document splitting",
+   "check_table": "T8G41A"
+  },
+  {
+   "pos": 18,
+   "name": "FLG_CUM_PLN_ACT",
+   "key": false,
+   "data_element": "FAGL_CUMULATIVE_PLANNING_ACTIV",
+   "domain": "BOOLE",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Cumulative Display of Plan Data",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "FAGL_HCM_COMP_EN",
+   "key": false,
+   "data_element": "FAGL_HCM_COMP_ENTRY_VIEW",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "HCM Integration: Compress Entry View",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "FAGL_NO_COMP_SD",
+   "key": false,
+   "data_element": "FAGL_NO_COMPRESS_SD_TAX",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Document Splitting: Do Not Summarize SD Tax Items",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "SPLITMETHD",
+   "foreign_table": "T8G01",
+   "foreign_field": "SPLITMETHD"
+  },
+  {
+   "field": "SPLIT_DEF_CONST",
+   "foreign_table": "T8G41A",
+   "foreign_field": "CONST"
+  }
+ ]
+}

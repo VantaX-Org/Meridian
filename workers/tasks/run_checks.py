@@ -224,9 +224,10 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
 
         # Records per module = rows of the module's anchor table (flat upload: all rows).
         from checks.frames import _graph
+        from checks.runner import is_overlay
         anchors = _graph()[1]
         module_rows = {m: (len(frames.frames[anchors[m]]) if anchors.get(m) in frames.frames else row_count)
-                       for m in modules}
+                       for m in modules if not is_overlay(m)}  # an overlay owns no records
         with Session(engine) as session:
             session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
             session.execute(text("UPDATE analysis_versions SET metadata = COALESCE(metadata, '{}'::jsonb) "
@@ -295,8 +296,11 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
         # misplaced values, placeholders, swaps, dead-in-text records (checks/value_placement.py)
         from checks import config_rules, country_rules, value_placement
         from checks.runner import _find_module_yaml
+        # overlay modules (S/4HANA readiness) re-judge tables other modules own:
+        # no generated rules, profiling, cleaning, mining or golden records of their own
+        data_modules = [m for m in modules if not is_overlay(m)]
         vp_rules = []
-        for m in modules:
+        for m in data_modules:
             try:
                 static = yaml.safe_load(_find_module_yaml(m).read_text()).get("rules", [])
             except FileNotFoundError:
@@ -332,18 +336,19 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
             all_results.extend(results)
             # joined frames are cached per pass; at millions of rows holding them all runs out of memory
             frames._cache.clear()
-            from checks.outliers import find as find_outliers
-            outliers.update(find_outliers(module_name, frames))  # reported, never scored
-            frames._cache.clear()
-            # Field profile + candidate hidden rules of the module's tables
-            # (checks/profiling.py, ≤ 200k rows per table). Best-effort: a
-            # profiling failure is logged and never fails the analysis.
-            try:
-                from api.services.field_profiles import profile_and_store
-                prof = profile_and_store(engine, str(tenant_id), str(version_id), module_name, frames, dictionary)
-                logger.info(f"field profile for {module_name}: {prof}")
-            except Exception as e:
-                logger.error(f"field profiling failed for {module_name}, continuing: {e}", exc_info=True)
+            if module_name in data_modules:
+                from checks.outliers import find as find_outliers
+                outliers.update(find_outliers(module_name, frames))  # reported, never scored
+                frames._cache.clear()
+                # Field profile + candidate hidden rules of the module's tables
+                # (checks/profiling.py, ≤ 200k rows per table). Best-effort: a
+                # profiling failure is logged and never fails the analysis.
+                try:
+                    from api.services.field_profiles import profile_and_store
+                    prof = profile_and_store(engine, str(tenant_id), str(version_id), module_name, frames, dictionary)
+                    logger.info(f"field profile for {module_name}: {prof}")
+                except Exception as e:
+                    logger.error(f"field profiling failed for {module_name}, continuing: {e}", exc_info=True)
             # Post-module tick so users see movement between modules.
             rows_done_after = int(((idx + 1) / module_count) * row_count)
             update_task_progress(
@@ -737,7 +742,7 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
         # Enqueue cleaning detection (non-blocking — failure is non-fatal)
         try:
             from workers.tasks.run_cleaning import run_cleaning
-            for module_name in modules:
+            for module_name in data_modules:
                 run_cleaning.delay(version_id, tenant_id, module_name, parquet_path)
             logger.info(f"Enqueued run_cleaning for version_id={version_id}, modules={modules}")
         except Exception as e:
@@ -785,7 +790,7 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
             from workers.tasks.mining.dedup import run_dedup
             from workers.tasks.mining.anomaly import run_anomaly
             from workers.tasks.mining.relationship import run_relationship
-            for module_name in modules:
+            for module_name in data_modules:
                 run_dedup.delay(version_id, tenant_id, module_name, parquet_path)
                 run_anomaly.delay(version_id, tenant_id, module_name, parquet_path)
                 run_relationship.delay(version_id, tenant_id, module_name, parquet_path)
@@ -803,7 +808,7 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
         # no caller at all.
         try:
             from workers.tasks.build_golden_records import build_golden_records
-            for module_name in modules:
+            for module_name in data_modules:
                 build_golden_records.delay(version_id, tenant_id, module_name, parquet_path)
             logger.info(
                 f"Enqueued build_golden_records for version_id={version_id}, "

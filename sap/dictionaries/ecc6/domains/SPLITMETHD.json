@@ -1,0 +1,11 @@
+{
+ "domain": "SPLITMETHD",
+ "type": "CHAR",
+ "length": 10,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": "T8G01",
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}
