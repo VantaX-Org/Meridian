@@ -9,7 +9,7 @@
 Built by workers/tasks/run_extraction.py after each extraction is stored.
 
 Revision ID: 055
-Revises: 053
+Revises: 054
 Create Date: 2026-10-04
 """
 
