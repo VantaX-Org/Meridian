@@ -6,7 +6,7 @@ blocked SAP features × severity, the "impact" sort of GET /api/v1/findings.
 tenants.cost_model — the tenant's overrides of checks/cost_model.yaml.
 
 Revision ID: 056
-Revises: 053
+Revises: 055
 Create Date: 2026-10-04
 """
 
