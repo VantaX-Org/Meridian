@@ -240,6 +240,11 @@ def prove(rule: dict, dictionary) -> tuple[str, str]:
         return _prove_aggregate(rule, dictionary, cand, live)
     if rule.get("check_class") == "exists_check":
         return _prove_exists(rule, dictionary, cand, live)
+    if rule.get("check_class") == "hierarchy_check":
+        # A and B report to each other, C reports to A (expected: 3 in scope, 2 failing)
+        i, f = rule["id_field"], rule["field"]
+        rows = [{i: "H1", f: "H2"}, {i: "H3", f: "H1"}, {i: "H2", f: "H1"}]
+        return _verify(rule, dictionary, rows, (3, 2), live)
     if rule.get("check_class") == "group_sum_check":
         return _prove_group_sum(rule, dictionary, cand, live)
     if rule.get("check_class") == "similarity_check":

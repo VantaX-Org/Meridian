@@ -24,6 +24,7 @@ from checks.types.country_format_check import CountryFormatCheck
 from checks.types.aggregate_check import AggregateCheck
 from checks.types.interval_check import IntervalCheck
 from checks.types.exists_check import ExistsCheck, key_of
+from checks.types.hierarchy_check import HierarchyCheck
 from checks.types.similarity_check import SimilarityCheck
 from checks.types.group_sum_check import GroupSumCheck, child_sums
 
@@ -102,11 +103,12 @@ REGISTRY: dict[str, type[BaseCheck]] = {
     "interval_check": IntervalCheck,
     "exists_check": ExistsCheck,
     "similarity_check": SimilarityCheck,
+    "hierarchy_check": HierarchyCheck,
     "group_sum_check": GroupSumCheck,
 }
 
 # check types judging a group of rows together: only sound on a complete extract
-_WHOLE_GROUP = {"balance_check", "aggregate_check", "interval_check", "group_sum_check"}
+_WHOLE_GROUP = {"balance_check", "aggregate_check", "interval_check", "hierarchy_check", "group_sum_check"}
 
 RULES_DIR = Path(__file__).parent / "rules"
 CATEGORIES = ["ecc", "successfactors", "warehouse", "concur", "ariba"]

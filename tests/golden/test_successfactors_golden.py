@@ -212,11 +212,15 @@ def test_employee_central_golden():
         "EC048": {"USERID=100115"},
         "EC058": {"USERID=100116"},
         "EC075": {"USERID=100116"},                                             # ...and is no employee
+        "EC077": {"USERID=100116"},                                             # ...so no active manager
         "EC059": {"USERID=100117"},
+        "EC080": {"USERID=100117"},                                             # ...and is under 15 today
         "EC060": {"USERID=100118"},
         "EC061": {"PERSON_ID=100119|EMAIL_TYPE=B", "PERSON_ID=100120|EMAIL_TYPE=B"},
         "EC062": {"PERSON_ID=100121", "PERSON_ID=100122"},
+        "EC083": {"PERSON_ID=100121", "PERSON_ID=100122"},                      # same name and birth date
         "EC063": {"PERSON_ID=100123|PHONE_TYPE=B"},
+        "EC086": {"PERSON_ID=100123|PHONE_TYPE=B"},                             # no digits at all
         "EC072": {"PERSON_ID=100124|ADDRESS_TYPE=home"},
         "EC055": {"PERSON_ID=100125"},
         "EC052": {"PERSON_ID=100126"},

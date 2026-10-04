@@ -390,7 +390,7 @@ class ConnectivityManager:
     def _extract_successfactors(self, connector, modules, dictionary, system_id):
         """Assemble SF canonical tables from their source entities (see canonical/successfactors.yaml)."""
         from checks.frames import tables_of
-        from checks.runner import _find_module_yaml, rule_columns
+        from checks.runner import _find_module_yaml, rule_columns, target_columns
         from api.services.source_design import latest_snapshot_id, load_overlay
         import yaml as _yaml
 
@@ -398,7 +398,7 @@ class ConnectivityManager:
         for m in modules:
             try:
                 for r in _yaml.safe_load(_find_module_yaml(m).read_text()).get("rules", []):
-                    wanted |= set(tables_of(rule_columns(r)))
+                    wanted |= set(tables_of(rule_columns(r) + target_columns(r)))
             except FileNotFoundError:
                 continue
         snap = latest_snapshot_id(self.session, system_id)
@@ -429,7 +429,8 @@ class ConnectivityManager:
                 continue
             merged = None
             for ent, props in by_entity.items():
-                join = [p for p in ("userId", "personIdExternal") if p not in props]
+                # merge keys only when several entities feed the table (FO objects and Position carry neither)
+                join = [p for p in ("userId", "personIdExternal") if p not in props] if len(by_entity) > 1 else []
                 try:
                     df = connector.read_entity_set(ent, select=sorted(set(props) | set(join)))
                 except Exception as e:
