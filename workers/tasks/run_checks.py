@@ -470,6 +470,16 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
             except Exception as e:
                 logger.error(f"record-level tracking failed for {version_id}: {e}", exc_info=True)
 
+            # Step 9c: route new / re-opened issues to owners and start their SLA clocks
+            try:
+                from api.services.triage import apply_sla, auto_assign
+                with session.begin_nested():
+                    assigned = auto_assign(session, str(tenant_id))
+                    started = apply_sla(session, str(tenant_id))
+                logger.info(f"triage for {version_id}: assigned={assigned} sla_started={started}")
+            except Exception as e:
+                logger.error(f"triage auto-assign failed for {version_id}: {e}", exc_info=True)
+
             # Step 10: Update version with DQS summary + which rule set produced it
             analysis = {"at": datetime.now(timezone.utc).isoformat(), "rule_set": rule_set_fingerprint(modules, rule_overrides, fs_rules),
                         "checks": len(all_results)}

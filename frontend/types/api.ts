@@ -800,6 +800,15 @@ export interface StewardshipQueueItem {
   updated_at: string;
   ai_recommendation: string | null;
   ai_confidence: number | null;
+  /** Triage / SLA fields; present once migration 059 is applied. */
+  assigned_team_id?: string | null;
+  acknowledged_at?: string | null;
+  resolved_at?: string | null;
+  ack_due_at?: string | null;
+  sla_state?: "on_track" | "at_risk" | "breached" | null;
+  sla_paused_at?: string | null;
+  snoozed_until?: string | null;
+  snooze_reason?: string | null;
 }
 
 export interface StewardshipQueueListResponse {
