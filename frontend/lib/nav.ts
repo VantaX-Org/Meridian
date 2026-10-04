@@ -169,6 +169,8 @@ const OFF_NAV_TITLES: Record<string, string> = {
   "/command-centre": "Live operations",
   "/executive-report": "Executive report",
   "/match-rules": "Match rules",
+  "/match-rules/tuning": "Match tuning",
+  "/match-rules/constraints": "Pair constraints",
   "/settings/scoring": "Scoring & alerts",
   "/workbench/report": "Record report",
   "/workbench/triage": "My queue",

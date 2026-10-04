@@ -73,6 +73,8 @@ export const WORKSPACES: readonly Workspace[] = [
       { id: "golden", label: "Golden records", href: "/golden-records" },
       { id: "glossary", label: "Glossary", href: "/glossary" },
       { id: "match-rules", label: "Match rules", href: "/match-rules" },
+      { id: "match-tuning", label: "Match tuning", href: "/match-rules/tuning" },
+      { id: "pair-constraints", label: "Pair constraints", href: "/match-rules/constraints" },
       { id: "reports", label: "Reports", href: "/reports" },
     ],
   },

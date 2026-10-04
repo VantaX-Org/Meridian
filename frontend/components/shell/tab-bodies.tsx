@@ -15,7 +15,7 @@ const named = <K extends string>(load: () => Promise<Record<K, ComponentType>>, 
   dynamic(() => load().then((m) => ({ default: m[key] })), { ssr: false, loading });
 
 /** Tabs whose body is an Aurora surface — rendered on the canvas, not in the light sheet. */
-export const AURORA_TABS: ReadonlySet<string> = new Set(["/", "/executive-report", "/sync", "/issues", "/match-rules", "/business-process", "/settings/scoring", "/workbench/triage", "/admin/triage", "/settings/field-mapping",
+export const AURORA_TABS: ReadonlySet<string> = new Set(["/", "/executive-report", "/sync", "/issues", "/match-rules", "/match-rules/tuning", "/match-rules/constraints", "/business-process", "/settings/scoring", "/workbench/triage", "/admin/triage", "/settings/field-mapping",
   "/systems", "/upload", "/versions", "/admin", "/findings", "/cleaning", "/exceptions", "/dedup", "/golden-records", "/glossary", "/reports", "/notifications", "/settings", "/settings/rules", "/settings/ai", "/settings/licence", "/contracts",
   "/relationships", "/mining", "/ai/rules", "/workbench"]);
 
@@ -43,6 +43,8 @@ export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
   "/ai/rules": named(() => import("@/components/workbench/ai-rules"), "AiRulesSurface"),
   "/golden-records": named(() => import("@/components/workbench/golden-records"), "GoldenRecordsSurface"),
   "/match-rules": named(() => import("@/components/workbench/match-rules"), "MatchRulesSurface"),
+  "/match-rules/tuning": named(() => import("@/components/workbench/match-tuning"), "MatchTuningSurface"),
+  "/match-rules/constraints": named(() => import("@/components/workbench/match-tuning"), "PairConstraintsSurface"),
   "/glossary": named(() => import("@/components/workbench/glossary"), "GlossarySurface"),
   "/reports": named(() => import("@/components/workbench/reports"), "ReportsSurface"),
 
