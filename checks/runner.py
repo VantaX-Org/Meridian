@@ -242,14 +242,17 @@ def get_required_columns(module_name: str) -> set[str]:
 
 def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[str]] | None = None,
              suppressed: dict[str, tuple[list[str], set[str]]] | None = None, *,
-             as_of: Any = None) -> tuple[dict, CheckResult | None]:
+             as_of: Any = None, sap_utc_offset_seconds: int | None = None) -> tuple[dict, CheckResult | None]:
     """Evaluate one rule at its grain: (rule as evaluated, result or None when not applicable).
 
     ``as_of`` is the date date-relative rules measure age against (the version's
-    snapshot date); None means now."""
+    snapshot date); None means now. ``sap_utc_offset_seconds`` is the source
+    system's offset from UTC (SAP dates are system-local); None means 0."""
     if as_of is not None:
         as_of = as_of_time(as_of)
         rule = {**rule, "_as_of": as_of.isoformat()}
+    if sap_utc_offset_seconds is not None:
+        rule = {**rule, "_sap_utc_offset_seconds": sap_utc_offset_seconds}
     check_cls = REGISTRY[rule["check_class"]]
     partial = sorted(set(tables_of(rule_columns(rule) + target_columns(rule))) & getattr(frames, "incomplete", set()))
     if rule.get("check_class") in _WHOLE_GROUP and partial:
@@ -323,6 +326,7 @@ def run_checks(
     cost_model: dict | None = None,
     *,
     as_of: Any = None,
+    sap_utc_offset_seconds: int | None = None,
 ) -> list[CheckResult]:
     """Load a module's YAML rules and evaluate each at its correct record grain.
 
@@ -364,7 +368,8 @@ def run_checks(
             result_rules.append(rule)
             continue
 
-        rule, result = run_rule(rule, frames, reference_values, suppressed, as_of=as_of)
+        rule, result = run_rule(rule, frames, reference_values, suppressed, as_of=as_of,
+                                sap_utc_offset_seconds=sap_utc_offset_seconds)
         if result is None:
             skipped += 1
             continue

@@ -3,6 +3,7 @@
 import json
 import logging
 import traceback
+import uuid
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -38,6 +39,17 @@ def run_exception_scan(self, version_id: str, tenant_id: str):
             )
             rows = result.fetchall()
 
+            # Only the tenant's enabled rules; disabled rules never fire.
+            rules = [dict(r._mapping) for r in session.execute(
+                text("""
+                    SELECT id::text AS id, name, description, rule_type, object_type,
+                           condition, severity, auto_assign_to::text AS auto_assign_to, is_active
+                    FROM exception_rules
+                    WHERE tenant_id = :tid AND is_active = true
+                """),
+                {"tid": tenant_id},
+            )]
+
         findings = []
         for row in rows:
             details = row[8] if row[8] else {}
@@ -60,34 +72,41 @@ def run_exception_scan(self, version_id: str, tenant_id: str):
             logger.info(f"run_exception_scan: no findings for version_id={version_id}")
             return {"version_id": version_id, "exceptions": 0}
 
-        # Evaluate SAP monitors
-        from api.services.exception_engine import SAPTransactionMonitor
+        # Evaluate SAP monitors + the tenant's enabled custom rules (against this version's findings)
+        from api.services.exception_engine import CustomRuleEvaluator, SAPTransactionMonitor
 
-        monitor = SAPTransactionMonitor()
-        exceptions = monitor.evaluate_monitors(findings, tenant_id)
+        exceptions = SAPTransactionMonitor().evaluate_monitors(findings, tenant_id)
+        for exc in CustomRuleEvaluator().evaluate_rules(findings, rules, tenant_id):
+            # Deterministic id per (tenant, version, rule): ON CONFLICT (id) DO NOTHING makes a re-scan a no-op.
+            exc["id"] = str(uuid.uuid5(uuid.NAMESPACE_URL,
+                                       f"meridian:exception_rule:{tenant_id}:{version_id}:{exc['source_reference']}"))
+            exceptions.append(exc)
 
         if not exceptions:
             logger.info(f"run_exception_scan: no exceptions detected for version_id={version_id}")
             return {"version_id": version_id, "exceptions": 0}
 
         # Insert exceptions into database
+        inserted = []
         with Session(engine) as session:
             session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
 
             for exc in exceptions:
-                session.execute(
+                row = session.execute(
                     text("""
                         INSERT INTO exceptions (
                             id, tenant_id, type, category, severity, status,
                             title, description, source_system, source_reference,
-                            affected_records, escalation_tier, sla_deadline, created_at
+                            affected_records, assigned_to, escalation_tier, sla_deadline,
+                            billing_tier, created_at
                         ) VALUES (
                             :id, :tid, :type, :category, :severity, :status,
                             :title, :description, :source_system, :source_reference,
-                            CAST(:affected_records AS jsonb), :escalation_tier,
-                            CAST(:sla_deadline AS timestamptz), now()
+                            CAST(:affected_records AS jsonb), CAST(:assigned_to AS uuid), :escalation_tier,
+                            CAST(:sla_deadline AS timestamptz), :billing_tier, now()
                         )
                         ON CONFLICT (id) DO NOTHING
+                        RETURNING id
                     """),
                     {
                         "id": exc["id"],
@@ -101,10 +120,15 @@ def run_exception_scan(self, version_id: str, tenant_id: str):
                         "source_system": exc.get("source_system"),
                         "source_reference": exc.get("source_reference"),
                         "affected_records": json.dumps(exc.get("affected_records", {})),
+                        "assigned_to": exc.get("assigned_to"),
                         "escalation_tier": exc["escalation_tier"],
                         "sla_deadline": exc["sla_deadline"],
+                        "billing_tier": exc.get("billing_tier"),
                     },
-                )
+                ).fetchone()
+                if row is None:
+                    continue  # already raised by an earlier scan of this version
+                inserted.append(exc)
 
                 # Upsert stewardship_queue row for this exception
                 try:
@@ -145,7 +169,7 @@ def run_exception_scan(self, version_id: str, tenant_id: str):
         try:
             from api.services.notifications import create_notification_sync
 
-            critical_exceptions = [e for e in exceptions if e["severity"] == "critical"]
+            critical_exceptions = [e for e in inserted if e["severity"] == "critical"]
             with Session(engine) as notif_session:
                 notif_session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
                 for exc in critical_exceptions:
@@ -164,10 +188,10 @@ def run_exception_scan(self, version_id: str, tenant_id: str):
 
         logger.info(
             "run_exception_scan complete: version_id={}, exceptions={}".format(
-                version_id, len(exceptions)
+                version_id, len(inserted)
             )
         )
-        return {"version_id": version_id, "exceptions": len(exceptions)}
+        return {"version_id": version_id, "exceptions": len(inserted)}
 
     except Exception as e:
         logger.warning(f"run_exception_scan failed (non-fatal): {traceback.format_exc()}")
