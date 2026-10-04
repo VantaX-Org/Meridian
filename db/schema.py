@@ -48,6 +48,7 @@ class Tenant(Base):
     licensed_modules = Column(ARRAY(Text), nullable=False, server_default="{}")
     dqs_weights = Column(JSONB, nullable=True)
     alert_thresholds = Column(JSONB, nullable=True)
+    cost_model = Column(JSONB, nullable=True)  # overrides of checks/cost_model.yaml
     stripe_customer_id = Column(Text, nullable=True)
     created_at = Column(
         DateTime(timezone=True),
@@ -115,6 +116,9 @@ class Finding(Base):
     rule_context = Column(JSONB, nullable=True)
     value_fix_map = Column(JSONB, nullable=True)
     record_fixes = Column(JSONB, nullable=True)
+    cost_at_risk = Column(Numeric, nullable=True)   # checks/cost.py
+    cost_formula = Column(Text, nullable=True)
+    impact_score = Column(Numeric, nullable=True)   # $ at risk × blocked features × severity
     created_at = Column(
         DateTime(timezone=True),
         nullable=False,

@@ -1,6 +1,6 @@
 import logging
 import uuid
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import case, func, select, text
@@ -26,15 +26,18 @@ async def _latest_version_ids(db: AsyncSession, tenant: Tenant) -> list[uuid.UUI
     """), {"tid": str(tenant.id)})).scalars().all())
 
 
-def composite_dqs(summaries: list[dict]) -> dict:
+def composite_dqs(summaries: list[dict], scoring: dict | None = None) -> dict:
     """One DQS over several modules/versions: module scores weighted by the number of
-    checks behind them (``dqs_summary`` = {module: DQSResult}). Pure — tested directly."""
+    checks behind them times the tenant's module weight (``scoring`` = the raw
+    ``tenants.dqs_weights``; ``dqs_summary`` = {module: DQSResult}). Pure — tested directly."""
+    from api.services.scoring import scoring_config, tier
+    cfg = scoring_config(scoring)
     mods: dict[str, dict] = {}
     for s in summaries:
         for module, r in (s or {}).items():
             if isinstance(r, dict) and r.get("composite_score") is not None:
                 mods[module] = r
-    weight = {m: max(1, int(r.get("total_checks") or 1)) for m, r in mods.items()}
+    weight = {m: cfg["module_weights"].get(m, 1.0) * max(1, int(r.get("total_checks") or 1)) for m, r in mods.items()}
     total = sum(weight.values())
     if not total:
         return {"composite": None, "dimension_scores": {}, "modules": {}}
@@ -42,11 +45,20 @@ def composite_dqs(summaries: list[dict]) -> dict:
     for d in ("completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity"):
         have = [(m, r["dimension_scores"][d]) for m, r in mods.items() if d in (r.get("dimension_scores") or {})]
         if have:
-            dims[d] = round(sum(v * weight[m] for m, v in have) / sum(weight[m] for m, _ in have), 2)
-    return {"composite": round(sum(r["composite_score"] * weight[m] for m, r in mods.items()) / total, 2),
+            w = sum(weight[m] for m, _ in have)
+            if w:
+                dims[d] = round(sum(v * weight[m] for m, v in have) / w, 2)
+    composite = round(sum(r["composite_score"] * weight[m] for m, r in mods.items()) / total, 2)
+    return {"composite": composite, "tier": tier(composite, cfg["thresholds"]),
             "dimension_scores": dims,
             "modules": {m: round(float(r["composite_score"]), 2) for m, r in mods.items()},
             "capped": any(r.get("capped") for r in mods.values())}
+
+
+async def _scoring_raw(db: AsyncSession, tenant: Tenant) -> dict:
+    """The tenant's raw scoring config (``tenants.dqs_weights``)."""
+    return (await db.execute(text("SELECT dqs_weights FROM tenants WHERE id = :tid"),
+                             {"tid": str(tenant.id)})).scalar() or {}
 
 
 @router.get("/findings/aggregate")
@@ -66,7 +78,7 @@ async def aggregate_findings(
     p = {"ids": [str(i) for i in ids]}
     rows = (await db.execute(text("""
         SELECT module, severity, dimension, count(*) AS n, COALESCE(sum(affected_count), 0) AS affected,
-               avg(pass_rate) AS avg_pass
+               avg(pass_rate) AS avg_pass, COALESCE(sum(cost_at_risk) FILTER (WHERE affected_count > 0), 0) AS cost
           FROM findings WHERE version_id = ANY(CAST(:ids AS uuid[]))
          GROUP BY module, severity, dimension
     """), p)).mappings().all()
@@ -77,8 +89,10 @@ async def aggregate_findings(
         n = int(r["n"])
         sev[r["severity"]] = sev.get(r["severity"], 0) + n
         m = by_module.setdefault(r["module"], {"module": r["module"], "findings": 0, "affected": 0,
-                                               "critical": 0, "high": 0, "medium": 0, "low": 0, "_pass": []})
+                                               "critical": 0, "high": 0, "medium": 0, "low": 0, "_pass": [],
+                                               "cost_at_risk": 0.0})
         m["findings"] += n
+        m["cost_at_risk"] = round(m["cost_at_risk"] + float(r["cost"]), 2)
         m["affected"] += int(r["affected"])
         m[r["severity"]] = m.get(r["severity"], 0) + n
         d = by_dim.setdefault(r["dimension"], {"dimension": r["dimension"], "findings": 0, "_pass": []})
@@ -104,7 +118,8 @@ async def aggregate_findings(
              WHERE av.tenant_id = :tid AND av.{_COMPLETE} AND av.run_at < cur.run_at AND av.id <> cur.id
         ) x ORDER BY lineage, run_at DESC
     """), {**p, "tid": str(tenant.id)})).scalars().all()
-    prev = composite_dqs(list(previous))
+    scoring = await _scoring_raw(db, tenant)
+    prev = composite_dqs(list(previous), scoring)
     return {
         "version_ids": p["ids"],
         "total": sum(sev.values()),
@@ -113,9 +128,40 @@ async def aggregate_findings(
         "by_module": sorted((_avg(m) for m in by_module.values()),
                             key=lambda m: (-m["critical"], -m["high"], -m["findings"])),
         "by_dimension": sorted((_avg(d) for d in by_dim.values()), key=lambda d: d["dimension"]),
-        "dqs": composite_dqs(list(summaries)),
+        "cost_at_risk": round(sum(m["cost_at_risk"] for m in by_module.values()), 2),
+        "dqs": composite_dqs(list(summaries), scoring),
         "previous_dqs": prev["composite"],
     }
+
+
+@router.get("/scores/history")
+async def score_history(
+    limit: int = Query(50, ge=1, le=500),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Composite DQS per complete run, newest first, twice: under the scoring config in
+    force when the run was scored (``metadata.scoring``; runs before it was recorded
+    count as the defaults) and re-weighted under the tenant's current config."""
+    from api.services.scoring import rescore
+    await db.execute(text("SELECT set_config('app.tenant_id', :tid, true)"), {"tid": str(tenant.id)})
+    current = await _scoring_raw(db, tenant)
+    rows = (await db.execute(text(f"""
+        SELECT id, run_at, dqs_summary, metadata->'scoring' AS scoring, metadata->>'system_id' AS system_id
+          FROM analysis_versions WHERE tenant_id = :tid AND {_COMPLETE} AND dqs_summary IS NOT NULL
+         ORDER BY run_at DESC LIMIT :lim
+    """), {"tid": str(tenant.id), "lim": limit})).mappings().all()
+    out = []
+    for r in rows:
+        summary = r["dqs_summary"] or {}
+        then = composite_dqs([summary], r["scoring"])
+        now = composite_dqs([{m: rescore(v, current) for m, v in summary.items() if isinstance(v, dict)}], current)
+        out.append({"version_id": str(r["id"]), "run_at": r["run_at"].isoformat() if r["run_at"] else None,
+                    "system_id": r["system_id"], "scoring_recorded": r["scoring"] is not None,
+                    "at_the_time": {"composite": then["composite"], "tier": then.get("tier"), "scoring": r["scoring"]},
+                    "under_current": {"composite": now["composite"], "tier": now.get("tier"),
+                                      "modules": now["modules"]}})
+    return {"history": out}
 
 
 @router.get("/findings")
@@ -125,6 +171,7 @@ async def list_findings(
     severity: Optional[str] = Query(None),
     dimension: Optional[str] = Query(None),
     check_id: Optional[str] = Query(None),
+    sort: Literal["severity", "impact"] = Query("severity", description="impact = $ at risk × blocked SAP features × severity"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
@@ -168,7 +215,11 @@ async def list_findings(
         (Finding.severity == "low", 4),
         else_=5,
     )
-    stmt = base.order_by(severity_order, Finding.pass_rate.asc()).offset(offset).limit(limit)
+    order = [severity_order, Finding.pass_rate.asc()]
+    if sort == "impact":
+        order.insert(0, Finding.impact_score.desc().nulls_last())
+        filters_applied["sort"] = "impact"
+    stmt = base.order_by(*order).offset(offset).limit(limit)
     result = await db.execute(stmt)
     findings = result.scalars().all()
 
@@ -214,6 +265,9 @@ async def list_findings(
                 "rule_context": f.rule_context,
                 "value_fix_map": f.value_fix_map,
                 "record_fixes": f.record_fixes,
+                "cost_at_risk": float(f.cost_at_risk) if f.cost_at_risk is not None else None,
+                "cost_formula": f.cost_formula,
+                "impact_score": float(f.impact_score) if f.impact_score is not None else None,
                 "created_at": f.created_at.isoformat() if f.created_at else None,
                 "business_name": glossary_lookup.get(f.check_id, {}).get("business_name"),
                 "glossary_term_id": glossary_lookup.get(f.check_id, {}).get("glossary_term_id"),
