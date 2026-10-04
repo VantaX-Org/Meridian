@@ -449,30 +449,6 @@ rules:
   record_fix_template: 'SO {VBAK.VBELN}: ABSTK is ''{actual_value}'' but ABGRU is blank. Set the rejection reason
     on each item via VA02 or Fiori app F6588.'
   fail_when: (`VBAK.ABSTK` == 'C') & `VBAP.ABGRU`.isna()
-- id: SDSO026
-  field: VBAP.ROUTE
-  check_class: null_check
-  applies_when:
-    VBAK.VBTYP:
-    - C
-    VBAP.PSTYV:
-      not_in:
-      - TATX
-      - TAD
-  severity: low
-  dimension: completeness
-  message: "Route missing \u2014 shipping scheduling and freight cost determination affected"
-  why_it_matters: ROUTE determines the transportation route for shipping scheduling, transit time calculation, and freight
-    cost determination. Without it, delivery scheduling uses default lead times and freight costs cannot be automatically
-    calculated from the route-based condition records.
-  rule_authority: best_practice
-  sap_impact: Shipping scheduling uses default transit times instead of route-specific values. Freight cost determination
-    from condition records fails. Transportation planning is less accurate.
-  fix_map:
-    __blank__: 'Route is empty. In ECC: set via VA02 > Item > Shipping tab > Route field. In S/4HANA: use Fiori app F6588.
-      Route is normally determined automatically from the shipping point, destination country, and transportation group.'
-  record_fix_template: 'SO {VBAK.VBELN} item {VBAP.POSNR}: ROUTE is {actual_value}. Set the route via VA02 > Shipping tab
-    or Fiori app F6588.'
 - id: SDSO027
   field: VBAK.ERNAM
   check_class: null_check
