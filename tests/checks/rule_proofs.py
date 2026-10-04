@@ -312,7 +312,8 @@ def _prove_exists(rule, dictionary, cand, live) -> tuple[str, str]:
     is not there (expected: 2 in scope, 1 failing). A third target record is inactive."""
     aw = rule.get("applies_when") or {}
     refs = list(rule.get("fields") or [rule["field"]])
-    row = {c: cand[c][0] for c in cand if c in aw}
+    # an in-scope value: the field's own candidates lead with its dictionary values, not the scope's
+    row = {c: str(aw[c][0]) if isinstance(aw[c], list) else cand[c][0] for c in cand if c in aw}
     rows = [{**row, **{c: f"T1{i}" for i, c in enumerate(refs)}},
             {**row, **{c: f"T9{i}" for i, c in enumerate(refs)}}]
     df = _rows(rule, dictionary, rows)
