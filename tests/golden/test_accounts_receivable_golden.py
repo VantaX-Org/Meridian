@@ -137,7 +137,8 @@ def _frames() -> TableFrames:
         "KNKK.CTLPC": ["" if k in (D_DUNN, OT) else "001" for k in credit],
         "KNKK.DTREV": ["20250310"] * len(credit),
         # D_NAME2: next review planned before the last review took place
-        "KNKK.NXTRV": ["20250101" if k == D_NAME2 else "20260310" for k in credit],
+        # the others: next review far in the future, so the overdue-review rule (AR200) stays date-proof
+        "KNKK.NXTRV": ["20250101" if k == D_NAME2 else "20990310" for k in credit],
         "KNKK.CRBLB": [""] * len(credit),
     })
     emails = {C1: "accounts@protea-eng.co.za", C2: "rechnungseingang@brenner-maschinenbau.de",
@@ -281,6 +282,7 @@ def test_accounts_receivable_golden():
         "AR041": {f"KUNNR={D_AKONT}|BUKRS=1000"},                 # 113100 is also blocked for posting
         "AR045": {f"KUNNR={D_DUNN}"},                             # credit limit without risk category
         "AR047": {f"KUNNR={D_NAME2}"},                            # next credit review before the last one
+        "AR200": {f"KUNNR={D_NAME2}"},                            # the next credit review is overdue
         "AR049": {f"KUNNR={D_DNU}"},                              # bank details without a bank key
         "AR056": {_key(C1, "0090012010", augdt="20260910", augbl="1400000310")},  # open item with clearing data
         "AR057": {_key(C2, "0090012011")},                        # EUR 4 100.00 translated to ZAR 0.00

@@ -2587,3 +2587,149 @@ rules:
     __other__: Check the conversion factor and both weights in MM02 > Additional data > Units of measure.
   record_fix_template: 'Material {MARM.MATNR}, unit {MARM.MEINH}: gross weight {MARM.BRGEW} {MARM.GEWEI} against base weight {MARA.BRGEW}
     x {MARM.UMREZ}/{MARM.UMREN}.'
+- id: MM300
+  field: MARC.MINBE
+  check_class: cross_field_check
+  fail_when: (`MARC.MINBE` > 0) & `MARC.DISMM`.notna() & ~`MARC.DISMM`.isin(['VB', 'VM', 'V1', 'V2'])
+  severity: low
+  dimension: consistency
+  message: Reorder point is maintained but the MRP type is not reorder-point planning
+  why_it_matters: The reorder point (MINBE) is only read by reorder-point MRP types (VB, VM, V1, V2 in the standard). On any
+    other MRP type it is ignored, so planners believe the material is protected by a reorder level that MRP never uses.
+  rule_authority: best_practice
+  sap_impact: MRP plans the material by forecast or demand only; the expected reorder-level replenishment never happens.
+  fix_map:
+    __other__: Either switch the MRP type to reorder-point planning in MM02 > MRP 1, or clear the reorder point if the material
+      is planned by demand.
+  record_fix_template: 'Material {MARC.MATNR} plant {MARC.WERKS}: reorder point {MARC.MINBE} with MRP type {MARC.DISMM}.'
+- id: MM301
+  field: MARC.EISBE
+  check_class: cross_field_check
+  fail_when: (`MARC.EISBE` > 0) & (`MARC.DISMM` == 'ND')
+  severity: low
+  dimension: consistency
+  message: Safety stock is maintained on a material that is excluded from MRP (MRP type ND)
+  why_it_matters: MRP type ND means no planning. A safety stock on such a material is never replenished and gives a false
+    sense of protection in stock-out analyses.
+  rule_authority: best_practice
+  sap_impact: Safety stock is never planned; stock-outs occur although the master record shows a buffer.
+  fix_map:
+    __other__: Set an MRP type that plans the material (MM02 > MRP 1) or remove the safety stock.
+  record_fix_template: 'Material {MARC.MATNR} plant {MARC.WERKS}: safety stock {MARC.EISBE} with MRP type ND.'
+- id: MM302
+  field: MARC.EKGRP
+  check_class: null_check
+  applies_when:
+    MARC.BESKZ:
+    - F
+    - X
+    MARC.DISMM:
+      populated: true
+      not_in:
+      - ND
+  severity: medium
+  dimension: completeness
+  message: Externally procured, MRP-planned material has no purchasing group
+  why_it_matters: MRP creates purchase requisitions for externally procured materials. The purchasing group on the plant view
+    is copied into each requisition and routes it to the responsible buyer. Without it, requisitions are created without an
+    owner.
+  rule_authority: best_practice
+  sap_impact: Requisitions from MRP land without a purchasing group; they are not picked up by buyer worklists (ME57) and
+    release strategies keyed on purchasing group do not apply.
+  fix_map:
+    __blank__: Maintain the purchasing group in MM02 > Purchasing view for the plant.
+  record_fix_template: 'Material {MARC.MATNR} plant {MARC.WERKS}: purchasing group is missing.'
+- id: MM303
+  field: MARC.LGPRO
+  check_class: null_check
+  applies_when:
+    MARC.BESKZ:
+    - E
+    MARC.DISMM:
+      populated: true
+      not_in:
+      - ND
+  severity: low
+  dimension: completeness
+  message: In-house produced, MRP-planned material has no production storage location
+  why_it_matters: The production storage location is proposed as the goods receipt location on production orders and as the
+    issue location for the material when it is a component. Without it, every order needs a manual storage location.
+  rule_authority: best_practice
+  sap_impact: Goods receipts from production and backflushing fail or need manual entry of the storage location.
+  fix_map:
+    __blank__: Maintain the production storage location in MM02 > MRP 2 for the plant.
+  record_fix_template: 'Material {MARC.MATNR} plant {MARC.WERKS}: production storage location is missing.'
+- id: MM304
+  field: MVKE.DWERK
+  check_class: exists_check
+  fields:
+  - MVKE.MATNR
+  - MVKE.DWERK
+  target_table: MARC
+  target_fields:
+  - MATNR
+  - WERKS
+  severity: high
+  dimension: consistency
+  message: Delivering plant on the sales view is not extended for the material (no plant view)
+  why_it_matters: The delivering plant is proposed into sales order items. If the material has no plant view in that plant,
+    the item cannot be checked for availability or delivered from it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Sales orders raise an error or fall back to a manual plant; deliveries cannot be created from the proposed plant.
+  fix_map:
+    __other__: Extend the material to the delivering plant (MM01 with plant views) or correct the delivering plant in MM02
+      > Sales org. 1.
+  record_fix_template: 'Material {MVKE.MATNR} sales area {MVKE.VKORG}/{MVKE.VTWEG}: delivering plant {MVKE.DWERK} is not extended.'
+- id: MM305
+  field: MARC.WERKS
+  check_class: exists_check
+  fields:
+  - MARC.MATNR
+  - MARC.WERKS
+  target_table: MBEW
+  target_fields:
+  - MATNR
+  - BWKEY
+  severity: medium
+  dimension: completeness
+  message: Plant view exists without an accounting (valuation) view for the plant
+  why_it_matters: With valuation at plant level the valuation area equals the plant. A plant view without its MBEW record
+    means the material cannot carry valuated stock there, so goods movements and inventory postings cannot be valued. Non-valuated
+    material types are expected here and should be reviewed by material type.
+  rule_authority: best_practice
+  sap_impact: Goods receipts for a valuated material fail with a missing accounting view; costing cannot run for the plant.
+  fix_map:
+    __other__: Create the accounting view for the plant in MM01 (Accounting 1), or confirm the material type is non-valuated.
+  record_fix_template: 'Material {MARC.MATNR} plant {MARC.WERKS}: no accounting view for the plant.'
+- id: MM306
+  field: MARA.MATNR
+  check_class: exists_check
+  target_table: MAKT
+  target_fields:
+  - MATNR
+  severity: high
+  dimension: completeness
+  message: Material has no description in any language
+  why_it_matters: The short text is how users find and recognise a material in every search help, purchase order, sales order
+    and print form. A material with no MAKT row at all is unusable in practice.
+  rule_authority: sap_hard_constraint
+  sap_impact: Documents print without an item text; the material cannot be found by description in search helps.
+  fix_map:
+    __other__: Maintain the material description in MM02 > Basic data 1 (at least in the logon language of the company).
+  record_fix_template: 'Material {MARA.MATNR}: no description in any language.'
+- id: MM308
+  field: MARD.LVORM
+  check_class: cross_field_check
+  fail_when: (`MARD.LVORM` == 'X') & ((`MARD.LABST` > 0) | (`MARD.INSME` > 0) | (`MARD.SPEME` > 0))
+  severity: medium
+  dimension: consistency
+  message: Storage location view is flagged for deletion but still holds stock
+  why_it_matters: A deletion flag at storage location level means the location should no longer be used for the material,
+    yet stock still sits there. The flag cannot be archived and the stock is effectively hidden from planners.
+  rule_authority: best_practice
+  sap_impact: Archiving (MM_MATNR) rejects the record; the stock remains on the balance sheet but is excluded from normal
+    use.
+  fix_map:
+    __other__: Transfer or scrap the remaining stock (MIGO), then keep the deletion flag; or remove the flag in MM06.
+  record_fix_template: 'Material {MARD.MATNR} plant {MARD.WERKS} storage location {MARD.LGORT}: flagged for deletion with
+    stock.'

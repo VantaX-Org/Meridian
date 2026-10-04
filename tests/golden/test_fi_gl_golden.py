@@ -262,6 +262,9 @@ def test_fi_gl_golden():
         "GL029": {"BUKRS=1000|BELNR=0100000046|GJAHR=2026"},      # document type ZM not in T003
         "GL032": {"KTOPL=INT|SAKNR=0000210000"},                  # balance sheet account with P&L type
         "GL033": {"BUKRS=1000|SAKNR=0000141000"},                 # reconciliation account on open items
+        "GL202": {"BUKRS=1000|SAKNR=0000141000"},                 # open-item managed, yet no line item display
+        "GL200": {"KTOPL=INT|SAKNR=0000199999"},                  # flagged for deletion, not blocked for posting
+        "GL206": {"BUKRS=1000|SAKNR=0000199999"},                 # deleted centrally, still live in company code 1000
         "GL049": {"BUKRS=1000|BELNR=1900000104|GJAHR=2026|BUZEI=001"},    # cleared before it was posted
         "GL050": {"BUKRS=1000|BELNR=1900000103|GJAHR=2026|BUZEI=001"},    # vendor line on a non-recon account
         "GL052": {"BUKRS=1000|BELNR=1400000021|GJAHR=2026|BUZEI=001"},    # USD account posted in ZAR

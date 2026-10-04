@@ -909,3 +909,42 @@ rules:
   fix_map:
     __other__: Assign an existing work centre (IE02 > Organisation).
   record_fix_template: 'Equipment {EQUZ.EQUNR}: main work centre {EQUZ.GEWRK} does not exist or is deleted.'
+- id: PM200
+  field: EQUI.EQUNR
+  check_class: exists_check
+  target_table: EQUZ
+  target_fields:
+  - EQUNR
+  target_when:
+    DATBI:
+    - '99991231'
+  severity: high
+  dimension: completeness
+  message: Equipment has no current time segment (no EQUZ record valid to 31.12.9999)
+  why_it_matters: The current EQUZ time segment holds the planning plant, main work centre and the link to the location and
+    account assignment data (ILOA). Equipment without it has no current organisational data at all.
+  rule_authority: sap_hard_constraint
+  sap_impact: Maintenance orders and notifications cannot derive planning plant, work centre or cost centre for the equipment;
+    it drops out of plant-based worklists.
+  fix_map:
+    __other__: Display the equipment in IE03 and save it again in IE02 with the organisational data, or reload the time segment.
+  record_fix_template: 'Equipment {EQUI.EQUNR}: no current time segment.'
+- id: PM201
+  field: EQUZ.ILOAN
+  check_class: exists_check
+  target_table: ILOA
+  target_fields:
+  - ILOAN
+  severity: high
+  dimension: consistency
+  message: Equipment points to a location and account assignment record (ILOA) that does not exist
+  why_it_matters: EQUZ.ILOAN links the equipment to its maintenance plant, cost centre, business area and functional location.
+    A dangling link means none of that data can be read.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orders for the equipment receive no settlement cost centre; location-based reporting omits it.
+  fix_map:
+    __other__: Re-enter the location and organisation data in IE02 so a new ILOA record is created.
+  record_fix_template: 'Equipment {EQUZ.EQUNR}: location record {EQUZ.ILOAN} does not exist.'
+  applies_when:
+    EQUZ.ILOAN:
+      populated: true

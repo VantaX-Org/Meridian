@@ -2346,3 +2346,178 @@ rules:
   fix_map:
     __other__: Delete the source list (ME01) or extend the material to the plant (MM01).
   record_fix_template: 'Source list {EORD.MATNR} plant {EORD.WERKS}: the material is not active in the plant.'
+- id: PUR300
+  field: EINE.INFNR
+  check_class: exists_check
+  grain: EINE
+  fields:
+  - EINA.LIFNR
+  - EINA.MATNR
+  - EINE.EKORG
+  - EINE.WERKS
+  - EINE.ESOKZ
+  target_table: A017
+  target_fields:
+  - LIFNR
+  - MATNR
+  - EKORG
+  - WERKS
+  - ESOKZ
+  applies_when:
+    EINA.MATNR:
+      populated: true
+    EINE.WERKS:
+      populated: true
+    EINE.LOEKZ:
+      blank: true
+    EINA.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: completeness
+  message: Plant-level purchasing info record has no condition record (no price conditions)
+  why_it_matters: Purchase orders take the price from the info record's condition records (A017 for plant-level records),
+    not from the net price field alone. An info record without conditions gives no price proposal, so buyers key prices by
+    hand or the order is priced at zero.
+  rule_authority: sap_hard_constraint
+  sap_impact: No price is proposed in ME21N; manual prices bypass negotiated terms and price variances appear at invoice verification.
+  fix_map:
+    __other__: Maintain the conditions for the info record in ME12 > Conditions, or flag the unused info record for deletion.
+  record_fix_template: 'Info record {EINE.INFNR} (purchasing org {EINE.EKORG}, plant {EINE.WERKS}): no condition records.'
+- id: PUR301
+  field: EINE.INFNR
+  check_class: exists_check
+  grain: EINE
+  fields:
+  - EINA.LIFNR
+  - EINA.MATNR
+  - EINE.EKORG
+  - EINE.ESOKZ
+  target_table: A018
+  target_fields:
+  - LIFNR
+  - MATNR
+  - EKORG
+  - ESOKZ
+  applies_when:
+    EINA.MATNR:
+      populated: true
+    EINE.WERKS:
+      blank: true
+    EINE.LOEKZ:
+      blank: true
+    EINA.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: completeness
+  message: Purchasing-organisation-level info record has no condition record (no price conditions)
+  why_it_matters: Info records maintained at purchasing organisation level keep their prices in condition table A018. Without
+    a condition record the purchase order receives no price proposal from the info record.
+  rule_authority: sap_hard_constraint
+  sap_impact: No price is proposed in ME21N; manual prices bypass negotiated terms and price variances appear at invoice verification.
+  fix_map:
+    __other__: Maintain the conditions for the info record in ME12 > Conditions, or flag the unused info record for deletion.
+  record_fix_template: 'Info record {EINE.INFNR} (purchasing org {EINE.EKORG}): no condition records.'
+- id: PUR302
+  field: EKBE.MENGE
+  check_class: aggregate_check
+  grain: EKBE
+  group_by:
+  - EKBE.EBELN
+  - EKBE.EBELP
+  amount: EKBE.MENGE
+  sign_field: EKBE.SHKZG
+  debit_value: S
+  split_field: EKBE.VGABE
+  left_values:
+  - '1'
+  right_values:
+  - '2'
+  compare: left_gt_right
+  applies_when:
+    EKPO.WEPOS:
+    - X
+    EKPO.REPOS:
+    - X
+    EKPO.PSTYP:
+      not_in:
+      - '1'
+      - '2'
+      - '9'
+    EKPO.EREKZ:
+      blank: true
+    EKKO.BEDAT:
+      older_than_days: 180
+  severity: medium
+  dimension: timeliness
+  message: Goods received but not yet invoiced on a purchase order more than six months old (aged GR/IR)
+  why_it_matters: A received quantity that is still not invoiced six months after the order was placed sits on the GR/IR clearing
+    account as an accrued liability. Aged GR/IR balances are either missing vendor invoices or receipts that should be reversed,
+    and auditors ask for them at every close.
+  rule_authority: best_practice
+  sap_impact: The GR/IR account carries stale balances; the liability is overstated or the vendor is never paid. The GR/IR
+    clearing (F.13 / MR11) cannot clear the item.
+  fix_map:
+    __other__: Chase the vendor invoice, reverse a wrong goods receipt (MIGO), or clear the remaining quantity with MR11 and
+      set the final invoice indicator.
+  record_fix_template: 'PO {EKBE.EBELN} item {EKBE.EBELP}: received quantity exceeds invoiced quantity on an order older than
+    six months.'
+- id: PUR303
+  field: EORD.BDATU
+  check_class: freshness_check
+  max_age_hours: 0
+  applies_when:
+    EORD.FLIFN:
+    - X
+    EORD.NOTKZ:
+      blank: true
+  severity: low
+  dimension: timeliness
+  message: Fixed source of supply in the source list has expired
+  why_it_matters: The fixed source flag tells MRP and automatic PO creation which vendor to use. Once its validity has passed
+    it is ignored, so requisitions fall back to manual source assignment.
+  rule_authority: best_practice
+  sap_impact: MRP requisitions no longer receive an automatic source; automatic PO creation (ME59N) skips them.
+  fix_map:
+    __other__: Extend the validity of the source list record in ME01 or create a new fixed source for the current period.
+  record_fix_template: 'Material {EORD.MATNR} plant {EORD.WERKS}: fixed source expired {age_days} days ago.'
+- id: PUR304
+  field: EKKO.KDATE
+  check_class: freshness_check
+  max_age_hours: 0
+  applies_when:
+    EKKO.BSTYP:
+    - K
+    - L
+    EKKO.LOEKZ:
+      blank: true
+  severity: low
+  dimension: timeliness
+  message: Outline agreement validity has ended but the agreement is still active
+  why_it_matters: Expired contracts and scheduling agreements remain selectable in source determination and reporting until
+    they are closed. They distort open-commitment and spend-under-contract figures.
+  rule_authority: best_practice
+  sap_impact: Expired agreements appear in source lists and release worklists; open target values are reported as available
+    contract volume.
+  fix_map:
+    __other__: Renew the agreement with a new validity period, or set the deletion indicator once all call-offs are settled
+      (ME32K / ME32L).
+  record_fix_template: 'Agreement {EKKO.EBELN}: validity ended {age_days} days ago.'
+- id: PUR305
+  field: RBKP.BUDAT
+  check_class: freshness_check
+  grain: RBKP
+  max_age_hours: 720
+  applies_when:
+    RBKP.RBSTAT:
+    - '3'
+    - D
+  severity: medium
+  dimension: timeliness
+  message: Logistics invoice with errors or on hold has been waiting for more than 30 days
+  why_it_matters: Invoices with status 'with errors' from background verification, or entered and held in MIRO, are not posted
+    to the vendor account and so are not paid. After 30 days they threaten payment terms and cash discounts.
+  rule_authority: best_practice
+  sap_impact: The vendor is not paid; cash discounts are lost and accounts payable is understated.
+  fix_map:
+    __other__: Process the invoice in MIR6 / MIR4 (correct the error and post it) or delete it.
+  record_fix_template: 'Invoice {RBKP.BELNR}/{RBKP.GJAHR}: with errors or on hold for {age_days} days.'

@@ -56,7 +56,8 @@ def apply_context(df: pd.DataFrame, applies_when: dict | None) -> pd.DataFrame:
         values = df[field].astype("string").str.strip()
         if isinstance(allowed, dict):
             # Operators: contains_any (multi-value code strings such as
-            # LFB1.ZWELS "CT"), not_in, populated, gt (numeric).
+            # LFB1.ZWELS "CT"), not_in, populated, gt (numeric),
+            # older_than_days (a date further in the past than N days).
             if "contains_any" in allowed:
                 chars = {str(v) for v in allowed["contains_any"]}
                 mask &= values.map(lambda v: isinstance(v, str) and any(c in v for c in chars)).astype(bool)
@@ -68,6 +69,10 @@ def apply_context(df: pd.DataFrame, applies_when: dict | None) -> pd.DataFrame:
                 mask &= values.fillna("").eq("") | values.isin(("00000000",)).fillna(False)
             if "gt" in allowed:
                 mask &= sap_number(values).gt(float(allowed["gt"])).fillna(False)
+            if "older_than_days" in allowed:
+                from checks.types.domain_value_check import _parse_dates
+                cutoff = pd.Timestamp.now() - pd.Timedelta(days=float(allowed["older_than_days"]))
+                mask &= (_parse_dates(values) < cutoff).fillna(False)
         else:
             mask &= values.isin({str(v).strip() for v in allowed}).fillna(False)
     return df[mask]

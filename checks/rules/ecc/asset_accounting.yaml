@@ -496,3 +496,130 @@ rules:
     __other__: Depreciation area '{invalid_value}' is not defined. Define it in the chart of depreciation
       (OADB) or remove the orphaned terms through SAP support.
   record_fix_template: 'Asset {ANLB.ANLN1}-{ANLB.ANLN2}: depreciation area ''{actual_value}'' is not defined in T093.'
+- id: AA200
+  field: ANLA.ANLN1
+  check_class: exists_check
+  fields:
+  - ANLA.BUKRS
+  - ANLA.ANLN1
+  - ANLA.ANLN2
+  target_table: ANLB
+  target_fields:
+  - BUKRS
+  - ANLN1
+  - ANLN2
+  severity: high
+  dimension: completeness
+  message: Asset has no depreciation terms (no ANLB record for any depreciation area)
+  why_it_matters: Depreciation terms (ANLB) hold the depreciation key, useful life and start date per depreciation area. An
+    asset master without any ANLB record was created outside the normal AS01 flow or lost its terms in a load, and the depreciation
+    run has nothing to calculate.
+  rule_authority: sap_hard_constraint
+  sap_impact: No planned depreciation is calculated or posted; the asset is missing from the asset history sheet values per
+    area.
+  fix_map:
+    __other__: Maintain the depreciation areas for the asset in AS02 > Depreciation areas, or reload the asset with its depreciation
+      terms.
+  record_fix_template: 'Asset {ANLA.BUKRS}/{ANLA.ANLN1}-{ANLA.ANLN2}: no depreciation terms in any depreciation area.'
+- id: AA201
+  field: ANLA.ANLN1
+  check_class: exists_check
+  fields:
+  - ANLA.BUKRS
+  - ANLA.ANLN1
+  - ANLA.ANLN2
+  target_table: ANLZ
+  target_fields:
+  - BUKRS
+  - ANLN1
+  - ANLN2
+  severity: high
+  dimension: completeness
+  message: Asset has no time-dependent assignment record (ANLZ)
+  why_it_matters: ANLZ carries the cost centre, profit centre, plant and location of the asset over time. Without any ANLZ
+    record the asset has no organisational assignment at all, so depreciation cannot be settled to a cost object.
+  rule_authority: sap_hard_constraint
+  sap_impact: The depreciation posting run cannot derive a cost centre; the asset falls out of cost centre and profit centre
+    reporting.
+  fix_map:
+    __other__: Maintain the time-dependent data in AS02 > Time-dependent tab (cost centre, plant, location).
+  record_fix_template: 'Asset {ANLA.BUKRS}/{ANLA.ANLN1}-{ANLA.ANLN2}: no time-dependent assignment.'
+- id: AA202
+  field: ANLA.XLOEV
+  check_class: cross_field_check
+  fail_when: (`ANLA.XLOEV` == 'X') & `ANLA.DEAKT`.isna() & `ANLA.AKTIV`.notna()
+  severity: medium
+  dimension: consistency
+  message: Capitalised asset is flagged for deletion but has never been retired (no deactivation date)
+  why_it_matters: A capitalised asset can only be archived after it is fully retired. A deletion flag on an asset that is
+    still active means someone tried to remove it from the register without posting the retirement, so the book value stays
+    on the balance sheet.
+  rule_authority: sap_hard_constraint
+  sap_impact: Archiving (AM_ASSET) rejects the asset; the net book value remains in the asset history sheet although the business
+    considers the asset gone.
+  fix_map:
+    __other__: Post the retirement or scrapping (ABAVN) so the deactivation date is set, or remove the deletion flag in AS06.
+  record_fix_template: 'Asset {ANLA.BUKRS}/{ANLA.ANLN1}-{ANLA.ANLN2}: flagged for deletion but still active.'
+- id: AA203
+  field: ANLA.ERDAT
+  check_class: freshness_check
+  max_age_hours: 8760
+  applies_when:
+    ANLA.AKTIV:
+      blank: true
+    ANLA.ZUGDT:
+      blank: true
+    ANLA.DEAKT:
+      blank: true
+  severity: low
+  dimension: timeliness
+  message: Asset master created more than a year ago has never received an acquisition posting
+  why_it_matters: An asset shell with no acquisition and no capitalisation date a year after creation is an abandoned master
+    record. Shells inflate the asset register count, confuse the inventory count and are often reused for unrelated acquisitions.
+  rule_authority: best_practice
+  sap_impact: The register carries dead records that appear in inventory lists and asset counts but never in the balance sheet.
+  fix_map:
+    __other__: Delete the unused asset in AS06 or post the planned acquisition; do not reuse the shell for a different asset.
+  record_fix_template: 'Asset {ANLA.BUKRS}/{ANLA.ANLN1}-{ANLA.ANLN2}: created {age_days} days ago without any acquisition.'
+- id: AA204
+  field: ANLB.NDJAR
+  check_class: cross_field_check
+  fail_when: '`ANLB.NDJAR`.str.fullmatch(''0*(8[1-9]|9[0-9]|[1-9][0-9]{2})'').fillna(False)'
+  severity: low
+  dimension: validity
+  message: Useful life is longer than 80 years
+  why_it_matters: Useful lives above 80 years are very rare outside land-like assets (which normally carry no depreciation).
+    A value such as 100 or 999 usually comes from a placeholder entered during a migration to suppress depreciation.
+  rule_authority: best_practice
+  sap_impact: Depreciation is understated for the whole life of the asset; book values and impairment tests are distorted.
+  fix_map:
+    __other__: Correct the useful life in AS02 > Depreciation areas, or use a no-depreciation key (for example 0000) where
+      depreciation is intentionally suppressed.
+  record_fix_template: 'Asset {ANLB.BUKRS}/{ANLB.ANLN1}-{ANLB.ANLN2} area {ANLB.AFABE}: useful life {ANLB.NDJAR} years.'
+- id: AA206
+  field: ANLA.ANLN1
+  check_class: exists_check
+  fields:
+  - ANLA.BUKRS
+  - ANLA.ANLN1
+  - ANLA.ANLN2
+  target_table: ANLB
+  target_fields:
+  - BUKRS
+  - ANLN1
+  - ANLN2
+  target_when:
+    AFABE:
+    - '01'
+  severity: high
+  dimension: completeness
+  message: Asset has no book depreciation area (area 01) record
+  why_it_matters: Depreciation area 01 is the book area that posts to the general ledger in standard charts of depreciation.
+    An asset with other areas but no area 01 is invisible in the financial statements.
+  rule_authority: best_practice
+  sap_impact: Acquisitions and depreciation for the asset do not reach the general ledger; the asset subledger does not reconcile
+    to the balance sheet accounts.
+  fix_map:
+    __other__: Activate depreciation area 01 for the asset in AS02 > Depreciation areas, or check the asset class defaults
+      in OAYZ.
+  record_fix_template: 'Asset {ANLA.BUKRS}/{ANLA.ANLN1}-{ANLA.ANLN2}: no book depreciation area 01.'

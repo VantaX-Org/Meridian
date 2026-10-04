@@ -377,6 +377,7 @@ def test_mm_purchasing_golden():
         "PH-LFA1-TELF1": {"LIFNR=0000100050"},                   # 0000000000 as the phone number
         "PUR057": {"EBELN=4500012016|EBELP=00010"},              # GR-based IV set, no goods receipt expected
         "PUR048": {"EBELN=4600000202"},                          # contract valid to before valid from
+        "PUR304": {"EBELN=4600000202"},                          # the same contract is past its validity end
         "PUR063": {"EBELN=4500012017|EBELP=00010"},              # open item, vendor blocked in purchasing org
         "PUR080": {"INFNR=5300000003|EKORG=1000|ESOKZ=0|WERKS="},  # info record price unit 0
         "PUR084": {"MATNR=000000000000300010|WERKS=1000|ZEORD=00002"},  # source valid to before valid from

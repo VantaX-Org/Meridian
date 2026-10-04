@@ -1499,3 +1499,210 @@ rules:
   fix_map:
     __other__: Check the BIC against the bank's confirmation and correct it in the bank directory (FI02).
   record_fix_template: 'Bank {BNKA.BANKS}/{BNKA.BANKL}: BIC {BNKA.SWIFT} belongs to another country.'
+- id: AP200
+  field: LFBK.BANKL
+  check_class: exists_check
+  fields:
+  - LFBK.BANKS
+  - LFBK.BANKL
+  target_table: BNKA
+  target_fields:
+  - BANKS
+  - BANKL
+  target_when:
+    LOEVM:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Vendor bank key does not exist in the bank directory or the bank is flagged for deletion
+  why_it_matters: The payment medium programs read the bank name, address and SWIFT code from the bank directory (BNKA). A
+    vendor bank key without a live BNKA entry produces payment files without a routable bank.
+  rule_authority: sap_hard_constraint
+  sap_impact: The payment run excludes the vendor or the bank rejects the transfer; the vendor is paid late.
+  fix_map:
+    __other__: Create or reactivate the bank in FI01/FI02, or correct the vendor bank key (XK02 > Payment transactions).
+  record_fix_template: 'Vendor {LFBK.LIFNR}: bank {LFBK.BANKS}/{LFBK.BANKL} is missing from the bank directory or deleted.'
+- id: AP201
+  field: LFBK.KOINH
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Vendor bank account has no account holder name
+  why_it_matters: Many countries and banks (SEPA confirmation of payee, UK CoP) match the beneficiary name against the account.
+    Without an account holder the payment file carries the vendor name, which often differs from the holder.
+  rule_authority: best_practice
+  sap_impact: Payments are returned or delayed by name-matching checks at the bank; fraud screening has no holder to compare.
+  fix_map:
+    __blank__: Maintain the account holder in XK02 > Payment transactions > Bank details.
+  record_fix_template: 'Vendor {LFBK.LIFNR}: bank account {LFBK.BANKS}/{LFBK.BANKL} has no account holder.'
+- id: AP202
+  field: LFBK.KOBIS
+  check_class: freshness_check
+  max_age_hours: 0
+  severity: medium
+  dimension: timeliness
+  message: Vendor bank details have expired (valid-to date in the past)
+  why_it_matters: Bank details with a validity end date are ignored by the payment run after that date. An expired entry is
+    either dead data or a bank change that was never completed.
+  rule_authority: best_practice
+  sap_impact: The payment run finds no valid bank for the vendor and leaves the items unpaid.
+  fix_map:
+    __other__: Delete the expired bank details or maintain the replacement account (XK02 > Payment transactions).
+  record_fix_template: 'Vendor {LFBK.LIFNR}: bank details {LFBK.BANKS}/{LFBK.BANKL} expired {age_days} days ago.'
+- id: AP203
+  field: BSIK.ZFBDT
+  check_class: freshness_check
+  max_age_hours: 2160
+  grain: BSIK
+  applies_when:
+    BSIK.ZLSPR:
+      populated: true
+  severity: medium
+  dimension: timeliness
+  message: Vendor item has been blocked for payment for more than 90 days
+  why_it_matters: A payment block is meant to be temporary while a price, quantity or quality issue is resolved. Items that
+    stay blocked for months are forgotten disputes that cost early-payment discounts and supplier goodwill.
+  rule_authority: best_practice
+  sap_impact: Liabilities stay open, discounts are lost and the vendor may put the company on credit hold.
+  fix_map:
+    __other__: Resolve the dispute and release the item (MRBR for invoice-verification blocks, FB02 otherwise).
+  record_fix_template: 'Open item {BSIK.BUKRS}/{BSIK.LIFNR} document {BSIK.BELNR}/{BSIK.GJAHR}: blocked ({BSIK.ZLSPR}) for
+    {age_days} days.'
+- id: AP204
+  field: BSIK.ZFBDT
+  check_class: freshness_check
+  max_age_hours: 8760
+  grain: BSIK
+  applies_when:
+    BSIK.SHKZG:
+    - H
+    BSIK.UMSKZ:
+      blank: true
+  severity: medium
+  dimension: timeliness
+  message: Vendor invoice has been open for more than a year
+  why_it_matters: An invoice still open a year after its baseline date was either paid outside SAP, disputed and forgotten,
+    or is a duplicate. Auditors test these items for unrecorded settlements and stale accruals.
+  rule_authority: best_practice
+  sap_impact: Overstated liabilities, uncleared GR/IR side effects, and risk of paying a very old invoice twice.
+  fix_map:
+    __other__: Confirm the item against the vendor statement, then clear it (F-44) or reverse it.
+  record_fix_template: 'Open item {BSIK.BUKRS}/{BSIK.LIFNR} document {BSIK.BELNR}/{BSIK.GJAHR}: open for {age_days} days.'
+- id: AP205
+  field: BSIK.XBLNR
+  check_class: null_check
+  grain: BSIK
+  applies_when:
+    BSIK.SHKZG:
+    - H
+    BSIK.UMSKZ:
+      blank: true
+  severity: medium
+  dimension: completeness
+  message: Open vendor invoice has no reference (vendor invoice number)
+  why_it_matters: SAP's duplicate invoice check (and Meridian's AP083) compares the reference. An invoice without a reference
+    cannot be checked for duplicates and cannot be matched to the vendor statement.
+  rule_authority: best_practice
+  sap_impact: Duplicate invoices go undetected and are paid twice.
+  fix_map:
+    __blank__: Enter the vendor's invoice number as reference (FB02) and make XBLNR required for vendor invoice document types
+      (OBA7).
+  record_fix_template: 'Open item {BSIK.BUKRS}/{BSIK.LIFNR} document {BSIK.BELNR}/{BSIK.GJAHR}: no invoice reference.'
+- id: AP206
+  field: BSIK.WRBTR
+  check_class: cross_field_check
+  grain: BSIK
+  fail_when: (`BSIK.WRBTR` == 0) & (`BSIK.DMBTR` == 0)
+  severity: low
+  dimension: validity
+  message: Open vendor item has a zero amount
+  why_it_matters: A zero line item settles nothing. It is typically left over from a reversed or split posting and clutters
+    open item lists and the payment proposal.
+  rule_authority: best_practice
+  sap_impact: Open item lists and ageing reports carry dead lines; the payment run proposes zero payments.
+  fix_map:
+    __other__: Clear the zero item against itself (F-44) or with the related document.
+  record_fix_template: 'Open item {BSIK.BUKRS}/{BSIK.LIFNR} document {BSIK.BELNR}/{BSIK.GJAHR}: zero amount.'
+- id: AP207
+  field: LFB1.LOEVM
+  check_class: cross_field_check
+  fail_when: (`LFB1.LOEVM` == 'X') & `LFB1.SPERR`.isna()
+  severity: medium
+  dimension: consistency
+  message: Vendor company code is flagged for deletion but not blocked for posting
+  why_it_matters: The deletion flag only marks the account for archiving. Without a posting block, invoices and payments can
+    still be posted to a vendor the business has retired.
+  rule_authority: best_practice
+  sap_impact: Postings and payments to retired vendors; archiving fails because new documents keep appearing.
+  fix_map:
+    __other__: Set the company-code posting block (XK05) together with the deletion flag.
+  record_fix_template: 'Vendor {LFB1.LIFNR} in company code {LFB1.BUKRS}: flagged for deletion but not blocked for posting.'
+- id: AP208
+  field: LFM1.LOEVM
+  check_class: cross_field_check
+  fail_when: (`LFM1.LOEVM` == 'X') & `LFM1.SPERM`.isna()
+  severity: medium
+  dimension: consistency
+  message: Vendor purchasing organisation is flagged for deletion but not blocked for purchasing
+  why_it_matters: Purchase orders are only stopped by the purchasing block. A deleted purchasing view without the block still
+    accepts new orders.
+  rule_authority: best_practice
+  sap_impact: New purchase orders can be issued to a vendor the business has retired.
+  fix_map:
+    __other__: Set the purchasing block for the purchasing organisation (XK05) together with the deletion flag.
+  record_fix_template: 'Vendor {LFM1.LIFNR} in purchasing organisation {LFM1.EKORG}: flagged for deletion but not blocked.'
+- id: AP209
+  field: BSIK.WRBTR
+  check_class: uniqueness_check
+  grain: BSIK
+  fields:
+  - BSIK.BUKRS
+  - BSIK.LIFNR
+  - BSIK.WRBTR
+  - BSIK.WAERS
+  - BSIK.ZFBDT
+  applies_when:
+    BSIK.SHKZG:
+    - H
+    BSIK.UMSKZ:
+      blank: true
+  severity: medium
+  dimension: uniqueness
+  message: 'Possible duplicate vendor invoice: same vendor, amount, currency and baseline date still open'
+  why_it_matters: Duplicate invoices are often entered with a slightly different reference (a typo, a prefix, a credit note
+    number), which defeats reference-based checks. Same vendor, amount and baseline date is the classic second test used in
+    duplicate-payment audits.
+  rule_authority: best_practice
+  sap_impact: Both invoices are paid by the next payment run.
+  fix_map:
+    __other__: Compare the items with the vendor statement; block and reverse the duplicate (FB08 / MR8M).
+  record_fix_template: 'Invoice {BSIK.BELNR}/{BSIK.GJAHR} of vendor {BSIK.LIFNR}: {BSIK.WRBTR} {BSIK.WAERS} with baseline
+    {BSIK.ZFBDT} is open more than once.'
+- id: AP210
+  field: LFB1.QLAND
+  check_class: cross_field_check
+  fail_when: '`LFB1.QSSKZ`.notna() & `LFB1.QLAND`.isna()'
+  severity: medium
+  dimension: completeness
+  message: Vendor has a withholding tax code but no withholding tax country
+  why_it_matters: Classic withholding tax determines the tax rate and reporting from the code together with the withholding
+    tax country. A code without a country cannot be evaluated by the withholding tax report (RFKQSU20).
+  rule_authority: best_practice
+  sap_impact: Withholding tax is not deducted or not reported to the tax authority.
+  fix_map:
+    __other__: Maintain the withholding tax country in XK02 > Company code > Withholding tax, or remove the code.
+  record_fix_template: 'Vendor {LFB1.LIFNR} in company code {LFB1.BUKRS}: withholding tax code {LFB1.QSSKZ} without country.'
+- id: AP211
+  field: LFB5.MAHNA
+  check_class: cross_field_check
+  fail_when: '`LFB5.MANSP`.notna() & `LFB5.MAHNA`.isna()'
+  severity: low
+  dimension: consistency
+  message: Vendor dunning block is set without a dunning procedure
+  why_it_matters: A dunning block only means something together with a dunning procedure. A block on a vendor that is never
+    dunned points to incomplete or copied dunning data.
+  rule_authority: best_practice
+  sap_impact: Debit balances on the vendor are not dunned and the block hides that the dunning data was never set up.
+  fix_map:
+    __other__: Maintain the dunning procedure or remove the dunning block (XK02 > Company code > Correspondence).
+  record_fix_template: 'Vendor {LFB5.LIFNR} in company code {LFB5.BUKRS}: dunning block {LFB5.MANSP} without procedure.'

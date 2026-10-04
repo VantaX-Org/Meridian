@@ -98,6 +98,7 @@ edges:
 
   # ── PO history (GR/IR) and logistics invoice verification ──────────────
   - {parent: EKPO, child: EKBE, join: {EBELN: EBELN, EBELP: EBELP}, cardinality: many}
+  - {parent: EINA, child: EINE, join: {INFNR: INFNR}, cardinality: many}
   - {parent: RBKP, child: RSEG, join: {BELNR: BELNR, GJAHR: GJAHR}, cardinality: many}
   - {parent: LFA1, child: RBKP, join: {LIFNR: LIFNR}, cardinality: many}
 

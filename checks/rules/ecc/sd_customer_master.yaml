@@ -971,3 +971,203 @@ rules:
       __other__: Replace the partner in the customer's sales-area partner functions (XD02 > Partner functions).
     record_fix_template: 'Customer {KNVP.KUNNR} ({KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART}): partner {KNVP.PARVW} {KNVP.KUNN2}
       does not exist or is deleted.'
+  - id: SDCM200
+    field: KNVP.KUNNR
+    check_class: exists_check
+    grain: KNVP
+    applies_when:
+      KNVP.PARVW:
+      - AG
+    fields:
+    - KNVP.KUNNR
+    - KNVP.VKORG
+    - KNVP.VTWEG
+    - KNVP.SPART
+    target_table: KNVP
+    target_fields:
+    - KUNNR
+    - VKORG
+    - VTWEG
+    - SPART
+    target_when:
+      PARVW:
+      - WE
+    severity: high
+    dimension: completeness
+    message: Sold-to party has no ship-to partner function in the sales area
+    why_it_matters: The partner determination procedure for a sold-to party requires a ship-to (WE). Without it in the sales
+      area, VA01 stops at partner determination and the order cannot be saved or delivered.
+    rule_authority: sap_hard_constraint
+    sap_impact: Sales orders for the customer stay incomplete (no ship-to), so no delivery can be created.
+    fix_map:
+      __other__: Maintain partner function WE for the sales area (XD02 > Sales area data > Partner functions).
+    record_fix_template: 'Customer {KNVP.KUNNR} ({KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART}): no ship-to partner function.'
+  - id: SDCM201
+    field: KNVP.KUNNR
+    check_class: exists_check
+    grain: KNVP
+    applies_when:
+      KNVP.PARVW:
+      - AG
+    fields:
+    - KNVP.KUNNR
+    - KNVP.VKORG
+    - KNVP.VTWEG
+    - KNVP.SPART
+    target_table: KNVP
+    target_fields:
+    - KUNNR
+    - VKORG
+    - VTWEG
+    - SPART
+    target_when:
+      PARVW:
+      - RE
+    severity: high
+    dimension: completeness
+    message: Sold-to party has no bill-to partner function in the sales area
+    why_it_matters: Billing copies the bill-to party (RE) from the order. A sold-to party without a bill-to in the sales area
+      makes the order incomplete for billing and the invoice address cannot be determined.
+    rule_authority: sap_hard_constraint
+    sap_impact: Orders and deliveries cannot be billed until the partner is added manually.
+    fix_map:
+      __other__: Maintain partner function RE for the sales area (XD02 > Sales area data > Partner functions).
+    record_fix_template: 'Customer {KNVP.KUNNR} ({KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART}): no bill-to partner function.'
+  - id: SDCM202
+    field: KNVP.KUNNR
+    check_class: exists_check
+    grain: KNVP
+    applies_when:
+      KNVP.PARVW:
+      - AG
+    fields:
+    - KNVP.KUNNR
+    - KNVP.VKORG
+    - KNVP.VTWEG
+    - KNVP.SPART
+    target_table: KNVP
+    target_fields:
+    - KUNNR
+    - VKORG
+    - VTWEG
+    - SPART
+    target_when:
+      PARVW:
+      - RG
+    severity: high
+    dimension: completeness
+    message: Sold-to party has no payer partner function in the sales area
+    why_it_matters: The payer (RG) carries the receivable, the credit check and the payment terms. A sold-to party without a
+      payer in the sales area cannot be invoiced or credit-checked.
+    rule_authority: sap_hard_constraint
+    sap_impact: Billing documents cannot be posted to FI; credit management has no account to check against.
+    fix_map:
+      __other__: Maintain partner function RG for the sales area (XD02 > Sales area data > Partner functions).
+    record_fix_template: 'Customer {KNVP.KUNNR} ({KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART}): no payer partner function.'
+  - id: SDCM203
+    field: KNVP.KUNN2
+    check_class: uniqueness_check
+    grain: KNVP
+    applies_when:
+      KNVP.PARVW:
+      - AG
+      - RG
+    fields:
+    - KNVP.KUNNR
+    - KNVP.VKORG
+    - KNVP.VTWEG
+    - KNVP.SPART
+    - KNVP.PARVW
+    severity: medium
+    dimension: uniqueness
+    message: Customer has more than one sold-to or payer partner in the same sales area
+    why_it_matters: Sold-to and payer are unique partner functions in the standard partner procedure. Several entries trigger
+      a selection pop-up in VA01 and lead to orders charged to the wrong payer.
+    rule_authority: best_practice
+    sap_impact: Order entry stops for a manual partner choice; receivables land on the wrong payer.
+    fix_map:
+      __other__: Keep one sold-to and one payer per sales area (XD02 > Partner functions) and delete the extra entries.
+    record_fix_template: 'Customer {KNVP.KUNNR} ({KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART}): partner function {KNVP.PARVW} is maintained
+      more than once.'
+  - id: SDCM204
+    field: KNVP.KUNN2
+    check_class: cross_field_check
+    grain: KNVP
+    applies_when:
+      KNVP.PARVW:
+      - AG
+    fail_when: '`KNVP.KUNN2` != `KNVP.KUNNR`'
+    require_populated: true
+    severity: high
+    dimension: consistency
+    message: Sold-to partner function points to another customer
+    why_it_matters: The sold-to partner of a customer is the customer itself. A sold-to entry pointing to a different account
+      means the account was copied from another customer and orders entered for it are booked to someone else.
+    rule_authority: sap_hard_constraint
+    sap_impact: Orders, pricing and statistics are recorded against the wrong sold-to party.
+    fix_map:
+      __other__: Correct the sold-to partner to the customer itself (XD02 > Partner functions).
+    record_fix_template: 'Customer {KNVP.KUNNR} ({KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART}): sold-to partner is {KNVP.KUNN2}.'
+  - id: SDCM205
+    field: KNVP.KUNN2
+    check_class: exists_check
+    grain: KNVP
+    applies_when:
+      KNVP.PARVW:
+      - WE
+      - RE
+      - RG
+    fields:
+    - KNVP.KUNN2
+    - KNVP.VKORG
+    - KNVP.VTWEG
+    - KNVP.SPART
+    target_table: KNVV
+    target_fields:
+    - KUNNR
+    - VKORG
+    - VTWEG
+    - SPART
+    target_when:
+      LOEVM:
+        blank: true
+    severity: high
+    dimension: consistency
+    message: Ship-to, bill-to or payer is not extended to the sales area, or is flagged for deletion there
+    why_it_matters: A partner used in a sales area must have its own sales-area data (KNVV) there. Without it SAP rejects the
+      partner in the order ("not defined for sales area") and billing to a payer without sales data fails.
+    rule_authority: sap_hard_constraint
+    sap_impact: Order entry errors at partner determination; the payer has no billing or credit data in the sales area.
+    fix_map:
+      __other__: Extend the partner customer to the sales area (XD01 with reference) or replace the partner.
+    record_fix_template: 'Customer {KNVP.KUNNR} ({KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART}): partner {KNVP.PARVW} {KNVP.KUNN2}
+      has no active data in the sales area.'
+  - id: SDCM206
+    field: KNVV.VWERK
+    check_class: null_check
+    severity: low
+    dimension: completeness
+    message: Delivering plant is missing in the customer sales-area data
+    why_it_matters: The delivering plant proposed into order items comes from the customer-material info, the customer (KNVV-VWERK)
+      or the material. Without a customer default, items fall back to the material and often pick the wrong plant.
+    rule_authority: best_practice
+    sap_impact: Order items without plant cannot be checked for availability or delivered until a plant is entered.
+    fix_map:
+      __other__: Maintain the delivering plant in XD02 > Sales area data > Shipping.
+    record_fix_template: 'Customer {KNVV.KUNNR} ({KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}): no delivering plant.'
+  - id: SDCM207
+    field: KNVV.LOEVM
+    check_class: cross_field_check
+    fail_when: (`KNVV.LOEVM` == 'X') & `KNVV.AUFSD`.isna() & `KNVV.LIFSD`.isna() & `KNVV.FAKSD`.isna()
+    severity: medium
+    dimension: consistency
+    message: Sales area flagged for deletion is not blocked for orders, deliveries or billing
+    why_it_matters: The deletion flag only marks the sales area for archiving; it does not stop new business. SAP's deletion
+      check (and MDG's block-before-delete validation) expects the sales area to carry an order, delivery or billing block first,
+      otherwise orders keep arriving on an account the business has retired.
+    rule_authority: best_practice
+    sap_impact: Orders, deliveries and invoices can still be created for a customer the business considers deleted, and archiving
+      fails because new documents keep appearing.
+    fix_map:
+      __other__: Set a sales-area order block (VD05 or XD05) before or together with the deletion flag.
+    record_fix_template: 'Customer {KNVV.KUNNR} ({KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}): flagged for deletion but not blocked.'

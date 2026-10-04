@@ -1338,3 +1338,169 @@ rules:
       __other__: Assign a current credit account (FD32) or make the customer its own credit account.
     record_fix_template: 'Customer {KNKK.KUNNR} (credit area {KNKK.KKBER}): credit account {KNKK.KNKLI} does not exist or is
       deleted.'
+  - id: AR200
+    field: KNKK.NXTRV
+    check_class: freshness_check
+    max_age_hours: 0
+    applies_when:
+      KNKK.KLIMK:
+        gt: 0
+    severity: medium
+    dimension: timeliness
+    message: Next internal credit review date has passed
+    why_it_matters: The next review date (NXTRV) drives the credit review worklist and the optional 'next review date' check
+      in automatic credit control (OVA8). A date in the past means the review is overdue and the limit is no longer backed by
+      a current assessment.
+    rule_authority: best_practice
+    sap_impact: Orders are blocked by the review-date credit check, or credit is extended on an unreviewed limit.
+    fix_map:
+      __other__: Perform the credit review and set the next review date in FD32 > Status.
+    record_fix_template: 'Customer {KNKK.KUNNR} (credit area {KNKK.KKBER}): credit review overdue by {age_days} days.'
+  - id: AR201
+    field: KNKK.DTREV
+    check_class: freshness_check
+    max_age_hours: 17520
+    applies_when:
+      KNKK.KLIMK:
+        gt: 0
+    severity: low
+    dimension: timeliness
+    message: Customer credit limit has not been reviewed for more than two years
+    why_it_matters: Credit policies require periodic review of limits. A limit whose last review is older than two years no
+      longer reflects the customer's current financial position.
+    rule_authority: best_practice
+    sap_impact: Credit exposure is approved against an outdated assessment; bad-debt risk is understated.
+    fix_map:
+      __other__: Review the credit limit and update the last review date in FD32 > Status.
+    record_fix_template: 'Customer {KNKK.KUNNR} (credit area {KNKK.KKBER}): last credit review {age_days} days ago.'
+  - id: AR202
+    field: BSID.ZFBDT
+    check_class: freshness_check
+    max_age_hours: 8760
+    grain: BSID
+    applies_when:
+      BSID.UMSKZ:
+        blank: true
+    severity: medium
+    dimension: timeliness
+    message: Customer item has been open for more than a year
+    why_it_matters: An invoice or payment still open a year after its baseline date is a doubtful receivable or an unapplied
+      cash receipt. Auditors expect a bad-debt allowance or clearing for such items.
+    rule_authority: best_practice
+    sap_impact: Receivables and DSO are overstated; unapplied payments hide real overdue balances.
+    fix_map:
+      __other__: Clear the item with the matching payment (F-32), write it off, or provide for it as a doubtful receivable.
+    record_fix_template: 'Open item {BSID.BUKRS}/{BSID.KUNNR} document {BSID.BELNR}/{BSID.GJAHR}: open for {age_days} days.'
+  - id: AR203
+    field: BSID.ZFBDT
+    check_class: freshness_check
+    max_age_hours: 2160
+    grain: BSID
+    applies_when:
+      BSID.MANSP:
+        populated: true
+    severity: medium
+    dimension: timeliness
+    message: Customer item has been blocked for dunning for more than 90 days
+    why_it_matters: A dunning block on an item is meant for a short dispute. Blocks that stay for months stop collection on
+      overdue receivables without anyone following up.
+    rule_authority: best_practice
+    sap_impact: Overdue items are never dunned; cash collection is delayed and bad-debt risk grows.
+    fix_map:
+      __other__: Resolve the dispute and remove the dunning block from the item (FB02 > Dunning block).
+    record_fix_template: 'Open item {BSID.BUKRS}/{BSID.KUNNR} document {BSID.BELNR}/{BSID.GJAHR}: dunning block {BSID.MANSP}
+      for {age_days} days.'
+  - id: AR204
+    field: KNB1.LOEVM
+    check_class: cross_field_check
+    fail_when: (`KNB1.LOEVM` == 'X') & `KNB1.SPERR`.isna()
+    severity: medium
+    dimension: consistency
+    message: Customer company code is flagged for deletion but not blocked for posting
+    why_it_matters: The deletion flag only marks the account for archiving. Without a posting block, invoices and payments can
+      still be posted to a customer the business has retired.
+    rule_authority: best_practice
+    sap_impact: Postings to retired customers; archiving fails because new documents keep appearing.
+    fix_map:
+      __other__: Set the company-code posting block (XD05) together with the deletion flag.
+    record_fix_template: 'Customer {KNB1.KUNNR} in company code {KNB1.BUKRS}: flagged for deletion but not blocked for posting.'
+  - id: AR205
+    field: KNBK.BANKL
+    check_class: exists_check
+    fields:
+    - KNBK.BANKS
+    - KNBK.BANKL
+    target_table: BNKA
+    target_fields:
+    - BANKS
+    - BANKL
+    target_when:
+      LOEVM:
+        blank: true
+    severity: medium
+    dimension: consistency
+    message: Customer bank key does not exist in the bank directory or the bank is flagged for deletion
+    why_it_matters: Direct debits and refunds read the bank data from the bank directory (BNKA). A customer bank key without
+      a live BNKA entry produces payment files without a routable bank.
+    rule_authority: sap_hard_constraint
+    sap_impact: Direct debits and refunds to the customer fail or are rejected by the bank.
+    fix_map:
+      __other__: Create or reactivate the bank in FI01/FI02, or correct the customer bank key (XD02 > Payment transactions).
+    record_fix_template: 'Customer {KNBK.KUNNR}: bank {KNBK.BANKS}/{KNBK.BANKL} is missing from the bank directory or deleted.'
+  - id: AR206
+    field: KNBK.KOBIS
+    check_class: freshness_check
+    max_age_hours: 0
+    severity: low
+    dimension: timeliness
+    message: Customer bank details have expired (valid-to date in the past)
+    why_it_matters: Bank details with a validity end date are ignored after that date. An expired entry is either dead data
+      or a bank change that was never completed.
+    rule_authority: best_practice
+    sap_impact: Direct debit collection finds no valid bank and the receivable stays open.
+    fix_map:
+      __other__: Delete the expired bank details or maintain the replacement account (XD02 > Payment transactions).
+    record_fix_template: 'Customer {KNBK.KUNNR}: bank details {KNBK.BANKS}/{KNBK.BANKL} expired {age_days} days ago.'
+  - id: AR207
+    field: BSID.WRBTR
+    check_class: cross_field_check
+    grain: BSID
+    fail_when: (`BSID.WRBTR` == 0) & (`BSID.DMBTR` == 0)
+    severity: low
+    dimension: validity
+    message: Open customer item has a zero amount
+    why_it_matters: A zero line item settles nothing. It is typically left over from a reversed or split posting and clutters
+      open item lists, dunning and the ageing report.
+    rule_authority: best_practice
+    sap_impact: Dead lines in open item lists and ageing reports.
+    fix_map:
+      __other__: Clear the zero item against itself (F-32) or with the related document.
+    record_fix_template: 'Open item {BSID.BUKRS}/{BSID.KUNNR} document {BSID.BELNR}/{BSID.GJAHR}: zero amount.'
+  - id: AR208
+    field: KNB5.MAHNA
+    check_class: cross_field_check
+    fail_when: '`KNB5.MANSP`.notna() & `KNB5.MAHNA`.isna()'
+    severity: low
+    dimension: consistency
+    message: Customer dunning block is set without a dunning procedure
+    why_it_matters: A dunning block only means something together with a dunning procedure. A block on a customer that is never
+      dunned points to incomplete or copied dunning data.
+    rule_authority: best_practice
+    sap_impact: The customer is never dunned and the block hides that dunning was never set up.
+    fix_map:
+      __other__: Maintain the dunning procedure or remove the dunning block (XD02 > Company code > Correspondence).
+    record_fix_template: 'Customer {KNB5.KUNNR} in company code {KNB5.BUKRS}: dunning block {KNB5.MANSP} without procedure.'
+  - id: AR209
+    field: KNKK.KLIMK
+    check_class: cross_field_check
+    fail_when: (`KNKK.KLIMK` > 0) & `KNKK.NXTRV`.isna() & `KNKK.DTREV`.isna()
+    severity: low
+    dimension: completeness
+    message: Customer has a credit limit that was never reviewed and has no review scheduled
+    why_it_matters: A credit limit should be backed by a review (last review date) or at least a scheduled one. A limit with
+      neither date was entered without a documented assessment.
+    rule_authority: best_practice
+    sap_impact: Credit is extended without an assessment trail; the credit review worklist never picks the customer up.
+    fix_map:
+      __other__: Record the review and schedule the next one in FD32 > Status.
+    record_fix_template: 'Customer {KNKK.KUNNR} (credit area {KNKK.KKBER}): credit limit {KNKK.KLIMK} without any review date.'
