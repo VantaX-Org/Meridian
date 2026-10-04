@@ -112,7 +112,7 @@ export function HeaderExportMenu() {
         render={
           <button
             type="button"
-            className="aurora-topbar__cmdk aurora-focus-ring hidden sm:inline-flex"
+            className="aurora-topbar__cmdk aurora-topbar__export aurora-focus-ring"
           />
         }
       >
@@ -271,7 +271,7 @@ export function NotificationBell() {
       >
         <Bell className="h-[18px] w-[18px]" />
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-destructive px-1 text-[11px] font-bold text-white ring-2 ring-[#F7F8FA]">
+          <span className="absolute -top-0.5 -right-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-destructive px-1 text-[11px] font-bold text-white ring-2 ring-[var(--aurora-canvas-base)]">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}

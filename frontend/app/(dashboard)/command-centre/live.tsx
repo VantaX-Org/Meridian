@@ -1,398 +1,203 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+/**
+ * Live operations: what is running now and what needs a decision. Every
+ * figure is read from the API; nothing here is estimated except job
+ * progress, which is elapsed time against that system's own average run.
+ */
+
 import Link from "next/link";
+import { useMemo } from "react";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import {
-  PageHead,
-  KPI,
-  SectionHeader,
-  StatusDot,
-  PriorityChip,
-  SevTag,
-} from "@/components/meridian/atoms";
-import { ArrowRight } from "@/components/meridian/icons";
-import { Skeleton } from "@/components/ui/skeleton";
+  Banner, EmptyState, Metric, MetricStrip, Mono, PageHeader, SectionCard, StatusBadge, TableSkeleton, type Status,
+} from "@/components/ui-core";
+import { useNowSec } from "@/hooks/use-now";
 import { getMdmDashboard } from "@/lib/api/mdm-metrics";
 import { getFindings } from "@/lib/api/findings";
 import { getSystems, getSyncRuns } from "@/lib/api/systems";
 import { getQueueItems } from "@/lib/api/stewardship";
-import { relativeTime } from "@/lib/format";
-import type { Finding, SAPSystem, SyncRun } from "@/types/api";
+import { formatModuleName, relativeTime } from "@/lib/format";
+import type { SAPSystem, SyncRun } from "@/types/api";
 
-function statusToDot(s: SAPSystem["last_sync_status"]): "healthy" | "degraded" | "down" | "scheduled" {
-  if (!s) return "scheduled";
-  if (s === "running" || s === "completed" || s === "complete") return "healthy";
-  if (s === "failed") return "down";
-  return "scheduled";
+function syncStatus(s: SAPSystem["last_sync_status"]): { status: Status; label: string } {
+  if (!s) return { status: "idle", label: "Never synced" };
+  if (s === "running") return { status: "running", label: "Syncing" };
+  if (s === "completed" || s === "complete") return { status: "ok", label: "Synced" };
+  if (s === "failed") return { status: "failed", label: "Last sync failed" };
+  return { status: "idle", label: "Scheduled" };
 }
 
-/** Progress estimate: elapsed time vs this system's own average completed-run
- * duration, capped at 95% (never 100% before the run actually completes).
- * Without a real average (e.g. this system's first-ever run) there's no
- * meaningful percentage to show — callers should fall back to elapsed time
- * as a duration, not a percentage; a fixed 90% for any run over 90s was
- * indistinguishable from a genuinely hung job. */
-function jobProgress(r: SyncRun, avgDurationMs: number | null): number | null {
+/** Elapsed time against this system's own average completed run, capped at
+ * 95% so a run never reads as done before it is. No average, no percentage. */
+function jobProgress(r: SyncRun, avgDurationMs: number | null, nowMs: number): number | null {
   if (r.completed_at) return 100;
   if (!avgDurationMs || avgDurationMs <= 0) return null;
-  const elapsed = Date.now() - new Date(r.started_at).getTime();
-  return Math.min(95, Math.round((elapsed / avgDurationMs) * 100));
+  return Math.min(95, Math.round(((nowMs - new Date(r.started_at).getTime()) / avgDurationMs) * 100));
 }
 
-export function LiveOperationsPage() {
-  const [now, setNow] = useState<Date | null>(null);
-  useEffect(() => {
-    // client-only clock (null during SSR); first tick right after mount
-    const tick = () => setNow(new Date());
-    const first = setTimeout(tick, 0);
-    const id = setInterval(tick, 1000);
-    return () => {
-      clearTimeout(first);
-      clearInterval(id);
-    };
-  }, []);
+const findingsHref = (p: Record<string, string>) => `/?${new URLSearchParams({ tab: "findings", ...p })}`;
 
-  const mdmQ = useQuery({
-    queryKey: ["mdm.dashboard"],
-    queryFn: getMdmDashboard,
-  });
-  const findingsQ = useQuery({
+export function LiveOperationsPage() {
+  const nowMs = useNowSec(true, 5_000) * 1000;
+
+  const mdmQ = useQuery({ queryKey: ["mdm.dashboard"], queryFn: getMdmDashboard });
+  const critQ = useQuery({
     queryKey: ["findings.list", { severity: "critical", limit: 50 }],
     queryFn: () => getFindings({ severity: "critical", limit: 50 }),
   });
-  const highFindingsQ = useQuery({
+  const highQ = useQuery({
     queryKey: ["findings.list", { severity: "high", limit: 50 }],
     queryFn: () => getFindings({ severity: "high", limit: 50 }),
   });
-  const systemsQ = useQuery({
-    queryKey: ["systems.list"],
-    queryFn: getSystems,
-  });
-  // limit: 200 is the API's own hard cap (Query(50, le=200) in
-  // api/routes/stewardship.py) — the highest this endpoint allows in one
-  // page, used here so the "at risk" filter below sees as much of the real
-  // open queue as the API can return in a single call, not an arbitrary
-  // small page size.
+  const systemsQ = useQuery({ queryKey: ["systems.list"], queryFn: getSystems });
+  // 200 is the stewardship API's own page cap, so "at risk" sees as much of the open queue as one call allows.
   const stewardQ = useQuery({
     queryKey: ["stewardship.queue", { status: "open", limit: 200 }],
     queryFn: () => getQueueItems({ status: "open", limit: 200 }),
   });
 
-  const systems: SAPSystem[] = systemsQ.data ?? [];
+  const systems = useMemo(() => systemsQ.data ?? [], [systemsQ.data]);
   const runs = useQueries({
-    queries: systems.map((s) => ({
-      queryKey: ["systems.runs", s.id],
-      queryFn: () => getSyncRuns(s.id, 5),
-      enabled: systems.length > 0,
-    })),
+    queries: systems.map((s) => ({ queryKey: ["systems.runs", s.id], queryFn: () => getSyncRuns(s.id, 5) })),
   });
+  const runData = runs.map((r) => r.data);
 
-  const isLoading =
-    mdmQ.isLoading ||
-    findingsQ.isLoading ||
-    highFindingsQ.isLoading ||
-    systemsQ.isLoading ||
-    stewardQ.isLoading;
-
-  const error = mdmQ.error || findingsQ.error || highFindingsQ.error || systemsQ.error || stewardQ.error;
-
-  const activeJobs = useMemo<{ run: SyncRun; systemName: string; avgDurationMs: number | null }[]>(() => {
+  const activeJobs = useMemo(() => {
     const out: { run: SyncRun; systemName: string; avgDurationMs: number | null }[] = [];
     systems.forEach((s, i) => {
-      const list = runs[i]?.data ?? [];
-      const completedDurations = list
-        .filter((r) => r.completed_at)
+      const list = runData[i] ?? [];
+      const done = list.filter((r) => r.completed_at)
         .map((r) => new Date(r.completed_at as string).getTime() - new Date(r.started_at).getTime())
         .filter((ms) => ms > 0);
-      const avgDurationMs = completedDurations.length > 0
-        ? completedDurations.reduce((a, b) => a + b, 0) / completedDurations.length
-        : null;
+      const avgDurationMs = done.length ? done.reduce((a, b) => a + b, 0) / done.length : null;
       for (const r of list) if (!r.completed_at) out.push({ run: r, systemName: s.name, avgDurationMs });
     });
     return out;
-  }, [systems, runs]);
+    // runData is a fresh array each render; its members are stable query results.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [systems, ...runData]);
 
-  if (isLoading) {
-    return (
-      <>
-        <PageHead title="Live operations" route="Overview · /command-centre" sub="Loading live view…" />
-        <div className="mn-row" style={{ gridTemplateColumns: "repeat(6, 1fr)", marginBottom: 18 }}>
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-20 rounded-[10px]" />
-          ))}
-        </div>
-        <Skeleton className="h-[420px] rounded-[10px]" />
-      </>
-    );
-  }
-  if (error) {
-    return (
-      <>
-        <PageHead title="Live operations" route="Overview · /command-centre" sub="Failed to load." />
-        <div className="mn-card mn-card-pad" style={{ color: "var(--mn-neg)" }}>
-          Could not reach one of the live endpoints (mdm/findings/systems/stewardship).
-        </div>
-      </>
-    );
-  }
+  const loading = mdmQ.isLoading || critQ.isLoading || highQ.isLoading || systemsQ.isLoading || stewardQ.isLoading;
+  const error = mdmQ.error || critQ.error || highQ.error || systemsQ.error || stewardQ.error;
 
-  const mdmLatest = mdmQ.data?.latest;
+  const latest = mdmQ.data?.latest;
   const trend = mdmQ.data?.trend ?? [];
-  const previousDqs = trend.length >= 2 ? trend[trend.length - 2].mdm_health_score : null;
-  const dqs = mdmLatest?.mdm_health_score ?? 0;
-  const dqsDelta = previousDqs !== null ? Number((dqs - previousDqs).toFixed(1)) : null;
-
-  const criticals = findingsQ.data?.findings ?? [];
-  const highs = highFindingsQ.data?.findings ?? [];
-  const inbox: Finding[] = [...criticals, ...highs].slice(0, 8);
-
-  const sla = mdmLatest?.steward_sla_compliance_pct ?? 0;
-  // slaAtRisk is a filter over the fetched page, not a server-computed
-  // total — accurate up to the API's 200-item cap (see stewardQ above);
-  // a tenant with more than 200 open items could still undercount this
-  // specific figure. decisions24h (the "Open queue" KPI) uses the list
-  // response's own `total`, so it doesn't share that limitation.
-  const slaAtRisk = stewardQ.data?.items.filter((t) => t.sla_hours !== null && t.due_at && new Date(t.due_at).getTime() - (now?.getTime() ?? 0) < t.sla_hours * 0.5 * 3600 * 1000).length ?? 0;
-  const decisions24h = stewardQ.data?.total ?? 0;
-  const clock = now ? now.toLocaleTimeString() : "—:—:—";
+  const prev = trend.length >= 2 ? trend[trend.length - 2].mdm_health_score : null;
+  const health = latest?.mdm_health_score ?? null;
+  const delta = health !== null && prev !== null ? Number((health - prev).toFixed(1)) : null;
+  const critTotal = critQ.data?.total ?? 0;
+  const highTotal = highQ.data?.total ?? 0;
+  const inbox = [...(critQ.data?.findings ?? []), ...(highQ.data?.findings ?? [])].slice(0, 8);
+  const queue = stewardQ.data?.items ?? [];
+  // Counted over the fetched page (up to 200 items), not a server total.
+  const atRisk = queue.filter((t) => t.sla_hours !== null && t.due_at
+    && new Date(t.due_at).getTime() - nowMs < t.sla_hours * 0.5 * 3600 * 1000).length;
 
   return (
-    <>
-      <PageHead
+    <div className="ui-page">
+      <PageHeader
         title="Live operations"
-        route="Overview · /command-centre"
-        sub={
-          <>
-            Live view across <strong style={{ color: "var(--mn-ink-700)" }}>{systems.length} systems</strong> ·{" "}
-            <strong style={{ color: "var(--mn-pos)" }}>{Math.round(sla)}% SLA</strong> ·{" "}
-            <strong style={{ color: "var(--mn-warn)" }}>{slaAtRisk} at risk</strong>.
-          </>
-        }
-        actions={
-          <>
-            <span className="mn-pill">
-              <span className="pdot" /> Live · {clock}
-            </span>
-          </>
-        }
+        summary={loading || error ? undefined
+          : `${systems.length} system${systems.length === 1 ? "" : "s"} connected, ${activeJobs.length} job${activeJobs.length === 1 ? "" : "s"} running, ${atRisk} queue item${atRisk === 1 ? "" : "s"} close to breaching SLA.`}
       />
 
-      <div className="mn-row mn-stagger" style={{ gridTemplateColumns: "repeat(6, minmax(0, 1fr))", marginBottom: 18 }}>
-        <KPI
-          label="Estate DQS"
-          value={dqs.toFixed(1)}
-          delta={dqsDelta ?? undefined}
-          deltaUnit=" pts"
-          tone={dqsDelta === null || dqsDelta >= 0 ? "pos" : "neg"}
-          href="/"
-        />
-        <KPI label="Open critical" value={findingsQ.data?.total ?? criticals.length} tone="neg" href="/findings?severity=critical" />
-        <KPI label="Open high" value={highFindingsQ.data?.total ?? highs.length} tone="warn" href="/findings?severity=high" />
-        <KPI label="Active jobs" value={activeJobs.length} tone={activeJobs.length > 0 ? "warn" : "pos"} />
-        <KPI label="SLA at risk" value={slaAtRisk} tone={slaAtRisk > 0 ? "warn" : "pos"} />
-        <KPI label="Open queue" value={decisions24h} tone="pos" href="/workbench" />
-      </div>
+      {loading ? <TableSkeleton rows={8} label="Loading live operations" />
+        : error ? <Banner tone="danger" title="Live operations could not be read">{(error as Error).message}</Banner>
+        : (
+          <>
+            <MetricStrip label="Live figures">
+              <Metric label="MDM health" value={health === null ? null : health.toFixed(1)}
+                delta={delta === null ? null : { value: delta, unit: " pts", good: "up" }} />
+              <Metric label="Open critical" value={critTotal} tone={critTotal ? "danger" : "default"} href={findingsHref({ severity: "critical" })} />
+              <Metric label="Open high" value={highTotal} tone={highTotal ? "warning" : "default"} href={findingsHref({ severity: "high" })} />
+              <Metric label="Jobs running" value={activeJobs.length} />
+              <Metric label="SLA at risk" value={atRisk} tone={atRisk ? "warning" : "default"} href="/workbench" />
+              <Metric label="Open queue" value={stewardQ.data?.total ?? queue.length} href="/workbench" />
+            </MetricStrip>
 
-      <div className="mn-row mn-row-12" style={{ marginBottom: 18 }}>
-        <div className="mn-col-8">
-          <div className="mn-card mn-card-pad">
-            <SectionHeader
-              title="Systems · live"
-              caption="Connection health across the estate"
-              right={
-                <Link href="/systems" className="mn-link">
-                  Systems <ArrowRight size={11} />
-                </Link>
-              }
-            />
-            <div className="mn-loads">
-              {systems.map((s) => (
-                <div key={s.id} className="mn-load">
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
-                    <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--mn-ink-900)" }}>{s.name}</span>
-                    <span
-                      className="mn-tabular"
-                      style={{ font: "500 11px/1 'JetBrains Mono', monospace", color: "var(--mn-ink-400)" }}
-                    >
-                      {s.last_sync_at ? relativeTime(s.last_sync_at) : "never"}
-                    </span>
-                  </div>
-                  <div style={{ height: 5, background: "rgba(15,23,42,0.06)", borderRadius: 999 }}>
-                    <div
-                      style={{
-                        height: "100%",
-                        width: `${s.is_active ? 65 : 0}%`,
-                        background:
-                          statusToDot(s.last_sync_status) === "healthy"
-                            ? "var(--mn-pos)"
-                            : statusToDot(s.last_sync_status) === "down"
-                              ? "var(--mn-neg)"
-                              : "var(--mn-warn)",
-                        borderRadius: 999,
-                        transition: "width 900ms cubic-bezier(.2,.7,.2,1)",
-                      }}
-                    />
-                  </div>
-                  <div style={{ marginTop: 6 }}>
-                    <StatusDot status={statusToDot(s.last_sync_status)} />
-                  </div>
-                </div>
-              ))}
-              {systems.length === 0 && (
-                <div style={{ color: "var(--mn-ink-400)", padding: 16 }}>No systems connected.</div>
-              )}
-            </div>
-          </div>
-        </div>
-        <div className="mn-col-4">
-          <div className="mn-card mn-card-pad" style={{ height: "100%" }}>
-            <SectionHeader title="Active jobs" caption={`${activeJobs.length} running`} />
-            <div className="mn-jobs">
-              {activeJobs.map(({ run, systemName, avgDurationMs }) => {
-                const progress = jobProgress(run, avgDurationMs);
-                return (
-                <div key={run.id} className="mn-job">
-                  <div className="mn-job-head">
-                    <PriorityChip p="P2" />
-                    <span style={{ font: "600 11px/1 'JetBrains Mono', monospace", color: "var(--mn-ink-500)" }}>
-                      {run.id.slice(0, 8)}
-                    </span>
-                    <span style={{ flex: 1, color: "var(--mn-ink-900)", fontSize: 13, fontWeight: 500 }}>
-                      {systemName}
-                    </span>
-                    <span
-                      className="mn-tabular"
-                      style={{ font: "500 11px/1 'JetBrains Mono', monospace", color: "var(--mn-ink-400)" }}
-                    >
-                      {relativeTime(run.started_at)}
-                    </span>
-                  </div>
-                  <div className="mn-job-progress">
-                    <div className="mn-job-bar">
-                      {/* No historical average for this system yet (first run) —
-                          nothing meaningful to show as a percentage of duration. */}
-                      <span style={{ width: progress !== null ? `${progress}%` : "100%", opacity: progress !== null ? 1 : 0.35 }} />
-                    </div>
-                    <span
-                      className="mn-tabular"
-                      style={{ font: "600 11.5px/1 'JetBrains Mono', monospace", color: "var(--mn-primary-700)" }}
-                    >
-                      {progress !== null ? `${progress}%` : "—"}
-                    </span>
-                  </div>
-                </div>
-                );
-              })}
-              {activeJobs.length === 0 && (
-                <div style={{ color: "var(--mn-ink-400)", padding: 16 }}>No active jobs.</div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+            <div className="ui-columns">
+              <div className="ui-stack">
+                <SectionCard title="Needs attention" meta={`${critTotal.toLocaleString()} critical and ${highTotal.toLocaleString()} high open`}
+                  action={<Link className="ui-link" href={findingsHref({})}>All findings</Link>} flush>
+                  {inbox.length ? (
+                    <ol className="ui-ranked">
+                      {inbox.map((f) => (
+                        <li key={f.id}>
+                          <Link href={findingsHref({ version_id: f.version_id, module: f.module, check_id: f.check_id, finding: f.id })}>
+                            <StatusBadge status={f.severity === "critical" ? "critical" : "high"} />
+                            <span className="ui-ranked__title">{f.business_name ?? f.details?.message ?? f.check_id}</span>
+                            <span className="ui-ranked__num aurora-number">{f.affected_count.toLocaleString()} record{f.affected_count === 1 ? "" : "s"}</span>
+                            <span className="ui-ranked__meta">{formatModuleName(f.module)}, <Mono>{f.check_id}</Mono>, found {relativeTime(f.created_at)}</span>
+                          </Link>
+                        </li>
+                      ))}
+                    </ol>
+                  ) : <EmptyState>No open critical or high findings.</EmptyState>}
+                </SectionCard>
 
-      <div className="mn-row mn-row-12">
-        <div className="mn-col-7">
-          <div className="mn-card mn-card-pad">
-            <SectionHeader
-              title="Inbox"
-              caption={`${findingsQ.data?.total ?? criticals.length} critical · ${highFindingsQ.data?.total ?? highs.length} high`}
-              right={
-                <Link href="/findings" className="mn-link">
-                  Findings <ArrowRight size={11} />
-                </Link>
-              }
-            />
-            <div style={{ marginTop: 10 }}>
-              {inbox.map((f) => (
-                <div
-                  key={f.id}
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "auto 1fr auto auto",
-                    alignItems: "center",
-                    gap: 12,
-                    padding: "10px 0",
-                    borderBottom: "1px dashed var(--mn-line-2)",
-                  }}
-                >
-                  <SevTag sev={f.severity === "critical" ? "critical" : f.severity === "high" ? "high" : f.severity === "medium" ? "medium" : "low"} />
-                  <div style={{ minWidth: 0 }}>
-                    <Link
-                      href={`/findings?${new URLSearchParams({ version_id: f.version_id, module: f.module, check_id: f.check_id })}`}
-                      style={{ display: "block", fontWeight: 500, color: "var(--mn-ink-900)", fontSize: 13 }}
-                    >
-                      {f.details?.message ?? f.check_id}
-                    </Link>
-                    <div
-                      style={{
-                        font: "500 11px/1 'JetBrains Mono', monospace",
-                        color: "var(--mn-ink-400)",
-                        marginTop: 3,
-                      }}
-                    >
-                      {f.module} · {f.check_id}
-                    </div>
-                  </div>
-                  <span
-                    className="mn-tabular"
-                    style={{ font: "500 11.5px/1 'JetBrains Mono', monospace", color: "var(--mn-ink-500)" }}
-                  >
-                    {f.affected_count.toLocaleString()}
-                  </span>
-                  <span
-                    className="mn-tabular"
-                    style={{ font: "500 11.5px/1 'JetBrains Mono', monospace", color: "var(--mn-ink-400)" }}
-                  >
-                    {relativeTime(f.created_at)}
-                  </span>
-                </div>
-              ))}
-              {inbox.length === 0 && (
-                <div style={{ color: "var(--mn-ink-400)", padding: 16 }}>No open criticals or highs.</div>
-              )}
+                <SectionCard title="Stewardship queue" meta={`Newest ${Math.min(8, queue.length)} of ${(stewardQ.data?.total ?? queue.length).toLocaleString()} open`}
+                  action={<Link className="ui-link" href="/workbench">Workbench</Link>} flush>
+                  {queue.length ? (
+                    <ul className="ui-ranked">
+                      {queue.slice(0, 8).map((t) => (
+                        <li key={t.id}>
+                          <div className="ui-ranked__row">
+                            <span className="ui-micro">{relativeTime(t.created_at)}</span>
+                            <span className="ui-ranked__title">{t.item_type.replace(/_/g, " ")}</span>
+                            <span className="ui-ranked__num">{t.ai_recommendation ? "Suggested fix" : "Manual"}</span>
+                            <span className="ui-ranked__meta"><Mono>{t.source_id}</Mono></span>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : <EmptyState>Nothing in the stewardship queue.</EmptyState>}
+                </SectionCard>
+              </div>
+
+              <div className="ui-stack">
+                <SectionCard title="Jobs running" meta={activeJobs.length ? "Progress is elapsed time against the system's average run" : undefined}>
+                  {activeJobs.length ? (
+                    <ul className="ui-ranked">
+                      {activeJobs.map(({ run, systemName, avgDurationMs }) => {
+                        const p = jobProgress(run, avgDurationMs, nowMs);
+                        return (
+                          <li key={run.id}>
+                            <div className="ui-ranked__row" style={{ paddingInline: 0 }}>
+                              <StatusBadge status="running">{p === null ? "Running" : `${p}%`}</StatusBadge>
+                              <span className="ui-ranked__title">{systemName}</span>
+                              <span className="ui-ranked__num">started {relativeTime(run.started_at)}</span>
+                              <span className="ui-ranked__meta">Run <Mono>{run.id.slice(0, 8)}</Mono>{p === null ? ", first run, no average yet" : ""}</span>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : <EmptyState>No jobs running.</EmptyState>}
+                </SectionCard>
+
+                <SectionCard title="Systems" action={<Link className="ui-link" href="/data?tab=systems">Manage systems</Link>}>
+                  {systems.length ? (
+                    <ul className="ui-ranked">
+                      {systems.map((s) => {
+                        const st = syncStatus(s.last_sync_status);
+                        return (
+                          <li key={s.id}>
+                            <div className="ui-ranked__row" style={{ paddingInline: 0 }}>
+                              <StatusBadge status={s.is_active ? st.status : "idle"}>{s.is_active ? st.label : "Inactive"}</StatusBadge>
+                              <span className="ui-ranked__title">{s.name}</span>
+                              <span className="ui-ranked__num">{s.last_sync_at ? relativeTime(s.last_sync_at) : "never"}</span>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : <EmptyState action={<Link className="ui-link" href="/data?tab=systems">Connect a system</Link>}>No systems connected.</EmptyState>}
+                </SectionCard>
+              </div>
             </div>
-          </div>
-        </div>
-        <div className="mn-col-5">
-          <div className="mn-card mn-card-pad" style={{ height: "100%" }}>
-            <SectionHeader
-              title="Decision stream"
-              caption={`Last ${stewardQ.data?.items.length ?? 0} stewardship items`}
-              right={
-                <Link href="/workbench" className="mn-link">
-                  Workbench <ArrowRight size={11} />
-                </Link>
-              }
-            />
-            <ul className="mn-decision-stream">
-              {(stewardQ.data?.items ?? []).slice(0, 8).map((t) => (
-                <li key={t.id}>
-                  <span className="t mn-tabular">{relativeTime(t.created_at)}</span>
-                  <span
-                    className="who"
-                    style={{
-                      background: t.ai_recommendation ? "var(--mn-primary-50)" : "var(--mn-pos-bg)",
-                      color: t.ai_recommendation ? "var(--mn-primary-700)" : "var(--mn-pos)",
-                    }}
-                  >
-                    {t.ai_recommendation ? "MODEL" : "QUEUE"}
-                  </span>
-                  <span style={{ color: "var(--mn-ink-700)", fontSize: 12.5 }}>
-                    {t.item_type.replace(/_/g, " ")} · {t.source_id}
-                  </span>
-                </li>
-              ))}
-              {(stewardQ.data?.items.length ?? 0) === 0 && (
-                <li style={{ color: "var(--mn-ink-400)", display: "block", padding: 8 }}>
-                  Nothing in the stewardship queue.
-                </li>
-              )}
-            </ul>
-          </div>
-        </div>
-      </div>
-    </>
+          </>
+        )}
+    </div>
   );
 }

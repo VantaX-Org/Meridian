@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Data → Runs: everything that is running or has run — downloads, config
- * syncs, imports, analyses — live from the job stream, plus the durable
+ * Runs: everything that is running or has run (downloads, config
+ * syncs, imports, analyses) live from the job stream, plus the durable
  * download history each system keeps as versions (jobs expire after a week;
  * versions do not).
  */
@@ -12,18 +12,26 @@ import { useMemo } from "react";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
-  Chip, DataTable, Drawer, EmptyState, KpiRail, Stack, Stat, Text, useDrawerParam, type AuroraColumnMeta,
-} from "@/components/aurora";
+  DataTable, DetailDrawer, EmptyState, Metric, MetricStrip, Mono, PageHeader, SectionCard, StatusBadge, useDrawerParam,
+  type AuroraColumnMeta, type Status,
+} from "@/components/ui-core";
 import { getSystems } from "@/lib/api/systems";
 import { getSystemVersions, type SystemVersion } from "@/lib/api/system-objects";
 import { useJobs } from "@/hooks/use-jobs";
 import { useNowSec } from "@/hooks/use-now";
 import { formatModuleName, relativeTime } from "@/lib/format";
 import type { Job } from "@/types/jobs";
-import { JobCard, KIND_LABEL, STATUS_TONE, fmtDuration, fmtInt, jobTiming } from "./job-card";
+import { JobCard, KIND_LABEL, fmtDuration, fmtInt, jobTiming } from "./job-card";
 
 const DAY = 24 * 3600;
 const meta = (m: AuroraColumnMeta) => m;
+const JOB_STATUS: Record<Job["status"], { badge: Status; label: string }> = {
+  queued: { badge: "idle", label: "Queued" },
+  running: { badge: "running", label: "Running" },
+  completed: { badge: "ok", label: "Completed" },
+  failed: { badge: "failed", label: "Failed" },
+};
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 type VersionRow = SystemVersion & { systemId: string; systemName: string };
 
@@ -54,62 +62,70 @@ export function RunsSurface() {
   const selected = drawer.value ? jobs.find((j) => j.id === drawer.value) ?? null : null;
 
   const jobColumns = useMemo<ColumnDef<Job, unknown>[]>(() => [
-    { id: "when", header: "Finished", meta: meta({ width: 110 }),
-      cell: ({ row }) => <span title={new Date((row.original.finished_at ?? row.original.updated_at) * 1000).toLocaleString()}>
-        {relativeTime(new Date((row.original.finished_at ?? row.original.updated_at) * 1000).toISOString())}</span> },
-    { id: "kind", header: "Kind", meta: meta({ width: 110 }), cell: ({ row }) => KIND_LABEL[row.original.kind] },
+    { id: "when", header: "Finished", meta: meta({ width: 120 }),
+      cell: ({ row }) => {
+        const d = new Date((row.original.finished_at ?? row.original.updated_at) * 1000);
+        return <span title={d.toLocaleString()}>{relativeTime(d.toISOString())}</span>;
+      } },
+    { id: "kind", header: "Kind", meta: meta({ width: 120 }), cell: ({ row }) => KIND_LABEL[row.original.kind] },
     { id: "label", header: "Run", accessorKey: "label", meta: meta({ width: 260 }) },
-    { id: "system", header: "System", meta: meta({ width: 140 }),
-      cell: ({ row }) => (row.original.system_id && systemName.get(row.original.system_id)) || "—" },
-    { id: "status", header: "Status", meta: meta({ width: 110 }),
-      cell: ({ row }) => <Chip tone={STATUS_TONE[row.original.status]}>{row.original.status}</Chip> },
+    { id: "system", header: "System", meta: meta({ width: 150 }),
+      cell: ({ row }) => (row.original.system_id && systemName.get(row.original.system_id)) || "" },
+    { id: "status", header: "Status", meta: meta({ width: 130 }),
+      cell: ({ row }) => <StatusBadge status={JOB_STATUS[row.original.status].badge}>{JOB_STATUS[row.original.status].label}</StatusBadge> },
     { id: "duration", header: "Duration", meta: meta({ width: 100, numeric: true, align: "end" }),
       cell: ({ row }) => fmtDuration(jobTiming(row.original, nowSec).elapsed) },
     { id: "rows", header: "Rows", meta: meta({ width: 110, numeric: true, align: "end" }),
-      cell: ({ row }) => (row.original.rows_done ? fmtInt(row.original.rows_done) : "—") },
-    { id: "note", header: "Note", cell: ({ row }) => row.original.error ?? row.original.message },
+      cell: ({ row }) => (row.original.rows_done ? fmtInt(row.original.rows_done) : "") },
+    { id: "note", header: "Note", meta: meta({ minWidth: 240 }), cell: ({ row }) => row.original.error ?? row.original.message },
   ], [systemName, nowSec]);
 
   const versionColumns = useMemo<ColumnDef<VersionRow, unknown>[]>(() => [
-    { id: "when", header: "Downloaded", meta: meta({ width: 110 }),
+    { id: "when", header: "Downloaded", meta: meta({ width: 120 }),
       cell: ({ row }) => <span title={new Date(row.original.run_at).toLocaleString()}>{relativeTime(row.original.run_at)}</span> },
-    { id: "system", header: "System", accessorKey: "systemName", meta: meta({ width: 140 }) },
-    { id: "label", header: "Version", meta: meta({ width: 220 }),
-      cell: ({ row }) => <Link href={`/systems/${row.original.systemId}`} className="aurora-link">
+    { id: "system", header: "System", accessorKey: "systemName", meta: meta({ width: 150 }) },
+    { id: "label", header: "Version", meta: meta({ width: 240 }),
+      cell: ({ row }) => <Link href={`/systems/${row.original.systemId}`} className="ui-link">
         {row.original.label ?? row.original.objects.map(formatModuleName).join(", ")}</Link> },
-    { id: "objects", header: "Objects", cell: ({ row }) => row.original.objects.map(formatModuleName).join(", ") },
+    { id: "objects", header: "Objects", meta: meta({ minWidth: 200 }), cell: ({ row }) => row.original.objects.map(formatModuleName).join(", ") },
     { id: "records", header: "Records", meta: meta({ width: 110, numeric: true, align: "end" }),
       cell: ({ row }) => fmtInt(Object.values(row.original.records).reduce((a, b) => a + b, 0)) },
-    { id: "coverage", header: "Read", meta: meta({ width: 130 }),
+    { id: "coverage", header: "Read", meta: meta({ width: 170 }),
       cell: ({ row }) => {
         const n = row.original.coverage.issues.length;
-        return n ? <Chip tone="warning">{n} table{n > 1 ? "s" : ""} incomplete</Chip>
-          : row.original.extraction_complete === false ? <Chip tone="warning">incomplete</Chip> : <Chip tone="success">complete</Chip>;
+        return n ? <StatusBadge status="medium">{n} table{n > 1 ? "s" : ""} incomplete</StatusBadge>
+          : row.original.extraction_complete === false ? <StatusBadge status="medium">Incomplete</StatusBadge>
+          : <StatusBadge status="ok">Complete</StatusBadge>;
       } },
-    { id: "status", header: "Analysis", meta: meta({ width: 120 }),
-      cell: ({ row }) => <Chip tone={row.original.status === "failed" ? "danger" : row.original.status.includes("complete") ? "success" : "info"}>
-        {row.original.status.replace(/_/g, " ")}</Chip> },
+    { id: "status", header: "Analysis", meta: meta({ width: 140 }),
+      cell: ({ row }) => {
+        const s = row.original.status;
+        return <StatusBadge status={s === "failed" ? "failed" : s.includes("complete") ? "ok" : "running"}>{cap(s.replace(/_/g, " "))}</StatusBadge>;
+      } },
     { id: "dqs", header: "DQS", meta: meta({ width: 90, numeric: true, align: "end" }),
       cell: ({ row }) => {
         const v = Object.values(row.original.dqs).filter((x): x is number => typeof x === "number");
-        return v.length ? (v.reduce((a, b) => a + b, 0) / v.length).toFixed(1) : "—";
+        return v.length ? (v.reduce((a, b) => a + b, 0) / v.length).toFixed(1) : "";
       } },
   ], []);
 
   return (
-    <Stack gap={6} className="aurora-runs">
-      <KpiRail>
-        <Stat label="Running now" value={active.length} tone={active.length ? "info" : "neutral"} />
-        <Stat label="Completed · 24h" value={completed24} tone="success" />
-        <Stat label="Failed · 24h" value={failed24} tone={failed24 ? "danger" : "neutral"} />
-        <Stat label="Rows read · 24h" value={fmtInt(rows24)} />
-        <Stat label="Systems" value={systems.length} />
-      </KpiRail>
+    <div className="ui-page">
+      <PageHeader
+        title="Runs"
+        summary="Every download, config sync, import and analysis. Jobs are kept for seven days; the download history is kept for good."
+      />
+      <MetricStrip label="Runs in the last 24 hours">
+        <Metric label="Running now" value={active.length} />
+        <Metric label="Completed in 24 hours" value={completed24} />
+        <Metric label="Failed in 24 hours" value={failed24} tone={failed24 ? "danger" : "default"} />
+        <Metric label="Rows read in 24 hours" value={fmtInt(rows24)} />
+        <Metric label="Systems" value={systems.length} />
+      </MetricStrip>
 
-      <section aria-labelledby="runs-live">
-        <Text as="h2" id="runs-live" variant="text-lead" className="aurora-runs__h">In flight</Text>
+      <SectionCard title="Running now" meta={active.length || undefined}>
         {active.length === 0 ? (
-          <EmptyState title="Nothing is running." body="Downloads, imports and analyses appear here the moment they start, with a bar per SAP table." />
+          <EmptyState>Nothing is running. Downloads, imports and analyses appear here as soon as they start, with progress for each SAP table.</EmptyState>
         ) : (
           <div className="aurora-runs__live">
             {active.map((j) => (
@@ -118,10 +134,9 @@ export function RunsSurface() {
             ))}
           </div>
         )}
-      </section>
+      </SectionCard>
 
-      <section aria-labelledby="runs-recent">
-        <Text as="h2" id="runs-recent" variant="text-lead" className="aurora-runs__h">Recent runs</Text>
+      <SectionCard title="Recent runs" meta={recent.length || undefined} flush>
         <DataTable<Job>
           ariaLabel="Recent runs"
           columns={jobColumns}
@@ -129,42 +144,43 @@ export function RunsSurface() {
           getRowId={(j) => j.id}
           onRowActivate={(j) => drawer.open(j.id)}
           maxHeight={420}
-          empty={isLoading ? "Loading…" : "No runs in the last seven days."}
+          empty={isLoading ? "Loading runs" : "No runs in the last seven days."}
         />
-      </section>
+      </SectionCard>
 
-      <section aria-labelledby="runs-versions">
-        <Text as="h2" id="runs-versions" variant="text-lead" className="aurora-runs__h">Download history</Text>
-        <Text variant="text-small" tone="muted" className="aurora-runs__sub">
-          Every download is a version. Open the system to analyse, compare or set a baseline.
-        </Text>
+      <SectionCard title="Download history" meta={versions.length || undefined} flush>
         <DataTable<VersionRow>
-          ariaLabel="Download history"
+          ariaLabel="Download history. Each download is a version; open the system to analyse, compare or set a baseline."
           columns={versionColumns}
           data={versions}
           getRowId={(v) => v.id}
           maxHeight={520}
-          empty={systemsQ.isLoading ? "Loading…" : "No downloads yet. Connect a system under Systems and download its objects."}
+          empty={systemsQ.isLoading ? "Loading downloads" : "No downloads yet. Connect a system under Systems and download its objects."}
         />
-      </section>
+      </SectionCard>
 
-      <Drawer open={!!selected} onClose={drawer.close} ariaLabel="Run details"
-              header={selected ? <Text variant="text-lead">{KIND_LABEL[selected.kind]} · {selected.label}</Text> : null}>
+      <DetailDrawer open={!!selected} onClose={drawer.close} ariaLabel="Run details"
+              header={selected ? (
+                <div className="ui-drawer-head">
+                  <StatusBadge status={JOB_STATUS[selected.status].badge}>{KIND_LABEL[selected.kind]}</StatusBadge>
+                  <h2 className="ui-drawer-head__title">{selected.label}</h2>
+                </div>
+              ) : null}>
         {selected ? (
-          <Stack gap={4}>
+          <div className="ui-detail">
             <JobCard job={selected} nowSec={nowSec} expanded
                      systemName={selected.system_id ? systemName.get(selected.system_id) : undefined} />
             {selected.version_id ? (
-              <Text variant="text-small">
-                Version{" "}
-                <Link className="aurora-link" href={selected.system_id ? `/systems/${selected.system_id}` : "/versions"}>
-                  {selected.version_id.slice(0, 8)}
+              <p className="ui-note">
+                Produced version{" "}
+                <Link className="ui-link" href={selected.system_id ? `/systems/${selected.system_id}` : "/versions"}>
+                  <Mono>{selected.version_id.slice(0, 8)}</Mono>
                 </Link>
-              </Text>
+              </p>
             ) : null}
-          </Stack>
+          </div>
         ) : null}
-      </Drawer>
-    </Stack>
+      </DetailDrawer>
+    </div>
   );
 }
