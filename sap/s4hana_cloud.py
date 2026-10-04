@@ -119,6 +119,88 @@ S4HC_MODULE_ENTITIES: dict[str, list[dict[str, Any]]] = {
             ],
         },
     ],
+    "accounts_receivable": [
+        {
+            "entity_set": "A_Customer",
+            "service_path": "/sap/opu/odata4/sap/api_business_partner/srvd_a2x/sap/a_businesspartner/0001",
+            "fields": [
+                "Customer", "CustomerName", "CustomerAccountGroup", "CreationDate",
+                "DeletionIndicator", "PostingIsBlocked", "Supplier", "TaxNumber1",
+                "VATRegistration",
+            ],
+        },
+        {
+            "entity_set": "A_CustomerCompany",
+            "service_path": "/sap/opu/odata4/sap/api_business_partner/srvd_a2x/sap/a_businesspartner/0001",
+            "fields": ["Customer", "CompanyCode", "ReconciliationAccount", "PaymentTerms"],
+        },
+    ],
+    "s4hc_master_data": [
+        {
+            "entity_set": "A_BusinessPartnerRole",
+            "service_path": "/sap/opu/odata4/sap/api_business_partner/srvd_a2x/sap/a_businesspartner/0001",
+            "fields": ["BusinessPartner", "BusinessPartnerRole"],
+        },
+    ],
+}
+
+# ---------------------------------------------------------------------------
+# OData entity -> SAP table, so the ECC rule packs evaluate S/4HANA Cloud data
+# ---------------------------------------------------------------------------
+# {TABLE: (entity_set, {FIELD: OData property}, required FIELD or None)}.
+# One entity can feed several tables (the CVI links are the Supplier /
+# Customer number on A_BusinessPartner); rows without the required field are
+# dropped (a BP with no supplier number has no CVI_VEND_LINK row).
+S4HC_TABLE_MAP: dict[str, tuple[str, dict[str, str], Optional[str]]] = {
+    "BUT000": ("A_BusinessPartner", {
+        "PARTNER": "BusinessPartner", "TYPE": "BusinessPartnerCategory", "BU_GROUP": "BusinessPartnerGrouping",
+        "NAME_FIRST": "FirstName", "NAME_LAST": "LastName", "NAME_ORG1": "OrganizationBPName1",
+        "BU_SORT1": "SearchTerm1", "CRDAT": "CreationDate", "NATPERS": "IsNaturalPerson",
+        "LANGU_CORR": "CorrespondenceLanguage", "XBLCK": "BusinessPartnerIsBlocked",
+        "XDELE": "IsMarkedForArchiving", "PARTNER_GUID": "BusinessPartnerUUID", "BIRTHDT": "BirthDate",
+    }, None),
+    "CVI_VEND_LINK": ("A_BusinessPartner", {"PARTNER_GUID": "BusinessPartnerUUID", "VENDOR": "Supplier"}, "VENDOR"),
+    "CVI_CUST_LINK": ("A_BusinessPartner", {"PARTNER_GUID": "BusinessPartnerUUID", "CUSTOMER": "Customer"},
+                      "CUSTOMER"),
+    "BUT100": ("A_BusinessPartnerRole", {"PARTNER": "BusinessPartner", "RLTYP": "BusinessPartnerRole"}, None),
+    "BUT020": ("A_BusinessPartnerAddress", {"PARTNER": "BusinessPartner", "ADDRNUMBER": "AddressID"}, None),
+    "ADRC": ("A_BusinessPartnerAddress", {
+        "ADDRNUMBER": "AddressID", "COUNTRY": "Country", "REGION": "Region", "CITY1": "CityName",
+        "POST_CODE1": "PostalCode", "STREET": "StreetName", "HOUSE_NUM1": "HouseNumber",
+    }, None),
+    "MARA": ("A_Product", {
+        "MATNR": "Product", "MTART": "ProductType", "MATKL": "ProductGroup", "MEINS": "BaseUnit",
+        "BRGEW": "GrossWeight", "GEWEI": "WeightUnit", "ERSDA": "CreationDate", "LVORM": "IsMarkedForDeletion",
+    }, None),
+    "MARC": ("A_ProductPlant", {
+        "MATNR": "Product", "WERKS": "Plant", "EKGRP": "PurchasingGroup", "DISMM": "MRPType",
+        "DISPO": "MRPController", "DISLS": "LotSizeKey", "MAABC": "ABCIndicator", "MTVFP": "AvailabilityCheckType",
+    }, None),
+    "MBEW": ("A_ProductValuation", {
+        "MATNR": "Product", "BWKEY": "ValuationArea", "BWTAR": "ValuationType", "BKLAS": "ValuationClass",
+        "VPRSV": "PriceControl", "STPRS": "StandardPrice", "VERPR": "MovingAveragePrice", "PEINH": "PriceUnitQty",
+    }, None),
+    "LFA1": ("A_Supplier", {
+        "LIFNR": "Supplier", "NAME1": "SupplierName", "ERDAT": "CreationDate", "STCD1": "TaxNumber1",
+        "STCD2": "TaxNumber2", "STCEG": "VATRegistration", "KTOKK": "SupplierAccountGroup", "KUNNR": "Customer",
+        "LOEVM": "DeletionIndicator", "SPERR": "PostingIsBlocked",
+    }, None),
+    "LFB1": ("A_SupplierCompany", {
+        "LIFNR": "Supplier", "BUKRS": "CompanyCode", "AKONT": "ReconciliationAccount", "ZTERM": "PaymentTerms",
+        "ZWELS": "PaymentMethodsList", "TOGRU": "APARToleranceGroup",
+    }, None),
+    "KNA1": ("A_Customer", {
+        "KUNNR": "Customer", "NAME1": "CustomerName", "KTOKD": "CustomerAccountGroup", "ERDAT": "CreationDate",
+        "LOEVM": "DeletionIndicator", "SPERR": "PostingIsBlocked", "LIFNR": "Supplier", "STCD1": "TaxNumber1",
+        "STCEG": "VATRegistration",
+    }, None),
+    "KNB1": ("A_CustomerCompany", {
+        "KUNNR": "Customer", "BUKRS": "CompanyCode", "AKONT": "ReconciliationAccount", "ZTERM": "PaymentTerms",
+    }, None),
+    "SKA1": ("A_GLAccountInChartOfAccounts", {
+        "KTOPL": "ChartOfAccounts", "SAKNR": "GLAccount", "KTOKS": "GLAccountGroup",
+        "XBILK": "IsBalanceSheetAccount", "XLOEV": "IsMarkedForDeletion",
+    }, None),
 }
 
 # ---------------------------------------------------------------------------

@@ -95,7 +95,7 @@ REGISTRY: dict[str, type[BaseCheck]] = {
 _WHOLE_GROUP = {"balance_check", "aggregate_check", "interval_check"}
 
 RULES_DIR = Path(__file__).parent / "rules"
-CATEGORIES = ["ecc", "successfactors", "warehouse"]
+CATEGORIES = ["ecc", "successfactors", "warehouse", "concur", "ariba"]
 
 
 def _find_module_yaml(module_name: str) -> Path:
