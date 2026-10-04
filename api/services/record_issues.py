@@ -116,7 +116,12 @@ def track(session, tenant_id: str, version_id: str, scope: str, results, frames)
         WITH hit AS (
             UPDATE record_issues ri
                SET status = 'open', resolution = NULL, resolved_version = NULL, resolved_at = NULL,
-                   reopened_count = ri.reopened_count + 1, updated_at = now()
+                   reopened_count = ri.reopened_count + 1, updated_at = now(),
+                   -- the previous owner keeps the item; its SLA clock restarts from now
+                   sla_started_at = NULL, sla_state = NULL, sla_notified = '{}', ack_due_at = NULL,
+                   ack_risk_at = NULL, due_at = NULL, risk_at = NULL, acknowledged_at = NULL,
+                   sla_paused_at = NULL, snoozed_until = NULL, snooze_reason = NULL,
+                   assigned_at = CASE WHEN ri.assigned_to IS NULL THEN NULL ELSE now() END
               FROM finding_records fr
              WHERE fr.version_id = :vid AND ri.tenant_id = :tid AND ri.scope = :scope
                AND ri.check_id = fr.check_id AND ri.record_key = fr.record_key AND ri.status = 'resolved'

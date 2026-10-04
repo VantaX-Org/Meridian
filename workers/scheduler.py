@@ -963,6 +963,10 @@ celery_app.conf.beat_schedule = {
         "task": "workers.scheduler.sync_profile_scheduler",
         "schedule": crontab(minute="*/5"),  # Check every 5 minutes for due sync profiles
     },
+    "triage-sla-sweep-every-5min": {
+        "task": "workers.tasks.triage_sla.sla_sweep",
+        "schedule": crontab(minute="*/5"),  # auto-assign, start SLA clocks, at-risk/breach escalation
+    },
     "stewardship-queue-populate-every-15min": {
         "task": "workers.tasks.populate_stewardship_queue.populate_queue",
         "schedule": crontab(minute="*/15"),  # Every 15 minutes — populates queue, then chains ai_triage
