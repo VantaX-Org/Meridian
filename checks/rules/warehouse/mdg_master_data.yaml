@@ -438,3 +438,20 @@ rules:
       __other__: Investigate how the change document was written and document the gap for audit.
     record_fix_template: 'Change document {CDPOS.OBJECTCLAS}/{CDPOS.OBJECTID}/{CDPOS.CHANGENR}: change type
       ''{actual_value}'' is not valid.'
+
+  - id: MDG026
+    field: USMD120C.USMD_REASON_REJ
+    check_class: null_check
+    applies_when:
+      USMD120C.USMD_CREQ_STATUS: ['06']
+    severity: low
+    dimension: completeness
+    message: Rejected change request has no rejection reason
+    why_it_matters: When a change request is rejected (status 06) the reason (USMD120C.USMD_REASON_REJ) tells the
+      requester what to fix and gives governance a record of why the change was refused.
+    rule_authority: best_practice
+    sap_impact: Requesters resubmit the same change; the governance audit trail lacks the decision reason.
+    fix_map:
+      __blank__: Make the rejection reason mandatory in the change request step configuration (MDGIMG) and record
+        reasons for future rejections.
+    record_fix_template: 'Change request {USMD120C.USMD_CREQUEST}: rejected without a reason.'
