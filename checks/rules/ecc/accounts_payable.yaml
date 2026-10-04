@@ -1499,3 +1499,27 @@ rules:
   fix_map:
     __other__: Check the BIC against the bank's confirmation and correct it in the bank directory (FI02).
   record_fix_template: 'Bank {BNKA.BANKS}/{BNKA.BANKL}: BIC {BNKA.SWIFT} belongs to another country.'
+- id: S4-CVI-LFA1
+  field: LFA1.LIFNR
+  check_class: exists_check
+  grain: LFA1
+  applies_when:
+    LFA1.LOEVM:
+      blank: true
+  target_table: CVI_VEND_LINK
+  target_fields:
+  - VENDOR
+  baseline: s4_target
+  severity: high
+  dimension: consistency
+  message: 'S/4HANA readiness: active vendor has no Business Partner link (CVI_VEND_LINK) - simplification item S4TWL Business
+    Partner Approach, SAP Note 2265093'
+  why_it_matters: In S/4HANA the Business Partner is the only maintenance object for vendors; LFA1 is kept in sync through
+    Customer/Vendor Integration. The conversion pre-checks stop the system conversion while an active vendor has no BP
+    assigned in CVI_VEND_LINK.
+  rule_authority: sap_hard_constraint
+  sap_impact: The S/4HANA conversion is blocked until every active vendor is synchronised to a Business Partner (MDS_LOAD_COCKPIT).
+  fix_map:
+    __other__: Synchronise the vendor to a Business Partner with the CVI synchronisation cockpit (MDS_LOAD_COCKPIT), or flag it
+      for deletion if it is no longer used.
+  record_fix_template: 'Vendor {LFA1.LIFNR} has no Business Partner in CVI_VEND_LINK.'

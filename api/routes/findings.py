@@ -3,7 +3,7 @@ import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import case, func, select, text
+from sqlalchemy import case, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
@@ -125,6 +125,7 @@ async def list_findings(
     severity: Optional[str] = Query(None),
     dimension: Optional[str] = Query(None),
     check_id: Optional[str] = Query(None),
+    baseline: Optional[str] = Query(None, pattern="^(live_config|sap_standard|s4_target)$"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
@@ -155,6 +156,11 @@ async def list_findings(
     if dimension:
         base = base.where(Finding.dimension == dimension)
         filters_applied["dimension"] = dimension
+    if baseline:
+        tag = Finding.details["baseline"].astext
+        # findings stored before the tag existed were judged against the live system
+        base = base.where(or_(tag == baseline, tag.is_(None)) if baseline == "live_config" else tag == baseline)
+        filters_applied["baseline"] = baseline
 
     # Get total count
     count_stmt = select(func.count()).select_from(base.subquery())
@@ -210,6 +216,7 @@ async def list_findings(
                 "total_count": f.total_count,
                 "pass_rate": float(f.pass_rate) if f.pass_rate is not None else None,
                 "details": f.details or {},
+                "baseline": (f.details or {}).get("baseline", "live_config"),
                 "remediation_text": f.remediation_text,
                 "rule_context": f.rule_context,
                 "value_fix_map": f.value_fix_map,

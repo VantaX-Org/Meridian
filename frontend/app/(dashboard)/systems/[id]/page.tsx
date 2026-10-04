@@ -29,6 +29,7 @@ import { ReferencePanel } from "./reference-panel";
 import {
   discoverSystem,
   getDesign,
+  getConfigDeviation,
   getDesignConfig,
   getDesignCoverage,
   getDesignDiff,
@@ -275,6 +276,7 @@ function ConfigTab({ id, tables }: { id: string; tables: { table: string; scope:
   if (!tables.length) return <Text tone="muted">No configuration read yet.</Text>;
   return (
     <Stack gap={3}>
+      <DeviationPanel id={id} />
       <Select value={open} aria-label="Configuration table" onValueChange={setOpen}
         options={tables.map((t) => ({ value: t.table, label: `${t.table} · ${t.rows} rows · ${t.source}` }))} />
       {data && (
@@ -296,6 +298,29 @@ function ConfigTab({ id, tables }: { id: string; tables: { table: string; scope:
         </>
       )}
     </Stack>
+  );
+}
+
+/** Live check-table values against the SAP-standard lists the rules fall back to. */
+function DeviationPanel({ id }: { id: string }) {
+  const { data } = useQuery({ queryKey: ["design-config-deviation", id], queryFn: () => getConfigDeviation(id) });
+  if (!data?.tables.length) return null;
+  const list = (vals: string[]) => (vals.length ? vals.slice(0, 12).join(", ") + (vals.length > 12 ? ` +${vals.length - 12}` : "") : "—");
+  return (
+    <Panel title="Deviation from SAP standard">
+      <table className="w-full text-[13px]">
+        <thead><tr><th className={th}>Check table</th><th className={th}>Custom (not in SAP standard)</th><th className={th}>SAP standard, not configured</th></tr></thead>
+        <tbody>
+          {data.tables.map((t) => (
+            <tr key={t.reference}>
+              <td className={`${td} font-mono`}>{t.reference}</td>
+              <td className={`${td} font-mono`}>{list(t.custom)}</td>
+              <td className={`${td} font-mono`}>{list(t.missing)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </Panel>
   );
 }
 
