@@ -288,7 +288,6 @@ class ConcurConnector(CloudSAPConnector):
         Concur uses ``Items`` + ``NextPage`` for pagination with a default
         page size controlled by the ``limit`` query parameter.
         """
-        self._ensure_token()
         assert self._client is not None
 
         all_items: list[dict[str, Any]] = []
@@ -301,6 +300,7 @@ class ConcurConnector(CloudSAPConnector):
             params["filter"] = filter_expr
 
         while url is not None:
+            self._ensure_token()  # long reads outlive the token
 
             try:
                 resp = self._client.get(url, params=params)

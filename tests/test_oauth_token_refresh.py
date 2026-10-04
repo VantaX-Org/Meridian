@@ -31,3 +31,19 @@ def test_401_refreshes_token_and_retries():
 def test_persistent_401_still_fails():
     with pytest.raises(SAPConnectorError):
         _connector(lambda request: httpx.Response(401))._request_with_retry("GET", "/x")
+
+
+def test_successfactors_401_refreshes_token():
+    from sap.successfactors import SuccessFactorsConnector
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.headers["Authorization"] == "Bearer old":
+            return httpx.Response(401)
+        return httpx.Response(200, json={"ok": True})
+
+    c = SuccessFactorsConnector()
+    c._params = CloudConnectionParams(base_url=BASE, company_id="co", auth_type="oauth2_saml")
+    c._client = httpx.Client(base_url=BASE, headers={"Authorization": "Bearer old"},
+                             transport=httpx.MockTransport(handler))
+    c._get_oauth_token = lambda params: "new"
+    assert c._request_with_retry("GET", "/x").json() == {"ok": True}
