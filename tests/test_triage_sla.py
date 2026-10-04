@@ -6,7 +6,7 @@ from datetime import UTC, date, datetime, time, timedelta
 import pytest
 from pydantic import ValidationError
 
-from api.routes.triage import BulkIn, RuleIn, SettingsIn
+from api.routes.triage import BulkIn, RuleIn, SettingsIn, TeamPatch
 from api.services.triage import (Calendar, Team, choose, deadlines, first_match, org_values, pick_policy, plan,
                                  rule_matches, shift)
 
@@ -216,3 +216,11 @@ def test_bulk_validation():
     with pytest.raises(ValidationError):
         BulkIn(kind="queue", ids=ids, action="priority", priority=9)
     BulkIn(kind="queue", ids=ids, action="snooze", reason="vendor on leave", until=datetime.now(UTC) + timedelta(1))
+
+
+def test_team_patch_rejects_explicit_null():
+    assert TeamPatch().model_dump(exclude_unset=True) == {}
+    assert TeamPatch(lead_user_id=None).lead_user_id is None
+    for field in ("name", "strategy"):
+        with pytest.raises(ValidationError):
+            TeamPatch(**{field: None})
