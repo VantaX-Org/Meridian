@@ -12,21 +12,25 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
-  Banner, Button, Chip, DataTable, Drawer, EmptyState, KpiRail, Stack, Stat, Text, useDrawerParam, type AuroraColumnMeta, type ChipTone,
+  Banner, Button, Chip, DataTable, Drawer, EmptyState, KpiRail, Select, Stack, Stat, Text, useDrawerParam, type AuroraColumnMeta, type ChipTone,
 } from "@/components/aurora";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
-import { approveCleaning, bulkApprove, getCleaningQueue, rejectCleaning, rollbackCleaning, type CleaningQueueItem } from "@/lib/api/cleaning";
+import {
+  approveCleaning, bulkApprove, downloadCleaningExport, getCleaningExportOptions, getCleaningQueue, rejectCleaning, rollbackCleaning,
+  type CleaningQueueItem, type ExportFormat,
+} from "@/lib/api/cleaning";
 import { formatModuleName, relativeTime } from "@/lib/format";
 
 const meta = (m: AuroraColumnMeta) => m;
 /** Confidence is 0..1 from the detector and 0..100 once stored; show one scale. */
 const pct = (c: number): number => Math.round(c <= 1 ? c * 100 : c);
 const APPLIED = new Set(["auto_approved", "applied", "verified"]);
-type Bucket = "auto" | "review" | "closed";
-const bucket = (s: string): Bucket => (APPLIED.has(s) ? "auto" : s === "rejected" || s === "rolled_back" ? "closed" : "review");
-const TONE: Record<Bucket, ChipTone> = { auto: "success", review: "warning", closed: "neutral" };
-const LABEL: Record<Bucket, string> = { auto: "auto-applied", review: "needs review", closed: "closed" };
+type Bucket = "auto" | "approved" | "review" | "closed";
+const bucket = (s: string): Bucket =>
+  APPLIED.has(s) ? "auto" : s === "approved" ? "approved" : s === "rejected" || s === "rolled_back" ? "closed" : "review";
+const TONE: Record<Bucket, ChipTone> = { auto: "success", approved: "info", review: "warning", closed: "neutral" };
+const LABEL: Record<Bucket, string> = { auto: "auto-applied", approved: "approved · export", review: "needs review", closed: "closed" };
 const VIEWS = [["all", "All"], ["review", "Needs review"], ["auto", "Auto-applied"]] as const;
 const text = (v: unknown): string => (v === null || v === undefined || v === "" ? "—" : typeof v === "object" ? JSON.stringify(v) : String(v));
 
@@ -42,6 +46,35 @@ function preview(i: CleaningQueueItem): string {
   if (i.golden_field_value) return `→ ${i.golden_field_value}`;
   const changed = changedFields(i);
   return changed.length ? changed.map(([k, b, a]) => `${k}: ${b} → ${a}`).join(" · ") : "—";
+}
+
+const FORMATS: { value: ExportFormat; label: string }[] = [
+  { value: "lsmw", label: "LSMW flat file" }, { value: "bapi", label: "BAPI (JSON)" }, { value: "idoc", label: "IDoc (JSON)" },
+  { value: "xlsx", label: "Excel review" }, { value: "csv", label: "CSV review" },
+];
+
+/** Corrections as a file SAP can load (LSMW / BAPI / IDoc) or a reviewer can read — Meridian never writes to SAP. */
+function SapExport() {
+  const opts = useQuery({ queryKey: ["cleaning.export-options"], queryFn: getCleaningExportOptions });
+  const statuses = opts.data?.statuses ?? [];
+  const [status, setStatus] = useState("");
+  const [format, setFormat] = useState<ExportFormat>("lsmw");
+  const chosen = status || (statuses.find((s) => s.value === "approved") ?? statuses[0])?.value || "";
+  const download = useMutation({
+    mutationFn: () => downloadCleaningExport(format, chosen),
+    onError: (e) => toast.error((e as Error).message || "Export failed"),
+  });
+  if (!statuses.length) return null;
+  return (
+    <Stack direction="row" gap={2} align="center">
+      <Select aria-label="Corrections to export" value={chosen} onValueChange={setStatus}
+        options={statuses.map((s) => ({ value: s.value, label: `${s.value.replace(/_/g, " ")} (${s.count.toLocaleString()})` }))} />
+      <Select aria-label="File format" value={format} onValueChange={setFormat} options={FORMATS} />
+      <Button variant="secondary" onClick={() => download.mutate()} disabled={!chosen || download.isPending}>
+        {download.isPending ? "Preparing…" : "Export for SAP"}
+      </Button>
+    </Stack>
+  );
 }
 
 function useAction(fn: (id: string) => Promise<unknown>, done: string, onDone: () => void) {
@@ -74,7 +107,7 @@ export function CleaningSurface() {
     onError: (e) => toast.error((e as Error).message || "Auto-jobs did not run"),
   });
 
-  const counts = items.reduce((a, i) => ({ ...a, [bucket(i.status)]: a[bucket(i.status)] + 1 }), { auto: 0, review: 0, closed: 0 } as Record<Bucket, number>);
+  const counts = items.reduce((a, i) => ({ ...a, [bucket(i.status)]: a[bucket(i.status)] + 1 }), { auto: 0, approved: 0, review: 0, closed: 0 } as Record<Bucket, number>);
   const meanConf = items.length ? Math.round(items.reduce((a, i) => a + pct(i.confidence), 0) / items.length) : null;
   const selected = drawer.value ? items.find((i) => i.id === drawer.value) ?? null : null;
 
@@ -100,6 +133,7 @@ export function CleaningSurface() {
       <Stack direction="row" gap={2} wrap align="center">
         {VIEWS.map(([k, l]) => <Chip key={k} selected={view === k} onClick={() => setView(k)}>{l}</Chip>)}
         <span style={{ flex: 1 }} />
+        {can("export") ? <SapExport /> : null}
         {canApprove ? <Button onClick={() => setConfirmAuto(true)} disabled={runAuto.isPending || confirmAuto}>Run auto-jobs</Button> : null}
       </Stack>
       {confirmAuto ? (
@@ -172,6 +206,7 @@ function JobDetail({ item: i, canApprove, canApply, busy, onApprove, onReject, o
       <Stack direction="row" gap={2} wrap>
         {b === "review" && canApprove ? <><Button onClick={onApprove} disabled={busy}>Approve</Button><Button variant="ghost" onClick={onReject} disabled={busy}>Reject</Button></> : null}
         {b === "auto" && canApply ? <Button variant="danger" onClick={onRollback} disabled={busy}>Roll back</Button> : null}
+        {b === "approved" ? <Text variant="text-small" tone="muted">Approved — load it into SAP with Export for SAP.</Text> : null}
         {b === "closed" ? <Text variant="text-small" tone="muted">This correction is closed.</Text> : null}
       </Stack>
     </Stack>
