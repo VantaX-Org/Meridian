@@ -117,9 +117,10 @@ export async function getSystemVersions(
 
 export async function getTrends(
   id: string,
-  object?: string
+  object?: string,
+  allSeries = false
 ): Promise<{ summary: TrendSummary[]; series: Record<string, TrendPoint[]> }> {
-  return (await apiClient.get(`${base(id)}/trends`, { params: { object } })).data;
+  return (await apiClient.get(`${base(id)}/trends`, { params: { object, all_series: allSeries || undefined } })).data;
 }
 
 export async function analyseVersion(versionId: string): Promise<{ status: string }> {

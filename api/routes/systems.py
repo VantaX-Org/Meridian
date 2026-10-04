@@ -106,6 +106,12 @@ class CreateSyncProfileRequest(BaseModel):
     active: bool = True
 
 
+class UpdateSyncProfileRequest(BaseModel):
+    # "" clears the schedule (manual sync only)
+    schedule_cron: Optional[str] = None
+    active: Optional[bool] = None
+
+
 class SyncProfileResponse(BaseModel):
     id: str
     system_id: str
@@ -685,6 +691,53 @@ async def list_sync_profiles(
         )
         for r in rows
     ]
+
+
+@router.patch("/systems/{system_id}/profiles/{profile_id}", response_model=SyncProfileResponse)
+async def update_sync_profile(
+    system_id: str,
+    profile_id: str,
+    body: UpdateSyncProfileRequest,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    role: str = Depends(require_permission("manage_systems")),
+):
+    """Change a profile's re-evaluation schedule or pause it. The next run is
+    recomputed from the new cron so a change never fires an immediate sync."""
+    from croniter import croniter
+    from workers.scheduler import _compute_next_run
+
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
+    sets, params = [], {"pid": profile_id, "sid": system_id, "tid": str(tenant.id)}
+    if body.schedule_cron is not None:
+        cron = body.schedule_cron.strip() or None
+        if cron and not croniter.is_valid(cron):
+            raise HTTPException(status_code=422, detail="Invalid cron expression")
+        sets += ["schedule_cron = :cron", "next_run_at = :next"]
+        params |= {"cron": cron, "next": _compute_next_run(cron) if cron else None}
+    if body.active is not None:
+        sets.append("active = :active")
+        params["active"] = body.active
+    if not sets:
+        raise HTTPException(status_code=422, detail="Nothing to update")
+
+    row = (await db.execute(
+        text(f"""
+            UPDATE sync_profiles SET {", ".join(sets)}
+            WHERE id = :pid AND system_id = :sid AND tenant_id = :tid
+            RETURNING id, system_id, domain, tables, schedule_cron, active,
+                      last_run_at::text, next_run_at::text
+        """),
+        params,
+    )).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Sync profile not found")
+    await db.commit()
+    return SyncProfileResponse(
+        id=str(row[0]), system_id=str(row[1]), domain=row[2],
+        tables=row[3], schedule_cron=row[4], active=row[5],
+        last_run_at=row[6], next_run_at=row[7],
+    )
 
 
 # ── Sync Runs ────────────────────────────────────────────────────────────────

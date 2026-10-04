@@ -258,16 +258,20 @@ export interface PlannerConfig {
   currency: string;
 }
 
+export interface AlertThresholds {
+  critical_threshold: number;
+  high_threshold: number;
+  dqs_drop_threshold: number;
+  /** module → minimum DQS; a run scoring the module below it raises an alert */
+  module_floors?: Record<string, number>;
+}
+
 export interface TenantSettings {
   name: string;
   licensed_modules: string[];
   planner_config: PlannerConfig | null;
   dqs_weights: DimensionScores | null;
-  alert_thresholds: {
-    critical_threshold: number;
-    high_threshold: number;
-    dqs_drop_threshold: number;
-  } | null;
+  alert_thresholds: AlertThresholds | null;
   notification_config: {
     email: string;
     teams_webhook: string;

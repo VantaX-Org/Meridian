@@ -757,6 +757,13 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
         except Exception as e:
             logger.warning(f"Failed to enqueue evaluate_contracts (non-fatal): {e}")
 
+        # Alert thresholds (failing-check counts, DQS drop, per-module floors)
+        try:
+            from workers.tasks.send_notifications import send_notification
+            send_notification.delay(version_id, tenant_id, "thresholds")
+        except Exception as e:
+            logger.warning(f"Failed to enqueue threshold alerts (non-fatal): {e}")
+
         # Enqueue exception scan (non-blocking — failure is non-fatal)
         try:
             from workers.tasks.run_exception_scan import run_exception_scan
