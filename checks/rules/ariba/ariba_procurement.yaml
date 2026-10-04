@@ -135,22 +135,23 @@ rules:
   record_fix_template: 'Ariba invoice {ARIBA_INVOICE.INVOICE_ID}: currency {ARIBA_INVOICE.CURRENCY_CODE}, PO currency
     {ARIBA_PO.CURRENCY_CODE}.'
 - id: ARP010
-  field: ARIBA_INVOICE.TOTAL_AMOUNT
-  check_class: cross_field_check
-  grain: ARIBA_INVOICE
-  # ponytail: compares each invoice to the whole PO total, so partial invoices that together exceed the PO pass.
-  # aggregate_check / balance_check sum one amount column of one frame; summing invoices against a PO-level total
-  # needs a check type that compares a group sum with a second column.
-  fail_when: "(`ARIBA_INVOICE.CURRENCY_CODE` == `ARIBA_PO.CURRENCY_CODE`) & (`ARIBA_INVOICE.TOTAL_AMOUNT` > `ARIBA_PO.TOTAL_AMOUNT`)"
+  field: ARIBA_PO.TOTAL_AMOUNT
+  check_class: group_sum_check
+  grain: ARIBA_PO
+  amount: ARIBA_INVOICE.TOTAL_AMOUNT
+  group_keys:
+    ARIBA_INVOICE.PURCHASE_ORDER_ID: ARIBA_PO.ORDER_ID
+    ARIBA_INVOICE.CURRENCY_CODE: ARIBA_PO.CURRENCY_CODE
+  compare: <=
   severity: high
   dimension: accuracy
-  message: Invoice total exceeds the PO total
-  why_it_matters: An invoice for more than was ordered is an over-billing that should be stopped in reconciliation.
+  message: Invoices against the PO total more than the PO
+  why_it_matters: Invoices that together bill more than was ordered are over-billing that should be stopped in reconciliation.
   rule_authority: best_practice
   sap_impact: Overpayment to the supplier if the tolerance rules let the invoice through.
   fix_map:
     __other__: Reject the invoice or raise a change order for the extra quantity / price.
-  record_fix_template: 'Ariba invoice {ARIBA_INVOICE.INVOICE_ID}: total {actual_value} exceeds PO total {ARIBA_PO.TOTAL_AMOUNT}.'
+  record_fix_template: 'Ariba PO {ARIBA_PO.ORDER_ID}: invoices in {ARIBA_PO.CURRENCY_CODE} exceed the PO total {actual_value}.'
 - id: ARP011
   field: ARIBA_INVOICE.INVOICE_DATE
   check_class: cross_field_check
