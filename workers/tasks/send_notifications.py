@@ -1,13 +1,20 @@
 """Celery task: send email and Teams notifications after analysis completes.
 
-Supports triggers: critical_found, dqs_drop, scheduled_daily, scheduled_weekly, scheduled_monthly.
+Supports triggers: critical_found, dqs_drop, thresholds, scheduled_daily, scheduled_weekly, scheduled_monthly.
+``thresholds`` runs after the deterministic checks: every breach of the tenant's
+alert thresholds becomes an in-app notification.
 Never raises — notification failures must not affect analysis results.
 """
 
+import hashlib
+import hmac
+import html
 import json
 import logging
 import os
+import time
 import traceback
+from datetime import datetime, timedelta, timezone
 
 import requests
 from sqlalchemy import text
@@ -45,6 +52,7 @@ def _load_tenant_config(session: Session, tenant_id: str) -> dict:
         "critical_threshold": (row[2] or {}).get("critical_threshold", 1),
         "high_threshold": (row[2] or {}).get("high_threshold", 10),
         "dqs_drop_threshold": (row[2] or {}).get("dqs_drop_threshold", 5),
+        "module_floors": (row[2] or {}).get("module_floors") or {},
     }
 
 
@@ -52,7 +60,7 @@ def _load_version_data(session: Session, version_id: str, tenant_id: str) -> dic
     """Load DQS summary, findings summary, and report JSON for a version."""
     result = session.execute(
         text("""
-            SELECT av.dqs_summary, av.metadata, r.report_json
+            SELECT av.dqs_summary, av.metadata, r.report_json, av.run_at
             FROM analysis_versions av
             LEFT JOIN reports r ON r.version_id = av.id AND r.tenant_id = av.tenant_id
             WHERE av.id = :vid AND av.tenant_id = :tid
@@ -68,7 +76,7 @@ def _load_version_data(session: Session, version_id: str, tenant_id: str) -> dic
         text("""
             SELECT check_id, module, severity, affected_count, pass_rate, details, remediation_text
             FROM findings
-            WHERE version_id = :vid AND tenant_id = :tid AND severity = 'critical'
+            WHERE version_id = :vid AND tenant_id = :tid AND severity = 'critical' AND affected_count > 0
             ORDER BY affected_count DESC
             LIMIT 5
         """),
@@ -87,6 +95,16 @@ def _load_version_data(session: Session, version_id: str, tenant_id: str) -> dic
         for f in findings_result.fetchall()
     ]
 
+    # failing checks per severity (findings also holds the checks that passed)
+    counts = dict(session.execute(
+        text("""
+            SELECT severity, COUNT(*) FROM findings
+            WHERE version_id = :vid AND tenant_id = :tid AND affected_count > 0
+            GROUP BY severity
+        """),
+        {"vid": version_id, "tid": tenant_id},
+    ).fetchall())
+
     dqs_summary = row[0] or {}
     report_json = row[2] or {}
 
@@ -99,8 +117,56 @@ def _load_version_data(session: Session, version_id: str, tenant_id: str) -> dic
         "overall_dqs": overall_dqs,
         "report_json": report_json,
         "critical_findings": critical_findings,
-        "critical_count": len(critical_findings),
+        "critical_count": counts.get("critical", 0),
+        "high_count": counts.get("high", 0),
+        "scope": (row[1] or {}).get("system_id") or "upload",
+        "run_at": row[3],
     }
+
+
+def _previous_dqs(session: Session, version_id: str, tenant_id: str, version_data: dict) -> dict:
+    """dqs_summary of the analysed version before this one from the same source
+    (system, or file upload) — a drop is only meaningful against the same data."""
+    row = session.execute(
+        text("""
+            SELECT dqs_summary FROM analysis_versions
+            WHERE tenant_id = :tid AND id <> :vid AND dqs_summary IS NOT NULL
+              AND COALESCE(metadata->>'system_id', 'upload') = :scope
+              AND status NOT IN ('pending', 'running', 'failed')
+              AND run_at < :run_at
+            ORDER BY run_at DESC LIMIT 1
+        """),
+        {"tid": tenant_id, "vid": version_id, "scope": version_data.get("scope", "upload"),
+         "run_at": version_data.get("run_at")},
+    ).fetchone()
+    return (row[0] if row and isinstance(row[0], dict) else {}) or {}
+
+
+def threshold_breaches(config: dict, dqs: dict, prev_dqs: dict, counts: dict) -> list[dict]:
+    """Every alert threshold this analysis crosses. Pure — the caller loads the data."""
+    out: list[dict] = []
+    crit, high = counts.get("critical", 0), counts.get("high", 0)
+    if crit and crit >= config.get("critical_threshold", 1):
+        out.append({"kind": "critical",
+                    "message": f"{crit} critical checks failing (threshold {config.get('critical_threshold', 1)})"})
+    if high and high >= config.get("high_threshold", 10):
+        out.append({"kind": "high",
+                    "message": f"{high} high checks failing (threshold {config.get('high_threshold', 10)})"})
+    drop_limit = config.get("dqs_drop_threshold", 5)
+    floors = config.get("module_floors") or {}
+    for module, cur in sorted((dqs or {}).items()):
+        score = (cur or {}).get("composite_score")
+        if score is None:
+            continue
+        before = ((prev_dqs or {}).get(module) or {}).get("composite_score")
+        if before is not None and before - score > drop_limit:
+            out.append({"kind": "dqs_drop", "module": module,
+                        "message": f"{module}: DQS fell {before - score:.1f} points to {score:.1f} (threshold {drop_limit:g})"})
+        floor = floors.get(module)
+        if floor is not None and score < floor:
+            out.append({"kind": "floor", "module": module,
+                        "message": f"{module}: DQS {score:.1f} is below its floor of {floor:g}"})
+    return out
 
 
 def _check_trigger(trigger: str, config: dict, version_data: dict, session: Session, version_id: str, tenant_id: str) -> bool:
@@ -109,23 +175,16 @@ def _check_trigger(trigger: str, config: dict, version_data: dict, session: Sess
         return version_data.get("critical_count", 0) >= config.get("critical_threshold", 1)
 
     if trigger == "dqs_drop":
-        # Compare with previous version
-        result = session.execute(
-            text("""
-                SELECT dqs_summary FROM analysis_versions
-                WHERE tenant_id = :tid AND status = 'agents_complete' AND id != :vid
-                ORDER BY run_at DESC LIMIT 1
-            """),
-            {"tid": tenant_id, "vid": version_id},
-        )
-        prev = result.fetchone()
-        if not prev or not prev[0]:
-            return False
-        prev_summary = prev[0]
-        prev_scores = [m.get("composite_score", 0) for m in prev_summary.values()] if isinstance(prev_summary, dict) else []
-        prev_overall = sum(prev_scores) / len(prev_scores) if prev_scores else 0
-        drop = prev_overall - version_data.get("overall_dqs", 0)
-        return drop > config.get("dqs_drop_threshold", 5)
+        prev = _previous_dqs(session, version_id, tenant_id, version_data)
+        return any(b["kind"] == "dqs_drop" for b in
+                   threshold_breaches(config, version_data.get("dqs_summary", {}), prev, {}))
+
+    if trigger == "thresholds":
+        prev = _previous_dqs(session, version_id, tenant_id, version_data)
+        version_data["breaches"] = threshold_breaches(
+            config, version_data.get("dqs_summary", {}), prev,
+            {"critical": version_data.get("critical_count", 0), "high": version_data.get("high_count", 0)})
+        return bool(version_data["breaches"])
 
     if trigger.startswith("scheduled_"):
         schedule_key = {
@@ -146,6 +205,8 @@ def _build_email_content(config: dict, version_data: dict, trigger: str) -> tupl
 
     if trigger == "critical_found":
         subject = f"Meridian DQ Alert — {critical_count} Critical findings"
+    elif trigger == "thresholds":
+        subject = f"Meridian DQ Alert — {len(version_data.get('breaches', []))} alert thresholds crossed"
     elif trigger.startswith("scheduled_"):
         from datetime import date
         subject = f"Meridian {trigger.replace('scheduled_', '').title()} DQ Summary — {date.today()}"
@@ -168,6 +229,9 @@ def _build_email_content(config: dict, version_data: dict, trigger: str) -> tupl
 
     report_json = version_data.get("report_json", {})
     executive_summary = report_json.get("executive_summary", "No summary available.")
+    if version_data.get("breaches"):
+        executive_summary = "Alert thresholds crossed:<br>" + "<br>".join(
+            html.escape(b["message"]) for b in version_data["breaches"])
     critical_color = "#BB0000" if critical_count > 0 else "#0F172A"
 
     if findings_rows:
@@ -284,7 +348,11 @@ def _send_email(config: dict, version_data: dict, trigger: str):
         return
 
     subject, body = _build_email_content(config, version_data, trigger)
+    _deliver_email(recipient, subject, body)
 
+
+def _deliver_email(recipient: str, subject: str, body: str):
+    """Microsoft Graph, else the SMTP relay (SMTP_HOST), else Resend."""
     # Try Microsoft Graph first
     graph_client = create_graph_client()
     if graph_client:
@@ -326,7 +394,9 @@ def _send_teams_card(config: dict, version_data: dict):
                         },
                         {
                             "type": "TextBlock",
-                            "text": report_json.get("executive_summary", "Analysis complete."),
+                            "wrap": True,
+                            "text": "\n\n".join(b["message"] for b in version_data["breaches"])
+                            if version_data.get("breaches") else report_json.get("executive_summary", "Analysis complete."),
                         },
                         {
                             "type": "FactSet",
@@ -349,12 +419,24 @@ def _send_teams_card(config: dict, version_data: dict):
         logger.error(f"Teams card send failed: {e}")
 
 
+def _notify_in_app(session: Session, tenant_id: str, version_id: str, breaches: list[dict]) -> None:
+    """One tenant-wide notification per analysis listing every breach."""
+    from api.services.notifications import create_notification_sync
+    modules = sorted({b["module"] for b in breaches if b.get("module")})
+    title = (f"DQ alert — {len(breaches)} thresholds crossed" if len(breaches) > 1
+             else f"DQ alert — {breaches[0]['message']}")
+    link = f"/findings?version_id={version_id}" + (f"&module={modules[0]}" if len(modules) == 1 else "")
+    create_notification_sync(tenant_id, None, "dq_alert", title[:200],
+                             "\n".join(b["message"] for b in breaches), link, session)
+    session.commit()
+
+
 @celery_app.task(bind=True, name="workers.tasks.send_notifications.send_notification",
                  soft_time_limit=60, time_limit=90)
 def send_notification(self, version_id: str, tenant_id: str, trigger: str):
     """Send notification for a completed analysis version.
 
-    trigger: critical_found | dqs_drop | scheduled_daily | scheduled_weekly | scheduled_monthly
+    trigger: critical_found | dqs_drop | thresholds | scheduled_daily | scheduled_weekly | scheduled_monthly
     """
     logger.info(f"send_notification: version={version_id}, tenant={tenant_id}, trigger={trigger}")
 
@@ -368,6 +450,9 @@ def send_notification(self, version_id: str, tenant_id: str, trigger: str):
                 logger.warning(f"Tenant {tenant_id} not found, skipping notification")
                 return
 
+            if trigger == "critical_found":  # alert channels: new critical findings go out immediately
+                _send_immediate_critical(session, tenant_id, version_id)
+
             version_data = _load_version_data(session, version_id, tenant_id)
             if not version_data:
                 logger.warning(f"Version {version_id} not found, skipping notification")
@@ -377,6 +462,12 @@ def send_notification(self, version_id: str, tenant_id: str, trigger: str):
                 logger.info(f"Trigger condition not met for {trigger}, skipping")
                 return
 
+            if trigger == "thresholds":
+                _notify_in_app(session, tenant_id, version_id, version_data["breaches"])
+                # critical-only runs are already emailed by run_agents' critical_found
+                if all(b["kind"] == "critical" for b in version_data["breaches"]):
+                    return
+
             _send_email(config, version_data, trigger)
             _send_teams_card(config, version_data)
 
@@ -385,3 +476,176 @@ def send_notification(self, version_id: str, tenant_id: str, trigger: str):
     except Exception:
         logger.error(f"send_notification failed: {traceback.format_exc()}")
         # Never raise — notification failures must not affect analysis
+
+
+# ── Alert channels (alert_channels, migration 054) ───────────────────────────
+# Payloads carry counts, rule ids and links only — never finding messages,
+# record keys or values. Digest (daily/weekly) is the default; a channel may
+# opt into immediate delivery of new critical findings only.
+
+DIGEST_WINDOW = {"daily": timedelta(days=1), "weekly": timedelta(days=7)}
+MAX_RULE_IDS = 50
+
+
+def sign(secret: str, timestamp: str, body: bytes) -> str:
+    """X-Meridian-Signature: HMAC-SHA256 over "<timestamp>.<body>" (receivers reject stale timestamps)."""
+    return "sha256=" + hmac.new(secret.encode(), timestamp.encode() + b"." + body, hashlib.sha256).hexdigest()
+
+
+def build_alert(mode: str, version_id: str | None, score: float | None, previous_score: float | None,
+                new_critical: set[str], sla_breaches: int, drop_threshold: float, base_url: str) -> dict | None:
+    """The alert payload, or None when no trigger fires."""
+    drop = round(previous_score - score, 1) if score is not None and previous_score is not None else None
+    triggers = [t for t, hit in (("score_drop", drop is not None and drop > drop_threshold),
+                                 ("new_critical", bool(new_critical)), ("sla_breach", sla_breaches > 0)) if hit]
+    if not triggers:
+        return None
+    return {
+        "event": "meridian.dq_alert", "mode": mode, "triggers": triggers,
+        "version_id": version_id, "score": score, "previous_score": previous_score, "score_drop": drop,
+        "new_critical_count": len(new_critical), "new_critical_rules": sorted(new_critical)[:MAX_RULE_IDS],
+        "sla_breaches": sla_breaches,
+        "links": {"findings": f"{base_url}/findings", "exceptions": f"{base_url}/exceptions",
+                  "versions": f"{base_url}/versions"},
+        "sent_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+def alert_text(alert: dict) -> str:
+    parts = []
+    if "score_drop" in alert["triggers"]:
+        parts.append(f"DQS fell {alert['score_drop']} points to {alert['score']}")
+    if alert["new_critical_count"]:
+        parts.append(f"{alert['new_critical_count']} new critical rule(s) failing: "
+                     + ", ".join(alert["new_critical_rules"][:10]))
+    if alert["sla_breaches"]:
+        parts.append(f"{alert['sla_breaches']} exception SLA breach(es)")
+    return f"Meridian {alert['mode']} alert — " + "; ".join(parts) + f". {alert['links']['findings']}"
+
+
+def render(kind: str, alert: dict) -> dict:
+    if kind == "slack":
+        return {"text": alert_text(alert)}
+    if kind == "teams":
+        return {"type": "message", "attachments": [{
+            "contentType": "application/vnd.microsoft.card.adaptive",
+            "content": {
+                "$schema": "http://adaptivecards.io/schemas/adaptive-card.json", "type": "AdaptiveCard",
+                "version": "1.4",
+                "body": [{"type": "TextBlock", "wrap": True, "text": alert_text(alert)}],
+                "actions": [{"type": "Action.OpenUrl", "title": "Open findings", "url": alert["links"]["findings"]}],
+            }}]}
+    return alert
+
+
+def deliver(channel: dict, alert: dict) -> bool:
+    """Send one alert. Never logs the target (webhook URLs embed tokens) or the secret."""
+    kind = channel["kind"]
+    if kind == "email":
+        _deliver_email(channel["target"], f"Meridian DQ {alert['mode']} alert",
+                       f"<p>{html.escape(alert_text(alert))}</p>")
+        return True
+    body = json.dumps(render(kind, alert), sort_keys=True, default=str).encode()
+    headers = {"Content-Type": "application/json", "X-Meridian-Event": alert["event"]}
+    if channel.get("secret"):
+        ts = str(int(time.time()))
+        headers |= {"X-Meridian-Timestamp": ts, "X-Meridian-Signature": sign(channel["secret"], ts, body)}
+    try:
+        resp = requests.post(channel["target"], data=body, headers=headers, timeout=10)
+        logger.info(f"alert channel {channel.get('id')} ({kind}): HTTP {resp.status_code}")
+        return resp.ok
+    except requests.RequestException as e:
+        logger.error(f"alert channel {channel.get('id')} ({kind}) failed: {type(e).__name__}")
+        return False
+
+
+def _channels(session: Session, where: str, params: dict | None = None) -> list[dict]:
+    try:
+        rows = session.execute(text(f"SELECT id, kind, target, secret FROM alert_channels WHERE enabled AND {where}"),
+                               params or {}).mappings().all()
+    except Exception:  # table absent before migration 054
+        session.rollback()
+        return []
+    return [dict(r) for r in rows]
+
+
+def _overall(dqs_summary) -> float | None:
+    scores = [m.get("composite_score", 0) for m in dqs_summary.values()] if isinstance(dqs_summary, dict) else []
+    return round(sum(scores) / len(scores), 1) if scores else None
+
+
+def _critical_rules(session: Session, version_id) -> set[str]:
+    """Critical rules failing in a version, suppressed ones excluded."""
+    return {r[0] for r in session.execute(text("""
+        SELECT DISTINCT check_id FROM findings
+         WHERE version_id = :v AND severity = 'critical' AND affected_count > 0
+           AND details->>'error' IS NULL AND NOT COALESCE((details->>'suppressed')::boolean, false)
+    """), {"v": str(version_id)}).fetchall()}
+
+
+def _completed(session: Session, before: datetime | None = None, skip: str | None = None):
+    """Latest completed analysis version (id, run_at, dqs_summary) — optionally before a time / not `skip`."""
+    return session.execute(text("""
+        SELECT id, run_at, dqs_summary FROM analysis_versions
+         WHERE status IN ('complete', 'agents_complete')
+           AND (CAST(:before AS timestamptz) IS NULL OR run_at < :before)
+           AND (CAST(:skip AS uuid) IS NULL OR id <> CAST(:skip AS uuid))
+         ORDER BY run_at DESC LIMIT 1
+    """), {"before": before, "skip": skip}).fetchone()
+
+
+def _drop_threshold(session: Session, tenant_id: str) -> float:
+    row = session.execute(text("SELECT alert_thresholds FROM tenants WHERE id = :t"), {"t": tenant_id}).fetchone()
+    return float(((row[0] if row else None) or {}).get("dqs_drop_threshold", 5))
+
+
+def _send_immediate_critical(session: Session, tenant_id: str, version_id: str) -> None:
+    channels = _channels(session, "immediate_critical")
+    if not channels:
+        return
+    from workers.tasks.send_user_invitation import _resolve_app_base_url
+    prev = _completed(session, skip=version_id)
+    new = _critical_rules(session, version_id) - (_critical_rules(session, prev[0]) if prev else set())
+    alert = build_alert("immediate", version_id, None, None, new, 0, 0, _resolve_app_base_url())
+    for ch in channels if alert else []:
+        deliver(ch, alert)
+
+
+@celery_app.task(name="workers.tasks.send_notifications.send_alert_digest",
+                 soft_time_limit=600, time_limit=660)
+def send_alert_digest(period: str) -> dict:
+    """Daily / weekly digest per tenant: score drop beyond the tenant's threshold, critical
+    rules newly failing, exception SLAs breached in the window. Silent when nothing fired."""
+    from workers.tasks.send_user_invitation import _resolve_app_base_url
+
+    since = datetime.now(timezone.utc) - DIGEST_WINDOW[period]
+    base_url = _resolve_app_base_url()
+    engine = get_sync_engine()
+    sent = 0
+    with Session(engine) as session:
+        tenants = [str(r[0]) for r in session.execute(text("SELECT id FROM tenants")).fetchall()]
+    for tid in tenants:
+        try:
+            with Session(engine) as session:
+                session.execute(text("SET app.tenant_id = :tid"), {"tid": tid})
+                channels = _channels(session, "digest = :p", {"p": period})
+                if not channels:
+                    continue
+                cur = _completed(session)
+                base = _completed(session, before=since)
+                fresh = cur is not None and cur[1] >= since
+                new = (_critical_rules(session, cur[0]) - (_critical_rules(session, base[0]) if base else set())
+                       if fresh and base else set())
+                sla = session.execute(text("""
+                    SELECT count(*) FROM exceptions WHERE status NOT IN ('resolved', 'closed')
+                       AND sla_deadline > :since AND sla_deadline <= now()
+                """), {"since": since}).scalar() or 0
+                alert = build_alert(period, str(cur[0]) if fresh else None,
+                                    _overall(cur[2]) if fresh else None,
+                                    _overall(base[2]) if fresh and base else None,
+                                    new, int(sla), _drop_threshold(session, tid), base_url)
+                for ch in channels if alert else []:
+                    sent += deliver(ch, alert)
+        except Exception as e:
+            logger.error(f"alert digest failed for tenant {tid}: {type(e).__name__}: {e}")
+    return {"period": period, "sent": sent}

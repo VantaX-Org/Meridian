@@ -12,6 +12,7 @@ psycopg2-binary>=2.9.10
 
 # Celery
 celery>=5.4.0
+croniter>=6.0.0  # sync_profiles.schedule_cron; without it every schedule runs daily
 redis>=5.2.0
 
 # MinIO

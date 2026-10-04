@@ -212,7 +212,7 @@ def _mark_resolved_items(session: Session, tid: str) -> int:
     result1 = session.execute(
         text("""
             UPDATE stewardship_queue sq
-            SET status = 'resolved', updated_at = now()
+            SET status = 'resolved', updated_at = now(), resolved_at = now()
             WHERE sq.tenant_id = :tid
               AND sq.item_type = 'merge_decision'
               AND sq.status IN ('open', 'in_progress')
@@ -229,7 +229,7 @@ def _mark_resolved_items(session: Session, tid: str) -> int:
     result2 = session.execute(
         text("""
             UPDATE stewardship_queue sq
-            SET status = 'resolved', updated_at = now()
+            SET status = 'resolved', updated_at = now(), resolved_at = now()
             WHERE sq.tenant_id = :tid
               AND sq.item_type = 'golden_record_review'
               AND sq.status IN ('open', 'in_progress')
@@ -246,7 +246,7 @@ def _mark_resolved_items(session: Session, tid: str) -> int:
     result3 = session.execute(
         text("""
             UPDATE stewardship_queue sq
-            SET status = 'resolved', updated_at = now()
+            SET status = 'resolved', updated_at = now(), resolved_at = now()
             WHERE sq.tenant_id = :tid
               AND sq.item_type = 'exception'
               AND sq.status IN ('open', 'in_progress')

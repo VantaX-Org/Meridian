@@ -42,6 +42,8 @@ def revalidate_licence(self):
         if result.get("valid"):
             _update_manifest_cache(result)
             _sync_manifest_to_db(result)
+            from workers.tasks.forced_update import store_signal
+            store_signal(result)
             _cache["response"] = result
             import time
             from api.middleware.licence import CACHE_TTL_SECONDS

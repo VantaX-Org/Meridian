@@ -117,3 +117,11 @@ def test_readiness_escalates_with_failures():
                 if readiness != "green":
                     found_non_green = True
     assert found_non_green, "At least one L3 should have non-green readiness"
+
+
+def test_classify_uses_percent_scale():
+    """findings.pass_rate is stored 0-100; 50% must not read as green."""
+    from api.services.process_writer import _classify_finding
+    assert _classify_finding({"severity": "low", "pass_rate": 50.0}) == "red"
+    assert _classify_finding({"severity": "low", "pass_rate": 80.0}) == "amber"
+    assert _classify_finding({"severity": "low", "pass_rate": 99.0}) == "green"

@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import csv
 import io
+import json
 from typing import Iterable
 
 from sqlalchemy import text
@@ -47,6 +48,15 @@ def _copy(session, table: str, columns: tuple[str, ...], rows: Iterable[tuple]) 
     return n
 
 
+def _keyed_values(r) -> dict[str, dict | None]:
+    """record_key → the rule's (masked) column values; first occurrence of a key wins."""
+    values = r.failing_record_values or []
+    out: dict[str, dict | None] = {}
+    for i, k in enumerate(r.failing_record_keys):
+        out.setdefault(k, values[i] if i < len(values) else None)
+    return out
+
+
 def present_keys(results, frames) -> set[tuple[str, str]]:
     """(grain, record_key) of every record evaluated in this run, per key layout used."""
     out: set[tuple[str, str]] = set()
@@ -68,15 +78,15 @@ def track(session, tenant_id: str, version_id: str, scope: str, results, frames)
     """Persist finding_records and reconcile record_issues for one version."""
     session.execute(text(
         "CREATE TEMP TABLE IF NOT EXISTS tmp_finding_records "
-        "(check_id text, module text, grain text, record_key text) ON COMMIT DROP"))
+        "(check_id text, module text, grain text, record_key text, field_values text) ON COMMIT DROP"))
     session.execute(text(
         "CREATE TEMP TABLE IF NOT EXISTS tmp_present (grain text, record_key text) ON COMMIT DROP"))
     session.execute(text("TRUNCATE tmp_finding_records, tmp_present"))
 
-    failing = _copy(session, "tmp_finding_records", ("check_id", "module", "grain", "record_key"), (
-        (r.check_id, r.module, r.grain, k)
+    failing = _copy(session, "tmp_finding_records", ("check_id", "module", "grain", "record_key", "field_values"), (
+        (r.check_id, r.module, r.grain, k, json.dumps(v) if v else None)
         for r in results if r.failing_record_keys
-        for k in dict.fromkeys(r.failing_record_keys)
+        for k, v in _keyed_values(r).items()
     ))
     _copy(session, "tmp_present", ("grain", "record_key"), present_keys(results, frames))
 
@@ -84,8 +94,9 @@ def track(session, tenant_id: str, version_id: str, scope: str, results, frames)
     # re-analysis of a version replaces its failing records
     session.execute(text("DELETE FROM finding_records WHERE version_id = :vid"), p)
     session.execute(text("""
-        INSERT INTO finding_records (tenant_id, version_id, check_id, module, grain, record_key)
-        SELECT CAST(:tid AS uuid), CAST(:vid AS uuid), check_id, module, NULLIF(grain, ''), record_key
+        INSERT INTO finding_records (tenant_id, version_id, check_id, module, grain, record_key, field_values)
+        SELECT CAST(:tid AS uuid), CAST(:vid AS uuid), check_id, module, NULLIF(grain, ''), record_key,
+               CAST(field_values AS jsonb)
         FROM tmp_finding_records
         ON CONFLICT DO NOTHING
     """), p)
@@ -105,7 +116,12 @@ def track(session, tenant_id: str, version_id: str, scope: str, results, frames)
         WITH hit AS (
             UPDATE record_issues ri
                SET status = 'open', resolution = NULL, resolved_version = NULL, resolved_at = NULL,
-                   reopened_count = ri.reopened_count + 1, updated_at = now()
+                   reopened_count = ri.reopened_count + 1, updated_at = now(),
+                   -- the previous owner keeps the item; its SLA clock restarts from now
+                   sla_started_at = NULL, sla_state = NULL, sla_notified = '{}', ack_due_at = NULL,
+                   ack_risk_at = NULL, due_at = NULL, risk_at = NULL, acknowledged_at = NULL,
+                   sla_paused_at = NULL, snoozed_until = NULL, snooze_reason = NULL,
+                   assigned_at = CASE WHEN ri.assigned_to IS NULL THEN NULL ELSE now() END
               FROM finding_records fr
              WHERE fr.version_id = :vid AND ri.tenant_id = :tid AND ri.scope = :scope
                AND ri.check_id = fr.check_id AND ri.record_key = fr.record_key AND ri.status = 'resolved'

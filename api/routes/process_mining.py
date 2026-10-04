@@ -207,7 +207,7 @@ async def get_mining_graph(
     )
     findings_by_check = {
         r[0]: {
-            "pass_rate": float(r[1]) if r[1] is not None else 0,
+            "pass_rate": float(r[1]) if r[1] is not None else None,
             "affected_count": r[2] or 0,
             "severity": r[3],
             "message": r[4] or "",

@@ -16,7 +16,7 @@ import { copyToClipboard } from "@/components/meridian/actions";
 import { getConfigMatchesExportUrl } from "@/lib/api/config-matches";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { compositeDqs } from "@/lib/api/findings";
-import { getReportDownloadUrl, getReportJsonExportUrl } from "@/lib/api/reports";
+import { getAnalysisReportUrl, getCleaningReportUrl, getComparisonReportUrl, getExtractionReportUrl, getReportDownloadUrl, getReportJsonExportUrl } from "@/lib/api/reports";
 import { getVersion, getVersions } from "@/lib/api/versions";
 import { formatModuleName, relativeTime } from "@/lib/format";
 import type { Version } from "@/types/api";
@@ -26,9 +26,13 @@ const DONE = new Set(["complete", "agents_complete", "ai_enriched"]);
 const exportable = (v: Version) => DONE.has(v.status) && !!v.dqs_summary;
 const checks = (v: Version) => Object.values(v.dqs_summary ?? {}).reduce((a, m) => a + (m.total_checks ?? 0), 0);
 const name = (v: Version) => v.label ?? v.metadata?.file_name ?? `Analysis ${v.id.slice(0, 8)}`;
-type Kind = "pdf" | "json" | "config";
+type Kind = "pdf" | "analysis" | "extraction" | "compare" | "cleaning" | "json" | "config";
 const FILE: Record<Kind, { url: (id: string) => string; file: (id: string) => string; label: string }> = {
   pdf: { url: getReportDownloadUrl, file: (id) => `meridian_dq_report_${id.slice(0, 8)}.pdf`, label: "PDF report" },
+  analysis: { url: getAnalysisReportUrl, file: (id) => `meridian_analysis_${id.slice(0, 8)}.pdf`, label: "Analysis run PDF" },
+  extraction: { url: getExtractionReportUrl, file: (id) => `meridian_extraction_${id.slice(0, 8)}.pdf`, label: "Extraction PDF" },
+  compare: { url: (id) => getComparisonReportUrl(id), file: (id) => `meridian_comparison_${id.slice(0, 8)}.pdf`, label: "Compare with previous PDF" },
+  cleaning: { url: getCleaningReportUrl, file: (id) => `meridian_cleaning_${id.slice(0, 8)}.pdf`, label: "Cleaning and fixes PDF" },
   json: { url: getReportJsonExportUrl, file: (id) => `meridian_dq_report_${id.slice(0, 8)}.json`, label: "JSON export" },
   config: { url: getConfigMatchesExportUrl, file: (id) => `meridian-config-${id.slice(0, 8)}.xlsx`, label: "Config workbook" },
 };
@@ -97,7 +101,7 @@ export function ReportsSurface() {
               </Stack>
             </Stack>
             <Stack direction="row" gap={2} wrap>
-              {(Object.keys(FILE) as Kind[]).map((k) => (
+              {(Object.keys(FILE) as Kind[]).filter((k) => k !== "extraction" || selected.metadata?.source === "extraction").map((k) => (
                 <Button key={k} variant={k === "pdf" ? "primary" : "secondary"} onClick={() => download.mutate({ v: selected, kind: k })} disabled={download.isPending}>{FILE[k].label}</Button>
               ))}
               <Button variant="ghost" onClick={() => copyToClipboard(selected.id, "Version ID copied")}>Copy version ID</Button>

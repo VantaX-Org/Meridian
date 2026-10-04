@@ -64,9 +64,8 @@ export const WORKSPACES: readonly Workspace[] = [
     tabs: [
       { id: "triage", label: "Triage", href: "/issues" },
       { id: "record", label: "Record report", href: "/workbench/report", hidden: true },
-      { id: "queue", label: "My queue", href: "/workbench" },
-      { id: "team", label: "Team workload", href: "/stewardship" },
-      { id: "metrics", label: "Steward metrics", href: "/stewardship/metrics", anyOf: ["assign"] },
+      { id: "queue", label: "Steward inbox", href: "/workbench" },
+      { id: "my-queue", label: "My queue", href: "/workbench/triage" },
       { id: "cleaning", label: "Cleaning", href: "/cleaning" },
       { id: "exceptions", label: "Exceptions", href: "/exceptions" },
       { id: "dedup", label: "Duplicates", href: "/dedup" },
@@ -74,6 +73,8 @@ export const WORKSPACES: readonly Workspace[] = [
       { id: "golden", label: "Golden records", href: "/golden-records" },
       { id: "glossary", label: "Glossary", href: "/glossary" },
       { id: "match-rules", label: "Match rules", href: "/match-rules" },
+      { id: "match-tuning", label: "Match tuning", href: "/match-rules/tuning" },
+      { id: "pair-constraints", label: "Pair constraints", href: "/match-rules/constraints" },
       { id: "reports", label: "Reports", href: "/reports" },
     ],
   },
@@ -83,8 +84,8 @@ export const WORKSPACES: readonly Workspace[] = [
       { id: "map", label: "Process map", href: "/process" },
       { id: "readiness", label: "Readiness", href: "/business-process" },
       { id: "config-impact", label: "Config impact", href: "/config-impact" },
-      { id: "patterns", label: "Patterns", href: "/mining" },
-      { id: "relationships", label: "Relationships", href: "/relationships" },
+      { id: "lineage", label: "Lineage", href: "/lineage" },
+      { id: "relationships", label: "Relationships & patterns", href: "/relationships" },
     ],
   },
   {
@@ -94,6 +95,7 @@ export const WORKSPACES: readonly Workspace[] = [
       { id: "settings", label: "Settings", href: "/settings" },
       { id: "scoring", label: "Scoring & alerts", href: "/settings/scoring", anyOf: ["view"] },
       { id: "rules", label: "Rules", href: "/settings/rules" },
+      { id: "triage", label: "Triage", href: "/admin/triage" },
       { id: "field-mapping", label: "Field mapping", href: "/settings/field-mapping" },
       { id: "ai", label: "AI", href: "/settings/ai" },
       { id: "licence", label: "Licence", href: "/settings/licence" },
@@ -106,6 +108,9 @@ export const HUB_ROUTES: ReadonlySet<string> = new Set(WORKSPACES.map((w) => w.h
 
 /** Non-hub pages built on Aurora — rendered on the canvas, not in the light sheet. */
 export const AURORA_PAGES: readonly string[] = ["/workbench/report"];
+
+/** Record 360 detail routes (the list pages above them are still legacy). */
+export const AURORA_DETAIL = /^\/(golden-records|glossary)\/[^/]+$/;
 
 /** Where each role lands after sign-in — the workspace built for their job. */
 export const LANDING: Readonly<Record<Role, string>> = {

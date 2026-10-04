@@ -21,8 +21,8 @@ from sap.process_definitions import PROCESS_DEFINITIONS
 logger = logging.getLogger("meridian.services.process_writer")
 
 # Thresholds for DQ status classification
-_PASS_RATE_GREEN = 0.95
-_PASS_RATE_AMBER = 0.70
+_PASS_RATE_GREEN = 95.0  # findings.pass_rate is 0-100 (checks/base.py)
+_PASS_RATE_AMBER = 70.0
 
 # Severity levels that force red regardless of pass_rate
 _RED_SEVERITIES = {"critical", "high"}
@@ -231,7 +231,7 @@ def _enrich_l5(
     if config_source and spro_config:
         # config_source may be a table name like "T052" or a compound like
         # "T077Y (field status)".  Extract the table name portion.
-        table_name = config_source.split("(")[0].strip().split("/")[0].strip()
+        table_name = config_source.split("(")[0].strip().split(" / ")[0].strip()
         config_data = spro_config.get(table_name)
         if config_data is not None:
             result["config_dependency"] = {

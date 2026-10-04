@@ -1,0 +1,69 @@
+{# Shared by the analysis run report and the executive report. #}
+<div class="figures">
+    <div class="figure primary"><div class="v">{{ overall.composite | n(1) }}<small> / 100</small></div><div class="k">Data quality score (DQS), all modules</div></div>
+    <div class="figure"><div class="v"><span class="st {{ readiness | st }}">{{ readiness | upper }}</span></div><div class="k">Migration readiness</div></div>
+    <div class="figure"><div class="v">{{ checks_failing | n }}<small> of {{ checks_run | n }}</small></div><div class="k">Checks with failing records</div></div>
+    <div class="figure"><div class="v">{{ sev.critical | n }}</div><div class="k">Critical checks failing</div></div>
+</div>
+<p class="lead">{{ headline }}</p>
+{% if overall.capped %}<p class="note">The score is capped because critical checks fail: one critical failure caps a module at 85, two or more at 70.</p>{% endif %}
+
+<h2>What to fix first</h2>
+{% if fix_first %}
+<p class="note">Ranked by severity weight (critical 8, high 4, medium 2, low 1) multiplied by the number of failing records.</p>
+<ol class="actions">
+{% for f in fix_first %}
+    <li><b>{{ f.message or f.check_id }}</b> — {{ f.affected | n }} of {{ f.total | n }} records fail ({{ f.fail_pct | pct }}) in {{ f.module | module }}{% if f.field %}, field <span class="mono">{{ f.field }}</span>{% endif %}.
+        <span class="st {{ f.severity | st }}">{{ f.severity | capitalize }}</span> <span class="mono muted">{{ f.check_id }}</span>
+        {% if f.why %}<span class="sub muted">{{ f.why }}</span>{% endif %}</li>
+{% endfor %}
+</ol>
+{% else %}
+<div class="empty">No check found failing records in this run, so there is nothing to prioritise.</div>
+{% endif %}
+
+<h2>Quality by dimension</h2>
+<p class="note">Score out of 100 per DAMA dimension, weighted by the number of checks that measure it. A dimension no check measured in this run is shown as not measured rather than as 100.</p>
+<div class="chart">{{ dim_chart }}</div>
+
+<h2>Modules</h2>
+{% if modules %}
+<div class="chart">{{ module_chart }}</div>
+<table class="data">
+<thead><tr><th>Module</th><th class="r">DQS</th><th>Readiness</th><th class="r">Checks run</th><th class="r">Failing</th><th class="r">Critical</th><th class="r">High</th><th class="r">Records checked</th></tr></thead>
+<tbody>
+{% for m in modules %}
+<tr><td>{{ m.name | module }}{% if m.cap_reason %}<span class="sub">{{ m.cap_reason }}</span>{% endif %}</td>
+    <td class="r">{{ m.score | n(1) }}</td>
+    <td>{% if m.status %}<span class="st {{ m.status | st }}">{{ m.status | upper }}</span>{% else %}<span class="st na">No score</span>{% endif %}</td>
+    <td class="r">{{ m.checks | n }}</td><td class="r">{{ m.failing | n }}</td>
+    <td class="r">{{ m.critical | n }}</td><td class="r">{{ m.high | n }}</td><td class="r">{{ m.records | n }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+<p class="note">Readiness per module: NO-GO when any critical check fails or the score is below 70, CONDITIONAL from 70 to 89.9, GO at 90 or above. Records checked is the largest record count any check in the module evaluated.</p>
+{% else %}
+<div class="empty">This run has no module scores. The run may still be in progress, or no data was supplied for a licensed module.</div>
+{% endif %}
+
+<h2>Failing checks by severity</h2>
+<table class="data keep" style="width:60%">
+<thead><tr><th>Severity</th><th class="r">Checks failing</th></tr></thead>
+<tbody>{% for s, c in sev.items() %}<tr><td><span class="st {{ s | st }}">{{ s | capitalize }}</span></td><td class="r">{{ c | n }}</td></tr>{% endfor %}</tbody>
+<tfoot><tr><td>Total</td><td class="r">{{ checks_failing | n }}</td></tr></tfoot>
+</table>
+
+<h2>Critical findings</h2>
+{% if critical %}
+<table class="data">
+<thead><tr><th>Check</th><th>Module</th><th>Field</th><th class="r">Failing records</th><th class="r">Of records</th><th class="r">Fail rate</th></tr></thead>
+<tbody>
+{% for f in critical %}
+<tr><td>{{ f.message or f.check_id }}<span class="sub mono">{{ f.check_id }}</span></td><td>{{ f.module | module }}</td>
+    <td class="mono">{{ f.field or "—" }}</td><td class="r">{{ f.affected | n }}</td><td class="r">{{ f.total | n }}</td><td class="r">{{ f.fail_pct | pct }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}
+<div class="empty">No critical check found failing records in this run.</div>
+{% endif %}

@@ -10,16 +10,17 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Banner, Button, Chip, Field, Input, KpiRail, Stack, Stat, Text } from "@/components/aurora";
+import { Banner, Button, Chip, Field, Input, KpiRail, Select, Stack, Stat, Text } from "@/components/aurora";
 import { useRole } from "@/hooks/use-role";
 import { getFindingsAggregate } from "@/lib/api/findings";
 import { getSettings, saveNotificationSettings, savePlannerConfig, updateAlertThresholds, updateDqsWeights } from "@/lib/api/settings";
-import type { DimensionScores, PlannerConfig, TenantSettings } from "@/types/api";
+import { formatModuleName } from "@/lib/format";
+import type { AlertThresholds, DimensionScores, PlannerConfig, TenantSettings } from "@/types/api";
 
 const DIMS = ["completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity"] as const;
 type Dim = (typeof DIMS)[number];
 const DEFAULT: DimensionScores = { completeness: 0.25, accuracy: 0.25, consistency: 0.2, timeliness: 0.1, uniqueness: 0.1, validity: 0.1 };
-const DEFAULT_THRESHOLDS = { critical_threshold: 1, high_threshold: 10, dqs_drop_threshold: 5 };
+const DEFAULT_THRESHOLDS: AlertThresholds = { critical_threshold: 1, high_threshold: 10, dqs_drop_threshold: 5, module_floors: {} };
 const DEFAULT_NOTIFY = { email: "", teams_webhook: "", daily_digest: false, weekly_summary: true, monthly_report: true };
 const DEFAULT_PLANNER: PlannerConfig = { minutes_per_record: 3, investigation_hours: 1, cleaning_item_hours: 0.25, exception_hours: 2, sprint_hours: 40, cost_per_record: null, currency: "ZAR" };
 
@@ -45,7 +46,15 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
   const agg = useQuery({ queryKey: ["findings.aggregate"], queryFn: () => getFindingsAggregate() });
 
   const [weights, setWeights] = useState<DimensionScores>(initial.dqs_weights ?? DEFAULT);
-  const [thresholds, setThresholds] = useState(initial.alert_thresholds ?? DEFAULT_THRESHOLDS);
+  const [thresholds, setThresholds] = useState<AlertThresholds>({ ...DEFAULT_THRESHOLDS, ...initial.alert_thresholds });
+  const floors = thresholds.module_floors ?? {};
+  const setFloor = (module: string, value: number | null) => {
+    const next = { ...floors };
+    if (value == null) delete next[module];
+    else next[module] = value;
+    setThresholds({ ...thresholds, module_floors: next });
+  };
+  const unfloored = (initial.licensed_modules ?? []).filter((m) => !(m in floors));
   const [notify, setNotify] = useState(initial.notification_config ?? DEFAULT_NOTIFY);
   const [planner, setPlanner] = useState<PlannerConfig>(initial.planner_config ?? DEFAULT_PLANNER);
 
@@ -134,11 +143,38 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
             {({ controlId }) => <Input id={controlId} type="number" min="0" value={thresholds.high_threshold} disabled={!write}
               onChange={(e) => setThresholds({ ...thresholds, high_threshold: Number(e.target.value) })} />}
           </Field>
-          <Field label="DQS drop (points)" helper="Alert when DQS falls by this much against the previous run">
+          <Field label="DQS drop (points)" helper="Alert when an object's DQS falls by more than this against the previous run of the same system">
             {({ controlId }) => <Input id={controlId} type="number" min="0" step="0.5" value={thresholds.dqs_drop_threshold} disabled={!write}
               onChange={(e) => setThresholds({ ...thresholds, dqs_drop_threshold: Number(e.target.value) })} />}
           </Field>
         </Stack>
+        <Text as="h3" variant="text-body" style={{ marginTop: "var(--aurora-space-4)" }}>DQS floors per object</Text>
+        <Text variant="text-small" tone="secondary" as="p" className="aurora-runs__sub">
+          An analysis that scores an object below its floor raises an in-app alert (and email or Teams, when configured).
+        </Text>
+        <table className="aurora-exec__table" style={{ maxWidth: 480 }}>
+          <thead><tr><th>Object</th><th>Floor (DQS)</th><th /></tr></thead>
+          <tbody>
+            {Object.entries(floors).sort(([a], [b]) => a.localeCompare(b)).map(([m, v]) => (
+              <tr key={m}>
+                <td>{formatModuleName(m)}</td>
+                <td>
+                  <Input type="number" min="0" max="100" step="1" value={v} disabled={!write} aria-label={`${formatModuleName(m)} floor`}
+                    className="aurora-number" onChange={(e) => setFloor(m, Math.min(100, Math.max(0, Number(e.target.value))))} />
+                </td>
+                <td>{write ? <Button variant="ghost" size="sm" onClick={() => setFloor(m, null)}>Remove</Button> : null}</td>
+              </tr>
+            ))}
+            {!Object.keys(floors).length ? <tr><td colSpan={3}><Text tone="muted">No floors set.</Text></td></tr> : null}
+          </tbody>
+        </table>
+        {write && unfloored.length ? (
+          <div style={{ marginTop: "var(--aurora-space-2)", maxWidth: 260 }}>
+            <Select aria-label="Add a floor for" placeholder="Add a floor for…" value=""
+              options={unfloored.map((m) => ({ value: m, label: formatModuleName(m) }))}
+              onValueChange={(m) => m && setFloor(m, 80)} />
+          </div>
+        ) : null}
         {write ? <div style={{ marginTop: "var(--aurora-space-3)" }}><Button onClick={() => saveThresholds.mutate()} disabled={saveThresholds.isPending}>Save thresholds</Button></div> : null}
       </section>
 

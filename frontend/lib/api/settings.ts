@@ -1,5 +1,5 @@
 import apiClient from "./client";
-import type { TenantSettings, DimensionScores, PlannerConfig } from "@/types/api";
+import type { AlertThresholds, TenantSettings, DimensionScores, PlannerConfig } from "@/types/api";
 
 export async function getSettings(): Promise<TenantSettings> {
   const { data } = await apiClient.get<TenantSettings>("/api/v1/settings");
@@ -12,11 +12,7 @@ export async function updateDqsWeights(
   await apiClient.patch("/api/v1/settings/dqs-weights", weights);
 }
 
-export async function updateAlertThresholds(thresholds: {
-  critical_threshold: number;
-  high_threshold: number;
-  dqs_drop_threshold: number;
-}): Promise<void> {
+export async function updateAlertThresholds(thresholds: AlertThresholds): Promise<void> {
   await apiClient.patch("/api/v1/settings/alert-thresholds", thresholds);
 }
 

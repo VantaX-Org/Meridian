@@ -221,6 +221,8 @@ def run_sync(self, profile_id: str, tenant_id: str):
     version_id = str(uuid.uuid4())
     metadata = {
         "source": "sync",
+        # links the version to its system: trends, heatmap and alert comparisons scope by it
+        "system_id": system_id,
         "system_name": system_name,
         "domain": domain,
         "tables": tables,

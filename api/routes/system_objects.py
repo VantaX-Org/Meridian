@@ -175,10 +175,11 @@ async def system_versions(system_id: uuid.UUID, limit: int = Query(50, le=200),
 
 
 @router.get("/{system_id}/trends", dependencies=[Depends(require_permission("view"))])
-async def trends(system_id: uuid.UUID, object: Optional[str] = None,
+async def trends(system_id: uuid.UUID, object: Optional[str] = None, all_series: bool = False,
                  db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     """Each analysed version is a point. A point is `comparable` with the one
-    before it only when scope, rule set and (±20 %) record volume are unchanged."""
+    before it only when scope, rule set and (±20 %) record volume are unchanged.
+    ``all_series`` returns every object's points (the object × version heatmap)."""
     await _rls(db, tenant)
     versions = (await db.execute(text(f"""
         SELECT id, run_at, label, metadata, dqs_summary FROM analysis_versions
@@ -251,7 +252,7 @@ async def trends(system_id: uuid.UUID, object: Optional[str] = None,
                 "dqs_delta": round(last["dqs"] - base["dqs"], 2),
                 "failing_records_delta": last["failing_records"] - base["failing_records"]},
         })
-    return {"summary": summary, "series": series if object else {}}
+    return {"summary": summary, "series": series if object or all_series else {}}
 
 
 # ── Customer reference lists (licensed data that never comes from SAP) ─────────
