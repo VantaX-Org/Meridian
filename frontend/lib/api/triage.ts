@@ -215,7 +215,8 @@ export async function createRule(body: AssignmentRuleInput): Promise<AssignmentR
   return (await apiClient.post<AssignmentRule>(`${BASE}/rules`, body)).data;
 }
 
-export async function updateRule(id: string, body: AssignmentRuleInput): Promise<AssignmentRule> {
+/** Full replace: send the whole rule, an omitted `enabled` or `match` resets to the default. */
+export async function updateRule(id: string, body: Required<Omit<AssignmentRuleInput, "position">> & { position?: number }): Promise<AssignmentRule> {
   return (await apiClient.patch<AssignmentRule>(`${BASE}/rules/${id}`, body)).data;
 }
 
@@ -245,6 +246,7 @@ export async function getTriageSettings(): Promise<TriageSettings> {
   return (await apiClient.get<TriageSettings>(`${BASE}/settings`)).data;
 }
 
-export async function saveTriageSettings(body: Partial<TriageSettings>): Promise<TriageSettings> {
+/** Full replace: omitted fields fall back to the defaults. */
+export async function saveTriageSettings(body: TriageSettings): Promise<TriageSettings> {
   return (await apiClient.put<TriageSettings>(`${BASE}/settings`, body)).data;
 }
