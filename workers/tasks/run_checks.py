@@ -527,6 +527,11 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
                 with session.begin_nested():
                     stats = track(session, str(tenant_id), str(version_id), scope_of(metadata), all_results, frames)
                 logger.info(f"record issues for {version_id}: {stats}")
+                if "lifecycle" not in stats:  # newest run of this system: check exported fix batches
+                    from api.services.remediation import reconcile
+                    with session.begin_nested():
+                        n = reconcile(session, str(tenant_id), str(version_id), scope_of(metadata))
+                    logger.info(f"remediation items reconciled for {version_id}: {n}")
             except Exception as e:
                 logger.error(f"record-level tracking failed for {version_id}: {e}", exc_info=True)
 
