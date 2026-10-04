@@ -171,6 +171,8 @@ const OFF_NAV_TITLES: Record<string, string> = {
   "/match-rules": "Match rules",
   "/match-rules/tuning": "Match tuning",
   "/match-rules/constraints": "Pair constraints",
+  "/exceptions/rules": "Exception rules",
+  "/settings/exception-billing": "Exception billing",
   "/settings/scoring": "Scoring & alerts",
   "/workbench/report": "Record report",
   "/workbench/triage": "My queue",
