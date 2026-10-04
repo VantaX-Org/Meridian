@@ -10,9 +10,9 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { AdminAuditLogTable, AdminDestructiveConfirm } from "@/components/aurora";
+import { AdminAuditLogTable, AdminDestructiveConfirm, type ChipTone } from "@/components/aurora";
 import {
-  Banner, Button, DataTable, DetailDrawer, EmptyState, Field, Input, KeyValue, Metric, MetricStrip, Mono, PageHeader, SectionCard, Select,
+  Banner, Button, Chip, DataTable, DetailDrawer, EmptyState, Field, Input, KeyValue, Metric, MetricStrip, Mono, PageHeader, SectionCard, Select,
   StatusBadge, TableSkeleton, Tabs, type AuroraColumnMeta,
 } from "@/components/ui-core";
 import { apiErrorMessage } from "@/lib/api/optional";
@@ -33,12 +33,13 @@ const ROLE_META: Record<UserRole, { label: string; desc: string }> = {
   admin: { label: "Admin", desc: "Full access. Manage users and rules, approve proposed rules." },
   manager: { label: "Manager", desc: "Run the programme. Connect systems, sync, analyse, approve, apply and assign work." },
   steward: { label: "Steward", desc: "Own the data. Fix, clean, approve and apply, maintain rules and assign work." },
-  ai_reviewer: { label: "AI reviewer", desc: "Review and approve proposed rules from steward corrections." },
+  ai_reviewer: { label: "AI Reviewer", desc: "Review and approve proposed rules from steward corrections." },
   approver: { label: "Approver", desc: "Four-eyes approval of cleaning, golden records and stewardship changes." },
   analyst: { label: "Analyst", desc: "Upload, sync and run analysis; export results. No approvals." },
   viewer: { label: "Viewer", desc: "Read-only access to dashboards and findings." },
   auditor: { label: "Auditor", desc: "Read-only access including the audit log." },
 };
+const ROLE_TONE: Record<UserRole, ChipTone> = { admin: "danger", manager: "info", steward: "info", ai_reviewer: "warning", approver: "warning", analyst: "neutral", viewer: "neutral", auditor: "neutral" };
 const ROLE_OPTIONS = ROLES.map((r) => ({ value: r, label: ROLE_META[r].label }));
 type View = "users" | "roles" | "licence" | "audit";
 
@@ -71,7 +72,7 @@ export function UsersSurface() {
   const columns = useMemo<ColumnDef<User, unknown>[]>(() => [
     { id: "user", header: "User", meta: meta({ sticky: "start", width: 260 }), cell: ({ row }) => (
       <span><strong>{row.original.name}</strong><div className="ui-micro">{row.original.email}</div></span>) },
-    { id: "role", header: "Role", meta: meta({ width: 130 }), cell: ({ row }) => ROLE_META[row.original.role]?.label ?? row.original.role },
+    { id: "role", header: "Role", meta: meta({ width: 130 }), cell: ({ row }) => <Chip tone={ROLE_TONE[row.original.role]}>{ROLE_META[row.original.role]?.label ?? row.original.role}</Chip> },
     { id: "active", header: "Status", meta: meta({ width: 110 }), cell: ({ row }) => <StatusBadge status={row.original.is_active ? "ok" : "idle"}>{row.original.is_active ? "Active" : "Inactive"}</StatusBadge> },
     { id: "login", header: "Last sign-in", meta: meta({ width: 130 }), cell: ({ row }) => row.original.last_login ? relativeTime(row.original.last_login) : "Never" },
     { id: "since", header: "Member since", meta: meta({ width: 130 }), cell: ({ row }) => relativeTime(row.original.created_at) },
@@ -170,7 +171,7 @@ function RolesView({ matrix, users }: { matrix: Record<string, string[]> | undef
               <tbody>
                 {ROLES.map((r) => (
                   <tr key={r}>
-                    <td><strong>{ROLE_META[r].label}</strong><div className="ui-micro">{ROLE_META[r].desc}</div></td>
+                    <td><Chip tone={ROLE_TONE[r]}>{ROLE_META[r].label}</Chip><div className="ui-micro">{ROLE_META[r].desc}</div></td>
                     {actions.map((a) => <td key={a} style={{ textAlign: "center" }}>{matrix[r]?.includes(a) ? <span aria-label="Allowed">✓</span> : <span className="ui-visually-hidden">Not allowed</span>}</td>)}
                   </tr>
                 ))}
