@@ -235,3 +235,13 @@ def test_flat_upload_unsplittable_table(ddic):
     assert "LFA1" in frames.unsplittable
     s = _by_field(profile_frames(frames, ddic, ["LFA1"]))
     assert s["LAND1"]["distinct"] == 2 and s["NAME1"]["top_values"] is None
+
+
+def test_only_code_fields_are_mined(ddic):
+    """The creator (ERNAM) tracks the material type in the data, but is no rule."""
+    df = _materials(1000, violators=5)
+    df["MARA.ERNAM"] = np.where(df["MARA.MTART"] == "ROH", "BUYER1", "PLANNER1")
+    df.loc[500:504, "MARA.ERNAM"] = "TEMP1"  # imperfect, so MTART → ERNAM would be a candidate
+    _, deps = profile_module(TableFrames({"MARA": df}, ddic), ddic, ["MARA"])
+    assert {d["determinant"] for d in deps} == {"MARA.MTART"}
+    assert all(d["dependent"] != "MARA.ERNAM" for d in deps)

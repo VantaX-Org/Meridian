@@ -115,6 +115,9 @@ class Settings(BaseSettings):
     # Live SAP write-back (BAPI execution) stays off until per-module BAPI
     # parameter builders + commit/rollback are verified against the customer's
     # release. With it off, fixes are delivered as export files (LSMW/BAPI).
+    # Forced updates (min_version from HQ) only start inside this UTC window,
+    # e.g. "Sun 02:00-04:00" or "02:00-04:00" (daily). Empty = any time.
+    update_window: str = Field(default="", validation_alias="MERIDIAN_UPDATE_WINDOW")
     live_writeback_enabled: bool = Field(default=False, validation_alias="MERIDIAN_LIVE_WRITEBACK_ENABLED")
 
     # SAP RFC sync

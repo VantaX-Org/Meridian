@@ -1,0 +1,131 @@
+# SAP Concur user profiles (canonical view CONCUR_USER in
+# sap/dictionaries/canonical/concur.yaml). Booleans arrive as 'true' / 'false'.
+module: concur_users
+target_state: CONCUR
+rules:
+- id: CNU001
+  field: CONCUR_USER.LOGIN_ID
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Concur user has no login ID
+  why_it_matters: The login ID is the user's key in Concur. Reports, approvals and delegates all point to it.
+  rule_authority: sap_hard_constraint
+  sap_impact: The user cannot sign in, own reports or approve; the HR feed cannot update the profile.
+  fix_map:
+    __blank__: Re-extract the user list; a blank login ID points to an incomplete page or a broken import file.
+  record_fix_template: 'Concur user {CONCUR_USER.EMPLOYEE_ID}: login ID is {actual_value}.'
+- id: CNU002
+  field: CONCUR_USER.LOGIN_ID
+  check_class: uniqueness_check
+  fields:
+  - CONCUR_USER.LOGIN_ID
+  case_insensitive: true
+  severity: critical
+  dimension: uniqueness
+  message: Login ID is used by more than one Concur user
+  why_it_matters: Concur login IDs are unique and case-insensitive. Duplicates in an extract mean two profiles collide, so
+    reports and approvals land on the wrong person.
+  rule_authority: sap_hard_constraint
+  sap_impact: The HR import rejects or overwrites one of the profiles; reports and reimbursements go to the wrong employee.
+  fix_map:
+    __other__: Keep one profile per person and change the other login ID (usually to the employee's e-mail address).
+  record_fix_template: 'Concur user {CONCUR_USER.LOGIN_ID}: login ID is not unique.'
+- id: CNU003
+  field: CONCUR_USER.EMPLOYEE_ID
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Concur user has no employee ID
+  why_it_matters: The employee ID links the Concur profile to the HR master and to the employee vendor / payee in the ERP.
+    Without it reimbursements cannot be paid through the ERP and the HR feed cannot match the user.
+  rule_authority: sap_hard_constraint
+  sap_impact: The employee payable posting has no payee; the HR employee import creates a second profile.
+  fix_map:
+    __blank__: Maintain the employee ID (Company Admin > User Administration, or the HR feed) with the personnel number used
+      in the ERP.
+  record_fix_template: 'Concur user {CONCUR_USER.LOGIN_ID}: employee ID is {actual_value}.'
+- id: CNU004
+  field: CONCUR_USER.EMPLOYEE_ID
+  check_class: uniqueness_check
+  fields:
+  - CONCUR_USER.EMPLOYEE_ID
+  severity: critical
+  dimension: uniqueness
+  message: Employee ID is shared by more than one Concur user
+  why_it_matters: Concur requires a unique employee ID per user. Two users with the same employee ID are paid to the same
+    payee and post to the same employee account.
+  rule_authority: sap_hard_constraint
+  sap_impact: Reimbursements are paid to the wrong person; the employee account in the ERP mixes two people's expenses.
+  fix_map:
+    __other__: Correct the employee ID on the wrong profile, or deactivate the duplicate profile.
+  record_fix_template: 'Concur user {CONCUR_USER.LOGIN_ID}: employee ID {actual_value} is used by another user.'
+- id: CNU005
+  field: CONCUR_USER.EMAIL
+  check_class: null_check
+  applies_when:
+    CONCUR_USER.ACTIVE: ['true']
+  severity: high
+  dimension: completeness
+  message: Active Concur user has no e-mail address
+  why_it_matters: Concur sends approval requests, report returns and receipt forwarding to the e-mail address. An active user
+    without one misses every workflow notification.
+  rule_authority: best_practice
+  sap_impact: Approvals stall and returned reports go unnoticed; e-mailed receipts cannot be matched to the user.
+  fix_map:
+    __blank__: Maintain the e-mail address in the user profile or the HR feed.
+  record_fix_template: 'Concur user {CONCUR_USER.LOGIN_ID}: e-mail is {actual_value}.'
+- id: CNU006
+  field: CONCUR_USER.EMAIL
+  check_class: regex_check
+  pattern: ^[^@\s]+@[^@\s]+\.[^@\s]+$
+  severity: medium
+  dimension: validity
+  message: E-mail address is not well formed
+  why_it_matters: A malformed address silently drops every notification and blocks e-mail receipt forwarding.
+  rule_authority: best_practice
+  sap_impact: Workflow e-mails bounce; approvals stall.
+  fix_map:
+    __other__: Correct the e-mail address in the user profile or the HR feed.
+  record_fix_template: 'Concur user {CONCUR_USER.LOGIN_ID}: e-mail ''{actual_value}'' is not a valid address.'
+- id: CNU007
+  field: CONCUR_USER.COST_CENTER
+  check_class: null_check
+  applies_when:
+    CONCUR_USER.ACTIVE: ['true']
+  severity: high
+  dimension: completeness
+  message: Active Concur user has no cost centre
+  why_it_matters: The profile cost centre is the default cost object for every expense the user claims. Without it every
+    report needs manual allocation or posts to a default account.
+  rule_authority: sap_hard_constraint
+  sap_impact: ERP postings land on the default or suspense cost object; cost centre reporting is wrong.
+  fix_map:
+    __blank__: Maintain the cost centre (the ERP cost centre ID) in the user profile or the HR feed.
+  record_fix_template: 'Concur user {CONCUR_USER.LOGIN_ID}: cost centre is {actual_value}.'
+- id: CNU008
+  field: CONCUR_USER.LAST_NAME
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Concur user has no last name
+  why_it_matters: The name is printed on reports, approvals and payment files. Approvers and auditors cannot identify a user
+    without it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payment files and audit trails show an incomplete payee name.
+  fix_map:
+    __blank__: Maintain the name in the user profile or the HR feed.
+  record_fix_template: 'Concur user {CONCUR_USER.LOGIN_ID}: last name is {actual_value}.'
+- id: CNU009
+  field: CONCUR_USER.FIRST_NAME
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Concur user has no first name
+  why_it_matters: The name is printed on reports, approvals and payment files. Approvers and auditors cannot identify a user
+    without it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payment files and audit trails show an incomplete payee name.
+  fix_map:
+    __blank__: Maintain the name in the user profile or the HR feed.
+  record_fix_template: 'Concur user {CONCUR_USER.LOGIN_ID}: first name is {actual_value}.'

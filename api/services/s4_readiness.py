@@ -35,9 +35,8 @@ def membership() -> dict[str, tuple[str, str]]:
 def status_of(finding: dict[str, Any], impact: str) -> str:
     if not finding.get("affected_count"):
         return "green"
-    pr = finding.get("pass_rate")  # stored 0-100; the L1-L5 thresholds are fractions
     status = _classify_finding({"severity": finding.get("severity"),
-                                "pass_rate": None if pr is None else float(pr) / 100})
+                                "pass_rate": finding.get("pass_rate")})  # both on the 0-100 scale
     return "red" if impact == "blocking" else status
 
 

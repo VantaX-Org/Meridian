@@ -162,3 +162,11 @@ def test_composite_dqs_weights_modules_by_their_checks():
     assert out["modules"] == {"accounts_payable": 90.0, "material_master": 60.0} and out["capped"]
     assert composite_dqs([]) == {"composite": None, "dimension_scores": {}, "modules": {}}
     assert composite_dqs([None, {}])["composite"] is None
+
+
+def test_findings_check_class_resolved_from_rule_yaml():
+    from api.routes.findings import check_class_of
+
+    assert check_class_of("accounts_payable", "AP001") == "null_check"
+    assert check_class_of("material_master", "AP001") is None   # module is part of the key
+    assert check_class_of("accounts_payable", "CUSTOM-1") is None

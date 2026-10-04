@@ -40,7 +40,7 @@ test.describe("signed out", () => {
 
   test("every legacy route still resolves", async ({ page }) => {
     for (const href of ["/command-centre", "/sync", "/executive-report", "/business-process", "/match-rules",
-      "/settings/scoring", "/settings/field-mapping", "/workbench", "/process", "/admin", "/findings", "/cleaning", "/exceptions", "/dedup", "/golden-records", "/glossary", "/reports", "/notifications"]) {
+      "/settings/scoring", "/settings/field-mapping", "/workbench", "/process", "/admin", "/findings", "/cleaning", "/exceptions", "/dedup", "/golden-records", "/glossary", "/reports", "/notifications", "/settings", "/settings/rules", "/settings/ai", "/settings/licence", "/contracts"]) {
       const response = await page.request.get(href, { maxRedirects: 0 });
       expect([200, 307, 308], href).toContain(response.status());
     }

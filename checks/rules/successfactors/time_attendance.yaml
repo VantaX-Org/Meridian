@@ -227,3 +227,37 @@ rules:
       __blank__: Delete or cancel the time/absence records dated after the termination date, or correct the termination date
         if it is wrong.
     record_fix_template: 'Time record {TIMESHEET.USERID} {TIMESHEET.DATE}: after employment end date {EMPEMPLOYMENT.END_DATE}.'
+  - id: TIME018
+    field: TIMESHEET.DATE
+    check_class: cross_field_check
+    fail_when: '`TIMESHEET.DATE` < `EMPEMPLOYMENT.START_DATE`'
+    require_populated: true
+    severity: medium
+    dimension: consistency
+    message: Time is recorded before the employment started
+    why_it_matters: An employee cannot work or take leave before the hire date. Time before hire is usually entered on the
+      wrong employee or the hire date is wrong.
+    rule_authority: best_practice
+    sap_impact: Payroll pays hours or leave before the hire date; time account balances start with time that is not owed.
+    fix_map:
+      __other__: Delete or move the time entry to the right employee, or correct the hire date.
+    record_fix_template: 'Employee {TIMESHEET.USERID}: time on {TIMESHEET.DATE}, hired {EMPEMPLOYMENT.START_DATE}.'
+  - id: TIME019
+    field: TIMESHEET.DATE
+    check_class: cross_field_check
+    fail_when: '`TIMESHEET.DATE` > @today'
+    applies_when:
+      TIMESHEET.APPROVAL_STATUS:
+      - APPROVED
+      TIMESHEET.ABSENCE_TYPE:
+        blank: true
+    severity: medium
+    dimension: validity
+    message: Approved working time is recorded for a future date
+    why_it_matters: Absences can be planned ahead, but worked hours can only be recorded once worked. Approved working time
+      for a future date was entered in advance or under the wrong date.
+    rule_authority: best_practice
+    sap_impact: Payroll pays hours not yet worked; overtime and time account balances are overstated.
+    fix_map:
+      __other__: Reject the time sheet and ask the employee to record the hours on the day they were worked.
+    record_fix_template: 'Employee {TIMESHEET.USERID}: approved working time on {TIMESHEET.DATE}, which is in the future.'

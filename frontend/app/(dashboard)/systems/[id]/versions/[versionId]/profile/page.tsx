@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
-import { Banner, Chip, KpiRail, Panel, Select, Stack, Stat, Text } from "@/components/aurora";
+import { Banner, Button, Chip, KpiRail, Panel, Select, Stack, Stat, Text } from "@/components/aurora";
 import { PageHead } from "@/components/meridian/atoms";
 import {
+  acceptDependency,
   getVersionProfile,
   type FieldDependency,
   type FieldStats,
@@ -15,6 +17,7 @@ import {
 } from "@/lib/api/field-profile";
 import { getSystemVersions } from "@/lib/api/system-objects";
 import { formatModuleName } from "@/lib/format";
+import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 
 const th = "px-3 py-2 text-left font-medium text-[var(--aurora-fg-tertiary)]";
@@ -124,14 +127,25 @@ function TablePanel({ table }: { table: TableProfile }) {
   );
 }
 
-function HiddenRules({ deps }: { deps: FieldDependency[] }) {
+function HiddenRules({ deps, module }: { deps: FieldDependency[]; module: string | null }) {
+  const qc = useQueryClient();
+  const canAccept = useRole().can("manage_rules") && !!module;
+  const accept = useMutation({
+    mutationFn: (d: FieldDependency) =>
+      acceptDependency({ module: module ?? "", determinant: d.determinant, dependent: d.dependent }),
+    onSuccess: (r) => {
+      toast.success(`${r.name.split(":")[0]} added — it runs on the next analysis`);
+      void qc.invalidateQueries({ queryKey: ["version-profile"] });
+    },
+    onError: () => toast.error("Could not add the check"),
+  });
   return (
     <Panel title="Hidden rules (candidates)">
       <Stack gap={3}>
         <Text variant="text-small" tone="secondary">
           Within one table, one field decides another for at least 99 % — but not all — of the records. The
-          disagreeing records are either errors or exceptions to a rule nobody wrote down. Review before turning one
-          into a check.
+          disagreeing records are either errors or exceptions to a rule nobody wrote down. Accept one to run it as a
+          check on every later analysis.
         </Text>
         {deps.length === 0 ? (
           <Text tone="muted">No candidate rules in this object&apos;s data.</Text>
@@ -140,7 +154,7 @@ function HiddenRules({ deps }: { deps: FieldDependency[] }) {
             <table className="w-full text-[13px]">
               <thead><tr>
                 <th className={th}>Rule</th><th className={`${th} text-right`}>Holds for</th>
-                <th className={`${th} text-right`}>Disagree</th><th className={th}>Sample records</th>
+                <th className={`${th} text-right`}>Disagree</th><th className={th}>Sample records</th><th className={th} />
               </tr></thead>
               <tbody>
                 {deps.map((d) => (
@@ -159,6 +173,15 @@ function HiddenRules({ deps }: { deps: FieldDependency[] }) {
                       {d.violations > d.sample_keys.length && (
                         <div className="text-[var(--aurora-fg-muted)]">+{(d.violations - d.sample_keys.length).toLocaleString()} more</div>
                       )}
+                    </td>
+                    <td className={`${td} text-right`}>
+                      {d.accepted ? (
+                        <Chip tone="success">Check</Chip>
+                      ) : canAccept ? (
+                        <Button size="sm" variant="ghost" disabled={accept.isPending} onClick={() => accept.mutate(d)}>
+                          Accept as check
+                        </Button>
+                      ) : null}
                     </td>
                   </tr>
                 ))}
@@ -225,7 +248,7 @@ export default function VersionProfilePage() {
               sample; the checks themselves ran on every record.
             </Banner>
           )}
-          <HiddenRules deps={data.dependencies} />
+          <HiddenRules deps={data.dependencies} module={data.object} />
           {tables.map((t) => <TablePanel key={t.table} table={t} />)}
         </>
       )}

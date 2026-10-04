@@ -79,3 +79,15 @@ def test_every_join_field_exists_in_the_dictionary():
                 missing.append(f"{e.child}.{f}")
     assert missing == []
     assert all(d.table(t) for t in anchors.values())
+
+
+def test_join_dedups_parent_keys_after_trimming():
+    # SAP pads CHAR keys; 'M1' and 'M1 ' are the same material once trimmed and
+    # must not fan the child out (was: "Length mismatch: Expected axis has ...")
+    ekpo = pd.DataFrame({"EKPO.EBELN": ["P1", "P1"], "EKPO.EBELP": ["10", "20"],
+                         "EKPO.MATNR": ["M1", "M2"], "EKPO.MATKL": ["A", "B"]})
+    mara = pd.DataFrame({"MARA.MATNR": ["M1", "M1 ", "M2"], "MARA.MATKL": ["A", "Z", "B"]})
+    frames = TableFrames({"EKPO": ekpo, "MARA": mara}, module="mm_purchasing")
+    frame, grain, _ = frames.frame_for(["EKPO.MATKL", "MARA.MATKL"])
+    assert grain == "EKPO" and len(frame) == 2
+    assert frame["MARA.MATKL"].tolist() == ["A", "B"]
