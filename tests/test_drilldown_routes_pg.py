@@ -151,8 +151,9 @@ def test_drilldown_routes(app_engine):
             # records of one check in one version
             r = (await c.get(f"/api/v1/versions/{v1}/findings/CHK-A/records", headers=h)).json()
             assert r["total"] == 2
-            assert r["records"] == [{"record_key": "LIFNR=1", "grain": "LFA1", "module": "accounts_payable"},
-                                    {"record_key": "LIFNR=2", "grain": "LFA1", "module": "accounts_payable"}]
+            assert r["records"] == [
+                {"record_key": "LIFNR=1", "grain": "LFA1", "module": "accounts_payable", "field_values": None},
+                {"record_key": "LIFNR=2", "grain": "LFA1", "module": "accounts_payable", "field_values": None}]
             page = (await c.get(f"/api/v1/versions/{v1}/findings/CHK-A/records", headers=h,
                                 params={"limit": 1, "offset": 1})).json()
             assert page["total"] == 2 and [x["record_key"] for x in page["records"]] == ["LIFNR=2"]

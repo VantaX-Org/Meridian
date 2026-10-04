@@ -81,6 +81,9 @@ class CheckResult(BaseModel):
     # Every failing record's SAP key ("BUKRS=1000|LIFNR=0000100001"), capped at
     # MAX_FAILING_KEYS. Persisted to finding_records — not part of details JSON.
     failing_record_keys: Optional[list[str]] = None
+    # The rule's column values of each failing record, parallel to failing_record_keys.
+    # Privacy-sensitive columns (checks.profiling.is_sensitive) are never kept: MASKED.
+    failing_record_values: Optional[list[dict]] = None
     grain: Optional[str] = None  # table whose records were evaluated (e.g. LFB1)
 
 
@@ -88,6 +91,21 @@ class CheckResult(BaseModel):
 # key list is truncated (details["failing_keys_truncated"] = True).
 MAX_FAILING_KEYS = 100_000
 SAMPLE_SIZE = 10
+MASKED = "\u2022\u2022\u2022"
+
+
+def failing_values(failing_df: pd.DataFrame, columns: list[str]) -> list[dict]:
+    """The failing records' values of ``columns`` ("TABLE.FIELD"), sensitive ones masked."""
+    from checks.profiling import is_sensitive  # profiling imports this module
+    cols = [c for c in dict.fromkeys(columns) if c in failing_df.columns]
+    if not cols:
+        return [{} for _ in range(len(failing_df))]
+    out = failing_df[cols].astype("string").fillna("")
+    for c in cols:
+        table, _, field = c.rpartition(".")
+        if is_sensitive(table, field):
+            out[c] = MASKED
+    return out.to_dict("records")
 
 
 def is_blank(series: pd.Series) -> pd.Series:
@@ -244,6 +262,7 @@ class BaseCheck(ABC):
             message=self.rule.get("message", ""),
             details=safe_json(details),
             failing_record_keys=[str(k) for k in all_keys.head(MAX_FAILING_KEYS)] if affected else [],
+            failing_record_values=failing_values(failing_df.head(MAX_FAILING_KEYS), self.columns()) if affected else [],
             grain=grain,
         )
 
