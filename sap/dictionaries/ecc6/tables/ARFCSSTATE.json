@@ -1,0 +1,237 @@
+{
+ "table": "ARFCSSTATE",
+ "description": "Description of ARFC Call Status (Send)",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 3,
+   "name": "ARFCIPID",
+   "key": true,
+   "data_element": "ARFCIPID",
+   "domain": "ARFCIPID",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Host ID (IP ID",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "ARFCPID",
+   "key": true,
+   "data_element": "ARFCPID",
+   "domain": "ARFCPID",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Process ID",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "ARFCTIME",
+   "key": true,
+   "data_element": "ARFCTIME",
+   "domain": "ARFCTIME",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Time Stamp",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "ARFCTIDCNT",
+   "key": true,
+   "data_element": "ARFCTIDCNT",
+   "domain": "ARFCTIDCNT",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Transaction ID (LUW -> COMMIT WORK)",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "ARFCDEST",
+   "key": true,
+   "data_element": "RFCDEST",
+   "domain": "RFCDEST",
+   "type": "CHAR",
+   "length": 32,
+   "decimals": 0,
+   "description": "Logical Destination (Specified in Function Call)",
+   "check_table": "RFCDES"
+  },
+  {
+   "pos": 8,
+   "name": "ARFCLUWCNT",
+   "key": true,
+   "data_element": "ARFCLUWCNT",
+   "domain": "ARFCLUWCNT",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Counter within a transaction (LUW)",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "ARFCSTATE",
+   "key": false,
+   "data_element": "ARFCSTATE",
+   "domain": "ARFCSTATE",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Status of an ARFC call (RECORDED,CPICERR,MAILED,READ..)",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "ARFCFNAM",
+   "key": false,
+   "data_element": "RS38L_FNAM",
+   "domain": "FUNCNAME",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Name of Function Module",
+   "check_table": "TFDIR"
+  },
+  {
+   "pos": 11,
+   "name": "ARFCRETURN",
+   "key": false,
+   "data_element": "ARFCRETURN",
+   "domain": "SYST_FLAG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Reply expected",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "ARFCUZEIT",
+   "key": false,
+   "data_element": "SYUZEIT",
+   "domain": "SYTIME",
+   "type": "TIMS",
+   "length": 6,
+   "decimals": 0,
+   "description": "System Time",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "ARFCDATUM",
+   "key": false,
+   "data_element": "SYDATUM",
+   "domain": "SYDATS",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "System Date",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "ARFCUSER",
+   "key": false,
+   "data_element": "SYUNAME",
+   "domain": "SYCHAR12",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "User Name",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "ARFCRETRYS",
+   "key": false,
+   "data_element": "RETRY",
+   "domain": "NUM04",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "No. of attempts",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "ARFCTCODE",
+   "key": false,
+   "data_element": "SYTCODE",
+   "domain": "TCODE",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "Transaction Code",
+   "check_table": "*"
+  },
+  {
+   "pos": 17,
+   "name": "ARFCRHOST",
+   "key": false,
+   "data_element": "RFCCHAR8",
+   "domain": "RFCCHAR8",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "RFCCHAR8",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "ARFCMSG",
+   "key": false,
+   "data_element": "SYMSGV",
+   "domain": "SYCHAR50",
+   "type": "CHAR",
+   "length": 50,
+   "decimals": 0,
+   "description": "Message Variable",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "ARFCRESERV",
+   "key": false,
+   "data_element": "SYULINE",
+   "domain": "SYCHAR255",
+   "type": "CHAR",
+   "length": 255,
+   "decimals": 0,
+   "description": "Horizontal Line",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "HASH",
+   "key": false,
+   "data_element": "ARFCHASH",
+   "domain": "ARFCHASH",
+   "type": "RAW",
+   "length": 40,
+   "decimals": 0,
+   "description": "HASH for tRFC/qRFC",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "ARFCDEST",
+   "foreign_table": "RFCDES",
+   "foreign_field": "RFCDEST"
+  },
+  {
+   "field": "ARFCFNAM",
+   "foreign_table": "TFDIR",
+   "foreign_field": "FUNCNAME"
+  }
+ ]
+}

@@ -88,6 +88,7 @@ class DependencyOut(BaseModel):
     rows: int
     violations: int
     sample_keys: list[str]
+    accepted: bool = False  # already a check (rules.source = 'mined')
 
 
 class ProfileOut(BaseModel):
@@ -133,8 +134,12 @@ async def version_profile(system_id: uuid.UUID, version_id: uuid.UUID,
         t.fields.append(FieldProfileOut(field=r.field, stats=stats))
 
     deps = (await db.execute(text("""
-        SELECT table_name, determinant, dependent, support, populated_rows, violations, sample_keys
-          FROM field_dependencies
+        SELECT table_name, determinant, dependent, support, populated_rows, violations, sample_keys,
+               EXISTS (SELECT 1 FROM rules r WHERE r.tenant_id = d.tenant_id AND r.module = d.module
+                          AND r.source = 'mined' AND r.enabled
+                          AND r.conditions->>'determinant' = d.determinant
+                          AND r.conditions->>'field' = d.dependent) AS accepted
+          FROM field_dependencies d
          WHERE tenant_id = :tid AND version_id = :v AND module = :m
          ORDER BY table_name, support DESC, determinant, dependent
     """), {"tid": tid, "v": version_id, "m": module})).fetchall()
@@ -142,6 +147,7 @@ async def version_profile(system_id: uuid.UUID, version_id: uuid.UUID,
         version_id=str(version_id), object=module, objects=objects, tables=list(tables.values()),
         dependencies=[DependencyOut(table=d.table_name, determinant=d.determinant, dependent=d.dependent,
                                     support=float(d.support), rows=int(d.populated_rows),
-                                    violations=int(d.violations), sample_keys=[str(k) for k in d.sample_keys or []])
+                                    violations=int(d.violations), sample_keys=[str(k) for k in d.sample_keys or []],
+                                    accepted=bool(d.accepted))
                       for d in deps],
     )

@@ -4,6 +4,7 @@ import logging
 import os
 import traceback
 
+import pandas as pd
 import yaml
 
 from sqlalchemy import text
@@ -44,6 +45,24 @@ def _live_reference_values(engine, tenant_id: str, metadata: dict) -> dict[str, 
                 if val not in (None, ""):
                     out.setdefault(f"{table}.{col}", set()).add(str(val).strip())
     return out
+
+
+def _live_config_frames(engine, tenant_id: str, metadata: dict, tables: set[str]) -> dict[str, pd.DataFrame]:
+    """Live configuration tables (T370T) as ``TABLE.FIELD`` frames, for the
+    population lookups of checks/population.py; the extraction stores them as
+    config snapshots, not data tables."""
+    system_id = metadata.get("system_id")
+    if not system_id or not tables:
+        return {}
+    with Session(engine) as session:
+        session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        rows = session.execute(
+            text("SELECT config_table, config_data FROM config_snapshots "
+                 "WHERE system_id = :sid AND source = 'live' AND config_table = ANY(:t) ORDER BY synced_at"),
+            {"sid": system_id, "t": sorted(tables)},
+        ).fetchall()
+    # the latest snapshot per table wins
+    return {t: pd.DataFrame(data or []).rename(columns=lambda c, t=t: f"{t}.{c}") for t, data in rows}
 
 
 def rule_set_fingerprint(modules: list[str], overrides: dict, generated: list[dict] | None = None) -> str:
@@ -138,7 +157,7 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
                 {"vid": version_id},
             ).fetchone()
             tenant_row = session.execute(
-                text("SELECT dqs_weights FROM tenants WHERE id = :tid"), {"tid": str(tenant_id)},
+                text("SELECT dqs_weights, cost_model FROM tenants WHERE id = :tid"), {"tid": str(tenant_id)},
             ).fetchone()
             # remember where the dataset lives (migration analysis re-reads it)
             session.execute(
@@ -150,6 +169,7 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
         metadata = (meta_row[0] if meta_row else None) or {}
         modules = metadata.get("modules", [])
         tenant_weights = (tenant_row[0] if tenant_row else None) or {}
+        cost_model = (tenant_row[1] if tenant_row else None) or {}
 
         from api.services.source_design import dictionary_for
         from workers.dataset import load_dataset
@@ -211,6 +231,8 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
 
         all_results = []
         live_refs = _live_reference_values(engine, tenant_id, metadata)
+        from checks.population import lookup_tables
+        frames.config = _live_config_frames(engine, tenant_id, metadata, lookup_tables() - set(frames.frames))
         from checks.overrides import load_overrides
         with Session(engine) as session:
             session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
@@ -237,6 +259,14 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
             fs_rules = fs_rules + material_rules
             from checks.field_status_rules import suppressed_fields
             fs_suppressed = suppressed_fields(fs_resolutions, fs_material)
+            # dependencies mined from profiled data that a steward accepted as checks (profile page)
+            mined_rules = [
+                {"id": r.name.split(":", 1)[0], "module": r.module, "severity": r.severity,
+                 "dimension": "consistency", "rule_authority": "customer_configured",
+                 "message": r.description, **(r.conditions or {})}
+                for r in session.execute(text(
+                    "SELECT name, module, severity, description, conditions FROM rules "
+                    "WHERE source = 'mined' AND enabled AND module = ANY(:m)"), {"m": list(modules)})]
         # misplaced values, placeholders, swaps, dead-in-text records (checks/value_placement.py)
         from checks import config_rules, country_rules, value_placement
         from checks.runner import _find_module_yaml
@@ -249,7 +279,7 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
             vp_rules += value_placement.generate(m, static, dictionary)
             vp_rules += country_rules.generate(m, static, fs_config, dictionary)  # T005 / BNKA
             vp_rules += config_rules.generate(m, fs_config, dictionary)  # T685A / T582A
-        fs_rules = fs_rules + vp_rules + authored
+        fs_rules = fs_rules + vp_rules + authored + mined_rules
         module_count = max(len(modules), 1)
         outliers: dict[str, dict] = {}
         for idx, module_name in enumerate(modules):
@@ -271,7 +301,8 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
                 total_rows=row_count,
             )
             results = execute_checks(module_name, frames, tenant_id, reference_values=live_refs,
-                                     overrides=rule_overrides, extra_rules=fs_rules, suppressed=fs_suppressed)
+                                     overrides=rule_overrides, extra_rules=fs_rules, suppressed=fs_suppressed,
+                                     cost_model=cost_model)
             all_results.extend(results)
             # joined frames are cached per pass; at millions of rows holding them all runs out of memory
             frames._cache.clear()
@@ -379,8 +410,23 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
         except Exception as e:
             logger.warning(f"root_cause enrichment failed, continuing: {e}")
 
+        # Step 6e: cost of poor data quality + impact ranking. Rule results are priced
+        # in the runner (from their failing records); Z-table and DDIC results here,
+        # from their severity (no failing frame to read a value field from).
+        from checks import cost as dq_cost
+        for r in all_results:
+            if r.error:
+                continue
+            if r.cost_at_risk is None:
+                r.cost_at_risk, r.cost_formula = dq_cost.price(
+                    dq_cost.resolve({"id": r.check_id, "module": r.module, "severity": r.severity}, cost_model),
+                    r.affected_count)
+            blocked = dq_cost.blocked_features(r.check_id)
+            if blocked and r.affected_count:
+                r.details = {**(r.details or {}), "blocked_features": blocked}
+
         # Step 7-8: Score all modules
-        from api.services.scoring import score_all_modules
+        from api.services.scoring import score_all_modules, scoring_config
 
         # suppressed rules / records (rule_suppressions) stay out of the score until they expire
         dqs_results = score_all_modules(lifecycle.for_scoring(all_results, sup_rules, sup_records), tenant_weights)
@@ -408,6 +454,11 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
                     "rule_context": json.dumps(check_result.rule_context) if check_result.rule_context else "{}",
                     "value_fix_map": json.dumps(check_result.value_fix_map) if check_result.value_fix_map else "{}",
                     "record_fixes": json.dumps(check_result.record_fixes) if check_result.record_fixes else "[]",
+                    "cost_at_risk": check_result.cost_at_risk,
+                    "cost_formula": check_result.cost_formula,
+                    "impact_score": dq_cost.impact(check_result.cost_at_risk,
+                                                   len((check_result.details or {}).get("blocked_features") or []),
+                                                   check_result.severity),
                 }
                 for check_result in all_results
             ]
@@ -418,21 +469,25 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
                         INSERT INTO findings (
                             id, version_id, tenant_id, module, check_id, severity,
                             dimension, affected_count, total_count, pass_rate, details,
-                            rule_context, value_fix_map, record_fixes
+                            rule_context, value_fix_map, record_fixes,
+                            cost_at_risk, cost_formula, impact_score
                         ) VALUES (
                             gen_random_uuid(), :version_id, :tenant_id, :module, :check_id,
                             :severity, :dimension, :affected_count, :total_count, :pass_rate,
                             CAST(:details AS jsonb),
                             CAST(:rule_context AS jsonb),
                             CAST(:value_fix_map AS jsonb),
-                            CAST(:record_fixes AS jsonb)
+                            CAST(:record_fixes AS jsonb),
+                            :cost_at_risk, :cost_formula, :impact_score
                         )
                         ON CONFLICT (version_id, check_id, tenant_id) DO UPDATE SET
                             module = EXCLUDED.module, severity = EXCLUDED.severity,
                             dimension = EXCLUDED.dimension, affected_count = EXCLUDED.affected_count,
                             total_count = EXCLUDED.total_count, pass_rate = EXCLUDED.pass_rate,
                             details = EXCLUDED.details, rule_context = EXCLUDED.rule_context,
-                            value_fix_map = EXCLUDED.value_fix_map, record_fixes = EXCLUDED.record_fixes
+                            value_fix_map = EXCLUDED.value_fix_map, record_fixes = EXCLUDED.record_fixes,
+                            cost_at_risk = EXCLUDED.cost_at_risk, cost_formula = EXCLUDED.cost_formula,
+                            impact_score = EXCLUDED.impact_score
                     """),
                     finding_rows,
                 )
@@ -460,7 +515,7 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
                 # unless an exception or write-back record still points at them
                 session.execute(text("""
                     DELETE FROM findings f
-                     WHERE f.version_id = :vid AND NOT (f.check_id = ANY(:ids))
+                     WHERE f.version_id = :vid AND NOT (f.check_id = ANY(:ids)) AND f.finding_type = 'rule'
                        AND NOT EXISTS (SELECT 1 FROM exceptions e WHERE e.linked_finding_id = f.id)
                        AND NOT EXISTS (SELECT 1 FROM write_back_log w WHERE w.finding_id = f.id)
                 """), {"vid": version_id, "ids": [r.check_id for r in all_results]})
@@ -486,7 +541,8 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
                     SET status = 'complete', dqs_summary = CAST(:summary AS jsonb),
                         metadata = COALESCE(metadata, '{}'::jsonb)
                             || jsonb_build_object('rule_set', CAST(:rs AS text), 'analysed_at', CAST(:at AS text),
-                                                  'field_usage', CAST(:fu AS jsonb), 'outliers', CAST(:ol AS jsonb))
+                                                  'field_usage', CAST(:fu AS jsonb), 'outliers', CAST(:ol AS jsonb),
+                                                  'scoring', CAST(:sc AS jsonb))
                             || jsonb_build_object('analyses', COALESCE(metadata->'analyses', '[]'::jsonb)
                                                               || jsonb_build_array(CAST(:an AS jsonb)))
                     WHERE id = :vid AND tenant_id = :tid
@@ -497,6 +553,8 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
                     "summary": json.dumps(dqs_summary),
                     "rs": analysis["rule_set"], "at": analysis["at"], "an": json.dumps(analysis),
                     "ol": json.dumps(outliers),
+                    # the scoring config this run's DQS was computed under (GET /scores/history)
+                    "sc": json.dumps(scoring_config(tenant_weights)),
                     # a field systematically used for other data (>30 % of ≥20 values): one field-level
                     # finding, not scored — the records are already flagged by its VP- rule
                     "fu": json.dumps([{"field": r.field, "module": r.module, "share": round(r.affected_count / r.total_count, 3),

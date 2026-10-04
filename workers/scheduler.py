@@ -993,6 +993,10 @@ celery_app.conf.beat_schedule = {
         "schedule": crontab(hour=4, minute=45, day_of_week=1),
         "args": ("weekly",),
     },
+    "forced-update-check-every-15min": {
+        "task": "forced_update_check",
+        "schedule": crontab(minute="3,18,33,48"),  # waits for idle workers + update window
+    },
     "contract-freshness-hourly": {
         "task": "workers.scheduler.contract_freshness",
         "schedule": crontab(minute=7),

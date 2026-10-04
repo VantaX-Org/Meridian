@@ -22,7 +22,7 @@ from sqlalchemy import text
 logger = logging.getLogger("meridian.tenant_seed")
 
 _ROOT = Path(__file__).resolve().parents[2]
-_CATEGORIES = ("ecc", "successfactors", "warehouse")
+_CATEGORIES = ("ecc", "successfactors", "warehouse", "concur", "ariba")
 
 
 @lru_cache(maxsize=1)
