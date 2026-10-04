@@ -21,8 +21,8 @@ from sap.process_definitions import PROCESS_DEFINITIONS
 logger = logging.getLogger("meridian.services.process_writer")
 
 # Thresholds for DQ status classification
-_PASS_RATE_GREEN = 0.95
-_PASS_RATE_AMBER = 0.70
+_PASS_RATE_GREEN = 95.0  # findings.pass_rate is 0-100 (checks/base.py)
+_PASS_RATE_AMBER = 70.0
 
 # Severity levels that force red regardless of pass_rate
 _RED_SEVERITIES = {"critical", "high"}
