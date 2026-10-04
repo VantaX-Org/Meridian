@@ -1,11 +1,12 @@
 import logging
+from typing import Any
 from dataclasses import asdict
 from pathlib import Path
 
 import pandas as pd
 import yaml
 
-from checks.base import BaseCheck, CheckResult, sap_number
+from checks.base import BaseCheck, CheckResult, as_of_time, sap_number
 from checks.frames import TableFrames, tables_of
 from checks.population import exclude, exclusions, fields_for
 from checks.fix_generator import FixGenerator
@@ -29,7 +30,7 @@ from checks.types.similarity_check import SimilarityCheck
 logger = logging.getLogger("meridian.checks")
 
 
-def apply_context(df: pd.DataFrame, applies_when: dict | None) -> pd.DataFrame:
+def apply_context(df: pd.DataFrame, applies_when: dict | None, as_of: Any = None) -> pd.DataFrame:
     """Filter `df` to rows that satisfy every condition in `applies_when`.
 
     `applies_when` is a dict of {field: allowed_values}; AND-combined.
@@ -40,6 +41,9 @@ def apply_context(df: pd.DataFrame, applies_when: dict | None) -> pd.DataFrame:
         from the extract — lets the caller treat the rule as "not applicable
         to this extract" via the existing None-result pathway
       - filtered df otherwise
+
+    `as_of` is the date `older_than_days` counts back from (the run's snapshot
+    date; now when None).
 
     Example: a rule with `applies_when: {MARA.MTART: ["FERT", "HALB"]}`
     runs only against finished/semi-finished materials; total_count and
@@ -71,7 +75,7 @@ def apply_context(df: pd.DataFrame, applies_when: dict | None) -> pd.DataFrame:
                 mask &= sap_number(values).gt(float(allowed["gt"])).fillna(False)
             if "older_than_days" in allowed:
                 from checks.types.domain_value_check import _parse_dates
-                cutoff = pd.Timestamp.now() - pd.Timedelta(days=float(allowed["older_than_days"]))
+                cutoff = as_of_time(as_of) - pd.Timedelta(days=float(allowed["older_than_days"]))
                 mask &= (_parse_dates(values) < cutoff).fillna(False)
         else:
             mask &= values.isin({str(v).strip() for v in allowed}).fillna(False)
@@ -155,7 +159,7 @@ def target_columns(rule: dict) -> list[str]:
     return [f"{t}.{f}" for f in list(rule["target_fields"]) + list(rule.get("target_when") or {})]
 
 
-def _with_targets(rule: dict, frames: TableFrames) -> dict | str | None:
+def _with_targets(rule: dict, frames: TableFrames, as_of: Any = None) -> dict | str | None:
     """The rule with its target key set; None when the target table was not read; a reason
     when it was read incompletely (a reference to a record outside the read is not missing)."""
     t = rule["target_table"]
@@ -165,7 +169,7 @@ def _with_targets(rule: dict, frames: TableFrames) -> dict | str | None:
     if target is None or any(c not in target.columns for c in target_columns(rule)):
         return None
     when = {f"{t}.{k}": v for k, v in (rule.get("target_when") or {}).items()}
-    target = apply_context(target, when)
+    target = apply_context(target, when, as_of)
     return {**rule, "_target_values": set(key_of(target, [f"{t}.{f}" for f in rule["target_fields"]]))}
 
 
@@ -178,8 +182,15 @@ def get_required_columns(module_name: str) -> set[str]:
 
 
 def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[str]] | None = None,
-             suppressed: dict[str, tuple[list[str], set[str]]] | None = None) -> tuple[dict, CheckResult | None]:
-    """Evaluate one rule at its grain: (rule as evaluated, result or None when not applicable)."""
+             suppressed: dict[str, tuple[list[str], set[str]]] | None = None, *,
+             as_of: Any = None) -> tuple[dict, CheckResult | None]:
+    """Evaluate one rule at its grain: (rule as evaluated, result or None when not applicable).
+
+    ``as_of`` is the date date-relative rules measure age against (the version's
+    snapshot date); None means now."""
+    if as_of is not None:
+        as_of = as_of_time(as_of)
+        rule = {**rule, "_as_of": as_of.isoformat()}
     check_cls = REGISTRY[rule["check_class"]]
     partial = sorted(set(tables_of(rule_columns(rule))) & getattr(frames, "incomplete", set()))
     if rule.get("check_class") in _WHOLE_GROUP and partial:
@@ -190,7 +201,7 @@ def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[st
     if rule.get("check_class") in ("referential_check", "domain_value_check"):
         rule = _with_reference(rule, frames.dictionary, reference_values or {})
     if rule.get("check_class") == "exists_check":
-        resolved = _with_targets(rule, frames)
+        resolved = _with_targets(rule, frames, as_of)
         if resolved is None:
             return rule, None  # the referenced table is not in the extract
         if isinstance(resolved, str):
@@ -215,7 +226,7 @@ def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[st
             except ValueError:
                 pass
         frame, excluded = exclude(frame, excl, frames)
-        scoped = apply_context(frame, rule.get("applies_when"))
+        scoped = apply_context(frame, rule.get("applies_when"), as_of)
         if len(scoped) == 0:
             return rule, None  # no records in the rule's population
         result = check_cls(rule).run(scoped, key_cols=key_cols, grain=grain)
@@ -235,6 +246,8 @@ def run_checks(
     overrides: dict[str, dict] | None = None,
     extra_rules: list[dict] | None = None,
     suppressed: dict[str, tuple[list[str], set[str]]] | None = None,
+    *,
+    as_of: Any = None,
 ) -> list[CheckResult]:
     """Load a module's YAML rules and evaluate each at its correct record grain.
 
@@ -243,6 +256,8 @@ def run_checks(
     ``reference_values`` maps ``TABLE.FIELD`` of a configuration table (e.g.
     ``T077Y.KTOKK``) to the values read live from the source system; referential
     rules naming that ``reference_table`` use them instead of their SAP-standard list.
+    ``as_of`` is the snapshot date that ageing, freshness and future-date rules
+    measure against; None means now (wall clock).
     """
     with open(_find_module_yaml(module_name), "r") as f:
         config = yaml.safe_load(f)
@@ -273,7 +288,7 @@ def run_checks(
             result_rules.append(rule)
             continue
 
-        rule, result = run_rule(rule, frames, reference_values, suppressed)
+        rule, result = run_rule(rule, frames, reference_values, suppressed, as_of=as_of)
         if result is None:
             skipped += 1
             continue

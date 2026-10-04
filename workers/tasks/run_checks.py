@@ -46,6 +46,28 @@ def _live_reference_values(engine, tenant_id: str, metadata: dict) -> dict[str, 
     return out
 
 
+def snapshot_as_of(session, metadata: dict) -> str | None:
+    """The date the version's data was read from the source: what ageing, freshness
+    and future-date rules measure against, so a re-analysis of an old version does
+    not age it by the wall clock. In order: an explicit ``as_of`` (set it when the
+    source system is itself an older copy), the extraction's ``downloaded_at``, the
+    sync run's start. None (uploads) means now."""
+    import pandas as pd
+    candidates = [metadata.get("as_of"), metadata.get("downloaded_at")]
+    if metadata.get("sync_run_id"):
+        row = session.execute(text("SELECT started_at FROM sync_runs WHERE id = :id"),
+                              {"id": str(metadata["sync_run_id"])}).fetchone()
+        candidates.append(row[0] if row else None)
+    for value in candidates:
+        if value in (None, ""):
+            continue
+        try:
+            return pd.Timestamp(value).isoformat()
+        except (ValueError, TypeError):
+            logger.warning(f"ignoring unparseable as-of date {value!r}")
+    return None
+
+
 def rule_set_fingerprint(modules: list[str], overrides: dict, generated: list[dict] | None = None) -> str:
     """Identifies the rules a run applied (YAML + governance + app version) — trend
     points produced by different rule sets are flagged as not comparable."""
@@ -140,11 +162,14 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
             tenant_row = session.execute(
                 text("SELECT dqs_weights FROM tenants WHERE id = :tid"), {"tid": str(tenant_id)},
             ).fetchone()
-            # remember where the dataset lives (migration analysis re-reads it)
+            as_of = snapshot_as_of(session, (meta_row[0] if meta_row else None) or {})
+            # remember where the dataset lives (migration analysis re-reads it) and the
+            # date its date-relative rules were measured against
             session.execute(
                 text("UPDATE analysis_versions SET metadata = COALESCE(metadata, '{}'::jsonb) "
-                     "|| jsonb_build_object('dataset_path', CAST(:p AS text)) WHERE id = :vid"),
-                {"vid": version_id, "p": parquet_path},
+                     "|| jsonb_build_object('dataset_path', CAST(:p AS text), "
+                     "'checks_as_of', CAST(:a AS text)) WHERE id = :vid"),
+                {"vid": version_id, "p": parquet_path, "a": as_of},
             )
             session.commit()
         metadata = (meta_row[0] if meta_row else None) or {}
@@ -267,7 +292,8 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
                 total_rows=row_count,
             )
             results = execute_checks(module_name, frames, tenant_id, reference_values=live_refs,
-                                     overrides=rule_overrides, extra_rules=fs_rules, suppressed=fs_suppressed)
+                                     overrides=rule_overrides, extra_rules=fs_rules, suppressed=fs_suppressed,
+                                     as_of=as_of)
             all_results.extend(results)
             # joined frames are cached per pass; at millions of rows holding them all runs out of memory
             frames._cache.clear()
@@ -305,6 +331,8 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
             if zt_rules:
                 logger.info(f"Running {len(zt_rules)} Z-table rule(s)")
                 for rule in zt_rules:
+                    if as_of:
+                        rule = {**rule, "_as_of": as_of}
                     check_cls = CHECK_REGISTRY.get(rule.get("check_class", ""))
                     if check_cls is None:
                         continue
