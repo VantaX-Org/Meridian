@@ -100,7 +100,7 @@ def _kind(dictionary, col: str) -> str:
 _PLACEMENT_SAMPLES = {"misplaced": ["ap@example.co.za", "www.acme.com", "0115551234", "GB82WEST12345698765432", "Acme"], "placeholder": ["N/A", "Acme"],
                       "swap": ["2196", "JOHANNESBURG"], "status_text": ["DO NOT USE", "Acme"],
                       "date_range": ["20991231", "20200101"], "change_before_create": ["20200101", "20210101"],
-                      "vat_checksum": ["DE136695977", "DE136695976"]}
+                      "vat_checksum": ["DE136695977", "DE136695976", "AU", "51824753557", "51824753556"]}
 _FORMAT_SAMPLES = {"gtin": "4006381333931", "ean": "4006381333931", "iban": "GB82WEST12345698765432",
                    "luhn": "4539148803436467", "email": "ap@example.co.za", "date": TODAY}
 
@@ -147,6 +147,9 @@ def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
             vals += [""] if aw.get("blank") else ["N0"] if "not_in" in aw else ["X"]  # inside the scope
             if "gt" in aw:
                 vals.append(str(float(aw["gt"]) + 1))
+            vals += [f"{p}1" for p in (aw.get("startswith") or [])[:2]]
+            if "older_than_days" in aw or "within_days" in aw:
+                vals += ["20000101", pd.Timestamp.today().strftime("%Y%m%d")]
         if f"`{c}`" in expr:
             vals += literals[:4] + numbers[:4]
         vals += paired.get(c, [])[:1] + _PROBES[_kind(dictionary, c)]

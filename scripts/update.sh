@@ -159,7 +159,7 @@ backup_database() {
 # rest of the update follows the new release's procedure.
 place() {  # place <src> <dest> <mode> — keeps a .bak of a locally changed file
     if [[ -f "$2" ]] && ! cmp -s "$1" "$2"; then cp -p "$2" "$2.bak"; fi
-    install -D -m "$3" "$1" "$2"
+    mkdir -p "$(dirname "$2")" && install -m "$3" "$1" "$2"  # not install -D: GNU-only
 }
 
 sync_deployment_files() {

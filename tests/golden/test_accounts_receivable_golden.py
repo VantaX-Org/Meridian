@@ -294,6 +294,9 @@ def test_accounts_receivable_golden():
         "AR065": {_key(C1, "0090011904", augdt="20260817", augbl="1400000291")},  # cleared before it was posted
         "AR066": {_key(C1, "0090011905")},                        # cleared item without a clearing reference
         "AR067": {_key(C1, "0090012018")},                        # dunning block 9 is not in T040S
+        "AR071": {_key(DEL, "0090012013")},                       # open item on a blocked customer
+        # next credit review (20260310 / 20250101) passed long ago; OT runs at a zero limit
+        "AR074": {f"KUNNR={k}" for k in CUSTOMERS if k not in (OT, DEL)},
     }, found
     # DEL is flagged for deletion and OT is a one-time account: out of the population, counted
     name = next(r for r in results if r.check_id == "AR003")

@@ -56,7 +56,8 @@ def apply_context(df: pd.DataFrame, applies_when: dict | None) -> pd.DataFrame:
         values = df[field].astype("string").str.strip()
         if isinstance(allowed, dict):
             # Operators: contains_any (multi-value code strings such as
-            # LFB1.ZWELS "CT"), not_in, populated, gt (numeric).
+            # LFB1.ZWELS "CT"), not_in, populated, gt (numeric), startswith,
+            # older_than_days / within_days (dates relative to today).
             if "contains_any" in allowed:
                 chars = {str(v) for v in allowed["contains_any"]}
                 mask &= values.map(lambda v: isinstance(v, str) and any(c in v for c in chars)).astype(bool)
@@ -68,6 +69,17 @@ def apply_context(df: pd.DataFrame, applies_when: dict | None) -> pd.DataFrame:
                 mask &= values.fillna("").eq("") | values.isin(("00000000",)).fillna(False)
             if "gt" in allowed:
                 mask &= sap_number(values).gt(float(allowed["gt"])).fillna(False)
+            if "startswith" in allowed:
+                prefixes = tuple(str(v) for v in allowed["startswith"])
+                mask &= values.str.startswith(prefixes).fillna(False).astype(bool)
+            if "older_than_days" in allowed or "within_days" in allowed:
+                # SAP dates (YYYYMMDD or ISO) relative to today; blank / 00000000 never match
+                age = (pd.Timestamp.today().normalize() - pd.to_datetime(
+                    values.str.replace("-", "", regex=False), format="%Y%m%d", errors="coerce")).dt.days
+                if "older_than_days" in allowed:
+                    mask &= age.gt(int(allowed["older_than_days"])).fillna(False)
+                if "within_days" in allowed:
+                    mask &= age.le(int(allowed["within_days"])).fillna(False)
         else:
             mask &= values.isin({str(v).strip() for v in allowed}).fillna(False)
     return df[mask]
