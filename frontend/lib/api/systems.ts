@@ -128,6 +128,18 @@ export async function createSyncProfile(
   return data;
 }
 
+export async function updateSyncProfile(
+  systemId: string,
+  profileId: string,
+  body: { schedule_cron?: string; active?: boolean }
+): Promise<SyncProfile> {
+  const { data } = await apiClient.patch<SyncProfile>(
+    `/api/v1/systems/${systemId}/profiles/${profileId}`,
+    body
+  );
+  return data;
+}
+
 export async function getSyncRuns(
   systemId: string,
   limit?: number
