@@ -158,6 +158,18 @@ def _with_reference(rule: dict, dictionary, reference_values: dict[str, set[str]
     return out
 
 
+def baseline_of(rule: dict) -> str:
+    """What a rule judges the data against: ``s4_target`` (S/4HANA readiness),
+    ``sap_standard`` (a value-list rule whose check table was not extracted live,
+    so it fell back to SAP's standard list) or ``live_config`` (the system's own
+    configuration and master data)."""
+    if rule.get("baseline"):
+        return rule["baseline"]
+    if rule.get("check_class") in ("referential_check", "domain_value_check") and "_live_reference" not in rule:
+        return "sap_standard"
+    return "live_config"
+
+
 def rule_columns(rule: dict) -> list[str]:
     """Every ``TABLE.FIELD`` column a rule reads (field, fields, condition, applies_when)."""
     check_cls = REGISTRY.get(rule.get("check_class", ""))
@@ -273,6 +285,8 @@ def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[st
         result = check_cls(rule).run(scoped, key_cols=key_cols, grain=grain)
         if result is not None and excluded:
             result.details["population_excluded"] = excluded
+        if result is not None:
+            result.details["baseline"] = baseline_of(rule)
         return rule, result
     except Exception as e:
         logger.error(f"Exception in check {rule.get('id')}: {e}", exc_info=True)
