@@ -839,6 +839,13 @@
 .aurora-process-graph .react-flow__edge-path {
   stroke: var(--aurora-canvas-line);
 }
+.aurora-process-graph .react-flow__edge-textbg {
+  fill: var(--aurora-canvas-elevated);
+}
+.aurora-process-graph .react-flow__edge-text {
+  fill: var(--aurora-fg-secondary);
+  font-size: 11px;
+}
 .aurora-process-graph .react-flow__handle {
   width: 6px;
   height: 6px;
