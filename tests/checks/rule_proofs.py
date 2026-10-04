@@ -92,7 +92,7 @@ def sample_regex(pattern: str) -> str | None:
 def _kind(dictionary, col: str) -> str:
     f = dictionary.resolve(col)
     t = (f.type or "").upper() if f else ""
-    if f is not None and ("TSTMP" in f"{f.data_element}{f.domain}".upper() or (f.data_element or "") == "TIMESTAMP"):
+    if f is not None and any(s in f"{f.data_element}{f.domain}".upper() for s in ("TSTMP", "TIMESTAMP")):
         return "timestamp"
     return "date" if t in _DATE_TYPES else "num" if t in _NUM_TYPES else "char"
 

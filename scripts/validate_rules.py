@@ -22,8 +22,9 @@ sys.path.insert(0, str(ROOT))
 
 from sap.ddic import get_dictionary  # noqa: E402
 
-_REF = re.compile(r"\b([A-Z][A-Z0-9_]{1,29})\.([A-Z][A-Z0-9_]{0,29})\b")
-_RULE_KEYS = ("field", "fields", "condition", "applies_when", "reference_field",
+# TABLE.FIELD, TABLE optionally in a /NAMESPACE/ (/SCWM/AQUA.QUAN)
+_REF = re.compile(r"(?<![\w/])((?:/[A-Z0-9_]+/)?[A-Z][A-Z0-9_]{1,29})\.([A-Z][A-Z0-9_]{0,29})\b")
+_RULE_KEYS = ("field", "fields", "condition", "fail_when", "applies_when", "reference_field",
               "date_field", "compare_field", "secondary_field")
 
 

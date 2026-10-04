@@ -16,6 +16,7 @@ BKPF:  {where: "BUDAT >= '{months_ago:3}'"}  # FI documents are high-volume: las
 BSEG:  {via: BKPF}
 LTAK:  {where: "BDATU >= '{months_ago:6}'"}
 LTAP:  {via: LTAK}
+/SCWM/ORDIM_C: {where: "CONFIRMED_AT >= '{months_ago:6}000000'"}  # EWM confirmed tasks (DEC15 timestamp)
 VTTK:  {where: "ERDAT >= '{months_ago:12}'"}
 VTTP:  {via: VTTK}
 CDHDR: {where: "UDATE >= '{months_ago:3}'"}
