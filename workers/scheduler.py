@@ -983,6 +983,16 @@ celery_app.conf.beat_schedule = {
         "task": "revalidate_licence",
         "schedule": crontab(minute=0, hour="*/6"),  # Every 6 hours — keeps manifest fresh
     },
+    "alert-digest-daily": {
+        "task": "workers.tasks.send_notifications.send_alert_digest",
+        "schedule": crontab(hour=4, minute=30),  # after the 00:00 UTC analysis
+        "args": ("daily",),
+    },
+    "alert-digest-weekly-monday": {
+        "task": "workers.tasks.send_notifications.send_alert_digest",
+        "schedule": crontab(hour=4, minute=45, day_of_week=1),
+        "args": ("weekly",),
+    },
     "contract-freshness-hourly": {
         "task": "workers.scheduler.contract_freshness",
         "schedule": crontab(minute=7),

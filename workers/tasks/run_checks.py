@@ -215,6 +215,10 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
         with Session(engine) as session:
             session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
             rule_overrides = load_overrides(session)
+            from checks import lifecycle
+            authored = lifecycle.authored_rules(
+                {rid: o["body"] for rid, o in rule_overrides.items() if "body" in o})
+            sup_rules, sup_records = lifecycle.load_suppressions(session)
             from checks.field_status_rules import generate, generate_material
             fs_rules = generate(fs_resolutions, modules)
             material_rules = generate_material(fs_material, modules)
@@ -245,7 +249,7 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
             vp_rules += value_placement.generate(m, static, dictionary)
             vp_rules += country_rules.generate(m, static, fs_config, dictionary)  # T005 / BNKA
             vp_rules += config_rules.generate(m, fs_config, dictionary)  # T685A / T582A
-        fs_rules = fs_rules + vp_rules
+        fs_rules = fs_rules + vp_rules + authored
         module_count = max(len(modules), 1)
         outliers: dict[str, dict] = {}
         for idx, module_name in enumerate(modules):
@@ -378,7 +382,8 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
         # Step 7-8: Score all modules
         from api.services.scoring import score_all_modules
 
-        dqs_results = score_all_modules(all_results, tenant_weights)
+        # suppressed rules / records (rule_suppressions) stay out of the score until they expire
+        dqs_results = score_all_modules(lifecycle.for_scoring(all_results, sup_rules, sup_records), tenant_weights)
         dqs_summary = {mod: result.model_dump() for mod, result in dqs_results.items()}
 
         # Step 9: Insert findings into Postgres via a single executemany call.
@@ -471,7 +476,9 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
                 logger.error(f"record-level tracking failed for {version_id}: {e}", exc_info=True)
 
             # Step 10: Update version with DQS summary + which rule set produced it
-            analysis = {"at": datetime.now(timezone.utc).isoformat(), "rule_set": rule_set_fingerprint(modules, rule_overrides, fs_rules),
+            governance = {**rule_overrides, "_suppressed": sorted(sup_rules)
+                          + sorted(f"{c}:{k}" for c, ks in sup_records.items() for k in ks)}
+            analysis = {"at": datetime.now(timezone.utc).isoformat(), "rule_set": rule_set_fingerprint(modules, governance, fs_rules),
                         "checks": len(all_results)}
             session.execute(
                 text("""

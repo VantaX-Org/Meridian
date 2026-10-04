@@ -183,7 +183,7 @@ async def bulk_update(
     need = {"approve"} if body.status == "accepted" else set()
     if body.status or body.assigned_to is not None:
         need.add("assign")
-    if body.note:
+    if body.note and not body.status:  # a note on a status change is that change's reason
         need.add("analyse")
     missing = [a for a in need if not has_permission(role, a)]
     if missing:
@@ -191,6 +191,8 @@ async def bulk_update(
     if body.status in _RESOLUTIONS and body.resolution not in _RESOLUTIONS[body.status]:
         raise HTTPException(status_code=400, detail=(
             f"Status '{body.status}' needs a resolution: {', '.join(sorted(_RESOLUTIONS[body.status]))}."))
+    if body.resolution == "false_positive" and not (body.note or "").strip():
+        raise HTTPException(status_code=400, detail="Say why it is not an issue: a false positive needs a note.")
 
     await _rls(db, tenant)
     ids = list(body.ids)

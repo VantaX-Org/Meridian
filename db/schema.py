@@ -926,6 +926,55 @@ class KnownIssue(Base):
                       Index("ix_known_issues_tenant_scope", "tenant_id", "scope"))
 
 
+class RuleVersion(Base):
+    """A tenant's version of a rule: draft → in_review → active → retired (migration 054)."""
+    __tablename__ = "rule_versions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    rule_id = Column(Text, nullable=False)
+    version = Column(Integer, nullable=False)
+    body = Column(JSONB, nullable=False)
+    state = Column(Text, nullable=False, server_default="draft")
+    note = Column(Text, nullable=True)
+    created_by = Column(Text, nullable=True)
+    approved_by = Column(Text, nullable=True)
+    approved_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
+    updated_at = Column(DateTime(timezone=True), server_default=text("now()"))
+
+    __table_args__ = (UniqueConstraint("tenant_id", "rule_id", "version", name="uq_rule_versions"),)
+
+
+class RuleSuppression(Base):
+    """A rule, or one record of it, kept out of the score until expires_at (migration 054)."""
+    __tablename__ = "rule_suppressions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    check_id = Column(Text, nullable=False)
+    record_key = Column(Text, nullable=True)
+    reason = Column(Text, nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    created_by = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
+
+
+class AlertChannel(Base):
+    """Outbound alert target — webhook | slack | teams | email (migration 054)."""
+    __tablename__ = "alert_channels"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    kind = Column(Text, nullable=False)
+    target = Column(Text, nullable=False)
+    secret = Column(Text, nullable=True)
+    digest = Column(Text, nullable=False, server_default="daily")
+    immediate_critical = Column(Boolean, nullable=False, server_default=text("false"))
+    enabled = Column(Boolean, nullable=False, server_default=text("true"))
+    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
+
+
 class FieldDependency(Base):
     """Candidate hidden rule A → B (≥ 99 %, < 100 % of records) — see migration 051."""
     __tablename__ = "field_dependencies"
