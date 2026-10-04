@@ -134,7 +134,8 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
                 {"vid": version_id, "tid": tenant_id, "st": "pending" if analyse else "extracted",
                  "label": label, "meta": json.dumps({
                     "modules": modules, "source": "extraction", "system_id": system_id,
-                    "scope": scope or {}, "downloaded_at": datetime.now(timezone.utc).isoformat(),
+                    "scope": scope or {}, "started_at": started["started_at"],
+                    "downloaded_at": datetime.now(timezone.utc).isoformat(),
                     "dataset_path": prefix, "object_rows": object_rows,
                     "coverage": coverage, "row_count": int(sum(len(d) for d in data_tables.values())),
                     # every data table read completely (row count reconciled, no truncation, no paging drift)

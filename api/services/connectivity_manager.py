@@ -10,6 +10,7 @@ Coordinates:
 
 import json
 import logging
+import time
 import uuid
 from typing import Callable, Optional
 
@@ -276,6 +277,7 @@ class ConnectivityManager:
                             frames[table] = df.rename(columns={c: f"{table}.{c}" for c in df.columns})
                         continue
                     logger.info(f"extract {system_id}: reading {table} ({len(cols)} fields)")
+                    t0 = time.monotonic()
                     try:
                         if plan.via:
                             wheres = via_filters(table, plan.via, raw.get(plan.via))
@@ -289,7 +291,8 @@ class ConnectivityManager:
                                                            max_rows=max_rows,
                                                            on_progress=lambda g, n, rows: report(table, g, n, rows))
                     except SAPConnectorError as e:
-                        coverage.append({"table": table, "status": "failed", "detail": str(e)[:300]})
+                        coverage.append({"table": table, "status": "failed", "detail": str(e)[:300],
+                                         "seconds": round(time.monotonic() - t0, 1)})
                         logger.warning(f"extract {system_id}: {table} failed: {str(e)[:300]}")
                         continue
                     # RFC_READ_TABLE pages without a sort order: pages can overlap. Repeated
@@ -303,7 +306,7 @@ class ConnectivityManager:
                              "partial": plan.partial, "modules": sorted(plan.modules),
                              "window": plan.where if plan.where and not plan.where.startswith(tuple(
                                  f"{f} = " for f in ("DATBI", "BDATU", "INACT"))) else None,
-                             "truncated": len(df) >= max_rows}
+                             "truncated": len(df) >= max_rows, "seconds": round(time.monotonic() - t0, 1)}
                     if table in counts:
                         entry["source_rows"] = counts[table]
                     entry["complete"] = not entry["truncated"] and not dup_keys and \

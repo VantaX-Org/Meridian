@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ title }}</title>
+<link rel="stylesheet" href="assets/report.css">
+<style>
+@page {
+    @top-left { content: {{ ("Meridian · " ~ title) | css_str }}; }
+    @top-right { content: {{ scope_label | css_str }}; }
+    @bottom-left { content: {{ ("Generated " ~ (generated_at | dt) ~ "  ·  Confidential") | css_str }}; }
+}
+</style>
+</head>
+<body>
+
+<header class="doc-head">
+    <div class="eyebrow">{{ eyebrow }}</div>
+    <h1>{{ title }}</h1>
+    <table class="meta">
+    {% for k, v in meta %}<tr><td class="k">{{ k }}</td><td>{{ v }}</td></tr>{% endfor %}
+    </table>
+</header>
+
+{% block body %}{% endblock %}
+</body>
+</html>

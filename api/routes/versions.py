@@ -105,25 +105,9 @@ async def compare_versions(
     summary1 = ver1.dqs_summary or {}
     summary2 = ver2.dqs_summary or {}
 
-    delta = {}
-    for mod in sorted(set(summary1) | set(summary2)):
-        if module and mod != module:
-            continue
-        s1, s2 = summary1.get(mod) or {}, summary2.get(mod) or {}
-        score1 = s1.get("composite_score", 0)
-        score2 = s2.get("composite_score", 0)
-        d1, d2 = s1.get("dimension_scores") or {}, s2.get("dimension_scores") or {}
-        delta[mod] = {
-            "dqs_change": round(score2 - score1, 2),
-            "v1_score": score1,
-            "v2_score": score2,
-            "dimensions": {
-                dim: {"v1": d1.get(dim), "v2": d2.get(dim),
-                      "change": None if d1.get(dim) is None or d2.get(dim) is None
-                      else round(d2[dim] - d1[dim], 2)}
-                for dim in sorted(set(d1) | set(d2))
-            },
-        }
+    from api.services.pdf_reports import module_deltas
+
+    delta = {m: d for m, d in module_deltas(summary1, summary2).items() if not module or m == module}
 
     rows = (await db.execute(text(_CHECK_CHANGES_SQL), {"v1": vid1, "v2": vid2, "module": module})).fetchall()
     changes = [{"check_id": r.check_id, "module": r.module, "severity": r.severity,
