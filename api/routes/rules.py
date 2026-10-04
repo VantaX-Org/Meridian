@@ -293,6 +293,11 @@ async def create_version(rule_id: str, body: VersionCreate, db: AsyncSession = D
     """New draft. Versions are immutable once submitted; change = a new draft."""
     if err := lifecycle.validate_body(rule_id, body.body):
         raise HTTPException(status_code=400, detail=err)
+    # fail_when / condition reach DataFrame.eval in cross_field_check once the version is active.
+    for key in ("fail_when", "condition"):
+        expr = body.body.get(key)
+        if expr is not None and not (isinstance(expr, str) and _safe_expression(expr)):
+            raise HTTPException(status_code=422, detail=_EXPR_ERROR)
     await _set_rls(db, tenant.id)
     row = (await db.execute(text(f"""
         INSERT INTO rule_versions (tenant_id, rule_id, version, body, state, note, created_by)
@@ -509,6 +514,8 @@ _BACKTICKED = re.compile(r"`[^`]*`")
 _QUOTED = re.compile(r"'[^']*'|\"[^\"]*\"")
 _EXPR_WORDS = re.compile(r"\b(isna|notna|and|or|not|True|False)\b")
 _EXPR_REST = re.compile(r"[\s\d.()<>=!&|~+\-*/,]*")
+_EXPR_ERROR = ("Expression may use only `TABLE.FIELD` columns, "
+               "quoted values, numbers, comparisons, & | ~ and isna()/notna()")
 
 
 class CustomRuleIn(BaseModel):
@@ -558,8 +565,7 @@ def _build_rule(body: CustomRuleIn) -> dict:
         except re.error as e:
             raise HTTPException(status_code=422, detail=f"Pattern does not compile: {e}")
     if "fail_when" in required and not _safe_expression(body.fail_when or ""):
-        raise HTTPException(status_code=422, detail="Expression may use only `TABLE.FIELD` columns, "
-                            "quoted values, numbers, comparisons, & | ~ and isna()/notna()")
+        raise HTTPException(status_code=422, detail=_EXPR_ERROR)
     cond = {k: getattr(body, k) for k in [*required, "grain"] if getattr(body, k)}
     cond["check_class"] = body.check_class
     cond["dimension"] = body.dimension or REGISTRY[body.check_class].default_dimension
