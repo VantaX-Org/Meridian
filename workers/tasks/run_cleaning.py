@@ -92,6 +92,15 @@ def run_cleaning(self, version_id: str, tenant_id: str, object_type: str, parque
                 {"tid": tenant_id, "ot": object_type},
             )
 
+            # Steward pair decisions survive reruns: do_not_match pairs are never re-proposed,
+            # always_match pairs are proposed even when the detector misses them.
+            from api.services.merge_explain import drop_blocked_pairs
+            blocked = {(r[0], r[1]) for r in session.execute(
+                text("SELECT key_lo, key_hi FROM mdm_pair_constraints WHERE tenant_id = :tid "
+                     "AND domain = :ot AND kind = 'do_not_match'"),
+                {"tid": tenant_id, "ot": object_type})}
+            candidates = drop_blocked_pairs(candidates, blocked)
+
             for c in candidates:
                 # Separate dedup candidates
                 if c.get("category") == "dedup" and c.get("merge_preview"):
@@ -151,6 +160,21 @@ def run_cleaning(self, version_id: str, tenant_id: str, object_type: str, parque
                     },
                 )
 
+            session.execute(
+                text("""
+                    INSERT INTO dedup_candidates (id, tenant_id, object_type, record_key_a, record_key_b,
+                                                  match_score, match_method, match_fields, status)
+                    SELECT gen_random_uuid(), p.tenant_id, p.domain, p.key_lo, p.key_hi, 100, 'always_match',
+                           '{}'::jsonb, 'pending'
+                      FROM mdm_pair_constraints p
+                     WHERE p.tenant_id = :tid AND p.domain = :ot AND p.kind = 'always_match'
+                       AND NOT EXISTS (SELECT 1 FROM dedup_candidates d
+                                        WHERE d.tenant_id = p.tenant_id AND d.object_type = p.domain
+                                          AND ((d.record_key_a = p.key_lo AND d.record_key_b = p.key_hi)
+                                            OR (d.record_key_a = p.key_hi AND d.record_key_b = p.key_lo)))
+                """),
+                {"tid": tenant_id, "ot": object_type},
+            )
             session.commit()
 
         # Create notification for cleaning candidates
