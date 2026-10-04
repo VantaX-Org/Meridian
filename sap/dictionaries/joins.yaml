@@ -148,6 +148,7 @@ edges:
   - {parent: GRACSODRISK, child: GRACSODRISKT, join: {RISKID: RISKID}, cardinality: one, prefer: {LANG: "E"}}
   - {parent: USMD120C, child: USMD1213, join: {USMD_CREQUEST: USMD_CREQUEST}, cardinality: many}
   - {parent: CDHDR, child: CDPOS, join: {OBJECTCLAS: OBJECTCLAS, OBJECTID: OBJECTID, CHANGENR: CHANGENR}, cardinality: many}
+  - {parent: EDIDC, child: EDIDS, join: {DOCNUM: DOCNUM}, cardinality: many}
 
   # ── SuccessFactors canonical views ─────────────────────────────────────
   - {parent: PERINFO, child: EMPEMPLOYMENT, join: {PERSON_ID: PERSON_ID}, cardinality: many}
@@ -194,6 +195,7 @@ anchors:
   transport_management: VTTK
   grc_compliance: GRACUSERROLE
   mdg_master_data: USMD120C
+  interface_health: EDIDC
   employee_central: EMPEMPLOYMENT
   s4hc_master_data: BUT000
   concur_expense: CONCUR_REPORT

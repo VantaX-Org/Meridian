@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, timedelta
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
@@ -28,7 +28,8 @@ _ECC = ["business_partner", "material_master", "fi_gl", "accounts_payable", "acc
         "asset_accounting", "mm_purchasing", "plant_maintenance", "production_planning",
         "sd_customer_master", "sd_sales_orders"]
 _LOGISTICS = ["batch_management", "ewms_stock", "ewms_transfer_orders", "wm_interface",
-              "fleet_management", "transport_management", "mdg_master_data", "grc_compliance"]
+              "fleet_management", "transport_management", "mdg_master_data", "grc_compliance",
+              "interface_health"]
 _SF = ["employee_central", "compensation", "benefits", "payroll_integration", "performance_goals",
        "succession_planning", "recruiting_onboarding", "learning_management", "time_attendance"]
 
@@ -36,7 +37,7 @@ _SF = ["employee_central", "compensation", "benefits", "payroll_integration", "p
 MODULES_BY_SYSTEM: dict[str, list[str]] = {
     "ecc": _ECC + _LOGISTICS,
     "s4hana_onprem": _ECC + _LOGISTICS + ["s4hc_master_data"],
-    "ewm": ["batch_management", "ewms_stock", "ewms_transfer_orders", "wm_interface"],
+    "ewm": ["batch_management", "ewms_stock", "ewms_transfer_orders", "wm_interface", "interface_health"],
     "s4hana_cloud": _ECC + ["s4hc_master_data"],
     "successfactors": _SF,
     "concur": ["concur_expense", "concur_users"],
@@ -78,6 +79,7 @@ def _months_ago(n: int, today: date) -> str:
 def render_where(template: str, today: Optional[date] = None) -> str:
     today = today or date.today()
     out = re.sub(r"\{months_ago:(\d+)\}", lambda m: _months_ago(int(m.group(1)), today), template)
+    out = re.sub(r"\{days_ago:(\d+)\}", lambda m: (today - timedelta(days=int(m.group(1)))).strftime("%Y%m%d"), out)
     return re.sub(r"\{years_ago:(\d+)\}", lambda m: str(today.year - int(m.group(1))), out)
 
 
