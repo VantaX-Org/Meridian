@@ -9,7 +9,7 @@ function Redirect() {
   const sp = useSearchParams();
   useEffect(() => {
     const q = new URLSearchParams(sp.toString());
-    q.set("tab", "metrics");
+    q.set("tab", "remediation");
     router.replace(`/workbench?${q.toString()}`);
   }, [router, sp]);
   return null;

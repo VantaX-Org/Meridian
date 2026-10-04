@@ -371,6 +371,14 @@ a.ui-link { color: var(--aurora-accent-500); text-decoration: none; }
   max-height: calc(100vh - 120px);
   overflow: auto;
 }
+@media (max-width: 1100px) {
+  .ui-split { grid-template-columns: minmax(0, 1fr); }
+  .ui-split__pane { position: static; max-height: none; }
+}
+
+/* A wrapping row of form fields. */
+.ui-fields { display: flex; flex-wrap: wrap; gap: var(--aurora-space-3); align-items: flex-end; }
+.ui-fields > * { flex: 1 1 200px; min-width: 0; }
 
 /* ── Overview: verdict ─────────────────────────────────────────────── */
 

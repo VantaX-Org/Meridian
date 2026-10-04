@@ -30,11 +30,11 @@ export async function downloadAuthenticated(url: string, fallbackFilename: strin
   window.URL.revokeObjectURL(objectUrl);
 }
 
-/** GET a file with query params; a JSON error body (e.g. a 409 gate reason) surfaces as the Error message. */
-export async function downloadBlob(url: string, params: object, fallbackFilename: string): Promise<void> {
+/** GET (or POST) a file with query params; a JSON error body (e.g. a 409 gate reason) surfaces as the Error message. */
+export async function downloadBlob(url: string, params: object, fallbackFilename: string, method: "get" | "post" = "get"): Promise<void> {
   let response;
   try {
-    response = await apiClient.get<Blob>(url, { responseType: "blob", params });
+    response = await apiClient.request<Blob>({ url, method, responseType: "blob", params });
   } catch (err: unknown) {
     const data = (err as { response?: { data?: unknown } }).response?.data;
     if (data instanceof Blob) {
