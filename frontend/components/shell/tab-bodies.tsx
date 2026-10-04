@@ -36,8 +36,8 @@ export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
   "/migration": page(() => import("@/app/(dashboard)/migration/page")),
 
   "/workbench": named(() => import("@/app/(dashboard)/workbench/queue"), "MyQueuePage"),
-  "/stewardship": page(() => import("@/app/(dashboard)/stewardship/page")),
-  "/stewardship/metrics": page(() => import("@/app/(dashboard)/stewardship/metrics/page")),
+  "/stewardship": named(() => import("@/components/workbench/team-workload"), "TeamWorkloadSurface"),
+  "/stewardship/metrics": named(() => import("@/components/workbench/steward-metrics"), "StewardMetricsSurface"),
   "/cleaning": named(() => import("@/components/workbench/cleaning"), "CleaningSurface"),
   "/exceptions": named(() => import("@/components/workbench/exceptions"), "ExceptionsSurface"),
   "/dedup": named(() => import("@/components/workbench/dedup"), "DedupSurface"),
