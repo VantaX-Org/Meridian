@@ -5,6 +5,7 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
+from checks import cost
 from checks.base import BaseCheck, CheckResult, sap_number
 from checks.frames import TableFrames, tables_of
 from checks.population import exclude, exclusions, fields_for
@@ -244,6 +245,13 @@ def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[st
                 frame = wider[0] if wider is not None else frame
             except ValueError:
                 pass
+        cf = (rule.get("_cost") or {}).get("field")
+        if cf and cf not in frame.columns and grain:
+            try:  # the cost field (EKPO.NETWR) joins at the same grain; else cost falls back to severity
+                wider = frames.frame_for(list(dict.fromkeys(cols + need + [cf])), grain=grain)
+                frame = wider[0] if wider is not None else frame
+            except ValueError:
+                pass
         frame, excluded = exclude(frame, excl, frames)
         scoped = apply_context(frame, rule.get("applies_when"))
         if len(scoped) == 0:
@@ -265,6 +273,7 @@ def run_checks(
     overrides: dict[str, dict] | None = None,
     extra_rules: list[dict] | None = None,
     suppressed: dict[str, tuple[list[str], set[str]]] | None = None,
+    cost_model: dict | None = None,
 ) -> list[CheckResult]:
     """Load a module's YAML rules and evaluate each at its correct record grain.
 
@@ -291,6 +300,7 @@ def run_checks(
 
     for rule in rules:
         rule["module"] = module
+        rule["_cost"] = cost.resolve(rule, cost_model)
         check_cls = REGISTRY.get(rule.get("check_class", ""))
         if check_cls is None:
             results.append(CheckResult(

@@ -239,7 +239,7 @@ def project_dqs(findings: list[dict], fixed_ids: set[str], tenant_weights: dict 
 
     def composite(by_module: dict[str, list[CheckResult]]) -> float | None:
         summary = {m: score_module(rs, tenant_weights or {}).model_dump() for m, rs in by_module.items() if rs}
-        return composite_dqs([summary]).get("composite")
+        return composite_dqs([summary], tenant_weights).get("composite")
 
     return {"now": composite(to_results(False)), "projected": composite(to_results(True))}
 

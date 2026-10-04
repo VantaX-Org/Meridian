@@ -7,6 +7,7 @@ export async function getFindings(params: {
   severity?: string;
   dimension?: string;
   check_id?: string;
+  sort?: "severity" | "impact";
   limit?: number;
   offset?: number;
 }): Promise<FindingList> {
@@ -32,10 +33,12 @@ export interface FindingsAggregate {
   affected_records: number;
   severity: { critical: number; high: number; medium: number; low: number };
   by_module: { module: string; findings: number; affected: number; critical: number; high: number; medium: number;
-    low: number; avg_pass_rate: number | null }[];
+    low: number; avg_pass_rate: number | null; cost_at_risk?: number }[];
+  cost_at_risk?: number;
   by_dimension: { dimension: string; findings: number; avg_pass_rate: number | null }[];
   avg_pass_rate: number | null;
-  dqs: { composite: number | null; dimension_scores: Record<string, number>; modules: Record<string, number>; capped?: boolean };
+  dqs: { composite: number | null; dimension_scores: Record<string, number>; modules: Record<string, number>; capped?: boolean;
+    tier?: "pass" | "warn" | "fail" | null };
   previous_dqs: number | null;
 }
 
