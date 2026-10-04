@@ -424,6 +424,51 @@ ECC_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
             description="Sales document item",
         ),
     ],
+
+    # ------------------------------------------------------------------
+    # Interface health (IDocs, qRFC/tRFC queues). Windows match
+    # sap/dictionaries/extraction_windows.yaml; never read in full.
+    # ------------------------------------------------------------------
+    "interface_health": [
+        ExtractionTarget(
+            source="EDIDC",
+            fields=[
+                "DOCNUM", "STATUS", "DIRECT", "MESTYP", "IDOCTP", "SNDPRN", "SNDPRT",
+                "RCVPRN", "RCVPRT", "CREDAT", "CRETIM", "UPDDAT", "UPDTIM",
+            ],
+            filter="CREDAT >= '{days_ago:90}'",
+            max_rows=500_000,
+            description="IDoc control record (last 90 days)",
+        ),
+        ExtractionTarget(
+            source="EDIDS",
+            fields=["DOCNUM", "COUNTR", "STATUS", "LOGDAT", "LOGTIM", "STAMID", "STAMNO", "STATXT"],
+            filter="LOGDAT >= '{days_ago:90}'",
+            max_rows=500_000,
+            description="IDoc status records (last 90 days)",
+        ),
+        ExtractionTarget(
+            source="TRFCQOUT",
+            fields=["QNAME", "DEST", "QSTATE", "QRFCFNAM", "QRFCDATUM", "QRFCUZEIT", "ERRMESS"],
+            filter="QRFCDATUM >= '{days_ago:365}'",
+            max_rows=100_000,
+            description="qRFC outbound queue entries",
+        ),
+        ExtractionTarget(
+            source="TRFCQIN",
+            fields=["QNAME", "DEST", "QSTATE", "QRFCFNAM", "QRFCDATUM", "QRFCUZEIT", "ERRMESS"],
+            filter="QRFCDATUM >= '{days_ago:365}'",
+            max_rows=100_000,
+            description="qRFC inbound queue entries",
+        ),
+        ExtractionTarget(
+            source="ARFCSSTATE",
+            fields=["ARFCDEST", "ARFCSTATE", "ARFCFNAM", "ARFCDATUM", "ARFCUZEIT", "ARFCMSG"],
+            filter="ARFCDATUM >= '{days_ago:365}'",
+            max_rows=100_000,
+            description="tRFC/qRFC send status",
+        ),
+    ],
 }
 
 

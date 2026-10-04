@@ -504,10 +504,11 @@ class ConnectivityManager:
         effective_max = max_rows if max_rows > 0 else target.max_rows
 
         if system_type in ("ecc", "s4hana_onprem", "ewm"):
+            from sap.extraction_plan import render_where
             return connector.read_table(
                 target.source,
                 target.fields if target.fields else [],
-                where=target.filter,
+                where=render_where(target.filter) if target.filter else None,
                 max_rows=effective_max,
             )
         elif system_type in ("successfactors", "s4hana_cloud"):

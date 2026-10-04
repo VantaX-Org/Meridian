@@ -120,6 +120,9 @@ def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
     for c in cols:
         if c in (rule.get("group_by") or []):
             continue  # a group key (document number): each generated record is its own group
+        if c == rule.get("time_field"):
+            out[c] = ["000000"]  # freshness time-of-day: one value, so the date probes stay inside MAX_ROWS
+            continue
         vals: list[str] = []
         if c == rule.get("field") and expr and f"`{c}`" not in expr and not (rule.get("applies_when") or {}).get(c):
             continue  # a cross-field rule's anchor: keep the record id

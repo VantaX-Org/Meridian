@@ -54,7 +54,7 @@ _DEV_TENANT = Tenant(
         "business_partner", "material_master", "fi_gl",
         "accounts_payable", "accounts_receivable", "asset_accounting",
         "mm_purchasing", "plant_maintenance", "production_planning",
-        "sd_customer_master", "sd_sales_orders",
+        "sd_customer_master", "sd_sales_orders", "interface_health",
         "employee_central", "compensation", "benefits",
         "payroll_integration", "performance_goals", "succession_planning",
         "recruiting_onboarding", "learning_management", "time_attendance",
