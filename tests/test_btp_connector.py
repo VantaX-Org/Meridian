@@ -149,3 +149,10 @@ def test_extract_mapped_empty_entity_set_is_zero_rows():
     frames, cov = ConnectivityManager._extract_mapped(Empty(), "btp", ["business_partner"])
     assert len(frames["BUT000"]) == 0 and "BUT000.PARTNER" in frames["BUT000"].columns
     assert all(c["status"] == "live" and c["rows"] == 0 for c in cov)
+
+
+def test_bp_sex_flags_map_to_matching_but000_fields():
+    bp = next(t for t in get_extraction_targets("btp", "business_partner") if t.source == "A_BusinessPartner")
+    assert bp.rename_map["IsMale"] == "BUT000.XSEXM"
+    assert bp.rename_map["IsFemale"] == "BUT000.XSEXF"
+    assert bp.rename_map["IsSexUnknown"] == "BUT000.XSEXU"
