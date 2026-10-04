@@ -14,7 +14,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
 import { toast } from "sonner";
-import { Banner, Button, Chip, DataTable, Drawer, EmptyState, Field, Input, KpiRail, Panel, Select, Stack, Stat, Text, Textarea, useDrawerParam, type AuroraColumnMeta } from "@/components/aurora";
+import {
+  Banner, Button, Chip, DataTable, DetailDrawer, EmptyState, Field, FilterBar, Input, KeyValue, Metric, MetricStrip, Mono, PageHeader, Select,
+  StatusBadge, TableSkeleton, Textarea, useDrawerParam, type AuroraColumnMeta,
+} from "@/components/ui-core";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import { createCustomRule, dryRunRule, getRules, getRulesSummary, updateRule, type CheckClass, type CustomRuleDraft, type DryRunResult, type Rule } from "@/lib/api/rules";
@@ -54,11 +57,11 @@ function FacetRow({ label, options, value, onChange, format = (v) => v }: {
 }) {
   if (options.length < 2) return null;
   return (
-    <Stack direction="row" gap={2} align="center" wrap>
-      <Text variant="text-small" tone="tertiary" style={{ width: 96 }}>{label}</Text>
+    <div className="ui-filterbar__chips" role="group" aria-label={label} style={{ alignItems: "center" }}>
+      <span className="ui-micro" style={{ width: 96 }}>{label}</span>
       <Chip selected={!value} onClick={() => onChange("")}>All</Chip>
       {options.map((o) => <Chip key={o} selected={value === o} onClick={() => onChange(value === o ? "" : o)}>{format(o)}</Chip>)}
-    </Stack>
+    </div>
   );
 }
 
@@ -91,6 +94,8 @@ export function RulesSurface() {
     && (!severity || r.severity === severity)
     && (!auth || authority(r) === auth)
     && (!source || r.source === source));
+  const filtered = !!(search || module || check || dimension || severity || auth || source);
+  const clearFilters = () => { setSearch(""); setModule(""); setCheck(""); setDimension(""); setSeverity(""); setAuth(""); setSource(""); };
   const selected = drawer.value ? rules.find((r) => r.id === drawer.value) ?? null : null;
   const totals = useMemo(() => {
     const t = { yaml: 0, other: 0, enabled: 0, disabled: 0 };
@@ -109,84 +114,90 @@ export function RulesSurface() {
         onClick={canManage ? () => toggle.mutate({ id: row.original.id, enabled: !row.original.enabled }) : undefined}
         aria-label={`${row.original.enabled ? "Disable" : "Enable"} ${row.original.name}`}>{row.original.enabled ? "enabled" : "disabled"}</Chip>) },
     { id: "rule", header: "Rule", cell: ({ row }) => (
-      <span><strong>{row.original.name}</strong>
-        <Text variant="text-micro" tone="muted" as="div" className="aurora-number">{row.original.id}{row.original.description ? ` · ${row.original.description.length > 90 ? `${row.original.description.slice(0, 90)}…` : row.original.description}` : ""}</Text></span>) },
+      <span className="ui-cell-stack">
+        <span className="ui-cell-stack__main"><strong>{row.original.name}</strong></span>
+        <span className="ui-cell-stack__sub"><Mono>{row.original.id}</Mono>{row.original.description ? <span>{row.original.description.length > 90 ? `${row.original.description.slice(0, 90)}…` : row.original.description}</span> : null}</span>
+      </span>) },
     { id: "module", header: "Object", meta: meta({ width: 170 }), cell: ({ row }) => formatModuleName(row.original.module) },
     { id: "check", header: "Check", meta: meta({ width: 170 }), cell: ({ row }) => valuesOf(row.original, "check_class").map(checkClassLabel).join(", ") || "—" },
-    { id: "severity", header: "Severity", meta: meta({ width: 100 }), cell: ({ row }) => <span className="aurora-workbench__severity" data-severity={sev(row.original.severity)}>{row.original.severity}</span> },
+    { id: "severity", header: "Severity", meta: meta({ width: 110 }), cell: ({ row }) => <StatusBadge status={sev(row.original.severity)}>{row.original.severity}</StatusBadge> },
     { id: "source", header: "Source", meta: meta({ width: 90 }), cell: ({ row }) => SOURCE_LABEL[row.original.source] ?? row.original.source },
     { id: "pass", header: "Last pass rate", meta: meta({ width: 120, align: "end" }), cell: ({ row }) => (
-      <span className="aurora-number" title={row.original.last_run_at ? `Last run ${new Date(row.original.last_run_at).toLocaleString()}` : "Not run yet"}>
+      <span className="ui-num" title={row.original.last_run_at ? `Last run ${new Date(row.original.last_run_at).toLocaleString()}` : "Not run yet"}>
         {row.original.last_pass_rate != null ? pct(row.original.last_pass_rate) : "—"}</span>) },
   // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [canManage, toggle.isPending]);
 
   return (
-    <Stack gap={5} className="aurora-page">
-      <KpiRail>
-        <Stat label="Rules" value={totals.yaml + totals.other || rules.length} />
-        <Stat label="Built-in" value={totals.yaml} />
-        <Stat label="HQ, mined & custom" value={totals.other} tone={totals.other ? "info" : "neutral"} />
-        <Stat label="Enabled" value={totals.enabled} tone="success" />
-        <Stat label="Disabled" value={totals.disabled} tone={totals.disabled ? "warning" : "neutral"} />
-        <Stat label="Ran at least once" value={rules.filter((r) => r.last_pass_rate != null).length} />
-      </KpiRail>
-      <Stack direction="row" gap={2} wrap align="center">
-        {CATEGORIES.map(([k, l]) => <Chip key={k} selected={category === k} onClick={() => setCategory(k)}>{l}</Chip>)}
-        <span style={{ flex: 1 }} />
-        <Select aria-label="Object" value={module} options={[{ value: "", label: "All objects" }, ...facets.modules.map((m) => ({ value: m, label: formatModuleName(m) }))]} onValueChange={setModule} />
-        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Filter rules…" aria-label="Filter rules" style={{ width: 240 }} />
-        {canManage ? <Button onClick={() => setAuthoring(true)}>New rule</Button> : null}
-      </Stack>
-      <Stack gap={2}>
+    <div className="ui-page">
+      <PageHeader title="Rules"
+        summary={`${(totals.yaml + totals.other || rules.length).toLocaleString()} rules in the library; ${totals.enabled.toLocaleString()} enabled.`}
+        actions={canManage ? <Button onClick={() => setAuthoring(true)}>New rule</Button> : null} />
+      <MetricStrip label="Rule library">
+        <Metric label="Rules" value={totals.yaml + totals.other || rules.length} />
+        <Metric label="Built-in" value={totals.yaml} />
+        <Metric label="HQ, mined & custom" value={totals.other} />
+        <Metric label="Enabled" value={totals.enabled} />
+        <Metric label="Disabled" value={totals.disabled} tone={totals.disabled ? "warning" : "default"} />
+        <Metric label="Ran at least once" value={rules.filter((r) => r.last_pass_rate != null).length} />
+      </MetricStrip>
+      <div className="ui-stack" style={{ gap: "var(--aurora-space-2)" }}>
+        <FilterBar search={{ value: search, onChange: setSearch, placeholder: "Filter rules" }} onClear={filtered ? clearFilters : undefined}
+          actions={<Select aria-label="Object" value={module} options={[{ value: "", label: "All objects" }, ...facets.modules.map((m) => ({ value: m, label: formatModuleName(m) }))]} onValueChange={setModule} />}>
+          {CATEGORIES.map(([k, l]) => <Chip key={k} selected={category === k} onClick={() => setCategory(k)}>{l}</Chip>)}
+        </FilterBar>
         <FacetRow label="Check type" options={facets.checks} value={check} onChange={setCheck} format={checkClassLabel} />
         <FacetRow label="Dimension" options={facets.dimensions} value={dimension} onChange={setDimension} />
         <FacetRow label="Severity" options={[...SEVERITIES]} value={severity} onChange={setSeverity} />
         <FacetRow label="Authority" options={["shipped", "customer"]} value={auth} onChange={setAuth} format={(a) => (a === "shipped" ? "SAP standard (shipped)" : "Customer configured")} />
         <FacetRow label="Source" options={facets.sources} value={source} onChange={setSource} format={(s) => SOURCE_LABEL[s] ?? s} />
-      </Stack>
-      {!canManage ? <Text variant="text-small" tone="muted">Enabling, disabling or writing a rule needs the manage-rules permission; the library is read-only for you.</Text> : null}
-      {rulesQ.isLoading ? <Text tone="muted">Reading the rule library.</Text>
+      </div>
+      {!canManage ? <p className="ui-note">Enabling, disabling or writing a rule needs the manage-rules permission; the library is read-only for you.</p> : null}
+      {rulesQ.isLoading ? <TableSkeleton rows={8} label="Reading the rule library" />
         : rulesQ.error ? <Banner tone="danger" title="Rules could not be read">{(rulesQ.error as Error).message}</Banner>
         : visible.length ? <DataTable columns={columns} data={visible} getRowId={(r) => r.id} onRowActivate={(r) => drawer.open(r.id)} ariaLabel="Rules" maxHeight="60vh" />
-        : <EmptyState title="No rules match." body="Loosen the filters or clear the search. Built-in rules ship with Meridian; HQ rules arrive through HQ sync; mined and custom rules are your stewards' own." />}
-      <Drawer open={!!selected} onClose={drawer.close} ariaLabel="Rule details"
-        header={selected ? <Stack direction="row" gap={2} align="center"><span className="aurora-workbench__severity" data-severity={sev(selected.severity)}>{selected.severity}</span><Text variant="text-lead">{selected.name}</Text></Stack> : null}>
+        : <EmptyState action={filtered ? <Button variant="ghost" onClick={clearFilters}>Clear filters</Button> : undefined}>
+            No rules match. Built-in rules ship with Meridian; HQ rules arrive through HQ sync; mined and custom rules are your stewards&apos; own.
+          </EmptyState>}
+      <DetailDrawer open={!!selected} onClose={drawer.close} ariaLabel="Rule details"
+        header={selected ? <div className="ui-drawer-head"><StatusBadge status={sev(selected.severity)}>{selected.severity}</StatusBadge><h2 className="ui-drawer-head__title">{selected.name}</h2></div> : null}>
         {selected ? (
-          <Stack gap={4}>
-            {selected.description ? <Text variant="text-small" tone="secondary">{selected.description}</Text> : null}
-            <table className="aurora-exec__table"><tbody>
-              {([["Rule ID", selected.id], ["Object", formatModuleName(selected.module)], ["System", CATEGORY_LABEL[selected.category] ?? selected.category],
-                ["Source", selected.source === "yaml" ? `built-in${selected.source_yaml ? ` · ${selected.source_yaml}` : ""}` : SOURCE_LABEL[selected.source] ?? selected.source],
-                ["Authority", authority(selected) === "shipped" ? "SAP standard (shipped)" : "Customer configured"],
-                ["State", selected.enabled ? "enabled" : "disabled"], ["Updated", new Date(selected.updated_at).toLocaleString()],
-                ["Last run", selected.last_pass_rate != null ? `${pct(selected.last_pass_rate)} pass${selected.last_run_at ? ` · ${new Date(selected.last_run_at).toLocaleString()}` : ""}` : "not run yet"]] as [string, string][])
-                .map(([k, v]) => <tr key={k}><td>{k}</td><td className="aurora-number">{v}</td></tr>)}
-              {valuesOf(selected, "check_class").length ? (
-                <tr><td>Check</td><td>{valuesOf(selected, "check_class").map((c, i) => <span key={c} title={c}>{i ? ", " : ""}{checkClassLabel(c)}</span>)}</td></tr>
-              ) : null}
-            </tbody></table>
-            {selected.tags?.length ? <Stack direction="row" gap={1} wrap>{selected.tags.map((t) => <Chip key={t}>{t}</Chip>)}</Stack> : null}
+          <div className="ui-detail">
+            {selected.description ? <p className="ui-note">{selected.description}</p> : null}
+            <KeyValue rows={[
+              { k: "Rule ID", v: selected.id, mono: true },
+              { k: "Object", v: formatModuleName(selected.module) },
+              { k: "System", v: CATEGORY_LABEL[selected.category] ?? selected.category },
+              { k: "Source", v: selected.source === "yaml" ? `built-in${selected.source_yaml ? ` · ${selected.source_yaml}` : ""}` : SOURCE_LABEL[selected.source] ?? selected.source },
+              { k: "Authority", v: authority(selected) === "shipped" ? "SAP standard (shipped)" : "Customer configured" },
+              { k: "State", v: <StatusBadge status={selected.enabled ? "ok" : "idle"}>{selected.enabled ? "enabled" : "disabled"}</StatusBadge> },
+              { k: "Updated", v: new Date(selected.updated_at).toLocaleString() },
+              { k: "Last run", v: selected.last_pass_rate != null ? `${pct(selected.last_pass_rate)} pass${selected.last_run_at ? ` · ${new Date(selected.last_run_at).toLocaleString()}` : ""}` : "not run yet" },
+              ...(valuesOf(selected, "check_class").length
+                ? [{ k: "Check", v: valuesOf(selected, "check_class").map((c, i) => <span key={c} title={c}>{i ? ", " : ""}{checkClassLabel(c)}</span>) }]
+                : []),
+            ]} />
+            {selected.tags?.length ? <div className="ui-filterbar__chips">{selected.tags.map((t) => <Chip key={t}>{t}</Chip>)}</div> : null}
             {conditionList(selected).length ? (
-              <Stack gap={2}><Text variant="text-micro" tone="muted" className="aurora-exec__eyebrow">Conditions</Text>
-                <pre className="aurora-code">{JSON.stringify(selected.conditions, null, 2)}</pre></Stack>
+              <section className="ui-detail-part"><h3 className="ui-detail-part__title">Conditions</h3>
+                <pre className="ui-code">{JSON.stringify(selected.conditions, null, 2)}</pre></section>
             ) : null}
             {selected.thresholds ? (
-              <Stack gap={2}><Text variant="text-micro" tone="muted" className="aurora-exec__eyebrow">Thresholds</Text>
-                <pre className="aurora-code">{JSON.stringify(selected.thresholds, null, 2)}</pre></Stack>
+              <section className="ui-detail-part"><h3 className="ui-detail-part__title">Thresholds</h3>
+                <pre className="ui-code">{JSON.stringify(selected.thresholds, null, 2)}</pre></section>
             ) : null}
             {canManage ? (
-              <Stack direction="row" gap={2}>
+              <div className="ui-form__actions">
                 <Button variant={selected.enabled ? "danger" : "primary"} onClick={() => toggle.mutate({ id: selected.id, enabled: !selected.enabled })} disabled={toggle.isPending}>
                   {selected.enabled ? "Disable rule" : "Enable rule"}
                 </Button>
-              </Stack>
+              </div>
             ) : null}
-          </Stack>
+          </div>
         ) : null}
-      </Drawer>
+      </DetailDrawer>
       {canManage ? <AuthorDrawer open={authoring} onClose={() => setAuthoring(false)} modules={facets.modules} /> : null}
-    </Stack>
+    </div>
   );
 }
 
@@ -230,24 +241,24 @@ function AuthorDrawer({ open, onClose, modules }: { open: boolean; onClose: () =
   const needsField = cls !== "cross_field_check" && cls !== "uniqueness_check";
   const text = (key: "field" | "pattern" | "determinant" | "message", label: string, helper?: string) => (
     <Field label={label} helper={helper}>
-      {({ controlId }) => <Input id={controlId} value={draft[key] ?? ""} onChange={(e) => setDraft({ [key]: e.target.value })} className={key === "message" ? undefined : "aurora-number"} />}
+      {({ controlId }) => <Input id={controlId} value={draft[key] ?? ""} onChange={(e) => setDraft({ [key]: e.target.value })} className={key === "message" ? undefined : "ui-mono"} />}
     </Field>
   );
 
   return (
-    <Drawer open={open} onClose={onClose} ariaLabel="New rule" header={<Text variant="text-lead">New rule</Text>}
+    <DetailDrawer open={open} onClose={onClose} ariaLabel="New rule" header={<div className="ui-drawer-head"><h2 className="ui-drawer-head__title">New rule</h2></div>}
       footer={
-        <Stack direction="row" gap={2} justify="end">
+        <div className="ui-form__actions" style={{ justifyContent: "flex-end" }}>
           <Button variant="ghost" onClick={onClose}>Discard draft</Button>
           <Button variant="secondary" disabled={!draft.version_id || dry.isPending} onClick={() => dry.mutate()}>{dry.isPending ? "Running…" : "Dry run"}</Button>
           <Button disabled={!result || !!result.error || save.isPending} onClick={() => save.mutate()}>Save rule</Button>
-        </Stack>
+        </div>
       }>
-      <Stack gap={4}>
-        <Text variant="text-small" tone="secondary">
+      <div className="ui-form">
+        <p className="ui-note">
           Build a check from an existing check type. Fields are SAP TABLE.FIELD names and are checked against the data
           dictionary. Dry-run it on an analysed version, then save; it runs on every later analysis of the object.
-        </Text>
+        </p>
         <Field label="Object">
           {({ controlId }) => <Select id={controlId} placeholder="Choose an object" value={draft.module}
             options={modules.map((m) => ({ value: m, label: formatModuleName(m) }))} onValueChange={(m) => setDraft({ module: m, version_id: undefined })} />}
@@ -261,16 +272,16 @@ function AuthorDrawer({ open, onClose, modules }: { open: boolean; onClose: () =
         {cls === "regex_check" && text("pattern", "Pattern (regular expression)", "Values that do not match fail, e.g. ^[0-9]{10}$")}
         {(cls === "domain_value_check" || cls === "uniqueness_check") && (
           <Field label={cls === "domain_value_check" ? "Allowed values" : "Fields that must be unique together"} helper="Comma or newline separated">
-            {({ controlId }) => <Textarea id={controlId} rows={3} className="aurora-number" value={values} onChange={(e) => { setValues(e.target.value); setResult(null); }} />}
+            {({ controlId }) => <Textarea id={controlId} rows={3} className="ui-mono" value={values} onChange={(e) => { setValues(e.target.value); setResult(null); }} />}
           </Field>
         )}
         {cls === "cross_field_check" && (
           <Field label="Fails when" helper="Backtick columns; use == != < > & | ~ and .isna() / .notna(), e.g. `LFA1.LAND1` == 'ZA' & `LFA1.STCD1`.isna()">
-            {({ controlId }) => <Textarea id={controlId} rows={3} className="aurora-number" value={draft.fail_when ?? ""} onChange={(e) => setDraft({ fail_when: e.target.value })} />}
+            {({ controlId }) => <Textarea id={controlId} rows={3} className="ui-mono" value={draft.fail_when ?? ""} onChange={(e) => setDraft({ fail_when: e.target.value })} />}
           </Field>
         )}
         {text("message", "Message", "What a failing record means, shown on each finding")}
-        <Stack direction="row" gap={3}>
+        <div className="ui-form__grid">
           <Field label="Severity">
             {({ controlId }) => <Select id={controlId} value={draft.severity} options={SEVERITIES.map((s) => ({ value: s, label: s }))} onValueChange={(s) => setDraft({ severity: s })} />}
           </Field>
@@ -278,7 +289,7 @@ function AuthorDrawer({ open, onClose, modules }: { open: boolean; onClose: () =
             {({ controlId }) => <Select id={controlId} value={draft.dimension ?? ""}
               options={[{ value: "", label: "Default for the check type" }, ...DIMENSIONS.map((d) => ({ value: d, label: d }))]} onValueChange={(d) => setDraft({ dimension: d })} />}
           </Field>
-        </Stack>
+        </div>
         <Field label="Dry run against" helper={draft.module && versions.data?.length === 0 ? "No analysed version holds this object yet" : undefined}>
           {({ controlId }) => <Select id={controlId} placeholder={draft.module ? "Choose a version" : "Choose an object first"}
             value={draft.version_id ?? ""} disabled={!versions.data?.length}
@@ -287,20 +298,19 @@ function AuthorDrawer({ open, onClose, modules }: { open: boolean; onClose: () =
         </Field>
         {error ? <Banner tone="danger" title="Not valid yet">{error}</Banner> : null}
         {result ? (result.error ? <Banner tone="danger" title="The rule errored on this data">{result.error}</Banner> : (
-          <Panel title="Dry run" action={result.grain ? <Text variant="text-small" tone="tertiary">per {result.grain} record</Text> : undefined}>
-            <Stack gap={3}>
-              <KpiRail>
-                <Stat label="Checked" value={result.population.toLocaleString()} />
-                <Stat label="Failing" value={result.failing.toLocaleString()} tone={result.failing ? "warning" : "neutral"} />
-                <Stat label="Pass rate" value={pct(result.pass_rate)} />
-              </KpiRail>
-              {result.sample_keys.length ? (
-                <pre className="aurora-code">{result.sample_keys.join("\n")}{result.failing > result.sample_keys.length ? `\n+${(result.failing - result.sample_keys.length).toLocaleString()} more` : ""}</pre>
-              ) : null}
-            </Stack>
-          </Panel>
+          <section className="ui-detail-part" aria-label="Dry run">
+            <h3 className="ui-detail-part__title">Dry run{result.grain ? <span className="ui-chip-count">per {result.grain} record</span> : null}</h3>
+            <MetricStrip label="Dry run result">
+              <Metric label="Checked" value={result.population} />
+              <Metric label="Failing" value={result.failing} tone={result.failing ? "warning" : "default"} />
+              <Metric label="Pass rate" value={pct(result.pass_rate)} />
+            </MetricStrip>
+            {result.sample_keys.length ? (
+              <pre className="ui-code">{result.sample_keys.join("\n")}{result.failing > result.sample_keys.length ? `\n+${(result.failing - result.sample_keys.length).toLocaleString()} more` : ""}</pre>
+            ) : null}
+          </section>
         )) : null}
-      </Stack>
-    </Drawer>
+      </div>
+    </DetailDrawer>
   );
 }
