@@ -327,7 +327,7 @@ def _prove_exists(rule, dictionary, cand, live) -> tuple[str, str]:
             return f"{cond['contains_any'][0]}{tag}{i}"
         return f"{tag}{i}"
 
-    row = {c: cand[c][0] for c in cand if c in aw}
+    row = {c: str(aw[c][0]) if isinstance(aw[c], list) else cand[c][0] for c in cand if c in aw}
     rows = [{**row, **{c: ref(c, i, "T1") for i, c in enumerate(refs)}},
             {**row, **{c: ref(c, i, "T9") for i, c in enumerate(refs)}}]
     df = _rows(rule, dictionary, rows)
