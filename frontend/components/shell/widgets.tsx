@@ -112,7 +112,7 @@ export function HeaderExportMenu() {
         render={
           <button
             type="button"
-            className="aurora-topbar__cmdk aurora-focus-ring hidden sm:inline-flex"
+            className="aurora-topbar__cmdk aurora-topbar__export aurora-focus-ring"
           />
         }
       >

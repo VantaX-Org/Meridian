@@ -898,7 +898,7 @@
 \* ------------------------------------------------------------------ */
 .aurora-app-shell {
   display: grid;
-  grid-template-columns: 48px 1fr;
+  grid-template-columns: 48px minmax(0, 1fr);
   grid-template-rows: 48px 1fr;
   grid-template-areas:
     "rail topbar"
@@ -924,6 +924,7 @@
   background: var(--aurora-canvas-base);
   border-bottom: 1px solid var(--aurora-canvas-line);
   gap: var(--aurora-space-3);
+  min-width: 0;
 }
 .aurora-app-shell__content {
   grid-area: content;
@@ -1151,6 +1152,8 @@
   color: var(--aurora-fg-tertiary);
   font-family: var(--aurora-font-ui);
   font-size: 13px;
+  white-space: nowrap;
+  flex-shrink: 0;
   cursor: pointer;
   position: relative;
   transition: color var(--aurora-duration-fast) var(--aurora-easing-standard);
@@ -1232,6 +1235,18 @@
 }
 .aurora-breadcrumb__sep {
   color: var(--aurora-fg-muted);
+}
+/* The breadcrumb is the one top-bar item that gives way: it truncates
+   rather than pushing the controls past the edge. */
+.aurora-breadcrumb { min-width: 0; }
+.aurora-app-shell__topbar > :not(.aurora-breadcrumb, .aurora-topbar__spacer) { flex-shrink: 0; }
+.aurora-breadcrumb > ol > li { white-space: nowrap; }
+.aurora-breadcrumb > ol > li[data-last="true"] { min-width: 0; }
+.aurora-breadcrumb__current { overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 720px) {
+  .aurora-app-shell__topbar { padding: 0 var(--aurora-space-2); gap: var(--aurora-space-2); }
+  /* Phones show only the page name; the rail already marks the workspace. */
+  .aurora-breadcrumb > ol > li:not([data-last="true"]) { display: none; }
 }
 
 /* ------------------------------------------------------------------ *\
@@ -3284,6 +3299,10 @@
   .aurora-topbar__cmdk { min-width: 0; }
   .aurora-topbar__cmdk kbd, .aurora-topbar__cmdk span { display: none; }
 }
+/* Unlayered Aurora rules beat Tailwind's `hidden`, so phones drop Export here. */
+@media (max-width: 639px) {
+  .aurora-topbar__export { display: none; }
+}
 .aurora-topbar__icon {
   width: 28px;
   padding: 0;
@@ -3427,6 +3446,7 @@
 .aurora-hub__bar .aurora-tabs {
   border-bottom: 0;
   overflow-x: auto;
+  min-width: 0;
 }
 .aurora-hub__title {
   margin: 0 0 6px;
