@@ -307,3 +307,27 @@ export function ReasonButton({ label, prompt, onConfirm, disabled, size }: {
     </form>
   );
 }
+
+/* ── Forms (batch: settings) ───────────────────────────────────────── */
+
+export { Field, Select, Textarea } from "@/components/aurora";
+export type { SelectOption } from "@/components/aurora";
+
+/* ── DiffView: a unified diff, line by line ────────────────────────── */
+
+/** Renders a unified-diff string. Added and removed lines differ by sign
+ *  and by hue, so the change reads without colour as well. */
+export function DiffView({ diff, label = "Changes" }: { diff: string; label?: string }) {
+  const lines = diff.replace(/\n$/, "").split("\n");
+  return (
+    <pre className="ui-diff" aria-label={label}>
+      {lines.map((line, i) => {
+        const kind = line.startsWith("+++") || line.startsWith("---") ? "file"
+          : line.startsWith("@@") ? "hunk"
+          : line.startsWith("+") ? "add"
+          : line.startsWith("-") ? "del" : "ctx";
+        return <span key={i} className="ui-diff__line" data-kind={kind}>{line || " "}{"\n"}</span>;
+      })}
+    </pre>
+  );
+}

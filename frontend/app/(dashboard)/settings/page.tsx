@@ -1,120 +1,84 @@
 "use client";
 
 import Link from "next/link";
-import { PageHead } from "@/components/meridian/atoms";
-import { Brain, ChevronRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { AdminDoctorCard } from "@/components/aurora";
+import { PageHeader } from "@/components/ui-core";
 import { getDoctor } from "@/lib/api/admin-doctor";
 import { useRole } from "@/hooks/use-role";
 import { useNavGate } from "@/hooks/use-nav";
 import { isItemVisible, SETTINGS_ITEMS } from "@/lib/nav";
 
-const SETTINGS_NAV = [
+/** Each entry carries the same permission and licence gate as its nav item
+ *  (lib/nav.ts SETTINGS_ITEMS), so a role only sees pages it can use. */
+const GROUPS: { title: string; items: { href: string; title: string; desc: string; perm?: string }[] }[] = [
   {
-    k: "rules",
-    l: "Rules Engine",
-    d: "Built-in + custom rules · triggers + scheduling",
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
-        <line x1="4" y1="6" x2="20" y2="6" />
-        <line x1="4" y1="12" x2="20" y2="12" />
-        <line x1="4" y1="18" x2="20" y2="18" />
-        <circle cx="9" cy="6" r="2.3" fill="white" />
-        <circle cx="15" cy="12" r="2.3" fill="white" />
-        <circle cx="8" cy="18" r="2.3" fill="white" />
-      </svg>
-    ),
-    route: "/settings/rules",
+    title: "Checks",
+    items: [
+      { href: "/settings/rules", title: "Rules", desc: "Every check the analysis runs, its versions, reviews and suppressions." },
+      { href: "/ai/rules", title: "Draft a rule with AI", desc: "Describe a check in words, dry-run it, save it for review.", perm: "manage_rules" },
+      { href: "/settings/scoring", title: "Scoring and alerts", desc: "Dimension weights, cost per failing record, alert channels.", perm: "manage_settings" },
+    ],
   },
   {
-    k: "field-mapping",
-    l: "Field Mapping",
-    d: "Source-to-canonical field maps per domain",
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <polygon points="3 6 9 4 15 6 21 4 21 18 15 20 9 18 3 20 3 6" />
-        <line x1="9" y1="4" x2="9" y2="18" />
-        <line x1="15" y1="6" x2="15" y2="20" />
-      </svg>
-    ),
-    route: "/settings/field-mapping",
+    title: "Data",
+    items: [
+      { href: "/settings/field-mapping", title: "Field mapping", desc: "Map source columns to SAP fields for each object." },
+    ],
   },
   {
-    k: "ai",
-    l: "AI settings",
-    d: "Language-model provider, model and connection test",
-    icon: <Brain size={22} strokeWidth={1.6} aria-hidden="true" />,
-    route: "/settings/ai",
-  },
-  {
-    k: "licence",
-    l: "Licence",
-    d: "Tier, seats, renewal & enabled modules",
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <circle cx="8" cy="15" r="4" />
-        <line x1="11" y1="12" x2="21" y2="2" />
-        <line x1="17" y1="6" x2="20" y2="9" />
-        <line x1="15" y1="8" x2="18" y2="11" />
-      </svg>
-    ),
-    route: "/settings/licence",
+    title: "System",
+    items: [
+      { href: "/settings/ai", title: "AI", desc: "Language model provider, model and connection test." },
+      { href: "/settings/licence", title: "Licence", desc: "Tier, seats, renewal date and enabled modules." },
+    ],
   },
 ];
 
 function Doctor() {
   const { data, refetch } = useQuery({ queryKey: ["admin.doctor"], queryFn: getDoctor, refetchInterval: 30_000 });
   if (!data) return null;
-  return (
-    <div className="mt-6">
-      <AdminDoctorCard items={data.items} lastChecked={new Date(data.last_checked).toLocaleTimeString()} onRefresh={() => refetch()} />
-    </div>
-  );
+  return <AdminDoctorCard items={data.items} lastChecked={new Date(data.last_checked).toLocaleTimeString()} onRefresh={() => refetch()} />;
 }
 
 export default function SettingsIndexPage() {
   const { can } = useRole();
   const gate = useNavGate();
-  // Each card carries the same permission + licence gate as its nav entry
-  // (lib/nav.ts SETTINGS_ITEMS), so a role only sees pages it can use.
-  const cards = SETTINGS_NAV.filter((s) => {
-    const item = SETTINGS_ITEMS.find((i) => i.href === s.route);
+  const visible = (href: string, perm?: string) => {
+    if (perm && !can(perm)) return false;
+    const item = SETTINGS_ITEMS.find((i) => i.href === href);
     return item ? isItemVisible(item, gate) : true;
-  });
+  };
+  const groups = GROUPS.map((g) => ({ ...g, items: g.items.filter((i) => visible(i.href, i.perm)) })).filter((g) => g.items.length);
+
   return (
-    <>
-      <PageHead
-        title="Settings"
-        route="/settings"
-        sub={
-          <>
-            Configure how Meridian operates — rule engine triggers, field mapping schemas, AI provider and licence.
-            {can("manage_users") && (
-              <>
-                {" "}Users and the role permission matrix live under{" "}
-                <Link className="mn-link" href="/admin" style={{ padding: 0, margin: 0 }}>
-                  Users &amp; audit
-                </Link>
-                .
-              </>
-            )}
-          </>
-        }
-      />
-      <div className="mn-row" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))" }}>
-        {cards.map((s) => (
-          <Link key={s.k} href={s.route} className="mn-settings-card">
-            <div className="mn-settings-icon">{s.icon}</div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="mn-settings-title">{s.l}</div>
-              <div className="mn-settings-sub">{s.d}</div>
-            </div>
-            <ChevronRight size={16} style={{ color: "var(--mn-ink-300)" }} />
-          </Link>
-        ))}
+    <div className="ui-page">
+      <PageHeader title="Settings" summary={
+        <>
+          How Meridian checks, scores and reports your SAP data.
+          {can("manage_users") ? <> Users and roles are under <Link className="ui-link" href="/admin">Users and audit</Link>.</> : null}
+        </>
+      } />
+      <div className="ui-columns">
+        <div className="ui-stack">
+          {groups.map((g) => (
+            <section key={g.title} className="ui-index-group" aria-labelledby={`settings-${g.title}`}>
+              <h2 id={`settings-${g.title}`} className="ui-index-group__title">{g.title}</h2>
+              <ul className="ui-index">
+                {g.items.map((i) => (
+                  <li key={i.href}>
+                    <Link href={i.href}>
+                      <span className="ui-index__title">{i.title}</span>
+                      <span className="ui-index__desc">{i.desc}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
+        {can("manage_system") ? <div className="ui-stack"><Doctor /></div> : null}
       </div>
-      {can("manage_system") && <Doctor />}
-    </>
+    </div>
   );
 }

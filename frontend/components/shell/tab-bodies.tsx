@@ -17,7 +17,8 @@ const named = <K extends string>(load: () => Promise<Record<K, ComponentType>>, 
 /** Tabs whose body is an Aurora surface — rendered on the canvas, not in the light sheet. */
 export const AURORA_TABS: ReadonlySet<string> = new Set(["/", "/executive-report", "/sync", "/issues", "/match-rules", "/business-process", "/settings/scoring", "/settings/field-mapping",
   "/systems", "/upload", "/versions", "/admin", "/findings", "/cleaning", "/exceptions", "/dedup", "/remediation", "/workbench", "/stewardship", "/stewardship/metrics", "/golden-records", "/glossary", "/reports", "/notifications",
-  "/process", "/config-impact", "/relationships", "/connectivity"]);
+  "/process", "/config-impact", "/relationships", "/connectivity",
+  "/settings", "/settings/rules", "/settings/ai", "/settings/licence", "/ai/rules"]);
 
 export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
   "/": named(() => import("@/components/command-centre/overview"), "CommandCentreOverview"),
