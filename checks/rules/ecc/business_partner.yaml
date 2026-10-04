@@ -24,18 +24,18 @@ rules:
   pattern: ^[A-Z0-9]{1,10}$
   severity: critical
   dimension: validity
-  message: BP number must be exactly 10-digit numeric
-  why_it_matters: In both ECC and S/4HANA, Business Partner numbers are 10 numeric digits by default (number range object
-    BU_PARTNER). Non-conforming formats are rejected during BP creation and by the CVI migration conversion program (FPMD_BP_CONVERT)
-    in S/4HANA. In S/4HANA, BUT000 is the primary BP table; KNA1/LFA1 are compatibility views only.
+  message: BP number must be 1-10 uppercase letters or digits
+  why_it_matters: BUT000.PARTNER is CHAR 10. Internal number ranges (object BU_PARTNER) give numeric keys; external ranges
+    allow uppercase letters and digits. Lowercase, spaces or special characters are rejected during BP creation and by the
+    CVI conversion in S/4HANA. In S/4HANA, BUT000 is the primary BP table; KNA1/LFA1 are compatibility views only.
   rule_authority: sap_hard_constraint
   sap_impact: Prevents BP creation and CVI conversion. Blocks all downstream SAP transactions that reference this partner
     number.
   fix_map:
-    __other__: 'Partner number ''{invalid_value}'' does not match the required 10-digit numeric format. In ECC: use LSMW or
-      conversion program to reformat. In S/4HANA: coordinate with basis team on number range (TNRO, object BU_PARTNER).'
-  record_fix_template: 'Partner {BUT000.PARTNER}: number format is invalid (value: ''{actual_value}''). Reformat to 10-digit
-    numeric via LSMW or number range reconfiguration.'
+    __other__: 'Partner number ''{invalid_value}'' contains characters other than uppercase letters and digits. In ECC: use
+      LSMW or a conversion program to renumber. In S/4HANA: check the grouping''s number range (BUCF, object BU_PARTNER).'
+  record_fix_template: 'Partner {BUT000.PARTNER}: number format is invalid (value: ''{actual_value}''). Use only uppercase
+    letters and digits (max 10); check the number range (BUCF) for the grouping.'
 - id: BP003
   field: BUT000.TYPE
   check_class: null_check
@@ -134,6 +134,9 @@ rules:
 - id: BP009
   field: BUT000.TITLE
   check_class: domain_value_check
+  applies_when:
+    BUT000.TYPE:
+    - '1'
   severity: medium
   dimension: validity
   message: Title key must be a valid SAP title code (0001-0010)
@@ -255,6 +258,7 @@ rules:
   applies_when:
     BUT000.TYPE:
     - '1'
+    - '2'
 - id: BP017
   field: ADR6.SMTP_ADDR
   check_class: null_check
@@ -576,6 +580,9 @@ rules:
 - id: BP040
   field: BUT000.TITLE
   check_class: null_check
+  applies_when:
+    BUT000.TYPE:
+    - '1'
   severity: low
   dimension: completeness
   message: Title/salutation is missing
@@ -985,3 +992,79 @@ rules:
   fix_map:
     __other__: Regenerate the GUID of the copied partner (re-create it via BP / MDG) and correct the CVI link.
   record_fix_template: 'BP {BUT000.PARTNER}: partner GUID {BUT000.PARTNER_GUID} is shared with another partner.'
+- id: BP065
+  field: BUT000.PARTNER
+  check_class: exists_check
+  grain: BUT000
+  target_table: BUT020
+  target_fields:
+  - PARTNER
+  severity: high
+  dimension: completeness
+  message: Business partner has no address
+  why_it_matters: Every BP needs a standard address. Customer/vendor synchronisation (CVI) maps it to KNA1/LFA1 and every
+    output uses it. A partner without BUT020 was loaded incompletely.
+  rule_authority: sap_hard_constraint
+  sap_impact: CVI synchronisation to customer/vendor fails (MDS_PPO2 errors). Documents for the partner have no address,
+    and tax and country determination fail.
+  fix_map:
+    __other__: Maintain the standard address (BP > Address), then rerun CVI synchronisation (MDS_LOAD_COCKPIT).
+  record_fix_template: 'BP {BUT000.PARTNER} has no address.'
+- id: BP066
+  field: BUT000.PARTNER
+  check_class: exists_check
+  grain: BUT000
+  target_table: BUT100
+  target_fields:
+  - PARTNER
+  severity: medium
+  dimension: completeness
+  message: Business partner has no role
+  why_it_matters: SAP stores at least the general role (000000) for every BP. A partner without any BUT100 entry was created
+    by a direct load. It has no customer or vendor role, so CVI never creates its customer or vendor account.
+  rule_authority: sap_hard_constraint
+  sap_impact: The partner cannot be used in SD, MM or FI, and transaction BP shows it without roles. Migration cockpits
+    and CVI skip it.
+  fix_map:
+    __other__: Assign the required roles (BP > Display in BP role; FLCU00/FLCU01 customer, FLVN00/FLVN01 vendor).
+  record_fix_template: 'BP {BUT000.PARTNER} has no role assignment.'
+- id: BP067
+  field: BUT0ID.IDNUMBER
+  check_class: uniqueness_check
+  fields:
+  - BUT0ID.TYPE
+  - BUT0ID.IDNUMBER
+  normalize: alnum
+  severity: high
+  dimension: uniqueness
+  message: Several business partners share the same identification number of the same type
+  why_it_matters: Identification numbers (DUNS, trade register, national ID, passport) identify one legal entity or person.
+    A number shared by two partners points to a duplicate partner. MDG and Information Steward use IDs as primary match
+    keys.
+  rule_authority: best_practice
+  sap_impact: Duplicate partners split credit exposure, payment history and sanctions screening. The same entity can be
+    paid or credited twice.
+  fix_map:
+    __other__: Merge or block the duplicate partner (BP; MDG consolidation in S/4HANA), or correct the mistyped number.
+  record_fix_template: 'BP {BUT0ID.PARTNER}: ID {BUT0ID.TYPE} "{BUT0ID.IDNUMBER}" is also held by another partner.'
+- id: BP068
+  field: BUT0BK.BANKN
+  check_class: uniqueness_check
+  fields:
+  - BUT0BK.BANKS
+  - BUT0BK.BANKL
+  - BUT0BK.BANKN
+  normalize: alnum
+  severity: high
+  dimension: uniqueness
+  message: Several business partners share the same bank account
+  why_it_matters: A bank account normally belongs to one party. A shared account means either a duplicate partner or a
+    payment-diversion risk, such as an employee's or another vendor's account on a supplier. Shared bank accounts across
+    partners are a standard Big-4 fraud and segregation test.
+  rule_authority: best_practice
+  sap_impact: Payments (F110) and refunds can go to the wrong party. Duplicate partners split balances and dunning.
+  fix_map:
+    __other__: Verify the account with each partner (call-back procedure). Remove it from the wrong partner or merge the
+      duplicates.
+  record_fix_template: 'BP {BUT0BK.PARTNER}: bank account {BUT0BK.BANKS}/{BUT0BK.BANKL}/{BUT0BK.BANKN} is also held by another
+    partner.'

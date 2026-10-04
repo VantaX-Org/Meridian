@@ -144,9 +144,9 @@ def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
             vals += [str(v) for v in aw[:3]]
         elif isinstance(aw, dict):
             vals += [str(v) for v in (aw.get("contains_any") or [])[:2]]
-            vals += [""] if aw.get("blank") else ["N0"] if "not_in" in aw else ["X"]  # inside the scope
             if "gt" in aw:
                 vals.append(str(float(aw["gt"]) + 1))
+            vals += [""] if aw.get("blank") else ["N0"] if "not_in" in aw else ["X"]  # inside the scope
         if f"`{c}`" in expr:
             vals += literals[:4] + numbers[:4]
         vals += paired.get(c, [])[:1] + _PROBES[_kind(dictionary, c)]
@@ -243,6 +243,9 @@ def prove(rule: dict, dictionary) -> tuple[str, str]:
         rows = [{**block, rule["field"]: n} for n in ("ACME ENGINEERING WORKS", "ACME ENGINERING WORKS",
                                                        "ZULU FREIGHT SERVICES")]
         return _verify(rule, dictionary, rows, (3, 2), live)
+    # the scope's own values first: with many conditions, MAX_ROWS would never reach a second checked value
+    aw = rule.get("applies_when") or {}
+    cand = {c: v[:2] if c in aw and c != rule.get("field") and len(cols) > 5 else v for c, v in cand.items()}
     combos = itertools.product(*(cand[c] for c in cols))
     values = [dict(zip(cols, combo)) for combo in itertools.islice(combos, MAX_ROWS)]
     df = _rows(rule, dictionary, values)
