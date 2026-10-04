@@ -100,6 +100,7 @@ export default function GoldenRecordDetailPage() {
       chips={<Chip tone={STATUS_TONE[record.status] ?? "neutral"}>{record.status.replace("_", " ")}</Chip>}
       actions={
         <>
+          <Link className="aurora-link" href={`/golden-records/${recordId}/merge`}>Why merged</Link>
           {record.status !== "golden" && record.status !== "superseded" && can("approve") ? (
             <Button onClick={() => promote.mutate()} disabled={promote.isPending}>
               {promote.isPending ? "Promoting…" : "Promote to golden"}

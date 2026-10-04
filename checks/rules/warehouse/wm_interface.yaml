@@ -371,3 +371,22 @@ rules:
       __other__: Create the bin (LS01N) or correct the material's fixed bin (MM02 > Warehouse management 2).
     record_fix_template: 'Material {MLGT.MATNR} warehouse {MLGT.LGNUM} storage type {MLGT.LGTYP}: fixed bin {MLGT.LGPLA} does
       not exist.'
+
+  - id: WMI023
+    field: MLGT.NSMNG
+    check_class: cross_field_check
+    fail_when: '`MLGT.NSMNG` > `MLGT.LPMAX`'
+    applies_when:
+      MLGT.LPMAX: {gt: 0}
+    severity: medium
+    dimension: consistency
+    message: Fixed-bin replenishment quantity is larger than the bin maximum
+    why_it_matters: Fixed-bin replenishment (LP21) brings stock in multiples of the replenishment quantity
+      (MLGT.NSMNG) up to the maximum bin quantity (MLGT.LPMAX). A replenishment quantity above the maximum never fits,
+      so the bin is either never refilled or overfilled.
+    rule_authority: best_practice
+    sap_impact: Picking bins run empty or overflow; replenishment transfer orders are not created as expected.
+    fix_map:
+      __other__: Correct the replenishment or maximum quantity in the material's storage type view (MM02).
+    record_fix_template: 'Material {MLGT.MATNR}, {MLGT.LGNUM}/{MLGT.LGTYP}: replenishment {MLGT.NSMNG}, bin maximum
+      {MLGT.LPMAX}.'

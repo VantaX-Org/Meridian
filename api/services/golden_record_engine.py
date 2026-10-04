@@ -309,8 +309,17 @@ async def process_sync_batch(
             await db.execute(
                 text("""
                     UPDATE master_records
-                    SET golden_fields = CAST(:golden_fields AS jsonb),
-                        source_contributions = CAST(:source_contributions AS jsonb),
+                    -- A record in a merge cluster (own_fields set) keeps its fused golden values;
+                    -- the sync refreshes its own pre-merge values instead (migration 060).
+                    -- ponytail: the cluster is not re-fused on sync; a steward override or
+                    -- re-merge recomputes it.
+                    SET golden_fields = CASE WHEN own_fields IS NULL THEN CAST(:golden_fields AS jsonb)
+                                             ELSE golden_fields END,
+                        own_fields = CASE WHEN own_fields IS NULL THEN NULL
+                                          ELSE CAST(:golden_fields AS jsonb) END,
+                        source_contributions = CASE WHEN own_fields IS NULL
+                                                    THEN CAST(:source_contributions AS jsonb)
+                                                    ELSE source_contributions END,
                         overall_confidence = :confidence,
                         status = CASE
                             WHEN status = 'golden' THEN 'golden'
