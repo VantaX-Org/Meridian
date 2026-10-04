@@ -1338,6 +1338,30 @@ rules:
       __other__: Assign a current credit account (FD32) or make the customer its own credit account.
     record_fix_template: 'Customer {KNKK.KUNNR} (credit area {KNKK.KKBER}): credit account {KNKK.KNKLI} does not exist or is
       deleted.'
+  - id: S4-CVI-KNA1
+    field: KNA1.KUNNR
+    check_class: exists_check
+    grain: KNA1
+    applies_when:
+      KNA1.LOEVM:
+        blank: true
+    target_table: CVI_CUST_LINK
+    target_fields:
+    - CUSTOMER
+    baseline: s4_target
+    severity: high
+    dimension: consistency
+    message: 'S/4HANA readiness: active customer has no Business Partner link (CVI_CUST_LINK) - simplification item S4TWL
+      Business Partner Approach, SAP Note 2265093'
+    why_it_matters: In S/4HANA the Business Partner is the only maintenance object for customers; KNA1 is kept in sync through
+      Customer/Vendor Integration. The conversion pre-checks stop the system conversion while an active customer has no BP
+      assigned in CVI_CUST_LINK.
+    rule_authority: sap_hard_constraint
+    sap_impact: The S/4HANA conversion is blocked until every active customer is synchronised to a Business Partner (MDS_LOAD_COCKPIT).
+    fix_map:
+      __other__: Synchronise the customer to a Business Partner with the CVI synchronisation cockpit (MDS_LOAD_COCKPIT), or
+        flag it for deletion if it is no longer used.
+    record_fix_template: 'Customer {KNA1.KUNNR} has no Business Partner in CVI_CUST_LINK.'
   - id: AR073
     field: KNKK.SKFOR
     check_class: cross_field_check

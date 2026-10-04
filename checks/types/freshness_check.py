@@ -1,3 +1,5 @@
+import os
+
 import pandas as pd
 
 from checks.base import BaseCheck, Evaluation, as_of_time, is_blank
@@ -31,14 +33,25 @@ class FreshnessCheck(BaseCheck):
             ok = d.str.fullmatch(r"\d{8}").fillna(False) & times.str.fullmatch(r"\d{6}").fillna(False)
             dates = d.where(~ok, d + times)  # malformed time: fall back to the date alone
         parsed = _parse_dates(dates)
-        # ponytail: compares SAP system-local date/time with the UTC as-of time; skew = system UTC offset.
-        # Fine for day-scale thresholds; read TZONE from the system profile if hour precision matters.
-        cutoff = as_of_time(self.rule.get("_as_of")) - pd.Timedelta(hours=max_age_hours)
+        # SAP dates/times are system-local: move the UTC cutoff onto the system's clock
+        cutoff = as_of_time(self.rule.get("_as_of")) - pd.Timedelta(hours=max_age_hours) \
+            + pd.Timedelta(seconds=sap_utc_offset(self.rule.get("_sap_utc_offset_seconds")))
         failing = parsed.isna() | (parsed < cutoff)
         valid = parsed.dropna()
         return Evaluation(~is_blank(df[field]), failing, {
             "max_age_hours": max_age_hours,
-            "cutoff_datetime": cutoff.isoformat(),
+            "cutoff_datetime": cutoff.isoformat(),  # in SAP system-local time
             "oldest_value": str(valid.min()) if len(valid) else None,
             "newest_value": str(valid.max()) if len(valid) else None,
         })
+
+
+def sap_utc_offset(stored) -> int:
+    """Seconds SAP local time is ahead of UTC: MERIDIAN_SAP_UTC_OFFSET_SECONDS when set,
+    else the offset read at extraction (RFC_SYSTEM_INFO RFCZONE), else 0 (uploads,
+    cloud connectors, snapshots taken before the offset was recorded)."""
+    # ponytail: RFCZONE sign assumed as documented (SAP local = UTC + RFCZONE). Unverified on a live
+    # system: compare RFC_SYSTEM_INFO RFCZONE with SY-UZEIT vs UTC; if the sign is wrong, set the env
+    # override (it wins) until the reader is fixed.
+    env = os.getenv("MERIDIAN_SAP_UTC_OFFSET_SECONDS", "").strip()
+    return int(env) if env else int(stored or 0)

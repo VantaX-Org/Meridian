@@ -27,10 +27,13 @@ const meta = (m: AuroraColumnMeta) => m;
 const PAGE = 200;
 const RECORDS_PAGE = 25;
 const EXPORT_PAGE = 1000;
-const FILTER_KEYS = ["version_id", "module", "severity", "dimension", "check_id"] as const;
+const FILTER_KEYS = ["version_id", "module", "severity", "dimension", "check_id", "baseline"] as const;
 type FilterKey = (typeof FILTER_KEYS)[number];
 type Filter = Partial<Record<FilterKey, string>>;
-const FILTER_LABEL: Record<FilterKey, string> = { version_id: "version", module: "object", severity: "severity", dimension: "dimension", check_id: "check" };
+const FILTER_LABEL: Record<FilterKey, string> = { version_id: "version", module: "object", severity: "severity", dimension: "dimension", check_id: "check", baseline: "baseline" };
+/** What a finding was judged against: the system's own config, SAP's standard lists, or S/4HANA. */
+const BASELINES = { live_config: "Live config", sap_standard: "SAP standard", s4_target: "S/4HANA target" } as const;
+const baselineLabel = (b: string | undefined) => BASELINES[(b ?? "live_config") as keyof typeof BASELINES] ?? b ?? "";
 const SEVERITIES = ["critical", "high", "medium", "low"] as const;
 type Sev = (typeof SEVERITIES)[number];
 const DIMENSIONS: Dimension[] = ["completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity"];
@@ -114,13 +117,20 @@ export function FindingsSurface() {
 
       <SeverityBar counts={counts.sev} total={agg?.total ?? 0} active={filter.severity} onPick={(s) => set({ severity: filter.severity === s ? undefined : s })} />
 
+      <Stack direction="row" gap={2} wrap align="center" aria-label="Baseline">
+        <Text variant="text-micro" tone="muted">Judged against</Text>
+        {(Object.keys(BASELINES) as (keyof typeof BASELINES)[]).map((b) => (
+          <Chip key={b} selected={filter.baseline === b} onClick={() => set({ baseline: filter.baseline === b ? undefined : b })}>{BASELINES[b]}</Chip>
+        ))}
+      </Stack>
+
       <Stack direction="row" gap={2} wrap align="center">
         {!filter.module ? counts.modules.slice(0, 10).map(([m, n]) => (
           <Chip key={m} onClick={() => set({ module: m })}>{formatModuleName(m)} · {n}</Chip>
         )) : null}
         {active.map((k) => (
           <Chip key={k} tone="info" onDismiss={() => set({ [k]: undefined })}>
-            {FILTER_LABEL[k]} · {k === "version_id" ? filter[k]?.slice(0, 8) : k === "module" ? formatModuleName(filter[k] ?? "") : filter[k]}
+            {FILTER_LABEL[k]} · {k === "version_id" ? filter[k]?.slice(0, 8) : k === "module" ? formatModuleName(filter[k] ?? "") : k === "baseline" ? baselineLabel(filter[k]) : filter[k]}
           </Chip>
         ))}
         {active.length ? <Button variant="ghost" size="sm" onClick={clearAll}>Clear all</Button> : null}
@@ -252,6 +262,7 @@ function FindingDetail({ finding: f }: { finding: Finding }) {
   const rows: [string, ReactNode][] = [
     ["Object", formatModuleName(f.module)], ["Check", f.check_id],
     ["Check type", f.check_class ? <span title={f.check_class}>{checkClassLabel(f.check_class)}</span> : "—"], ["Dimension", f.dimension], ["Field", f.details?.field_checked ?? "—"],
+    ["Baseline", baselineLabel(f.baseline)],
     ["Records", `${f.affected_count.toLocaleString()} of ${f.total_count.toLocaleString()}`],
     ["Pass rate", f.pass_rate === null ? "—" : `${Math.round(f.pass_rate)}%`], ["Version", f.version_id.slice(0, 8)],
   ];

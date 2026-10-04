@@ -86,6 +86,7 @@ def run_conformance(table: str, df: pd.DataFrame, dictionary: Dictionary, module
     cells = {k: 0 for k in _KINDS}
     failing_rows = {k: pd.Series(False, index=df.index) for k in _KINDS}
     per_field: dict[str, dict[str, int]] = {k: {} for k in _KINDS}
+    check_tables: dict[str, str] = {}  # field → live check table its values were judged against
     for col in df.columns:
         name = col.split(".", 1)[-1]
         f = t.fields.get(name)
@@ -95,6 +96,8 @@ def run_conformance(table: str, df: pd.DataFrame, dictionary: Dictionary, module
         if not populated.any():
             continue
         check_values = reference_values.get(f.check_ref) if f.check_ref else None
+        if check_values is not None:
+            check_tables[f.name] = f.check_ref
         if check_values is not None and name in _ALSO_VALID:
             check_values = check_values | _ALSO_VALID[name]
         for kind, bad in _violations(df[col], f, check_values).items():
@@ -109,6 +112,9 @@ def run_conformance(table: str, df: pd.DataFrame, dictionary: Dictionary, module
                 per_field[kind][f.name] = n
                 failing_rows[kind] |= bad
 
+    # check-table values only ever come from the extracted live configuration; the
+    # other kinds judge against the field definition, live DDIC or SAP standard
+    definition = sorted({f.provenance for f in t.fields.values()})
     results = []
     for kind, (severity, message) in _KINDS.items():
         if not cells[kind]:
@@ -133,7 +139,10 @@ def run_conformance(table: str, df: pd.DataFrame, dictionary: Dictionary, module
                 "fields_failing": per_field[kind],
                 "failing_record_count": int(rows.sum()),
                 "record_key_fields": keys,
-                "dictionary_provenance": sorted({f.provenance for f in t.fields.values()}),
+                "baseline": "live_config" if kind == "check_table" or "live" in definition else "sap_standard",
+                "definition_provenance": definition,
+                **({"check_tables": {fld: check_tables[fld] for fld in per_field[kind]},
+                    "check_values_source": "live_config"} if kind == "check_table" else {}),
                 "sample_failing_records": [
                     {**{c: str(df.at[i, c]) for c in keys},
                      **{f"{table}.{fld}": str(df.at[i, f"{table}.{fld}"]) for fld in per_field[kind]

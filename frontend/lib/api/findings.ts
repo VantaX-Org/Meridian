@@ -7,6 +7,7 @@ export async function getFindings(params: {
   severity?: string;
   dimension?: string;
   check_id?: string;
+  baseline?: string;
   sort?: "severity" | "impact";
   limit?: number;
   offset?: number;
