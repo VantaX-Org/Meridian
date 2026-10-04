@@ -71,12 +71,15 @@ export interface MetricProps {
   tone?: "default" | "danger" | "warning";
 }
 
+// Fixed locale so server and client render the same string.
+const fmt = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+
 export function Metric({ label, value, unit, delta, href, tone = "default" }: MetricProps) {
   const body = (
     <>
       <dt className="ui-metric__label">{label}</dt>
       <dd className="ui-metric__value aurora-number" data-tone={tone}>
-        {value ?? "—"}
+        {typeof value === "number" ? fmt(value) : (value ?? "—")}
         {value != null && unit ? <span className="ui-metric__unit">{unit}</span> : null}
         {delta && delta.value !== 0 ? (
           <span
@@ -84,7 +87,7 @@ export function Metric({ label, value, unit, delta, href, tone = "default" }: Me
             data-good={(delta.value > 0) === (delta.good === "up")}
           >
             {delta.value > 0 ? "+" : "−"}
-            {Math.abs(delta.value)}
+            {fmt(Math.abs(delta.value))}
             {delta.unit ?? ""}
           </span>
         ) : null}
