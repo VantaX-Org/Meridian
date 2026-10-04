@@ -4,8 +4,8 @@ rule_versions      — draft → in_review → active → retired, with approver
 rule_suppressions  — a rule or one record kept out of the score until expires_at (reason required)
 alert_channels     — webhook / Slack / Teams / email targets; digest by default
 
-Revision ID: 054
-Revises: 053
+Revision ID: 057
+Revises: 056
 Create Date: 2026-10-04
 """
 
@@ -15,8 +15,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 
-revision: str = "054"
-down_revision: Union[str, None] = "053"
+revision: str = "057"
+down_revision: Union[str, None] = "056"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
