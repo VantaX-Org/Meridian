@@ -155,7 +155,8 @@ def test_profile_api(app_engine):
             assert body["dependencies"] == [{
                 "table": "MARA", "determinant": "MARA.MTART", "dependent": "MARA.MBRSH", "support": 0.9925,
                 "rows": 400, "violations": 3,
-                "sample_keys": ["MATNR=000000000000000001", "MATNR=000000000000000002", "MATNR=000000000000000003"]}]
+                "sample_keys": ["MATNR=000000000000000001", "MATNR=000000000000000002", "MATNR=000000000000000003"],
+                "accepted": False}]
 
             # default object = first profiled one
             assert (await c.get(url, headers=hdr)).json()["object"] == "material_master"

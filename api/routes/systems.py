@@ -41,6 +41,7 @@ class RegisterSystemRequest(BaseModel):
     base_url: Optional[str] = None
     company_id: Optional[str] = None
     auth_type: Optional[str] = None
+    token_url: Optional[str] = None  # OAuth client credentials, e.g. the BTP XSUAA /oauth/token URL
     # RFC: overrides the global SAP_RFC_USER for this system if set. Cloud
     # basic-auth: the actual username (e.g. SuccessFactors username@company_id).
     username: Optional[str] = None
@@ -170,11 +171,11 @@ async def register_system(
         text("""
             INSERT INTO sap_systems (
                 id, tenant_id, name, system_type, host, client, sysnr, username,
-                base_url, company_id, auth_type, description, environment
+                base_url, company_id, auth_type, token_url, description, environment
             )
             VALUES (
                 gen_random_uuid(), :tid, :name, :system_type, :host, :client, :sysnr, :username,
-                :base_url, :company_id, :auth_type, :description, :environment
+                :base_url, :company_id, :auth_type, :token_url, :description, :environment
             )
             RETURNING id, name, system_type, host, client, sysnr, username, base_url, company_id,
                       auth_type, description, environment, is_active,
@@ -191,6 +192,7 @@ async def register_system(
             "base_url": body.base_url,
             "company_id": body.company_id,
             "auth_type": auth_type,
+            "token_url": body.token_url,
             "description": body.description,
             "environment": body.environment,
         },
@@ -499,7 +501,7 @@ async def test_draft_connection(
         "client_id": client_id,
         "client_secret": client_secret,
         "api_key": api_key,
-        "token_url": "",
+        "token_url": body.token_url or "",
     }
     return _run_connection_test(body.system_type, params, [password, client_secret, api_key])
 

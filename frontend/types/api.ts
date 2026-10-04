@@ -139,6 +139,11 @@ export interface Finding {
   rule_context: RuleContext | null;
   value_fix_map: Record<string, ValueFixEntry> | null;
   record_fixes: RecordFixEntry[] | null;
+  /** Cost of poor data quality (checks/cost.py) and how it was computed. */
+  cost_at_risk?: number | null;
+  cost_formula?: string | null;
+  /** $ at risk × blocked SAP features × severity — the "impact" sort. */
+  impact_score?: number | null;
   created_at: string;
   /* Glossary enrichment (Phase K) */
   business_name?: string | null;
@@ -804,6 +809,15 @@ export interface StewardshipQueueItem {
   updated_at: string;
   ai_recommendation: string | null;
   ai_confidence: number | null;
+  /** Triage / SLA fields; present once migration 059 is applied. */
+  assigned_team_id?: string | null;
+  acknowledged_at?: string | null;
+  resolved_at?: string | null;
+  ack_due_at?: string | null;
+  sla_state?: "on_track" | "at_risk" | "breached" | null;
+  sla_paused_at?: string | null;
+  snoozed_until?: string | null;
+  snooze_reason?: string | null;
 }
 
 export interface StewardshipQueueListResponse {
@@ -887,7 +901,7 @@ export interface MdmHistoryResponse {
 }
 
 /* -- System Types (Extended) -- */
-export type SystemType = "ecc" | "s4hana_onprem" | "s4hana_cloud" | "successfactors" | "concur" | "ariba" | "ewm";
+export type SystemType = "ecc" | "s4hana_onprem" | "s4hana_cloud" | "successfactors" | "concur" | "ariba" | "btp" | "ewm";
 export type AuthType = "rfc" | "basic" | "oauth2_client_credentials" | "oauth2_saml" | "api_key";
 export type HealthStatus = "healthy" | "degraded" | "unreachable" | "auth_failed" | "unknown";
 

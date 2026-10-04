@@ -24,10 +24,12 @@ export async function registerSystem(body: {
   sysnr?: string;
   // RFC: overrides the global SAP_RFC_USER if set. Cloud basic-auth: the username.
   username?: string;
-  // Cloud fields (s4hana_cloud, successfactors, concur, ariba)
+  // Cloud fields (s4hana_cloud, successfactors, concur, ariba, btp)
   base_url?: string;
   company_id?: string;
   auth_type?: string;
+  // OAuth client credentials token endpoint (s4hana_cloud, btp: the XSUAA /oauth/token URL)
+  token_url?: string;
   // RFC: { password }. Cloud: { client_id, client_secret, api_key, password? (basic auth) }
   credentials: Record<string, string>;
 }): Promise<SAPSystem> {
@@ -84,6 +86,7 @@ export async function testDraftConnection(body: {
   base_url?: string;
   company_id?: string;
   auth_type?: string;
+  token_url?: string;
   credentials: Record<string, string>;
 }): Promise<TestConnectionResponse> {
   const { data } = await apiClient.post<TestConnectionResponse>(

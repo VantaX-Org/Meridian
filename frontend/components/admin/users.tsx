@@ -15,7 +15,7 @@ import {
   Select, Stack, Stat, Tabs, Text, type AuroraColumnMeta, type ChipTone,
 } from "@/components/aurora";
 import { downloadCsv } from "@/components/meridian/actions";
-import { PlatformVersionCard } from "@/components/platform-version-card";
+import { PlatformVersion } from "./platform-version";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import { getAuditEntries } from "@/lib/api/audit";
@@ -125,7 +125,7 @@ export function UsersSurface() {
             </Stack>
           </div>
           <Text variant="text-micro" tone="muted">Plan changes and invoices are managed centrally in Meridian HQ.</Text>
-          <PlatformVersionCard />
+          <PlatformVersion />
         </Stack>
       ) : null}
 

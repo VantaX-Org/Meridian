@@ -60,6 +60,8 @@ export interface FieldDependency {
   rows: number;
   violations: number;
   sample_keys: string[];
+  /** Already accepted as a check. */
+  accepted: boolean;
 }
 
 export interface VersionProfile {
@@ -81,4 +83,13 @@ export async function getVersionProfile(
       params: { object },
     })
   ).data;
+}
+
+/** Accept a mined dependency as a check run on every later analysis of the object. */
+export async function acceptDependency(body: {
+  module: string;
+  determinant: string;
+  dependent: string;
+}): Promise<{ id: string; name: string }> {
+  return (await apiClient.post("/api/v1/rules/mined", body)).data;
 }

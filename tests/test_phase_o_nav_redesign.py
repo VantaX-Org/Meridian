@@ -82,10 +82,10 @@ def test_sidebar_quality_items():
 
 
 def test_sidebar_fix_items():
-    """Fix has the two renamed queues plus Cleaning, Exceptions, Duplicates, AI rule review."""
+    """Fix has the steward inbox plus Cleaning, Exceptions, Duplicates, AI rule review."""
     block = _group_block(_nav(), "Fix")
-    assert 'href: "/workbench", label: "My queue"' in block
-    assert 'href: "/stewardship", label: "Team workload"' in block
+    assert 'href: "/workbench", label: "Steward inbox"' in block
+    assert '"/stewardship"' not in block
     for href in ("/cleaning", "/exceptions", "/dedup", "/ai/rules"):
         assert f'"{href}"' in block, f"{href} missing from Fix"
     assert 'label: "Workbench"' not in _nav(), "duplicate 'Workbench' labels must be gone"
@@ -136,8 +136,8 @@ def test_nav_permission_gating():
 
 
 def test_settings_cards_are_gated():
-    """Settings cards use the same gate as their nav entries."""
-    content = Path("frontend/app/(dashboard)/settings/page.tsx").read_text(encoding="utf-8")
+    """Settings cards (Admin → Settings surface) use the same gate as their nav entries."""
+    content = Path("frontend/components/admin/settings.tsx").read_text(encoding="utf-8")
     assert "isItemVisible" in content
     assert "SETTINGS_ITEMS" in content
 

@@ -151,8 +151,9 @@ def test_drilldown_routes(app_engine):
             # records of one check in one version
             r = (await c.get(f"/api/v1/versions/{v1}/findings/CHK-A/records", headers=h)).json()
             assert r["total"] == 2
-            assert r["records"] == [{"record_key": "LIFNR=1", "grain": "LFA1", "module": "accounts_payable"},
-                                    {"record_key": "LIFNR=2", "grain": "LFA1", "module": "accounts_payable"}]
+            assert r["records"] == [
+                {"record_key": "LIFNR=1", "grain": "LFA1", "module": "accounts_payable", "field_values": None},
+                {"record_key": "LIFNR=2", "grain": "LFA1", "module": "accounts_payable", "field_values": None}]
             page = (await c.get(f"/api/v1/versions/{v1}/findings/CHK-A/records", headers=h,
                                 params={"limit": 1, "offset": 1})).json()
             assert page["total"] == 2 and [x["record_key"] for x in page["records"]] == ["LIFNR=2"]
@@ -263,6 +264,9 @@ def test_findings_aggregate(app_engine):
             assert latest["dqs"]["modules"] == {"accounts_payable": 85.5, "business_partner": 70.0}
             assert latest["dqs"]["dimension_scores"] == {"completeness": 80.0, "validity": 88.0}
             assert latest["previous_dqs"] == 80.0                        # v1, the run before v2 on the same system
+
+            bp = (await c.get("/api/v1/findings/aggregate", headers=h, params={"module": "business_partner"})).json()
+            assert bp["total"] == 1 and bp["affected_records"] == 1 and bp["dqs"]["composite"] == 77.75
 
             one = (await c.get("/api/v1/findings/aggregate", headers=h, params={"version_id": v1})).json()
             assert one["version_ids"] == [v1] and one["total"] == 5 and one["dqs"]["composite"] == 80.0
