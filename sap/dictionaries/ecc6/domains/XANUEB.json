@@ -1,0 +1,32 @@
+{
+ "domain": "XANUEB",
+ "type": "NUMC",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "0",
+   "high": null,
+   "text": "Asset data transfer completed"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Asset data transfer not yet completed"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Test company code with data transfer always allowed"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Company code deactivated - later reporting allowed"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

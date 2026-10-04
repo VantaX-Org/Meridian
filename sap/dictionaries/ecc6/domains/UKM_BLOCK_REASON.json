@@ -1,0 +1,11 @@
+{
+ "domain": "UKM_BLOCK_REASON",
+ "type": "CHAR",
+ "length": 2,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": "UKM_BL_REASON",
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

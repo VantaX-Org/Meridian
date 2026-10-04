@@ -1,0 +1,269 @@
+{
+ "table": "CSKB",
+ "description": "Cost Elements (Data Dependent on Controlling Area)",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "KOKRS",
+   "key": true,
+   "data_element": "KOKRS",
+   "domain": "CACCD",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Controlling Area",
+   "check_table": "TKA01"
+  },
+  {
+   "pos": 3,
+   "name": "KSTAR",
+   "key": true,
+   "data_element": "KSTAR",
+   "domain": "KSTAR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Cost Element",
+   "check_table": "CSKA"
+  },
+  {
+   "pos": 4,
+   "name": "DATBI",
+   "key": true,
+   "data_element": "DATBI",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Valid To Date",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "DATAB",
+   "key": false,
+   "data_element": "DATAB",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Valid-From Date",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "KATYP",
+   "key": false,
+   "data_element": "KATYP",
+   "domain": "KATYP",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Cost element category",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "ERSDA",
+   "key": false,
+   "data_element": "ERFDT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Created on",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "USNAM",
+   "key": false,
+   "data_element": "ERFNM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Entered by",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "EIGEN",
+   "key": false,
+   "data_element": "EIGEN",
+   "domain": "EIGEN",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Cost element attributes",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "PLAZU",
+   "key": false,
+   "data_element": "PLAZU",
+   "domain": "WERC1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator for planning access",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "PLAOR",
+   "key": false,
+   "data_element": "PLAOR",
+   "domain": "WERC1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator for the planning location",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "PLAUS",
+   "key": false,
+   "data_element": "PLAUS",
+   "domain": "WERC2",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Indicators for planning user",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "KOSTL",
+   "key": false,
+   "data_element": "KOSTL",
+   "domain": "KOSTL",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Cost Center",
+   "check_table": "CSKS"
+  },
+  {
+   "pos": 15,
+   "name": "AUFNR",
+   "key": false,
+   "data_element": "AUFNR",
+   "domain": "AUFNR",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Order Number",
+   "check_table": "AUFK"
+  },
+  {
+   "pos": 16,
+   "name": "MGEFL",
+   "key": false,
+   "data_element": "MGEFL",
+   "domain": "YNFLG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator for Recording Consumption Quantities",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "MSEHI",
+   "key": false,
+   "data_element": "MSEHI",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit of Measurement",
+   "check_table": "T006"
+  },
+  {
+   "pos": 18,
+   "name": "DEAKT",
+   "key": false,
+   "data_element": "CO_DEAKT",
+   "domain": "CO_DEAKT",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Cost element deactivated",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "LOEVM",
+   "key": false,
+   "data_element": "CO_LOEFL",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Cost element is flagged for deletion",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "RECID",
+   "key": false,
+   "data_element": "JV_RECIND",
+   "domain": "JV_RECIND",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Recovery Indicator",
+   "check_table": "T8JJ"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "AUFNR",
+   "foreign_table": "AUFK",
+   "foreign_field": "AUFNR"
+  },
+  {
+   "field": "KOKRS",
+   "foreign_table": "TKA01",
+   "foreign_field": "KOKRS"
+  },
+  {
+   "field": "KOSTL",
+   "foreign_table": "CSKS",
+   "foreign_field": "KOSTL"
+  },
+  {
+   "field": "KSTAR",
+   "foreign_table": "CSKA",
+   "foreign_field": "KSTAR"
+  },
+  {
+   "field": "MSEHI",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "RECID",
+   "foreign_table": "T8JJ",
+   "foreign_field": "RECID"
+  }
+ ]
+}

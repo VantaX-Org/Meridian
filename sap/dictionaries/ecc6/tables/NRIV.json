@@ -1,0 +1,129 @@
+{
+ "table": "NRIV",
+ "description": "Number Range Intervals",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "CLIENT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "OBJECT",
+   "key": true,
+   "data_element": "NROBJ",
+   "domain": "NROBJ",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Name of number range object",
+   "check_table": "TNRO"
+  },
+  {
+   "pos": 3,
+   "name": "SUBOBJECT",
+   "key": true,
+   "data_element": "NRSOBJ",
+   "domain": "CHAR6",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Number range object subobject value",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "NRRANGENR",
+   "key": true,
+   "data_element": "NRNR",
+   "domain": "CHAR2",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Number range number",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "TOYEAR",
+   "key": true,
+   "data_element": "NRYEAR",
+   "domain": "GJAHR",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "To fiscal year",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "FROMNUMBER",
+   "key": false,
+   "data_element": "NRFROM",
+   "domain": "CHAR20",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "From number",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "TONUMBER",
+   "key": false,
+   "data_element": "NRTO",
+   "domain": "CHAR20",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "To number",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "NRLEVEL",
+   "key": false,
+   "data_element": "NRLEVEL",
+   "domain": "NUMC20",
+   "type": "NUMC",
+   "length": 20,
+   "decimals": 0,
+   "description": "Number range status",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "EXTERNIND",
+   "key": false,
+   "data_element": "NRIND",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Internal (' ') or external ('X') number range flag",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "CLIENT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "OBJECT",
+   "foreign_table": "TNRO",
+   "foreign_field": "OBJECT"
+  }
+ ]
+}

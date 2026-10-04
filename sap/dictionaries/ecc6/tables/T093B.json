@@ -1,0 +1,305 @@
+{
+ "table": "T093B",
+ "description": "Company code-related depreciation area specifications",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "BUKRS",
+   "key": true,
+   "data_element": "BUKRS",
+   "domain": "BUKRS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Company Code",
+   "check_table": "T001"
+  },
+  {
+   "pos": 3,
+   "name": "AFABE",
+   "key": true,
+   "data_element": "AFABE_D",
+   "domain": "AFABE",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Real depreciation area",
+   "check_table": "T093"
+  },
+  {
+   "pos": 4,
+   "name": "WAERS",
+   "key": false,
+   "data_element": "WAERS",
+   "domain": "WAERS",
+   "type": "CUKY",
+   "length": 5,
+   "decimals": 0,
+   "description": "Currency Key",
+   "check_table": "TCURC"
+  },
+  {
+   "pos": 5,
+   "name": "RUNDEN",
+   "key": false,
+   "data_element": "RUNDEN",
+   "domain": "NUM01",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Number of places for rounding in depreciation calculation",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "ERWERT",
+   "key": false,
+   "data_element": "ERWERT",
+   "domain": "WERT13",
+   "type": "CURR",
+   "length": 13,
+   "decimals": 2,
+   "description": "Memo value",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "GWGWRT",
+   "key": false,
+   "data_element": "GWGWRT",
+   "domain": "WERT13",
+   "type": "CURR",
+   "length": 13,
+   "decimals": 2,
+   "description": "Maximum low-value asset amount",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "UMRWRT",
+   "key": false,
+   "data_element": "UMRWRT",
+   "domain": "WERT13",
+   "type": "CURR",
+   "length": 13,
+   "decimals": 2,
+   "description": "Net book value for changeover of depreciation method",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "GWGBST",
+   "key": false,
+   "data_element": "GWGBST",
+   "domain": "WERT13",
+   "type": "CURR",
+   "length": 13,
+   "decimals": 2,
+   "description": "Maximum LVA amount for purchase order",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "FILLER",
+   "key": false,
+   "data_element": "XPERHM",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Inapplicable",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "RNDAHK",
+   "key": false,
+   "data_element": "RNDAHK",
+   "domain": "NUM01",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Number of places for rounding indexed replacement value",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "ABGJA",
+   "key": false,
+   "data_element": "ABGJA",
+   "domain": "GJAHR",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Closed fiscal year for depreciation calculation",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "AFRHY",
+   "key": false,
+   "data_element": "AFRHY",
+   "domain": "PERAF",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Depreciation posting cycle",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "XANZUM",
+   "key": false,
+   "data_element": "XANZUM",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator transfer down payments from previous years",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "VERSN_011",
+   "key": false,
+   "data_element": "VERSN_011",
+   "domain": "VERSN_011",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Financial Statement Version",
+   "check_table": "T011"
+  },
+  {
+   "pos": 16,
+   "name": "X445R",
+   "key": false,
+   "data_element": "X445R",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Weight depreciation distribution",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "XAKPL",
+   "key": false,
+   "data_element": "T093B_AKPL",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator for managing group assets",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "BASRND",
+   "key": false,
+   "data_element": "BASRND",
+   "domain": "BASRND",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Which value is rounded?",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "METRND",
+   "key": false,
+   "data_element": "METRND",
+   "domain": "METRND",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Rounding method",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "PERIV",
+   "key": false,
+   "data_element": "PERIV",
+   "domain": "PERIV",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Fiscal Year Variant",
+   "check_table": "T009"
+  },
+  {
+   "pos": 21,
+   "name": "TOLERANZ",
+   "key": false,
+   "data_element": "FIAA_TOLE",
+   "domain": "ANLKWERT",
+   "type": "CURR",
+   "length": 13,
+   "decimals": 2,
+   "description": "Tolerance amount in deprec. calculation",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "KZRBWB_AFABE",
+   "key": false,
+   "data_element": "KZRBWB_AFABE",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Area Posts Net Book Value for Retirement",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "AFABE",
+   "foreign_table": "T093",
+   "foreign_field": "AFABER"
+  },
+  {
+   "field": "BUKRS",
+   "foreign_table": "T001",
+   "foreign_field": "BUKRS"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "PERIV",
+   "foreign_table": "T009",
+   "foreign_field": "PERIV"
+  },
+  {
+   "field": "VERSN_011",
+   "foreign_table": "T011",
+   "foreign_field": "VERSN"
+  },
+  {
+   "field": "WAERS",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  }
+ ]
+}

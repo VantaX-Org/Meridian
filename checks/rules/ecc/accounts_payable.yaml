@@ -1883,3 +1883,71 @@ rules:
   fix_map:
     __other__: Maintain the dunning procedure or remove the dunning block (XK02 > Company code > Correspondence).
   record_fix_template: 'Vendor {LFB5.LIFNR} in company code {LFB5.BUKRS}: dunning block {LFB5.MANSP} without procedure.'
+- id: S4-CVI-KNVK-VEND
+  field: KNVK.PARNR
+  check_class: exists_check
+  grain: KNVK
+  applies_when:
+    KNVK.LIFNR:
+      populated: true
+    LFA1.LOEVM:
+      blank: true
+  target_table: CVI_VEND_CT_LINK
+  target_fields:
+  - VENDOR_CONT
+  baseline: s4_target
+  severity: high
+  dimension: consistency
+  message: 'S/4HANA readiness: contact person of an active vendor has no Business Partner relationship (CVI_VEND_CT_LINK) - simplification item S4TWL Business Partner Approach, SAP Note 2265093'
+  why_it_matters: In S/4HANA contact persons are Business Partners in a contact-person relationship with the vendor's Business
+    Partner. Customer/Vendor Integration converts KNVK contacts and records the link in CVI_VEND_CT_LINK; a contact without the link is
+    not carried over.
+  rule_authority: sap_hard_constraint
+  sap_impact: The contact person is lost or must be recreated by hand after the S/4HANA conversion; the CVI pre-checks report
+    the vendor as not fully synchronised.
+  fix_map:
+    __other__: Activate contact-person synchronisation for the vendor direction in CVI customizing and synchronise the vendor
+      with MDS_LOAD_COCKPIT, or delete the obsolete contact.
+  record_fix_template: 'Contact person {KNVK.PARNR} of vendor {KNVK.LIFNR} has no Business Partner relationship in CVI_VEND_CT_LINK.'
+- id: S4-CVI-KTOKK-NUM
+  field: LFA1.KTOKK
+  check_class: exists_check
+  grain: LFA1
+  applies_when:
+    LFA1.LOEVM:
+      blank: true
+  target_table: CVIC_VEND_TO_BP1
+  target_fields:
+  - ACCOUNT_GROUP
+  baseline: s4_target
+  severity: high
+  dimension: consistency
+  message: 'S/4HANA readiness: account group of an active vendor has no Business Partner grouping (number assignment) assigned in CVI customizing (CVIC_VEND_TO_BP1) - simplification item S4TWL Business Partner Approach, SAP Note 2265093'
+  why_it_matters: Customer/Vendor Integration derives each vendor's Business Partner from its account group. Without an
+    entry in CVIC_VEND_TO_BP1 for the account group, the synchronisation cannot create a Business Partner number and the vendor cannot be converted.
+  rule_authority: sap_hard_constraint
+  sap_impact: The CVI synchronisation of every vendor in this account group fails, which blocks the S/4HANA conversion.
+  fix_map:
+    __other__: Assign a Business Partner grouping (number assignment) to the account group in CVI customizing (SPRO > Cross-Application Components > Master Data Synchronization > Customer/Vendor Integration > Business Partner Settings > Settings for Vendor Integration) before synchronising.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: account group {LFA1.KTOKK} has no Business Partner grouping (number assignment) in CVIC_VEND_TO_BP1.'
+- id: S4-CVI-KTOKK-ROLE
+  field: LFA1.KTOKK
+  check_class: exists_check
+  grain: LFA1
+  applies_when:
+    LFA1.LOEVM:
+      blank: true
+  target_table: CVIC_VEND_TO_BP2
+  target_fields:
+  - ACCOUNT_GROUP
+  baseline: s4_target
+  severity: high
+  dimension: consistency
+  message: 'S/4HANA readiness: account group of an active vendor has no Business Partner role assigned in CVI customizing (CVIC_VEND_TO_BP2) - simplification item S4TWL Business Partner Approach, SAP Note 2265093'
+  why_it_matters: Customer/Vendor Integration derives each vendor's Business Partner from its account group. Without an
+    entry in CVIC_VEND_TO_BP2 for the account group, the synchronisation cannot create the Business Partner in its role and the vendor cannot be converted.
+  rule_authority: sap_hard_constraint
+  sap_impact: The CVI synchronisation of every vendor in this account group fails, which blocks the S/4HANA conversion.
+  fix_map:
+    __other__: Assign a Business Partner role to the account group in CVI customizing (SPRO > Cross-Application Components > Master Data Synchronization > Customer/Vendor Integration > Business Partner Settings > Settings for Vendor Integration) before synchronising.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: account group {LFA1.KTOKK} has no Business Partner role in CVIC_VEND_TO_BP2.'
