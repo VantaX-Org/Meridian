@@ -52,24 +52,32 @@ def composite_dqs(summaries: list[dict]) -> dict:
 @router.get("/findings/aggregate")
 async def aggregate_findings(
     version_id: Optional[str] = Query(None, description="One version; default = latest complete run per system"),
+    module: Optional[str] = Query(None),
+    severity: Optional[str] = Query(None),
+    dimension: Optional[str] = Query(None),
+    check_id: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
     """Severity, module and dimension totals plus the composite DQS, computed server-side
-    over the whole result set — the figures the Command Centre headline is built from."""
+    over the whole result set — the figures the Command Centre headline is built from.
+    The same filters as GET /findings narrow the totals (not the DQS, a version figure)."""
     await db.execute(text("SELECT set_config('app.tenant_id', :tid, true)"), {"tid": str(tenant.id)})
     ids = [uuid.UUID(version_id)] if version_id else await _latest_version_ids(db, tenant)
     if not ids:
         return {"version_ids": [], "total": 0, "affected_records": 0,
-                "severity": {"critical": 0, "high": 0, "medium": 0, "low": 0}, "by_module": [], "by_dimension": [],
+                "severity": {"critical": 0, "high": 0, "medium": 0, "low": 0}, "by_module": [], "by_dimension": [], "avg_pass_rate": None,
                 "dqs": composite_dqs([]), "previous_dqs": None}
     p = {"ids": [str(i) for i in ids]}
-    rows = (await db.execute(text("""
+    narrow = {k: v for k, v in (("module", module), ("severity", severity), ("dimension", dimension),
+                                ("check_id", check_id)) if v}
+    where = "".join(f" AND {k} = :{k}" for k in narrow)
+    rows = (await db.execute(text(f"""
         SELECT module, severity, dimension, count(*) AS n, COALESCE(sum(affected_count), 0) AS affected,
                avg(pass_rate) AS avg_pass
-          FROM findings WHERE version_id = ANY(CAST(:ids AS uuid[]))
+          FROM findings WHERE version_id = ANY(CAST(:ids AS uuid[])){where}
          GROUP BY module, severity, dimension
-    """), p)).mappings().all()
+    """), {**p, **narrow})).mappings().all()
     sev = {"critical": 0, "high": 0, "medium": 0, "low": 0}
     by_module: dict[str, dict] = {}
     by_dim: dict[str, dict] = {}
@@ -105,6 +113,7 @@ async def aggregate_findings(
         ) x ORDER BY lineage, run_at DESC
     """), {**p, "tid": str(tenant.id)})).scalars().all()
     prev = composite_dqs(list(previous))
+    overall = _avg({"_pass": [pair for d in by_dim.values() for pair in d["_pass"]]})
     return {
         "version_ids": p["ids"],
         "total": sum(sev.values()),
@@ -113,6 +122,7 @@ async def aggregate_findings(
         "by_module": sorted((_avg(m) for m in by_module.values()),
                             key=lambda m: (-m["critical"], -m["high"], -m["findings"])),
         "by_dimension": sorted((_avg(d) for d in by_dim.values()), key=lambda d: d["dimension"]),
+        "avg_pass_rate": overall["avg_pass_rate"],
         "dqs": composite_dqs(list(summaries)),
         "previous_dqs": prev["composite"],
     }
