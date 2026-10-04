@@ -125,6 +125,7 @@ async def list_findings(
     severity: Optional[str] = Query(None),
     dimension: Optional[str] = Query(None),
     check_id: Optional[str] = Query(None),
+    finding_type: Optional[str] = Query(None, alias="type", description="rule | anomaly"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
@@ -146,6 +147,9 @@ async def list_findings(
         base = base.where(Finding.check_id == check_id)
         filters_applied["check_id"] = check_id
 
+    if finding_type:
+        base = base.where(Finding.finding_type == finding_type)
+        filters_applied["type"] = finding_type
     if module:
         base = base.where(Finding.module == module)
         filters_applied["module"] = module
@@ -204,6 +208,7 @@ async def list_findings(
                 "version_id": str(f.version_id),
                 "module": f.module,
                 "check_id": f.check_id,
+                "finding_type": f.finding_type,
                 "severity": f.severity,
                 "dimension": f.dimension,
                 "affected_count": f.affected_count,

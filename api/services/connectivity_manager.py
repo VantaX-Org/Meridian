@@ -299,7 +299,7 @@ class ConnectivityManager:
                     raw[table] = df
                     frames[table] = df.rename(columns={c: f"{table}.{c}" for c in df.columns})
                     entry = {"table": table, "status": "live", "rows": len(df), "purpose": plan.purpose,
-                             "partial": plan.partial,
+                             "partial": plan.partial, "modules": sorted(plan.modules),
                              "window": plan.where if plan.where and not plan.where.startswith(tuple(
                                  f"{f} = " for f in ("DATBI", "BDATU", "INACT"))) else None,
                              "truncated": len(df) >= max_rows}
