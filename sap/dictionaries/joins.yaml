@@ -162,6 +162,10 @@ edges:
   - {parent: EMPEMPLOYMENT, child: LEARNINGCOMPLETION, join: {USERID: USERID}, cardinality: many}
   - {parent: EMPEMPLOYMENT, child: ONBOARDINGCANDIDATEINFO, join: {USERID: USERID}, cardinality: one}
   - {parent: JOBREQUISITION, child: JOBAPPLICATION, join: {JOB_REQ_ID: JOB_REQ_ID}, cardinality: many}
+  # foundation objects and the position an employment points at (attributes of the employment)
+  - {parent: EMPEMPLOYMENT, child: POSITION, join: {CODE: POSITION}, cardinality: one}
+  - {parent: EMPEMPLOYMENT, child: FOCOMPANY, join: {EXTERNAL_CODE: COMPANY}, cardinality: one}
+  - {parent: EMPEMPLOYMENT, child: FODEPARTMENT, join: {EXTERNAL_CODE: DEPARTMENT}, cardinality: one}
 
 # Default grain per module when a rule names only attribute tables.
 anchors:
