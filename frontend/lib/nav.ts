@@ -10,7 +10,7 @@
  * Gating (`anyOf`) uses the permission names from api/services/rbac.py; the
  * API enforces the same names, so hiding an item only removes a dead end.
  * Pages left out of the nav (/command-centre, /connectivity, /run-sync,
- * /stewardship/metrics, /notifications) stay routable and are linked from
+ * /notifications) stay routable and are linked from
  * the pages that own them.
  */
 import type { CSSProperties, JSX } from "react";
@@ -29,7 +29,6 @@ import {
   ShieldAlert,
   Sliders,
   UserCog,
-  Users,
   Zap,
 } from "lucide-react";
 import {
@@ -122,8 +121,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     group: "Fix",
     anyOf: ["approve", "apply", "assign", "mdm.write", "review_ai_rules"],
     items: [
-      { href: "/workbench", label: "My queue", icon: ClipboardIcon, licenceKey: "stewardship", anyOf: ["approve", "apply"], keywords: "workbench triage tasks" },
-      { href: "/stewardship", label: "Team workload", icon: Users, licenceKey: "stewardship", anyOf: ["assign"], keywords: "stewardship steward team assign" },
+      { href: "/workbench", label: "Steward inbox", icon: ClipboardIcon, licenceKey: "stewardship", anyOf: ["approve", "apply", "assign"], keywords: "workbench queue triage tasks stewardship steward team assign sla metrics" },
       { href: "/cleaning", label: "Cleaning", icon: Eraser, anyOf: ["approve", "apply"], keywords: "corrections proposals apply" },
       { href: "/exceptions", label: "Exceptions", icon: ShieldAlert, anyOf: ["approve", "assign"], keywords: "escalate sla" },
       { href: "/dedup", label: "Duplicates", icon: Copy, anyOf: ["approve", "mdm.write"], keywords: "dedup merge match" },
@@ -173,7 +171,6 @@ const OFF_NAV_TITLES: Record<string, string> = {
   "/workbench/report": "Record report",
   "/connectivity": "Connectivity",
   "/run-sync": "Run Sync",
-  "/stewardship/metrics": "Stewardship metrics",
   "/notifications": "Notifications",
 };
 

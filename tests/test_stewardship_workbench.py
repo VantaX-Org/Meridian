@@ -296,54 +296,60 @@ def test_stewardship_route_registered_in_main():
 # ── L.4b/c Frontend structure ────────────────────────────────────────────────
 
 
-def test_frontend_stewardship_page_exists():
-    """Frontend stewardship workbench page exists."""
-    path = Path("frontend/app/(dashboard)/stewardship/page.tsx")
-    assert path.exists()
+INBOX = Path("frontend/components/workbench/inbox.tsx")
 
 
-def test_frontend_stewardship_metrics_page_exists():
-    """Frontend stewardship metrics page exists."""
-    path = Path("frontend/app/(dashboard)/stewardship/metrics/page.tsx")
-    assert path.exists()
+def test_frontend_steward_inbox_replaces_legacy_pages():
+    """One steward inbox (Workbench tab) replaces My queue, team workload and metrics."""
+    assert INBOX.exists()
+    for gone in ("stewardship/page.tsx", "stewardship/metrics/page.tsx", "workbench/queue.tsx"):
+        assert not Path(f"frontend/app/(dashboard)/{gone}").exists(), gone
+    bodies = Path("frontend/components/shell/tab-bodies.tsx").read_text(encoding="utf-8")
+    assert '"StewardInboxSurface"' in bodies and '"/stewardship' not in bodies
 
 
-# Per-item steward actions live on the personal /workbench surface;
-# /stewardship is the team overview. Keyboard shortcuts + override modal are
-# on the workbench where tasks are actually resolved.
+def test_frontend_legacy_steward_urls_redirect():
+    """Old /stewardship bookmarks land on the inbox tab."""
+    content = Path("frontend/next.config.ts").read_text(encoding="utf-8")
+    for src in ('"/stewardship"', '"/stewardship/metrics"'):
+        assert f'source: {src}, destination: "/workbench?tab=queue"' in content
+
+
 def test_frontend_stewardship_keyboard_shortcuts():
-    """Workbench page implements keyboard shortcuts A, R, N, E."""
-    path = Path("frontend/app/(dashboard)/workbench/queue.tsx")
-    content = path.read_text()
+    """Inbox implements keyboard shortcuts A, R, N, E on the focused task."""
+    content = INBOX.read_text()
     for key in ['"a"', '"r"', '"n"', '"e"', '"A"', '"R"', '"N"', '"E"']:
         assert key in content, f"Missing keyboard shortcut: {key}"
 
 
 def test_frontend_stewardship_override_modal():
-    """Workbench page has an override dialog that rejects an AI recommendation
-    with a required correction reason. Implemented inline as a Dialog gated by
-    `overrideOpen` rather than a separate OverrideModal component."""
-    path = Path("frontend/app/(dashboard)/workbench/queue.tsx")
-    content = path.read_text()
-    assert "overrideOpen" in content
+    """Rejecting overrides the AI recommendation and needs a correction reason,
+    which is sent to the AI-feedback loop."""
+    content = INBOX.read_text()
     assert "Reject with reason" in content
     assert "Correction reason" in content
+    assert "submitAiFeedback" in content
+
+
+def test_frontend_inbox_bulk_and_quick_actions():
+    """Bulk approve/reject/escalate/assign and the quick-actions palette."""
+    content = INBOX.read_text()
+    for fn in ("bulkApprove", "resolveItem", "escalateItem", "assignItem"):
+        assert fn in content
+    assert "CommandPalette" in content and "disableGlobalHotkey" in content
 
 
 def test_frontend_metrics_ai_acceptance_rate():
-    """Metrics page displays the AI suggestion-acceptance metric."""
-    path = Path("frontend/app/(dashboard)/stewardship/metrics/page.tsx")
-    content = path.read_text()
-    assert "Suggestion Acceptance" in content
-    assert "ai_acceptance_rate" in content
+    """Inbox shows the AI suggestion-acceptance metric when the API returns it."""
+    content = INBOX.read_text()
+    assert "Suggestion acceptance" in content
+    assert "ai_acceptance_rate != null" in content
 
 
 def test_frontend_metrics_steward_breakdown_hidden_for_ai_reviewer():
-    """Metrics page gates the individual steward breakdown behind !isAiReviewer."""
-    path = Path("frontend/app/(dashboard)/stewardship/metrics/page.tsx")
-    content = path.read_text()
-    assert "isAiReviewer" in content
-    assert "!isAiReviewer && metrics.steward_breakdown" in content
+    """The per-steward breakdown renders only when the API returns it (it is null for ai_reviewer)."""
+    content = INBOX.read_text()
+    assert "metrics?.steward_breakdown?.length" in content
 
 
 def test_frontend_api_client_exists():
@@ -371,8 +377,8 @@ def test_frontend_types_defined():
 def test_frontend_nav_has_stewardship():
     """The shared nav (sidebar + ⌘K) has the steward pages in the Fix group."""
     content = Path("frontend/lib/nav.ts").read_text(encoding="utf-8")
-    assert 'href: "/stewardship", label: "Team workload"' in content
-    assert 'href: "/workbench", label: "My queue", icon: ClipboardIcon' in content
+    assert 'href: "/workbench", label: "Steward inbox", icon: ClipboardIcon' in content
+    assert 'href: "/stewardship"' not in content
 
 
 # ── L.2 ai_triage task file structure ────────────────────────────────────────
