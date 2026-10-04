@@ -134,3 +134,27 @@ def test_missing_status_table_is_reported_not_silent():
     f = TableFrames({"EQUI": equi}, D, module="fleet_management")
     _, r = run_rule({"id": "X", "field": "EQUI.HERST", "check_class": "null_check", "module": "fleet_management"}, f)
     assert r.details["population_excluded"] == {"unverified_deleted": 1}
+
+
+def test_customer_equipment_is_out_of_internal_maintenance_planning_rules():
+    # categories come from the system's own T370T: reference category S = customer equipment
+    equi = pd.DataFrame({"EQUI.EQUNR": ["E1", "E2", "E3"], "EQUI.OBJNR": ["IE1", "IE2", "IE3"],
+                         "EQUI.EQTYP": ["M", "S", "A"], "EQUI.HERST": ["", "", ""]})
+    equz = pd.DataFrame({"EQUZ.EQUNR": ["E1", "E2", "E3"], "EQUZ.DATBI": ["99991231"] * 3, "EQUZ.EQLFN": ["001"] * 3,
+                         "EQUZ.IWERK": ["", "", ""]})
+    jest = pd.DataFrame({"JEST.OBJNR": [], "JEST.STAT": [], "JEST.INACT": []})
+    f = TableFrames({"EQUI": equi, "EQUZ": equz, "JEST": jest}, D, module="plant_maintenance")
+    f.config = {"T370T": pd.DataFrame({"T370T.EQTYP": ["A", "M", "S"], "T370T.REFTP": ["S", "M", "S"]})}
+    _, r = run_rule({"id": "PM006", "field": "EQUZ.IWERK", "check_class": "null_check", "module": "plant_maintenance",
+                     "applies_when": {"EQUZ.DATBI": ["99991231"]}}, f)
+    assert r.failing_record_keys and r.total_count == 1
+    assert r.details["population_excluded"] == {"customer_equipment": 2}
+    # manufacturer data is still judged on customer equipment
+    _, r = run_rule({"id": "X", "field": "EQUI.HERST", "check_class": "null_check", "module": "plant_maintenance"}, f)
+    assert r.total_count == 3
+
+
+def test_extraction_reads_the_category_reference_type():
+    from sap.extraction_plan import plan_modules
+    p = plan_modules(["plant_maintenance"], D)["T370T"]
+    assert p.purpose == "config" and {"EQTYP", "REFTP"} <= p.fields

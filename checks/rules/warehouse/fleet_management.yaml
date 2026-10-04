@@ -1,589 +1,644 @@
 module: fleet_management
 target_state: ECC_AND_S4HANA
 rules:
-- id: FLEET001
-  field: FLEET.LICENSE_NUM
-  check_class: null_check
-  severity: critical
-  dimension: completeness
-  message: Registration number is mandatory for traffic authority compliance and insurance
-  why_it_matters: The vehicle registration number is a legal requirement for all road-going vehicles. It is required for traffic
-    authority compliance, insurance claims, toll road management, and fleet reporting. Without it, the vehicle cannot be legally
-    operated and insurance claims may be rejected.
-  rule_authority: sap_hard_constraint
-  sap_impact: Vehicle cannot be linked to insurance policies or toll accounts. Fleet compliance reports are incomplete. Legal
-    and regulatory exposure.
-  fix_map:
-    __blank__: 'In ECC: enter registration number via T-code IE02 > Fleet/Classification tab. In S/4HANA: use Fiori app F2723
-      (Manage Equipment) or IE02.'
-  record_fix_template: 'Vehicle {FLEET.FLEET_VIN}: REG_NUMBER is {actual_value}. Enter the registration number via IE02 (ECC)
-    or Fiori app F2723 (S/4HANA).'
-  applies_when:
-    EQUI.S_FLEET:
-    - X
-- id: FLEET002
-  field: FLEET.FLEET_CAT
-  check_class: domain_value_check
-  severity: high
-  dimension: accuracy
-  message: Vehicle type must be a valid fleet category
-  valid_values_with_labels:
-    CAR: Passenger car — standard light vehicle
-    TRUCK: Truck — heavy goods vehicle
-    VAN: Van — light commercial vehicle
-    BUS: Bus — passenger transport
-    MOTORCYCLE: Motorcycle — two-wheeled vehicle
-    TRAILER: Trailer — non-powered hauled unit
-  why_it_matters: Vehicle type drives maintenance scheduling intervals, insurance categorisation, driver licence requirements,
-    and cost centre allocation rules. An invalid type means maintenance plans use wrong intervals, insurance premiums are
-    miscalculated, and fleet reports are unreliable.
-  rule_authority: customer_configured
-  sap_impact: Incorrect maintenance intervals. Insurance categorisation wrong. Fleet reports by vehicle type are inaccurate.
-    Driver assignment may violate licence requirements.
-  fix_map:
-    __other__: 'Vehicle type ''{invalid_value}'' is not a valid category. Valid types are: CAR, TRUCK, VAN, BUS, MOTORCYCLE,
-      TRAILER. In ECC: correct via IE02 > Classification tab. In S/4HANA: use Fiori app F2723 or IE02.'
-  record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: VEHICLE_TYPE is ''{actual_value}''. Set to a valid type via IE02 (ECC)
-    or Fiori app F2723 (S/4HANA).'
-  applies_when:
-    EQUI.S_FLEET:
-    - X
-- id: FLEET003
-  field: FLEET.FLEET_VIN
-  check_class: null_check
-  severity: critical
-  dimension: completeness
-  message: Vehicle Identification Number (VIN) is mandatory for asset identification
-  why_it_matters: The VIN is the globally unique identifier for a vehicle, assigned by the manufacturer. It is required for
-    insurance, warranty claims, recall management, and theft recovery. Without it, the vehicle cannot be uniquely identified
-    in external systems and regulatory databases.
-  rule_authority: sap_hard_constraint
-  sap_impact: Vehicle cannot be uniquely identified. Insurance and warranty claims rejected. Recall notices cannot be matched.
-    Theft recovery impossible.
-  fix_map:
-    __blank__: 'In ECC: enter VIN via IE02 > Fleet/General tab. In S/4HANA: use Fiori app F2723 or IE02.'
-  record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: VIN is {actual_value}. Enter the VIN from the vehicle plate via IE02
-    (ECC) or Fiori app F2723 (S/4HANA).'
-  applies_when:
-    EQUI.S_FLEET:
-    - X
-- id: FLEET004
-  field: FLEET.FLEET_VIN
-  check_class: regex_check
-  pattern: ^[A-HJ-NPR-Z0-9]{17}$
-  severity: high
-  dimension: validity
-  message: VIN must be exactly 17 characters in standard format (no I, O, or Q)
-  why_it_matters: 'The Vehicle Identification Number follows the ISO 3779 standard: exactly 17 characters, alphanumeric excluding
-    I, O, and Q (to avoid confusion with 1 and 0). A non-conforming VIN indicates data entry error and will fail validation
-    against manufacturer databases, insurance systems, and traffic authority records.'
-  rule_authority: sap_hard_constraint
-  sap_impact: VIN lookup fails in manufacturer database. Insurance validation rejects the VIN. Recall matching cannot find
-    this vehicle.
-  fix_map:
-    __other__: 'VIN ''{invalid_value}'' does not match the ISO 3779 standard (17 chars, no I/O/Q). In ECC: correct via IE02
-      > Fleet tab. In S/4HANA: use Fiori app F2723 or IE02.'
-  record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: VIN ''{actual_value}'' is non-standard. Verify against the physical
-    VIN plate and correct via IE02 (ECC) or Fiori app F2723 (S/4HANA).'
-- id: FLEET005
-  field: FLEET_MASTER.DRIVER_ID
-  check_class: null_check
-  severity: medium
-  dimension: completeness
-  message: Driver assignment enables cost allocation and incident tracking
-  why_it_matters: DRIVER_ID links the vehicle to its assigned driver, enabling fuel cost allocation, traffic fine routing,
-    incident investigation, and driver behaviour tracking. Without it, costs cannot be allocated to the responsible person
-    and incidents cannot be traced to a driver.
-  rule_authority: best_practice
-  sap_impact: Fuel and toll costs unallocated. Traffic fines cannot be routed. Incident investigation has no driver assignment
-    for this vehicle.
-  fix_map:
-    __blank__: 'In ECC: assign driver via IE02 > Fleet tab using the personnel number. In S/4HANA: use Fiori app F2723 or
-      IE02.'
-  record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: DRIVER_ID is {actual_value}. Assign the current driver via IE02 (ECC)
-    or Fiori app F2723 (S/4HANA).'
-  applies_when:
-    EQUI.S_FLEET:
-    - X
-    FLEET.FLEET_CAT:
-      not_in:
-      - TRAILER
-- id: FLEET006
-  field: EQUI.INBDT
-  check_class: freshness_check
-  severity: high
-  dimension: completeness
-  message: Fleet object in service for over a year with no recorded service
-  why_it_matters: LAST_SERVICE_DATE is needed to calculate when the next service is due. Without it, the maintenance scheduling
-    system cannot determine the service interval countdown and the vehicle's maintenance history has a gap that affects warranty
-    and compliance.
-  rule_authority: best_practice
-  sap_impact: Next service date cannot be calculated. Maintenance scheduling is blind to this vehicle's service history. Compliance
-    reporting incomplete.
-  fix_map:
-    __blank__: 'In ECC: enter last service date via IE02 > Fleet tab. In S/4HANA: use Fiori app F2723 or IE02.'
-  record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: in service since {actual_value} with no completed maintenance call. Complete
-    the overdue service (IW32) or record the last service via IE02 / Fiori app F2723.'
-  applies_when:
-    EQUI.S_FLEET:
-    - X
-    FLEET_MASTER.LAST_SERVICE_DATE:
-    - ''
-    - '00000000'
-  max_age_hours: 8760
-- id: FLEET007
-  field: FLEET_MASTER.SERVICE_KM
-  check_class: null_check
-  severity: high
-  dimension: completeness
-  message: Service kilometre interval required for preventive maintenance scheduling
-  why_it_matters: SERVICE_KM defines when the next service notification should fire. Without it, no preventive maintenance
-    notification is created and the vehicle receives no scheduled servicing, creating safety and compliance risks.
-  rule_authority: best_practice
-  sap_impact: No preventive maintenance notifications generated. Vehicle servicing relies entirely on manual tracking. Safety
-    and warranty compliance at risk.
-  fix_map:
-    __blank__: 'In ECC: set service interval via IE02 > Fleet tab. In S/4HANA: use Fiori app F2723 or IE02.'
-  record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: SERVICE_KM is {actual_value}. Set the service interval via IE02 (ECC)
-    or Fiori app F2723 (S/4HANA).'
-  applies_when:
-    EQUI.S_FLEET:
-    - X
-    FLEET.FLEET_CAT:
-      not_in:
-      - TRAILER
-- id: FLEET008
-  field: FLEET_MASTER.SERVICE_KM
-  check_class: cross_field_check
-  severity: high
-  dimension: timeliness
-  message: Vehicle has passed its next-service odometer reading — service overdue
-  why_it_matters: If SERVICE_KM (the odometer at last service) exceeds CURRENT_KM (current odometer), the data is logically
-    inconsistent — the vehicle cannot have been serviced at a higher mileage than it currently shows. This indicates either
-    an odometer rollback, data entry error, or a unit mismatch (km vs miles).
-  rule_authority: best_practice
-  sap_impact: Next service calculation produces negative distance-to-service. Maintenance notifications may fire incorrectly
-    or not at all.
-  fix_map:
-    __blank__: 'In ECC: verify the odometer and service records, then correct via IE02 > Fleet tab. In S/4HANA: use Fiori
-      app F2723 or IE02.'
-  record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: SERVICE_KM ({actual_value}) exceeds CURRENT_KM. Verify odometer readings
-    and correct via IE02 (ECC) or Fiori app F2723 (S/4HANA).'
-  fail_when: '`FLEET_MASTER.SERVICE_KM` < `FLEET_MASTER.CURRENT_KM`'
-  require_populated: true
-- id: FLEET009
-  field: ILOA.KOSTL
-  check_class: null_check
-  severity: medium
-  dimension: completeness
-  message: Cost centre required for fleet cost allocation and reporting
-  why_it_matters: COST_CENTRE determines where vehicle operating costs (fuel, maintenance, insurance) are posted in controlling.
-    Without it, costs accumulate on a default or error cost centre, making fleet cost analysis by department or business unit
-    impossible.
-  rule_authority: best_practice
-  sap_impact: Vehicle costs posted to wrong or default cost centre. Fleet cost reporting by department is inaccurate. Budget
-    variance analysis unreliable.
-  fix_map:
-    __blank__: 'In ECC: assign cost centre via IE02 > Organisation tab. In S/4HANA: use Fiori app F2723 or IE02 > Organisation
-      tab.'
-  record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: COST_CENTRE is {actual_value}. Assign the correct cost centre via IE02
-    (ECC) or Fiori app F2723 (S/4HANA).'
-  applies_when:
-    EQUI.S_FLEET:
-    - X
-  grain: EQUI
-- id: FLEET010
-  field: EQUI.HERST
-  check_class: null_check
-  severity: medium
-  dimension: completeness
-  message: Vehicle make is required for fleet analytics and maintenance part sourcing
-  why_it_matters: MAKE identifies the vehicle manufacturer (e.g. Toyota, Mercedes-Benz). It is needed for fleet composition
-    analytics, maintenance part sourcing, recall matching, and insurance classification. Missing make values degrade all of
-    these processes.
-  rule_authority: best_practice
-  sap_impact: Fleet composition reports incomplete. Maintenance part catalogues cannot filter by make. Recall notices cannot
-    be matched by manufacturer.
-  fix_map:
-    __blank__: 'In ECC: enter vehicle make via IE02 > Fleet tab. In S/4HANA: use Fiori app F2723 or IE02.'
-  record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: MAKE is {actual_value}. Enter the manufacturer via IE02 (ECC) or Fiori
-    app F2723 (S/4HANA).'
-  applies_when:
-    EQUI.S_FLEET:
-    - X
-- id: FLEET011
-  field: EQUI.TYPBZ
-  check_class: null_check
-  severity: medium
-  dimension: completeness
-  message: Vehicle model needed for maintenance scheduling and spare part compatibility
-  why_it_matters: MODEL identifies the specific vehicle model which determines service intervals, spare part compatibility,
-    and technical specifications. Without it, maintenance plans may use generic intervals and incompatible parts may be ordered.
-  rule_authority: best_practice
-  sap_impact: Maintenance intervals may be incorrect for this model. Spare part ordering cannot verify compatibility. Technical
-    specifications unavailable.
-  fix_map:
-    __blank__: 'In ECC: enter vehicle model via IE02 > Fleet tab. In S/4HANA: use Fiori app F2723 or IE02.'
-  record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: MODEL is {actual_value}. Enter the model via IE02 (ECC) or Fiori app
-    F2723 (S/4HANA).'
-  applies_when:
-    EQUI.S_FLEET:
-    - X
-- id: FLEET012
-  field: EQUI.BAUJJ
-  check_class: regex_check
-  pattern: ^(19|20)\d{2}$
-  severity: medium
-  dimension: validity
-  message: Vehicle year must be a valid 4-digit year (1900-2099)
-  why_it_matters: The vehicle year of manufacture determines age-based maintenance requirements, emissions compliance category,
-    and depreciation calculations. An invalid year corrupts all age-dependent calculations and fleet age profile reporting.
-  rule_authority: best_practice
-  sap_impact: Age-based maintenance rules cannot evaluate this vehicle. Depreciation calculation incorrect. Fleet age profile
-    reporting unreliable.
-  fix_map:
-    __other__: 'Vehicle year ''{invalid_value}'' is not a valid 4-digit year. In ECC: correct via IE02 > Fleet tab. In S/4HANA:
-      use Fiori app F2723 or IE02.'
-  record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: YEAR ''{actual_value}'' is invalid. Enter the correct manufacturing
-    year via IE02 (ECC) or Fiori app F2723 (S/4HANA).'
-- id: FLEET013
-  field: FLEET_MASTER.CURRENT_KM
-  check_class: null_check
-  severity: high
-  dimension: completeness
-  message: Current odometer reading is essential for service scheduling and resale valuation
-  why_it_matters: CURRENT_KM is the vehicle's current odometer reading. It is the basis for distance-based maintenance scheduling,
-    fuel consumption calculation, and vehicle resale valuation. Without it, none of these processes can function accurately.
-  rule_authority: best_practice
-  sap_impact: Distance-based maintenance scheduling fails. Fuel consumption per km cannot be calculated. Vehicle resale value
-    cannot be assessed.
-  fix_map:
-    __blank__: 'In ECC: enter current odometer via IE02 > Fleet tab. In S/4HANA: use Fiori app F2723 or IE02.'
-  record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: CURRENT_KM is {actual_value}. Enter the current odometer reading via
-    IE02 (ECC) or Fiori app F2723 (S/4HANA).'
-  applies_when:
-    EQUI.S_FLEET:
-    - X
-    FLEET.FLEET_CAT:
-      not_in:
-      - TRAILER
-- id: FLEET014
-  field: FLEET_MASTER.INSURANCE_EXPIRY
-  check_class: null_check
-  severity: critical
-  dimension: completeness
-  message: Insurance expiry date is mandatory for compliance — uninsured vehicles cannot operate
-  why_it_matters: INSURANCE_EXPIRY tracks when the vehicle's insurance policy expires. Operating a vehicle without valid insurance
-    is illegal in most jurisdictions and exposes the organisation to significant financial liability. Missing expiry dates
-    mean the fleet management system cannot alert before insurance lapses.
-  rule_authority: sap_hard_constraint
-  sap_impact: No insurance expiry alert generated. Vehicle may operate without valid insurance. Legal and financial exposure.
-    Fleet compliance report incomplete.
-  fix_map:
-    __blank__: 'In ECC: enter insurance expiry via IE02 > Fleet tab. In S/4HANA: use Fiori app F2723 or IE02.'
-  record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: INSURANCE_EXPIRY is {actual_value}. Enter the insurance expiry date via
-    IE02 (ECC) or Fiori app F2723 (S/4HANA).'
-  applies_when:
-    EQUI.S_FLEET:
-    - X
-- id: FLEET015
-  field: FLEET.EXPIRY_DATE
-  check_class: null_check
-  severity: critical
-  dimension: completeness
-  message: License expiry date is mandatory — expired license means vehicle cannot be on the road
-  why_it_matters: LICENSE_EXPIRY tracks when the vehicle's operating license (road tax disc) expires. An expired license means
-    the vehicle cannot legally be on public roads. Missing expiry dates prevent the fleet system from generating renewal alerts.
-  rule_authority: sap_hard_constraint
-  sap_impact: No license renewal alert generated. Vehicle may operate with expired license. Traffic authority fines. Fleet
-    compliance reporting incomplete.
-  fix_map:
-    __blank__: 'In ECC: enter license expiry via IE02 > Fleet tab. In S/4HANA: use Fiori app F2723 or IE02.'
-  record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: LICENSE_EXPIRY is {actual_value}. Enter the license expiry date via IE02
-    (ECC) or Fiori app F2723 (S/4HANA).'
-  applies_when:
-    EQUI.S_FLEET:
-    - X
-- id: FLEET016
-  field: FLEET_MASTER.NEXT_SERVICE_DUE
-  check_class: null_check
-  severity: medium
-  dimension: completeness
-  message: Next service due date is missing
-  why_it_matters: Next service due date (FLEET_MASTER.NEXT_SERVICE_DUE) is not maintained. This field supports downstream
-    processes and reporting accuracy. Missing data may result in incomplete records or processing gaps.
-  rule_authority: best_practice
-  sap_impact: Missing Next service due date may cause incomplete data in related transactions and reports.
-  fix_map:
-    __blank__: 'In ECC: Set via IE02 (Equipment Master). In S/4HANA: Use Fiori app F4283.'
-  record_fix_template: 'Record is missing FLEET_MASTER.NEXT_SERVICE_DUE. In ECC: Set via IE02 (Equipment Master). In S/4HANA:
-    Use Fiori app F4283.'
-  applies_when:
-    EQUI.S_FLEET:
-    - X
+  - id: FLEET001
+    field: FLEET.LICENSE_NUM
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: Registration number is mandatory for traffic authority compliance and insurance
+    why_it_matters: The vehicle registration number is a legal requirement for all road-going vehicles. It is required for traffic
+      authority compliance, insurance claims, toll road management, and fleet reporting. Without it, the vehicle cannot be legally
+      operated and insurance claims may be rejected.
+    rule_authority: sap_hard_constraint
+    sap_impact: Vehicle cannot be linked to insurance policies or toll accounts. Fleet compliance reports are incomplete. Legal
+      and regulatory exposure.
+    fix_map:
+      __blank__: 'In ECC: enter registration number via T-code IE02 > Fleet/Classification tab. In S/4HANA: use Fiori app F2723
+        (Manage Equipment) or IE02.'
+    record_fix_template: 'Vehicle {FLEET.FLEET_VIN}: REG_NUMBER is {actual_value}. Enter the registration number via IE02 (ECC)
+      or Fiori app F2723 (S/4HANA).'
+    applies_when:
+      EQUI.S_FLEET:
+      - X
+  - id: FLEET002
+    field: FLEET.FLEET_CAT
+    check_class: domain_value_check
+    severity: high
+    dimension: accuracy
+    message: Vehicle type must be a valid fleet category
+    valid_values_with_labels:
+      CAR: Passenger car — standard light vehicle
+      TRUCK: Truck — heavy goods vehicle
+      VAN: Van — light commercial vehicle
+      BUS: Bus — passenger transport
+      MOTORCYCLE: Motorcycle — two-wheeled vehicle
+      TRAILER: Trailer — non-powered hauled unit
+    why_it_matters: Vehicle type drives maintenance scheduling intervals, insurance categorisation, driver licence requirements,
+      and cost centre allocation rules. An invalid type means maintenance plans use wrong intervals, insurance premiums are
+      miscalculated, and fleet reports are unreliable.
+    rule_authority: customer_configured
+    sap_impact: Incorrect maintenance intervals. Insurance categorisation wrong. Fleet reports by vehicle type are inaccurate.
+      Driver assignment may violate licence requirements.
+    fix_map:
+      __other__: 'Vehicle type ''{invalid_value}'' is not a valid category. Valid types are: CAR, TRUCK, VAN, BUS, MOTORCYCLE,
+        TRAILER. In ECC: correct via IE02 > Classification tab. In S/4HANA: use Fiori app F2723 or IE02.'
+    record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: VEHICLE_TYPE is ''{actual_value}''. Set to a valid type via IE02 (ECC)
+      or Fiori app F2723 (S/4HANA).'
+    applies_when:
+      EQUI.S_FLEET:
+      - X
+  - id: FLEET003
+    field: FLEET.FLEET_VIN
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: Vehicle Identification Number (VIN) is mandatory for asset identification
+    why_it_matters: The VIN is the globally unique identifier for a vehicle, assigned by the manufacturer. It is required for
+      insurance, warranty claims, recall management, and theft recovery. Without it, the vehicle cannot be uniquely identified
+      in external systems and regulatory databases.
+    rule_authority: sap_hard_constraint
+    sap_impact: Vehicle cannot be uniquely identified. Insurance and warranty claims rejected. Recall notices cannot be matched.
+      Theft recovery impossible.
+    fix_map:
+      __blank__: 'In ECC: enter VIN via IE02 > Fleet/General tab. In S/4HANA: use Fiori app F2723 or IE02.'
+    record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: VIN is {actual_value}. Enter the VIN from the vehicle plate via IE02
+      (ECC) or Fiori app F2723 (S/4HANA).'
+    applies_when:
+      EQUI.S_FLEET:
+      - X
+  - id: FLEET004
+    field: FLEET.FLEET_VIN
+    check_class: regex_check
+    pattern: ^[A-HJ-NPR-Z0-9]{17}$
+    severity: high
+    dimension: validity
+    message: VIN must be exactly 17 characters in standard format (no I, O, or Q)
+    why_it_matters: 'The Vehicle Identification Number follows the ISO 3779 standard: exactly 17 characters, alphanumeric excluding
+      I, O, and Q (to avoid confusion with 1 and 0). A non-conforming VIN indicates data entry error and will fail validation
+      against manufacturer databases, insurance systems, and traffic authority records.'
+    rule_authority: sap_hard_constraint
+    sap_impact: VIN lookup fails in manufacturer database. Insurance validation rejects the VIN. Recall matching cannot find
+      this vehicle.
+    fix_map:
+      __other__: 'VIN ''{invalid_value}'' does not match the ISO 3779 standard (17 chars, no I/O/Q). In ECC: correct via IE02
+        > Fleet tab. In S/4HANA: use Fiori app F2723 or IE02.'
+    record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: VIN ''{actual_value}'' is non-standard. Verify against the physical
+      VIN plate and correct via IE02 (ECC) or Fiori app F2723 (S/4HANA).'
+  - id: FLEET005
+    field: FLEET_MASTER.DRIVER_ID
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: Driver assignment enables cost allocation and incident tracking
+    why_it_matters: DRIVER_ID links the vehicle to its assigned driver, enabling fuel cost allocation, traffic fine routing,
+      incident investigation, and driver behaviour tracking. Without it, costs cannot be allocated to the responsible person
+      and incidents cannot be traced to a driver.
+    rule_authority: best_practice
+    sap_impact: Fuel and toll costs unallocated. Traffic fines cannot be routed. Incident investigation has no driver assignment
+      for this vehicle.
+    fix_map:
+      __blank__: 'In ECC: assign driver via IE02 > Fleet tab using the personnel number. In S/4HANA: use Fiori app F2723 or
+        IE02.'
+    record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: DRIVER_ID is {actual_value}. Assign the current driver via IE02 (ECC)
+      or Fiori app F2723 (S/4HANA).'
+    applies_when:
+      EQUI.S_FLEET:
+      - X
+      FLEET.FLEET_CAT:
+        not_in:
+        - TRAILER
+  - id: FLEET006
+    field: EQUI.INBDT
+    check_class: freshness_check
+    severity: high
+    dimension: completeness
+    message: Fleet object in service for over a year with no recorded service
+    why_it_matters: LAST_SERVICE_DATE is needed to calculate when the next service is due. Without it, the maintenance scheduling
+      system cannot determine the service interval countdown and the vehicle's maintenance history has a gap that affects warranty
+      and compliance.
+    rule_authority: best_practice
+    sap_impact: Next service date cannot be calculated. Maintenance scheduling is blind to this vehicle's service history. Compliance
+      reporting incomplete.
+    fix_map:
+      __blank__: 'In ECC: enter last service date via IE02 > Fleet tab. In S/4HANA: use Fiori app F2723 or IE02.'
+    record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: in service since {actual_value} with no completed maintenance call. Complete
+      the overdue service (IW32) or record the last service via IE02 / Fiori app F2723.'
+    applies_when:
+      EQUI.S_FLEET:
+      - X
+      FLEET_MASTER.LAST_SERVICE_DATE:
+      - ''
+      - '00000000'
+    max_age_hours: 8760
+  - id: FLEET007
+    field: FLEET_MASTER.SERVICE_KM
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: Service kilometre interval required for preventive maintenance scheduling
+    why_it_matters: SERVICE_KM defines when the next service notification should fire. Without it, no preventive maintenance
+      notification is created and the vehicle receives no scheduled servicing, creating safety and compliance risks.
+    rule_authority: best_practice
+    sap_impact: No preventive maintenance notifications generated. Vehicle servicing relies entirely on manual tracking. Safety
+      and warranty compliance at risk.
+    fix_map:
+      __blank__: 'In ECC: set service interval via IE02 > Fleet tab. In S/4HANA: use Fiori app F2723 or IE02.'
+    record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: SERVICE_KM is {actual_value}. Set the service interval via IE02 (ECC)
+      or Fiori app F2723 (S/4HANA).'
+    applies_when:
+      EQUI.S_FLEET:
+      - X
+      FLEET.FLEET_CAT:
+        not_in:
+        - TRAILER
+  - id: FLEET008
+    field: FLEET_MASTER.SERVICE_KM
+    check_class: cross_field_check
+    severity: high
+    dimension: timeliness
+    message: Vehicle has passed its next-service odometer reading — service overdue
+    why_it_matters: If SERVICE_KM (the odometer at last service) exceeds CURRENT_KM (current odometer), the data is logically
+      inconsistent — the vehicle cannot have been serviced at a higher mileage than it currently shows. This indicates either
+      an odometer rollback, data entry error, or a unit mismatch (km vs miles).
+    rule_authority: best_practice
+    sap_impact: Next service calculation produces negative distance-to-service. Maintenance notifications may fire incorrectly
+      or not at all.
+    fix_map:
+      __blank__: 'In ECC: verify the odometer and service records, then correct via IE02 > Fleet tab. In S/4HANA: use Fiori
+        app F2723 or IE02.'
+    record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: SERVICE_KM ({actual_value}) exceeds CURRENT_KM. Verify odometer readings
+      and correct via IE02 (ECC) or Fiori app F2723 (S/4HANA).'
+    fail_when: '`FLEET_MASTER.SERVICE_KM` < `FLEET_MASTER.CURRENT_KM`'
+    require_populated: true
+  - id: FLEET009
+    field: ILOA.KOSTL
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: Cost centre required for fleet cost allocation and reporting
+    why_it_matters: COST_CENTRE determines where vehicle operating costs (fuel, maintenance, insurance) are posted in controlling.
+      Without it, costs accumulate on a default or error cost centre, making fleet cost analysis by department or business unit
+      impossible.
+    rule_authority: best_practice
+    sap_impact: Vehicle costs posted to wrong or default cost centre. Fleet cost reporting by department is inaccurate. Budget
+      variance analysis unreliable.
+    fix_map:
+      __blank__: 'In ECC: assign cost centre via IE02 > Organisation tab. In S/4HANA: use Fiori app F2723 or IE02 > Organisation
+        tab.'
+    record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: COST_CENTRE is {actual_value}. Assign the correct cost centre via IE02
+      (ECC) or Fiori app F2723 (S/4HANA).'
+    applies_when:
+      EQUI.S_FLEET:
+      - X
+    grain: EQUI
+  - id: FLEET010
+    field: EQUI.HERST
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: Vehicle make is required for fleet analytics and maintenance part sourcing
+    why_it_matters: MAKE identifies the vehicle manufacturer (e.g. Toyota, Mercedes-Benz). It is needed for fleet composition
+      analytics, maintenance part sourcing, recall matching, and insurance classification. Missing make values degrade all of
+      these processes.
+    rule_authority: best_practice
+    sap_impact: Fleet composition reports incomplete. Maintenance part catalogues cannot filter by make. Recall notices cannot
+      be matched by manufacturer.
+    fix_map:
+      __blank__: 'In ECC: enter vehicle make via IE02 > Fleet tab. In S/4HANA: use Fiori app F2723 or IE02.'
+    record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: MAKE is {actual_value}. Enter the manufacturer via IE02 (ECC) or Fiori
+      app F2723 (S/4HANA).'
+    applies_when:
+      EQUI.S_FLEET:
+      - X
+  - id: FLEET011
+    field: EQUI.TYPBZ
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: Vehicle model needed for maintenance scheduling and spare part compatibility
+    why_it_matters: MODEL identifies the specific vehicle model which determines service intervals, spare part compatibility,
+      and technical specifications. Without it, maintenance plans may use generic intervals and incompatible parts may be ordered.
+    rule_authority: best_practice
+    sap_impact: Maintenance intervals may be incorrect for this model. Spare part ordering cannot verify compatibility. Technical
+      specifications unavailable.
+    fix_map:
+      __blank__: 'In ECC: enter vehicle model via IE02 > Fleet tab. In S/4HANA: use Fiori app F2723 or IE02.'
+    record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: MODEL is {actual_value}. Enter the model via IE02 (ECC) or Fiori app
+      F2723 (S/4HANA).'
+    applies_when:
+      EQUI.S_FLEET:
+      - X
+  - id: FLEET012
+    field: EQUI.BAUJJ
+    check_class: regex_check
+    pattern: ^(19|20)\d{2}$
+    severity: medium
+    dimension: validity
+    message: Vehicle year must be a valid 4-digit year (1900-2099)
+    why_it_matters: The vehicle year of manufacture determines age-based maintenance requirements, emissions compliance category,
+      and depreciation calculations. An invalid year corrupts all age-dependent calculations and fleet age profile reporting.
+    rule_authority: best_practice
+    sap_impact: Age-based maintenance rules cannot evaluate this vehicle. Depreciation calculation incorrect. Fleet age profile
+      reporting unreliable.
+    fix_map:
+      __other__: 'Vehicle year ''{invalid_value}'' is not a valid 4-digit year. In ECC: correct via IE02 > Fleet tab. In S/4HANA:
+        use Fiori app F2723 or IE02.'
+    record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: YEAR ''{actual_value}'' is invalid. Enter the correct manufacturing
+      year via IE02 (ECC) or Fiori app F2723 (S/4HANA).'
+  - id: FLEET013
+    field: FLEET_MASTER.CURRENT_KM
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: Current odometer reading is essential for service scheduling and resale valuation
+    why_it_matters: CURRENT_KM is the vehicle's current odometer reading. It is the basis for distance-based maintenance scheduling,
+      fuel consumption calculation, and vehicle resale valuation. Without it, none of these processes can function accurately.
+    rule_authority: best_practice
+    sap_impact: Distance-based maintenance scheduling fails. Fuel consumption per km cannot be calculated. Vehicle resale value
+      cannot be assessed.
+    fix_map:
+      __blank__: 'In ECC: enter current odometer via IE02 > Fleet tab. In S/4HANA: use Fiori app F2723 or IE02.'
+    record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: CURRENT_KM is {actual_value}. Enter the current odometer reading via
+      IE02 (ECC) or Fiori app F2723 (S/4HANA).'
+    applies_when:
+      EQUI.S_FLEET:
+      - X
+      FLEET.FLEET_CAT:
+        not_in:
+        - TRAILER
+  - id: FLEET014
+    field: FLEET_MASTER.INSURANCE_EXPIRY
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: Insurance expiry date is mandatory for compliance — uninsured vehicles cannot operate
+    why_it_matters: INSURANCE_EXPIRY tracks when the vehicle's insurance policy expires. Operating a vehicle without valid insurance
+      is illegal in most jurisdictions and exposes the organisation to significant financial liability. Missing expiry dates
+      mean the fleet management system cannot alert before insurance lapses.
+    rule_authority: sap_hard_constraint
+    sap_impact: No insurance expiry alert generated. Vehicle may operate without valid insurance. Legal and financial exposure.
+      Fleet compliance report incomplete.
+    fix_map:
+      __blank__: 'In ECC: enter insurance expiry via IE02 > Fleet tab. In S/4HANA: use Fiori app F2723 or IE02.'
+    record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: INSURANCE_EXPIRY is {actual_value}. Enter the insurance expiry date via
+      IE02 (ECC) or Fiori app F2723 (S/4HANA).'
+    applies_when:
+      EQUI.S_FLEET:
+      - X
+  - id: FLEET015
+    field: FLEET.EXPIRY_DATE
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: License expiry date is mandatory — expired license means vehicle cannot be on the road
+    why_it_matters: LICENSE_EXPIRY tracks when the vehicle's operating license (road tax disc) expires. An expired license means
+      the vehicle cannot legally be on public roads. Missing expiry dates prevent the fleet system from generating renewal alerts.
+    rule_authority: sap_hard_constraint
+    sap_impact: No license renewal alert generated. Vehicle may operate with expired license. Traffic authority fines. Fleet
+      compliance reporting incomplete.
+    fix_map:
+      __blank__: 'In ECC: enter license expiry via IE02 > Fleet tab. In S/4HANA: use Fiori app F2723 or IE02.'
+    record_fix_template: 'Vehicle {FLEET.LICENSE_NUM}: LICENSE_EXPIRY is {actual_value}. Enter the license expiry date via IE02
+      (ECC) or Fiori app F2723 (S/4HANA).'
+    applies_when:
+      EQUI.S_FLEET:
+      - X
+  - id: FLEET016
+    field: FLEET_MASTER.NEXT_SERVICE_DUE
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: Next service due date is missing
+    why_it_matters: Next service due date (FLEET_MASTER.NEXT_SERVICE_DUE) is not maintained. This field supports downstream
+      processes and reporting accuracy. Missing data may result in incomplete records or processing gaps.
+    rule_authority: best_practice
+    sap_impact: Missing Next service due date may cause incomplete data in related transactions and reports.
+    fix_map:
+      __blank__: 'In ECC: Set via IE02 (Equipment Master). In S/4HANA: Use Fiori app F4283.'
+    record_fix_template: 'Record is missing FLEET_MASTER.NEXT_SERVICE_DUE. In ECC: Set via IE02 (Equipment Master). In S/4HANA:
+      Use Fiori app F4283.'
+    applies_when:
+      EQUI.S_FLEET:
+      - X
 
-- id: FLEET017
-  field: FLEET.LICENSE_NUM
-  check_class: uniqueness_check
-  fields: [FLEET.LICENSE_NUM]
-  severity: critical
-  dimension: uniqueness
-  message: Duplicate vehicle registration numbers detected — each vehicle must be unique
-  why_it_matters: Duplicate registrations cause incorrect cost allocation, doubled insurance premiums, and fleet
-    size overstatement. Each vehicle must have a unique registration.
-  rule_authority: sap_hard_constraint
-  sap_impact: Maintenance costs are allocated to wrong vehicle. Insurance and licence costs are doubled. Fleet utilisation
-    reports are unreliable.
-  fix_map: {__blank__: Identify duplicate vehicle records. Merge or archive the duplicate via fleet management transaction.
-      Update all linked maintenance orders.}
+  - id: FLEET017
+    field: FLEET.LICENSE_NUM
+    check_class: uniqueness_check
+    fields: [FLEET.LICENSE_NUM]
+    severity: critical
+    dimension: uniqueness
+    message: Duplicate vehicle registration numbers detected — each vehicle must be unique
+    why_it_matters: Duplicate registrations cause incorrect cost allocation, doubled insurance premiums, and fleet
+      size overstatement. Each vehicle must have a unique registration.
+    rule_authority: sap_hard_constraint
+    sap_impact: Maintenance costs are allocated to wrong vehicle. Insurance and licence costs are doubled. Fleet utilisation
+      reports are unreliable.
+    fix_map: {__blank__: Identify duplicate vehicle records. Merge or archive the duplicate via fleet management transaction.
+        Update all linked maintenance orders.}
 
-- id: FLEET018
-  field: FLEET_MASTER.LAST_SERVICE_DATE
-  check_class: freshness_check
-  max_age_hours: 8760
-  severity: medium
-  dimension: timeliness
-  message: Vehicle not serviced in 1+ year — overdue maintenance creates safety and warranty risk
-  rule_authority: best_practice
-  why_it_matters: "Vehicles not serviced in 1+ year are overdue for preventive maintenance, creating safety, warranty, and regulatory-compliance exposure."
-  sap_impact: "Unserviced vehicles risk breakdown and accident liability; warranties may be voided; statutory roadworthiness/inspection requirements go unmet."
-  fix_map:
-    __blank__: "Schedule the overdue service: raise a maintenance order against the vehicle, confirm odometer/usage, and record the completed service to refresh the service date."
-  record_fix_template: "Vehicle {field} not serviced {age_days} days. Raise a maintenance order, perform the overdue service, and record completion."
+  - id: FLEET018
+    field: FLEET_MASTER.LAST_SERVICE_DATE
+    check_class: freshness_check
+    max_age_hours: 8760
+    severity: medium
+    dimension: timeliness
+    message: Vehicle not serviced in 1+ year — overdue maintenance creates safety and warranty risk
+    rule_authority: best_practice
+    why_it_matters: "Vehicles not serviced in 1+ year are overdue for preventive maintenance, creating safety, warranty, and regulatory-compliance exposure."
+    sap_impact: "Unserviced vehicles risk breakdown and accident liability; warranties may be voided; statutory roadworthiness/inspection requirements go unmet."
+    fix_map:
+      __blank__: "Schedule the overdue service: raise a maintenance order against the vehicle, confirm odometer/usage, and record the completed service to refresh the service date."
+    record_fix_template: "Vehicle {field} not serviced {age_days} days. Raise a maintenance order, perform the overdue service, and record completion."
 
-# ── Breadth: VIN uniqueness, legal validity, service plan consistency, physical data and units ──
+  # ── Breadth: VIN uniqueness, legal validity, service plan consistency, physical data and units ──
 
-- id: FLEET019
-  field: FLEET.FLEET_VIN
-  check_class: uniqueness_check
-  fields: [FLEET.FLEET_VIN]
-  case_insensitive: true
-  severity: critical
-  dimension: uniqueness
-  message: The same vehicle identification number (VIN) is maintained for several fleet objects
-  why_it_matters: A VIN identifies exactly one physical vehicle worldwide (ISO 3779). Two fleet objects with one VIN
-    are the same vehicle recorded twice, or a typing error that hides the real vehicle — costs, fuel, fines and
-    insurance claims are split or posted to the wrong vehicle.
-  rule_authority: sap_hard_constraint
-  sap_impact: Vehicle costs and maintenance history are split across duplicates; recalls and insurance claims
-    cannot be matched to the right vehicle.
-  fix_map:
-    __other__: Compare both fleet objects with the registration documents; correct the wrong VIN (IE02 > Fleet) or
-      deactivate the duplicate equipment.
-  record_fix_template: 'Equipment {EQUI.EQUNR}: VIN {FLEET.FLEET_VIN} is also used by another fleet object.'
+  - id: FLEET019
+    field: FLEET.FLEET_VIN
+    check_class: uniqueness_check
+    fields: [FLEET.FLEET_VIN]
+    case_insensitive: true
+    severity: critical
+    dimension: uniqueness
+    message: The same vehicle identification number (VIN) is maintained for several fleet objects
+    why_it_matters: A VIN identifies exactly one physical vehicle worldwide (ISO 3779). Two fleet objects with one VIN
+      are the same vehicle recorded twice, or a typing error that hides the real vehicle — costs, fuel, fines and
+      insurance claims are split or posted to the wrong vehicle.
+    rule_authority: sap_hard_constraint
+    sap_impact: Vehicle costs and maintenance history are split across duplicates; recalls and insurance claims
+      cannot be matched to the right vehicle.
+    fix_map:
+      __other__: Compare both fleet objects with the registration documents; correct the wrong VIN (IE02 > Fleet) or
+        deactivate the duplicate equipment.
+    record_fix_template: 'Equipment {EQUI.EQUNR}: VIN {FLEET.FLEET_VIN} is also used by another fleet object.'
 
-- id: FLEET020
-  field: FLEET.EXPIRY_DATE
-  check_class: freshness_check
-  max_age_hours: 0
-  applies_when:
-    EQUI.S_FLEET: ['X']
-  severity: high
-  dimension: timeliness
-  message: Vehicle registration (licence) validity has expired
-  why_it_matters: A vehicle whose registration has expired may not be driven on public roads; insurance typically
-    does not cover it. A fleet object with a past validity end date is either operating illegally or the renewal was
-    not recorded — both need action.
-  rule_authority: best_practice
-  sap_impact: The vehicle may be dispatched while unlicensed; fines and uninsured-loss exposure.
-  fix_map:
-    __other__: Renew the registration and record the new validity end date (IE02 > Fleet), or take the vehicle out
-      of service (set status INAC).
-  record_fix_template: 'Equipment {EQUI.EQUNR} ({FLEET.LICENSE_NUM}): licence expired {actual_value}.'
+  - id: FLEET020
+    field: FLEET.EXPIRY_DATE
+    check_class: freshness_check
+    max_age_hours: 0
+    applies_when:
+      EQUI.S_FLEET: ['X']
+    severity: high
+    dimension: timeliness
+    message: Vehicle registration (licence) validity has expired
+    why_it_matters: A vehicle whose registration has expired may not be driven on public roads; insurance typically
+      does not cover it. A fleet object with a past validity end date is either operating illegally or the renewal was
+      not recorded — both need action.
+    rule_authority: best_practice
+    sap_impact: The vehicle may be dispatched while unlicensed; fines and uninsured-loss exposure.
+    fix_map:
+      __other__: Renew the registration and record the new validity end date (IE02 > Fleet), or take the vehicle out
+        of service (set status INAC).
+    record_fix_template: 'Equipment {EQUI.EQUNR} ({FLEET.LICENSE_NUM}): licence expired {actual_value}.'
 
-- id: FLEET021
-  field: FLEET_MASTER.INSURANCE_EXPIRY
-  check_class: freshness_check
-  max_age_hours: 0
-  applies_when:
-    EQUI.S_FLEET: ['X']
-  severity: critical
-  dimension: timeliness
-  message: Vehicle insurance has expired
-  why_it_matters: Operating a vehicle without valid insurance is unlawful in most jurisdictions and leaves every
-    accident uninsured. A past insurance expiry on an active fleet object means the policy lapsed or the renewal
-    was not recorded.
-  rule_authority: best_practice
-  sap_impact: The vehicle may be dispatched uninsured; full liability for accidents.
-  fix_map:
-    __other__: Confirm the policy with the insurer and record the new expiry date, or take the vehicle out of
-      service.
-  record_fix_template: 'Equipment {EQUI.EQUNR}: insurance expired {actual_value}.'
+  - id: FLEET021
+    field: FLEET_MASTER.INSURANCE_EXPIRY
+    check_class: freshness_check
+    max_age_hours: 0
+    applies_when:
+      EQUI.S_FLEET: ['X']
+    severity: critical
+    dimension: timeliness
+    message: Vehicle insurance has expired
+    why_it_matters: Operating a vehicle without valid insurance is unlawful in most jurisdictions and leaves every
+      accident uninsured. A past insurance expiry on an active fleet object means the policy lapsed or the renewal
+      was not recorded.
+    rule_authority: best_practice
+    sap_impact: The vehicle may be dispatched uninsured; full liability for accidents.
+    fix_map:
+      __other__: Confirm the policy with the insurer and record the new expiry date, or take the vehicle out of
+        service.
+    record_fix_template: 'Equipment {EQUI.EQUNR}: insurance expired {actual_value}.'
 
-- id: FLEET022
-  field: FLEET_MASTER.NEXT_SERVICE_DUE
-  check_class: cross_field_check
-  fail_when: '`FLEET_MASTER.NEXT_SERVICE_DUE` < `FLEET_MASTER.LAST_SERVICE_DATE`'
-  require_populated: true
-  severity: medium
-  dimension: consistency
-  message: Next service is due before the last service was performed
-  why_it_matters: The next service date is scheduled from the last completed service. A next-due date before the
-    last service date means the schedule was not updated after the service — the vehicle shows as overdue (or
-    is never called in again) for the wrong reason.
-  rule_authority: sap_hard_constraint
-  sap_impact: Preventive maintenance scheduling (IP10) and overdue reporting are wrong for this vehicle.
-  fix_map:
-    __other__: Complete the maintenance order of the last service (IW32 / IW41) so the maintenance plan reschedules,
-      or correct the next due date.
-  record_fix_template: 'Equipment {EQUI.EQUNR}: next service {FLEET_MASTER.NEXT_SERVICE_DUE} before last service
-    {FLEET_MASTER.LAST_SERVICE_DATE}.'
+  - id: FLEET022
+    field: FLEET_MASTER.NEXT_SERVICE_DUE
+    check_class: cross_field_check
+    fail_when: '`FLEET_MASTER.NEXT_SERVICE_DUE` < `FLEET_MASTER.LAST_SERVICE_DATE`'
+    require_populated: true
+    severity: medium
+    dimension: consistency
+    message: Next service is due before the last service was performed
+    why_it_matters: The next service date is scheduled from the last completed service. A next-due date before the
+      last service date means the schedule was not updated after the service — the vehicle shows as overdue (or
+      is never called in again) for the wrong reason.
+    rule_authority: sap_hard_constraint
+    sap_impact: Preventive maintenance scheduling (IP10) and overdue reporting are wrong for this vehicle.
+    fix_map:
+      __other__: Complete the maintenance order of the last service (IW32 / IW41) so the maintenance plan reschedules,
+        or correct the next due date.
+    record_fix_template: 'Equipment {EQUI.EQUNR}: next service {FLEET_MASTER.NEXT_SERVICE_DUE} before last service
+      {FLEET_MASTER.LAST_SERVICE_DATE}.'
 
-- id: FLEET023
-  field: FLEET.LOAD_WGT
-  check_class: cross_field_check
-  fail_when: '`FLEET.LOAD_WGT` > `FLEET.GROSS_WGT`'
-  applies_when:
-    FLEET.GROSS_WGT: {gt: 0}
-  severity: high
-  dimension: consistency
-  message: Maximum load weight exceeds the total permissible weight of the vehicle
-  why_it_matters: The total permissible weight (FLEET.GROSS_WGT) includes the vehicle's own weight plus its load
-    (FLEET.LOAD_WGT). A load limit above the total weight is physically impossible; transport planning that trusts
-    it overloads the vehicle.
-  rule_authority: sap_hard_constraint
-  sap_impact: Shipments are planned above the legal axle and gross weight — overload fines and safety risk.
-  fix_map:
-    __other__: Correct the weights from the vehicle registration document (IE02 > Fleet > Weights).
-  record_fix_template: 'Equipment {EQUI.EQUNR}: load weight {FLEET.LOAD_WGT} > total weight {FLEET.GROSS_WGT}.'
+  - id: FLEET023
+    field: FLEET.LOAD_WGT
+    check_class: cross_field_check
+    fail_when: '`FLEET.LOAD_WGT` > `FLEET.GROSS_WGT`'
+    applies_when:
+      FLEET.GROSS_WGT: {gt: 0}
+    severity: high
+    dimension: consistency
+    message: Maximum load weight exceeds the total permissible weight of the vehicle
+    why_it_matters: The total permissible weight (FLEET.GROSS_WGT) includes the vehicle's own weight plus its load
+      (FLEET.LOAD_WGT). A load limit above the total weight is physically impossible; transport planning that trusts
+      it overloads the vehicle.
+    rule_authority: sap_hard_constraint
+    sap_impact: Shipments are planned above the legal axle and gross weight — overload fines and safety risk.
+    fix_map:
+      __other__: Correct the weights from the vehicle registration document (IE02 > Fleet > Weights).
+    record_fix_template: 'Equipment {EQUI.EQUNR}: load weight {FLEET.LOAD_WGT} > total weight {FLEET.GROSS_WGT}.'
 
-- id: FLEET024
-  field: FLEET.WGT_UNIT
-  check_class: cross_field_check
-  fail_when: '((`FLEET.GROSS_WGT` > 0) | (`FLEET.LOAD_WGT` > 0)) & `FLEET.WGT_UNIT`.isna()'
-  severity: medium
-  dimension: consistency
-  message: Vehicle weights are maintained without a weight unit
-  why_it_matters: Gross and load weight (FLEET.GROSS_WGT / LOAD_WGT) are quantities whose unit is FLEET.WGT_UNIT. A
-    weight without unit cannot be compared with shipment weights or legal limits.
-  rule_authority: sap_hard_constraint
-  sap_impact: Vehicle capacity checks in transport planning cannot use the weights.
-  fix_map:
-    __other__: Maintain the weight unit (IE02 > Fleet > Weights).
-  record_fix_template: 'Equipment {EQUI.EQUNR}: weights without unit.'
+  - id: FLEET024
+    field: FLEET.WGT_UNIT
+    check_class: cross_field_check
+    fail_when: '((`FLEET.GROSS_WGT` > 0) | (`FLEET.LOAD_WGT` > 0)) & `FLEET.WGT_UNIT`.isna()'
+    severity: medium
+    dimension: consistency
+    message: Vehicle weights are maintained without a weight unit
+    why_it_matters: Gross and load weight (FLEET.GROSS_WGT / LOAD_WGT) are quantities whose unit is FLEET.WGT_UNIT. A
+      weight without unit cannot be compared with shipment weights or legal limits.
+    rule_authority: sap_hard_constraint
+    sap_impact: Vehicle capacity checks in transport planning cannot use the weights.
+    fix_map:
+      __other__: Maintain the weight unit (IE02 > Fleet > Weights).
+    record_fix_template: 'Equipment {EQUI.EQUNR}: weights without unit.'
 
-- id: FLEET025
-  field: FLEET.DIM_UNIT
-  check_class: cross_field_check
-  fail_when: '((`FLEET.FLEET_HGT` > 0) | (`FLEET.FLEET_WID` > 0) | (`FLEET.FLEET_LEN` > 0)) & `FLEET.DIM_UNIT`.isna()'
-  severity: medium
-  dimension: consistency
-  message: Vehicle dimensions are maintained without a unit of length
-  why_it_matters: Height, width and length of the vehicle (FLEET_HGT / WID / LEN) are quantities whose unit is
-    FLEET.DIM_UNIT. Clearance checks (bridges, tunnels, docks) cannot use a dimension without its unit.
-  rule_authority: sap_hard_constraint
-  sap_impact: Route and dock clearance checks cannot use the vehicle dimensions.
-  fix_map:
-    __other__: Maintain the unit of length (IE02 > Fleet > Dimensions).
-  record_fix_template: 'Equipment {EQUI.EQUNR}: dimensions without unit.'
+  - id: FLEET025
+    field: FLEET.DIM_UNIT
+    check_class: cross_field_check
+    fail_when: '((`FLEET.FLEET_HGT` > 0) | (`FLEET.FLEET_WID` > 0) | (`FLEET.FLEET_LEN` > 0)) & `FLEET.DIM_UNIT`.isna()'
+    severity: medium
+    dimension: consistency
+    message: Vehicle dimensions are maintained without a unit of length
+    why_it_matters: Height, width and length of the vehicle (FLEET_HGT / WID / LEN) are quantities whose unit is
+      FLEET.DIM_UNIT. Clearance checks (bridges, tunnels, docks) cannot use a dimension without its unit.
+    rule_authority: sap_hard_constraint
+    sap_impact: Route and dock clearance checks cannot use the vehicle dimensions.
+    fix_map:
+      __other__: Maintain the unit of length (IE02 > Fleet > Dimensions).
+    record_fix_template: 'Equipment {EQUI.EQUNR}: dimensions without unit.'
 
-- id: FLEET026
-  field: FLEET.UNIT_POWER
-  check_class: cross_field_check
-  fail_when: '(`FLEET.ENGINE_POWER` > 0) & `FLEET.UNIT_POWER`.isna()'
-  severity: low
-  dimension: consistency
-  message: Engine power is maintained without a power unit
-  why_it_matters: Engine power (FLEET.ENGINE_POWER) is a quantity whose unit is FLEET.UNIT_POWER (kW, HP). Without
-    the unit the value cannot be used for tax, emission class or spare-part selection.
-  rule_authority: sap_hard_constraint
-  sap_impact: Vehicle tax and emission reporting cannot use the engine power.
-  fix_map:
-    __other__: Maintain the power unit (IE02 > Fleet > Engine).
-  record_fix_template: 'Equipment {EQUI.EQUNR}: engine power {FLEET.ENGINE_POWER} without unit.'
+  - id: FLEET026
+    field: FLEET.UNIT_POWER
+    check_class: cross_field_check
+    fail_when: '(`FLEET.ENGINE_POWER` > 0) & `FLEET.UNIT_POWER`.isna()'
+    severity: low
+    dimension: consistency
+    message: Engine power is maintained without a power unit
+    why_it_matters: Engine power (FLEET.ENGINE_POWER) is a quantity whose unit is FLEET.UNIT_POWER (kW, HP). Without
+      the unit the value cannot be used for tax, emission class or spare-part selection.
+    rule_authority: sap_hard_constraint
+    sap_impact: Vehicle tax and emission reporting cannot use the engine power.
+    fix_map:
+      __other__: Maintain the power unit (IE02 > Fleet > Engine).
+    record_fix_template: 'Equipment {EQUI.EQUNR}: engine power {FLEET.ENGINE_POWER} without unit.'
 
-- id: FLEET027
-  field: FLEET.UNIT_CAP
-  check_class: cross_field_check
-  fail_when: '(`FLEET.ENGINE_CAP` > 0) & `FLEET.UNIT_CAP`.isna()'
-  severity: low
-  dimension: consistency
-  message: Engine capacity is maintained without a unit
-  why_it_matters: Engine capacity (FLEET.ENGINE_CAP) is a quantity whose unit is FLEET.UNIT_CAP (ccm, l). Without
-    the unit the value cannot be used for tax classes or parts selection.
-  rule_authority: sap_hard_constraint
-  sap_impact: Vehicle tax class and parts compatibility cannot use the engine capacity.
-  fix_map:
-    __other__: Maintain the engine capacity unit (IE02 > Fleet > Engine).
-  record_fix_template: 'Equipment {EQUI.EQUNR}: engine capacity {FLEET.ENGINE_CAP} without unit.'
+  - id: FLEET027
+    field: FLEET.UNIT_CAP
+    check_class: cross_field_check
+    fail_when: '(`FLEET.ENGINE_CAP` > 0) & `FLEET.UNIT_CAP`.isna()'
+    severity: low
+    dimension: consistency
+    message: Engine capacity is maintained without a unit
+    why_it_matters: Engine capacity (FLEET.ENGINE_CAP) is a quantity whose unit is FLEET.UNIT_CAP (ccm, l). Without
+      the unit the value cannot be used for tax classes or parts selection.
+    rule_authority: sap_hard_constraint
+    sap_impact: Vehicle tax class and parts compatibility cannot use the engine capacity.
+    fix_map:
+      __other__: Maintain the engine capacity unit (IE02 > Fleet > Engine).
+    record_fix_template: 'Equipment {EQUI.EQUNR}: engine capacity {FLEET.ENGINE_CAP} without unit.'
 
-- id: FLEET028
-  field: FLEET.REPLA_DATE
-  check_class: cross_field_check
-  fail_when: '`FLEET.REPLA_DATE` < `EQUI.INBDT`'
-  require_populated: true
-  severity: medium
-  dimension: consistency
-  message: Planned replacement date is before the vehicle's start-up date
-  why_it_matters: A vehicle is replaced after it is put into service (EQUI.INBDT). A replacement date before
-    start-up was entered wrongly, so fleet renewal planning and depreciation-based replacement budgets are wrong.
-  rule_authority: sap_hard_constraint
-  sap_impact: Fleet replacement planning schedules the vehicle for immediate replacement.
-  fix_map:
-    __other__: Correct the replacement date (IE02 > Fleet) from the fleet renewal policy.
-  record_fix_template: 'Equipment {EQUI.EQUNR}: replacement {FLEET.REPLA_DATE} before start-up {EQUI.INBDT}.'
+  - id: FLEET028
+    field: FLEET.REPLA_DATE
+    check_class: cross_field_check
+    fail_when: '`FLEET.REPLA_DATE` < `EQUI.INBDT`'
+    require_populated: true
+    severity: medium
+    dimension: consistency
+    message: Planned replacement date is before the vehicle's start-up date
+    why_it_matters: A vehicle is replaced after it is put into service (EQUI.INBDT). A replacement date before
+      start-up was entered wrongly, so fleet renewal planning and depreciation-based replacement budgets are wrong.
+    rule_authority: sap_hard_constraint
+    sap_impact: Fleet replacement planning schedules the vehicle for immediate replacement.
+    fix_map:
+      __other__: Correct the replacement date (IE02 > Fleet) from the fleet renewal policy.
+    record_fix_template: 'Equipment {EQUI.EQUNR}: replacement {FLEET.REPLA_DATE} before start-up {EQUI.INBDT}.'
 
-- id: FLEET029
-  field: FLEET.FUEL_PRI
-  check_class: referential_check
-  reference_values: []
-  reference_table: T370FLD
-  reference_field: FLUID_TYPE
-  severity: medium
-  dimension: consistency
-  message: Primary fuel type does not exist in the consumables configuration (T370FLD)
-  why_it_matters: Fuel consumption recording (IFCU) validates the fuel against the vehicle's primary fuel type. A
-    fuel type that is not configured makes consumption postings for the vehicle fail.
-  rule_authority: sap_hard_constraint
-  sap_impact: Fuel consumption cannot be recorded or valued for this vehicle.
-  fix_map:
-    __other__: Fuel type '{invalid_value}' is not in T370FLD. Correct the vehicle (IE02 > Fleet > Engine) or configure
-      the consumable type.
-  record_fix_template: 'Equipment {EQUI.EQUNR}: fuel type ''{actual_value}'' is not configured.'
+  - id: FLEET029
+    field: FLEET.FUEL_PRI
+    check_class: referential_check
+    reference_values: []
+    reference_table: T370FLD
+    reference_field: FLUID_TYPE
+    severity: medium
+    dimension: consistency
+    message: Primary fuel type does not exist in the consumables configuration (T370FLD)
+    why_it_matters: Fuel consumption recording (IFCU) validates the fuel against the vehicle's primary fuel type. A
+      fuel type that is not configured makes consumption postings for the vehicle fail.
+    rule_authority: sap_hard_constraint
+    sap_impact: Fuel consumption cannot be recorded or valued for this vehicle.
+    fix_map:
+      __other__: Fuel type '{invalid_value}' is not in T370FLD. Correct the vehicle (IE02 > Fleet > Engine) or configure
+        the consumable type.
+    record_fix_template: 'Equipment {EQUI.EQUNR}: fuel type ''{actual_value}'' is not configured.'
 
-- id: FLEET030
-  field: FLEET.ENGINE_TYPE
-  check_class: referential_check
-  reference_values: []
-  reference_table: T370ENG
-  reference_field: ENGINE_TYPE
-  severity: low
-  dimension: consistency
-  message: Engine type does not exist in the fleet configuration (T370ENG)
-  why_it_matters: Engine types group vehicles for maintenance strategies and parts. An unconfigured engine type
-    cannot be used in selection or reporting.
-  rule_authority: sap_hard_constraint
-  sap_impact: The vehicle is missing from engine-type based maintenance and parts planning.
-  fix_map:
-    __other__: Engine type '{invalid_value}' is not in T370ENG. Correct the vehicle (IE02 > Fleet > Engine).
-  record_fix_template: 'Equipment {EQUI.EQUNR}: engine type ''{actual_value}'' is not configured.'
+  - id: FLEET030
+    field: FLEET.ENGINE_TYPE
+    check_class: referential_check
+    reference_values: []
+    reference_table: T370ENG
+    reference_field: ENGINE_TYPE
+    severity: low
+    dimension: consistency
+    message: Engine type does not exist in the fleet configuration (T370ENG)
+    why_it_matters: Engine types group vehicles for maintenance strategies and parts. An unconfigured engine type
+      cannot be used in selection or reporting.
+    rule_authority: sap_hard_constraint
+    sap_impact: The vehicle is missing from engine-type based maintenance and parts planning.
+    fix_map:
+      __other__: Engine type '{invalid_value}' is not in T370ENG. Correct the vehicle (IE02 > Fleet > Engine).
+    record_fix_template: 'Equipment {EQUI.EQUNR}: engine type ''{actual_value}'' is not configured.'
 
-- id: FLEET031
-  field: FLEET.LOAD_DIM_UNIT
-  check_class: cross_field_check
-  fail_when: '((`FLEET.LOAD_HGT` > 0) | (`FLEET.LOAD_WID` > 0) | (`FLEET.LOAD_LEN` > 0)) & `FLEET.LOAD_DIM_UNIT`.isna()'
-  severity: low
-  dimension: consistency
-  message: Load space dimensions are maintained without a unit of length
-  why_it_matters: The load space dimensions (LOAD_HGT / WID / LEN) are quantities whose unit is
-    FLEET.LOAD_DIM_UNIT. Load planning cannot compare them with package dimensions without the unit.
-  rule_authority: sap_hard_constraint
-  sap_impact: Load space planning cannot use the vehicle's load dimensions.
-  fix_map:
-    __other__: Maintain the unit for the load dimensions (IE02 > Fleet > Dimensions).
-  record_fix_template: 'Equipment {EQUI.EQUNR}: load dimensions without unit.'
+  - id: FLEET031
+    field: FLEET.LOAD_DIM_UNIT
+    check_class: cross_field_check
+    fail_when: '((`FLEET.LOAD_HGT` > 0) | (`FLEET.LOAD_WID` > 0) | (`FLEET.LOAD_LEN` > 0)) & `FLEET.LOAD_DIM_UNIT`.isna()'
+    severity: low
+    dimension: consistency
+    message: Load space dimensions are maintained without a unit of length
+    why_it_matters: The load space dimensions (LOAD_HGT / WID / LEN) are quantities whose unit is
+      FLEET.LOAD_DIM_UNIT. Load planning cannot compare them with package dimensions without the unit.
+    rule_authority: sap_hard_constraint
+    sap_impact: Load space planning cannot use the vehicle's load dimensions.
+    fix_map:
+      __other__: Maintain the unit for the load dimensions (IE02 > Fleet > Dimensions).
+    record_fix_template: 'Equipment {EQUI.EQUNR}: load dimensions without unit.'
 
-- id: FLEET032
-  field: FLEET.VOL_UNIT
-  check_class: cross_field_check
-  fail_when: '(`FLEET.LOAD_VOL` > 0) & `FLEET.VOL_UNIT`.isna()'
-  severity: low
-  dimension: consistency
-  message: Load volume is maintained without a volume unit
-  why_it_matters: The load volume (FLEET.LOAD_VOL) is a quantity whose unit is FLEET.VOL_UNIT. Volume-based load
-    planning cannot use it without the unit.
-  rule_authority: sap_hard_constraint
-  sap_impact: Volume capacity checks in transport planning cannot use the vehicle's load volume.
-  fix_map:
-    __other__: Maintain the volume unit (IE02 > Fleet > Dimensions).
-  record_fix_template: 'Equipment {EQUI.EQUNR}: load volume {FLEET.LOAD_VOL} without unit.'
+  - id: FLEET032
+    field: FLEET.VOL_UNIT
+    check_class: cross_field_check
+    fail_when: '(`FLEET.LOAD_VOL` > 0) & `FLEET.VOL_UNIT`.isna()'
+    severity: low
+    dimension: consistency
+    message: Load volume is maintained without a volume unit
+    why_it_matters: The load volume (FLEET.LOAD_VOL) is a quantity whose unit is FLEET.VOL_UNIT. Volume-based load
+      planning cannot use it without the unit.
+    rule_authority: sap_hard_constraint
+    sap_impact: Volume capacity checks in transport planning cannot use the vehicle's load volume.
+    fix_map:
+      __other__: Maintain the volume unit (IE02 > Fleet > Dimensions).
+    record_fix_template: 'Equipment {EQUI.EQUNR}: load volume {FLEET.LOAD_VOL} without unit.'
+
+  - id: FLEET033
+    field: EQUZ.IWERK
+    check_class: null_check
+    grain: EQUI
+    applies_when:
+      EQUI.S_FLEET: [X]
+    severity: high
+    dimension: completeness
+    message: Vehicle has no maintenance planning plant
+    why_it_matters: The maintenance planning plant (EQUZ.IWERK) decides where maintenance plans, notifications and
+      orders for the vehicle are planned. Without it the vehicle cannot be included in preventive maintenance.
+    rule_authority: sap_hard_constraint
+    sap_impact: Maintenance plans and orders cannot be created for the vehicle; servicing is missed.
+    fix_map:
+      __blank__: Set the planning plant on the equipment organisation tab (IE02).
+    record_fix_template: 'Vehicle {EQUI.EQUNR}: no maintenance planning plant.'
+
+  - id: FLEET034
+    field: ILOA.TPLNR
+    check_class: null_check
+    grain: EQUI
+    applies_when:
+      EQUI.S_FLEET: [X]
+    severity: low
+    dimension: completeness
+    message: Vehicle is not installed at a functional location
+    why_it_matters: Installing a vehicle at a functional location (ILOA.TPLNR), such as a depot or fleet pool, lets
+      costs and maintenance history roll up by location. A vehicle without one only appears in equipment-level
+      reports.
+    rule_authority: best_practice
+    sap_impact: Location-based maintenance and cost reports omit the vehicle.
+    fix_map:
+      __blank__: Install the vehicle at its depot functional location (IE02, structure tab, or IE4N).
+    record_fix_template: 'Vehicle {EQUI.EQUNR}: no functional location.'
+
+  - id: FLEET035
+    field: EQUI.IMRC_POINT
+    check_class: exists_check
+    fields:
+    - EQUI.IMRC_POINT
+    target_table: IMPTT
+    target_fields:
+    - POINT
+    severity: medium
+    dimension: consistency
+    message: Equipment refers to a measuring point that does not exist
+    why_it_matters: The measuring point on the equipment (EQUI.IMRC_POINT) must exist in the measuring point table
+      (IMPTT). A missing point means odometer or hour readings cannot be recorded against it, so counter-based
+      maintenance does not trigger.
+    rule_authority: sap_hard_constraint
+    sap_impact: Measurement documents cannot be posted; counter-based maintenance plans do not schedule.
+    fix_map:
+      __other__: Create the measuring point (IK01) or correct the reference on the equipment (IE02).
+    record_fix_template: 'Equipment {EQUI.EQUNR}: measuring point {EQUI.IMRC_POINT} not found.'

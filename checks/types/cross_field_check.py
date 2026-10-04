@@ -52,7 +52,8 @@ class CrossFieldCheck(BaseCheck):
     Legacy form:   ``condition`` — rows where it is True pass.
     ``require_populated: true`` limits the population to rows where every
     referenced field has a value (blanks are null_check's job).
-    Evaluated with ``DataFrame.eval(engine="python")`` on DDIC-typed values.
+    Evaluated with ``DataFrame.eval(engine="python")`` on DDIC-typed values;
+    ``@today`` is the current date (future hire dates, ages).
     """
 
     check_class = "cross_field_check"
@@ -68,7 +69,8 @@ class CrossFieldCheck(BaseCheck):
     def evaluate(self, df: pd.DataFrame) -> Evaluation:
         cols = self.columns()
         t = typed(df, cols)
-        result = t.eval(self._expr(), engine="python")
+        result = t.eval(self._expr(), engine="python",
+                        local_dict={"today": pd.Series(pd.Timestamp.today().normalize(), index=t.index)})
         if not isinstance(result, pd.Series):
             result = pd.Series(result, index=df.index)
         result = result.astype("boolean")

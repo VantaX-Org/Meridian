@@ -13,6 +13,7 @@ See: docs/ARCHITECTURE.md for detailed design rationale.
 import uuid
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     Column,
     Date,
@@ -48,6 +49,7 @@ class Tenant(Base):
     licensed_modules = Column(ARRAY(Text), nullable=False, server_default="{}")
     dqs_weights = Column(JSONB, nullable=True)
     alert_thresholds = Column(JSONB, nullable=True)
+    cost_model = Column(JSONB, nullable=True)  # overrides of checks/cost_model.yaml
     stripe_customer_id = Column(Text, nullable=True)
     created_at = Column(
         DateTime(timezone=True),
@@ -115,6 +117,10 @@ class Finding(Base):
     rule_context = Column(JSONB, nullable=True)
     value_fix_map = Column(JSONB, nullable=True)
     record_fixes = Column(JSONB, nullable=True)
+    cost_at_risk = Column(Numeric, nullable=True)   # checks/cost.py
+    cost_formula = Column(Text, nullable=True)
+    impact_score = Column(Numeric, nullable=True)   # $ at risk × blocked features × severity
+    finding_type = Column(Text, nullable=False, server_default="rule")  # rule | anomaly (migration 054)
     created_at = Column(
         DateTime(timezone=True),
         nullable=False,
@@ -837,8 +843,24 @@ class FindingRecord(Base):
     module = Column(Text, nullable=False)
     grain = Column(Text, nullable=True)
     record_key = Column(Text, primary_key=True)
+    field_values = Column(JSONB, nullable=True)  # rule columns, sensitive ones masked (migration 054)
 
     __table_args__ = (Index("ix_finding_records_tenant_record", "tenant_id", "record_key"),)
+
+
+class SavedView(Base):
+    """A user's named filter set for one page (migration 054)."""
+    __tablename__ = "saved_views"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    user_id = Column(Text, nullable=False)
+    route = Column(Text, nullable=False)
+    name = Column(Text, nullable=False)
+    filters = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (UniqueConstraint("tenant_id", "user_id", "route", "name", name="uq_saved_views_user_route_name"),)
 
 
 class RecordIssue(Base):
@@ -967,6 +989,25 @@ class FieldProfile(Base):
     )
 
 
+class TableProfile(Base):
+    """Profile of one extracted table in one version — the anomaly baseline (migration 054)."""
+    __tablename__ = "table_profiles"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    version_id = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id", ondelete="CASCADE"), nullable=False)
+    system_id = Column(Text, nullable=True)
+    table_name = Column(Text, nullable=False)
+    row_count = Column(BigInteger, nullable=False)
+    profile = Column(JSONB, nullable=False, server_default="{}")  # checks/anomaly.py:profile_table
+    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
+
+    __table_args__ = (
+        UniqueConstraint("version_id", "table_name", name="uq_table_profiles"),
+        Index("ix_table_profiles_baseline", "tenant_id", "system_id", "table_name", "created_at"),
+    )
+
+
 class KnownIssue(Base):
     """A record the customer's stewards know is wrong — recall of the pilot scorecard (migration 052)."""
     __tablename__ = "known_issues"
@@ -981,6 +1022,55 @@ class KnownIssue(Base):
 
     __table_args__ = (UniqueConstraint("tenant_id", "scope", "module", "record_ref", name="uq_known_issues"),
                       Index("ix_known_issues_tenant_scope", "tenant_id", "scope"))
+
+
+class RuleVersion(Base):
+    """A tenant's version of a rule: draft → in_review → active → retired (migration 054)."""
+    __tablename__ = "rule_versions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    rule_id = Column(Text, nullable=False)
+    version = Column(Integer, nullable=False)
+    body = Column(JSONB, nullable=False)
+    state = Column(Text, nullable=False, server_default="draft")
+    note = Column(Text, nullable=True)
+    created_by = Column(Text, nullable=True)
+    approved_by = Column(Text, nullable=True)
+    approved_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
+    updated_at = Column(DateTime(timezone=True), server_default=text("now()"))
+
+    __table_args__ = (UniqueConstraint("tenant_id", "rule_id", "version", name="uq_rule_versions"),)
+
+
+class RuleSuppression(Base):
+    """A rule, or one record of it, kept out of the score until expires_at (migration 054)."""
+    __tablename__ = "rule_suppressions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    check_id = Column(Text, nullable=False)
+    record_key = Column(Text, nullable=True)
+    reason = Column(Text, nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    created_by = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
+
+
+class AlertChannel(Base):
+    """Outbound alert target — webhook | slack | teams | email (migration 054)."""
+    __tablename__ = "alert_channels"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    kind = Column(Text, nullable=False)
+    target = Column(Text, nullable=False)
+    secret = Column(Text, nullable=True)
+    digest = Column(Text, nullable=False, server_default="daily")
+    immediate_critical = Column(Boolean, nullable=False, server_default=text("false"))
+    enabled = Column(Boolean, nullable=False, server_default=text("true"))
+    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
 
 
 class FieldDependency(Base):

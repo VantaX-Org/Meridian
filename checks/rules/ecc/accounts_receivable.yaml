@@ -1338,3 +1338,98 @@ rules:
       __other__: Assign a current credit account (FD32) or make the customer its own credit account.
     record_fix_template: 'Customer {KNKK.KUNNR} (credit area {KNKK.KKBER}): credit account {KNKK.KNKLI} does not exist or is
       deleted.'
+  - id: AR073
+    field: KNKK.SKFOR
+    check_class: cross_field_check
+    grain: KNA1
+    fail_when: (`KNKK.KLIMK` > 0) & ((`KNKK.SKFOR`.fillna(0) + `KNKK.SSOBL`.fillna(0)) > `KNKK.KLIMK`)
+    require_populated: false
+    applies_when:
+      KNKK.KLIMK: {gt: 0}
+    severity: high
+    dimension: consistency
+    message: Customer receivables plus special liabilities exceed the credit limit
+    why_it_matters: >-
+      Credit management blocks new orders when exposure exceeds the limit. Receivables already above
+      the limit mean the limit was raised or bypassed after the fact, or deliveries were released
+      manually. Either way the customer carries more unsecured risk than approved.
+    rule_authority: best_practice
+    sap_impact: Orders go onto credit block (VKM1); bad-debt provisioning understates the exposure.
+    fix_map:
+      __other__: Review exposure in FD32 / F.31 (S/4 FSCM UKM_BP / Manage Credit Accounts F4596); raise the limit with approval or stop shipments.
+    record_fix_template: 'Customer {KNA1.KUNNR} (credit area {KNKK.KKBER}): exposure exceeds limit {KNKK.KLIMK}.'
+
+  - id: AR071
+    field: BSID.BELNR
+    check_class: cross_field_check
+    grain: BSID
+    fail_when: (`KNA1.SPERR` == 'X') | (`KNB1.SPERR` == 'X')
+    severity: medium
+    dimension: consistency
+    message: Customer is blocked for posting but still has open items
+    why_it_matters: >-
+      Incoming payments and clearing need a posting to the customer. With the account blocked, open
+      receivables cannot be cleared and lock-box or bank-statement matching fails. The items age until
+      written off.
+    rule_authority: best_practice
+    sap_impact: FF_5 / FEBAN cannot post the payment to the account; dunning still runs on the open items.
+    fix_map:
+      __other__: Review the items in FBL5N (S/4 Manage Customer Line Items F0711); clear, write off, or lift the block (XD05).
+    record_fix_template: 'Customer {BSID.KUNNR} (company code {BSID.BUKRS}) is posting-blocked with open item {BSID.BELNR}/{BSID.GJAHR}.'
+
+  - id: AR072
+    field: BSID.BUDAT
+    check_class: freshness_check
+    max_age_hours: 8760
+    applies_when:
+      BSID.SHKZG: [H]
+      BSID.UMSKZ: {blank: true}
+    severity: medium
+    dimension: timeliness
+    message: Customer credit item (unapplied payment / credit memo) open for more than 12 months
+    why_it_matters: >-
+      A credit on a customer account is money owed to the customer, or a payment never matched to its
+      invoice. Credits that are a year old understate receivables and, in many jurisdictions, become
+      unclaimed property that must be reported.
+    rule_authority: best_practice
+    sap_impact: Receivables and dunning are distorted (invoices dunned although paid); escheatment obligations missed.
+    fix_map:
+      __other__: Match the credit to its invoices in F-32 (S/4 Clear Incoming Payments F0773) or refund it.
+    record_fix_template: 'Customer {BSID.KUNNR} (company code {BSID.BUKRS}): credit item {BSID.BELNR}/{BSID.GJAHR} posted {BSID.BUDAT} is still open.'
+
+  - id: AR075
+    field: KNB1.XVERR
+    check_class: cross_field_check
+    grain: KNB1
+    fail_when: '`KNB1.XVERR`.isna()'
+    applies_when:
+      KNA1.LIFNR: {populated: true}
+    severity: low
+    dimension: consistency
+    message: Customer is linked to a vendor but clearing with the vendor is off
+    why_it_matters: >-
+      With the vendor link but no KNB1.XVERR, dunning and the payment run ignore the vendor balance.
+      The customer is dunned for an amount the company itself owes them.
+    rule_authority: best_practice
+    sap_impact: Dunning letters and automatic debits ignore payables to the same party.
+    fix_map:
+      __blank__: Set "Clrg with vend." in XD02 > Company code > Payment transactions, or remove the link.
+    record_fix_template: 'Customer {KNB1.KUNNR} in company code {KNB1.BUKRS} is linked to vendor {KNA1.LIFNR} but clearing is off.'
+
+  - id: AR074
+    field: KNKK.NXTRV
+    check_class: freshness_check
+    max_age_hours: 720
+    applies_when:
+      KNKK.KLIMK: {gt: 0}
+    severity: low
+    dimension: timeliness
+    message: Credit limit's next review date passed more than 30 days ago
+    why_it_matters: >-
+      Credit limits are approved for a review cycle. A limit past its review date keeps granting
+      credit on an assessment nobody has renewed.
+    rule_authority: best_practice
+    sap_impact: Credit checks (VKM1) pass against an outdated limit.
+    fix_map:
+      __other__: Review the customer in FD32 (S/4 F4596) and set the next review date.
+    record_fix_template: 'Customer {KNA1.KUNNR} (credit area {KNKK.KKBER}): credit review was due {KNKK.NXTRV}.'

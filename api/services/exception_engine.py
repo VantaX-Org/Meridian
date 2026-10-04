@@ -145,7 +145,7 @@ class SAPTransactionMonitor:
                 finding_fields.add(field_checked.upper())
             message = details.get("message", "")
             # Extract TABLE.FIELD patterns from message
-            for match in re.findall(r"[A-Z0-9_]+\.[A-Z0-9_]+", message.upper()):
+            for match in re.findall(r"[A-Z0-9_/]+\.[A-Z0-9_]+", message.upper()):
                 finding_fields.add(match)
 
         for monitor in SAP_MONITORS:

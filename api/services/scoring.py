@@ -12,6 +12,8 @@ DEFAULT_WEIGHTS = {
     "uniqueness": 0.10,
     "validity": 0.10,
 }
+# Composite DQS at or above ``pass`` passes, at or above ``warn`` warns, else fails.
+DEFAULT_THRESHOLDS = {"pass": 90.0, "warn": 75.0}
 
 
 class DQSResult(BaseModel):
@@ -29,6 +31,7 @@ class DQSResult(BaseModel):
     cap_reason: Optional[str] = None
     errored_checks: int = 0          # checks that could not be evaluated — excluded from the score
     weights: dict = {}               # effective (normalised) weights over measured dimensions
+    tier: Optional[str] = None       # pass | warn | fail against the tenant's thresholds
 
 
 def effective_weights(tenant_weights: dict | None) -> dict:
@@ -39,6 +42,54 @@ def effective_weights(tenant_weights: dict | None) -> dict:
             w[dim] = float(val)
     total = sum(w.values())
     return {d: v / total for d, v in w.items()} if total > 0 else dict(DEFAULT_WEIGHTS)
+
+
+def scoring_config(raw: dict | None) -> dict:
+    """The tenant's scoring config (stored in ``tenants.dqs_weights``) with defaults filled:
+    normalised dimension weights, module weights (default 1) and pass/warn thresholds."""
+    raw = raw or {}
+    mw = raw.get("module_weights") or {}
+    return {
+        "dimension_weights": {d: round(w, 4) for d, w in effective_weights(raw).items()},
+        "module_weights": {m: float(w) for m, w in mw.items() if isinstance(w, (int, float)) and w >= 0},
+        "thresholds": {**DEFAULT_THRESHOLDS, **{k: float(v) for k, v in (raw.get("thresholds") or {}).items()
+                                                if k in DEFAULT_THRESHOLDS and isinstance(v, (int, float))}},
+    }
+
+
+def tier(score: float | None, thresholds: dict | None = None) -> str | None:
+    t = {**DEFAULT_THRESHOLDS, **(thresholds or {})}
+    if score is None:
+        return None
+    return "pass" if score >= t["pass"] else "warn" if score >= t["warn"] else "fail"
+
+
+def _composite(dimension_scores: dict, dimension_coverage: dict, critical_failures: int,
+               weights: dict) -> tuple[float, bool, str | None, dict]:
+    """(composite, capped, cap_reason, measured weights) — weighted over measured
+    dimensions, then the critical caps."""
+    measured = {d: w for d, w in weights.items() if dimension_coverage.get(d)}
+    total_w = sum(measured.values())
+    composite = (
+        sum(dimension_scores[d] * w for d, w in measured.items()) / total_w if total_w else 100.0
+    )
+    capped, cap_reason = False, None
+    if critical_failures >= 2 and composite > 70:
+        composite, capped = 70.0, True
+        cap_reason = f"{critical_failures} critical failures — score capped at 70"
+    elif critical_failures == 1 and composite > 85:
+        composite, capped = 85.0, True
+        cap_reason = "1 critical failure — score capped at 85"
+    return composite, capped, cap_reason, ({d: round(w / total_w, 4) for d, w in measured.items()} if total_w else {})
+
+
+def rescore(summary: dict, raw_config: dict | None) -> dict:
+    """A stored module DQSResult dict re-weighted under another scoring config."""
+    composite, capped, cap_reason, w = _composite(
+        summary.get("dimension_scores") or {}, summary.get("dimension_coverage") or {},
+        int(summary.get("critical_count") or 0), effective_weights(raw_config))
+    return {**summary, "composite_score": round(composite, 2), "capped": capped, "cap_reason": cap_reason,
+            "weights": w, "tier": tier(composite, scoring_config(raw_config)["thresholds"])}
 
 
 def score_module(findings: list[CheckResult], tenant_config: dict) -> DQSResult:
@@ -96,26 +147,10 @@ def score_module(findings: list[CheckResult], tenant_config: dict) -> DQSResult:
             # excluded from the composite: absence of evidence is not a pass.
             dimension_scores[dim] = 100.0
 
-    # Weighted composite over the dimensions actually measured
-    measured = {d: w for d, w in weights.items() if dimension_coverage.get(d)}
-    total_w = sum(measured.values())
-    composite = (
-        sum(dimension_scores[d] * w for d, w in measured.items()) / total_w if total_w else 100.0
-    )
-
-    # Apply Critical severity caps
-    capped = False
-    cap_reason = None
+    # Weighted composite over the dimensions actually measured, then the critical caps
     critical_failures = severity_counts["critical"]
-
-    if critical_failures >= 2 and composite > 70:
-        composite = 70.0
-        capped = True
-        cap_reason = f"{critical_failures} critical failures — score capped at 70"
-    elif critical_failures == 1 and composite > 85:
-        composite = 85.0
-        capped = True
-        cap_reason = "1 critical failure — score capped at 85"
+    composite, capped, cap_reason, measured_weights = _composite(
+        dimension_scores, dimension_coverage, critical_failures, weights)
 
     total_checks = len(findings)
     passing_checks = sum(1 for f in findings if f.passed)
@@ -134,7 +169,8 @@ def score_module(findings: list[CheckResult], tenant_config: dict) -> DQSResult:
         capped=capped,
         cap_reason=cap_reason,
         errored_checks=len(errored),
-        weights={d: round(w / total_w, 4) for d, w in measured.items()} if total_w else {},
+        weights=measured_weights,
+        tier=tier(composite, scoring_config(tenant_config)["thresholds"]),
     )
 
 
