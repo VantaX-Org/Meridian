@@ -1309,6 +1309,29 @@ rules:
         FB08 and repost in the correct period, otherwise record why the source document is dated later.
     record_fix_template: 'Document {BKPF.BELNR}/{BKPF.GJAHR} (company code {BKPF.BUKRS}): document date {BKPF.BLDAT} after posting date {BKPF.BUDAT}.'
 
+  - id: GL067
+    field: BKPF.MONAT
+    check_class: cross_field_check
+    grain: BKPF
+    fail_when: (`BKPF.MONAT` >= '13')
+    require_populated: true
+    applies_when:
+      BKPF.AWTYP: [BKPF]
+      BKPF.BSTAT: {not_in: [D, M, S, V, W, Z]}
+    severity: low
+    dimension: validity
+    message: Manual journal entry was posted to a special period (13-16)
+    why_it_matters: >-
+      Special periods hold year-end closing and audit adjustments made after the last regular period.
+      Journal-entry testing under ISA 240 and PCAOB AS 2401 selects these postings, because they change
+      the annual result without passing through a regular month. Each one should have an approved reason.
+    rule_authority: regulatory
+    sap_impact: None in SAP itself; the entry changes the annual figures and is selected for audit sampling.
+    fix_map:
+      __other__: Review the document in FB03 (S/4 F0717) and its approval; confirm it belongs in the year-end
+        close and that OB52 opens the special periods only during the close.
+    record_fix_template: 'Document {BKPF.BELNR}/{BKPF.GJAHR} (company code {BKPF.BUKRS}) posted to period {BKPF.MONAT} by {BKPF.USNAM}.'
+
   - id: GL059
     field: BSEG.HKONT
     check_class: cross_field_check
