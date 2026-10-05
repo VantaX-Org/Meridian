@@ -1020,6 +1020,9 @@ BTP_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
             "BusinessPartner": "PARTNER", "BankIdentification": "BKVID", "BankCountryKey": "BANKS",
             "BankNumber": "BANKL", "IBAN": "IBAN",
         }, "Business partner bank details"),
+        _btp("A_AddressEmailAddress", "ADR6", {
+            "AddressID": "ADDRNUMBER", "EmailAddress": "SMTP_ADDR",
+        }, "Business partner e-mail addresses"),
     ],
 }
 

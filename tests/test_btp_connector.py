@@ -113,7 +113,7 @@ def test_btp_registered():
     assert "btp" in CLOUD_SYSTEM_TYPES
     tables = {next(iter(t.rename_map.values())).split(".")[0]
               for t in get_extraction_targets("btp", "business_partner", include_config=False)}
-    assert {"BUT000", "BUT020", "ADRC", "DFKKBPTAXNUM", "BUT0BK"} <= tables
+    assert {"BUT000", "BUT020", "ADRC", "ADR6", "DFKKBPTAXNUM", "BUT0BK"} <= tables
 
 
 def test_connect_sap_system_selects_btp(http):
@@ -156,3 +156,8 @@ def test_bp_sex_flags_map_to_matching_but000_fields():
     assert bp.rename_map["IsMale"] == "BUT000.XSEXM"
     assert bp.rename_map["IsFemale"] == "BUT000.XSEXF"
     assert bp.rename_map["IsSexUnknown"] == "BUT000.XSEXU"
+
+
+def test_bp_email_maps_to_adr6():
+    t = next(t for t in get_extraction_targets("btp", "business_partner") if t.source == "A_AddressEmailAddress")
+    assert t.rename_map == {"AddressID": "ADR6.ADDRNUMBER", "EmailAddress": "ADR6.SMTP_ADDR"}
