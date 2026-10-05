@@ -21,7 +21,7 @@ import { HEALTH_LABEL, latestDqs } from "@/components/data/systems";
 import { getSystemModules, getSystems, syncConfig, testConnection } from "@/lib/api/connectivity";
 import { getFindingsAggregate } from "@/lib/api/findings";
 import { discoverSystem, getDesign } from "@/lib/api/source-design";
-import { analyseVersion, getSystemObjects, getSystemVersions, startDownload, type SystemVersion } from "@/lib/api/system-objects";
+import { analyseVersion, getSystemVersions, startDownload, type SystemVersion } from "@/lib/api/system-objects";
 import { deleteSystem, updateSystem } from "@/lib/api/systems";
 import { formatModuleName, relativeTime } from "@/lib/format";
 import { useRole } from "@/hooks/use-role";
@@ -29,6 +29,7 @@ import { useUrlState } from "@/hooks/use-url-state";
 import type { SystemModule } from "@/types/api";
 import { ConfigTab, CoverageTab, SnapshotsTab, TablesTab } from "./design-panels";
 import { PilotTab } from "./pilot-tab";
+import { ScopePicker } from "./scope-picker";
 import { ReferencePanel } from "./reference-panel";
 import { SchedulesPanel } from "./schedules-panel";
 
@@ -58,7 +59,6 @@ export default function SystemPage() {
   const [tabParam, setTab] = useUrlState("tab", "overview");
   const tab: Tab = isTab(tabParam) ? tabParam : "overview";
   const drawer = useDrawerParam("drawer");
-  const [confirmExtract, setConfirmExtract] = useState(false);
 
   const systemsQ = useQuery({ queryKey: ["systems"], queryFn: getSystems });
   const system = systemsQ.data?.find((s) => s.id === id);
@@ -79,14 +79,6 @@ export default function SystemPage() {
   };
   const err = (m: string) => (e: unknown) => toast.error((e as Error).message || m);
 
-  const extract = useMutation({
-    mutationFn: async () => {
-      const cat = await getSystemObjects(id);
-      return startDownload(id, { objects: cat.objects.map((o) => o.object), scope: {}, analyse: false });
-    },
-    onSuccess: () => { toast.success("Extraction started. A new run appears under Runs."); setConfirmExtract(false); refresh(); },
-    onError: err("Extraction refused"),
-  });
   const analyse = useMutation({
     mutationFn: () => analyseVersion((latest ?? versions[0]).id),
     onSuccess: () => { toast.success("Analysis started"); refresh(); },
@@ -120,20 +112,11 @@ export default function SystemPage() {
       <PageHeader title={alias}
         summary={`${system.system_type}, ${system.environment}. ${system.last_sync_at ? `Last extraction ${relativeTime(system.last_sync_at)}.` : "Nothing extracted yet."}`}
         actions={<>
-          {can("trigger_sync") ? <Button variant="secondary" onClick={() => setConfirmExtract(true)} disabled={extract.isPending}>Extract</Button> : null}
+          {can("trigger_sync") ? <Button variant="secondary" onClick={() => setTab("objects")}>Extract</Button> : null}
           {can("analyse") ? <Button variant="secondary" onClick={() => analyse.mutate()} disabled={analyse.isPending || !(latest ?? versions[0])}>Analyse</Button> : null}
           {can("manage_systems") ? <Button onClick={() => drawer.open("edit")}>Edit</Button> : null}
         </>} />
 
-      {confirmExtract ? (
-        <Banner tone="warning" title={`Extract every object from ${alias}?`} action={
-          <Stack direction="row" gap={2}>
-            <Button size="sm" onClick={() => extract.mutate()} disabled={extract.isPending}>Extract</Button>
-            <Button size="sm" variant="ghost" onClick={() => setConfirmExtract(false)}>Cancel</Button>
-          </Stack>}>
-          This reads every object this system offers into a new run. Pick single objects on the Objects tab to read less.
-        </Banner>
-      ) : null}
       {versionsQ.data?.download?.status === "running" || versionsQ.data?.download?.status === "queued" ? (
         <Banner tone="info" title="Extraction in progress">
           {versionsQ.data.download.table ? <>Reading <Mono>{versionsQ.data.download.table}</Mono>. </> : null}
@@ -264,8 +247,14 @@ function Objects({ id, modules, versions, canSync, canAnalyse, onChanged }: {
       );
     } },
   ], [again, run, canSync, canAnalyse, latest, versions]);
-  if (!modules.length) return <EmptyState>This system offers no objects yet.</EmptyState>;
-  return <DataTable columns={columns} data={modules} getRowId={(m) => m.module} onRowActivate={(m) => router.push(`/analyse/object/${m.module}`)} ariaLabel="Objects of this system" maxHeight="65vh" />;
+  return (
+    <div className="ui-stack">
+      {canSync ? <ScopePicker id={id} onDownloaded={onChanged} /> : null}
+      {modules.length ? (
+        <DataTable columns={columns} data={modules} getRowId={(m) => m.module} onRowActivate={(m) => router.push(`/analyse/object/${m.module}`)} ariaLabel="Objects of this system" maxHeight="65vh" />
+      ) : <EmptyState>This system offers no objects yet.</EmptyState>}
+    </div>
+  );
 }
 
 /* ── Runs ──────────────────────────────────────────────────────────────── */

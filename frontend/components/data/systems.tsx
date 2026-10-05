@@ -19,7 +19,7 @@ import { EmptyState, PageHeader, StatusBadge, TableSkeleton, Tally, type Status 
 import { useRole } from "@/hooks/use-role";
 import { getSystemModules, getSystems } from "@/lib/api/connectivity";
 import { getSystemVersions, type SystemVersion } from "@/lib/api/system-objects";
-import { registerSystem, testDraftConnection } from "@/lib/api/systems";
+import { registerSystem, testDraftConnection, triggerSync } from "@/lib/api/systems";
 import { relativeTime } from "@/lib/format";
 import type { HealthStatus, SAPSystemExtended, SystemModule, SystemType } from "@/types/api";
 
@@ -94,6 +94,7 @@ export function SystemsSurface() {
   const router = useRouter();
   const { can } = useRole();
   const canManage = can("manage_systems");
+  const canSync = can("trigger_sync");
   const drawer = useDrawerParam("drawer");
   const adding = drawer.value === "new-system";
 
@@ -102,6 +103,15 @@ export function SystemsSurface() {
   const modulesQ = useQueries({ queries: systems.map((s) => ({ queryKey: ["system-modules", s.id], queryFn: () => getSystemModules(s.id) })) });
   const versionsQ = useQueries({ queries: systems.map((s) => ({ queryKey: ["system-versions", s.id], queryFn: () => getSystemVersions(s.id) })) });
   const refresh = () => { qc.invalidateQueries({ queryKey: ["systems"] }); };
+
+  const syncAll = useMutation({
+    mutationFn: async () => {
+      const results = await Promise.allSettled(systems.map((s) => triggerSync(s.id)));
+      return results.filter((r) => r.status === "fulfilled").length;
+    },
+    onSuccess: (ok) => { toast.success(`Triggered ${ok} of ${systems.length} syncs`); refresh(); },
+    onError: (e) => toast.error((e as Error).message || "Sync not triggered"),
+  });
 
   const rows: Row[] = systems.map((system, i) => {
     const modules = modulesQ[i]?.data;
@@ -141,7 +151,12 @@ export function SystemsSurface() {
       cell: ({ row }) => row.original.dqs === null ? "—" : row.original.dqs.toFixed(1) },
   ], []);
 
-  const addButton = canManage ? <Button onClick={() => drawer.open("new-system")}>Add system</Button> : null;
+  const addButton = (
+    <>
+      {canSync ? <Button variant="secondary" onClick={() => syncAll.mutate()} disabled={syncAll.isPending || !systems.length}>Sync all</Button> : null}
+      {canManage ? <Button onClick={() => drawer.open("new-system")}>Add system</Button> : null}
+    </>
+  );
 
   return (
     <div className="ui-page">
