@@ -1172,6 +1172,49 @@ rules:
       __other__: Review the document (FB03 / S/4 F0717) and its approval; tighten OB52 period opening to the close calendar.
     record_fix_template: 'Document {BKPF.BELNR}/{BKPF.GJAHR} (company code {BKPF.BUKRS}) entered {BKPF.CPUDT}, posted to {BKPF.BUDAT}.'
 
+  - id: GL061
+    field: BKPF.BUDAT
+    check_class: cross_field_check
+    grain: BKPF
+    fail_when: (`BKPF.BUDAT` - `BKPF.CPUDT`).dt.days > 31
+    require_populated: true
+    applies_when:
+      BKPF.BSTAT: {not_in: [D, M, S, V, W, Z]}
+    severity: medium
+    dimension: timeliness
+    message: Journal entry posted more than 31 days after it was entered (forward-dated)
+    why_it_matters: >-
+      A posting date well after the entry date moves the amount into a later period than the one it was
+      entered in. Auditors test these journals alongside backdated ones, because shifting income or cost
+      into a future period is a known way to manage results. It also means future posting periods were
+      opened in OB52 earlier than the close calendar needs.
+    rule_authority: regulatory
+    sap_impact: The current period's figures miss the amount; the future period opens with postings nobody expects.
+    fix_map:
+      __other__: Review the document (FB03 / S/4 F0717) and why it was dated ahead; keep future periods closed in OB52 until the close calendar opens them.
+    record_fix_template: 'Document {BKPF.BELNR}/{BKPF.GJAHR} (company code {BKPF.BUKRS}) entered {BKPF.CPUDT}, posted to {BKPF.BUDAT}.'
+
+  - id: GL062
+    field: BKPF.BKTXT
+    check_class: cross_field_check
+    grain: BKPF
+    fail_when: '`BKPF.BKTXT`.isna() & `BKPF.XBLNR`.isna()'
+    applies_when:
+      BKPF.AWTYP: [BKPF]
+      BKPF.BSTAT: {not_in: [D, M, S, V, W, Z]}
+    severity: low
+    dimension: completeness
+    message: Manual journal entry has neither a header text nor a reference
+    why_it_matters: >-
+      A journal keyed directly in FI (FB01, FB50, F-02) carries no source document from another module,
+      so its header text and reference are the only record of why it was posted. Auditors sample manual
+      journals first; one with neither field filled cannot be explained without asking the person who posted it.
+    rule_authority: best_practice
+    sap_impact: The journal cannot be traced to a reason or supporting document in FB03, line-item reports or the audit file.
+    fix_map:
+      __other__: Add a header text or reference in FB02 (both fields can be changed after posting); make one of them required for manual document types in OBA7 / the field status of the posting key.
+    record_fix_template: 'Document {BKPF.BELNR}/{BKPF.GJAHR} (company code {BKPF.BUKRS}, type {BKPF.BLART}) posted by {BKPF.USNAM} has no header text or reference.'
+
   - id: GL059
     field: BSEG.HKONT
     check_class: cross_field_check
