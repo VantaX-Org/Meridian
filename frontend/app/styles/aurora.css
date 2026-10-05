@@ -158,7 +158,7 @@
   --aurora-density-table-size: 14px;
 
   --aurora-duration-instant: 80ms;
-  --aurora-duration-fast: 160ms;
+  --aurora-duration-fast: 120ms;
   --aurora-duration-medium: 240ms;
   --aurora-duration-slow: 360ms;
   --aurora-duration-base: 200ms;
