@@ -101,7 +101,7 @@ export function RecordReportView({ issueId }: { issueId: string }) {
         { level: "record", label: `Record: ${issue.record_key}` },
       ]} />
       <Tally level={4} label="This record" figures={[
-        { label: "Open issues on this record", value: open.length, tone: open.length ? "high" : undefined, verdict: open.length ? "Checks this record still fails." : "None.", href: records, loading: siblings.isLoading },
+        { label: "Open issues on this record", value: open.length, tone: open.length ? "high" : undefined, verdict: open.length ? "Checks this record still fails." : "This record passes every check.", href: records, loading: siblings.isLoading },
         { label: "Days open", value: days, unit: days === 1 ? " day" : " days", verdict: issue.resolved_at ? "From first seen to resolved." : "Since a run first found it.", href: self },
         { label: "Reopened", value: issue.reopened_count || "Never", verdict: issue.reopened_count ? "Failed again after it was resolved." : "It has not failed again.", href: self },
       ]} />

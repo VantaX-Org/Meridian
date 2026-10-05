@@ -134,9 +134,9 @@ export function TriageQueueSurface() {
   return (
     <Stack gap={5} className="aurora-page">
       <Tally level={2} label="My queue" figures={[
-        { label: "Overdue", value: q?.overdue.count ?? null, loading: !q, tone: q?.overdue.count ? "danger" : undefined, verdict: q?.overdue.count ? "Past their due time." : "None.", href: "#triage-overdue" },
-        { label: "Due today", value: q?.due_today.count ?? null, loading: !q, tone: q?.due_today.count ? "warning" : undefined, verdict: q?.due_today.count ? "Due before midnight." : "None.", href: "#triage-due_today" },
-        { label: "Later", value: q?.later.count ?? null, loading: !q, verdict: q?.later.count ? "Not due yet." : "None.", href: "#triage-later" },
+        { label: "Overdue", value: q?.overdue.count ?? null, loading: !q, tone: q?.overdue.count ? "danger" : undefined, verdict: q?.overdue.count ? "Past their due time." : "Nothing past due.", href: "#triage-overdue" },
+        { label: "Due today", value: q?.due_today.count ?? null, loading: !q, tone: q?.due_today.count ? "warning" : undefined, verdict: q?.due_today.count ? "Due before midnight." : "Nothing due today.", href: "#triage-due_today" },
+        { label: "Later", value: q?.later.count ?? null, loading: !q, verdict: q?.later.count ? "Not due yet." : "Nothing scheduled later.", href: "#triage-later" },
       ]} />
 
       <Stack direction="row" gap={3} wrap align="center" className="aurora-filters">

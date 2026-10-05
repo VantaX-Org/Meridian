@@ -106,8 +106,8 @@ export function ReportsSurface() {
         </Banner>
       ) : null}
       <Tally level={2} label="Reports" figures={[
-        { label: "Reports", value: q.isLoading ? null : versions.length, loading: q.isLoading, verdict: versions.length ? "Completed analyses." : "None.", href: "/reports" },
-        { label: "This week", value: q.isLoading ? null : week, loading: q.isLoading, verdict: week ? "Written in the last 7 days." : "None.", href: "/reports" },
+        { label: "Reports", value: q.isLoading ? null : versions.length, loading: q.isLoading, verdict: versions.length ? "Completed analyses." : "No analysis has finished yet.", href: "/reports" },
+        { label: "This week", value: q.isLoading ? null : week, loading: q.isLoading, verdict: week ? "Written in the last 7 days." : "Nothing written this week.", href: "/reports" },
         { label: "Latest DQS", value: latestDqs === null ? (q.isLoading ? null : "None") : Math.round(latestDqs * 10) / 10, loading: q.isLoading,
           tone: latestDqs !== null && latestDqs < 70 ? "danger" : latestDqs !== null && latestDqs < 90 ? "warning" : undefined,
           verdict: latest ? `Run ${relativeTime(latest.run_at)}.` : "No analysis has completed.", href: latest ? `/reports?report=${latest.id}` : "/reports" },

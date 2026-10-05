@@ -79,8 +79,8 @@ export function GoldenRecordsSurface() {
           tone: health && health.mdm_health_score < 60 ? "danger" : undefined,
           verdict: health ? `${Math.round(health.golden_record_coverage_pct)}% coverage, ${health.backlog_count} in the steward backlog.` : "No snapshot yet.", href: "/golden-records#mdm-health" },
         { label: "Master records", value: q.isLoading ? null : total, loading: q.isLoading, verdict: `${golden} golden.`, href: "/golden-records" },
-        { label: "Pending review", value: q.isLoading ? null : pending, loading: q.isLoading, tone: pending ? "warning" : undefined, verdict: pending ? "Waiting for a steward." : "None.", href: "/golden-records" },
-        { label: "Open issues", value: q.isLoading ? null : issues, loading: q.isLoading, tone: issues ? "danger" : undefined, verdict: issues ? "Failing checks on these records." : "None.", href: "/analyse?tab=records&status=open" },
+        { label: "Pending review", value: q.isLoading ? null : pending, loading: q.isLoading, tone: pending ? "warning" : undefined, verdict: pending ? "Waiting for a steward." : "Nothing awaiting a steward.", href: "/golden-records" },
+        { label: "Open issues", value: q.isLoading ? null : issues, loading: q.isLoading, tone: issues ? "danger" : undefined, verdict: issues ? "Failing checks on these records." : "No failing checks.", href: "/analyse?tab=records&status=open" },
       ]} />
       {health ? (
         <SectionCard title="MDM health" meta={health.snapshot_date}>

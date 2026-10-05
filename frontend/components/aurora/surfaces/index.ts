@@ -7,6 +7,18 @@
  * render out); page files wire data via react-query.
  */
 
+export { Process } from "./process";
+export type {
+  ProcessProps,
+  ProcessVerdict,
+  ProcessTabId,
+  ProcessReadiness,
+  ProcessPick,
+  ProcessVariant,
+  ProcessCase,
+  ProcessConfigImpactRow,
+} from "./process";
+
 export {
   Admin,
   AdminDoctorCard,

@@ -138,10 +138,10 @@ export function CleaningSurface() {
           {canApprove ? <Button onClick={() => setConfirmAuto(true)} disabled={runAuto.isPending || confirmAuto}>Approve confident corrections</Button> : null}
         </>} />
       <Tally level={2} label="Cleaning queue" figures={[
-        { label: "In queue", value: q.isLoading ? null : total, loading: q.isLoading, verdict: total ? "Corrections proposed for single records." : "None.", href: "/cleaning" },
-        { label: "Needs review", value: q.isLoading ? null : counts.review, loading: q.isLoading, tone: counts.review ? "warning" : undefined, verdict: counts.review ? "Waiting for a steward." : "None.", href: "/cleaning?view=review" },
-        { label: "Auto-applied", value: q.isLoading ? null : counts.auto, loading: q.isLoading, verdict: counts.auto ? "Can be rolled back." : "None.", href: "/cleaning?view=auto" },
-        { label: "Mean confidence", value: meanConf, unit: meanConf === null ? undefined : "%", loading: q.isLoading, verdict: meanConf === null ? "None." : "Across the queue.", href: "/cleaning" },
+        { label: "In queue", value: q.isLoading ? null : total, loading: q.isLoading, verdict: total ? "Corrections proposed for single records." : "No corrections proposed.", href: "/cleaning" },
+        { label: "Needs review", value: q.isLoading ? null : counts.review, loading: q.isLoading, tone: counts.review ? "warning" : undefined, verdict: counts.review ? "Waiting for a steward." : "Nothing waiting for a steward.", href: "/cleaning?view=review" },
+        { label: "Auto-applied", value: q.isLoading ? null : counts.auto, loading: q.isLoading, verdict: counts.auto ? "Can be rolled back." : "Nothing applied automatically.", href: "/cleaning?view=auto" },
+        { label: "Mean confidence", value: meanConf, unit: meanConf === null ? undefined : "%", loading: q.isLoading, verdict: meanConf === null ? "No corrections to average." : "Across the queue.", href: "/cleaning" },
       ]} />
       {confirmAuto ? (
         <Banner tone="info" title="Approve every correction above the auto-approval threshold?" action={

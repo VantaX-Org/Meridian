@@ -110,10 +110,10 @@ export default function GoldenRecordDetailPage() {
         { label: "Overall confidence", value: conf, unit: "%", tone: record.overall_confidence < 0.6 ? "danger" : record.overall_confidence < 0.85 ? "warning" : undefined,
           verdict: record.overall_confidence >= 0.85 ? "Sources agree on most fields." : "Sources disagree on some fields.", href: `${self}?tab=sources` },
         { label: "Open findings", value: issues.isLoading ? null : open.length, loading: issues.isLoading, tone: open.length ? "high" : undefined,
-          verdict: open.length ? "Checks this record still fails." : "None.", href: `${self}?tab=findings` },
-        { label: "Source systems", value: bySource.size, verdict: bySource.size ? "Contribute fields to this record." : "None.", href: `${self}?tab=sources` },
+          verdict: open.length ? "Checks this record still fails." : "This record passes every check.", href: `${self}?tab=findings` },
+        { label: "Source systems", value: bySource.size, verdict: bySource.size ? "Contribute fields to this record." : "No sources linked.", href: `${self}?tab=sources` },
         { label: "Suggested merges", value: suggested, tone: suggested ? "warning" : undefined,
-          verdict: suggested ? "Fields where the AI prefers another source." : "None.", href: `${self}?tab=record` },
+          verdict: suggested ? "Fields where the AI prefers another source." : "No better source suggested.", href: `${self}?tab=record` },
       ]} />
       <PageHeader
         title={<Mono>{record.sap_object_key}</Mono>}
