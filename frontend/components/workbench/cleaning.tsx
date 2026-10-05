@@ -12,8 +12,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
-  Banner, Button, Chip, DataTable, DetailDrawer, EmptyState, FilterBar, KeyValue, Metric, MetricStrip, Mono,
-  PageHeader, Select, StatusBadge, TableSkeleton, useDrawerParam, type AuroraColumnMeta, type Status,
+  Banner, Button, Chip, DataTable, DetailDrawer, EmptyState, FilterBar, KeyValue, Mono,
+  PageHeader, Select, StatusBadge, TableSkeleton, Tally, useDrawerParam, type AuroraColumnMeta, type Status,
 } from "@/components/ui-core";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
@@ -137,12 +137,12 @@ export function CleaningSurface() {
           {can("export") ? <SapExport /> : null}
           {canApprove ? <Button onClick={() => setConfirmAuto(true)} disabled={runAuto.isPending || confirmAuto}>Approve confident corrections</Button> : null}
         </>} />
-      <MetricStrip label="Cleaning queue">
-        <Metric label="In queue" value={total} />
-        <Metric label="Needs review" value={counts.review} tone={counts.review ? "warning" : "default"} />
-        <Metric label="Auto-applied" value={counts.auto} />
-        <Metric label="Mean confidence" value={meanConf} unit="%" />
-      </MetricStrip>
+      <Tally level={2} label="Cleaning queue" figures={[
+        { label: "In queue", value: q.isLoading ? null : total, loading: q.isLoading, verdict: total ? "Corrections proposed for single records." : "No corrections proposed.", href: "/cleaning" },
+        { label: "Needs review", value: q.isLoading ? null : counts.review, loading: q.isLoading, tone: counts.review ? "warning" : undefined, verdict: counts.review ? "Waiting for a steward." : "Nothing waiting for a steward.", href: "/cleaning?view=review" },
+        { label: "Auto-applied", value: q.isLoading ? null : counts.auto, loading: q.isLoading, verdict: counts.auto ? "Can be rolled back." : "Nothing applied automatically.", href: "/cleaning?view=auto" },
+        { label: "Mean confidence", value: meanConf, unit: meanConf === null ? undefined : "%", loading: q.isLoading, verdict: meanConf === null ? "No corrections to average." : "Across the queue.", href: "/cleaning" },
+      ]} />
       {confirmAuto ? (
         <Banner tone="info" title="Approve every correction above the auto-approval threshold?" action={
           <div className="ui-page-header__actions">
@@ -186,6 +186,7 @@ const Part = ({ title, children }: { title: string; children: ReactNode }) => (
 function JobDetail({ item: i, canApprove, canApply, busy, onApprove, onReject, onRollback }: {
   item: CleaningQueueItem; canApprove: boolean; canApply: boolean; busy: boolean; onApprove: () => void; onReject: () => void; onRollback: () => void;
 }) {
+  const [ask, setAsk] = useState<"approve" | "reject" | "rollback" | null>(null);
   const b = bucket(i.status);
   const changed = changedFields(i);
   // fields that differ between the two records first; identical ones carry no decision
@@ -227,12 +228,27 @@ function JobDetail({ item: i, canApprove, canApply, busy, onApprove, onReject, o
           ))}</ul>
         </Part>
       ) : null}
-      <div className="ui-page-header__actions">
-        {b === "review" && canApprove ? <><Button onClick={onApprove} disabled={busy}>Approve</Button><Button variant="ghost" onClick={onReject} disabled={busy}>Reject</Button></> : null}
-        {b === "auto" && canApply ? <Button variant="danger" onClick={onRollback} disabled={busy}>Roll back</Button> : null}
-        {b === "approved" ? <p className="ui-micro">Approved. Load it into SAP with Export for SAP.</p> : null}
-        {b === "closed" ? <p className="ui-micro">This correction is closed.</p> : null}
-      </div>
+      {ask ? (
+        <Banner tone={ask === "approve" ? "info" : "danger"}
+          title={ask === "approve" ? "Approve this correction?" : ask === "reject" ? "Reject this correction?" : "Roll this correction back?"}
+          action={
+            <div className="ui-page-header__actions">
+              <Button size="sm" variant={ask === "approve" ? "primary" : "danger"} disabled={busy}
+                onClick={() => { (ask === "approve" ? onApprove : ask === "reject" ? onReject : onRollback)(); setAsk(null); }}>
+                {ask === "approve" ? "Approve" : ask === "reject" ? "Reject" : "Roll back"}
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setAsk(null)}>Not now</Button>
+            </div>}>
+          This changes Meridian&apos;s data only. Nothing is written to SAP.
+        </Banner>
+      ) : (
+        <div className="ui-page-header__actions">
+          {b === "review" && canApprove ? <><Button onClick={() => setAsk("approve")} disabled={busy}>Approve</Button><Button variant="ghost" onClick={() => setAsk("reject")} disabled={busy}>Reject</Button></> : null}
+          {b === "auto" && canApply ? <Button variant="danger" onClick={() => setAsk("rollback")} disabled={busy}>Roll back</Button> : null}
+          {b === "approved" ? <p className="ui-micro">Approved. Load it into SAP with Export for SAP.</p> : null}
+          {b === "closed" ? <p className="ui-micro">This correction is closed.</p> : null}
+        </div>
+      )}
     </div>
   );
 }

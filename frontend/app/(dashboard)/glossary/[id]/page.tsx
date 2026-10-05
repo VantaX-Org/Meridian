@@ -5,8 +5,11 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Banner, Button, Chip, EmptyState, Stat, Text, Textarea, type ChipTone } from "@/components/aurora";
-import { Record360, Record360Loading, Record360Table, td } from "@/components/meridian/record-360";
+import { Textarea, type ChipTone } from "@/components/aurora";
+import {
+  Banner, Button, Chip, EmptyState, KeyValue, Mono, PageHeader, SectionCard, TableSkeleton, Tally,
+} from "@/components/ui-core";
+import { PageCrumb } from "@/components/shell/page-crumb";
 import { useRole } from "@/hooks/use-role";
 import { getGlossaryTerm, requestAIDraft, updateGlossaryTerm, reviewGlossaryTerm } from "@/lib/api/glossary";
 import { formatModuleName, relativeTime } from "@/lib/format";
@@ -14,6 +17,8 @@ import type { AIDraftResponse, GlossaryStatus, GlossaryTermDetail } from "@/type
 
 const STATUS_TONE: Record<GlossaryStatus, ChipTone> = { active: "success", under_review: "warning", deprecated: "danger" };
 const sevTone = (s: string | null): ChipTone => (s === "critical" || s === "high" ? "danger" : s === "medium" ? "warning" : "neutral");
+const scroll = { overflowX: "auto" } as const;
+const NONE = "None";
 
 function daysSince(iso: string | null): number | null {
   return iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000) : null;
@@ -37,22 +42,26 @@ export default function GlossaryDetailPage() {
       qc.invalidateQueries({ queryKey: ["glossary", id] });
       setEditDef(null);
     },
-    onError: () => toast.error("Could not save definition — please try again"),
+    onError: () => toast.error("Could not save the definition. Try again."),
   });
   const review = useMutation({
     mutationFn: () => reviewGlossaryTerm(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["glossary", id] }),
-    onError: () => toast.error("Could not mark term as reviewed — please try again"),
+    onError: () => toast.error("Could not mark the term as reviewed. Try again."),
   });
   const autoDraft = useMutation({
     mutationFn: () => requestAIDraft(id),
     onSuccess: setDraft,
-    onError: () => toast.error("Could not draft a definition — please try again"),
+    onError: () => toast.error("Could not draft a definition. Try again."),
   });
 
-  if (isLoading) return <Record360Loading what="term" />;
+  if (isLoading) return <div className="ui-page"><TableSkeleton rows={6} label="Loading term" /></div>;
   if (!term) {
-    return <EmptyState title="Glossary term not found" actions={<Link className="aurora-link" href="/glossary">Back to glossary</Link>} />;
+    return (
+      <div className="ui-page">
+        <EmptyState action={<Link className="ui-link" href="/glossary">Open the glossary</Link>}>This glossary term no longer exists.</EmptyState>
+      </div>
+    );
   }
 
   const reviewDays = daysSince(term.last_reviewed_at);
@@ -63,157 +72,153 @@ export default function GlossaryDetailPage() {
   const approved = term.approved_values == null ? []
     : Array.isArray(term.approved_values) ? term.approved_values.map((v) => [v, ""] as const)
     : Object.entries(term.approved_values);
+  const self = `/glossary/${id}`;
 
   return (
-    <Record360
-      backHref="/glossary"
-      backLabel="Glossary"
-      eyebrow={`GLOSSARY TERM · ${formatModuleName(term.domain).toUpperCase()}`}
-      title={term.business_name}
-      support={`${term.technical_name} · review every ${term.review_cycle_days} days · ${reviewDays === null ? "never reviewed" : `last reviewed ${reviewDays} day${reviewDays === 1 ? "" : "s"} ago`}`}
-      chips={
-        <>
-          <Chip tone={STATUS_TONE[term.status] ?? "neutral"}>{term.status.replace("_", " ")}</Chip>
-          {term.mandatory_for_s4hana ? <Chip tone="danger">Mandatory for S/4HANA</Chip> : null}
-          {term.ai_drafted ? <Chip tone="info">Auto-drafted</Chip> : null}
-          {term.rule_authority ? <Chip>{term.rule_authority}</Chip> : null}
-        </>
-      }
-      actions={can("approve") ? (
-        <Button variant="secondary" disabled={!reviewDue || review.isPending} onClick={() => review.mutate()}>
-          {review.isPending ? "Reviewing…" : "Mark reviewed"}
-        </Button>
-      ) : null}
-      notice={draft ? (
-        <Banner
-          tone="info"
-          title="Auto-drafted definition"
-          action={
-            <>
-              <Button size="sm" onClick={() => { setEditDef(draft.business_definition); setDraft(null); }}>Use draft</Button>
-              <Button size="sm" variant="ghost" onClick={() => setDraft(null)}>Discard</Button>
-            </>
-          }
-        >
-          <p>{draft.business_definition}</p>
-          {draft.why_it_matters_business ? <p className="mt-2 text-[var(--aurora-fg-tertiary)]">{draft.why_it_matters_business}</p> : null}
-        </Banner>
-      ) : null}
-      kpis={
-        <>
-          <Stat label="Linked rules" value={term.linked_rules.length} />
-          <Stat label="Rules failing" value={failing.length} tone={failing.length ? "danger" : "success"} />
-          <Stat label="Approved values" value={approved.length} />
-          <Stat label="Review" value={reviewDue ? "Due" : "Current"} tone={reviewDue ? "warning" : "success"} />
-        </>
-      }
-      sources={{
-        count: 1,
-        body: (
+    <div className="ui-page">
+      <PageCrumb segments={[
+        { level: "portfolio", label: "Portfolio", href: "/" },
+        { level: "object", label: "Glossary", href: "/glossary" },
+        { level: "record", label: term.business_name },
+      ]} />
+      <Tally level={4} label="This term" figures={[
+        { label: "Linked rules", value: term.linked_rules.length, verdict: term.linked_rules.length ? "Checks that read this field." : "No checks read this field.", href: self },
+        { label: "Rules failing", value: failing.length, tone: failing.length ? "high" : undefined,
+          verdict: failing.length ? "Linked checks that find records failing." : "Every linked check passes.", href: self },
+        { label: "Approved values", value: approved.length, verdict: approved.length ? "Codes the field may hold." : "No value list defined.", href: self },
+        { label: "Review", value: reviewDue ? "Due" : "Current", tone: reviewDue ? "warning" : undefined,
+          verdict: reviewDays === null ? "Never reviewed." : `Last reviewed ${reviewDays} day${reviewDays === 1 ? "" : "s"} ago.`, href: self },
+      ]} />
+      <PageHeader
+        title={term.business_name}
+        summary={`${formatModuleName(term.domain)}. ${term.technical_name}, reviewed every ${term.review_cycle_days} days.`}
+        actions={
           <>
-            <Record360Table head={["SAP table", "Field", "Technical name", "Domain", "Steward"]}>
-              <tr>
-                <td className={`${td} font-mono`}>{term.sap_table}</td>
-                <td className={`${td} font-mono`}>{term.sap_field}</td>
-                <td className={`${td} font-mono`}>{term.technical_name}</td>
-                <td className={td}>{formatModuleName(term.domain)}</td>
-                <td className={td}>{term.data_steward_id ?? "Unassigned"}</td>
-              </tr>
-            </Record360Table>
-            {approved.length ? (
-              <div className="mt-4">
-                <Text variant="text-micro" tone="tertiary" as="h3">APPROVED VALUES</Text>
-                <Record360Table head={["Code", "Label"]}>
-                  {approved.map(([code, label]) => (
-                    <tr key={code}>
-                      <td className={`${td} font-mono`}>{code}</td>
-                      <td className={td}>{label || "—"}</td>
-                    </tr>
-                  ))}
-                </Record360Table>
-              </div>
+            <Chip tone={STATUS_TONE[term.status] ?? "neutral"}>{term.status.replace("_", " ")}</Chip>
+            {term.mandatory_for_s4hana ? <Chip tone="danger">Mandatory for S/4HANA</Chip> : null}
+            {term.ai_drafted ? <Chip tone="info">Auto-drafted</Chip> : null}
+            {term.rule_authority ? <Chip>{term.rule_authority}</Chip> : null}
+            {can("approve") ? (
+              <Button variant="secondary" disabled={!reviewDue || review.isPending} onClick={() => review.mutate()}>
+                {review.isPending ? "Reviewing…" : "Mark reviewed"}
+              </Button>
             ) : null}
           </>
-        ),
-      }}
-      survivorship={{
-        label: "Definition of record",
-        count: 1,
-        body: (
-          <div className="flex flex-col gap-3">
-            <Textarea
-              aria-label="Business definition"
-              value={currentDef}
-              onChange={(e) => setEditDef(e.target.value)}
-              readOnly={!can("approve")}
-              placeholder="No business definition yet. Use Auto-draft to propose one."
-            />
-            <div className="flex flex-wrap gap-2">
-              {can("trigger_ai") ? (
-                <Button size="sm" variant="secondary" onClick={() => autoDraft.mutate()} disabled={autoDraft.isPending}>
-                  {autoDraft.isPending ? "Drafting…" : "Auto-draft"}
+        }
+      />
+
+      {draft ? (
+        <Banner tone="info" title="Auto-drafted definition"
+          action={
+            <div className="ui-page-header__actions">
+              <Button size="sm" onClick={() => { setEditDef(draft.business_definition); setDraft(null); }}>Use draft</Button>
+              <Button size="sm" variant="ghost" onClick={() => setDraft(null)}>Discard</Button>
+            </div>}>
+          <p>{draft.business_definition}</p>
+          {draft.why_it_matters_business ? <p className="ui-micro">{draft.why_it_matters_business}</p> : null}
+        </Banner>
+      ) : null}
+
+      <SectionCard title="Definition of record"
+        action={
+          <div className="ui-page-header__actions">
+            {can("trigger_ai") ? (
+              <Button size="sm" variant="secondary" onClick={() => autoDraft.mutate()} disabled={autoDraft.isPending}>
+                {autoDraft.isPending ? "Drafting…" : "Auto-draft"}
+              </Button>
+            ) : null}
+            {dirty ? (
+              <>
+                <Button size="sm" onClick={() => save.mutate({ business_definition: editDef })} disabled={save.isPending}>
+                  {save.isPending ? "Saving…" : "Save"}
                 </Button>
-              ) : null}
-              {dirty ? (
-                <>
-                  <Button size="sm" onClick={() => save.mutate({ business_definition: editDef })} disabled={save.isPending}>
-                    {save.isPending ? "Saving…" : "Save"}
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => setEditDef(null)}>Discard</Button>
-                </>
-              ) : null}
-            </div>
-            {term.why_it_matters ? (
-              <div>
-                <Text variant="text-micro" tone="tertiary" as="h3">WHY IT MATTERS</Text>
-                <Text variant="text-small">{term.why_it_matters}</Text>
-              </div>
+                <Button size="sm" variant="ghost" onClick={() => setEditDef(null)}>Discard</Button>
+              </>
             ) : null}
-            {term.sap_impact ? (
-              <div>
-                <Text variant="text-micro" tone="tertiary" as="h3">SAP IMPACT</Text>
-                <Text variant="text-small">{term.sap_impact}</Text>
-              </div>
-            ) : null}
+          </div>}>
+        <div className="ui-stack">
+          <Textarea
+            aria-label="Business definition"
+            value={currentDef}
+            onChange={(e) => setEditDef(e.target.value)}
+            readOnly={!can("approve")}
+            placeholder="No business definition yet. Use Auto-draft to propose one."
+          />
+          {term.why_it_matters ? <KeyValue rows={[{ k: "Why it matters", v: term.why_it_matters }]} /> : null}
+          {term.sap_impact ? <KeyValue rows={[{ k: "SAP impact", v: term.sap_impact }]} /> : null}
+        </div>
+      </SectionCard>
+
+      <SectionCard title="Where it lives in SAP">
+        <KeyValue rows={[
+          { k: "SAP table", v: term.sap_table, mono: true },
+          { k: "Field", v: term.sap_field, mono: true },
+          { k: "Technical name", v: term.technical_name, mono: true },
+          { k: "Object", v: formatModuleName(term.domain) },
+          { k: "Steward", v: term.data_steward_id ?? "Unassigned" },
+        ]} />
+      </SectionCard>
+
+      <SectionCard title="Approved values" meta={String(approved.length)} flush={approved.length > 0}>
+        {approved.length === 0 ? <p className="ui-note">No approved values are defined for this field.</p> : (
+          <div style={scroll}>
+            <table className="ui-mini-table">
+              <thead><tr><th>Code</th><th>Label</th></tr></thead>
+              <tbody>
+                {approved.map(([code, label]) => (
+                  <tr key={code}><td><Mono>{code}</Mono></td><td>{label || NONE}</td></tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        ),
-      }}
-      findings={{
-        count: failing.length,
-        empty: term.linked_rules.length ? "Every linked rule passes in the latest analysis." : "No rules linked to this term.",
-        body: (
-          <Record360Table head={["Rule", "Severity", "Pass rate", "Affected / total"]}>
-            {failing.map((r) => (
-              <tr key={r.rule_id}>
-                <td className={`${td} font-mono`}>{r.rule_id}</td>
-                <td className={td}>{r.severity ? <Chip tone={sevTone(r.severity)}>{r.severity}</Chip> : "—"}</td>
-                <td className={`${td} aurora-number`}>{r.pass_rate != null ? `${r.pass_rate.toFixed(1)}%` : "—"}</td>
-                <td className={`${td} aurora-number`}>{r.affected_count} / {r.total_count ?? "—"}</td>
-              </tr>
-            ))}
-          </Record360Table>
-        ),
-      }}
-      history={{
-        count: term.change_history.length,
-        empty: "No changes recorded.",
-        body: (
-          <Record360Table head={["When", "Field", "By", "Change"]}>
-            {term.change_history.map((e) => (
-              <tr key={e.id}>
-                <td className={td}>{relativeTime(e.changed_at)}</td>
-                <td className={td}>{e.field_changed}</td>
-                <td className={td}>{e.changed_by}</td>
-                <td className={td}>
-                  {e.old_value ? <div className="line-through text-[var(--aurora-fg-tertiary)]">{e.old_value.substring(0, 100)}</div> : null}
-                  {e.new_value ? <div>{e.new_value.substring(0, 200)}</div> : null}
-                  {e.change_reason ? <div className="italic text-[var(--aurora-fg-tertiary)]">{e.change_reason}</div> : null}
-                </td>
-              </tr>
-            ))}
-          </Record360Table>
-        ),
-      }}
-    />
+        )}
+      </SectionCard>
+
+      <SectionCard title="Linked rules failing" meta={String(failing.length)} flush={failing.length > 0}>
+        {failing.length === 0 ? (
+          <p className="ui-note">{term.linked_rules.length ? "Every linked rule passes in the latest analysis." : "No rules are linked to this term."}</p>
+        ) : (
+          <div style={scroll}>
+            <table className="ui-mini-table">
+              <thead><tr><th>Rule</th><th>Severity</th><th>Pass rate</th><th>Affected of total</th></tr></thead>
+              <tbody>
+                {failing.map((r) => (
+                  <tr key={r.rule_id}>
+                    <td><Mono>{r.rule_id}</Mono></td>
+                    <td>{r.severity ? <Chip tone={sevTone(r.severity)}>{r.severity}</Chip> : NONE}</td>
+                    <td className="aurora-number">{r.pass_rate != null ? `${r.pass_rate.toFixed(1)}%` : NONE}</td>
+                    <td className="aurora-number">{r.affected_count} of {r.total_count ?? NONE}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </SectionCard>
+
+      <SectionCard title="Change history" meta={String(term.change_history.length)} flush={term.change_history.length > 0}>
+        {term.change_history.length === 0 ? <p className="ui-note">No changes recorded.</p> : (
+          <div style={scroll}>
+            <table className="ui-mini-table">
+              <thead><tr><th>When</th><th>Field</th><th>By</th><th>Change</th></tr></thead>
+              <tbody>
+                {term.change_history.map((e) => (
+                  <tr key={e.id}>
+                    <td>{relativeTime(e.changed_at)}</td>
+                    <td>{e.field_changed}</td>
+                    <td>{e.changed_by}</td>
+                    <td style={{ whiteSpace: "normal" }}>
+                      {e.old_value ? <div className="ui-micro">Was: {e.old_value.substring(0, 100)}</div> : null}
+                      {e.new_value ? <div>{e.new_value.substring(0, 200)}</div> : null}
+                      {e.change_reason ? <div className="ui-micro">{e.change_reason}</div> : null}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </SectionCard>
+    </div>
   );
 }

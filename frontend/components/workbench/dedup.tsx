@@ -11,8 +11,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
-  Banner, Button, Chip, DataTable, DetailDrawer, EmptyState, FilterBar, KeyValue, Metric, MetricStrip, Mono,
-  PageHeader, TableSkeleton, useDrawerParam, type AuroraColumnMeta,
+  Banner, Button, Chip, DataTable, DetailDrawer, EmptyState, FilterBar, KeyValue, Mono,
+  PageHeader, TableSkeleton, Tally, useDrawerParam, type AuroraColumnMeta,
 } from "@/components/ui-core";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
@@ -34,6 +34,7 @@ export function DedupSurface() {
   const drawer = useDrawerParam("pair");
   const [search, setSearch] = useState("");
   const [confirming, setConfirming] = useState(false);
+  const [confirmOne, setConfirmOne] = useState<string | null>(null);
   // Which record survives a merge, per candidate. Defaults to A (listed first); the steward can switch.
   const [survivors, setSurvivors] = useState<Record<string, "a" | "b">>({});
   const survivorKey = (p: DedupCandidate) => ((survivors[p.id] ?? "a") === "a" ? p.record_key_a : p.record_key_b);
@@ -45,7 +46,7 @@ export function DedupSurface() {
 
   const merge = useMutation({
     mutationFn: (p: DedupCandidate) => mergeDedupCandidate({ candidate_id: p.id, survivor_key: survivorKey(p) }),
-    onSuccess: (d) => { toast.success(`Merged into ${d.survivor_key}`); drawer.close(); refresh(); },
+    onSuccess: (d) => { toast.success(`Merged into ${d.survivor_key}`); setConfirmOne(null); drawer.close(); refresh(); },
     onError: (e) => toast.error((e as Error).message || "Not merged"),
   });
   const bulk = useMutation({
@@ -60,6 +61,7 @@ export function DedupSurface() {
   const filtered = all.filter((c) => (kind === "all" || c.object_type === kind) && matches(c, search));
   const highConfidence = filtered.filter((c) => score(c.match_score) >= BULK_MIN);
   const counts = Object.fromEntries(objectTypes.map((t) => [t, all.filter((c) => c.object_type === t).length])) as Record<string, number>;
+  const high = all.filter((c) => score(c.match_score) >= BULK_MIN).length;
   const mean = all.length ? Math.round(all.reduce((a, c) => a + score(c.match_score), 0) / all.length) : null;
   const selected = drawer.value ? all.find((c) => c.id === drawer.value) ?? null : null;
 
@@ -87,12 +89,12 @@ export function DedupSurface() {
           <Button onClick={() => setConfirming(true)} disabled={!highConfidence.length || bulk.isPending || confirming}>
             Merge {highConfidence.length} pair{highConfidence.length === 1 ? "" : "s"} at {BULK_MIN}% or higher
           </Button>) : null} />
-      <MetricStrip label="Duplicate pairs">
-        <Metric label="Pairs to review" value={all.length} tone={all.length ? "warning" : "default"} />
-        <Metric label={`At ${BULK_MIN}% or higher`} value={all.filter((c) => score(c.match_score) >= BULK_MIN).length} />
-        <Metric label="Mean match" value={mean} unit="%" />
-        <Metric label="Objects" value={objectTypes.length} />
-      </MetricStrip>
+      <Tally level={2} label="Duplicate pairs" figures={[
+        { label: "Pairs to review", value: q.isLoading ? null : all.length, loading: q.isLoading, tone: all.length ? "warning" : undefined, verdict: all.length ? "Waiting for a merge decision." : "No duplicates waiting.", href: "/dedup" },
+        { label: `At ${BULK_MIN}% or higher`, value: q.isLoading ? null : high, loading: q.isLoading, verdict: high ? "Safe to merge in bulk after a check." : "No pairs safe to bulk merge.", href: "/dedup" },
+        { label: "Mean match", value: mean, unit: mean === null ? undefined : "%", loading: q.isLoading, verdict: mean === null ? "No pairs to average." : "Across the pairs waiting.", href: "/dedup" },
+        { label: "Objects", value: q.isLoading ? null : objectTypes.length, loading: q.isLoading, verdict: objectTypes.length ? "With pairs to review." : "No objects have duplicates.", href: "/dedup" },
+      ]} />
       {confirming ? (
         <Banner tone="danger" title={`Merge ${highConfidence.length} pair${highConfidence.length === 1 ? "" : "s"} scoring ${BULK_MIN}% or higher?`} action={
           <div className="ui-page-header__actions">
@@ -126,16 +128,19 @@ export function DedupSurface() {
           <div className="ui-detail">
             <fieldset className="ui-detail-part" style={{ border: 0, padding: 0, margin: 0 }}>
               <legend className="ui-detail-part__title">Record that survives</legend>
-              {(["a", "b"] as const).map((side) => {
-                const key = side === "a" ? selected.record_key_a : selected.record_key_b;
-                return (
-                  <label key={side} className="ui-note" style={{ display: "flex", gap: "var(--aurora-space-2)", alignItems: "center" }}>
-                    <input type="radio" name={`survivor-${selected.id}`} checked={(survivors[selected.id] ?? "a") === side}
-                      onChange={() => setSurvivors((s) => ({ ...s, [selected.id]: side }))} />
-                    <Mono>{key}</Mono>
-                  </label>
-                );
-              })}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--aurora-space-3)" }}>
+                {(["a", "b"] as const).map((side) => {
+                  const key = side === "a" ? selected.record_key_a : selected.record_key_b;
+                  const keep = (survivors[selected.id] ?? "a") === side;
+                  return (
+                    <label key={side} className="ui-note" style={{ display: "flex", flexDirection: "column", gap: "var(--aurora-space-1)", padding: "var(--aurora-space-3)", border: `1px solid ${keep ? "var(--aurora-fg-primary)" : "var(--aurora-canvas-line)"}` }}>
+                      <span><input type="radio" name={`survivor-${selected.id}`} checked={keep}
+                        onChange={() => { setConfirmOne(null); setSurvivors((x) => ({ ...x, [selected.id]: side })); }} /> {keep ? "Survivor" : "Retired"}</span>
+                      <Mono>{key}</Mono>
+                    </label>
+                  );
+                })}
+              </div>
               <p className="ui-micro">The other record is retired and its references point to the survivor.</p>
             </fieldset>
             <KeyValue rows={[
@@ -151,9 +156,19 @@ export function DedupSurface() {
               </section>
             ) : null}
             {canMerge ? (
-              <div className="ui-page-header__actions">
-                <Button onClick={() => merge.mutate(selected)} disabled={merge.isPending}>{merge.isPending ? "Merging" : `Merge into ${survivorKey(selected)}`}</Button>
-              </div>
+              confirmOne === selected.id ? (
+                <Banner tone="danger" title={`Merge into ${survivorKey(selected)}?`} action={
+                  <div className="ui-page-header__actions">
+                    <Button size="sm" variant="danger" onClick={() => merge.mutate(selected)} disabled={merge.isPending}>{merge.isPending ? "Merging" : "Merge records"}</Button>
+                    <Button size="sm" variant="ghost" onClick={() => setConfirmOne(null)}>Keep reviewing</Button>
+                  </div>}>
+                  The other record is retired. This changes Meridian&apos;s data only, nothing is written to SAP.
+                </Banner>
+              ) : (
+                <div className="ui-page-header__actions">
+                  <Button onClick={() => setConfirmOne(selected.id)}>Merge into {survivorKey(selected)}</Button>
+                </div>
+              )
             ) : <p className="ui-micro">Merging needs the approve permission.</p>}
           </div>
         ) : null}

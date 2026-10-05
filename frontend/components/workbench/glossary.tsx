@@ -12,8 +12,8 @@ import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { copyToClipboard } from "@/components/meridian/actions";
 import {
-  Banner, Button, Chip, DataTable, DetailDrawer, EmptyState, FieldChip, FilterBar, KeyValue, Metric, MetricStrip, PageHeader,
-  StatusBadge, TableSkeleton, useDrawerParam, type AuroraColumnMeta,
+  Banner, Button, Chip, DataTable, DetailDrawer, EmptyState, FieldChip, FilterBar, KeyValue, PageHeader,
+  StatusBadge, TableSkeleton, Tally, useDrawerParam, type AuroraColumnMeta,
 } from "@/components/ui-core";
 import { useUrlState } from "@/hooks/use-url-state";
 import { getGlossaryTerms } from "@/lib/api/glossary";
@@ -62,6 +62,7 @@ export function GlossarySurface() {
   }, [terms]);
   const active = terms.filter((t) => t.status === "active").length;
   const review = terms.filter((t) => t.status === "under_review").length;
+  const termsLinked = terms.filter((t) => t.linked_rules_count > 0).length;
   const linked = terms.reduce((a, t) => a + t.linked_rules_count, 0);
   const selected = drawer.value ? terms.find((t) => t.id === drawer.value) ?? null : null;
   const narrowed = Boolean(search || domain !== "all");
@@ -73,13 +74,12 @@ export function GlossarySurface() {
         summary="The business name and definition behind each SAP field, and the rules that depend on it."
         actions={<Link href="/relationships" className="ui-link">Open the relationship graph</Link>}
       />
-      <MetricStrip label="Glossary">
-        <Metric label="Terms" value={total.toLocaleString()} />
-        <Metric label="Approved" value={active} />
-        <Metric label="Under review" value={review} tone={review ? "warning" : "default"} />
-        <Metric label="Rules linked" value={linked} />
-        <Metric label="Domains" value={domains.length} />
-      </MetricStrip>
+      <Tally level={2} label="Glossary" figures={[
+        { label: "Terms", value: q.isLoading ? null : total, loading: q.isLoading, verdict: `Across ${domains.length} domain${domains.length === 1 ? "" : "s"}.`, href: "/glossary" },
+        { label: "Linked to checks", value: q.isLoading ? null : termsLinked, loading: q.isLoading, verdict: termsLinked ? `${linked} rules depend on them.` : "No terms tied to checks yet.", href: "/glossary" },
+        { label: "Under review", value: q.isLoading ? null : review, loading: q.isLoading, tone: review ? "warning" : undefined, verdict: review ? "Waiting for a steward to approve." : "Nothing waiting for approval.", href: "/glossary" },
+        { label: "Approved", value: q.isLoading ? null : active, loading: q.isLoading, verdict: active ? "Definitions in force." : "No definitions approved yet.", href: "/glossary" },
+      ]} />
       <FilterBar
         search={{ value: search, onChange: setSearch, placeholder: "Search terms" }}
         onClear={narrowed ? () => { setSearch(""); setDomain("all"); } : undefined}

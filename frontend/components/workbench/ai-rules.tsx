@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Workbench → AI rule review: match rules the AI proposes after stewards keep
+ * Workbench, AI rule review: match rules the AI proposes after stewards keep
  * correcting the same field. Each proposal shows its evidence (how many
  * corrections back it and the model's rationale), how strongly that evidence
  * supports it, and what it does to the domain's live rule set — then it is
@@ -13,8 +13,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
-  Button, Chip, DataTable, Drawer, EmptyState, KpiRail, Stack, Stat, Tabs, Text, type AuroraColumnMeta, type ChipTone,
-} from "@/components/aurora";
+  Banner, Button, Chip, DataTable, DetailDrawer, EmptyState, KeyValue, PageHeader, Tabs, Tally, type AuroraColumnMeta,
+} from "@/components/ui-core";
+import type { ChipTone } from "@/components/aurora";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import { approveProposedRule, getMatchRules, getProposedRules, rejectProposedRule } from "@/lib/api/match-rules";
@@ -44,7 +45,7 @@ function impact(p: AIProposedRule, live: MatchRule[]): string {
   const same = live.filter((r) => r.domain === p.domain && r.field === p.proposed_rule.field && r.active);
   if (!same.length) return `New field for ${formatModuleName(p.domain)}`;
   const r = same[0];
-  return `Adds beside ${r.match_type} · ${Math.round(r.threshold * 100)}%${same.length > 1 ? ` (+${same.length - 1})` : ""}`;
+  return `Adds beside ${r.match_type} at ${Math.round(r.threshold * 100)}%${same.length > 1 ? ` (+${same.length - 1})` : ""}`;
 }
 
 export function AiRulesSurface() {
@@ -53,10 +54,13 @@ export function AiRulesSurface() {
   const review = can("review_ai_rules");
   const [status, setStatus] = useUrlState("status", "pending");
   const [open, setOpen] = useState<AIProposedRule | null>(null);
+  const [ask, setAsk] = useState<{ p: AIProposedRule; what: "approve" | "reject" } | null>(null);
 
   const proposals = useQuery({ queryKey: ["ai.proposed-rules", status], queryFn: () => getProposedRules(status) });
   const pending = useQuery({ queryKey: ["ai.proposed-rules", "pending"], queryFn: () => getProposedRules("pending") });
   const live = useQuery({ queryKey: ["match-rules", ""], queryFn: () => getMatchRules() });
+  const approved = useQuery({ queryKey: ["ai.proposed-rules", "approved"], queryFn: () => getProposedRules("approved") });
+  const rejected = useQuery({ queryKey: ["ai.proposed-rules", "rejected"], queryFn: () => getProposedRules("rejected") });
   const list = proposals.data?.rules ?? [];
   const rules = live.data?.rules ?? [];
 
@@ -64,6 +68,7 @@ export function AiRulesSurface() {
     qc.invalidateQueries({ queryKey: ["ai.proposed-rules"] });
     qc.invalidateQueries({ queryKey: ["match-rules"] });
     setOpen(null);
+    setAsk(null);
   };
   const approve = useMutation({
     mutationFn: (p: AIProposedRule) => approveProposedRule(p.id),
@@ -76,15 +81,11 @@ export function AiRulesSurface() {
     onError: (e) => toast.error((e as Error).message || "Not rejected"),
   });
   const busy = approve.isPending || reject.isPending;
-  const accept = (p: AIProposedRule) => {
-    if (confirm(`A ${p.proposed_rule.match_type} rule on ${p.proposed_rule.field} will be added to the match engine for ${formatModuleName(p.domain)}. Approve?`)) approve.mutate(p);
-  };
-
   const actions = (p: AIProposedRule) => review && p.status === "pending" ? (
-    <Stack direction="row" gap={2}>
-      <Button size="sm" disabled={busy} onClick={(e) => { e.stopPropagation(); accept(p); }}>Approve</Button>
-      <Button size="sm" variant="ghost" disabled={busy} onClick={(e) => { e.stopPropagation(); reject.mutate(p); }}>Reject</Button>
-    </Stack>
+    <div className="ui-page-header__actions">
+      <Button size="sm" disabled={busy} onClick={(e) => { e.stopPropagation(); setAsk({ p, what: "approve" }); }}>Approve</Button>
+      <Button size="sm" variant="ghost" disabled={busy} onClick={(e) => { e.stopPropagation(); setAsk({ p, what: "reject" }); }}>Reject</Button>
+    </div>
   ) : null;
 
   const columns = useMemo<ColumnDef<AIProposedRule, unknown>[]>(() => [
@@ -93,7 +94,7 @@ export function AiRulesSurface() {
       cell: ({ row }) => <span className="aurora-number">{row.original.proposed_rule.field}</span> },
     { id: "match", header: "Match", meta: meta({ width: 170 }), cell: ({ row }) => {
       const r = row.original.proposed_rule;
-      return <span className="aurora-number">{r.match_type} · {Math.round(r.threshold * 100)}% · w{r.weight}</span>;
+      return <span className="aurora-number">{r.match_type}, {Math.round(r.threshold * 100)}%, weight {r.weight}</span>;
     } },
     { id: "evidence", header: "Corrections", meta: meta({ width: 110, numeric: true, align: "end" }),
       cell: ({ row }) => row.original.supporting_correction_count.toLocaleString() },
@@ -103,24 +104,42 @@ export function AiRulesSurface() {
     } },
     { id: "impact", header: "If approved", meta: meta({ width: 220 }), cell: ({ row }) => impact(row.original, rules) },
     { id: "rationale", header: "Rationale", meta: meta({ width: 320 }),
-      cell: ({ row }) => <Text variant="text-small" tone="secondary" className="line-clamp-2">{row.original.rationale}</Text> },
+      cell: ({ row }) => <span className="ui-micro">{row.original.rationale}</span> },
     { id: "status", header: "State", meta: meta({ width: 100 }),
       cell: ({ row }) => <Chip tone={STATUS_TONE[row.original.status]}>{row.original.status}</Chip> },
     { id: "actions", header: "", cell: ({ row }) => actions(row.original) },
   // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [rules, review, busy]);
 
-  const evidence = list.reduce((a, p) => a + p.supporting_correction_count, 0);
-  const strong = list.filter((p) => confidence(p.supporting_correction_count).label === "High").length;
+  const nPending = pending.data?.rules.length ?? null;
+  const nOk = approved.data?.rules.length ?? null;
+  const nNo = rejected.data?.rules.length ?? null;
+  const decided = (nOk ?? 0) + (nNo ?? 0);
+  const rate = nOk === null || nNo === null ? null : decided ? Math.round((nOk / decided) * 100) : "None";
+  const loading = pending.isLoading || approved.isLoading || rejected.isLoading;
 
   return (
-    <Stack gap={6} className="aurora-page">
-      <KpiRail>
-        <Stat label="Awaiting review" value={pending.data?.rules.length ?? "—"} tone={pending.data?.rules.length ? "warning" : "neutral"} />
-        <Stat label={`${STATUSES.find((s) => s.id === status)?.label ?? ""} proposals`} value={list.length} />
-        <Stat label="High confidence" value={strong} tone={strong ? "success" : "neutral"} />
-        <Stat label="Supporting corrections" value={evidence.toLocaleString()} />
-      </KpiRail>
+    <div className="ui-page">
+      <PageHeader title="AI rule review" summary="Match rules the AI proposes after stewards keep correcting the same field." />
+      <Tally level={2} label="AI rule proposals" figures={[
+        { label: "Proposed", value: nPending, loading, tone: nPending ? "warning" : undefined, verdict: nPending ? "Waiting for a reviewer." : "No rules waiting for review.", href: "/ai/rules?status=pending" },
+        { label: "Accepted", value: nOk, loading, verdict: nOk ? "Live in the match engine." : "No AI rules in use yet.", href: "/ai/rules?status=approved" },
+        { label: "Rejected", value: nNo, loading, verdict: nNo ? "Turned down by a reviewer." : "Nothing turned down.", href: "/ai/rules?status=rejected" },
+        { label: "Acceptance rate", value: rate, unit: typeof rate === "number" ? "%" : undefined, loading, verdict: typeof rate === "number" ? "Of decided proposals." : "Nothing decided yet.", href: "/ai/rules?status=approved" },
+      ]} />
+
+      {ask ? (
+        <Banner tone={ask.what === "approve" ? "info" : "danger"}
+          title={ask.what === "approve" ? `Add a ${ask.p.proposed_rule.match_type} rule on ${ask.p.proposed_rule.field}?` : `Reject the ${ask.p.proposed_rule.field} proposal?`}
+          action={
+            <div className="ui-page-header__actions">
+              <Button size="sm" variant={ask.what === "approve" ? "primary" : "danger"} disabled={busy}
+                onClick={() => (ask.what === "approve" ? approve : reject).mutate(ask.p)}>{ask.what === "approve" ? "Approve rule" : "Reject proposal"}</Button>
+              <Button size="sm" variant="ghost" onClick={() => setAsk(null)}>Not now</Button>
+            </div>}>
+          {ask.what === "approve" ? `The rule will be added to the match engine for ${formatModuleName(ask.p.domain)}. It changes Meridian's matching only, nothing is written to SAP.` : "The AI will not propose it again until new corrections arrive."}
+        </Banner>
+      ) : null}
 
       <Tabs ariaLabel="Proposal state" value={status} onValueChange={setStatus}
         items={STATUSES.map((s) => ({ id: s.id, label: s.label, count: s.id === "pending" ? pending.data?.rules.length : undefined }))} />
@@ -137,33 +156,25 @@ export function AiRulesSurface() {
           : `No ${status} proposals.`}
       />
 
-      <Drawer open={!!open} onClose={() => setOpen(null)} ariaLabel="Proposed rule"
-        header={open ? <Text variant="text-lead">{formatModuleName(open.domain)} · {open.proposed_rule.field}</Text> : null}
+      <DetailDrawer open={!!open} onClose={() => setOpen(null)} ariaLabel="Proposed rule"
+        header={open ? <div className="ui-drawer-head"><h2 className="ui-drawer-head__title">{formatModuleName(open.domain)}, {open.proposed_rule.field}</h2></div> : null}
         footer={open ? actions(open) : null}>
         {open ? (
-          <Stack gap={4}>
-            <KpiRail>
-              <Stat label="Match type" value={open.proposed_rule.match_type} />
-              <Stat label="Threshold" value={`${Math.round(open.proposed_rule.threshold * 100)}%`} />
-              <Stat label="Weight" value={open.proposed_rule.weight} />
-              <Stat label="Corrections" value={open.supporting_correction_count} tone={confidence(open.supporting_correction_count).tone} />
-            </KpiRail>
-            <Stack gap={1}>
-              <Text variant="text-micro" tone="secondary">Rationale</Text>
-              <Text>{open.rationale || "No rationale recorded."}</Text>
-            </Stack>
-            <Stack gap={1}>
-              <Text variant="text-micro" tone="secondary">If approved</Text>
-              <Text>{impact(open, rules)}</Text>
-            </Stack>
-            <Text variant="text-small" tone="secondary">
-              Proposed {new Date(open.created_at).toLocaleString()}
-              {open.reviewed_at ? ` · ${open.status} ${new Date(open.reviewed_at).toLocaleString()}` : ""}
-            </Text>
-          </Stack>
+          <div className="ui-detail">
+            <KeyValue rows={[
+              { k: "Match type", v: open.proposed_rule.match_type },
+              { k: "Threshold", v: `${Math.round(open.proposed_rule.threshold * 100)}%` },
+              { k: "Weight", v: String(open.proposed_rule.weight) },
+              { k: "Corrections", v: `${open.supporting_correction_count} (${confidence(open.supporting_correction_count).label.toLowerCase()} confidence)` },
+              { k: "Rationale", v: open.rationale || "No rationale recorded." },
+              { k: "If approved", v: impact(open, rules) },
+              { k: "Proposed", v: new Date(open.created_at).toLocaleString() },
+              ...(open.reviewed_at ? [{ k: `Reviewed (${open.status})`, v: new Date(open.reviewed_at).toLocaleString() }] : []),
+            ]} />
+          </div>
         ) : null}
-      </Drawer>
-      {!review ? <EmptyState title="You can view proposals; AI reviewers approve or reject them." /> : null}
-    </Stack>
+      </DetailDrawer>
+      {!review ? <EmptyState>You can view proposals. AI reviewers approve or reject them.</EmptyState> : null}
+    </div>
   );
 }
