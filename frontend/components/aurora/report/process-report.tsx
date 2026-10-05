@@ -108,8 +108,6 @@ export interface ProcessReportRecommendation {
 }
 
 export interface ProcessReportProps {
-  /** Process slug — "order-to-cash", "procure-to-pay". */
-  processSlug: ReactNode;
   /** Process display name. */
   processName: ReactNode;
   /** Display-sm verdict sentence. */
@@ -164,7 +162,6 @@ const EFFORT_LABEL: Record<"low" | "medium" | "high", string> = {
 /* ------------------------------------------------------------ Surface --- */
 
 export function ProcessReport({
-  processSlug,
   processName,
   verdict,
   support,
@@ -228,11 +225,6 @@ export function ProcessReport({
   return (
     <div className={clsx("aurora-process-report", className)}>
       <ReportSurface
-        eyebrow={
-          <>
-            PROCESS · <span>{processSlug}</span>
-          </>
-        }
         title={verdict}
         support={support}
         chips={
@@ -251,7 +243,7 @@ export function ProcessReport({
             </Text>
             {owner ? (
               <Text variant="text-small" tone="tertiary" as="span">
-                Owner · {owner}
+                Owner: {owner}
               </Text>
             ) : null}
             {lastUpdated ? (
