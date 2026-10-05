@@ -172,7 +172,8 @@ const OFF_NAV_TITLES: Record<string, string> = {
   "/exceptions/rules": "Exception rules",
   "/settings/exception-billing": "Exception billing",
   "/settings/scoring": "Scoring & alerts",
-  "/workbench/report": "Record report",
+  "/workbench/record": "Record report",
+  "/workbench/progress": "Progress",
   "/workbench/triage": "My queue",
   "/notifications": "Notifications",
 };

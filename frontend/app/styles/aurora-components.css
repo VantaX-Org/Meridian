@@ -3903,3 +3903,26 @@
 
 /* Structured terms and conditions shown as they are stored */
 .aurora-code { margin: 0; padding: var(--aurora-space-3); border: 1px solid var(--aurora-canvas-line); border-radius: 8px; background: var(--aurora-canvas-base); font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 12px; line-height: 18px; overflow: auto; max-height: 320px; color: var(--aurora-fg-secondary); }
+
+/* Owner ladder: owners ranked by open work. The bar scales from its left edge. */
+.ui-ladder { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--aurora-space-1); }
+.ui-ladder__row {
+  display: grid;
+  grid-template-columns: minmax(8rem, 14rem) 1fr 4rem 7rem;
+  align-items: center;
+  gap: var(--aurora-space-3);
+  padding: var(--aurora-space-1) 0;
+  color: var(--aurora-fg-primary);
+  text-decoration: none;
+}
+.ui-ladder__row:hover .ui-ladder__name { text-decoration: underline; text-decoration-color: var(--aurora-accent-500); }
+.ui-ladder__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ui-ladder__track { display: block; height: 8px; background: var(--aurora-canvas-sunken); overflow: hidden; }
+.ui-ladder__fill { display: block; height: 100%; background: var(--aurora-accent-500); transform-origin: left; }
+.ui-ladder__n { text-align: end; }
+.ui-ladder__breach { color: var(--aurora-fg-tertiary); font-size: 13px; }
+.ui-ladder__breach[data-hot] { color: var(--aurora-status-danger-500); }
+@media (max-width: 640px) {
+  .ui-ladder__row { grid-template-columns: 1fr 3rem; }
+  .ui-ladder__track, .ui-ladder__breach { display: none; }
+}

@@ -11,14 +11,15 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
-  Banner, Button, Chip, DataTable, Drawer, EmptyState, Field, Input, KpiRail, Select, Stack, Stat, Text, Textarea,
+  Banner, Button, Chip, DataTable, Drawer, EmptyState, Field, Input, Select, Stack, Text, Textarea,
   type AuroraColumnMeta, type ChipTone,
 } from "@/components/aurora";
 import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
+import { Tally } from "@/components/ui-core";
 import { useUrlState } from "@/hooks/use-url-state";
 import type { SlaState } from "@/lib/api/issues";
-import { bulkTriage, getTeams, getTriageMetrics, getTriageQueue, type BulkAction, type TriageBulkInput, type TriageQueueItem } from "@/lib/api/triage";
+import { bulkTriage, getTeams, getTriageQueue, type BulkAction, type TriageBulkInput, type TriageQueueItem } from "@/lib/api/triage";
 import { getAssignableUsers } from "@/lib/api/users";
 import { formatModuleName } from "@/lib/format";
 
@@ -37,7 +38,6 @@ const keyOf = (t: TriageQueueItem) => `${t.kind}:${t.id}`;
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
 const label = (s: string) => s.replace(/_/g, " ");
 const when = (iso: string) => new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
-const hours = (h: number | null) => (h == null ? "—" : h.toFixed(1));
 
 export function TriageQueueSurface() {
   const qc = useQueryClient();
@@ -54,7 +54,6 @@ export function TriageQueueSurface() {
     queryFn: () => getTriageQueue({ assignee, include_snoozed: snoozed, limit: 500 }),
     refetchInterval: 60_000,
   });
-  const metricsQ = useQuery({ queryKey: ["triage.metrics"], queryFn: () => getTriageMetrics() });
   const teamsQ = useQuery({ queryKey: ["triage.teams"], queryFn: getTeams });
   const usersQ = useQuery({ queryKey: ["users.assignable"], queryFn: getAssignableUsers, enabled: canAct });
 
@@ -130,20 +129,15 @@ export function TriageQueueSurface() {
     { value: "me", label: "Assigned to me" }, { value: "unassigned", label: "Unassigned" }, { value: "all", label: "Everyone" },
     ...(teamsQ.data ?? []).map((t) => ({ value: `team:${t.id}`, label: `Team: ${t.name}` })),
   ];
-  const m = metricsQ.data;
   const q = queueQ.data;
 
   return (
     <Stack gap={5} className="aurora-page">
-      <KpiRail>
-        <Stat label="Overdue" value={q?.overdue.count ?? "—"} tone={q?.overdue.count ? "danger" : "neutral"} />
-        <Stat label="Due today" value={q?.due_today.count ?? "—"} tone={q?.due_today.count ? "warning" : "neutral"} />
-        <Stat label="Resolved on time" value={m?.sla_attainment_pct ?? "—"} unit={m?.sla_attainment_pct != null ? "%" : undefined} />
-        <Stat label="Time to acknowledge" value={hours(m?.mtta_hours ?? null)} unit={m?.mtta_hours != null ? "h" : undefined} />
-        <Stat label="Time to resolve" value={hours(m?.mttr_hours ?? null)} unit={m?.mttr_hours != null ? "h" : undefined} />
-        <Stat label="Breaches" value={m?.breach_count ?? "—"} tone={m?.breach_count ? "danger" : "neutral"} />
-        <Stat label="Unassigned" value={m?.unassigned ?? "—"} />
-      </KpiRail>
+      <Tally level={2} label="My queue" figures={[
+        { label: "Overdue", value: q?.overdue.count ?? null, loading: !q, tone: q?.overdue.count ? "danger" : undefined, verdict: q?.overdue.count ? "Past their due time." : "None.", href: "#triage-overdue" },
+        { label: "Due today", value: q?.due_today.count ?? null, loading: !q, tone: q?.due_today.count ? "warning" : undefined, verdict: q?.due_today.count ? "Due before midnight." : "None.", href: "#triage-due_today" },
+        { label: "Later", value: q?.later.count ?? null, loading: !q, verdict: q?.later.count ? "Not due yet." : "None.", href: "#triage-later" },
+      ]} />
 
       <Stack direction="row" gap={3} wrap align="center" className="aurora-filters">
         <Field label="Queue">{({ controlId }) => <Select id={controlId} options={assigneeOptions} value={assignee} onValueChange={(v) => { setAssignee(v); setPicked(new Set()); }} />}</Field>

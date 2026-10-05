@@ -29,7 +29,7 @@ import { useRole } from "@/hooks/use-role";
 import { useAuroraPrefs } from "@/hooks/use-theme";
 import apiClient from "@/lib/api/client";
 import { getPageTitle } from "@/lib/nav";
-import { AURORA_DETAIL, AURORA_PAGES, HUB_ROUTES, locate, visibleWorkspaces, type WorkspaceId } from "@/lib/workspaces";
+import { AURORA_DETAIL, HUB_ROUTES, locate, visibleWorkspaces, type WorkspaceId } from "@/lib/workspaces";
 import type { HealthResponse } from "@/types/api";
 
 const ICONS: Record<WorkspaceId, React.ReactNode> = {
@@ -70,7 +70,7 @@ function Shell({ children }: { children: React.ReactNode }) {
 
   const workspaces = useMemo(() => visibleWorkspaces(gate), [gate]);
   const isHub = HUB_ROUTES.has(pathname);
-  const isAurora = isHub || AURORA_PAGES.some((p) => pathname === p || pathname.startsWith(p + "/")) || AURORA_DETAIL.test(pathname);
+  const isAurora = isHub || AURORA_DETAIL.test(pathname);
 
   // ⌘1–⌘6 switch workspace (Alt on Windows/Linux keyboards without a Meta key).
   useEffect(() => {

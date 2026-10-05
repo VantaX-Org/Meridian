@@ -4,15 +4,16 @@
  * Record report: one SAP record, everything Meridian knows about it — every
  * check it fails, the evidence, what to do, which SAP features that blocks,
  * how it has behaved version by version, and the steward trail. Built on the
- * Aurora RecordReport surface; reached from the triage drawer (?issue=<id>).
+ * Aurora RecordReport surface; reached at /workbench/record/<issue id>.
  */
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button, Chip, EmptyState, RecordReport, type FixStep, type RecordReportStatus } from "@/components/aurora";
-import { ReasonButton } from "@/components/ui-core";
+import { ReasonButton, Tally } from "@/components/ui-core";
+import { PageCrumb } from "@/components/shell/page-crumb";
 import { useRole } from "@/hooks/use-role";
 import { findingToRecordReport } from "@/lib/aurora";
 import { getConfigImpact } from "@/lib/api/connectivity";
@@ -56,14 +57,15 @@ export function RecordReportView({ issueId }: { issueId: string }) {
   const impact = useQuery({ queryKey: ["config-impact", latest?.id], enabled: !!latest, retry: false,
     queryFn: () => getConfigImpact(latest!.id), meta: { ignoreError: true } });
 
+  const [nowMs] = useState(() => Date.now());
   const transition = useMutation({
     mutationFn: (body: { status: IssueStatus; resolution?: string; note?: string }) => updateIssues({ ids: [issueId], ...body }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["issue", issueId] }); qc.invalidateQueries({ queryKey: ["issues"] }); },
     onError: (e) => toast.error((e as Error).message || "Not saved"),
   });
 
-  if (detail.isLoading) return <EmptyState title="Loading record…" />;
-  if (!issue) return <EmptyState title="This record issue no longer exists." actions={<Link className="aurora-link" href="/workbench">Back to the workbench</Link>} />;
+  if (detail.isLoading) return <EmptyState title="Loading record" />;
+  if (!issue) return <EmptyState title="This record issue no longer exists." actions={<Link className="aurora-link" href="/workbench">Open the steward inbox</Link>} />;
 
   const worst = (open.length ? open : [issue]).map((i) => i.severity).sort((a, b) => ["critical", "high", "medium", "low"].indexOf(a) - ["critical", "high", "medium", "low"].indexOf(b))[0];
   const verdict = open.length === 0
@@ -85,8 +87,24 @@ export function RecordReportView({ issueId }: { issueId: string }) {
   const act = (status: IssueStatus, resolution?: string, note?: string) => transition.mutate({ status, resolution, note });
   const canAct = can("approve") || can("apply") || can("assign");
 
+  const end = issue.resolved_at ? new Date(issue.resolved_at).getTime() : nowMs;
+  const days = Math.max(0, Math.floor((end - new Date(issue.first_seen_at).getTime()) / 86_400_000));
+  const records = `/analyse?tab=records&status=open&search=${encodeURIComponent(issue.record_key)}`;
+  const self = `/workbench/record/${issueId}`;
+  const checkFinding = findings.find((f) => f.check_id === issue.check_id);
   return (
-    <div className="aurora-page">
+    <div className="ui-page">
+      <PageCrumb segments={[
+        { level: "portfolio", label: "Portfolio", href: "/" },
+        { level: "object", label: `Object: ${formatModuleName(issue.module)}`, href: `/analyse/object/${encodeURIComponent(issue.module)}` },
+        { level: "check", label: `Check: ${issue.check_id}`, href: checkFinding ? `/analyse/finding/${checkFinding.id}` : undefined },
+        { level: "record", label: `Record: ${issue.record_key}` },
+      ]} />
+      <Tally level={4} label="This record" figures={[
+        { label: "Open issues on this record", value: open.length, tone: open.length ? "high" : undefined, verdict: open.length ? "Checks this record still fails." : "None.", href: records, loading: siblings.isLoading },
+        { label: "Days open", value: days, unit: days === 1 ? " day" : " days", verdict: issue.resolved_at ? "From first seen to resolved." : "Since a run first found it.", href: self },
+        { label: "Reopened", value: issue.reopened_count || "Never", verdict: issue.reopened_count ? "Failed again after it was resolved." : "It has not failed again.", href: self },
+      ]} />
       <RecordReport
         recordId={issue.record_key}
         module={formatModuleName(issue.module)}

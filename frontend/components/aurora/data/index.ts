@@ -51,3 +51,7 @@ export type { ChartTokens } from "./chart-theme";
 
 export { Pager } from "./pager";
 export type { PagerProps } from "./pager";
+
+export { BurnDown } from "./burn-down";
+export type { BurnDownWeek } from "./burn-down";
+export { AgeingBars, AGE_BUCKETS } from "./ageing-bars";
