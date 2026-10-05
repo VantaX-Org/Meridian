@@ -1262,6 +1262,53 @@ rules:
       __other__: Review the document in FB03 (S/4 F0717) and attach or reference the calculation behind the amount.
     record_fix_template: 'Document {BSEG.BELNR}/{BSEG.GJAHR} line {BSEG.BUZEI} (company code {BSEG.BUKRS}, account {BSEG.HKONT}): {BSEG.DMBTR}.'
 
+  - id: GL065
+    field: BKPF.CPUTM
+    check_class: cross_field_check
+    grain: BKPF
+    fail_when: (`BKPF.CPUTM` >= '200000') | (`BKPF.CPUTM` < '060000')
+    require_populated: true
+    applies_when:
+      BKPF.AWTYP: [BKPF]
+      BKPF.BSTAT: {not_in: [D, M, S, V, W, Z]}
+    severity: low
+    dimension: validity
+    message: Manual journal entry was entered between 20:00 and 06:00
+    why_it_matters: >-
+      Journal-entry testing under ISA 240 and PCAOB AS 2401 selects manual journals entered outside
+      business hours, alongside weekend entries (GL063). Batch jobs and interfaces post overnight, but
+      a person keying a journal at night is unusual and should have a reason on record. The time is the
+      application server time SAP stamps on entry.
+    rule_authority: regulatory
+    sap_impact: None in SAP itself; the entry is selected for audit sampling and needs a documented reason.
+    fix_map:
+      __other__: Review the document in FB03 (S/4 F0717) and record why it was entered out of hours; if the user is a batch or interface user, exclude it from manual journal populations.
+    record_fix_template: 'Document {BKPF.BELNR}/{BKPF.GJAHR} (company code {BKPF.BUKRS}) entered {BKPF.CPUDT} {BKPF.CPUTM} by {BKPF.USNAM}.'
+
+  - id: GL066
+    field: BKPF.BLDAT
+    check_class: cross_field_check
+    grain: BKPF
+    fail_when: (`BKPF.BLDAT` - `BKPF.BUDAT`).dt.days > 0
+    require_populated: true
+    applies_when:
+      BKPF.BSTAT: {not_in: [D, M, S, V, W, Z]}
+    severity: low
+    dimension: validity
+    message: Document date is later than the posting date
+    why_it_matters: >-
+      The document date is the date of the source document, such as an invoice. A posting dated before
+      its source document records a transaction that had not yet happened. SAP allows it, so it usually
+      means a keying error, a back-dated posting or an invoice booked ahead of receipt. Auditors test it
+      as a cut-off exception.
+    rule_authority: best_practice
+    sap_impact: Payment terms that use the document date as baseline give a due date after the posting;
+      period-end cut-off and accrual reviews treat the posting as belonging to the wrong period.
+    fix_map:
+      __other__: Check the source document in FB03 (S/4 F0717); if the posting date is wrong, reverse with
+        FB08 and repost in the correct period, otherwise record why the source document is dated later.
+    record_fix_template: 'Document {BKPF.BELNR}/{BKPF.GJAHR} (company code {BKPF.BUKRS}): document date {BKPF.BLDAT} after posting date {BKPF.BUDAT}.'
+
   - id: GL059
     field: BSEG.HKONT
     check_class: cross_field_check
