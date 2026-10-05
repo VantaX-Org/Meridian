@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { PageHead, KPI } from "@/components/meridian/atoms";
@@ -36,6 +37,7 @@ function statusFromBackend(s: ModuleStatus["status"]): RowStatus {
 
 export default function RunSyncPage() {
   const qc = useQueryClient();
+  const router = useRouter();
   const { data: modules, isLoading, error } = useQuery({
     queryKey: ["sync-trigger.modules"],
     queryFn: getModuleStatuses,
@@ -129,7 +131,14 @@ export default function RunSyncPage() {
         toast.warning(
           queued.length > 0
             ? `Skipped ${skipped.length}: ${skipped.map(labelOf).join(", ")} — no prior import to re-run`
-            : `Nothing to run — ${skipped.map(labelOf).join(", ")} ${skipped.length === 1 ? "has" : "have"} no prior import. Import data for these modules first.`
+            : `Nothing to run — ${skipped.map(labelOf).join(", ")} ${skipped.length === 1 ? "has" : "have"} no prior import. Download them from the system's Versions tab first.`,
+          {
+            // The first import happens per system (Versions tab, "Download and analyse"); go straight there when there is one system.
+            action: {
+              label: "Import data",
+              onClick: () => router.push(systems?.length === 1 ? `/systems/${systems[0].id}` : "/systems"),
+            },
+          }
         );
       }
       qc.invalidateQueries({ queryKey: ["sync-trigger.modules"] });
