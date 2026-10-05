@@ -171,7 +171,7 @@ function Dependencies() {
   });
   const obj = profile.data?.object ?? object;
   const deps = useMemo(() => profile.data?.dependencies ?? [], [profile.data]);
-  const profileHref = `/systems/${sid}/versions/${vid}/profile${obj ? `?object=${encodeURIComponent(obj)}` : ""}`;
+  const profileHref = `/data/runs/${vid}?tab=profile${obj ? `&object=${encodeURIComponent(obj)}` : ""}`;
 
   // A version change can drop the selected object; let the API pick the default again.
   useEffect(() => {

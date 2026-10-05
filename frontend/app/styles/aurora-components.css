@@ -3450,7 +3450,14 @@
   width: 100%;
   margin-top: 6px;
 }
+.aurora-job-rail__wrap {
+  position: relative;
+}
 .aurora-job-rail__panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 50;
   width: 360px;
   padding: 0;
   border-radius: var(--aurora-radius-sheet);
@@ -3671,11 +3678,17 @@
 .aurora-job-card {
   border: 1px solid var(--aurora-canvas-line);
   border-radius: var(--aurora-radius-sheet);
-  background: var(--aurora-elev-1-bg);
-  box-shadow: var(--aurora-elev-1-shadow);
+  background: var(--aurora-canvas-raised);
   padding: var(--aurora-space-4);
   display: grid;
   gap: var(--aurora-space-3);
+}
+.aurora-job-card[data-compact] {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  gap: var(--aurora-space-2);
 }
 .aurora-job-card[data-status="running"] {
   border-color: var(--aurora-signal-border);
@@ -3755,7 +3768,6 @@
 }
 .aurora-progress[data-live="true"] > span {
   background: var(--aurora-signal-500);
-  box-shadow: 0 0 10px var(--aurora-signal-border);
 }
 .aurora-stepper {
   list-style: none;

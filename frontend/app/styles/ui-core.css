@@ -766,3 +766,9 @@ a.ui-link { color: var(--aurora-accent-500); text-decoration: none; }
 .ui-o360__feature-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--aurora-space-3); }
 .ui-o360__tcodes { display: flex; flex-wrap: wrap; gap: var(--aurora-space-2); }
 .ui-o360__sticky { display: flex; flex-wrap: wrap; gap: var(--aurora-space-2); }
+
+/* Fill bar: a 1px rule that shows how full a field is. */
+.ui-fill { display: inline-flex; align-items: center; gap: 8px; width: 100%; }
+.ui-fill__bar { position: relative; flex: 1; height: 1px; background: var(--aurora-canvas-line); }
+.ui-fill__bar > span { position: absolute; left: 0; top: 0; height: 1px; background: var(--aurora-fg-secondary); }
+.ui-fill__num { font-variant-numeric: tabular-nums; min-width: 44px; text-align: right; }

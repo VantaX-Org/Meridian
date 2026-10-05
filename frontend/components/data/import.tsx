@@ -12,7 +12,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
-  Banner, Button, Chip, DataTable, EmptyState, Metric, MetricStrip, Mono, PageHeader, SectionCard, StatusBadge,
+  Banner, Button, Chip, DataTable, EmptyState, Mono, PageHeader, SectionCard, StatusBadge, Tally,
   type AuroraColumnMeta, type Status,
 } from "@/components/ui-core";
 import { useRole } from "@/hooks/use-role";
@@ -51,7 +51,7 @@ export function ImportSurface() {
 
   const systemsQ = useQuery({ queryKey: ["systems.list"], queryFn: getSystems, staleTime: 60_000 });
   const recent = useQuery({
-    queryKey: ["versions.list", { limit: 8 }], queryFn: () => getVersions({ limit: 8 }),
+    queryKey: ["versions.list", { limit: 50 }], queryFn: () => getVersions({ limit: 50 }),
     refetchInterval: (q) => (q.state.data?.versions.some((v) => !TERMINAL.has(v.status)) ? 5000 : false),
   });
 
@@ -104,20 +104,20 @@ export function ImportSurface() {
 
   const columns = useMemo<ColumnDef<Version, unknown>[]>(() => [
     { id: "file", header: "File", meta: meta({ sticky: "start", width: 240 }), cell: ({ row }) => (
-      <Link href={`/findings?version_id=${row.original.id}`} className="ui-link">{row.original.metadata?.file_name ?? row.original.label ?? row.original.id.slice(0, 8)}</Link>) },
+      <Link href={`/data/runs/${row.original.id}`} className="ui-link">{row.original.metadata?.file_name ?? row.original.label ?? row.original.id.slice(0, 8)}</Link>) },
     { id: "modules", header: "Objects", cell: ({ row }) => (row.original.metadata?.modules ?? []).map(formatModuleName).join(", ") },
-    { id: "rows", header: "Rows", meta: meta({ width: 90, align: "end", numeric: true }), cell: ({ row }) => row.original.metadata?.row_count?.toLocaleString() ?? "" },
-    { id: "dqs", header: "DQS", meta: meta({ width: 80, align: "end", numeric: true }), cell: ({ row }) => { const d = versionDqs(row.original); return d === null ? "" : d.toFixed(1); } },
+    { id: "rows", header: "Records", meta: meta({ width: 90, align: "end", numeric: true }), cell: ({ row }) => row.original.metadata?.row_count?.toLocaleString() ?? "" },
+    { id: "dqs", header: "Score", meta: meta({ width: 80, align: "end", numeric: true }), cell: ({ row }) => { const d = versionDqs(row.original); return d === null ? "" : d.toFixed(1); } },
     { id: "status", header: "Status", meta: meta({ width: 140 }), cell: ({ row }) => <StatusBadge status={versionStatus(row.original.status)}>{cap(row.original.status.replace(/_/g, " "))}</StatusBadge> },
     { id: "when", header: "Imported", meta: meta({ width: 110 }), cell: ({ row }) => relativeTime(row.original.run_at) },
   ], []);
-  const versions = recent.data?.versions ?? [];
-  const completed = versions.filter((v) => TERMINAL.has(v.status) && !v.status.includes("failed"));
+  // Runs read from a system are listed under Runs; imports are the versions that came from a file.
+  const versions = (recent.data?.versions ?? []).filter((v) => v.metadata?.source !== "extraction");
+  const rowsImported = versions.reduce((a, v) => a + (v.metadata?.row_count ?? 0), 0);
 
   const fileNote = matchMut.isPending ? "Reading the columns"
     : match ? `${formatSize(file?.size ?? 0)}, looks like ${match.module_label} (${Math.round(match.module_confidence * 100)}% sure), ${mapped} columns mapped`
     : file ? formatSize(file.size) : "";
-  const latestDqs = completed[0] ? versionDqs(completed[0]) : null;
 
   return (
     <div className="ui-page">
@@ -131,12 +131,12 @@ export function ImportSurface() {
           Pulling objects straight from a connected system keeps versions comparable run to run. File imports suit one-off assessments.
         </Banner>
       ) : null}
-      <MetricStrip label="Imports">
-        <Metric label="Imports" value={versions.length} />
-        <Metric label="Analysed" value={completed.length} />
-        <Metric label="Latest DQS" value={latestDqs} />
-        <Metric label="In progress" value={versions.filter((v) => !TERMINAL.has(v.status)).length} />
-      </MetricStrip>
+      <Tally level={4} label="Imports" figures={[
+        { label: "Files imported", value: versions.length, href: "/data?tab=import", loading: recent.isLoading, verdict: versions.length ? "Each one is a run you can open." : "Nothing imported yet." },
+        { label: "Records imported", value: rowsImported, href: "/data?tab=import", loading: recent.isLoading, verdict: "Across all imported files." },
+        { label: "Last import", value: versions[0] ? relativeTime(versions[0].run_at) : "Never", href: versions[0] ? `/data/runs/${versions[0].id}` : "/data?tab=import", loading: recent.isLoading,
+          verdict: versions[0]?.metadata?.file_name ?? "Drop a file below to start." },
+      ]} />
 
       <div className="aurora-import">
         <label className={`aurora-import__drop${dragging ? " is-over" : ""}${file ? " has-file" : ""}`}
@@ -150,10 +150,10 @@ export function ImportSurface() {
         </label>
         <div className="aurora-import__side">
           <StageStepper stages={stages} />
-          {job ? <ProgressBar percent={job.status === "completed" ? 100 : job.percent} live={job.status === "processing" || job.status === "queued"} label={job.step} /> :
-            run.isPending ? <ProgressBar percent={uploadPct} live label={`Uploading ${uploadPct}%`} /> : null}
+          {job && job.status !== "completed" && job.status !== "failed" ? <p className="ui-note">{cap(job.step.replace(/_/g, " "))}</p> :
+            run.isPending && !job ? <ProgressBar percent={uploadPct} live label={`Uploading ${uploadPct} of 100 percent`} /> : null}
           {job?.error ? <Banner tone="danger" title="Analysis failed">{job.error}</Banner> : null}
-          {job?.status === "completed" ? <Link href={`/findings?version_id=${job.versionId}`} className="ui-link">Open the findings</Link> : null}
+          {job?.status === "completed" ? <Link href={`/data/runs/${job.versionId}`} className="ui-link">Open the run</Link> : null}
         </div>
       </div>
 

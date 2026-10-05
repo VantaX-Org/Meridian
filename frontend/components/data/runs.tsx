@@ -12,7 +12,7 @@ import { useMemo } from "react";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
-  DataTable, DetailDrawer, EmptyState, Metric, MetricStrip, Mono, PageHeader, SectionCard, StatusBadge, useDrawerParam,
+  DataTable, DetailDrawer, EmptyState, Mono, PageHeader, SectionCard, StatusBadge, Tally, useDrawerParam,
   type AuroraColumnMeta, type Status,
 } from "@/components/ui-core";
 import { getSystems } from "@/lib/api/systems";
@@ -85,7 +85,7 @@ export function RunsSurface() {
       cell: ({ row }) => <span title={new Date(row.original.run_at).toLocaleString()}>{relativeTime(row.original.run_at)}</span> },
     { id: "system", header: "System", accessorKey: "systemName", meta: meta({ width: 150 }) },
     { id: "label", header: "Version", meta: meta({ width: 240 }),
-      cell: ({ row }) => <Link href={`/systems/${row.original.systemId}`} className="ui-link">
+      cell: ({ row }) => <Link href={`/data/runs/${row.original.id}`} className="ui-link">
         {row.original.label ?? row.original.objects.map(formatModuleName).join(", ")}</Link> },
     { id: "objects", header: "Objects", meta: meta({ minWidth: 200 }), cell: ({ row }) => row.original.objects.map(formatModuleName).join(", ") },
     { id: "records", header: "Records", meta: meta({ width: 110, numeric: true, align: "end" }),
@@ -115,13 +115,12 @@ export function RunsSurface() {
         title="Runs"
         summary="Every download, config sync, import and analysis. Jobs are kept for seven days; the download history is kept for good."
       />
-      <MetricStrip label="Runs in the last 24 hours">
-        <Metric label="Running now" value={active.length} />
-        <Metric label="Completed in 24 hours" value={completed24} />
-        <Metric label="Failed in 24 hours" value={failed24} tone={failed24 ? "danger" : "default"} />
-        <Metric label="Rows read in 24 hours" value={fmtInt(rows24)} />
-        <Metric label="Systems" value={systems.length} />
-      </MetricStrip>
+      <Tally level={2} label="Runs in the last 24 hours" figures={[
+        { label: "Running now", value: active.length, href: "/data?tab=runs", verdict: active.length ? "Progress is shown for each stage." : "Nothing is running." },
+        { label: "Finished today", value: completed24, href: "/data?tab=runs", verdict: "Completed in the last 24 hours." },
+        { label: "Failed today", value: failed24, href: "/data?tab=runs", tone: failed24 ? "danger" : undefined, verdict: failed24 ? "Open a run to see why." : "No run failed." },
+        { label: "Rows read today", value: rows24, href: "/data?tab=runs", verdict: "Across all runs in the last 24 hours." },
+      ]} />
 
       <SectionCard title="Running now" meta={active.length || undefined}>
         {active.length === 0 ? (
@@ -150,7 +149,7 @@ export function RunsSurface() {
 
       <SectionCard title="Download history" meta={versions.length || undefined} flush>
         <DataTable<VersionRow>
-          ariaLabel="Download history. Each download is a version; open the system to analyse, compare or set a baseline."
+          ariaLabel="Download history. Each download is a version; open a version to see its profile and tables."
           columns={versionColumns}
           data={versions}
           getRowId={(v) => v.id}
@@ -172,8 +171,8 @@ export function RunsSurface() {
                      systemName={selected.system_id ? systemName.get(selected.system_id) : undefined} />
             {selected.version_id ? (
               <p className="ui-note">
-                Produced version{" "}
-                <Link className="ui-link" href={selected.system_id ? `/systems/${selected.system_id}` : "/versions"}>
+                Produced run{" "}
+                <Link className="ui-link" href={`/data/runs/${selected.version_id}`}>
                   <Mono>{selected.version_id.slice(0, 8)}</Mono>
                 </Link>
               </p>
