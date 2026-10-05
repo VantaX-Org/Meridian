@@ -58,10 +58,10 @@ def test_sidebar_and_palette_share_nav():
 
 
 def test_overview_items():
-    """Overview holds Command Centre at / plus Analytics; no 'Dashboard' label."""
+    """Overview holds Command Centre at /; Trends (/analytics) merged into Home; no 'Dashboard' label."""
     block = _group_block(_nav(), "Overview")
     assert 'href: "/", label: "Command Centre"' in block
-    assert '"/analytics"' in block
+    assert '"/analytics"' not in block
     palette = PALETTE.read_text(encoding="utf-8")
     assert 'label: "Dashboard"' not in palette and 'label: "Dashboard"' not in _nav()
 
