@@ -3,8 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Banner, Button, Input, Mono, SectionCard } from "@/components/ui-core";
 import { ClusterGraph } from "@/components/mdm/cluster-graph";
 import { useRole } from "@/hooks/use-role";
 import {
@@ -19,54 +18,50 @@ import {
   type PairExplanation,
 } from "@/lib/api/merge-explain";
 
-const muted = { color: "var(--aurora-fg-muted)" };
-const mono = { fontFamily: "var(--aurora-font-mono)" };
 const pct = (v: number | null | undefined) => (v == null ? "n/a" : `${(v * 100).toFixed(1)}%`);
+const NONE = "None";
+const scroll = { overflowX: "auto" } as const;
 
 function PairDetail({ pair }: { pair: PairExplanation }) {
   const ex = pair.explanation;
-  if (!ex) return <p className="text-sm" style={muted}>No per-attribute breakdown stored for this pair.</p>;
+  if (!ex) return <p className="ui-note">No per-attribute breakdown is stored for this pair.</p>;
   return (
-    <div className="space-y-2">
-      <p className="text-sm">
-        <span style={mono}>{pair.a}</span> vs <span style={mono}>{pair.b}</span>: total{" "}
-        <strong className="aurora-number">{ex.total.toFixed(3)}</strong>, band <strong>{ex.band}</strong>{" "}
-        <span style={muted}>({ex.fired})</span>
+    <div className="ui-stack">
+      <p className="ui-note">
+        <Mono>{pair.a}</Mono> against <Mono>{pair.b}</Mono>: total <strong className="aurora-number">{ex.total.toFixed(3)}</strong>,
+        band <strong>{ex.band}</strong> ({ex.fired}).
       </p>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+      <div style={scroll}>
+        <table className="ui-mini-table">
           <thead>
-            <tr style={muted} className="text-left">
-              <th className="py-1 pr-3">Field</th><th className="pr-3">Comparator</th><th className="pr-3">A</th>
-              <th className="pr-3">B</th><th className="pr-3 text-right">Similarity</th>
-              <th className="pr-3 text-right">Weight</th><th className="pr-3 text-right">Contribution</th>
-              <th>Threshold</th>
-            </tr>
+            <tr><th>Field</th><th>Comparator</th><th>A</th><th>B</th><th>Similarity</th><th>Weight</th><th>Contribution</th><th>Threshold</th></tr>
           </thead>
           <tbody>
             {ex.attributes.map((a) => (
-              <tr key={a.field} style={{ borderTop: "1px solid var(--aurora-canvas-line)" }}>
-                <td className="py-1 pr-3" style={mono}>{a.field}</td>
-                <td className="pr-3">{a.comparator}</td>
-                <td className="pr-3" style={mono}>{a.value_a || "-"}</td>
-                <td className="pr-3" style={mono}>{a.value_b || "-"}</td>
-                <td className="pr-3 text-right aurora-number">{a.skipped ? a.reason : pct(a.similarity)}</td>
-                <td className="pr-3 text-right aurora-number">{a.weight}</td>
-                <td className="pr-3 text-right aurora-number">{a.contribution.toFixed(3)}</td>
-                <td style={{ color: a.threshold_met === false ? "var(--aurora-status-warning-500)" : undefined }}>
-                  {a.threshold == null ? "-" : `${pct(a.threshold)} ${a.threshold_met ? "met" : "not met"}`}
-                </td>
+              <tr key={a.field}>
+                <td><Mono>{a.field}</Mono></td>
+                <td>{a.comparator}</td>
+                <td><Mono>{a.value_a || NONE}</Mono></td>
+                <td><Mono>{a.value_b || NONE}</Mono></td>
+                <td className="aurora-number">{a.skipped ? a.reason : pct(a.similarity)}</td>
+                <td className="aurora-number">{a.weight}</td>
+                <td className="aurora-number">{a.contribution.toFixed(3)}</td>
+                <td>{a.threshold == null ? NONE : `${pct(a.threshold)} ${a.threshold_met ? "met" : "not met"}`}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      {ex.attributes.some((a) => a.masked) && (
-        <p className="text-xs" style={muted}>Sensitive values are masked.</p>
-      )}
+      {ex.attributes.some((a) => a.masked) ? <p className="ui-micro">Sensitive values are masked.</p> : null}
     </div>
   );
 }
+
+type Ask =
+  | { kind: "unmerge" }
+  | { kind: "undo" }
+  | { kind: "remerge"; id: string }
+  | { kind: "pair"; id: string; decision: "accept" | "reject" };
 
 /** "Why merged": match evidence, survivorship winners and losers, cluster graph and unmerge controls. */
 export function WhyMergedPanel({ recordId }: { recordId: string }) {
@@ -76,12 +71,14 @@ export function WhyMergedPanel({ recordId }: { recordId: string }) {
   const [split, setSplit] = useState<string[]>([]);
   const [reason, setReason] = useState("");
   const [edit, setEdit] = useState<{ field: string; value: string } | null>(null);
+  const [ask, setAsk] = useState<Ask | null>(null);
 
   const explain = useQuery({ queryKey: ["merge-explain", recordId], queryFn: () => getMergeExplanation(recordId) });
   const graph = useQuery({ queryKey: ["cluster-graph", recordId], queryFn: () => getClusterGraph(recordId) });
   const events = useQuery({ queryKey: ["merge-events", recordId], queryFn: () => getMergeEvents(recordId) });
 
   const refresh = () => {
+    setAsk(null);
     for (const k of ["merge-explain", "cluster-graph", "merge-events", "master-record"]) {
       qc.invalidateQueries({ queryKey: [k] });
     }
@@ -122,182 +119,192 @@ export function WhyMergedPanel({ recordId }: { recordId: string }) {
     onError,
   });
 
-  if (explain.isLoading) return <p className="text-sm" style={muted}>Loading merge explanation...</p>;
+  if (explain.isLoading) return <p className="ui-note">Loading the merge explanation.</p>;
   if (!explain.data) return null;
   const d = explain.data;
   const pair = d.pairs.find((p) => p.id === edgeId) ?? d.pairs[0];
   const busy = unmerge.isPending || undo.isPending || revert.isPending || decide.isPending || override.isPending;
   const survivorship = Object.entries(d.survivorship).sort(([a], [b]) => a.localeCompare(b));
+  const events_ = events.data ?? [];
+
+  const run = () => {
+    if (!ask) return;
+    if (ask.kind === "unmerge") unmerge.mutate();
+    else if (ask.kind === "undo") undo.mutate();
+    else if (ask.kind === "remerge") revert.mutate(ask.id);
+    else decide.mutate({ id: ask.id, decision: ask.decision });
+  };
+  const text = (a: Ask): { title: string; body: string; go: string } => {
+    if (a.kind === "unmerge") return { title: `Split ${split.length} record${split.length === 1 ? "" : "s"} out of this cluster?`, body: "They become separate records again and each pair is marked do not match. This changes Meridian's data only, nothing is written to SAP.", go: "Unmerge records" };
+    if (a.kind === "undo") return { title: "Undo the last merge?", body: "The most recent merge on this cluster is reversed. Nothing is written to SAP.", go: "Undo merge" };
+    if (a.kind === "remerge") return { title: "Re-merge these records?", body: "The reversal is itself reversed and the records join the cluster again.", go: "Re-merge" };
+    return { title: a.decision === "accept" ? "Always match this pair?" : "Never match this pair?", body: "Future runs follow this decision for the pair.", go: "Record decision" };
+  };
+  const t = ask ? text(ask) : null;
+  const gentle = ask?.kind === "remerge" || ask?.kind === "pair";
 
   return (
-    <Card>
-      <CardContent className="space-y-6 p-4">
-        <div>
-          <h2 className="text-base font-semibold">Why merged</h2>
-          <p className="text-sm" style={muted}>
-            Survivor <span style={mono}>{d.key}</span>
-            {d.members.length ? <> with {d.members.length} merged record(s)</> : <>, not merged with any record</>}.
-            Auto-merge at {pct(d.thresholds.auto_merge)}, steward review from {pct(d.thresholds.review_floor)}.
-          </p>
-        </div>
+    <div className="ui-stack">
+      <SectionCard title="Why merged" meta={d.key}>
+        <p className="ui-note">
+          {d.members.length ? `Survivor ${d.key} with ${d.members.length} merged record${d.members.length === 1 ? "" : "s"}.` : `Survivor ${d.key}, not merged with any record.`}{" "}
+          Auto-merge at {pct(d.thresholds.auto_merge)}, steward review from {pct(d.thresholds.review_floor)}.
+        </p>
+      </SectionCard>
 
-        {graph.data && graph.data.nodes.length > 1 && (
-          <div className="grid gap-4 md:grid-cols-[320px_1fr]">
+      {ask && t ? (
+        <Banner tone={gentle ? "warning" : "danger"} title={t.title}
+          action={
+            <div className="ui-page-header__actions">
+              <Button size="sm" variant={gentle ? "primary" : "danger"} disabled={busy} onClick={run}>{t.go}</Button>
+              <Button size="sm" variant="ghost" onClick={() => setAsk(null)}>Keep as it is</Button>
+            </div>}>
+          {t.body}
+        </Banner>
+      ) : null}
+
+      {graph.data && graph.data.nodes.length > 1 ? (
+        <SectionCard title="Cluster" meta={`${graph.data.nodes.length} records`}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "var(--aurora-space-4)" }}>
             <ClusterGraph graph={graph.data} selectedEdgeId={pair?.id ?? null} onSelectEdge={(e) => setEdgeId(e.id)} />
-            <div className="space-y-2 text-sm">
+            <div className="ui-stack">
               {graph.data.weak_chains.length > 0 ? (
                 <>
-                  <p style={{ color: "var(--aurora-status-warning-500)" }}>
-                    {graph.data.weak_chains.length} weak transitive chain(s):
-                  </p>
-                  <ul className="space-y-1">
+                  <p className="ui-note"><strong>{graph.data.weak_chains.length} weak chain{graph.data.weak_chains.length === 1 ? "" : "s"}</strong> link records only through a third record.</p>
+                  <ul className="ui-stack">
                     {graph.data.weak_chains.map((w) => (
-                      <li key={`${w.a}-${w.via}-${w.b}`} style={mono}>
-                        {w.a} - {w.via} - {w.b}: {w.reason.replace(/_/g, " ")}
+                      <li key={`${w.a}-${w.via}-${w.b}`} className="ui-micro">
+                        <Mono>{w.a}</Mono> to <Mono>{w.via}</Mono> to <Mono>{w.b}</Mono>: {w.reason.replace(/_/g, " ")}
                       </li>
                     ))}
                   </ul>
                 </>
-              ) : <p style={muted}>Every member links directly above the threshold.</p>}
-              <p className="text-xs" style={muted}>Select an edge to see its attribute breakdown.</p>
+              ) : <p className="ui-note">Every member links directly above the threshold.</p>}
+              <p className="ui-micro">Select an edge to see its attribute breakdown.</p>
             </div>
           </div>
-        )}
+        </SectionCard>
+      ) : null}
 
-        {pair && (
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold">Match evidence</h3>
+      {pair ? (
+        <SectionCard title="Match evidence"
+          action={canChange ? (
+            <div className="ui-page-header__actions">
+              <Button size="sm" variant="secondary" disabled={busy || !reason} onClick={() => setAsk({ kind: "pair", id: pair.id, decision: "accept" })}>Always match</Button>
+              <Button size="sm" variant="secondary" disabled={busy || !reason} onClick={() => setAsk({ kind: "pair", id: pair.id, decision: "reject" })}>Do not match</Button>
+            </div>) : undefined}>
+          <div className="ui-stack">
             <PairDetail pair={pair} />
-            <p className="text-xs" style={muted}>
-              {pair.steward_decision ? `Steward ${pair.steward_decision}ed: ${pair.steward_reason ?? ""}` : "No steward decision"}
-              {pair.constraint ? ` | ${pair.constraint.replace(/_/g, " ")}` : ""}
+            <p className="ui-micro">
+              {pair.steward_decision ? `Steward ${pair.steward_decision}ed: ${pair.steward_reason ?? "no reason recorded"}.` : "No steward decision."}
+              {pair.constraint ? ` Constraint: ${pair.constraint.replace(/_/g, " ")}.` : ""}
             </p>
-            {canChange && (
-              <div className="flex flex-wrap gap-2">
-                <Button size="sm" variant="outline" disabled={busy || !reason}
-                  onClick={() => decide.mutate({ id: pair.id, decision: "accept" })}>Always match</Button>
-                <Button size="sm" variant="outline" disabled={busy || !reason}
-                  onClick={() => decide.mutate({ id: pair.id, decision: "reject" })}>Do not match</Button>
-              </div>
-            )}
           </div>
-        )}
+        </SectionCard>
+      ) : null}
 
-        <div className="space-y-2">
-          <h3 className="text-sm font-semibold">Survivorship</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr style={muted} className="text-left">
-                  <th className="py-1 pr-3">Field</th><th className="pr-3">Value</th><th className="pr-3">From</th>
-                  <th className="pr-3">Rule</th><th className="pr-3">Losing values</th>{canChange && <th>Override</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {survivorship.map(([field, s]) => (
-                  <tr key={field} style={{ borderTop: "1px solid var(--aurora-canvas-line)" }}>
-                    <td className="py-1 pr-3" style={mono}>{field}</td>
-                    <td className="pr-3" style={mono}>
-                      {edit?.field === field ? (
-                        <input
-                          aria-label={`Override value for ${field}`} value={edit.value} autoFocus
-                          onChange={(e) => setEdit({ field, value: e.target.value })}
-                          className="w-full rounded border px-2 py-1 text-sm"
-                          style={{ borderColor: "var(--aurora-canvas-line)", background: "var(--aurora-elev-1-bg)" }}
-                        />
-                      ) : s.value || "-"}
-                    </td>
-                    <td className="pr-3" style={mono}>{s.winner_key ?? "-"}</td>
-                    <td className="pr-3">{s.rule}</td>
+      <SectionCard title="Survivorship" meta={`${survivorship.length} fields`} flush>
+        <div style={scroll}>
+          <table className="ui-mini-table">
+            <thead>
+              <tr><th>Field</th><th>Value</th><th>From</th><th>Rule</th><th>Losing values</th>{canChange ? <th>Override</th> : null}</tr>
+            </thead>
+            <tbody>
+              {survivorship.map(([field, s]) => (
+                <tr key={field}>
+                  <td><Mono>{field}</Mono></td>
+                  <td>
+                    {edit?.field === field ? (
+                      <Input aria-label={`Override value for ${field}`} value={edit.value} autoFocus
+                        onChange={(e) => setEdit({ field, value: e.target.value })} />
+                    ) : <Mono>{s.value || NONE}</Mono>}
+                  </td>
+                  <td><Mono>{s.winner_key ?? NONE}</Mono></td>
+                  <td>{s.rule}</td>
+                  <td>
+                    {s.losers.length === 0 ? NONE : s.losers.map((l) => (
+                      <div key={l.key}>
+                        <Mono>{l.key}</Mono> {l.value ? <Mono>{`"${l.value}"`}</Mono> : null} <span className="ui-micro">{l.reason}</span>
+                      </div>
+                    ))}
+                  </td>
+                  {canChange ? (
                     <td>
-                      {s.losers.length === 0 ? <span style={muted}>-</span> : s.losers.map((l) => (
-                        <div key={l.key}>
-                          <span style={mono}>{l.key}</span> {l.value ? <span style={mono}>&quot;{l.value}&quot;</span> : null}{" "}
-                          <span style={muted}>{l.reason}</span>
-                        </div>
-                      ))}
+                      {edit?.field === field ? (
+                        <>
+                          <Button size="sm" variant="secondary" disabled={busy || !edit.value} onClick={() => override.mutate({ field, value: edit.value })}>Save</Button>{" "}
+                          <Button size="sm" variant="ghost" onClick={() => setEdit(null)}>Discard edit</Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button size="sm" variant="ghost" disabled={busy} onClick={() => setEdit({ field, value: s.value ?? "" })}>Override</Button>
+                          {field in d.steward_overrides ? (
+                            <Button size="sm" variant="ghost" disabled={busy} onClick={() => override.mutate({ field, value: null })}>Clear</Button>
+                          ) : null}
+                        </>
+                      )}
                     </td>
-                    {canChange && (
-                      <td className="whitespace-nowrap">
-                        {edit?.field === field ? (
-                          <>
-                            <Button size="sm" variant="outline" disabled={busy || !edit.value}
-                              onClick={() => override.mutate({ field, value: edit.value })}>Save</Button>{" "}
-                            <Button size="sm" variant="ghost" onClick={() => setEdit(null)}>Discard edit</Button>
-                          </>
-                        ) : (
-                          <>
-                            <Button size="sm" variant="ghost" disabled={busy}
-                              onClick={() => setEdit({ field, value: s.value ?? "" })}>Override</Button>
-                            {field in d.steward_overrides && (
-                              <Button size="sm" variant="ghost" disabled={busy}
-                                onClick={() => override.mutate({ field, value: null })}>Clear</Button>
-                            )}
-                          </>
-                        )}
+                  ) : null}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </SectionCard>
+
+      {canChange ? (
+        <SectionCard title="Steward actions">
+          <div className="ui-stack">
+            <label className="ui-note">
+              Reason, required for unmerge and pair decisions and recorded with overrides
+              <Input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={2000} />
+            </label>
+            {d.members.length > 0 ? (
+              <fieldset className="ui-stack">
+                <legend className="ui-micro">Split out of this cluster</legend>
+                {d.members.map((k) => (
+                  <label key={k} className="ui-note">
+                    <input type="checkbox" checked={split.includes(k)}
+                      onChange={(e) => setSplit(e.target.checked ? [...split, k] : split.filter((x) => x !== k))} />{" "}
+                    <Mono>{k}</Mono>
+                  </label>
+                ))}
+              </fieldset>
+            ) : null}
+            <div className="ui-page-header__actions">
+              <Button size="sm" disabled={busy || !split.length || !reason} onClick={() => setAsk({ kind: "unmerge" })}>Unmerge selected</Button>
+              <Button size="sm" variant="secondary" disabled={busy || !d.members.length} onClick={() => setAsk({ kind: "undo" })}>Undo last merge</Button>
+            </div>
+          </div>
+        </SectionCard>
+      ) : null}
+
+      <SectionCard title="Merge history" meta={String(events_.length)} flush={events_.length > 0}>
+        {events_.length === 0 ? <p className="ui-note">No merge events.</p> : (
+          <div style={scroll}>
+            <table className="ui-mini-table">
+              <thead><tr><th>When</th><th>Event</th><th>Records</th><th>Reason</th>{canChange ? <th>Action</th> : null}</tr></thead>
+              <tbody>
+                {events_.map((e) => (
+                  <tr key={e.id}>
+                    <td className="aurora-number">{new Date(e.created_at).toLocaleString()}</td>
+                    <td>{e.event_type}{e.reversed ? " (reversed)" : ""}</td>
+                    <td><Mono>{e.member_keys.join(", ")}</Mono></td>
+                    <td>{e.reason || NONE}</td>
+                    {canChange ? (
+                      <td>
+                        {!e.reversed && (e.event_type === "unmerge" || e.event_type === "undo") ? (
+                          <Button size="sm" variant="ghost" disabled={busy} onClick={() => setAsk({ kind: "remerge", id: e.id })}>Re-merge</Button>
+                        ) : null}
                       </td>
-                    )}
+                    ) : null}
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </div>
-
-        {canChange && (
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold">Steward actions</h3>
-            <label className="block text-sm">
-              Reason (required for unmerge and pair decisions, recorded with overrides)
-              <input
-                value={reason} onChange={(e) => setReason(e.target.value)} maxLength={2000}
-                className="mt-1 w-full rounded border px-2 py-1 text-sm"
-                style={{ borderColor: "var(--aurora-canvas-line)", background: "var(--aurora-elev-1-bg)" }}
-              />
-            </label>
-            {d.members.length > 0 && (
-              <fieldset className="flex flex-wrap gap-3 text-sm">
-                <legend className="mb-1" style={muted}>Split out of this cluster</legend>
-                {d.members.map((k) => (
-                  <label key={k} className="flex items-center gap-1" style={mono}>
-                    <input type="checkbox" checked={split.includes(k)}
-                      onChange={(e) => setSplit(e.target.checked ? [...split, k] : split.filter((x) => x !== k))} />
-                    {k}
-                  </label>
-                ))}
-              </fieldset>
-            )}
-            <div className="flex flex-wrap gap-2">
-              <Button size="sm" disabled={busy || !split.length || !reason} onClick={() => unmerge.mutate()}>
-                Unmerge selected
-              </Button>
-              <Button size="sm" variant="outline" disabled={busy || !d.members.length} onClick={() => undo.mutate()}>
-                Undo last merge
-              </Button>
-            </div>
-          </div>
         )}
-
-        <div className="space-y-2">
-          <h3 className="text-sm font-semibold">Merge history</h3>
-          {(events.data ?? []).length === 0 ? <p className="text-sm" style={muted}>No merge events.</p> : (
-            <ul className="space-y-1 text-sm">
-              {(events.data ?? []).map((e) => (
-                <li key={e.id} className="flex flex-wrap items-center gap-2">
-                  <span style={mono}>{new Date(e.created_at).toLocaleString()}</span>
-                  <strong>{e.event_type}</strong>
-                  <span style={mono}>{e.member_keys.join(", ")}</span>
-                  {e.reason && <span style={muted}>{e.reason}</span>}
-                  {e.reversed && <span style={muted}>(reversed)</span>}
-                  {canChange && !e.reversed && (e.event_type === "unmerge" || e.event_type === "undo") && (
-                    <Button size="sm" variant="ghost" disabled={busy} onClick={() => revert.mutate(e.id)}>Re-merge</Button>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+      </SectionCard>
+    </div>
   );
 }

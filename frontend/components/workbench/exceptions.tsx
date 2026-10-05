@@ -12,8 +12,8 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { Field, Select, Textarea } from "@/components/aurora";
 import {
-  Banner, Button, Chip, DataTable, DetailDrawer, EmptyState, FilterBar, Input, KeyValue, Metric, MetricStrip, Mono,
-  PageHeader, StatusBadge, TableSkeleton, useDrawerParam, type AuroraColumnMeta, type Status,
+  Banner, Button, Chip, DataTable, DetailDrawer, EmptyState, FilterBar, Input, KeyValue, Mono,
+  PageHeader, StatusBadge, TableSkeleton, Tally, useDrawerParam, type AuroraColumnMeta, type Status,
 } from "@/components/ui-core";
 import { copyToClipboard } from "@/components/meridian/actions";
 import { useRole } from "@/hooks/use-role";
@@ -85,15 +85,15 @@ export function ExceptionsSurface() {
         summary={q.data ? `${total.toLocaleString()} cases a check could not settle on its own.` : undefined}
         actions={canRequest ? <Button onClick={() => setRequesting(true)}>Request exception</Button> : null} />
       {mq.error ? <Banner tone="warning" title="Exception metrics could not be read">{(mq.error as Error).message}</Banner> : (
-        <MetricStrip label="Exception metrics">
-          <Metric label="Open" value={m ? m.open_count : null} />
-          <Metric label="Past SLA" value={m ? m.overdue_count : null} tone={m?.overdue_count ? "danger" : "default"} />
-          <Metric label="Resolved, last 7 days" value={m ? m.resolved_count : null} />
-          {/* With nothing resolved yet the endpoint returns 0 h and 100 %; show dashes, not made-up figures. */}
-          <Metric label="Mean time to resolve" value={resolvedAny ? m.avg_resolution_hours : null} unit="h" />
-          <Metric label="Resolved within SLA" value={resolvedAny ? m.sla_compliance_pct : null} unit="%"
-            tone={resolvedAny && m.sla_compliance_pct < 90 ? "warning" : "default"} />
-        </MetricStrip>
+        <Tally level={2} label="Exception metrics" figures={[
+          { label: "Open", value: m ? m.open_count : null, loading: mq.isLoading, verdict: m?.open_count ? "Cases still to settle." : "None.", href: "/exceptions?status=open" },
+          { label: "Past SLA", value: m ? m.overdue_count : null, loading: mq.isLoading, tone: m?.overdue_count ? "danger" : undefined, verdict: m?.overdue_count ? "Open beyond their deadline." : "None.", href: "/exceptions?status=open" },
+          { label: "Resolved, last 7 days", value: m ? m.resolved_count : null, loading: mq.isLoading, verdict: m?.resolved_count ? "Settled this week." : "None.", href: "/exceptions?status=resolved" },
+          /* With nothing resolved yet the endpoint returns 0 h and 100 %; show a plain word, not made-up figures. */
+          { label: "Mean time to resolve", value: m ? (resolvedAny ? Math.round(m.avg_resolution_hours * 10) / 10 : "None") : null, unit: resolvedAny ? "h" : undefined, loading: mq.isLoading,
+            tone: resolvedAny && m.sla_compliance_pct < 90 ? "warning" : undefined,
+            verdict: resolvedAny ? `${Math.round(m.sla_compliance_pct)}% resolved within SLA.` : "Nothing resolved yet.", href: "/exceptions?status=resolved" },
+        ]} />
       )}
       <FilterBar search={{ value: search, onChange: setSearch, placeholder: "Search exceptions" }}>
         {STATUSES.map((s) => <Chip key={s} selected={status === s} onClick={() => setStatus(s)}>{s === "all" ? "All" : label(s)}</Chip>)}
@@ -124,6 +124,7 @@ export function ExceptionsSurface() {
 
 function ExceptionDetail({ exception: e, canApprove, onChanged }: { exception: Exception; canApprove: boolean; onChanged: () => void }) {
   const [resolving, setResolving] = useState(false);
+  const [escalating, setEscalating] = useState(false);
   const [r, setR] = useState({ resolution_type: "steward", root_cause_category: "incorrect_data", resolution_notes: "" });
   const resolve = useMutation({
     mutationFn: () => resolveException(e.id, r),
@@ -132,7 +133,7 @@ function ExceptionDetail({ exception: e, canApprove, onChanged }: { exception: E
   });
   const escalate = useMutation({
     mutationFn: () => escalateException(e.id, { reason: "Escalated from the workbench" }),
-    onSuccess: (d) => { toast.success(`Escalated to tier ${d.escalation_tier}`); onChanged(); },
+    onSuccess: (d) => { toast.success(`Escalated to tier ${d.escalation_tier}`); setEscalating(false); onChanged(); },
     onError: (err) => toast.error((err as Error).message || "Not escalated"),
   });
   return (
@@ -168,10 +169,18 @@ function ExceptionDetail({ exception: e, canApprove, onChanged }: { exception: E
             <Button type="button" variant="ghost" onClick={() => setResolving(false)}>Keep open</Button>
           </div>
         </form>
+      ) : escalating ? (
+        <Banner tone="warning" title={`Escalate to tier ${e.escalation_tier + 1}?`} action={
+          <div className="ui-page-header__actions">
+            <Button size="sm" onClick={() => escalate.mutate()} disabled={escalate.isPending}>{escalate.isPending ? "Escalating" : "Escalate"}</Button>
+            <Button size="sm" variant="ghost" onClick={() => setEscalating(false)}>Not now</Button>
+          </div>}>
+          The next tier is told and takes the case.
+        </Banner>
       ) : (
         <div className="ui-page-header__actions">
           {canApprove && !DONE.has(e.status) ? <Button onClick={() => setResolving(true)}>Resolve</Button> : null}
-          {canApprove && !DONE.has(e.status) ? <Button variant="secondary" onClick={() => escalate.mutate()} disabled={escalate.isPending}>{escalate.isPending ? "Escalating" : "Escalate"}</Button> : null}
+          {canApprove && !DONE.has(e.status) ? <Button variant="secondary" onClick={() => setEscalating(true)}>Escalate</Button> : null}
           <Button variant="ghost" onClick={() => copyToClipboard(e.id, "Exception ID copied")}>Copy ID</Button>
         </div>
       )}

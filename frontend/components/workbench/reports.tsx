@@ -7,12 +7,12 @@
  */
 
 import { useSearchParams } from "next/navigation";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
-  Banner, Button, DataTable, DetailDrawer, EmptyState, KeyValue, Metric, MetricStrip, Mono, PageHeader, TableSkeleton, useDrawerParam, type AuroraColumnMeta,
+  Banner, Button, DataTable, DetailDrawer, EmptyState, KeyValue, Mono, PageHeader, TableSkeleton, Tally, useDrawerParam, type AuroraColumnMeta,
 } from "@/components/ui-core";
 import { apiErrorMessage } from "@/lib/api/optional";
 import { copyToClipboard } from "@/components/meridian/actions";
@@ -55,6 +55,7 @@ export function ReportsSurface() {
   const week = versions.filter((v) => Date.now() - new Date(v.run_at).getTime() < 7 * 86_400_000).length;
 
   const qc = useQueryClient();
+  const [confirmClear, setConfirmClear] = useState(false);
   const restore = useMutation({
     mutationFn: restoreVersions,
     onSuccess: () => qc.invalidateQueries(),
@@ -92,15 +93,25 @@ export function ReportsSurface() {
     <div className="ui-page">
       <PageHeader title="Reports" summary="Every completed analysis as a PDF for people, JSON for systems, and the config workbook for consultants."
         actions={latest ? <>
-          {versions.length > 1 ? <Button variant="secondary" onClick={() => clear.mutate()} disabled={clear.isPending}>Clear old runs</Button> : null}
+          {versions.length > 1 ? <Button variant="secondary" onClick={() => setConfirmClear(true)} disabled={clear.isPending}>Clear old runs</Button> : null}
           <Button onClick={() => download.mutate({ v: latest, kind: "pdf" })} disabled={download.isPending}>Download latest PDF</Button>
         </> : null} />
-      <MetricStrip label="Reports">
-        <Metric label="Reports" value={versions.length} />
-        <Metric label="This week" value={week} />
-        <Metric label="Latest DQS" value={latestDqs?.toFixed(1) ?? "—"} tone={latestDqs !== null && latestDqs < 70 ? "danger" : latestDqs !== null && latestDqs < 90 ? "warning" : "default"} />
-        <Metric label="Latest run" value={latest ? relativeTime(latest.run_at) : "—"} />
-      </MetricStrip>
+      {confirmClear ? (
+        <Banner tone="warning" title="Clear old runs?"
+          action={<div className="ui-page-header__actions">
+            <Button size="sm" variant="danger" disabled={clear.isPending} onClick={() => { clear.mutate(); setConfirmClear(false); }}>Clear old runs</Button>
+            <Button size="sm" variant="ghost" onClick={() => setConfirmClear(false)}>Keep runs</Button>
+          </div>}>
+          Every run except the latest is archived. You can undo this from the confirmation message.
+        </Banner>
+      ) : null}
+      <Tally level={2} label="Reports" figures={[
+        { label: "Reports", value: q.isLoading ? null : versions.length, loading: q.isLoading, verdict: versions.length ? "Completed analyses." : "None.", href: "/reports" },
+        { label: "This week", value: q.isLoading ? null : week, loading: q.isLoading, verdict: week ? "Written in the last 7 days." : "None.", href: "/reports" },
+        { label: "Latest DQS", value: latestDqs === null ? (q.isLoading ? null : "None") : Math.round(latestDqs * 10) / 10, loading: q.isLoading,
+          tone: latestDqs !== null && latestDqs < 70 ? "danger" : latestDqs !== null && latestDqs < 90 ? "warning" : undefined,
+          verdict: latest ? `Run ${relativeTime(latest.run_at)}.` : "No analysis has completed.", href: latest ? `/reports?report=${latest.id}` : "/reports" },
+      ]} />
       {q.isLoading ? <TableSkeleton rows={8} label="Loading completed analyses" />
         : q.error ? <Banner tone="danger" title="Analyses could not be read">{apiErrorMessage(q.error)}</Banner>
         : versions.length ? (

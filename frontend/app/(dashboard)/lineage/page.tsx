@@ -2,7 +2,7 @@
 
 import { useMemo, useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { PageHead, KPI } from "@/components/meridian/atoms";
+import { PageHeader, Tally } from "@/components/ui-core";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LineageGraphView } from "@/components/lineage/lineage-graph";
 import {
@@ -17,8 +17,6 @@ import {
 } from "@/lib/api/lineage";
 import { getVersions } from "@/lib/api/versions";
 import type { Version } from "@/types/api";
-
-const ROUTE = "Process & impact · /lineage";
 
 const SEV_TONE: Record<Severity, string> = {
   critical: "var(--mn-neg)",
@@ -229,7 +227,7 @@ export default function LineagePage() {
   if (modelQ.isLoading) {
     return (
       <>
-        <PageHead title="Lineage & Impact" route={ROUTE} sub="Building the lineage graph from the model." />
+        <PageHeader title="Lineage and impact" summary="Building the lineage graph from the model." />
         <Skeleton className="h-[420px] rounded-[10px]" />
       </>
     );
@@ -237,7 +235,7 @@ export default function LineagePage() {
   if (modelQ.error || !modelQ.data) {
     return (
       <>
-        <PageHead title="Lineage & Impact" route={ROUTE} sub="Failed to load." />
+        <PageHeader title="Lineage and impact" summary="Failed to load." />
         <div className="mn-card mn-card-pad" style={{ color: "var(--mn-neg)" }}>
           Could not reach <code>/api/v1/lineage/model</code>.
         </div>
@@ -248,30 +246,21 @@ export default function LineagePage() {
 
   return (
     <>
-      <PageHead
-        title="Lineage & Impact"
-        route={ROUTE}
-        sub={
-          <>
-            SAP field to config, process step, SAP feature and business KPI. Model v{model.model_version},{" "}
-            {model.edge_count.toLocaleString()} edges
-            {latest && (
-              <>
-                {" "}· impact for version{" "}
-                <span style={{ font: "500 12px/1 'JetBrains Mono', monospace", color: "var(--mn-ink-500)" }}>{latest.id.slice(0, 8)}</span>
-              </>
-            )}
-            .
-          </>
-        }
+      <PageHeader
+        title="Lineage and impact"
+        summary={`SAP field to config, process step, SAP feature and business KPI. Model v${model.model_version}, ${model.edge_count.toLocaleString()} edges${latest ? `, impact for version ${latest.id.slice(0, 8)}` : ""}.`}
       />
 
-      <div className="mn-row mn-stagger" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))", marginBottom: 18 }}>
-        <KPI label="KPIs at risk" value={impact ? `${impact.kpis.length}/${model.kpis.length}` : "—"} tone={impact?.kpis.length ? "neg" : undefined} />
-        <KPI label="Processes at risk" value={impact?.processes.length ?? "—"} tone={impact?.processes.length ? "warn" : undefined} />
-        <KPI label="Features at risk" value={impact?.features.length ?? "—"} tone={impact?.features.length ? "warn" : undefined} />
-        <KPI label="Rules not reaching a KPI" value={impact?.unmapped_checks.length ?? "—"} hint="Failing rules with no modelled path to a KPI" />
-      </div>
+      <Tally level={2} label="Lineage impact" figures={[
+        { label: "KPIs at risk", value: impact ? impact.kpis.length : null, loading: impactQ.isLoading, tone: impact?.kpis.length ? "danger" : undefined,
+          verdict: impact ? `Of ${model.kpis.length} modelled.` : "Needs a completed version.", href: "/lineage" },
+        { label: "Processes at risk", value: impact ? impact.processes.length : null, loading: impactQ.isLoading, tone: impact?.processes.length ? "warning" : undefined,
+          verdict: impact?.processes.length ? "Reached by a failing rule." : "None.", href: "/lineage" },
+        { label: "Features at risk", value: impact ? impact.features.length : null, loading: impactQ.isLoading, tone: impact?.features.length ? "warning" : undefined,
+          verdict: impact?.features.length ? "SAP features a failing rule blocks." : "None.", href: "/lineage" },
+        { label: "Rules off the map", value: impact ? impact.unmapped_checks.length : null, loading: impactQ.isLoading,
+          verdict: "Failing rules with no modelled path to a KPI.", href: "/lineage" },
+      ]} />
 
       {impact && (
         <div className="mn-row" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", marginBottom: 18 }}>
@@ -312,7 +301,7 @@ export default function LineagePage() {
             {graphQ.data.paths_to_kpis.length > 0 && (
               <div style={{ marginTop: 12, font: MONO, color: "var(--mn-ink-500)" }}>
                 {graphQ.data.paths_to_kpis.slice(0, 5).map((p) => (
-                  <div key={p.join(">")}>{p.join("  →  ")}</div>
+                  <div key={p.join(">")}>{p.join(", then ")}</div>
                 ))}
               </div>
             )}

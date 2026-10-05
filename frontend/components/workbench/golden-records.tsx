@@ -13,10 +13,11 @@ import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { downloadCsv } from "@/components/meridian/actions";
 import {
-  Banner, Button, Chip, DataTable, EmptyState, FilterBar, Metric, MetricStrip, Mono, PageHeader, StatusBadge, TableSkeleton,
+  Banner, Button, Chip, DataTable, EmptyState, FilterBar, KeyValue, Mono, PageHeader, SectionCard, StatusBadge, TableSkeleton, Tally,
   type AuroraColumnMeta, type Status,
 } from "@/components/ui-core";
 import { useUrlState } from "@/hooks/use-url-state";
+import { getMdmDashboard } from "@/lib/api/mdm-metrics";
 import { getMasterRecords } from "@/lib/api/master-records";
 import { formatModuleName, relativeTime } from "@/lib/format";
 import type { MasterRecordStatus, MasterRecordSummary } from "@/types/api";
@@ -44,6 +45,8 @@ export function GoldenRecordsSurface() {
   const router = useRouter();
   const [domain, setDomain] = useUrlState("domain", "all");
   const q = useQuery({ queryKey: ["master-records.list", { domain }], queryFn: () => getMasterRecords({ per_page: 100, domain: domain === "all" ? undefined : domain }) });
+  const mdm = useQuery({ queryKey: ["mdm-metrics"], queryFn: getMdmDashboard, retry: false, meta: { ignoreError: true } });
+  const health = mdm.data?.latest ?? null;
   const records = useMemo(() => q.data?.records ?? [], [q.data]);
   const total = q.data?.total ?? records.length;
   const domains = useMemo(() => {
@@ -54,7 +57,6 @@ export function GoldenRecordsSurface() {
   const golden = records.filter((r) => r.status === "golden").length;
   const pending = records.filter((r) => r.status === "pending_review").length;
   const issues = records.reduce((a, r) => a + r.pending_issues, 0);
-  const mean = records.length ? Math.round(records.reduce((a, r) => a + r.overall_confidence, 0) / records.length * 100) : null;
 
   const exportCsv = () => downloadCsv("meridian-golden-records.csv", records.map((r) => ({
     id: r.id, domain: r.domain, sap_key: r.sap_object_key, sources: r.source_count, confidence: `${pct(r.overall_confidence)}%`, issues: r.pending_issues, status: r.status, updated_at: r.updated_at,
@@ -72,13 +74,27 @@ export function GoldenRecordsSurface() {
           </>
         }
       />
-      <MetricStrip label="Master records">
-        <Metric label="Master records" value={total.toLocaleString()} />
-        <Metric label="Golden" value={golden} />
-        <Metric label="Pending review" value={pending} tone={pending ? "warning" : "default"} />
-        <Metric label="Open issues" value={issues} tone={issues ? "danger" : "default"} />
-        <Metric label="Mean confidence" value={mean} unit="%" />
-      </MetricStrip>
+      <Tally level={2} label="Master records" figures={[
+        { label: "MDM health", value: health ? Math.round(health.mdm_health_score) : mdm.isError ? "None" : null, unit: health ? "of 100" : undefined, loading: mdm.isLoading,
+          tone: health && health.mdm_health_score < 60 ? "danger" : undefined,
+          verdict: health ? `${Math.round(health.golden_record_coverage_pct)}% coverage, ${health.backlog_count} in the steward backlog.` : "No snapshot yet.", href: "/golden-records#mdm-health" },
+        { label: "Master records", value: q.isLoading ? null : total, loading: q.isLoading, verdict: `${golden} golden.`, href: "/golden-records" },
+        { label: "Pending review", value: q.isLoading ? null : pending, loading: q.isLoading, tone: pending ? "warning" : undefined, verdict: pending ? "Waiting for a steward." : "None.", href: "/golden-records" },
+        { label: "Open issues", value: q.isLoading ? null : issues, loading: q.isLoading, tone: issues ? "danger" : undefined, verdict: issues ? "Failing checks on these records." : "None.", href: "/analyse?tab=records&status=open" },
+      ]} />
+      {health ? (
+        <SectionCard title="MDM health" meta={health.snapshot_date}>
+          <span id="mdm-health" />
+          <KeyValue rows={[
+            { k: "Golden record coverage", v: `${Math.round(health.golden_record_coverage_pct)}%` },
+            { k: "Mean match confidence", v: `${Math.round(health.avg_match_confidence * (health.avg_match_confidence <= 1 ? 100 : 1))}%` },
+            { k: "Steward SLA met", v: `${Math.round(health.steward_sla_compliance_pct)}%` },
+            { k: "Source consistency", v: `${Math.round(health.source_consistency_pct)}%` },
+            { k: "Sync coverage", v: `${Math.round(health.sync_coverage_pct)}%` },
+            ...(health.ai_narrative ? [{ k: "Summary", v: health.ai_narrative }] : []),
+          ]} />
+        </SectionCard>
+      ) : null}
       <FilterBar>
         <Chip selected={domain === "all"} onClick={() => setDomain("all")}>All domains<span className="ui-chip-count">{total}</span></Chip>
         {domains.map(([d, n]) => (
