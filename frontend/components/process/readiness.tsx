@@ -134,8 +134,10 @@ export function ProcessReadiness() {
       };
     }));
 
+  const gates = new Set(blockingFindings.map((b) => b.gate)).size;
+  const failing = blockingFindings.reduce((a, b) => a + (b.affected ?? 0), 0);
   const verdict = blocking
-    ? `${l1.l1_name} is ${pct}% ready; ${blocking} field${blocking === 1 ? "" : "s"} block${blocking === 1 ? "s" : ""} ${new Set(blockingFindings.map((b) => b.gate)).size} gate${new Set(blockingFindings.map((b) => b.gate)).size === 1 ? "" : "s"}.`
+    ? `${l1.l1_name} is ${pct}% ready; ${blocking} field${blocking === 1 ? "" : "s"} block${blocking === 1 ? "s" : ""} ${gates} gate${gates === 1 ? "" : "s"}.`
     : pct >= 90 ? `${l1.l1_name} is ready: ${pct}% of its fields pass.` : `${l1.l1_name} is ${pct}% ready with no blocking fields.`;
 
   return (
@@ -146,24 +148,22 @@ export function ProcessReadiness() {
           <Select aria-label="Process" value={l1.l1_id} options={processes.map((p) => ({ value: p.l1_id, label: p.l1_name }))} onValueChange={setL1} />
         ) : null}
       </FilterBar>
-      {impact.data ? (
-        <Tally level={2} label="Feature readiness" figures={[
-          { label: "Features assessed", value: impact.data.summary.total_features_assessed, href: "/process?tab=readiness", verdict: `${impact.data.summary.features_ok.toLocaleString()} unaffected.` },
-          { label: "Blocked", value: impact.data.summary.features_blocked, href: "/process?tab=readiness", tone: impact.data.summary.features_blocked ? "danger" : undefined,
-            verdict: impact.data.summary.features_blocked ? "Findings stop these features." : "Nothing blocked." },
-          { label: "Degraded", value: impact.data.summary.features_degraded, href: "/process?tab=readiness", tone: impact.data.summary.features_degraded ? "warning" : undefined,
-            verdict: impact.data.summary.features_degraded ? "These run, with weaker data." : "Nothing degraded." },
-          { label: "Records involved", value: impact.data.results.reduce((a, r) => a + r.total_affected_records, 0), href: "/process?tab=readiness", verdict: "Behind the blocked and degraded features." },
-        ]} />
-      ) : null}
+      <Tally level={2} label={`${l1.l1_name} readiness`} figures={[
+        { label: "Ready", value: pct, unit: "%", href: "/process?tab=readiness", tone: blocking ? "danger" : pct >= 90 ? "success" : "warning",
+          verdict: pct >= 90 ? "Share of fields that pass." : "Below the go-live line of 90%." },
+        { label: "Blocking fields", value: blocking, href: "/process?tab=readiness", tone: blocking ? "danger" : undefined,
+          verdict: blocking ? "Fields failing a mandatory check." : "Nothing blocks go-live." },
+        { label: "Gates blocked", value: gates, href: "/process?tab=readiness", tone: gates ? "danger" : undefined,
+          verdict: gates ? "Transactions that cannot run clean." : "Every gate is clear." },
+        { label: "Records failing", value: failing, href: "/process?tab=readiness",
+          verdict: failing ? "Behind the blocking fields." : "No records fail these fields." },
+      ]} />
       <ProcessReport
-        processSlug={l1.l1_id}
         processName={l1.l1_name}
         verdict={verdict}
         support={l1.l1_description}
         readiness={pct}
         readinessSemantic={semantic(pct, blocking)}
-        owner={l1.system}
         lastUpdated={new Date(latest.run_at).toLocaleDateString("en-GB")}
         hierarchy={hierarchy}
         configAlignment={configAlignment}

@@ -484,7 +484,7 @@ function RunResult({ run, targetType, canEdit, canExport }: {
         { label: "Readiness", value: r.readiness_score != null ? Math.round(r.readiness_score * 10) / 10 : null, unit: "%",
           verdict: "Share of records with no blocking gap.", href: MIGRATION_HREF },
         { label: "Critical gaps", value: r.critical_count, tone: r.critical_count ? "danger" : undefined,
-          verdict: r.critical_count ? "These records cannot load." : "None.", href: MIGRATION_HREF },
+          verdict: r.critical_count ? "These records cannot load." : "Nothing blocks the load.", href: MIGRATION_HREF },
       ]} />
       <Tabs<ResultTab>
         ariaLabel="Run result"

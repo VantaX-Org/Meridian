@@ -83,7 +83,7 @@ export function ExecutiveReport() {
             { label: "Composite DQS", value: dqs.toFixed(1), href: "/analyse?tab=findings", tone: dqs < 70 ? "danger" : dqs < 90 ? "warning" : undefined,
               delta: a.previous_dqs != null ? { value: Number((dqs - a.previous_dqs).toFixed(1)), unit: " points", good: "up" } : undefined,
               verdict: dqs >= 90 ? "At or above the go-live line of 90." : "Below the go-live line of 90." },
-            { label: "Failing records", value: a.affected_records, href: "/analyse?tab=findings", verdict: `${a.total.toLocaleString()} findings across ${Object.keys(a.dqs.modules).length} objects.` },
+            { label: "Failing records", value: a.affected_records, href: "/analyse?tab=findings", verdict: `${a.total.toLocaleString()} findings across ${Object.keys(a.dqs.modules).length} object${Object.keys(a.dqs.modules).length === 1 ? "" : "s"}.` },
             { label: "Critical findings", value: a.severity.critical, href: "/analyse?tab=findings&severity=critical", tone: a.severity.critical ? "danger" : undefined,
               verdict: a.severity.critical ? "Each one blocks go-live." : "None block go-live." },
             { label: "Features at risk", value: impact.data ? impact.data.summary.features_blocked + impact.data.summary.features_degraded : null, href: "/analyse?tab=findings",

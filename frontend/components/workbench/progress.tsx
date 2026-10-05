@@ -64,9 +64,9 @@ export function ProgressSurface() {
         actions={<Select aria-label="Weeks shown" options={WEEKS} value={String(weeks)} onValueChange={setWeeks} />}
       />
       <Tally level={2} label="Progress" figures={[
-        { label: "Open", value: loading ? null : openNow, loading, verdict: openNow ? "Issues a run found failing." : "None.", href: "/workbench" },
-        { label: "Opened this week", value: last?.opened ?? null, loading, verdict: last?.opened ? "New since the week began." : "None.", href: last ? `${RECORDS}&week=${last.week}` : RECORDS },
-        { label: "Resolved this week", value: last?.resolved ?? null, loading, tone: last?.resolved ? "success" : undefined, verdict: last?.resolved ? "Closed since the week began." : "None.", href: `${RECORDS}&status=resolved` },
+        { label: "Open", value: loading ? null : openNow, loading, verdict: openNow ? "Issues a run found failing." : "The inbox is clear.", href: "/workbench" },
+        { label: "Opened this week", value: last?.opened ?? null, loading, verdict: last?.opened ? "New since the week began." : "Nothing new this week.", href: last ? `${RECORDS}&week=${last.week}` : RECORDS },
+        { label: "Resolved this week", value: last?.resolved ?? null, loading, tone: last?.resolved ? "success" : undefined, verdict: last?.resolved ? "Closed since the week began." : "Nothing closed this week.", href: `${RECORDS}&status=resolved` },
         { label: "SLA attainment", value: m?.sla_attainment_pct ?? null, unit: "%", loading, verdict: m?.sla_attainment_pct != null ? "Resolved inside their SLA." : "Never.", href: "/workbench?view=breached" },
         { label: "Mean time to resolve", value: m?.mttr_hours != null ? Math.round(m.mttr_hours * 10) / 10 : null, unit: " h", loading, verdict: m?.mttr_hours != null ? "From SLA start to resolved." : "Never.", href: `${RECORDS}&status=resolved` },
       ]} />

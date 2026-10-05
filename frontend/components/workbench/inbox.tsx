@@ -302,11 +302,11 @@ export function StewardInboxSurface() {
   return (
     <Stack gap={5} className="aurora-page">
       <Tally level={2} label="Steward inbox" figures={[
-        { label: "Overdue", value: counts.breached, tone: counts.breached ? "danger" : undefined, loading, verdict: counts.breached ? "Past their due time." : "None.", href: "/workbench?view=breached" },
-        { label: "Due today", value: counts.today, tone: counts.today ? "warning" : undefined, loading, verdict: counts.today ? "Due before midnight." : "None.", href: "/workbench?view=today" },
-        { label: "Unassigned", value: counts.unassigned, loading, verdict: counts.unassigned ? "Nobody owns these yet." : "None.", href: "/workbench?view=unassigned" },
-        { label: "Open", value: all.length, loading, verdict: all.length ? "Tasks waiting on a steward." : "None.", href: "/workbench?view=all" },
-        { label: "Resolved this week", value: weekQ.data?.weekly.at(-1)?.resolved ?? null, loading: weekQ.isLoading, verdict: weekQ.data?.weekly.at(-1)?.resolved ? "Closed in the last seven days." : "None.", href: "/workbench?tab=progress" },
+        { label: "Overdue", value: counts.breached, tone: counts.breached ? "danger" : undefined, loading, verdict: counts.breached ? "Past their due time." : "Nothing past due.", href: "/workbench?view=breached" },
+        { label: "Due today", value: counts.today, tone: counts.today ? "warning" : undefined, loading, verdict: counts.today ? "Due before midnight." : "Nothing due today.", href: "/workbench?view=today" },
+        { label: "Unassigned", value: counts.unassigned, loading, verdict: counts.unassigned ? "Nobody owns these yet." : "Every task has an owner.", href: "/workbench?view=unassigned" },
+        { label: "Open", value: all.length, loading, verdict: all.length ? "Tasks waiting on a steward." : "The inbox is clear.", href: "/workbench?view=all" },
+        { label: "Resolved this week", value: weekQ.data?.weekly.at(-1)?.resolved ?? null, loading: weekQ.isLoading, verdict: weekQ.data?.weekly.at(-1)?.resolved ? "Closed in the last seven days." : "Nothing closed this week.", href: "/workbench?tab=progress" },
       ]} />
 
       <Stack direction="row" gap={2} wrap align="center">

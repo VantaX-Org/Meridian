@@ -90,10 +90,10 @@ export function DedupSurface() {
             Merge {highConfidence.length} pair{highConfidence.length === 1 ? "" : "s"} at {BULK_MIN}% or higher
           </Button>) : null} />
       <Tally level={2} label="Duplicate pairs" figures={[
-        { label: "Pairs to review", value: q.isLoading ? null : all.length, loading: q.isLoading, tone: all.length ? "warning" : undefined, verdict: all.length ? "Waiting for a merge decision." : "None.", href: "/dedup" },
-        { label: `At ${BULK_MIN}% or higher`, value: q.isLoading ? null : high, loading: q.isLoading, verdict: high ? "Safe to merge in bulk after a check." : "None.", href: "/dedup" },
-        { label: "Mean match", value: mean, unit: mean === null ? undefined : "%", loading: q.isLoading, verdict: mean === null ? "None." : "Across the pairs waiting.", href: "/dedup" },
-        { label: "Objects", value: q.isLoading ? null : objectTypes.length, loading: q.isLoading, verdict: objectTypes.length ? "With pairs to review." : "None.", href: "/dedup" },
+        { label: "Pairs to review", value: q.isLoading ? null : all.length, loading: q.isLoading, tone: all.length ? "warning" : undefined, verdict: all.length ? "Waiting for a merge decision." : "No duplicates waiting.", href: "/dedup" },
+        { label: `At ${BULK_MIN}% or higher`, value: q.isLoading ? null : high, loading: q.isLoading, verdict: high ? "Safe to merge in bulk after a check." : "No pairs safe to bulk merge.", href: "/dedup" },
+        { label: "Mean match", value: mean, unit: mean === null ? undefined : "%", loading: q.isLoading, verdict: mean === null ? "No pairs to average." : "Across the pairs waiting.", href: "/dedup" },
+        { label: "Objects", value: q.isLoading ? null : objectTypes.length, loading: q.isLoading, verdict: objectTypes.length ? "With pairs to review." : "No objects have duplicates.", href: "/dedup" },
       ]} />
       {confirming ? (
         <Banner tone="danger" title={`Merge ${highConfidence.length} pair${highConfidence.length === 1 ? "" : "s"} scoring ${BULK_MIN}% or higher?`} action={

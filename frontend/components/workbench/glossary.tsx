@@ -76,9 +76,9 @@ export function GlossarySurface() {
       />
       <Tally level={2} label="Glossary" figures={[
         { label: "Terms", value: q.isLoading ? null : total, loading: q.isLoading, verdict: `Across ${domains.length} domain${domains.length === 1 ? "" : "s"}.`, href: "/glossary" },
-        { label: "Linked to checks", value: q.isLoading ? null : termsLinked, loading: q.isLoading, verdict: termsLinked ? `${linked} rules depend on them.` : "None.", href: "/glossary" },
-        { label: "Under review", value: q.isLoading ? null : review, loading: q.isLoading, tone: review ? "warning" : undefined, verdict: review ? "Waiting for a steward to approve." : "None.", href: "/glossary" },
-        { label: "Approved", value: q.isLoading ? null : active, loading: q.isLoading, verdict: active ? "Definitions in force." : "None.", href: "/glossary" },
+        { label: "Linked to checks", value: q.isLoading ? null : termsLinked, loading: q.isLoading, verdict: termsLinked ? `${linked} rules depend on them.` : "No terms tied to checks yet.", href: "/glossary" },
+        { label: "Under review", value: q.isLoading ? null : review, loading: q.isLoading, tone: review ? "warning" : undefined, verdict: review ? "Waiting for a steward to approve." : "Nothing waiting for approval.", href: "/glossary" },
+        { label: "Approved", value: q.isLoading ? null : active, loading: q.isLoading, verdict: active ? "Definitions in force." : "No definitions approved yet.", href: "/glossary" },
       ]} />
       <FilterBar
         search={{ value: search, onChange: setSearch, placeholder: "Search terms" }}
