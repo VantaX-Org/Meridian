@@ -48,3 +48,12 @@ export type { BannerProps, BannerTone } from "./banner";
 
 export { Panel } from "./panel";
 export type { PanelProps } from "./panel";
+
+export { Dialog } from "./dialog";
+export type { DialogProps } from "./dialog";
+
+export { Menu, MenuItem, MenuLabel, MenuSeparator } from "./menu";
+export type { MenuProps } from "./menu";
+
+export { Tooltip } from "./tooltip";
+export type { TooltipProps } from "./tooltip";

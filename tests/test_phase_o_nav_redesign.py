@@ -12,7 +12,6 @@ import pytest
 
 NAV = Path("frontend/lib/nav.ts")
 LAYOUT = Path("frontend/app/(dashboard)/layout.tsx")
-PALETTE = Path("frontend/components/command-palette.tsx")
 
 NAV_GROUP_ORDER = (
     "Overview",
@@ -45,13 +44,12 @@ def test_sidebar_has_nav_groups():
 
 
 def test_sidebar_and_palette_share_nav():
-    """Sidebar and command palette both render the role/licence-filtered shared nav."""
+    """Sidebar and the Aurora command palette both render the role/licence-filtered shared nav."""
     layout = LAYOUT.read_text(encoding="utf-8")
-    palette = PALETTE.read_text(encoding="utf-8")
     assert "useVisibleNav" in layout
-    assert "useVisibleNav" in palette
+    assert "CommandPalette" in layout and "flattenNav" in layout
     assert "NAV_GROUPS: NavGroup[] = [" not in layout, "layout must not keep its own nav copy"
-    assert "const PAGES" not in palette, "palette must not keep its own nav copy"
+    assert "const PAGES" not in layout, "palette must not keep its own nav copy"
     # Header titles come from the nav labels, not a hand-kept map.
     assert 'from "@/lib/nav"' in layout
     assert "export const PAGE_TITLES" in _nav()
@@ -62,8 +60,7 @@ def test_overview_items():
     block = _group_block(_nav(), "Overview")
     assert 'href: "/", label: "Command Centre"' in block
     assert '"/analytics"' not in block
-    palette = PALETTE.read_text(encoding="utf-8")
-    assert 'label: "Dashboard"' not in palette and 'label: "Dashboard"' not in _nav()
+    assert 'label: "Dashboard"' not in LAYOUT.read_text(encoding="utf-8") and 'label: "Dashboard"' not in _nav()
 
 
 def test_sidebar_systems_and_data_items():

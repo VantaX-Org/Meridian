@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { Dialog } from "@/components/aurora";
+import { Banner, Button } from "@/components/ui-core";
 import { useAuth } from "@/context/auth-context";
 import { useUpdateModal, UPDATE_SNOOZE_KEY } from "@/context/update-modal-context";
 import {
@@ -247,226 +249,80 @@ export function UpdateAvailableModal() {
   if (stage === "closed" || !status) return null;
 
   const isTerminal = phase != null && TERMINAL_PHASES.includes(phase);
+  // Esc and backdrop never drop progress tracking while an update runs or is
+  // being submitted. The update keeps going either way, but the admin would
+  // silently lose sight of it. The explicit Close buttons stay available.
+  const busy = stage === "submitting" || stage === "progress";
+
+  let footer: React.ReactNode = null;
+  if (stage === "announce") {
+    footer = (
+      <>
+        <Button variant="ghost" onClick={handleSnooze}>Remind me later</Button>
+        <Button onClick={() => setRawStage("confirm")}>Update now</Button>
+      </>
+    );
+  } else if (stage === "confirm" || stage === "submitting") {
+    footer = (
+      <>
+        <Button variant="ghost" onClick={() => setRawStage("announce")} disabled={stage === "submitting"}>Don&apos;t update yet</Button>
+        <Button variant="danger" onClick={handleConfirmUpdate} disabled={stage === "submitting"}>
+          {stage === "submitting" ? "Starting…" : "Yes, update now"}
+        </Button>
+      </>
+    );
+  } else if (phase === "reconnect_timeout") {
+    footer = <Button onClick={handleManualRetry}>Check again</Button>;
+  } else if (phase === "failed" || phase === "rolled_back") {
+    footer = <Button variant="ghost" onClick={handleClose}>Close</Button>;
+  }
 
   return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-      style={{ background: "rgba(0, 0, 0, 0.72)", backdropFilter: "blur(6px)" }}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="update-modal-title"
-      onClick={(e) => {
-        // Never let a stray backdrop click drop progress tracking while an
-        // update is actually running (or being submitted) — the backend
-        // update keeps going either way, but the admin would silently lose
-        // visibility into it. The explicit "×"/Close buttons remain
-        // available for an intentional dismissal.
-        if (e.target === e.currentTarget && stage !== "submitting" && stage !== "progress") {
-          handleClose();
-        }
-      }}
+    <Dialog
+      open
+      onClose={handleClose}
+      dismissible={!busy}
+      title={stage === "progress" ? "Updating Meridian" : "A new version of Meridian is available"}
+      footer={footer}
     >
-      <div
-        className="w-full max-w-md rounded-xl p-6 shadow-2xl"
-        style={{
-          background: "var(--aurora-canvas-raised)",
-          border: "1px solid var(--aurora-canvas-line)",
-        }}
-      >
-        <div className="flex items-start justify-between gap-3 mb-2">
-          <h2
-            id="update-modal-title"
-            className="text-xl font-semibold"
-            style={{ color: "var(--aurora-fg-primary)" }}
-          >
-            {stage === "progress"
-              ? "Updating Meridian"
-              : "A new version of Meridian is available"}
-          </h2>
-          {stage !== "submitting" && (
-            <button
-              type="button"
-              onClick={handleClose}
-              aria-label="Close"
-              className="shrink-0 rounded-md px-1.5 py-0.5 text-lg leading-none transition-opacity hover:opacity-70"
-              style={{ color: "var(--aurora-fg-tertiary)" }}
-            >
-              ×
-            </button>
+      {stage === "announce" && (
+        <>
+          <p className="ui-note">
+            <strong>{status.latest_version}</strong> is available. You are running <strong>{status.current_version}</strong>.
+          </p>
+          {status.release_notes && <p className="ui-note ui-update__notes">{status.release_notes}</p>}
+        </>
+      )}
+
+      {(stage === "confirm" || stage === "submitting") && (
+        <>
+          <Banner tone="warning" title="This restarts Meridian for everyone">
+            Everyone currently signed in is disconnected. The update usually takes a few minutes. Make sure nothing else is
+            mid-run (an import, a sync, a report export) before continuing.
+          </Banner>
+          {triggerError && <Banner tone="danger" title="The update did not start">{triggerError}</Banner>}
+        </>
+      )}
+
+      {stage === "progress" && (
+        <>
+          <p className="ui-note ui-update__phase" role="status" data-phase={phase ?? undefined}>
+            {!isTerminal && <span className="ui-update__spin" aria-hidden />}
+            {phase ? progressCopy(phase, progressMessage) : "Starting the update…"}
+          </p>
+          {phase === "rolled_back" && (
+            <Banner tone="warning" title="Rolled back">
+              The update failed and was rolled back automatically. Meridian is back on {status.current_version}.
+              {progressMessage ? ` (${progressMessage})` : ""}
+            </Banner>
           )}
-        </div>
-
-        {stage === "announce" && (
-          <>
-            <p className="text-sm mb-1" style={{ color: "var(--aurora-fg-secondary)" }}>
-              <strong style={{ color: "var(--aurora-fg-primary)" }}>
-                {status.latest_version}
-              </strong>{" "}
-              is available — you&apos;re currently running{" "}
-              <strong style={{ color: "var(--aurora-fg-primary)" }}>
-                {status.current_version}
-              </strong>
-              .
-            </p>
-            {status.release_notes && (
-              <p
-                className="text-sm mb-5 mt-3 rounded-md p-3 whitespace-pre-wrap"
-                style={{
-                  background: "var(--aurora-canvas-elevated)",
-                  border: "1px solid var(--aurora-canvas-line)",
-                  color: "var(--aurora-fg-secondary)",
-                  maxHeight: 180,
-                  overflowY: "auto",
-                }}
-              >
-                {status.release_notes}
-              </p>
-            )}
-            <div className="flex items-center justify-between pt-3">
-              <button
-                type="button"
-                onClick={handleSnooze}
-                className="text-sm underline"
-                style={{ color: "var(--aurora-fg-tertiary)" }}
-              >
-                Remind me later
-              </button>
-              <button
-                type="button"
-                onClick={() => setRawStage("confirm")}
-                className="rounded-md px-5 py-2 text-sm font-medium transition-opacity hover:opacity-90"
-                style={{ background: "var(--aurora-accent-500)", color: "var(--aurora-fg-inverse)" }}
-              >
-                Update now
-              </button>
-            </div>
-          </>
-        )}
-
-        {(stage === "confirm" || stage === "submitting") && (
-          <>
-            <div
-              className="text-sm mb-5 mt-2 rounded-md p-3"
-              style={{
-                background: "var(--aurora-status-warning-bg)",
-                border: "1px solid var(--aurora-status-warning-border)",
-                color: "var(--aurora-fg-primary)",
-              }}
-            >
-              This restarts the entire Meridian stack for everyone currently
-              signed in. The update usually takes a few minutes. Make sure
-              nothing else is mid-run (an import, a sync, a report export)
-              before continuing.
-            </div>
-            {triggerError && (
-              <p className="text-sm mb-3" style={{ color: "var(--aurora-status-danger-500)" }}>
-                {triggerError}
-              </p>
-            )}
-            <div className="flex items-center justify-between pt-1">
-              <button
-                type="button"
-                onClick={() => setRawStage("announce")}
-                disabled={stage === "submitting"}
-                className="text-sm underline disabled:opacity-50"
-                style={{ color: "var(--aurora-fg-tertiary)" }}
-              >
-                Don&apos;t update yet
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmUpdate}
-                disabled={stage === "submitting"}
-                className="rounded-md px-5 py-2 text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-50"
-                style={{ background: "var(--aurora-status-danger-500)", color: "var(--aurora-fg-inverse)" }}
-              >
-                {stage === "submitting" ? "Starting…" : "Yes, update now"}
-              </button>
-            </div>
-          </>
-        )}
-
-        {stage === "progress" && (
-          <>
-            <div className="flex items-center gap-3 mb-4 mt-2">
-              {!isTerminal && (
-                <div
-                  className="h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-t-transparent"
-                  style={{ borderColor: "var(--aurora-accent-500)", borderTopColor: "transparent" }}
-                  aria-hidden
-                />
-              )}
-              <p
-                className="text-sm"
-                style={{
-                  color:
-                    phase === "failed"
-                      ? "var(--aurora-status-danger-500)"
-                      : phase === "rolled_back"
-                        ? "var(--aurora-status-warning-500)"
-                        : "var(--aurora-fg-secondary)",
-                }}
-              >
-                {phase ? progressCopy(phase, progressMessage) : "Starting the update…"}
-              </p>
-            </div>
-
-            {phase === "rolled_back" && (
-              <div
-                className="text-sm mb-4 rounded-md p-3"
-                style={{
-                  background: "var(--aurora-status-warning-bg)",
-                  border: "1px solid var(--aurora-status-warning-border)",
-                  color: "var(--aurora-fg-primary)",
-                }}
-              >
-                Update failed and was automatically rolled back — no action
-                needed. Meridian is back on {status.current_version}.
-                {progressMessage ? ` (${progressMessage})` : ""}
-              </div>
-            )}
-
-            {phase === "failed" && (
-              <div
-                className="text-sm mb-4 rounded-md p-3"
-                style={{
-                  background: "var(--aurora-status-danger-bg)",
-                  border: "1px solid var(--aurora-status-danger-border)",
-                  color: "var(--aurora-fg-primary)",
-                }}
-              >
-                {progressMessage || "The update failed. Check the server logs or contact support."}
-              </div>
-            )}
-
-            {phase === "reconnect_timeout" && (
-              <div className="flex justify-end pt-1">
-                <button
-                  type="button"
-                  onClick={handleManualRetry}
-                  className="rounded-md px-4 py-2 text-sm font-medium transition-opacity hover:opacity-90"
-                  style={{ background: "var(--aurora-accent-500)", color: "var(--aurora-fg-inverse)" }}
-                >
-                  Check again
-                </button>
-              </div>
-            )}
-
-            {(phase === "failed" || phase === "rolled_back") && (
-              <div className="flex justify-end pt-1">
-                <button
-                  type="button"
-                  onClick={handleClose}
-                  className="rounded-md px-4 py-2 text-sm font-medium transition-opacity hover:opacity-90"
-                  style={{ background: "var(--aurora-canvas-elevated)", color: "var(--aurora-fg-primary)" }}
-                >
-                  Close
-                </button>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-    </div>
+          {phase === "failed" && (
+            <Banner tone="danger" title="The update failed">
+              {progressMessage || "Check the server logs or contact support."}
+            </Banner>
+          )}
+        </>
+      )}
+    </Dialog>
   );
 }

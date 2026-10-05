@@ -19,7 +19,7 @@ import {
   Tally, TableSkeleton, type AuroraColumnMeta, type Status,
 } from "@/components/ui-core";
 import { PageCrumb } from "@/components/shell/page-crumb";
-import { copyToClipboard } from "@/components/meridian/actions";
+import { copyToClipboard } from "@/lib/actions";
 import { useRole } from "@/hooks/use-role";
 import { getConfigImpact } from "@/lib/api/connectivity";
 import { getFinding, getFindings, type FindingDetailData } from "@/lib/api/findings";

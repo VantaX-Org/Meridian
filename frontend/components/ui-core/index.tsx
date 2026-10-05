@@ -25,10 +25,38 @@ export {
   Tabs,
   useDrawerParam,
 } from "@/components/aurora";
-export type { AuroraColumnMeta, TabsItem } from "@/components/aurora";
+export type { AuroraColumnMeta, ChipTone, TabsItem } from "@/components/aurora";
 
 function cx(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(" ");
+}
+
+/* ── SegmentedControl ──────────────────────────────────────────────── */
+
+/** A few views of one surface, one active. Arrow keys move the choice. */
+export function SegmentedControl({ value, options, onChange, ariaLabel }: {
+  value: string;
+  options: ReadonlyArray<{ id: string; label: string }>;
+  onChange: (id: string) => void;
+  ariaLabel: string;
+}) {
+  const move = (e: React.KeyboardEvent, i: number) => {
+    const step = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+    if (!step) return;
+    e.preventDefault();
+    const next = options[(i + step + options.length) % options.length];
+    onChange(next.id);
+    (e.currentTarget.parentElement?.querySelector(`[data-id="${next.id}"]`) as HTMLElement | null)?.focus();
+  };
+  return (
+    <div className="ui-segmented" role="radiogroup" aria-label={ariaLabel}>
+      {options.map((o, i) => (
+        <button key={o.id} type="button" role="radio" aria-checked={o.id === value} data-id={o.id}
+          tabIndex={o.id === value ? 0 : -1} className="ui-segmented__option aurora-focus-ring"
+          onClick={() => onChange(o.id)} onKeyDown={(e) => move(e, i)}>{o.label}</button>
+      ))}
+    </div>
+  );
 }
 
 /* ── PageHeader ────────────────────────────────────────────────────── */

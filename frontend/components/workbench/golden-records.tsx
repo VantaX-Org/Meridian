@@ -11,7 +11,7 @@ import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { downloadCsv } from "@/components/meridian/actions";
+import { downloadCsv } from "@/lib/actions";
 import {
   Banner, Button, Chip, DataTable, EmptyState, FilterBar, KeyValue, Mono, PageHeader, SectionCard, StatusBadge, TableSkeleton, Tally,
   type AuroraColumnMeta, type Status,

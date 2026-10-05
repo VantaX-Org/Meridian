@@ -5,19 +5,17 @@
  * workspace underneath. Workspaces live in lib/workspaces.ts, ⌘1–⌘6 to switch,
  * ⌘K for everything else. The nav itself lives in lib/nav.ts and feeds the
  * palette and the titles here, so a page is never named differently in two
- * places. Pages not yet rebuilt on components/ui-core render inside the
- * legacy host.
+ * places.
  */
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useMemo } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import {
-  ClipboardList, Database, LayoutDashboard, Moon, Rows3, ScanSearch, Search, Settings2, Sun, Workflow,
+  Bookmark, ClipboardList, Database, LayoutDashboard, Moon, Rows3, ScanSearch, Search, Settings2, Sun, Workflow,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { AppShell, DepthCrumb, type DepthSegment } from "@/components/aurora";
-import { CommandPalette, useCommandPalette } from "@/components/command-palette";
+import { AppShell, CommandPalette, DepthCrumb, type CommandPaletteCommand, type DepthSegment } from "@/components/aurora";
 import { MeridianMark } from "@/components/meridian/icons";
 import { JobRail } from "@/components/shell/job-rail";
 import { SELF_CRUMB } from "@/components/shell/page-crumb";
@@ -28,8 +26,8 @@ import { useNavGate, useVisibleNav } from "@/hooks/use-nav";
 import { useRole } from "@/hooks/use-role";
 import { useAuroraPrefs } from "@/hooks/use-theme";
 import apiClient from "@/lib/api/client";
-import { getPageTitle } from "@/lib/nav";
-import { AURORA_DETAIL, HUB_ROUTES, locate, visibleWorkspaces, type WorkspaceId } from "@/lib/workspaces";
+import { flattenNav, getPageTitle } from "@/lib/nav";
+import { HUB_ROUTES, locate, visibleWorkspaces, type WorkspaceId } from "@/lib/workspaces";
 import type { HealthResponse } from "@/types/api";
 
 const ICONS: Record<WorkspaceId, React.ReactNode> = {
@@ -64,13 +62,40 @@ function Shell({ children }: { children: React.ReactNode }) {
   const gate = useNavGate();
   const { can } = useRole();
   const { theme, density, setTheme, setDensity } = useAuroraPrefs();
-  const { open: cmdkOpen, setOpen: setCmdkOpen } = useCommandPalette();
-  useVisibleNav(); // nav + palette share lib/nav.ts; titles below come from the same source
+  const [cmdkOpen, setCmdkOpen] = useState(false);
+  const groups = useVisibleNav(); // nav + palette share lib/nav.ts; titles below come from the same source
   useJobStream();
 
   const workspaces = useMemo(() => visibleWorkspaces(gate), [gate]);
-  const isHub = HUB_ROUTES.has(pathname);
-  const isAurora = isHub || AURORA_DETAIL.test(pathname);
+
+  // Palette: workspaces, every visible nav page, and one quick action. Same
+  // role and licence filters as the rail, because it reads the same nav.
+  const commands = useMemo<CommandPaletteCommand[]>(() => {
+    const out: CommandPaletteCommand[] = workspaces.map((w) => ({
+      id: `ws:${w.id}`, label: w.label, group: "Workspaces", hint: w.shortcut, keywords: ["workspace"],
+      onRun: () => router.push(w.href),
+    }));
+    const hrefs = new Set<string>();
+    for (const g of groups) {
+      for (const item of flattenNav(g.items)) {
+        hrefs.add(item.href);
+        out.push({
+          id: `nav:${item.href}`, label: item.label, group: g.group, hint: item.shortcut,
+          keywords: item.keywords ? item.keywords.split(/\s+/) : undefined,
+          icon: <item.icon size={16} aria-hidden />,
+          onRun: () => router.push(item.href),
+        });
+      }
+    }
+    if (hrefs.has("/findings")) {
+      out.push({
+        id: "action:saved-views", label: "Go to Findings with active filters", group: "Quick actions",
+        hint: "Opens the last saved view", icon: <Bookmark size={16} aria-hidden />,
+        onRun: () => router.push("/findings"),
+      });
+    }
+    return out;
+  }, [workspaces, groups, router]);
 
   // ⌘1–⌘6 switch workspace (Alt on Windows/Linux keyboards without a Meta key).
   useEffect(() => {
@@ -135,15 +160,17 @@ function Shell({ children }: { children: React.ReactNode }) {
             {theme === "dark" ? <Sun size={16} aria-hidden /> : <Moon size={16} aria-hidden />}
           </button>
           <UserButton />
-          <CommandPalette open={cmdkOpen} onOpenChange={setCmdkOpen} />
+          <CommandPalette
+            commands={commands}
+            open={cmdkOpen}
+            onOpenChange={setCmdkOpen}
+            placeholder="Jump to a page, for example findings or systems"
+            emptyMessage="No matches."
+          />
         </>
       }
     >
-      {isAurora ? children : (
-        <div className="aurora-hub">
-          <div className="mn-legacy-host">{children}</div>
-        </div>
-      )}
+      {children}
     </AppShell>
   );
 }

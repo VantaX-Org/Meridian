@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Admin → Rules: the check library — shipped YAML rules, HQ rules, rules
+ * Admin, Rules: the check library — shipped YAML rules, HQ rules, rules
  * mined from profiled data and rules a steward wrote — faceted by module,
  * check type, dimension, severity, authority and source, with each rule's
  * last-run pass rate. A tenant can enable or disable a rule here, and a
@@ -15,8 +15,8 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
 import { toast } from "sonner";
 import {
-  Banner, Button, Chip, DataTable, DetailDrawer, EmptyState, Field, FilterBar, Input, KeyValue, Metric, MetricStrip, Mono, PageHeader, Select,
-  StatusBadge, TableSkeleton, Textarea, useDrawerParam, type AuroraColumnMeta,
+  Banner, Button, Chip, DataTable, DetailDrawer, EmptyState, Field, FilterBar, Input, KeyValue, Mono, PageHeader, Select,
+  StatusBadge, TableSkeleton, Tally, Textarea, useDrawerParam, type AuroraColumnMeta,
 } from "@/components/ui-core";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
@@ -24,6 +24,7 @@ import { createCustomRule, dryRunRule, getRules, getRulesSummary, updateRule, ty
 import { getVersions } from "@/lib/api/versions";
 import { checkClassLabel, formatModuleName } from "@/lib/format";
 
+const HREF = "/admin?tab=rules";
 const meta = (m: AuroraColumnMeta) => m;
 const CATEGORIES = [["all", "All"], ["ecc", "ECC"], ["successfactors", "SuccessFactors"], ["warehouse", "Warehouse"]] as const;
 const CATEGORY_LABEL: Record<string, string> = { ecc: "ECC", successfactors: "SuccessFactors", warehouse: "Warehouse" };
@@ -133,14 +134,11 @@ export function RulesSurface() {
       <PageHeader title="Rules"
         summary={`${(totals.yaml + totals.other || rules.length).toLocaleString()} rules in the library; ${totals.enabled.toLocaleString()} enabled.`}
         actions={canManage ? <Button onClick={() => setAuthoring(true)}>New rule</Button> : null} />
-      <MetricStrip label="Rule library">
-        <Metric label="Rules" value={totals.yaml + totals.other || rules.length} />
-        <Metric label="Built-in" value={totals.yaml} />
-        <Metric label="HQ, mined & custom" value={totals.other} />
-        <Metric label="Enabled" value={totals.enabled} />
-        <Metric label="Disabled" value={totals.disabled} tone={totals.disabled ? "warning" : "default"} />
-        <Metric label="Ran at least once" value={rules.filter((r) => r.last_pass_rate != null).length} />
-      </MetricStrip>
+      <Tally level={4} label="Rule library" figures={[
+        { label: "Rules", value: summary.isLoading ? null : totals.yaml + totals.other || rules.length, loading: summary.isLoading, verdict: `${totals.yaml.toLocaleString()} built in, ${totals.other.toLocaleString()} HQ, mined or custom.`, href: HREF },
+        { label: "Enabled", value: summary.isLoading ? null : totals.enabled, loading: summary.isLoading, tone: "success", verdict: "Run on every analysis.", href: HREF },
+        { label: "Disabled", value: summary.isLoading ? null : totals.disabled || "None", loading: summary.isLoading, tone: totals.disabled ? "warning" : undefined, verdict: totals.disabled ? "Skipped by analyses." : "Every rule is active.", href: HREF },
+      ]} />
       <div className="ui-stack" style={{ gap: "var(--aurora-space-2)" }}>
         <FilterBar search={{ value: search, onChange: setSearch, placeholder: "Filter rules" }} onClear={filtered ? clearFilters : undefined}
           actions={<Select aria-label="Object" value={module} options={[{ value: "", label: "All objects" }, ...facets.modules.map((m) => ({ value: m, label: formatModuleName(m) }))]} onValueChange={setModule} />}>
@@ -168,11 +166,11 @@ export function RulesSurface() {
               { k: "Rule ID", v: selected.id, mono: true },
               { k: "Object", v: formatModuleName(selected.module) },
               { k: "System", v: CATEGORY_LABEL[selected.category] ?? selected.category },
-              { k: "Source", v: selected.source === "yaml" ? `built-in${selected.source_yaml ? ` · ${selected.source_yaml}` : ""}` : SOURCE_LABEL[selected.source] ?? selected.source },
+              { k: "Source", v: selected.source === "yaml" ? `built-in${selected.source_yaml ? `, ${selected.source_yaml}` : ""}` : SOURCE_LABEL[selected.source] ?? selected.source },
               { k: "Authority", v: authority(selected) === "shipped" ? "SAP standard (shipped)" : "Customer configured" },
               { k: "State", v: <StatusBadge status={selected.enabled ? "ok" : "idle"}>{selected.enabled ? "enabled" : "disabled"}</StatusBadge> },
               { k: "Updated", v: new Date(selected.updated_at).toLocaleString() },
-              { k: "Last run", v: selected.last_pass_rate != null ? `${pct(selected.last_pass_rate)} pass${selected.last_run_at ? ` · ${new Date(selected.last_run_at).toLocaleString()}` : ""}` : "not run yet" },
+              { k: "Last run", v: selected.last_pass_rate != null ? `${pct(selected.last_pass_rate)} pass${selected.last_run_at ? `, ${new Date(selected.last_run_at).toLocaleString()}` : ""}` : "not run yet" },
               ...(valuesOf(selected, "check_class").length
                 ? [{ k: "Check", v: valuesOf(selected, "check_class").map((c, i) => <span key={c} title={c}>{i ? ", " : ""}{checkClassLabel(c)}</span>) }]
                 : []),
@@ -293,18 +291,18 @@ function AuthorDrawer({ open, onClose, modules }: { open: boolean; onClose: () =
         <Field label="Dry run against" helper={draft.module && versions.data?.length === 0 ? "No analysed version holds this object yet" : undefined}>
           {({ controlId }) => <Select id={controlId} placeholder={draft.module ? "Choose a version" : "Choose an object first"}
             value={draft.version_id ?? ""} disabled={!versions.data?.length}
-            options={(versions.data ?? []).map((v) => ({ value: v.id, label: `${new Date(v.run_at).toLocaleString()}${v.label ? ` · ${v.label}` : ""}` }))}
+            options={(versions.data ?? []).map((v) => ({ value: v.id, label: `${new Date(v.run_at).toLocaleString()}${v.label ? `, ${v.label}` : ""}` }))}
             onValueChange={(v) => setDraft({ version_id: v })} />}
         </Field>
         {error ? <Banner tone="danger" title="Not valid yet">{error}</Banner> : null}
         {result ? (result.error ? <Banner tone="danger" title="The rule errored on this data">{result.error}</Banner> : (
           <section className="ui-detail-part" aria-label="Dry run">
             <h3 className="ui-detail-part__title">Dry run{result.grain ? <span className="ui-chip-count">per {result.grain} record</span> : null}</h3>
-            <MetricStrip label="Dry run result">
-              <Metric label="Checked" value={result.population} />
-              <Metric label="Failing" value={result.failing} tone={result.failing ? "warning" : "default"} />
-              <Metric label="Pass rate" value={pct(result.pass_rate)} />
-            </MetricStrip>
+            <KeyValue rows={[
+              { k: "Checked", v: result.population.toLocaleString() },
+              { k: "Failing", v: result.failing.toLocaleString() },
+              { k: "Pass rate", v: pct(result.pass_rate) },
+            ]} />
             {result.sample_keys.length ? (
               <pre className="ui-code">{result.sample_keys.join("\n")}{result.failing > result.sample_keys.length ? `\n+${(result.failing - result.sample_keys.length).toLocaleString()} more` : ""}</pre>
             ) : null}

@@ -3418,11 +3418,6 @@
   margin: 0 0 6px;
   white-space: nowrap;
 }
-.mn-legacy-host {
-  flex: 1;
-  padding: var(--aurora-space-4) var(--aurora-space-6) var(--aurora-space-6);
-  color: var(--aurora-fg-primary);
-}
 /* Journey sidebar — labelled workspaces in the order a steward works, the
  * open one expanded to its tabs. Collapses to icons under 900 px, where the
  * hub tab bar takes over tab switching. */
@@ -3510,7 +3505,6 @@
 @media (max-width: 720px) {
   .aurora-hub__bar { padding: var(--aurora-space-2) var(--aurora-space-3) 0; gap: var(--aurora-space-3); }
   .aurora-hub__title { display: none; }
-  .mn-legacy-host { margin: var(--aurora-space-3); padding: var(--aurora-space-3); }
 }
 
 /* ------------------------------------------------------------------ *\
@@ -3925,3 +3919,63 @@
   .ui-ladder__row { grid-template-columns: 1fr 3rem; }
   .ui-ladder__track, .ui-ladder__breach { display: none; }
 }
+
+/* ── Dialog, Menu, Tooltip primitives ─────────────────────────────── */
+.aurora-dialog {
+  margin: auto;
+  padding: 0;
+  width: min(32rem, calc(100vw - 2 * var(--aurora-space-4)));
+  max-height: calc(100vh - 2 * var(--aurora-space-4));
+  overflow: auto;
+  color: var(--aurora-fg-primary);
+  background: var(--aurora-elev-3-bg);
+  border: 1px solid var(--aurora-canvas-line-strong);
+  border-radius: var(--aurora-radius-sheet);
+  box-shadow: var(--aurora-elev-3-shadow);
+}
+.aurora-dialog::backdrop { background: color-mix(in srgb, var(--aurora-canvas-rule) 40%, transparent); }
+.aurora-dialog__panel { display: grid; gap: var(--aurora-space-3); padding: var(--aurora-space-5); }
+.aurora-dialog__title { margin: 0; font: inherit; font-size: 1.0625rem; font-weight: 600; }
+.aurora-dialog__desc { margin: 0; color: var(--aurora-fg-tertiary); }
+.aurora-dialog__footer { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--aurora-space-2); }
+
+.aurora-menu {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  padding: var(--aurora-space-1);
+  max-width: calc(100vw - 2 * var(--aurora-space-2));
+  max-height: calc(100vh - 6rem);
+  overflow: auto;
+  color: var(--aurora-fg-primary);
+  background: var(--aurora-elev-2-bg);
+  border: 1px solid var(--aurora-canvas-line-strong);
+  border-radius: var(--aurora-radius-sheet);
+  box-shadow: var(--aurora-elev-2-shadow);
+}
+.aurora-menu:not(:popover-open) { display: none; }
+.aurora-menu__label { padding: var(--aurora-space-2) var(--aurora-space-3); color: var(--aurora-fg-muted); font-size: 0.8125rem; }
+.aurora-menu__sep { margin: var(--aurora-space-1) 0; border: 0; border-top: 1px solid var(--aurora-canvas-line); }
+.aurora-menu__item {
+  display: flex; align-items: center; gap: var(--aurora-space-2);
+  width: 100%; padding: var(--aurora-space-2) var(--aurora-space-3);
+  color: inherit; font: inherit; text-align: left; text-decoration: none;
+  background: transparent; border: 0; border-radius: var(--aurora-radius-control); cursor: pointer;
+}
+.aurora-menu__item:hover:not(:disabled), .aurora-menu__item:focus-visible { background: var(--aurora-canvas-overlay); }
+.aurora-menu__item:focus-visible { outline: var(--aurora-focus-ring-width) solid var(--aurora-focus-ring-colour); outline-offset: -2px; }
+.aurora-menu__item:disabled { color: var(--aurora-fg-disabled); cursor: not-allowed; }
+
+.aurora-tooltip { position: relative; display: inline-flex; }
+.aurora-tooltip::after {
+  content: attr(data-tip);
+  position: absolute; z-index: 10; left: 50%; top: calc(100% + var(--aurora-space-1));
+  transform: translateX(-50%);
+  padding: var(--aurora-space-1) var(--aurora-space-2);
+  white-space: nowrap; pointer-events: none;
+  color: var(--aurora-fg-inverse); background: var(--aurora-canvas-rule);
+  border-radius: var(--aurora-radius-control); font-size: 0.75rem;
+  opacity: 0; transition: opacity var(--aurora-duration-fast) var(--aurora-ease-out);
+}
+.aurora-tooltip:hover::after, .aurora-tooltip:focus-within::after { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .aurora-tooltip::after { transition: none; } }

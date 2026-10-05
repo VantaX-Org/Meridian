@@ -10,13 +10,14 @@ import { Fragment, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  Banner, Button, EmptyState, FilterBar, Input, Metric, MetricStrip, Mono, PageHeader, SectionCard, Select, StatusBadge, TableSkeleton,
+  Banner, Button, EmptyState, FilterBar, Input, Mono, PageHeader, SectionCard, Select, StatusBadge, TableSkeleton, Tally,
 } from "@/components/ui-core";
 import { useRole } from "@/hooks/use-role";
 import { getFieldMappings, resetFieldMappings, updateFieldMapping, type FieldMapping } from "@/lib/api/field-mappings";
 import { apiErrorMessage } from "@/lib/api/optional";
 import { formatModuleName } from "@/lib/format";
 
+const HREF = "/admin?tab=field-mapping";
 type Draft = Pick<FieldMapping, "customer_field" | "customer_label" | "notes">;
 
 function Row({ m, write, onSaved }: { m: FieldMapping; write: boolean; onSaved: () => void }) {
@@ -77,12 +78,10 @@ export function FieldMappingSettings() {
     <div className="ui-page">
       <PageHeader title="Field mapping"
         summary="Imported files are matched on these customer columns. A standard field with no customer column is skipped by every check that needs it." />
-      <MetricStrip label="Mapping coverage">
-        <Metric label="Standard fields" value={shown.length} />
-        <Metric label="Mapped" value={mapped} />
-        <Metric label="Not mapped" value={shown.length - mapped} tone={shown.length - mapped ? "warning" : "default"} />
-        <Metric label="Objects" value={object ? 1 : objects.length} />
-      </MetricStrip>
+      <Tally level={4} label="Mapping coverage" figures={[
+        { label: "Mapped", value: all.isLoading ? null : mapped, loading: all.isLoading, tone: "success", verdict: `Of ${shown.length} standard fields.`, href: HREF },
+        { label: "Unmapped", value: all.isLoading ? null : shown.length - mapped || "None", loading: all.isLoading, tone: shown.length - mapped ? "warning" : undefined, verdict: shown.length - mapped ? "Skipped by checks that need them." : "Every field has a customer column.", href: HREF },
+      ]} />
       <FilterBar search={{ value: search, onChange: setSearch, placeholder: "Search fields" }}
         onClear={object || search ? () => { setObject(""); setSearch(""); } : undefined}
         actions={write ? (confirmReset ? (

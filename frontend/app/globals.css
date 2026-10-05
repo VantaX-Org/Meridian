@@ -7,9 +7,6 @@
 @import "./styles/aurora.css";
 @import "./styles/aurora-components.css";
 
-/* Legacy .mn-* component CSS, mapped onto the tokens. Retired page by page. */
-@import "./styles/meridian.css";
-
 /* Shared page parts (components/ui-core). */
 @import "./styles/ui-core.css";
 
@@ -61,8 +58,7 @@
 }
 
 /* ─── Token bridge ───
- * shadcn semantic tokens and the legacy --mn-* direct tokens, mapped once
- * onto the theme tokens. Theme-agnostic: the values follow data-theme
+ * shadcn semantic tokens, mapped once onto the theme tokens. Theme-agnostic: the values follow data-theme
  * through the --aurora-* variables. */
 :root,
 [data-theme="light"],
@@ -106,25 +102,6 @@
   --sidebar-border: var(--aurora-canvas-line);
   --sidebar-ring: var(--aurora-accent-500);
 
-  --mn-bg-base: var(--aurora-canvas-base);
-  --mn-bg-card: var(--aurora-canvas-raised);
-  --mn-bg-card-hover: var(--aurora-canvas-overlay);
-  --mn-border: var(--aurora-canvas-line);
-  --mn-border-hover: var(--aurora-canvas-line-strong);
-  --mn-green-dark: var(--aurora-accent-600);
-  --mn-green-mid: var(--aurora-accent-500);
-  --mn-green-light: var(--aurora-accent-400);
-  --mn-green-dim: var(--aurora-accent-selected-bg);
-  --mn-blue-bright: var(--aurora-accent-500);
-  --mn-blue-mid: var(--aurora-accent-500);
-  --mn-amber: var(--aurora-status-warning-500);
-  --mn-red: var(--aurora-status-danger-500);
-  --mn-teal: var(--aurora-status-success-500);
-  --mn-text-primary: var(--aurora-fg-primary);
-  --mn-text-secondary: var(--aurora-fg-secondary);
-  --mn-text-tertiary: var(--aurora-fg-tertiary);
-  --mn-sidebar-bg: var(--aurora-canvas-base);
-  --mn-sidebar-text: var(--aurora-fg-secondary);
 }
 
 /* ─── Base ─── */

@@ -15,7 +15,7 @@ import {
   Banner, Button, Chip, DataTable, DetailDrawer, EmptyState, FilterBar, Input, KeyValue, Mono,
   PageHeader, StatusBadge, TableSkeleton, Tally, useDrawerParam, type AuroraColumnMeta, type Status,
 } from "@/components/ui-core";
-import { copyToClipboard } from "@/components/meridian/actions";
+import { copyToClipboard } from "@/lib/actions";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import { createException, escalateException, getExceptionMetrics, getExceptions, resolveException } from "@/lib/api/exceptions";

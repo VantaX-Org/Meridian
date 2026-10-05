@@ -103,8 +103,6 @@ export const WORKSPACES: readonly Workspace[] = [
       { id: "triage", label: "Triage routing", href: "/admin/triage" },
       { id: "exception-rules", label: "Exception rules", href: "/exceptions/rules", anyOf: ["approve", "assign", "manage_rules"] },
       { id: "match-rules", label: "Match rules", href: "/match-rules" },
-      { id: "match-tuning", label: "Match tuning", href: "/match-rules/tuning" },
-      { id: "pair-constraints", label: "Pair constraints", href: "/match-rules/constraints" },
       { id: "field-mapping", label: "Field mapping", href: "/settings/field-mapping" },
       { id: "ai", label: "AI", href: "/settings/ai" },
       { id: "contracts", label: "Data contracts", href: "/contracts" },
@@ -120,9 +118,6 @@ export function tabHref(w: Workspace, t: WorkspaceTab): string {
 }
 
 export const HUB_ROUTES: ReadonlySet<string> = new Set(WORKSPACES.map((w) => w.href).concat("/command-centre"));
-
-/** Record 360 detail routes (the list pages above them are still legacy). */
-export const AURORA_DETAIL = /^\/(golden-records\/[^/]+|workbench\/record\/[^/]+|glossary\/[^/]+|analyse\/(object|finding)\/[^/]+)$/;
 
 /** Where each role lands after sign-in — the workspace built for their job. */
 export const LANDING: Readonly<Record<Role, string>> = {
