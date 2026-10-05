@@ -2,6 +2,7 @@ import io
 import logging
 from typing import Optional
 
+import urllib3
 from minio import Minio
 
 from api.config import settings
@@ -15,6 +16,11 @@ def get_minio_client() -> Minio:
         access_key=settings.minio_access_key,
         secret_key=settings.minio_secret_key,
         secure=False,  # Internal Docker network — no TLS
+        # fail fast instead of hanging a request when storage stalls
+        http_client=urllib3.PoolManager(
+            timeout=urllib3.Timeout(connect=5, read=60),
+            retries=urllib3.Retry(total=2, backoff_factor=0.5),
+        ),
     )
 
 

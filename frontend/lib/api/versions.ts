@@ -13,6 +13,17 @@ export async function getVersions(params?: {
   return data;
 }
 
+/* Hide finished runs from every list, keeping the newest `keepLatest`. Nothing is deleted. */
+export async function archiveVersions(keepLatest = 1): Promise<{ archived: number }> {
+  const { data } = await apiClient.post("/api/v1/versions/archive", null, { params: { keep_latest: keepLatest } });
+  return data;
+}
+
+export async function restoreVersions(): Promise<{ restored: number }> {
+  const { data } = await apiClient.post("/api/v1/versions/restore");
+  return data;
+}
+
 export async function getVersion(id: string): Promise<Version> {
   const { data } = await apiClient.get<Version>(`/api/v1/versions/${id}`);
   return data;

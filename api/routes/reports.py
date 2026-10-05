@@ -76,7 +76,7 @@ async def download_report(
     # Fast path: MinIO already has the PDF produced by the worker
     if report.pdf_path:
         try:
-            pdf_bytes = download_file(settings.minio_bucket_reports, report.pdf_path)
+            pdf_bytes = await asyncio.to_thread(download_file, settings.minio_bucket_reports, report.pdf_path)
         except Exception as e:
             logger.warning(
                 f"PDF missing from MinIO for version {version_id} (pdf_path={report.pdf_path}): {e}. "
