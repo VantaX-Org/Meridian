@@ -1349,6 +1349,30 @@ rules:
         trace the interface or load program that created the header.
     record_fix_template: 'Document {BKPF.BELNR}/{BKPF.GJAHR} (company code {BKPF.BUKRS}): entering user missing.'
 
+  - id: GL069
+    field: BKPF.XBLNR
+    check_class: uniqueness_check
+    fields: [BKPF.BUKRS, BKPF.BLART, BKPF.XBLNR, BKPF.BLDAT]
+    normalize: alnum
+    grain: BKPF
+    applies_when:
+      BKPF.BSTAT: {not_in: [D, M, S, V, W, Z]}
+      BKPF.STBLG: {blank: true}
+    severity: medium
+    dimension: uniqueness
+    message: Possible duplicate posting - same reference, document type and document date
+    why_it_matters: >-
+      Two posted documents in one company code with the same document type, reference and document date
+      usually record the same source document twice. A duplicate overstates expenses or revenue and, for
+      vendor invoices, can lead to a duplicate payment. Reversed documents are out of scope.
+    rule_authority: best_practice
+    sap_impact: Duplicated balances migrate as open items or GL balances; duplicate vendor invoices stay
+      payable after go-live.
+    fix_map:
+      __other__: Compare the documents in FB03 (S/4 F0717); reverse the duplicate with FB08, or put a
+        distinct reference on documents that are genuinely separate.
+    record_fix_template: 'Document {BKPF.BELNR}/{BKPF.GJAHR} (company code {BKPF.BUKRS}): reference {BKPF.XBLNR} dated {BKPF.BLDAT} also appears on another document.'
+
   - id: GL059
     field: BSEG.HKONT
     check_class: cross_field_check
