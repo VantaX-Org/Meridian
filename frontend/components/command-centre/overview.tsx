@@ -413,7 +413,7 @@ export function CommandCentreOverview() {
               <ol className="ui-ranked">
                 {top.data.findings.map((f) => (
                   <li key={f.id}>
-                    <Link href={findingsHref({ check_id: f.check_id, module: f.module, version_id: f.version_id })}>
+                    <Link href={`/analyse/finding/${f.id}?v=${f.version_id}`}>
                       <StatusBadge status={f.severity === "warning" ? "medium" : f.severity} />
                       <span className="ui-ranked__title">{f.details.message ?? f.check_id}</span>
                       <span className="ui-ranked__num aurora-number">{plural(f.affected_count, "record")}</span>

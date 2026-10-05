@@ -53,10 +53,8 @@ export const WORKSPACES: readonly Workspace[] = [
     id: "data", label: "Connect & load", hint: "Bring SAP data in", href: "/data", shortcut: "⌘2",
     tabs: [
       { id: "systems", label: "Systems", href: "/systems" },
-      { id: "connectivity", label: "Connection test", href: "/connectivity", anyOf: ["trigger_sync"] },
       { id: "runs", label: "Extractions", href: "/sync" },
       { id: "import", label: "Import files", href: "/upload" },
-      { id: "run-sync", label: "Re-run modules", href: "/run-sync", anyOf: ["trigger_sync"] },
       { id: "migration", label: "Migration", href: "/migration" },
     ],
   },
@@ -67,6 +65,8 @@ export const WORKSPACES: readonly Workspace[] = [
       { id: "triage", label: "Issues by record", href: "/issues" },
       { id: "analyses", label: "Analysis runs", href: "/versions" },
       { id: "reports", label: "Reports", href: "/reports" },
+      { id: "finding", label: "Finding", href: "/analyse/finding", hidden: true },
+      { id: "object", label: "Object", href: "/analyse/object", hidden: true },
     ],
   },
   {
@@ -125,7 +125,7 @@ export const HUB_ROUTES: ReadonlySet<string> = new Set(WORKSPACES.map((w) => w.h
 export const AURORA_PAGES: readonly string[] = ["/workbench/report"];
 
 /** Record 360 detail routes (the list pages above them are still legacy). */
-export const AURORA_DETAIL = /^\/(golden-records\/[^/]+|glossary\/[^/]+|analyse\/object\/[^/]+)$/;
+export const AURORA_DETAIL = /^\/(golden-records\/[^/]+|glossary\/[^/]+|analyse\/(object|finding)\/[^/]+)$/;
 
 /** Where each role lands after sign-in — the workspace built for their job. */
 export const LANDING: Readonly<Record<Role, string>> = {

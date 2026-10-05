@@ -116,12 +116,14 @@ def test_sidebar_reports_and_admin_items():
 
 
 def test_pages_removed_from_nav_stay_routable():
-    """Off-nav pages keep their routes and still get a header title."""
+    """Off-nav pages keep their routes; live ones get a header title, the rest redirect."""
     content = _nav()
     for href in ("/command-centre", "/connectivity", "/run-sync"):
         assert f'href: "{href}"' not in content, f"{href} should no longer be a nav item"
-        assert f'"{href}":' in content, f"{href} needs a header title"
-        assert Path(f"frontend/app/(dashboard){href}/page.tsx").exists()
+        page = Path(f"frontend/app/(dashboard){href}/page.tsx")
+        assert page.exists()
+        if "redirect(" not in page.read_text():
+            assert f'"{href}":' in content, f"{href} needs a header title"
 
 
 def test_nav_permission_gating():

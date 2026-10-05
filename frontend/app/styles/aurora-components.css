@@ -329,13 +329,6 @@
 
 /* Native <select> arrow — keeps chrome minimal on dark canvas */
 .aurora-select {
-  appearance: none;
-  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
-    linear-gradient(135deg, currentColor 50%, transparent 50%);
-  background-position: calc(100% - 14px) 50%, calc(100% - 10px) 50%;
-  background-size: 4px 4px, 4px 4px;
-  background-repeat: no-repeat;
-  padding-right: 28px;
   color: var(--aurora-fg-primary);
 }
 
@@ -1441,11 +1434,7 @@
   pointer-events: none;
   opacity: 0.65;
   z-index: 0;
-  background: radial-gradient(
-    120% 80% at 0% 0%,
-    var(--aurora-verdict-halo-start, rgba(0, 87, 210, 0.28)) 0%,
-    var(--aurora-verdict-halo-end, rgba(0, 87, 210, 0)) 60%
-  );
+  background: var(--aurora-verdict-halo-start, transparent);
   animation: aurora-verdict-halo-in var(--aurora-duration-slow) var(--aurora-easing-enter);
 }
 .aurora-verdict[data-semantic="success"] {
@@ -3941,7 +3930,7 @@
 }
 @media print {
   .aurora-app-shell__rail, .aurora-app-shell__topbar, .aurora-hub__bar { display: none !important; }
-  .aurora-app-shell { display: block; background: #fff; color: #000; }
+  .aurora-app-shell { display: block; background: Canvas; color: CanvasText; }
 }
 
 .aurora-page {

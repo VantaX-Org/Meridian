@@ -335,3 +335,5 @@ export function DiffView({ diff, label = "Changes" }: { diff: string; label?: st
 export { Tally, TallyFigure } from "./tally";
 export type { TallyProps, TallyFigureProps } from "./tally";
 export { Verdict } from "./verdict";
+export { ScoreRing } from "./score-ring";
+export type { ScoreRingProps } from "./score-ring";
