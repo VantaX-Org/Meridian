@@ -2636,6 +2636,27 @@ rules:
   fix_map:
     __blank__: Set delivery completed in ME22N if nothing more is due. Otherwise remove the final-invoice flag.
   record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: final invoice posted, delivery not completed.'
+- id: PUR146
+  field: EKPO.MATKL
+  check_class: cross_field_check
+  fail_when: '`EKPO.MATKL` != `MARA.MATKL`'
+  require_populated: true
+  applies_when:
+    EKPO.MATNR:
+      populated: true
+    EKPO.ELIKZ:
+      not_in:
+      - X
+  severity: low
+  dimension: consistency
+  message: Open PO item material group differs from the material master
+  why_it_matters: Spend analytics, account determination by material group and release strategies by MATKL read the
+    PO item. A stale group misclassifies spend.
+  rule_authority: best_practice
+  sap_impact: Spend reported in the wrong category, and possibly the wrong release strategy.
+  fix_map:
+    __other__: Confirm which group is right. Correct the material master (MM02) or close or recreate the item.
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: material group {EKPO.MATKL}, material master {MARA.MATKL}.'
 - id: PUR147
   field: EINE.NETPR
   check_class: cross_field_check
