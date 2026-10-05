@@ -140,7 +140,7 @@ export function AnalysesSurface() {
 
       {trend.length >= 2 ? (
         <SectionCard title="Score trend" meta={`Last ${trend.length} analysed runs${object ? `, ${formatModuleName(object)}` : ""}`}>
-          <LineChart data={trend} xKey="run" series={[{ key: "dqs", label: "Score" }]} height={180} ariaLabel="Score trend" yFormatter={(v) => v.toFixed(0)} />
+          <LineChart data={trend} xKey="run" series={[{ key: "dqs", label: "Score" }]} height={180} ariaLabel="Score trend" yFormatter={(v) => v.toFixed(0)} onPointClick={(i) => router.push(`/data/runs/${trend[i].id}?tab=summary`)} />
         </SectionCard>
       ) : null}
 

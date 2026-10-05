@@ -255,7 +255,7 @@ export function StewardInboxSurface() {
     { id: "sla", header: "SLA", meta: meta({ width: 120 }), cell: ({ row }) => { const s = slaOf(row.original, now); return <Chip tone={SLA_TONE[s.state]}>{slaText(s)}</Chip>; } },
     { id: "task", header: "Task", cell: ({ row }) => (
       <span><strong>{typeLabel(row.original.item_type)}</strong> <span className="aurora-number">{row.original.source_id}</span>
-        <Text variant="text-micro" tone="muted" as="div">{row.original.domain} · {row.original.id.slice(0, 8)}{row.original.ai_recommendation ? " · model suggestion" : ""}</Text></span>) },
+        <Text variant="text-micro" tone="muted" as="div">{row.original.domain}, {row.original.id.slice(0, 8)}{row.original.ai_recommendation ? ", model suggestion" : ""}</Text></span>) },
     { id: "priority", header: "Priority", meta: meta({ width: 80 }), cell: ({ row }) => `P${row.original.priority}` },
     { id: "status", header: "Status", meta: meta({ width: 120 }), cell: ({ row }) => <Chip tone={STATUS_TONE[row.original.status]}>{label(row.original.status)}</Chip> },
     { id: "assignee", header: "Assignee", meta: meta({ width: 140 }), cell: ({ row }) => who(row.original.assigned_to) },
@@ -267,7 +267,7 @@ export function StewardInboxSurface() {
     const c: CommandPaletteCommand[] = [];
     const t = target;
     if (t) {
-      const g = `Task · ${typeLabel(t.item_type)} ${t.source_id}`;
+      const g = `Task: ${typeLabel(t.item_type)} ${t.source_id}`;
       if (canApprove) {
         c.push({ id: "t-approve", group: g, label: "Approve", hint: "A", onRun: () => approve.mutate([t.id]) });
         c.push({ id: "t-reject", group: g, label: "Reject with reason", hint: "R", onRun: () => setRejectIds([t.id]) });
@@ -341,7 +341,7 @@ export function StewardInboxSurface() {
       {canSeeTeam ? <TeamPanel items={all} now={now} who={who} metrics={m} /> : null}
 
       <Drawer open={!!detail} onClose={drawer.close} ariaLabel="Task details"
-        header={detail ? <Stack direction="row" gap={2} align="center"><Chip tone={STATUS_TONE[detail.status]}>{label(detail.status)}</Chip><Text variant="text-lead">{typeLabel(detail.item_type)} · {detail.source_id}</Text></Stack> : null}>
+        header={detail ? <Stack direction="row" gap={2} align="center"><Chip tone={STATUS_TONE[detail.status]}>{label(detail.status)}</Chip><Text variant="text-lead">{typeLabel(detail.item_type)}: {detail.source_id}</Text></Stack> : null}>
         {detail ? (
           <TaskDetail task={detail} now={now} who={who} canApprove={canApprove} busy={busy} assignees={assignees} me={user?.id}
             onApprove={() => approve.mutate([detail.id])} onReject={() => setRejectIds([detail.id])} onEscalate={() => escalate.mutate([detail.id])}

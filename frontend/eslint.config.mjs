@@ -2,6 +2,7 @@ import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
 import auroraWriting from "./eslint-rules/aurora-writing.mjs";
+import auroraStructure from "./eslint-rules/aurora-structure.mjs";
 
 const eslintConfig = defineConfig([
   ...nextVitals,
@@ -20,9 +21,20 @@ const eslintConfig = defineConfig([
   {
     plugins: {
       "aurora-writing": auroraWriting,
+      "aurora-structure": auroraStructure,
     },
     rules: {
       "aurora-writing/no-forbidden-copy": "warn",
+      "aurora-writing/no-forbidden-glyphs": "error",
+      "aurora-structure/tally-figure-href": "error",
+      "aurora-structure/one-tally": "error",
+      "aurora-structure/tally-verdict": "error",
+      "aurora-structure/chart-rules": "error",
+      "aurora-structure/severity-via-badge": "error",
+      "aurora-structure/sap-name-in-chip": "warn",
+      "aurora-structure/empty-state-no-media": "error",
+      "aurora-structure/no-invented-progress": "error",
+      "aurora-structure/url-is-state": "warn",
     },
     // Scope: user-facing Aurora code and dashboard pages. Skip type
     // definitions, config, and the design playground (which intentionally

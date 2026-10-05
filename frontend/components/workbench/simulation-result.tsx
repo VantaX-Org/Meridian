@@ -112,15 +112,15 @@ function Result({ r }: { r: SimulationResult }) {
         <Stack gap={1}>
           <Text variant="text-micro" tone="tertiary">DQS</Text>
           <Text variant="display-sm" className="aurora-number">
-            {fmt(o.before)} → {fmt(o.after)}
+            {fmt(o.before)} to {fmt(o.after)}
           </Text>
         </Stack>
         <Delta value={o.delta} />
         {o.capped_before && !o.capped_after ? <Chip tone="success">critical cap lifted</Chip> : null}
         <Text variant="text-small" tone="secondary">
-          {r.fixes.cells_changed} cells changed · {r.findings.resolved} findings resolved ·{" "}
-          {r.findings.introduced} introduced · {r.records.resolved} failing records cleared
-          {r.fixes.unmatched_records ? ` · ${r.fixes.unmatched_records} fixes matched no record` : ""}
+          {r.fixes.cells_changed} cells changed, {r.findings.resolved} findings resolved,{" "}
+          {r.findings.introduced} introduced, {r.records.resolved} failing records cleared
+          {r.fixes.unmatched_records ? `, ${r.fixes.unmatched_records} fixes matched no record` : ""}
         </Text>
       </Stack>
 

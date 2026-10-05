@@ -332,7 +332,8 @@ export function CommandCentreOverview() {
           {!a || a.total === 0 ? <EmptyState>No open findings.</EmptyState> : (
             <>
               <DonutChart height={160} ariaLabel="Share of open findings by severity"
-                data={sev.map((x) => ({ name: x.label, value: a.severity[x.key], color: x.color }))} />
+                data={sev.map((x) => ({ name: x.label, value: a.severity[x.key], color: x.color }))}
+                onSegmentClick={(i) => router.push(findingsHref({ severity: sev[i].key }))} />
               <ul className="mn-legend">
                 {sev.map((x) => (
                   <li key={x.key}>
