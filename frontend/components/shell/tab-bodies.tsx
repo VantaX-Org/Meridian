@@ -17,7 +17,7 @@ const named = <K extends string>(load: () => Promise<Record<K, ComponentType>>, 
 /** Tabs whose body is an Aurora surface — rendered on the canvas, not in the light sheet. */
 export const AURORA_TABS: ReadonlySet<string> = new Set(["/", "/executive-report", "/sync", "/issues", "/match-rules", "/match-rules/tuning", "/match-rules/constraints", "/business-process", "/settings/scoring", "/workbench/triage", "/admin/triage", "/settings/field-mapping", "/exceptions/rules", "/settings/exception-billing",
   "/systems", "/upload", "/versions", "/admin", "/findings", "/cleaning", "/exceptions", "/dedup", "/golden-records", "/glossary", "/reports", "/notifications", "/settings", "/settings/rules", "/settings/ai", "/settings/licence", "/contracts",
-  "/relationships", "/mining", "/ai/rules", "/workbench", "/process", "/config-impact", "/connectivity"]);
+  "/relationships", "/mining", "/ai/rules", "/workbench", "/process", "/config-impact"]);
 
 export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
   "/": named(() => import("@/components/command-centre/overview"), "CommandCentreOverview"),
@@ -31,8 +31,6 @@ export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
   "/sync": named(() => import("@/components/data/runs"), "RunsSurface"),
   "/upload": named(() => import("@/components/data/import"), "ImportSurface"),
   "/versions": named(() => import("@/components/data/analyses"), "AnalysesSurface"),
-  "/connectivity": page(() => import("@/app/(dashboard)/connectivity/page")),
-  "/run-sync": page(() => import("@/app/(dashboard)/run-sync/page")),
   "/migration": page(() => import("@/app/(dashboard)/migration/page")),
 
   "/workbench": named(() => import("@/components/workbench/inbox"), "StewardInboxSurface"),

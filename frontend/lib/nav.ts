@@ -9,7 +9,7 @@
  *
  * Gating (`anyOf`) uses the permission names from api/services/rbac.py; the
  * API enforces the same names, so hiding an item only removes a dead end.
- * Pages left out of the nav (/command-centre, /connectivity, /run-sync,
+ * Pages left out of the nav (/command-centre,
  * /notifications) stay routable and are linked from
  * the pages that own them.
  */
@@ -174,8 +174,6 @@ const OFF_NAV_TITLES: Record<string, string> = {
   "/settings/scoring": "Scoring & alerts",
   "/workbench/report": "Record report",
   "/workbench/triage": "My queue",
-  "/connectivity": "Connectivity",
-  "/run-sync": "Run Sync",
   "/notifications": "Notifications",
 };
 

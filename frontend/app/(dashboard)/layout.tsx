@@ -20,6 +20,7 @@ import { AppShell, DepthCrumb, type DepthSegment } from "@/components/aurora";
 import { CommandPalette, useCommandPalette } from "@/components/command-palette";
 import { MeridianMark } from "@/components/meridian/icons";
 import { JobRail } from "@/components/shell/job-rail";
+import { SELF_CRUMB } from "@/components/shell/page-crumb";
 import { JourneyNav } from "@/components/shell/journey-nav";
 import { AuthGuard, HeaderExportMenu, NotificationBell, UserButton } from "@/components/shell/widgets";
 import { useJobStream } from "@/hooks/use-jobs";
@@ -49,6 +50,7 @@ function Crumb({ pathname }: { pathname: string }) {
   const hubTab = w && HUB_ROUTES.has(pathname)
     ? (w.tabs.find((t) => t.id === tabId) ?? w.tabs.find((t) => !t.hidden))
     : undefined;
+  if (SELF_CRUMB.test(pathname)) return null; // the page draws its own, one level deeper
   const segments: DepthSegment[] = [{ level: "portfolio", label: "Portfolio", href: "/" }];
   if (w) segments.push({ level: "hub", label: w.label, href: w.href });
   if (hubTab) segments.push({ level: "tab", label: hubTab.label });

@@ -1,405 +1,406 @@
 "use client";
 
-import { useState } from "react";
+/**
+ * Connect and load > one system. Five tabs in the URL (?tab=): Overview, Objects,
+ * Runs, Health, Pilot. Actions: Extract, Analyse, Edit (?drawer=edit).
+ */
+
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { ArrowLeft, RefreshCw, ScanSearch } from "lucide-react";
 import {
-  Banner,
-  Button,
-  Chip,
-  Drawer,
-  Input,
-  KpiRail,
-  Pager,
-  Panel,
-  Select,
-  Stack,
-  Stat,
-  Tabs,
-  Text,
-  type ChipTone,
+  Banner, BarChart, Button, ConnectionTestButton, DataTable, Drawer, Field, Input, LineChart, Select, Stack, Tabs, Text,
+  useDrawerParam, type AuroraColumnMeta, type ConnectionTestState,
 } from "@/components/aurora";
-import { PageHead } from "@/components/meridian/atoms";
-import { getSystems, testConnection } from "@/lib/api/connectivity";
-import { ObjectsPanel, SchedulesPanel, TrendsTab, VersionsTab } from "./versions";
-import { ReferencePanel } from "./reference-panel";
-import {
-  discoverSystem,
-  getDesign,
-  getConfigDeviation,
-  getDesignConfig,
-  getDesignCoverage,
-  getDesignDiff,
-  getDesignSnapshots,
-  getDesignTable,
-  getDesignTables,
-} from "@/lib/api/source-design";
-import { relativeTime } from "@/lib/format";
+import { EmptyState, KeyValue, Mono, PageHeader, SectionCard, StatusBadge, TableSkeleton, Tally, type Status } from "@/components/ui-core";
+import { PageCrumb } from "@/components/shell/page-crumb";
+import { HEALTH_LABEL, latestDqs } from "@/components/data/systems";
+import { getSystemModules, getSystems, syncConfig, testConnection } from "@/lib/api/connectivity";
+import { getFindingsAggregate } from "@/lib/api/findings";
+import { discoverSystem, getDesign } from "@/lib/api/source-design";
+import { analyseVersion, getSystemObjects, getSystemVersions, startDownload, type SystemVersion } from "@/lib/api/system-objects";
+import { deleteSystem, updateSystem } from "@/lib/api/systems";
+import { formatModuleName, relativeTime } from "@/lib/format";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
+import type { SystemModule } from "@/types/api";
+import { ConfigTab, CoverageTab, SnapshotsTab, TablesTab } from "./design-panels";
+import { PilotTab } from "./pilot-tab";
+import { ReferencePanel } from "./reference-panel";
+import { SchedulesPanel } from "./schedules-panel";
 
-type Tab = "versions" | "trends" | "tables" | "config" | "coverage" | "snapshots";
-const TABS: readonly Tab[] = ["versions", "trends", "tables", "config", "coverage", "snapshots"];
+type Tab = "overview" | "objects" | "runs" | "health" | "pilot";
+const TABS: readonly Tab[] = ["overview", "objects", "runs", "health", "pilot"];
 const isTab = (v: string): v is Tab => (TABS as readonly string[]).includes(v);
-const PAGE = 100;
+type Part = "tables" | "config" | "coverage" | "snapshots";
+const PARTS: readonly Part[] = ["tables", "config", "coverage", "snapshots"];
+const isPart = (v: string): v is Part => (PARTS as readonly string[]).includes(v);
 
-const STATUS_TONE: Record<string, ChipTone> = {
-  live: "success", complete: "success", synced: "success", healthy: "success",
-  partial: "warning", degraded: "warning", not_found: "neutral", running: "info", queued: "info",
-  failed: "danger", unreachable: "danger",
+const meta = (m: AuroraColumnMeta) => m;
+const when = (iso: string | null | undefined, never = "Never") => (iso ? relativeTime(iso) : never);
+const RUN_STATUS: Record<string, Status> = { complete: "ok", failed: "failed", running: "running", pending: "running", extracted: "idle" };
+const meanDqs = (v: SystemVersion) => {
+  const x = Object.values(v.dqs ?? {}).filter((d): d is number => typeof d === "number");
+  return x.length ? x.reduce((a, b) => a + b, 0) / x.length : null;
 };
+const sumRecords = (v: SystemVersion) => Object.values(v.records ?? {}).reduce((a, b) => a + b, 0);
+const findingsHref = (versionId: string, module?: string) =>
+  `/analyse?${new URLSearchParams({ tab: "findings", version_id: versionId, ...(module ? { module } : {}) })}`;
 
-const tone = (s: string | null | undefined): ChipTone => STATUS_TONE[s ?? ""] ?? "neutral";
-
-const th = "px-3 py-2 text-left font-medium text-[var(--aurora-fg-tertiary)]";
-const td = "px-3 py-1.5 border-t border-[var(--aurora-canvas-line)]";
-
-export default function SystemDesignPage() {
+export default function SystemPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const qc = useQueryClient();
   const { can } = useRole();
-  // The tab lives in the URL (?tab=trends) so Versions and Trends can be linked to.
-  const [tabParam, setTabParam] = useUrlState("tab", "versions");
-  const tab: Tab = isTab(tabParam) ? tabParam : "versions";
-  const setTab = (t: Tab) => setTabParam(t);
+  const [tabParam, setTab] = useUrlState("tab", "overview");
+  const tab: Tab = isTab(tabParam) ? tabParam : "overview";
+  const drawer = useDrawerParam("drawer");
+  const [confirmExtract, setConfirmExtract] = useState(false);
 
-  const { data: systems = [] } = useQuery({ queryKey: ["systems"], queryFn: getSystems });
-  const system = systems.find((s) => s.id === id);
-  const { data: design, error } = useQuery({
-    queryKey: ["design", id],
-    queryFn: () => getDesign(id),
-    refetchInterval: (q) => (["queued", "running"].includes(q.state.data?.discovery_status ?? "") ? 3000 : false),
+  const systemsQ = useQuery({ queryKey: ["systems"], queryFn: getSystems });
+  const system = systemsQ.data?.find((s) => s.id === id);
+  const modulesQ = useQuery({ queryKey: ["system-modules", id], queryFn: () => getSystemModules(id) });
+  const versionsQ = useQuery({
+    queryKey: ["system-versions", id], queryFn: () => getSystemVersions(id),
+    refetchInterval: (q) => (["queued", "running"].includes(q.state.data?.download?.status ?? "") ? 4000 : false),
   });
+  const modules = useMemo(() => modulesQ.data ?? [], [modulesQ.data]);
+  const versions = useMemo(() => [...(versionsQ.data?.versions ?? [])].sort((a, b) => b.run_at.localeCompare(a.run_at)), [versionsQ.data]);
+  const { dqs, version: latest } = latestDqs(versions);
+  const aggQ = useQuery({ queryKey: ["system-agg", id, latest?.id], queryFn: () => getFindingsAggregate(latest?.id), enabled: !!latest });
 
+  const alias = system?.name ?? "System";
+  const loaded = modules.filter((m) => m.enabled && m.row_count > 0).length;
   const refresh = () => {
-    qc.invalidateQueries({ queryKey: ["design", id] });
-    qc.invalidateQueries({ queryKey: ["systems"] });
+    for (const k of ["systems", "system-modules", "system-versions", "design"]) qc.invalidateQueries({ queryKey: [k] });
   };
-  const test = useMutation({
-    mutationFn: () => testConnection(id),
-    onSuccess: (r) => { toast.success(`Connection ${r.status} (${r.latency_ms} ms)`); refresh(); },
-    onError: (e) => toast.error((e as Error).message || "Connection test failed"),
-  });
-  const discover = useMutation({
-    mutationFn: () => discoverSystem(id),
-    onSuccess: () => { toast.success("Discovery started — reading the system's dictionary and configuration"); refresh(); },
-    onError: (e) => toast.error((e as Error).message || "Could not start discovery"),
-  });
-  const snap = design?.snapshot;
-  const running = ["queued", "running"].includes(design?.discovery_status ?? "");
-  const cov = snap?.coverage_summary ?? {};
+  const err = (m: string) => (e: unknown) => toast.error((e as Error).message || m);
 
-  return (
-    <div className="space-y-6">
-      <Link href="/systems" className="inline-flex items-center gap-1 text-[13px] text-[var(--aurora-fg-secondary)] hover:underline">
-        <ArrowLeft size={14} /> Systems
-      </Link>
-      <PageHead
-        title={system?.name ?? "System"}
-        sub={system ? `${system.system_type} · ${system.environment} — what Meridian learned about this system's design: its data dictionary, customer extensions and live configuration, compared with the SAP standard.` : undefined}
-        actions={
-          <Stack direction="row" gap={2}>
-            <Link href={`/systems/${id}/pilot`}>
-              <Button variant="ghost" size="sm">Pilot scorecard</Button>
-            </Link>
-            {can("trigger_sync") && (
-              <>
-                <Button variant="secondary" size="sm" leadingIcon={<RefreshCw size={14} className={test.isPending ? "animate-spin" : ""} />}
-                  disabled={test.isPending} onClick={() => test.mutate()}>
-                  Test connection
-                </Button>
-                <Button size="sm" leadingIcon={<ScanSearch size={14} />} disabled={discover.isPending || running}
-                  onClick={() => discover.mutate()}>
-                  {running ? "Discovering…" : snap ? "Re-discover" : "Discover design"}
-                </Button>
-              </>
-            )}
-          </Stack>
-        }
-      />
+  const extract = useMutation({
+    mutationFn: async () => {
+      const cat = await getSystemObjects(id);
+      return startDownload(id, { objects: cat.objects.map((o) => o.object), scope: {}, analyse: false });
+    },
+    onSuccess: () => { toast.success("Extraction started. A new run appears under Runs."); setConfirmExtract(false); refresh(); },
+    onError: err("Extraction refused"),
+  });
+  const analyse = useMutation({
+    mutationFn: () => analyseVersion((latest ?? versions[0]).id),
+    onSuccess: () => { toast.success("Analysis started"); refresh(); },
+    onError: err("Analysis refused"),
+  });
 
-      {error ? <Banner tone="danger" title="Could not load the system design">{(error as Error).message}</Banner> : null}
-      {design && !snap && !running && (
-        <Banner tone="info" title="Not discovered yet">
-          Discovery reads the system&apos;s own data dictionary (DD02L/DD03L/DD04L/DD01L/DD05S/DD07L, TADIR for customer
-          tables) and check-table configuration, so every later check uses this system&apos;s real field definitions and
-          configured values instead of assumptions.
+  const crumb = (
+    <PageCrumb segments={[
+      { level: "portfolio", label: "Portfolio", href: "/" },
+      { level: "hub", label: "Connect & load", href: "/data" },
+      { level: "page", label: alias },
+    ]} />
+  );
+
+  if (systemsQ.isLoading) return <div className="ui-page">{crumb}<TableSkeleton rows={6} label="Loading the system" /></div>;
+  if (systemsQ.error || !system) {
+    return (
+      <div className="ui-page">{crumb}
+        <Banner tone="danger" title={systemsQ.error ? "The system could not be read" : "No such system"}
+          action={<Button size="sm" variant="secondary" onClick={() => systemsQ.refetch()}>Retry</Button>}>
+          {systemsQ.error ? (systemsQ.error as Error).message : <>It may have been removed. <Link href="/systems" className="ui-link">Open Systems</Link></>}
         </Banner>
-      )}
-      {snap?.error && <Banner tone="warning" title={`Discovery ${snap.status}`}>{snap.error}</Banner>}
+      </div>
+    );
+  }
 
-      <KpiRail>
-        <Stat label="Release" value={design?.sap_release ?? "—"} unit={design?.sap_product ?? undefined} />
-        <Stat label="Tables read" value={snap?.tables?.toLocaleString() ?? "—"}
-          tone={cov.failed ? "warning" : "neutral"} />
-        <Stat label="Customer tables" value={snap?.customer_tables?.toLocaleString() ?? "—"} />
-        <Stat label="Customer fields (ZZ/YY)" value={snap?.customer_fields?.toLocaleString() ?? "—"} />
-        <Stat label="Config tables" value={design?.configuration.length.toLocaleString() ?? "—"}
-          tone={design?.config_sync_status === "partial" ? "warning" : "neutral"} />
-      </KpiRail>
-      {design && (
-        <Stack direction="row" gap={2} wrap>
-          <Chip tone={tone(design.discovery_status)}>discovery {design.discovery_status ?? "never"}</Chip>
-          {design.discovered_at && <Chip>{relativeTime(design.discovered_at)}</Chip>}
-          {Object.entries(cov).map(([s, n]) => <Chip key={s} tone={tone(s)}>{n} {s}</Chip>)}
-        </Stack>
-      )}
+  const here = `/systems/${id}`;
+  return (
+    <div className="ui-page">
+      {crumb}
+      <PageHeader title={alias}
+        summary={`${system.system_type}, ${system.environment}. ${system.last_sync_at ? `Last extraction ${relativeTime(system.last_sync_at)}.` : "Nothing extracted yet."}`}
+        actions={<>
+          {can("trigger_sync") ? <Button variant="secondary" onClick={() => setConfirmExtract(true)} disabled={extract.isPending}>Extract</Button> : null}
+          {can("analyse") ? <Button variant="secondary" onClick={() => analyse.mutate()} disabled={analyse.isPending || !(latest ?? versions[0])}>Analyse</Button> : null}
+          {can("manage_systems") ? <Button onClick={() => drawer.open("edit")}>Edit</Button> : null}
+        </>} />
 
-      {can("trigger_sync") && <ObjectsPanel id={id} onDownloaded={() => setTab("versions")} />}
-      <SchedulesPanel id={id} canManage={can("manage_systems")} />
-      {can("manage_systems") && <ReferencePanel id={id} />}
+      {confirmExtract ? (
+        <Banner tone="warning" title={`Extract every object from ${alias}?`} action={
+          <Stack direction="row" gap={2}>
+            <Button size="sm" onClick={() => extract.mutate()} disabled={extract.isPending}>Extract</Button>
+            <Button size="sm" variant="ghost" onClick={() => setConfirmExtract(false)}>Cancel</Button>
+          </Stack>}>
+          This reads every object this system offers into a new run. Pick single objects on the Objects tab to read less.
+        </Banner>
+      ) : null}
+      {versionsQ.data?.download?.status === "running" || versionsQ.data?.download?.status === "queued" ? (
+        <Banner tone="info" title="Extraction in progress">
+          {versionsQ.data.download.table ? <>Reading <Mono>{versionsQ.data.download.table}</Mono>. </> : null}
+          {versionsQ.data.download.percent != null ? `${versionsQ.data.download.percent} of 100 percent done.` : null}
+        </Banner>
+      ) : null}
 
-      <Panel>
-        <Tabs<Tab> ariaLabel="System" value={tab} onValueChange={setTab}
-          items={[
-            { id: "versions", label: "Versions" },
-            { id: "trends", label: "Trends" },
-            { id: "tables", label: "Data dictionary", count: snap?.tables, disabled: !snap },
-            { id: "config", label: "Configuration", count: design?.configuration.length, disabled: !snap },
-            { id: "coverage", label: "Coverage", disabled: !snap },
-            { id: "snapshots", label: "History", disabled: !snap },
-          ]} />
-        <div className="mt-[var(--aurora-space-4)]">
-          {tab === "versions" && <VersionsTab id={id} canAnalyse={can("analyse")} />}
-          {tab === "trends" && <TrendsTab id={id} />}
-          {tab === "tables" && snap && <TablesTab id={id} />}
-          {tab === "config" && snap && design && <ConfigTab id={id} tables={design.configuration} />}
-          {tab === "coverage" && snap && <CoverageTab id={id} />}
-          {tab === "snapshots" && snap && <SnapshotsTab id={id} />}
-        </div>
-      </Panel>
+      <Tally level={2} label={`${alias} at a glance`} figures={[
+        { label: "Health", value: HEALTH_LABEL[system.health_status], href: `${here}?tab=health`,
+          tone: system.health_status === "healthy" ? "success" : system.health_status === "unknown" ? undefined : "danger",
+          verdict: system.last_health_check ? `Last checked ${relativeTime(system.last_health_check)}.` : "The connection has not been tested." },
+        modules.length && loaded
+          ? { label: "Objects", value: loaded, unit: `of ${modules.length}`, href: `${here}?tab=objects`, loading: modulesQ.isLoading, verdict: `${loaded} of ${modules.length} objects have rows.` }
+          : { label: "Objects", value: "Never extracted", href: `${here}?tab=objects`, loading: modulesQ.isLoading, verdict: "No object has rows yet." },
+        { label: "Latest DQS", value: dqs === null ? null : Number(dqs.toFixed(1)), href: latest ? findingsHref(latest.id) : `${here}?tab=runs`,
+          loading: versionsQ.isLoading, verdict: latest ? `Mean over ${Object.values(latest.dqs).filter((d) => d !== null).length} objects, ${relativeTime(latest.analysed_at ?? latest.run_at)}.` : "Not analysed yet." },
+        { label: "Open findings", value: latest ? aggQ.data?.total ?? null : null, href: latest ? findingsHref(latest.id) : `${here}?tab=runs`,
+          loading: !!latest && aggQ.isLoading, tone: aggQ.data?.severity.critical ? "danger" : undefined,
+          verdict: aggQ.data ? `${aggQ.data.severity.critical} critical and ${aggQ.data.severity.high} high.` : "Findings appear after an analysis." },
+      ]} />
+
+      <Tabs<Tab> ariaLabel="System" value={tab} onValueChange={setTab}
+        items={[{ id: "overview", label: "Overview" }, { id: "objects", label: "Objects", count: modules.length || undefined },
+          { id: "runs", label: "Runs", count: versions.length || undefined }, { id: "health", label: "Health" }, { id: "pilot", label: "Pilot" }]} />
+
+      {tab === "overview" ? <Overview id={id} modules={modules} versions={versions} onRun={(v) => router.push(`${here}/versions/${v}/profile`)} /> : null}
+      {tab === "objects" ? <Objects id={id} modules={modules} versions={versions} canSync={can("trigger_sync")} canAnalyse={can("analyse")} onChanged={refresh} /> : null}
+      {tab === "runs" ? <Runs id={id} versions={versions} loading={versionsQ.isLoading} /> : null}
+      {tab === "health" ? <Health id={id} modules={modules} canSync={can("trigger_sync")} canManage={can("manage_systems")} onChanged={refresh} /> : null}
+      {tab === "pilot" ? <PilotTab id={id} /> : null}
+
+      <Drawer open={drawer.value === "edit"} onClose={drawer.close} ariaLabel="Edit system" header={<Text variant="text-lead">Edit {alias}</Text>}>
+        {drawer.value === "edit" ? <EditForm key={system.id} system={system} onDone={() => { drawer.close(); refresh(); }} onDeleted={() => { drawer.close(); refresh(); router.push("/systems"); }} /> : null}
+      </Drawer>
     </div>
   );
 }
 
-function TablesTab({ id }: { id: string }) {
-  const [search, setSearch] = useState("");
-  const [customerOnly, setCustomerOnly] = useState(false);
-  const [offset, setOffset] = useState(0);
-  const [open, setOpen] = useState<string | null>(null);
-  const { data } = useQuery({
-    queryKey: ["design-tables", id, search, customerOnly, offset],
-    queryFn: () => getDesignTables(id, { search: search || undefined, customer_only: customerOnly, limit: PAGE, offset }),
-  });
-  const total = data?.total ?? 0;
-  return (
-    <Stack gap={3}>
-      <Stack direction="row" gap={2} align="center">
-        <Input placeholder="Search table or description (Enter)" aria-label="Search tables"
-          onKeyDown={(e) => { if (e.key === "Enter") { setSearch(e.currentTarget.value); setOffset(0); } }} />
-        <Chip selected={customerOnly} onClick={() => { setCustomerOnly(!customerOnly); setOffset(0); }}>
-          Customer extensions only
-        </Chip>
-      </Stack>
-      <table className="w-full text-[13px]">
-        <thead><tr>
-          <th className={th}>Table</th><th className={th}>Description</th><th className={th}>Delivery class</th>
-          <th className={`${th} text-right`}>Fields</th><th className={`${th} text-right`}>Customer fields</th>
-        </tr></thead>
-        <tbody>
-          {(data?.items ?? []).map((t) => (
-            <tr key={t.table} className="cursor-pointer hover:bg-[var(--aurora-elev-2-bg)]" onClick={() => setOpen(t.table)}>
-              <td className={`${td} font-mono`}>
-                {t.table} {t.customer_table && <Chip tone="info">customer</Chip>}
-              </td>
-              <td className={td}>{t.description ?? "—"}</td>
-              <td className={td}>{t.delivery_class ?? "—"}</td>
-              <td className={`${td} text-right aurora-number`}>{t.field_count}</td>
-              <td className={`${td} text-right aurora-number`}>{t.customer_fields || ""}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <Pager offset={offset} total={total} pageSize={PAGE} onChange={setOffset} noun="tables" />
-      <TableDrawer id={id} table={open} onClose={() => setOpen(null)} />
-    </Stack>
-  );
-}
+/* ── Overview ──────────────────────────────────────────────────────────── */
 
-function TableDrawer({ id, table, onClose }: { id: string; table: string | null; onClose: () => void }) {
-  const { data, error } = useQuery({
-    queryKey: ["design-table", id, table],
-    queryFn: () => getDesignTable(id, table as string),
-    enabled: Boolean(table),
-  });
-  const deviations = data?.fields.filter((f) => f.deviation).length ?? 0;
+function Overview({ id, modules, versions, onRun }: { id: string; modules: SystemModule[]; versions: SystemVersion[]; onRun: (versionId: string) => void }) {
+  const router = useRouter();
+  const scored = versions.filter((v) => meanDqs(v) !== null).slice(0, 12).reverse();
+  const byRows = [...modules].filter((m) => m.row_count > 0).sort((a, b) => b.row_count - a.row_count).slice(0, 12);
+  const runCols = useMemo(() => runColumns(id), [id]);
   return (
-    <Drawer open={Boolean(table)} onClose={onClose} ariaLabel={`Table ${table ?? ""}`}
-      header={<Stack gap={1}>
-        <Text variant="display-sm" className="font-mono">{table}</Text>
-        {data && <Text variant="text-small" tone="secondary">{data.description}</Text>}
-      </Stack>}>
-      {error ? <Banner tone="danger">{(error as Error).message}</Banner> : !data ? <Text tone="muted">Reading the table definition…</Text> : (
-        <Stack gap={3}>
-          <Stack direction="row" gap={2} wrap>
-            <Chip tone={data.in_sap_standard ? "neutral" : "info"}>{data.in_sap_standard ? "SAP standard table" : "not in SAP standard"}</Chip>
-            <Chip tone={deviations ? "warning" : "success"}>{deviations} field deviation{deviations === 1 ? "" : "s"} from standard</Chip>
-            {data.standard_fields_missing.length > 0 && (
-              <Chip tone="warning">{data.standard_fields_missing.length} standard fields absent</Chip>
-            )}
-          </Stack>
-          <table className="w-full text-[13px]">
-            <thead><tr>
-              <th className={th}>Field</th><th className={th}>This system</th><th className={th}>SAP standard</th>
-              <th className={th}>Check table</th><th className={th}>Deviation</th>
-            </tr></thead>
-            <tbody>
-              {data.fields.map((f) => (
-                <tr key={f.name}>
-                  <td className={`${td} font-mono`}>{f.key ? <strong>{f.name}</strong> : f.name}
-                    <div className="text-[11px] text-[var(--aurora-fg-muted)]">{f.description}</div></td>
-                  <td className={`${td} font-mono`}>{f.type}({f.length}{f.decimals ? `,${f.decimals}` : ""}) {f.domain ?? ""}</td>
-                  <td className={`${td} font-mono`}>{f.standard ? `${f.standard.type}(${f.standard.length}) ${f.standard.domain ?? ""}` : "—"}</td>
-                  <td className={`${td} font-mono`}>{f.check_table ?? ""}</td>
-                  <td className={td}>{f.deviation && <Chip tone={f.deviation === "customer_field" ? "info" : "warning"}>{f.deviation}</Chip>}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {data.standard_fields_missing.length > 0 && (
-            <Text variant="text-small" tone="secondary">
-              In SAP standard but not in this system: <span className="font-mono">{data.standard_fields_missing.join(", ")}</span>
-            </Text>
+    <div className="ui-stack">
+      <div className="mn-charts">
+        <SectionCard title="Score per run" meta={scored.length ? `${scored.length} runs` : undefined}>
+          {scored.length < 2 ? <EmptyState>Two analysed runs are needed to draw a trend.</EmptyState> : (
+            <LineChart data={scored.map((v) => ({ run: new Date(v.run_at).toLocaleDateString(), dqs: Number((meanDqs(v) ?? 0).toFixed(1)) }))}
+              xKey="run" series={[{ key: "dqs", label: "DQS" }]} height={240} ariaLabel="Score per run"
+              onPointClick={(i) => router.push(findingsHref(scored[i].id))} />
           )}
+        </SectionCard>
+        <SectionCard title="Objects by rows" meta={byRows.length ? `${byRows.length} objects` : undefined}>
+          {!byRows.length ? <EmptyState>No object has rows yet.</EmptyState> : (
+            <BarChart data={byRows.map((m) => ({ object: formatModuleName(m.module), rows: m.row_count }))}
+              xKey="object" series={[{ key: "rows", label: "Rows" }]} height={240} ariaLabel="Objects by rows"
+              onBarClick={(i) => router.push(`/analyse/object/${byRows[i].module}`)} />
+          )}
+        </SectionCard>
+      </div>
+      <SectionCard title="Last 5 runs" action={<Link href={`/systems/${id}?tab=runs`} className="ui-link">All runs</Link>} flush>
+        {versions.length ? <DataTable columns={runCols} data={versions.slice(0, 5)} getRowId={(v) => v.id} onRowActivate={(v) => onRun(v.id)} ariaLabel="Last five runs" />
+          : <EmptyState>Nothing has been extracted from this system yet.</EmptyState>}
+      </SectionCard>
+    </div>
+  );
+}
+
+function runColumns(systemId: string): ColumnDef<SystemVersion, unknown>[] {
+  return [
+    { id: "run", header: "Run", meta: meta({ sticky: "start", width: 220 }), cell: ({ row }) => (
+      <Link href={`/systems/${systemId}/versions/${row.original.id}/profile`} className="ui-link">
+        {row.original.label ?? new Date(row.original.run_at).toLocaleString()}
+      </Link>) },
+    { id: "status", header: "Status", meta: meta({ width: 120 }),
+      cell: ({ row }) => <StatusBadge status={RUN_STATUS[row.original.status] ?? "idle"}>{row.original.status}</StatusBadge> },
+    { id: "objects", header: "Objects", meta: meta({ numeric: true, width: 90 }), cell: ({ row }) => row.original.objects.length },
+    { id: "rows", header: "Rows", meta: meta({ numeric: true, width: 110 }), cell: ({ row }) => sumRecords(row.original).toLocaleString() },
+    { id: "analysed", header: "Analysed", meta: meta({ width: 130 }), cell: ({ row }) => when(row.original.analysed_at) },
+    { id: "dqs", header: "DQS", meta: meta({ numeric: true, width: 80 }), cell: ({ row }) => {
+      const d = meanDqs(row.original);
+      return d === null ? "—" : <Link href={findingsHref(row.original.id)} className="ui-link">{d.toFixed(1)}</Link>;
+    } },
+  ];
+}
+
+/* ── Objects ───────────────────────────────────────────────────────────── */
+
+function Objects({ id, modules, versions, canSync, canAnalyse, onChanged }: {
+  id: string; modules: SystemModule[]; versions: SystemVersion[]; canSync: boolean; canAnalyse: boolean; onChanged: () => void;
+}) {
+  const router = useRouter();
+  const latest = latestDqs(versions).version;
+  const again = useMutation({
+    mutationFn: (module: string) => startDownload(id, { objects: [module], scope: {}, analyse: false }),
+    onSuccess: () => { toast.success("Extraction started"); onChanged(); },
+    onError: (e) => toast.error((e as Error).message || "Extraction refused"),
+  });
+  const run = useMutation({
+    mutationFn: (versionId: string) => analyseVersion(versionId),
+    onSuccess: () => { toast.success("Analysis started"); onChanged(); },
+    onError: (e) => toast.error((e as Error).message || "Analysis refused"),
+  });
+  const columns = useMemo<ColumnDef<SystemModule, unknown>[]>(() => [
+    { id: "module", header: "Object", meta: meta({ sticky: "start", width: 220 }),
+      cell: ({ row }) => <Link href={`/analyse/object/${row.original.module}`} className="ui-link">{formatModuleName(row.original.module)}</Link> },
+    { id: "enabled", header: "Enabled", meta: meta({ width: 90 }), cell: ({ row }) => (row.original.enabled ? "Yes" : "No") },
+    { id: "rows", header: "Rows", meta: meta({ numeric: true, width: 110 }), cell: ({ row }) => row.original.row_count.toLocaleString() },
+    { id: "synced", header: "Last synced", meta: meta({ width: 130 }), cell: ({ row }) => when(row.original.last_synced_at) },
+    { id: "config", header: "Config synced", meta: meta({ width: 120 }), cell: ({ row }) => (row.original.config_synced ? "Yes" : "No") },
+    { id: "dqs", header: "DQS", meta: meta({ numeric: true, width: 80 }), cell: ({ row }) => {
+      const d = latest?.dqs?.[row.original.module];
+      return typeof d === "number" ? d.toFixed(1) : "—";
+    } },
+    { id: "actions", header: "", meta: meta({ width: 230, align: "end" }), cell: ({ row }) => {
+      const m = row.original.module;
+      const version = versions.find((v) => v.analysable && v.objects.includes(m));
+      return (
+        <Stack direction="row" gap={2}>
+          {canSync ? <Button size="sm" variant="secondary" disabled={again.isPending || !row.original.enabled}
+            onClick={(e) => { e.stopPropagation(); again.mutate(m); }}>Extract again</Button> : null}
+          {canAnalyse ? <Button size="sm" variant="ghost" disabled={run.isPending || !version}
+            onClick={(e) => { e.stopPropagation(); if (version) run.mutate(version.id); }}>Analyse</Button> : null}
         </Stack>
-      )}
-    </Drawer>
-  );
+      );
+    } },
+  ], [again, run, canSync, canAnalyse, latest, versions]);
+  if (!modules.length) return <EmptyState>This system offers no objects yet.</EmptyState>;
+  return <DataTable columns={columns} data={modules} getRowId={(m) => m.module} onRowActivate={(m) => router.push(`/analyse/object/${m.module}`)} ariaLabel="Objects of this system" maxHeight="65vh" />;
 }
 
-function ConfigTab({ id, tables }: { id: string; tables: { table: string; scope: string; rows: number; source: string; synced_at: string | null }[] }) {
-  const [open, setOpen] = useState(tables[0]?.table ?? "");
-  const { data } = useQuery({ queryKey: ["design-config", id, open], queryFn: () => getDesignConfig(id, open), enabled: Boolean(open) });
-  const cols = data?.rows[0] ? Object.keys(data.rows[0]) : [];
-  if (!tables.length) return <Text tone="muted">No configuration read yet.</Text>;
-  return (
-    <Stack gap={3}>
-      <DeviationPanel id={id} />
-      <Select value={open} aria-label="Configuration table" onValueChange={setOpen}
-        options={tables.map((t) => ({ value: t.table, label: `${t.table} · ${t.rows} rows · ${t.source}` }))} />
-      {data && (
-        <>
-          <Text variant="text-small" tone="secondary">
-            {data.total} value{data.total === 1 ? "" : "s"} read {data.source === "live" ? "live from the system" : `(${data.source})`}
-            {data.synced_at ? `, ${relativeTime(data.synced_at)}` : ""}. Checks validate against these values, so customer-configured codes count as valid.
-          </Text>
-          <div className="max-h-[480px] overflow-auto">
-            <table className="w-full text-[13px]">
-              <thead className="sticky top-0 bg-[var(--aurora-elev-1-bg)]"><tr>{cols.map((c) => <th key={c} className={th}>{c}</th>)}</tr></thead>
-              <tbody>
-                {data.rows.map((r, i) => (
-                  <tr key={i}>{cols.map((c) => <td key={c} className={`${td} font-mono`}>{String(r[c] ?? "")}</td>)}</tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
-    </Stack>
-  );
+/* ── Runs ──────────────────────────────────────────────────────────────── */
+
+function Runs({ id, versions, loading }: { id: string; versions: SystemVersion[]; loading: boolean }) {
+  const router = useRouter();
+  const columns = useMemo(() => runColumns(id), [id]);
+  if (loading) return <TableSkeleton rows={6} label="Loading runs" />;
+  if (!versions.length) return <EmptyState>Nothing has been extracted from this system yet.</EmptyState>;
+  return <DataTable columns={columns} data={versions} getRowId={(v) => v.id}
+    onRowActivate={(v) => router.push(`/systems/${id}/versions/${v.id}/profile`)} ariaLabel="Runs of this system" maxHeight="65vh" />;
 }
 
-/** Live check-table values against the SAP-standard lists the rules fall back to. */
-function DeviationPanel({ id }: { id: string }) {
-  const { data } = useQuery({ queryKey: ["design-config-deviation", id], queryFn: () => getConfigDeviation(id) });
-  if (!data?.tables.length) return null;
-  const list = (vals: string[]) => (vals.length ? vals.slice(0, 12).join(", ") + (vals.length > 12 ? ` +${vals.length - 12}` : "") : "—");
-  return (
-    <Panel title="Deviation from SAP standard">
-      <table className="w-full text-[13px]">
-        <thead><tr><th className={th}>Check table</th><th className={th}>Custom (not in SAP standard)</th><th className={th}>SAP standard, not configured</th></tr></thead>
-        <tbody>
-          {data.tables.map((t) => (
-            <tr key={t.reference}>
-              <td className={`${td} font-mono`}>{t.reference}</td>
-              <td className={`${td} font-mono`}>{list(t.custom)}</td>
-              <td className={`${td} font-mono`}>{list(t.missing)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </Panel>
-  );
-}
+/* ── Health ────────────────────────────────────────────────────────────── */
 
-function CoverageTab({ id }: { id: string }) {
-  const { data } = useQuery({ queryKey: ["design-coverage", id], queryFn: () => getDesignCoverage(id) });
-  const parts = Object.entries(data?.coverage ?? {});
+function Health({ id, modules, canSync, canManage, onChanged }: {
+  id: string; modules: SystemModule[]; canSync: boolean; canManage: boolean; onChanged: () => void;
+}) {
+  const systemsQ = useQuery({ queryKey: ["systems"], queryFn: getSystems });
+  const system = systemsQ.data?.find((s) => s.id === id);
+  const designQ = useQuery({
+    queryKey: ["design", id], queryFn: () => getDesign(id),
+    refetchInterval: (q) => (["queued", "running"].includes(q.state.data?.discovery_status ?? "") ? 3000 : false),
+  });
+  const design = designQ.data;
+  const [partParam, setPart] = useUrlState("part", "tables");
+  const part: Part = isPart(partParam) ? partParam : "tables";
+  const snap = design?.snapshot;
+  const running = ["queued", "running"].includes(design?.discovery_status ?? "");
+
+  const test = useMutation({
+    mutationFn: () => testConnection(id),
+    onSuccess: (r) => { toast.success(`Connection ${r.status}, ${r.latency_ms} ms`); onChanged(); },
+    onError: (e) => toast.error((e as Error).message || "Connection test failed"),
+  });
+  const testState: ConnectionTestState = test.isPending ? "testing" : test.isError ? "error" : test.data ? (test.data.status === "healthy" ? "success" : "error") : "idle";
+  const sync = useMutation({
+    mutationFn: () => syncConfig(id, modules.filter((m) => m.enabled).map((m) => m.module)),
+    onSuccess: () => { toast.success("Configuration sync started"); onChanged(); },
+    onError: (e) => toast.error((e as Error).message || "Configuration sync refused"),
+  });
+  const discover = useMutation({
+    mutationFn: () => discoverSystem(id),
+    onSuccess: () => { toast.success("Discovery started"); onChanged(); },
+    onError: (e) => toast.error((e as Error).message || "Could not start discovery"),
+  });
+
+  if (!system) return null;
+  const verdict = system.health_status === "healthy"
+    ? `The connection is healthy${system.last_health_check ? `, checked ${relativeTime(system.last_health_check)}` : ""}.`
+    : `The connection is ${HEALTH_LABEL[system.health_status].toLowerCase()}${system.health_message ? `: ${system.health_message}` : ""}.`;
+
   return (
-    <Stack gap={4}>
-      <Text variant="text-small" tone="secondary">
-        Every object Meridian tried to read, and the outcome. &ldquo;not_found&rdquo; means the object does not exist in
-        this release; &ldquo;failed&rdquo; usually means a missing RFC authorisation (S_TABU_DIS / S_TABU_NAM).
-      </Text>
-      {parts.map(([part, items]) => (
-        <Stack key={part} gap={2}>
-          <Text className="font-semibold">{part}</Text>
-          <Stack direction="row" gap={2} wrap>
-            {items.map((c) => (
-              <span key={c.table} title={c.detail}><Chip tone={tone(c.status)}>
-                <span className="font-mono">{c.table}</span>{c.rows != null ? ` · ${c.rows}` : ""} · {c.status}
-              </Chip></span>
-            ))}
+    <div className="ui-stack">
+      <SectionCard title="Connection" action={<Stack direction="row" gap={2}>
+        {canSync ? <ConnectionTestButton state={testState} onTest={() => test.mutate()} /> : null}
+        {canSync ? <Button size="sm" variant="secondary" disabled={sync.isPending || !modules.some((m) => m.enabled)} onClick={() => sync.mutate()}>Sync config</Button> : null}
+        {canSync ? <Button size="sm" variant="secondary" disabled={discover.isPending || running} onClick={() => discover.mutate()}>
+          {running ? "Discovering" : snap ? "Discover again" : "Discover design"}</Button> : null}
+      </Stack>}>
+        <p className="ui-note">{verdict}</p>
+        <KeyValue rows={[
+          { k: "Health", v: <StatusBadge status={system.health_status === "healthy" ? "ok" : system.health_status === "unknown" ? "idle" : "failed"}>{HEALTH_LABEL[system.health_status]}</StatusBadge> },
+          { k: "Last health check", v: when(system.last_health_check, "Never") },
+          { k: "Configuration last synced", v: when(system.config_last_synced_at, "Never") },
+          { k: "Configuration sync status", v: system.config_sync_status ?? "Never run" },
+          { k: "Discovery status", v: design?.discovery_status ?? system.discovery_status ?? "Never run" },
+          { k: "SAP release", v: design?.sap_release ?? "Unknown", mono: true },
+        ]} />
+        {snap?.error ? <Banner tone="warning" title={`Discovery ${snap.status}`}>{snap.error}</Banner> : null}
+      </SectionCard>
+
+      <SchedulesPanel id={id} canManage={canManage} />
+      {canManage ? <ReferencePanel id={id} /> : null}
+
+      <SectionCard title="Design discovery" meta={snap ? `${snap.tables.toLocaleString()} tables read` : undefined}>
+        {!snap ? <EmptyState>Not discovered yet. Discover design reads this system&apos;s data dictionary and configuration.</EmptyState> : (
+          <Stack gap={3}>
+            <Tabs<Part> ariaLabel="Design discovery" value={part} onValueChange={setPart}
+              items={[{ id: "tables", label: "Data dictionary", count: snap.tables }, { id: "config", label: "Configuration", count: design?.configuration.length },
+                { id: "coverage", label: "Coverage" }, { id: "snapshots", label: "History" }]} />
+            {part === "tables" ? <TablesTab id={id} /> : null}
+            {part === "config" && design ? <ConfigTab id={id} tables={design.configuration} /> : null}
+            {part === "coverage" ? <CoverageTab id={id} /> : null}
+            {part === "snapshots" ? <SnapshotsTab id={id} /> : null}
           </Stack>
-        </Stack>
-      ))}
-    </Stack>
+        )}
+      </SectionCard>
+    </div>
   );
 }
 
-function SnapshotsTab({ id }: { id: string }) {
-  const { data: snaps = [] } = useQuery({ queryKey: ["design-snapshots", id], queryFn: () => getDesignSnapshots(id) });
-  const done = snaps.filter((s) => s.status !== "failed" && s.status !== "running");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
-  const a = from || done[1]?.id || "";
-  const b = to || done[0]?.id || "";
-  const { data: diff } = useQuery({ queryKey: ["design-diff", id, a, b], queryFn: () => getDesignDiff(id, a, b), enabled: Boolean(a && b && a !== b) });
-  const opts = done.map((s) => ({ value: s.id, label: `${s.started_at ? new Date(s.started_at).toLocaleString() : s.id} · ${s.tables} tables` }));
+/* ── Edit ──────────────────────────────────────────────────────────────── */
+
+function EditForm({ system, onDone, onDeleted }: {
+  system: { id: string; name: string; environment: "PRD" | "QAS" | "DEV"; description: string | null; is_active: boolean };
+  onDone: () => void; onDeleted: () => void;
+}) {
+  const [name, setName] = useState(system.name);
+  const [environment, setEnvironment] = useState<string>(system.environment);
+  const [description, setDescription] = useState(system.description ?? "");
+  const [active, setActive] = useState(system.is_active);
+  const [confirming, setConfirming] = useState(false);
+  const save = useMutation({
+    mutationFn: () => updateSystem(system.id, { name: name.trim(), environment, description, is_active: active }),
+    onSuccess: () => { toast.success("System saved"); onDone(); },
+    onError: (e) => toast.error((e as Error).message || "Not saved"),
+  });
+  const del = useMutation({
+    mutationFn: () => deleteSystem(system.id),
+    onSuccess: () => { toast.success(`${system.name} removed`); onDeleted(); },
+    onError: (e) => toast.error((e as Error).message || "Not removed"),
+  });
   return (
-    <Stack gap={4}>
-      <table className="w-full text-[13px]">
-        <thead><tr><th className={th}>Started</th><th className={th}>Status</th><th className={`${th} text-right`}>Tables</th>
-          <th className={`${th} text-right`}>Customer tables</th><th className={`${th} text-right`}>Customer fields</th></tr></thead>
-        <tbody>
-          {snaps.map((s) => (
-            <tr key={s.id}>
-              <td className={td}>{s.started_at ? new Date(s.started_at).toLocaleString() : "—"}</td>
-              <td className={td}><span title={s.error ?? undefined}><Chip tone={tone(s.status)}>{s.status}</Chip></span></td>
-              <td className={`${td} text-right aurora-number`}>{s.tables}</td>
-              <td className={`${td} text-right aurora-number`}>{s.customer_tables}</td>
-              <td className={`${td} text-right aurora-number`}>{s.customer_fields}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {done.length > 1 ? (
-        <Stack gap={2}>
-          <Text className="font-semibold">Design drift</Text>
-          <Stack direction="row" gap={2}>
-            <Select value={a} aria-label="From snapshot" options={opts} onValueChange={setFrom} />
-            <Select value={b} aria-label="To snapshot" options={opts} onValueChange={setTo} />
-          </Stack>
-          {diff && (diff.changes.length === 0 ? <Text tone="muted">No dictionary changes between these snapshots.</Text> : (
-            <table className="w-full text-[13px]">
-              <thead><tr><th className={th}>Table</th><th className={th}>Field</th><th className={th}>Change</th><th className={th}>Detail</th></tr></thead>
-              <tbody>
-                {diff.changes.map((c, i) => (
-                  <tr key={i}>
-                    <td className={`${td} font-mono`}>{c.table}</td>
-                    <td className={`${td} font-mono`}>{c.field ?? ""}</td>
-                    <td className={td}><Chip tone={c.change.endsWith("removed") ? "danger" : c.change.endsWith("added") ? "info" : "warning"}>{c.change.replace("_", " ")}</Chip></td>
-                    <td className={`${td} font-mono`}>{c.diff ? Object.entries(c.diff).map(([k, [x, y]]) => `${k}: ${String(x)} → ${String(y)}`).join("; ") : ""}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ))}
+    <form onSubmit={(e) => { e.preventDefault(); if (name.trim()) save.mutate(); }}>
+      <Stack gap={4}>
+        <Field label="Alias" required>{({ controlId }) => <Input id={controlId} value={name} onChange={(e) => setName(e.target.value)} />}</Field>
+        <Field label="Environment">{({ controlId }) => <Select id={controlId} options={["DEV", "QAS", "PRD"].map((v) => ({ value: v, label: v }))}
+          value={environment} onValueChange={setEnvironment} />}</Field>
+        <Field label="Description" helper="Optional">{({ controlId }) => <Input id={controlId} value={description} onChange={(e) => setDescription(e.target.value)} />}</Field>
+        <label className="ui-micro"><input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} /> Active</label>
+        <Stack direction="row" gap={2}>
+          <Button type="submit" disabled={!name.trim() || save.isPending}>Save</Button>
+          {!confirming ? <Button type="button" variant="danger" onClick={() => setConfirming(true)}>Delete</Button> : null}
         </Stack>
-      ) : <Text tone="muted">Drift appears once the system has been discovered twice.</Text>}
-    </Stack>
+        {confirming ? (
+          <Banner tone="danger" title={`Remove ${system.name}?`} action={
+            <Stack direction="row" gap={2}>
+              <Button type="button" variant="danger" size="sm" onClick={() => del.mutate()} disabled={del.isPending}>Remove</Button>
+              <Button type="button" variant="ghost" size="sm" onClick={() => setConfirming(false)}>Keep</Button>
+            </Stack>}>
+            Its credentials and sync profiles go with it. Downloaded runs and findings stay.
+          </Banner>
+        ) : null}
+      </Stack>
+    </form>
   );
 }

@@ -58,7 +58,7 @@ function ReferenceRow({ id, spec, list }: { id: string; spec: (typeof KINDS)[num
       <Text tone="muted">{spec.help}</Text>
       {list ? (
         <Chip tone="success">
-          {list.records.toLocaleString()} {spec.unit} · {list.countries.join(", ")}
+          {list.records.toLocaleString()} {spec.unit}, {list.countries.join(", ")}
         </Chip>
       ) : (
         <Chip>none loaded</Chip>

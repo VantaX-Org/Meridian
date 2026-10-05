@@ -1,26 +1,27 @@
 "use client";
 
 /**
- * Data → Systems: every connected SAP system with its connection health and
- * last sync, a drawer per system (test, sync, delete, open), and the connect
- * form for a new one. Reads systems; manage_systems connects/tests/deletes;
- * trigger_sync syncs.
+ * Connect and load: every connected SAP system with health, objects, rows and
+ * the last extraction and analysis. A row opens the system; "Add system" opens
+ * the connect form in a drawer (?drawer=new-system).
  */
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
-  Banner, Button, Chip, DataTable, Drawer, Field, Input, Select, Stack, Text, useDrawerParam, type AuroraColumnMeta,
+  Banner, Button, DataTable, Drawer, Field, Input, Select, Stack, Text, useDrawerParam, type AuroraColumnMeta,
 } from "@/components/aurora";
-import { EmptyState, Metric, MetricStrip, Mono, PageHeader, StatusBadge, TableSkeleton, type Status } from "@/components/ui-core";
+import { EmptyState, PageHeader, StatusBadge, TableSkeleton, Tally, type Status } from "@/components/ui-core";
 import { useRole } from "@/hooks/use-role";
-import { deleteSystem, getSystems, registerSystem, testConnection, testDraftConnection, triggerSync } from "@/lib/api/systems";
+import { getSystemModules, getSystems } from "@/lib/api/connectivity";
+import { getSystemVersions, type SystemVersion } from "@/lib/api/system-objects";
+import { registerSystem, testDraftConnection } from "@/lib/api/systems";
 import { relativeTime } from "@/lib/format";
-import type { SAPSystem, SystemType } from "@/types/api";
+import type { HealthStatus, SAPSystemExtended, SystemModule, SystemType } from "@/types/api";
 
 const meta = (m: AuroraColumnMeta) => m;
 
@@ -37,17 +38,25 @@ const TYPE_OPTIONS: { value: SystemType; label: string }[] = [
 const TYPE_LABEL = Object.fromEntries(TYPE_OPTIONS.map((o) => [o.value, o.label])) as Record<SystemType, string>;
 const isRfc = (t: SystemType) => RFC_TYPES.includes(t);
 
-type Health = "healthy" | "down" | "awaiting";
-const HEALTH_STATUS: Record<Health, Status> = { healthy: "ok", down: "failed", awaiting: "idle" };
-const HEALTH_LABEL: Record<Health, string> = { healthy: "Healthy", down: "Last sync failed", awaiting: "Awaiting first sync" };
-const HealthBadge = ({ s }: { s: SAPSystem }) => <StatusBadge status={HEALTH_STATUS[health(s)]}>{HEALTH_LABEL[health(s)]}</StatusBadge>;
-function health(s: SAPSystem): Health {
-  const st = s.last_sync_status;
-  if (!st) return "awaiting";
-  if (st === "failed") return "down";
-  if (st === "running" || st === "completed" || st === "complete") return "healthy";
-  return "awaiting";
+export const HEALTH_STATUS: Record<HealthStatus, Status> = {
+  healthy: "ok", degraded: "medium", unreachable: "failed", auth_failed: "failed", unknown: "idle",
+};
+export const HEALTH_LABEL: Record<HealthStatus, string> = {
+  healthy: "Healthy", degraded: "Degraded", unreachable: "Unreachable", auth_failed: "Sign-in refused", unknown: "Not tested",
+};
+export const HealthBadge = ({ s }: { s: HealthStatus }) => <StatusBadge status={HEALTH_STATUS[s]}>{HEALTH_LABEL[s]}</StatusBadge>;
+
+/** Mean DQS of the objects in the newest analysed run, or null before any analysis. */
+export function latestDqs(versions: SystemVersion[]): { dqs: number | null; version: SystemVersion | null } {
+  const v = [...versions].filter((x) => x.analysed_at).sort((a, b) => b.run_at.localeCompare(a.run_at))[0] ?? null;
+  const vals = Object.values(v?.dqs ?? {}).filter((x): x is number => typeof x === "number");
+  return { dqs: vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null, version: v };
 }
+
+type Row = {
+  system: SAPSystemExtended; modules: SystemModule[] | undefined; versions: SystemVersion[] | undefined;
+  loadedObjects: number; rows: number; lastExtraction: string | null; dqs: number | null;
+};
 
 type Draft = {
   name: string; system_type: SystemType; environment: string; description: string;
@@ -85,126 +94,88 @@ export function SystemsSurface() {
   const router = useRouter();
   const { can } = useRole();
   const canManage = can("manage_systems");
-  const canSync = can("trigger_sync");
-  const drawer = useDrawerParam("system");
-  const [connectOpen, setConnectOpen] = useState(false);
+  const drawer = useDrawerParam("drawer");
+  const adding = drawer.value === "new-system";
 
-  const systemsQ = useQuery({ queryKey: ["systems.list"], queryFn: getSystems });
+  const systemsQ = useQuery({ queryKey: ["systems"], queryFn: getSystems });
   const systems = useMemo(() => systemsQ.data ?? [], [systemsQ.data]);
-  const refresh = () => { qc.invalidateQueries({ queryKey: ["systems.list"] }); qc.invalidateQueries({ queryKey: ["systems"] }); };
-  const counts = systems.reduce((a, s) => ({ ...a, [health(s)]: a[health(s)] + 1 }), { healthy: 0, down: 0, awaiting: 0 } as Record<Health, number>);
-  const selected = drawer.value ? systems.find((s) => s.id === drawer.value) ?? null : null;
+  const modulesQ = useQueries({ queries: systems.map((s) => ({ queryKey: ["system-modules", s.id], queryFn: () => getSystemModules(s.id) })) });
+  const versionsQ = useQueries({ queries: systems.map((s) => ({ queryKey: ["system-versions", s.id], queryFn: () => getSystemVersions(s.id) })) });
+  const refresh = () => { qc.invalidateQueries({ queryKey: ["systems"] }); };
 
-  const syncAll = useMutation({
-    mutationFn: async () => {
-      const results = await Promise.allSettled(systems.map((s) => triggerSync(s.id)));
-      return results.filter((r) => r.status === "fulfilled").length;
-    },
-    onSuccess: (ok) => { toast.success(`Triggered ${ok} of ${systems.length} syncs`); refresh(); },
-    onError: (e) => toast.error((e as Error).message || "Sync not triggered"),
+  const rows: Row[] = systems.map((system, i) => {
+    const modules = modulesQ[i]?.data;
+    const versions = versionsQ[i]?.data?.versions;
+    const last = (modules ?? []).map((m) => m.last_synced_at).filter((x): x is string => !!x).sort().pop() ?? system.last_sync_at;
+    return {
+      system, modules, versions,
+      loadedObjects: (modules ?? []).filter((m) => m.enabled && m.row_count > 0).length,
+      rows: (modules ?? []).reduce((a, m) => a + (m.row_count || 0), 0),
+      lastExtraction: last, dqs: versions ? latestDqs(versions).dqs : null,
+    };
   });
 
-  const columns = useMemo<ColumnDef<SAPSystem, unknown>[]>(() => [
-    { id: "name", header: "System", meta: meta({ sticky: "start", width: 220 }),
-      cell: ({ row }) => <span className="ui-cell-stack"><span className="ui-cell-stack__main">{row.original.name}</span><span className="ui-cell-stack__sub">{TYPE_LABEL[row.original.system_type] ?? row.original.system_type}</span></span> },
-    { id: "env", header: "Env", meta: meta({ width: 80 }), cell: ({ row }) => <Mono>{row.original.environment}</Mono> },
-    { id: "endpoint", header: "Endpoint", cell: ({ row }) => {
-      const r = row.original;
-      return <span className="ui-cell-stack"><Mono>{r.host ?? r.base_url ?? "Not set"}</Mono>
-        {isRfc(r.system_type) && r.client ? <span className="ui-cell-stack__sub">{`Client ${r.client}, system number ${r.sysnr ?? "00"}`}</span> : null}</span>;
-    } },
-    { id: "sync", header: "Last sync", meta: meta({ width: 130 }), cell: ({ row }) => row.original.last_sync_at ? relativeTime(row.original.last_sync_at) : "Never" },
-    { id: "health", header: "Health", meta: meta({ width: 180 }), cell: ({ row }) => <HealthBadge s={row.original} /> },
-    { id: "active", header: "State", meta: meta({ width: 90 }), cell: ({ row }) => (row.original.is_active ? "Active" : "Inactive") },
+  const modulesLoading = modulesQ.some((q) => q.isLoading);
+  const objectsLoaded = rows.reduce((a, r) => a + r.loadedObjects, 0);
+  const objectsOffered = rows.reduce((a, r) => a + (r.modules?.length ?? 0), 0);
+  const rowsLoaded = rows.reduce((a, r) => a + r.rows, 0);
+  const lastAny = rows.map((r) => r.lastExtraction).filter((x): x is string => !!x).sort().pop() ?? null;
+  const notHealthy = systems.filter((s) => s.health_status !== "healthy").length;
+
+  const columns = useMemo<ColumnDef<Row, unknown>[]>(() => [
+    { id: "alias", header: "Alias", meta: meta({ sticky: "start", width: 220 }),
+      cell: ({ row }) => <Link href={`/systems/${row.original.system.id}`} className="ui-link">{row.original.system.name}</Link> },
+    { id: "type", header: "Type", meta: meta({ width: 170 }),
+      cell: ({ row }) => <span className="ui-cell-stack"><span className="ui-cell-stack__main">{TYPE_LABEL[row.original.system.system_type] ?? row.original.system.system_type}</span>
+        <span className="ui-cell-stack__sub">{row.original.system.environment}</span></span> },
+    { id: "health", header: "Health", meta: meta({ width: 170 }), cell: ({ row }) => <HealthBadge s={row.original.system.health_status} /> },
+    { id: "objects", header: "Objects", meta: meta({ numeric: true, width: 90 }),
+      cell: ({ row }) => row.original.modules ? `${row.original.loadedObjects} of ${row.original.modules.length}` : "…" },
+    { id: "rows", header: "Rows", meta: meta({ numeric: true, width: 110 }),
+      cell: ({ row }) => row.original.modules ? row.original.rows.toLocaleString() : "…" },
+    { id: "extraction", header: "Last extraction", meta: meta({ width: 140 }),
+      cell: ({ row }) => row.original.lastExtraction ? relativeTime(row.original.lastExtraction) : "Never" },
+    { id: "analysis", header: "Last analysis", meta: meta({ width: 140 }),
+      cell: ({ row }) => row.original.system.last_analysis_at ? relativeTime(row.original.system.last_analysis_at) : "Never" },
+    { id: "dqs", header: "DQS", meta: meta({ numeric: true, width: 80 }),
+      cell: ({ row }) => row.original.dqs === null ? "—" : row.original.dqs.toFixed(1) },
   ], []);
+
+  const addButton = canManage ? <Button onClick={() => drawer.open("new-system")}>Add system</Button> : null;
 
   return (
     <div className="ui-page">
-      <PageHeader
-        title="Systems"
-        summary={systemsQ.isLoading ? undefined : <>{systems.length} connected SAP system{systems.length === 1 ? "" : "s"}. Health is from the last sync; probe connections on <Link href="/connectivity" className="ui-link">Connectivity</Link>.</>}
-        actions={<>
-          {canSync ? <Button variant="secondary" onClick={() => syncAll.mutate()} disabled={syncAll.isPending || !systems.length}>Sync all</Button> : null}
-          {canManage ? <Button onClick={() => setConnectOpen(true)}>Connect system</Button> : null}
-        </>}
-      />
+      <PageHeader title="Systems" actions={addButton}
+        summary={systemsQ.isLoading ? undefined : "Every connected SAP system, what has been loaded from it and when it was last analysed."} />
       {systemsQ.isLoading ? <TableSkeleton rows={6} label="Loading connected systems" /> : systemsQ.error ? (
-        <Banner tone="danger" title="Systems could not be read">{(systemsQ.error as Error).message}</Banner>
+        <Banner tone="danger" title="Systems could not be read" action={<Button size="sm" variant="secondary" onClick={() => systemsQ.refetch()}>Retry</Button>}>
+          {(systemsQ.error as Error).message}
+        </Banner>
       ) : systems.length ? (
         <>
-          <MetricStrip label="System health">
-            <Metric label="Systems" value={systems.length} />
-            <Metric label="Healthy" value={counts.healthy} />
-            <Metric label="Last sync failed" value={counts.down} tone={counts.down ? "danger" : "default"} />
-            <Metric label="Awaiting first sync" value={counts.awaiting} />
-          </MetricStrip>
-          <div className="ui-table-stacked"><DataTable columns={columns} data={systems} getRowId={(s) => s.id} onRowActivate={(s) => drawer.open(s.id)} ariaLabel="Connected systems" maxHeight="60vh" /></div>
+          <Tally level={2} label="Systems at a glance" figures={[
+            { label: "Systems", value: systems.length, href: "/systems",
+              verdict: notHealthy ? `${notHealthy} of ${systems.length} not healthy.` : "All connected systems are healthy.", tone: notHealthy ? "warning" : undefined },
+            { label: "Objects loaded", value: objectsLoaded, href: "/systems", loading: modulesLoading,
+              verdict: `${objectsLoaded} of ${objectsOffered} objects have rows.` },
+            { label: "Rows loaded", value: rowsLoaded, href: "/sync", loading: modulesLoading,
+              verdict: "Rows held across every loaded object." },
+            { label: "Last extraction", value: lastAny ? relativeTime(lastAny) : "Never", href: "/sync", loading: modulesLoading,
+              verdict: lastAny ? "Most recent extraction on any system." : "Nothing has been extracted yet." },
+          ]} />
+          <div className="ui-table-stacked">
+            <DataTable columns={columns} data={rows} getRowId={(r) => r.system.id}
+              onRowActivate={(r) => router.push(`/systems/${r.system.id}`)} ariaLabel="Connected systems" maxHeight="60vh" />
+          </div>
         </>
       ) : (
-        <EmptyState action={canManage ? <Button onClick={() => setConnectOpen(true)}>Connect system</Button> : undefined}>
-          {canManage ? "No systems connected. Connect an SAP system to discover its design, download objects and analyse them." : "No systems connected. An administrator connects SAP systems here."}
-        </EmptyState>
+        <EmptyState action={addButton}>No SAP system yet. Add the first one.</EmptyState>
       )}
 
-      <Drawer open={!!selected} onClose={drawer.close} ariaLabel="System details"
-              header={selected ? <Text variant="text-lead">{selected.name}</Text> : null}>
-        {selected ? <SystemDetail system={selected} canManage={canManage} canSync={canSync} onChanged={refresh} onDeleted={() => { drawer.close(); refresh(); }} /> : null}
-      </Drawer>
-
-      <Drawer open={connectOpen} onClose={() => setConnectOpen(false)} ariaLabel="Connect a system" header={<Text variant="text-lead">Connect a system</Text>}>
-        {connectOpen ? <ConnectForm onDone={(id) => { setConnectOpen(false); refresh(); router.push(`/systems/${id}`); }} /> : null}
+      <Drawer open={adding} onClose={drawer.close} ariaLabel="Add a system" header={<Text variant="text-lead">Add a system</Text>}>
+        {adding ? <ConnectForm onDone={(id) => { drawer.close(); refresh(); router.push(`/systems/${id}`); }} /> : null}
       </Drawer>
     </div>
-  );
-}
-
-function SystemDetail({ system, canManage, canSync, onChanged, onDeleted }: {
-  system: SAPSystem; canManage: boolean; canSync: boolean; onChanged: () => void; onDeleted: () => void;
-}) {
-  const [result, setResult] = useState<{ connected: boolean; message: string } | null>(null);
-  const [confirming, setConfirming] = useState(false);
-  const test = useMutation({ mutationFn: () => testConnection(system.id), onSuccess: setResult, onError: (e) => toast.error((e as Error).message || "Test failed") });
-  const sync = useMutation({ mutationFn: () => triggerSync(system.id), onSuccess: (r) => { toast.success(`Sync queued (${r.job_ids.length} jobs)`); onChanged(); },
-    onError: (e) => toast.error((e as Error).message || "Sync not triggered") });
-  const del = useMutation({ mutationFn: () => deleteSystem(system.id), onSuccess: () => { toast.success(`${system.name} removed`); onDeleted(); },
-    onError: (e) => toast.error((e as Error).message || "Not removed") });
-  const rfc = isRfc(system.system_type);
-  const rows: [string, string][] = rfc
-    ? [["Host", system.host ?? "—"], ["Client", system.client ?? "—"], ["System number", system.sysnr ?? "—"], ["RFC user", system.username ?? "default"]]
-    : [["Base URL", system.base_url ?? "—"], ["Company", system.company_id ?? "—"], ["Auth", system.auth_type ?? "oauth2"]];
-  return (
-    <Stack gap={4}>
-      <Stack direction="row" gap={2} wrap>
-        <HealthBadge s={system} />
-        <Chip>{TYPE_LABEL[system.system_type] ?? system.system_type}</Chip>
-        <Chip>{system.environment}</Chip>
-        <Chip>{system.is_active ? "Active" : "Inactive"}</Chip>
-      </Stack>
-      <table className="aurora-exec__table"><tbody>
-        {rows.map(([k, v]) => <tr key={k}><td>{k}</td><td className="aurora-number">{v}</td></tr>)}
-        <tr><td>Last sync</td><td>{system.last_sync_at ? `${relativeTime(system.last_sync_at)}, ${system.last_sync_status}` : "never"}</td></tr>
-        <tr><td>Registered</td><td>{relativeTime(system.created_at)}</td></tr>
-        {system.description ? <tr><td>Description</td><td>{system.description}</td></tr> : null}
-      </tbody></table>
-      {result ? <Banner tone={result.connected ? "success" : "danger"} title={result.connected ? "Connection succeeded" : "Connection failed"}>{result.message}</Banner> : null}
-      <Stack direction="row" gap={2} wrap>
-        <Link href={`/systems/${system.id}`} className="ui-link">Open system design, objects and versions</Link>
-      </Stack>
-      <Stack direction="row" gap={2} wrap>
-        {canManage ? <Button variant="secondary" onClick={() => test.mutate()} disabled={test.isPending}>{test.isPending ? "Testing…" : "Test connection"}</Button> : null}
-        {canSync ? <Button onClick={() => sync.mutate()} disabled={sync.isPending}>Trigger sync</Button> : null}
-        {canManage && !confirming ? <Button variant="danger" onClick={() => setConfirming(true)}>Delete</Button> : null}
-      </Stack>
-      {confirming ? (
-        <Banner tone="danger" title={`Remove ${system.name}?`} action={
-          <Stack direction="row" gap={2}>
-            <Button variant="danger" size="sm" onClick={() => del.mutate()} disabled={del.isPending}>Remove</Button>
-            <Button variant="ghost" size="sm" onClick={() => setConfirming(false)}>Keep</Button>
-          </Stack>}>
-          Its credentials and sync profiles go with it. Downloaded versions and findings stay.
-        </Banner>
-      ) : null}
-    </Stack>
   );
 }
 

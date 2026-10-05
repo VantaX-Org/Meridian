@@ -1,5 +1,20 @@
 import apiClient from "./client";
-import type { FindingList, FindingReportContext } from "@/types/api";
+import type { Finding, FindingList, FindingReportContext } from "@/types/api";
+
+export type FindingDetailData = Finding & { context: FindingReportContext["report_context"] };
+
+/**
+ * One finding by id. The API has no GET /findings/{id}: report-context names the
+ * check and module, and the list endpoint (narrowed to them) holds the row.
+ * `versionId` is a hint that keeps the list to one run; without it every run is searched.
+ */
+export async function getFinding(findingId: string, versionId?: string | null): Promise<FindingDetailData> {
+  const ctx = await getFindingReportContext(findingId);
+  const list = await getFindings({ check_id: ctx.check_id, module: ctx.module, version_id: versionId ?? undefined, limit: 200 });
+  const hit = list.findings.find((f) => f.id === findingId);
+  if (!hit) throw new Error("Finding not found");
+  return { ...hit, context: ctx.report_context };
+}
 
 export async function getFindings(params: {
   version_id?: string;

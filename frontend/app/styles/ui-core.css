@@ -737,143 +737,32 @@ a.ui-link { color: var(--aurora-accent-500); text-decoration: none; }
   a.ui-link { color: inherit; text-decoration: none; }
 }
 
-/* ── Object 360 ─────────────────────────────────────────────────────
-   One SAP object: the score ring is the page's single loud element.
-   Everything else is hairline sheets and tabular numbers. */
-.mn-o360 { display: grid; gap: var(--aurora-space-6); }
-.mn-o360 .mn-charts { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); }
-@media (max-width: 800px) { .mn-o360 .mn-charts { grid-template-columns: minmax(0, 1fr); } }
+/* ── Score ring ─────────────────────────────────────────────────────
+   Shared by Object 360 and System detail. The fill animates once, with the Tally. */
+.ui-ring { display: block; width: 100%; height: auto; max-width: 200px; }
+.ui-ring[data-size="120"] { max-width: 120px; }
+.ui-ring circle { fill: none; stroke-width: 14; }
+.ui-ring__track { stroke: var(--aurora-canvas-line); }
+.ui-ring__fill { stroke: var(--aurora-status-success-500); stroke-linecap: butt; animation: ui-ring var(--aurora-duration-tally) var(--aurora-easing-enter) both; }
+.ui-ring[data-band="warn"] .ui-ring__fill { stroke: var(--aurora-status-warning-500); }
+.ui-ring[data-band="fail"] .ui-ring__fill { stroke: var(--aurora-status-danger-500); }
+.ui-ring__num { text-anchor: middle; font-size: 48px; font-weight: 600; font-variant-numeric: tabular-nums; fill: var(--aurora-fg-primary); }
+.ui-ring__unit { text-anchor: middle; font-size: 13px; fill: var(--aurora-fg-tertiary); }
+@keyframes ui-ring { from { stroke-dashoffset: 527.79; } }
+@media (prefers-reduced-motion: reduce) { .ui-ring__fill { animation: none; } }
 
-.mn-o360__hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 220px;
-  gap: var(--aurora-space-8);
-  align-items: center;
-  padding: var(--aurora-space-8);
-  background: var(--aurora-canvas-raised);
-  border: 1px solid var(--aurora-canvas-line);
-  border-radius: var(--aurora-radius-sheet);
-}
-@media (max-width: 800px) {
-  .mn-o360__hero { grid-template-columns: minmax(0, 1fr); padding: var(--aurora-space-5); }
-  .mn-o360__ring { order: -1; max-width: 180px; }
-}
-.mn-o360__lede { display: grid; gap: var(--aurora-space-3); min-width: 0; }
-.mn-o360__title {
-  margin: 0;
-  font-size: 44px;
-  line-height: 48px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  color: var(--aurora-fg-primary);
-}
-.mn-o360__verdict { margin: 0; max-width: 64ch; font-size: 17px; line-height: 26px; color: var(--aurora-fg-secondary); }
-.mn-o360__cap {
-  margin: 0;
-  padding-left: var(--aurora-space-3);
-  border-left: 3px solid var(--aurora-status-danger-500);
-  font-size: 13px;
-  color: var(--aurora-fg-primary);
-}
-.mn-o360__meta { margin: 0; font-size: 12px; color: var(--aurora-fg-tertiary); }
-
-/* Severity counts: hue plus a top rule; low has no hue, as everywhere. */
-.mn-o360__counts {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, auto));
-  justify-content: start;
-  gap: var(--aurora-space-8);
-  margin: var(--aurora-space-2) 0 0;
-}
-@media (max-width: 800px) { .mn-o360__counts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--aurora-space-4); } }
-.mn-o360__counts > div { padding-top: var(--aurora-space-2); border-top: 3px solid var(--aurora-canvas-line); }
-.mn-o360__counts dt { font-size: 12px; color: var(--aurora-fg-tertiary); }
-.mn-o360__counts dd {
-  margin: 0;
-  font-size: 32px;
-  line-height: 40px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--aurora-fg-primary);
-}
-.mn-o360__counts dd a { color: inherit; text-decoration: none; }
-.mn-o360__counts dd a:hover { text-decoration: underline; text-underline-offset: 4px; }
-.mn-o360__counts [data-sev="critical"] { border-top-color: var(--aurora-status-danger-500); }
-.mn-o360__counts [data-sev="critical"] dd { color: var(--aurora-status-danger-500); }
-.mn-o360__counts [data-sev="high"] { border-top-color: var(--aurora-status-high-500); }
-.mn-o360__counts [data-sev="medium"] { border-top-color: var(--aurora-status-warning-500); }
-.mn-o360__counts [data-sev="low"] { border-top-style: dotted; border-top-color: var(--aurora-fg-tertiary); }
-
-.mn-o360__ring { width: 100%; height: auto; }
-.mn-o360__ring circle { fill: none; stroke-width: 14; }
-.mn-o360__ring-track { stroke: var(--aurora-canvas-line); }
-.mn-o360__ring-fill { stroke: var(--aurora-status-success-500); stroke-linecap: butt; animation: mn-ring 900ms cubic-bezier(.2, .7, .2, 1) both; }
-.mn-o360__ring[data-band="warn"] .mn-o360__ring-fill { stroke: var(--aurora-status-warning-500); }
-.mn-o360__ring[data-band="fail"] .mn-o360__ring-fill { stroke: var(--aurora-status-danger-500); }
-.mn-o360__ring-num {
-  text-anchor: middle;
-  font-size: 48px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-  fill: var(--aurora-fg-primary);
-}
-.mn-o360__ring-unit { text-anchor: middle; font-size: 13px; fill: var(--aurora-fg-tertiary); }
-@keyframes mn-ring { from { stroke-dashoffset: 527.79; } }
-@media (prefers-reduced-motion: reduce) { .mn-o360__ring-fill { animation: none; } }
-
-/* What breaks in SAP. */
-.mn-o360__features { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--aurora-space-4); }
-.mn-o360__features > li { display: grid; gap: var(--aurora-space-1); padding-left: var(--aurora-space-4); border-left: 3px solid var(--aurora-status-warning-500); }
-.mn-o360__features > li[data-status="blocked"] { border-left-color: var(--aurora-status-danger-500); }
-.mn-o360__features p { margin: 0; color: var(--aurora-fg-secondary); }
-.mn-o360__feature-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--aurora-space-3); }
-.mn-o360__feature-head strong { font-size: 15px; color: var(--aurora-fg-primary); }
-.mn-o360__feature-head > span:last-child { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--aurora-fg-tertiary); }
-.mn-o360__tcodes { display: flex; flex-wrap: wrap; gap: var(--aurora-space-2); }
-.mn-o360__tcodes code, .mn-o360__detail code {
-  font-family: var(--aurora-font-mono);
-  font-size: 12px;
-  padding: 1px 6px;
-  border: 1px solid var(--aurora-canvas-line);
-  border-radius: var(--aurora-radius-control);
-}
-
-/* Worst checks: an impact ladder. The bar behind each row is its share of the worst. */
-.mn-o360__checks { list-style: none; margin: 0; padding: 0; }
-.mn-o360__checks > li + li { border-top: 1px solid var(--aurora-canvas-line); }
-.mn-o360__checks summary {
-  position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--aurora-space-4);
-  align-items: center;
-  padding: var(--aurora-space-3) var(--aurora-space-5);
-  cursor: pointer;
-  list-style: none;
-}
-.mn-o360__checks summary::-webkit-details-marker { display: none; }
-.mn-o360__checks summary:hover { background: var(--aurora-canvas-overlay); }
-.mn-o360__checks summary:focus-visible { outline: 2px solid var(--aurora-accent-500); outline-offset: -2px; }
-.mn-o360__bar {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  height: 3px;
-  width: var(--w);
-  background: var(--aurora-fg-tertiary);
-}
-.mn-o360__bar[data-sev="critical"] { background: var(--aurora-status-danger-500); }
-.mn-o360__bar[data-sev="high"] { background: var(--aurora-status-high-500); }
-.mn-o360__bar[data-sev="medium"] { background: var(--aurora-status-warning-500); }
-.mn-o360__check { display: flex; align-items: center; gap: var(--aurora-space-3); min-width: 0; }
-.mn-o360__msg { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--aurora-fg-primary); }
-.mn-o360__num { font-variant-numeric: tabular-nums; color: var(--aurora-fg-tertiary); white-space: nowrap; }
-.mn-o360__num strong { font-size: 17px; color: var(--aurora-fg-primary); }
-.mn-o360__detail { display: grid; gap: var(--aurora-space-3); padding: 0 var(--aurora-space-5) var(--aurora-space-5); }
-.mn-o360__detail p { margin: 0; max-width: 80ch; color: var(--aurora-fg-secondary); }
-.mn-o360__sample { border-collapse: collapse; font-size: 12px; }
-.mn-o360__sample th, .mn-o360__sample td { padding: 4px 12px 4px 0; text-align: left; border-bottom: 1px solid var(--aurora-canvas-line); }
-.mn-o360__sample th { font-weight: 500; color: var(--aurora-fg-tertiary); }
-.mn-o360__sample td { font-family: var(--aurora-font-mono); color: var(--aurora-fg-primary); }
-.mn-o360__sample em { font-family: var(--aurora-font-ui); color: var(--aurora-status-danger-500); }
+/* Object 360 and Finding detail layout. */
+.ui-o360 { display: grid; gap: var(--aurora-space-6); }
+.ui-o360__head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--aurora-space-8); align-items: center; }
+@media (max-width: 800px) { .ui-o360__head { grid-template-columns: minmax(0, 1fr); } }
+.ui-o360__charts { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: var(--aurora-space-4); }
+@media (max-width: 800px) { .ui-o360__charts { grid-template-columns: minmax(0, 1fr); } }
+.ui-o360__dims { display: flex; flex-wrap: wrap; gap: var(--aurora-space-3); margin-top: var(--aurora-space-3); font-size: 13px; }
+.ui-o360__cap { margin: 0; padding-left: var(--aurora-space-3); border-left: 3px solid var(--aurora-status-danger-500); font-size: 13px; color: var(--aurora-fg-primary); }
+.ui-o360__features { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--aurora-space-4); }
+.ui-o360__features > li { display: grid; gap: var(--aurora-space-1); padding-left: var(--aurora-space-4); border-left: 3px solid var(--aurora-status-warning-500); }
+.ui-o360__features > li[data-status="blocked"] { border-left-color: var(--aurora-status-danger-500); }
+.ui-o360__features p { margin: 0; color: var(--aurora-fg-secondary); }
+.ui-o360__feature-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--aurora-space-3); }
+.ui-o360__tcodes { display: flex; flex-wrap: wrap; gap: var(--aurora-space-2); }
+.ui-o360__sticky { display: flex; flex-wrap: wrap; gap: var(--aurora-space-2); }
