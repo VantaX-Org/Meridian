@@ -86,9 +86,9 @@ export function ExceptionsSurface() {
         actions={canRequest ? <Button onClick={() => setRequesting(true)}>Request exception</Button> : null} />
       {mq.error ? <Banner tone="warning" title="Exception metrics could not be read">{(mq.error as Error).message}</Banner> : (
         <Tally level={2} label="Exception metrics" figures={[
-          { label: "Open", value: m ? m.open_count : null, loading: mq.isLoading, verdict: m?.open_count ? "Cases still to settle." : "None.", href: "/exceptions?status=open" },
-          { label: "Past SLA", value: m ? m.overdue_count : null, loading: mq.isLoading, tone: m?.overdue_count ? "danger" : undefined, verdict: m?.overdue_count ? "Open beyond their deadline." : "None.", href: "/exceptions?status=open" },
-          { label: "Resolved, last 7 days", value: m ? m.resolved_count : null, loading: mq.isLoading, verdict: m?.resolved_count ? "Settled this week." : "None.", href: "/exceptions?status=resolved" },
+          { label: "Open", value: m ? m.open_count : null, loading: mq.isLoading, verdict: m?.open_count ? "Cases still to settle." : "No open cases.", href: "/exceptions?status=open" },
+          { label: "Past SLA", value: m ? m.overdue_count : null, loading: mq.isLoading, tone: m?.overdue_count ? "danger" : undefined, verdict: m?.overdue_count ? "Open beyond their deadline." : "Nothing past due.", href: "/exceptions?status=open" },
+          { label: "Resolved, last 7 days", value: m ? m.resolved_count : null, loading: mq.isLoading, verdict: m?.resolved_count ? "Settled this week." : "Nothing settled this week.", href: "/exceptions?status=resolved" },
           /* With nothing resolved yet the endpoint returns 0 h and 100 %; show a plain word, not made-up figures. */
           { label: "Mean time to resolve", value: m ? (resolvedAny ? Math.round(m.avg_resolution_hours * 10) / 10 : "None") : null, unit: resolvedAny ? "h" : undefined, loading: mq.isLoading,
             tone: resolvedAny && m.sla_compliance_pct < 90 ? "warning" : undefined,

@@ -228,11 +228,11 @@ function IssuesWorkList() {
       />
 
       <Tally level={2} label="Failing records" figures={[
-        { label: "Open", value: counts.open ?? null, verdict: counts.open ? "Records a run found failing." : "None.", href: `${base}&status=open`, loading: !data },
-        { label: "Breached SLA", value: m?.breach_count ?? null, tone: m?.breach_count ? "danger" : undefined, verdict: m?.breach_count ? "Past their due date." : "None.", href: `${base}&status=open&sla=breached`, loading: !m },
-        { label: "At risk", value: atRisk, tone: atRisk ? "warning" : undefined, verdict: atRisk ? "Close to their due date." : "None.", href: `${base}&status=open&sla=at_risk`, loading: !m },
-        { label: "Unassigned", value: m?.unassigned ?? null, verdict: m?.unassigned ? "Nobody owns these yet." : "None.", href: `${base}&status=open&assigned_to=unassigned`, loading: !m },
-        { label: "Resolved this week", value: resolvedWeek, verdict: resolvedWeek ? "Closed in the last seven days." : "None.", href: `${base}&status=resolved`, loading: !m },
+        { label: "Open", value: counts.open ?? null, verdict: counts.open ? "Records a run found failing." : "No records failing.", href: `${base}&status=open`, loading: !data },
+        { label: "Breached SLA", value: m?.breach_count ?? null, tone: m?.breach_count ? "danger" : undefined, verdict: m?.breach_count ? "Past their due date." : "Nothing past due.", href: `${base}&status=open&sla=breached`, loading: !m },
+        { label: "At risk", value: atRisk, tone: atRisk ? "warning" : undefined, verdict: atRisk ? "Close to their due date." : "Nothing close to due.", href: `${base}&status=open&sla=at_risk`, loading: !m },
+        { label: "Unassigned", value: m?.unassigned ?? null, verdict: m?.unassigned ? "Nobody owns these yet." : "Every record has an owner.", href: `${base}&status=open&assigned_to=unassigned`, loading: !m },
+        { label: "Resolved this week", value: resolvedWeek, verdict: resolvedWeek ? "Closed in the last seven days." : "Nothing closed this week.", href: `${base}&status=resolved`, loading: !m },
       ]} />
 
       <Tabs<IssueStatus> ariaLabel="Failing record status" value={status} onValueChange={(s) => set({ status: s })}
