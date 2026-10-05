@@ -281,6 +281,7 @@ class ConnectivityManager:
                         continue
                     logger.info(f"extract {system_id}: reading {table} ({len(cols)} fields)")
                     t0 = time.monotonic()
+                    where = plan.where
                     try:
                         if plan.via:
                             wheres = via_filters(table, plan.via, raw.get(plan.via))
@@ -290,9 +291,15 @@ class ConnectivityManager:
                                      for w in wheres]
                             df = pd.concat(parts, ignore_index=True) if parts else pd.DataFrame(columns=cols)
                         else:
-                            df = connector.read_table_full(table, cols, list(t.keys), where=plan.where,
+                            df = connector.read_table_full(table, cols, list(t.keys), where=where,
                                                            max_rows=max_rows,
                                                            on_progress=lambda g, n, rows: report(table, g, n, rows))
+                            if df.empty and plan.wide_where:
+                                logger.info(f"extract {system_id}: {table} empty in default window, widening")
+                                where = plan.wide_where
+                                df = connector.read_table_full(table, cols, list(t.keys), where=where,
+                                                               max_rows=max_rows,
+                                                               on_progress=lambda g, n, rows: report(table, g, n, rows))
                     except SAPConnectorError as e:
                         coverage.append({"table": table, "status": "failed", "detail": str(e)[:300],
                                          "seconds": round(time.monotonic() - t0, 1)})
@@ -307,7 +314,7 @@ class ConnectivityManager:
                     frames[table] = df.rename(columns={c: f"{table}.{c}" for c in df.columns})
                     entry = {"table": table, "status": "live", "rows": len(df), "purpose": plan.purpose,
                              "partial": plan.partial, "modules": sorted(plan.modules),
-                             "window": plan.where if plan.where and not plan.where.startswith(tuple(
+                             "window": where if where and not where.startswith(tuple(
                                  f"{f} = " for f in ("DATBI", "BDATU", "INACT"))) else None,
                              "truncated": len(df) >= max_rows, "seconds": round(time.monotonic() - t0, 1)}
                     if table in counts:
