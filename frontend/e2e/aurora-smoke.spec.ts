@@ -27,7 +27,7 @@ test("Home shows the verdict for the latest run", async ({ app }) => {
 test("the Runs tab lists the recorded jobs with their outcome", async ({ app }) => {
   await app.goto("/data?tab=runs", { waitUntil: "load" });
   await expect(app.getByRole("heading", { level: 1, name: "Connect & load" })).toBeVisible();
-  await expect(app.getByText(/analysis|download/i).first()).toBeVisible();
+  await expect(app.getByRole("main").getByText(/analysis|download/i).first()).toBeVisible();
 });
 
 test.describe("signed out", () => {
