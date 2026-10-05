@@ -2923,3 +2923,21 @@ rules:
     __other__: Transfer or scrap the remaining stock (MIGO), then keep the deletion flag; or remove the flag in MM06.
   record_fix_template: 'Material {MARD.MATNR} plant {MARD.WERKS} storage location {MARD.LGORT}: flagged for deletion with
     stock.'
+- id: MM309
+  field: MARA.MATNR
+  check_class: uniqueness_check
+  fields:
+  - MARA.MATNR
+  normalize: space
+  severity: medium
+  dimension: uniqueness
+  message: Two material numbers differ only by spaces (likely duplicate material)
+  why_it_matters: Externally assigned material numbers are typed by hand, so PUMP 100 and PUMP100 end up as two materials
+    for one part. SAP treats them as different keys, so stock, consumption history and purchasing volume split across both.
+  rule_authority: best_practice
+  sap_impact: Users pick either number in purchasing, goods movements and BOMs; MRP plans each separately and interfaces
+    that strip spaces map both to one key.
+  fix_map:
+    __other__: Confirm the duplicate, choose the surviving material, transfer stock (309), move open documents, BOM items
+      and info records, then flag the duplicate for deletion (MM06) and set a blocking material status.
+  record_fix_template: 'Material {MARA.MATNR}: matches another material number once spaces are ignored.'
