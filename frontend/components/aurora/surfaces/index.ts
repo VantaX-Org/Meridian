@@ -7,20 +7,6 @@
  * render out); page files wire data via react-query.
  */
 
-export {
-  CommandCentre,
-  buildVerdict,
-} from "./command-centre";
-export type {
-  CommandCentreProps,
-  CommandCentreVerdict,
-  CommandCentreKpi,
-  CommandCentreInboxItem,
-  CommandCentreTrendPoint,
-  CommandCentreIssueBucket,
-  BuildVerdictInput,
-} from "./command-centre";
-
 export { Workbench, WorkbenchDrawerHeader } from "./workbench";
 export type {
   WorkbenchProps,

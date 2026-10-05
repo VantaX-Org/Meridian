@@ -1,10 +1,5 @@
-import { Suspense } from "react";
-import { WorkspaceHub } from "@/components/shell/workspace-hub";
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return (
-    <Suspense fallback={null}>
-      <WorkspaceHub id="command-centre" />
-    </Suspense>
-  );
+  redirect("/?tab=live");
 }

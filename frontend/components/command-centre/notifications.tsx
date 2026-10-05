@@ -1,22 +1,24 @@
 "use client";
 
 /**
- * Command Centre → Notifications: what the platform wants a person to know —
- * findings, approvals, cleaning outcomes, digests and warnings. Opening one
+ * Notifications: what the platform wants a person to know, grouped by day.
+ * Findings, approvals, cleaning outcomes, digests and warnings. Opening one
  * marks it read; the link takes you to the thing itself.
  */
 
 import Link from "next/link";
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Banner, Button, Chip, EmptyState, KpiRail, Stack, Stat, Text, type ChipTone } from "@/components/aurora";
+import { Chip } from "@/components/aurora";
+import { Banner, Button, EmptyState, SectionCard, TableSkeleton, Verdict } from "@/components/ui-core";
 import { useUrlState } from "@/hooks/use-url-state";
 import { getNotifications, markAllNotificationsRead, markNotificationRead } from "@/lib/api/notifications";
 import { relativeTime } from "@/lib/format";
-import type { NotificationType } from "@/types/api";
+import type { Notification, NotificationType } from "@/types/api";
 
 const TYPES: NotificationType[] = ["finding", "approval", "cleaning", "exception", "digest", "warning"];
-const TONE: Record<NotificationType, ChipTone> = { finding: "info", approval: "warning", cleaning: "success", exception: "neutral", digest: "neutral", warning: "danger" };
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+const dayLabel = (iso: string) => new Date(iso).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
 
 export function NotificationsSurface() {
   const qc = useQueryClient();
@@ -30,41 +32,54 @@ export function NotificationsSurface() {
   const refresh = () => { qc.invalidateQueries({ queryKey: ["notifications.list"] }); qc.invalidateQueries({ queryKey: ["notifications-unread-count"] }); };
   const markOne = useMutation({ mutationFn: markNotificationRead, onSuccess: refresh });
   const markAll = useMutation({ mutationFn: markAllNotificationsRead, onSuccess: refresh });
-  const byType = TYPES.map((t) => [t, items.filter((n) => n.type === t).length] as const);
+
+  const days = useMemo(() => {
+    const m = new Map<string, Notification[]>();
+    for (const n of items) {
+      const k = dayLabel(n.created_at);
+      m.set(k, [...(m.get(k) ?? []), n]);
+    }
+    return [...m.entries()];
+  }, [items]);
+
+  const verdict = q.isLoading || q.error ? null
+    : unread ? `${unread.toLocaleString()} unread ${unread === 1 ? "notification is" : "notifications are"} waiting for you.`
+    : "You have read everything.";
 
   return (
-    <Stack gap={5} className="aurora-page">
-      <KpiRail>
-        <Stat label="Notifications" value={q.data?.total ?? items.length} />
-        <Stat label="Unread" value={unread} tone={unread ? "info" : "neutral"} />
-        <Stat label="Warnings" value={items.filter((n) => n.type === "warning").length} tone={items.some((n) => n.type === "warning" && !n.is_read) ? "danger" : "neutral"} />
-        <Stat label="Awaiting approval" value={items.filter((n) => n.type === "approval" && !n.is_read).length} tone={items.some((n) => n.type === "approval" && !n.is_read) ? "warning" : "neutral"} />
-      </KpiRail>
-      <Stack direction="row" gap={2} wrap align="center">
+    <div className="ui-page">
+      {verdict ? <Verdict>{verdict}</Verdict> : null}
+      <div className="aurora-notifs__bar">
         <Chip selected={view === "all"} onClick={() => setView("all")}>All</Chip>
-        <Chip selected={view === "unread"} onClick={() => setView("unread")}>Unread · {unread}</Chip>
-        {byType.map(([t, n]) => <Chip key={t} selected={view === t} onClick={() => setView(t)}>{t} · {n}</Chip>)}
-        <span style={{ flex: 1 }} />
-        <Button variant="secondary" size="sm" onClick={() => markAll.mutate()} disabled={markAll.isPending || !unread}>Mark all read</Button>
-      </Stack>
-      {q.isLoading ? <Text tone="muted">Reading notifications.</Text>
+        <Chip selected={view === "unread"} onClick={() => setView("unread")}>Unread</Chip>
+        {TYPES.map((t) => <Chip key={t} selected={view === t} onClick={() => setView(t)}>{cap(t)}</Chip>)}
+        <span className="aurora-notifs__spacer" />
+        <Button variant="secondary" onClick={() => markAll.mutate()} disabled={markAll.isPending || !unread}>Mark all read</Button>
+      </div>
+
+      {q.isLoading ? <TableSkeleton rows={6} label="Reading notifications" />
         : q.error ? <Banner tone="danger" title="Notifications could not be read">{(q.error as Error).message}</Banner>
-        : items.length ? (
-          <ul className="aurora-notifs" aria-label="Notifications">
-            {items.map((n) => (
-              <li key={n.id} className="aurora-notifs__row" data-unread={!n.is_read}>
-                <span className="aurora-notifs__dot" aria-hidden="true" />
-                <Chip tone={TONE[n.type] ?? "neutral"}>{n.type}</Chip>
-                <button type="button" className="aurora-notifs__body" onClick={() => !n.is_read && markOne.mutate(n.id)} aria-label={n.is_read ? n.title : `${n.title} (unread; mark read)`}>
-                  <Text variant="text-body" as="span"><strong>{n.title}</strong></Text>
-                  <Text variant="text-small" tone="secondary" as="span">{n.body}</Text>
-                </button>
-                <Text variant="text-micro" tone="muted" className="aurora-number">{relativeTime(n.created_at)}</Text>
-                {n.link ? <Link href={n.link} className="aurora-link" onClick={() => !n.is_read && markOne.mutate(n.id)}>Open →</Link> : null}
-              </li>
-            ))}
-          </ul>
-        ) : <EmptyState title={view === "all" ? "Nothing to tell you yet." : "Nothing in this view."} body="Findings above your alert thresholds, approvals waiting on you and run digests arrive here." />}
-    </Stack>
+        : days.length ? days.map(([day, list]) => (
+          <SectionCard key={day} title={day} meta={list.length} flush>
+            <ul className="aurora-notifs" aria-label={day}>
+              {list.map((n) => (
+                <li key={n.id} className="aurora-notifs__row" data-unread={!n.is_read}>
+                  <span className="aurora-notifs__dot" aria-hidden="true" />
+                  <button type="button" className="aurora-notifs__body" onClick={() => !n.is_read && markOne.mutate(n.id)}
+                    aria-label={n.is_read ? n.title : `${n.title}, unread. Mark read.`}>
+                    <span className="aurora-notifs__title">{n.title}</span>
+                    <span className="aurora-notifs__text">{n.body}</span>
+                  </button>
+                  <span className="aurora-notifs__kind">{cap(n.type)}</span>
+                  <span className="aurora-notifs__when aurora-number">{relativeTime(n.created_at)}</span>
+                  {n.link ? <Link href={n.link} className="ui-link" onClick={() => !n.is_read && markOne.mutate(n.id)}>Open</Link> : <span />}
+                </li>
+              ))}
+            </ul>
+          </SectionCard>
+        )) : (
+          <EmptyState>{view === "all" ? "Nothing to tell you yet. Findings above your alert thresholds, approvals waiting on you and run digests arrive here." : "Nothing in this view."}</EmptyState>
+        )}
+    </div>
   );
 }

@@ -314,3 +314,23 @@
     --aurora-duration-tally: 0ms;
   }
 }
+
+/* Executive report: layout, and print as one or two pages with no app shell. */
+.ui-report__bar { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--aurora-space-4); }
+.ui-report__actions { display: flex; align-items: center; gap: var(--aurora-space-4); }
+
+@media print {
+  .aurora-app-shell__rail,
+  .aurora-app-shell__topbar,
+  .aurora-job-rail__wrap,
+  .aurora-hub__bar,
+  .ui-report__actions,
+  [data-print="hide"] { display: none !important; }
+  html, body { background: Canvas !important; color: CanvasText !important; height: auto !important; overflow: visible !important; }
+  .aurora-app-shell { display: block !important; height: auto !important; background: none !important; }
+  .aurora-app-shell__content { display: block !important; height: auto !important; overflow: visible !important; padding: 0 !important; background: none !important; }
+  .ui-section, .ui-tally, tr { break-inside: avoid; }
+  .ui-section { box-shadow: none !important; }
+  .ui-tally__figure { animation: none !important; }
+  @page { margin: 14mm; }
+}
