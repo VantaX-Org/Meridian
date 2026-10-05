@@ -1,51 +1,53 @@
 "use client";
 
 /**
- * Admin → Exception billing: what a month of resolved exceptions costs, by
+ * Admin, Exception billing: what a month of resolved exceptions costs, by
  * billing tier, on top of the base fee. Read only; the first read of a month
  * records it.
  */
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Banner, Field, Input, KpiRail, Stack, Stat, Text } from "@/components/aurora";
+import { Banner, Field, Input, PageHeader, SectionCard, TableSkeleton, Tally } from "@/components/ui-core";
 import { getExceptionBilling } from "@/lib/api/exceptions";
 
 const TIERS = [1, 2, 3, 4] as const;
 const money = (v: number) => Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const thisMonth = () => new Date().toISOString().slice(0, 7);
+const HREF = "/admin?tab=exception-billing";
 
 export function ExceptionBillingSurface() {
   const [period, setPeriod] = useState(thisMonth);
   const q = useQuery({ queryKey: ["exceptions.billing", period], queryFn: () => getExceptionBilling(period), enabled: /^\d{4}-\d{2}$/.test(period) });
   const b = q.data;
+  const resolved = b ? TIERS.reduce((n, t) => n + b[`tier${t}_count`], 0) : null;
   return (
-    <Stack gap={5} className="aurora-page">
-      <Field label="Month">
+    <div className="ui-page">
+      <PageHeader title="Exception billing" summary="Resolved exceptions by billing tier, on top of the base fee. Read only." />
+      <Tally level={4} label="Billing for the month" figures={[
+        { label: "Total", value: b ? money(b.total_amount) : null, loading: q.isLoading, verdict: b ? "Base fee plus tiers." : "Pick a month.", href: HREF },
+        { label: "Base fee", value: b ? money(b.base_fee) : null, loading: q.isLoading, verdict: "Charged every month.", href: HREF },
+        { label: "Resolved exceptions", value: resolved, loading: q.isLoading, verdict: resolved ? "Billed by tier below." : "Nothing resolved this month.", href: HREF },
+      ]} />
+      <div className="ui-fields"><Field label="Month">
         {({ controlId }) => <Input id={controlId} type="month" value={period} max={thisMonth()} onChange={(e) => setPeriod(e.target.value)} />}
-      </Field>
-      {q.isLoading ? <Text tone="muted">Reading billing.</Text>
+      </Field></div>
+      {q.isLoading ? <TableSkeleton rows={4} label="Reading billing" />
         : q.error ? <Banner tone="danger" title="Billing could not be read">{(q.error as Error).message}</Banner>
         : b ? (
-          <>
-            <KpiRail>
-              <Stat label="Total" value={money(b.total_amount)} />
-              <Stat label="Base fee" value={money(b.base_fee)} />
-              <Stat label="Resolved exceptions" value={TIERS.reduce((n, t) => n + b[`tier${t}_count`], 0)} />
-            </KpiRail>
-            <table className="aurora-exec__table">
-              <thead><tr><th>Tier</th><th>Resolved</th><th>Amount</th></tr></thead>
+          <SectionCard title="By tier" meta={b.stripe_invoice_id ? `Invoice ${b.stripe_invoice_id}` : undefined} flush>
+            <table className="ui-mini-table">
+              <thead><tr><th>Tier</th><th className="ui-num">Resolved</th><th className="ui-num">Amount</th></tr></thead>
               <tbody>{TIERS.map((t) => (
                 <tr key={t}>
                   <td>Tier {t}</td>
-                  <td className="aurora-number">{b[`tier${t}_count`]}</td>
-                  <td className="aurora-number">{money(b[`tier${t}_amount`])}</td>
+                  <td className="ui-num">{b[`tier${t}_count`]}</td>
+                  <td className="ui-num">{money(b[`tier${t}_amount`])}</td>
                 </tr>
               ))}</tbody>
             </table>
-            {b.stripe_invoice_id ? <Text variant="text-small" tone="muted">Invoice {b.stripe_invoice_id}</Text> : null}
-          </>
+          </SectionCard>
         ) : null}
-    </Stack>
+    </div>
   );
 }

@@ -2,28 +2,25 @@
 
 /**
  * Admin, Users and audit: who has access and with which role, the role matrix
- * the API enforces, the licence this deployment runs under, and the audit
- * log. Everything here needs manage_users on the API.
+ * the API enforces, and the audit log. Everything here needs manage_users on the API.
  */
 
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { AdminAuditLogTable, AdminDestructiveConfirm, type ChipTone } from "@/components/aurora";
 import {
-  Banner, Button, Chip, DataTable, DetailDrawer, EmptyState, Field, Input, KeyValue, Metric, MetricStrip, Mono, PageHeader, SectionCard, Select,
-  StatusBadge, TableSkeleton, Tabs, type AuroraColumnMeta,
+  Banner, Button, Chip, DataTable, DetailDrawer, EmptyState, Field, Input, Mono, PageHeader, SectionCard, Select,
+  SegmentedControl, StatusBadge, TableSkeleton, Tally, type AuroraColumnMeta, type ChipTone,
 } from "@/components/ui-core";
 import { apiErrorMessage } from "@/lib/api/optional";
-import { downloadCsv } from "@/components/meridian/actions";
-import { PlatformVersion } from "./platform-version";
+import { downloadCsv } from "@/lib/actions";
+import { AuditLogTable, DestructiveConfirm } from "./parts";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import { getAuditEntries } from "@/lib/api/audit";
 import { downloadBlob } from "@/lib/api/download";
 import { getRoleMatrix } from "@/lib/api/auth";
-import { getLicenceManifest } from "@/lib/api/licence";
 import { deleteUser, getUsers, inviteUser, updateUser } from "@/lib/api/users";
 import { relativeTime } from "@/lib/format";
 import type { User, UserRole } from "@/types/api";
@@ -42,25 +39,28 @@ const ROLE_META: Record<UserRole, { label: string; desc: string }> = {
 };
 const ROLE_TONE: Record<UserRole, ChipTone> = { admin: "danger", manager: "info", steward: "info", ai_reviewer: "warning", approver: "warning", analyst: "neutral", viewer: "neutral", auditor: "neutral" };
 const ROLE_OPTIONS = ROLES.map((r) => ({ value: r, label: ROLE_META[r].label }));
-type View = "users" | "roles" | "licence" | "audit";
+const HREF = "/admin?tab=users";
+const WEEK = 7 * 24 * 3600 * 1000;
 
 export function UsersSurface() {
   const qc = useQueryClient();
   const { can } = useRole();
   const canManage = can("manage_users");
   const [view, setView] = useUrlState("view", "users");
+  const [mountedAt] = useState(() => Date.now());
   const [invite, setInvite] = useState(false);
   const [editing, setEditing] = useState<User | null>(null);
   const [deleting, setDeleting] = useState<User | null>(null);
 
   const usersQ = useQuery({ queryKey: ["users.list"], queryFn: getUsers, enabled: canManage });
-  const licence = useQuery({ queryKey: ["licence.manifest"], queryFn: getLicenceManifest });
   const matrix = useQuery({ queryKey: ["auth.roles"], queryFn: getRoleMatrix, enabled: view === "roles" });
   const audit = useQuery({ queryKey: ["audit.entries", 50], queryFn: () => getAuditEntries({ limit: 50 }), enabled: view === "audit" && canManage });
   const users = useMemo(() => usersQ.data?.users ?? [], [usersQ.data]);
   const active = users.filter((u) => u.is_active);
-  const seats = licence.data?.features?.max_users || 0;
-  const rolesInUse = new Set(active.map((u) => u.role));
+  const activeWeek = useMemo(() => {
+    return users.filter((u) => u.is_active && u.last_login && new Date(u.last_login).getTime() > mountedAt - WEEK).length;
+  }, [users, mountedAt]);
+  const neverSignedIn = active.filter((u) => !u.last_login).length;
   const refresh = () => qc.invalidateQueries({ queryKey: ["users.list"] });
 
   const del = useMutation({
@@ -95,18 +95,14 @@ export function UsersSurface() {
         </> : view === "audit" ? (
           <Button variant="secondary" onClick={() => downloadBlob("/api/v1/audit/export", {}, "audit_log.csv").catch((e) => toast.error(apiErrorMessage(e)))}>Export audit log</Button>
         ) : null} />
-      <MetricStrip label="Access">
-        <Metric label="Active users" value={active.length} unit={seats ? `of ${seats} seats` : undefined} tone={seats && active.length >= seats ? "warning" : "default"} />
-        <Metric label="Roles in use" value={rolesInUse.size} />
-        <Metric label="Modules licensed" value={licence.data?.enabled_modules?.length ?? 0} unit={licence.data?.tier} />
-        <Metric label="Licence" value={licence.data?.valid === false ? "Not valid" : licence.data?.days_remaining ?? "—"} unit={licence.data?.valid !== false && licence.data?.days_remaining != null ? "days left" : undefined}
-          tone={licence.data?.valid === false ? "danger" : licence.data?.days_remaining != null && licence.data.days_remaining < 30 ? "warning" : "default"} />
-      </MetricStrip>
-      <div>
-        <Tabs ariaLabel="Users and audit sections" value={view as View} onValueChange={(v) => setView(v)} items={[
-          { id: "users", label: "Users", count: users.length }, { id: "roles", label: "Roles" }, { id: "licence", label: "Licence and modules" }, { id: "audit", label: "Audit log" },
-        ]} />
-      </div>
+      <Tally level={4} label="Access" figures={[
+        { label: "Users", value: usersQ.isLoading ? null : users.length, loading: usersQ.isLoading, verdict: `${active.length} active.`, href: HREF },
+        { label: "Active this week", value: usersQ.isLoading ? null : activeWeek, loading: usersQ.isLoading, verdict: activeWeek ? "Signed in over the last 7 days." : "Nobody has signed in this week.", href: HREF },
+        { label: "Never signed in", value: usersQ.isLoading ? null : neverSignedIn || "None", loading: usersQ.isLoading, tone: neverSignedIn ? "warning" : undefined, verdict: neverSignedIn ? "Invited and not yet accepted." : "Every active user has signed in.", href: HREF },
+      ]} />
+      <SegmentedControl ariaLabel="Users and audit sections" value={view} onChange={setView} options={[
+        { id: "users", label: "Users" }, { id: "roles", label: "Roles" }, { id: "audit", label: "Audit log" },
+      ]} />
 
       {view === "users" ? (usersQ.isLoading ? <TableSkeleton rows={6} label="Loading users" /> : users.length
         ? <DataTable columns={columns} data={users} getRowId={(u) => u.id} onRowActivate={setEditing} ariaLabel="Users" maxHeight="60vh" />
@@ -114,33 +110,8 @@ export function UsersSurface() {
 
       {view === "roles" ? <RolesView matrix={matrix.data} users={active} /> : null}
 
-      {view === "licence" ? (
-        <div className="ui-columns">
-          <div className="ui-stack">
-            <SectionCard title="Licence">
-              <KeyValue rows={[
-                { k: "Tier", v: licence.data?.tier ?? "—" },
-                { k: "Seats", v: `${active.length} of ${seats || "unlimited"}` },
-                { k: "Renews", v: licence.data?.expiry_date ? `${licence.data.expiry_date}${licence.data.days_remaining != null ? `, ${licence.data.days_remaining} days` : ""}` : "—" },
-                { k: "Status", v: <StatusBadge status={licence.data?.valid === true ? "ok" : licence.data?.valid === false ? "failed" : "idle"}>{licence.data?.status ?? "Unknown"}</StatusBadge> },
-                { k: "Last validated", v: licence.data?.last_validated ? relativeTime(licence.data.last_validated) : "—" },
-              ]} />
-            </SectionCard>
-            <p className="ui-note">Plan changes and invoices are handled in Meridian HQ.</p>
-          </div>
-          <div className="ui-stack">
-            <SectionCard title="Modules enabled" meta={licence.data?.enabled_menu_items?.length || undefined}>
-              {licence.data?.enabled_menu_items?.length
-                ? <ul className="ui-plain-list">{licence.data.enabled_menu_items.map((m) => <li key={m}>{m}</li>)}</ul>
-                : <p className="ui-note">None enabled.</p>}
-            </SectionCard>
-            <PlatformVersion />
-          </div>
-        </div>
-      ) : null}
-
       {view === "audit" ? (audit.isLoading ? <TableSkeleton rows={8} label="Loading the audit log" /> : (
-        <AdminAuditLogTable entries={(audit.data?.entries ?? []).map((e) => ({
+        <AuditLogTable entries={(audit.data?.entries ?? []).map((e) => ({
           id: e.id, timestamp: e.created_at, displayTime: relativeTime(e.created_at),
           actor: e.actor_email ? e.actor_email.split("@")[0] : "system",
           action: `${e.action}, ${e.entity_type}`, context: `${e.method} ${e.path} returned ${e.status_code}${e.entity_id ? `, ${e.entity_id.slice(0, 8)}` : ""}`,
@@ -153,9 +124,9 @@ export function UsersSurface() {
         {editing ? <EditForm key={editing.id} user={editing} onDone={() => { setEditing(null); refresh(); }} /> : null}
       </DetailDrawer>
       <DetailDrawer open={!!deleting} onClose={() => setDeleting(null)} ariaLabel="Remove user">
-        {deleting ? <AdminDestructiveConfirm title={`Remove ${deleting.name}`} expected={deleting.email}
+        {deleting ? <DestructiveConfirm title={`Remove ${deleting.name}`} expected={deleting.email}
           body={<>Type <Mono>{deleting.email}</Mono> to remove this user. Their stewardship history stays attributed to them.</>}
-          confirmLabel="Remove user" cancelLabel="Keep" onConfirm={() => del.mutate(deleting)} onCancel={() => setDeleting(null)} /> : null}
+          confirmLabel="Remove user" cancelLabel="Keep" busy={del.isPending} onConfirm={() => del.mutate(deleting)} onCancel={() => setDeleting(null)} /> : null}
       </DetailDrawer>
     </div>
   );
@@ -175,7 +146,7 @@ function RolesView({ matrix, users }: { matrix: Record<string, string[]> | undef
                 {ROLES.map((r) => (
                   <tr key={r}>
                     <td><Chip tone={ROLE_TONE[r]}>{ROLE_META[r].label}</Chip><div className="ui-micro">{ROLE_META[r].desc}</div></td>
-                    {actions.map((a) => <td key={a} style={{ textAlign: "center" }}>{matrix[r]?.includes(a) ? <span aria-label="Allowed">✓</span> : <span className="ui-visually-hidden">Not allowed</span>}</td>)}
+                    {actions.map((a) => <td key={a} style={{ textAlign: "center" }}>{matrix[r]?.includes(a) ? <span aria-label="Allowed">Yes</span> : <span className="ui-visually-hidden">Not allowed</span>}</td>)}
                   </tr>
                 ))}
               </tbody>

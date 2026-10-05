@@ -18,7 +18,7 @@ import {
   useDrawerParam, type AuroraColumnMeta, type ChipTone, type CommandPaletteCommand,
 } from "@/components/aurora";
 import { Tally } from "@/components/ui-core";
-import { copyToClipboard } from "@/components/meridian/actions";
+import { copyToClipboard } from "@/lib/actions";
 import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";

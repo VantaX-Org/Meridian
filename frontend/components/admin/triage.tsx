@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Admin → Triage: who gets new issues and steward tasks (teams and ordered
+ * Admin, Triage: who gets new issues and steward tasks (teams and ordered
  * assignment rules), how long they have (SLA policies) and the working
  * calendar the clocks run on. Teams, rules and policies need manage_rules;
  * the calendar needs manage_settings; everyone else can read.
@@ -11,6 +11,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Banner, Button, Chip, Drawer, Field, Input, Select, Stack, Text, Textarea } from "@/components/aurora";
+import { PageHeader, StatusBadge, Tally } from "@/components/ui-core";
 import { useRole } from "@/hooks/use-role";
 import {
   createRule, createTeam, deleteRule, deleteSlaPolicy, deleteTeam, getRules, getSlaPolicies, getTeams, getTriageSettings,
@@ -30,16 +31,17 @@ const MATCH_FIELDS = [
 ] as const;
 type ListField = (typeof MATCH_FIELDS)[number][0];
 
+const HREF = "/admin?tab=triage";
 const errText = (e: unknown, fallback: string) => (e as Error).message || fallback;
 const list = (s: string) => s.split(/[,\n]/).map((x) => x.trim()).filter(Boolean);
 const toggled = <T,>(xs: T[], x: T, on: boolean) => (on ? [...xs, x] : xs.filter((y) => y !== x));
-const mins = (m: number | null) => (m == null ? "—" : m % 1440 === 0 ? `${m / 1440}d` : m % 60 === 0 ? `${m / 60}h` : `${m}m`);
+const mins = (m: number | null) => (m == null ? "None" : m % 1440 === 0 ? `${m / 1440}d` : m % 60 === 0 ? `${m / 60}h` : `${m}m`);
 
 function useUsers() {
   const { can } = useRole();
   const q = useQuery({ queryKey: ["users.assignable"], queryFn: getAssignableUsers, enabled: can("assign") });
   const users: User[] = q.data ?? [];
-  const name = (id: string | null) => (!id ? "—" : users.find((u) => u.id === id)?.name ?? id.slice(0, 8));
+  const name = (id: string | null) => (!id ? "None" : users.find((u) => u.id === id)?.name ?? id.slice(0, 8));
   return { users, name };
 }
 
@@ -47,7 +49,7 @@ function Section({ id, title, action, children }: { id: string; title: string; a
   return (
     <section aria-labelledby={id}>
       <Stack direction="row" gap={3} align="center">
-        <Text as="h2" id={id} variant="text-lead" className="aurora-runs__h">{title}</Text>
+        <Text as="h2" id={id} variant="text-lead">{title}</Text>
         <span style={{ flex: 1 }} />
         {action}
       </Stack>
@@ -60,14 +62,25 @@ export function TriageAdminSurface() {
   const { can } = useRole();
   const rules = can("manage_rules");
   const settings = can("manage_settings");
+  const teams = useQuery({ queryKey: ["triage.teams"], queryFn: getTeams });
+  const ruleQ = useQuery({ queryKey: ["triage.rules"], queryFn: getRules });
+  const sla = useQuery({ queryKey: ["triage.sla"], queryFn: getSlaPolicies });
+  const idle = (ruleQ.data ?? []).filter((r) => !r.enabled).length;
+  const custom = (sla.data ?? []).filter((p) => !p.is_default).length;
   return (
-    <Stack gap={6} className="aurora-page">
+    <div className="ui-page">
+      <PageHeader title="Triage" summary="Who gets new issues, how long they have, and the calendar the clocks run on." />
+      <Tally level={4} label="Triage setup" figures={[
+        { label: "Teams", value: teams.isLoading ? null : teams.data?.length || "None", loading: teams.isLoading, verdict: teams.data?.length ? "Rules can route to a team." : "No team to route to yet.", href: HREF },
+        { label: "Assignment rules", value: ruleQ.isLoading ? null : ruleQ.data?.length || "None", loading: ruleQ.isLoading, tone: idle ? "warning" : undefined, verdict: idle ? `${idle} switched off.` : ruleQ.data?.length ? "Every rule is active." : "Items go to the fallback user.", href: HREF },
+        { label: "SLA policies", value: sla.isLoading ? null : custom || "None", loading: sla.isLoading, verdict: custom ? "Saved by you." : "Defaults apply.", href: HREF },
+      ]} />
       {!rules && !settings ? <Banner tone="info" title="Read only">Changing triage needs the manage rules or manage settings permission.</Banner> : null}
       <TeamsSection write={rules} />
       <RulesSection write={rules} />
       <PoliciesSection write={rules} />
       <CalendarSection write={settings} />
-    </Stack>
+    </div>
   );
 }
 
@@ -88,7 +101,7 @@ function TeamsSection({ write }: { write: boolean }) {
       {teams.isLoading ? <Text tone="muted">Reading teams.</Text>
         : teams.error ? <Banner tone="danger" title="Teams could not be read">{errText(teams.error, "")}</Banner>
         : teams.data?.length ? (
-          <table className="aurora-exec__table">
+          <table className="ui-mini-table">
             <thead><tr><th>Name</th><th>Strategy</th><th>Lead</th><th>Members</th><th>Open items</th>{write ? <th /> : null}</tr></thead>
             <tbody>{teams.data.map((t) => (
               <tr key={t.id}>
@@ -180,7 +193,7 @@ function RulesSection({ write }: { write: boolean }) {
   });
   const remove = useMutation({ mutationFn: deleteRule, onSuccess: () => done("Rule deleted"), onError: (e) => toast.error(errText(e, "Rule not deleted")) });
   const target = (r: AssignmentRule) => (r.assign_team_id ? `Team: ${teams.data?.find((t) => t.id === r.assign_team_id)?.name ?? r.assign_team_id.slice(0, 8)}` : name(r.assign_user_id));
-  const matchText = (m: RuleMatch) => Object.entries(m).filter(([, v]) => v?.length).map(([k, v]) => `${k.replace(/_/g, " ")}: ${(v as string[]).join(", ")}`).join(" · ") || "Everything";
+  const matchText = (m: RuleMatch) => Object.entries(m).filter(([, v]) => v?.length).map(([k, v]) => `${k.replace(/_/g, " ")}: ${(v as string[]).join(", ")}`).join("; ") || "Everything";
   const busy = toggle.isPending || move.isPending || remove.isPending;
   const rows = rules.data ?? [];
   return (
@@ -189,7 +202,7 @@ function RulesSection({ write }: { write: boolean }) {
       {rules.isLoading ? <Text tone="muted">Reading rules.</Text>
         : rules.error ? <Banner tone="danger" title="Rules could not be read">{errText(rules.error, "")}</Banner>
         : rows.length ? (
-          <table className="aurora-exec__table">
+          <table className="ui-mini-table">
             <thead><tr><th>#</th><th>Name</th><th>Matches</th><th>Assigns to</th><th>Enabled</th>{write ? <th /> : null}</tr></thead>
             <tbody>{rows.map((r, i) => (
               <tr key={r.id}>
@@ -283,11 +296,11 @@ function PoliciesSection({ write }: { write: boolean }) {
       {policies.isLoading ? <Text tone="muted">Reading policies.</Text>
         : policies.error ? <Banner tone="danger" title="Policies could not be read">{errText(policies.error, "")}</Banner>
         : (
-          <table className="aurora-exec__table">
+          <table className="ui-mini-table">
             <thead><tr><th>Severity</th><th>Module</th><th>Acknowledge</th><th>Resolve</th><th>At risk</th><th>Business hours</th><th />{write ? <th /> : null}</tr></thead>
             <tbody>{(policies.data ?? []).map((p) => (
               <tr key={p.id ?? `default-${p.severity}-${p.module ?? ""}`}>
-                <td><span className="aurora-workbench__severity" data-severity={p.severity}>{p.severity}</span></td>
+                <td><StatusBadge status={p.severity}>{p.severity}</StatusBadge></td>
                 <td>{p.module ? formatModuleName(p.module) : "All modules"}</td>
                 <td className="aurora-number">{mins(p.ack_minutes)}</td>
                 <td className="aurora-number">{mins(p.resolve_minutes)}</td>
@@ -380,7 +393,7 @@ function CalendarForm({ initial, write }: { initial: TriageSettings; write: bool
   return (
     <Stack gap={3}>
       {!write ? <Banner tone="info" title="Read only">Changing the calendar needs the manage settings permission.</Banner> : null}
-      <Stack direction="row" gap={3} wrap className="aurora-filters">
+      <Stack direction="row" gap={3} wrap className="ui-fields">
         <Field label="Timezone" helper="IANA name, such as Africa/Johannesburg.">{({ controlId }) => <Input id={controlId} value={timezone} disabled={!write} onChange={(e) => setTimezone(e.target.value)} />}</Field>
         <Field label="Day starts">{({ controlId }) => <Input id={controlId} type="time" value={start} disabled={!write} onChange={(e) => setStart(e.target.value)} />}</Field>
         <Field label="Day ends">{({ controlId }) => <Input id={controlId} type="time" value={end} disabled={!write} onChange={(e) => setEnd(e.target.value)} />}</Field>

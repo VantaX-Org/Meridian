@@ -240,7 +240,7 @@ export function CommandCentreOverview() {
       ) : null}
 
       {empty ? (
-        <div className="mn-legacy-host"><GettingStarted hasAnalysis={false} /></div>
+        <GettingStarted hasAnalysis={false} />
       ) : null}
 
       {a && dqs !== null ? (

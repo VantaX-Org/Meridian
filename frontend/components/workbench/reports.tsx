@@ -15,7 +15,7 @@ import {
   Banner, Button, DataTable, DetailDrawer, EmptyState, KeyValue, Mono, PageHeader, TableSkeleton, Tally, useDrawerParam, type AuroraColumnMeta,
 } from "@/components/ui-core";
 import { apiErrorMessage } from "@/lib/api/optional";
-import { copyToClipboard } from "@/components/meridian/actions";
+import { copyToClipboard } from "@/lib/actions";
 import { getConfigMatchesExportUrl } from "@/lib/api/config-matches";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { compositeDqs } from "@/lib/api/findings";

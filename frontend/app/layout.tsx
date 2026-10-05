@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Atkinson_Hyperlegible_Mono, Atkinson_Hyperlegible_Next } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-provider";
-import { Toaster } from "@/components/ui/sonner";
+import { Toaster } from "@/components/shell/toaster";
 import { Providers } from "@/lib/providers";
 import "./globals.css";
 
@@ -37,7 +37,7 @@ export default function RootLayout({
         >
           <Providers>
             {children}
-            <Toaster richColors position="top-right" />
+            <Toaster />
           </Providers>
         </body>
       </html>

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { EmptyState, PageHeader } from "@/components/ui-core";
 import { useRole } from "@/hooks/use-role";
 import type { Role } from "@/hooks/use-role";
 
@@ -37,20 +38,11 @@ export function RoleGate({ tier, permission, fallback = null, children }: RoleGa
  */
 export function PermissionDenied({ message }: { message?: string }) {
   return (
-    <div className="flex flex-col items-center justify-center py-24 gap-4">
-      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
-        <span className="text-2xl">🔒</span>
-      </div>
-      <h2 className="text-lg font-semibold text-foreground">Access Restricted</h2>
-      <p className="text-sm text-muted-foreground text-center max-w-sm">
-        {message ?? "You don't have permission to view this page. Contact your administrator."}
-      </p>
-      <Link
-        href="/"
-        className="mt-2 rounded-xl bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-      >
-        Back to Dashboard
-      </Link>
+    <div className="ui-page">
+      <PageHeader title="Access restricted" />
+      <EmptyState action={<Link href="/" className="aurora-button aurora-focus-ring" data-variant="primary" data-size="md"><span>Back to the Command Centre</span></Link>}>
+        {message ?? "You do not have permission to view this page. Contact your administrator."}
+      </EmptyState>
     </div>
   );
 }

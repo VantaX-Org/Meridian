@@ -11,7 +11,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  Banner, Button, Field, Input, Metric, MetricStrip, PageHeader, SectionCard, Select, TableSkeleton,
+  Banner, Button, Field, Input, PageHeader, SectionCard, Select, TableSkeleton, Tally,
 } from "@/components/ui-core";
 import { useRole } from "@/hooks/use-role";
 import { getFindingsAggregate } from "@/lib/api/findings";
@@ -19,6 +19,7 @@ import { getSettings, saveNotificationSettings, savePlannerConfig, updateAlertTh
 import { formatModuleName } from "@/lib/format";
 import type { AlertThresholds, DimensionScores, PlannerConfig, TenantSettings } from "@/types/api";
 
+const HREF = "/admin?tab=scoring";
 const DIMS = ["completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity"] as const;
 type Dim = (typeof DIMS)[number];
 const DEFAULT: DimensionScores = { completeness: 0.25, accuracy: 0.25, consistency: 0.2, timeliness: 0.1, uniqueness: 0.1, validity: 0.1 };
@@ -106,13 +107,11 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
       <PageHeader title="Scoring and alerts" summary="How the data quality score is weighted, when Meridian raises an alert, and who hears about it." />
       {!write ? <Banner tone="info" title="Read only">Changing these settings needs the manage_settings permission.</Banner> : null}
 
-      <MetricStrip label="Score preview">
-        <Metric label="Score now" value={current === null ? null : current.toFixed(1)} />
-        <Metric label="With these weights" value={preview === null ? null : preview.toFixed(1)}
-          delta={delta === null ? null : { value: delta, unit: " pts", good: "up" }} />
-        <Metric label="Weights sum" value={sum.toFixed(2)} tone={Math.abs(sum - 1) < 0.005 ? "default" : "warning"} />
-        {capped ? <Metric label="Cap in force" value="Yes" tone="danger" /> : null}
-      </MetricStrip>
+      <Tally level={4} label="Score preview" figures={[
+        { label: "Score now", value: current === null ? "None" : current.toFixed(1), loading: agg.isLoading, tone: capped ? "danger" : undefined, verdict: capped ? "A severity cap is in force." : current === null ? "No analysis has run yet." : "From the latest run.", href: HREF },
+        { label: "With these weights", value: preview === null ? "None" : preview.toFixed(1), loading: agg.isLoading, verdict: delta === null ? "Needs a scored run." : delta === 0 ? "Same as now." : `${delta > 0 ? "Up" : "Down"} ${Math.abs(delta)} points.`, href: HREF },
+        { label: "Weights sum", value: sum.toFixed(2), tone: Math.abs(sum - 1) < 0.005 ? undefined : "warning", verdict: Math.abs(sum - 1) < 0.005 ? "Sums to one." : "Normalised to one on save.", href: HREF },
+      ]} />
 
       <SectionCard title="Dimension weights" meta="Normalised to 1 on save">
         <div className="ui-stack">

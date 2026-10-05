@@ -7,17 +7,12 @@
  */
 import dynamic from "next/dynamic";
 import type { ComponentType } from "react";
-import { Skeleton } from "@/components/ui/skeleton";
+import { TableSkeleton } from "@/components/ui-core";
 
-const loading = () => <Skeleton className="h-64 w-full rounded-xl" />;
+const loading = () => <TableSkeleton rows={6} label="Loading" />;
 const page = (load: () => Promise<{ default: ComponentType }>) => dynamic(load, { ssr: false, loading });
 const named = <K extends string>(load: () => Promise<Record<K, ComponentType>>, key: K) =>
   dynamic(() => load().then((m) => ({ default: m[key] })), { ssr: false, loading });
-
-/** Tabs whose body is an Aurora surface — rendered on the canvas, not in the light sheet. */
-export const AURORA_TABS: ReadonlySet<string> = new Set(["/", "/migration", "/command-centre", "/executive-report", "/sync", "/issues", "/match-rules", "/match-rules/tuning", "/match-rules/constraints", "/business-process", "/settings/scoring", "/workbench/triage", "/workbench/progress", "/admin/triage", "/settings/field-mapping", "/exceptions/rules", "/settings/exception-billing",
-  "/systems", "/upload", "/versions", "/admin", "/findings", "/cleaning", "/exceptions", "/dedup", "/golden-records", "/glossary", "/reports", "/notifications", "/settings", "/settings/rules", "/settings/ai", "/settings/licence", "/contracts",
-  "/relationships", "/mining", "/ai/rules", "/workbench", "/process", "/lineage"]);
 
 export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
   "/": named(() => import("@/components/command-centre/overview"), "CommandCentreOverview"),
@@ -42,8 +37,6 @@ export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
   "/ai/rules": named(() => import("@/components/workbench/ai-rules"), "AiRulesSurface"),
   "/golden-records": named(() => import("@/components/workbench/golden-records"), "GoldenRecordsSurface"),
   "/match-rules": named(() => import("@/components/workbench/match-rules"), "MatchRulesSurface"),
-  "/match-rules/tuning": named(() => import("@/components/workbench/match-tuning"), "MatchTuningSurface"),
-  "/match-rules/constraints": named(() => import("@/components/workbench/match-tuning"), "PairConstraintsSurface"),
   "/glossary": named(() => import("@/components/workbench/glossary"), "GlossarySurface"),
   "/reports": named(() => import("@/components/workbench/reports"), "ReportsSurface"),
 

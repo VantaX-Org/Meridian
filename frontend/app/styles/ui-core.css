@@ -772,3 +772,45 @@ a.ui-link { color: var(--aurora-accent-500); text-decoration: none; }
 .ui-fill__bar { position: relative; flex: 1; height: 1px; background: var(--aurora-canvas-line); }
 .ui-fill__bar > span { position: absolute; left: 0; top: 0; height: 1px; background: var(--aurora-fg-secondary); }
 .ui-fill__num { font-variant-numeric: tabular-nums; min-width: 44px; text-align: right; }
+
+/* ── SegmentedControl ── */
+.ui-segmented { display: inline-flex; border: 1px solid var(--aurora-canvas-line); border-radius: var(--aurora-radius-control, 6px); overflow: hidden; align-self: flex-start; }
+.ui-segmented__option { appearance: none; border: 0; background: transparent; color: var(--aurora-fg-secondary); font: inherit; font-size: 14px; line-height: 20px; padding: var(--aurora-space-2) var(--aurora-space-4); cursor: pointer; }
+.ui-segmented__option + .ui-segmented__option { border-left: 1px solid var(--aurora-canvas-line); }
+.ui-segmented__option:hover { background: var(--aurora-canvas-overlay); color: var(--aurora-fg-primary); }
+.ui-segmented__option[aria-checked="true"] { background: var(--aurora-canvas-overlay); color: var(--aurora-fg-primary); font-weight: 600; box-shadow: inset 0 -2px 0 var(--aurora-fg-primary); }
+
+/* ── Admin parts ── */
+.ui-doctor { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--aurora-space-2); }
+.ui-doctor__item { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--aurora-space-3); }
+.ui-scroll-x { overflow-x: auto; }
+.ui-chip-row { display: flex; flex-wrap: wrap; gap: var(--aurora-space-2); }
+.ui-linklist { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; border-top: 1px solid var(--aurora-canvas-line); }
+.ui-linklist a { display: grid; gap: var(--aurora-space-1); padding: var(--aurora-space-3) 0; border-bottom: 1px solid var(--aurora-canvas-line); color: var(--aurora-fg-primary); text-decoration: none; }
+.ui-linklist a:hover strong { text-decoration: underline; }
+.ui-linklist a:focus-visible { outline: var(--aurora-focus-ring-width) solid var(--aurora-focus-ring-colour); outline-offset: 2px; }
+
+/* Update dialog */
+.ui-update__notes { max-height: 11rem; overflow-y: auto; white-space: pre-wrap; padding: var(--aurora-space-3); background: var(--aurora-canvas-sunken); border: 1px solid var(--aurora-canvas-line); border-radius: var(--aurora-radius-control); }
+.ui-update__phase { display: flex; align-items: center; gap: var(--aurora-space-3); }
+.ui-update__phase[data-phase="failed"] { color: var(--aurora-status-danger-500); }
+.ui-update__phase[data-phase="rolled_back"] { color: var(--aurora-status-warning-500); }
+.ui-update__spin { width: 1.25rem; height: 1.25rem; flex: none; border: 2px solid var(--aurora-accent-500); border-top-color: transparent; border-radius: 50%; animation: ui-update-spin 1s linear infinite; }
+@keyframes ui-update-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .ui-update__spin { animation: none; } }
+
+/* Shell menus */
+.ui-menu__head { display: grid; gap: var(--aurora-space-1); padding: var(--aurora-space-3); border-bottom: 1px solid var(--aurora-canvas-line); min-width: 0; }
+.ui-menu__head > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ui-menu__head--row { display: flex; align-items: center; justify-content: space-between; }
+.ui-menu__link { padding: 0; color: var(--aurora-accent-500); font: inherit; font-size: 0.8125rem; background: none; border: 0; cursor: pointer; text-decoration: underline; }
+.ui-bell { position: relative; }
+.ui-bell__count { position: absolute; top: -2px; right: -2px; min-width: 1.125rem; padding: 0 var(--aurora-space-1); font-size: 0.6875rem; line-height: 1.125rem; text-align: center; color: var(--aurora-fg-inverse); background: var(--aurora-status-danger-500); border-radius: 999px; }
+.ui-notifs { max-height: 20rem; overflow-y: auto; }
+.ui-notifs__empty { padding: var(--aurora-space-6, 24px) var(--aurora-space-3); text-align: center; }
+.ui-notif { align-items: flex-start; justify-content: space-between; }
+.ui-notif[data-read] { color: var(--aurora-fg-muted); }
+.ui-notif__body { display: grid; gap: 2px; min-width: 0; }
+.ui-notif__body > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ui-notif__dot { flex: none; width: 8px; height: 8px; margin-top: 6px; border-radius: 50%; background: var(--aurora-accent-500); }
+.ui-boot { display: flex; min-height: 100vh; align-items: center; justify-content: center; background: var(--aurora-canvas-base); }

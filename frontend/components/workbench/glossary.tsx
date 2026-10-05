@@ -10,7 +10,7 @@ import Link from "next/link";
 import { useDeferredValue, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { copyToClipboard } from "@/components/meridian/actions";
+import { copyToClipboard } from "@/lib/actions";
 import {
   Banner, Button, Chip, DataTable, DetailDrawer, EmptyState, FieldChip, FilterBar, KeyValue, PageHeader,
   StatusBadge, TableSkeleton, Tally, useDrawerParam, type AuroraColumnMeta,

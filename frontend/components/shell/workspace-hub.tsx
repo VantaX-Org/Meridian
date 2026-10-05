@@ -3,14 +3,16 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Tabs, Text } from "@/components/aurora";
-import { PermissionDenied } from "@/components/role-gate";
+import { PermissionDenied } from "@/components/shell/role-gate";
 import { useNavGate } from "@/hooks/use-nav";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import { LANDING, tabHref, visibleWorkspaces, type WorkspaceId } from "@/lib/workspaces";
-import { AURORA_TABS, TAB_BODIES } from "./tab-bodies";
+import { TAB_BODIES } from "./tab-bodies";
 
 const LANDED_KEY = "mn_landed";
+/** Tabs folded into the Match rules tab as a view, for old bookmarks. */
+const FOLDED: Readonly<Record<string, string>> = { "match-tuning": "tuning", "pair-constraints": "constraints" };
 
 /**
  * One workspace: its tab bar (URL-synced via ?tab=) and the active tab's body.
@@ -23,9 +25,15 @@ export function WorkspaceHub({ id, landing = false }: { id: WorkspaceId; landing
   const gate = useNavGate();
   const all = visibleWorkspaces(gate);
   const workspace = all.find((w) => w.id === id);
-  const [tabParam, setTab] = useUrlState("tab", "");
+  const [rawTab, setTab] = useUrlState("tab", "");
+  const folded = FOLDED[rawTab];
+  const tabParam = folded ? "match-rules" : rawTab;
   const tabs = workspace?.tabs.filter((t) => !t.hidden) ?? [];
   const active = tabs.find((t) => t.id === tabParam) ?? tabs[0];
+
+  useEffect(() => {
+    if (folded) router.replace(`${window.location.pathname}?tab=match-rules&view=${folded}`);
+  }, [folded, router]);
 
   // First arrival at "/" in this browser session goes to the role's own workspace.
   useEffect(() => {
@@ -66,11 +74,7 @@ export function WorkspaceHub({ id, landing = false }: { id: WorkspaceId; landing
           onValueChange={setTab}
         />
       </div>
-      {AURORA_TABS.has(active.href) ? (Body ? <Body /> : null) : (
-        <div className="mn-legacy-host">
-          {Body ? <Body /> : null}
-        </div>
-      )}
+      {Body ? <Body /> : null}
     </div>
   );
 }
