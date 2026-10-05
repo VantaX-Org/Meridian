@@ -134,7 +134,9 @@ _CHECKS_LIMIT = int(os.getenv("MERIDIAN_CHECKS_TIME_LIMIT", "21600"))
 
 
 @celery_app.task(bind=True, name="workers.tasks.run_checks.run_checks",
-                 soft_time_limit=_CHECKS_LIMIT, time_limit=_CHECKS_LIMIT + 60)
+                 soft_time_limit=_CHECKS_LIMIT, time_limit=_CHECKS_LIMIT + 60,
+                 # Redelivered after a worker restart; every write below upserts, so a rerun is safe.
+                 acks_late=True, reject_on_worker_lost=True)
 def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanalyse: bool = False):
     """Execute the full check suite against a dataset (``reanalyse``: again, on the same version)."""
     engine = get_sync_engine()
