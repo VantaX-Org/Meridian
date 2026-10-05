@@ -107,8 +107,15 @@ def failing_values(failing_df: pd.DataFrame, columns: list[str]) -> list[dict]:
     for c in cols:
         table, _, field = c.rpartition(".")
         if is_sensitive(table, field):
-            out[c] = MASKED
+            out[c] = out[c].where(out[c].str.strip() == "", MASKED)  # a blank reveals nothing
     return out.to_dict("records")
+
+
+def _sensitive_field(column: str) -> bool:
+    """Field-name sensitivity only: names, tax IDs, contact data. Coded values on an
+    HR table (status, reason codes) stay countable for value-level fix guidance."""
+    from checks.profiling import is_sensitive
+    return is_sensitive("", column.rpartition(".")[2])
 
 
 def is_blank(series: pd.Series) -> pd.Series:
@@ -237,8 +244,7 @@ class BaseCheck(ABC):
         shown = [c for c in dict.fromkeys(keys + self.columns()) if c in df.columns]
         sample = failing_df.head(SAMPLE_SIZE)
         samples = []
-        for idx in sample.index:
-            rec = {c: ("" if pd.isna(sample.at[idx, c]) else str(sample.at[idx, c])) for c in shown}
+        for idx, rec in zip(sample.index, failing_values(sample, shown)):
             rec["record_key"] = str(all_keys.at[idx])
             if ev.invalid_values_field:
                 rec["invalid_value"] = rec.get(ev.invalid_values_field, "")
@@ -253,7 +259,7 @@ class BaseCheck(ABC):
             "sample_failing_records": samples,
             **ev.details,
         }
-        if ev.invalid_values_field and affected:
+        if ev.invalid_values_field and affected and not _sensitive_field(ev.invalid_values_field):
             details["distinct_invalid_values"] = (
                 failing_df[ev.invalid_values_field].astype("string").str.strip()
                 .value_counts().head(10).to_dict()
