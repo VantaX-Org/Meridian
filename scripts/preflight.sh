@@ -37,6 +37,10 @@ fi
 docker compose version >/dev/null 2>&1 && pass "docker compose plugin present" || fail "docker compose plugin missing"
 free_gb=$(df -Pk "$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || echo /var/lib/docker)" 2>/dev/null | awk 'NR==2{print int($4/1048576)}')
 [[ "${free_gb:-0}" -ge 20 ]] && pass "${free_gb} GB free for Docker" || fail "${free_gb:-?} GB free for Docker — at least 20 GB needed (images + pre-update DB backup)"
+if [[ -d /var/lib/containerd ]]; then
+    ctr_gb=$(df -Pk /var/lib/containerd | awk 'NR==2{print int($4/1048576)}')
+    [[ "${ctr_gb:-0}" -ge 10 ]] && pass "${ctr_gb} GB free for containerd" || fail "${ctr_gb:-?} GB free on /var/lib/containerd — at least 10 GB needed to pull images"
+fi
 
 # ── Configuration ─────────────────────────────────────────────────────────
 if [[ -f .env ]]; then
