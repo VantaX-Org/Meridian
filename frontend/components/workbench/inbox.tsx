@@ -312,7 +312,7 @@ export function StewardInboxSurface() {
       <Stack direction="row" gap={2} wrap align="center">
         {VIEWS.map((v) => <Chip key={v.value} selected={view === v.value} onClick={() => setView(v.value)}>{v.label}</Chip>)}
         <span style={{ flex: 1 }} />
-        <Button variant="ghost" size="sm" onClick={() => setPaletteOpen(true)} title="Quick actions (.)">Quick actions <kbd>.</kbd></Button>
+        <Button variant="ghost" size="sm" onClick={() => setPaletteOpen(true)} title="Quick actions (.)">Quick actions</Button>
       </Stack>
       <Stack direction="row" gap={3} wrap className="aurora-filters">
         <Field label="Search">{({ controlId }) => <Input id={controlId} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Record, domain, assignee, task id" />}</Field>
@@ -388,7 +388,7 @@ function TaskDetail({ task: t, now, who, canApprove, busy, assignees, me, onAppr
           <Text variant="text-small" tone="secondary">{t.ai_recommendation}</Text>
         </Panel>
       ) : null}
-      <table className="aurora-exec__table"><tbody>{rows.map(([k, v]) => <tr key={k}><td>{k}</td><td className="aurora-number">{v}</td></tr>)}</tbody></table>
+      <table className="ui-mini-table"><tbody>{rows.map(([k, v]) => <tr key={k}><td>{k}</td><td className="aurora-number">{v}</td></tr>)}</tbody></table>
       <Stack direction="row" gap={2} wrap>
         {canApprove ? <Button disabled={busy} onClick={onApprove}>Approve <kbd>A</kbd></Button> : null}
         {canApprove ? <Button variant="secondary" disabled={busy} onClick={onReject}>Reject <kbd>R</kbd></Button> : null}
@@ -439,7 +439,7 @@ function TeamPanel({ items, now, who, metrics }: {
         <Stack gap={2}>
           {metrics?.ai_acceptance_rate != null ? <Text variant="text-small">Suggestion acceptance {Math.round(metrics.ai_acceptance_rate * 100)} %</Text> : null}
           <Text variant="text-micro" tone="muted">Open workload</Text>
-          <table className="aurora-exec__table">
+          <table className="ui-mini-table">
             <thead><tr><th>Assignee</th><th>Open</th><th>Breached</th></tr></thead>
             <tbody>{load.length ? load.map(([k, r]) => <tr key={k}><td>{k}</td><td className="aurora-number">{r.open}</td><td className="aurora-number">{r.breached}</td></tr>)
               : <tr><td colSpan={3}>No open tasks.</td></tr>}</tbody>
@@ -448,7 +448,7 @@ function TeamPanel({ items, now, who, metrics }: {
         {types.length ? (
           <Stack gap={2}>
             <Text variant="text-micro" tone="muted">By task type, all time</Text>
-            <table className="aurora-exec__table">
+            <table className="ui-mini-table">
               <thead><tr><th>Type</th><th>Tasks</th><th>Avg to resolve</th></tr></thead>
               <tbody>{types.map((k) => {
                 const h = metrics?.avg_resolution_hours_by_type[k];
@@ -460,7 +460,7 @@ function TeamPanel({ items, now, who, metrics }: {
         {metrics?.steward_breakdown?.length ? (
           <Stack gap={2}>
             <Text variant="text-micro" tone="muted">Steward throughput</Text>
-            <table className="aurora-exec__table">
+            <table className="ui-mini-table">
               <thead><tr><th>Steward</th><th>Resolved</th><th>Avg to resolve</th></tr></thead>
               <tbody>{metrics.steward_breakdown.map((s) => (
                 <tr key={s.steward_name}><td>{s.steward_name}</td><td className="aurora-number">{s.resolved} / {s.total}</td>

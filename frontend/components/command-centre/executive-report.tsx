@@ -30,7 +30,7 @@ const band = (v: number) => (v >= 90 ? undefined : v >= 70 ? "warn" : "fail");
 function Bar({ value }: { value: number }) {
   return (
     <span className="ui-dims__track" role="img" aria-label={`${value.toFixed(0)} percent`} style={{ minWidth: 80 }}>
-      <span className="ui-dims__fill" data-band={band(value)} style={{ width: `${Math.max(0, Math.min(100, value))}%` }} />
+      <span className="ui-dims__fill" data-band={band(value)} style={{ transform: `scaleX(${Math.max(0, Math.min(100, value)) / 100})` }} />
     </span>
   );
 }
