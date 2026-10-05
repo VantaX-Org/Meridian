@@ -17,7 +17,7 @@ const named = <K extends string>(load: () => Promise<Record<K, ComponentType>>, 
 /** Tabs whose body is an Aurora surface — rendered on the canvas, not in the light sheet. */
 export const AURORA_TABS: ReadonlySet<string> = new Set(["/", "/migration", "/command-centre", "/executive-report", "/sync", "/issues", "/match-rules", "/match-rules/tuning", "/match-rules/constraints", "/business-process", "/settings/scoring", "/workbench/triage", "/workbench/progress", "/admin/triage", "/settings/field-mapping", "/exceptions/rules", "/settings/exception-billing",
   "/systems", "/upload", "/versions", "/admin", "/findings", "/cleaning", "/exceptions", "/dedup", "/golden-records", "/glossary", "/reports", "/notifications", "/settings", "/settings/rules", "/settings/ai", "/settings/licence", "/contracts",
-  "/relationships", "/mining", "/ai/rules", "/workbench", "/process", "/config-impact"]);
+  "/relationships", "/mining", "/ai/rules", "/workbench", "/process", "/lineage"]);
 
 export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
   "/": named(() => import("@/components/command-centre/overview"), "CommandCentreOverview"),
@@ -49,7 +49,7 @@ export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
 
   "/process": named(() => import("@/app/(dashboard)/process/map"), "ProcessMapPage"),
   "/business-process": named(() => import("@/components/process/readiness"), "ProcessReadiness"),
-  "/config-impact": page(() => import("@/app/(dashboard)/config-impact/page")),
+  "/lineage": named(() => import("@/components/process/lineage"), "LineageSurface"),
   "/mining": named(() => import("@/components/process/graph"), "GraphSurface"),
   "/relationships": named(() => import("@/components/process/graph"), "GraphSurface"),
 

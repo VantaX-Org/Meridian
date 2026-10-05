@@ -11,16 +11,14 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Banner, EmptyState, Metric, MetricStrip, Mono, PageHeader, SectionCard, StatusBadge, TableSkeleton, Tabs, type Status,
+  Banner, DetailDrawer, EmptyState, Mono, PageHeader, SectionCard, StatusBadge, TableSkeleton, Tabs, Tally, useDrawerParam, type Status,
 } from "@/components/ui-core";
-import { getMiningGraph, type MiningActivity, type MiningTransition, type MiningVariant } from "@/lib/api/process-mining";
-import { getVersions } from "@/lib/api/versions";
+import { ProcessGraph, ProcessGraphEmergence } from "@/components/aurora";
+import { useFindingHref, useLatestVersion } from "@/components/process/shared";
+import { getMiningGraph, type MiningActivity, type MiningVariant } from "@/lib/api/process-mining";
+import { getBusinessProcess } from "@/lib/api/connectivity";
 import { formatModuleName } from "@/lib/format";
-import type { Version } from "@/types/api";
 
-function isComplete(v: Version): boolean {
-  return (v.status === "agents_complete" || v.status === "complete" || v.status === "ai_enriched") && !!v.dqs_summary;
-}
 
 const STEP: Record<MiningActivity["step_status"], { status: Status; label: string }> = {
   green: { status: "ok", label: "Passing" },
@@ -30,83 +28,17 @@ const STEP: Record<MiningActivity["step_status"], { status: Status; label: strin
 
 const READINESS: Record<MiningVariant["readiness"], string> = { green: "Ready", amber: "At risk", red: "Blocked" };
 
+const ALIGN = { green: "aligned", amber: "drifting", red: "blocked" } as const;
 const pct = (n: number | null | undefined) => (n == null ? null : `${Math.round(n * 100)}%`);
 const plural = (n: number, w: string, many = `${w}s`) => `${n.toLocaleString()} ${n === 1 ? w : many}`;
 
-/* Grid layout in activity order. Edges to the next node run side to side;
-   forward skips arc over the row, backward steps arc under it, and edges to
-   another row leave from the bottom and enter from the top. */
-const COLS = 5, W = 156, H = 52, GX = 56, GY = 64, PAD = 16, TOP = 64;
-
-function edgePath(a: { x: number; y: number }, b: { x: number; y: number }) {
-  let p: number[];
-  if (a.y === b.y && b.x === a.x + W + GX) {
-    p = [a.x + W, a.y + H / 2, a.x + W + GX / 3, a.y + H / 2, b.x - GX / 3, b.y + H / 2, b.x, b.y + H / 2];
-  } else if (a.y === b.y) {
-    const up = b.x > a.x, lift = Math.min(TOP, 24 + Math.abs(b.x - a.x) / 12);
-    const y = up ? a.y : a.y + H, dy = up ? -lift : lift;
-    const x1 = a.x + W / 2 + (up ? 12 : -12), x2 = b.x + W / 2 + (up ? -12 : 12);
-    p = [x1, y, x1, y + dy, x2, y + dy, x2, y];
-  } else {
-    const down = b.y > a.y;
-    const x1 = a.x + W / 2, y1 = down ? a.y + H : a.y, x2 = b.x + W / 2, y2 = down ? b.y : b.y + H;
-    const c = (y2 - y1) / 2;
-    p = [x1, y1, x1, y1 + c, x2, y2 - c, x2, y2];
-  }
-  const mid = { x: (p[0] + 3 * p[2] + 3 * p[4] + p[6]) / 8, y: (p[1] + 3 * p[3] + 3 * p[5] + p[7]) / 8 };
-  return { d: `M ${p[0]} ${p[1]} C ${p[2]} ${p[3]}, ${p[4]} ${p[5]}, ${p[6]} ${p[7]}`, mid };
-}
-
-function ProcessGraph({ activities, transitions }: { activities: MiningActivity[]; transitions: MiningTransition[] }) {
-  const pos = new Map(activities.map((a, i) => [a.id, { x: PAD + (i % COLS) * (W + GX), y: TOP + Math.floor(i / COLS) * (H + GY) }]));
-  const rows = Math.ceil(activities.length / COLS);
-  const width = PAD * 2 + Math.min(COLS, activities.length) * (W + GX) - GX;
-  const height = TOP * 2 + rows * (H + GY) - GY;
-  const maxW = Math.max(1, ...transitions.map((t) => t.weight));
-  const showWeights = transitions.length <= 24;
-
-  return (
-    <svg className="ui-graph" viewBox={`0 0 ${width} ${height}`} width={width} height={height}
-         role="img" aria-label={`Process graph: ${plural(activities.length, "activity", "activities")}, ${plural(transitions.length, "transition")}`}>
-      <defs>
-        <marker id="pm-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
-          <path d="M0 0 L8 4 L0 8 z" className="ui-graph__arrow" />
-        </marker>
-      </defs>
-      {transitions.map((t, i) => {
-        const a = pos.get(t.from), b = pos.get(t.to);
-        if (!a || !b) return null;
-        const { d, mid } = edgePath(a, b);
-        return (
-          <g key={i}>
-            <path className="ui-graph__edge" d={d} strokeWidth={1 + 3 * (t.weight / maxW)} markerEnd="url(#pm-arrow)" />
-            {showWeights ? <text className="ui-graph__weight" x={mid.x} y={mid.y - 5} textAnchor="middle">{t.weight.toLocaleString()}</text> : null}
-          </g>
-        );
-      })}
-      {activities.map((a) => {
-        const p = pos.get(a.id)!;
-        const step = STEP[a.step_status] ?? STEP.green;
-        return (
-          <g key={a.id} transform={`translate(${p.x} ${p.y})`}>
-            <title>{`${a.label}${a.tcode ? ` (${a.tcode})` : ""}: ${step.label}, ${plural(a.affected_records, "affected record")}`}</title>
-            <rect className="ui-graph__node" width={W} height={H} rx="4" />
-            <circle className="ui-graph__dot" data-status={step.status} cx="14" cy="19" r="4" />
-            <text className="ui-graph__title" x="26" y="23">{a.label.length > 18 ? `${a.label.slice(0, 17)}…` : a.label}</text>
-            <text className="ui-graph__sub" x="26" y="40">{plural(a.affected_records, "record")}</text>
-          </g>
-        );
-      })}
-    </svg>
-  );
-}
 
 /* Objects with a process definition (Procure to Pay, Order to Cash) in api/services/process_writer.py. */
 const MAPPED = new Set(["accounts_payable", "accounts_receivable", "fi_gl", "material_master", "mm_purchasing", "sd_customer_master", "sd_sales_orders"]);
 
 export function ProcessMapPage() {
-  const versionsQ = useQuery({ queryKey: ["versions.list", { limit: 10 }], queryFn: () => getVersions({ limit: 10 }) });
-  const latest = useMemo(() => versionsQ.data?.versions.find(isComplete), [versionsQ.data]);
+  const { latest, isLoading, error } = useLatestVersion();
+  const versionsQ = { isLoading, error };
   const analysed = useMemo(() => (latest?.dqs_summary ? Object.keys(latest.dqs_summary) : []), [latest]);
   const modules = useMemo(() => analysed.filter((m) => MAPPED.has(m)), [analysed]);
   const unmapped = analysed.filter((m) => !MAPPED.has(m));
@@ -119,11 +51,27 @@ export function ProcessMapPage() {
     enabled: !!latest && !!active,
   });
 
-  const activities = graphQ.data?.activities ?? [];
-  const transitions = graphQ.data?.transitions ?? [];
+  const activities = useMemo(() => graphQ.data?.activities ?? [], [graphQ.data]);
+  const transitions = useMemo(() => graphQ.data?.transitions ?? [], [graphQ.data]);
   const variants = graphQ.data?.variants ?? [];
   const bottlenecks = activities.filter((a) => a.step_status !== "green").sort((a, b) => b.affected_records - a.affected_records);
-  const affected = activities.reduce((s, a) => s + a.affected_records, 0);
+  const blocked = activities.filter((a) => a.step_status === "red").length;
+  const degraded = activities.filter((a) => a.step_status === "amber").length;
+  const drawer = useDrawerParam("node");
+  const findingHref = useFindingHref(latest?.id);
+  const bpQ = useQuery({
+    queryKey: ["business-process", latest?.id, active], enabled: !!latest && !!active && !!drawer.value, retry: false,
+    queryFn: () => getBusinessProcess(latest!.id, active!), meta: { ignoreError: true },
+  });
+  const picked = drawer.value ? activities.find((a) => a.id === drawer.value) ?? null : null;
+  const pickedFields = useMemo(() => (bpQ.data ?? []).flatMap((p) => p.l2_groups.flatMap((g) => g.l3_processes.flatMap((l3) =>
+    l3.l4_steps.filter((s) => s.l4_id === drawer.value).flatMap((s) => s.l5_fields)))).filter((f) => f.dq_status !== "green"),
+  [bpQ.data, drawer.value]);
+  const graphNodes = useMemo(() => activities.map((a) => ({
+    id: a.id,
+    data: { label: a.label, kind: "transform" as const, alignment: ALIGN[a.step_status] ?? "unknown", stepId: a.tcode ?? undefined, secondary: plural(a.affected_records, "record") },
+  })), [activities]);
+  const graphEdges = useMemo(() => transitions.map((t, i) => ({ id: `${t.from}-${t.to}-${i}`, source: t.from, target: t.to, label: t.weight.toLocaleString() })), [transitions]);
 
   if (versionsQ.isLoading) {
     return <div className="ui-page"><PageHeader title="Process map" /><TableSkeleton rows={8} label="Loading process map" /></div>;
@@ -164,18 +112,19 @@ export function ProcessMapPage() {
         : graphQ.error ? <Banner tone="danger" title="Process graph could not be read">{(graphQ.error as Error).message}</Banner>
         : (
           <>
-            <MetricStrip label="Process figures">
-              <Metric label="Activities" value={activities.length} />
-              <Metric label="Transitions" value={transitions.length} />
-              <Metric label="Variants" value={variants.length} />
-              <Metric label="Affected records" value={affected.toLocaleString()} />
-              <Metric label="Steps failing" value={bottlenecks.length} tone={bottlenecks.length ? "warning" : "default"} />
-            </MetricStrip>
+            <Tally level={2} label="Process figures" figures={[
+              { label: "Steps mapped", value: activities.length, href: "/process?tab=map", verdict: `${plural(transitions.length, "transition")} between them.` },
+              { label: "Blocked", value: blocked, href: "/process?tab=readiness", tone: blocked ? "danger" : undefined, verdict: blocked ? "Critical or high findings stop these steps." : "Nothing blocked." },
+              { label: "Degraded", value: degraded, href: "/process?tab=readiness", tone: degraded ? "warning" : undefined, verdict: degraded ? "Medium findings, or a partial pass rate." : "Nothing degraded." },
+              { label: "Variants", value: variants.length, href: "/process?tab=map", verdict: variants.length ? "Mined paths through the steps." : "No variants mined." },
+            ]} />
 
-            <SectionCard title={formatModuleName(active ?? "")} meta={`${plural(activities.length, "activity", "activities")}, ${plural(transitions.length, "transition")}. Line weight is transition count.`} flush>
+            <SectionCard title={formatModuleName(active ?? "")} meta={`${plural(activities.length, "activity", "activities")}, ${plural(transitions.length, "transition")}. Select a step for its failing fields.`} flush>
               {activities.length ? (
                 <>
-                  <div className="ui-graph-scroll"><ProcessGraph activities={activities} transitions={transitions} /></div>
+                  <ProcessGraphEmergence remountKey={`${latest.id}-${active}`}>
+                    <ProcessGraph nodes={graphNodes} edges={graphEdges} height={480} onNodeClick={(n) => drawer.open(n.id)} />
+                  </ProcessGraphEmergence>
                   <ul className="ui-legend" aria-label="Step state">
                     <li><StatusBadge status={STEP.green.status}>95% pass or better</StatusBadge></li>
                     <li><StatusBadge status={STEP.amber.status}>Medium finding, or 70 to 95% pass</StatusBadge></li>
@@ -225,6 +174,40 @@ export function ProcessMapPage() {
             </div>
           </>
         )}
+
+      <DetailDrawer open={!!picked} onClose={drawer.close} ariaLabel="Step detail"
+        header={picked ? <div className="ui-drawer-head"><StatusBadge status={STEP[picked.step_status].status}>{STEP[picked.step_status].label}</StatusBadge>
+          <h2 className="ui-drawer-head__title">{picked.label}</h2></div> : null}>
+        {picked ? (
+          <div className="ui-detail">
+            <p className="ui-note">
+              {picked.tcode ? <><Mono>{picked.tcode}</Mono>, </> : null}{plural(picked.affected_records, "affected record")}, {plural(picked.finding_count, "finding")}
+              {picked.avg_pass_rate != null ? `, ${Math.round(picked.avg_pass_rate)}% pass rate` : ""}.
+            </p>
+            {bpQ.isLoading ? <TableSkeleton rows={4} label="Loading fields" />
+              : pickedFields.length ? (
+                <ul className="ui-ranked">
+                  {pickedFields.map((f) => {
+                    const href = f.check_id ? findingHref(active ?? "", f.check_id) : undefined;
+                    return (
+                      <li key={f.field}>
+                        <div className="ui-ranked__row">
+                          <StatusBadge status={f.dq_status === "red" ? "critical" : "medium"}>{f.dq_status === "red" ? "Blocking" : "Failing"}</StatusBadge>
+                          <span className="ui-ranked__title"><Mono>{f.field}</Mono></span>
+                          <span className="ui-ranked__num">{plural(f.affected_count, "record")}</span>
+                          <span className="ui-ranked__meta">
+                            {f.finding_message || f.description}
+                            {f.check_id ? <>{" "}{href ? <Link className="ui-link" href={href}>{f.check_id}</Link> : <Mono>{f.check_id}</Mono>}</> : null}
+                          </span>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : <EmptyState>No failing fields are recorded for this step.</EmptyState>}
+          </div>
+        ) : null}
+      </DetailDrawer>
     </div>
   );
 }

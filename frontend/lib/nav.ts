@@ -30,7 +30,6 @@ import {
   Sliders,
   Timer,
   UserCog,
-  Zap,
 } from "lucide-react";
 import {
   BookIcon,
@@ -142,7 +141,6 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     items: [
       { href: "/process", label: "Process map", icon: WorkflowIcon, keywords: "process mining flow" },
       { href: "/business-process", label: "Process readiness", icon: Route, keywords: "l1 l5 business process ptp otc" },
-      { href: "/config-impact", label: "Config impact", icon: Zap, keywords: "features blocked degraded" },
       { href: "/lineage", label: "Lineage & impact", icon: Network, keywords: "lineage downstream kpi blast radius guards" },
       { href: "/mining", label: "Pattern mining", icon: Pickaxe, keywords: "patterns clustering" },
     ],

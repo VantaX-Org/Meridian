@@ -12,7 +12,9 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { EmptyState, FilterBar, TableSkeleton } from "@/components/ui-core";
+import { EmptyState, FilterBar, TableSkeleton, Tally } from "@/components/ui-core";
+import { FeaturesTable } from "@/components/process/features";
+import { useFindingHref } from "@/components/process/shared";
 import {
   ProcessReport, Select, type ProcessReportBlockingFinding, type ProcessReportHierarchyNode,
   type ProcessReportReadiness, type ProcessReportRecommendation,
@@ -43,6 +45,7 @@ export function ProcessReadiness() {
     queryFn: () => getBusinessProcess(latest!.id, object) });
   const impact = useQuery({ queryKey: ["config-impact", latest?.id], enabled: !!latest, retry: false,
     queryFn: () => getConfigImpact(latest!.id), meta: { ignoreError: true } });
+  const findingHref = useFindingHref(latest?.id);
   const [l1Choice, setL1] = useState<string>("");
   const processes = bp.data ?? [];
   const l1 = processes.find((p) => p.l1_id === l1Choice) ?? processes[0];
@@ -106,7 +109,7 @@ export function ProcessReadiness() {
     l3.l4_steps.flatMap((l4) => l4.l5_fields.filter((f) => f.dq_status === "red").map((f) => ({
       id: `${l3.l3_id}-${l4.l4_id}-${f.field}`, severity: sev(f), checkId: f.check_id ?? f.field,
       title: f.finding_message || f.description, gate: `${l3.l3_name} (${l3.tcode})`, affected: f.affected_count,
-      href: f.check_id ? `/workbench?tab=triage&check_id=${encodeURIComponent(f.check_id)}` : undefined,
+      href: f.check_id ? findingHref(object, f.check_id) : undefined,
     })))));
 
   const configAlignment = (impact.data?.results ?? [])
@@ -131,8 +134,10 @@ export function ProcessReadiness() {
       };
     }));
 
+  const gates = new Set(blockingFindings.map((b) => b.gate)).size;
+  const failing = blockingFindings.reduce((a, b) => a + (b.affected ?? 0), 0);
   const verdict = blocking
-    ? `${l1.l1_name} is ${pct}% ready; ${blocking} field${blocking === 1 ? "" : "s"} block${blocking === 1 ? "s" : ""} ${new Set(blockingFindings.map((b) => b.gate)).size} gate${new Set(blockingFindings.map((b) => b.gate)).size === 1 ? "" : "s"}.`
+    ? `${l1.l1_name} is ${pct}% ready; ${blocking} field${blocking === 1 ? "" : "s"} block${blocking === 1 ? "s" : ""} ${gates} gate${gates === 1 ? "" : "s"}.`
     : pct >= 90 ? `${l1.l1_name} is ready: ${pct}% of its fields pass.` : `${l1.l1_name} is ${pct}% ready with no blocking fields.`;
 
   return (
@@ -143,20 +148,29 @@ export function ProcessReadiness() {
           <Select aria-label="Process" value={l1.l1_id} options={processes.map((p) => ({ value: p.l1_id, label: p.l1_name }))} onValueChange={setL1} />
         ) : null}
       </FilterBar>
+      <Tally level={2} label={`${l1.l1_name} readiness`} figures={[
+        { label: "Ready", value: pct, unit: "%", href: "/process?tab=readiness", tone: blocking ? "danger" : pct >= 90 ? "success" : "warning",
+          verdict: pct >= 90 ? "Share of fields that pass." : "Below the go-live line of 90%." },
+        { label: "Blocking fields", value: blocking, href: "/process?tab=readiness", tone: blocking ? "danger" : undefined,
+          verdict: blocking ? "Fields failing a mandatory check." : "Nothing blocks go-live." },
+        { label: "Gates blocked", value: gates, href: "/process?tab=readiness", tone: gates ? "danger" : undefined,
+          verdict: gates ? "Transactions that cannot run clean." : "Every gate is clear." },
+        { label: "Records failing", value: failing, href: "/process?tab=readiness",
+          verdict: failing ? "Behind the blocking fields." : "No records fail these fields." },
+      ]} />
       <ProcessReport
-        processSlug={l1.l1_id}
         processName={l1.l1_name}
         verdict={verdict}
         support={l1.l1_description}
         readiness={pct}
         readinessSemantic={semantic(pct, blocking)}
-        owner={l1.system}
         lastUpdated={new Date(latest.run_at).toLocaleDateString("en-GB")}
         hierarchy={hierarchy}
         configAlignment={configAlignment}
         blockingFindings={blockingFindings}
         recommendations={recommendations}
       />
+      {impact.data ? <FeaturesTable results={impact.data.results} versionId={latest.id} /> : null}
     </div>
   );
 }

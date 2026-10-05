@@ -2192,8 +2192,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--aurora-space-8);
-  max-width: 1120px;
-  margin: 0 auto;
   padding: var(--aurora-space-5) 0;
 }
 
@@ -2203,8 +2201,9 @@
   border-radius: var(--aurora-radius-sheet);
   background: var(--aurora-canvas-raised);
 }
-.aurora-report__title {
+.aurora-text.aurora-report__title {
   letter-spacing: -0.01em;
+  font-weight: var(--aurora-weight-regular, 400);
 }
 .aurora-report__chips {
   display: flex;
