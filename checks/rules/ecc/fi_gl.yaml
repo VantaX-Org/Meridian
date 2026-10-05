@@ -1373,6 +1373,30 @@ rules:
         distinct reference on documents that are genuinely separate.
     record_fix_template: 'Document {BKPF.BELNR}/{BKPF.GJAHR} (company code {BKPF.BUKRS}): reference {BKPF.XBLNR} dated {BKPF.BLDAT} also appears on another document.'
 
+  - id: GL070
+    field: BKPF.KURSF
+    check_class: cross_field_check
+    grain: BKPF
+    fail_when: (`BKPF.WAERS` != `BKPF.HWAER`) & (`BKPF.KURSF`.isna() | (`BKPF.KURSF` == 0))
+    applies_when:
+      BKPF.WAERS: {populated: true}
+      BKPF.HWAER: {populated: true}
+      BKPF.BSTAT: {not_in: [D, M, S, V, W, Z]}
+    severity: high
+    dimension: accuracy
+    message: Foreign-currency document has no exchange rate
+    why_it_matters: >-
+      A document in a currency other than the company code currency needs an exchange rate to translate
+      its amounts. Without one the local-currency amounts were keyed or interfaced by hand and cannot be
+      traced back to a rate, so foreign-currency valuation and revaluation work from an unknown basis.
+    rule_authority: sap_hard_constraint
+    sap_impact: Open-item revaluation (FAGL_FCV) and migrated foreign-currency balances use the wrong
+      local-currency basis; realised exchange differences on clearing are misstated.
+    fix_map:
+      __other__: Check the document in FB03 (S/4 F0717) and the rate in table TCURR for the posting date;
+        if the local amounts are wrong, reverse with FB08 and repost with the correct rate.
+    record_fix_template: 'Document {BKPF.BELNR}/{BKPF.GJAHR} (company code {BKPF.BUKRS}): currency {BKPF.WAERS}, local currency {BKPF.HWAER}, no exchange rate.'
+
   - id: GL059
     field: BSEG.HKONT
     check_class: cross_field_check
