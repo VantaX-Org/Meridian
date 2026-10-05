@@ -10,7 +10,7 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Button, EmptyState, Metric, MetricStrip, Mono, PageHeader, SectionCard, StatusBadge, type Status } from "@/components/ui-core";
+import { Button, EmptyState, Mono, SectionCard, StatusBadge, Tally, Verdict, type Status } from "@/components/ui-core";
 import { getPredictiveAnalytics, getPrescriptiveAnalytics } from "@/lib/api/analytics";
 import { getConfigImpact } from "@/lib/api/connectivity";
 import { compositeDqs, getFindingsAggregate } from "@/lib/api/findings";
@@ -69,22 +69,27 @@ export function ExecutiveReport() {
 
   return (
     <div className="ui-page">
-      <PageHeader title="Executive report"
-        summary={<>{day(new Date().toISOString())}. {sentence}</>}
-        actions={<>
+      <div className="ui-report__bar">
+        <Verdict>{sentence}</Verdict>
+        <div className="ui-report__actions" data-print="hide">
           <Button variant="secondary" onClick={() => window.print()}>Print or save as PDF</Button>
           <Link className="ui-link" href="/analyse?tab=findings">All findings</Link>
-        </>} />
+        </div>
+      </div>
 
       {a && dqs !== null ? (
         <>
-          <MetricStrip label="Estate">
-            <Metric label="Composite DQS" value={dqs.toFixed(1)} tone={dqs < 70 ? "danger" : dqs < 90 ? "warning" : "default"}
-              delta={a.previous_dqs != null ? { value: Number((dqs - a.previous_dqs).toFixed(1)), unit: "vs previous run", good: "up" } : undefined} />
-            <Metric label="Critical findings" value={a.severity.critical} tone={a.severity.critical ? "danger" : "default"} />
-            <Metric label="High findings" value={a.severity.high} tone={a.severity.high ? "warning" : "default"} />
-            <Metric label="Records affected" value={a.affected_records.toLocaleString()} />
-          </MetricStrip>
+          <Tally level={2} label="Estate" as_of={day(new Date().toISOString())} figures={[
+            { label: "Composite DQS", value: dqs.toFixed(1), href: "/analyse?tab=findings", tone: dqs < 70 ? "danger" : dqs < 90 ? "warning" : undefined,
+              delta: a.previous_dqs != null ? { value: Number((dqs - a.previous_dqs).toFixed(1)), unit: " points", good: "up" } : undefined,
+              verdict: dqs >= 90 ? "At or above the go-live line of 90." : "Below the go-live line of 90." },
+            { label: "Failing records", value: a.affected_records, href: "/analyse?tab=findings", verdict: `${a.total.toLocaleString()} findings across ${Object.keys(a.dqs.modules).length} objects.` },
+            { label: "Critical findings", value: a.severity.critical, href: "/analyse?tab=findings&severity=critical", tone: a.severity.critical ? "danger" : undefined,
+              verdict: a.severity.critical ? "Each one blocks go-live." : "None block go-live." },
+            { label: "Features at risk", value: impact.data ? impact.data.summary.features_blocked + impact.data.summary.features_degraded : null, href: "/analyse?tab=findings",
+              tone: impact.data?.summary.features_blocked ? "high" : undefined,
+              verdict: impact.data ? `${impact.data.summary.features_blocked} blocked, ${impact.data.summary.features_degraded} degraded.` : "Config impact is not available." },
+          ]} />
           <p className="ui-note">
             {a.version_ids.length} system{a.version_ids.length === 1 ? "" : "s"} in the latest run set, {Object.keys(a.dqs.modules).length} object{Object.keys(a.dqs.modules).length === 1 ? "" : "s"}, {a.total.toLocaleString()} findings.
             Scores use the DAMA dimensions at the weights shown. One critical finding caps the score at 85, two or more at 70.{a.dqs.capped ? " This score is capped." : ""}
