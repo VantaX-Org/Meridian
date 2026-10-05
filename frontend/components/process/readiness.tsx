@@ -12,7 +12,9 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { EmptyState, FilterBar, TableSkeleton } from "@/components/ui-core";
+import { EmptyState, FilterBar, TableSkeleton, Tally } from "@/components/ui-core";
+import { FeaturesTable } from "@/components/process/features";
+import { useFindingHref } from "@/components/process/shared";
 import {
   ProcessReport, Select, type ProcessReportBlockingFinding, type ProcessReportHierarchyNode,
   type ProcessReportReadiness, type ProcessReportRecommendation,
@@ -43,6 +45,7 @@ export function ProcessReadiness() {
     queryFn: () => getBusinessProcess(latest!.id, object) });
   const impact = useQuery({ queryKey: ["config-impact", latest?.id], enabled: !!latest, retry: false,
     queryFn: () => getConfigImpact(latest!.id), meta: { ignoreError: true } });
+  const findingHref = useFindingHref(latest?.id);
   const [l1Choice, setL1] = useState<string>("");
   const processes = bp.data ?? [];
   const l1 = processes.find((p) => p.l1_id === l1Choice) ?? processes[0];
@@ -106,7 +109,7 @@ export function ProcessReadiness() {
     l3.l4_steps.flatMap((l4) => l4.l5_fields.filter((f) => f.dq_status === "red").map((f) => ({
       id: `${l3.l3_id}-${l4.l4_id}-${f.field}`, severity: sev(f), checkId: f.check_id ?? f.field,
       title: f.finding_message || f.description, gate: `${l3.l3_name} (${l3.tcode})`, affected: f.affected_count,
-      href: f.check_id ? `/workbench?tab=triage&check_id=${encodeURIComponent(f.check_id)}` : undefined,
+      href: f.check_id ? findingHref(object, f.check_id) : undefined,
     })))));
 
   const configAlignment = (impact.data?.results ?? [])
@@ -143,6 +146,16 @@ export function ProcessReadiness() {
           <Select aria-label="Process" value={l1.l1_id} options={processes.map((p) => ({ value: p.l1_id, label: p.l1_name }))} onValueChange={setL1} />
         ) : null}
       </FilterBar>
+      {impact.data ? (
+        <Tally level={2} label="Feature readiness" figures={[
+          { label: "Features assessed", value: impact.data.summary.total_features_assessed, href: "/process?tab=readiness", verdict: `${impact.data.summary.features_ok.toLocaleString()} unaffected.` },
+          { label: "Blocked", value: impact.data.summary.features_blocked, href: "/process?tab=readiness", tone: impact.data.summary.features_blocked ? "danger" : undefined,
+            verdict: impact.data.summary.features_blocked ? "Findings stop these features." : "Nothing blocked." },
+          { label: "Degraded", value: impact.data.summary.features_degraded, href: "/process?tab=readiness", tone: impact.data.summary.features_degraded ? "warning" : undefined,
+            verdict: impact.data.summary.features_degraded ? "These run, with weaker data." : "Nothing degraded." },
+          { label: "Records involved", value: impact.data.results.reduce((a, r) => a + r.total_affected_records, 0), href: "/process?tab=readiness", verdict: "Behind the blocked and degraded features." },
+        ]} />
+      ) : null}
       <ProcessReport
         processSlug={l1.l1_id}
         processName={l1.l1_name}
@@ -157,6 +170,7 @@ export function ProcessReadiness() {
         blockingFindings={blockingFindings}
         recommendations={recommendations}
       />
+      {impact.data ? <FeaturesTable results={impact.data.results} versionId={latest.id} /> : null}
     </div>
   );
 }

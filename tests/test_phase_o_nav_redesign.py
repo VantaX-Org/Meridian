@@ -99,9 +99,9 @@ def test_sidebar_master_data_items():
 
 
 def test_sidebar_process_and_impact_items():
-    """Process & impact has the process map, readiness, config impact and pattern mining."""
+    """Process & impact has the process map, readiness and pattern mining."""
     block = _group_block(_nav(), "Process & impact")
-    for href in ("/process", "/business-process", "/config-impact", "/mining"):
+    for href in ("/process", "/business-process", "/mining"):
         assert f'"{href}"' in block
 
 

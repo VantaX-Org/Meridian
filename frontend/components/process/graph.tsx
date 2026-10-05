@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Process → Relationships & patterns: one graph surface over what links the
+ * Process, Relationships & patterns: one graph surface over what links the
  * master data together.
  *
  *  • Entity links — record-to-record relationships (``/relationships``)
@@ -17,8 +17,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
+import { Tally } from "@/components/ui-core";
 import {
-  Banner, Chip, DataTable, KpiRail, Panel, ProcessGraph, Select, Stack, Stat, Tabs, Text,
+  Banner, Chip, DataTable, Panel, ProcessGraph, Select, Stack, Tabs, Text,
   type AuroraColumnMeta, type ChipTone, type ProcessGraphProps,
 } from "@/components/aurora";
 import { useUrlState } from "@/hooks/use-url-state";
@@ -57,8 +58,27 @@ export function GraphSurface() {
           { id: "patterns", label: "Patterns" },
         ]}
       />
+      <GraphTally />
       {lens === "dependencies" ? <Dependencies /> : lens === "patterns" ? <Patterns /> : <EntityLinks />}
     </Stack>
+  );
+}
+
+/** Same query keys as the lenses below, so the figures cost no extra requests. */
+function GraphTally() {
+  const rel = useQuery({ queryKey: ["relationships.list"], queryFn: () => getRelationships({ include_inactive: true }) });
+  const sum = useQuery({ queryKey: ["mining.summary"], queryFn: () => getMiningSummary(30) });
+  const rels = rel.data?.relationships ?? [];
+  const domains = new Set(rels.flatMap((r) => [r.from_domain, r.to_domain])).size;
+  const anomalies = sum.data?.new_anomalies ?? 0;
+  const fig = { loading: rel.isLoading, error: rel.error ? { retry: () => void rel.refetch() } : undefined };
+  return (
+    <Tally level={4} label="Graph figures" figures={[
+      { label: "Entities", value: domains, href: "/process?tab=relationships", verdict: domains ? "Domains with a recorded link." : "No domains linked.", ...fig },
+      { label: "Links", value: rel.data?.total ?? rels.length, href: "/process?tab=relationships", verdict: `${rels.filter((r) => r.ai_inferred).length.toLocaleString()} inferred.`, ...fig },
+      { label: "Patterns", value: sum.data?.total_patterns ?? null, href: "/process?tab=relationships&lens=patterns", verdict: `${(sum.data?.stable_patterns ?? 0).toLocaleString()} stable.`, loading: sum.isLoading, error: sum.error ? { retry: () => void sum.refetch() } : undefined },
+      { label: "New anomalies", value: anomalies, href: "/process?tab=relationships&lens=patterns", tone: anomalies ? "warning" : undefined, verdict: anomalies ? "Seen in the last 30 days." : "No new anomalies.", loading: sum.isLoading },
+    ]} />
   );
 }
 
@@ -89,12 +109,12 @@ function EntityLinks() {
       data: {
         label: formatModuleName(d), kind: s.in === 0 ? "source" : s.out === 0 ? "sink" : "transform",
         alignment: s.inactive ? "drifting" : "aligned",
-        secondary: `${s.out.toLocaleString()} out · ${s.in.toLocaleString()} in${s.inactive ? ` · ${s.inactive} inactive` : ""}`,
+        secondary: `${s.out.toLocaleString()} out, ${s.in.toLocaleString()} in${s.inactive ? `, ${s.inactive} inactive` : ""}`,
       },
     }));
     const edges: GraphEdges = Array.from(pairs.values()).sort((a, b) => b.n - a.n).slice(0, MAX_EDGES).map((p) => ({
       id: `${p.from}>${p.to}>${p.type}`, source: p.from, target: p.to,
-      label: `${p.type} · ${p.n.toLocaleString()}`,
+      label: `${p.type}, ${p.n.toLocaleString()}`,
     }));
     return { nodes, edges };
   }, [rels]);
@@ -111,7 +131,7 @@ function EntityLinks() {
     ) },
     { id: "type", header: "Type", meta: meta({ width: 170 }), cell: ({ row }) => <span className="aurora-number">{row.original.relationship_type}</span> },
     { id: "source", header: "Source", meta: meta({ width: 130 }), cell: ({ row }) => row.original.ai_inferred
-      ? <Chip tone="info">inferred{row.original.ai_confidence != null ? ` · ${pct(row.original.ai_confidence, 0)}` : ""}</Chip>
+      ? <Chip tone="info">inferred{row.original.ai_confidence != null ? `, ${pct(row.original.ai_confidence, 0)}` : ""}</Chip>
       : <Chip>{row.original.sap_link_table ?? "SAP"}</Chip> },
     { id: "state", header: "State", meta: meta({ width: 100 }), cell: ({ row }) =>
       <Chip tone={row.original.active ? "success" : "warning"}>{row.original.active ? "active" : "inactive"}</Chip> },
@@ -124,14 +144,8 @@ function EntityLinks() {
 
   return (
     <Stack gap={6}>
-      <KpiRail>
-        <Stat label="Domains" value={nodes.length} />
-        <Stat label="Links" value={(q.data?.total ?? rels.length).toLocaleString()} />
-        <Stat label="Inferred" value={inferred.toLocaleString()} tone={inferred ? "info" : "neutral"} />
-        <Stat label="Inactive" value={inactive.toLocaleString()} tone={inactive ? "warning" : "success"} />
-      </KpiRail>
       <Panel title="Entity map" action={
-        <Text variant="text-small" tone="tertiary">Click a domain to list its links{domain ? ` · showing ${formatModuleName(domain)}` : ""}</Text>
+        <Text variant="text-small" tone="tertiary">Click a domain to list its links{domain ? `, showing ${formatModuleName(domain)}` : ""}</Text>
       }>
         {q.isLoading ? <Text tone="muted">Reading relationships…</Text>
           : nodes.length ? <ProcessGraph nodes={nodes} edges={edges} height={440} onNodeClick={(n) => setDomain(n.id === domain ? "" : n.id)} />
@@ -191,14 +205,14 @@ function Dependencies() {
     }));
     const edges: GraphEdges = top.map((d) => ({
       id: `${d.determinant}>${d.dependent}`, source: d.determinant, target: d.dependent,
-      label: `${pct(d.support)} · ${d.violations.toLocaleString()} disagree`,
+      label: `${pct(d.support)}, ${d.violations.toLocaleString()} disagree`,
     }));
     return { nodes, edges };
   }, [deps]);
 
   const columns = useMemo<ColumnDef<FieldDependency, unknown>[]>(() => [
     { id: "rule", header: "Candidate rule", meta: meta({ width: 320 }), cell: ({ row }) => (
-      <span className="aurora-number">{row.original.determinant} → {row.original.dependent}</span>
+      <span className="aurora-number">{row.original.determinant} decides {row.original.dependent}</span>
     ) },
     { id: "support", header: "Holds for", meta: meta({ width: 110, numeric: true, align: "end" }), cell: ({ row }) => pct(row.original.support, 2) },
     { id: "rows", header: "Records", meta: meta({ width: 110, numeric: true, align: "end" }), cell: ({ row }) => row.original.rows.toLocaleString() },
@@ -221,22 +235,16 @@ function Dependencies() {
           options={(systems.data ?? []).map((s) => ({ value: s.id, label: s.name }))}
           onValueChange={(v) => { setSystemId(v); setVersionId(""); setObject(""); }} />
         <Select aria-label="Version" value={vid}
-          options={(versions.data ?? []).map((v) => ({ value: v.id, label: `${new Date(v.run_at).toLocaleString()}${v.label ? ` · ${v.label}` : ""}` }))}
+          options={(versions.data ?? []).map((v) => ({ value: v.id, label: `${new Date(v.run_at).toLocaleString()}${v.label ? `, ${v.label}` : ""}` }))}
           onValueChange={(v) => { setVersionId(v); setObject(""); }} />
         <Select aria-label="Object" value={obj}
           options={(profile.data?.objects ?? (obj ? [obj] : [])).map((o) => ({ value: o, label: formatModuleName(o) }))}
           onValueChange={setObject} />
         {sid && vid ? <Link href={profileHref} className="text-[13px] text-[var(--aurora-accent-400)] hover:underline">Open profile</Link> : null}
       </Stack>
-      <KpiRail>
-        <Stat label="Candidate rules" value={deps.length.toLocaleString()} />
-        <Stat label="Fields involved" value={nodes.length.toLocaleString()} />
-        <Stat label="Disagreeing records" value={deps.reduce((n, d) => n + d.violations, 0).toLocaleString()}
-          tone={deps.length ? "warning" : "neutral"} />
-      </KpiRail>
       {profile.error ? <Banner tone="danger" title="The profile for this version could not be loaded." /> : null}
       <Panel title="Dependency map" action={
-        <Text variant="text-small" tone="tertiary">Field → field it decides, in ≥ 99 % of records. Click a field to review it.</Text>
+        <Text variant="text-small" tone="tertiary">One field decides another in at least 99 % of records. Click a field to review it.</Text>
       }>
         {profile.isLoading || systems.isLoading || versions.isLoading ? <Text tone="muted">Reading the profile…</Text>
           : nodes.length ? <ProcessGraph nodes={nodes} edges={edges} height={480} onNodeClick={() => router.push(profileHref)} />
@@ -281,13 +289,6 @@ function Patterns() {
   if (summary.error || patterns.error) return <Banner tone="danger" title="Patterns could not be loaded." />;
   return (
     <Stack gap={6}>
-      <KpiRail>
-        <Stat label="Patterns" value={s.total_patterns.toLocaleString()} />
-        <Stat label={`New anomalies · ${s.window_days}d`} value={s.new_anomalies.toLocaleString()} tone={s.new_anomalies ? "warning" : "neutral"} />
-        <Stat label="Stable" value={s.stable_patterns.toLocaleString()} tone="success" />
-        <Stat label="Coverage" value={`${Math.round(s.coverage_pct)} %`} />
-        <Stat label="Runs" value={s.runs_total.toLocaleString()} />
-      </KpiRail>
       <Select aria-label="Pattern type" placeholder="All types" value={type} onValueChange={setType}
         options={["anomaly", "drift", "duplicate", "pii"].map((t) => ({ value: t, label: formatModuleName(t) }))} />
       <DataTable<MiningPattern>

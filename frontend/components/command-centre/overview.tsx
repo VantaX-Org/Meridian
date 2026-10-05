@@ -286,7 +286,7 @@ export function CommandCentreOverview() {
           {
             label: "SAP features at risk",
             value: atRisk,
-            href: "/process?tab=config-impact",
+            href: "/process?tab=readiness",
             loading: !!latestVersion && impact.isLoading,
             error: impact.isError ? { retry: () => { void impact.refetch(); } } : undefined,
             tone: impactSummary?.features_blocked ? "danger" : undefined,
