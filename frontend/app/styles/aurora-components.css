@@ -538,7 +538,7 @@
   background: var(--aurora-canvas-elevated);
   border: 1px solid var(--aurora-canvas-line);
   border-radius: var(--aurora-radius-control);
-  box-shadow: var(--aurora-elev-3-shadow, 0 8px 24px rgba(0, 0, 0, 0.4));
+  box-shadow: var(--aurora-elev-3-shadow);
   padding: var(--aurora-space-1);
   margin: 0;
   list-style: none;
@@ -849,7 +849,7 @@
   border: 1px solid var(--aurora-canvas-line);
   border-radius: var(--aurora-radius-sheet);
   position: relative;
-  box-shadow: var(--aurora-elev-2);
+  box-shadow: var(--aurora-elev-1);
   transition: border-color var(--aurora-duration-fast)
       var(--aurora-easing-standard),
     box-shadow var(--aurora-duration-fast) var(--aurora-easing-standard);
@@ -857,7 +857,7 @@
 .aurora-process-node[data-selected="true"] {
   border-color: var(--aurora-accent-400);
   box-shadow: 0 0 0 1px var(--aurora-accent-400),
-    var(--aurora-elev-3);
+    var(--aurora-elev-1);
 }
 .aurora-process-node[data-kind="approval"] {
   border-style: dashed;
@@ -3823,7 +3823,7 @@
   width: 32px;
   height: 32px;
   border-radius: 999px;
-  background: var(--aurora-elev-3-bg);
+  background: var(--aurora-canvas-overlay);
   color: var(--aurora-fg-primary);
   box-shadow: inset 0 0 0 1px var(--aurora-canvas-line);
   font: 600 11px/1 var(--aurora-font-ui, inherit);
@@ -3840,7 +3840,7 @@
 .aurora-import__drop {
   display: flex; align-items: center; justify-content: center; min-height: 220px; padding: var(--aurora-space-6);
   border: 1px dashed var(--aurora-canvas-line); border-radius: var(--aurora-radius-sheet); background: var(--aurora-canvas-raised);
-  cursor: pointer; transition: border-color var(--aurora-motion-fast, 160ms), background var(--aurora-motion-fast, 160ms);
+  cursor: pointer; transition: border-color var(--aurora-duration-fast), background var(--aurora-duration-fast);
 }
 .aurora-import__drop:hover, .aurora-import__drop.is-over { border-color: var(--aurora-accent-500); background: var(--aurora-accent-selected-bg); }
 .aurora-import__drop.has-file { border-style: solid; }
@@ -3891,7 +3891,7 @@
 
 /* Settings: ways into each settings tab */
 .aurora-linkcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--aurora-space-4); }
-.aurora-linkcard { display: flex; flex-direction: column; gap: var(--aurora-space-1); padding: var(--aurora-space-4); border: 1px solid var(--aurora-canvas-line); border-radius: 12px; background: var(--aurora-canvas-raised); color: inherit; text-decoration: none; transition: border-color var(--aurora-motion-fast, 160ms), background var(--aurora-motion-fast, 160ms); }
+.aurora-linkcard { display: flex; flex-direction: column; gap: var(--aurora-space-1); padding: var(--aurora-space-4); border: 1px solid var(--aurora-canvas-line); border-radius: 12px; background: var(--aurora-canvas-raised); color: inherit; text-decoration: none; transition: border-color var(--aurora-duration-fast), background var(--aurora-duration-fast); }
 .aurora-linkcard:hover { border-color: var(--aurora-accent-500); background: var(--aurora-accent-selected-bg); }
 
 /* Structured terms and conditions shown as they are stored */
@@ -3979,3 +3979,11 @@
 }
 .aurora-tooltip:hover::after, .aurora-tooltip:focus-within::after { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .aurora-tooltip::after { transition: none; } }
+
+/* Ring fill and spinner motion (moved from ui-core.css; motion lives here only). */
+.ui-ring__fill { animation: ui-ring var(--aurora-duration-tally) var(--aurora-easing-enter) both; }
+@keyframes ui-ring { from { stroke-dashoffset: 527.79; } }
+@media (prefers-reduced-motion: reduce) { .ui-ring__fill { animation: none; } }
+.ui-update__spin { width: 1.25rem; height: 1.25rem; flex: none; border: 2px solid var(--aurora-accent-500); border-top-color: transparent; border-radius: 50%; animation: ui-update-spin 1s linear infinite; }
+@keyframes ui-update-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .ui-update__spin { animation: none; } }

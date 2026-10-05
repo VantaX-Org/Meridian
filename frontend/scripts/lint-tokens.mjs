@@ -21,7 +21,30 @@ const RULES = [
   { name: "hex colour", re: /(?<![\w&/#-])#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})(?![\w-])/ },
   { name: "gradient", re: /\b(?:linear|radial|conic)-gradient\(|\bbg-(?:gradient|linear|radial)-/ },
   { name: "backdrop blur", re: /\bbackdrop-(?:blur|filter)\b/ },
+  // Rule 13: shadows come from --aurora-elev-* only.
+  { name: "box-shadow literal", re: /box-shadow\s*:[^;]*(?:#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?)\(|\b(?:black|white)\b|var\(--aurora-elev-[\w-]+\s*,)/i },
+  // Rule 15: no all-caps eyebrows.
+  { name: "text-transform uppercase", re: /^(?!.*::first-letter).*text-transform\s*:\s*uppercase|\buppercase\b(?=[^\n]*(?:className|class=|@apply))/ },
+  // Rule 11: motion lives in the Aurora style files only.
+  { name: "motion outside aurora css", re: /\b(?:transition|animation)(?:-[a-z-]+)?\s*:|@keyframes\b/, skip: new Set(["app/styles/aurora.css", "app/styles/aurora-components.css"]) },
+  { name: "duration literal outside aurora.css", re: /\b\d*\.?\d+ms\b/, skip: new Set(["app/styles/aurora.css"]) },
 ];
+
+// Rule 14 and rule 6 read the CSS selector that owns each declaration.
+const OVERLAY = /\[data-overlay\]|popover|menu|dialog|drawer|tooltip|modal|toast|palette|scrim|overlay|listbox|dropdown|combobox|panel|preview/i;
+function* cssDecls(src) {
+  let sel = "", depth = [];
+  const lines = src.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const t = lines[i];
+    const open = t.indexOf("{");
+    if (open >= 0 && !t.includes("}")) { depth.push(sel + t.slice(0, open)); sel = ""; continue; }
+    if (open >= 0) { yield { line: i + 1, text: t, sel: t.slice(0, open) }; continue; }
+    if (t.includes("}")) { depth.pop(); sel = ""; continue; }
+    if (/[:]/.test(t) && depth.length) yield { line: i + 1, text: t, sel: depth.join(" ") };
+    else if (!depth.length || t.trim().endsWith(",")) sel += t;
+  }
+}
 
 function* walk(dir) {
   for (const e of readdirSync(dir, { withFileTypes: true })) {
@@ -34,12 +57,21 @@ const allow = new Set(
   readFileSync(ALLOW_FILE, "utf8").split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("#")),
 );
 const hits = new Map();
+const warns = [];
 for (const abs of walk(ROOT)) {
   const file = relative(ROOT, abs);
   if (TOKEN_FILES.has(file)) continue;
-  readFileSync(abs, "utf8").split("\n").forEach((line, i) => {
-    for (const r of RULES) if (r.re.test(line)) (hits.get(file) ?? hits.set(file, []).get(file)).push(`${file}:${i + 1}  ${r.name}`);
+  const src = readFileSync(abs, "utf8");
+  const add = (n, name) => (hits.get(file) ?? hits.set(file, []).get(file)).push(`${file}:${n}  ${name}`);
+  src.split("\n").forEach((line, i) => {
+    for (const r of RULES) if (!r.skip?.has(file) && r.re.test(line)) add(i + 1, r.name);
   });
+  if (file.endsWith(".css") && file !== "app/styles/aurora.css") {
+    for (const d of cssDecls(src)) {
+      if (/--aurora-elev-[2-4]/.test(d.text) && !/^\s*--/.test(d.text) && !OVERLAY.test(d.sel)) add(d.line, "elevation 2-4 outside an overlay");
+      if (/var\(--aurora-status-/.test(d.text) && !/\[data-(?:severity|tone)/.test(d.sel)) warns.push(`${file}:${d.line}  status colour without [data-severity] or [data-tone]`);
+    }
+  }
 }
 
 if (process.argv.includes("--write-allowlist")) {
@@ -57,4 +89,5 @@ if (bad.length || stale.length) {
   console.error(`\nlint:tokens failed: use --aurora-* tokens (see DESIGN.md).`);
   process.exit(1);
 }
-console.log(`lint:tokens ok (${allow.size} legacy files allowlisted)`);
+if (process.env.LINT_WARN) for (const w of warns) console.warn(`warn ${w}`);
+console.log(`lint:tokens ok (${warns.length} warnings) (${allow.size} legacy files allowlisted)`);

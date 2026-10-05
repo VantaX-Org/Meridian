@@ -743,13 +743,11 @@ a.ui-link { color: var(--aurora-accent-500); text-decoration: none; }
 .ui-ring[data-size="120"] { max-width: 120px; }
 .ui-ring circle { fill: none; stroke-width: 14; }
 .ui-ring__track { stroke: var(--aurora-canvas-line); }
-.ui-ring__fill { stroke: var(--aurora-status-success-500); stroke-linecap: butt; animation: ui-ring var(--aurora-duration-tally) var(--aurora-easing-enter) both; }
+.ui-ring__fill { stroke: var(--aurora-status-success-500); stroke-linecap: butt; }
 .ui-ring[data-band="warn"] .ui-ring__fill { stroke: var(--aurora-status-warning-500); }
 .ui-ring[data-band="fail"] .ui-ring__fill { stroke: var(--aurora-status-danger-500); }
 .ui-ring__num { text-anchor: middle; font-size: 48px; font-weight: 600; font-variant-numeric: tabular-nums; fill: var(--aurora-fg-primary); }
 .ui-ring__unit { text-anchor: middle; font-size: 13px; fill: var(--aurora-fg-tertiary); }
-@keyframes ui-ring { from { stroke-dashoffset: 527.79; } }
-@media (prefers-reduced-motion: reduce) { .ui-ring__fill { animation: none; } }
 
 /* Object 360 and Finding detail layout. */
 .ui-o360 { display: grid; gap: var(--aurora-space-6); }
@@ -795,9 +793,6 @@ a.ui-link { color: var(--aurora-accent-500); text-decoration: none; }
 .ui-update__phase { display: flex; align-items: center; gap: var(--aurora-space-3); }
 .ui-update__phase[data-phase="failed"] { color: var(--aurora-status-danger-500); }
 .ui-update__phase[data-phase="rolled_back"] { color: var(--aurora-status-warning-500); }
-.ui-update__spin { width: 1.25rem; height: 1.25rem; flex: none; border: 2px solid var(--aurora-accent-500); border-top-color: transparent; border-radius: 50%; animation: ui-update-spin 1s linear infinite; }
-@keyframes ui-update-spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .ui-update__spin { animation: none; } }
 
 /* Shell menus */
 .ui-menu__head { display: grid; gap: var(--aurora-space-1); padding: var(--aurora-space-3); border-bottom: 1px solid var(--aurora-canvas-line); min-width: 0; }
