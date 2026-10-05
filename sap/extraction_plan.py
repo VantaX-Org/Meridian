@@ -54,6 +54,7 @@ class TablePlan:
     fields: set[str] = field(default_factory=set)
     keys: list[str] = field(default_factory=list)
     where: Optional[str] = None
+    wide_where: Optional[str] = None   # retry when the default window is empty (stale/sandbox systems)
     via: Optional[str] = None          # read by parent keys (see extraction_windows.yaml)
     purpose: str = "data"              # data | config
     modules: set[str] = field(default_factory=set)
@@ -118,6 +119,17 @@ def _scope_filters(table: str, dictionary: Dictionary, scope: dict) -> list[str]
         if scope.get(key) and dictionary.field(table, field) is not None:
             out.append(f"{field} IN (" + ", ".join(f"'{v}'" for v in scope[key]) + ")")
     return out
+
+
+def widen(template: str, factor: int = 4, cap: int = 24) -> Optional[str]:
+    """The window with every ``{months_ago:N}`` (N > 0) stretched to N*factor, capped.
+
+    A copy or sandbox client often has no postings in the last quarter: the
+    default window then reads nothing. None when there is nothing to stretch."""
+    out = re.sub(r"\{months_ago:(\d+)\}",
+                 lambda m: f"{{months_ago:{min(int(m.group(1)) * factor, cap)}}}" if int(m.group(1)) else m.group(0),
+                 template)
+    return out if out != template else None
 
 
 def _window(template: str, scope: dict) -> str:
@@ -211,12 +223,16 @@ def plan_modules(modules: list[str], dictionary: Dictionary, scope: Optional[dic
         p.fields = {f for f in p.fields if dictionary.field(t, f) is not None}
         w = _windows().get(t) or {}
         filters = [f"{f} = '{v or ' '}'" for e in edges if e.child == t for f, v in e.filter]
+        wide = None
         if w.get("where"):
+            if not (scope or {}).get("date_from") and not (scope or {}).get("date_to") and widen(w["where"]):
+                wide = filters + [render_where(widen(w["where"]))]
             filters.append(_window(w["where"], scope or {}))
         scoped = _scope_filters(t, dictionary, scope or {}) if p.purpose == "data" else []
         filters += scoped
         p.partial = bool(w.get("where") or w.get("via") or scoped)
         p.where = " AND ".join(filters) or None
+        p.wide_where = " AND ".join(wide + scoped) if wide else None
         p.via = w.get("via") if w.get("via") in plans else None
 
     # the check table of every field read: the DDIC conformance check value-checks each one

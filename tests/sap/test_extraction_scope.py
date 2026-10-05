@@ -37,3 +37,14 @@ def test_odata_v2_dates_become_iso():
     assert odata_date("/Date(1704067200000)/") == "2024-01-01"
     assert odata_date("/Date(1704110400000+0000)/") == "2024-01-01T12:00:00"
     assert odata_date("2024-01-01") == "2024-01-01"
+
+
+def test_default_window_has_a_wider_fallback():
+    from sap.extraction_plan import widen
+    assert widen("BUDAT >= '{months_ago:3}'") == "BUDAT >= '{months_ago:12}'"
+    assert widen("ERDAT >= '{months_ago:24}'") is None  # already at the cap: no second read
+    assert widen("DATBI >= '{months_ago:0}'") is None  # validity window, not a recency window
+    assert widen("CREDAT >= '{days_ago:90}'") is None
+    assert plan_modules(["fi_gl"], D)["BKPF"].wide_where.startswith("BUDAT >= '")
+    dated = normalise_scope({"date_from": "2026-01-01"})
+    assert plan_modules(["fi_gl"], D, dated)["BKPF"].wide_where is None  # the user's range is never widened

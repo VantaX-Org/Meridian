@@ -47,14 +47,31 @@ def _live_reference_values(engine, tenant_id: str, metadata: dict) -> dict[str, 
     return out
 
 
+STALE_DAYS = 30
+
+
 def snapshot_as_of(session, metadata: dict) -> str | None:
     """The date the version's data was read from the source: what ageing, freshness
     and future-date rules measure against, so a re-analysis of an old version does
     not age it by the wall clock. In order: an explicit ``as_of`` (set it when the
     source system is itself an older copy), the extraction's ``downloaded_at``, the
-    sync run's start. None (uploads) means now."""
+    sync run's start. None (uploads) means now.
+
+    A source whose last document entry (``latest_activity``) is more than
+    STALE_DAYS before the download is a frozen copy: its data is as of that last
+    entry, and ageing it by the download date would fail every open item."""
     import pandas as pd
-    candidates = [metadata.get("as_of"), metadata.get("downloaded_at")]
+    downloaded = metadata.get("downloaded_at")
+    try:
+        if not metadata.get("as_of") and downloaded and metadata.get("latest_activity") and \
+                pd.Timestamp(downloaded).tz_localize(None) - pd.Timestamp(metadata["latest_activity"]) \
+                > pd.Timedelta(days=STALE_DAYS):
+            logger.warning(f"source data ends {metadata['latest_activity']}, downloaded {downloaded}: "
+                           "measuring as of the last entry")
+            downloaded = metadata["latest_activity"]
+    except (ValueError, TypeError):
+        pass
+    candidates = [metadata.get("as_of"), downloaded]
     if metadata.get("sync_run_id"):
         row = session.execute(text("SELECT started_at FROM sync_runs WHERE id = :id"),
                               {"id": str(metadata["sync_run_id"])}).fetchone()

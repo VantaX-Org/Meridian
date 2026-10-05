@@ -40,7 +40,7 @@ BTP_MODULE_ENTITIES: dict[str, list[dict[str, Any]]] = {
     "business_partner": [
         {"entity_set": e, "service_path": BP_SERVICE}
         for e in ("A_BusinessPartner", "A_BusinessPartnerAddress",
-                  "A_BusinessPartnerTaxNumber", "A_BusinessPartnerBank")
+                  "A_BusinessPartnerTaxNumber", "A_BusinessPartnerBank", "A_AddressEmailAddress")
     ],
 }
 

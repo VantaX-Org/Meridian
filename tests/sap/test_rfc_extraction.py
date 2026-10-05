@@ -238,3 +238,35 @@ def test_payroll_totals_through_the_customer_function():
     assert len(df) == 2 and df["BETRG"].tolist() == ["15000.5", "15000.5"]
     assert entry == {"table": "ZMERIDIAN_PAYRT", "purpose": "data", "status": "live", "rows": 2, "results": 3,
                      "unauthorised": 1, "complete": False}
+
+
+def test_stale_system_widens_an_empty_default_window(monkeypatch):
+    """A sandbox with no postings in the last quarter still yields BKPF, and BSEG through it."""
+    from datetime import date, timedelta
+    from api.services import connectivity_manager as cm
+
+    budat = (date.today() - timedelta(days=150)).strftime("%Y%m%d")
+    bkpf = pd.DataFrame({"MANDT": ["100"], "BUKRS": ["1000"], "BELNR": ["0100000001"], "GJAHR": [budat[:4]],
+                         "BUDAT": [budat], "BLART": ["SA"]})
+    bseg = pd.DataFrame({"MANDT": ["100"] * 2, "BUKRS": ["1000"] * 2, "BELNR": ["0100000001"] * 2,
+                         "GJAHR": [budat[:4]] * 2, "BUZEI": ["001", "002"], "HKONT": ["400000", "160000"]})
+    fake = FakeRFCConnector({"BKPF": bkpf, "BSEG": bseg})
+
+    class Mgr(cm.ConnectivityManager):
+        def __init__(self):
+            self.tenant_id, self.session = "t", None
+
+        def _load_system(self, sid):
+            return type("R", (), {"system_type": "ecc", "id": sid})()
+
+        def _build_connection_params(self, row):
+            return {"system_type": "ecc"}
+
+        def _get_connector(self, system_type, params):
+            return fake
+
+    monkeypatch.setattr("api.services.source_design.dictionary_for", lambda s, sid, st=None: get_dictionary("ecc6"))
+    _, coverage = Mgr().extract("sys", ["fi_gl"])
+    cov = {c["table"]: c for c in coverage}
+    assert cov["BKPF"]["rows"] == 1 and cov["BKPF"]["window"] == plan_modules(["fi_gl"], get_dictionary("ecc6"))["BKPF"].wide_where
+    assert cov["BSEG"]["rows"] == 2
