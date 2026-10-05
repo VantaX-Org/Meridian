@@ -70,3 +70,17 @@ def test_snapshot_as_of_priority():
     assert snapshot_as_of(s, {"sync_run_id": "x"}).startswith("2020-01-01")
     assert snapshot_as_of(s, {"as_of": "not a date", "sync_run_id": "x"}).startswith("2020-01-01")
     assert snapshot_as_of(_Session(None), {"source": "upload"}) is None
+
+
+def test_frozen_copy_is_measured_as_of_its_last_entry():
+    from workers.tasks.run_extraction import latest_activity
+    frames = {"BKPF": pd.DataFrame({"BKPF.CPUDT": ["20260601", "20260619", ""]}),
+              "LFA1": pd.DataFrame({"LFA1.ERDAT": ["20261001"]})}  # master data does not count
+    assert latest_activity(frames) == "2026-06-19"
+    assert latest_activity({"LFA1": frames["LFA1"]}) is None
+    s = _Session(None)
+    stale = {"downloaded_at": "2026-10-03T05:52:40+00:00", "latest_activity": "2026-06-19"}
+    assert snapshot_as_of(s, stale).startswith("2026-06-19")
+    live = {"downloaded_at": "2026-10-03T05:52:40+00:00", "latest_activity": "2026-10-02"}
+    assert snapshot_as_of(s, live).startswith("2026-10-03")
+    assert snapshot_as_of(s, {**stale, "as_of": SNAP}).startswith(SNAP)  # the manual date still wins

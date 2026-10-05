@@ -33,6 +33,25 @@ def progress_key(system_id) -> str:
     return f"extract:{system_id}"
 
 
+# Entry dates of documents a live system creates every day. Master-data dates are
+# left out: a quiet vendor master is normal, a quiet general ledger is not.
+_ACTIVITY_DATES = ("BKPF.CPUDT", "RBKP.CPUDT", "CDHDR.UDATE", "EKKO.AEDAT", "VBAK.ERDAT")
+
+
+def latest_activity(frames: dict) -> str | None:
+    """Latest document entry date in the extracted data (YYYY-MM-DD), None if none was read."""
+    import pandas as pd
+    latest = None
+    for col in _ACTIVITY_DATES:
+        df = frames.get(col.split(".")[0])
+        if df is None or col not in df.columns:
+            continue
+        d = pd.to_datetime(df[col], format="%Y%m%d", errors="coerce").max()
+        if pd.notna(d) and (latest is None or d > latest):
+            latest = d
+    return latest.date().isoformat() if latest is not None else None
+
+
 @celery_app.task(
     bind=True,
     name="workers.tasks.run_extraction.run_extraction",
@@ -136,6 +155,7 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
                     "modules": modules, "source": "extraction", "system_id": system_id,
                     "scope": scope or {}, "started_at": started["started_at"],
                     "downloaded_at": datetime.now(timezone.utc).isoformat(),
+                    "latest_activity": latest_activity(data_tables),
                     # SAP system-local time vs UTC; None = unknown (checks treat it as 0)
                     "sap_utc_offset_seconds": getattr(manager, "sap_utc_offset_seconds", None),
                     "dataset_path": prefix, "object_rows": object_rows,
