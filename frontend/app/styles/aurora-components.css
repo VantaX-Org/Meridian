@@ -2201,7 +2201,7 @@
   border-radius: var(--aurora-radius-sheet);
   background: var(--aurora-canvas-raised);
 }
-.aurora-report__title {
+.aurora-text.aurora-report__title {
   letter-spacing: -0.01em;
   font-weight: var(--aurora-weight-regular, 400);
 }
