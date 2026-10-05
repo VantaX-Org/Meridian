@@ -78,7 +78,7 @@ export function UsersSurface() {
     { id: "login", header: "Last sign-in", meta: meta({ width: 130 }), cell: ({ row }) => row.original.last_login ? relativeTime(row.original.last_login) : "Never" },
     { id: "since", header: "Member since", meta: meta({ width: 130 }), cell: ({ row }) => relativeTime(row.original.created_at) },
     { id: "actions", header: "", meta: meta({ width: 150, align: "end" }), cell: ({ row }) => canManage ? (
-      <span className="ui-form__actions" style={{ justifyContent: "flex-end" }}>
+      <span className="ui-form__actions" style={{ justifyContent: "flex-end", paddingTop: 0 }}>
         <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setEditing(row.original); }}>Edit</Button>
         <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setDeleting(row.original); }}>Remove</Button>
       </span>) : null },
