@@ -313,16 +313,11 @@ a.ui-link { color: var(--aurora-accent-500); text-decoration: none; }
 .ui-skeleton__row {
   height: var(--aurora-density-row);
   background: var(--aurora-canvas-overlay);
-  opacity: 0.6;
 }
 .ui-reason { display: flex; flex-wrap: wrap; align-items: center; gap: var(--aurora-space-2); }
 .ui-reason__label { font-size: 13px; color: var(--aurora-fg-secondary); }
 .ui-reason input { min-width: 240px; flex: 1 1 240px; }
 
-@media (prefers-reduced-motion: no-preference) {
-  .ui-skeleton__row { animation: ui-pulse 1.4s var(--aurora-easing-standard) infinite alternate; }
-}
-@keyframes ui-pulse { to { opacity: 0.25; } }
 
 /* ── Table additions (DataTable) ───────────────────────────────────── */
 
@@ -385,80 +380,11 @@ a.ui-link { color: var(--aurora-accent-500); text-decoration: none; }
 .ui-verdict {
   margin: 0;
   max-width: 64ch;
-  font-size: 17px;
-  line-height: 26px;
+  font-size: var(--aurora-verdict-size);
+  line-height: var(--aurora-verdict-line);
   color: var(--aurora-fg-primary);
   text-wrap: pretty;
 }
-
-/* Home journey: five counters in the order data moves, SAP to fixed record.
- * One sheet, hairline-divided; the chevron between cells marks the sequence. */
-.mn-journey-strip {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  background: var(--aurora-canvas-raised);
-  border: 1px solid var(--aurora-canvas-line);
-  border-radius: var(--aurora-radius-sheet);
-}
-.mn-journey-strip > li { position: relative; min-width: 0; }
-.mn-journey-strip > li + li { border-left: 1px solid var(--aurora-canvas-line); }
-.mn-journey-strip > li + li::before {
-  content: "";
-  position: absolute;
-  left: -5px;
-  top: 50%;
-  width: 8px;
-  height: 8px;
-  margin-top: -4px;
-  background: var(--aurora-canvas-raised);
-  border-top: 1px solid var(--aurora-canvas-line);
-  border-right: 1px solid var(--aurora-canvas-line);
-  transform: rotate(45deg);
-}
-.mn-journey-strip a {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  height: 100%;
-  padding: var(--aurora-space-4) var(--aurora-space-5);
-  color: inherit;
-  text-decoration: none;
-}
-.mn-journey-strip a:hover { background: var(--aurora-canvas-overlay); }
-.mn-journey-strip__label { font-size: 13px; color: var(--aurora-fg-secondary); }
-.mn-journey-strip__value {
-  font-size: 40px;
-  line-height: 48px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  font-variant-numeric: tabular-nums;
-  color: var(--aurora-fg-primary);
-}
-.mn-journey-strip li[data-tone="danger"] .mn-journey-strip__value { color: var(--aurora-status-danger-500); }
-.mn-journey-strip li[data-tone="success"] .mn-journey-strip__value { color: var(--aurora-status-success-500); }
-.mn-journey-strip__sub { font-size: 12px; color: var(--aurora-fg-tertiary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-@media (max-width: 1100px) {
-  .mn-journey-strip { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
-  .mn-journey-strip > li + li::before { display: none; }
-  .mn-journey-strip > li { border-left: 0 !important; border-bottom: 1px solid var(--aurora-canvas-line); }
-}
-
-/* One next step, stated plainly with its action. */
-.mn-next {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--aurora-space-3);
-  padding: var(--aurora-space-3) var(--aurora-space-4);
-  border-left: 3px solid var(--aurora-accent-500);
-  background: var(--aurora-accent-selected-bg);
-  border-radius: 0 var(--aurora-radius-sheet) var(--aurora-radius-sheet) 0;
-}
-.mn-next__label { font-size: 13px; font-weight: 600; color: var(--aurora-accent-500); }
-.mn-next__text { flex: 1; min-width: 200px; font-size: 15px; color: var(--aurora-fg-primary); }
 
 .mn-charts {
   display: grid;

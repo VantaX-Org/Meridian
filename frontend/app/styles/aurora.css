@@ -31,8 +31,10 @@
   --aurora-canvas-raised: #ffffff;
   --aurora-canvas-elevated: #ffffff;
   --aurora-canvas-overlay: #e8eae7;
-  --aurora-canvas-line: #dadDd8;
+  --aurora-canvas-line: #e1e3df;
   --aurora-canvas-line-strong: #b9bdb7;
+  --aurora-canvas-sunken: #ebece9;
+  --aurora-canvas-rule: #15181a;
 
   --aurora-fg-primary: var(--aurora-ink-900);
   --aurora-fg-secondary: var(--aurora-ink-700);
@@ -156,9 +158,29 @@
   --aurora-density-table-size: 14px;
 
   --aurora-duration-instant: 80ms;
-  --aurora-duration-fast: 160ms;
+  --aurora-duration-fast: 120ms;
   --aurora-duration-medium: 240ms;
   --aurora-duration-slow: 360ms;
+  --aurora-duration-base: 200ms;
+  --aurora-duration-tally: 360ms;
+  --aurora-ease-out: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Tally: the one bold element. Size, line height, tracking. */
+  --aurora-tally-1-size: 96px;
+  --aurora-tally-1-line: 88px;
+  --aurora-tally-1-track: -0.03em;
+  --aurora-tally-2-size: 64px;
+  --aurora-tally-2-line: 64px;
+  --aurora-tally-2-track: -0.025em;
+  --aurora-tally-3-size: 48px;
+  --aurora-tally-3-line: 48px;
+  --aurora-tally-3-track: -0.02em;
+  --aurora-tally-4-size: 32px;
+  --aurora-tally-4-line: 36px;
+  --aurora-tally-4-track: -0.01em;
+  --aurora-tally-weight: 500;
+  --aurora-verdict-size: 15px;
+  --aurora-verdict-line: 22px;
   --aurora-easing-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
   --aurora-easing-enter: cubic-bezier(0, 0, 0.2, 1);
   --aurora-easing-exit: cubic-bezier(0.4, 0, 1, 1);
@@ -189,6 +211,8 @@
   --aurora-canvas-overlay: #2a2f32;
   --aurora-canvas-line: #2c3134;
   --aurora-canvas-line-strong: #41484c;
+  --aurora-canvas-sunken: #101213;
+  --aurora-canvas-rule: #eceeea;
 
   --aurora-fg-primary: var(--aurora-ink-100);
   --aurora-fg-secondary: var(--aurora-ink-200);
@@ -285,5 +309,8 @@
   [data-theme="light"] {
     --aurora-duration-medium: 0ms;
     --aurora-duration-slow: 0ms;
+    --aurora-duration-fast: 0ms;
+    --aurora-duration-base: 0ms;
+    --aurora-duration-tally: 0ms;
   }
 }

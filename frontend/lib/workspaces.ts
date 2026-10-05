@@ -45,7 +45,6 @@ export const WORKSPACES: readonly Workspace[] = [
     tabs: [
       { id: "overview", label: "Overview", href: "/" },
       { id: "report", label: "Executive report", href: "/executive-report" },
-      { id: "analytics", label: "Trends", href: "/analytics" },
       { id: "live", label: "Live activity", href: "/command-centre" },
       { id: "notifications", label: "Notifications", href: "/notifications" },
     ],

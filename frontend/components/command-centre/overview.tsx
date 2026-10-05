@@ -1,17 +1,15 @@
 "use client";
 
 /**
- * Command Centre overview: the verdict a consultant reads out and the sheet a
- * steward starts from. Every figure links to the findings behind it.
+ * Home overview: where things stand. The Tally leads with five figures, each a
+ * link to the rows behind it, and everything below answers one of them.
  *
- *  - Journey: systems, analysed objects, open findings, steward inbox, resolved,
- *    each a step a user can click into, and the one thing to do next.
- *  - Verdict and ledger: findings/aggregate, config impact (features blocked).
+ *  - Tally: DQS, failing checks, failing records, SAP features at risk, cost at risk.
+ *  - Next step: the planner's top action, or the next step on the journey.
  *  - Charts: DQS per run, findings per object by severity, severity share.
- *  - Score: composite DQS and dimension bars.
- *  - Matrix: SAP object × DAMA dimension from each object's latest run, with
- *    the predictive 30-day forecast beside it.
- *  - Top by impact: the prescriptive planner (severity weight × records).
+ *  - Where this is heading: the 30-day forecast and early warnings.
+ *  - Matrix: SAP object x DAMA dimension from each object's latest run.
+ *  - How the score is made, and the top findings by impact.
  *  - Where the data lives: connected systems and their last extraction.
  */
 
@@ -19,23 +17,23 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { BarChart, DonutChart, LineChart, resolveChartTokens } from "@/components/aurora";
+import { BarChart, DonutChart, LineChart, resolveChartTokens, Sparkline } from "@/components/aurora";
 import { GettingStarted } from "@/components/getting-started";
 import {
   Button,
   EmptyState,
-  Metric,
-  MetricStrip,
-  PageHeader,
   SectionCard,
   StatusBadge,
+  Tally,
   TableSkeleton,
+  Verdict,
 } from "@/components/ui-core";
 import { useJobs } from "@/hooks/use-jobs";
 import { useNowSec } from "@/hooks/use-now";
 import { getPredictiveAnalytics, getPrescriptiveAnalytics } from "@/lib/api/analytics";
 import { getConfigImpact, getSystems } from "@/lib/api/connectivity";
-import { compositeDqs, getFindingsAggregate } from "@/lib/api/findings";
+import { compositeDqs, getFindings, getFindingsAggregate } from "@/lib/api/findings";
+import { getSettings } from "@/lib/api/settings";
 import { getMetrics } from "@/lib/api/stewardship";
 import { getVersions } from "@/lib/api/versions";
 import { formatModuleName, relativeTime } from "@/lib/format";
@@ -46,6 +44,14 @@ const DISMISSED_KEY = "mn_arrival_dismissed";
 const DIMENSIONS: ReadonlyArray<keyof DimensionScores> = [
   "completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity",
 ];
+
+/** The documented defaults (CLAUDE.md scoring), used when a tenant has set no weights. */
+const DEFAULT_WEIGHTS: DimensionScores = {
+  completeness: 0.25, accuracy: 0.25, consistency: 0.2, timeliness: 0.1, uniqueness: 0.1, validity: 0.1,
+};
+
+const cap = (d: string) => d.charAt(0).toUpperCase() + d.slice(1);
+const plural = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
 
 /** One critical finding caps DQS at 85, two cap it at 70 (CLAUDE.md scoring). */
 function band(score: number): "fail" | "warn" | undefined {
@@ -96,20 +102,23 @@ interface NextStep { text: string; action: string; href: string }
 /** The single most useful thing to do now, walking the journey in order. */
 function nextStep(input: {
   systems: number | null; extracted: boolean; runs: number; critical: number;
-  topAction: { title: string; href: string } | null; backlog: number;
+  topAction: { text: string; href: string } | null; backlog: number;
 }): NextStep | null {
   const { systems, extracted, runs, critical, topAction, backlog } = input;
   if (systems === 0) return { text: "No SAP system is connected yet.", action: "Connect a system", href: "/data?tab=systems" };
   if (runs === 0 && !extracted) return { text: "A system is connected but nothing has been extracted.", action: "Run an extraction", href: "/data?tab=runs" };
   if (runs === 0) return { text: "Data is loaded but has not been analysed.", action: "Run an analysis", href: "/analyse?tab=analyses" };
-  if (critical > 0 && topAction) return { text: `Start with the biggest problem: ${topAction.title}.`, action: "Open it", href: topAction.href };
-  if (backlog > 0) return { text: `${backlog.toLocaleString()} record${backlog === 1 ? " is" : "s are"} waiting for a steward.`, action: "Open the inbox", href: "/workbench" };
+  if (critical > 0 && topAction) return { text: topAction.text, action: "Open finding", href: topAction.href };
+  if (critical > 0) return { text: `${plural(critical, "critical finding")} ${critical === 1 ? "is" : "are"} open.`, action: "Open critical findings", href: "/analyse?tab=findings&severity=critical" };
+  if (backlog > 0) return { text: `${plural(backlog, "record")} ${backlog === 1 ? "is" : "are"} waiting for a steward.`, action: "Open the inbox", href: "/workbench" };
   return { text: "Nothing critical is open. Re-run the analysis after the next extraction.", action: "Analysis runs", href: "/analyse?tab=analyses" };
 }
 
 function shortDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short" });
 }
+
+const compact = new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 });
 
 export function CommandCentreOverview() {
   const router = useRouter();
@@ -122,6 +131,9 @@ export function CommandCentreOverview() {
     retry: false, meta: { ignoreError: true } });
   const planner = useQuery({ queryKey: ["analytics.prescriptive", { limit: 5 }],
     queryFn: () => getPrescriptiveAnalytics({ limit: 5 }), retry: false, meta: { ignoreError: true } });
+  const top = useQuery({ queryKey: ["findings.top-impact"], queryFn: () => getFindings({ sort: "impact", limit: 5 }),
+    retry: false, meta: { ignoreError: true } });
+  const settings = useQuery({ queryKey: ["settings"], queryFn: getSettings, retry: false, meta: { ignoreError: true } });
   const systems = useQuery({ queryKey: ["systems.list"], queryFn: getSystems, retry: false, meta: { ignoreError: true } });
   const inbox = useQuery({ queryKey: ["stewardship.metrics"], queryFn: getMetrics, retry: false, meta: { ignoreError: true } });
   const { jobs } = useJobs();
@@ -134,7 +146,6 @@ export function CommandCentreOverview() {
   const dqs = a?.dqs.composite ?? null;
   const previous = a?.previous_dqs ?? null;
   const delta = dqs !== null && previous !== null ? Math.round((dqs - previous) * 10) / 10 : null;
-  const blocked = impact.data?.summary.features_blocked ?? null;
   const topModule = a?.by_module[0]?.module ?? null;
 
   /** Each object's latest run: versions arrive newest first. */
@@ -149,9 +160,15 @@ export function CommandCentreOverview() {
       .map(([module, s]) => ({ module, ...s }))
       .sort((x, y) => x.summary.composite_score - y.summary.composite_score);
   }, [versions.data]);
+  const totalChecks = objects.reduce((n, o) => n + (o.summary.total_checks ?? 0), 0);
 
   const forecastByModule = useMemo(
     () => new Map((forecast.data?.forecasts ?? []).map((f) => [f.module_id, f])),
+    [forecast.data],
+  );
+  /** The three objects furthest below where they should be in 30 days. */
+  const heading = useMemo(
+    () => [...(forecast.data?.forecasts ?? [])].sort((x, y) => x.forecast_30d - y.forecast_30d).slice(0, 3),
     [forecast.data],
   );
 
@@ -189,41 +206,31 @@ export function CommandCentreOverview() {
 
   const lastSync = (systems.data ?? []).map((s) => s.last_sync_at).filter((t): t is string => !!t).sort().pop() ?? null;
   const backlog = inbox.data?.backlog_total ?? 0;
-  const resolved = inbox.data?.items_by_status.resolved ?? 0;
+  const best = actions[0];
   const next = a && !versions.isLoading && !systems.isLoading ? nextStep({
     systems: systems.data ? systems.data.length : null,
     extracted: !!lastSync,
     runs: versions.data?.versions.length ?? 0,
     critical: a.severity.critical,
-    topAction: actions[0] ? { title: actions[0].title, href: actionHref(actions[0]) } : null,
+    topAction: best ? {
+      text: `Clear ${best.title}: ${plural(best.affected_count, "record")}, about ${Math.max(1, Math.round(best.effort_hours))} hours, `
+        + `worth ${best.impact_points.toFixed(1)} points of DQS.`,
+      href: actionHref(best),
+    } : null,
     backlog,
   }) : null;
-  const journey = [
-    { label: "Systems connected", value: systems.data?.length ?? null, href: "/data?tab=systems",
-      sub: lastSync ? `Last extraction ${relativeTime(lastSync)}` : "Nothing extracted yet" },
-    { label: "Objects analysed", value: objects.length, href: "/analyse?tab=analyses",
-      sub: latestVersion ? `Latest run ${relativeTime(latestVersion.run_at)}` : "No run yet" },
-    { label: "Open findings", value: a?.total ?? null, href: "/analyse", tone: a?.severity.critical ? "danger" : undefined,
-      sub: a ? `${a.affected_records.toLocaleString()} records affected` : "" },
-    { label: "With stewards", value: inbox.data ? backlog : null, href: "/workbench",
-      sub: inbox.data ? `${Math.round(inbox.data.sla_compliance_rate)}% inside SLA` : "" },
-    { label: "Resolved", value: inbox.data ? resolved : null, href: "/workbench?tab=my-queue", tone: resolved ? "success" : undefined,
-      sub: "Records fixed by stewards" },
-  ];
+
+  const impactSummary = impact.data?.summary;
+  const atRisk = impactSummary ? impactSummary.features_blocked + impactSummary.features_degraded : null;
+  const cost = a?.cost_at_risk ?? null;
+  const costObjects = a?.by_module.filter((m) => (m.cost_at_risk ?? 0) > 0).length ?? 0;
+  const retryAgg = () => { void agg.refetch(); };
+
+  const weights = settings.data?.dqs_weights ?? DEFAULT_WEIGHTS;
+  const weightTotal = DIMENSIONS.reduce((n, d) => n + weights[d], 0) || 1;
 
   return (
     <div className="ui-page">
-      <PageHeader
-        title="Overview"
-        summary={latestVersion ? `Latest run ${relativeTime(latestVersion.run_at)}, ${objects.length} SAP object${objects.length === 1 ? "" : "s"} assessed.` : undefined}
-        actions={
-          <>
-            <Button variant="primary" onClick={() => router.push("/analyse")}>Open findings</Button>
-            <Button variant="secondary" onClick={() => router.push("/?tab=report")}>Executive report</Button>
-          </>
-        }
-      />
-
       {arrivedJob ? (
         <div className="ui-notice" role="status">
           <span>{arrivedJob.label} finished. {arrivedJob.message}</span>
@@ -236,50 +243,81 @@ export function CommandCentreOverview() {
         <div className="mn-legacy-host"><GettingStarted hasAnalysis={false} /></div>
       ) : null}
 
-      <ol className="mn-journey-strip" aria-label="Progress from SAP to fixed records">
-        {journey.map((j) => (
-          <li key={j.label} data-tone={j.tone}>
-            <Link href={j.href} className="aurora-focus-ring">
-              <span className="mn-journey-strip__label">{j.label}</span>
-              <span className="mn-journey-strip__value aurora-number">{j.value === null ? "—" : j.value.toLocaleString()}</span>
-              <span className="mn-journey-strip__sub">{j.sub}</span>
-            </Link>
-          </li>
-        ))}
-      </ol>
-
-      {next ? (
-        <div className="mn-next" role="status">
-          <span className="mn-next__label">Next</span>
-          <span className="mn-next__text">{next.text}</span>
-          <Button variant="primary" size="sm" onClick={() => router.push(next.href)}>{next.action}</Button>
-        </div>
-      ) : null}
-
       {a && dqs !== null ? (
-        <p className="ui-verdict">
+        <Verdict>
           {verdictSentence({ dqs, previous, critical: a.severity.critical, high: a.severity.high,
             topModule: topModule ? formatModuleName(topModule) : null })}
-        </p>
+        </Verdict>
       ) : null}
 
-      <MetricStrip label="Open findings by severity">
-        <Metric label="Critical" value={a ? a.severity.critical.toLocaleString() : null}
-          tone={a?.severity.critical ? "danger" : "default"} href={findingsHref({ severity: "critical" })} />
-        <Metric label="High" value={a ? a.severity.high.toLocaleString() : null}
-          tone={a?.severity.high ? "warning" : "default"} href={findingsHref({ severity: "high" })} />
-        <Metric label="Medium" value={a ? a.severity.medium.toLocaleString() : null} href={findingsHref({ severity: "medium" })} />
-        <Metric label="Records affected" value={a ? a.affected_records.toLocaleString() : null} href={findingsHref({})} />
-        <Metric label="SAP features blocked" value={blocked === null ? null : blocked.toLocaleString()}
-          tone={blocked ? "danger" : "default"} href="/process?tab=config-impact" />
-      </MetricStrip>
+      <Tally
+        level={1}
+        label="Where things stand"
+        as_of={latestVersion ? `Latest run ${relativeTime(latestVersion.run_at)}, ${plural(objects.length, "SAP object")} assessed.` : undefined}
+        figures={[
+          {
+            label: "DQS",
+            value: dqs === null ? null : dqs.toFixed(1),
+            href: "/analyse?tab=analyses",
+            loading: agg.isLoading,
+            error: agg.isError ? { retry: retryAgg } : undefined,
+            tone: a ? (a.dqs.tier === "fail" ? "danger" : a.dqs.tier === "warn" ? "warning" : undefined) : undefined,
+            verdict: dqs === null ? "No scored run yet. Run an analysis."
+              : a?.dqs.capped ? "of 100, capped by critical findings" : "of 100",
+            delta: delta === null ? undefined : { value: delta, unit: " points", good: "up" },
+          },
+          {
+            label: "Failing checks",
+            value: a ? a.total : null,
+            href: findingsHref({}),
+            loading: agg.isLoading,
+            error: agg.isError ? { retry: retryAgg } : undefined,
+            tone: a?.severity.critical ? "danger" : undefined,
+            verdict: a ? `${totalChecks ? `of ${totalChecks.toLocaleString()}. ` : ""}${a.severity.critical.toLocaleString()} critical` : "",
+          },
+          {
+            label: "Failing records",
+            value: a ? a.affected_records : null,
+            href: "/analyse?tab=triage",
+            loading: agg.isLoading,
+            error: agg.isError ? { retry: retryAgg } : undefined,
+            verdict: a ? `across ${plural(a.by_module.length, "object")}` : "",
+          },
+          {
+            label: "SAP features at risk",
+            value: atRisk,
+            href: "/process?tab=config-impact",
+            loading: !!latestVersion && impact.isLoading,
+            error: impact.isError ? { retry: () => { void impact.refetch(); } } : undefined,
+            tone: impactSummary?.features_blocked ? "danger" : undefined,
+            verdict: impactSummary
+              ? `${impactSummary.features_blocked} blocked, ${impactSummary.features_degraded} degraded`
+              : "No SAP feature assessed yet.",
+          },
+          {
+            label: "Cost at risk",
+            value: cost ? compact.format(cost) : null,
+            href: findingsHref({ sort: "impact" }),
+            loading: agg.isLoading,
+            error: agg.isError ? { retry: retryAgg } : undefined,
+            verdict: cost ? `this run, across ${plural(costObjects, "object")}` : "No cost formula configured.",
+          },
+        ]}
+      />
+
+      {next ? (
+        <SectionCard title="Next step">
+          <p className="ui-note">{next.text}</p>
+          <Button variant="primary" size="sm" onClick={() => router.push(next.href)}>{next.action}</Button>
+        </SectionCard>
+      ) : null}
 
       <div className="mn-charts">
         <SectionCard title="Score per run" meta={trend.length ? "Select a run to see its findings" : undefined}>
           {trend.length < 2 ? <EmptyState>The trend appears after the second run.</EmptyState> : (
             <LineChart data={trend} xKey="run" series={[{ key: "dqs", label: "DQS", color: colours.accent }]}
               height={220} yFormatter={(v) => v.toFixed(0)} ariaLabel={`DQS over ${trend.length} runs`}
-              onPointClick={(i) => router.push(findingsHref({ version_id: trend[i]?.id }))} />
+              onPointClick={(i) => router.push(`/analyse?tab=analyses&version_id=${trend[i]?.id}`)} />
           )}
         </SectionCard>
         <SectionCard title="Findings per object" meta={byObject.length ? "Select an object to open it" : undefined}>
@@ -312,7 +350,7 @@ export function CommandCentreOverview() {
 
       <div className="ui-columns">
         <div className="ui-stack">
-          <SectionCard title="Objects by dimension" meta={objects.length ? `${objects.length} object${objects.length === 1 ? "" : "s"}, weakest first` : undefined} flush>
+          <SectionCard title="Objects by dimension" meta={objects.length ? `${plural(objects.length, "object")}, weakest first` : undefined} flush>
             {versions.isLoading ? <TableSkeleton rows={5} label="Loading scores" /> : objects.length === 0 ? (
               <EmptyState>No scored runs yet.</EmptyState>
             ) : (
@@ -325,7 +363,7 @@ export function CommandCentreOverview() {
                     <tr>
                       <th scope="col">Object</th>
                       <th scope="col">DQS</th>
-                      {DIMENSIONS.map((d) => <th key={d} scope="col">{d.charAt(0).toUpperCase() + d.slice(1)}</th>)}
+                      {DIMENSIONS.map((d) => <th key={d} scope="col">{cap(d)}</th>)}
                       <th scope="col" title="Projected DQS in 30 days from the run history. Confidence grows with the number of runs.">In 30 days</th>
                     </tr>
                   </thead>
@@ -368,21 +406,19 @@ export function CommandCentreOverview() {
             )}
           </SectionCard>
 
-          <SectionCard title="Top 5 by impact" meta="Severity weight × records" flush>
-            {planner.isLoading ? <TableSkeleton rows={5} label="Loading priorities" /> : actions.length === 0 ? (
-              <EmptyState>Nothing to prioritise. The planner ranks open findings once a run has scored.</EmptyState>
+          <SectionCard title="Top findings by impact" meta="Severity weight × records" flush>
+            {top.isLoading ? <TableSkeleton rows={5} label="Loading findings" /> : !top.data || top.data.findings.length === 0 ? (
+              <EmptyState>No findings.</EmptyState>
             ) : (
               <ol className="ui-ranked">
-                {actions.map((x) => (
-                  <li key={`${x.type}-${x.id}`}>
-                    <Link href={actionHref(x)}>
-                      <StatusBadge status={x.severity} />
-                      <span className="ui-ranked__title">{x.title}</span>
-                      <span className="ui-ranked__num aurora-number">{x.affected_count.toLocaleString()} record{x.affected_count === 1 ? "" : "s"}</span>
+                {top.data.findings.map((f) => (
+                  <li key={f.id}>
+                    <Link href={findingsHref({ check_id: f.check_id, module: f.module, version_id: f.version_id })}>
+                      <StatusBadge status={f.severity === "warning" ? "medium" : f.severity} />
+                      <span className="ui-ranked__title">{f.details.message ?? f.check_id}</span>
+                      <span className="ui-ranked__num aurora-number">{plural(f.affected_count, "record")}</span>
                       <span className="ui-ranked__meta">
-                        {[x.module ? formatModuleName(x.module) : null,
-                          x.recommended_steward ? `Owner ${x.recommended_steward}` : "No owner assigned",
-                          `about ${Math.max(1, Math.round(x.effort_hours))} h`].filter(Boolean).join(", ")}
+                        {[formatModuleName(f.module), f.cost_at_risk ? `${compact.format(f.cost_at_risk)} at risk` : null].filter(Boolean).join(", ")}
                       </span>
                     </Link>
                   </li>
@@ -393,30 +429,42 @@ export function CommandCentreOverview() {
         </div>
 
         <div className="ui-stack">
-          <SectionCard title="Data quality score" meta={a?.dqs.capped ? "Capped by critical findings" : undefined}>
-            <MetricStrip label="Composite score">
-              <Metric label="Composite, out of 100" value={dqs === null ? null : dqs.toFixed(1)}
-                delta={delta === null ? null : { value: delta, unit: " pts", good: "up" }} />
-            </MetricStrip>
-            <dl className="ui-dims" style={{ marginTop: "var(--aurora-space-4)" }}>
-              {DIMENSIONS.map((d) => {
-                const s = a?.dqs.dimension_scores[d];
-                return (
-                  <div key={d} className="ui-dims__row">
-                    <dt><Link className="ui-link" href={findingsHref({ dimension: d })}>{d.charAt(0).toUpperCase() + d.slice(1)}</Link></dt>
-                    <dd>
-                      <span className="ui-dims__track" aria-hidden>
-                        {s != null ? <span className="ui-dims__fill" data-band={band(s)} style={{ width: `${Math.max(0, Math.min(100, s))}%` }} /> : null}
-                      </span>
-                      <span className="aurora-number">{s == null ? "—" : s.toFixed(1)}</span>
-                    </dd>
-                  </div>
-                );
-              })}
+          <SectionCard title="Where this is heading"
+            action={<Link className="ui-link" href="/analyse?tab=analyses">Analysis runs</Link>}>
+            {heading.length === 0 ? <EmptyState>Forecast needs three runs.</EmptyState> : (
+              <ul className="ui-ranked">
+                {heading.map((f) => (
+                  <li key={f.module_id}>
+                    <Link href={`/analyse/object/${encodeURIComponent(f.module_id)}`}>
+                      <span className="ui-ranked__title">{formatModuleName(f.module_id)}</span>
+                      <span className="ui-ranked__num aurora-number">{f.forecast_30d.toFixed(1)}</span>
+                      <span className="ui-ranked__meta">{`In 30 days, ${f.confidence}% confidence`}</span>
+                      <Sparkline height={24}
+                        data={[{ d: "Now", v: f.current_score }, { d: "7 days", v: f.forecast_7d },
+                          { d: "30 days", v: f.forecast_30d }, { d: "90 days", v: f.forecast_90d }]}
+                        xKey="d" yKey="v" ariaLabel={`${formatModuleName(f.module_id)} score now and in 7, 30 and 90 days`} />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {(forecast.data?.early_warnings ?? []).slice(0, 2).map((w) => (
+              <p key={`${w.module_id}-${w.message}`} className="ui-micro">{formatModuleName(w.module_id)}: {w.message}</p>
+            ))}
+          </SectionCard>
+
+          <SectionCard title="How the score is made" meta={settings.data?.dqs_weights ? undefined : "Defaults in use"}
+            action={<Link className="ui-link" href="/data?tab=scoring">Scoring and alerts</Link>}>
+            <dl className="ui-dims">
+              {DIMENSIONS.map((d) => (
+                <div key={d} className="ui-dims__row">
+                  <dt><Link className="ui-link" href={findingsHref({ dimension: d })}>{cap(d)}</Link></dt>
+                  <dd><span className="aurora-number">{Math.round((weights[d] / weightTotal) * 100)}%</span></dd>
+                </div>
+              ))}
             </dl>
             <p className="ui-micro" style={{ marginTop: "var(--aurora-space-4)" }}>
-              The score weighs completeness and accuracy at 25% each, consistency at 20%, and the other three at 10%.
-              One critical finding caps it at 85, two or more at 70.
+              One critical finding caps the score at 85, two or more at 70.
             </p>
           </SectionCard>
 

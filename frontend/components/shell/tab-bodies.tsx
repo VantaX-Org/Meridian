@@ -23,7 +23,6 @@ export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
   "/": named(() => import("@/components/command-centre/overview"), "CommandCentreOverview"),
   "/executive-report": named(() => import("@/components/command-centre/executive-report"), "ExecutiveReport"),
   "/command-centre": named(() => import("@/app/(dashboard)/command-centre/live"), "LiveOperationsPage"),
-  "/analytics": page(() => import("@/app/(dashboard)/analytics/page")),
   "/findings": named(() => import("@/components/command-centre/findings"), "FindingsSurface"),
   "/issues": page(() => import("@/app/(dashboard)/issues/page")),
   "/notifications": named(() => import("@/components/command-centre/notifications"), "NotificationsSurface"),

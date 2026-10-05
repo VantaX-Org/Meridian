@@ -30,3 +30,6 @@ export type { DrawerProps } from "./drawer";
 
 export { useDrawerParam } from "./use-drawer-param";
 export type { UseDrawerParamResult } from "./use-drawer-param";
+
+export { DepthCrumb } from "./depth-crumb";
+export type { DepthCrumbProps, DepthSegment } from "./depth-crumb";

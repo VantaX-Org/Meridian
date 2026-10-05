@@ -1,6 +1,5 @@
 # Files allowed to hold raw colour, gradient or blur until migrated to ui-core.
 # Delete a line when its file is clean. Never add one.
-app/(dashboard)/analytics/page.tsx
 app/styles/aurora-components.css
 app/styles/meridian.css
 lib/format.ts
