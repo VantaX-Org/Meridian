@@ -1309,6 +1309,94 @@ rules:
         FB08 and repost in the correct period, otherwise record why the source document is dated later.
     record_fix_template: 'Document {BKPF.BELNR}/{BKPF.GJAHR} (company code {BKPF.BUKRS}): document date {BKPF.BLDAT} after posting date {BKPF.BUDAT}.'
 
+  - id: GL067
+    field: BKPF.MONAT
+    check_class: cross_field_check
+    grain: BKPF
+    fail_when: (`BKPF.MONAT` >= '13')
+    require_populated: true
+    applies_when:
+      BKPF.AWTYP: [BKPF]
+      BKPF.BSTAT: {not_in: [D, M, S, V, W, Z]}
+    severity: low
+    dimension: validity
+    message: Manual journal entry was posted to a special period (13-16)
+    why_it_matters: >-
+      Special periods hold year-end closing and audit adjustments made after the last regular period.
+      Journal-entry testing under ISA 240 and PCAOB AS 2401 selects these postings, because they change
+      the annual result without passing through a regular month. Each one should have an approved reason.
+    rule_authority: regulatory
+    sap_impact: None in SAP itself; the entry changes the annual figures and is selected for audit sampling.
+    fix_map:
+      __other__: Review the document in FB03 (S/4 F0717) and its approval; confirm it belongs in the year-end
+        close and that OB52 opens the special periods only during the close.
+    record_fix_template: 'Document {BKPF.BELNR}/{BKPF.GJAHR} (company code {BKPF.BUKRS}) posted to period {BKPF.MONAT} by {BKPF.USNAM}.'
+
+  - id: GL068
+    field: BKPF.USNAM
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: Accounting document has no entering user
+    why_it_matters: >-
+      SAP stamps the user who entered every document. A blank user name breaks the audit trail and
+      segregation-of-duties testing, because nobody can be held to the posting. It usually means the
+      header was loaded or changed outside the posting logic.
+    rule_authority: sap_hard_constraint
+    sap_impact: Change-log, authorisation and segregation-of-duties reviews cannot attribute the document.
+    fix_map:
+      __blank__: Compare the document in FB03 with the extract; re-extract if FB03 shows a user, otherwise
+        trace the interface or load program that created the header.
+    record_fix_template: 'Document {BKPF.BELNR}/{BKPF.GJAHR} (company code {BKPF.BUKRS}): entering user missing.'
+
+  - id: GL069
+    field: BKPF.XBLNR
+    check_class: uniqueness_check
+    fields: [BKPF.BUKRS, BKPF.BLART, BKPF.XBLNR, BKPF.BLDAT]
+    normalize: alnum
+    grain: BKPF
+    applies_when:
+      BKPF.BSTAT: {not_in: [D, M, S, V, W, Z]}
+      BKPF.STBLG: {blank: true}
+    severity: medium
+    dimension: uniqueness
+    message: Possible duplicate posting - same reference, document type and document date
+    why_it_matters: >-
+      Two posted documents in one company code with the same document type, reference and document date
+      usually record the same source document twice. A duplicate overstates expenses or revenue and, for
+      vendor invoices, can lead to a duplicate payment. Reversed documents are out of scope.
+    rule_authority: best_practice
+    sap_impact: Duplicated balances migrate as open items or GL balances; duplicate vendor invoices stay
+      payable after go-live.
+    fix_map:
+      __other__: Compare the documents in FB03 (S/4 F0717); reverse the duplicate with FB08, or put a
+        distinct reference on documents that are genuinely separate.
+    record_fix_template: 'Document {BKPF.BELNR}/{BKPF.GJAHR} (company code {BKPF.BUKRS}): reference {BKPF.XBLNR} dated {BKPF.BLDAT} also appears on another document.'
+
+  - id: GL070
+    field: BKPF.KURSF
+    check_class: cross_field_check
+    grain: BKPF
+    fail_when: (`BKPF.WAERS` != `BKPF.HWAER`) & (`BKPF.KURSF`.isna() | (`BKPF.KURSF` == 0))
+    applies_when:
+      BKPF.WAERS: {populated: true}
+      BKPF.HWAER: {populated: true}
+      BKPF.BSTAT: {not_in: [D, M, S, V, W, Z]}
+    severity: high
+    dimension: accuracy
+    message: Foreign-currency document has no exchange rate
+    why_it_matters: >-
+      A document in a currency other than the company code currency needs an exchange rate to translate
+      its amounts. Without one the local-currency amounts were keyed or interfaced by hand and cannot be
+      traced back to a rate, so foreign-currency valuation and revaluation work from an unknown basis.
+    rule_authority: sap_hard_constraint
+    sap_impact: Open-item revaluation (FAGL_FCV) and migrated foreign-currency balances use the wrong
+      local-currency basis; realised exchange differences on clearing are misstated.
+    fix_map:
+      __other__: Check the document in FB03 (S/4 F0717) and the rate in table TCURR for the posting date;
+        if the local amounts are wrong, reverse with FB08 and repost with the correct rate.
+    record_fix_template: 'Document {BKPF.BELNR}/{BKPF.GJAHR} (company code {BKPF.BUKRS}): currency {BKPF.WAERS}, local currency {BKPF.HWAER}, no exchange rate.'
+
   - id: GL059
     field: BSEG.HKONT
     check_class: cross_field_check
