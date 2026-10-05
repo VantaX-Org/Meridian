@@ -21,6 +21,7 @@ import { PlatformVersion } from "./platform-version";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import { getAuditEntries } from "@/lib/api/audit";
+import { downloadBlob } from "@/lib/api/download";
 import { getRoleMatrix } from "@/lib/api/auth";
 import { getLicenceManifest } from "@/lib/api/licence";
 import { deleteUser, getUsers, inviteUser, updateUser } from "@/lib/api/users";
@@ -91,7 +92,9 @@ export function UsersSurface() {
         actions={view === "users" ? <>
           <Button variant="secondary" onClick={() => downloadCsv("meridian-users.csv", users.map((u) => ({ name: u.name, email: u.email, role: u.role, active: u.is_active, last_login: u.last_login ?? "" })))}>Export users</Button>
           <Button onClick={() => setInvite(true)}>Invite user</Button>
-        </> : null} />
+        </> : view === "audit" ? (
+          <Button variant="secondary" onClick={() => downloadBlob("/api/v1/audit/export", {}, "audit_log.csv").catch((e) => toast.error(apiErrorMessage(e)))}>Export audit log</Button>
+        ) : null} />
       <MetricStrip label="Access">
         <Metric label="Active users" value={active.length} unit={seats ? `of ${seats} seats` : undefined} tone={seats && active.length >= seats ? "warning" : "default"} />
         <Metric label="Roles in use" value={rolesInUse.size} />
