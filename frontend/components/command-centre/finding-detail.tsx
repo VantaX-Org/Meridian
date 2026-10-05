@@ -316,7 +316,7 @@ function Sample({ f, fieldChecked }: { f: Finding; fieldChecked: string | null }
   const columns = useMemo<ColumnDef<SampleRow, unknown>[]>(() => [
     { id: "key", header: "Record", meta: meta({ sticky: "start", minWidth: 200, mono: true }), cell: ({ row }) => (
       row.original.issueId
-        ? <Link className="ui-link" href={`/workbench/report?issue=${row.original.issueId}`} onClick={(e) => e.stopPropagation()}><Mono>{row.original.key}</Mono></Link>
+        ? <Link className="ui-link" href={`/workbench/record/${row.original.issueId}`} onClick={(e) => e.stopPropagation()}><Mono>{row.original.key}</Mono></Link>
         : <Mono>{row.original.key}</Mono>) },
     ...cols.map((c): ColumnDef<SampleRow, unknown> => ({
       id: `f:${c}`, meta: meta({ minWidth: 120, mono: true }),
@@ -335,7 +335,7 @@ function Sample({ f, fieldChecked }: { f: Finding; fieldChecked: string | null }
       ) : (
         <>
           <DataTable columns={columns} data={rows} getRowId={(r, i) => `${r.key}:${i}`} ariaLabel="Sample failing records" maxHeight="420px"
-            onRowActivate={(r) => { if (r.issueId) router.push(`/workbench/report?issue=${r.issueId}`); }} />
+            onRowActivate={(r) => { if (r.issueId) router.push(`/workbench/record/${r.issueId}`); }} />
           {stored.length ? <div style={{ padding: "var(--aurora-space-3) var(--aurora-space-4)" }}><Pager offset={offset} total={total} pageSize={PAGE} onChange={setOffset} noun="records" /></div> : null}
         </>
       )}

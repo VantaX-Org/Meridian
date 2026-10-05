@@ -191,7 +191,7 @@ export default function GoldenRecordDetailPage() {
               <tr key={i.id}>
                 <td className={td}><Chip tone={sevTone(i.severity)}>{i.severity}</Chip></td>
                 <td className={td}>
-                  <Link className="aurora-link font-mono" href={`/workbench/report?issue=${i.id}`}>{i.check_id}</Link>
+                  <Link className="aurora-link font-mono" href={`/workbench/record/${i.id}`}>{i.check_id}</Link>
                   {i.message ? <div className="text-[var(--aurora-fg-tertiary)]">{i.message}</div> : null}
                 </td>
                 <td className={`${td} font-mono`}>{i.field ?? "—"}</td>

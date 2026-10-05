@@ -14,14 +14,16 @@ import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/rea
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
-  Banner, Button, Chip, CommandPalette, DataTable, Drawer, EmptyState, Field, Input, KpiRail, Panel, Select, Stack, Stat, Text, Textarea,
+  Banner, Button, Chip, CommandPalette, DataTable, Drawer, EmptyState, Field, Input, Panel, Select, Stack, Text, Textarea,
   useDrawerParam, type AuroraColumnMeta, type ChipTone, type CommandPaletteCommand,
 } from "@/components/aurora";
+import { Tally } from "@/components/ui-core";
 import { copyToClipboard } from "@/components/meridian/actions";
 import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import { assignItem, bulkApprove, escalateItem, getMetrics, getQueueItems, resolveItem, submitAiFeedback } from "@/lib/api/stewardship";
+import { getTriageMetrics } from "@/lib/api/triage";
 import { getUsers } from "@/lib/api/users";
 import { relativeTime } from "@/lib/format";
 import type { StewardshipQueueItem, StewardshipStatus } from "@/types/api";
@@ -37,10 +39,11 @@ const TYPE_LABEL: Record<string, string> = {
 };
 const VIEWS = [
   { value: "all", label: "All open" }, { value: "mine", label: "Mine" }, { value: "unassigned", label: "Unassigned" },
-  { value: "breached", label: "SLA breached" }, { value: "escalated", label: "Escalated" },
+  { value: "breached", label: "SLA breached" }, { value: "today", label: "Due today" }, { value: "escalated", label: "Escalated" },
 ];
 const SORTS = [{ value: "sla", label: "SLA due" }, { value: "priority", label: "Priority" }, { value: "age", label: "Oldest" }];
 const BULK_CONFIDENCE = 0.85;
+const isToday = (iso: string | null, now: number) => !!iso && new Date(iso).toDateString() === new Date(now).toDateString();
 const label = (s: string) => s.replace(/_/g, " ");
 const typeLabel = (t: string) => TYPE_LABEL[t] ?? label(t);
 
@@ -85,6 +88,7 @@ export function StewardInboxSurface() {
   const [view, setView] = useUrlState("view", "all");
   const [sort, setSort] = useUrlState("sort", "sla");
   const [type, setType] = useUrlState("type", "all");
+  const [assignee] = useUrlState("assignee", "");
   const [search, setSearch] = useState("");
   const drawer = useDrawerParam("task");
   const [focusedId, setFocusedId] = useState<string | null>(null);
@@ -99,6 +103,7 @@ export function StewardInboxSurface() {
       refetchInterval: 60_000,
     })),
   });
+  const weekQ = useQuery({ queryKey: ["triage.metrics", 8], queryFn: () => getTriageMetrics(8), refetchInterval: 60_000 });
   const metricsQ = useQuery({ queryKey: ["stewardship.metrics"], queryFn: getMetrics, refetchInterval: 60_000 });
   // The user list needs `manage_users`; without it assignees show as "You" or an id prefix.
   const usersQ = useQuery({ queryKey: ["users.list"], queryFn: getUsers, enabled: can("manage_users") });
@@ -126,7 +131,9 @@ export function StewardInboxSurface() {
       if (type !== "all" && t.item_type !== type) return false;
       if (view === "mine" && t.assigned_to !== user?.id) return false;
       if (view === "unassigned" && t.assigned_to) return false;
+      if (assignee && (assignee === "unassigned" ? t.assigned_to : t.assigned_to !== assignee)) return false;
       if (view === "breached" && slaOf(t, now).state !== "breached") return false;
+      if (view === "today" && !isToday(t.due_at, now)) return false;
       if (view === "escalated" && t.status !== "escalated") return false;
       return !q || [t.id, t.source_id, t.domain, t.item_type, who(t.assigned_to)].some((v) => v.toLowerCase().includes(q));
     });
@@ -151,6 +158,7 @@ export function StewardInboxSurface() {
       unassigned: all.filter((t) => !t.assigned_to).length,
       breached: sla.filter((s) => s === "breached").length,
       risk: sla.filter((s) => s === "risk").length,
+      today: all.filter((t) => isToday(t.due_at, now)).length,
     };
   }, [all, now, user?.id]);
 
@@ -266,7 +274,7 @@ export function StewardInboxSurface() {
         if (user && t.assigned_to !== user.id) c.push({ id: "t-mine", group: g, label: "Assign to me", onRun: () => assign.mutate({ ids: [t.id], userId: user.id }) });
       }
       c.push({ id: "t-escalate", group: g, label: "Escalate", hint: "E", onRun: () => escalate.mutate([t.id]) });
-      c.push({ id: "t-open", group: g, label: "Open details", hint: "↵", onRun: () => drawer.open(t.id) });
+      c.push({ id: "t-open", group: g, label: "Open details", hint: "Enter", onRun: () => drawer.open(t.id) });
       c.push({ id: "t-copy", group: g, label: "Copy task ID", onRun: () => copyToClipboard(t.id, "Task ID copied") });
     }
     c.push({ id: "s-all", group: "Selection", label: `Select all shown (${items.length})`, onRun: () => toggle(visibleIds, true) });
@@ -293,15 +301,13 @@ export function StewardInboxSurface() {
   const m = metricsQ.data;
   return (
     <Stack gap={5} className="aurora-page">
-      <KpiRail>
-        <Stat label="Open tasks" value={all.length} />
-        <Stat label="Mine" value={counts.mine} />
-        <Stat label="Unassigned" value={counts.unassigned} tone={counts.unassigned ? "info" : "neutral"} />
-        <Stat label="SLA breached" value={counts.breached} tone={counts.breached ? "danger" : "neutral"} />
-        <Stat label="At risk" value={counts.risk} tone={counts.risk ? "warning" : "neutral"} />
-        <Stat label="Resolved on time" value={m ? Math.round(m.sla_compliance_rate * 100) : "—"} unit={m ? "%" : undefined} />
-        {m?.ai_acceptance_rate != null ? <Stat label="Suggestion acceptance" value={Math.round(m.ai_acceptance_rate * 100)} unit="%" /> : null}
-      </KpiRail>
+      <Tally level={2} label="Steward inbox" figures={[
+        { label: "Overdue", value: counts.breached, tone: counts.breached ? "danger" : undefined, loading, verdict: counts.breached ? "Past their due time." : "Nothing past due.", href: "/workbench?view=breached" },
+        { label: "Due today", value: counts.today, tone: counts.today ? "warning" : undefined, loading, verdict: counts.today ? "Due before midnight." : "Nothing due today.", href: "/workbench?view=today" },
+        { label: "Unassigned", value: counts.unassigned, loading, verdict: counts.unassigned ? "Nobody owns these yet." : "Every task has an owner.", href: "/workbench?view=unassigned" },
+        { label: "Open", value: all.length, loading, verdict: all.length ? "Tasks waiting on a steward." : "The inbox is clear.", href: "/workbench?view=all" },
+        { label: "Resolved this week", value: weekQ.data?.weekly.at(-1)?.resolved ?? null, loading: weekQ.isLoading, verdict: weekQ.data?.weekly.at(-1)?.resolved ? "Closed in the last seven days." : "Nothing closed this week.", href: "/workbench?tab=progress" },
+      ]} />
 
       <Stack direction="row" gap={2} wrap align="center">
         {VIEWS.map((v) => <Chip key={v.value} selected={view === v.value} onClick={() => setView(v.value)}>{v.label}</Chip>)}
@@ -377,7 +383,8 @@ function TaskDetail({ task: t, now, who, canApprove, busy, assignees, me, onAppr
   return (
     <Stack gap={4}>
       {t.ai_recommendation ? (
-        <Panel title={`Model suggestion${t.ai_confidence != null ? ` · ${Math.round(t.ai_confidence * 100)}% confidence` : ""}`}>
+        <Panel title="Model suggestion">
+          {t.ai_confidence != null ? <Text variant="text-small">Confidence {Math.round(t.ai_confidence * 100)} %</Text> : null}
           <Text variant="text-small" tone="secondary">{t.ai_recommendation}</Text>
         </Panel>
       ) : null}
@@ -430,7 +437,8 @@ function TeamPanel({ items, now, who, metrics }: {
     <Panel title="Team and throughput">
       <Stack direction="row" gap={6} wrap align="start">
         <Stack gap={2}>
-          <Text variant="text-micro" tone="muted" className="aurora-exec__eyebrow">Open workload</Text>
+          {metrics?.ai_acceptance_rate != null ? <Text variant="text-small">Suggestion acceptance {Math.round(metrics.ai_acceptance_rate * 100)} %</Text> : null}
+          <Text variant="text-micro" tone="muted">Open workload</Text>
           <table className="aurora-exec__table">
             <thead><tr><th>Assignee</th><th>Open</th><th>Breached</th></tr></thead>
             <tbody>{load.length ? load.map(([k, r]) => <tr key={k}><td>{k}</td><td className="aurora-number">{r.open}</td><td className="aurora-number">{r.breached}</td></tr>)
@@ -439,7 +447,7 @@ function TeamPanel({ items, now, who, metrics }: {
         </Stack>
         {types.length ? (
           <Stack gap={2}>
-            <Text variant="text-micro" tone="muted" className="aurora-exec__eyebrow">By task type · all time</Text>
+            <Text variant="text-micro" tone="muted">By task type, all time</Text>
             <table className="aurora-exec__table">
               <thead><tr><th>Type</th><th>Tasks</th><th>Avg to resolve</th></tr></thead>
               <tbody>{types.map((k) => {
@@ -451,7 +459,7 @@ function TeamPanel({ items, now, who, metrics }: {
         ) : null}
         {metrics?.steward_breakdown?.length ? (
           <Stack gap={2}>
-            <Text variant="text-micro" tone="muted" className="aurora-exec__eyebrow">Steward throughput</Text>
+            <Text variant="text-micro" tone="muted">Steward throughput</Text>
             <table className="aurora-exec__table">
               <thead><tr><th>Steward</th><th>Resolved</th><th>Avg to resolve</th></tr></thead>
               <tbody>{metrics.steward_breakdown.map((s) => (

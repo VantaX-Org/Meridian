@@ -23,7 +23,12 @@ import type {
   RecordReportRootCauseType,
   RecordReportSeverity,
 } from "@/components/aurora/report/record-report";
-import type { WorkbenchRowOrigin } from "@/components/aurora/surfaces/workbench";
+/** Compact origin markers for a record: cross-module, Z-table and root-cause type. */
+export interface WorkbenchRowOrigin {
+  crossModule?: boolean;
+  customerNamespace?: boolean;
+  rootCauseType?: "bad_data" | "bad_config" | "bad_data_and_config" | "unknown";
+}
 
 const ROOT_CAUSE_TYPES: ReadonlyArray<RecordReportRootCauseType> = [
   "bad_data",

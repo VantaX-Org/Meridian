@@ -62,7 +62,7 @@ export const WORKSPACES: readonly Workspace[] = [
     id: "analyse", label: "Analyse", hint: "See what is wrong", href: "/analyse", shortcut: "⌘3",
     tabs: [
       { id: "findings", label: "Findings", href: "/findings" },
-      { id: "triage", label: "Issues by record", href: "/issues" },
+      { id: "records", label: "Failing records", href: "/issues" },
       { id: "analyses", label: "Analysis runs", href: "/versions" },
       { id: "reports", label: "Reports", href: "/reports" },
       { id: "finding", label: "Finding", href: "/analyse/finding", hidden: true },
@@ -74,7 +74,8 @@ export const WORKSPACES: readonly Workspace[] = [
     tabs: [
       { id: "queue", label: "Steward inbox", href: "/workbench" },
       { id: "my-queue", label: "My queue", href: "/workbench/triage" },
-      { id: "record", label: "Record report", href: "/workbench/report", hidden: true },
+      { id: "progress", label: "Progress", href: "/workbench/progress", anyOf: ["approve", "apply", "assign"] },
+      { id: "record", label: "Record report", href: "/workbench/record", hidden: true },
       { id: "dedup", label: "Duplicates", href: "/dedup" },
       { id: "cleaning", label: "Cleaning", href: "/cleaning" },
       { id: "exceptions", label: "Exceptions", href: "/exceptions" },
@@ -121,11 +122,8 @@ export function tabHref(w: Workspace, t: WorkspaceTab): string {
 
 export const HUB_ROUTES: ReadonlySet<string> = new Set(WORKSPACES.map((w) => w.href).concat("/command-centre"));
 
-/** Non-hub pages built on Aurora — rendered on the canvas, not in the light sheet. */
-export const AURORA_PAGES: readonly string[] = ["/workbench/report"];
-
 /** Record 360 detail routes (the list pages above them are still legacy). */
-export const AURORA_DETAIL = /^\/(golden-records\/[^/]+|glossary\/[^/]+|analyse\/(object|finding)\/[^/]+)$/;
+export const AURORA_DETAIL = /^\/(golden-records\/[^/]+|workbench\/record\/[^/]+|glossary\/[^/]+|analyse\/(object|finding)\/[^/]+)$/;
 
 /** Where each role lands after sign-in — the workspace built for their job. */
 export const LANDING: Readonly<Record<Role, string>> = {

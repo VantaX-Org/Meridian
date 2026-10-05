@@ -9,11 +9,23 @@
 
 import type { Finding, FindingList, Severity } from "@/types/api";
 import { findingOriginForWorkbench } from "@/lib/aurora";
-import type {
-  WorkbenchRow,
-  WorkbenchSeverity,
-  WorkbenchStatus,
-} from "@/components/aurora";
+import type { WorkbenchRowOrigin } from "@/lib/aurora/finding-to-record";
+
+export type WorkbenchSeverity = "critical" | "high" | "medium" | "low";
+export type WorkbenchStatus = "open" | "in_progress" | "resolved" | "escalated";
+export interface WorkbenchRow {
+  id: string;
+  recordId: string;
+  headline: string;
+  module: string;
+  severity: WorkbenchSeverity;
+  status: WorkbenchStatus;
+  age: string;
+  assignee: string | null;
+  blocking: number;
+  score?: number;
+  origin?: WorkbenchRowOrigin;
+}
 
 function severityToWorkbench(s: Severity): WorkbenchSeverity {
   switch (s) {

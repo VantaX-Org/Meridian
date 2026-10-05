@@ -15,7 +15,7 @@ const named = <K extends string>(load: () => Promise<Record<K, ComponentType>>, 
   dynamic(() => load().then((m) => ({ default: m[key] })), { ssr: false, loading });
 
 /** Tabs whose body is an Aurora surface — rendered on the canvas, not in the light sheet. */
-export const AURORA_TABS: ReadonlySet<string> = new Set(["/", "/command-centre", "/executive-report", "/sync", "/issues", "/match-rules", "/match-rules/tuning", "/match-rules/constraints", "/business-process", "/settings/scoring", "/workbench/triage", "/admin/triage", "/settings/field-mapping", "/exceptions/rules", "/settings/exception-billing",
+export const AURORA_TABS: ReadonlySet<string> = new Set(["/", "/command-centre", "/executive-report", "/sync", "/issues", "/match-rules", "/match-rules/tuning", "/match-rules/constraints", "/business-process", "/settings/scoring", "/workbench/triage", "/workbench/progress", "/admin/triage", "/settings/field-mapping", "/exceptions/rules", "/settings/exception-billing",
   "/systems", "/upload", "/versions", "/admin", "/findings", "/cleaning", "/exceptions", "/dedup", "/golden-records", "/glossary", "/reports", "/notifications", "/settings", "/settings/rules", "/settings/ai", "/settings/licence", "/contracts",
   "/relationships", "/mining", "/ai/rules", "/workbench", "/process", "/config-impact"]);
 
@@ -24,7 +24,8 @@ export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
   "/executive-report": named(() => import("@/components/command-centre/executive-report"), "ExecutiveReport"),
   "/command-centre": named(() => import("@/components/command-centre/live"), "LiveOperationsPage"),
   "/findings": named(() => import("@/components/command-centre/findings"), "FindingsSurface"),
-  "/issues": page(() => import("@/app/(dashboard)/issues/page")),
+  "/issues": named(() => import("@/components/analyse/records"), "RecordsSurface"),
+  "/workbench/progress": named(() => import("@/components/workbench/progress"), "ProgressSurface"),
   "/notifications": named(() => import("@/components/command-centre/notifications"), "NotificationsSurface"),
 
   "/systems": named(() => import("@/components/data/systems"), "SystemsSurface"),

@@ -1,19 +1,16 @@
 "use client";
 
-import { Suspense } from "react";
-import { useSearchParams } from "next/navigation";
-import { EmptyState } from "@/components/aurora";
-import { RecordReportView } from "@/components/workbench/record-report";
+import { Suspense, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
-function Inner() {
+/** Old record report links (?issue=<id>) land on the record page. */
+function Redirect() {
+  const router = useRouter();
   const issue = useSearchParams().get("issue");
-  return issue ? <RecordReportView issueId={issue} /> : <EmptyState title="Open a record from the triage table to see its report." />;
+  useEffect(() => router.replace(issue ? `/workbench/record/${encodeURIComponent(issue)}` : "/workbench"), [router, issue]);
+  return null;
 }
 
-export default function RecordReportPage() {
-  return (
-    <Suspense fallback={null}>
-      <Inner />
-    </Suspense>
-  );
+export default function LegacyRedirect() {
+  return <Suspense><Redirect /></Suspense>;
 }

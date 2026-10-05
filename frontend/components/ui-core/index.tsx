@@ -337,3 +337,5 @@ export type { TallyProps, TallyFigureProps } from "./tally";
 export { Verdict } from "./verdict";
 export { ScoreRing } from "./score-ring";
 export type { ScoreRingProps } from "./score-ring";
+export { OwnerLadder } from "./owner-ladder";
+export type { OwnerRung } from "./owner-ladder";
