@@ -538,7 +538,7 @@
   background: var(--aurora-canvas-elevated);
   border: 1px solid var(--aurora-canvas-line);
   border-radius: var(--aurora-radius-control);
-  box-shadow: var(--aurora-elev-3-shadow, 0 8px 24px rgba(0, 0, 0, 0.4));
+  box-shadow: var(--aurora-elev-3-shadow);
   padding: var(--aurora-space-1);
   margin: 0;
   list-style: none;
@@ -849,7 +849,7 @@
   border: 1px solid var(--aurora-canvas-line);
   border-radius: var(--aurora-radius-sheet);
   position: relative;
-  box-shadow: var(--aurora-elev-2);
+  box-shadow: var(--aurora-elev-1);
   transition: border-color var(--aurora-duration-fast)
       var(--aurora-easing-standard),
     box-shadow var(--aurora-duration-fast) var(--aurora-easing-standard);
@@ -857,7 +857,7 @@
 .aurora-process-node[data-selected="true"] {
   border-color: var(--aurora-accent-400);
   box-shadow: 0 0 0 1px var(--aurora-accent-400),
-    var(--aurora-elev-3);
+    var(--aurora-elev-1);
 }
 .aurora-process-node[data-kind="approval"] {
   border-style: dashed;
@@ -1911,35 +1911,6 @@
   overflow: hidden;
 }
 
-.aurora-workbench__severity {
-  display: inline-flex;
-  align-items: center;
-  height: 20px;
-  padding: 0 8px;
-  border-radius: var(--aurora-radius-sheet);
-  border: 1px solid var(--aurora-canvas-line);
-  background: transparent;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: var(--aurora-fg-secondary);
-}
-.aurora-workbench__severity[data-severity="critical"] {
-  color: var(--aurora-status-danger-500);
-  background: var(--aurora-status-danger-bg);
-  border-color: var(--aurora-status-danger-border);
-}
-.aurora-workbench__severity[data-severity="high"] {
-  color: var(--aurora-status-warning-500);
-  background: var(--aurora-status-warning-bg);
-  border-color: var(--aurora-status-warning-border);
-}
-.aurora-workbench__severity[data-severity="medium"] {
-  color: var(--aurora-fg-primary);
-}
-.aurora-workbench__severity[data-severity="low"] {
-  color: var(--aurora-fg-tertiary);
-}
 
 .aurora-workbench__status {
   display: inline-flex;
@@ -2150,9 +2121,11 @@
   content: "";
   position: absolute;
   inset: 0 auto 0 0;
-  width: calc(var(--aurora-ratio, 0) * 100%);
+  width: 100%;
+  transform: scaleX(var(--aurora-ratio, 0));
+  transform-origin: left;
   background: var(--aurora-accent-500);
-  transition: width var(--aurora-duration-medium) var(--aurora-easing-standard);
+  transition: transform var(--aurora-duration-base) var(--aurora-easing-standard);
 }
 @media (prefers-reduced-motion: reduce) {
   .aurora-process__coverage-bar::after { transition: none; }
@@ -2485,9 +2458,11 @@
   content: "";
   position: absolute;
   inset: 0 auto 0 0;
-  width: calc(var(--aurora-ratio, 0) * 100%);
+  width: 100%;
+  transform: scaleX(var(--aurora-ratio, 0));
+  transform-origin: left;
   background: var(--aurora-accent-500);
-  transition: width var(--aurora-duration-medium) var(--aurora-easing-standard);
+  transition: transform var(--aurora-duration-base) var(--aurora-easing-standard);
 }
 @media (prefers-reduced-motion: reduce) {
   .aurora-record-report__passrate-bar::after { transition: none; }
@@ -2740,9 +2715,11 @@
   content: "";
   position: absolute;
   inset: 0 auto 0 0;
-  width: calc(var(--aurora-ratio, 0) * 100%);
+  width: 100%;
+  transform: scaleX(var(--aurora-ratio, 0));
+  transform-origin: left;
   background: var(--aurora-accent-500);
-  transition: width var(--aurora-duration-medium) var(--aurora-easing-standard);
+  transition: transform var(--aurora-duration-base) var(--aurora-easing-standard);
 }
 @media (prefers-reduced-motion: reduce) {
   .aurora-process-report__variant-fill::after { transition: none; }
@@ -2872,327 +2849,6 @@
   background: var(--aurora-canvas-raised);
 }
 
-/* ─────────────────────────────────────────────── Admin (WS8 §9) ─── */
-
-.aurora-admin {
-  display: flex;
-  flex-direction: column;
-  gap: var(--aurora-space-6);
-  padding: var(--aurora-space-8);
-  max-width: 1280px;
-  margin: 0 auto;
-}
-
-.aurora-admin__head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--aurora-space-6);
-  flex-wrap: wrap;
-}
-
-.aurora-admin__title {
-  display: flex;
-  flex-direction: column;
-  gap: var(--aurora-space-2);
-}
-
-.aurora-admin__actions {
-  display: inline-flex;
-  gap: var(--aurora-space-2);
-}
-
-.aurora-admin__body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--aurora-space-6);
-  padding-top: var(--aurora-space-4);
-}
-
-.aurora-admin__empty {
-  padding: var(--aurora-space-8);
-  border: 1px dashed var(--aurora-canvas-line);
-  border-radius: var(--aurora-radius-control);
-  text-align: center;
-}
-
-/* -- Doctor card -- */
-
-.aurora-admin-doctor {
-  display: flex;
-  flex-direction: column;
-  gap: var(--aurora-space-3);
-  padding: var(--aurora-space-4);
-  border: 1px solid var(--aurora-canvas-line);
-  border-radius: var(--aurora-radius-sheet);
-  background: var(--aurora-canvas-raised);
-}
-
-.aurora-admin-doctor__head {
-  display: flex;
-  align-items: center;
-  gap: var(--aurora-space-3);
-  flex-wrap: wrap;
-}
-
-.aurora-admin-doctor__refresh {
-  margin-left: auto;
-}
-
-.aurora-admin-doctor__summary {
-  display: flex;
-  gap: var(--aurora-space-4);
-  padding: var(--aurora-space-2) 0;
-  border-top: 1px solid var(--aurora-canvas-line);
-  border-bottom: 1px solid var(--aurora-canvas-line);
-}
-
-.aurora-admin-doctor__items {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--aurora-space-2);
-}
-
-.aurora-admin-doctor__item {
-  display: grid;
-  grid-template-columns: 12px 1fr;
-  column-gap: var(--aurora-space-3);
-  row-gap: 2px;
-  align-items: center;
-}
-
-.aurora-admin-doctor__dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--aurora-status-success-500);
-  display: block;
-  margin-left: 2px;
-}
-
-.aurora-admin-doctor__dot[data-status="warn"] {
-  background: var(--aurora-status-warning-500);
-}
-
-.aurora-admin-doctor__dot[data-status="fail"] {
-  background: var(--aurora-status-danger-500);
-}
-
-.aurora-admin-doctor__detail {
-  grid-column: 2 / -1;
-}
-
-/* -- Audit log table -- */
-
-.aurora-admin-audit {
-  width: 100%;
-  border-collapse: collapse;
-  border: 1px solid var(--aurora-canvas-line);
-  border-radius: var(--aurora-radius-control);
-  overflow: hidden;
-  font-size: 13px;
-}
-
-.aurora-admin-audit thead {
-  background: var(--aurora-canvas-raised);
-}
-
-.aurora-admin-audit th {
-  text-align: left;
-  padding: var(--aurora-space-2) var(--aurora-space-3);
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--aurora-fg-secondary);
-  border-bottom: 1px solid var(--aurora-canvas-line);
-}
-
-.aurora-admin-audit td {
-  padding: var(--aurora-space-2) var(--aurora-space-3);
-  border-bottom: 1px solid var(--aurora-canvas-line);
-  vertical-align: top;
-}
-
-.aurora-admin-audit tr:last-child td {
-  border-bottom: none;
-}
-
-.aurora-admin-audit__empty {
-  padding: var(--aurora-space-6);
-  text-align: center;
-  border: 1px dashed var(--aurora-canvas-line);
-  border-radius: var(--aurora-radius-control);
-}
-
-/* -- Destructive confirm -- */
-
-.aurora-admin-destructive {
-  display: flex;
-  flex-direction: column;
-  gap: var(--aurora-space-3);
-  padding: var(--aurora-space-4);
-  border: 1px solid color-mix(in srgb, var(--aurora-status-danger-500) 40%, var(--aurora-canvas-line));
-  border-radius: var(--aurora-radius-sheet);
-  background: color-mix(in srgb, var(--aurora-status-danger-500) 6%, var(--aurora-canvas-raised));
-}
-
-.aurora-admin-destructive__field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--aurora-space-1);
-}
-
-.aurora-admin-destructive__token {
-  font-family: var(--aurora-font-mono);
-  font-weight: 600;
-  padding: 1px 6px;
-  border-radius: 3px;
-  background: var(--aurora-canvas-base);
-  border: 1px solid var(--aurora-canvas-line);
-}
-
-.aurora-admin-destructive__input {
-  width: 100%;
-  padding: var(--aurora-space-2) var(--aurora-space-3);
-  border: 1px solid var(--aurora-canvas-line);
-  border-radius: 6px;
-  background: var(--aurora-canvas-base);
-  color: var(--aurora-fg-primary);
-  font-family: var(--aurora-font-mono);
-  font-size: 13px;
-}
-
-.aurora-admin-destructive__input:focus-visible {
-  outline: 2px solid var(--aurora-accent-500);
-  outline-offset: 1px;
-}
-
-.aurora-admin-destructive__actions {
-  margin-top: var(--aurora-space-2);
-  justify-content: flex-end;
-}
-
-/* -- Admin list rows (live /admin page) -- */
-
-.aurora-admin-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--aurora-space-1);
-  border: 1px solid var(--aurora-canvas-line);
-  border-radius: var(--aurora-radius-sheet);
-  background: var(--aurora-canvas-raised);
-  overflow: hidden;
-}
-
-.aurora-admin-list__row {
-  display: flex;
-  align-items: center;
-  gap: var(--aurora-space-4);
-  padding: var(--aurora-space-3) var(--aurora-space-4);
-  border-bottom: 1px solid var(--aurora-canvas-line);
-}
-
-.aurora-admin-list__row:last-child {
-  border-bottom: none;
-}
-
-.aurora-admin-list__row > :first-child {
-  flex: 1;
-  min-width: 0;
-}
-
-/* -- Admin inline form elements (invite, role select) -- */
-
-.aurora-admin-inline-input,
-.aurora-admin-inline-select {
-  width: 100%;
-  padding: 6px 10px;
-  border: 1px solid var(--aurora-canvas-line);
-  border-radius: 6px;
-  background: var(--aurora-canvas-base);
-  color: var(--aurora-fg-primary);
-  font: inherit;
-  font-size: 13px;
-}
-
-.aurora-admin-inline-select {
-  cursor: pointer;
-}
-
-.aurora-admin-inline-input:focus-visible,
-.aurora-admin-inline-select:focus-visible {
-  outline: 2px solid var(--aurora-accent-500);
-  outline-offset: 1px;
-}
-
-.aurora-admin-invite {
-  display: grid;
-  grid-template-columns: 1fr 1fr auto;
-  gap: var(--aurora-space-3);
-  padding: var(--aurora-space-4);
-  border: 1px solid var(--aurora-canvas-line);
-  border-radius: var(--aurora-radius-sheet);
-  background: var(--aurora-canvas-raised);
-}
-
-.aurora-admin-invite__field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--aurora-space-1);
-  min-width: 0;
-}
-
-.aurora-admin-invite__actions {
-  grid-column: 1 / -1;
-  justify-content: flex-end;
-  margin-top: var(--aurora-space-1);
-}
-
-/* -- Admin AI tab (live LLM config + savings) -- */
-
-.aurora-admin-ai__card {
-  padding: var(--aurora-space-4);
-  border: 1px solid var(--aurora-canvas-line);
-  border-radius: var(--aurora-radius-sheet);
-  background: var(--aurora-canvas-raised);
-}
-
-.aurora-admin-ai__kv {
-  display: grid;
-  grid-template-columns: minmax(120px, auto) 1fr;
-  gap: var(--aurora-space-2) var(--aurora-space-4);
-  margin: 0;
-  font-size: 13px;
-}
-
-.aurora-admin-ai__kv dt {
-  color: var(--aurora-fg-tertiary);
-  font-weight: 500;
-}
-
-.aurora-admin-ai__kv dd {
-  margin: 0;
-  color: var(--aurora-fg-primary);
-  font-family: var(--aurora-font-mono);
-  word-break: break-all;
-}
-
-/* Register-system form: wider grid — 3 columns for name/env/host + client/sysnr/password + full-width description */
-.aurora-admin-register {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--aurora-space-3);
-  padding: var(--aurora-space-4);
-  border: 1px solid var(--aurora-canvas-line);
-  border-radius: var(--aurora-radius-sheet);
-  background: var(--aurora-canvas-raised);
-}
-
 /* ------------------------------------------------------------------ *\
  * Shell chrome — rail mark + licence dot, top-bar controls, job rail,
  * workspace hub, and the light sheet legacy pages render in.
@@ -3305,9 +2961,11 @@
 .aurora-job-rail__bar > span,
 .aurora-job-rail__progress > span {
   display: block;
+  width: 100%;
   height: 100%;
+  transform-origin: left;
   background: var(--aurora-signal-500);
-  transition: width var(--aurora-duration-medium) var(--aurora-easing-standard);
+  transition: transform var(--aurora-duration-base) var(--aurora-easing-standard);
 }
 .aurora-job-rail__progress {
   width: 100%;
@@ -3620,8 +3278,10 @@
 .aurora-progress > span {
   display: block;
   height: 100%;
+  width: 100%;
+  transform-origin: left;
   background: var(--aurora-accent-500);
-  transition: width var(--aurora-duration-medium) var(--aurora-easing-standard);
+  transition: transform var(--aurora-duration-base) var(--aurora-easing-standard);
 }
 .aurora-progress[data-live="true"] > span {
   background: var(--aurora-signal-500);
@@ -3736,28 +3396,6 @@
   display: block;
   letter-spacing: 0.01em;
 }
-.aurora-exec__table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-.aurora-exec__table th {
-  text-align: left;
-  font-size: 11px;
-  letter-spacing: 0.01em;
-  color: var(--aurora-fg-muted);
-  padding: 6px 8px;
-  border-bottom: 1px solid var(--aurora-canvas-line);
-  white-space: nowrap;
-}
-.aurora-exec__table td {
-  padding: 7px 8px;
-  border-bottom: 1px solid var(--aurora-canvas-line);
-  vertical-align: top;
-}
-.aurora-exec__table td:last-child {
-  min-width: 120px;
-}
 .aurora-exec__bar {
   display: block;
   height: 6px;
@@ -3823,7 +3461,7 @@
   width: 32px;
   height: 32px;
   border-radius: 999px;
-  background: var(--aurora-elev-3-bg);
+  background: var(--aurora-canvas-overlay);
   color: var(--aurora-fg-primary);
   box-shadow: inset 0 0 0 1px var(--aurora-canvas-line);
   font: 600 11px/1 var(--aurora-font-ui, inherit);
@@ -3840,7 +3478,7 @@
 .aurora-import__drop {
   display: flex; align-items: center; justify-content: center; min-height: 220px; padding: var(--aurora-space-6);
   border: 1px dashed var(--aurora-canvas-line); border-radius: var(--aurora-radius-sheet); background: var(--aurora-canvas-raised);
-  cursor: pointer; transition: border-color var(--aurora-motion-fast, 160ms), background var(--aurora-motion-fast, 160ms);
+  cursor: pointer; transition: border-color var(--aurora-duration-fast), background var(--aurora-duration-fast);
 }
 .aurora-import__drop:hover, .aurora-import__drop.is-over { border-color: var(--aurora-accent-500); background: var(--aurora-accent-selected-bg); }
 .aurora-import__drop.has-file { border-style: solid; }
@@ -3891,7 +3529,7 @@
 
 /* Settings: ways into each settings tab */
 .aurora-linkcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--aurora-space-4); }
-.aurora-linkcard { display: flex; flex-direction: column; gap: var(--aurora-space-1); padding: var(--aurora-space-4); border: 1px solid var(--aurora-canvas-line); border-radius: 12px; background: var(--aurora-canvas-raised); color: inherit; text-decoration: none; transition: border-color var(--aurora-motion-fast, 160ms), background var(--aurora-motion-fast, 160ms); }
+.aurora-linkcard { display: flex; flex-direction: column; gap: var(--aurora-space-1); padding: var(--aurora-space-4); border: 1px solid var(--aurora-canvas-line); border-radius: 12px; background: var(--aurora-canvas-raised); color: inherit; text-decoration: none; transition: border-color var(--aurora-duration-fast), background var(--aurora-duration-fast); }
 .aurora-linkcard:hover { border-color: var(--aurora-accent-500); background: var(--aurora-accent-selected-bg); }
 
 /* Structured terms and conditions shown as they are stored */
@@ -3979,3 +3617,11 @@
 }
 .aurora-tooltip:hover::after, .aurora-tooltip:focus-within::after { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .aurora-tooltip::after { transition: none; } }
+
+/* Ring fill and spinner motion (moved from ui-core.css; motion lives here only). */
+.ui-ring__fill { animation: ui-ring var(--aurora-duration-tally) var(--aurora-easing-enter) both; }
+@keyframes ui-ring { from { stroke-dashoffset: 527.79; } }
+@media (prefers-reduced-motion: reduce) { .ui-ring__fill { animation: none; } }
+.ui-update__spin { width: 1.25rem; height: 1.25rem; flex: none; border: 2px solid var(--aurora-accent-500); border-top-color: transparent; border-radius: 50%; animation: ui-update-spin 1s linear infinite; }
+@keyframes ui-update-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .ui-update__spin { animation: none; } }

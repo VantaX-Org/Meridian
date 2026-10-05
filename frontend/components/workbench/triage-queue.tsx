@@ -16,7 +16,7 @@ import {
 } from "@/components/aurora";
 import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
-import { Tally } from "@/components/ui-core";
+import { StatusBadge, Tally, type Status } from "@/components/ui-core";
 import { useUrlState } from "@/hooks/use-url-state";
 import type { SlaState } from "@/lib/api/issues";
 import { bulkTriage, getTeams, getTriageQueue, type BulkAction, type TriageBulkInput, type TriageQueueItem } from "@/lib/api/triage";
@@ -99,7 +99,7 @@ export function TriageQueueSurface() {
     const keys = rows.map(keyOf);
     const allOn = keys.length > 0 && keys.every((k) => picked.has(k));
     const cols: ColumnDef<TriageQueueItem, unknown>[] = [
-      { id: "severity", header: "Severity", meta: meta({ width: 96 }), cell: ({ row }) => <span className="aurora-workbench__severity" data-severity={row.original.severity}>{row.original.severity}</span> },
+      { id: "severity", header: "Severity", meta: meta({ width: 96 }), cell: ({ row }) => <StatusBadge status={row.original.severity as Status}>{row.original.severity}</StatusBadge> },
       { id: "module", header: "Module", cell: ({ row }) => (row.original.module ? formatModuleName(row.original.module) : row.original.kind === "queue" ? "Steward task" : "—") },
       { id: "check", header: "Check", cell: ({ row }) => <span className="aurora-number">{row.original.check_id ?? "—"}</span> },
       { id: "ref", header: "Ref", cell: ({ row }) => <span className="aurora-number">{row.original.ref ?? row.original.id.slice(0, 8)}</span> },

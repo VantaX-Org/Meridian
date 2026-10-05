@@ -285,7 +285,7 @@ export function RecordReport({
       <ReportSurface
         eyebrow={
           <>
-            RECORD · <span data-numeric="true">{recordId}</span>
+            Record: <span data-numeric="true">{recordId}</span>
           </>
         }
         title={verdict}
@@ -462,7 +462,7 @@ function FindingOriginChips({ finding }: { finding: RecordReportFinding }) {
   if (finding.sourceModules && finding.sourceModules.length > 0) {
     chips.push(
       <Chip key="cross-module" tone="info">
-        Cross-module · {finding.sourceModules.join(" + ")}
+        Cross-module: {finding.sourceModules.join(" + ")}
       </Chip>,
     );
   }

@@ -400,7 +400,7 @@ function VariantsSection({
             <Text variant="text-body">{row.label}</Text>
             <Text variant="text-micro" tone="tertiary">
               <span data-numeric="true">{row.cases.toLocaleString()}</span>{" "}
-              cases · quality{" "}
+              cases, quality{" "}
               <span data-numeric="true">{row.quality.toFixed(1)}</span>
             </Text>
           </Stack>
@@ -496,7 +496,7 @@ function BlockingSection({
               </Text>
               {f.gate ? (
                 <Text variant="text-small" tone="tertiary" as="span">
-                  · {f.gate}
+                  {f.gate}
                 </Text>
               ) : null}
             </div>
@@ -591,10 +591,10 @@ function RecommendationsSection({
             <Text variant="text-micro" tone="tertiary">
               {item.owner ? (
                 <>
-                  Owner · <span>{item.owner}</span>
+                  Owner: <span>{item.owner}</span>
                 </>
               ) : null}
-              {item.owner && item.effort ? " · " : null}
+              {item.owner && item.effort ? ", " : null}
               {item.effort ? EFFORT_LABEL[item.effort] : null}
             </Text>
           </Stack>

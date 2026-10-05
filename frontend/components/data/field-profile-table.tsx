@@ -44,7 +44,7 @@ function columns(table: string): ColumnDef<FieldProfile, unknown>[] {
         const fill = Math.max(0, Math.min(100, 100 - row.original.stats.blank_pct));
         return (
           <span className="ui-fill" title={`${n(row.original.stats.rows - row.original.stats.blank)} of ${n(row.original.stats.rows)} filled`}>
-            <span className="ui-fill__bar"><span style={{ width: `${fill}%` }} /></span>
+            <span className="ui-fill__bar"><span style={{ transform: `scaleX(${fill / 100})` }} /></span>
             <span className="ui-fill__num">{fill.toFixed(1)}%</span>
           </span>
         );

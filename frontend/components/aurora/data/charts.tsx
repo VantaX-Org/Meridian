@@ -377,6 +377,7 @@ export interface DonutChartProps {
   outerRadius?: number;
   className?: string;
   ariaLabel?: string;
+  onSegmentClick?: (index: number) => void;
 }
 
 export function DonutChart({
@@ -386,6 +387,7 @@ export function DonutChart({
   outerRadius = 72,
   className,
   ariaLabel,
+  onSegmentClick,
 }: DonutChartProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const t = useTokens(hostRef);
@@ -393,7 +395,7 @@ export function DonutChart({
     <div
       ref={hostRef}
       className={clsx("aurora-chart", className)}
-      style={{ width: "100%", height }}
+      style={{ width: "100%", height, cursor: onSegmentClick ? "pointer" : undefined }}
       role="img"
       aria-label={ariaLabel}
     >
@@ -417,6 +419,7 @@ export function DonutChart({
             stroke="var(--aurora-canvas-base)"
             strokeWidth={2}
             isAnimationActive={false}
+            onClick={onSegmentClick ? (_, index) => onSegmentClick(index) : undefined}
           >
             {data.map((entry, index) => (
               <Cell

@@ -33,7 +33,7 @@ export function JobRail() {
         <span className="aurora-job-rail__count aurora-number">{active.length}</span>
         {percent !== null ? (
           <span className="aurora-job-rail__bar" role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}>
-            <span style={{ width: `${percent}%` }} />
+            <span style={{ transform: `scaleX(${percent / 100})` }} />
           </span>
         ) : null}
       </button>

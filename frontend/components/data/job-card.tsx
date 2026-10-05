@@ -56,7 +56,7 @@ export function ProgressBar({ percent, live, label }: { percent: number; live?: 
   return (
     <div className="aurora-progress" data-live={live ? "true" : undefined} role="progressbar"
          aria-valuenow={Math.round(percent)} aria-valuemin={0} aria-valuemax={100} aria-label={label}>
-      <span style={{ width: `${Math.min(100, Math.max(0, percent))}%` }} />
+      <span style={{ transform: `scaleX(${Math.min(100, Math.max(0, percent)) / 100})` }} />
     </div>
   );
 }

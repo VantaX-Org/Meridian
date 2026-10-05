@@ -50,6 +50,16 @@ const GLOSSARY_VIOLATIONS = [
       "is the anti-pattern.",
   },
   {
+    pattern: /\bthis page shows\b/i,
+    replacement: "a sentence that states what is true now",
+    rationale: "Every page's first paragraph states the verdict, not the page (DESIGN.md rule 4).",
+  },
+  {
+    pattern: /\bclick here\b/i,
+    replacement: "a link that names its destination",
+    rationale: "Links name where they go (DESIGN.md rule 15).",
+  },
+  {
     pattern: /\bsomething went wrong\b/i,
     replacement: "a specific failure description",
     rationale:
@@ -171,10 +181,32 @@ const rule = {
   },
 };
 
+// DESIGN.md rule 15: no arrow glyphs, no middle-dot separators.
+const GLYPHS = /[→←↑↓]| · /;
+const glyphRule = {
+  meta: {
+    type: "problem",
+    schema: [],
+    messages: { glyph: "No arrow glyphs or middle-dot separators in copy (DESIGN.md rule 15): '{{value}}'." },
+  },
+  create(context) {
+    const check = (node, raw) => {
+      if (typeof raw === "string" && GLYPHS.test(raw)) context.report({ node, messageId: "glyph", data: { value: raw.trim().slice(0, 40) } });
+    };
+    const inJsx = (n) => n.parent?.type === "JSXAttribute" || n.parent?.type === "JSXExpressionContainer";
+    return {
+      JSXText(node) { check(node, node.value); },
+      Literal(node) { if (inJsx(node)) check(node, node.value); },
+      TemplateLiteral(node) { if (inJsx(node)) node.quasis.forEach((q) => check(node, q.value.cooked)); },
+    };
+  },
+};
+
 const plugin = {
   meta: { name: "aurora-writing", version: "1.0.0" },
   rules: {
     "no-forbidden-copy": rule,
+    "no-forbidden-glyphs": glyphRule,
   },
 };
 
