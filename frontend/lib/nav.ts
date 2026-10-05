@@ -33,7 +33,6 @@ import {
   Zap,
 } from "lucide-react";
 import {
-  AnalyticsIcon,
   BookIcon,
   ClipboardIcon,
   ContractIcon,
@@ -99,7 +98,6 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     group: "Overview",
     items: [
       { href: "/", label: "Command Centre", icon: LayoutDashIcon, licenceKey: "dashboard", keywords: "overview home dqs verdict", shortcut: "⌘1" },
-      { href: "/analytics", label: "Analytics", icon: AnalyticsIcon, licenceKey: "analytics", keywords: "charts metrics forecast" },
     ],
   },
   {

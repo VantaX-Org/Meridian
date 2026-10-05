@@ -331,3 +331,7 @@ export function DiffView({ diff, label = "Changes" }: { diff: string; label?: st
     </pre>
   );
 }
+
+export { Tally, TallyFigure } from "./tally";
+export type { TallyProps, TallyFigureProps } from "./tally";
+export { Verdict } from "./verdict";

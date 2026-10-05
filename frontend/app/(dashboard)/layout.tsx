@@ -10,13 +10,13 @@
  */
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo } from "react";
 import {
   ClipboardList, Database, LayoutDashboard, Moon, Rows3, ScanSearch, Search, Settings2, Sun, Workflow,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { AppShell, Breadcrumb } from "@/components/aurora";
+import { AppShell, DepthCrumb, type DepthSegment } from "@/components/aurora";
 import { CommandPalette, useCommandPalette } from "@/components/command-palette";
 import { MeridianMark } from "@/components/meridian/icons";
 import { JobRail } from "@/components/shell/job-rail";
@@ -41,6 +41,21 @@ const ICONS: Record<WorkspaceId, React.ReactNode> = {
 };
 const DENSITY_NEXT = { compact: "default", default: "comfortable", comfortable: "compact" } as const;
 
+/** Portfolio, hub, tab: the tab comes from ?tab= on a hub, from the page title elsewhere. */
+function Crumb({ pathname }: { pathname: string }) {
+  const tabId = useSearchParams().get("tab");
+  const here = locate(pathname);
+  const w = here?.workspace;
+  const hubTab = w && HUB_ROUTES.has(pathname)
+    ? (w.tabs.find((t) => t.id === tabId) ?? w.tabs.find((t) => !t.hidden))
+    : undefined;
+  const segments: DepthSegment[] = [{ level: "portfolio", label: "Portfolio", href: "/" }];
+  if (w) segments.push({ level: "hub", label: w.label, href: w.href });
+  if (hubTab) segments.push({ level: "tab", label: hubTab.label });
+  else if (!HUB_ROUTES.has(pathname)) segments.push({ level: "page", label: getPageTitle(pathname) });
+  return <DepthCrumb segments={segments} renderLink={({ children: c, ...props }) => <Link {...props}>{c}</Link>} />;
+}
+
 function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -52,7 +67,6 @@ function Shell({ children }: { children: React.ReactNode }) {
   useJobStream();
 
   const workspaces = useMemo(() => visibleWorkspaces(gate), [gate]);
-  const here = locate(pathname);
   const isHub = HUB_ROUTES.has(pathname);
   const isAurora = isHub || AURORA_PAGES.some((p) => pathname === p || pathname.startsWith(p + "/")) || AURORA_DETAIL.test(pathname);
 
@@ -77,12 +91,6 @@ function Shell({ children }: { children: React.ReactNode }) {
   });
   const licenceOk = health?.licence?.valid;
 
-  const crumbs = [
-    { label: "Meridian", href: "/" },
-    ...(here ? [{ label: here.workspace.label, href: here.workspace.href }] : []),
-    ...(!isHub ? [{ label: getPageTitle(pathname) }] : []),
-  ];
-
   return (
     <AppShell
       rail={
@@ -104,10 +112,9 @@ function Shell({ children }: { children: React.ReactNode }) {
       }
       topBar={
         <>
-          <Breadcrumb
-            items={crumbs}
-            renderLink={({ children: c, ...props }) => <Link {...props}>{c}</Link>}
-          />
+          <Suspense fallback={null}>
+            <Crumb pathname={pathname} />
+          </Suspense>
           <div className="aurora-topbar__spacer" />
           <JobRail />
           <button type="button" className="aurora-topbar__cmdk aurora-focus-ring" onClick={() => setCmdkOpen(true)}
