@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useAuth } from "@/context/auth-context";
+import { AuthFrame, PasswordField } from "@/components/auth/auth-frame";
+import { Banner, Button } from "@/components/ui-core";
 
 /**
  * Blocking overlay shown when the current user's account still has the
@@ -43,128 +45,25 @@ export function ForcePasswordChange() {
     } catch (err: unknown) {
       const detail =
         (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setError(detail || "Password change failed. Please try again.");
+      setError(detail || "Password change failed. Try again.");
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-      style={{ background: "rgba(0, 0, 0, 0.72)", backdropFilter: "blur(6px)" }}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="fpc-title"
-    >
-      <div
-        className="w-full max-w-md rounded-xl p-6 shadow-2xl"
-        style={{
-          background: "var(--aurora-canvas-raised)",
-          border: "1px solid var(--aurora-canvas-line)",
-        }}
-      >
-        <h2
-          id="fpc-title"
-          className="text-xl font-semibold mb-2"
-          style={{ color: "var(--aurora-fg-primary)" }}
-        >
-          Change your password to continue
-        </h2>
-        <p
-          className="text-sm mb-5"
-          style={{ color: "var(--aurora-fg-secondary)" }}
-        >
-          You&apos;re signed in as <strong>{user?.email}</strong>. This account
-          still has its default password; set a new one before you can use
-          Meridian.
-        </p>
-
-        <form onSubmit={onSubmit} className="space-y-3">
-          <label className="block text-sm">
-            <span className="block mb-1" style={{ color: "var(--aurora-fg-secondary)" }}>
-              Current password
-            </span>
-            <input
-              type="password"
-              autoComplete="current-password"
-              required
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              className="w-full rounded-md px-3 py-2 text-sm outline-none"
-              style={{
-                background: "var(--aurora-canvas-elevated)",
-                border: "1px solid var(--aurora-canvas-line)",
-                color: "var(--aurora-fg-primary)",
-              }}
-            />
-          </label>
-          <label className="block text-sm">
-            <span className="block mb-1" style={{ color: "var(--aurora-fg-secondary)" }}>
-              New password (min 12 characters)
-            </span>
-            <input
-              type="password"
-              autoComplete="new-password"
-              required
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full rounded-md px-3 py-2 text-sm outline-none"
-              style={{
-                background: "var(--aurora-canvas-elevated)",
-                border: "1px solid var(--aurora-canvas-line)",
-                color: "var(--aurora-fg-primary)",
-              }}
-            />
-          </label>
-          <label className="block text-sm">
-            <span className="block mb-1" style={{ color: "var(--aurora-fg-secondary)" }}>
-              Confirm new password
-            </span>
-            <input
-              type="password"
-              autoComplete="new-password"
-              required
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              className="w-full rounded-md px-3 py-2 text-sm outline-none"
-              style={{
-                background: "var(--aurora-canvas-elevated)",
-                border: "1px solid var(--aurora-canvas-line)",
-                color: "var(--aurora-fg-primary)",
-              }}
-            />
-          </label>
-
-          {error && (
-            <p className="text-sm" style={{ color: "var(--aurora-status-danger-500)" }}>
-              {error}
-            </p>
-          )}
-
-          <div className="flex items-center justify-between pt-2">
-            <button
-              type="button"
-              onClick={logout}
-              className="text-sm underline"
-              style={{ color: "var(--aurora-fg-tertiary)" }}
-            >
-              Sign out
-            </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="rounded-md px-5 py-2 text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-50"
-              style={{
-                background: "var(--aurora-accent-500)",
-                color: "var(--aurora-fg-inverse)",
-              }}
-            >
-              {submitting ? "Changing…" : "Change password"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <AuthFrame title="Change your password to continue"
+      lead={<>You are signed in as {user?.email}. This account still has its default password. Set a new one to use Meridian.</>}>
+      <form className="ui-form" onSubmit={onSubmit} noValidate>
+        {error ? <Banner tone="danger">{error}</Banner> : null}
+        <PasswordField label="Current password" value={currentPassword} onChange={setCurrentPassword} autoComplete="current-password" />
+        <PasswordField label="New password" value={newPassword} onChange={setNewPassword} autoComplete="new-password" helper="At least 12 characters." />
+        <PasswordField label="Confirm new password" value={confirm} onChange={setConfirm} autoComplete="new-password" />
+        <div className="ui-form__actions">
+          <Button type="submit" disabled={submitting}>{submitting ? "Saving" : "Change password"}</Button>
+          <Button type="button" variant="ghost" onClick={logout}>Sign out</Button>
+        </div>
+      </form>
+    </AuthFrame>
   );
 }
