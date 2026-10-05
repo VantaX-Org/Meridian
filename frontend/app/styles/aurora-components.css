@@ -3887,7 +3887,7 @@
 .aurora-notifs { list-style: none; margin: 0; padding: 0; }
 .aurora-notifs__bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--aurora-space-2); }
 .aurora-notifs__spacer { flex: 1; }
-.aurora-notifs__row { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto auto auto; gap: var(--aurora-space-3); align-items: center; padding: var(--aurora-space-3) 0; border-bottom: 1px solid var(--aurora-canvas-line); }
+.aurora-notifs__row { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto auto auto; gap: var(--aurora-space-3); align-items: center; padding: var(--aurora-space-3) var(--aurora-space-4); border-bottom: 1px solid var(--aurora-canvas-line); }
 .aurora-notifs__row:last-child { border-bottom: 0; }
 .aurora-notifs__dot { width: 8px; height: 8px; border-radius: 50%; background: transparent; }
 .aurora-notifs__row[data-unread="true"] .aurora-notifs__dot { background: var(--aurora-accent-500); }
