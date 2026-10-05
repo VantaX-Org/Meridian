@@ -1,20 +1,22 @@
 /**
- * The five workspaces, organised by the job someone comes to do. Each tab is
- * a page the product already has (its legacy route stays live for deep links);
- * role and licence gating comes from the matching nav entry in lib/nav.ts,
- * so a tab is never shown here and hidden there. Pages without a nav entry
- * carry their own `anyOf`.
+ * The workspaces, in the order work happens: connect SAP and load data,
+ * analyse it, fix what the analysis found, then see the process impact.
+ * Each tab is a page the product already has (its legacy route stays live
+ * for deep links); role and licence gating comes from the matching nav entry
+ * in lib/nav.ts, so a tab is never shown here and hidden there. Pages without
+ * a nav entry carry their own `anyOf`.
  *
- *   ⌘1 Command Centre — what is happening (managers, viewers, auditors)
- *   ⌘2 Data           — systems, downloads, imports, analyses (analysts)
- *   ⌘3 Workbench      — fix and govern records (stewards, approvers)
- *   ⌘4 Process        — process and configuration impact
- *   ⌘5 Admin          — users, settings, licence
+ *   ⌘1 Home            — where things stand
+ *   ⌘2 Connect & load  — systems, extractions, imports
+ *   ⌘3 Analyse         — findings and the runs behind them
+ *   ⌘4 Fix             — work the records
+ *   ⌘5 Process         — process and configuration impact
+ *   ⌘6 Admin           — users, rules, reference setup, licence
  */
 import type { Role } from "@/hooks/use-role";
 import { allowed, flattenNav, NAV_GROUPS, SETTINGS_PERMISSIONS, type NavGate } from "@/lib/nav";
 
-export type WorkspaceId = "command-centre" | "data" | "workbench" | "process" | "admin";
+export type WorkspaceId = "command-centre" | "data" | "analyse" | "workbench" | "process" | "admin";
 
 export interface WorkspaceTab {
   id: string;
@@ -30,6 +32,8 @@ export interface WorkspaceTab {
 export interface Workspace {
   id: WorkspaceId;
   label: string;
+  /** One line under the label in the sidebar: what you do here. */
+  hint: string;
   href: string;
   shortcut: string;
   tabs: readonly WorkspaceTab[];
@@ -37,74 +41,84 @@ export interface Workspace {
 
 export const WORKSPACES: readonly Workspace[] = [
   {
-    id: "command-centre", label: "Command Centre", href: "/", shortcut: "⌘1",
+    id: "command-centre", label: "Home", hint: "Where things stand", href: "/", shortcut: "⌘1",
     tabs: [
       { id: "overview", label: "Overview", href: "/" },
       { id: "report", label: "Executive report", href: "/executive-report" },
-      { id: "live", label: "Live operations", href: "/command-centre" },
       { id: "analytics", label: "Trends", href: "/analytics" },
-      { id: "findings", label: "Findings", href: "/findings" },
+      { id: "live", label: "Live activity", href: "/command-centre" },
       { id: "notifications", label: "Notifications", href: "/notifications" },
     ],
   },
   {
-    id: "data", label: "Data", href: "/data", shortcut: "⌘2",
+    id: "data", label: "Connect & load", hint: "Bring SAP data in", href: "/data", shortcut: "⌘2",
     tabs: [
       { id: "systems", label: "Systems", href: "/systems" },
-      { id: "runs", label: "Runs", href: "/sync" },
-      { id: "import", label: "Import", href: "/upload" },
-      { id: "analyses", label: "Analyses", href: "/versions" },
-      { id: "connectivity", label: "Connectivity", href: "/connectivity", anyOf: ["trigger_sync"] },
+      { id: "connectivity", label: "Connection test", href: "/connectivity", anyOf: ["trigger_sync"] },
+      { id: "runs", label: "Extractions", href: "/sync" },
+      { id: "import", label: "Import files", href: "/upload" },
       { id: "run-sync", label: "Re-run modules", href: "/run-sync", anyOf: ["trigger_sync"] },
       { id: "migration", label: "Migration", href: "/migration" },
     ],
   },
   {
-    id: "workbench", label: "Workbench", href: "/workbench", shortcut: "⌘3",
+    id: "analyse", label: "Analyse", hint: "See what is wrong", href: "/analyse", shortcut: "⌘3",
     tabs: [
-      { id: "triage", label: "Triage", href: "/issues" },
-      { id: "record", label: "Record report", href: "/workbench/report", hidden: true },
-      { id: "queue", label: "Steward inbox", href: "/workbench" },
-      { id: "my-queue", label: "My queue", href: "/workbench/triage" },
-      { id: "cleaning", label: "Cleaning", href: "/cleaning" },
-      { id: "exceptions", label: "Exceptions", href: "/exceptions" },
-      { id: "exception-rules", label: "Exception rules", href: "/exceptions/rules", anyOf: ["approve", "assign", "manage_rules"] },
-      { id: "dedup", label: "Duplicates", href: "/dedup" },
-      { id: "ai-rules", label: "AI rule review", href: "/ai/rules" },
-      { id: "golden", label: "Golden records", href: "/golden-records" },
-      { id: "glossary", label: "Glossary", href: "/glossary" },
-      { id: "match-rules", label: "Match rules", href: "/match-rules" },
-      { id: "match-tuning", label: "Match tuning", href: "/match-rules/tuning" },
-      { id: "pair-constraints", label: "Pair constraints", href: "/match-rules/constraints" },
+      { id: "findings", label: "Findings", href: "/findings" },
+      { id: "triage", label: "Issues by record", href: "/issues" },
+      { id: "analyses", label: "Analysis runs", href: "/versions" },
       { id: "reports", label: "Reports", href: "/reports" },
     ],
   },
   {
-    id: "process", label: "Process", href: "/process", shortcut: "⌘4",
+    id: "workbench", label: "Fix", hint: "Work the records", href: "/workbench", shortcut: "⌘4",
+    tabs: [
+      { id: "queue", label: "Steward inbox", href: "/workbench" },
+      { id: "my-queue", label: "My queue", href: "/workbench/triage" },
+      { id: "record", label: "Record report", href: "/workbench/report", hidden: true },
+      { id: "dedup", label: "Duplicates", href: "/dedup" },
+      { id: "cleaning", label: "Cleaning", href: "/cleaning" },
+      { id: "exceptions", label: "Exceptions", href: "/exceptions" },
+      { id: "golden", label: "Golden records", href: "/golden-records" },
+      { id: "ai-rules", label: "AI rule review", href: "/ai/rules" },
+      { id: "glossary", label: "Glossary", href: "/glossary" },
+    ],
+  },
+  {
+    id: "process", label: "Process", hint: "Impact on SAP processes", href: "/process", shortcut: "⌘5",
     tabs: [
       { id: "map", label: "Process map", href: "/process" },
       { id: "readiness", label: "Readiness", href: "/business-process" },
       { id: "config-impact", label: "Config impact", href: "/config-impact" },
       { id: "lineage", label: "Lineage", href: "/lineage" },
-      { id: "relationships", label: "Relationships & patterns", href: "/relationships" },
+      { id: "relationships", label: "Relationships", href: "/relationships" },
     ],
   },
   {
-    id: "admin", label: "Admin", href: "/admin", shortcut: "⌘5",
+    id: "admin", label: "Admin", hint: "Users, rules, licence", href: "/admin", shortcut: "⌘6",
     tabs: [
       { id: "users", label: "Users & audit", href: "/admin" },
       { id: "settings", label: "Settings", href: "/settings" },
+      { id: "rules", label: "Check rules", href: "/settings/rules" },
       { id: "scoring", label: "Scoring & alerts", href: "/settings/scoring", anyOf: ["view"] },
-      { id: "rules", label: "Rules", href: "/settings/rules" },
-      { id: "triage", label: "Triage", href: "/admin/triage" },
+      { id: "triage", label: "Triage routing", href: "/admin/triage" },
+      { id: "exception-rules", label: "Exception rules", href: "/exceptions/rules", anyOf: ["approve", "assign", "manage_rules"] },
+      { id: "match-rules", label: "Match rules", href: "/match-rules" },
+      { id: "match-tuning", label: "Match tuning", href: "/match-rules/tuning" },
+      { id: "pair-constraints", label: "Pair constraints", href: "/match-rules/constraints" },
       { id: "field-mapping", label: "Field mapping", href: "/settings/field-mapping" },
       { id: "ai", label: "AI", href: "/settings/ai" },
+      { id: "contracts", label: "Data contracts", href: "/contracts" },
       { id: "licence", label: "Licence", href: "/settings/licence" },
       { id: "exception-billing", label: "Exception billing", href: "/settings/exception-billing", anyOf: ["view"] },
-      { id: "contracts", label: "Contracts", href: "/contracts" },
     ],
   },
 ];
+
+/** The hub URL that shows a tab: the workspace route, plus ?tab= past the first tab. */
+export function tabHref(w: Workspace, t: WorkspaceTab): string {
+  return t.id === w.tabs.find((x) => !x.hidden)?.id ? w.href : `${w.href}?tab=${t.id}`;
+}
 
 export const HUB_ROUTES: ReadonlySet<string> = new Set(WORKSPACES.map((w) => w.href).concat("/command-centre"));
 
@@ -112,7 +126,7 @@ export const HUB_ROUTES: ReadonlySet<string> = new Set(WORKSPACES.map((w) => w.h
 export const AURORA_PAGES: readonly string[] = ["/workbench/report"];
 
 /** Record 360 detail routes (the list pages above them are still legacy). */
-export const AURORA_DETAIL = /^\/(golden-records|glossary)\/[^/]+$/;
+export const AURORA_DETAIL = /^\/(golden-records\/[^/]+|glossary\/[^/]+|analyse\/object\/[^/]+)$/;
 
 /** Where each role lands after sign-in — the workspace built for their job. */
 export const LANDING: Readonly<Record<Role, string>> = {

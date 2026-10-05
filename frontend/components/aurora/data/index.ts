@@ -22,6 +22,7 @@ export {
   AreaChart,
   BarChart,
   DonutChart,
+  RadarChart,
   LineChart,
   Sparkline,
 } from "./charts";
@@ -29,6 +30,7 @@ export type {
   AreaChartProps,
   BarChartProps,
   DonutChartProps,
+  RadarChartProps,
   DonutSlice,
   LineChartProps,
   SeriesDef,

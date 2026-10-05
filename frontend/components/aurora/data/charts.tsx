@@ -31,6 +31,11 @@ import {
   LineChart as RcLineChart,
   Pie,
   PieChart as RcPieChart,
+  PolarAngleAxis,
+  PolarGrid,
+  PolarRadiusAxis,
+  Radar,
+  RadarChart as RcRadarChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -188,6 +193,8 @@ export interface BarChartProps<
   className?: string;
   yFormatter?: (value: number) => string;
   ariaLabel?: string;
+  /** Called with the index into `data` of the clicked bar group. */
+  onBarClick?: (index: number) => void;
 }
 
 export function BarChart<
@@ -201,6 +208,7 @@ export function BarChart<
   className,
   yFormatter,
   ariaLabel,
+  onBarClick,
 }: BarChartProps<TDatum>) {
   const hostRef = useRef<HTMLDivElement>(null);
   const t = useTokens(hostRef);
@@ -209,12 +217,19 @@ export function BarChart<
     <div
       ref={hostRef}
       className={clsx("aurora-chart", className)}
-      style={{ width: "100%", height }}
+      style={{ width: "100%", height, cursor: onBarClick ? "pointer" : undefined }}
       role="img"
       aria-label={ariaLabel}
     >
       <ResponsiveContainer>
-        <RcBarChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+        <RcBarChart
+          data={data}
+          margin={{ top: 8, right: 12, left: 0, bottom: 0 }}
+          onClick={onBarClick ? (state) => {
+            const i = state.activeTooltipIndex == null ? NaN : Number(state.activeTooltipIndex);
+            if (Number.isInteger(i)) onBarClick(i);
+          } : undefined}
+        >
           <CartesianGrid stroke={t.gridInk} vertical={false} strokeDasharray="2 4" />
           <XAxis
             dataKey={xKey as string}
@@ -472,6 +487,33 @@ export function Sparkline<
             isAnimationActive={false}
           />
         </RcAreaChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+export interface RadarChartProps {
+  /** One spoke per datum; `value` on a 0..`max` scale. */
+  data: { axis: string; value: number }[];
+  max?: number;
+  height?: number;
+  ariaLabel?: string;
+}
+
+/** Single-series radar: the shape of a score across its dimensions. */
+export function RadarChart({ data, max = 100, height = 260, ariaLabel }: RadarChartProps) {
+  const hostRef = useRef<HTMLDivElement>(null);
+  const t = useTokens(hostRef);
+  return (
+    <div ref={hostRef} className="aurora-chart" style={{ width: "100%", height }} role="img" aria-label={ariaLabel}>
+      <ResponsiveContainer>
+        <RcRadarChart data={data} outerRadius="72%">
+          <PolarGrid stroke={t.gridInk} />
+          <PolarAngleAxis dataKey="axis" tick={{ fill: t.axisInk, fontSize: 12 }} />
+          <PolarRadiusAxis domain={[0, max]} tick={false} axisLine={false} />
+          <Radar dataKey="value" stroke={t.accent} fill={t.accent} fillOpacity={0.22} strokeWidth={2}
+            dot={{ r: 3, fill: t.accent }} isAnimationActive={false} />
+        </RcRadarChart>
       </ResponsiveContainer>
     </div>
   );

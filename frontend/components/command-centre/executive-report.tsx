@@ -73,7 +73,7 @@ export function ExecutiveReport() {
         summary={<>{day(new Date().toISOString())}. {sentence}</>}
         actions={<>
           <Button variant="secondary" onClick={() => window.print()}>Print or save as PDF</Button>
-          <Link className="ui-link" href="/?tab=findings">All findings</Link>
+          <Link className="ui-link" href="/analyse?tab=findings">All findings</Link>
         </>} />
 
       {a && dqs !== null ? (

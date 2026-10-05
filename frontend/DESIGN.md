@@ -46,6 +46,7 @@ Light values are listed first. Dark overrides live under `[data-theme="dark"]` i
   - Drawer title: 17/24, weight 600.
   - Body and table: 13/18.
   - Meta: 12/16.
+  - Big counters: 40/48 in the journey strip, 32/40 for hero counts, 48 inside the score ring. An object title is 44/48.
 - Numbers use tabular figures (`font-variant-numeric: tabular-nums`, or `.aurora-number`).
 - Sentence case everywhere. There are no all-caps eyebrows, no middle-dot meta strings and no arrows on links or buttons.
 
@@ -79,15 +80,49 @@ Supporting pieces from `components/aurora`:
 - **`DetailDrawer`** with `useDrawerParam`: the open record lives in the URL, so a drawer can be linked to. The drawer is at most `100vw` wide.
 - **`Banner`**, **`Pager`**, **`Chip`**, **`Button`**.
 
+## Depth
+
+Meridian is read top-down. Every level answers one question and opens the level below in one click. A page that shows a number without a way down is unfinished.
+
+| Level | Question | Surface |
+|---|---|---|
+| Portfolio | How healthy is our SAP data, and what do I do next? | Home |
+| Object | What is wrong with Material Master, and what does it break? | Object 360 |
+| Check | Which rule fails, on how many records, and why does it matter? | Finding drawer |
+| Record | Which rows, and who fixes them? | Sample table, steward inbox |
+
+The journey runs across the top of that ladder: Connect and load, Analyse, Fix, Process. The sidebar numbers those four stages because they are a sequence. Home sits above them and Admin below.
+
+## Rules
+
+These are the rules a page is reviewed against. Breaking one needs a reason written in the pull request.
+
+1. **Every number opens its rows.** A count, a chart mark or a matrix cell is a link to the filtered list behind it.
+2. **One loud element per page.** Home has the journey strip; Object 360 has the score ring. Everything else is hairline sheets and tabular numbers.
+3. **Big numbers are counts people act on.** 32–48px, weight 600, tabular figures, with a plain label under or above. Never a percentage without the count beside it.
+4. **Say the verdict in a sentence.** A page or hero opens with what is true now ("12 of 40 checks fail. Weakest on validity."), not a description of the page.
+5. **Charts answer one question each,** named in the card title as the answer's subject ("Score per run", "Findings per object"). No chart without a click target, no legend that is not also a filter or link.
+6. **Severity is colour plus shape.** Critical, high and medium carry hue; low is a dotted or hollow mark. A badge always carries the word.
+7. **Show the cap.** When a critical finding caps the score, say so beside the score, with the reason.
+8. **Name SAP things the way SAP does.** Objects by their business name, fields as `TABLE.FIELD` in mono, transactions as codes.
+9. **Empty states direct.** One sentence on what is missing and the link that fills it. No illustrations.
+10. **Nothing is invented.** No progress bars without a real basis, no projected figures without their confidence, no sample data in production surfaces.
+11. **Motion only shows a change.** The one entrance is the score ring filling once. Reduced motion turns it off.
+12. **The URL is the state.** Tabs, filters, the open drawer and the selected run live in the query string, so any view can be linked.
+
 ## Page patterns
 
-- **Overview (`components/command-centre/overview.tsx`)**:
-  - A one-sentence verdict.
-  - A metric strip.
-  - An object by dimension matrix, weakest first.
-  - Top items by impact.
-  - The score with its dimension bars and run history.
-  - Where the data lives.
+- **Home (`components/command-centre/overview.tsx`)**:
+  - The journey strip: five big counters (systems, objects, open findings, with stewards, resolved), each a link to its stage.
+  - One next step, chosen by `nextStep()`, with its action.
+  - Three charts: score per run (a point opens that run), findings per object by severity (a bar opens the object), severity share.
+  - An object by dimension matrix, weakest first. The object name opens Object 360; a cell opens its findings.
+  - Top items by impact, the score with its weighting and cap, and where the data lives.
+- **Object 360 (`app/(dashboard)/analyse/object/[module]/page.tsx`)**:
+  - The hero: object name, a verdict sentence, the cap if one applies, severity counts, and the score ring.
+  - Score by dimension (radar) beside score per run.
+  - What breaks in SAP: config-impact features the object's findings block or degrade, with their transactions.
+  - Worst checks: an impact ladder ranked by records affected. Each row expands in place to the remediation and the failing sample.
 - **Findings (`components/command-centre/findings.tsx`)**:
   - A register with filter chips by severity and object.
   - Columns: severity, finding with check and field, basis, object.

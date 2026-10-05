@@ -3464,6 +3464,90 @@
   padding: var(--aurora-space-4) var(--aurora-space-6) var(--aurora-space-6);
   color: var(--aurora-fg-primary);
 }
+/* Journey sidebar — labelled workspaces in the order a steward works, the
+ * open one expanded to its tabs. Collapses to icons under 900 px, where the
+ * hub tab bar takes over tab switching. */
+.aurora-app-shell { grid-template-columns: 232px minmax(0, 1fr); }
+.aurora-app-shell__rail {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  align-items: stretch;
+  padding: var(--aurora-space-2);
+}
+.aurora-app-shell__rail .aurora-rail__mark { margin-left: 4px; }
+.aurora-app-shell__rail .aurora-rail__licence { margin-left: 14px; margin-bottom: var(--aurora-space-2); }
+.mn-journey { display: flex; flex-direction: column; flex: 1; }
+.mn-journey ul { list-style: none; margin: 0; padding: 0; }
+.mn-journey__stages {
+  margin-top: var(--aurora-space-3) !important;
+  padding-top: var(--aurora-space-3) !important;
+  border-top: 1px solid var(--aurora-canvas-line);
+}
+.mn-journey__foot {
+  margin-top: auto !important;
+  padding-top: var(--aurora-space-3) !important;
+  border-top: 1px solid var(--aurora-canvas-line);
+}
+.mn-journey__item + .mn-journey__item { margin-top: 2px; }
+.mn-journey__ws {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 7px 8px;
+  border-radius: var(--aurora-radius-sheet);
+  color: var(--aurora-fg-secondary);
+  text-decoration: none;
+}
+.mn-journey__ws:hover { background: var(--aurora-canvas-overlay); color: var(--aurora-fg-primary); }
+.mn-journey__item[data-open] > .mn-journey__ws { color: var(--aurora-fg-primary); }
+.mn-journey__item[data-open] > .mn-journey__ws .mn-journey__icon { color: var(--aurora-accent-500); }
+.mn-journey__icon { display: inline-flex; width: 20px; height: 20px; flex-shrink: 0; margin-top: 1px; }
+.mn-journey__icon > svg { width: 100%; height: 100%; }
+.mn-journey__text { display: flex; flex-direction: column; min-width: 0; }
+.mn-journey__label { font-size: 14px; font-weight: 600; line-height: 20px; display: flex; gap: 6px; align-items: baseline; }
+.mn-journey__step {
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--aurora-fg-tertiary);
+}
+.mn-journey__hint { font-size: 12px; line-height: 16px; color: var(--aurora-fg-tertiary); }
+.mn-journey__tabs { margin: 2px 0 6px 18px !important; border-left: 1px solid var(--aurora-canvas-line); }
+.mn-journey__tab {
+  display: block;
+  position: relative;
+  padding: 5px 10px 5px 20px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--aurora-fg-secondary);
+  text-decoration: none;
+  border-radius: 0 var(--aurora-radius-sheet) var(--aurora-radius-sheet) 0;
+}
+.mn-journey__tab:hover { color: var(--aurora-fg-primary); background: var(--aurora-canvas-overlay); }
+.mn-journey__tab[aria-current="page"] { color: var(--aurora-accent-500); background: var(--aurora-accent-selected-bg); font-weight: 600; }
+.mn-journey__tab[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  left: -1px;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  background: var(--aurora-accent-500);
+}
+/* The sidebar lists the tabs on wide screens; the hub bar keeps only the title. */
+@media (min-width: 901px) {
+  .aurora-hub__bar .aurora-tabs { display: none; }
+  .aurora-hub__bar { padding-bottom: var(--aurora-space-3); align-items: center; }
+  .aurora-hub__title { margin: 0; }
+}
+@media (max-width: 900px) {
+  .aurora-app-shell { grid-template-columns: 56px minmax(0, 1fr); }
+  .mn-journey__text, .mn-journey__tabs { display: none; }
+  .mn-journey__ws { justify-content: center; padding: 10px 0; }
+  .aurora-app-shell__rail .aurora-rail__mark, .aurora-app-shell__rail .aurora-rail__licence { margin-left: auto; margin-right: auto; }
+}
 @media (max-width: 720px) {
   .aurora-hub__bar { padding: var(--aurora-space-2) var(--aurora-space-3) 0; gap: var(--aurora-space-3); }
   .aurora-hub__title { display: none; }

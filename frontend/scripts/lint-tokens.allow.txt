@@ -3,7 +3,4 @@
 app/(dashboard)/analytics/page.tsx
 app/styles/aurora-components.css
 app/styles/meridian.css
-components/force-password-change.tsx
-components/meridian/charts.tsx
-components/update-available-modal.tsx
 lib/format.ts

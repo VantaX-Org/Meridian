@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * The Meridian shell: a 48 px workspace rail, a 48 px top bar, and the
- * workspace underneath. Five workspaces (lib/workspaces.ts), ⌘1–⌘5 to switch,
+ * The Meridian shell: a labelled journey sidebar, a 48 px top bar, and the
+ * workspace underneath. Workspaces live in lib/workspaces.ts, ⌘1–⌘6 to switch,
  * ⌘K for everything else. The nav itself lives in lib/nav.ts and feeds the
  * palette and the titles here, so a page is never named differently in two
  * places. Pages not yet rebuilt on components/ui-core render inside the
@@ -11,15 +11,16 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo } from "react";
+import { Suspense, useEffect, useMemo } from "react";
 import {
-  ClipboardList, Database, LayoutDashboard, Moon, Rows3, Search, Settings2, Sun, Workflow,
+  ClipboardList, Database, LayoutDashboard, Moon, Rows3, ScanSearch, Search, Settings2, Sun, Workflow,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { AppShell, Breadcrumb, WorkspaceSwitcher } from "@/components/aurora";
+import { AppShell, Breadcrumb } from "@/components/aurora";
 import { CommandPalette, useCommandPalette } from "@/components/command-palette";
 import { MeridianMark } from "@/components/meridian/icons";
 import { JobRail } from "@/components/shell/job-rail";
+import { JourneyNav } from "@/components/shell/journey-nav";
 import { AuthGuard, HeaderExportMenu, NotificationBell, UserButton } from "@/components/shell/widgets";
 import { useJobStream } from "@/hooks/use-jobs";
 import { useNavGate, useVisibleNav } from "@/hooks/use-nav";
@@ -33,6 +34,7 @@ import type { HealthResponse } from "@/types/api";
 const ICONS: Record<WorkspaceId, React.ReactNode> = {
   "command-centre": <LayoutDashboard size={20} strokeWidth={1.5} />,
   data: <Database size={20} strokeWidth={1.5} />,
+  analyse: <ScanSearch size={20} strokeWidth={1.5} />,
   workbench: <ClipboardList size={20} strokeWidth={1.5} />,
   process: <Workflow size={20} strokeWidth={1.5} />,
   admin: <Settings2 size={20} strokeWidth={1.5} />,
@@ -54,7 +56,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   const isHub = HUB_ROUTES.has(pathname);
   const isAurora = isHub || AURORA_PAGES.some((p) => pathname === p || pathname.startsWith(p + "/")) || AURORA_DETAIL.test(pathname);
 
-  // ⌘1–⌘5 switch workspace (Alt on Windows/Linux keyboards without a Meta key).
+  // ⌘1–⌘6 switch workspace (Alt on Windows/Linux keyboards without a Meta key).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.altKey) || e.ctrlKey || e.shiftKey) return;
@@ -88,11 +90,9 @@ function Shell({ children }: { children: React.ReactNode }) {
           <Link href="/" className="aurora-rail__mark" aria-label="Meridian home">
             <MeridianMark size={22} />
           </Link>
-          <WorkspaceSwitcher
-            items={workspaces.map((w) => ({ id: w.id, label: w.label, shortcut: w.shortcut, href: w.href, icon: ICONS[w.id] }))}
-            active={here?.workspace.id}
-            renderLink={({ children: c, ...props }) => <Link {...props}>{c}</Link>}
-          />
+          <Suspense fallback={null}>
+            <JourneyNav workspaces={workspaces} icons={ICONS} />
+          </Suspense>
           <Link
             href="/settings/licence"
             className="aurora-rail__licence"

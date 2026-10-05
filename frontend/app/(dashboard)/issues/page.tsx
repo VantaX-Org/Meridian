@@ -260,7 +260,7 @@ function IssuesWorkList() {
         ) : (
           <EmptyState action={narrowed
             ? <button type="button" className="ui-link-button" onClick={clearAll}>Clear filters</button>
-            : <Link className="ui-link" href="/?tab=findings">Open findings</Link>}>
+            : <Link className="ui-link" href="/analyse?tab=findings">Open findings</Link>}>
             {narrowed ? "No failing records match these filters."
               : status === "open" ? "No open failing records. Records appear here after a run finds them failing."
               : `No ${STATUSES.find((s) => s.id === status)?.label.toLowerCase()} records.`}
