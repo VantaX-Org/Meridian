@@ -129,8 +129,8 @@ export function AnalysesSurface() {
       <Tally level={2} label="Analysis runs" figures={[
         { label: "Runs", value: versions.length, href: "/analyse?tab=analyses", loading: list.isLoading, verdict: `${completed.length} analysed.` },
         { label: "Latest score", value: latestDqs, href: completed[0] ? `/data/runs/${completed[0].id}` : "/analyse?tab=analyses", loading: list.isLoading, unit: latestDqs === null ? undefined : "of 100", verdict: completed[0] ? versionName(completed[0]) : "Nothing analysed yet." },
-        { label: "Baseline score", value: baselineDqs ?? "None set", href: baseline ? `/data/runs/${baseline.id}` : "/analyse?tab=analyses", loading: list.isLoading, verdict: baseline ? versionName(baseline) : "Pin a run as the baseline from a comparison." },
-        { label: "Change since baseline", value: sinceBaseline === null ? "Not known" : signed(sinceBaseline), href: "/analyse?tab=analyses", loading: list.isLoading,
+        { label: "Baseline score", value: baselineDqs ?? "None", href: baseline ? `/data/runs/${baseline.id}` : "/analyse?tab=analyses", loading: list.isLoading, verdict: baseline ? versionName(baseline) : "Pin a run as the baseline from a comparison." },
+        { label: "Change since baseline", value: sinceBaseline === null ? "None" : signed(sinceBaseline), href: "/analyse?tab=analyses", loading: list.isLoading,
           tone: sinceBaseline !== null && sinceBaseline < 0 ? "danger" : undefined, verdict: sinceBaseline === null ? "Needs a baseline and a later analysed run." : "Latest score minus baseline score." },
       ]} />
       <FilterBar onClear={object || systemId ? () => setParams({ module: null, system_id: null }) : undefined}>
