@@ -36,7 +36,7 @@ function jobProgress(r: SyncRun, avgDurationMs: number | null, nowMs: number): n
   return Math.min(95, Math.round(((nowMs - new Date(r.started_at).getTime()) / avgDurationMs) * 100));
 }
 
-const findingsHref = (p: Record<string, string>) => `/?${new URLSearchParams({ tab: "findings", ...p })}`;
+const findingsHref = (p: Record<string, string>) => `/analyse?${new URLSearchParams({ tab: "findings", ...p })}`;
 
 export function LiveOperationsPage() {
   const nowMs = useNowSec(true, 5_000) * 1000;

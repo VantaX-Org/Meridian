@@ -7,7 +7,7 @@ import { PermissionDenied } from "@/components/role-gate";
 import { useNavGate } from "@/hooks/use-nav";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
-import { LANDING, visibleWorkspaces, type WorkspaceId } from "@/lib/workspaces";
+import { LANDING, tabHref, visibleWorkspaces, type WorkspaceId } from "@/lib/workspaces";
 import { AURORA_TABS, TAB_BODIES } from "./tab-bodies";
 
 const LANDED_KEY = "mn_landed";
@@ -21,7 +21,8 @@ export function WorkspaceHub({ id, landing = false }: { id: WorkspaceId; landing
   const router = useRouter();
   const { role } = useRole();
   const gate = useNavGate();
-  const workspace = visibleWorkspaces(gate).find((w) => w.id === id);
+  const all = visibleWorkspaces(gate);
+  const workspace = all.find((w) => w.id === id);
   const [tabParam, setTab] = useUrlState("tab", "");
   const tabs = workspace?.tabs.filter((t) => !t.hidden) ?? [];
   const active = tabs.find((t) => t.id === tabParam) ?? tabs[0];
@@ -37,6 +38,18 @@ export function WorkspaceHub({ id, landing = false }: { id: WorkspaceId; landing
     }
     if (LANDING[role] !== "/") router.replace(LANDING[role]);
   }, [landing, role, router]);
+
+  // A tab that moved to another workspace (old bookmark, e.g. /?tab=findings) follows it there.
+  const owner = tabParam && !tabs.some((t) => t.id === tabParam)
+    ? all.find((w) => w.tabs.some((t) => t.id === tabParam)) : undefined;
+  useEffect(() => {
+    if (!owner) return;
+    const q = new URLSearchParams(window.location.search);
+    q.delete("tab");
+    const base = tabHref(owner, owner.tabs.find((t) => t.id === tabParam)!);
+    const rest = q.toString();
+    router.replace(rest ? `${base}${base.includes("?") ? "&" : "?"}${rest}` : base);
+  }, [owner, tabParam, router]);
 
   if (!workspace || !active) {
     return <PermissionDenied message="Nothing in this workspace is open to your role." />;

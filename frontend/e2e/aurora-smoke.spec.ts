@@ -19,14 +19,14 @@ for (const r of ROUTES) {
   });
 }
 
-test("the Command Centre shows the verdict for the latest run", async ({ app }) => {
+test("Home shows the verdict for the latest run", async ({ app }) => {
   await app.goto("/", { waitUntil: "load" });
   await expect(app.locator(".ui-verdict")).toBeVisible();
 });
 
 test("the Runs tab lists the recorded jobs with their outcome", async ({ app }) => {
   await app.goto("/data?tab=runs", { waitUntil: "load" });
-  await expect(app.getByRole("heading", { level: 1, name: "Data" })).toBeVisible();
+  await expect(app.getByRole("heading", { level: 1, name: "Connect & load" })).toBeVisible();
   await expect(app.getByText(/analysis|download/i).first()).toBeVisible();
 });
 

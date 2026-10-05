@@ -2,37 +2,37 @@
   {
     "name": "command-centre",
     "path": "/",
-    "heading": "Command Centre"
+    "heading": "Home"
   },
   {
     "name": "executive-report",
     "path": "/?tab=report",
-    "heading": "Command Centre"
+    "heading": "Home"
   },
   {
     "name": "systems",
     "path": "/data?tab=systems",
-    "heading": "Data"
+    "heading": "Connect & load"
   },
   {
     "name": "runs",
     "path": "/data?tab=runs",
-    "heading": "Data"
+    "heading": "Connect & load"
   },
   {
     "name": "import",
     "path": "/data?tab=import",
-    "heading": "Data"
+    "heading": "Connect & load"
   },
   {
     "name": "analyses",
-    "path": "/data?tab=analyses",
-    "heading": "Data"
+    "path": "/analyse?tab=analyses",
+    "heading": "Analyse"
   },
   {
     "name": "workbench",
     "path": "/workbench",
-    "heading": "Workbench"
+    "heading": "Fix"
   },
   {
     "name": "process",
@@ -51,43 +51,43 @@
   },
   {
     "name": "findings",
-    "path": "/?tab=findings",
-    "heading": "Command Centre"
+    "path": "/analyse?tab=findings",
+    "heading": "Analyse"
   },
   {
     "name": "cleaning",
     "path": "/workbench?tab=cleaning",
-    "heading": "Workbench"
+    "heading": "Fix"
   },
   {
     "name": "exceptions",
     "path": "/workbench?tab=exceptions",
-    "heading": "Workbench"
+    "heading": "Fix"
   },
   {
     "name": "dedup",
     "path": "/workbench?tab=dedup",
-    "heading": "Workbench"
+    "heading": "Fix"
   },
   {
     "name": "golden",
     "path": "/workbench?tab=golden",
-    "heading": "Workbench"
+    "heading": "Fix"
   },
   {
     "name": "glossary",
     "path": "/workbench?tab=glossary",
-    "heading": "Workbench"
+    "heading": "Fix"
   },
   {
     "name": "reports",
-    "path": "/workbench?tab=reports",
-    "heading": "Workbench"
+    "path": "/analyse?tab=reports",
+    "heading": "Analyse"
   },
   {
     "name": "notifications",
     "path": "/?tab=notifications",
-    "heading": "Command Centre"
+    "heading": "Home"
   },
   {
     "name": "settings",

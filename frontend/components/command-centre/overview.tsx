@@ -4,8 +4,11 @@
  * Command Centre overview: the verdict a consultant reads out and the sheet a
  * steward starts from. Every figure links to the findings behind it.
  *
+ *  - Journey: systems, analysed objects, open findings, steward inbox, resolved,
+ *    each a step a user can click into, and the one thing to do next.
  *  - Verdict and ledger: findings/aggregate, config impact (features blocked).
- *  - Score: composite DQS, dimension bars, DQS per run.
+ *  - Charts: DQS per run, findings per object by severity, severity share.
+ *  - Score: composite DQS and dimension bars.
  *  - Matrix: SAP object × DAMA dimension from each object's latest run, with
  *    the predictive 30-day forecast beside it.
  *  - Top by impact: the prescriptive planner (severity weight × records).
@@ -16,6 +19,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
+import { BarChart, DonutChart, LineChart, resolveChartTokens } from "@/components/aurora";
 import { GettingStarted } from "@/components/getting-started";
 import {
   Button,
@@ -32,6 +36,7 @@ import { useNowSec } from "@/hooks/use-now";
 import { getPredictiveAnalytics, getPrescriptiveAnalytics } from "@/lib/api/analytics";
 import { getConfigImpact, getSystems } from "@/lib/api/connectivity";
 import { compositeDqs, getFindingsAggregate } from "@/lib/api/findings";
+import { getMetrics } from "@/lib/api/stewardship";
 import { getVersions } from "@/lib/api/versions";
 import { formatModuleName, relativeTime } from "@/lib/format";
 import type { DimensionScores, DQSSummary, SystemType } from "@/types/api";
@@ -63,7 +68,7 @@ const SYSTEM_LABEL: Record<SystemType, string> = {
 function findingsHref(params: Record<string, string | undefined>): string {
   const q = new URLSearchParams({ tab: "findings" });
   for (const [k, v] of Object.entries(params)) if (v) q.set(k, v);
-  return `/?${q.toString()}`;
+  return `/analyse?${q.toString()}`;
 }
 
 function verdictSentence(input: {
@@ -86,25 +91,24 @@ function verdictSentence(input: {
   return `${movement} No critical or high-severity findings are open.`;
 }
 
-/** DQS per run as one line, with the 85 threshold dashed behind it. */
-function Sparkline({ points }: { points: number[] }) {
-  if (points.length < 2) return <p className="ui-micro">The trend appears after the second run.</p>;
-  const min = Math.min(60, ...points);
-  const max = 100;
-  const w = 100;
-  const h = 48;
-  const x = (i: number) => (i / (points.length - 1)) * w;
-  const y = (v: number) => h - ((v - min) / (max - min)) * h;
-  const d = points.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(2)},${y(v).toFixed(2)}`).join(" ");
-  const last = points[points.length - 1];
-  return (
-    <svg className="ui-spark" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" role="img"
-      aria-label={`DQS over ${points.length} runs, from ${points[0].toFixed(1)} to ${last.toFixed(1)}`}>
-      <line className="ui-spark__ref" x1={0} x2={w} y1={y(85)} y2={y(85)} />
-      <path className="ui-spark__line" d={d} />
-      <circle className="ui-spark__dot" cx={x(points.length - 1)} cy={y(last)} r={1.6} />
-    </svg>
-  );
+interface NextStep { text: string; action: string; href: string }
+
+/** The single most useful thing to do now, walking the journey in order. */
+function nextStep(input: {
+  systems: number | null; extracted: boolean; runs: number; critical: number;
+  topAction: { title: string; href: string } | null; backlog: number;
+}): NextStep | null {
+  const { systems, extracted, runs, critical, topAction, backlog } = input;
+  if (systems === 0) return { text: "No SAP system is connected yet.", action: "Connect a system", href: "/data?tab=systems" };
+  if (runs === 0 && !extracted) return { text: "A system is connected but nothing has been extracted.", action: "Run an extraction", href: "/data?tab=runs" };
+  if (runs === 0) return { text: "Data is loaded but has not been analysed.", action: "Run an analysis", href: "/analyse?tab=analyses" };
+  if (critical > 0 && topAction) return { text: `Start with the biggest problem: ${topAction.title}.`, action: "Open it", href: topAction.href };
+  if (backlog > 0) return { text: `${backlog.toLocaleString()} record${backlog === 1 ? " is" : "s are"} waiting for a steward.`, action: "Open the inbox", href: "/workbench" };
+  return { text: "Nothing critical is open. Re-run the analysis after the next extraction.", action: "Analysis runs", href: "/analyse?tab=analyses" };
+}
+
+function shortDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short" });
 }
 
 export function CommandCentreOverview() {
@@ -119,6 +123,7 @@ export function CommandCentreOverview() {
   const planner = useQuery({ queryKey: ["analytics.prescriptive", { limit: 5 }],
     queryFn: () => getPrescriptiveAnalytics({ limit: 5 }), retry: false, meta: { ignoreError: true } });
   const systems = useQuery({ queryKey: ["systems.list"], queryFn: getSystems, retry: false, meta: { ignoreError: true } });
+  const inbox = useQuery({ queryKey: ["stewardship.metrics"], queryFn: getMetrics, retry: false, meta: { ignoreError: true } });
   const { jobs } = useJobs();
   const nowSec = useNowSec(true, 30_000);
   const [dismissed, setDismissed] = useState<string | null>(() => {
@@ -150,10 +155,24 @@ export function CommandCentreOverview() {
     [forecast.data],
   );
 
+  /** DQS per run, oldest first, for the trend chart. */
   const trend = useMemo(() => (versions.data?.versions ?? [])
-    .map((v) => compositeDqs(v.dqs_summary))
-    .filter((p): p is number => p !== null)
+    .flatMap((v) => {
+      const dqs = compositeDqs(v.dqs_summary);
+      return dqs === null ? [] : [{ run: shortDate(v.run_at), dqs: Math.round(dqs * 10) / 10, id: v.id }];
+    })
     .reverse(), [versions.data]);
+
+  const colours = useMemo(() => resolveChartTokens(null), []);
+  const sev = [
+    { key: "critical", label: "Critical", color: colours.status.danger },
+    { key: "high", label: "High", color: colours.status.warning },
+    { key: "medium", label: "Medium", color: colours.status.info },
+    { key: "low", label: "Low", color: colours.axisInk },
+  ] as const;
+  const byObject = (a?.by_module ?? []).slice(0, 8).map((m) => ({
+    module: m.module, object: formatModuleName(m.module), critical: m.critical, high: m.high, medium: m.medium, low: m.low,
+  }));
 
   const arrivedJob = jobs.find((j) => j.kind !== "config_sync" && j.status === "completed"
     && nowSec - (j.finished_at ?? 0) < 900 && j.id !== dismissed);
@@ -165,6 +184,32 @@ export function CommandCentreOverview() {
 
   const empty = a && a.version_ids.length === 0 && !versions.isLoading && (versions.data?.versions.length ?? 0) === 0;
   const actions = planner.data?.actions.slice(0, 5) ?? [];
+  const actionHref = (x: (typeof actions)[number]) =>
+    x.check_id ? findingsHref({ check_id: x.check_id, module: x.module }) : "/workbench";
+
+  const lastSync = (systems.data ?? []).map((s) => s.last_sync_at).filter((t): t is string => !!t).sort().pop() ?? null;
+  const backlog = inbox.data?.backlog_total ?? 0;
+  const resolved = inbox.data?.items_by_status.resolved ?? 0;
+  const next = a && !versions.isLoading && !systems.isLoading ? nextStep({
+    systems: systems.data ? systems.data.length : null,
+    extracted: !!lastSync,
+    runs: versions.data?.versions.length ?? 0,
+    critical: a.severity.critical,
+    topAction: actions[0] ? { title: actions[0].title, href: actionHref(actions[0]) } : null,
+    backlog,
+  }) : null;
+  const journey = [
+    { label: "Systems connected", value: systems.data?.length ?? null, href: "/data?tab=systems",
+      sub: lastSync ? `Last extraction ${relativeTime(lastSync)}` : "Nothing extracted yet" },
+    { label: "Objects analysed", value: objects.length, href: "/analyse?tab=analyses",
+      sub: latestVersion ? `Latest run ${relativeTime(latestVersion.run_at)}` : "No run yet" },
+    { label: "Open findings", value: a?.total ?? null, href: "/analyse", tone: a?.severity.critical ? "danger" : undefined,
+      sub: a ? `${a.affected_records.toLocaleString()} records affected` : "" },
+    { label: "With stewards", value: inbox.data ? backlog : null, href: "/workbench",
+      sub: inbox.data ? `${Math.round(inbox.data.sla_compliance_rate)}% inside SLA` : "" },
+    { label: "Resolved", value: inbox.data ? resolved : null, href: "/workbench?tab=my-queue", tone: resolved ? "success" : undefined,
+      sub: "Records fixed by stewards" },
+  ];
 
   return (
     <div className="ui-page">
@@ -173,7 +218,7 @@ export function CommandCentreOverview() {
         summary={latestVersion ? `Latest run ${relativeTime(latestVersion.run_at)}, ${objects.length} SAP object${objects.length === 1 ? "" : "s"} assessed.` : undefined}
         actions={
           <>
-            <Button variant="primary" onClick={() => router.push("/?tab=findings")}>Open findings</Button>
+            <Button variant="primary" onClick={() => router.push("/analyse")}>Open findings</Button>
             <Button variant="secondary" onClick={() => router.push("/?tab=report")}>Executive report</Button>
           </>
         }
@@ -182,13 +227,33 @@ export function CommandCentreOverview() {
       {arrivedJob ? (
         <div className="ui-notice" role="status">
           <span>{arrivedJob.label} finished. {arrivedJob.message}</span>
-          <Button variant="secondary" size="sm" onClick={() => { dismiss(); router.push("/?tab=findings"); }}>Open findings</Button>
+          <Button variant="secondary" size="sm" onClick={() => { dismiss(); router.push("/analyse"); }}>Open findings</Button>
           <button type="button" className="ui-link-button" onClick={dismiss}>Dismiss</button>
         </div>
       ) : null}
 
       {empty ? (
         <div className="mn-legacy-host"><GettingStarted hasAnalysis={false} /></div>
+      ) : null}
+
+      <ol className="mn-journey-strip" aria-label="Progress from SAP to fixed records">
+        {journey.map((j) => (
+          <li key={j.label} data-tone={j.tone}>
+            <Link href={j.href} className="aurora-focus-ring">
+              <span className="mn-journey-strip__label">{j.label}</span>
+              <span className="mn-journey-strip__value aurora-number">{j.value === null ? "—" : j.value.toLocaleString()}</span>
+              <span className="mn-journey-strip__sub">{j.sub}</span>
+            </Link>
+          </li>
+        ))}
+      </ol>
+
+      {next ? (
+        <div className="mn-next" role="status">
+          <span className="mn-next__label">Next</span>
+          <span className="mn-next__text">{next.text}</span>
+          <Button variant="primary" size="sm" onClick={() => router.push(next.href)}>{next.action}</Button>
+        </div>
       ) : null}
 
       {a && dqs !== null ? (
@@ -208,6 +273,42 @@ export function CommandCentreOverview() {
         <Metric label="SAP features blocked" value={blocked === null ? null : blocked.toLocaleString()}
           tone={blocked ? "danger" : "default"} href="/process?tab=config-impact" />
       </MetricStrip>
+
+      <div className="mn-charts">
+        <SectionCard title="Score per run" meta={trend.length ? "Select a run to see its findings" : undefined}>
+          {trend.length < 2 ? <EmptyState>The trend appears after the second run.</EmptyState> : (
+            <LineChart data={trend} xKey="run" series={[{ key: "dqs", label: "DQS", color: colours.accent }]}
+              height={220} yFormatter={(v) => v.toFixed(0)} ariaLabel={`DQS over ${trend.length} runs`}
+              onPointClick={(i) => router.push(findingsHref({ version_id: trend[i]?.id }))} />
+          )}
+        </SectionCard>
+        <SectionCard title="Findings per object" meta={byObject.length ? "Select an object to open it" : undefined}>
+          {byObject.length === 0 ? <EmptyState>No findings yet.</EmptyState> : (
+            <BarChart data={byObject} xKey="object" stacked height={220}
+              series={sev.map((x) => ({ key: x.key, label: x.label, color: x.color }))}
+              ariaLabel="Open findings per SAP object, split by severity"
+              onBarClick={(i) => router.push(`/analyse/object/${encodeURIComponent(byObject[i].module)}`)} />
+          )}
+        </SectionCard>
+        <SectionCard title="By severity">
+          {!a || a.total === 0 ? <EmptyState>No open findings.</EmptyState> : (
+            <>
+              <DonutChart height={160} ariaLabel="Share of open findings by severity"
+                data={sev.map((x) => ({ name: x.label, value: a.severity[x.key], color: x.color }))} />
+              <ul className="mn-legend">
+                {sev.map((x) => (
+                  <li key={x.key}>
+                    <Link href={findingsHref({ severity: x.key })}>
+                      <span className="mn-legend__swatch" style={{ background: x.color }} aria-hidden />
+                      {x.label}<span className="aurora-number">{a.severity[x.key].toLocaleString()}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </SectionCard>
+      </div>
 
       <div className="ui-columns">
         <div className="ui-stack">
@@ -233,7 +334,7 @@ export function CommandCentreOverview() {
                       const f = forecastByModule.get(module);
                       return (
                         <tr key={module}>
-                          <th scope="row">{formatModuleName(module)}</th>
+                          <th scope="row"><Link className="ui-link" href={`/analyse/object/${encodeURIComponent(module)}`}>{formatModuleName(module)}</Link></th>
                           <td data-col="dqs" data-band={band(summary.composite_score)}>
                             <Link href={findingsHref({ module, version_id: versionId })}
                               title={summary.capped && summary.cap_reason ? summary.cap_reason : undefined}>
@@ -274,7 +375,7 @@ export function CommandCentreOverview() {
               <ol className="ui-ranked">
                 {actions.map((x) => (
                   <li key={`${x.type}-${x.id}`}>
-                    <Link href={x.check_id ? findingsHref({ check_id: x.check_id, module: x.module }) : "/workbench"}>
+                    <Link href={actionHref(x)}>
                       <StatusBadge status={x.severity} />
                       <span className="ui-ranked__title">{x.title}</span>
                       <span className="ui-ranked__num aurora-number">{x.affected_count.toLocaleString()} record{x.affected_count === 1 ? "" : "s"}</span>
@@ -313,12 +414,10 @@ export function CommandCentreOverview() {
                 );
               })}
             </dl>
-            <div style={{ marginTop: "var(--aurora-space-5)" }}>
-              <p className="ui-micro" style={{ marginBottom: "var(--aurora-space-2)" }}>
-                DQS per run, last {trend.length}. Dashed line at 85.
-              </p>
-              <Sparkline points={trend} />
-            </div>
+            <p className="ui-micro" style={{ marginTop: "var(--aurora-space-4)" }}>
+              The score weighs completeness and accuracy at 25% each, consistency at 20%, and the other three at 10%.
+              One critical finding caps it at 85, two or more at 70.
+            </p>
           </SectionCard>
 
           <SectionCard title="Where the data lives"
