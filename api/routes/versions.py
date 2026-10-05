@@ -47,6 +47,7 @@ async def list_versions(
     offset: int = Query(0, ge=0),
     module: Optional[str] = Query(None),
     system_id: Optional[str] = Query(None, description="Only versions downloaded from this system"),
+    include_archived: bool = Query(False),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
@@ -56,6 +57,8 @@ async def list_versions(
         .where(AnalysisVersion.tenant_id == tenant.id)
         .order_by(AnalysisVersion.run_at.desc())
     )
+    if not include_archived:
+        stmt = stmt.where(AnalysisVersion.metadata_.op("->>")("archived").is_distinct_from("true"))
     if module:
         # Filter by module in metadata JSON
         stmt = stmt.where(
@@ -67,6 +70,42 @@ async def list_versions(
     result = await db.execute(stmt)
     versions = result.scalars().all()
     return {"versions": [_version_to_response(v) for v in versions]}
+
+
+ARCHIVE_SQL = """
+    UPDATE analysis_versions SET metadata = COALESCE(metadata, '{}'::jsonb) || '{"archived": true}'::jsonb
+     WHERE tenant_id = :tid
+       AND (status = ANY(:done) OR run_at < now() - interval '6 hours')  -- runs a restart left "running"
+       AND COALESCE(metadata->>'archived', '') <> 'true'
+       AND id NOT IN (SELECT id FROM analysis_versions WHERE tenant_id = :tid AND status = ANY(:done)
+                       ORDER BY run_at DESC LIMIT :keep)
+"""
+RESTORE_SQL = ("UPDATE analysis_versions SET metadata = metadata - 'archived' "
+               "WHERE tenant_id = :tid AND metadata->>'archived' = 'true'")
+_DONE = ("complete", "partial", "agents_complete", "agents_failed", "ai_enriched", "failed")
+
+
+@router.post("/versions/archive", dependencies=[Depends(require_permission("analyse"))])
+async def archive_versions(
+    keep_latest: int = Query(1, ge=0, le=100),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Hide finished runs from every list, keeping the newest ``keep_latest``.
+    Nothing is deleted: findings, reports and history stay, and
+    ``/versions/restore`` brings them back."""
+    await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
+    res = await db.execute(text(ARCHIVE_SQL), {"tid": str(tenant.id), "done": list(_DONE), "keep": keep_latest})
+    await db.commit()
+    return {"archived": res.rowcount}
+
+
+@router.post("/versions/restore", dependencies=[Depends(require_permission("analyse"))])
+async def restore_versions(db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+    await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
+    res = await db.execute(text(RESTORE_SQL), {"tid": str(tenant.id)})
+    await db.commit()
+    return {"restored": res.rowcount}
 
 
 # a check changed state only when it ran cleanly in both versions

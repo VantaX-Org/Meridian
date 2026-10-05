@@ -8,7 +8,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { useMemo } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
@@ -20,7 +20,7 @@ import { getConfigMatchesExportUrl } from "@/lib/api/config-matches";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { compositeDqs } from "@/lib/api/findings";
 import { getAnalysisReportUrl, getCleaningReportUrl, getComparisonReportUrl, getExtractionReportUrl, getReportDownloadUrl, getReportJsonExportUrl } from "@/lib/api/reports";
-import { getVersion, getVersions } from "@/lib/api/versions";
+import { archiveVersions, getVersion, getVersions, restoreVersions } from "@/lib/api/versions";
 import { formatModuleName, relativeTime } from "@/lib/format";
 import type { Version } from "@/types/api";
 
@@ -54,6 +54,21 @@ export function ReportsSurface() {
   const latestDqs = latest ? compositeDqs(latest.dqs_summary) : null;
   const week = versions.filter((v) => Date.now() - new Date(v.run_at).getTime() < 7 * 86_400_000).length;
 
+  const qc = useQueryClient();
+  const restore = useMutation({
+    mutationFn: restoreVersions,
+    onSuccess: () => qc.invalidateQueries(),
+  });
+  const clear = useMutation({
+    mutationFn: () => archiveVersions(1),
+    onSuccess: ({ archived }) => {
+      qc.invalidateQueries();
+      toast.success(archived ? `Cleared ${archived} old run${archived === 1 ? "" : "s"}. The latest run stays.` : "No old runs to clear.",
+        archived ? { action: { label: "Undo", onClick: () => restore.mutate() } } : undefined);
+    },
+    onError: (e) => toast.error(`Old runs were not cleared. ${apiErrorMessage(e)}`),
+  });
+
   const download = useMutation({
     mutationFn: ({ v, kind }: { v: Version; kind: Kind }) => downloadAuthenticated(FILE[kind].url(v.id), FILE[kind].file(v.id)),
     onSuccess: (_r, { kind }) => toast.success(`${FILE[kind].label} downloaded`),
@@ -76,7 +91,10 @@ export function ReportsSurface() {
   return (
     <div className="ui-page">
       <PageHeader title="Reports" summary="Every completed analysis as a PDF for people, JSON for systems, and the config workbook for consultants."
-        actions={latest ? <Button onClick={() => download.mutate({ v: latest, kind: "pdf" })} disabled={download.isPending}>Download latest PDF</Button> : null} />
+        actions={latest ? <>
+          {versions.length > 1 ? <Button variant="secondary" onClick={() => clear.mutate()} disabled={clear.isPending}>Clear old runs</Button> : null}
+          <Button onClick={() => download.mutate({ v: latest, kind: "pdf" })} disabled={download.isPending}>Download latest PDF</Button>
+        </> : null} />
       <MetricStrip label="Reports">
         <Metric label="Reports" value={versions.length} />
         <Metric label="This week" value={week} />

@@ -101,10 +101,15 @@ function ProcessGraph({ activities, transitions }: { activities: MiningActivity[
   );
 }
 
+/* Objects with a process definition (Procure to Pay, Order to Cash) in api/services/process_writer.py. */
+const MAPPED = new Set(["accounts_payable", "accounts_receivable", "fi_gl", "material_master", "mm_purchasing", "sd_customer_master", "sd_sales_orders"]);
+
 export function ProcessMapPage() {
   const versionsQ = useQuery({ queryKey: ["versions.list", { limit: 10 }], queryFn: () => getVersions({ limit: 10 }) });
   const latest = useMemo(() => versionsQ.data?.versions.find(isComplete), [versionsQ.data]);
-  const modules = useMemo(() => (latest?.dqs_summary ? Object.keys(latest.dqs_summary) : []), [latest]);
+  const analysed = useMemo(() => (latest?.dqs_summary ? Object.keys(latest.dqs_summary) : []), [latest]);
+  const modules = useMemo(() => analysed.filter((m) => MAPPED.has(m)), [analysed]);
+  const unmapped = analysed.filter((m) => !MAPPED.has(m));
   const [module, setModule] = useState<string | null>(null);
   const active = module ?? modules[0] ?? null;
 
@@ -149,11 +154,13 @@ export function ProcessMapPage() {
         summary={`Mined from ${latest.label ?? "the latest complete version"}. ${bottlenecks.length ? `${plural(bottlenecks.length, "step")} in ${formatModuleName(active ?? "")} carry failing checks.` : "Every step passes its checks."}`}
       />
 
+      {unmapped.length ? <p className="ui-note">No process map yet for {unmapped.map(formatModuleName).join(", ")}. Maps cover Procure to Pay and Order to Cash objects.</p> : null}
+      {!modules.length ? <EmptyState>This analysis has no object with a process map. Analyse a purchasing, sales, vendor, customer, material or G/L object to see one.</EmptyState> : null}
       {modules.length > 1 ? (
         <Tabs ariaLabel="Module" items={modules.map((m) => ({ id: m, label: formatModuleName(m) }))} value={active ?? ""} onValueChange={setModule} />
       ) : null}
 
-      {graphQ.isLoading ? <TableSkeleton rows={8} label="Loading process graph" />
+      {!modules.length ? null : graphQ.isLoading ? <TableSkeleton rows={8} label="Loading process graph" />
         : graphQ.error ? <Banner tone="danger" title="Process graph could not be read">{(graphQ.error as Error).message}</Banner>
         : (
           <>
