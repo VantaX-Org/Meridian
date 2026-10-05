@@ -30,6 +30,8 @@ class UniquenessCheck(BaseCheck):
                 return name_key(s)
             if self.rule.get("normalize") == "alnum":  # identifiers: 'ZA 4012-345.678' == 'ZA4012345678'
                 return s.str.replace(r"[^0-9A-Za-z]", "", regex=True).str.upper()
+            if self.rule.get("normalize") == "space":  # 'PUMP 100' == 'PUMP100' but not 'PUMP-100'
+                return s.str.replace(r"\s", "", regex=True).str.upper()
             return s.str.upper() if self.rule.get("case_insensitive") else s
 
         norm = df[cols].apply(_norm)

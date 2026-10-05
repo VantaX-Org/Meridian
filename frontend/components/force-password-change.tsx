@@ -60,20 +60,20 @@ export function ForcePasswordChange() {
       <div
         className="w-full max-w-md rounded-xl p-6 shadow-2xl"
         style={{
-          background: "var(--aurora-canvas-raised, #111726)",
-          border: "1px solid var(--aurora-canvas-line, #2a3654)",
+          background: "var(--aurora-canvas-raised)",
+          border: "1px solid var(--aurora-canvas-line)",
         }}
       >
         <h2
           id="fpc-title"
           className="text-xl font-semibold mb-2"
-          style={{ color: "var(--aurora-fg-primary, #f7f8fa)" }}
+          style={{ color: "var(--aurora-fg-primary)" }}
         >
           Change your password to continue
         </h2>
         <p
           className="text-sm mb-5"
-          style={{ color: "var(--aurora-fg-secondary, #c7d0dc)" }}
+          style={{ color: "var(--aurora-fg-secondary)" }}
         >
           You&apos;re signed in as <strong>{user?.email}</strong>. This account
           still has its default password; set a new one before you can use
@@ -93,7 +93,7 @@ export function ForcePasswordChange() {
               onChange={(e) => setCurrentPassword(e.target.value)}
               className="w-full rounded-md px-3 py-2 text-sm outline-none"
               style={{
-                background: "var(--aurora-canvas-elevated, #172034)",
+                background: "var(--aurora-canvas-elevated)",
                 border: "1px solid var(--aurora-canvas-line)",
                 color: "var(--aurora-fg-primary)",
               }}
@@ -111,7 +111,7 @@ export function ForcePasswordChange() {
               onChange={(e) => setNewPassword(e.target.value)}
               className="w-full rounded-md px-3 py-2 text-sm outline-none"
               style={{
-                background: "var(--aurora-canvas-elevated, #172034)",
+                background: "var(--aurora-canvas-elevated)",
                 border: "1px solid var(--aurora-canvas-line)",
                 color: "var(--aurora-fg-primary)",
               }}
@@ -129,7 +129,7 @@ export function ForcePasswordChange() {
               onChange={(e) => setConfirm(e.target.value)}
               className="w-full rounded-md px-3 py-2 text-sm outline-none"
               style={{
-                background: "var(--aurora-canvas-elevated, #172034)",
+                background: "var(--aurora-canvas-elevated)",
                 border: "1px solid var(--aurora-canvas-line)",
                 color: "var(--aurora-fg-primary)",
               }}
@@ -156,8 +156,8 @@ export function ForcePasswordChange() {
               disabled={submitting}
               className="rounded-md px-5 py-2 text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-50"
               style={{
-                background: "var(--aurora-accent-500, #0057d2)",
-                color: "#ffffff",
+                background: "var(--aurora-accent-500)",
+                color: "var(--aurora-fg-inverse)",
               }}
             >
               {submitting ? "Changing…" : "Change password"}

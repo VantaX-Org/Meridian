@@ -240,19 +240,13 @@ export function RadialGauge({ value, max = 100, size = 96, stroke = 9 }: RadialG
   const off = c - (Math.min(value, max) / max) * c;
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
-      <defs>
-        <linearGradient id="mn-gauge-grad" x1="0" x2="1" y1="0" y2="1">
-          <stop offset="0%" stopColor="var(--mn-primary)" />
-          <stop offset="100%" stopColor="color-mix(in srgb, var(--mn-primary) 70%, #8B5CF6 30%)" />
-        </linearGradient>
-      </defs>
       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(15,23,42,0.07)" strokeWidth={stroke} />
       <circle
         cx={size / 2}
         cy={size / 2}
         r={r}
         fill="none"
-        stroke="url(#mn-gauge-grad)"
+        stroke="var(--mn-primary)"
         strokeWidth={stroke}
         strokeLinecap="round"
         strokeDasharray={c}
@@ -283,7 +277,7 @@ interface DimensionRingsProps {
 }
 export function DimensionRings({ dimensions, overall }: DimensionRingsProps) {
   const entries = Object.entries(dimensions);
-  const colors = ["var(--mn-primary)", "#8B5CF6", "#0EA5A4", "#F59E0B", "#EC4899", "#14B8A6"];
+  const colors = ["var(--aurora-viz-1)", "var(--aurora-viz-2)", "var(--aurora-viz-3)", "var(--aurora-viz-4)", "var(--aurora-viz-5)", "var(--aurora-viz-6)"];
   const v = useCountUp(overall, 1100, 1);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14, alignItems: "center" }}>
@@ -368,7 +362,7 @@ export function SeverityBars({ counts }: { counts: SeverityCounts }) {
     { key: "critical", label: "Critical", value: counts.critical, color: "var(--mn-neg)", bg: "var(--mn-neg-bg)" },
     { key: "high", label: "High", value: counts.high, color: "var(--mn-warn)", bg: "var(--mn-warn-bg)" },
     { key: "medium", label: "Medium", value: counts.medium, color: "var(--mn-primary)", bg: "var(--mn-primary-50)" },
-    { key: "low", label: "Low", value: counts.low, color: "#0EA5A4", bg: "rgba(14,165,164,0.10)" },
+    { key: "low", label: "Low", value: counts.low, color: "var(--aurora-fg-muted)", bg: "var(--aurora-canvas-line)" },
   ];
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -415,12 +409,12 @@ interface SmallMultiplesProps {
 }
 export function SmallMultiples({ series }: SmallMultiplesProps) {
   const colors: Record<string, string> = {
-    completeness: "var(--mn-primary)",
-    accuracy: "#8B5CF6",
-    consistency: "#0EA5A4",
-    timeliness: "#F59E0B",
-    uniqueness: "#EC4899",
-    validity: "#14B8A6",
+    completeness: "var(--aurora-viz-1)",
+    accuracy: "var(--aurora-viz-2)",
+    consistency: "var(--aurora-viz-3)",
+    timeliness: "var(--aurora-viz-4)",
+    uniqueness: "var(--aurora-viz-5)",
+    validity: "var(--aurora-viz-6)",
   };
   return (
     <div className="mn-multi-grid">

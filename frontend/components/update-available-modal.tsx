@@ -269,15 +269,15 @@ export function UpdateAvailableModal() {
       <div
         className="w-full max-w-md rounded-xl p-6 shadow-2xl"
         style={{
-          background: "var(--aurora-canvas-raised, #111726)",
-          border: "1px solid var(--aurora-canvas-line, #2a3654)",
+          background: "var(--aurora-canvas-raised)",
+          border: "1px solid var(--aurora-canvas-line)",
         }}
       >
         <div className="flex items-start justify-between gap-3 mb-2">
           <h2
             id="update-modal-title"
             className="text-xl font-semibold"
-            style={{ color: "var(--aurora-fg-primary, #f7f8fa)" }}
+            style={{ color: "var(--aurora-fg-primary)" }}
           >
             {stage === "progress"
               ? "Updating Meridian"
@@ -289,7 +289,7 @@ export function UpdateAvailableModal() {
               onClick={handleClose}
               aria-label="Close"
               className="shrink-0 rounded-md px-1.5 py-0.5 text-lg leading-none transition-opacity hover:opacity-70"
-              style={{ color: "var(--aurora-fg-tertiary, #8a93a8)" }}
+              style={{ color: "var(--aurora-fg-tertiary)" }}
             >
               ×
             </button>
@@ -298,7 +298,7 @@ export function UpdateAvailableModal() {
 
         {stage === "announce" && (
           <>
-            <p className="text-sm mb-1" style={{ color: "var(--aurora-fg-secondary, #c7d0dc)" }}>
+            <p className="text-sm mb-1" style={{ color: "var(--aurora-fg-secondary)" }}>
               <strong style={{ color: "var(--aurora-fg-primary)" }}>
                 {status.latest_version}
               </strong>{" "}
@@ -312,7 +312,7 @@ export function UpdateAvailableModal() {
               <p
                 className="text-sm mb-5 mt-3 rounded-md p-3 whitespace-pre-wrap"
                 style={{
-                  background: "var(--aurora-canvas-elevated, #172034)",
+                  background: "var(--aurora-canvas-elevated)",
                   border: "1px solid var(--aurora-canvas-line)",
                   color: "var(--aurora-fg-secondary)",
                   maxHeight: 180,
@@ -335,7 +335,7 @@ export function UpdateAvailableModal() {
                 type="button"
                 onClick={() => setRawStage("confirm")}
                 className="rounded-md px-5 py-2 text-sm font-medium transition-opacity hover:opacity-90"
-                style={{ background: "var(--aurora-accent-500, #0057d2)", color: "#ffffff" }}
+                style={{ background: "var(--aurora-accent-500)", color: "var(--aurora-fg-inverse)" }}
               >
                 Update now
               </button>
@@ -378,7 +378,7 @@ export function UpdateAvailableModal() {
                 onClick={handleConfirmUpdate}
                 disabled={stage === "submitting"}
                 className="rounded-md px-5 py-2 text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-50"
-                style={{ background: "var(--aurora-status-danger-500)", color: "#ffffff" }}
+                style={{ background: "var(--aurora-status-danger-500)", color: "var(--aurora-fg-inverse)" }}
               >
                 {stage === "submitting" ? "Starting…" : "Yes, update now"}
               </button>
@@ -445,7 +445,7 @@ export function UpdateAvailableModal() {
                   type="button"
                   onClick={handleManualRetry}
                   className="rounded-md px-4 py-2 text-sm font-medium transition-opacity hover:opacity-90"
-                  style={{ background: "var(--aurora-accent-500)", color: "#ffffff" }}
+                  style={{ background: "var(--aurora-accent-500)", color: "var(--aurora-fg-inverse)" }}
                 >
                   Check again
                 </button>
