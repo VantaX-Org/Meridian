@@ -142,7 +142,7 @@ export default function SystemPage() {
         items={[{ id: "overview", label: "Overview" }, { id: "objects", label: "Objects", count: modules.length || undefined },
           { id: "runs", label: "Runs", count: versions.length || undefined }, { id: "health", label: "Health" }, { id: "pilot", label: "Pilot" }]} />
 
-      {tab === "overview" ? <Overview id={id} modules={modules} versions={versions} onRun={(v) => router.push(`${here}/versions/${v}/profile`)} /> : null}
+      {tab === "overview" ? <Overview id={id} modules={modules} versions={versions} onRun={(v) => router.push(`/data/runs/${v}`)} /> : null}
       {tab === "objects" ? <Objects id={id} modules={modules} versions={versions} canSync={can("trigger_sync")} canAnalyse={can("analyse")} onChanged={refresh} /> : null}
       {tab === "runs" ? <Runs id={id} versions={versions} loading={versionsQ.isLoading} /> : null}
       {tab === "health" ? <Health id={id} modules={modules} canSync={can("trigger_sync")} canManage={can("manage_systems")} onChanged={refresh} /> : null}
@@ -191,7 +191,7 @@ function Overview({ id, modules, versions, onRun }: { id: string; modules: Syste
 function runColumns(systemId: string): ColumnDef<SystemVersion, unknown>[] {
   return [
     { id: "run", header: "Run", meta: meta({ sticky: "start", width: 220 }), cell: ({ row }) => (
-      <Link href={`/systems/${systemId}/versions/${row.original.id}/profile`} className="ui-link">
+      <Link href={`/data/runs/${row.original.id}`} className="ui-link">
         {row.original.label ?? new Date(row.original.run_at).toLocaleString()}
       </Link>) },
     { id: "status", header: "Status", meta: meta({ width: 120 }),
@@ -265,7 +265,7 @@ function Runs({ id, versions, loading }: { id: string; versions: SystemVersion[]
   if (loading) return <TableSkeleton rows={6} label="Loading runs" />;
   if (!versions.length) return <EmptyState>Nothing has been extracted from this system yet.</EmptyState>;
   return <DataTable columns={columns} data={versions} getRowId={(v) => v.id}
-    onRowActivate={(v) => router.push(`/systems/${id}/versions/${v.id}/profile`)} ariaLabel="Runs of this system" maxHeight="65vh" />;
+    onRowActivate={(v) => router.push(`/data/runs/${v.id}`)} ariaLabel="Runs of this system" maxHeight="65vh" />;
 }
 
 /* ── Health ────────────────────────────────────────────────────────────── */

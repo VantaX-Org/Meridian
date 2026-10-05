@@ -15,8 +15,8 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { LineChart, Select } from "@/components/aurora";
 import {
-  Banner, Button, Chip, DataTable, DetailDrawer, EmptyState, FilterBar, Metric, MetricStrip, Mono, PageHeader,
-  SectionCard, StatusBadge, TableSkeleton, type AuroraColumnMeta, type Status,
+  Banner, Button, Chip, DataTable, DetailDrawer, EmptyState, FilterBar, Mono, PageHeader,
+  SectionCard, StatusBadge, TableSkeleton, Tally, type AuroraColumnMeta, type Status,
 } from "@/components/ui-core";
 import { useRole } from "@/hooks/use-role";
 import { compareRecordKeys, compareRecords, compareVersions, getVersions, pinBaseline } from "@/lib/api/versions";
@@ -76,35 +76,35 @@ export function AnalysesSurface() {
   const versions = useMemo(() => list.data?.versions ?? [], [list.data]);
   const completed = useMemo(() => versions.filter(isComplete), [versions]);
 
-  // the pair: URL first, else the two most recent completed versions, older first
-  const pair = useMemo<string[]>(() => {
-    const v1 = search.get("v1"), v2 = search.get("v2");
-    if (v1 && v2) return [v1, v2];
-    return completed.slice(0, 2).reverse().map((v) => v.id);
-  }, [search, completed]);
-  const toggle = (id: string) => {
-    let next = pair.includes(id) ? pair.filter((p) => p !== id) : pair.length >= 2 ? [pair[1], id] : [...pair, id];
-    next = next.map((x) => versions.find((v) => v.id === x)).filter((v): v is Version => !!v)
-      .sort((a, b) => a.run_at.localeCompare(b.run_at)).map((v) => v.id);
-    setParams({ v1: next[0] ?? null, v2: next[1] ?? null });
-  };
+  // ticked rows live in state; Compare writes them to ?compare=v1,v2, which opens the drawer
+  const compareParam = search.get("compare");
+  const [picked, setPicked] = useState<string[]>(() => (compareParam ? compareParam.split(",").slice(0, 2) : []));
+  const byAge = (ids: string[]) => ids.map((x) => versions.find((v) => v.id === x)).filter((v): v is Version => !!v)
+    .sort((a, b) => a.run_at.localeCompare(b.run_at)).map((v) => v.id);
+  const pair = useMemo<string[]>(() => (compareParam ? byAge(compareParam.split(",").slice(0, 2)) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [compareParam, versions]);
+  const toggle = (id: string) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : p.length >= 2 ? [p[1], id] : [...p, id]));
   const older = versions.find((v) => v.id === pair[0]);
   const newer = versions.find((v) => v.id === pair[1]);
 
   const cmp = useQuery({
-    queryKey: ["versions.compare", pair[0], pair[1], object], enabled: pair.length === 2, retry: false,
+    queryKey: ["versions.compare", pair[0], pair[1], object], enabled: pair.length === 2 && !!older && !!newer, retry: false,
     queryFn: () => compareVersions(pair[0], pair[1], object || undefined),
   });
   const objects = useMemo(() => Array.from(new Set([...Object.keys(older?.dqs_summary ?? {}), ...Object.keys(newer?.dqs_summary ?? {}), ...(object ? [object] : [])])).sort(), [older, newer, object]);
   const trend = useMemo(() => completed.slice(0, 20).reverse().map((v) => ({ run: relativeTime(v.run_at), id: v.id, dqs: averageDqs(scoped(v.dqs_summary, object || undefined)) ?? 0 })), [completed, object]);
   const baseline = versions.find((v) => v.metadata?.baseline);
+  const latestDqs = completed[0] ? averageDqs(scoped(completed[0].dqs_summary, object || undefined)) : null;
+  const baselineDqs = baseline ? averageDqs(scoped(baseline.dqs_summary, object || undefined)) : null;
+  const sinceBaseline = latestDqs !== null && baselineDqs !== null && baseline?.id !== completed[0]?.id ? Math.round((latestDqs - baselineDqs) * 10) / 10 : null;
 
   const columns = useMemo<ColumnDef<Version, unknown>[]>(() => [
     { id: "pick", header: "", meta: meta({ width: 44, align: "center" }), cell: ({ row }) => (
-      <input type="checkbox" aria-label={`Compare ${versionName(row.original)}`} checked={pair.includes(row.original.id)} onChange={() => toggle(row.original.id)} onClick={(e) => e.stopPropagation()} />) },
+      <input type="checkbox" aria-label={`Compare ${versionName(row.original)}`} checked={picked.includes(row.original.id)} onChange={() => toggle(row.original.id)} onClick={(e) => e.stopPropagation()} />) },
     { id: "when", header: "Version", meta: meta({ sticky: "start", width: 240 }), cell: ({ row }) => (
       <div className="ui-cell-stack">
-        <span className="ui-cell-stack__main">{versionName(row.original)}</span>
+        <Link href={`/data/runs/${row.original.id}?tab=summary`} className="ui-cell-stack__main ui-link" onClick={(e) => e.stopPropagation()}>{versionName(row.original)}</Link>
         <span className="ui-cell-stack__sub">
           <span>{relativeTime(row.original.run_at)}</span>
           <Mono>{row.original.id.slice(0, 8)}</Mono>
@@ -112,51 +112,56 @@ export function AnalysesSurface() {
         </span>
       </div>) },
     { id: "status", header: "Status", meta: meta({ width: 120 }), cell: ({ row }) => <VersionStatus v={row.original} /> },
-    { id: "dqs", header: "DQS", meta: meta({ width: 80, align: "end", numeric: true }), cell: ({ row }) => { const d = averageDqs(scoped(row.original.dqs_summary, object || undefined)); return d === null ? "" : d.toFixed(1); } },
+    { id: "dqs", header: "Score", meta: meta({ width: 80, align: "end", numeric: true }), cell: ({ row }) => { const d = averageDqs(scoped(row.original.dqs_summary, object || undefined)); return d === null ? "" : d.toFixed(1); } },
     { id: "crit", header: "Critical", meta: meta({ width: 90, align: "end", numeric: true }), cell: ({ row }) => sumCounts(row.original.dqs_summary, "critical_count") },
     { id: "high", header: "High", meta: meta({ width: 80, align: "end", numeric: true }), cell: ({ row }) => sumCounts(row.original.dqs_summary, "high_count") },
     { id: "checks", header: "Checks", meta: meta({ width: 90, align: "end", numeric: true }), cell: ({ row }) => sumCounts(row.original.dqs_summary, "total_checks") },
     { id: "objects", header: "Objects", meta: meta({ minWidth: 200 }), cell: ({ row }) => (row.original.metadata?.modules ?? []).map(formatModuleName).join(", ") },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [pair, object, versions]);
+  ], [picked, object, versions]);
 
   return (
     <div className="ui-page">
       <PageHeader
         title="Analyses"
-        summary="Tick two versions to compare them. The older one is always on the left; the pin makes it the baseline later runs are measured against."
-      />
-      <MetricStrip label="Versions">
-        <Metric label="Versions" value={versions.length} />
-        <Metric label="Analysed" value={completed.length} />
-        <Metric label="Latest DQS" value={completed[0] ? averageDqs(completed[0].dqs_summary) : null} />
-        <Metric label="Baseline" value={baseline ? versionName(baseline) : "None set"} />
-      </MetricStrip>
+        summary="Tick two runs and compare them. The older one is always on the left; the pin makes it the baseline later runs are measured against."
+        actions={<Button disabled={picked.length !== 2} onClick={() => setParams({ compare: byAge(picked).join(",") })}>Compare</Button>} />
+      <Tally level={2} label="Analysis runs" figures={[
+        { label: "Runs", value: versions.length, href: "/analyse?tab=analyses", loading: list.isLoading, verdict: `${completed.length} analysed.` },
+        { label: "Latest score", value: latestDqs, href: completed[0] ? `/data/runs/${completed[0].id}` : "/analyse?tab=analyses", loading: list.isLoading, unit: latestDqs === null ? undefined : "of 100", verdict: completed[0] ? versionName(completed[0]) : "Nothing analysed yet." },
+        { label: "Baseline score", value: baselineDqs ?? "None", href: baseline ? `/data/runs/${baseline.id}` : "/analyse?tab=analyses", loading: list.isLoading, verdict: baseline ? versionName(baseline) : "Pin a run as the baseline from a comparison." },
+        { label: "Change since baseline", value: sinceBaseline === null ? "None" : signed(sinceBaseline), href: "/analyse?tab=analyses", loading: list.isLoading,
+          tone: sinceBaseline !== null && sinceBaseline < 0 ? "danger" : undefined, verdict: sinceBaseline === null ? "Needs a baseline and a later analysed run." : "Latest score minus baseline score." },
+      ]} />
       <FilterBar onClear={object || systemId ? () => setParams({ module: null, system_id: null }) : undefined}>
         <Select aria-label="Object" placeholder="All objects" value={object} options={objects.map((o) => ({ value: o, label: formatModuleName(o) }))} onValueChange={(v) => setParams({ module: v || null })} />
         {systemId ? <Chip selected onDismiss={() => setParams({ system_id: null })}>System <Mono>{systemId.slice(0, 8)}</Mono></Chip> : null}
       </FilterBar>
 
-      {older && newer ? <PairSummary older={older} newer={newer} object={object} /> : (
-        <Banner tone="info" title="Pick two analysed versions">The comparison, object scores and record-level change appear once two versions are ticked.</Banner>
-      )}
-      {cmp.isError ? <Banner tone="danger" title="These versions cannot be compared">{errorText(cmp.error)}</Banner> : null}
-
-      {cmp.data && older && newer ? <ObjectCompare data={cmp.data} newer={newer} older={older} /> : null}
-      {older && newer && cmp.data ? <RecordCompare older={older} newer={newer} object={object || undefined} canPin={can("analyse")}
-        onPinned={() => qc.invalidateQueries({ queryKey: ["versions.list"] })} /> : null}
-
       {trend.length >= 2 ? (
-        <SectionCard title="DQS trend" meta={`Last ${trend.length} analysed versions${object ? `, ${formatModuleName(object)}` : ""}`}>
-          <LineChart data={trend} xKey="run" series={[{ key: "dqs", label: "DQS" }]} height={180} ariaLabel="DQS trend" yFormatter={(v) => v.toFixed(0)} />
+        <SectionCard title="Score trend" meta={`Last ${trend.length} analysed runs${object ? `, ${formatModuleName(object)}` : ""}`}>
+          <LineChart data={trend} xKey="run" series={[{ key: "dqs", label: "Score" }]} height={180} ariaLabel="Score trend" yFormatter={(v) => v.toFixed(0)} />
         </SectionCard>
       ) : null}
 
-      <SectionCard title="Version history" meta={versions.length || undefined} flush>
+      <SectionCard title="Run history" meta={versions.length || undefined} flush>
         {list.isLoading ? <TableSkeleton rows={6} label="Loading versions" /> : versions.length ? (
-          <DataTable columns={columns} data={versions} getRowId={(v) => v.id} onRowActivate={(v) => toggle(v.id)} ariaLabel="Version history" maxHeight="56vh" />
-        ) : <EmptyState action={<Link href="/upload" className="ui-link">Import a file</Link>}>No versions yet. Import a file or download objects from a connected system to create the first one.</EmptyState>}
+          <DataTable columns={columns} data={versions} getRowId={(v) => v.id} onRowActivate={(v) => router.push(`/data/runs/${v.id}?tab=summary`)} ariaLabel="Run history" maxHeight="56vh" />
+        ) : <EmptyState action={<Link href="/data?tab=import" className="ui-link">Import a file</Link>}>No runs yet. Import a file or download objects from a connected system to create the first one.</EmptyState>}
       </SectionCard>
+
+      <DetailDrawer open={pair.length === 2} onClose={() => setParams({ compare: null })} ariaLabel="Compare runs"
+        header={<div className="ui-drawer-head"><h2 className="ui-drawer-head__title">Compare runs</h2></div>}>
+        {older && newer ? (
+          <div className="ui-stack">
+            <PairSummary older={older} newer={newer} object={object} />
+            {cmp.isError ? <Banner tone="danger" title="These runs cannot be compared">{errorText(cmp.error)}</Banner> : null}
+            {cmp.data ? <ObjectCompare data={cmp.data} newer={newer} older={older} /> : cmp.isLoading ? <TableSkeleton rows={4} label="Comparing" /> : null}
+            {cmp.data ? <RecordCompare older={older} newer={newer} object={object || undefined} canPin={can("analyse")}
+              onPinned={() => qc.invalidateQueries({ queryKey: ["versions.list"] })} /> : null}
+          </div>
+        ) : list.isLoading ? <TableSkeleton rows={4} label="Loading runs" /> : <Banner tone="warning" title="One of these runs was not found" />}
+      </DetailDrawer>
     </div>
   );
 }
@@ -166,7 +171,7 @@ function PairSummary({ older, newer, object }: { older: Version; newer: Version;
   const a = scoped(older.dqs_summary, object || undefined), b = scoped(newer.dqs_summary, object || undefined);
   const da = averageDqs(a), db = averageDqs(b);
   const rows: Array<{ k: string; a: number | null; b: number | null; digits?: number }> = [
-    { k: "DQS", a: da, b: db },
+    { k: "Score", a: da, b: db },
     { k: "Critical failures", a: sumCounts(a, "critical_count"), b: sumCounts(b, "critical_count"), digits: 0 },
     { k: "High failures", a: sumCounts(a, "high_count"), b: sumCounts(b, "high_count"), digits: 0 },
     { k: "Checks run", a: sumCounts(a, "total_checks"), b: sumCounts(b, "total_checks"), digits: 0 },
@@ -274,11 +279,9 @@ function RecordCompare({ older, newer, object, canPin, onPinned }: { older: Vers
         : canPin ? <Button variant="secondary" size="sm" onClick={() => pin.mutate()} disabled={pin.isPending}>Pin older version as baseline</Button> : null}>
       {diff.isError ? <Banner tone="warning" title="Record-level comparison unavailable">{errorText(diff.error)}</Banner> : d ? (
         <div className="ui-stack">
-          <MetricStrip label="Records that changed">
-            <Metric label="Newly failing records" value={d.totals.new.toLocaleString()} tone={d.totals.new ? "danger" : "default"} />
-            <Metric label="No longer failing" value={d.totals.resolved.toLocaleString()} />
-            <Metric label="Still failing" value={d.totals.persisting.toLocaleString()} />
-          </MetricStrip>
+          <p className="ui-note">
+            <strong>{d.totals.new.toLocaleString()}</strong> newly failing, <strong>{d.totals.resolved.toLocaleString()}</strong> no longer failing, <strong>{d.totals.persisting.toLocaleString()}</strong> still failing.
+          </p>
           {changed.length ? (
             <div className="ui-matrix-scroll">
               <table className="ui-mini-table">
@@ -303,22 +306,19 @@ function RecordCompare({ older, newer, object, canPin, onPinned }: { older: Vers
           ) : <EmptyState>No record moved between these versions.</EmptyState>}
         </div>
       ) : <TableSkeleton rows={4} label="Comparing records" />}
-      <DetailDrawer open={!!open} onClose={() => setOpen(null)} ariaLabel="Record keys"
-        header={open ? (
-          <div className="ui-drawer-head">
-            <h2 className="ui-drawer-head__title">{CHANGE_LABEL[open.change]} records for <Mono>{open.check}</Mono></h2>
-          </div>
-        ) : null}>
-        {open ? (
-          <div className="ui-detail">
+      {open ? (
+        <div className="ui-stack">
+          <p className="ui-note">
+            {CHANGE_LABEL[open.change]} records for <Mono>{open.check}</Mono>.{" "}
             <Link className="ui-link" href={`/issues?${new URLSearchParams({ check_id: open.check, module: open.module, status: open.change === "resolved" ? "resolved" : "open", version_id: open.change === "resolved" ? older.id : newer.id })}`}>Open these in failing records</Link>
-            {keys.isLoading ? <TableSkeleton rows={4} label="Loading record keys" /> : (
-              <ul className="ui-keys">{(keys.data?.record_keys ?? []).map((k) => <li key={k}><Mono>{k}</Mono></li>)}</ul>
-            )}
-            {(keys.data?.record_keys.length ?? 0) >= 200 ? <p className="ui-micro">The first 200 records are shown.</p> : null}
-          </div>
-        ) : null}
-      </DetailDrawer>
+            {" "}<button type="button" className="ui-link-button" onClick={() => setOpen(null)}>Hide</button>
+          </p>
+          {keys.isLoading ? <TableSkeleton rows={4} label="Loading record keys" /> : (
+            <ul className="ui-keys">{(keys.data?.record_keys ?? []).map((k) => <li key={k}><Mono>{k}</Mono></li>)}</ul>
+          )}
+          {(keys.data?.record_keys.length ?? 0) >= 200 ? <p className="ui-micro">The first 200 records are shown.</p> : null}
+        </div>
+      ) : null}
     </SectionCard>
   );
 }
