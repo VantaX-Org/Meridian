@@ -1215,6 +1215,53 @@ rules:
       __other__: Add a header text or reference in FB02 (both fields can be changed after posting); make one of them required for manual document types in OBA7 / the field status of the posting key.
     record_fix_template: 'Document {BKPF.BELNR}/{BKPF.GJAHR} (company code {BKPF.BUKRS}, type {BKPF.BLART}) posted by {BKPF.USNAM} has no header text or reference.'
 
+  - id: GL063
+    field: BKPF.CPUDT
+    check_class: cross_field_check
+    grain: BKPF
+    fail_when: '`BKPF.CPUDT`.dt.dayofweek >= 5'
+    require_populated: true
+    applies_when:
+      BKPF.AWTYP: [BKPF]
+      BKPF.BSTAT: {not_in: [D, M, S, V, W, Z]}
+    severity: low
+    dimension: validity
+    message: Manual journal entry was entered on a weekend
+    why_it_matters: >-
+      Journal-entry testing under ISA 240 and PCAOB AS 2401 looks for manual journals entered outside
+      normal working days, because entries made when reviewers are absent carry a higher risk of error or
+      override. Most weekend entries have an ordinary reason (period close, a system cut-over); the point
+      is that someone can name it.
+    rule_authority: regulatory
+    sap_impact: None in SAP itself; the entry is selected for audit sampling and needs a documented reason.
+    fix_map:
+      __other__: Review the document in FB03 (S/4 F0717) and record why it was entered on a weekend; if weekend entries are routine at close, document that in the close calendar.
+    record_fix_template: 'Document {BKPF.BELNR}/{BKPF.GJAHR} (company code {BKPF.BUKRS}) entered {BKPF.CPUDT} by {BKPF.USNAM}.'
+
+  - id: GL064
+    field: BSEG.DMBTR
+    check_class: cross_field_check
+    grain: BSEG
+    fail_when: (`BSEG.DMBTR` >= 10000) & (`BSEG.DMBTR` % 1000 == 0)
+    require_populated: true
+    applies_when:
+      BKPF.AWTYP: [BKPF]
+      BKPF.BSTAT: {not_in: [D, M, S, V, W, Z]}
+      BSEG.SHKZG: [S]
+    severity: low
+    dimension: validity
+    message: Manual journal line is a large round amount
+    why_it_matters: >-
+      Real transactions rarely land on exact thousands. Journal-entry testing under ISA 240 and PCAOB
+      AS 2401 selects large round-amount manual journals because estimates, top-side adjustments and
+      plugs tend to look like this. Many have a good reason (accruals, provisions, loan drawdowns);
+      the reason should be on record. Only the debit side is counted so each journal is flagged once per line pair.
+    rule_authority: regulatory
+    sap_impact: None in SAP itself; the line is selected for audit sampling and needs a documented basis.
+    fix_map:
+      __other__: Review the document in FB03 (S/4 F0717) and attach or reference the calculation behind the amount.
+    record_fix_template: 'Document {BSEG.BELNR}/{BSEG.GJAHR} line {BSEG.BUZEI} (company code {BSEG.BUKRS}, account {BSEG.HKONT}): {BSEG.DMBTR}.'
+
   - id: GL059
     field: BSEG.HKONT
     check_class: cross_field_check
