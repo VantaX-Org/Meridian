@@ -4,10 +4,13 @@ Mutations are appended automatically by api.middleware.audit. This route
 is the admin-facing viewer. Admin role (manage_users permission) required.
 """
 
+import csv
+import io
+import json
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,6 +22,40 @@ router = APIRouter(prefix="/api/v1", tags=["audit"])
 
 async def _set_rls(db: AsyncSession, tenant_id: uuid.UUID) -> None:
     await db.execute(text(f"SET app.tenant_id = '{str(tenant_id)}'"))
+
+
+_COLUMNS = ("id, actor_user_id, actor_email, action, entity_type, entity_id, method, path, "
+            "status_code, ip, user_agent, before_json, after_json, created_at")
+_EXPORT_MAX = 100_000
+_FORMULA = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _filters(tenant: Tenant, actor_user_id, entity_type, entity_id, action, method, since, until) -> tuple[str, dict]:
+    conditions = ["tenant_id = :tid"]
+    params: dict = {"tid": str(tenant.id)}
+    for value, clause, key in (
+        (actor_user_id, "actor_user_id = :actor", "actor"),
+        (entity_type, "entity_type = :etype", "etype"),
+        (entity_id, "entity_id = :eid", "eid"),
+        (action, "action = :action", "action"),
+        (method.upper() if method else None, "method = :method", "method"),
+        (since, "created_at >= :since", "since"),
+        (until, "created_at <= :until", "until"),
+    ):
+        if value:
+            conditions.append(clause)
+            params[key] = value
+    return " AND ".join(conditions), params
+
+
+def _entry(row) -> dict:
+    d = dict(row._mapping)
+    for k in ("id", "actor_user_id"):
+        if d.get(k):
+            d[k] = str(d[k])
+    if d.get("created_at"):
+        d["created_at"] = d["created_at"].isoformat()
+    return d
 
 
 @router.get("/audit")
@@ -42,33 +79,7 @@ async def list_audit_entries(
 ):
     """List audit log entries for this tenant, newest first."""
     await _set_rls(db, tenant.id)
-
-    conditions = ["tenant_id = :tid"]
-    params: dict = {"tid": str(tenant.id)}
-
-    if actor_user_id:
-        conditions.append("actor_user_id = :actor")
-        params["actor"] = actor_user_id
-    if entity_type:
-        conditions.append("entity_type = :etype")
-        params["etype"] = entity_type
-    if entity_id:
-        conditions.append("entity_id = :eid")
-        params["eid"] = entity_id
-    if action:
-        conditions.append("action = :action")
-        params["action"] = action
-    if method:
-        conditions.append("method = :method")
-        params["method"] = method.upper()
-    if since:
-        conditions.append("created_at >= :since")
-        params["since"] = since
-    if until:
-        conditions.append("created_at <= :until")
-        params["until"] = until
-
-    where_clause = " AND ".join(conditions)
+    where_clause, params = _filters(tenant, actor_user_id, entity_type, entity_id, action, method, since, until)
 
     count_result = await db.execute(
         text(f"SELECT COUNT(*) FROM audit_log WHERE {where_clause}"),
@@ -81,9 +92,7 @@ async def list_audit_entries(
     result = await db.execute(
         text(
             f"""
-            SELECT id, actor_user_id, actor_email, action, entity_type,
-                   entity_id, method, path, status_code, ip, user_agent,
-                   before_json, after_json, created_at
+            SELECT {_COLUMNS}
             FROM audit_log
             WHERE {where_clause}
             ORDER BY created_at DESC
@@ -92,18 +101,52 @@ async def list_audit_entries(
         ),
         params,
     )
-    entries = []
-    for row in result.fetchall():
-        d = dict(row._mapping)
-        if d.get("id"):
-            d["id"] = str(d["id"])
-        if d.get("actor_user_id"):
-            d["actor_user_id"] = str(d["actor_user_id"])
-        if d.get("created_at"):
-            d["created_at"] = d["created_at"].isoformat()
-        entries.append(d)
+    entries = [_entry(row) for row in result.fetchall()]
 
     return {"entries": entries, "total": total, "limit": limit, "offset": offset}
+
+
+def _csv_cell(value) -> str:
+    if value is None:
+        return ""
+    s = value if isinstance(value, str) else json.dumps(value, default=str) if isinstance(value, (dict, list)) else str(value)
+    return "'" + s if s.startswith(_FORMULA) else s  # spreadsheet formula injection
+
+
+@router.get("/audit/export")
+async def export_audit_entries(
+    actor_user_id: Optional[str] = Query(None),
+    entity_type: Optional[str] = Query(None),
+    entity_id: Optional[str] = Query(None),
+    action: Optional[str] = Query(None),
+    method: Optional[str] = Query(None),
+    since: Optional[str] = Query(None),
+    until: Optional[str] = Query(None),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("manage_users")),
+):
+    """Audit log as CSV for auditors and SIEM import, oldest first, same filters as /audit.
+    Capped at 100,000 rows; narrow with since/until for longer histories."""
+    await _set_rls(db, tenant.id)
+    where_clause, params = _filters(tenant, actor_user_id, entity_type, entity_id, action, method, since, until)
+    params["limit"] = _EXPORT_MAX
+    result = await db.execute(
+        text(f"SELECT {_COLUMNS} FROM audit_log WHERE {where_clause} ORDER BY created_at LIMIT :limit"),
+        params,
+    )
+    buf = io.StringIO()
+    out = csv.writer(buf)
+    cols = [c.strip() for c in _COLUMNS.split(",")]
+    out.writerow(cols)
+    for row in result.fetchall():
+        d = _entry(row)
+        out.writerow([_csv_cell(d.get(c)) for c in cols])
+    return Response(
+        buf.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="audit_log.csv"'},
+    )
 
 
 @router.get("/audit/summary")

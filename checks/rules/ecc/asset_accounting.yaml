@@ -668,6 +668,25 @@ rules:
       ANLZ-STORT, the custodian to ANLZ-PERNR, and write the physical tag number into INVNR (AS02 or
       mass change AR31).
   record_fix_template: 'Asset {ANLA.ANLN1}-{ANLA.ANLN2}: inventory number ''{actual_value}'' is not an asset tag.'
+- id: AA048
+  field: ANLA.AKTIV
+  check_class: cross_field_check
+  fail_when: '`ANLA.AKTIV` > @today'
+  require_populated: true
+  severity: high
+  dimension: validity
+  message: Asset capitalisation date is in the future
+  why_it_matters: >-
+    The capitalisation date sets the start of ordinary depreciation through the period control of the
+    depreciation key. A date in the future means depreciation will not start when the asset is in use,
+    so the period's depreciation and the net book value are misstated. It usually comes from a typo in
+    the year during a legacy data load (AS91) or a manual change in AS02.
+  rule_authority: best_practice
+  sap_impact: AFAB posts no depreciation for the asset until the future date; AW01N shows the asset as not yet capitalised.
+  fix_map:
+    __other__: Correct the capitalisation date in AS02 (S/4HANA Manage Fixed Asset F2747), then recalculate depreciation with AFAR.
+  record_fix_template: 'Asset {ANLA.ANLN1}-{ANLA.ANLN2} (company code {ANLA.BUKRS}) is capitalised on {ANLA.AKTIV}.'
+
 - id: AA200
   field: ANLA.ANLN1
   check_class: exists_check
