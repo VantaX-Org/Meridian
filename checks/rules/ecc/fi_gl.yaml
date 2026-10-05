@@ -1332,6 +1332,23 @@ rules:
         close and that OB52 opens the special periods only during the close.
     record_fix_template: 'Document {BKPF.BELNR}/{BKPF.GJAHR} (company code {BKPF.BUKRS}) posted to period {BKPF.MONAT} by {BKPF.USNAM}.'
 
+  - id: GL068
+    field: BKPF.USNAM
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: Accounting document has no entering user
+    why_it_matters: >-
+      SAP stamps the user who entered every document. A blank user name breaks the audit trail and
+      segregation-of-duties testing, because nobody can be held to the posting. It usually means the
+      header was loaded or changed outside the posting logic.
+    rule_authority: sap_hard_constraint
+    sap_impact: Change-log, authorisation and segregation-of-duties reviews cannot attribute the document.
+    fix_map:
+      __blank__: Compare the document in FB03 with the extract; re-extract if FB03 shows a user, otherwise
+        trace the interface or load program that created the header.
+    record_fix_template: 'Document {BKPF.BELNR}/{BKPF.GJAHR} (company code {BKPF.BUKRS}): entering user missing.'
+
   - id: GL059
     field: BSEG.HKONT
     check_class: cross_field_check
