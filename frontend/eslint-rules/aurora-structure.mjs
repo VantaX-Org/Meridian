@@ -2,7 +2,7 @@
  * aurora-structure: the page-structure rules from DESIGN.md "Rules".
  * Rule numbers in the comments are the DESIGN.md numbers.
  */
-import { DEPTH_ROUTES } from "../lib/depth.ts";
+import { DEPTH_ROUTES } from "../lib/depth.mjs";
 
 const norm = (f) => f.replaceAll("\\", "/");
 const jsxName = (n) => (n.type === "JSXIdentifier" ? n.name : null);
@@ -38,7 +38,7 @@ const tallyFigureHref = mk(
 const oneTally = mk(
   {
     many: "One Tally per page. A second Tally makes a second loud element.",
-    level: "This route is level {{want}} in lib/depth.ts; the Tally says level {{got}}.",
+    level: "This route is level {{want}} in lib/depth.mjs; the Tally says level {{got}}.",
   },
   (context) => {
     const route = routeOf(context.filename);

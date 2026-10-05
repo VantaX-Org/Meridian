@@ -1,6 +1,6 @@
 /** Run: `node lib/depth.test.mjs` */
 import assert from "node:assert/strict";
-import { depthLevel } from "./depth.ts";
+import { depthLevel } from "./depth.mjs";
 
 assert.equal(depthLevel("/"), 1);
 assert.equal(depthLevel("/analyse/object/business_partner"), 3);
