@@ -109,6 +109,7 @@ function nextStep(input: {
   if (runs === 0 && !extracted) return { text: "A system is connected but nothing has been extracted.", action: "Run an extraction", href: "/data?tab=runs" };
   if (runs === 0) return { text: "Data is loaded but has not been analysed.", action: "Run an analysis", href: "/analyse?tab=analyses" };
   if (critical > 0 && topAction) return { text: topAction.text, action: "Open finding", href: topAction.href };
+  if (critical > 0) return { text: `${plural(critical, "critical finding")} ${critical === 1 ? "is" : "are"} open.`, action: "Open critical findings", href: "/analyse?tab=findings&severity=critical" };
   if (backlog > 0) return { text: `${plural(backlog, "record")} ${backlog === 1 ? "is" : "are"} waiting for a steward.`, action: "Open the inbox", href: "/workbench" };
   return { text: "Nothing critical is open. Re-run the analysis after the next extraction.", action: "Analysis runs", href: "/analyse?tab=analyses" };
 }
@@ -272,7 +273,7 @@ export function CommandCentreOverview() {
             loading: agg.isLoading,
             error: agg.isError ? { retry: retryAgg } : undefined,
             tone: a?.severity.critical ? "danger" : undefined,
-            verdict: a ? `${totalChecks ? `of ${totalChecks.toLocaleString()}. ` : ""}${plural(a.severity.critical, "critical")}` : "",
+            verdict: a ? `${totalChecks ? `of ${totalChecks.toLocaleString()}. ` : ""}${a.severity.critical.toLocaleString()} critical` : "",
           },
           {
             label: "Failing records",
