@@ -258,9 +258,24 @@ pull_images() {
     # Meridian images first, by name — independent of the (possibly outdated)
     # compose file on this host, which is refreshed from the new image next.
     info "Pulling latest images..."
+    # Docker's own root and containerd's content store (used by the containerd image store) can sit on
+    # different filesystems; an image pull fills whichever one holds the layers.
+    local d free
+    for d in "$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || echo /var/lib/docker)" /var/lib/containerd; do
+        [[ -d "$d" ]] || continue
+        free=$(df -Pk "$d" | awk 'NR==2{print int($4/1048576)}')
+        [[ "${free:-0}" -ge 10 ]] \
+            || error "Only ${free:-?} GB free on ${d}. Running stack is untouched. Free space (docker image prune -f; docker builder prune -f) and rerun."
+    done
+    local out
     for img in "${IMAGES[@]}"; do
-        docker pull "${img}:latest" >/dev/null \
-            || error "Pull of ${img} failed. Running stack is untouched. Check network / docker login ghcr.io."
+        if ! out=$(docker pull "${img}:latest" 2>&1 >/dev/null); then
+            echo "$out" | tail -3 >&2
+            if grep -q 'no space left on device' <<<"$out"; then
+                error "Pull of ${img} failed: disk full. Running stack is untouched. Free space (docker image prune -f; docker builder prune -f) and rerun."
+            fi
+            error "Pull of ${img} failed. Running stack is untouched. Check network / docker login ghcr.io."
+        fi
     done
     info "Images pulled successfully"
 }
