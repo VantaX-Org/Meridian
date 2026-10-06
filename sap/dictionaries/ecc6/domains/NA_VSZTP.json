@@ -1,0 +1,32 @@
+{
+ "domain": "NA_VSZTP",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "1",
+   "high": null,
+   "text": "Send with periodically scheduled job"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Send with job, with additional time specification"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Send with application own transaction"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Send immediately (when saving the application)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

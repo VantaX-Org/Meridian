@@ -2470,3 +2470,277 @@ rules:
     fix_map:
       __other__: Enter the control key from the customer's bank details (XD02 > Payment transactions) or maintain the IBAN.
     record_fix_template: 'Customer {KNBK.KUNNR}: bank account in {KNBK.BANKS} has no control key.'
+  - id: AR255
+    field: KNKK.KLIMK
+    check_class: cross_field_check
+    fail_when: (`KNKA.KLIMG` > 0) & (`KNKK.KLIMK` > `KNKA.KLIMG`)
+    grain: KNKK
+    s4_area: credit_management
+    s4_impact: warning
+    simplification_item: Credit Management - FI-AR-CR replaced by FIN-FSCM-CR
+    baseline: s4_target
+    severity: medium
+    dimension: consistency
+    message: Credit limit of a credit control area is higher than the customer's overall credit limit
+    why_it_matters: Credit Management migration writes the overall limit from KNKA to the business partner credit profile and
+      the area limit to the credit segment. A segment limit above the overall limit contradicts the profile and is capped or
+      rejected by the credit check.
+    rule_authority: s4hana_migration
+    sap_impact: After the conversion the credit check on sales orders uses the lower overall limit, or the migration reports
+      the segment as inconsistent.
+    fix_map:
+      __other__: 'Align the limits in FD32: raise the overall limit (central data) or lower the credit control area limit before
+        the credit master data migration.'
+    record_fix_template: 'Customer {KNKK.KUNNR}, credit control area {KNKK.KKBER}: area limit exceeds the overall credit limit.'
+  - id: AR256
+    field: KNKA.WAERS
+    check_class: null_check
+    applies_when:
+      KNKA.KLIMG:
+        gt: 0
+    grain: KNKA
+    s4_area: credit_management
+    s4_impact: blocking
+    simplification_item: Credit Management - FI-AR-CR replaced by FIN-FSCM-CR
+    baseline: s4_target
+    severity: high
+    dimension: completeness
+    message: Customer has an overall credit limit but no currency in the central credit data
+    why_it_matters: The overall credit limit is migrated to the business partner credit profile together with its currency.
+      A limit without currency cannot be converted.
+    rule_authority: s4hana_migration
+    sap_impact: The credit master data migration rejects the customer's central credit data; credit checks lose the overall
+      limit.
+    fix_map:
+      __other__: Enter the currency in the central credit data (FD32 > Central data).
+    record_fix_template: 'Customer {KNKA.KUNNR}: overall credit limit has no currency.'
+  - id: AR257
+    field: KNKA.KUNNR
+    check_class: exists_check
+    applies_when:
+      KNKA.KLIMG:
+        gt: 0
+    target_table: KNKK
+    target_fields:
+    - KUNNR
+    grain: KNKA
+    s4_area: credit_management
+    s4_impact: warning
+    simplification_item: Credit Management - FI-AR-CR replaced by FIN-FSCM-CR
+    baseline: s4_target
+    severity: medium
+    dimension: consistency
+    message: Customer has an overall credit limit but no credit control area data (KNKK)
+    why_it_matters: An overall limit without any segment data leaves nothing to check against. After migration the business
+      partner has a credit profile with no credit segment.
+    rule_authority: s4hana_migration
+    sap_impact: The overall limit has no effect in the credit check; orders are not limited as the central data suggests.
+    fix_map:
+      __other__: Create the credit control area data for the customer (FD32) or remove the overall limit.
+    record_fix_template: 'Customer {KNKA.KUNNR}: overall credit limit set, no credit control area data.'
+  - id: AR258
+    field: T014.KKBER
+    check_class: exists_check
+    target_table: UKM_KKBER2SGM
+    target_fields:
+    - KKBER
+    grain: T014
+    s4_area: credit_management
+    s4_impact: blocking
+    simplification_item: Credit Management - FI-AR-CR replaced by FIN-FSCM-CR
+    baseline: s4_target
+    severity: high
+    dimension: consistency
+    message: Credit control area has no credit segment assigned in SAP Credit Management
+    why_it_matters: Every credit control area must be mapped to a credit segment (UKM_KKBER2SGM) before credit data is migrated.
+      This rule checks the configuration itself, whether or not customers use the area yet.
+    rule_authority: s4hana_migration
+    sap_impact: No credit data can be migrated for the area; orders in the area fail the credit check after the conversion.
+    fix_map:
+      __other__: Define the credit segment and assign the credit control area to it in SPRO > Financial Supply Chain Management
+        > Credit Management.
+    record_fix_template: 'Credit control area {T014.KKBER}: no credit segment in UKM_KKBER2SGM.'
+  - id: AR259
+    field: T691A.KKBER
+    check_class: exists_check
+    target_table: T014
+    target_fields:
+    - KKBER
+    grain: T691A
+    s4_area: credit_management
+    s4_impact: warning
+    simplification_item: Credit Management - FI-AR-CR replaced by FIN-FSCM-CR
+    baseline: s4_target
+    severity: low
+    dimension: consistency
+    message: Risk category is defined for a credit control area that does not exist
+    why_it_matters: Risk categories (T691A) belong to a credit control area. One for an area that is not in T014 cannot be mapped
+      to a credit segment and is dropped by the migration.
+    rule_authority: s4hana_migration
+    sap_impact: The risk category cannot be used after the conversion; customers carrying it lose their rating.
+    fix_map:
+      __other__: Delete the entry or define the credit control area (SPRO > Credit Management > Credit Control Account).
+    record_fix_template: 'Risk category {T691A.CTLPC}: credit control area {T691A.KKBER} does not exist.'
+  - id: AR260
+    field: T014.CTLPC
+    check_class: exists_check
+    fields:
+    - T014.CTLPC
+    - T014.KKBER
+    target_table: T691A
+    target_fields:
+    - CTLPC
+    - KKBER
+    grain: T014
+    s4_area: credit_management
+    s4_impact: warning
+    simplification_item: Credit Management - FI-AR-CR replaced by FIN-FSCM-CR
+    baseline: s4_target
+    severity: medium
+    dimension: consistency
+    message: Default risk category of a credit control area is not defined for that area
+    why_it_matters: The default risk category of the area is the rating that new credit accounts start with. It must exist in
+      T691A for the same area, or the business partner credit profile starts with an invalid risk class.
+    rule_authority: s4hana_migration
+    sap_impact: New business partners get no valid risk class after conversion.
+    fix_map:
+      __other__: Define the risk category for the credit control area (OB01) or change the default.
+    record_fix_template: 'Credit control area {T014.KKBER}: default risk category {T014.CTLPC} not defined in T691A.'
+  - id: AR261
+    field: KNBK.KOINH
+    check_class: null_check
+    grain: KNBK
+    s4_area: business_partner
+    s4_impact: warning
+    simplification_item: Business Partner Approach (SAP Note 2265093)
+    baseline: s4_target
+    severity: medium
+    dimension: completeness
+    message: Customer bank account has no account holder
+    why_it_matters: The business partner bank detail carries the account holder name. The customer-vendor integration copies
+      it as is; a blank holder fails the payment run checks in S/4HANA for direct debits.
+    rule_authority: s4hana_migration
+    sap_impact: Direct debits and refunds to the account are rejected until the holder is entered.
+    fix_map:
+      __other__: Enter the account holder in the customer bank details (XD02 > Payment transactions).
+    record_fix_template: 'Customer {KNBK.KUNNR}: bank account in {KNBK.BANKS} has no account holder.'
+  - id: AR262
+    field: KNBK.BVTYP
+    check_class: uniqueness_check
+    fields:
+    - KNBK.KUNNR
+    - KNBK.BVTYP
+    grain: KNBK
+    s4_area: business_partner
+    s4_impact: warning
+    simplification_item: Business Partner Approach (SAP Note 2265093)
+    baseline: s4_target
+    severity: medium
+    dimension: uniqueness
+    message: Partner bank type is used twice for the same customer
+    why_it_matters: Each bank detail ID of a business partner must be unique. The customer-vendor integration builds the ID
+      from the partner bank type, so two accounts with the same type collide.
+    rule_authority: s4hana_migration
+    sap_impact: The business partner synchronisation rejects the second bank account of the customer.
+    fix_map:
+      __other__: Give each bank account its own partner bank type (XD02 > Payment transactions).
+    record_fix_template: 'Customer {KNBK.KUNNR}: partner bank type {KNBK.BVTYP} is assigned to more than one bank account.'
+  - id: AR263
+    field: KNA1.SPRAS
+    check_class: exists_check
+    target_table: T002
+    target_fields:
+    - SPRAS
+    grain: KNA1
+    s4_area: business_partner
+    s4_impact: blocking
+    simplification_item: Business Partner Approach (SAP Note 2265093)
+    baseline: s4_target
+    severity: high
+    dimension: validity
+    message: Customer language key is not an installed language
+    why_it_matters: The language of the customer becomes the correspondence language of the business partner. A language that
+      is not in T002 cannot be mapped.
+    rule_authority: s4hana_migration
+    sap_impact: The business partner is not created for the customer.
+    fix_map:
+      __other__: Correct the language in XD02 > Address.
+    record_fix_template: 'Customer {KNA1.KUNNR}: language key {KNA1.SPRAS} is not in T002.'
+  - id: AR264
+    field: KNA1.LIFNR
+    check_class: exists_check
+    fields:
+    - KNA1.LIFNR
+    - KNA1.KUNNR
+    target_table: LFA1
+    target_fields:
+    - LIFNR
+    - KUNNR
+    grain: KNA1
+    s4_area: business_partner
+    s4_impact: warning
+    simplification_item: Business Partner Approach (SAP Note 2265093)
+    baseline: s4_target
+    severity: high
+    dimension: consistency
+    message: Customer links to a vendor that does not link back
+    why_it_matters: A customer and a vendor that are the same company become one business partner with both roles. The merge
+      follows the links on both sides; a customer pointing at a vendor whose own customer link points elsewhere is merged wrongly
+      or not at all.
+    rule_authority: s4hana_migration
+    sap_impact: The customer-vendor integration creates two separate business partners or stops with an error.
+    fix_map:
+      __other__: Make both links match (XD02 and XK02 > Control) or remove the wrong one.
+    record_fix_template: 'Customer {KNA1.KUNNR}: linked vendor {KNA1.LIFNR} does not link back to this customer.'
+  - id: AR265
+    field: KNA1.KUNNR
+    check_class: exists_check
+    applies_when:
+      KNA1.LOEVM:
+      - X
+    target_table: BSID
+    target_fields:
+    - KUNNR
+    grain: KNA1
+    s4_area: business_partner
+    s4_impact: warning
+    simplification_item: Business Partner Approach (SAP Note 2265093)
+    baseline: s4_target
+    severity: low
+    dimension: timeliness
+    message: 'Customer flagged for deletion has no open items: candidate for archiving'
+    why_it_matters: A customer flagged for deletion without open items can be archived and deleted before the conversion. Each
+      one removed is one business partner less to migrate and cleanse.
+    rule_authority: best_practice
+    sap_impact: Dead customers are migrated and kept as business partners after the conversion.
+    fix_map:
+      __other__: Run the archiving check (SARA, FI_ACCRECV) after verifying the retention period, then delete the account.
+    record_fix_template: 'Customer {KNA1.KUNNR}: flagged for deletion, no open items.'
+  - id: AR266
+    field: KNB1.KUNNR
+    check_class: exists_check
+    fields:
+    - KNB1.KUNNR
+    - KNB1.BUKRS
+    applies_when:
+      KNB1.LOEVM:
+      - X
+    target_table: BSID
+    target_fields:
+    - KUNNR
+    - BUKRS
+    grain: KNB1
+    s4_area: business_partner
+    s4_impact: warning
+    simplification_item: Business Partner Approach (SAP Note 2265093)
+    baseline: s4_target
+    severity: low
+    dimension: timeliness
+    message: 'Customer company code data flagged for deletion has no open items: candidate for archiving'
+    why_it_matters: Company code data flagged for deletion without open items can be archived before the conversion and does
+      not become a customer role in the business partner.
+    rule_authority: best_practice
+    sap_impact: Dead company code segments are migrated after the conversion.
+    fix_map:
+      __other__: Archive and delete the company code data (SARA, FI_ACCRECV).
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: flagged for deletion, no open items.'

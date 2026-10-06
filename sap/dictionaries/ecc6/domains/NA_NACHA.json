@@ -1,0 +1,62 @@
+{
+ "domain": "NA_NACHA",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "1",
+   "high": null,
+   "text": "Print output"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Fax"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Telex"
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "External send"
+  },
+  {
+   "low": "6",
+   "high": null,
+   "text": "EDI"
+  },
+  {
+   "low": "7",
+   "high": null,
+   "text": "Simple Mail"
+  },
+  {
+   "low": "8",
+   "high": null,
+   "text": "Special function"
+  },
+  {
+   "low": "9",
+   "high": null,
+   "text": "Events (SAP Business Workflow)"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Distribution (ALE)"
+  },
+  {
+   "low": "T",
+   "high": null,
+   "text": "Tasks (SAP Business Workflow)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

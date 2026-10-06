@@ -1,0 +1,1031 @@
+{
+ "table": "EIKP",
+ "description": "Foreign Trade: Export/Import Header Data",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "EXNUM",
+   "key": true,
+   "data_element": "EXNUM",
+   "domain": "EXNUM",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Number of foreign trade data in MM and SD documents",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "ALAND",
+   "key": false,
+   "data_element": "HLAND",
+   "domain": "LAND1",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Delivering country",
+   "check_table": "T005"
+  },
+  {
+   "pos": 4,
+   "name": "EXPVZ",
+   "key": false,
+   "data_element": "EXPVZ",
+   "domain": "EXPVZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Mode of Transport for Foreign Trade",
+   "check_table": "T618"
+  },
+  {
+   "pos": 5,
+   "name": "ZOLLA",
+   "key": false,
+   "data_element": "DZOLLS",
+   "domain": "ZOLLS",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Customs Office: Office of Exit/Entry for Foreign Trade",
+   "check_table": "T615"
+  },
+  {
+   "pos": 6,
+   "name": "ZOLLB",
+   "key": false,
+   "data_element": "DZOLLB",
+   "domain": "ZOLLS",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Customs office: Office of destination for foreign trade",
+   "check_table": "T615"
+  },
+  {
+   "pos": 7,
+   "name": "ZOLL1",
+   "key": false,
+   "data_element": "DZOLL1",
+   "domain": "ZOLLS",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Customs office: Customs office 1 for foreign trade",
+   "check_table": "T615"
+  },
+  {
+   "pos": 8,
+   "name": "ZOLL2",
+   "key": false,
+   "data_element": "DZOLL2",
+   "domain": "ZOLLS",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Customs office: Customs office 2 for foreign trade",
+   "check_table": "T615"
+  },
+  {
+   "pos": 9,
+   "name": "ZOLL3",
+   "key": false,
+   "data_element": "DZOLL3",
+   "domain": "ZOLLS",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Customs office: Customs office 3 for foreign trade",
+   "check_table": "T615"
+  },
+  {
+   "pos": 10,
+   "name": "ZOLL4",
+   "key": false,
+   "data_element": "DZOLL4",
+   "domain": "ZOLLS",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Customs office: Customs office 4 for foreign trade",
+   "check_table": "T615"
+  },
+  {
+   "pos": 11,
+   "name": "ZOLL5",
+   "key": false,
+   "data_element": "DZOLL5",
+   "domain": "ZOLLS",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Customs office: Customs office 5 for foreign trade",
+   "check_table": "T615"
+  },
+  {
+   "pos": 12,
+   "name": "ZOLL6",
+   "key": false,
+   "data_element": "DZOLL6",
+   "domain": "ZOLLS",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Customs office: Customs office 6 for foreign trade",
+   "check_table": "T615"
+  },
+  {
+   "pos": 13,
+   "name": "KZGBE",
+   "key": false,
+   "data_element": "KZGBE",
+   "domain": "KZGBEF",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Indicator for means of transport crossing the border",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "KZABE",
+   "key": false,
+   "data_element": "KZABE",
+   "domain": "KZABE",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Indicator for the means of transport at departure",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "STGBE",
+   "key": false,
+   "data_element": "STGBE",
+   "domain": "LAND1",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Origin of Means of Transport when Crossing the Border",
+   "check_table": "T005"
+  },
+  {
+   "pos": 16,
+   "name": "STABE",
+   "key": false,
+   "data_element": "STABE",
+   "domain": "LAND1",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Country of Origin of the Means of Transport at Departure",
+   "check_table": "T005"
+  },
+  {
+   "pos": 17,
+   "name": "CONTA",
+   "key": false,
+   "data_element": "CONTA",
+   "domain": "CONTA",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "ID: Goods cross border in a container",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "GRWCU",
+   "key": false,
+   "data_element": "GRWCU",
+   "domain": "WAERS",
+   "type": "CUKY",
+   "length": 5,
+   "decimals": 0,
+   "description": "Currency of statistical values for foreign trade",
+   "check_table": "TCURC"
+  },
+  {
+   "pos": 19,
+   "name": "IEVER",
+   "key": false,
+   "data_element": "IEVER",
+   "domain": "EXPVZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Domestic Mode of Transport for Foreign Trade",
+   "check_table": "T618"
+  },
+  {
+   "pos": 20,
+   "name": "SEGAL",
+   "key": false,
+   "data_element": "SEGAL",
+   "domain": "SEGAL",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Exclusion/Inclusion indicator for declara. to authorities",
+   "check_table": "T609A"
+  },
+  {
+   "pos": 21,
+   "name": "WZOCU",
+   "key": false,
+   "data_element": "WZOCU",
+   "domain": "WAERS",
+   "type": "CUKY",
+   "length": 5,
+   "decimals": 0,
+   "description": "Currency of customs values for import procg in foreign trade",
+   "check_table": "TCURC"
+  },
+  {
+   "pos": 22,
+   "name": "PRONU",
+   "key": false,
+   "data_element": "PRONU",
+   "domain": "PRONU",
+   "type": "CHAR",
+   "length": 25,
+   "decimals": 0,
+   "description": "Invoice: Number of invoice document for import processing",
+   "check_table": null
+  },
+  {
+   "pos": 23,
+   "name": "PRODA",
+   "key": false,
+   "data_element": "PRODA",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Invoice: Date of invoice document for import processing",
+   "check_table": null
+  },
+  {
+   "pos": 24,
+   "name": "VORPA",
+   "key": false,
+   "data_element": "VORPA",
+   "domain": "VORPA",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Preliminary document: Document type for foreign trade procg",
+   "check_table": "T610VA"
+  },
+  {
+   "pos": 25,
+   "name": "VORDA",
+   "key": false,
+   "data_element": "VORDA",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Preliminary document: Date of preliminary doc.f.import procg",
+   "check_table": null
+  },
+  {
+   "pos": 26,
+   "name": "VORNU",
+   "key": false,
+   "data_element": "VORNU",
+   "domain": "CHAR25",
+   "type": "CHAR",
+   "length": 25,
+   "decimals": 0,
+   "description": "Preliminary document: No. of preliminary doc.f.import procg",
+   "check_table": null
+  },
+  {
+   "pos": 27,
+   "name": "BEHOE",
+   "key": false,
+   "data_element": "VOHOE",
+   "domain": "BEHOE",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Preliminary doc.: Issuing authority of relevant prelim.doc.",
+   "check_table": "T610O"
+  },
+  {
+   "pos": 28,
+   "name": "KENNU",
+   "key": false,
+   "data_element": "KENNU",
+   "domain": "CHAR06",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Preliminary document: Customs office/ID number for import",
+   "check_table": null
+  },
+  {
+   "pos": 29,
+   "name": "VOISO",
+   "key": false,
+   "data_element": "VOISO",
+   "domain": "INTCA",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Prelim. doc.: ISO code of ctry issuing the preliminary doc.",
+   "check_table": null
+  },
+  {
+   "pos": 30,
+   "name": "PREFPACOD",
+   "key": false,
+   "data_element": "PREFPACOD",
+   "domain": "PREFPACOD",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Preference code for foreign trade (decl.to author., import)",
+   "check_table": "T604C"
+  },
+  {
+   "pos": 31,
+   "name": "PREFA",
+   "key": false,
+   "data_element": "PREFA",
+   "domain": "PREFA",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Preference: Preference type for foreign trade",
+   "check_table": "T610PA"
+  },
+  {
+   "pos": 32,
+   "name": "PREFN",
+   "key": false,
+   "data_element": "PREFN",
+   "domain": "CHAR25",
+   "type": "CHAR",
+   "length": 25,
+   "decimals": 0,
+   "description": "Preference: Official number of preference document - Import",
+   "check_table": null
+  },
+  {
+   "pos": 33,
+   "name": "PREDU",
+   "key": false,
+   "data_element": "PREDU",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Preference: Date of preference document for import procg",
+   "check_table": null
+  },
+  {
+   "pos": 34,
+   "name": "PRISO",
+   "key": false,
+   "data_element": "PRISO",
+   "domain": "INTCA",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Preference: ISO code of country issuing the preference doc.",
+   "check_table": null
+  },
+  {
+   "pos": 35,
+   "name": "PRHOE",
+   "key": false,
+   "data_element": "PRHOE",
+   "domain": "BEHOE",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Preference: Issuing authoritiy for relevant preference doc.",
+   "check_table": "T610O"
+  },
+  {
+   "pos": 36,
+   "name": "PRUEL",
+   "key": false,
+   "data_element": "PRUEL",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Preference: Validity date of preference document for import",
+   "check_table": null
+  },
+  {
+   "pos": 37,
+   "name": "NACAR",
+   "key": false,
+   "data_element": "NACAR",
+   "domain": "NACAR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Verification documents: Type of certificate for import",
+   "check_table": "T610NA"
+  },
+  {
+   "pos": 38,
+   "name": "NACNU",
+   "key": false,
+   "data_element": "NACNU",
+   "domain": "CHAR25",
+   "type": "CHAR",
+   "length": 25,
+   "decimals": 0,
+   "description": "Verification docs: Official no. of verific. doc. - Import",
+   "check_table": null
+  },
+  {
+   "pos": 39,
+   "name": "NACDA",
+   "key": false,
+   "data_element": "NACDA",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Verification documents: Date of verif.doc. for import procg",
+   "check_table": null
+  },
+  {
+   "pos": 40,
+   "name": "NAISO",
+   "key": false,
+   "data_element": "NAISO",
+   "domain": "INTCA",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Verification doc: ISO code of ctry supplying verific.doc.",
+   "check_table": null
+  },
+  {
+   "pos": 41,
+   "name": "NAHOE",
+   "key": false,
+   "data_element": "NAHOE",
+   "domain": "BEHOE",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Verification documents: Issuing authority for relev. verif.",
+   "check_table": "T610O"
+  },
+  {
+   "pos": 42,
+   "name": "NAUEL",
+   "key": false,
+   "data_element": "NAUEL",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Verification docs: Validity date of verific.doc. for import",
+   "check_table": null
+  },
+  {
+   "pos": 43,
+   "name": "TEXT1",
+   "key": false,
+   "data_element": "TXTFT",
+   "domain": "TEXT40",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Comments: Text for foreign trade processing",
+   "check_table": null
+  },
+  {
+   "pos": 44,
+   "name": "TEXT2",
+   "key": false,
+   "data_element": "TXTFT",
+   "domain": "TEXT40",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Comments: Text for foreign trade processing",
+   "check_table": null
+  },
+  {
+   "pos": 45,
+   "name": "TEXT3",
+   "key": false,
+   "data_element": "TXTFT",
+   "domain": "TEXT40",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Comments: Text for foreign trade processing",
+   "check_table": null
+  },
+  {
+   "pos": 46,
+   "name": "EXDAR",
+   "key": false,
+   "data_element": "EXDAR",
+   "domain": "VORPA",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Export document: Export document type for foreign trade",
+   "check_table": "T610VA"
+  },
+  {
+   "pos": 47,
+   "name": "EXDAA",
+   "key": false,
+   "data_element": "EXDAA",
+   "domain": "CHAR25",
+   "type": "CHAR",
+   "length": 25,
+   "decimals": 0,
+   "description": "Export document: Official number of export document",
+   "check_table": null
+  },
+  {
+   "pos": 48,
+   "name": "EXDAB",
+   "key": false,
+   "data_element": "EXDAB",
+   "domain": "CHAR25",
+   "type": "CHAR",
+   "length": 25,
+   "decimals": 0,
+   "description": "Export document: Valid-to number of export document",
+   "check_table": null
+  },
+  {
+   "pos": 49,
+   "name": "EXDTA",
+   "key": false,
+   "data_element": "EXDTA",
+   "domain": "VORPA",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "T document: Type of T document for foreign trade",
+   "check_table": "T610VA"
+  },
+  {
+   "pos": 50,
+   "name": "EXDT2",
+   "key": false,
+   "data_element": "EXDT2",
+   "domain": "CHAR25",
+   "type": "CHAR",
+   "length": 25,
+   "decimals": 0,
+   "description": "T document: Official number of T document for foreign trade",
+   "check_table": null
+  },
+  {
+   "pos": 51,
+   "name": "EXDTB",
+   "key": false,
+   "data_element": "EXDTB",
+   "domain": "CHAR25",
+   "type": "CHAR",
+   "length": 25,
+   "decimals": 0,
+   "description": "T doc.: Official no. for next page of T doc. f.foreign trade",
+   "check_table": null
+  },
+  {
+   "pos": 52,
+   "name": "EXDPA",
+   "key": false,
+   "data_element": "EXDPA",
+   "domain": "PREFA",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Preference: Preference type for foreign trade",
+   "check_table": "T610PA"
+  },
+  {
+   "pos": 53,
+   "name": "EXPRE",
+   "key": false,
+   "data_element": "EXPRE",
+   "domain": "CHAR25",
+   "type": "CHAR",
+   "length": 25,
+   "decimals": 0,
+   "description": "Preference: Official number of preference document - Export",
+   "check_table": null
+  },
+  {
+   "pos": 54,
+   "name": "EXDT5",
+   "key": false,
+   "data_element": "EXDT5",
+   "domain": "CHAR25",
+   "type": "CHAR",
+   "length": 25,
+   "decimals": 0,
+   "description": "CAP: Official number of T5 document for foreign trade",
+   "check_table": null
+  },
+  {
+   "pos": 55,
+   "name": "LADEL",
+   "key": false,
+   "data_element": "LADEL",
+   "domain": "LADEL",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Place of loading/unloading for foreign trade",
+   "check_table": null
+  },
+  {
+   "pos": 56,
+   "name": "AUSFU",
+   "key": false,
+   "data_element": "AUSFU",
+   "domain": "LIFNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Exporter for import processing in foreign trade",
+   "check_table": "LFA1"
+  },
+  {
+   "pos": 57,
+   "name": "EIOKW",
+   "key": false,
+   "data_element": "EIOKW",
+   "domain": "EIOKW",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Status: Complete document data in foreign trade (user)",
+   "check_table": null
+  },
+  {
+   "pos": 58,
+   "name": "AUSOK",
+   "key": false,
+   "data_element": "AUSOK",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Status: Document data in foreign trade complete (system)",
+   "check_table": null
+  },
+  {
+   "pos": 59,
+   "name": "LAZL1",
+   "key": false,
+   "data_element": "LAZLS",
+   "domain": "LAND1",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Customs office: Country of customs office for foreign trade",
+   "check_table": "T005"
+  },
+  {
+   "pos": 60,
+   "name": "LAZL2",
+   "key": false,
+   "data_element": "LAZLS",
+   "domain": "LAND1",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Customs office: Country of customs office for foreign trade",
+   "check_table": "T005"
+  },
+  {
+   "pos": 61,
+   "name": "LAZL3",
+   "key": false,
+   "data_element": "LAZLS",
+   "domain": "LAND1",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Customs office: Country of customs office for foreign trade",
+   "check_table": "T005"
+  },
+  {
+   "pos": 62,
+   "name": "LAZL4",
+   "key": false,
+   "data_element": "LAZLS",
+   "domain": "LAND1",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Customs office: Country of customs office for foreign trade",
+   "check_table": "T005"
+  },
+  {
+   "pos": 63,
+   "name": "LAZL5",
+   "key": false,
+   "data_element": "LAZLS",
+   "domain": "LAND1",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Customs office: Country of customs office for foreign trade",
+   "check_table": "T005"
+  },
+  {
+   "pos": 64,
+   "name": "LAZL6",
+   "key": false,
+   "data_element": "LAZLS",
+   "domain": "LAND1",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Customs office: Country of customs office for foreign trade",
+   "check_table": "T005"
+  },
+  {
+   "pos": 65,
+   "name": "AZOLL",
+   "key": false,
+   "data_element": "AZOLL",
+   "domain": "ZOLLS",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Customs office: Export customs office for foreign trade",
+   "check_table": "T615"
+  },
+  {
+   "pos": 66,
+   "name": "AHBAS",
+   "key": false,
+   "data_element": "AHBAS",
+   "domain": "AHBAS",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Basis document category for foreign trade processing",
+   "check_table": null
+  },
+  {
+   "pos": 67,
+   "name": "REFNR",
+   "key": false,
+   "data_element": "VBELN",
+   "domain": "VBELN",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Sales and Distribution Document Number",
+   "check_table": "*"
+  },
+  {
+   "pos": 68,
+   "name": "MABSD",
+   "key": false,
+   "data_element": "MABSD",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Selection date for periodic declarations",
+   "check_table": null
+  },
+  {
+   "pos": 69,
+   "name": "BFMAR",
+   "key": false,
+   "data_element": "BFMAR",
+   "domain": "BFMAR",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Foreign Trade: Type of means of transport",
+   "check_table": "T612B"
+  },
+  {
+   "pos": 70,
+   "name": "CUDCL",
+   "key": false,
+   "data_element": "CUDCL",
+   "domain": "CUDCL",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Customs declaration type for customs processing in FT",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "ALAND",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "AUSFU",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "AZOLL",
+   "foreign_table": "T615",
+   "foreign_field": "ZOLLA"
+  },
+  {
+   "field": "BEHOE",
+   "foreign_table": "T610O",
+   "foreign_field": "BEHOE"
+  },
+  {
+   "field": "BFMAR",
+   "foreign_table": "T612B",
+   "foreign_field": "BFMAR"
+  },
+  {
+   "field": "EXDAR",
+   "foreign_table": "T610VA",
+   "foreign_field": "VORPA"
+  },
+  {
+   "field": "EXDPA",
+   "foreign_table": "T610PA",
+   "foreign_field": "PREFA"
+  },
+  {
+   "field": "EXDTA",
+   "foreign_table": "T610VA",
+   "foreign_field": "VORPA"
+  },
+  {
+   "field": "EXPVZ",
+   "foreign_table": "T618",
+   "foreign_field": "EXPVZ"
+  },
+  {
+   "field": "GRWCU",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  },
+  {
+   "field": "IEVER",
+   "foreign_table": "T618",
+   "foreign_field": "EXPVZ"
+  },
+  {
+   "field": "LAZL1",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "LAZL2",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "LAZL3",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "LAZL4",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "LAZL5",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "LAZL6",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "NACAR",
+   "foreign_table": "T610NA",
+   "foreign_field": "NACAR"
+  },
+  {
+   "field": "NAHOE",
+   "foreign_table": "T610O",
+   "foreign_field": "BEHOE"
+  },
+  {
+   "field": "PREFA",
+   "foreign_table": "T610PA",
+   "foreign_field": "PREFA"
+  },
+  {
+   "field": "PREFPACOD",
+   "foreign_table": "T604C",
+   "foreign_field": "PREFPACOD"
+  },
+  {
+   "field": "PRHOE",
+   "foreign_table": "T610O",
+   "foreign_field": "BEHOE"
+  },
+  {
+   "field": "SEGAL",
+   "foreign_table": "T609A",
+   "foreign_field": "SEGAL"
+  },
+  {
+   "field": "STABE",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "STGBE",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "VORPA",
+   "foreign_table": "T610VA",
+   "foreign_field": "VORPA"
+  },
+  {
+   "field": "WZOCU",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  },
+  {
+   "field": "ZOLL1",
+   "foreign_table": "T615",
+   "foreign_field": "ZOLLA"
+  },
+  {
+   "field": "ZOLL2",
+   "foreign_table": "T615",
+   "foreign_field": "ZOLLA"
+  },
+  {
+   "field": "ZOLL3",
+   "foreign_table": "T615",
+   "foreign_field": "ZOLLA"
+  },
+  {
+   "field": "ZOLL4",
+   "foreign_table": "T615",
+   "foreign_field": "ZOLLA"
+  },
+  {
+   "field": "ZOLL5",
+   "foreign_table": "T615",
+   "foreign_field": "ZOLLA"
+  },
+  {
+   "field": "ZOLL6",
+   "foreign_table": "T615",
+   "foreign_field": "ZOLLA"
+  },
+  {
+   "field": "ZOLLA",
+   "foreign_table": "T615",
+   "foreign_field": "ZOLLA"
+  },
+  {
+   "field": "ZOLLB",
+   "foreign_table": "T615",
+   "foreign_field": "ZOLLA"
+  }
+ ]
+}

@@ -3165,3 +3165,191 @@ rules:
     __other__: Extend the vendor to the purchasing organisation (XK01 / MK01) or set the central purchasing block (XK05) for
       an accounting-only vendor.
   record_fix_template: 'Vendor {LFA1.LIFNR}: no purchasing organisation data and no purchasing block.'
+- id: AP277
+  field: LFA1.STCD1
+  check_class: cross_field_check
+  fail_when: '`KNA1.KUNNR`.notna() & `KNA1.STCD1`.notna() & `LFA1.STCD1`.notna() & (`KNA1.STCD1` != `LFA1.STCD1`)'
+  applies_when:
+    LFA1.KUNNR:
+      populated: true
+  grain: LFA1
+  s4_area: business_partner
+  s4_impact: warning
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+  baseline: s4_target
+  severity: medium
+  dimension: consistency
+  message: Vendor and linked customer carry different tax numbers
+  why_it_matters: Linked customer and vendor are merged into one business partner, which holds one tax number per tax type.
+    When the two differ, the last one synchronised wins.
+  rule_authority: s4hana_migration
+  sap_impact: The business partner carries the wrong tax number for one of the roles; tax reporting and withholding use it.
+  fix_map:
+    __other__: Correct the tax number on the side that is wrong (XK02 or XD02) before the merge.
+  record_fix_template: 'Vendor {LFA1.LIFNR}, linked customer {LFA1.KUNNR}: tax number 1 differs.'
+- id: AP278
+  field: LFA1.STCEG
+  check_class: cross_field_check
+  fail_when: '`KNA1.KUNNR`.notna() & `KNA1.STCEG`.notna() & `LFA1.STCEG`.notna() & (`KNA1.STCEG` != `LFA1.STCEG`)'
+  applies_when:
+    LFA1.KUNNR:
+      populated: true
+  grain: LFA1
+  s4_area: business_partner
+  s4_impact: warning
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+  baseline: s4_target
+  severity: medium
+  dimension: consistency
+  message: Vendor and linked customer carry different VAT registration numbers
+  why_it_matters: The merged business partner holds one VAT registration number. A mismatch between the roles is overwritten
+    by the last synchronisation.
+  rule_authority: s4hana_migration
+  sap_impact: VAT reporting and validation use the wrong registration number for one of the roles.
+  fix_map:
+    __other__: Correct the VAT registration number on the wrong side (XK02 or XD02).
+  record_fix_template: 'Vendor {LFA1.LIFNR}, linked customer {LFA1.KUNNR}: VAT registration number differs.'
+- id: AP279
+  field: LFA1.LAND1
+  check_class: cross_field_check
+  fail_when: '`KNA1.KUNNR`.notna() & `KNA1.LAND1`.notna() & `LFA1.LAND1`.notna() & (`KNA1.LAND1` != `LFA1.LAND1`)'
+  applies_when:
+    LFA1.KUNNR:
+      populated: true
+  grain: LFA1
+  s4_area: business_partner
+  s4_impact: warning
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+  baseline: s4_target
+  severity: medium
+  dimension: consistency
+  message: Vendor and linked customer are in different countries
+  why_it_matters: One business partner has one standard address. A vendor and a customer in different countries cannot share
+    it, and tax and bank rules differ by country.
+  rule_authority: s4hana_migration
+  sap_impact: The merged business partner takes the country of one role; the other role gets wrong tax and bank validation.
+  fix_map:
+    __other__: Check whether the two accounts are the same company; if not, remove the link, otherwise correct the country.
+  record_fix_template: 'Vendor {LFA1.LIFNR}, linked customer {LFA1.KUNNR}: country differs.'
+- id: AP280
+  field: LFA1.LOEVM
+  check_class: cross_field_check
+  fail_when: '`KNA1.KUNNR`.notna() & `LFA1.LOEVM`.notna() & `KNA1.LOEVM`.isna()'
+  applies_when:
+    LFA1.KUNNR:
+      populated: true
+  grain: LFA1
+  s4_area: business_partner
+  s4_impact: warning
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+  baseline: s4_target
+  severity: medium
+  dimension: consistency
+  message: Vendor is flagged for deletion but its linked customer is active
+  why_it_matters: The merged business partner has one deletion flag per role. A deleted vendor next to a customer in use ends
+    up with a half deleted partner.
+  rule_authority: s4hana_migration
+  sap_impact: The vendor role is migrated although it is dead, or blocks the shared business partner.
+  fix_map:
+    __other__: Remove the deletion flag from the vendor or flag the customer too (XK06, XD06).
+  record_fix_template: 'Vendor {LFA1.LIFNR}, linked customer {LFA1.KUNNR}: vendor flagged for deletion, customer active.'
+- id: AP281
+  field: LFA1.SPRAS
+  check_class: exists_check
+  target_table: T002
+  target_fields:
+  - SPRAS
+  grain: LFA1
+  s4_area: business_partner
+  s4_impact: blocking
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+  baseline: s4_target
+  severity: high
+  dimension: validity
+  message: Vendor language key is not an installed language
+  why_it_matters: The language of the vendor becomes the correspondence language of the business partner. A language that
+    is not in T002 cannot be mapped.
+  rule_authority: s4hana_migration
+  sap_impact: The business partner is not created for the vendor.
+  fix_map:
+    __other__: Correct the language in XK02 > Address.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: language key {LFA1.SPRAS} is not in T002.'
+- id: AP282
+  field: LFB1.AKONT
+  check_class: exists_check
+  fields:
+  - LFB1.BUKRS
+  - LFB1.AKONT
+  target_table: SKB1
+  target_fields:
+  - BUKRS
+  - SAKNR
+  grain: LFB1
+  s4_area: business_partner
+  s4_impact: blocking
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+  baseline: s4_target
+  severity: critical
+  dimension: consistency
+  message: Vendor reconciliation account does not exist in the company code's G/L master (SKB1)
+  why_it_matters: Every vendor posting also posts to the reconciliation account. Without a company code segment in SKB1 the
+    vendor role cannot be created for that company code.
+  rule_authority: sap_hard_constraint
+  sap_impact: Vendor invoices and payments in the company code cannot be posted; the vendor role fails to migrate.
+  fix_map:
+    __other__: Create the account in the company code (FS00) as a vendor reconciliation account or assign another one in XK02
+      > Company code data.
+  record_fix_template: 'Vendor {LFB1.LIFNR}, company code {LFB1.BUKRS}: reconciliation account {LFB1.AKONT} does not exist
+    in SKB1.'
+- id: AP283
+  field: LFA1.LIFNR
+  check_class: exists_check
+  applies_when:
+    LFA1.LOEVM:
+    - X
+  target_table: BSIK
+  target_fields:
+  - LIFNR
+  grain: LFA1
+  s4_area: business_partner
+  s4_impact: warning
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+  baseline: s4_target
+  severity: low
+  dimension: timeliness
+  message: 'Vendor flagged for deletion has no open items: candidate for archiving'
+  why_it_matters: A vendor flagged for deletion without open items can be archived and deleted before the conversion. Each
+    one removed is one business partner less to migrate.
+  rule_authority: best_practice
+  sap_impact: Dead vendors are migrated and kept as business partners after the conversion.
+  fix_map:
+    __other__: Run the archiving check (SARA, FI_ACCPAYB) after verifying the retention period, then delete the account.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: flagged for deletion, no open items.'
+- id: AP284
+  field: LFB1.LIFNR
+  check_class: exists_check
+  fields:
+  - LFB1.LIFNR
+  - LFB1.BUKRS
+  applies_when:
+    LFB1.LOEVM:
+    - X
+  target_table: BSIK
+  target_fields:
+  - LIFNR
+  - BUKRS
+  grain: LFB1
+  s4_area: business_partner
+  s4_impact: warning
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+  baseline: s4_target
+  severity: low
+  dimension: timeliness
+  message: 'Vendor company code data flagged for deletion has no open items: candidate for archiving'
+  why_it_matters: Company code data flagged for deletion without open items can be archived before the conversion and does
+    not become a vendor role.
+  rule_authority: best_practice
+  sap_impact: Dead company code segments are migrated after the conversion.
+  fix_map:
+    __other__: Archive and delete the company code data (SARA, FI_ACCPAYB).
+  record_fix_template: 'Vendor {LFB1.LIFNR}, company code {LFB1.BUKRS}: flagged for deletion, no open items.'
