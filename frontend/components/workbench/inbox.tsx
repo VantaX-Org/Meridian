@@ -17,13 +17,14 @@ import {
   Banner, Button, Chip, CommandPalette, DataTable, Drawer, EmptyState, Field, Input, Panel, Select, Stack, Text, Textarea,
   useDrawerParam, type AuroraColumnMeta, type ChipTone, type CommandPaletteCommand,
 } from "@/components/aurora";
-import { PageHeader, Tally } from "@/components/ui-core";
+import { FieldChip, OwnerLadder, PageHeader, Tally } from "@/components/ui-core";
 import { copyToClipboard } from "@/lib/actions";
 import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
-import { assignItem, bulkApprove, escalateItem, getMetrics, getQueueItems, resolveItem, submitAiFeedback } from "@/lib/api/stewardship";
-import { getTriageMetrics } from "@/lib/api/triage";
+import { getIssues } from "@/lib/api/issues";
+import { assignItem, bulkApprove, escalateItem, getQueueItems, resolveItem, submitAiFeedback } from "@/lib/api/stewardship";
+import { getTriageMetrics, ownerRungs } from "@/lib/api/triage";
 import { getUsers } from "@/lib/api/users";
 import { relativeTime, formatDate, labelOf, formatModuleName, humanizeIds } from "@/lib/format";
 import type { StewardshipQueueItem, StewardshipStatus } from "@/types/api";
@@ -77,6 +78,8 @@ async function each(ids: string[], fn: (id: string) => Promise<unknown>): Promis
 }
 
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
+/** "LFA1.STCD1" gives table and field; a bare field has no table. */
+const splitField = (s: string) => (s.includes(".") ? { table: s.slice(0, s.indexOf(".")), field: s.slice(s.lastIndexOf(".") + 1) } : { table: null, field: s });
 
 export function StewardInboxSurface() {
   const qc = useQueryClient();
@@ -104,7 +107,13 @@ export function StewardInboxSurface() {
     })),
   });
   const weekQ = useQuery({ queryKey: ["triage.metrics", 8], queryFn: () => getTriageMetrics(8), refetchInterval: 60_000 });
-  const metricsQ = useQuery({ queryKey: ["stewardship.metrics"], queryFn: getMetrics, refetchInterval: 60_000 });
+  // What each task is about, read from the open record issues it points at.
+  const issuesQ = useQuery({ queryKey: ["issues.list", { status: "open", limit: 100, offset: 0 }], queryFn: () => getIssues({ status: "open", limit: 100, offset: 0 }), retry: false, meta: { ignoreError: true } });
+  const about = useMemo(() => {
+    const m = new Map<string, { message: string | null; field: string | null }>();
+    for (const i of issuesQ.data?.items ?? []) { m.set(i.id, i); m.set(i.record_key, i); }
+    return m;
+  }, [issuesQ.data]);
   // The user list needs `manage_users`; without it assignees show as "You" or an id prefix.
   const usersQ = useQuery({ queryKey: ["users.list"], queryFn: getUsers, enabled: can("manage_users") });
 
@@ -254,14 +263,19 @@ export function StewardInboxSurface() {
     },
     { id: "sla", header: "SLA", meta: meta({ width: 120 }), cell: ({ row }) => { const s = slaOf(row.original, now); return <Chip tone={SLA_TONE[s.state]}>{slaText(s)}</Chip>; } },
     { id: "task", header: "Task", cell: ({ row }) => (
-      <span><strong>{typeLabel(row.original.item_type)}</strong> <span className="aurora-number">{humanizeIds(row.original.source_id)}</span>
-        <Text variant="text-micro" tone="muted" as="div">{formatModuleName(row.original.domain)}{row.original.ai_recommendation ? ", model suggestion" : ""}</Text></span>) },
+      <span><strong>{typeLabel(row.original.item_type)}</strong>
+        <Text variant="text-micro" tone="muted" as="div">
+          {formatModuleName(row.original.domain)}
+          {about.get(row.original.source_id)?.message ? `, ${about.get(row.original.source_id)?.message}` : ""}
+          {about.get(row.original.source_id)?.field ? <>{" "}<FieldChip {...splitField(about.get(row.original.source_id)?.field ?? "")} /></> : null}
+          {row.original.ai_recommendation ? ", model suggestion" : ""}
+        </Text></span>) },
     { id: "priority", header: "Priority", meta: meta({ width: 80 }), cell: ({ row }) => `P${row.original.priority}` },
     { id: "status", header: "Status", meta: meta({ width: 120 }), cell: ({ row }) => <Chip tone={STATUS_TONE[row.original.status]}>{label(row.original.status)}</Chip> },
     { id: "assignee", header: "Assignee", meta: meta({ width: 140 }), cell: ({ row }) => who(row.original.assigned_to) },
     { id: "age", header: "Age", meta: meta({ width: 80, align: "end", numeric: true }), cell: ({ row }) => span(now - Date.parse(row.original.created_at)) },
   // eslint-disable-next-line react-hooks/exhaustive-deps -- visibleIds tracks items
-  ], [picked, allVisible, items, now, toggle, who]);
+  ], [picked, allVisible, items, now, toggle, who, about]);
 
   const commands = useMemo<CommandPaletteCommand[]>(() => {
     const c: CommandPaletteCommand[] = [];
@@ -298,15 +312,14 @@ export function StewardInboxSurface() {
   // eslint-disable-next-line react-hooks/exhaustive-deps -- visibleIds tracks items
   }, [target, canApprove, user, items, selected, now, who, approve, assign, escalate, drawer, toggle, setView, setSort]);
 
-  const m = metricsQ.data;
   return (
     <Stack gap={5} className="aurora-page">
-      <PageHeader title="Steward inbox" summary="Tasks assigned to you and your team, most urgent first." />
+      <PageHeader title="Steward inbox" summary={loading ? undefined : `${all.length} open, ${counts.breached} past SLA${all.length ? `, oldest ${span(now - Math.min(...all.map((t) => Date.parse(t.created_at))))}` : ""}.`} />
       <Tally level={2} label="Steward inbox" figures={[
+        { label: "Open", value: all.length, loading, verdict: all.length ? "Tasks waiting on a steward." : "The inbox is clear.", href: "/workbench?view=all" },
         { label: "Overdue", value: counts.breached, tone: counts.breached ? "danger" : undefined, loading, verdict: counts.breached ? "Past their due time." : "Nothing past due.", href: "/workbench?view=breached" },
         { label: "Due today", value: counts.today, tone: counts.today ? "warning" : undefined, loading, verdict: counts.today ? "Due before midnight." : "Nothing due today.", href: "/workbench?view=today" },
         { label: "Unassigned", value: counts.unassigned, loading, verdict: counts.unassigned ? "Nobody owns these yet." : "Every task has an owner.", href: "/workbench?view=unassigned" },
-        { label: "Open", value: all.length, loading, verdict: all.length ? "Tasks waiting on a steward." : "The inbox is clear.", href: "/workbench?view=all" },
         { label: "Resolved this week", value: weekQ.data?.weekly.at(-1)?.resolved ?? null, loading: weekQ.isLoading, verdict: weekQ.data?.weekly.at(-1)?.resolved ? "Closed in the last seven days." : "Nothing closed this week.", href: "/workbench?tab=progress" },
       ]} />
 
@@ -339,7 +352,7 @@ export function StewardInboxSurface() {
         : items.length ? <DataTable columns={columns} data={items} getRowId={(t) => t.id} onRowFocus={(t) => setFocusedId(t?.id ?? null)} onRowActivate={(t) => drawer.open(t.id)} ariaLabel="Steward inbox" maxHeight="60vh" />
         : <EmptyState title={all.length ? "No tasks in this view." : "Inbox zero."} body={all.length ? "Change the view or clear the search." : "Merge decisions, golden-record reviews, writebacks and exceptions land here when they need a steward."} />}
 
-      {canSeeTeam ? <TeamPanel items={all} now={now} who={who} metrics={m} /> : null}
+      {canSeeTeam ? <TeamPanel metrics={weekQ.data} /> : null}
 
       <Drawer open={!!detail} onClose={drawer.close} ariaLabel="Task details"
         header={detail ? <Stack direction="row" gap={2} align="center"><Chip tone={STATUS_TONE[detail.status]}>{label(detail.status)}</Chip><Text variant="text-lead">{typeLabel(detail.item_type)}: {humanizeIds(detail.source_id)}</Text></Stack> : null}>
@@ -417,59 +430,16 @@ function RejectForm({ count, pending, onSubmit, onCancel }: { count: number; pen
   );
 }
 
-/** Team workload (open tasks per assignee) and throughput per task type; the metrics endpoint
- * withholds the per-steward breakdown from roles that may not see it. */
-function TeamPanel({ items, now, who, metrics }: {
-  items: StewardshipQueueItem[]; now: number; who: (id: string | null) => string; metrics?: import("@/types/api").StewardshipMetrics;
-}) {
-  const load = useMemo(() => {
-    const m = new Map<string, { open: number; breached: number }>();
-    for (const t of items) {
-      const k = who(t.assigned_to);
-      const r = m.get(k) ?? { open: 0, breached: 0 };
-      r.open += 1;
-      if (slaOf(t, now).state === "breached") r.breached += 1;
-      m.set(k, r);
-    }
-    return [...m.entries()].sort((a, b) => b[1].open - a[1].open);
-  }, [items, now, who]);
-  const types = Object.keys({ ...metrics?.items_by_type, ...metrics?.avg_resolution_hours_by_type }).sort();
+/** Who holds the open work, and how fast it closes. */
+function TeamPanel({ metrics }: { metrics?: import("@/lib/api/triage").TriageMetrics }) {
+  const rungs = ownerRungs(metrics);
+  const resolved = metrics?.weekly.at(-1)?.resolved;
+  const mttr = metrics?.mttr_hours;
   return (
-    <Panel title="Team and throughput">
-      <Stack direction="row" gap={6} wrap align="start">
-        <Stack gap={2}>
-          {metrics?.ai_acceptance_rate != null ? <Text variant="text-small">Suggestion acceptance {Math.round(metrics.ai_acceptance_rate * 100)} %</Text> : null}
-          <Text variant="text-micro" tone="muted">Open workload</Text>
-          <table className="ui-mini-table">
-            <thead><tr><th>Assignee</th><th>Open</th><th>Breached</th></tr></thead>
-            <tbody>{load.length ? load.map(([k, r]) => <tr key={k}><td>{k}</td><td className="aurora-number">{r.open}</td><td className="aurora-number">{r.breached}</td></tr>)
-              : <tr><td colSpan={3}>No open tasks.</td></tr>}</tbody>
-          </table>
-        </Stack>
-        {types.length ? (
-          <Stack gap={2}>
-            <Text variant="text-micro" tone="muted">By task type, all time</Text>
-            <table className="ui-mini-table">
-              <thead><tr><th>Type</th><th>Tasks</th><th>Avg to resolve</th></tr></thead>
-              <tbody>{types.map((k) => {
-                const h = metrics?.avg_resolution_hours_by_type[k];
-                return <tr key={k}><td>{typeLabel(k)}</td><td className="aurora-number">{metrics?.items_by_type[k] ?? 0}</td><td className="aurora-number">{h != null ? `${h}h` : "—"}</td></tr>;
-              })}</tbody>
-            </table>
-          </Stack>
-        ) : null}
-        {metrics?.steward_breakdown?.length ? (
-          <Stack gap={2}>
-            <Text variant="text-micro" tone="muted">Steward throughput</Text>
-            <table className="ui-mini-table">
-              <thead><tr><th>Steward</th><th>Resolved</th><th>Avg to resolve</th></tr></thead>
-              <tbody>{metrics.steward_breakdown.map((s) => (
-                <tr key={s.steward_name}><td>{s.steward_name}</td><td className="aurora-number">{s.resolved} / {s.total}</td>
-                  <td className="aurora-number">{s.avg_resolution_hours != null ? `${s.avg_resolution_hours}h` : "—"}</td></tr>
-              ))}</tbody>
-            </table>
-          </Stack>
-        ) : null}
+    <Panel title="Who holds the work">
+      <Stack gap={3}>
+        {rungs.length ? <OwnerLadder rows={rungs} ariaLabel="Open work by owner" /> : <Text variant="text-small" tone="muted">Nobody holds open work.</Text>}
+        {metrics ? <Text variant="text-small" tone="secondary">{resolved != null ? `${plural(resolved, "task")} resolved this week` : "Nothing resolved this week"}{mttr != null ? `, ${Math.round(mttr * 10) / 10} h on average to resolve.` : "."}</Text> : null}
       </Stack>
     </Panel>
   );

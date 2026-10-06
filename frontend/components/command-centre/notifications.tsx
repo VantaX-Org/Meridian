@@ -19,6 +19,7 @@ import type { Notification, NotificationType } from "@/types/api";
 const TYPES: NotificationType[] = ["finding", "approval", "cleaning", "exception", "digest", "warning"];
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const dayLabel = (iso: string) => formatDate(iso);
+type Group = { n: Notification; count: number; since: string; unread: boolean; unreadIds: string[] };
 
 export function NotificationsSurface() {
   const qc = useQueryClient();
@@ -33,13 +34,18 @@ export function NotificationsSurface() {
   const markOne = useMutation({ mutationFn: markNotificationRead, onSuccess: refresh });
   const markAll = useMutation({ mutationFn: markAllNotificationsRead, onSuccess: refresh });
 
+  // Same title on the same day is one row: the newest, with a count and the oldest time.
   const days = useMemo(() => {
-    const m = new Map<string, Notification[]>();
-    for (const n of items) {
-      const k = dayLabel(n.created_at);
-      m.set(k, [...(m.get(k) ?? []), n]);
+    const m = new Map<string, Map<string, Group>>();
+    for (const n of [...items].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))) {
+      const day = dayLabel(n.created_at);
+      const byTitle = m.get(day) ?? new Map<string, Group>();
+      const g = byTitle.get(n.title);
+      if (g) { g.count += 1; g.since = n.created_at; g.unread ||= !n.is_read; if (!n.is_read) g.unreadIds.push(n.id); }
+      else byTitle.set(n.title, { n, count: 1, since: n.created_at, unread: !n.is_read, unreadIds: n.is_read ? [] : [n.id] });
+      m.set(day, byTitle);
     }
-    return [...m.entries()];
+    return [...m.entries()].map(([day, g]) => [day, [...g.values()]] as const);
   }, [items]);
 
   const verdict = q.isLoading || q.error ? null
@@ -61,21 +67,30 @@ export function NotificationsSurface() {
       {q.isLoading ? <TableSkeleton rows={6} label="Reading notifications" />
         : q.error ? <Banner tone="danger" title="Notifications could not be read">{(q.error as Error).message}</Banner>
         : days.length ? days.map(([day, list]) => (
-          <SectionCard key={day} title={day} meta={list.length} flush>
+          <SectionCard key={day} title={day} meta={list.reduce((a, g) => a + g.count, 0)} flush>
             <ul className="aurora-notifs" aria-label={day}>
-              {list.map((n) => (
-                <li key={n.id} className="aurora-notifs__row" data-unread={!n.is_read}>
-                  <span className="aurora-notifs__dot" aria-hidden="true" />
-                  <button type="button" className="aurora-notifs__body" onClick={() => !n.is_read && markOne.mutate(n.id)}
-                    aria-label={n.is_read ? humanizeIds(n.title) : `${humanizeIds(n.title)}, unread. Mark read.`}>
-                    <span className="aurora-notifs__title">{humanizeIds(n.title)}</span>
-                    <span className="aurora-notifs__text">{humanizeIds(n.body)}</span>
-                  </button>
-                  <span className="aurora-notifs__kind">{cap(n.type)}</span>
-                  <span className="aurora-notifs__when aurora-number">{relativeTime(n.created_at)}</span>
-                  {n.link ? <Link href={n.link} className="ui-link" onClick={() => !n.is_read && markOne.mutate(n.id)}>Open</Link> : <span />}
-                </li>
-              ))}
+              {list.map(({ n, count, since, unread: isUnread, unreadIds }) => {
+                const title = count > 1 ? `${humanizeIds(n.title)} — ${count} times since ${relativeTime(since)}` : humanizeIds(n.title);
+                const readAll = () => unreadIds.forEach((id) => markOne.mutate(id));
+                const row = (
+                  <>
+                    <span className="aurora-notifs__body">
+                      <span className="aurora-notifs__title">{title}</span>
+                      <span className="aurora-notifs__text">{humanizeIds(n.body)}</span>
+                    </span>
+                    <span className="aurora-notifs__kind">{cap(n.type)}</span>
+                    <span className="aurora-notifs__when aurora-number">{relativeTime(n.created_at)}</span>
+                  </>
+                );
+                return (
+                  <li key={n.id} className="aurora-notifs__row" data-unread={isUnread}>
+                    <span className="aurora-notifs__dot" aria-hidden="true" />
+                    {n.link
+                      ? <Link href={n.link} className="aurora-notifs__link" onClick={readAll} aria-label={`${title}${isUnread ? ", unread" : ""}. Open.`}>{row}</Link>
+                      : <button type="button" className="aurora-notifs__link" onClick={readAll} aria-label={isUnread ? `${title}, unread. Mark read.` : title}>{row}</button>}
+                  </li>
+                );
+              })}
             </ul>
           </SectionCard>
         )) : (
