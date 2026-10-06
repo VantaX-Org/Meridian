@@ -9,8 +9,7 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Chip } from "@/components/aurora";
-import { Banner, Button, EmptyState, PageHeader, SectionCard, TableSkeleton, Verdict } from "@/components/ui-core";
+import { Banner, Button, CountChips, EmptyState, PageHeader, SectionCard, TableSkeleton, Verdict } from "@/components/ui-core";
 import { useUrlState } from "@/hooks/use-url-state";
 import { getNotifications, markAllNotificationsRead, markNotificationRead } from "@/lib/api/notifications";
 import { relativeTime, formatDate, humanizeIds } from "@/lib/format";
@@ -24,12 +23,18 @@ type Group = { n: Notification; count: number; since: string; unread: boolean; u
 export function NotificationsSurface() {
   const qc = useQueryClient();
   const [view, setView] = useUrlState("view", "all");
-  const q = useQuery({
-    queryKey: ["notifications.list", view],
-    queryFn: () => getNotifications({ limit: 100, ...(view === "unread" ? { is_read: false } : view !== "all" ? { type: view } : {}) }),
-  });
-  const items = useMemo(() => q.data?.items ?? [], [q.data]);
-  const unread = items.filter((n) => !n.is_read).length;
+  // One unfiltered read, so every chip can show its count.
+  const q = useQuery({ queryKey: ["notifications.list"], queryFn: () => getNotifications({ limit: 100 }) });
+  const everything = useMemo(() => q.data?.items ?? [], [q.data]);
+  const items = useMemo(
+    () => everything.filter((n) => (view === "unread" ? !n.is_read : view === "all" ? true : n.type === view)),
+    [everything, view],
+  );
+  const unread = everything.filter((n) => !n.is_read).length;
+  const chipOptions = [
+    { value: "unread", label: "Unread", count: unread },
+    ...TYPES.map((t) => ({ value: t, label: cap(t), count: everything.filter((n) => n.type === t).length })),
+  ];
   const refresh = () => { qc.invalidateQueries({ queryKey: ["notifications.list"] }); qc.invalidateQueries({ queryKey: ["notifications-unread-count"] }); };
   const markOne = useMutation({ mutationFn: markNotificationRead, onSuccess: refresh });
   const markAll = useMutation({ mutationFn: markAllNotificationsRead, onSuccess: refresh });
@@ -57,9 +62,7 @@ export function NotificationsSurface() {
       <PageHeader title="Notifications" summary="Alerts and job results addressed to you." />
       {verdict ? <Verdict>{verdict}</Verdict> : null}
       <div className="aurora-notifs__bar">
-        <Chip selected={view === "all"} onClick={() => setView("all")}>All</Chip>
-        <Chip selected={view === "unread"} onClick={() => setView("unread")}>Unread</Chip>
-        {TYPES.map((t) => <Chip key={t} selected={view === t} onClick={() => setView(t)}>{cap(t)}</Chip>)}
+        <CountChips value={view === "all" ? "" : view} onChange={(v) => setView(v || "all")} options={chipOptions} total={everything.length} />
         <span className="aurora-notifs__spacer" />
         <Button variant="secondary" onClick={() => markAll.mutate()} disabled={markAll.isPending || !unread}>Mark all read</Button>
       </div>

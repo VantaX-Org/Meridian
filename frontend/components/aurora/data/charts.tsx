@@ -157,6 +157,7 @@ export function LineChart<
               verticalAlign="top"
               iconType="circle"
               iconSize={8}
+              content={() => <SeriesLegend series={series} palette={t.categorical} />}
               wrapperStyle={{ fontSize: 12, color: t.axisInk }}
             />
           ) : null}
@@ -260,6 +261,7 @@ export function BarChart<
               verticalAlign="top"
               iconType="circle"
               iconSize={8}
+              content={() => <SeriesLegend series={series} palette={t.categorical} />}
               wrapperStyle={{ fontSize: 12, color: t.axisInk }}
             />
           ) : null}
@@ -277,6 +279,20 @@ export function BarChart<
         </RcBarChart>
       </ResponsiveContainer>
     </div>
+  );
+}
+
+/** Legend in the order the series are given; Recharts' own legend follows its draw order. */
+function SeriesLegend({ series, palette }: { series: SeriesDef[]; palette: string[] }) {
+  return (
+    <ul className="aurora-chart__legend">
+      {series.map((s, i) => (
+        <li key={s.key}>
+          <span className="aurora-chart__swatch" style={{ background: s.color ?? palette[i % palette.length] }} aria-hidden="true" />
+          {s.label}
+        </li>
+      ))}
+    </ul>
   );
 }
 
