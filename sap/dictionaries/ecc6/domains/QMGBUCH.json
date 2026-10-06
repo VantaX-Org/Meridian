@@ -1,0 +1,167 @@
+{
+ "domain": "QMGBUCH",
+ "type": "CHAR",
+ "length": 10,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "VMENGE01",
+   "high": null,
+   "text": "To unrestricted use"
+  },
+  {
+   "low": "VMENGE02",
+   "high": null,
+   "text": "To scrap"
+  },
+  {
+   "low": "VMENGE03",
+   "high": null,
+   "text": "To sample"
+  },
+  {
+   "low": "VMENGE04",
+   "high": null,
+   "text": "To blocked stock"
+  },
+  {
+   "low": "VMENGE05",
+   "high": null,
+   "text": "To reserve samples"
+  },
+  {
+   "low": "VMENGE06",
+   "high": null,
+   "text": "New material"
+  },
+  {
+   "low": "VMENGE07",
+   "high": null,
+   "text": "Return delivery"
+  },
+  {
+   "low": "VMENGE08",
+   "high": null,
+   "text": "other qty posting"
+  },
+  {
+   "low": "VMENGE09",
+   "high": null,
+   "text": "other qty posting 2"
+  },
+  {
+   "low": "TRANSFER01",
+   "high": null,
+   "text": "Stock transfers (plant)"
+  },
+  {
+   "low": "TRANSFER02",
+   "high": null,
+   "text": "Stock transfers (StLoc)"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Unrestricted batch status"
+  },
+  {
+   "low": "VMENGE01 1",
+   "high": null,
+   "text": "To unrestricted use; Unrestricted batch status"
+  },
+  {
+   "low": "VMENGE02 1",
+   "high": null,
+   "text": "To scrap; Unrestricted batch status"
+  },
+  {
+   "low": "VMENGE03 1",
+   "high": null,
+   "text": "To sample; Unrestricted batch status"
+  },
+  {
+   "low": "VMENGE04 1",
+   "high": null,
+   "text": "To blocked stock; Unrestricted batch status"
+  },
+  {
+   "low": "VMENGE05 1",
+   "high": null,
+   "text": "To appropriation; Unrestricted batch status"
+  },
+  {
+   "low": "VMENGE06 1",
+   "high": null,
+   "text": "New material; Unrestricted batch status"
+  },
+  {
+   "low": "VMENGE07 1",
+   "high": null,
+   "text": "Return delivery; Unrestricted batch status"
+  },
+  {
+   "low": "VMENGE08 1",
+   "high": null,
+   "text": "other qty posting; Unrestricted batch status"
+  },
+  {
+   "low": "VMENGE09 1",
+   "high": null,
+   "text": "Other qty posting 2; Unrestricted batch status"
+  },
+  {
+   "low": "0",
+   "high": null,
+   "text": "Blocked batch status"
+  },
+  {
+   "low": "VMENGE01 0",
+   "high": null,
+   "text": "To unrestricted use stock; Blocked batch status"
+  },
+  {
+   "low": "VMENGE02 0",
+   "high": null,
+   "text": "To scrap; Blocked batch status"
+  },
+  {
+   "low": "VMENGE03 0",
+   "high": null,
+   "text": "To sample; Blocked batch status"
+  },
+  {
+   "low": "VMENGE04 0",
+   "high": null,
+   "text": "To blocked stock; Blocked batch status"
+  },
+  {
+   "low": "VMENGE05 0",
+   "high": null,
+   "text": "To appropriation; Blocked batch status"
+  },
+  {
+   "low": "VMENGE06 0",
+   "high": null,
+   "text": "New material; Blocked batch status"
+  },
+  {
+   "low": "VMENGE07 0",
+   "high": null,
+   "text": "Return delivery; Blocked batch status"
+  },
+  {
+   "low": "VMENGE08 0",
+   "high": null,
+   "text": "other qty posting; Blocked batch status"
+  },
+  {
+   "low": "VMENGE09 0",
+   "high": null,
+   "text": "other qty posting 2; Blocked batch status"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

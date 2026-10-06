@@ -1,0 +1,404 @@
+{
+ "table": "QPAC",
+ "description": "Inspection catalog codes for selected sets",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "WERKS",
+   "key": true,
+   "data_element": "WERKS_D",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Plant",
+   "check_table": "T001W"
+  },
+  {
+   "pos": 3,
+   "name": "KATALOGART",
+   "key": true,
+   "data_element": "QKATART",
+   "domain": "QKATART",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Catalog",
+   "check_table": "TQ15"
+  },
+  {
+   "pos": 4,
+   "name": "AUSWAHLMGE",
+   "key": true,
+   "data_element": "QAUSWAHLMG",
+   "domain": "QAUSWAHLMG",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Selected Set",
+   "check_table": "QPAM"
+  },
+  {
+   "pos": 5,
+   "name": "CODEGRUPPE",
+   "key": true,
+   "data_element": "QCODEGRP",
+   "domain": "QCODEGRP",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Code Group",
+   "check_table": "QPGR"
+  },
+  {
+   "pos": 6,
+   "name": "CODE",
+   "key": true,
+   "data_element": "QCODE",
+   "domain": "QCODE",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Code",
+   "check_table": "QPCD"
+  },
+  {
+   "pos": 7,
+   "name": "VERSIONAM",
+   "key": true,
+   "data_element": "QVERSNRAM",
+   "domain": "QVERSNR",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Version Number of the Selected Set Record",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "GUELTIGAB",
+   "key": false,
+   "data_element": "DATUV",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Valid-From Date",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "VERSIONCD",
+   "key": false,
+   "data_element": "QVERSNRCD",
+   "domain": "QVERSNR",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Version Number of the Code Record",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "MASSNAHME",
+   "key": false,
+   "data_element": "QMASSKTEXT",
+   "domain": "QKURZTEXT",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Short Text for Task",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "LTEXTMASSV",
+   "key": false,
+   "data_element": "QLTEXTMS",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Long Text Exists for the Task",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "AUSWIRKUNG",
+   "key": false,
+   "data_element": "QAUSWKTEXT",
+   "domain": "QKURZTEXT",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Short Text About Effect",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "LTEXTAUSWV",
+   "key": false,
+   "data_element": "QLTEXTAW",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Long Text Exists for the Effect",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "BEWERTUNG",
+   "key": false,
+   "data_element": "QBEWERTUNG",
+   "domain": "QBEWERTUNG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Code Valuation",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "FEHLKLASSE",
+   "key": false,
+   "data_element": "QFEHLKLAS",
+   "domain": "QFEHLKLAS",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Defect class",
+   "check_table": "TQ17"
+  },
+  {
+   "pos": 16,
+   "name": "WAEHRUNG",
+   "key": false,
+   "data_element": "WAERS",
+   "domain": "WAERS",
+   "type": "CUKY",
+   "length": 5,
+   "decimals": 0,
+   "description": "Currency Key",
+   "check_table": "TCURC"
+  },
+  {
+   "pos": 17,
+   "name": "FKOSTEN",
+   "key": false,
+   "data_element": "QFKOSTEN",
+   "domain": "QFKOSTEN",
+   "type": "CURR",
+   "length": 10,
+   "decimals": 2,
+   "description": "Nonconformity Costs",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "MUSSTEXTKZ",
+   "key": false,
+   "data_element": "QMUSSTKZ",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Text Must Be Entered when Results Are Confirmed",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "AENDERKZ",
+   "key": false,
+   "data_element": "Q1LZEITMK",
+   "domain": "Q1LZEITMK",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Consider Long-Term Characteristics for Stock Proposal",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "ERSTELLER",
+   "key": false,
+   "data_element": "QERSTELLER",
+   "domain": "QAENDERER",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of User Who Created the Data Record",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "E_DATUM",
+   "key": false,
+   "data_element": "QDATUMERST",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date on Which the Data Record Was Created",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "AENDERER",
+   "key": false,
+   "data_element": "QAENDERER",
+   "domain": "QAENDERER",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of User who Most Recently Changed the Data Record",
+   "check_table": null
+  },
+  {
+   "pos": 23,
+   "name": "A_DATUM",
+   "key": false,
+   "data_element": "QDATUMAEND",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date on Which Data Record Was Changed",
+   "check_table": null
+  },
+  {
+   "pos": 24,
+   "name": "GELOESCHT",
+   "key": false,
+   "data_element": "Q_UNUSED01",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Field Not Used as of 3.0       Field Reserved for SAP",
+   "check_table": null
+  },
+  {
+   "pos": 25,
+   "name": "QKENNZAHL",
+   "key": false,
+   "data_element": "QKENNZ",
+   "domain": "QKENNZ",
+   "type": "INT4",
+   "length": 10,
+   "decimals": 0,
+   "description": "Quality Score",
+   "check_table": null
+  },
+  {
+   "pos": 26,
+   "name": "FOLGEAKTI",
+   "key": false,
+   "data_element": "QFOLGEAKTI",
+   "domain": "QFOLGEAKTI",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Follow-Up Action",
+   "check_table": "TQ07"
+  },
+  {
+   "pos": 27,
+   "name": "BB_VORSCH",
+   "key": false,
+   "data_element": "Q_BB_VOR",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Stock Posting Proposal",
+   "check_table": null
+  },
+  {
+   "pos": 28,
+   "name": "BB_DUNKEL",
+   "key": false,
+   "data_element": "Q_BB_DARK",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Background Processing of Stock Screen",
+   "check_table": null
+  },
+  {
+   "pos": 29,
+   "name": "FELDNAME",
+   "key": false,
+   "data_element": "QMGBUCH",
+   "domain": "QMGBUCH",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Posting Proposal in Usage Decision",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "AUSWAHLMGE",
+   "foreign_table": "QPAM",
+   "foreign_field": "AUSWAHLMGE"
+  },
+  {
+   "field": "CODE",
+   "foreign_table": "QPCD",
+   "foreign_field": "CODE"
+  },
+  {
+   "field": "CODEGRUPPE",
+   "foreign_table": "QPGR",
+   "foreign_field": "CODEGRUPPE"
+  },
+  {
+   "field": "FEHLKLASSE",
+   "foreign_table": "TQ17",
+   "foreign_field": "FEHLKLASSE"
+  },
+  {
+   "field": "FOLGEAKTI",
+   "foreign_table": "TQ07",
+   "foreign_field": "FOLGEAKTI"
+  },
+  {
+   "field": "KATALOGART",
+   "foreign_table": "TQ15",
+   "foreign_field": "KATALOGART"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "WAEHRUNG",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  }
+ ]
+}

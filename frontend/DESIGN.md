@@ -109,6 +109,10 @@ These are the rules a page is reviewed against. Breaking one needs a reason writ
 10. **Nothing is invented.** No progress bars without a real basis, no projected figures without their confidence, no sample data in production surfaces.
 11. **Motion only shows a change.** The one entrance is the score ring filling once. Reduced motion turns it off.
 12. **The URL is the state.** Tabs, filters, the open drawer and the selected run live in the query string, so any view can be linked.
+16. **One h1 per route.** `PageHeader` renders it, and the auth frame renders it on sign-in. Everything else uses a lower level.
+17. **A figure is a number.** `value` is a number or `null`. A word or a formatted figure (money, relative time) goes in `text`. Absence is `null` plus a verdict that says why. Never `"None"`, `"Unknown"` or `"Never"` as a figure.
+18. **No raw ids as copy.** Backend values such as `module`, `status`, `item_type` and sliced ids go through `labelOf`, `formatModuleName` or `<Mono>`. Labels use "and", never "&".
+19. **Dates go through `formatDate`.** `toLocaleDateString` and `toLocaleTimeString` are banned outside `lib/format.ts`, and `toLocaleString` is for numbers only.
 
 ## Page patterns
 
@@ -141,6 +145,7 @@ The redesign is finished. Every guardrail below is enforced by a script or an es
 - `npm run lint:tokens` (`scripts/lint-tokens.mjs`) rejects raw hex, gradients, backdrop blur, ad hoc shadows, motion and durations outside the token files, all-caps text, and elevation outside the five levels. `scripts/lint-tokens.allow.txt` is empty. Never add a line to it.
 - `aurora-writing` eslint rules flag placeholder copy, arrow glyphs and middle-dot separators. Enum props (`type`, `status`, `variant`) are not copy and are skipped.
 - `aurora-structure` eslint rules enforce the page rules: every `TallyFigure` has an href and a verdict sentence, one `Tally` per page at the level set in `lib/depth.mjs`, charts come from `components/aurora/data` and are clickable, severity renders through `StatusBadge`, and `JobCard` percent needs a known total.
+- Rules 16 to 19 are eslint errors: `aurora-structure/one-h1`, `aurora-structure/tally-figure-numeric`, `aurora-writing/no-raw-id` and `aurora-writing/format-date-only`. `aurora-writing/no-forbidden-copy` is an error too, and `no-forbidden-glyphs` also rejects a spaced "&" in any string in `lib/` and `components/`. Tests: `node eslint-rules/aurora-truth.test.mjs`.
 - `lib/depth.mjs` is the one place that maps a detail route to its Tally level. Change it there and the rule follows.
 - Fill bars (progress, coverage, score) animate `transform: scaleX`, never `width`. Motion lives only in `aurora.css` and `aurora-components.css`, with token durations.
 - Reduced motion turns off the drawer and scrim entrance. Focus rings always show and use the accent colour.

@@ -1,0 +1,489 @@
+{
+ "table": "QINF",
+ "description": "QM-info record for material and vendor",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "MATNR",
+   "key": true,
+   "data_element": "MATNR",
+   "domain": "MATNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Material Number",
+   "check_table": "MARA"
+  },
+  {
+   "pos": 3,
+   "name": "ZAEHL",
+   "key": true,
+   "data_element": "Q_COUNT",
+   "domain": "Q_COUNT",
+   "type": "NUMC",
+   "length": 6,
+   "decimals": 0,
+   "description": "Internal Counter for DB Objects",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "ERSTELLER",
+   "key": false,
+   "data_element": "QINFERST",
+   "domain": "QAENDERER",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of User who Created the Q-Info Record",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "ERSTELLDAT",
+   "key": false,
+   "data_element": "QINFERSTDT",
+   "domain": "QFREIDAT",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Create Date of Q-Info Record",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "AENDERER",
+   "key": false,
+   "data_element": "QINFAEND",
+   "domain": "QAENDERER",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of User who Most Recently Changed the Q-Info Record",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "AENDERDAT",
+   "key": false,
+   "data_element": "QINFAENDDT",
+   "domain": "QFREIDAT",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Change Date of Q-Info Record",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "LIEFERANT",
+   "key": false,
+   "data_element": "ELIFN",
+   "domain": "LIFNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Vendor's account number",
+   "check_table": "LFA1"
+  },
+  {
+   "pos": 9,
+   "name": "WERK",
+   "key": false,
+   "data_element": "WERKS_D",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Plant",
+   "check_table": "T001W"
+  },
+  {
+   "pos": 10,
+   "name": "FREI_DAT",
+   "key": false,
+   "data_element": "QFREIDAT",
+   "domain": "QFREIDAT",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date Until Which the Release Is Valid",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "FREI_MGKZ",
+   "key": false,
+   "data_element": "QFREIMGKZ",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Release Quantity Is Active",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "ME",
+   "key": false,
+   "data_element": "QBSTME",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Base Unit of Measure for the Material",
+   "check_table": "T006"
+  },
+  {
+   "pos": 13,
+   "name": "FREI_MNG",
+   "key": false,
+   "data_element": "QFREIMG",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Quantity Released for the Material",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "BEST_MG",
+   "key": false,
+   "data_element": "QBSTMG",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Quantity Ordered for the Material",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "DAT_RUECK",
+   "key": false,
+   "data_element": "QRSDAT",
+   "domain": "QFREIDAT",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date when the Ordered Quantity Was Reset",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "SPERRGRUND",
+   "key": false,
+   "data_element": "QSPERRGR",
+   "domain": "QKURZTEXT",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Blocking reason",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "SPRACHE",
+   "key": false,
+   "data_element": "SPRAS",
+   "domain": "SPRAS",
+   "type": "LANG",
+   "length": 1,
+   "decimals": 0,
+   "description": "Language Key",
+   "check_table": "T002"
+  },
+  {
+   "pos": 18,
+   "name": "SPERRFKT",
+   "key": false,
+   "data_element": "QSPERRFKT",
+   "domain": "QSPERRFKT",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Function That Will Be Blocked",
+   "check_table": "TQ04A"
+  },
+  {
+   "pos": 19,
+   "name": "QVVORH",
+   "key": false,
+   "data_element": "QQSVVORH",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Quality Assurance Agreement Exists",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "NOINSP",
+   "key": false,
+   "data_element": "QNOINSP",
+   "domain": "QNOINSP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Inspection Control in the QM Info Record",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "QSSYSFAM",
+   "key": false,
+   "data_element": "QSSYS_IST",
+   "domain": "QSSYSFAM",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Vendor's QM system",
+   "check_table": "TQ02B"
+  },
+  {
+   "pos": 22,
+   "name": "QSSYSDAT",
+   "key": false,
+   "data_element": "QQSSYSDAT",
+   "domain": "QQSSYSDAT",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Validity date of certification",
+   "check_table": null
+  },
+  {
+   "pos": 23,
+   "name": "VARIABNAHM",
+   "key": false,
+   "data_element": "QINFVAR1",
+   "domain": "QPART",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Inspection Type for Insp. Lot Origin (Source Inspection)",
+   "check_table": "TQ30"
+  },
+  {
+   "pos": 24,
+   "name": "LTEXTKZ",
+   "key": false,
+   "data_element": "QLTEXTKZ",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Inspection Characteristic Long Text Exists",
+   "check_table": null
+  },
+  {
+   "pos": 25,
+   "name": "SPRAS",
+   "key": false,
+   "data_element": "SPRAS",
+   "domain": "SPRAS",
+   "type": "LANG",
+   "length": 1,
+   "decimals": 0,
+   "description": "Language Key",
+   "check_table": "T002"
+  },
+  {
+   "pos": 26,
+   "name": "PLOS",
+   "key": false,
+   "data_element": "QPLOSQINF",
+   "domain": "QPLOS",
+   "type": "NUMC",
+   "length": 12,
+   "decimals": 0,
+   "description": "Inspection Lot No. in QINF for Current Status",
+   "check_table": "QALS"
+  },
+  {
+   "pos": 27,
+   "name": "PLOS2",
+   "key": false,
+   "data_element": "QPLOSQINF2",
+   "domain": "QPLOS",
+   "type": "NUMC",
+   "length": 12,
+   "decimals": 0,
+   "description": "Inspection Lot No. in QINF for Next Status",
+   "check_table": "QALS"
+  },
+  {
+   "pos": 28,
+   "name": "STSMA",
+   "key": false,
+   "data_element": "QSTSMAQINF",
+   "domain": "J_STSMA",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Status Profile Assigned to Quality Info Record",
+   "check_table": "TJ20"
+  },
+  {
+   "pos": 29,
+   "name": "OBJNR",
+   "key": false,
+   "data_element": "QINFOBJNR",
+   "domain": "J_OBJNR",
+   "type": "CHAR",
+   "length": 22,
+   "decimals": 0,
+   "description": "QINF Object Number in Status Management",
+   "check_table": "ONR00"
+  },
+  {
+   "pos": 30,
+   "name": "NOINSPABN",
+   "key": false,
+   "data_element": "QNOWEABN",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "No GR Inspection if Source Inspection Lot Exists",
+   "check_table": null
+  },
+  {
+   "pos": 31,
+   "name": "VORLABN",
+   "key": false,
+   "data_element": "QVORLABN",
+   "domain": "QANZAHL1",
+   "type": "INT1",
+   "length": 3,
+   "decimals": 0,
+   "description": "Lot Creation Lead Time (in Days) for Source Inspection",
+   "check_table": null
+  },
+  {
+   "pos": 32,
+   "name": "REVLV",
+   "key": false,
+   "data_element": "REVLV",
+   "domain": "REVLV",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Revision level",
+   "check_table": null
+  },
+  {
+   "pos": 33,
+   "name": "LOEKZ",
+   "key": false,
+   "data_element": "QLOEKZ",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Deletion Flag",
+   "check_table": null
+  },
+  {
+   "pos": 34,
+   "name": "CERTCONTROL",
+   "key": false,
+   "data_element": "QCERTCONTROL",
+   "domain": "QCERTCONTROL",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Control of Certificate Receipt",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "LIEFERANT",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MATNR",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "ME",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "OBJNR",
+   "foreign_table": "ONR00",
+   "foreign_field": "OBJNR"
+  },
+  {
+   "field": "PLOS",
+   "foreign_table": "QALS",
+   "foreign_field": "PRUEFLOS"
+  },
+  {
+   "field": "PLOS2",
+   "foreign_table": "QALS",
+   "foreign_field": "PRUEFLOS"
+  },
+  {
+   "field": "QSSYSFAM",
+   "foreign_table": "TQ02B",
+   "foreign_field": "QSSYSFAM"
+  },
+  {
+   "field": "SPERRFKT",
+   "foreign_table": "TQ04A",
+   "foreign_field": "SPERRFKT"
+  },
+  {
+   "field": "SPRACHE",
+   "foreign_table": "T002",
+   "foreign_field": "SPRAS"
+  },
+  {
+   "field": "SPRAS",
+   "foreign_table": "T002",
+   "foreign_field": "SPRAS"
+  },
+  {
+   "field": "STSMA",
+   "foreign_table": "TJ20",
+   "foreign_field": "STSMA"
+  },
+  {
+   "field": "VARIABNAHM",
+   "foreign_table": "TQ30",
+   "foreign_field": "ART"
+  },
+  {
+   "field": "WERK",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  }
+ ]
+}

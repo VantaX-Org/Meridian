@@ -5,9 +5,21 @@
  * the read-only audit table and the typed-confirmation block for removals.
  */
 
+import Link from "next/link";
 import { useId, useState, type ReactNode } from "react";
 import { Button, Field, Input, SectionCard, StatusBadge } from "@/components/ui-core";
 import type { DoctorItem } from "@/lib/api/admin-doctor";
+import { formatDate, humanizeIds } from "@/lib/format";
+
+/** Where to fix an amber row. Rows with no settings tab get no link. */
+const FIX_HREF: Record<string, string> = { llm: "/admin?tab=ai", licence: "/admin?tab=licence" };
+
+const doctorLabel = (s: string) => s.replace(/\s*\(\s*\)/g, "").trim();
+const doctorDetail = (s: string) => humanizeIds(s
+  .replace(/no api key\s*[-\u2014]\s*AI features degrade/i, "No API key stored. AI features are reduced.")
+  .replace(/api key present/i, "API key stored")
+  .replace(/^expires (\S+)$/, (_m, d: string) => `Expires ${formatDate(d)}`)
+  .replace(/^licence cache empty$/i, "Not validated yet"));
 
 const DOCTOR_STATUS = { ok: "ok", warn: "medium", fail: "failed" } as const;
 
@@ -22,8 +34,9 @@ export function DoctorCard({ items, lastChecked, onRefresh }: { items: ReadonlyA
       <ul className="ui-doctor">
         {items.map((i) => (
           <li key={i.id} className="ui-doctor__item">
-            <StatusBadge status={DOCTOR_STATUS[i.status]}>{i.label}</StatusBadge>
-            {i.detail ? <span className="ui-micro">{i.detail}</span> : null}
+            <StatusBadge status={DOCTOR_STATUS[i.status]}>{doctorLabel(i.label)}</StatusBadge>
+            {i.detail ? <span className="ui-micro">{doctorDetail(i.detail)}</span> : null}
+            {i.status !== "ok" && FIX_HREF[i.id] ? <Link href={FIX_HREF[i.id]} className="ui-link">Fix</Link> : null}
           </li>
         ))}
       </ul>

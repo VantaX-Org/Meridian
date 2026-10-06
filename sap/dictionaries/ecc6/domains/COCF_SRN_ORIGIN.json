@@ -1,0 +1,22 @@
+{
+ "domain": "COCF_SRN_ORIGIN",
+ "type": "NUMC",
+ "length": 2,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "01",
+   "high": null,
+   "text": "Work Center/Hierarchy"
+  },
+  {
+   "low": "02",
+   "high": null,
+   "text": "Functional Location/Equipment"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

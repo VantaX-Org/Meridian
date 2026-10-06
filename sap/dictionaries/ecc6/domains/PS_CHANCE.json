@@ -1,0 +1,37 @@
+{
+ "domain": "PS_CHANCE",
+ "type": "NUMC",
+ "length": 2,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "01",
+   "high": null,
+   "text": "Very Low"
+  },
+  {
+   "low": "02",
+   "high": null,
+   "text": "Short"
+  },
+  {
+   "low": "03",
+   "high": null,
+   "text": "Medium"
+  },
+  {
+   "low": "04",
+   "high": null,
+   "text": "High"
+  },
+  {
+   "low": "05",
+   "high": null,
+   "text": "Very high"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

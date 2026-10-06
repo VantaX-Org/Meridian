@@ -19,7 +19,7 @@ import { getSystems } from "@/lib/api/systems";
 import { getSystemVersions, type SystemVersion } from "@/lib/api/system-objects";
 import { useJobs } from "@/hooks/use-jobs";
 import { useNowSec } from "@/hooks/use-now";
-import { formatModuleName, relativeTime } from "@/lib/format";
+import { formatModuleName, relativeTime, formatDate, errorLabel, humanizeIds } from "@/lib/format";
 import type { Job } from "@/types/jobs";
 import { JobCard, KIND_LABEL, fmtDuration, fmtInt, jobTiming } from "./job-card";
 
@@ -65,24 +65,24 @@ export function RunsSurface() {
     { id: "when", header: "Finished", meta: meta({ width: 120 }),
       cell: ({ row }) => {
         const d = new Date((row.original.finished_at ?? row.original.updated_at) * 1000);
-        return <span title={d.toLocaleString()}>{relativeTime(d.toISOString())}</span>;
+        return <span title={formatDate(d, "datetime")}>{relativeTime(d.toISOString())}</span>;
       } },
     { id: "kind", header: "Kind", meta: meta({ width: 120 }), cell: ({ row }) => KIND_LABEL[row.original.kind] },
-    { id: "label", header: "Run", accessorKey: "label", meta: meta({ width: 260 }) },
+    { id: "label", header: "Run", meta: meta({ width: 260 }), cell: ({ row }) => humanizeIds(row.original.label) },
     { id: "system", header: "System", meta: meta({ width: 150 }),
       cell: ({ row }) => (row.original.system_id && systemName.get(row.original.system_id)) || "" },
     { id: "status", header: "Status", meta: meta({ width: 130 }),
       cell: ({ row }) => <StatusBadge status={JOB_STATUS[row.original.status].badge}>{JOB_STATUS[row.original.status].label}</StatusBadge> },
     { id: "duration", header: "Duration", meta: meta({ width: 100, numeric: true, align: "end" }),
-      cell: ({ row }) => fmtDuration(jobTiming(row.original, nowSec).elapsed) },
+      cell: ({ row }) => (row.original.status === "failed" ? "—" : fmtDuration(jobTiming(row.original, nowSec).elapsed)) },
     { id: "rows", header: "Rows", meta: meta({ width: 110, numeric: true, align: "end" }),
       cell: ({ row }) => (row.original.rows_done ? fmtInt(row.original.rows_done) : "") },
-    { id: "note", header: "Note", meta: meta({ minWidth: 240 }), cell: ({ row }) => row.original.error ?? row.original.message },
+    { id: "note", header: "Note", meta: meta({ minWidth: 240 }), cell: ({ row }) => (row.original.error ? errorLabel(row.original.error) : row.original.message) },
   ], [systemName, nowSec]);
 
   const versionColumns = useMemo<ColumnDef<VersionRow, unknown>[]>(() => [
     { id: "when", header: "Downloaded", meta: meta({ width: 120 }),
-      cell: ({ row }) => <span title={new Date(row.original.run_at).toLocaleString()}>{relativeTime(row.original.run_at)}</span> },
+      cell: ({ row }) => <span title={formatDate(row.original.run_at, "datetime")}>{relativeTime(row.original.run_at)}</span> },
     { id: "system", header: "System", accessorKey: "systemName", meta: meta({ width: 150 }) },
     { id: "label", header: "Version", meta: meta({ width: 240 }),
       cell: ({ row }) => <Link href={`/data/runs/${row.original.id}`} className="ui-link">
@@ -112,7 +112,7 @@ export function RunsSurface() {
   return (
     <div className="ui-page">
       <PageHeader
-        title="Runs"
+        title="Jobs"
         summary="Every download, config sync, import and analysis. Jobs are kept for seven days; the download history is kept for good."
       />
       <Tally level={2} label="Runs in the last 24 hours" figures={[

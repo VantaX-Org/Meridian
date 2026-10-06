@@ -75,7 +75,7 @@ export function GoldenRecordsSurface() {
         }
       />
       <Tally level={2} label="Master records" figures={[
-        { label: "MDM health", value: health ? Math.round(health.mdm_health_score) : mdm.isError ? "None" : null, unit: health ? "of 100" : undefined, loading: mdm.isLoading,
+        { label: "MDM health", value: health ? Math.round(health.mdm_health_score) : null, unit: health ? "of 100" : undefined, loading: mdm.isLoading,
           tone: health && health.mdm_health_score < 60 ? "danger" : undefined,
           verdict: health ? `${Math.round(health.golden_record_coverage_pct)}% coverage, ${health.backlog_count} in the steward backlog.` : "No snapshot yet.", href: "/golden-records#mdm-health" },
         { label: "Master records", value: q.isLoading ? null : total, loading: q.isLoading, verdict: `${golden} golden.`, href: "/golden-records" },

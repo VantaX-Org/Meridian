@@ -1,0 +1,17 @@
+{
+ "domain": "QSTELLEN",
+ "type": "INT1",
+ "length": 3,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "0",
+   "high": "10",
+   "text": "To a maximum of 10 decimal places"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

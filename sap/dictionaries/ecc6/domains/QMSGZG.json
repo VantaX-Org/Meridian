@@ -1,0 +1,57 @@
+{
+ "domain": "QMSGZG",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "E",
+   "high": null,
+   "text": "Without lot: Blocked stock, with lot: Status"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Without lot: Blocked stock, with lot: Error message"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Without lot: Blocked stock, with lot: Status, No skipToStock"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Without lot: Error message, with lot: Status"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Without lot: Error message, with lot: Error message"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Without lot: Error message, with lot: Status, no skipToStock"
+  },
+  {
+   "low": "W",
+   "high": null,
+   "text": "Warning"
+  },
+  {
+   "low": "I",
+   "high": null,
+   "text": "Information"
+  },
+  {
+   "low": "N",
+   "high": null,
+   "text": "No notification"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

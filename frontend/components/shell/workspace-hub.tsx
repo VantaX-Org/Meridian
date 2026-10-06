@@ -66,7 +66,7 @@ export function WorkspaceHub({ id, landing = false }: { id: WorkspaceId; landing
   return (
     <div className="aurora-hub">
       <div className="aurora-hub__bar">
-        <Text as="h1" variant="display-sm" className="aurora-hub__title">{workspace.label}</Text>
+        <Text as="p" variant="display-sm" className="aurora-hub__title">{workspace.label}</Text>
         <Tabs
           ariaLabel={`${workspace.label} tabs`}
           items={tabs.map((t) => ({ id: t.id, label: t.label }))}

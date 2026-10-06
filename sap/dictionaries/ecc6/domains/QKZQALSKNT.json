@@ -1,0 +1,67 @@
+{
+ "domain": "QKZQALSKNT",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "Cost center"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Order"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Project"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Cost object"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Network"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Real est."
+  },
+  {
+   "low": "G",
+   "high": null,
+   "text": "Sales order"
+  },
+  {
+   "low": "H",
+   "high": null,
+   "text": "Profitability segment"
+  },
+  {
+   "low": "I",
+   "high": null,
+   "text": "Fixed asset"
+  },
+  {
+   "low": "J",
+   "high": null,
+   "text": "Reconciliation object"
+  },
+  {
+   "low": "K",
+   "high": null,
+   "text": "Repetitive manufacturing"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

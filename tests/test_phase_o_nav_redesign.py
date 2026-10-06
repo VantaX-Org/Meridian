@@ -15,11 +15,11 @@ LAYOUT = Path("frontend/app/(dashboard)/layout.tsx")
 
 NAV_GROUP_ORDER = (
     "Overview",
-    "Systems & data",
+    "Systems and data",
     "Quality",
     "Fix",
     "Master data",
-    "Process & impact",
+    "Process and impact",
     "Reports",
     "Admin",
 )
@@ -64,10 +64,10 @@ def test_overview_items():
 
 
 def test_sidebar_systems_and_data_items():
-    """Systems & data (second group) has Systems, Import file, Download history, Migration."""
-    block = _group_block(_nav(), "Systems & data")
+    """Systems and data (second group) has Systems, Import file, Download history, Migration."""
+    block = _group_block(_nav(), "Systems and data")
     for href in ("/systems", "/upload", "/sync", "/migration"):
-        assert f'"{href}"' in block, f"{href} missing from Systems & data"
+        assert f'"{href}"' in block, f"{href} missing from Systems and data"
 
 
 def test_sidebar_quality_items():
@@ -96,8 +96,8 @@ def test_sidebar_master_data_items():
 
 
 def test_sidebar_process_and_impact_items():
-    """Process & impact has the process map, readiness and pattern mining."""
-    block = _group_block(_nav(), "Process & impact")
+    """Process and impact has the process map, readiness and pattern mining."""
+    block = _group_block(_nav(), "Process and impact")
     for href in ("/process", "/business-process", "/mining"):
         assert f'"{href}"' in block
 

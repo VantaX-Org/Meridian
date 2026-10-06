@@ -1,0 +1,115 @@
+{
+ "table": "QPGT",
+ "description": "Code Group Texts",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDANT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "KATALOGART",
+   "key": true,
+   "data_element": "COMT_CATALOG",
+   "domain": "COM_CATALOG",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Catalog",
+   "check_table": "TQ15"
+  },
+  {
+   "pos": 3,
+   "name": "CODEGRUPPE",
+   "key": true,
+   "data_element": "QCODEGRP",
+   "domain": "QCODEGRP",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Code Group",
+   "check_table": "QPGR"
+  },
+  {
+   "pos": 4,
+   "name": "SPRACHE",
+   "key": true,
+   "data_element": "SPRAS",
+   "domain": "SPRAS",
+   "type": "LANG",
+   "length": 1,
+   "decimals": 0,
+   "description": "Language Key",
+   "check_table": "T002"
+  },
+  {
+   "pos": 5,
+   "name": "KURZTEXT",
+   "key": false,
+   "data_element": "QKTEXTGR",
+   "domain": "QKURZTEXT",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Code Group Description",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "LTEXTV",
+   "key": false,
+   "data_element": "QLTEXTGRP",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Long Text Exists for the Code Group",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "INAKTIV",
+   "key": false,
+   "data_element": "QINAK",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Status of Code Group or Code Record",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "CODEGRUPPE",
+   "foreign_table": "QPGR",
+   "foreign_field": "CODEGRUPPE"
+  },
+  {
+   "field": "KATALOGART",
+   "foreign_table": "TQ15",
+   "foreign_field": "KATALOGART"
+  },
+  {
+   "field": "MANDANT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "SPRACHE",
+   "foreign_table": "T002",
+   "foreign_field": "SPRAS"
+  }
+ ]
+}

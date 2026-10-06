@@ -1,0 +1,665 @@
+{
+ "table": "QMIH",
+ "description": "Quality message - maintenance data excerpt",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "QMNUM",
+   "key": true,
+   "data_element": "QMNUM",
+   "domain": "QMNUM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Message Number",
+   "check_table": "QMEL"
+  },
+  {
+   "pos": 3,
+   "name": "IWERK",
+   "key": false,
+   "data_element": "IWERK",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Maintenance Planning Plant",
+   "check_table": "T399I"
+  },
+  {
+   "pos": 4,
+   "name": "ILOAN",
+   "key": false,
+   "data_element": "ILOAN",
+   "domain": "ILOAN",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Location and account assignment for technical object",
+   "check_table": "ILOA"
+  },
+  {
+   "pos": 5,
+   "name": "ILOAI",
+   "key": false,
+   "data_element": "ILOAI",
+   "domain": "X",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "ILOA Individual",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "EQUNR",
+   "key": false,
+   "data_element": "EQUNR",
+   "domain": "EQUNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Equipment Number",
+   "check_table": "EQUI"
+  },
+  {
+   "pos": 7,
+   "name": "BAUTL",
+   "key": false,
+   "data_element": "BAUTL",
+   "domain": "MATNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Assembly",
+   "check_table": "MARA"
+  },
+  {
+   "pos": 8,
+   "name": "EBORT",
+   "key": false,
+   "data_element": "EBORT",
+   "domain": "TEXT20",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "Installation Point for Subitem",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "MSAUS",
+   "key": false,
+   "data_element": "MSAUS",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Breakdown Indicator",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "AUSVN",
+   "key": false,
+   "data_element": "AUSVN",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Start of Malfunction (Date)",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "AUSBS",
+   "key": false,
+   "data_element": "AUSBS",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "End of Malfunction (Date)",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "AUZTV",
+   "key": false,
+   "data_element": "AUZTV",
+   "domain": "UHRZT",
+   "type": "TIMS",
+   "length": 6,
+   "decimals": 0,
+   "description": "Start of Malfunction (Time)",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "AUZTB",
+   "key": false,
+   "data_element": "AUZTB",
+   "domain": "UHRZT",
+   "type": "TIMS",
+   "length": 6,
+   "decimals": 0,
+   "description": "End of Malfunction (Time)",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "AUSZT",
+   "key": false,
+   "data_element": "AUSZT",
+   "domain": "FLTP",
+   "type": "FLTP",
+   "length": 16,
+   "decimals": 16,
+   "description": "Breakdown Duration",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "MAUEH",
+   "key": false,
+   "data_element": "MAUEH",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit for Breakdown Duration",
+   "check_table": "T006"
+  },
+  {
+   "pos": 16,
+   "name": "BTPLN",
+   "key": false,
+   "data_element": "BTPLN",
+   "domain": "TPLNR",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Functional Location Affected",
+   "check_table": "IFLOT"
+  },
+  {
+   "pos": 17,
+   "name": "BEQUI",
+   "key": false,
+   "data_element": "BEQUI",
+   "domain": "EQUNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Equipment Affected",
+   "check_table": "EQUI"
+  },
+  {
+   "pos": 18,
+   "name": "AUSWK",
+   "key": false,
+   "data_element": "AUSWK",
+   "domain": "AUSWK",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Effect on Operation",
+   "check_table": "T357A"
+  },
+  {
+   "pos": 19,
+   "name": "VERFV",
+   "key": false,
+   "data_element": "VERFV",
+   "domain": "NUM3",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Availability Before Malfunction",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "VERFN",
+   "key": false,
+   "data_element": "VERFN",
+   "domain": "NUM3",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Availability After Malfunction",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "VERFM",
+   "key": false,
+   "data_element": "VERFM",
+   "domain": "NUM3",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Availability After Completion of Task",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "ANLZV",
+   "key": false,
+   "data_element": "ANLZV",
+   "domain": "ANLAZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "System Condition Before Malfunction",
+   "check_table": "T357Z"
+  },
+  {
+   "pos": 23,
+   "name": "ANLZN",
+   "key": false,
+   "data_element": "ANLZN",
+   "domain": "ANLAZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "System Condition After Malfunction",
+   "check_table": "T357Z"
+  },
+  {
+   "pos": 24,
+   "name": "ANLZE",
+   "key": false,
+   "data_element": "ANLZE",
+   "domain": "ANLAZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "System Condition After Completion of Task",
+   "check_table": "T357Z"
+  },
+  {
+   "pos": 25,
+   "name": "INSPK",
+   "key": false,
+   "data_element": "INSPK",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of Person Responsible for Technical Inspection",
+   "check_table": null
+  },
+  {
+   "pos": 26,
+   "name": "DATAN",
+   "key": false,
+   "data_element": "DATAN",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date of Technical Inspection",
+   "check_table": null
+  },
+  {
+   "pos": 27,
+   "name": "INGRP",
+   "key": false,
+   "data_element": "INGRP",
+   "domain": "INGRP",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Planner Group for Customer Service and Plant Maintenance",
+   "check_table": "T024I"
+  },
+  {
+   "pos": 28,
+   "name": "WARPL",
+   "key": false,
+   "data_element": "WARPL",
+   "domain": "WARPL",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Maintenance Plan",
+   "check_table": "MPLA"
+  },
+  {
+   "pos": 29,
+   "name": "ABNUM",
+   "key": false,
+   "data_element": "ABNUM",
+   "domain": "ABNUM",
+   "type": "INT4",
+   "length": 10,
+   "decimals": 0,
+   "description": "Maintenance Plan Call Number",
+   "check_table": null
+  },
+  {
+   "pos": 30,
+   "name": "WAPOS",
+   "key": false,
+   "data_element": "WAPOS",
+   "domain": "POSNU",
+   "type": "CHAR",
+   "length": 16,
+   "decimals": 0,
+   "description": "Maintenance item",
+   "check_table": null
+  },
+  {
+   "pos": 31,
+   "name": "KDAUF",
+   "key": false,
+   "data_element": "VBELN_VA",
+   "domain": "VBELN",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Sales Document",
+   "check_table": "VBUK"
+  },
+  {
+   "pos": 32,
+   "name": "KDPOS",
+   "key": false,
+   "data_element": "POSNR_VA",
+   "domain": "POSNR",
+   "type": "NUMC",
+   "length": 6,
+   "decimals": 0,
+   "description": "Sales Document Item",
+   "check_table": "VBUP"
+  },
+  {
+   "pos": 33,
+   "name": "SCREENTY",
+   "key": false,
+   "data_element": "SCRTP",
+   "domain": "SCRTP",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Scenario or Subscreen Category",
+   "check_table": "*"
+  },
+  {
+   "pos": 34,
+   "name": "PLNTY",
+   "key": false,
+   "data_element": "PLNTY",
+   "domain": "PLNTY",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Task List Type",
+   "check_table": "*"
+  },
+  {
+   "pos": 35,
+   "name": "PLNNR",
+   "key": false,
+   "data_element": "PLNNR",
+   "domain": "PLNNR",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Key for Task List Group",
+   "check_table": null
+  },
+  {
+   "pos": 36,
+   "name": "PLNAL",
+   "key": false,
+   "data_element": "PLNAL",
+   "domain": "ALTNR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Group Counter",
+   "check_table": null
+  },
+  {
+   "pos": 37,
+   "name": "REVNR",
+   "key": false,
+   "data_element": "REVNI",
+   "domain": "REVNI",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Revision of Plant Maintenance and Customer Service",
+   "check_table": "*"
+  },
+  {
+   "pos": 39,
+   "name": "ZAEHL",
+   "key": false,
+   "data_element": "CIM_COUNT",
+   "domain": "CIM_COUNT",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Internal counter",
+   "check_table": "PLKO"
+  },
+  {
+   "pos": 42,
+   "name": "PAMS_PTSTF",
+   "key": false,
+   "data_element": "PAMS_PTSTF",
+   "domain": "TZNTSTMPS",
+   "type": "DEC",
+   "length": 15,
+   "decimals": 0,
+   "description": "Planned Time Stamp (from)",
+   "check_table": null
+  },
+  {
+   "pos": 43,
+   "name": "PAMS_PTSTT",
+   "key": false,
+   "data_element": "PAMS_PTSTT",
+   "domain": "TZNTSTMPS",
+   "type": "DEC",
+   "length": 15,
+   "decimals": 0,
+   "description": "Planned Time Stamp (to)",
+   "check_table": null
+  },
+  {
+   "pos": 44,
+   "name": "PAMS_ATSTF",
+   "key": false,
+   "data_element": "PAMS_ATSTF",
+   "domain": "TZNTSTMPS",
+   "type": "DEC",
+   "length": 15,
+   "decimals": 0,
+   "description": "Actual Start Time",
+   "check_table": null
+  },
+  {
+   "pos": 45,
+   "name": "PAMS_ATSTT",
+   "key": false,
+   "data_element": "PAMS_ATSTT",
+   "domain": "TZNTSTMPS",
+   "type": "DEC",
+   "length": 15,
+   "decimals": 0,
+   "description": "Actual End Time",
+   "check_table": null
+  },
+  {
+   "pos": 46,
+   "name": "PAMS_POOL",
+   "key": false,
+   "data_element": "PAMS_POOL",
+   "domain": "PAMS_D_POOL",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "PAM Pool",
+   "check_table": null
+  },
+  {
+   "pos": 47,
+   "name": "PAMS_KOSTL",
+   "key": false,
+   "data_element": "KOSTL",
+   "domain": "KOSTL",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Cost Center",
+   "check_table": "*"
+  },
+  {
+   "pos": 48,
+   "name": "PAMS_AUFNR",
+   "key": false,
+   "data_element": "AUFNR",
+   "domain": "AUFNR",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Order Number",
+   "check_table": "*"
+  },
+  {
+   "pos": 49,
+   "name": "PAMS_PROID",
+   "key": false,
+   "data_element": "PS_PSP_PNR",
+   "domain": "PS_POSNR",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Work Breakdown Structure Element (WBS Element)",
+   "check_table": "*"
+  },
+  {
+   "pos": 50,
+   "name": "PAMS_KOKRS",
+   "key": false,
+   "data_element": "KOKRS",
+   "domain": "CACCD",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Controlling Area",
+   "check_table": "*"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "ANLZE",
+   "foreign_table": "T357Z",
+   "foreign_field": "ANLAZ"
+  },
+  {
+   "field": "ANLZN",
+   "foreign_table": "T357Z",
+   "foreign_field": "ANLAZ"
+  },
+  {
+   "field": "ANLZV",
+   "foreign_table": "T357Z",
+   "foreign_field": "ANLAZ"
+  },
+  {
+   "field": "AUSWK",
+   "foreign_table": "T357A",
+   "foreign_field": "AUSWK"
+  },
+  {
+   "field": "BAUTL",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "BEQUI",
+   "foreign_table": "EQUI",
+   "foreign_field": "EQUNR"
+  },
+  {
+   "field": "BTPLN",
+   "foreign_table": "IFLOT",
+   "foreign_field": "TPLNR"
+  },
+  {
+   "field": "EQUNR",
+   "foreign_table": "EQUI",
+   "foreign_field": "EQUNR"
+  },
+  {
+   "field": "ILOAN",
+   "foreign_table": "ILOA",
+   "foreign_field": "ILOAN"
+  },
+  {
+   "field": "INGRP",
+   "foreign_table": "T024I",
+   "foreign_field": "INGRP"
+  },
+  {
+   "field": "IWERK",
+   "foreign_table": "T399I",
+   "foreign_field": "IWERK"
+  },
+  {
+   "field": "KDAUF",
+   "foreign_table": "VBUK",
+   "foreign_field": "VBELN"
+  },
+  {
+   "field": "KDPOS",
+   "foreign_table": "VBUP",
+   "foreign_field": "POSNR"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MAUEH",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "QMNUM",
+   "foreign_table": "QMEL",
+   "foreign_field": "QMNUM"
+  },
+  {
+   "field": "WARPL",
+   "foreign_table": "MPLA",
+   "foreign_field": "WARPL"
+  },
+  {
+   "field": "ZAEHL",
+   "foreign_table": "PLKO",
+   "foreign_field": "ZAEHL"
+  }
+ ]
+}

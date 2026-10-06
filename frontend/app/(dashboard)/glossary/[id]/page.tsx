@@ -86,7 +86,7 @@ export default function GlossaryDetailPage() {
         { label: "Rules failing", value: failing.length, tone: failing.length ? "high" : undefined,
           verdict: failing.length ? "Linked checks that find records failing." : "Every linked check passes.", href: self },
         { label: "Approved values", value: approved.length, verdict: approved.length ? "Codes the field may hold." : "No value list defined.", href: self },
-        { label: "Review", value: reviewDue ? "Due" : "Current", tone: reviewDue ? "warning" : undefined,
+        { label: "Review", value: null, text: reviewDue ? "Due" : "Current", tone: reviewDue ? "warning" : undefined,
           verdict: reviewDays === null ? "Never reviewed." : `Last reviewed ${reviewDays} day${reviewDays === 1 ? "" : "s"} ago.`, href: self },
       ]} />
       <PageHeader

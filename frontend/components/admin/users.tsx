@@ -98,7 +98,7 @@ export function UsersSurface() {
       <Tally level={4} label="Access" figures={[
         { label: "Users", value: usersQ.isLoading ? null : users.length, loading: usersQ.isLoading, verdict: `${active.length} active.`, href: HREF },
         { label: "Active this week", value: usersQ.isLoading ? null : activeWeek, loading: usersQ.isLoading, verdict: activeWeek ? "Signed in over the last 7 days." : "Nobody has signed in this week.", href: HREF },
-        { label: "Never signed in", value: usersQ.isLoading ? null : neverSignedIn || "None", loading: usersQ.isLoading, tone: neverSignedIn ? "warning" : undefined, verdict: neverSignedIn ? "Invited and not yet accepted." : "Every active user has signed in.", href: HREF },
+        { label: "Never signed in", value: usersQ.isLoading ? null : neverSignedIn, loading: usersQ.isLoading, tone: neverSignedIn ? "warning" : undefined, verdict: neverSignedIn ? "Invited and not yet accepted." : "Every active user has signed in.", href: HREF },
       ]} />
       <SegmentedControl ariaLabel="Users and audit sections" value={view} onChange={setView} options={[
         { id: "users", label: "Users" }, { id: "roles", label: "Roles" }, { id: "audit", label: "Audit log" },

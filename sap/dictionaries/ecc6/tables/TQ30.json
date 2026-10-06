@@ -1,0 +1,279 @@
+{
+ "table": "TQ30",
+ "description": "Inspection types",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "ART",
+   "key": true,
+   "data_element": "QPART",
+   "domain": "QPART",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Inspection Type",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "PPLVERW",
+   "key": false,
+   "data_element": "QPLN_VERWE",
+   "domain": "PLN_VERWE",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Task List Usage",
+   "check_table": "T411"
+  },
+  {
+   "pos": 4,
+   "name": "BILDS",
+   "key": false,
+   "data_element": "QBILDS",
+   "domain": "QBILDS",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Key for Field Control (Not Used After 3.0)",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "VEMENGE",
+   "key": false,
+   "data_element": "QVEMENGE",
+   "domain": "QAUSWAHLMG",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Selected Set for Usage Decision",
+   "check_table": "QPAM"
+  },
+  {
+   "pos": 6,
+   "name": "VEVERSION",
+   "key": false,
+   "data_element": "QVEVERSION",
+   "domain": "QVERSNR",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Code Version Used for an Automatic Usage Decision",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "VEDATUM",
+   "key": false,
+   "data_element": "QVEDATUM",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date of Code Used for Usage Decision",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "KZVEWERKS",
+   "key": false,
+   "data_element": "QKZVEWERKS",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Selected Set Must Be Available in Plant",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "KZPZDR",
+   "key": false,
+   "data_element": "QKZPZDR",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Print Sample-Drawing Instruction Immediately at Lot Creation",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "KZPADR",
+   "key": false,
+   "data_element": "QKZPADR",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Print Inspection Instruction Immediately at Lot Creation",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "KZMESSAGE",
+   "key": false,
+   "data_element": "QKZMESSAGE",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Messages Should Be Displayed When Printing",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "STSMA",
+   "key": false,
+   "data_element": "J_STSMA",
+   "domain": "J_STSMA",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Status Profile",
+   "check_table": "TJ20"
+  },
+  {
+   "pos": 13,
+   "name": "ERFSICHT",
+   "key": false,
+   "data_element": "QERFSICHT",
+   "domain": "QERFSICHT",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Recording View",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "STEUS",
+   "key": false,
+   "data_element": "STEUS",
+   "domain": "STEUS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Control key",
+   "check_table": "T430"
+  },
+  {
+   "pos": 15,
+   "name": "QMART",
+   "key": false,
+   "data_element": "QMART",
+   "domain": "QMART",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Message Type",
+   "check_table": "TQ80"
+  },
+  {
+   "pos": 16,
+   "name": "VORNR",
+   "key": false,
+   "data_element": "VORNR",
+   "domain": "VORNR",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Operation/Activity Number",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "PRART",
+   "key": false,
+   "data_element": "QPRART",
+   "domain": "QPRART",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Physical-Sample Type",
+   "check_table": "TQ40"
+  },
+  {
+   "pos": 18,
+   "name": "EINEMELD",
+   "key": false,
+   "data_element": "QEINEMELD",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "One Quality Notification per Inspection Lot",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "AUART",
+   "key": false,
+   "data_element": "QAUARTTQ30",
+   "domain": "AUFART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Order Type for QM Orders As Default Value for Insp. Type",
+   "check_table": "T003O"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "AUART",
+   "foreign_table": "T003O",
+   "foreign_field": "AUART"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "PPLVERW",
+   "foreign_table": "T411",
+   "foreign_field": "VERWE"
+  },
+  {
+   "field": "PRART",
+   "foreign_table": "TQ40",
+   "foreign_field": "PRART"
+  },
+  {
+   "field": "QMART",
+   "foreign_table": "TQ80",
+   "foreign_field": "QMART"
+  },
+  {
+   "field": "STEUS",
+   "foreign_table": "T430",
+   "foreign_field": "STEUS"
+  },
+  {
+   "field": "STSMA",
+   "foreign_table": "TJ20",
+   "foreign_field": "STSMA"
+  },
+  {
+   "field": "VEMENGE",
+   "foreign_table": "QPAM",
+   "foreign_field": "AUSWAHLMGE"
+  }
+ ]
+}

@@ -1,0 +1,361 @@
+{
+ "table": "QAVE",
+ "description": "Inspection processing: Usage decision",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDANT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "PRUEFLOS",
+   "key": true,
+   "data_element": "QPLOS",
+   "domain": "QPLOS",
+   "type": "NUMC",
+   "length": 12,
+   "decimals": 0,
+   "description": "Inspection Lot Number",
+   "check_table": "QALS"
+  },
+  {
+   "pos": 3,
+   "name": "KZART",
+   "key": true,
+   "data_element": "QKZART",
+   "domain": "QKZART",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Inspection Lot, Partial Lot, Single Unit, Interval",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "ZAEHLER",
+   "key": true,
+   "data_element": "QVEZAEHLER",
+   "domain": "QVERSNR",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Counter for Usage Decision",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "VKATART",
+   "key": false,
+   "data_element": "QKATART",
+   "domain": "QKATART",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Catalog",
+   "check_table": "TQ15"
+  },
+  {
+   "pos": 6,
+   "name": "VWERKS",
+   "key": false,
+   "data_element": "WERKS_D",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Plant",
+   "check_table": "T001W"
+  },
+  {
+   "pos": 7,
+   "name": "VAUSWAHLMG",
+   "key": false,
+   "data_element": "QVMENGE",
+   "domain": "QAUSWAHLMG",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Selected Set of the Usage Decision",
+   "check_table": "QPAM"
+  },
+  {
+   "pos": 8,
+   "name": "VCODEGRP",
+   "key": false,
+   "data_element": "QVGRUPPE",
+   "domain": "QCODEGRP",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Code Group of the Usage Decision",
+   "check_table": "QPGR"
+  },
+  {
+   "pos": 9,
+   "name": "VCODE",
+   "key": false,
+   "data_element": "QVCODE",
+   "domain": "QCODE",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Usage Decision Code",
+   "check_table": "QPCD"
+  },
+  {
+   "pos": 10,
+   "name": "VERSIONAM",
+   "key": false,
+   "data_element": "QVERSVE",
+   "domain": "QVERSNR",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Version Number of the Selected Set Record",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "VERSIONCD",
+   "key": false,
+   "data_element": "QVERSNRCD",
+   "domain": "QVERSNR",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Version Number of the Code Record",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "VBEWERTUNG",
+   "key": false,
+   "data_element": "QBEWERTUNG",
+   "domain": "QBEWERTUNG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Code Valuation",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "DBEWERTUNG",
+   "key": false,
+   "data_element": "QDBEWERT",
+   "domain": "QBEWERTUNG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Dynamic Modif. Valuation According to Worst Case Principle",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "VFOLGEAKTI",
+   "key": false,
+   "data_element": "QFOLGEAKTI",
+   "domain": "QFOLGEAKTI",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Follow-Up Action",
+   "check_table": "TQ07"
+  },
+  {
+   "pos": 15,
+   "name": "QKENNZAHL",
+   "key": false,
+   "data_element": "QKENNZAHL",
+   "domain": "QKENNZAHL",
+   "type": "DEC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Quality Score",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "LTEXTKZ",
+   "key": false,
+   "data_element": "QLTEXTAVE",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Long Text for Usage Decision",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "VNAME",
+   "key": false,
+   "data_element": "QVNAME",
+   "domain": "QAENDERER",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Person who Made the Usage Decision",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "VDATUM",
+   "key": false,
+   "data_element": "QVEDATUM",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date of Code Used for Usage Decision",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "VEZEITERF",
+   "key": false,
+   "data_element": "QVEZEITERF",
+   "domain": "QZEIT",
+   "type": "TIMS",
+   "length": 6,
+   "decimals": 0,
+   "description": "Time when Usage Decision Was Recorded",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "VAENAME",
+   "key": false,
+   "data_element": "QVAENAME",
+   "domain": "QAENDERER",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Person who Changed the Usage Decision",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "VAEDATUM",
+   "key": false,
+   "data_element": "QVAEDATUM",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Change Date of Usage Decision",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "VEZEITAEN",
+   "key": false,
+   "data_element": "QVEZEITAEN",
+   "domain": "QZEIT",
+   "type": "TIMS",
+   "length": 6,
+   "decimals": 0,
+   "description": "Time when Usage Decision Changed",
+   "check_table": null
+  },
+  {
+   "pos": 23,
+   "name": "STAFO",
+   "key": false,
+   "data_element": "STAFO",
+   "domain": "STAFO",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Update group for statistics update",
+   "check_table": "TMCB"
+  },
+  {
+   "pos": 24,
+   "name": "TEILLOS",
+   "key": false,
+   "data_element": "QTLOS",
+   "domain": "QTLOS",
+   "type": "NUMC",
+   "length": 6,
+   "decimals": 0,
+   "description": "Partial lot number",
+   "check_table": "QALT"
+  },
+  {
+   "pos": 25,
+   "name": "VORGLFNR",
+   "key": false,
+   "data_element": "QLFNKN",
+   "domain": "KNTNR",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Current Node Number from Order Counter APLZL",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDANT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "PRUEFLOS",
+   "foreign_table": "QALS",
+   "foreign_field": "PRUEFLOS"
+  },
+  {
+   "field": "STAFO",
+   "foreign_table": "TMCB",
+   "foreign_field": "STAFO"
+  },
+  {
+   "field": "TEILLOS",
+   "foreign_table": "QALT",
+   "foreign_field": "TEILLOS"
+  },
+  {
+   "field": "VAUSWAHLMG",
+   "foreign_table": "QPAM",
+   "foreign_field": "AUSWAHLMGE"
+  },
+  {
+   "field": "VCODE",
+   "foreign_table": "QPCD",
+   "foreign_field": "CODE"
+  },
+  {
+   "field": "VCODEGRP",
+   "foreign_table": "QPGR",
+   "foreign_field": "CODEGRUPPE"
+  },
+  {
+   "field": "VFOLGEAKTI",
+   "foreign_table": "TQ07",
+   "foreign_field": "FOLGEAKTI"
+  },
+  {
+   "field": "VKATART",
+   "foreign_table": "TQ15",
+   "foreign_field": "KATALOGART"
+  },
+  {
+   "field": "VWERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  }
+ ]
+}

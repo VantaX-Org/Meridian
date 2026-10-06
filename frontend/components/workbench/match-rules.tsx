@@ -22,7 +22,7 @@ import { createMatchRule, deleteMatchRule, getMatchRules, simulateMatchRules, up
 import {
   clearPairConstraint, getPairConstraints, matchTuningDryRun, type DryRunResult, type PairConstraint, type PairConstraintKind,
 } from "@/lib/api/merge-explain";
-import { formatModuleName } from "@/lib/format";
+import { formatModuleName, formatDate } from "@/lib/format";
 import type { MatchRule, MatchType, SimulationResult } from "@/types/api";
 
 const MATCH_TYPES: { value: MatchType; label: string; hint: string }[] = [
@@ -59,9 +59,9 @@ export function MatchRulesSurface() {
       <PageHeader title="Match rules" summary="How the matcher scores duplicate candidates, what a change would do, and the pairs stewards have pinned."
         actions={<SegmentedControl ariaLabel="Match rules view" value={current} options={VIEWS} onChange={setView} />} />
       <Tally level={4} label="Matching" figures={[
-        { label: "Rules", value: all.isLoading ? null : nRules || "None", loading: all.isLoading, tone: nOff ? "warning" : undefined, verdict: nOff ? `${nOff} switched off.` : nRules ? "Every rule is active." : "No rule to score with yet.", href: HREF },
-        { label: "Tuned pairs", value: tuned ?? "None", verdict: tuned === null ? "Run a tuning dry run." : "Re-scored in the last dry run.", href: `${HREF}&view=tuning` },
-        { label: "Constraints", value: cons.isLoading ? null : cons.data?.length || "None", loading: cons.isLoading, verdict: cons.data?.length ? "Pinned by stewards." : "No pair is pinned.", href: `${HREF}&view=constraints` },
+        { label: "Rules", value: all.isLoading ? null : nRules ?? 0, loading: all.isLoading, tone: nOff ? "warning" : undefined, verdict: nOff ? `${nOff} switched off.` : nRules ? "Every rule is active." : "No rule to score with yet.", href: HREF },
+        { label: "Tuned pairs", value: tuned ?? null, verdict: tuned === null ? "Run a tuning dry run." : "Re-scored in the last dry run.", href: `${HREF}&view=tuning` },
+        { label: "Constraints", value: cons.isLoading ? null : cons.data?.length ?? 0, loading: cons.isLoading, verdict: cons.data?.length ? "Pinned by stewards." : "No pair is pinned.", href: `${HREF}&view=constraints` },
       ]} />
       {current === "tuning" ? <TuningView domains={domainOptions(all.data?.rules.map((r) => r.domain) ?? [])} onTuned={setTuned} />
         : current === "constraints" ? <ConstraintsView domains={domainOptions(all.data?.rules.map((r) => r.domain) ?? [])} />
@@ -302,7 +302,7 @@ function ConstraintsView({ domains }: { domains: { value: string; label: string 
     { id: "a", header: "Record A", meta: meta({ width: 140 }), cell: ({ row }) => <span className="aurora-number">{row.original.key_lo}</span> },
     { id: "b", header: "Record B", meta: meta({ width: 140 }), cell: ({ row }) => <span className="aurora-number">{row.original.key_hi}</span> },
     { id: "reason", header: "Reason", meta: meta({ minWidth: 200 }), cell: ({ row }) => row.original.reason ?? "None given" },
-    { id: "created", header: "Created", meta: meta({ width: 170 }), cell: ({ row }) => new Date(row.original.created_at).toLocaleString() },
+    { id: "created", header: "Created", meta: meta({ width: 170 }), cell: ({ row }) => formatDate(row.original.created_at, "datetime") },
     { id: "clear", header: "", meta: meta({ width: 260 }), cell: ({ row }) => write ? (
       <ReasonButton size="sm" label="Clear" prompt="Why clear this constraint? (optional note)" disabled={clear.isPending}
         onConfirm={(reason) => clear.mutate({ c: row.original, reason })} />

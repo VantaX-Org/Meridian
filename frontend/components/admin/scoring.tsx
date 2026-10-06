@@ -76,8 +76,11 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
   }, [weights, sum]);
   const scores = agg.data?.dqs.dimension_scores ?? {};
   const current = agg.data?.dqs.composite ?? null;
-  const preview = composite(scores, normalised);
+  const rawPreview = composite(scores, normalised);
   const capped = agg.data?.dqs.capped;
+  const criticals = agg.data?.severity.critical ?? 0;
+  const capValue = capped && criticals > 0 ? (criticals >= 2 ? 70 : 85) : null;
+  const preview = rawPreview !== null && capValue !== null ? Math.min(rawPreview, capValue) : rawPreview;
 
   const saveWeights = useMutation({
     mutationFn: () => updateDqsWeights(normalised),
@@ -108,9 +111,9 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
       {!write ? <Banner tone="info" title="Read only">Changing these settings needs the manage_settings permission.</Banner> : null}
 
       <Tally level={4} label="Score preview" figures={[
-        { label: "Score now", value: current === null ? "None" : current.toFixed(1), loading: agg.isLoading, tone: capped ? "danger" : undefined, verdict: capped ? "A severity cap is in force." : current === null ? "No analysis has run yet." : "From the latest run.", href: HREF },
-        { label: "With these weights", value: preview === null ? "None" : preview.toFixed(1), loading: agg.isLoading, verdict: delta === null ? "Needs a scored run." : delta === 0 ? "Same as now." : `${delta > 0 ? "Up" : "Down"} ${Math.abs(delta)} points.`, href: HREF },
-        { label: "Weights sum", value: sum.toFixed(2), tone: Math.abs(sum - 1) < 0.005 ? undefined : "warning", verdict: Math.abs(sum - 1) < 0.005 ? "Sums to one." : "Normalised to one on save.", href: HREF },
+        { label: "Score now", value: current === null ? null : Number(current.toFixed(1)), loading: agg.isLoading, tone: capped ? "danger" : undefined, verdict: capped ? "A severity cap is in force." : current === null ? "No analysis has run yet." : "From the latest run.", href: HREF },
+        { label: "With these weights", value: preview === null ? null : Number(preview.toFixed(1)), loading: agg.isLoading, verdict: capValue !== null && rawPreview !== null && rawPreview > capValue ? `Capped at ${capValue} by ${criticals} critical ${criticals === 1 ? "finding" : "findings"}.` : delta === null ? "Needs a scored run." : delta === 0 ? "Same as now." : `${delta > 0 ? "Up" : "Down"} ${Math.abs(delta)} points.`, href: HREF },
+        { label: "Weights sum", value: null, text: sum.toFixed(2), tone: Math.abs(sum - 1) < 0.005 ? undefined : "warning", verdict: Math.abs(sum - 1) < 0.005 ? "Sums to one." : "Normalised to one on save.", href: HREF },
       ]} />
 
       <SectionCard title="Dimension weights" meta="Normalised to 1 on save">

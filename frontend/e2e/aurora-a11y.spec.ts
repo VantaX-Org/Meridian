@@ -11,6 +11,7 @@ for (const r of ROUTES) {
   test(`a11y — ${r.name} has no critical or serious axe violations`, async ({ app }) => {
     await app.goto(r.path, { waitUntil: "load" });
     await expect(app.getByRole("heading", { level: 1, name: r.heading })).toBeVisible();
+    await expect(app.getByRole("heading", { level: 1 })).toHaveCount(1);
 
     const result = await new AxeBuilder({ page: app })
       .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])

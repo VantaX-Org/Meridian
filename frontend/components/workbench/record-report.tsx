@@ -20,7 +20,7 @@ import { getConfigImpact } from "@/lib/api/connectivity";
 import { getFindings } from "@/lib/api/findings";
 import { getIssue, getIssues, updateIssues, type IssueStatus, type RecordIssue } from "@/lib/api/issues";
 import { getVersions } from "@/lib/api/versions";
-import { formatModuleName, relativeTime } from "@/lib/format";
+import { formatModuleName, relativeTime, formatDate } from "@/lib/format";
 
 const STATUS: Record<IssueStatus, RecordReportStatus> = { open: "open", in_progress: "in_progress", waiting_sap: "in_progress", waiting_requester: "in_progress", accepted: "resolved", resolved: "resolved" };
 const SEV = (s: string): "critical" | "high" | "medium" | "low" =>
@@ -103,7 +103,7 @@ export function RecordReportView({ issueId }: { issueId: string }) {
       <Tally level={4} label="This record" figures={[
         { label: "Open issues on this record", value: open.length, tone: open.length ? "high" : undefined, verdict: open.length ? "Checks this record still fails." : "This record passes every check.", href: records, loading: siblings.isLoading },
         { label: "Days open", value: days, unit: days === 1 ? " day" : " days", verdict: issue.resolved_at ? "From first seen to resolved." : "Since a run first found it.", href: self },
-        { label: "Reopened", value: issue.reopened_count || "Never", verdict: issue.reopened_count ? "Failed again after it was resolved." : "It has not failed again.", href: self },
+        { label: "Reopened", value: issue.reopened_count ?? 0, verdict: issue.reopened_count ? "Failed again after it was resolved." : "It has not failed again.", href: self },
       ]} />
       <RecordReport
         recordId={issue.record_key}
@@ -125,7 +125,7 @@ export function RecordReportView({ issueId }: { issueId: string }) {
         fixPlaybook={steps.length ? { title: "What to do", steps } : undefined}
         configImpact={configImpact}
         activity={[
-          ...detail.data!.runs.map((r) => ({ id: r.version_id, timestamp: r.run_at, displayTime: new Date(r.run_at).toLocaleString(),
+          ...detail.data!.runs.map((r) => ({ id: r.version_id, timestamp: r.run_at, displayTime: formatDate(r.run_at, "datetime"),
             actor: "Analysis", action: r.failing ? "found the record failing" : "found the record passing" })),
           ...detail.data!.events.map((e, n) => ({ id: `e${n}`, timestamp: e.created_at, displayTime: relativeTime(e.created_at),
             actor: e.user_label ?? "system", action: `${e.action.replace(/_/g, " ")}${e.from_value || e.to_value ? ` from ${e.from_value ?? "none"} to ${e.to_value ?? "none"}` : ""}`,

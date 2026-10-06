@@ -10,15 +10,15 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Chip } from "@/components/aurora";
-import { Banner, Button, EmptyState, SectionCard, TableSkeleton, Verdict } from "@/components/ui-core";
+import { Banner, Button, EmptyState, PageHeader, SectionCard, TableSkeleton, Verdict } from "@/components/ui-core";
 import { useUrlState } from "@/hooks/use-url-state";
 import { getNotifications, markAllNotificationsRead, markNotificationRead } from "@/lib/api/notifications";
-import { relativeTime } from "@/lib/format";
+import { relativeTime, formatDate, humanizeIds } from "@/lib/format";
 import type { Notification, NotificationType } from "@/types/api";
 
 const TYPES: NotificationType[] = ["finding", "approval", "cleaning", "exception", "digest", "warning"];
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-const dayLabel = (iso: string) => new Date(iso).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
+const dayLabel = (iso: string) => formatDate(iso);
 
 export function NotificationsSurface() {
   const qc = useQueryClient();
@@ -48,6 +48,7 @@ export function NotificationsSurface() {
 
   return (
     <div className="ui-page">
+      <PageHeader title="Notifications" summary="Alerts and job results addressed to you." />
       {verdict ? <Verdict>{verdict}</Verdict> : null}
       <div className="aurora-notifs__bar">
         <Chip selected={view === "all"} onClick={() => setView("all")}>All</Chip>
@@ -66,9 +67,9 @@ export function NotificationsSurface() {
                 <li key={n.id} className="aurora-notifs__row" data-unread={!n.is_read}>
                   <span className="aurora-notifs__dot" aria-hidden="true" />
                   <button type="button" className="aurora-notifs__body" onClick={() => !n.is_read && markOne.mutate(n.id)}
-                    aria-label={n.is_read ? n.title : `${n.title}, unread. Mark read.`}>
-                    <span className="aurora-notifs__title">{n.title}</span>
-                    <span className="aurora-notifs__text">{n.body}</span>
+                    aria-label={n.is_read ? humanizeIds(n.title) : `${humanizeIds(n.title)}, unread. Mark read.`}>
+                    <span className="aurora-notifs__title">{humanizeIds(n.title)}</span>
+                    <span className="aurora-notifs__text">{humanizeIds(n.body)}</span>
                   </button>
                   <span className="aurora-notifs__kind">{cap(n.type)}</span>
                   <span className="aurora-notifs__when aurora-number">{relativeTime(n.created_at)}</span>

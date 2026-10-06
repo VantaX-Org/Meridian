@@ -1,0 +1,11 @@
+{
+ "domain": "QP_RESPLAN",
+ "type": "CHAR",
+ "length": 3,
+ "decimals": 0,
+ "conversion_exit": "ALPHA",
+ "lowercase": false,
+ "value_table": "TQPC_RESPLAN",
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -25,8 +25,8 @@ export function ExceptionBillingSurface() {
     <div className="ui-page">
       <PageHeader title="Exception billing" summary="Resolved exceptions by billing tier, on top of the base fee. Read only." />
       <Tally level={4} label="Billing for the month" figures={[
-        { label: "Total", value: b ? money(b.total_amount) : null, loading: q.isLoading, verdict: b ? "Base fee plus tiers." : "Pick a month.", href: HREF },
-        { label: "Base fee", value: b ? money(b.base_fee) : null, loading: q.isLoading, verdict: "Charged every month.", href: HREF },
+        { label: "Total", value: null, text: b ? money(b.total_amount) : undefined, loading: q.isLoading, verdict: b ? "Base fee plus tiers." : "Pick a month.", href: HREF },
+        { label: "Base fee", value: null, text: b ? money(b.base_fee) : undefined, loading: q.isLoading, verdict: "Charged every month.", href: HREF },
         { label: "Resolved exceptions", value: resolved, loading: q.isLoading, verdict: resolved ? "Billed by tier below." : "Nothing resolved this month.", href: HREF },
       ]} />
       <div className="ui-fields"><Field label="Month">

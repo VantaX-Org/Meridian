@@ -20,7 +20,7 @@ import {
 } from "@/components/ui-core";
 import { useRole } from "@/hooks/use-role";
 import { compareRecordKeys, compareRecords, compareVersions, getVersions, pinBaseline } from "@/lib/api/versions";
-import { formatModuleName, relativeTime } from "@/lib/format";
+import { formatModuleName, relativeTime, formatDate } from "@/lib/format";
 import type { DQSSummary, Version } from "@/types/api";
 
 const meta = (m: AuroraColumnMeta) => m;
@@ -123,14 +123,14 @@ export function AnalysesSurface() {
   return (
     <div className="ui-page">
       <PageHeader
-        title="Analyses"
+        title="Analysis runs"
         summary="Tick two runs and compare them. The older one is always on the left; the pin makes it the baseline later runs are measured against."
         actions={<Button disabled={picked.length !== 2} onClick={() => setParams({ compare: byAge(picked).join(",") })}>Compare</Button>} />
       <Tally level={2} label="Analysis runs" figures={[
         { label: "Runs", value: versions.length, href: "/analyse?tab=analyses", loading: list.isLoading, verdict: `${completed.length} analysed.` },
         { label: "Latest score", value: latestDqs, href: completed[0] ? `/data/runs/${completed[0].id}` : "/analyse?tab=analyses", loading: list.isLoading, unit: latestDqs === null ? undefined : "of 100", verdict: completed[0] ? versionName(completed[0]) : "Nothing analysed yet." },
-        { label: "Baseline score", value: baselineDqs ?? "None", href: baseline ? `/data/runs/${baseline.id}` : "/analyse?tab=analyses", loading: list.isLoading, verdict: baseline ? versionName(baseline) : "Pin a run as the baseline from a comparison." },
-        { label: "Change since baseline", value: sinceBaseline === null ? "None" : signed(sinceBaseline), href: "/analyse?tab=analyses", loading: list.isLoading,
+        { label: "Baseline score", value: baselineDqs ?? null, href: baseline ? `/data/runs/${baseline.id}` : "/analyse?tab=analyses", loading: list.isLoading, verdict: baseline ? versionName(baseline) : "Pin a run as the baseline from a comparison." },
+        { label: "Change since baseline", value: null, text: sinceBaseline === null ? undefined : signed(sinceBaseline), href: "/analyse?tab=analyses", loading: list.isLoading,
           tone: sinceBaseline !== null && sinceBaseline < 0 ? "danger" : undefined, verdict: sinceBaseline === null ? "Needs a baseline and a later analysed run." : "Latest score minus baseline score." },
       ]} />
       <FilterBar onClear={object || systemId ? () => setParams({ module: null, system_id: null }) : undefined}>
@@ -181,7 +181,7 @@ function PairSummary({ older, newer, object }: { older: Version; newer: Version;
     <th scope="col">
       <div className="ui-cell-stack">
         <span className="ui-cell-stack__main">{versionName(v)}{v.metadata?.baseline ? " (baseline)" : ""}</span>
-        <span className="ui-cell-stack__sub"><span>{new Date(v.run_at).toLocaleString()}</span><Mono>{v.id.slice(0, 8)}</Mono></span>
+        <span className="ui-cell-stack__sub"><span>{formatDate(v.run_at, "datetime")}</span><Mono>{v.id.slice(0, 8)}</Mono></span>
       </div>
     </th>
   );

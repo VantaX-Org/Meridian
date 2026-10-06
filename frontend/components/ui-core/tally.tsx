@@ -6,7 +6,10 @@ import { useCountUp } from "@/lib/aurora/use-count-up";
 
 export interface TallyFigureProps {
   label: string;
-  value: number | string | null;
+  /** A figure is a number or null (an em dash). The reason for null goes in `verdict`. */
+  value: number | null;
+  /** A word as the figure, only when it is the real answer. Never "None", "Unknown" or "Never": use null. */
+  text?: string;
   unit?: string;
   verdict: ReactNode;
   href: string;
@@ -17,9 +20,9 @@ export interface TallyFigureProps {
   error?: { retry: () => void };
 }
 
-export function TallyFigure({ label, value, unit, verdict, href, tone, delta, loading, error }: TallyFigureProps) {
-  const counted = useCountUp(typeof value === "number" ? value : null);
-  const shown = typeof value === "number" ? counted : value;
+export function TallyFigure({ label, value, text: word, unit, verdict, href, tone, delta, loading, error }: TallyFigureProps) {
+  const counted = useCountUp(value, 360, `${label}|${href}`);
+  const shown = value === null ? (word ?? null) : counted;
   const text = error || shown === null ? "—" : typeof shown === "number" ? shown.toLocaleString() : shown;
   const deltaText = !delta ? null
     : delta.value === 0 ? "no change since last run"
