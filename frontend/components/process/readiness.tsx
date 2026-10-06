@@ -23,13 +23,15 @@ import {
 import { getBusinessProcess, getConfigImpact } from "@/lib/api/connectivity";
 import { getVersions } from "@/lib/api/versions";
 import { formatModuleName, formatDate } from "@/lib/format";
-import type { BusinessProcessL1, BusinessProcessL5Field, Version } from "@/types/api";
+import type { BusinessProcessL1, BusinessProcessL4, BusinessProcessL5Field, Version } from "@/types/api";
 
 const COMPLETE = new Set(["complete", "agents_running", "agents_complete", "agents_failed", "ai_enriching", "ai_enriched"]);
 const isComplete = (v: Version) => COMPLETE.has(v.status) && !!v.dqs_summary && Object.keys(v.dqs_summary).length > 0;
 
+const l4Fields = (l4: BusinessProcessL4): BusinessProcessL5Field[] => l4.activities.flatMap((a) => a.fields);
+
 function fields(l1: BusinessProcessL1): BusinessProcessL5Field[] {
-  return l1.l2_groups.flatMap((l2) => l2.l3_processes.flatMap((l3) => l3.l4_steps.flatMap((l4) => l4.l5_fields)));
+  return l1.l2_groups.flatMap((l2) => l2.l3_processes.flatMap((l3) => l3.l4_subprocesses.flatMap(l4Fields)));
 }
 const score = (fs: BusinessProcessL5Field[]) => (fs.length ? Math.round((fs.filter((f) => f.dq_status === "green").length / fs.length) * 100) : 100);
 const red = (fs: BusinessProcessL5Field[]) => fs.filter((f) => f.dq_status === "red").length;
@@ -96,18 +98,18 @@ export function ProcessReadiness() {
   const hierarchy: ProcessReportHierarchyNode[] = [{
     level: 1, id: l1.l1_id, label: l1.l1_name, module: l1.system, score: pct, blocking,
     children: l1.l2_groups.map((l2) => {
-      const f2 = l2.l3_processes.flatMap((l3) => l3.l4_steps.flatMap((l4) => l4.l5_fields));
+      const f2 = l2.l3_processes.flatMap((l3) => l3.l4_subprocesses.flatMap(l4Fields));
       return {
         level: 2 as const, id: l2.l2_id, label: l2.l2_name, score: score(f2), blocking: red(f2),
         children: l2.l3_processes.map((l3) => {
-          const f3 = l3.l4_steps.flatMap((l4) => l4.l5_fields);
+          const f3 = l3.l4_subprocesses.flatMap(l4Fields);
           return {
-            level: 3 as const, id: l3.l3_id, label: `${l3.l3_name} (${l3.tcode})`, score: score(f3), blocking: red(f3),
-            children: l3.l4_steps.map((l4) => ({
-              level: 4 as const, id: l4.l4_id, label: l4.l4_name, score: score(l4.l5_fields), blocking: red(l4.l5_fields),
-              children: l4.l5_fields.map((f) => ({
-                level: 5 as const, id: `${l4.l4_id}-${f.field}`, label: `${f.field}${f.mandatory ? ", mandatory" : ""}`,
-                module: f.config_source, score: f.pass_rate ?? (f.dq_status === "green" ? 100 : 0), blocking: f.dq_status === "red" ? 1 : 0,
+            level: 3 as const, id: l3.l3_id, label: l3.l3_name, score: score(f3), blocking: red(f3),
+            children: l3.l4_subprocesses.map((l4) => ({
+              level: 4 as const, id: l4.l4_id, label: `${l4.l4_name}${l4.tcode ? ` (${l4.tcode})` : ""}`, score: score(l4Fields(l4)), blocking: red(l4Fields(l4)),
+              children: l4.activities.map((act) => ({
+                level: 5 as const, id: act.l5_id, label: act.l5_name, module: act.tcode || undefined,
+                score: score(act.fields), blocking: red(act.fields),
               })),
             })),
           };
@@ -117,9 +119,9 @@ export function ProcessReadiness() {
   }];
 
   const blockingFindings: ProcessReportBlockingFinding[] = l1.l2_groups.flatMap((l2) => l2.l3_processes.flatMap((l3) =>
-    l3.l4_steps.flatMap((l4) => l4.l5_fields.filter((f) => f.dq_status === "red").map((f) => ({
+    l3.l4_subprocesses.flatMap((l4) => l4Fields(l4).filter((f) => f.dq_status === "red").map((f) => ({
       id: `${l3.l3_id}-${l4.l4_id}-${f.field}`, severity: sev(f), checkId: f.check_id ?? f.field,
-      title: f.finding_message || f.description, gate: `${l3.l3_name} (${l3.tcode})`, affected: f.affected_count,
+      title: f.finding_message || f.description, gate: l3.l3_name, affected: f.affected_count,
       href: f.check_id ? findingHref(object, f.check_id) : undefined,
     })))));
 
@@ -133,13 +135,13 @@ export function ProcessReadiness() {
   const recommendations: ProcessReportRecommendation[] = l1.l2_groups.flatMap((l2) => l2.l3_processes
     .filter((l3) => l3.overall_readiness !== "green")
     .map((l3) => {
-      const f3 = l3.l4_steps.flatMap((l4) => l4.l5_fields);
+      const f3 = l3.l4_subprocesses.flatMap(l4Fields);
       const reds = f3.filter((f) => f.dq_status === "red");
       const records = reds.reduce((a, f) => a + f.affected_count, 0);
       return {
         id: l3.l3_id,
-        label: reds.length ? `Clear ${reds.length} failing field${reds.length === 1 ? "" : "s"} in ${l3.l3_name} (${l3.tcode})`
-          : `Review the amber fields in ${l3.l3_name} (${l3.tcode})`,
+        label: reds.length ? `Clear ${reds.length} failing field${reds.length === 1 ? "" : "s"} in ${l3.l3_name}`
+          : `Review the amber fields in ${l3.l3_name}`,
         effort: (records > 500 ? "high" : records > 50 ? "medium" : "low") as "low" | "medium" | "high",
         rationale: reds.length ? `${records.toLocaleString()} records fail ${Array.from(new Set(reds.map((f) => f.check_id).filter(Boolean))).join(", ")}` : "No field is red; amber fields have partial pass rates.",
       };

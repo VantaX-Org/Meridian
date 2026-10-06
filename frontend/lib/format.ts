@@ -173,10 +173,15 @@ export function objectNoun(module: string): string {
 
 const KEY_LABEL: Record<string, string> = { LIFNR: "vendor", KUNNR: "customer", MATNR: "material", BUKRS: "company code", WERKS: "plant", EKORG: "purchasing org", VKORG: "sales org", VTWEG: "distribution channel", SPART: "division", LGORT: "storage location", KOKRS: "controlling area", KOSTL: "cost centre", SAKNR: "account", EBELN: "purchase order", VBELN: "document" };
 
+/** "BUKRS" -> "company code": a record key field as a noun; unknown fields are lower-cased. */
+export function keyFieldLabel(field: string): string {
+  return KEY_LABEL[field.toUpperCase()] ?? field.toLowerCase();
+}
+
 /** "LIFNR=V3|BUKRS=1000" becomes "Vendor V3, company code 1000". A key that is not field=value pairs is returned as is. */
 export function recordKeyLabel(key: string): string {
   const parts = key.split("|").map((p) => p.split("="));
   if (!parts.every((p) => p.length === 2 && p[0] && p[1])) return key;
-  const text = parts.map(([k, v]) => `${KEY_LABEL[k.toUpperCase()] ?? k.toLowerCase()} ${v}`).join(", ");
+  const text = parts.map(([k, v]) => `${keyFieldLabel(k)} ${v}`).join(", ");
   return text.charAt(0).toUpperCase() + text.slice(1);
 }

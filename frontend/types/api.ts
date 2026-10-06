@@ -1000,21 +1000,31 @@ export interface BusinessProcessL5Field {
   finding_message: string;
 }
 
-export interface BusinessProcessL4Step {
+export interface BusinessProcessL5Activity {
+  l5_id: string;
+  l5_name: string;
+  tcode: string;
+  description: string;
+  fields: BusinessProcessL5Field[];
+  check_ids: string[];
+  activity_status: "green" | "amber" | "red";
+}
+
+export interface BusinessProcessL4 {
   l4_id: string;
   l4_name: string;
+  tcode: string;
   description: string;
   config_dependency: { table: string; field: string; source: string; values_found: number } | null;
-  l5_fields: BusinessProcessL5Field[];
+  activities: BusinessProcessL5Activity[];
   step_status: "green" | "amber" | "red";
 }
 
 export interface BusinessProcessL3 {
   l3_id: string;
   l3_name: string;
-  tcode: string;
   description: string;
-  l4_steps: BusinessProcessL4Step[];
+  l4_subprocesses: BusinessProcessL4[];
   overall_readiness: "green" | "amber" | "red";
 }
 

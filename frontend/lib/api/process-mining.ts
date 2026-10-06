@@ -3,8 +3,8 @@ import apiClient from "./client";
 export interface MiningActivity {
   id: string;
   label: string;
-  l3_id: string;
-  l3_name: string;
+  l4_id: string;
+  l4_name: string;
   tcode: string | null;
   step_status: "green" | "amber" | "red";
   affected_records: number;

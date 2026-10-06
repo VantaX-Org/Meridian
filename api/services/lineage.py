@@ -162,24 +162,30 @@ def build_graph(model: dict, rules: list[tuple[str, dict]] | None = None) -> Gra
 
     for l1 in PROCESS_DEFINITIONS:
         g.node(f"process:{l1['id']}", "process", l1["name"], level=1)
-        for l2 in l1.get("l2_processes", []):
+        for l2 in l1.get("l2", []):
             g.node(f"process:{l2['id']}", "process", l2["name"], level=2, l1=l1["id"])
             g.edge(f"process:{l2['id']}", f"process:{l1['id']}", "part_of", "process_definitions")
-            for l3 in l2.get("l3_transactions", []):
-                for l4 in l3.get("l4_steps", []):
-                    fields, cfgs = [], set()
-                    for l5 in l4.get("l5_fields", []):
-                        tf = l5["field"]
-                        if not _known_field(tf):
-                            g.warnings.append(f"{l4['id']}: L5 field {tf} is not in the SAP dictionary (skipped)")
-                            continue
-                        fields.append(tf)
-                        cid = l5.get("check_id")
-                        if cid in rule_fields and tf not in rule_fields[cid]:
-                            g.warnings.append(f"{l4['id']}: L5 {tf} declares check {cid}, which does not read it")
-                        cfgs |= set(re.findall(r"\b[A-Z][A-Z0-9]{2,}\b", l5.get("config_source") or "")) & set(configs)
-                    add_step(l4["id"], l4["name"], l2["id"], l1["id"], l3.get("tcode"), fields,
-                             sorted(cfgs), "process_definitions")
+            for l3 in l2.get("l3", []):
+                g.node(f"process:{l3['id']}", "process", l3["name"], level=3, l1=l1["id"])
+                g.edge(f"process:{l3['id']}", f"process:{l2['id']}", "part_of", "process_definitions")
+                for l4 in l3.get("l4", []):
+                    g.node(f"process:{l4['id']}", "process", l4["name"], level=4, l1=l1["id"], tcode=l4.get("tcode"))
+                    g.edge(f"process:{l4['id']}", f"process:{l3['id']}", "part_of", "process_definitions")
+                    for act in l4.get("activities", []):
+                        fields, cfgs = [], set()
+                        for ref in act.get("fields", []):
+                            tf = ref["field"]
+                            if not _known_field(tf):
+                                g.warnings.append(f"{act['id']}: field {tf} is not in the SAP dictionary (skipped)")
+                                continue
+                            fields.append(tf)
+                            cid = ref.get("check_id")
+                            if cid in rule_fields and tf not in rule_fields[cid]:
+                                g.warnings.append(f"{act['id']}: {tf} declares check {cid}, which does not read it")
+                            cfgs |= set(re.findall(r"\b[A-Z][A-Z0-9]{2,}\b", ref.get("config_source") or "")) & set(configs)
+                        add_step(act["id"], act["name"], l2["id"], l1["id"], act.get("tcode") or l4.get("tcode"),
+                                 fields, sorted(cfgs), "process_definitions")
+                        g.edge(f"step:{act['id']}", f"process:{l4['id']}", "part_of", "process_definitions")
 
     for l1 in model.get("processes") or []:
         g.node(f"process:{l1['id']}", "process", l1["name"], level=1)

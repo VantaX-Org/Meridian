@@ -66,7 +66,7 @@ export function ProcessMapPage() {
   });
   const picked = drawer.value ? activities.find((a) => a.id === drawer.value) ?? null : null;
   const pickedFields = useMemo(() => (bpQ.data ?? []).flatMap((p) => p.l2_groups.flatMap((g) => g.l3_processes.flatMap((l3) =>
-    l3.l4_steps.filter((s) => s.l4_id === drawer.value).flatMap((s) => s.l5_fields)))).filter((f) => f.dq_status !== "green"),
+    l3.l4_subprocesses.flatMap((l4) => l4.activities).filter((act) => act.l5_id === drawer.value).flatMap((act) => act.fields)))).filter((f) => f.dq_status !== "green"),
   [bpQ.data, drawer.value]);
   const graphNodes = useMemo(() => activities.map((a) => ({
     id: a.id,

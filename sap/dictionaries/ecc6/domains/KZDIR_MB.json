@@ -1,0 +1,27 @@
+{
+ "domain": "KZDIR_MB",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Integrated Case"
+  },
+  {
+   "low": "S",
+   "high": null,
+   "text": "Issuing System"
+  },
+  {
+   "low": "R",
+   "high": null,
+   "text": "Receiving System"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

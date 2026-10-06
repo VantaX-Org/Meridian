@@ -5,24 +5,19 @@ from api.services.process_writer import generate_process_document
 
 
 def _get_first_l3(doc):
-    """Navigate to the first L3 transaction in the document."""
-    l1 = doc[0]
-    l2_key = "l2_groups" if "l2_groups" in l1 else "l2_processes"
-    l2 = l1[l2_key][0]
-    l3_key = "l3_processes" if "l3_processes" in l2 else "l3_transactions"
-    return l2[l3_key][0]
+    """Navigate to the first L3 process in the document."""
+    return doc[0]["l2_groups"][0]["l3_processes"][0]
 
 
 def _get_all_l5_fields(doc):
     """Collect all L5 fields from the document."""
     fields = []
     for l1 in doc:
-        l2_key = "l2_groups" if "l2_groups" in l1 else "l2_processes"
-        for l2 in l1.get(l2_key, []):
-            l3_key = "l3_processes" if "l3_processes" in l2 else "l3_transactions"
-            for l3 in l2.get(l3_key, []):
-                for l4 in l3.get("l4_steps", []):
-                    fields.extend(l4.get("l5_fields", []))
+        for l2 in l1["l2_groups"]:
+            for l3 in l2["l3_processes"]:
+                for l4 in l3["l4_subprocesses"]:
+                    for act in l4["activities"]:
+                        fields.extend(act["fields"])
     return fields
 
 
@@ -39,17 +34,18 @@ def test_empty_inputs_returns_processes():
 def test_l1_has_l2_children():
     """L1 should have L2 children."""
     doc = generate_process_document("accounts_payable", {}, {}, [])
-    l1 = doc[0]
-    l2_key = "l2_groups" if "l2_groups" in l1 else "l2_processes"
-    assert len(l1[l2_key]) > 0
+    assert len(doc[0]["l2_groups"]) > 0
 
 
-def test_l3_has_l4_steps():
-    """L3 should have L4 steps."""
+def test_l3_has_l4_subprocesses_with_activities():
+    """L3 has L4 sub-processes; each has L5 activities carrying fields."""
     doc = generate_process_document("accounts_payable", {}, {}, [])
     l3 = _get_first_l3(doc)
-    assert "l4_steps" in l3
-    assert len(l3["l4_steps"]) > 0
+    assert len(l3["l4_subprocesses"]) > 0
+    l4 = l3["l4_subprocesses"][0]
+    assert l4["tcode"] and l4["activities"]
+    act = l4["activities"][0]
+    assert act["l5_id"].startswith(l4["l4_id"]) and act["fields"] and act["activity_status"] == "green"
 
 
 def test_l3_has_readiness():
@@ -109,10 +105,8 @@ def test_readiness_escalates_with_failures():
     # At least one L3 should not be green
     found_non_green = False
     for l1 in doc:
-        l2_key = "l2_groups" if "l2_groups" in l1 else "l2_processes"
-        for l2 in l1.get(l2_key, []):
-            l3_key = "l3_processes" if "l3_processes" in l2 else "l3_transactions"
-            for l3 in l2.get(l3_key, []):
+        for l2 in l1["l2_groups"]:
+            for l3 in l2["l3_processes"]:
                 readiness = l3.get("overall_readiness") or l3.get("readiness", "green")
                 if readiness != "green":
                     found_non_green = True
@@ -125,3 +119,52 @@ def test_classify_uses_percent_scale():
     assert _classify_finding({"severity": "low", "pass_rate": 50.0}) == "red"
     assert _classify_finding({"severity": "low", "pass_rate": 80.0}) == "amber"
     assert _classify_finding({"severity": "low", "pass_rate": 99.0}) == "green"
+
+
+# check_ids of every field in the process model before the L1-L5 migration (22 of them).
+_OLD_CHECK_IDS = {
+    "AP001", "AP003", "AP005", "AP007", "AP009", "AP010", "AP014", "AP016", "AP017", "AP018", "AP019", "AP020",
+    "AR001", "AR005", "AR010", "MM001", "MM005", "PUR003", "PUR004", "SD005", "SO001", "SO005",
+}
+
+
+def test_every_old_check_id_survives():
+    """The migration must not lose a field -> check_id link."""
+    from sap.process_definitions import PROCESS_DEFINITIONS, get_check_ids_for_process
+
+    ids = {f["check_id"] for l1 in PROCESS_DEFINITIONS for l2 in l1["l2"] for l3 in l2["l3"]
+           for l4 in l3["l4"] for a in l4["activities"] for f in a["fields"] if f["check_id"]}
+    assert ids == _OLD_CHECK_IDS
+    assert set().union(*(get_check_ids_for_process(p["id"]) for p in PROCESS_DEFINITIONS)) == _OLD_CHECK_IDS
+
+
+def test_old_ids_survive_at_new_levels():
+    from sap.process_definitions import reference_document
+
+    doc = reference_document()
+    assert [x.id for x in doc.l1] == ["PTP", "OTC"]
+    assert len(doc.all_l4()) == 8 and {x.id for x in doc.all_l4()} >= {"PTP-VM-FK01", "OTC-SO-VA01", "PTP-IV-MIRO"}
+    acts = {a.id for l4 in doc.all_l4() for a in l4.activities}
+    assert {"PTP-VM-FK01-01", "OTC-SO-VA01-04", "PTP-IV-MIRO-01"} <= acts
+
+
+def test_activity_statuses_share_the_readiness_colouring():
+    from api.services.process_writer import activity_statuses
+    from sap.process_definitions import reference_document
+
+    findings = {"AP018": {"pass_rate": 80.0, "affected_count": 200, "severity": "critical", "message": "x"}}
+    doc = reference_document()
+    out = activity_statuses(doc, findings, {}, [])
+    red = [k for k, v in out.items() if v["dq_status"] == "red"]
+    assert red and all(out[k]["affected_count"] == 200 and out[k]["finding_count"] == 1 for k in red)
+    assert all(v["dq_status"] == "green" for k, v in out.items() if k not in red)
+
+
+def test_mining_transition_passes_through_gateway():
+    """A flow task -> exclusiveGateway -> task collapses to one activity-to-activity transition."""
+    from api.routes.process_mining import _collapse
+
+    edges = _collapse("OTC-SO-VA01")
+    assert ("OTC-SO-VA01-03", "OTC-SO-VA01-04") in edges  # the gateway sits between them
+    assert _collapse("PTP-IV-MIRO") == []  # gateway leads only to end events: no transition
+    assert _collapse("NO-SUCH-L4") == []
