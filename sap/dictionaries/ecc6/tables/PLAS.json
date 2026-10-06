@@ -1,0 +1,218 @@
+{
+ "table": "PLAS",
+ "description": "Task list - selection of operations/activities",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "PLNTY",
+   "key": true,
+   "data_element": "PLNTY",
+   "domain": "PLNTY",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Task List Type",
+   "check_table": "TCA01"
+  },
+  {
+   "pos": 3,
+   "name": "PLNNR",
+   "key": true,
+   "data_element": "PLNNR",
+   "domain": "PLNNR",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Key for Task List Group",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "PLNAL",
+   "key": true,
+   "data_element": "PLNAL",
+   "domain": "ALTNR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Group Counter",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "PLNFL",
+   "key": true,
+   "data_element": "PLNFOLGE",
+   "domain": "PLNFOLGE",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Sequence",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "PLNKN",
+   "key": true,
+   "data_element": "PLNKN",
+   "domain": "KNTNR",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Number of the task list node",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "ZAEHL",
+   "key": true,
+   "data_element": "CIM_COUNT",
+   "domain": "CIM_COUNT",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Internal counter",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "DATUV",
+   "key": false,
+   "data_element": "DATUV",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Valid-From Date",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "TECHV",
+   "key": false,
+   "data_element": "TECHV",
+   "domain": "TECHS",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Technical status from",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "AENNR",
+   "key": false,
+   "data_element": "AENNR",
+   "domain": "AENNR",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Change Number",
+   "check_table": "AENR"
+  },
+  {
+   "pos": 11,
+   "name": "LOEKZ",
+   "key": false,
+   "data_element": "LKENZ",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Deletion Indicator",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "PARKZ",
+   "key": false,
+   "data_element": "PARKZ",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: inactive changes",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "ANDAT",
+   "key": false,
+   "data_element": "ANDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date Record Created on",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "ANNAM",
+   "key": false,
+   "data_element": "ANNAM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "User Who Created Record",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "AEDAT",
+   "key": false,
+   "data_element": "AEDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Last Changed On",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "AENAM",
+   "key": false,
+   "data_element": "AENAM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of Person Who Changed Object",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "AENNR",
+   "foreign_table": "AENR",
+   "foreign_field": "AENNR"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "PLNTY",
+   "foreign_table": "TCA01",
+   "foreign_field": "PLNTY"
+  }
+ ]
+}

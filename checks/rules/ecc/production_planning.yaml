@@ -1362,3 +1362,3825 @@ rules:
   fix_map:
     __other__: Recreate the BOM header in CS02 or delete the orphaned items.
   record_fix_template: 'BOM {STPO.STLTY}/{STPO.STLNR} item {STPO.STLKN}: no BOM header.'
+- id: PP205
+  field: MAST.STLNR
+  check_class: exists_check
+  fields:
+  - MAST.STLNR
+  - MAST.STLAL
+  target_table: STKO
+  target_fields:
+  - STLNR
+  - STLAL
+  target_when:
+    STLTY:
+    - M
+    LKENZ:
+      blank: true
+  severity: high
+  dimension: lifecycle
+  message: Material is assigned to a BOM alternative that is flagged for deletion
+  why_it_matters: The material-to-BOM link (MAST) still points at a BOM header whose deletion indicator is set. MRP and order
+    creation read the link first, then find a deleted BOM.
+  rule_authority: sap_hard_constraint
+  sap_impact: Planned and production orders find no BOM for the material; dependent requirements are not created for the components.
+  fix_map:
+    __other__: Remove the assignment by deleting the BOM in CS02 completely, or restore the BOM alternative (CS02, reset the
+      deletion flag).
+  record_fix_template: 'Material {MAST.MATNR}, plant {MAST.WERKS}: BOM {MAST.STLNR} alternative {MAST.STLAL} is flagged for
+    deletion.'
+- id: PP206
+  field: STKO.STLNR
+  check_class: exists_check
+  grain: STKO
+  target_table: MAST
+  target_fields:
+  - STLNR
+  applies_when:
+    STKO.STLTY:
+    - M
+    STKO.LKENZ:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Material BOM header is not assigned to any material (orphan BOM)
+  why_it_matters: A material BOM (category M) is reached only through MAST. A header without a MAST row cannot be exploded
+    for any material and hides stale engineering data.
+  rule_authority: sap_hard_constraint
+  sap_impact: The BOM is invisible to MRP, costing and order creation; it still shows in BOM reports and where-used lists
+    as a valid structure.
+  fix_map:
+    __other__: Assign the BOM to a material in CS02, or flag the header for deletion.
+  record_fix_template: 'BOM {STKO.STLNR} alternative {STKO.STLAL}: not assigned to a material (MAST).'
+- id: PP207
+  field: STKO.DATUV
+  check_class: cross_field_check
+  fail_when: (`STKO.DATUV` - @today).dt.days > 365
+  applies_when:
+    STKO.STLTY:
+    - M
+    STKO.LKENZ:
+      blank: true
+  severity: medium
+  dimension: accuracy
+  message: BOM header valid-from date is more than a year in the future
+  why_it_matters: A far-future valid-from date usually comes from a mistyped year. Until the date arrives, the BOM is not
+    selected for any order.
+  rule_authority: best_practice
+  sap_impact: MRP and order creation find no valid BOM for today; the material is planned without components.
+  fix_map:
+    __other__: Correct the valid-from date through a change number in CS02.
+  record_fix_template: 'BOM {STKO.STLNR} alternative {STKO.STLAL}: valid from {actual_value}.'
+- id: PP208
+  field: STKO.AEDAT
+  check_class: cross_field_check
+  fail_when: '`STKO.AEDAT` < `STKO.ANDAT`'
+  applies_when:
+    STKO.AEDAT:
+      populated: true
+  severity: low
+  dimension: accuracy
+  message: BOM header change date is before its creation date
+  why_it_matters: A change cannot precede the creation. The pair of dates shows a load that did not keep the audit fields
+    of the source.
+  rule_authority: best_practice
+  sap_impact: Audit trails and change analysis in the BOM are unreliable.
+  fix_map:
+    __other__: Correct the audit fields in the load or recreate the header through CS01.
+  record_fix_template: 'BOM {STKO.STLNR} alternative {STKO.STLAL}: changed {actual_value}, created {STKO.ANDAT}.'
+- id: PP209
+  field: STKO.STLST
+  check_class: null_check
+  applies_when:
+    STKO.STLTY:
+    - M
+    STKO.LKENZ:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: Material BOM has no BOM status
+  why_it_matters: The BOM status decides whether MRP, costing and orders may use the BOM. A blank status is not a valid state.
+  rule_authority: sap_hard_constraint
+  sap_impact: The BOM is treated as unusable or is selected inconsistently between functions.
+  fix_map:
+    __blank__: Set the BOM status (active or inactive) in CS02 > Header.
+  record_fix_template: 'BOM {STKO.STLNR} alternative {STKO.STLAL}: no BOM status.'
+- id: PP210
+  field: STKO.STKTX
+  check_class: null_check
+  applies_when:
+    STKO.STLTY:
+    - M
+    STKO.LKENZ:
+      blank: true
+  severity: low
+  dimension: completeness
+  message: Active material BOM has no alternative text
+  why_it_matters: The alternative text is how planners tell alternatives apart in CS03 and in the production-version selection.
+    A multi-alternative BOM without text is hard to use.
+  rule_authority: best_practice
+  sap_impact: Wrong alternative is chosen when production versions are created.
+  fix_map:
+    __blank__: Enter a short alternative text in CS02 > Header.
+  record_fix_template: 'BOM {STKO.STLNR} alternative {STKO.STLAL}: no alternative text.'
+- id: PP211
+  field: STKO.WRKAN
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: BOM alternative-determination plant (STKO.WRKAN) is not a plant (T001W)
+  why_it_matters: WRKAN names the plant used to find the BOM alternative. A value that is not a plant leaves automatic alternative
+    selection without a base.
+  rule_authority: sap_hard_constraint
+  sap_impact: Automatic BOM alternative selection fails for the BOM.
+  fix_map:
+    __other__: Correct the plant in CS02 > Header, or create the plant in customizing.
+  record_fix_template: 'BOM {STKO.STLNR}: alternative-determination plant ''{actual_value}'' is not in T001W.'
+- id: PP212
+  field: STKO.LABOR
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: BOM laboratory/design office (STKO.LABOR) is not defined in the system's configuration (T024L)
+  why_it_matters: The laboratory or design office is a key into customizing. An undefined value cannot be selected or reported
+    on.
+  rule_authority: sap_hard_constraint
+  sap_impact: Design-office reports and authorisation checks on the BOM skip the record.
+  fix_map:
+    __other__: Correct the value in CS02 > Header or create the office in customizing.
+  record_fix_template: 'BOM {STKO.STLNR}: laboratory/design office ''{actual_value}'' is not in T024L.'
+- id: PP213
+  field: STKO.AENNR
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: BOM change number (STKO.AENNR) is not a change master (AENR)
+  why_it_matters: Every history record of a BOM is tied to a change number. A number without a change master cannot show the
+    reason or validity of the change.
+  rule_authority: sap_hard_constraint
+  sap_impact: Engineering change history for the BOM is broken; time-dependent explosion by change status is unreliable.
+  fix_map:
+    __other__: Create the change master (CC01) or correct the change number.
+  record_fix_template: 'BOM {STKO.STLNR}: change number ''{actual_value}'' is not in AENR.'
+- id: PP214
+  field: STZU.STLAN
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: BOM general data usage (STZU.STLAN) is not defined in the system's configuration (T416)
+  why_it_matters: The BOM usage (production, engineering, sales) is customizing. An undefined usage cannot be used in selection.
+  rule_authority: sap_hard_constraint
+  sap_impact: BOM explosions by usage skip the BOM.
+  fix_map:
+    __other__: Correct the usage in CS02 or create it in customizing.
+  record_fix_template: 'BOM {STZU.STLNR}: usage ''{actual_value}'' is not in T416.'
+- id: PP215
+  field: STZU.WRKAN
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: BOM general data plant (STZU.WRKAN) is not a plant (T001W)
+  why_it_matters: The plant in the general BOM data steers alternative selection for the whole BOM group. A non-plant value
+    breaks it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Alternative selection fails for every alternative of the group.
+  fix_map:
+    __other__: Correct the plant in CS02 > General data.
+  record_fix_template: 'BOM {STZU.STLNR}: plant ''{actual_value}'' is not in T001W.'
+- id: PP216
+  field: MAST.STLAL
+  check_class: exists_check
+  fields:
+  - MAST.STLNR
+  target_table: STPO
+  target_fields:
+  - STLNR
+  target_when:
+    STLTY:
+    - M
+    LKENZ:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Material BOM alternative has no active items
+  why_it_matters: An alternative with only deleted items explodes to nothing; MRP then treats the parent as having no components.
+  rule_authority: best_practice
+  sap_impact: Dependent requirements are not generated and the cost estimate is empty.
+  fix_map:
+    __other__: Add items in CS02 or remove the assignment.
+  record_fix_template: 'Material {MAST.MATNR}, plant {MAST.WERKS}: BOM {MAST.STLNR} alternative {MAST.STLAL} has no active
+    items.'
+- id: PP217
+  field: STPO.DATUV
+  check_class: cross_field_check
+  fail_when: (`STPO.DATUV` - @today).dt.days > 365
+  applies_when:
+    STPO.LKENZ:
+      blank: true
+  severity: medium
+  dimension: accuracy
+  message: BOM item valid-from date is more than a year in the future
+  why_it_matters: A far-future valid-from date is mostly a mistyped year. The item is not part of the structure until the
+    date arrives.
+  rule_authority: best_practice
+  sap_impact: The component is missing from MRP, costing and order reservations today.
+  fix_map:
+    __other__: Correct the date through a change number in CS02.
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: valid from {actual_value}.'
+- id: PP218
+  field: STPO.AEDAT
+  check_class: cross_field_check
+  fail_when: '`STPO.AEDAT` < `STPO.ANDAT`'
+  applies_when:
+    STPO.AEDAT:
+      populated: true
+  severity: low
+  dimension: accuracy
+  message: BOM item change date is before its creation date
+  why_it_matters: A change cannot precede the creation. The item audit fields come from a load that did not keep them.
+  rule_authority: best_practice
+  sap_impact: Audit and change analysis on the item are unreliable.
+  fix_map:
+    __other__: Correct the audit fields in the load.
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: changed {actual_value}, created {STPO.ANDAT}.'
+- id: PP219
+  field: STPO.POSNR
+  check_class: null_check
+  applies_when:
+    STPO.POSTP:
+    - L
+    - N
+    - R
+    - K
+    - D
+    STPO.LKENZ:
+      blank: true
+  severity: medium
+  dimension: completeness
+  message: Stock, non-stock, variable-size or class item has no item number
+  why_it_matters: The item number is how users, drawings and the production order identify a line. Blank numbers make lines
+    indistinguishable.
+  rule_authority: best_practice
+  sap_impact: Component lists, drawings and order reservations cannot be matched to the BOM line.
+  fix_map:
+    __blank__: Enter the item number in CS02.
+  record_fix_template: 'BOM {STPO.STLNR} item node {STPO.STLKN}: no item number.'
+- id: PP220
+  field: STPO.AUSCH
+  check_class: cross_field_check
+  fail_when: (`STPO.AUSCH` > 100) | (`STPO.AUSCH` < 0)
+  applies_when:
+    STPO.LKENZ:
+      blank: true
+  severity: high
+  dimension: accuracy
+  message: Component scrap is negative or above 100 percent
+  why_it_matters: Component scrap in percent increases the planned quantity. A value above 100 or below zero gives a nonsensical
+    gross quantity.
+  rule_authority: sap_hard_constraint
+  sap_impact: Gross requirement and costing quantity of the component are wrong.
+  fix_map:
+    __other__: Correct the component scrap in CS02 > Item > Basic data.
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: component scrap is {actual_value} percent.'
+- id: PP221
+  field: STPO.AVOAU
+  check_class: cross_field_check
+  fail_when: (`STPO.AVOAU` > 100) | (`STPO.AVOAU` < 0)
+  applies_when:
+    STPO.LKENZ:
+      blank: true
+  severity: medium
+  dimension: accuracy
+  message: Operation scrap is negative or above 100 percent
+  why_it_matters: Operation scrap is the loss at the operation where the component is used. Outside 0 to 100 percent it is
+    not a valid rate.
+  rule_authority: sap_hard_constraint
+  sap_impact: Planned component quantity and cost are wrong.
+  fix_map:
+    __other__: Correct the operation scrap in CS02 > Item > Basic data.
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: operation scrap is {actual_value} percent.'
+- id: PP222
+  field: STPO.NETAU
+  check_class: cross_field_check
+  fail_when: (`STPO.NETAU` == 'X') & (`STPO.AUSCH` > 0)
+  applies_when:
+    STPO.LKENZ:
+      blank: true
+  severity: low
+  dimension: consistency
+  message: Net indicator is set although component scrap is maintained
+  why_it_matters: With the net indicator the system ignores the component scrap. Scrap entered on the same line has no effect
+    and shows an unclear intent.
+  rule_authority: best_practice
+  sap_impact: Planners expect a scrap quantity that MRP never adds.
+  fix_map:
+    __other__: Clear the net indicator or the component scrap in CS02.
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: net indicator set with scrap {STPO.AUSCH}.'
+- id: PP223
+  field: STPO.EWAHR
+  check_class: cross_field_check
+  fail_when: (`STPO.EWAHR` > 100) | (`STPO.EWAHR` < 0)
+  applies_when:
+    STPO.ALPOS:
+    - X
+    STPO.LKENZ:
+      blank: true
+  severity: medium
+  dimension: accuracy
+  message: Usage probability of an alternative item is above 100 percent or negative
+  why_it_matters: Usage probability splits the requirement between alternative items. A value outside 0 to 100 percent is
+    invalid.
+  rule_authority: sap_hard_constraint
+  sap_impact: The split of dependent requirements between alternative items is wrong.
+  fix_map:
+    __other__: Correct the usage probability in CS02 > Item > Alternative items.
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: usage probability {actual_value}.'
+- id: PP224
+  field: STPO.ALPST
+  check_class: null_check
+  applies_when:
+    STPO.ALPOS:
+    - X
+    STPO.LKENZ:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: Alternative item has no strategy
+  why_it_matters: An item that belongs to an alternative item group needs a strategy (ranking order or usage probability)
+    so MRP knows which alternative to use.
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP cannot choose between the alternative items; requirements for the group are not created.
+  fix_map:
+    __blank__: Maintain the strategy on the item in CS02 > Item > Alternative items.
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: alternative item without strategy.'
+- id: PP225
+  field: STPO.ALPRF
+  check_class: null_check
+  applies_when:
+    STPO.ALPST:
+    - '1'
+    STPO.LKENZ:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: Alternative item ranked by priority has no ranking order
+  why_it_matters: With the ranking-order strategy, MRP takes the alternative with the best rank first. A blank rank leaves
+    the order undefined.
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP may take the wrong alternative, or none.
+  fix_map:
+    __blank__: Enter the ranking order in CS02 > Item > Alternative items.
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: ranking order missing.'
+- id: PP226
+  field: STPO.EWAHR
+  check_class: cross_field_check
+  fail_when: '`STPO.EWAHR`.isna() | (`STPO.EWAHR` <= 0)'
+  applies_when:
+    STPO.ALPST:
+    - '2'
+    STPO.LKENZ:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: Alternative item with the usage-probability strategy has no usage probability
+  why_it_matters: With the probability strategy the share of each alternative must be given. Blank or zero means the item
+    receives no requirement.
+  rule_authority: sap_hard_constraint
+  sap_impact: The component receives no dependent requirement; production runs short of it.
+  fix_map:
+    __other__: Enter the usage probability in CS02 > Item > Alternative items.
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: usage probability missing or zero.'
+- id: PP227
+  field: STPO.PSWRK
+  check_class: exists_check
+  fields:
+  - STPO.IDNRK
+  - STPO.PSWRK
+  target_table: MARC
+  target_fields:
+  - MATNR
+  - WERKS
+  target_when:
+    LVORM:
+      blank: true
+  applies_when:
+    STPO.POSTP:
+    - L
+    - R
+    STPO.LKENZ:
+      blank: true
+    STPO.PSWRK:
+      populated: true
+  severity: high
+  dimension: consistency
+  message: Component plant override has no active plant view for the component
+  why_it_matters: When the item names a different plant for the component, the component must be maintained there. Otherwise
+    reservations point at a plant without the material.
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods issue and MRP for the component fail or post to the wrong plant.
+  fix_map:
+    __other__: Extend the component to that plant (MM01) or clear the plant on the item.
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: component {STPO.IDNRK} is not active in plant {STPO.PSWRK}.'
+- id: PP228
+  field: STPO.PREIS
+  check_class: null_check
+  applies_when:
+    STPO.POSTP:
+    - N
+    STPO.LKENZ:
+      blank: true
+  severity: medium
+  dimension: completeness
+  message: Non-stock item has no price
+  why_it_matters: A non-stock item is costed from the price on the item. Without it the BOM cost estimate omits the line.
+  rule_authority: best_practice
+  sap_impact: The product cost estimate is understated.
+  fix_map:
+    __blank__: Enter the price in CS02 > Item > Purchasing data.
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: non-stock item without price.'
+- id: PP229
+  field: STPO.PEINH
+  check_class: cross_field_check
+  fail_when: (`STPO.PREIS` > 0) & ~(`STPO.PEINH` > 0)
+  applies_when:
+    STPO.LKENZ:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Item price is maintained but the price unit is zero
+  why_it_matters: The price is per price unit. A zero unit gives a division by zero in costing.
+  rule_authority: sap_hard_constraint
+  sap_impact: The cost estimate of the BOM fails or is wrong for the line.
+  fix_map:
+    __other__: Set the price unit in CS02 > Item > Purchasing data.
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: price {STPO.PREIS} with price unit {actual_value}.'
+- id: PP230
+  field: STPO.WAERS
+  check_class: cross_field_check
+  fail_when: (`STPO.PREIS` > 0) & `STPO.WAERS`.isna()
+  applies_when:
+    STPO.LKENZ:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: Item price is maintained but has no currency
+  why_it_matters: A price without currency has no value in costing.
+  rule_authority: sap_hard_constraint
+  sap_impact: The cost estimate treats the price as zero or fails.
+  fix_map:
+    __other__: Enter the currency in CS02 > Item > Purchasing data.
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: price {STPO.PREIS} without currency.'
+- id: PP231
+  field: STPO.RFORM
+  check_class: null_check
+  applies_when:
+    STPO.POSTP:
+    - R
+    STPO.LKENZ:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: Variable-size item has no formula key
+  why_it_matters: The formula key turns the sizes into the component quantity. Without it the quantity cannot be calculated.
+  rule_authority: sap_hard_constraint
+  sap_impact: Component quantity is zero or fails when the BOM is exploded.
+  fix_map:
+    __blank__: Enter the formula key in CS02 > Item > Variable-size item.
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: variable-size item without formula.'
+- id: PP232
+  field: STPO.CLASS
+  check_class: null_check
+  applies_when:
+    STPO.POSTP:
+    - K
+    STPO.LKENZ:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: Class item has no class
+  why_it_matters: A class item stands for any material of the class. Without a class it stands for nothing.
+  rule_authority: sap_hard_constraint
+  sap_impact: The line cannot be resolved to a material in the order.
+  fix_map:
+    __blank__: Enter the class in CS02 > Item > Class item.
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: class item without class.'
+- id: PP233
+  field: STPO.KLART
+  check_class: null_check
+  applies_when:
+    STPO.POSTP:
+    - K
+    STPO.LKENZ:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: Class item has no class type
+  why_it_matters: The class type tells which class catalogue the class is in.
+  rule_authority: sap_hard_constraint
+  sap_impact: The class cannot be found.
+  fix_map:
+    __blank__: Enter the class type in CS02 > Item > Class item.
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: class item without class type.'
+- id: PP234
+  field: STPO.DOKVR
+  check_class: null_check
+  applies_when:
+    STPO.POSTP:
+    - D
+    STPO.LKENZ:
+      blank: true
+  severity: low
+  dimension: completeness
+  message: Document item has no document version
+  why_it_matters: A document item points to one document version. Without the version the right file cannot be opened.
+  rule_authority: best_practice
+  sap_impact: Users open the wrong document or none.
+  fix_map:
+    __blank__: Enter the document version in CS02 > Item > Document item.
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: document item without version.'
+- id: PP235
+  field: STPO.MATKL
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: BOM item material group (STPO.MATKL) is not defined in the system's configuration (T023)
+  why_it_matters: The material group on the item is a key into T023. A value that is not there cannot be read by BOM, MRP
+    or costing functions.
+  rule_authority: sap_hard_constraint
+  sap_impact: Functions that read T023 for the BOM item stop or skip the line.
+  fix_map:
+    __other__: Correct the value in CS02 or create it in customizing (T023).
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: material group ''{actual_value}'' is not in T023.'
+- id: PP236
+  field: STPO.EKGRP
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: BOM item purchasing group (STPO.EKGRP) is not defined in the system's configuration (T024)
+  why_it_matters: The purchasing group on the item is a key into T024. A value that is not there cannot be read by BOM, MRP
+    or costing functions.
+  rule_authority: sap_hard_constraint
+  sap_impact: Functions that read T024 for the BOM item stop or skip the line.
+  fix_map:
+    __other__: Correct the value in CS02 or create it in customizing (T024).
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: purchasing group ''{actual_value}'' is not in T024.'
+- id: PP237
+  field: STPO.EKORG
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: BOM item purchasing organisation (STPO.EKORG) is not defined in the system's configuration (T024E)
+  why_it_matters: The purchasing organisation on the item is a key into T024E. A value that is not there cannot be read by
+    BOM, MRP or costing functions.
+  rule_authority: sap_hard_constraint
+  sap_impact: Functions that read T024E for the BOM item stop or skip the line.
+  fix_map:
+    __other__: Correct the value in CS02 or create it in customizing (T024E).
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: purchasing organisation ''{actual_value}'' is not in T024E.'
+- id: PP238
+  field: STPO.LIFNR
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: BOM item vendor (STPO.LIFNR) is not defined in the system's configuration (LFA1)
+  why_it_matters: The vendor on the item is a key into LFA1. A value that is not there cannot be read by BOM, MRP or costing
+    functions.
+  rule_authority: sap_hard_constraint
+  sap_impact: Functions that read LFA1 for the BOM item stop or skip the line.
+  fix_map:
+    __other__: Correct the value in CS02 or create it in customizing (LFA1).
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: vendor ''{actual_value}'' is not in LFA1.'
+- id: PP239
+  field: STPO.WAERS
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: BOM item currency (STPO.WAERS) is not defined in the system's configuration (TCURC)
+  why_it_matters: The currency on the item is a key into TCURC. A value that is not there cannot be read by BOM, MRP or costing
+    functions.
+  rule_authority: sap_hard_constraint
+  sap_impact: Functions that read TCURC for the BOM item stop or skip the line.
+  fix_map:
+    __other__: Correct the value in CS02 or create it in customizing (TCURC).
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: currency ''{actual_value}'' is not in TCURC.'
+- id: PP240
+  field: STPO.BEIKZ
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: BOM item material provision indicator (STPO.BEIKZ) is not defined in the system's configuration (T417)
+  why_it_matters: The material provision indicator on the item is a key into T417. A value that is not there cannot be read
+    by BOM, MRP or costing functions.
+  rule_authority: sap_hard_constraint
+  sap_impact: Functions that read T417 for the BOM item stop or skip the line.
+  fix_map:
+    __other__: Correct the value in CS02 or create it in customizing (T417).
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: material provision indicator ''{actual_value}'' is not in T417.'
+- id: PP241
+  field: STPO.ERSKZ
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: BOM item spare-part indicator (STPO.ERSKZ) is not defined in the system's configuration (T413)
+  why_it_matters: The spare-part indicator on the item is a key into T413. A value that is not there cannot be read by BOM,
+    MRP or costing functions.
+  rule_authority: sap_hard_constraint
+  sap_impact: Functions that read T413 for the BOM item stop or skip the line.
+  fix_map:
+    __other__: Correct the value in CS02 or create it in customizing (T413).
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: spare-part indicator ''{actual_value}'' is not in T413.'
+- id: PP242
+  field: STPO.RVREL
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: BOM item revision level (STPO.RVREL) is not defined in the system's configuration (TVRL)
+  why_it_matters: The revision level on the item is a key into TVRL. A value that is not there cannot be read by BOM, MRP
+    or costing functions.
+  rule_authority: sap_hard_constraint
+  sap_impact: Functions that read TVRL for the BOM item stop or skip the line.
+  fix_map:
+    __other__: Correct the value in CS02 or create it in customizing (TVRL).
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: revision level ''{actual_value}'' is not in TVRL.'
+- id: PP243
+  field: STPO.SANKA
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: BOM item costing relevancy (STPO.SANKA) is not defined in the system's configuration (TCK08)
+  why_it_matters: The costing relevancy on the item is a key into TCK08. A value that is not there cannot be read by BOM,
+    MRP or costing functions.
+  rule_authority: sap_hard_constraint
+  sap_impact: Functions that read TCK08 for the BOM item stop or skip the line.
+  fix_map:
+    __other__: Correct the value in CS02 or create it in customizing (TCK08).
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: costing relevancy ''{actual_value}'' is not in TCK08.'
+- id: PP244
+  field: STPO.RFORM
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: BOM item variable-size formula (STPO.RFORM) is not defined in the system's configuration (T418F)
+  why_it_matters: The variable-size formula on the item is a key into T418F. A value that is not there cannot be read by BOM,
+    MRP or costing functions.
+  rule_authority: sap_hard_constraint
+  sap_impact: Functions that read T418F for the BOM item stop or skip the line.
+  fix_map:
+    __other__: Correct the value in CS02 or create it in customizing (T418F).
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: variable-size formula ''{actual_value}'' is not in T418F.'
+- id: PP245
+  field: STPO.DSPST
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: BOM item status of the item (STPO.DSPST) is not defined in the system's configuration (T414)
+  why_it_matters: The status of the item on the item is a key into T414. A value that is not there cannot be read by BOM,
+    MRP or costing functions.
+  rule_authority: sap_hard_constraint
+  sap_impact: Functions that read T414 for the BOM item stop or skip the line.
+  fix_map:
+    __other__: Correct the value in CS02 or create it in customizing (T414).
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: status of the item ''{actual_value}'' is not in T414.'
+- id: PP246
+  field: STPO.PSWRK
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: BOM item component plant (STPO.PSWRK) is not defined in the system's configuration (T001W)
+  why_it_matters: The component plant on the item is a key into T001W. A value that is not there cannot be read by BOM, MRP
+    or costing functions.
+  rule_authority: sap_hard_constraint
+  sap_impact: Functions that read T001W for the BOM item stop or skip the line.
+  fix_map:
+    __other__: Correct the value in CS02 or create it in customizing (T001W).
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: component plant ''{actual_value}'' is not in T001W.'
+- id: PP247
+  field: STPO.AENNR
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: BOM item change number (STPO.AENNR) is not defined in the system's configuration (AENR)
+  why_it_matters: The change number on the item is a key into AENR. A value that is not there cannot be read by BOM, MRP or
+    costing functions.
+  rule_authority: sap_hard_constraint
+  sap_impact: Functions that read AENR for the BOM item stop or skip the line.
+  fix_map:
+    __other__: Correct the value in CS02 or create it in customizing (AENR).
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: change number ''{actual_value}'' is not in AENR.'
+- id: PP248
+  field: STAS.STLKN
+  check_class: exists_check
+  fields:
+  - STAS.STLTY
+  - STAS.STLNR
+  - STAS.STLKN
+  target_table: STPO
+  target_fields:
+  - STLTY
+  - STLNR
+  - STLKN
+  target_when:
+    LKENZ:
+      blank: true
+  applies_when:
+    STAS.LKENZ:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: BOM alternative assignment points at an item node that does not exist or is deleted
+  why_it_matters: STAS ties an item node to a BOM alternative. If the node is gone the alternative explodes with a missing
+    line.
+  rule_authority: sap_hard_constraint
+  sap_impact: BOM explosion reports an inconsistency for the alternative.
+  fix_map:
+    __other__: Rebuild the assignment through CS02, or delete the assignment.
+  record_fix_template: 'BOM {STAS.STLNR} alternative {STAS.STLAL}: item node {STAS.STLKN} does not exist.'
+- id: PP249
+  field: STPO.STLKN
+  check_class: exists_check
+  fields:
+  - STPO.STLTY
+  - STPO.STLNR
+  - STPO.STLKN
+  target_table: STAS
+  target_fields:
+  - STLTY
+  - STLNR
+  - STLKN
+  target_when:
+    LKENZ:
+      blank: true
+  applies_when:
+    STPO.LKENZ:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Active BOM item node is not assigned to any BOM alternative
+  why_it_matters: STPO items belong to alternatives only through STAS. A node without an active STAS row is in no alternative
+    and never exploded.
+  rule_authority: sap_hard_constraint
+  sap_impact: The component is silently missing from every explosion.
+  fix_map:
+    __other__: Assign the item to an alternative in CS02 or delete it.
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: not assigned to any alternative.'
+- id: PP250
+  field: STAS.STLNR
+  check_class: exists_check
+  fields:
+  - STAS.STLTY
+  - STAS.STLNR
+  - STAS.STLAL
+  target_table: STKO
+  target_fields:
+  - STLTY
+  - STLNR
+  - STLAL
+  applies_when:
+    STAS.LKENZ:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: BOM alternative assignment points at an alternative that has no header
+  why_it_matters: Every STAS row names an alternative; the STKO header must exist for it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Explosion of the alternative fails.
+  fix_map:
+    __other__: Recreate the header through CS01 or delete the assignment.
+  record_fix_template: 'BOM {STAS.STLNR} alternative {STAS.STLAL}: no header (STKO).'
+- id: PP251
+  field: STAS.DATUV
+  check_class: cross_field_check
+  fail_when: (`STAS.DATUV` - @today).dt.days > 365
+  applies_when:
+    STAS.LKENZ:
+      blank: true
+  severity: low
+  dimension: accuracy
+  message: BOM alternative assignment is valid from a date more than a year ahead
+  why_it_matters: A far-future valid-from on the assignment keeps the item out of the alternative until then.
+  rule_authority: best_practice
+  sap_impact: The component is missing from the alternative today.
+  fix_map:
+    __other__: Correct the date through a change number in CS02.
+  record_fix_template: 'BOM {STAS.STLNR} alternative {STAS.STLAL}: assignment valid from {actual_value}.'
+- id: PP252
+  field: STPO.IDNRK
+  check_class: exists_check
+  grain: STPO
+  fields:
+  - STPO.STLNR
+  target_table: STKO
+  target_fields:
+  - STLNR
+  target_when:
+    STLTY:
+    - M
+    LKENZ:
+      blank: true
+  applies_when:
+    STPO.STLTY:
+    - M
+    STPO.LKENZ:
+      blank: true
+  severity: medium
+  dimension: lifecycle
+  message: Active BOM item exists in a BOM whose alternatives are all flagged for deletion
+  why_it_matters: Items in a deleted BOM stay active in the database but can never be exploded. They block deletion and archiving.
+  rule_authority: best_practice
+  sap_impact: Clutter; where-used lists show the component in a structure that is dead.
+  fix_map:
+    __other__: Delete the items with the BOM (CS02) or reactivate a BOM alternative.
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: all BOM alternatives are deleted.'
+- id: PP253
+  field: STPO.NFMAT
+  check_class: exists_check
+  fields:
+  - STPO.NFMAT
+  - MAST.WERKS
+  target_table: MARC
+  target_fields:
+  - MATNR
+  - WERKS
+  target_when:
+    LVORM:
+      blank: true
+  applies_when:
+    STPO.LKENZ:
+      blank: true
+  grain: STPO
+  severity: high
+  dimension: consistency
+  message: Item follow-up material is not maintained in the plant of the BOM
+  why_it_matters: The follow-up material on a BOM item replaces the component when it is discontinued. It must exist in the
+    plant that uses the BOM or MRP cannot use it.
+  rule_authority: sap_hard_constraint
+  sap_impact: The replacement requirement for the discontinued component cannot be planned or issued in the plant.
+  fix_map:
+    __other__: Extend the follow-up material to the plant (MM01) or correct the follow-up material on the item in CS02.
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: follow-up material {actual_value} is not active in plant {MAST.WERKS}.'
+- id: PP254
+  field: STPO.NFMAT
+  check_class: exists_check
+  target_table: MARA
+  target_fields:
+  - MATNR
+  applies_when:
+    STPO.LKENZ:
+      blank: true
+  grain: STPO
+  severity: high
+  dimension: consistency
+  message: Item follow-up material does not exist in the material master
+  why_it_matters: A follow-up material that is not in MARA is a typing error or a deleted material. The replacement can never
+    be planned.
+  rule_authority: sap_hard_constraint
+  sap_impact: Discontinuation of the component leaves the BOM with a dead reference.
+  fix_map:
+    __other__: Correct the follow-up material in CS02 or create the material.
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: follow-up material {actual_value} does not exist.'
+- id: PP255
+  field: STPO.NFMAT
+  check_class: cross_field_check
+  fail_when: '`STPO.NFMAT` == `STPO.IDNRK`'
+  applies_when:
+    STPO.LKENZ:
+      blank: true
+  severity: critical
+  dimension: consistency
+  message: Item follow-up material is the component itself
+  why_it_matters: A component cannot be its own successor. The replacement chain never leaves the part.
+  rule_authority: sap_hard_constraint
+  sap_impact: Supersession during MRP or BOM explosion never reaches a new part.
+  fix_map:
+    __other__: Enter the real successor, or clear the follow-up material in CS02.
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: follow-up material {actual_value} equals the component.'
+- id: PP256
+  field: STPO.NFMAT
+  check_class: cross_field_check
+  fail_when: '`STPO.NFMAT` == `MAST.MATNR`'
+  applies_when:
+    STPO.LKENZ:
+      blank: true
+  grain: STPO
+  severity: critical
+  dimension: consistency
+  message: Item follow-up material is the header material of the BOM
+  why_it_matters: A successor that equals the assembly turns the BOM into a loop when the replacement is applied.
+  rule_authority: sap_hard_constraint
+  sap_impact: BOM explosion recurses into the assembly after the component is replaced.
+  fix_map:
+    __other__: Enter the real successor in CS02.
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: follow-up material {actual_value} is the BOM header material.'
+- id: PP257
+  field: STPO.NFMAT
+  check_class: exists_check
+  fields:
+  - STPO.NFMAT
+  - MAST.WERKS
+  negate: true
+  target_table: MARC
+  target_fields:
+  - MATNR
+  - WERKS
+  target_when:
+    KZAUS:
+      populated: true
+    NFMAT:
+      blank: true
+  applies_when:
+    STPO.LKENZ:
+      blank: true
+  grain: STPO
+  severity: high
+  dimension: lifecycle
+  message: Item follow-up material is itself discontinued in the plant with no successor
+  why_it_matters: A follow-up that is also discontinued and has no successor of its own ends in a dead end.
+  rule_authority: best_practice
+  sap_impact: The supersession chain ends in a part that is no longer procured.
+  fix_map:
+    __other__: Choose an active successor in CS02 or maintain a follow-up material on the successor in MM02 MRP 4.
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: follow-up material {actual_value} is discontinued in plant {MAST.WERKS}
+    with no successor.'
+- id: PP258
+  field: STPO.NFMAT
+  check_class: exists_check
+  fields:
+  - STPO.NFMAT
+  - MAST.WERKS
+  negate: true
+  target_table: MARC
+  target_fields:
+  - MATNR
+  - WERKS
+  target_when:
+    MMSTA:
+      populated: true
+  applies_when:
+    STPO.LKENZ:
+      blank: true
+  grain: STPO
+  severity: high
+  dimension: lifecycle
+  message: Item follow-up material is blocked by its plant material status
+  why_it_matters: A plant-specific status on the successor can block procurement or production. The replacement would be unusable.
+  rule_authority: best_practice
+  sap_impact: Requirements move to a part that MRP or goods movements reject.
+  fix_map:
+    __other__: Release the successor (MM02) or choose another one.
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: follow-up material {actual_value} is blocked in plant {MAST.WERKS}.'
+- id: PP259
+  field: STPO.NFMAT
+  check_class: exists_check
+  negate: true
+  target_table: MARA
+  target_fields:
+  - MATNR
+  target_when:
+    LVORM:
+    - X
+  applies_when:
+    STPO.LKENZ:
+      blank: true
+  grain: STPO
+  severity: high
+  dimension: lifecycle
+  message: Item follow-up material is flagged for deletion
+  why_it_matters: A successor with a deletion flag is on its way out of the system.
+  rule_authority: best_practice
+  sap_impact: The replacement is removed at the next archiving run; the BOM keeps a dead reference.
+  fix_map:
+    __other__: Choose a live successor in CS02.
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: follow-up material {actual_value} is flagged for deletion.'
+- id: PP260
+  field: STPO.IDNRK
+  check_class: exists_check
+  fields:
+  - STPO.IDNRK
+  - MAST.WERKS
+  target_table: MARC
+  target_fields:
+  - MATNR
+  - WERKS
+  target_when:
+    KZAUS:
+      populated: true
+  applies_when:
+    STPO.NFMAT:
+      populated: true
+    STPO.POSTP:
+    - L
+    - R
+    STPO.LKENZ:
+      blank: true
+  grain: STPO
+  severity: medium
+  dimension: consistency
+  message: Item follow-up material is set although the component is not discontinued in the plant
+  why_it_matters: An item follow-up material only takes effect when the component is discontinued. Without that, the entry
+    is unused and misleading.
+  rule_authority: best_practice
+  sap_impact: Planners think a replacement is active when MRP still uses the old part.
+  fix_map:
+    __other__: Set the discontinuation indicator on the component in MM02 MRP 4, or clear the follow-up material.
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: follow-up {STPO.NFMAT} set but component {STPO.IDNRK} is not discontinued
+    in {MAST.WERKS}.'
+- id: PP261
+  field: STPO.IDNRK
+  check_class: exists_check
+  fields:
+  - STPO.IDNRK
+  - MAST.WERKS
+  negate: true
+  target_table: MARC
+  target_fields:
+  - MATNR
+  - WERKS
+  target_when:
+    KZAUS:
+      populated: true
+    AUSDT:
+      older_than_days: 0
+  applies_when:
+    STPO.POSTP:
+    - L
+    - R
+    STPO.LKENZ:
+      blank: true
+  grain: STPO
+  severity: high
+  dimension: lifecycle
+  message: Active BOM component passed its effective-out date in the plant of the BOM
+  why_it_matters: After the effective-out date the component is discontinued. The BOM should consume the successor or the
+    item should be closed.
+  rule_authority: best_practice
+  sap_impact: Production plans a part that is no longer procured; shortages appear at order release.
+  fix_map:
+    __other__: Replace the component by its successor (CS02) or end the item with a valid-to date.
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: component {STPO.IDNRK} is past effective-out in plant {MAST.WERKS}.'
+- id: PP262
+  field: MAST.MATNR
+  check_class: exists_check
+  fields:
+  - MAST.MATNR
+  - MAST.WERKS
+  negate: true
+  target_table: MARC
+  target_fields:
+  - MATNR
+  - WERKS
+  target_when:
+    KZAUS:
+      populated: true
+    AUSDT:
+      older_than_days: 0
+  severity: medium
+  dimension: lifecycle
+  message: BOM exists for a header material that passed its effective-out date in the plant
+  why_it_matters: A discontinued assembly should not keep an active BOM. The BOM drives requirements for components that will
+    never be used.
+  rule_authority: best_practice
+  sap_impact: Components are still planned for an assembly that is no longer built.
+  fix_map:
+    __other__: Flag the BOM for deletion (CS02) or reverse the discontinuation in MM02.
+  record_fix_template: 'Material {MAST.MATNR}, plant {MAST.WERKS}: BOM {MAST.STLNR} remains but the material is past effective-out.'
+- id: PP263
+  field: MAPL.MATNR
+  check_class: exists_check
+  fields:
+  - MAPL.MATNR
+  - MAPL.WERKS
+  negate: true
+  target_table: MARC
+  target_fields:
+  - MATNR
+  - WERKS
+  target_when:
+    KZAUS:
+      populated: true
+    AUSDT:
+      older_than_days: 0
+  applies_when:
+    MAPL.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: lifecycle
+  message: Routing is assigned to a material that passed its effective-out date in the plant
+  why_it_matters: A routing for a discontinued material keeps capacity and cost data alive that will never be used.
+  rule_authority: best_practice
+  sap_impact: Capacity planning loads work for a material that is no longer produced.
+  fix_map:
+    __other__: Remove the assignment (CA02) or reverse the discontinuation in MM02.
+  record_fix_template: 'Material {MAPL.MATNR}, plant {MAPL.WERKS}: routing {MAPL.PLNNR} remains but the material is past effective-out.'
+- id: PP264
+  field: MKAL.MATNR
+  check_class: exists_check
+  fields:
+  - MKAL.MATNR
+  - MKAL.WERKS
+  negate: true
+  target_table: MARC
+  target_fields:
+  - MATNR
+  - WERKS
+  target_when:
+    KZAUS:
+      populated: true
+    AUSDT:
+      older_than_days: 0
+  applies_when:
+    MKAL.MKSP:
+      blank: true
+  severity: medium
+  dimension: lifecycle
+  message: Production version exists for a material that passed its effective-out date in the plant
+  why_it_matters: A valid production version for a discontinued material still lets planned orders convert into production
+    orders.
+  rule_authority: best_practice
+  sap_impact: Orders are created for an assembly that should no longer be produced.
+  fix_map:
+    __other__: Lock the production version (C223) or reverse the discontinuation in MM02.
+  record_fix_template: 'Material {MKAL.MATNR}, plant {MKAL.WERKS}: version {MKAL.VERID} is valid but the material is past
+    effective-out.'
+- id: PP265
+  field: MARC.NFMAT
+  check_class: exists_check
+  fields:
+  - MARC.NFMAT
+  - MARC.WERKS
+  target_table: MAST
+  target_fields:
+  - MATNR
+  - WERKS
+  applies_when:
+    MARC.KZAUS:
+      populated: true
+    MARC.BESKZ:
+    - E
+    - X
+    MARC.NFMAT:
+      populated: true
+  severity: high
+  dimension: consistency
+  message: Discontinued in-house material has a successor with no BOM in the plant
+  why_it_matters: When an in-house part is replaced, the successor must be buildable. Without a BOM in the plant, planned
+    orders for it cannot be exploded.
+  rule_authority: best_practice
+  sap_impact: Requirements passed on to the successor create orders without components.
+  fix_map:
+    __other__: Create the BOM for the successor in CS01.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: successor {MARC.NFMAT} has no BOM in the plant.'
+- id: PP266
+  field: MARC.NFMAT
+  check_class: exists_check
+  fields:
+  - MARC.NFMAT
+  - MARC.WERKS
+  target_table: MAPL
+  target_fields:
+  - MATNR
+  - WERKS
+  target_when:
+    PLNTY:
+    - N
+    - R
+    - '2'
+    LOEKZ:
+      blank: true
+  applies_when:
+    MARC.KZAUS:
+      populated: true
+    MARC.BESKZ:
+    - E
+    - X
+    MARC.NFMAT:
+      populated: true
+  severity: medium
+  dimension: consistency
+  message: Discontinued in-house material has a successor with no routing in the plant
+  why_it_matters: A successor built in-house needs a routing for operations, capacity and cost.
+  rule_authority: best_practice
+  sap_impact: Orders for the successor have no operations and the cost estimate has no labour or machine cost.
+  fix_map:
+    __other__: Create and assign a routing for the successor in CA01.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: successor {MARC.NFMAT} has no routing in the plant.'
+- id: PP267
+  field: MARC.NFMAT
+  check_class: exists_check
+  fields:
+  - MARC.NFMAT
+  - MARC.WERKS
+  target_table: MKAL
+  target_fields:
+  - MATNR
+  - WERKS
+  applies_when:
+    MARC.KZAUS:
+      populated: true
+    MARC.BESKZ:
+    - E
+    - X
+    MARC.NFMAT:
+      populated: true
+    MARC.SFEPR:
+      populated: true
+  severity: medium
+  dimension: consistency
+  message: Discontinued in-house material has a successor with no production version in the plant
+  why_it_matters: Where production versions drive order creation, the successor needs one.
+  rule_authority: best_practice
+  sap_impact: Planned orders for the successor cannot be converted into production orders.
+  fix_map:
+    __other__: Create a production version for the successor (C223 or MM02 MRP 4).
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: successor {MARC.NFMAT} has no production version in the
+    plant.'
+- id: PP268
+  field: STPO.NFMAT
+  check_class: hierarchy_check
+  grain: STPO
+  id_field: STPO.IDNRK
+  scope_field: STPO.STLNR
+  severity: critical
+  dimension: consistency
+  message: Item follow-up materials form a loop inside a BOM
+  why_it_matters: Following the item follow-up material from component to successor must end. A loop (A to B to A) means none
+    of them can be the final part.
+  rule_authority: sap_hard_constraint
+  sap_impact: BOM explosion with replacement does not terminate; requirements are lost.
+  fix_map:
+    __other__: Break the loop by correcting one follow-up material in CS02.
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: follow-up material {actual_value} is part of a loop.'
+- id: PP269
+  field: STPO.NFMAT
+  check_class: hierarchy_check
+  grain: STPO
+  id_field: STPO.IDNRK
+  scope_field: STPO.STLNR
+  max_depth: 3
+  severity: medium
+  dimension: consistency
+  message: Item follow-up chain in a BOM is longer than three links
+  why_it_matters: Long chains of successors hide the real replacement and add lead time at each hop.
+  rule_authority: best_practice
+  sap_impact: Planners cannot see the final part; the cost of the chain is not visible.
+  fix_map:
+    __other__: Point the first component directly at the final successor in CS02.
+  record_fix_template: 'BOM {STPO.STLNR} item {STPO.POSNR}: follow-up chain from {actual_value} exceeds three links.'
+- id: PP270
+  field: PLKO.VERWE
+  check_class: null_check
+  applies_when:
+    PLKO.PLNTY:
+    - N
+    - R
+    - '2'
+    PLKO.LOEKZ:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: Routing has no usage
+  why_it_matters: The usage decides in which functions (production, costing, maintenance) the routing can be selected.
+  rule_authority: sap_hard_constraint
+  sap_impact: The routing is never selected by order creation or costing.
+  fix_map:
+    __blank__: Set the usage in CA02 > Header.
+  record_fix_template: 'Routing {PLKO.PLNNR} group counter {PLKO.PLNAL}: no usage.'
+- id: PP271
+  field: PLKO.WERKS
+  check_class: referential_check
+  severity: high
+  dimension: validity
+  message: Routing plant (PLKO.WERKS) is not a plant (T001W)
+  why_it_matters: The plant restricts who can select and maintain the routing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Order creation in the plant never finds the routing.
+  fix_map:
+    __other__: Correct the plant in CA02 > Header.
+  record_fix_template: 'Routing {PLKO.PLNNR}: plant ''{actual_value}'' is not in T001W.'
+- id: PP272
+  field: PLKO.PLNTY
+  check_class: referential_check
+  severity: high
+  dimension: validity
+  message: Task list type (PLKO.PLNTY) is not defined in the system's configuration (TCA01)
+  why_it_matters: Task list types decide the type of the object and its functions.
+  rule_authority: sap_hard_constraint
+  sap_impact: Task list functions reject the header.
+  fix_map:
+    __other__: Correct the type or create it in customizing.
+  record_fix_template: 'Routing {PLKO.PLNNR}: task list type ''{actual_value}'' is not in TCA01.'
+- id: PP273
+  field: PLKO.AENNR
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Routing change number (PLKO.AENNR) is not a change master (AENR)
+  why_it_matters: A history record for a routing needs a valid change master to show the validity and the reason.
+  rule_authority: sap_hard_constraint
+  sap_impact: Time-dependent routing selection by change status is wrong.
+  fix_map:
+    __other__: Create the change master (CC01) or correct the number.
+  record_fix_template: 'Routing {PLKO.PLNNR}: change number ''{actual_value}'' is not in AENR.'
+- id: PP274
+  field: PLKO.DATUV
+  check_class: cross_field_check
+  fail_when: (`PLKO.DATUV` - @today).dt.days > 365
+  applies_when:
+    PLKO.PLNTY:
+    - N
+    - R
+    - '2'
+    PLKO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: accuracy
+  message: Routing valid-from date is more than a year in the future
+  why_it_matters: A far-future valid-from date is mostly a typo. The routing is not selected until then.
+  rule_authority: best_practice
+  sap_impact: Order creation finds no routing today.
+  fix_map:
+    __other__: Correct the date through a change number in CA02.
+  record_fix_template: 'Routing {PLKO.PLNNR} counter {PLKO.PLNAL}: valid from {actual_value}.'
+- id: PP275
+  field: PLKO.AEDAT
+  check_class: cross_field_check
+  fail_when: '`PLKO.AEDAT` < `PLKO.ANDAT`'
+  applies_when:
+    PLKO.AEDAT:
+      populated: true
+  severity: low
+  dimension: accuracy
+  message: Routing change date is before its creation date
+  why_it_matters: A change cannot precede the creation. It points at a load that lost audit fields.
+  rule_authority: best_practice
+  sap_impact: Audit and change analysis for the routing are unreliable.
+  fix_map:
+    __other__: Correct the audit fields in the load.
+  record_fix_template: 'Routing {PLKO.PLNNR}: changed {actual_value}, created {PLKO.ANDAT}.'
+- id: PP276
+  field: PLKO.STLNR
+  check_class: exists_check
+  fields:
+  - PLKO.STLTY
+  - PLKO.STLNR
+  - PLKO.STLAL
+  target_table: STKO
+  target_fields:
+  - STLTY
+  - STLNR
+  - STLAL
+  target_when:
+    LKENZ:
+      blank: true
+  applies_when:
+    PLKO.PLNTY:
+    - N
+    - R
+    - '2'
+    PLKO.LOEKZ:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Routing is linked to a BOM that does not exist or is flagged for deletion
+  why_it_matters: A routing with a BOM link takes component allocation from it. The BOM must exist.
+  rule_authority: sap_hard_constraint
+  sap_impact: Component allocation to operations fails; the order explosion is wrong.
+  fix_map:
+    __other__: Correct the BOM link in CA02 > Header or restore the BOM (CS02).
+  record_fix_template: 'Routing {PLKO.PLNNR} counter {PLKO.PLNAL}: BOM {actual_value} does not exist or is deleted.'
+- id: PP277
+  field: PLKO.PLNNR
+  check_class: exists_check
+  fields:
+  - PLKO.PLNTY
+  - PLKO.PLNNR
+  - PLKO.PLNAL
+  target_table: PLAS
+  target_fields:
+  - PLNTY
+  - PLNNR
+  - PLNAL
+  target_when:
+    LOEKZ:
+      blank: true
+  applies_when:
+    PLKO.PLNTY:
+    - N
+    - R
+    - '2'
+    PLKO.LOEKZ:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Routing alternative has no sequence assignment
+  why_it_matters: Operations belong to an alternative through the sequence (PLAS). Without it the alternative has no operations.
+  rule_authority: sap_hard_constraint
+  sap_impact: Order creation copies an empty routing.
+  fix_map:
+    __other__: Assign operations to the alternative in CA02.
+  record_fix_template: 'Routing {PLKO.PLNTY}/{PLKO.PLNNR}/{PLKO.PLNAL}: no operations assigned.'
+- id: PP278
+  field: MAPL.PLNTY
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Routing assignment task list type (MAPL.PLNTY) is not defined in the system's configuration (TCA01)
+  why_it_matters: The assignment type must be a valid task list type.
+  rule_authority: sap_hard_constraint
+  sap_impact: Routing selection for the material ignores the assignment.
+  fix_map:
+    __other__: Correct the type or create it in customizing.
+  record_fix_template: 'Material {MAPL.MATNR}: task list type ''{actual_value}'' is not in TCA01.'
+- id: PP279
+  field: MAPL.MATNR
+  check_class: exists_check
+  fields:
+  - MAPL.MATNR
+  - MAPL.WERKS
+  target_table: MARC
+  target_fields:
+  - MATNR
+  - WERKS
+  target_when:
+    BESKZ:
+    - E
+    - X
+  applies_when:
+    MAPL.PLNTY:
+    - N
+    - R
+    - '2'
+    MAPL.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Routing is assigned to a material that is not in-house produced in the plant
+  why_it_matters: A production routing for a material that is procured externally (procurement type F) is never used by MRP.
+  rule_authority: best_practice
+  sap_impact: The routing keeps capacity and costing data for a material that is bought.
+  fix_map:
+    __other__: Remove the assignment (CA02) or set the procurement type to in-house (MM02 MRP 2).
+  record_fix_template: 'Material {MAPL.MATNR}, plant {MAPL.WERKS}: routing {MAPL.PLNNR} assigned but not produced in-house.'
+- id: PP280
+  field: MAPL.DATUV
+  check_class: cross_field_check
+  fail_when: (`MAPL.DATUV` - @today).dt.days > 365
+  applies_when:
+    MAPL.LOEKZ:
+      blank: true
+  severity: low
+  dimension: accuracy
+  message: Routing assignment is valid from a date more than a year ahead
+  why_it_matters: The assignment is inactive until then; the material has no routing today.
+  rule_authority: best_practice
+  sap_impact: Order creation finds no routing.
+  fix_map:
+    __other__: Correct the date in CA02.
+  record_fix_template: 'Material {MAPL.MATNR}: assignment valid from {actual_value}.'
+- id: PP281
+  field: PLPO.SUMNR
+  check_class: exists_check
+  fields:
+  - PLPO.PLNTY
+  - PLPO.PLNNR
+  - PLPO.SUMNR
+  target_table: PLPO
+  target_fields:
+  - PLNTY
+  - PLNNR
+  - PLNKN
+  target_when:
+    LOEKZ:
+      blank: true
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Sub-operation has no active superior operation in the task list
+  why_it_matters: A sub-operation hangs on a parent operation (SUMNR) in the same task list. If the parent is missing or deleted
+    the sub-operation is lost.
+  rule_authority: sap_hard_constraint
+  sap_impact: The sub-operation is not shown or scheduled with the order.
+  fix_map:
+    __other__: Correct the parent in CA02 or delete the sub-operation.
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: superior operation {actual_value} is missing or deleted.'
+- id: PP282
+  field: PLPO.SUMNR
+  check_class: hierarchy_check
+  grain: PLPO
+  id_field: PLPO.PLNKN
+  scope_field: PLPO.PLNNR
+  severity: critical
+  dimension: consistency
+  message: Sub-operations form a loop
+  why_it_matters: A sub-operation may not be its own ancestor.
+  rule_authority: sap_hard_constraint
+  sap_impact: Operation tree cannot be read; order creation fails.
+  fix_map:
+    __other__: Break the loop in CA02.
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: superior operation {actual_value} is in a loop.'
+- id: PP283
+  field: PLPO.ARBID
+  check_class: exists_check
+  fields:
+  - PLPO.ARBID
+  - PLPO.WERKS
+  target_table: CRHD
+  target_fields:
+  - OBJID
+  - WERKS
+  target_when:
+    OBJTY:
+    - A
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+    PLPO.WERKS:
+      populated: true
+  severity: high
+  dimension: consistency
+  message: Operation work centre is in a different plant than the operation
+  why_it_matters: The work centre of an operation must belong to the operation's plant. A work centre of another plant breaks
+    capacity and cost.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling and costing use the wrong plant's calendar, rates and capacity.
+  fix_map:
+    __other__: Choose a work centre of the operation plant in CA02.
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: work centre {actual_value} is not in plant {PLPO.WERKS}.'
+- id: PP284
+  field: PLPO.PLNKN
+  check_class: exists_check
+  fields:
+  - PLPO.PLNTY
+  - PLPO.PLNNR
+  - PLPO.PLNKN
+  target_table: PLAS
+  target_fields:
+  - PLNTY
+  - PLNNR
+  - PLNKN
+  target_when:
+    LOEKZ:
+      blank: true
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Active operation is not assigned to any routing alternative
+  why_it_matters: Operations belong to a routing alternative through PLAS. An operation that is in no sequence is never executed.
+  rule_authority: sap_hard_constraint
+  sap_impact: The operation is silently skipped in every production order.
+  fix_map:
+    __other__: Assign the operation to a sequence in CA02 or delete it.
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: not assigned to a sequence.'
+- id: PP285
+  field: PLAS.PLNKN
+  check_class: exists_check
+  fields:
+  - PLAS.PLNTY
+  - PLAS.PLNNR
+  - PLAS.PLNKN
+  target_table: PLPO
+  target_fields:
+  - PLNTY
+  - PLNNR
+  - PLNKN
+  target_when:
+    LOEKZ:
+      blank: true
+  applies_when:
+    PLAS.LOEKZ:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Sequence assignment points at an operation that does not exist or is deleted
+  why_it_matters: PLAS ties the operation to the alternative; the operation must exist.
+  rule_authority: sap_hard_constraint
+  sap_impact: Order creation copies an incomplete routing.
+  fix_map:
+    __other__: Correct the assignment in CA02.
+  record_fix_template: 'Task list {PLAS.PLNNR} alternative {PLAS.PLNAL}: operation node {PLAS.PLNKN} is missing or deleted.'
+- id: PP286
+  field: PLAS.PLNNR
+  check_class: exists_check
+  fields:
+  - PLAS.PLNTY
+  - PLAS.PLNNR
+  - PLAS.PLNAL
+  target_table: PLKO
+  target_fields:
+  - PLNTY
+  - PLNNR
+  - PLNAL
+  target_when:
+    LOEKZ:
+      blank: true
+  applies_when:
+    PLAS.LOEKZ:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Sequence assignment points at an alternative that does not exist or is deleted
+  why_it_matters: PLAS rows name an alternative of the header (PLKO).
+  rule_authority: sap_hard_constraint
+  sap_impact: Operations hang on an alternative that cannot be selected.
+  fix_map:
+    __other__: Correct or delete the assignment in CA02.
+  record_fix_template: 'Task list {PLAS.PLNNR} alternative {PLAS.PLNAL}: no active header.'
+- id: PP287
+  field: PLPO.UMREN
+  check_class: cross_field_check
+  fail_when: '`PLPO.UMREN`.isna() | (`PLPO.UMREN` <= 0)'
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: Operation unit conversion denominator is zero
+  why_it_matters: The conversion to the task list unit divides by UMREN. Zero gives a division by zero.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling and costing of the operation fail.
+  fix_map:
+    __other__: Enter a positive denominator in CA02 > Operation > Quantities.
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: UMREN is {actual_value}.'
+- id: PP288
+  field: PLPO.MEINH
+  check_class: null_check
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: Operation has no operation unit
+  why_it_matters: Standard values and base quantity are given in the operation unit.
+  rule_authority: sap_hard_constraint
+  sap_impact: Standard values cannot be scaled to the order quantity.
+  fix_map:
+    __blank__: Enter the unit in CA02 > Operation > Quantities.
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: no operation unit.'
+- id: PP289
+  field: PLPO.VGW01
+  check_class: cross_field_check
+  fail_when: (`PLPO.VGW01` < 0) | (`PLPO.VGW02` < 0) | (`PLPO.VGW03` < 0) | (`PLPO.VGW04` < 0) | (`PLPO.VGW05` < 0) | (`PLPO.VGW06`
+    < 0)
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: high
+  dimension: accuracy
+  message: An operation standard value is negative
+  why_it_matters: Standard values are times or quantities. A negative value reduces the order time and cost.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling and costing under-state the order.
+  fix_map:
+    __other__: Correct the standard value in CA02.
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: standard value {actual_value}.'
+- id: PP290
+  field: PLPO.VGW04
+  check_class: cross_field_check
+  fail_when: (`PLPO.VGW04` > 0) & `PLPO.VGE04`.isna()
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: completeness
+  message: Operation standard value 4 is maintained without its unit
+  why_it_matters: A standard value without unit cannot be converted to hours or days.
+  rule_authority: sap_hard_constraint
+  sap_impact: The standard value is ignored or fails in scheduling.
+  fix_map:
+    __other__: Enter the unit for standard value 4 in CA02.
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: standard value 4 {actual_value} has no unit.'
+- id: PP291
+  field: PLPO.VGW05
+  check_class: cross_field_check
+  fail_when: (`PLPO.VGW05` > 0) & `PLPO.VGE05`.isna()
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: completeness
+  message: Operation standard value 5 is maintained without its unit
+  why_it_matters: A standard value without unit cannot be converted to hours or days.
+  rule_authority: sap_hard_constraint
+  sap_impact: The standard value is ignored or fails in scheduling.
+  fix_map:
+    __other__: Enter the unit for standard value 5 in CA02.
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: standard value 5 {actual_value} has no unit.'
+- id: PP292
+  field: PLPO.VGW06
+  check_class: cross_field_check
+  fail_when: (`PLPO.VGW06` > 0) & `PLPO.VGE06`.isna()
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: completeness
+  message: Operation standard value 6 is maintained without its unit
+  why_it_matters: A standard value without unit cannot be converted to hours or days.
+  rule_authority: sap_hard_constraint
+  sap_impact: The standard value is ignored or fails in scheduling.
+  fix_map:
+    __other__: Enter the unit for standard value 6 in CA02.
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: standard value 6 {actual_value} has no unit.'
+- id: PP293
+  field: PLPO.LAR01
+  check_class: cross_field_check
+  fail_when: (`PLPO.VGW01` > 0) & `PLPO.LAR01`.isna()
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: completeness
+  message: Operation standard value 1 has no activity type
+  why_it_matters: The activity type connects the standard value to a cost rate. Without it the time is not costed.
+  rule_authority: best_practice
+  sap_impact: The cost estimate omits the cost of this standard value.
+  fix_map:
+    __other__: Enter activity type 1 in CA02 or on the work centre.
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: value 1 {PLPO.VGW01} has no activity type.'
+- id: PP294
+  field: PLPO.LAR02
+  check_class: cross_field_check
+  fail_when: (`PLPO.VGW02` > 0) & `PLPO.LAR02`.isna()
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: completeness
+  message: Operation standard value 2 has no activity type
+  why_it_matters: The activity type connects the standard value to a cost rate. Without it the time is not costed.
+  rule_authority: best_practice
+  sap_impact: The cost estimate omits the cost of this standard value.
+  fix_map:
+    __other__: Enter activity type 2 in CA02 or on the work centre.
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: value 2 {PLPO.VGW02} has no activity type.'
+- id: PP295
+  field: PLPO.LAR03
+  check_class: cross_field_check
+  fail_when: (`PLPO.VGW03` > 0) & `PLPO.LAR03`.isna()
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: completeness
+  message: Operation standard value 3 has no activity type
+  why_it_matters: The activity type connects the standard value to a cost rate. Without it the time is not costed.
+  rule_authority: best_practice
+  sap_impact: The cost estimate omits the cost of this standard value.
+  fix_map:
+    __other__: Enter activity type 3 in CA02 or on the work centre.
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: value 3 {PLPO.VGW03} has no activity type.'
+- id: PP296
+  field: PLPO.AUFAK
+  check_class: cross_field_check
+  fail_when: (`PLPO.AUFAK` > 100) | (`PLPO.AUFAK` < 0)
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: accuracy
+  message: Operation scrap factor is negative or above 100 percent
+  why_it_matters: Operation scrap is a loss rate and must lie between 0 and 100 percent.
+  rule_authority: sap_hard_constraint
+  sap_impact: Planned quantity and cost are wrong.
+  fix_map:
+    __other__: Correct the scrap in CA02 > Operation > Quantities.
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: scrap {actual_value}.'
+- id: PP297
+  field: PLPO.PREIS
+  check_class: cross_field_check
+  fail_when: (`PLPO.PREIS` > 0) & ~(`PLPO.PEINH` > 0)
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: External operation price is maintained but its price unit is zero
+  why_it_matters: Price is per price unit; zero gives a division by zero.
+  rule_authority: sap_hard_constraint
+  sap_impact: Cost of the external operation fails.
+  fix_map:
+    __other__: Set the price unit in CA02 > Operation > External processing.
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: price {PLPO.PREIS} with unit {actual_value}.'
+- id: PP298
+  field: PLPO.WAERS
+  check_class: cross_field_check
+  fail_when: (`PLPO.PREIS` > 0) & `PLPO.WAERS`.isna()
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: External operation price is maintained without currency
+  why_it_matters: A price without currency has no value.
+  rule_authority: sap_hard_constraint
+  sap_impact: Cost of the external operation fails.
+  fix_map:
+    __other__: Enter the currency in CA02.
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: price {PLPO.PREIS} without currency.'
+- id: PP299
+  field: PLPO.VPLNR
+  check_class: cross_field_check
+  fail_when: '`PLPO.VPLNR`.notna() & `PLPO.VPLTY`.isna()'
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Operation refers to a reference operation set without a task list type
+  why_it_matters: A reference needs type, group and counter to find the set.
+  rule_authority: sap_hard_constraint
+  sap_impact: The reference cannot be resolved; operation data is not inherited.
+  fix_map:
+    __other__: Complete the reference in CA02.
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: reference {actual_value} without type.'
+- id: PP300
+  field: PLPO.VPLNR
+  check_class: exists_check
+  fields:
+  - PLPO.VPLTY
+  - PLPO.VPLNR
+  target_table: PLKO
+  target_fields:
+  - PLNTY
+  - PLNNR
+  target_when:
+    LOEKZ:
+      blank: true
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Operation refers to a reference operation set that does not exist or is deleted
+  why_it_matters: The reference must point to a live reference operation set.
+  rule_authority: sap_hard_constraint
+  sap_impact: Operation data is not inherited and costing is incomplete.
+  fix_map:
+    __other__: Correct the reference in CA02.
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: reference {actual_value} is missing or deleted.'
+- id: PP301
+  field: PLPO.KTSCH
+  check_class: referential_check
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: low
+  dimension: validity
+  message: Operation standard text key (PLPO.KTSCH) is not defined in the system's configuration (T435)
+  why_it_matters: The standard text key on the operation is a key into T435. An undefined value cannot be used by scheduling
+    or costing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Functions that read T435 for the operation stop or skip the value.
+  fix_map:
+    __other__: Correct the value in CA02 or create it (T435).
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: standard text key ''{actual_value}'' is not in T435.'
+- id: PP302
+  field: PLPO.QUALF
+  check_class: referential_check
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: low
+  dimension: validity
+  message: Operation suitability (PLPO.QUALF) is not defined in the system's configuration (T423)
+  why_it_matters: The suitability on the operation is a key into T423. An undefined value cannot be used by scheduling or
+    costing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Functions that read T423 for the operation stop or skip the value.
+  fix_map:
+    __other__: Correct the value in CA02 or create it (T423).
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: suitability ''{actual_value}'' is not in T423.'
+- id: PP303
+  field: PLPO.LOGRP
+  check_class: referential_check
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: low
+  dimension: validity
+  message: Operation wage group (PLPO.LOGRP) is not defined in the system's configuration (T421)
+  why_it_matters: The wage group on the operation is a key into T421. An undefined value cannot be used by scheduling or costing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Functions that read T421 for the operation stop or skip the value.
+  fix_map:
+    __other__: Correct the value in CA02 or create it (T421).
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: wage group ''{actual_value}'' is not in T421.'
+- id: PP304
+  field: PLPO.MATKL
+  check_class: referential_check
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Operation material group (PLPO.MATKL) is not defined in the system's configuration (T023)
+  why_it_matters: The material group on the operation is a key into T023. An undefined value cannot be used by scheduling
+    or costing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Functions that read T023 for the operation stop or skip the value.
+  fix_map:
+    __other__: Correct the value in CA02 or create it (T023).
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: material group ''{actual_value}'' is not in T023.'
+- id: PP305
+  field: PLPO.EKGRP
+  check_class: referential_check
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Operation purchasing group (PLPO.EKGRP) is not defined in the system's configuration (T024)
+  why_it_matters: The purchasing group on the operation is a key into T024. An undefined value cannot be used by scheduling
+    or costing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Functions that read T024 for the operation stop or skip the value.
+  fix_map:
+    __other__: Correct the value in CA02 or create it (T024).
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: purchasing group ''{actual_value}'' is not in T024.'
+- id: PP306
+  field: PLPO.EKORG
+  check_class: referential_check
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Operation purchasing organisation (PLPO.EKORG) is not defined in the system's configuration (T024E)
+  why_it_matters: The purchasing organisation on the operation is a key into T024E. An undefined value cannot be used by scheduling
+    or costing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Functions that read T024E for the operation stop or skip the value.
+  fix_map:
+    __other__: Correct the value in CA02 or create it (T024E).
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: purchasing organisation ''{actual_value}'' is not in
+    T024E.'
+- id: PP307
+  field: PLPO.LIFNR
+  check_class: referential_check
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Operation vendor (PLPO.LIFNR) is not defined in the system's configuration (LFA1)
+  why_it_matters: The vendor on the operation is a key into LFA1. An undefined value cannot be used by scheduling or costing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Functions that read LFA1 for the operation stop or skip the value.
+  fix_map:
+    __other__: Correct the value in CA02 or create it (LFA1).
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: vendor ''{actual_value}'' is not in LFA1.'
+- id: PP308
+  field: PLPO.INFNR
+  check_class: referential_check
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Operation info record (PLPO.INFNR) is not defined in the system's configuration (EINA)
+  why_it_matters: The info record on the operation is a key into EINA. An undefined value cannot be used by scheduling or
+    costing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Functions that read EINA for the operation stop or skip the value.
+  fix_map:
+    __other__: Correct the value in CA02 or create it (EINA).
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: info record ''{actual_value}'' is not in EINA.'
+- id: PP309
+  field: PLPO.KAPAR
+  check_class: referential_check
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Operation capacity category (PLPO.KAPAR) is not defined in the system's configuration (TC26)
+  why_it_matters: The capacity category on the operation is a key into TC26. An undefined value cannot be used by scheduling
+    or costing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Functions that read TC26 for the operation stop or skip the value.
+  fix_map:
+    __other__: Correct the value in CA02 or create it (TC26).
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: capacity category ''{actual_value}'' is not in TC26.'
+- id: PP310
+  field: PLPO.WERKS
+  check_class: referential_check
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: high
+  dimension: validity
+  message: Operation plant (PLPO.WERKS) is not defined in the system's configuration (T001W)
+  why_it_matters: The plant on the operation is a key into T001W. An undefined value cannot be used by scheduling or costing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Functions that read T001W for the operation stop or skip the value.
+  fix_map:
+    __other__: Correct the value in CA02 or create it (T001W).
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: plant ''{actual_value}'' is not in T001W.'
+- id: PP311
+  field: PLPO.AENNR
+  check_class: referential_check
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Operation change number (PLPO.AENNR) is not defined in the system's configuration (AENR)
+  why_it_matters: The change number on the operation is a key into AENR. An undefined value cannot be used by scheduling or
+    costing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Functions that read AENR for the operation stop or skip the value.
+  fix_map:
+    __other__: Correct the value in CA02 or create it (AENR).
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: change number ''{actual_value}'' is not in AENR.'
+- id: PP312
+  field: PLPO.ANFKO
+  check_class: referential_check
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Operation cost centre (PLPO.ANFKO) is not defined in the system's configuration (CSKS)
+  why_it_matters: The cost centre on the operation is a key into CSKS. An undefined value cannot be used by scheduling or
+    costing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Functions that read CSKS for the operation stop or skip the value.
+  fix_map:
+    __other__: Correct the value in CA02 or create it (CSKS).
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: cost centre ''{actual_value}'' is not in CSKS.'
+- id: PP313
+  field: PLPO.WAERS
+  check_class: referential_check
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Operation currency (PLPO.WAERS) is not defined in the system's configuration (TCURC)
+  why_it_matters: The currency on the operation is a key into TCURC. An undefined value cannot be used by scheduling or costing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Functions that read TCURC for the operation stop or skip the value.
+  fix_map:
+    __other__: Correct the value in CA02 or create it (TCURC).
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: currency ''{actual_value}'' is not in TCURC.'
+- id: PP314
+  field: PLPO.LAR01
+  check_class: referential_check
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Operation activity type 1 (PLPO.LAR01) is not defined in the system's configuration (CSLA)
+  why_it_matters: The activity type 1 on the operation is a key into CSLA. An undefined value cannot be used by scheduling
+    or costing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Functions that read CSLA for the operation stop or skip the value.
+  fix_map:
+    __other__: Correct the value in CA02 or create it (CSLA).
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: activity type 1 ''{actual_value}'' is not in CSLA.'
+- id: PP315
+  field: PLPO.LAR02
+  check_class: referential_check
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Operation activity type 2 (PLPO.LAR02) is not defined in the system's configuration (CSLA)
+  why_it_matters: The activity type 2 on the operation is a key into CSLA. An undefined value cannot be used by scheduling
+    or costing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Functions that read CSLA for the operation stop or skip the value.
+  fix_map:
+    __other__: Correct the value in CA02 or create it (CSLA).
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: activity type 2 ''{actual_value}'' is not in CSLA.'
+- id: PP316
+  field: PLPO.LAR03
+  check_class: referential_check
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Operation activity type 3 (PLPO.LAR03) is not defined in the system's configuration (CSLA)
+  why_it_matters: The activity type 3 on the operation is a key into CSLA. An undefined value cannot be used by scheduling
+    or costing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Functions that read CSLA for the operation stop or skip the value.
+  fix_map:
+    __other__: Correct the value in CA02 or create it (CSLA).
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: activity type 3 ''{actual_value}'' is not in CSLA.'
+- id: PP317
+  field: PLPO.LAR04
+  check_class: referential_check
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Operation activity type 4 (PLPO.LAR04) is not defined in the system's configuration (CSLA)
+  why_it_matters: The activity type 4 on the operation is a key into CSLA. An undefined value cannot be used by scheduling
+    or costing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Functions that read CSLA for the operation stop or skip the value.
+  fix_map:
+    __other__: Correct the value in CA02 or create it (CSLA).
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: activity type 4 ''{actual_value}'' is not in CSLA.'
+- id: PP318
+  field: PLPO.LAR05
+  check_class: referential_check
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Operation activity type 5 (PLPO.LAR05) is not defined in the system's configuration (CSLA)
+  why_it_matters: The activity type 5 on the operation is a key into CSLA. An undefined value cannot be used by scheduling
+    or costing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Functions that read CSLA for the operation stop or skip the value.
+  fix_map:
+    __other__: Correct the value in CA02 or create it (CSLA).
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: activity type 5 ''{actual_value}'' is not in CSLA.'
+- id: PP319
+  field: PLPO.LAR06
+  check_class: referential_check
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Operation activity type 6 (PLPO.LAR06) is not defined in the system's configuration (CSLA)
+  why_it_matters: The activity type 6 on the operation is a key into CSLA. An undefined value cannot be used by scheduling
+    or costing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Functions that read CSLA for the operation stop or skip the value.
+  fix_map:
+    __other__: Correct the value in CA02 or create it (CSLA).
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: activity type 6 ''{actual_value}'' is not in CSLA.'
+- id: PP320
+  field: PLPO.VGE01
+  check_class: referential_check
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Operation unit of standard value 1 (PLPO.VGE01) is not defined in the system's configuration (T006)
+  why_it_matters: The unit of standard value 1 on the operation is a key into T006. An undefined value cannot be used by scheduling
+    or costing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Functions that read T006 for the operation stop or skip the value.
+  fix_map:
+    __other__: Correct the value in CA02 or create it (T006).
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: unit of standard value 1 ''{actual_value}'' is not
+    in T006.'
+- id: PP321
+  field: PLPO.VGE02
+  check_class: referential_check
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Operation unit of standard value 2 (PLPO.VGE02) is not defined in the system's configuration (T006)
+  why_it_matters: The unit of standard value 2 on the operation is a key into T006. An undefined value cannot be used by scheduling
+    or costing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Functions that read T006 for the operation stop or skip the value.
+  fix_map:
+    __other__: Correct the value in CA02 or create it (T006).
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: unit of standard value 2 ''{actual_value}'' is not
+    in T006.'
+- id: PP322
+  field: PLPO.VGE03
+  check_class: referential_check
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Operation unit of standard value 3 (PLPO.VGE03) is not defined in the system's configuration (T006)
+  why_it_matters: The unit of standard value 3 on the operation is a key into T006. An undefined value cannot be used by scheduling
+    or costing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Functions that read T006 for the operation stop or skip the value.
+  fix_map:
+    __other__: Correct the value in CA02 or create it (T006).
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: unit of standard value 3 ''{actual_value}'' is not
+    in T006.'
+- id: PP323
+  field: PLPO.VGE04
+  check_class: referential_check
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Operation unit of standard value 4 (PLPO.VGE04) is not defined in the system's configuration (T006)
+  why_it_matters: The unit of standard value 4 on the operation is a key into T006. An undefined value cannot be used by scheduling
+    or costing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Functions that read T006 for the operation stop or skip the value.
+  fix_map:
+    __other__: Correct the value in CA02 or create it (T006).
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: unit of standard value 4 ''{actual_value}'' is not
+    in T006.'
+- id: PP324
+  field: PLPO.VGE05
+  check_class: referential_check
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Operation unit of standard value 5 (PLPO.VGE05) is not defined in the system's configuration (T006)
+  why_it_matters: The unit of standard value 5 on the operation is a key into T006. An undefined value cannot be used by scheduling
+    or costing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Functions that read T006 for the operation stop or skip the value.
+  fix_map:
+    __other__: Correct the value in CA02 or create it (T006).
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: unit of standard value 5 ''{actual_value}'' is not
+    in T006.'
+- id: PP325
+  field: PLPO.VGE06
+  check_class: referential_check
+  applies_when:
+    PLPO.PLNTY:
+    - N
+    - R
+    - '2'
+    - S
+    PLPO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Operation unit of standard value 6 (PLPO.VGE06) is not defined in the system's configuration (T006)
+  why_it_matters: The unit of standard value 6 on the operation is a key into T006. An undefined value cannot be used by scheduling
+    or costing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Functions that read T006 for the operation stop or skip the value.
+  fix_map:
+    __other__: Correct the value in CA02 or create it (T006).
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: unit of standard value 6 ''{actual_value}'' is not
+    in T006.'
+- id: PP326
+  field: CRHD.VERAN
+  check_class: exists_check
+  fields:
+  - CRHD.WERKS
+  - CRHD.VERAN
+  target_table: TC24
+  target_fields:
+  - WERKS
+  - VERAN
+  applies_when:
+    CRHD.OBJTY:
+    - A
+    CRHD.LVORM:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Work centre person responsible is not defined for the plant (TC24)
+  why_it_matters: The person responsible is a key per plant. Reports and workflows read it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Capacity and confirmation reports by responsible group skip the work centre.
+  fix_map:
+    __other__: Create the responsible in customizing or correct it in CR02.
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: person responsible ''{actual_value}'' is not in TC24.'
+- id: PP327
+  field: CRHD.VERAN
+  check_class: null_check
+  applies_when:
+    CRHD.OBJTY:
+    - A
+    CRHD.LVORM:
+      blank: true
+  severity: low
+  dimension: completeness
+  message: Work centre has no person responsible
+  why_it_matters: The responsible group is the first contact for capacity and confirmation issues.
+  rule_authority: best_practice
+  sap_impact: Issues and approvals are not routed to the owner.
+  fix_map:
+    __blank__: Enter the person responsible in CR02 > Basic data.
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: no person responsible.'
+- id: PP328
+  field: CRHD.WERKS
+  check_class: referential_check
+  applies_when:
+    CRHD.OBJTY:
+    - A
+  severity: high
+  dimension: validity
+  message: Work centre plant (CRHD.WERKS) is not a plant (T001W)
+  why_it_matters: The plant is part of the work centre key.
+  rule_authority: sap_hard_constraint
+  sap_impact: Costing and scheduling for the work centre fail.
+  fix_map:
+    __other__: Correct the plant or create it.
+  record_fix_template: 'Work centre {CRHD.ARBPL}: plant ''{actual_value}'' is not in T001W.'
+- id: PP329
+  field: CRHD.PLANV
+  check_class: null_check
+  applies_when:
+    CRHD.OBJTY:
+    - A
+    CRHD.LVORM:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: Work centre has no task list application
+  why_it_matters: The application decides the task list types the work centre can be used in.
+  rule_authority: sap_hard_constraint
+  sap_impact: The work centre cannot be used in routings.
+  fix_map:
+    __blank__: Enter the application in CR02 > Basic data.
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: no task list application.'
+- id: PP330
+  field: CRHD.VGWTS
+  check_class: null_check
+  applies_when:
+    CRHD.OBJTY:
+    - A
+    CRHD.LVORM:
+      blank: true
+  severity: medium
+  dimension: completeness
+  message: Work centre has no standard value key
+  why_it_matters: The standard value key defines which standard values exist and what they mean in operations.
+  rule_authority: sap_hard_constraint
+  sap_impact: Operations at the work centre carry no meaningful standard values.
+  fix_map:
+    __blank__: Enter the key in CR02 > Default values.
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: no standard value key.'
+- id: PP331
+  field: CRHD.STEUS
+  check_class: null_check
+  applies_when:
+    CRHD.OBJTY:
+    - A
+    CRHD.LVORM:
+      blank: true
+  severity: low
+  dimension: completeness
+  message: Work centre has no default control key
+  why_it_matters: The control key in the work centre becomes the default of every operation.
+  rule_authority: best_practice
+  sap_impact: Every operation needs a manually entered key.
+  fix_map:
+    __blank__: Enter the key in CR02 > Default values.
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: no default control key.'
+- id: PP332
+  field: CRHD.BEGDA
+  check_class: null_check
+  applies_when:
+    CRHD.OBJTY:
+    - A
+  severity: medium
+  dimension: completeness
+  message: Work centre has no valid-from date
+  why_it_matters: The validity start is mandatory for time-dependent use.
+  rule_authority: sap_hard_constraint
+  sap_impact: Validity checks in operations are wrong.
+  fix_map:
+    __blank__: Enter the date in CR02.
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: no valid-from date.'
+- id: PP333
+  field: CRHD.KAPID
+  check_class: exists_check
+  target_table: KAKO
+  target_fields:
+  - KAPID
+  applies_when:
+    CRHD.OBJTY:
+    - A
+  severity: high
+  dimension: consistency
+  message: Work centre capacity header does not exist
+  why_it_matters: The capacity header carries shifts, utilisation and the number of capacities.
+  rule_authority: sap_hard_constraint
+  sap_impact: Capacity planning and scheduling for the work centre fail.
+  fix_map:
+    __other__: Create or reassign the capacity in CR02 > Capacities.
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: capacity {actual_value} does not exist.'
+- id: PP334
+  field: CRHD.KAPID
+  check_class: exists_check
+  fields:
+  - CRHD.KAPID
+  - CRHD.WERKS
+  target_table: KAKO
+  target_fields:
+  - KAPID
+  - WERKS
+  applies_when:
+    CRHD.OBJTY:
+    - A
+  severity: medium
+  dimension: consistency
+  message: Work centre capacity belongs to a different plant than the work centre
+  why_it_matters: Capacity of another plant uses another calendar and shift model.
+  rule_authority: sap_hard_constraint
+  sap_impact: Capacity load is computed against the wrong plant.
+  fix_map:
+    __other__: Assign a capacity of the same plant in CR02.
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: capacity {actual_value} is in another plant.'
+- id: PP335
+  field: CRHD.KAPID
+  check_class: null_check
+  applies_when:
+    CRHD.OBJTY:
+    - A
+    CRHD.LVORM:
+      blank: true
+    CRHD.VGWTS:
+      populated: true
+  severity: medium
+  dimension: completeness
+  message: Work centre with standard values has no capacity
+  why_it_matters: Without capacity, scheduling cannot find the available time and capacity planning shows no load.
+  rule_authority: best_practice
+  sap_impact: Finite scheduling and capacity leveling are not possible.
+  fix_map:
+    __blank__: Create a capacity in CR02 > Capacities.
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: no capacity.'
+- id: PP336
+  field: CRTX.OBJID
+  check_class: exists_check
+  fields:
+  - CRTX.OBJTY
+  - CRTX.OBJID
+  target_table: CRHD
+  target_fields:
+  - OBJTY
+  - OBJID
+  severity: medium
+  dimension: consistency
+  message: Work centre text has no work centre
+  why_it_matters: The text must belong to an existing work centre.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orphan texts clutter selection lists.
+  fix_map:
+    __other__: Delete the text or restore the work centre.
+  record_fix_template: 'Work centre text {CRTX.OBJID}, language {CRTX.SPRAS}: no work centre.'
+- id: PP337
+  field: CRHD.ARBPL
+  check_class: exists_check
+  fields:
+  - CRHD.OBJTY
+  - CRHD.OBJID
+  target_table: CRTX
+  target_fields:
+  - OBJTY
+  - OBJID
+  target_when:
+    KTEXT:
+      populated: true
+  applies_when:
+    CRHD.OBJTY:
+    - A
+    CRHD.LVORM:
+      blank: true
+  severity: medium
+  dimension: completeness
+  message: Active work centre has no description
+  why_it_matters: Users pick work centres by name and text in selection lists.
+  rule_authority: best_practice
+  sap_impact: Planners cannot identify the work centre in CA02 and confirmations.
+  fix_map:
+    __other__: Enter the description in CR02.
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: no description.'
+- id: PP338
+  field: CRTX.SPRAS
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: Work centre text language (CRTX.SPRAS) is not defined (T002)
+  why_it_matters: A text in an undefined language is never shown.
+  rule_authority: sap_hard_constraint
+  sap_impact: The text is lost.
+  fix_map:
+    __other__: Correct the language key.
+  record_fix_template: 'Work centre text {CRTX.OBJID}: language ''{actual_value}'' is not in T002.'
+- id: PP339
+  field: CRHD.ARBPL
+  check_class: exists_check
+  fields:
+  - CRHD.OBJID
+  target_table: PLPO
+  target_fields:
+  - ARBID
+  target_when:
+    LOEKZ:
+      blank: true
+  applies_when:
+    CRHD.OBJTY:
+    - A
+    CRHD.LVORM:
+      blank: true
+  severity: low
+  dimension: lifecycle
+  message: Active work centre is used by no operation
+  why_it_matters: A work centre that no task list uses is dead master data and a candidate for deletion.
+  rule_authority: best_practice
+  sap_impact: Master data clutter; capacity reports show unused resources.
+  fix_map:
+    __other__: Flag the work centre for deletion in CR02.
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: used by no operation.'
+- id: PP340
+  field: CRHD.FORT1
+  check_class: referential_check
+  applies_when:
+    CRHD.OBJTY:
+    - A
+  severity: medium
+  dimension: validity
+  message: Work centre formula 1 (CRHD.FORT1) is not defined in the system's configuration (TC25)
+  why_it_matters: The formula 1 is a key into TC25. An undefined value breaks the functions that read it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling and costing at the work centre cannot use formula 1.
+  fix_map:
+    __other__: Correct the value in CR02 or create it (TC25).
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: formula 1 ''{actual_value}'' is not in TC25.'
+- id: PP341
+  field: CRHD.FORT2
+  check_class: referential_check
+  applies_when:
+    CRHD.OBJTY:
+    - A
+  severity: medium
+  dimension: validity
+  message: Work centre formula 2 (CRHD.FORT2) is not defined in the system's configuration (TC25)
+  why_it_matters: The formula 2 is a key into TC25. An undefined value breaks the functions that read it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling and costing at the work centre cannot use formula 2.
+  fix_map:
+    __other__: Correct the value in CR02 or create it (TC25).
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: formula 2 ''{actual_value}'' is not in TC25.'
+- id: PP342
+  field: CRHD.FORT3
+  check_class: referential_check
+  applies_when:
+    CRHD.OBJTY:
+    - A
+  severity: medium
+  dimension: validity
+  message: Work centre formula 3 (CRHD.FORT3) is not defined in the system's configuration (TC25)
+  why_it_matters: The formula 3 is a key into TC25. An undefined value breaks the functions that read it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling and costing at the work centre cannot use formula 3.
+  fix_map:
+    __other__: Correct the value in CR02 or create it (TC25).
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: formula 3 ''{actual_value}'' is not in TC25.'
+- id: PP343
+  field: CRHD.KTSCH
+  check_class: referential_check
+  applies_when:
+    CRHD.OBJTY:
+    - A
+  severity: medium
+  dimension: validity
+  message: Work centre standard text key (CRHD.KTSCH) is not defined in the system's configuration (T435)
+  why_it_matters: The standard text key is a key into T435. An undefined value breaks the functions that read it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling and costing at the work centre cannot use standard text key.
+  fix_map:
+    __other__: Correct the value in CR02 or create it (T435).
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: standard text key ''{actual_value}'' is not in T435.'
+- id: PP344
+  field: CRHD.LOGRP
+  check_class: referential_check
+  applies_when:
+    CRHD.OBJTY:
+    - A
+  severity: medium
+  dimension: validity
+  message: Work centre wage group (CRHD.LOGRP) is not defined in the system's configuration (T421)
+  why_it_matters: The wage group is a key into T421. An undefined value breaks the functions that read it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling and costing at the work centre cannot use wage group.
+  fix_map:
+    __other__: Correct the value in CR02 or create it (T421).
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: wage group ''{actual_value}'' is not in T421.'
+- id: PP345
+  field: CRHD.QUALF
+  check_class: referential_check
+  applies_when:
+    CRHD.OBJTY:
+    - A
+  severity: medium
+  dimension: validity
+  message: Work centre suitability (CRHD.QUALF) is not defined in the system's configuration (T423)
+  why_it_matters: The suitability is a key into T423. An undefined value breaks the functions that read it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling and costing at the work centre cannot use suitability.
+  fix_map:
+    __other__: Correct the value in CR02 or create it (T423).
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: suitability ''{actual_value}'' is not in T423.'
+- id: PP346
+  field: CRHD.RASCH
+  check_class: referential_check
+  applies_when:
+    CRHD.OBJTY:
+    - A
+  severity: medium
+  dimension: validity
+  message: Work centre setup type (CRHD.RASCH) is not defined in the system's configuration (T428)
+  why_it_matters: The setup type is a key into T428. An undefined value breaks the functions that read it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling and costing at the work centre cannot use setup type.
+  fix_map:
+    __other__: Correct the value in CR02 or create it (T428).
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: setup type ''{actual_value}'' is not in T428.'
+- id: PP347
+  field: CRHD.STEUS
+  check_class: referential_check
+  applies_when:
+    CRHD.OBJTY:
+    - A
+  severity: medium
+  dimension: validity
+  message: Work centre control key (CRHD.STEUS) is not defined in the system's configuration (T430)
+  why_it_matters: The control key is a key into T430. An undefined value breaks the functions that read it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling and costing at the work centre cannot use control key.
+  fix_map:
+    __other__: Correct the value in CR02 or create it (T430).
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: control key ''{actual_value}'' is not in T430.'
+- id: PP348
+  field: CRHD.KAPID
+  check_class: referential_check
+  applies_when:
+    CRHD.OBJTY:
+    - A
+  severity: medium
+  dimension: validity
+  message: Work centre capacity (CRHD.KAPID) is not defined in the system's configuration (KAKO)
+  why_it_matters: The capacity is a key into KAKO. An undefined value breaks the functions that read it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling and costing at the work centre cannot use capacity.
+  fix_map:
+    __other__: Correct the value in CR02 or create it (KAKO).
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: capacity ''{actual_value}'' is not in KAKO.'
+- id: PP349
+  field: CRHD.LIFNR
+  check_class: referential_check
+  applies_when:
+    CRHD.OBJTY:
+    - A
+  severity: medium
+  dimension: validity
+  message: Work centre vendor (CRHD.LIFNR) is not defined in the system's configuration (LFA1)
+  why_it_matters: The vendor is a key into LFA1. An undefined value breaks the functions that read it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling and costing at the work centre cannot use vendor.
+  fix_map:
+    __other__: Correct the value in CR02 or create it (LFA1).
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: vendor ''{actual_value}'' is not in LFA1.'
+- id: PP350
+  field: CRHD.PAR01
+  check_class: referential_check
+  applies_when:
+    CRHD.OBJTY:
+    - A
+  severity: medium
+  dimension: validity
+  message: Work centre formula parameter 1 (CRHD.PAR01) is not defined in the system's configuration (TC20)
+  why_it_matters: The formula parameter 1 is a key into TC20. An undefined value breaks the functions that read it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling and costing at the work centre cannot use formula parameter 1.
+  fix_map:
+    __other__: Correct the value in CR02 or create it (TC20).
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: formula parameter 1 ''{actual_value}'' is not in TC20.'
+- id: PP351
+  field: CRHD.PAR02
+  check_class: referential_check
+  applies_when:
+    CRHD.OBJTY:
+    - A
+  severity: medium
+  dimension: validity
+  message: Work centre formula parameter 2 (CRHD.PAR02) is not defined in the system's configuration (TC20)
+  why_it_matters: The formula parameter 2 is a key into TC20. An undefined value breaks the functions that read it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling and costing at the work centre cannot use formula parameter 2.
+  fix_map:
+    __other__: Correct the value in CR02 or create it (TC20).
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: formula parameter 2 ''{actual_value}'' is not in TC20.'
+- id: PP352
+  field: CRHD.PAR03
+  check_class: referential_check
+  applies_when:
+    CRHD.OBJTY:
+    - A
+  severity: medium
+  dimension: validity
+  message: Work centre formula parameter 3 (CRHD.PAR03) is not defined in the system's configuration (TC20)
+  why_it_matters: The formula parameter 3 is a key into TC20. An undefined value breaks the functions that read it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling and costing at the work centre cannot use formula parameter 3.
+  fix_map:
+    __other__: Correct the value in CR02 or create it (TC20).
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: formula parameter 3 ''{actual_value}'' is not in TC20.'
+- id: PP353
+  field: CRHD.PAR04
+  check_class: referential_check
+  applies_when:
+    CRHD.OBJTY:
+    - A
+  severity: medium
+  dimension: validity
+  message: Work centre formula parameter 4 (CRHD.PAR04) is not defined in the system's configuration (TC20)
+  why_it_matters: The formula parameter 4 is a key into TC20. An undefined value breaks the functions that read it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling and costing at the work centre cannot use formula parameter 4.
+  fix_map:
+    __other__: Correct the value in CR02 or create it (TC20).
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: formula parameter 4 ''{actual_value}'' is not in TC20.'
+- id: PP354
+  field: CRHD.PAR05
+  check_class: referential_check
+  applies_when:
+    CRHD.OBJTY:
+    - A
+  severity: medium
+  dimension: validity
+  message: Work centre formula parameter 5 (CRHD.PAR05) is not defined in the system's configuration (TC20)
+  why_it_matters: The formula parameter 5 is a key into TC20. An undefined value breaks the functions that read it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling and costing at the work centre cannot use formula parameter 5.
+  fix_map:
+    __other__: Correct the value in CR02 or create it (TC20).
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: formula parameter 5 ''{actual_value}'' is not in TC20.'
+- id: PP355
+  field: CRHD.PAR06
+  check_class: referential_check
+  applies_when:
+    CRHD.OBJTY:
+    - A
+  severity: medium
+  dimension: validity
+  message: Work centre formula parameter 6 (CRHD.PAR06) is not defined in the system's configuration (TC20)
+  why_it_matters: The formula parameter 6 is a key into TC20. An undefined value breaks the functions that read it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling and costing at the work centre cannot use formula parameter 6.
+  fix_map:
+    __other__: Correct the value in CR02 or create it (TC20).
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: formula parameter 6 ''{actual_value}'' is not in TC20.'
+- id: PP356
+  field: CRHD.PARV1
+  check_class: cross_field_check
+  fail_when: (`CRHD.PARV1` != 0) & `CRHD.PAR01`.isna()
+  applies_when:
+    CRHD.OBJTY:
+    - A
+  severity: medium
+  dimension: consistency
+  message: Work centre parameter value 1 is maintained without a parameter
+  why_it_matters: A value needs the parameter that tells which variable it is used for in the formulas.
+  rule_authority: sap_hard_constraint
+  sap_impact: The value is never used by any formula.
+  fix_map:
+    __other__: Enter parameter 1 in CR02 > Default values.
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: value 1 {actual_value} without parameter.'
+- id: PP357
+  field: CRHD.PARV2
+  check_class: cross_field_check
+  fail_when: (`CRHD.PARV2` != 0) & `CRHD.PAR02`.isna()
+  applies_when:
+    CRHD.OBJTY:
+    - A
+  severity: medium
+  dimension: consistency
+  message: Work centre parameter value 2 is maintained without a parameter
+  why_it_matters: A value needs the parameter that tells which variable it is used for in the formulas.
+  rule_authority: sap_hard_constraint
+  sap_impact: The value is never used by any formula.
+  fix_map:
+    __other__: Enter parameter 2 in CR02 > Default values.
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: value 2 {actual_value} without parameter.'
+- id: PP358
+  field: CRHD.PARV3
+  check_class: cross_field_check
+  fail_when: (`CRHD.PARV3` != 0) & `CRHD.PAR03`.isna()
+  applies_when:
+    CRHD.OBJTY:
+    - A
+  severity: medium
+  dimension: consistency
+  message: Work centre parameter value 3 is maintained without a parameter
+  why_it_matters: A value needs the parameter that tells which variable it is used for in the formulas.
+  rule_authority: sap_hard_constraint
+  sap_impact: The value is never used by any formula.
+  fix_map:
+    __other__: Enter parameter 3 in CR02 > Default values.
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: value 3 {actual_value} without parameter.'
+- id: PP359
+  field: CRHD.PARV4
+  check_class: cross_field_check
+  fail_when: (`CRHD.PARV4` != 0) & `CRHD.PAR04`.isna()
+  applies_when:
+    CRHD.OBJTY:
+    - A
+  severity: medium
+  dimension: consistency
+  message: Work centre parameter value 4 is maintained without a parameter
+  why_it_matters: A value needs the parameter that tells which variable it is used for in the formulas.
+  rule_authority: sap_hard_constraint
+  sap_impact: The value is never used by any formula.
+  fix_map:
+    __other__: Enter parameter 4 in CR02 > Default values.
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: value 4 {actual_value} without parameter.'
+- id: PP360
+  field: CRHD.PARV5
+  check_class: cross_field_check
+  fail_when: (`CRHD.PARV5` != 0) & `CRHD.PAR05`.isna()
+  applies_when:
+    CRHD.OBJTY:
+    - A
+  severity: medium
+  dimension: consistency
+  message: Work centre parameter value 5 is maintained without a parameter
+  why_it_matters: A value needs the parameter that tells which variable it is used for in the formulas.
+  rule_authority: sap_hard_constraint
+  sap_impact: The value is never used by any formula.
+  fix_map:
+    __other__: Enter parameter 5 in CR02 > Default values.
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: value 5 {actual_value} without parameter.'
+- id: PP361
+  field: CRHD.PARV6
+  check_class: cross_field_check
+  fail_when: (`CRHD.PARV6` != 0) & `CRHD.PAR06`.isna()
+  applies_when:
+    CRHD.OBJTY:
+    - A
+  severity: medium
+  dimension: consistency
+  message: Work centre parameter value 6 is maintained without a parameter
+  why_it_matters: A value needs the parameter that tells which variable it is used for in the formulas.
+  rule_authority: sap_hard_constraint
+  sap_impact: The value is never used by any formula.
+  fix_map:
+    __other__: Enter parameter 6 in CR02 > Default values.
+  record_fix_template: 'Work centre {CRHD.ARBPL} plant {CRHD.WERKS}: value 6 {actual_value} without parameter.'
+- id: PP362
+  field: CRCO.KOSTL
+  check_class: exists_check
+  fields:
+  - CRCO.KOKRS
+  - CRCO.KOSTL
+  target_table: CSKS
+  target_fields:
+  - KOKRS
+  - KOSTL
+  severity: high
+  dimension: consistency
+  message: Work centre cost centre does not exist in the controlling area
+  why_it_matters: Activity costs at the work centre post to the cost centre. A cost centre outside CSKS cannot take postings.
+  rule_authority: sap_hard_constraint
+  sap_impact: Confirmations and activity allocation fail.
+  fix_map:
+    __other__: Correct the cost centre in CR02 > Costing.
+  record_fix_template: 'Work centre object {CRCO.OBJID}: cost centre {actual_value} is not in controlling area {CRCO.KOKRS}.'
+- id: PP363
+  field: CRCO.LSTAR
+  check_class: referential_check
+  severity: high
+  dimension: validity
+  message: Work centre activity type (CRCO.LSTAR) is not defined in the system's configuration (CSLA)
+  why_it_matters: Each cost rate is driven by an activity type of the controlling area.
+  rule_authority: sap_hard_constraint
+  sap_impact: Operation costs are not valued.
+  fix_map:
+    __other__: Correct the activity type in CR02 > Costing.
+  record_fix_template: 'Work centre object {CRCO.OBJID}: activity type ''{actual_value}'' is not in CSLA.'
+- id: PP364
+  field: CRCO.LSTAR
+  check_class: null_check
+  applies_when:
+    CRCO.KOSTL:
+      populated: true
+    CRCO.LSTAR_REF:
+      blank: true
+  severity: medium
+  dimension: completeness
+  message: Work centre costing line has a cost centre but no activity type
+  why_it_matters: The activity type connects the cost centre to the rate used in the operation.
+  rule_authority: sap_hard_constraint
+  sap_impact: Costing finds no rate; the cost estimate omits the operation.
+  fix_map:
+    __blank__: Enter the activity type in CR02 > Costing.
+  record_fix_template: 'Work centre object {CRCO.OBJID} slot {CRCO.LASET}: no activity type.'
+- id: PP365
+  field: CRCO.KOSTL
+  check_class: null_check
+  applies_when:
+    CRCO.LSTAR:
+      populated: true
+  severity: high
+  dimension: completeness
+  message: Work centre costing line has an activity type but no cost centre
+  why_it_matters: An activity type needs the cost centre that supplies it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Costing finds no cost centre; postings fail.
+  fix_map:
+    __blank__: Enter the cost centre in CR02 > Costing.
+  record_fix_template: 'Work centre object {CRCO.OBJID} slot {CRCO.LASET}: no cost centre.'
+- id: PP366
+  field: CRCO.ENDDA
+  check_class: cross_field_check
+  fail_when: '`CRCO.BEGDA` > `CRCO.ENDDA`'
+  severity: high
+  dimension: consistency
+  message: Work centre costing validity ends before it starts
+  why_it_matters: A validity range must start before it ends.
+  rule_authority: sap_hard_constraint
+  sap_impact: Costing finds no valid rate in the period.
+  fix_map:
+    __other__: Correct the validity in CR02 > Costing.
+  record_fix_template: 'Work centre object {CRCO.OBJID}: valid {CRCO.BEGDA} to {actual_value}.'
+- id: PP367
+  field: CRCO.FORML
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Work centre costing formula (CRCO.FORML) is not defined (TC25)
+  why_it_matters: Costing uses the formula key to turn standard values into quantities.
+  rule_authority: sap_hard_constraint
+  sap_impact: Costing of the activity fails.
+  fix_map:
+    __other__: Correct the formula in CR02 > Costing.
+  record_fix_template: 'Work centre object {CRCO.OBJID}: formula ''{actual_value}'' is not in TC25.'
+- id: PP368
+  field: CRCO.KOKRS
+  check_class: referential_check
+  severity: high
+  dimension: validity
+  message: Work centre controlling area (CRCO.KOKRS) is not defined (TKA01)
+  why_it_matters: The controlling area is the base of the cost centre and activity type.
+  rule_authority: sap_hard_constraint
+  sap_impact: Cost lookups fail.
+  fix_map:
+    __other__: Correct the controlling area.
+  record_fix_template: 'Work centre object {CRCO.OBJID}: controlling area ''{actual_value}'' is not in TKA01.'
+- id: PP369
+  field: CRCA.ENDDA
+  check_class: cross_field_check
+  fail_when: '`CRCA.BEGDA` > `CRCA.ENDDA`'
+  severity: high
+  dimension: consistency
+  message: Work centre capacity assignment ends before it starts
+  why_it_matters: A validity range must start before it ends.
+  rule_authority: sap_hard_constraint
+  sap_impact: Capacity planning finds no capacity for the period.
+  fix_map:
+    __other__: Correct the validity in CR02 > Capacities.
+  record_fix_template: 'Work centre object {CRCA.OBJID}: capacity valid {CRCA.BEGDA} to {actual_value}.'
+- id: PP370
+  field: CRCA.KAPID
+  check_class: exists_check
+  target_table: KAKO
+  target_fields:
+  - KAPID
+  severity: high
+  dimension: consistency
+  message: Work centre capacity assignment points at a capacity header that does not exist
+  why_it_matters: Capacity header carries the shifts and available time.
+  rule_authority: sap_hard_constraint
+  sap_impact: Capacity planning loses the resource.
+  fix_map:
+    __other__: Recreate the capacity in CR02.
+  record_fix_template: 'Work centre object {CRCA.OBJID}: capacity {actual_value} does not exist.'
+- id: PP371
+  field: CRCA.FORK1
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Work centre capacity formula 1 (CRCA.FORK1) is not defined (TC25)
+  why_it_matters: Capacity requirements use this formula to turn standard values into capacity load.
+  rule_authority: sap_hard_constraint
+  sap_impact: Capacity load of operations is wrong.
+  fix_map:
+    __other__: Correct the formula in CR02 > Capacities.
+  record_fix_template: 'Work centre object {CRCA.OBJID}: formula ''{actual_value}'' is not in TC25.'
+- id: PP372
+  field: CRCA.FORK2
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Work centre capacity formula 2 (CRCA.FORK2) is not defined (TC25)
+  why_it_matters: Capacity requirements use this formula to turn standard values into capacity load.
+  rule_authority: sap_hard_constraint
+  sap_impact: Capacity load of operations is wrong.
+  fix_map:
+    __other__: Correct the formula in CR02 > Capacities.
+  record_fix_template: 'Work centre object {CRCA.OBJID}: formula ''{actual_value}'' is not in TC25.'
+- id: PP373
+  field: CRCA.FORK3
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Work centre capacity formula 3 (CRCA.FORK3) is not defined (TC25)
+  why_it_matters: Capacity requirements use this formula to turn standard values into capacity load.
+  rule_authority: sap_hard_constraint
+  sap_impact: Capacity load of operations is wrong.
+  fix_map:
+    __other__: Correct the formula in CR02 > Capacities.
+  record_fix_template: 'Work centre object {CRCA.OBJID}: formula ''{actual_value}'' is not in TC25.'
+- id: PP374
+  field: CRCA.FORKN
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Work centre capacity formula N (CRCA.FORKN) is not defined (TC25)
+  why_it_matters: Capacity requirements use this formula to turn standard values into capacity load.
+  rule_authority: sap_hard_constraint
+  sap_impact: Capacity load of operations is wrong.
+  fix_map:
+    __other__: Correct the formula in CR02 > Capacities.
+  record_fix_template: 'Work centre object {CRCA.OBJID}: formula ''{actual_value}'' is not in TC25.'
+- id: PP375
+  field: CRCA.VERT1
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: Work centre distribution (CRCA.VERT1) is not defined (TC29)
+  why_it_matters: Distribution spreads the capacity load.
+  rule_authority: sap_hard_constraint
+  sap_impact: Capacity load is not spread.
+  fix_map:
+    __other__: Correct the distribution.
+  record_fix_template: 'Work centre object {CRCA.OBJID}: distribution ''{actual_value}'' is not in TC29.'
+- id: PP376
+  field: KAKO.AZNOR
+  check_class: cross_field_check
+  fail_when: '`KAKO.AZNOR`.isna() | (`KAKO.AZNOR` <= 0)'
+  applies_when:
+    KAKO.POOLK:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: Capacity has no individual capacities
+  why_it_matters: The number of individual capacities multiplies the available time. Zero means the resource has no capacity.
+  rule_authority: sap_hard_constraint
+  sap_impact: Capacity load is infinite and finite scheduling fails.
+  fix_map:
+    __other__: Enter a positive number in CR02 > Capacities.
+  record_fix_template: 'Capacity {KAKO.KAPID}: number of individual capacities {actual_value}.'
+- id: PP377
+  field: KAKO.NGRAD
+  check_class: cross_field_check
+  fail_when: (`KAKO.NGRAD` == '000') | (`KAKO.NGRAD` > '100')
+  applies_when:
+    KAKO.POOLK:
+      blank: true
+  severity: high
+  dimension: accuracy
+  message: Capacity utilisation rate is zero or above 100 percent
+  why_it_matters: Utilisation scales the available time. Zero removes the capacity; above 100 percent is not valid.
+  rule_authority: sap_hard_constraint
+  sap_impact: Available capacity is zero or overstated.
+  fix_map:
+    __other__: Correct the rate in CR02 > Capacities.
+  record_fix_template: 'Capacity {KAKO.KAPID}: utilisation {actual_value}.'
+- id: PP378
+  field: KAKO.ENDZT
+  check_class: cross_field_check
+  fail_when: '`KAKO.ENDZT` < `KAKO.BEGZT`'
+  severity: high
+  dimension: consistency
+  message: Capacity operating time ends before it starts
+  why_it_matters: The operating time (start to finish) of the day defines the available time.
+  rule_authority: sap_hard_constraint
+  sap_impact: Available time is negative or zero.
+  fix_map:
+    __other__: Correct the times in CR02 > Capacities.
+  record_fix_template: 'Capacity {KAKO.KAPID}: finish {actual_value}, start {KAKO.BEGZT}.'
+- id: PP379
+  field: KAKO.PAUSE
+  check_class: cross_field_check
+  fail_when: (`KAKO.ENDZT` > `KAKO.BEGZT`) & (`KAKO.PAUSE` >= (`KAKO.ENDZT` - `KAKO.BEGZT`))
+  severity: medium
+  dimension: consistency
+  message: Capacity break is as long as the operating time
+  why_it_matters: A break that fills the whole operating time leaves no available capacity.
+  rule_authority: sap_hard_constraint
+  sap_impact: Available capacity per day is zero.
+  fix_map:
+    __other__: Shorten the break in CR02 > Capacities.
+  record_fix_template: 'Capacity {KAKO.KAPID}: break {actual_value}.'
+- id: PP380
+  field: KAKO.KAPAR
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Capacity has no capacity category
+  why_it_matters: The category (machine, labour) decides what the capacity is used for.
+  rule_authority: sap_hard_constraint
+  sap_impact: Capacity requirements are not assigned to the resource.
+  fix_map:
+    __blank__: Enter the category in CR02.
+  record_fix_template: 'Capacity {KAKO.KAPID}: no capacity category.'
+- id: PP381
+  field: KAKO.MEINS
+  check_class: null_check
+  applies_when:
+    KAKO.POOLK:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: Capacity has no base unit
+  why_it_matters: Available time is given in the base unit.
+  rule_authority: sap_hard_constraint
+  sap_impact: Capacity load cannot be converted.
+  fix_map:
+    __blank__: Enter the unit in CR02.
+  record_fix_template: 'Capacity {KAKO.KAPID}: no base unit.'
+- id: PP382
+  field: KAKO.WERKS
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Capacity has no plant
+  why_it_matters: The plant selects the factory calendar and planning scope.
+  rule_authority: sap_hard_constraint
+  sap_impact: Capacity is not part of any plant.
+  fix_map:
+    __blank__: Enter the plant in CR02.
+  record_fix_template: 'Capacity {KAKO.KAPID}: no plant.'
+- id: PP383
+  field: KAKO.WERKS
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Capacity plant (KAKO.WERKS) is not defined in the system's configuration (T001W)
+  why_it_matters: The plant is a key into T001W. An undefined value breaks scheduling and capacity planning.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling cannot use plant of the capacity.
+  fix_map:
+    __other__: Correct the value in CR02 > Capacities or create it (T001W).
+  record_fix_template: 'Capacity {KAKO.KAPID}: plant ''{actual_value}'' is not in T001W.'
+- id: PP384
+  field: KAKO.KAPAR
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Capacity capacity category (KAKO.KAPAR) is not defined in the system's configuration (TC26)
+  why_it_matters: The capacity category is a key into TC26. An undefined value breaks scheduling and capacity planning.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling cannot use capacity category of the capacity.
+  fix_map:
+    __other__: Correct the value in CR02 > Capacities or create it (TC26).
+  record_fix_template: 'Capacity {KAKO.KAPID}: capacity category ''{actual_value}'' is not in TC26.'
+- id: PP385
+  field: KAKO.KALID
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Capacity factory calendar (KAKO.KALID) is not defined in the system's configuration (TFACD)
+  why_it_matters: The factory calendar is a key into TFACD. An undefined value breaks scheduling and capacity planning.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling cannot use factory calendar of the capacity.
+  fix_map:
+    __other__: Correct the value in CR02 > Capacities or create it (TFACD).
+  record_fix_template: 'Capacity {KAKO.KAPID}: factory calendar ''{actual_value}'' is not in TFACD.'
+- id: PP386
+  field: KAKO.PLANR
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Capacity capacity planner (KAKO.PLANR) is not defined in the system's configuration (TC27)
+  why_it_matters: The capacity planner is a key into TC27. An undefined value breaks scheduling and capacity planning.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling cannot use capacity planner of the capacity.
+  fix_map:
+    __other__: Correct the value in CR02 > Capacities or create it (TC27).
+  record_fix_template: 'Capacity {KAKO.KAPID}: capacity planner ''{actual_value}'' is not in TC27.'
+- id: PP387
+  field: KAKO.VERSA
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Capacity shift sequence (KAKO.VERSA) is not defined in the system's configuration (TC36)
+  why_it_matters: The shift sequence is a key into TC36. An undefined value breaks scheduling and capacity planning.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling cannot use shift sequence of the capacity.
+  fix_map:
+    __other__: Correct the value in CR02 > Capacities or create it (TC36).
+  record_fix_template: 'Capacity {KAKO.KAPID}: shift sequence ''{actual_value}'' is not in TC36.'
+- id: PP388
+  field: KAKO.MOSID
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Capacity mode (KAKO.MOSID) is not defined in the system's configuration (TC39A)
+  why_it_matters: The mode is a key into TC39A. An undefined value breaks scheduling and capacity planning.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling cannot use mode of the capacity.
+  fix_map:
+    __other__: Correct the value in CR02 > Capacities or create it (TC39A).
+  record_fix_template: 'Capacity {KAKO.KAPID}: mode ''{actual_value}'' is not in TC39A.'
+- id: PP389
+  field: KAKO.REFID
+  check_class: exists_check
+  target_table: KAKO
+  target_fields:
+  - KAPID
+  severity: high
+  dimension: consistency
+  message: Capacity refers to a capacity that does not exist
+  why_it_matters: Reference capacities supply the shifts. A missing one leaves the capacity empty.
+  rule_authority: sap_hard_constraint
+  sap_impact: Capacity time is not found.
+  fix_map:
+    __other__: Correct the reference in CR02.
+  record_fix_template: 'Capacity {KAKO.KAPID}: reference {actual_value} does not exist.'
+- id: PP390
+  field: KAKO.KAPID
+  check_class: exists_check
+  target_table: CRCA
+  target_fields:
+  - KAPID
+  applies_when:
+    KAKO.POOLK:
+      blank: true
+  severity: low
+  dimension: lifecycle
+  message: Capacity is assigned to no work centre
+  why_it_matters: A capacity that no work centre uses is dead data.
+  rule_authority: best_practice
+  sap_impact: Clutter in capacity reports.
+  fix_map:
+    __other__: Delete the capacity or assign it in CR02.
+  record_fix_template: 'Capacity {KAKO.KAPID}: not used by any work centre.'
+- id: PP391
+  field: MKAL.BDATU
+  check_class: freshness_check
+  max_age_hours: 0
+  applies_when:
+    MKAL.MKSP:
+      blank: true
+  severity: low
+  dimension: timeliness
+  message: Production version validity has ended and the version is not locked
+  why_it_matters: An expired version is not selected by order creation, but still shows in selection lists.
+  rule_authority: best_practice
+  sap_impact: Planned orders fail to convert for lack of a valid version.
+  fix_map:
+    __other__: Extend the validity or lock the version in C223.
+  record_fix_template: 'Material {MKAL.MATNR}, plant {MKAL.WERKS}, version {MKAL.VERID}: valid to ended {age_days} days ago.'
+- id: PP392
+  field: MKAL.MATNR
+  check_class: exists_check
+  fields:
+  - MKAL.MATNR
+  - MKAL.WERKS
+  target_table: MARC
+  target_fields:
+  - MATNR
+  - WERKS
+  target_when:
+    BESKZ:
+    - E
+    - X
+  severity: medium
+  dimension: consistency
+  message: Production version exists for a material that is not in-house produced in the plant
+  why_it_matters: Versions only matter for materials that are produced in-house.
+  rule_authority: best_practice
+  sap_impact: The version never takes part in planning.
+  fix_map:
+    __other__: Set the procurement type to in-house or delete the version.
+  record_fix_template: 'Material {MKAL.MATNR}, plant {MKAL.WERKS}: version {MKAL.VERID} but the material is not in-house.'
+- id: PP393
+  field: MKAL.PLNNR
+  check_class: cross_field_check
+  fail_when: '`MKAL.PLNNR`.isna() & `MKAL.STLAL`.isna()'
+  severity: high
+  dimension: completeness
+  message: Production version has neither BOM nor routing
+  why_it_matters: A version links BOM and routing for production. With neither, it carries nothing.
+  rule_authority: best_practice
+  sap_impact: Orders created with the version have no components or operations.
+  fix_map:
+    __other__: Maintain BOM and routing in C223.
+  record_fix_template: 'Material {MKAL.MATNR}, plant {MKAL.WERKS}, version {MKAL.VERID}: no BOM and no routing.'
+- id: PP394
+  field: MKAL.PLNTY
+  check_class: cross_field_check
+  fail_when: (`MKAL.PLNNR`.notna()) != (`MKAL.PLNTY`.notna())
+  severity: high
+  dimension: consistency
+  message: Production version routing is incomplete (type and group do not match)
+  why_it_matters: A routing is given by type and group together.
+  rule_authority: sap_hard_constraint
+  sap_impact: The routing cannot be found.
+  fix_map:
+    __other__: Complete the routing in C223.
+  record_fix_template: 'Material {MKAL.MATNR}, plant {MKAL.WERKS}, version {MKAL.VERID}: routing type ''{actual_value}'' without
+    a group.'
+- id: PP395
+  field: MKAL.ALORT
+  check_class: exists_check
+  fields:
+  - MKAL.WERKS
+  - MKAL.ALORT
+  target_table: T001L
+  target_fields:
+  - WERKS
+  - LGORT
+  severity: medium
+  dimension: consistency
+  message: Production version issue storage location does not exist in the plant
+  why_it_matters: The location supplies components to the order.
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods issue fails.
+  fix_map:
+    __other__: Correct the location in C223.
+  record_fix_template: 'Material {MKAL.MATNR}, plant {MKAL.WERKS}, version {MKAL.VERID}: storage location {actual_value} not
+    in plant.'
+- id: PP396
+  field: MKAL.ELPRO
+  check_class: exists_check
+  fields:
+  - MKAL.WERKS
+  - MKAL.ELPRO
+  target_table: T001L
+  target_fields:
+  - WERKS
+  - LGORT
+  severity: medium
+  dimension: consistency
+  message: Production version receiving storage location does not exist in the plant
+  why_it_matters: The location receives the finished goods from the order.
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods receipt fails.
+  fix_map:
+    __other__: Correct the location in C223.
+  record_fix_template: 'Material {MKAL.MATNR}, plant {MKAL.WERKS}, version {MKAL.VERID}: receiving location {actual_value}
+    not in plant.'
+- id: PP397
+  field: MKAL.VERTO
+  check_class: exists_check
+  fields:
+  - MKAL.WERKS
+  - MKAL.VERTO
+  target_table: T437V
+  target_fields:
+  - WERKS
+  - VERTL
+  severity: low
+  dimension: consistency
+  message: Production version distribution function does not exist for the plant
+  why_it_matters: The distribution function spreads the requirement.
+  rule_authority: sap_hard_constraint
+  sap_impact: Splitting by distribution fails.
+  fix_map:
+    __other__: Correct it in C223.
+  record_fix_template: 'Material {MKAL.MATNR}, plant {MKAL.WERKS}, version {MKAL.VERID}: distribution {actual_value} not in
+    T437V.'
+- id: PP398
+  field: MKAL.SOBSL
+  check_class: exists_check
+  fields:
+  - MKAL.WERKS
+  - MKAL.SOBSL
+  target_table: T460A
+  target_fields:
+  - WERKS
+  - SOBSL
+  severity: medium
+  dimension: consistency
+  message: Production version special procurement key is not defined for the plant
+  why_it_matters: The key must exist for the plant in T460A.
+  rule_authority: sap_hard_constraint
+  sap_impact: Planning cannot use the key.
+  fix_map:
+    __other__: Correct it in C223.
+  record_fix_template: 'Material {MKAL.MATNR}, plant {MKAL.WERKS}, version {MKAL.VERID}: key {actual_value} not in T460A.'
+- id: PP399
+  field: MKAL.BESKZ
+  check_class: exists_check
+  fields:
+  - MKAL.WERKS
+  - MKAL.SOBSL
+  - MKAL.BESKZ
+  target_table: T460A
+  target_fields:
+  - WERKS
+  - SOBSL
+  - BESKZ
+  applies_when:
+    MKAL.BESKZ:
+    - E
+    - F
+  severity: medium
+  dimension: consistency
+  message: Production version procurement type differs from the type of its special procurement key
+  why_it_matters: T460A fixes the procurement type of a key. A version with another type contradicts it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Planning follows the wrong procurement path.
+  fix_map:
+    __other__: Align procurement type and key in C223.
+  record_fix_template: 'Material {MKAL.MATNR}, plant {MKAL.WERKS}, version {MKAL.VERID}: type {actual_value} does not match
+    key.'
+- id: PP400
+  field: MKAL.TEXT1
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Production version has no text
+  why_it_matters: The text is shown in the version selection of orders.
+  rule_authority: best_practice
+  sap_impact: Planners cannot tell versions apart.
+  fix_map:
+    __blank__: Enter a text in C223.
+  record_fix_template: 'Material {MKAL.MATNR}, plant {MKAL.WERKS}, version {MKAL.VERID}: no text.'
+- id: PP401
+  field: MKAL.STLAN
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Production version BOM usage (MKAL.STLAN) is not defined (T416)
+  why_it_matters: BOM usage is customizing.
+  rule_authority: sap_hard_constraint
+  sap_impact: BOM selection fails.
+  fix_map:
+    __other__: Correct it.
+  record_fix_template: 'Material {MKAL.MATNR}, plant {MKAL.WERKS}: usage ''{actual_value}'' is not in T416.'
+- id: PP402
+  field: MARC.SOBSL
+  check_class: exists_check
+  fields:
+  - MARC.WERKS
+  - MARC.SOBSL
+  - MARC.BESKZ
+  target_table: T460A
+  target_fields:
+  - WERKS
+  - SOBSL
+  - BESKZ
+  applies_when:
+    MARC.BESKZ:
+    - E
+    - F
+    MARC.SOBSL:
+      populated: true
+  severity: medium
+  dimension: consistency
+  message: Special procurement key procurement type contradicts the material procurement type
+  why_it_matters: A special procurement key carries a procurement type (E or F). A material with the other type has a contradicting
+    key.
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP follows the wrong procurement path.
+  fix_map:
+    __other__: Align the procurement type and the key in MM02 MRP 2.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: type {actual_value} does not match special key {MARC.SOBSL}.'
+- id: PP403
+  field: MARC.SOBSL
+  check_class: exists_check
+  fields:
+  - MARC.WERKS
+  - MARC.SOBSL
+  target_table: T460A
+  target_fields:
+  - WERKS
+  - SOBSL
+  severity: high
+  dimension: consistency
+  message: Special procurement key is not defined for the plant of the material
+  why_it_matters: The key exists per plant in T460A. A key from another plant does not apply.
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP cannot apply the special procurement.
+  fix_map:
+    __other__: Correct it in MM02 MRP 2.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: key {actual_value} not in T460A.'
+- id: PP404
+  field: MARC.FEVOR
+  check_class: exists_check
+  fields:
+  - MARC.WERKS
+  - MARC.FEVOR
+  target_table: T024F
+  target_fields:
+  - WERKS
+  - FEVOR
+  severity: medium
+  dimension: consistency
+  message: Production scheduler is not defined for the plant of the material
+  why_it_matters: The scheduler is defined per plant (T024F). A scheduler of another plant is invalid.
+  rule_authority: sap_hard_constraint
+  sap_impact: Order lists by scheduler skip the material.
+  fix_map:
+    __other__: Correct it in MM02 MRP 4.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: scheduler {actual_value} not in T024F.'
+- id: PP405
+  field: MARC.MATNR
+  check_class: exists_check
+  fields:
+  - MARC.MATNR
+  - MARC.WERKS
+  negate: true
+  target_table: MAST
+  target_fields:
+  - MATNR
+  - WERKS
+  applies_when:
+    MARC.BESKZ:
+    - F
+    MARC.SOBSL:
+      blank: true
+    MARC.LVORM:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Externally procured material has a production BOM in the plant
+  why_it_matters: A material that is bought has no production, unless special procurement (subcontracting, phantom) is set.
+    A BOM without that is unused.
+  rule_authority: best_practice
+  sap_impact: The BOM is ignored or confuses planners.
+  fix_map:
+    __other__: Remove the BOM or set the right procurement type.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: externally procured but has a BOM.'
+- id: PP406
+  field: MARC.DZEIT
+  check_class: cross_field_check
+  fail_when: '`MARC.DZEIT`.isna() | (`MARC.DZEIT` <= 0)'
+  applies_when:
+    MARC.BESKZ:
+    - E
+    MARC.SOBSL:
+      blank: true
+    MARC.DISMM:
+      populated: true
+      not_in:
+      - ND
+  severity: medium
+  dimension: completeness
+  message: In-house produced material has no in-house production time
+  why_it_matters: MRP schedules production with the in-house production time unless the lot-size dependent time is set from
+    the routing.
+  rule_authority: best_practice
+  sap_impact: Lead time is zero; planned orders are dated too late.
+  fix_map:
+    __other__: Enter the time in MM02 MRP 2.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: in-house time {actual_value}.'
+- id: PP407
+  field: T024F.SFCPF
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Production scheduler default profile (T024F.SFCPF) is not defined (TCO43)
+  why_it_matters: The scheduler sets the default scheduling profile.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orders get no default profile.
+  fix_map:
+    __other__: Correct it in customizing.
+  record_fix_template: 'Plant {T024F.WERKS} scheduler {T024F.FEVOR}: profile ''{actual_value}'' is not in TCO43.'
+- id: PP408
+  field: T437V.FUNCT
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: Distribution function (T437V.FUNCT) is not defined (TC29V)
+  why_it_matters: The distribution spreads requirements.
+  rule_authority: sap_hard_constraint
+  sap_impact: Distribution is not applied.
+  fix_map:
+    __other__: Correct it in customizing.
+  record_fix_template: 'Plant {T437V.WERKS} distribution {T437V.VERTL}: function ''{actual_value}'' is not in TC29V.'
+- id: PP409
+  field: T460A.WRK02
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Special procurement key source plant (T460A.WRK02) is not a plant (T001W)
+  why_it_matters: A key that procures from another plant needs a real plant.
+  rule_authority: sap_hard_constraint
+  sap_impact: Stock transfer or production in the source plant fails.
+  fix_map:
+    __other__: Correct it in customizing.
+  record_fix_template: 'Plant {T460A.WERKS} key {T460A.SOBSL}: source plant ''{actual_value}'' is not in T001W.'
+- id: PP410
+  field: T460A.REWRK
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: Special procurement key receiving plant (T460A.REWRK) is not a plant (T001W)
+  why_it_matters: A key with reverse transfer needs a real plant.
+  rule_authority: sap_hard_constraint
+  sap_impact: Transfer fails.
+  fix_map:
+    __other__: Correct it in customizing.
+  record_fix_template: 'Plant {T460A.WERKS} key {T460A.SOBSL}: receiving plant ''{actual_value}'' is not in T001W.'

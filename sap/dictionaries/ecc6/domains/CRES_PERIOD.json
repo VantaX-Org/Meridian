@@ -1,0 +1,22 @@
+{
+ "domain": "CRES_PERIOD",
+ "type": "NUMC",
+ "length": 2,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "01",
+   "high": null,
+   "text": "No Period Reference"
+  },
+  {
+   "low": "02",
+   "high": null,
+   "text": "Day"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

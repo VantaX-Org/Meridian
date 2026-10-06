@@ -1,0 +1,281 @@
+{
+ "table": "CRCO",
+ "description": "Assignment of Work Center to Cost Center",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "OBJTY",
+   "key": true,
+   "data_element": "CR_OBJTY",
+   "domain": "CR_OBJTY",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Object types of the CIM resource",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "OBJID",
+   "key": true,
+   "data_element": "CR_OBJID",
+   "domain": "CR_OBJID",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Object ID of the resource",
+   "check_table": "CRID"
+  },
+  {
+   "pos": 4,
+   "name": "LASET",
+   "key": true,
+   "data_element": "CR_LASET",
+   "domain": "CHAR6",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Activity type set",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "ENDDA",
+   "key": true,
+   "data_element": "ENDDATUM",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "End Date",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "LANUM",
+   "key": true,
+   "data_element": "CR_LANUM",
+   "domain": "NUM4",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Activity type number within a set",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "BEGDA",
+   "key": false,
+   "data_element": "BEGDATUM",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Start Date",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "AEDAT_KOST",
+   "key": false,
+   "data_element": "AEDTM",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Changed on",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "AENAM_KOST",
+   "key": false,
+   "data_element": "USRNAME",
+   "domain": "CHAR12",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "User Name",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "KOKRS",
+   "key": false,
+   "data_element": "KOKRS",
+   "domain": "CACCD",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Controlling Area",
+   "check_table": "TKA01"
+  },
+  {
+   "pos": 11,
+   "name": "KOSTL",
+   "key": false,
+   "data_element": "KOSTL",
+   "domain": "KOSTL",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Cost Center",
+   "check_table": "CSKS"
+  },
+  {
+   "pos": 12,
+   "name": "LSTAR",
+   "key": false,
+   "data_element": "LSTAR",
+   "domain": "LSTAR",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Activity Type",
+   "check_table": "CSLA"
+  },
+  {
+   "pos": 13,
+   "name": "LSTAR_REF",
+   "key": false,
+   "data_element": "AP_KZREF",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Field is referenced",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "FORML",
+   "key": false,
+   "data_element": "AP_FORM_C1",
+   "domain": "AP_FORMEL",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Formula key for costing",
+   "check_table": "TC25"
+  },
+  {
+   "pos": 15,
+   "name": "PRZ",
+   "key": false,
+   "data_element": "CO_PRZNR",
+   "domain": "CO_PRZNR",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Business Process",
+   "check_table": "*"
+  },
+  {
+   "pos": 16,
+   "name": "ACTXY",
+   "key": false,
+   "data_element": "ACTXY",
+   "domain": "ACTXY",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Activity description type",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "ACTXK",
+   "key": false,
+   "data_element": "ACTXK",
+   "domain": "CHAR4",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Key for alternative activity description",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "LEINH",
+   "key": false,
+   "data_element": "LEINH",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Activity Unit",
+   "check_table": "*"
+  },
+  {
+   "pos": 19,
+   "name": "BDE",
+   "key": false,
+   "data_element": "BDENR",
+   "domain": "BDENR",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Transfer activity types to incentive wages",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "SAKL",
+   "key": false,
+   "data_element": "SA_KLASSE",
+   "domain": "SA_KLASSE",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Record type group",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "FORML",
+   "foreign_table": "TC25",
+   "foreign_field": "IDENT"
+  },
+  {
+   "field": "KOKRS",
+   "foreign_table": "TKA01",
+   "foreign_field": "KOKRS"
+  },
+  {
+   "field": "KOSTL",
+   "foreign_table": "CSKS",
+   "foreign_field": "KOSTL"
+  },
+  {
+   "field": "LSTAR",
+   "foreign_table": "CSLA",
+   "foreign_field": "LSTAR"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "OBJID",
+   "foreign_table": "CRID",
+   "foreign_field": "OBJID"
+  }
+ ]
+}

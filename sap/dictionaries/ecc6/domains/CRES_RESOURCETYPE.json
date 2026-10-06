@@ -1,0 +1,52 @@
+{
+ "domain": "CRES_RESOURCETYPE",
+ "type": "NUMC",
+ "length": 2,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "01",
+   "high": null,
+   "text": "Multiactivity Resource"
+  },
+  {
+   "low": "02",
+   "high": null,
+   "text": "Single-Activity Resource"
+  },
+  {
+   "low": "04",
+   "high": null,
+   "text": "Single Mixed Resource"
+  },
+  {
+   "low": "05",
+   "high": null,
+   "text": "Multimixed Resource"
+  },
+  {
+   "low": "06",
+   "high": null,
+   "text": "Single Line Resource"
+  },
+  {
+   "low": "07",
+   "high": null,
+   "text": "Single Mixed Line Resource"
+  },
+  {
+   "low": "10",
+   "high": null,
+   "text": "Calendar Resource"
+  },
+  {
+   "low": "11",
+   "high": null,
+   "text": "Calendar Mixed Resource"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,32 @@
+{
+ "domain": "CAP_BACKFLUSH",
+ "type": "NUMC",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "0",
+   "high": null,
+   "text": "Formula-Related"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Completely for Partial Confirmation"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Completely for Final Confirmation"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Proportional to Service"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

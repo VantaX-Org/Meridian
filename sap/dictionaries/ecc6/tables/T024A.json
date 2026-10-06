@@ -1,0 +1,69 @@
+{
+ "table": "T024A",
+ "description": "Planner group",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "WERKS",
+   "key": true,
+   "data_element": "WERKS_D",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Plant",
+   "check_table": "T001W"
+  },
+  {
+   "pos": 3,
+   "name": "FEVOR",
+   "key": true,
+   "data_element": "VAGRP",
+   "domain": "VAGRP",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Responsible planner group/department",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "TXT",
+   "key": false,
+   "data_element": "DISPTXT",
+   "domain": "TEXT30",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Description of the Planner Group",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  }
+ ]
+}

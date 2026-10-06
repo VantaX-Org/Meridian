@@ -1,0 +1,27 @@
+{
+ "domain": "CRES_CAMPAIGN_SNP",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No Cross-Period Lot-Size Planning"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Cross-Period Lot Size Planning"
+  },
+  {
+   "low": "S",
+   "high": null,
+   "text": "Sequence-Dependent Lot-Size Planning"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

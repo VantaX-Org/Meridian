@@ -1,0 +1,136 @@
+{
+ "table": "TC25",
+ "description": "Work center formulas",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "IDENT",
+   "key": true,
+   "data_element": "AP_FORMEL",
+   "domain": "AP_FORMEL",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Formula key",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "FTEXT",
+   "key": false,
+   "data_element": "AP_FORTXT",
+   "domain": "TDOBNAME",
+   "type": "CHAR",
+   "length": 70,
+   "decimals": 0,
+   "description": "Formula",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "FTEXT2",
+   "key": false,
+   "data_element": "AP_FORTXT",
+   "domain": "TDOBNAME",
+   "type": "CHAR",
+   "length": 70,
+   "decimals": 0,
+   "description": "Formula",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "FTEXT3",
+   "key": false,
+   "data_element": "AP_FORTXT",
+   "domain": "TDOBNAME",
+   "type": "CHAR",
+   "length": 70,
+   "decimals": 0,
+   "description": "Formula",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "GENER",
+   "key": false,
+   "data_element": "CR_GENER",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Internal indicator: Coding generated",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "VKALK",
+   "key": false,
+   "data_element": "CR_VWKALK",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicates it is allowed for costing",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "VKAPA",
+   "key": false,
+   "data_element": "CR_VWKAPA",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: work center is allowed for capacity requirements",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "VKAPF",
+   "key": false,
+   "data_element": "CR_VWKAPF",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: PRT allowed for requirements",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "VTERM",
+   "key": false,
+   "data_element": "CR_VWTER",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Allowed for scheduling",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}
