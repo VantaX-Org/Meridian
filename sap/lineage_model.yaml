@@ -119,7 +119,7 @@ processes:
 
   - id: R2R
     name: Record to Report
-    modules: [fi_gl, accounts_payable, accounts_receivable, asset_accounting]
+    modules: [fi_gl, accounts_payable, accounts_receivable, asset_accounting, hcm]
     l2:
       - id: R2R-GL
         name: General Ledger

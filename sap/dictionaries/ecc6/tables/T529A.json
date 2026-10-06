@@ -1,0 +1,225 @@
+{
+ "table": "T529A",
+ "description": "Personnel Action Types",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "MASSN",
+   "key": true,
+   "data_element": "MASSN",
+   "domain": "MASSN",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Action Type",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "ITYGR",
+   "key": false,
+   "data_element": "ITYGR",
+   "domain": "DLGGR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Infotype Group Number",
+   "check_table": "T588C"
+  },
+  {
+   "pos": 4,
+   "name": "WERKS",
+   "key": false,
+   "data_element": "NUSED4",
+   "domain": "CHAR4",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Reserved field/unused field of length 4",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "PERSG",
+   "key": false,
+   "data_element": "MSVER",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Action version",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "PERSK",
+   "key": false,
+   "data_element": "NUSED2",
+   "domain": "NUSED2",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Reserved Field/Unused Field of Length 2",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "FSTAT",
+   "key": false,
+   "data_element": "FSTAT",
+   "domain": "CHAR2",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Input for CC, PA, PS, ES",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "FUNCH",
+   "key": false,
+   "data_element": "FUNCH",
+   "domain": "FUNCH",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Function character for action",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "STAT1",
+   "key": false,
+   "data_element": "STAT1",
+   "domain": "STATA",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Customer-Specific Status",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "STAT2",
+   "key": false,
+   "data_element": "STAT2",
+   "domain": "STATA",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Employment Status",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "STAT3",
+   "key": false,
+   "data_element": "STAT3",
+   "domain": "STATA",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Special Payment Status",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "AUSDT",
+   "key": false,
+   "data_element": "AUSKN",
+   "domain": "AUSKN",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Date control",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "NAMEN",
+   "key": false,
+   "data_element": "MSNMK",
+   "domain": "CHAR5",
+   "type": "CHAR",
+   "length": 5,
+   "decimals": 0,
+   "description": "Feature for checking action sequence",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "P0000",
+   "key": false,
+   "data_element": "UPD00",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Update infotype 0000 when executing an action",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "P0302",
+   "key": false,
+   "data_element": "UPDEV",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Update infotype 0302 when executing an action",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "ORDNR",
+   "key": false,
+   "data_element": "SEQNP",
+   "domain": "SEQNP",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Sequence number",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "CTRY_CHG",
+   "key": false,
+   "data_element": "PAD_CHG_COUNTRY",
+   "domain": null,
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Country reassignment action",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "ITYGR",
+   "foreign_table": "T588C",
+   "foreign_field": "MENUE"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

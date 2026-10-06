@@ -26,6 +26,7 @@ MODULE_REGISTRY: dict[str, dict[str, str]] = {
     "accounts_payable": {"category": "ECC", "label": "Accounts Payable"},
     "accounts_receivable": {"category": "ECC", "label": "Accounts Receivable"},
     "asset_accounting": {"category": "ECC", "label": "Asset Accounting"},
+    "hcm": {"category": "ECC", "label": "HCM Personnel Administration"},
     "mm_purchasing": {"category": "ECC", "label": "MM Purchasing"},
     "plant_maintenance": {"category": "ECC", "label": "Plant Maintenance"},
     "production_planning": {"category": "ECC", "label": "Production Planning"},

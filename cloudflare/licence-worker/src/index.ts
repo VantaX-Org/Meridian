@@ -591,12 +591,12 @@ const DEFAULT_FEATURES: TenantFeatures = {
 const TIER_MODULES: Record<string, string[]> = {
   starter: [
     "business_partner", "material_master", "fi_gl", "accounts_payable",
-    "accounts_receivable", "asset_accounting", "mm_purchasing",
+    "accounts_receivable", "asset_accounting", "hcm", "mm_purchasing",
     "plant_maintenance", "production_planning", "sd_customer_master", "sd_sales_orders",
   ],
   professional: [
     "business_partner", "material_master", "fi_gl", "accounts_payable",
-    "accounts_receivable", "asset_accounting", "mm_purchasing",
+    "accounts_receivable", "asset_accounting", "hcm", "mm_purchasing",
     "plant_maintenance", "production_planning", "sd_customer_master", "sd_sales_orders",
     "interface_health",
     "s4_readiness",
@@ -608,7 +608,7 @@ const TIER_MODULES: Record<string, string[]> = {
   ],
   enterprise: [
     "business_partner", "material_master", "fi_gl", "accounts_payable",
-    "accounts_receivable", "asset_accounting", "mm_purchasing",
+    "accounts_receivable", "asset_accounting", "hcm", "mm_purchasing",
     "plant_maintenance", "production_planning", "sd_customer_master", "sd_sales_orders",
     "interface_health",
     "s4_readiness",

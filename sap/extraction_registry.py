@@ -341,6 +341,29 @@ ECC_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
     ],
 
     # ------------------------------------------------------------------
+    # HCM Personnel Administration (ECC infotypes + organisational management)
+    # ------------------------------------------------------------------
+    "hcm": [
+        ExtractionTarget(source="PA0000", fields=['PERNR', 'BEGDA', 'ENDDA', 'STAT2'], description="Actions"),
+        ExtractionTarget(source="PA0001", fields=['PERNR', 'BEGDA', 'ENDDA', 'ORGEH', 'PLANS', 'STELL', 'ABKRS', 'KOSTL', 'BUKRS', 'WERKS', 'BTRTL', 'PERSG', 'PERSK'], description="Organisational assignment"),
+        ExtractionTarget(source="PA0002", fields=['PERNR', 'BEGDA', 'ENDDA', 'NACHN', 'VORNA', 'GBDAT', 'PERID', 'GESCH'], description="Personal data"),
+        ExtractionTarget(source="PA0003", fields=['PERNR', 'BEGDA', 'ENDDA', 'ABRSP', 'ABRDT'], description="Payroll status"),
+        ExtractionTarget(source="PA0006", fields=['PERNR', 'BEGDA', 'ENDDA', 'SUBTY', 'OBJPS', 'LAND1'], description="Addresses"),
+        ExtractionTarget(source="PA0007", fields=['PERNR', 'BEGDA', 'ENDDA', 'EMPCT', 'TEILK'], description="Planned working time"),
+        ExtractionTarget(source="PA0008", fields=['PERNR', 'BEGDA', 'ENDDA', 'SUBTY', 'BET01', 'BSGRD'], description="Basic pay"),
+        ExtractionTarget(source="PA0009", fields=['PERNR', 'BEGDA', 'ENDDA', 'SUBTY', 'ZLSCH', 'BANKS', 'BANKL', 'BANKN'], description="Bank details"),
+        ExtractionTarget(source="PA0105", fields=['PERNR', 'BEGDA', 'ENDDA', 'SUBTY', 'USRID'], description="Communication (user link)"),
+        ExtractionTarget(source="HRP1000", fields=['PLVAR', 'OTYPE', 'OBJID', 'LANGU', 'BEGDA', 'ENDDA', 'ISTAT', 'STEXT'], description="Organisational objects"),
+        ExtractionTarget(source="HRP1001", fields=['PLVAR', 'OTYPE', 'OBJID', 'RSIGN', 'RELAT', 'BEGDA', 'ENDDA', 'SCLAS', 'SOBID', 'PROZT'], description="Organisational relationships"),
+        ExtractionTarget(source="CSKS", fields=['KOKRS', 'KOSTL', 'DATBI', 'BUKRS', 'BKZKP'], description="Cost centre master"),
+        ExtractionTarget(source="USR02", fields=['BNAME', 'UFLAG', 'GLTGB'], description="User master logon data"),
+        ExtractionTarget(source="BNKA", fields=['BANKS', 'BANKL'], description="Bank master", is_config=True),
+        ExtractionTarget(source="T500P", fields=['PERSA', 'BUKRS'], description="Personnel areas", is_config=True),
+        ExtractionTarget(source="T001P", fields=['WERKS', 'BTRTL'], description="Personnel subareas", is_config=True),
+        ExtractionTarget(source="T503Z", fields=['PERSG', 'PERSK'], description="Employee group / subgroup combinations", is_config=True),
+    ],
+
+    # ------------------------------------------------------------------
     # Plant Maintenance
     # ------------------------------------------------------------------
     "plant_maintenance": [
