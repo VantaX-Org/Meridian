@@ -1,0 +1,42 @@
+{
+ "domain": "QKZART",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "L",
+   "high": null,
+   "text": "Usage decision for inspection lot"
+  },
+  {
+   "low": "T",
+   "high": null,
+   "text": "Usage decision for partial lot"
+  },
+  {
+   "low": "K",
+   "high": null,
+   "text": "Usage decision for interval"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Usage decision for single unit"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Task for the notification"
+  },
+  {
+   "low": "O",
+   "high": null,
+   "text": "For Operation Completion"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

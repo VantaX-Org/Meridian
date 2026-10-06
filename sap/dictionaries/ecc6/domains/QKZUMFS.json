@@ -1,0 +1,27 @@
+{
+ "domain": "QKZUMFS",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No multiple samples"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Independent multiple samples"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Dependent multiple samples"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,64 @@
+{
+ "table": "TQ05T",
+ "description": "QM: text table for certificate types",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "SPRACHE",
+   "key": true,
+   "data_element": "SPRAS",
+   "domain": "SPRAS",
+   "type": "LANG",
+   "length": 1,
+   "decimals": 0,
+   "description": "Language Key",
+   "check_table": "*"
+  },
+  {
+   "pos": 3,
+   "name": "ZGTYP",
+   "key": true,
+   "data_element": "QZGTYP",
+   "domain": "QZGTYP",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Certificate Type",
+   "check_table": "TQ05"
+  },
+  {
+   "pos": 4,
+   "name": "KURZTEXT",
+   "key": false,
+   "data_element": "QKURZTEXT",
+   "domain": "QKURZTEXT",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Short Text",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "ZGTYP",
+   "foreign_table": "TQ05",
+   "foreign_field": "ZGTYP"
+  }
+ ]
+}

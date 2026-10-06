@@ -1,0 +1,32 @@
+{
+ "domain": "QSTABI",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No inspection lot for stability study"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Initial inspection"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Inspection lot for storage condition (created automatically)"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Inspection lot for storage condition (created  manually)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

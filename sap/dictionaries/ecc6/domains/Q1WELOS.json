@@ -1,0 +1,42 @@
+{
+ "domain": "Q1WELOS",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "An inspection lot for each document item"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "An insp. lot per purch. order item, or order item and batch"
+  },
+  {
+   "low": "Y",
+   "high": null,
+   "text": "Early lot creation for the order item"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "An insp. lot per material document, material and batch"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "An inspection lot for each material and batch"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "One Inspection Lot for Each Batch Split Item"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}
