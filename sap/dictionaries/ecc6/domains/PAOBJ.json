@@ -1,0 +1,132 @@
+{
+ "domain": "PAOBJ",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "Customer Master"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Sales Document Header"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Sales Document Item"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Delivery"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Billing Header"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Billing Item"
+  },
+  {
+   "low": "G",
+   "high": null,
+   "text": "Sales Activities (CAS)"
+  },
+  {
+   "low": "H",
+   "high": null,
+   "text": "Plant Maintenance"
+  },
+  {
+   "low": "I",
+   "high": null,
+   "text": "Vendor Master"
+  },
+  {
+   "low": "J",
+   "high": null,
+   "text": "Purchasing Documents"
+  },
+  {
+   "low": "K",
+   "high": null,
+   "text": "Service Management"
+  },
+  {
+   "low": "L",
+   "high": null,
+   "text": "Quality Management"
+  },
+  {
+   "low": "M",
+   "high": null,
+   "text": "Agreements"
+  },
+  {
+   "low": "N",
+   "high": null,
+   "text": "Transport"
+  },
+  {
+   "low": "Q",
+   "high": null,
+   "text": "Appropriation Request"
+  },
+  {
+   "low": "R",
+   "high": null,
+   "text": "Agency Document Header"
+  },
+  {
+   "low": "S",
+   "high": null,
+   "text": "Work Breakdown Structure (WBS)"
+  },
+  {
+   "low": "T",
+   "high": null,
+   "text": "Claim Management"
+  },
+  {
+   "low": "U",
+   "high": null,
+   "text": "General Notification"
+  },
+  {
+   "low": "V",
+   "high": null,
+   "text": "Trading Contract Header"
+  },
+  {
+   "low": "W",
+   "high": null,
+   "text": "Trading Contract Item"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Bulk Transportation (IS-Oil Only)"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Condition Contract"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Agency Document Item"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

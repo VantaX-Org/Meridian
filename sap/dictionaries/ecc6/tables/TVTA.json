@@ -1,0 +1,384 @@
+{
+ "table": "TVTA",
+ "description": "Organizational Unit: Sales Area(s)",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "VKORG",
+   "key": true,
+   "data_element": "VKORG",
+   "domain": "VKORG",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Sales Organization",
+   "check_table": "TVKO"
+  },
+  {
+   "pos": 3,
+   "name": "VTWEG",
+   "key": true,
+   "data_element": "VTWEG",
+   "domain": "VTWEG",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Distribution Channel",
+   "check_table": "TVKOV"
+  },
+  {
+   "pos": 4,
+   "name": "SPART",
+   "key": true,
+   "data_element": "SPART",
+   "domain": "SPART",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Division",
+   "check_table": "TVKOS"
+  },
+  {
+   "pos": 6,
+   "name": "VTWKU",
+   "key": false,
+   "data_element": "VTWKU",
+   "domain": "VTWEG",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Reference distrib.channel for cust.and material masters",
+   "check_table": "TVTW"
+  },
+  {
+   "pos": 7,
+   "name": "SPAKU",
+   "key": false,
+   "data_element": "SPAKU",
+   "domain": "SPART",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Reference division for customers",
+   "check_table": "TSPA"
+  },
+  {
+   "pos": 8,
+   "name": "VTWKO",
+   "key": false,
+   "data_element": "VTWKO",
+   "domain": "VTWEG",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Reference distribution channel for conditions",
+   "check_table": "TVTW"
+  },
+  {
+   "pos": 9,
+   "name": "SPAKO",
+   "key": false,
+   "data_element": "SPAKO",
+   "domain": "SPART",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Reference division for conditions",
+   "check_table": "TSPA"
+  },
+  {
+   "pos": 10,
+   "name": "MABER",
+   "key": false,
+   "data_element": "MABER",
+   "domain": "MABER",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Dunning Area",
+   "check_table": "T047M"
+  },
+  {
+   "pos": 11,
+   "name": "VKOAU",
+   "key": false,
+   "data_element": "VKOAU",
+   "domain": "VKORG",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Reference sales org.for sales doc.types (by sales area)",
+   "check_table": "TVKO"
+  },
+  {
+   "pos": 12,
+   "name": "VTWAU",
+   "key": false,
+   "data_element": "VTWAU",
+   "domain": "VTWEG",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Distribution channel for sales doc types",
+   "check_table": "TVTW"
+  },
+  {
+   "pos": 13,
+   "name": "SPAAU",
+   "key": false,
+   "data_element": "SPAAU",
+   "domain": "SPART",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Reference division for document types (by sales area)",
+   "check_table": "TSPA"
+  },
+  {
+   "pos": 14,
+   "name": "GSBER",
+   "key": false,
+   "data_element": "GSBER",
+   "domain": "GSBER",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Business Area",
+   "check_table": "TGSB"
+  },
+  {
+   "pos": 15,
+   "name": "REGGB",
+   "key": false,
+   "data_element": "REGGB",
+   "domain": "REGGB",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Rule for determining the business area",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "REVFP",
+   "key": false,
+   "data_element": "REVFP",
+   "domain": "REVFP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Rule for transferring the results of the availability check",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "FIXMG",
+   "key": false,
+   "data_element": "FIXMG",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Delivery date and quantity fixed",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "AFIND",
+   "key": false,
+   "data_element": "AFIND",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Promo determination",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "KKBER",
+   "key": false,
+   "data_element": "KKBER",
+   "domain": "KKBER",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Credit control area",
+   "check_table": "T014"
+  },
+  {
+   "pos": 20,
+   "name": "J_1ASNR",
+   "key": false,
+   "data_element": "J_1ADBRNCH",
+   "domain": "J_1BBRANCH",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Branch for domestic operations",
+   "check_table": "J_1BBRANCH"
+  },
+  {
+   "pos": 21,
+   "name": "J_1AESNR",
+   "key": false,
+   "data_element": "J_1AEBRNCH",
+   "domain": "J_1BBRANCH",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Branch for export operations",
+   "check_table": "J_1BBRANCH"
+  },
+  {
+   "pos": 23,
+   "name": "ISP_VB",
+   "key": false,
+   "data_element": "VERBBEZ",
+   "domain": "BEZIRK",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "IS-M: Distribution Zone",
+   "check_table": "JVTBEZIRK"
+  },
+  {
+   "pos": 24,
+   "name": "ISM_BP_VTB_GROUP",
+   "key": false,
+   "data_element": "GROUP_SALESAREA",
+   "domain": "ISM_GROUP_SALESAREA",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "IS-M: Sales Area Group for Business Partner Selection",
+   "check_table": "TJH_GR_SALESAREA"
+  },
+  {
+   "pos": 27,
+   "name": "J_3GKBAUL",
+   "key": false,
+   "data_element": "J_3GKBAUL",
+   "domain": "J_3GKBAUL",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "ETM-Relevant Indicator",
+   "check_table": null
+  },
+  {
+   "pos": 29,
+   "name": "OID_CHECKC",
+   "key": false,
+   "data_element": "OID_CHECKC",
+   "domain": "OIDMSG_PRD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Check customer ship-to/sold-to warning/error/information",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "GSBER",
+   "foreign_table": "TGSB",
+   "foreign_field": "GSBER"
+  },
+  {
+   "field": "ISM_BP_VTB_GROUP",
+   "foreign_table": "TJH_GR_SALESAREA",
+   "foreign_field": "GR_SA"
+  },
+  {
+   "field": "ISP_VB",
+   "foreign_table": "JVTBEZIRK",
+   "foreign_field": "BEZIRK"
+  },
+  {
+   "field": "J_1AESNR",
+   "foreign_table": "J_1BBRANCH",
+   "foreign_field": "BRANCH"
+  },
+  {
+   "field": "J_1ASNR",
+   "foreign_table": "J_1BBRANCH",
+   "foreign_field": "BRANCH"
+  },
+  {
+   "field": "KKBER",
+   "foreign_table": "T014",
+   "foreign_field": "KKBER"
+  },
+  {
+   "field": "MABER",
+   "foreign_table": "T047M",
+   "foreign_field": "MABER"
+  },
+  {
+   "field": "SPAAU",
+   "foreign_table": "TSPA",
+   "foreign_field": "SPART"
+  },
+  {
+   "field": "SPAKO",
+   "foreign_table": "TSPA",
+   "foreign_field": "SPART"
+  },
+  {
+   "field": "SPAKU",
+   "foreign_table": "TSPA",
+   "foreign_field": "SPART"
+  },
+  {
+   "field": "SPART",
+   "foreign_table": "TVKOS",
+   "foreign_field": "SPART"
+  },
+  {
+   "field": "VKOAU",
+   "foreign_table": "TVKO",
+   "foreign_field": "VKORG"
+  },
+  {
+   "field": "VKORG",
+   "foreign_table": "TVKO",
+   "foreign_field": "VKORG"
+  },
+  {
+   "field": "VTWAU",
+   "foreign_table": "TVTW",
+   "foreign_field": "VTWEG"
+  },
+  {
+   "field": "VTWEG",
+   "foreign_table": "TVKOV",
+   "foreign_field": "VTWEG"
+  },
+  {
+   "field": "VTWKO",
+   "foreign_table": "TVTW",
+   "foreign_field": "VTWEG"
+  },
+  {
+   "field": "VTWKU",
+   "foreign_table": "TVTW",
+   "foreign_field": "VTWEG"
+  }
+ ]
+}

@@ -1,0 +1,27 @@
+{
+ "domain": "REGGB",
+ "type": "NUMC",
+ "length": 3,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "001",
+   "high": null,
+   "text": "Business area determination from plant/division (T134G)"
+  },
+  {
+   "low": "002",
+   "high": null,
+   "text": "Business area determination from sales area (TVTA)"
+  },
+  {
+   "low": "003",
+   "high": null,
+   "text": "Business area det. from sales org/dist. channel item div."
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,349 @@
+{
+ "table": "KNMT",
+ "description": "Customer-Material Info Record Data Table",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "VKORG",
+   "key": true,
+   "data_element": "VKORG",
+   "domain": "VKORG",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Sales Organization",
+   "check_table": "TVKO"
+  },
+  {
+   "pos": 3,
+   "name": "VTWEG",
+   "key": true,
+   "data_element": "VTWEG",
+   "domain": "VTWEG",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Distribution Channel",
+   "check_table": "TVTW"
+  },
+  {
+   "pos": 4,
+   "name": "KUNNR",
+   "key": true,
+   "data_element": "KUNNR_V",
+   "domain": "KUNNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Customer number",
+   "check_table": "KNA1"
+  },
+  {
+   "pos": 5,
+   "name": "MATNR",
+   "key": true,
+   "data_element": "MATNR",
+   "domain": "MATNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Material Number",
+   "check_table": "MARA"
+  },
+  {
+   "pos": 6,
+   "name": "ERNAM",
+   "key": false,
+   "data_element": "ERNAM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of Person who Created the Object",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "ERDAT",
+   "key": false,
+   "data_element": "ERDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date on which the record was created",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "SORTL",
+   "key": false,
+   "data_element": "SORTL",
+   "domain": "CHAR10",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Sort field",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "KDMAT",
+   "key": false,
+   "data_element": "MATNR_KU",
+   "domain": "IDNEX",
+   "type": "CHAR",
+   "length": 35,
+   "decimals": 0,
+   "description": "Customer Material Number",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "POSTX",
+   "key": false,
+   "data_element": "KDPTX",
+   "domain": "TEXT40",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Customer description of material",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "LPRIO",
+   "key": false,
+   "data_element": "LPRIO",
+   "domain": "LPRIO",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Delivery priority",
+   "check_table": "TPRIO"
+  },
+  {
+   "pos": 12,
+   "name": "MINLF",
+   "key": false,
+   "data_element": "MINLF",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Minimum delivery quantity in delivery note processing",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "MEINS",
+   "key": false,
+   "data_element": "MEINS",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Base Unit of Measure",
+   "check_table": "T006"
+  },
+  {
+   "pos": 14,
+   "name": "CHSPL",
+   "key": false,
+   "data_element": "CHSPL",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Batch split allowed",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "KZTLF",
+   "key": false,
+   "data_element": "KZTLF",
+   "domain": "KZTLF",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Partial delivery at item level",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "ANTLF",
+   "key": false,
+   "data_element": "ANTLF",
+   "domain": "ANTLF",
+   "type": "DEC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Maximum number of partial deliveries allowed per item",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "UNTTO",
+   "key": false,
+   "data_element": "UNTTO",
+   "domain": "PRZ21",
+   "type": "DEC",
+   "length": 3,
+   "decimals": 1,
+   "description": "Underdelivery Tolerance Limit",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "UEBTO",
+   "key": false,
+   "data_element": "UEBTO",
+   "domain": "PRZ21",
+   "type": "DEC",
+   "length": 3,
+   "decimals": 1,
+   "description": "Overdelivery Tolerance Limit",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "UEBTK",
+   "key": false,
+   "data_element": "UEBTK_V",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Unlimited overdelivery allowed",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "WERKS",
+   "key": false,
+   "data_element": "WERKS_EXT",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Plant (Own or External)",
+   "check_table": "*"
+  },
+  {
+   "pos": 21,
+   "name": "RDPRF",
+   "key": false,
+   "data_element": "RDPRF",
+   "domain": "RDPRF",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Rounding Profile",
+   "check_table": "RDPR"
+  },
+  {
+   "pos": 22,
+   "name": "MEGRU",
+   "key": false,
+   "data_element": "MEGRU",
+   "domain": "MEGRU",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Unit of Measure Group",
+   "check_table": "*"
+  },
+  {
+   "pos": 23,
+   "name": "J_1BTXSDC",
+   "key": false,
+   "data_element": "J_1BTXSDC_",
+   "domain": "J_1BTXSDC",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "SD tax code",
+   "check_table": "J_1BTXSDC"
+  },
+  {
+   "pos": 24,
+   "name": "VWPOS",
+   "key": false,
+   "data_element": "VWPOS",
+   "domain": "VWPOS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Item usage",
+   "check_table": "TVVW"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "J_1BTXSDC",
+   "foreign_table": "J_1BTXSDC",
+   "foreign_field": "TAXCODE"
+  },
+  {
+   "field": "KUNNR",
+   "foreign_table": "KNA1",
+   "foreign_field": "KUNNR"
+  },
+  {
+   "field": "LPRIO",
+   "foreign_table": "TPRIO",
+   "foreign_field": "LPRIO"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MATNR",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "MEINS",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "RDPRF",
+   "foreign_table": "RDPR",
+   "foreign_field": "RDPRF"
+  },
+  {
+   "field": "VKORG",
+   "foreign_table": "TVKO",
+   "foreign_field": "VKORG"
+  },
+  {
+   "field": "VTWEG",
+   "foreign_table": "TVTW",
+   "foreign_field": "VTWEG"
+  },
+  {
+   "field": "VWPOS",
+   "foreign_table": "TVVW",
+   "foreign_field": "VWPOS"
+  }
+ ]
+}
