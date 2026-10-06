@@ -26,12 +26,17 @@ import { checkClassLabel, formatModuleName, formatDate, labelOf } from "@/lib/fo
 
 const HREF = "/admin?tab=rules";
 const meta = (m: AuroraColumnMeta) => m;
-const CATEGORIES = [["all", "All"], ["ecc", "ECC"], ["successfactors", "SuccessFactors"], ["warehouse", "Warehouse"]] as const;
 const CATEGORY_LABEL: Record<string, string> = { ecc: "ECC", successfactors: "SuccessFactors", warehouse: "Warehouse" };
 const SOURCE_LABEL: Record<string, string> = { yaml: "built-in", hq: "HQ", mined: "mined", custom: "custom" };
 const AUTHORING: CheckClass[] = ["null_check", "domain_value_check", "regex_check", "cross_field_check", "dependency_check", "uniqueness_check"];
 const SEVERITIES = ["critical", "high", "medium", "low"] as const;
 const DIMENSIONS = ["completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity"];
+const SEV_RANK: Record<string, number> = { critical: 4, high: 3, medium: 2, low: 1 };
+/** Shipped rule names start with their code ("AP001: Vendor number is mandatory"); the code gets its own column. */
+const CODE_PREFIX = /^([A-Z][A-Z0-9]*\d):\s+/;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-/i;
+const codeOf = (r: Rule) => r.name.match(CODE_PREFIX)?.[1] ?? (UUID.test(r.id) ? "" : r.id);
+const nameOf = (r: Rule) => r.name.replace(CODE_PREFIX, "");
 const sev = (s: string) => (s === "critical" || s === "high" || s === "low" ? s : "medium");
 const authority = (r: Rule) => (r.source === "mined" || r.source === "custom" ? "customer" : "shipped");
 /** Shipped rules carry a list of conditions; mined/custom rules one rule object. */
@@ -53,19 +58,6 @@ async function getAllRules(category?: string): Promise<Rule[]> {
   }
 }
 
-function FacetRow({ label, options, value, onChange, format = (v) => v }: {
-  label: string; options: string[]; value: string; onChange: (v: string) => void; format?: (v: string) => string;
-}) {
-  if (options.length < 2) return null;
-  return (
-    <div className="ui-filterbar__chips" role="group" aria-label={label} style={{ alignItems: "center" }}>
-      <span className="ui-micro" style={{ width: 96 }}>{label}</span>
-      <Chip selected={!value} onClick={() => onChange("")}>All</Chip>
-      {options.map((o) => <Chip key={o} selected={value === o} onClick={() => onChange(value === o ? "" : o)}>{format(o)}</Chip>)}
-    </div>
-  );
-}
-
 export function RulesSurface() {
   const qc = useQueryClient();
   const canManage = useRole().can("manage_rules");
@@ -76,6 +68,7 @@ export function RulesSurface() {
   const [severity, setSeverity] = useUrlState("severity", "");
   const [auth, setAuth] = useUrlState("authority", "");
   const [source, setSource] = useUrlState("source", "");
+  const [sort, setSort] = useUrlState("sort");
   const [search, setSearch] = useState("");
   const [authoring, setAuthoring] = useState(false);
   const drawer = useDrawerParam("rule");
@@ -88,15 +81,35 @@ export function RulesSurface() {
     dimensions: uniq(rules.flatMap((r) => valuesOf(r, "dimension"))),
     sources: uniq(rules.map((r) => r.source)),
   }), [rules]);
-  const visible = rules.filter((r) => matches(r, search)
-    && (!module || r.module === module)
-    && (!check || valuesOf(r, "check_class").includes(check))
-    && (!dimension || valuesOf(r, "dimension").includes(dimension))
-    && (!severity || r.severity === severity)
-    && (!auth || authority(r) === auth)
-    && (!source || r.source === source));
-  const filtered = !!(search || module || check || dimension || severity || auth || source);
-  const clearFilters = () => { setSearch(""); setModule(""); setCheck(""); setDimension(""); setSeverity(""); setAuth(""); setSource(""); };
+  const tests: Record<string, (r: Rule) => boolean> = {
+    module: (r) => !module || r.module === module,
+    check: (r) => !check || valuesOf(r, "check_class").includes(check),
+    dimension: (r) => !dimension || valuesOf(r, "dimension").includes(dimension),
+    severity: (r) => !severity || r.severity === severity,
+    authority: (r) => !auth || authority(r) === auth,
+    source: (r) => !source || r.source === source,
+  };
+  const passing = (r: Rule, skip?: string) => matches(r, search) && Object.entries(tests).every(([k, t]) => k === skip || t(r));
+  const visible = rules.filter((r) => passing(r));
+  const filtered = !!(search || module || check || dimension || severity || auth || source || category !== "all");
+  const clearFilters = () => { setSearch(""); setModule(""); setCheck(""); setDimension(""); setSeverity(""); setAuth(""); setSource(""); setCategory("all"); };
+  /** Options for one menu chip, each counted over the rules the other filters leave. */
+  const group = (id: string, label: string, value: string, onChange: (v: string) => void, values: string[], format: (v: string) => string, allLabel: string) => ({
+    id, label, value, onChange, allLabel,
+    options: values.map((v) => ({ value: v, label: format(v), count: rules.filter((r) => passing(r, id) && (id === "module" ? r.module === v
+      : id === "check" ? valuesOf(r, "check_class").includes(v) : id === "dimension" ? valuesOf(r, "dimension").includes(v)
+      : id === "severity" ? r.severity === v : id === "authority" ? authority(r) === v : r.source === v)).length })),
+  });
+  const groups = [
+    { id: "category", label: "System", value: category === "all" ? "" : category, allLabel: "All systems", onChange: (v: string) => setCategory(v || "all"),
+      options: Object.entries(CATEGORY_LABEL).map(([value, label]) => ({ value, label })) },
+    ...(facets.checks.length > 1 ? [group("check", "Check type", check, setCheck, facets.checks, checkClassLabel, "All check types")] : []),
+    ...(facets.dimensions.length > 1 ? [group("dimension", "Dimension", dimension, setDimension, facets.dimensions, labelOf, "All dimensions")] : []),
+    group("severity", "Severity", severity, setSeverity, [...SEVERITIES], labelOf, "All severities"),
+    group("authority", "Authority", auth, setAuth, ["shipped", "customer"], (a) => (a === "shipped" ? "SAP standard (shipped)" : "Customer configured"), "All authorities"),
+    ...(facets.sources.length > 1 ? [group("source", "Source", source, setSource, facets.sources, (v) => labelOf(SOURCE_LABEL[v] ?? v), "All sources")] : []),
+    ...(facets.modules.length > 1 ? [group("module", "Object", module, setModule, facets.modules, formatModuleName, "All objects")] : []),
+  ];
   const selected = drawer.value ? rules.find((r) => r.id === drawer.value) ?? null : null;
   const totals = useMemo(() => {
     const t = { yaml: 0, other: 0, enabled: 0, disabled: 0 };
@@ -109,25 +122,27 @@ export function RulesSurface() {
     onError: (e) => toast.error((e as Error).message || "Rule not updated"),
   });
 
+  const anyPassRate = rules.some((r) => r.last_pass_rate != null);
+  const toggleRule = toggle.mutate;
   const columns = useMemo<ColumnDef<Rule, unknown>[]>(() => [
-    { id: "state", header: "State", meta: meta({ sticky: "start", width: 110 }), cell: ({ row }) => (
-      <Chip tone={row.original.enabled ? "success" : "neutral"} selected={row.original.enabled}
-        onClick={canManage ? () => toggle.mutate({ id: row.original.id, enabled: !row.original.enabled }) : undefined}
-        aria-label={`${row.original.enabled ? "Disable" : "Enable"} ${row.original.name}`}>{labelOf(row.original.enabled ? "enabled" : "disabled")}</Chip>) },
-    { id: "rule", header: "Rule", cell: ({ row }) => (
-      <span className="ui-cell-stack">
-        <span className="ui-cell-stack__main"><strong>{row.original.name}</strong></span>
-        <span className="ui-cell-stack__sub"><Mono>{row.original.id}</Mono>{row.original.description ? <span>{row.original.description.length > 90 ? `${row.original.description.slice(0, 90)}…` : row.original.description}</span> : null}</span>
-      </span>) },
-    { id: "module", header: "Object", meta: meta({ width: 170 }), cell: ({ row }) => formatModuleName(row.original.module) },
-    { id: "check", header: "Check", meta: meta({ width: 170 }), cell: ({ row }) => valuesOf(row.original, "check_class").map(checkClassLabel).join(", ") || "—" },
-    { id: "severity", header: "Severity", meta: meta({ width: 110 }), cell: ({ row }) => <StatusBadge status={sev(row.original.severity)}>{row.original.severity}</StatusBadge> },
-    { id: "source", header: "Source", meta: meta({ width: 90 }), cell: ({ row }) => SOURCE_LABEL[row.original.source] ?? row.original.source },
-    { id: "pass", header: "Last pass rate", meta: meta({ width: 120, align: "end" }), cell: ({ row }) => (
+    { id: "state", header: "State", accessorFn: (r) => (r.enabled ? 1 : 0), meta: meta({ sticky: "start", width: 96 }), cell: ({ row }) => {
+      const r = row.original;
+      const text = labelOf(r.enabled ? "enabled" : "disabled");
+      return canManage
+        ? <button type="button" className="ui-state-toggle" data-off={r.enabled ? undefined : "true"} aria-label={`${r.enabled ? "Disable" : "Enable"} ${nameOf(r)}`}
+            onClick={(e) => { e.stopPropagation(); toggleRule({ id: r.id, enabled: !r.enabled }); }}>{text}</button>
+        : <span className="ui-state-toggle" data-off={r.enabled ? undefined : "true"}>{text}</span>;
+    } },
+    { id: "code", header: "Rule ID", accessorFn: (r) => codeOf(r), meta: meta({ width: 72 }), cell: ({ row }) => <Mono>{codeOf(row.original) || "—"}</Mono> },
+    { id: "rule", header: "Rule", accessorFn: (r) => nameOf(r), meta: meta({ minWidth: 260, clamp: 2 }), cell: ({ row }) => <strong>{nameOf(row.original)}</strong> },
+    { id: "module", header: "Object", accessorFn: (r) => formatModuleName(r.module), meta: meta({ width: 170 }) },
+    { id: "check", header: "Check", accessorFn: (r) => valuesOf(r, "check_class").map(checkClassLabel).join(", "), meta: meta({ width: 170 }), cell: ({ row }) => valuesOf(row.original, "check_class").map(checkClassLabel).join(", ") || "—" },
+    { id: "severity", header: "Severity", accessorFn: (r) => SEV_RANK[r.severity] ?? 0, meta: meta({ width: 110 }), cell: ({ row }) => <StatusBadge status={sev(row.original.severity)}>{labelOf(row.original.severity)}</StatusBadge> },
+    { id: "source", header: "Source", accessorFn: (r) => SOURCE_LABEL[r.source] ?? r.source, meta: meta({ width: 90 }) },
+    ...(anyPassRate ? [{ id: "pass", header: "Last pass rate", accessorFn: (r: Rule) => r.last_pass_rate ?? -1, meta: meta({ width: 120, align: "end" }), cell: ({ row }) => (
       <span className="ui-num" title={row.original.last_run_at ? `Last run ${formatDate(row.original.last_run_at, "datetime")}` : "Not run yet"}>
-        {row.original.last_pass_rate != null ? pct(row.original.last_pass_rate) : "—"}</span>) },
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [canManage, toggle.isPending]);
+        {row.original.last_pass_rate != null ? pct(row.original.last_pass_rate) : "—"}</span>) } as ColumnDef<Rule, unknown>] : []),
+  ], [canManage, toggleRule, anyPassRate]);
 
   return (
     <div className="ui-page">
@@ -139,31 +154,21 @@ export function RulesSurface() {
         { label: "Enabled", value: summary.isLoading ? null : totals.enabled, loading: summary.isLoading, tone: "success", verdict: "Run on every analysis.", href: HREF },
         { label: "Disabled", value: summary.isLoading ? null : totals.disabled, loading: summary.isLoading, tone: totals.disabled ? "warning" : undefined, verdict: totals.disabled ? "Skipped by analyses." : "Every rule is active.", href: HREF },
       ]} />
-      <div className="ui-stack" style={{ gap: "var(--aurora-space-2)" }}>
-        <FilterBar search={{ value: search, onChange: setSearch, placeholder: "Filter rules" }} onClear={filtered ? clearFilters : undefined}
-          actions={<Select aria-label="Object" value={module} options={[{ value: "", label: "All objects" }, ...facets.modules.map((m) => ({ value: m, label: formatModuleName(m) }))]} onValueChange={setModule} />}>
-          {CATEGORIES.map(([k, l]) => <Chip key={k} selected={category === k} onClick={() => setCategory(k)}>{l}</Chip>)}
-        </FilterBar>
-        <FacetRow label="Check type" options={facets.checks} value={check} onChange={setCheck} format={checkClassLabel} />
-        <FacetRow label="Dimension" options={facets.dimensions} value={dimension} onChange={setDimension} />
-        <FacetRow label="Severity" options={[...SEVERITIES]} value={severity} onChange={setSeverity} />
-        <FacetRow label="Authority" options={["shipped", "customer"]} value={auth} onChange={setAuth} format={(a) => (a === "shipped" ? "SAP standard (shipped)" : "Customer configured")} />
-        <FacetRow label="Source" options={facets.sources} value={source} onChange={setSource} format={(s) => SOURCE_LABEL[s] ?? s} />
-      </div>
+      <FilterBar search={{ value: search, onChange: setSearch, placeholder: "Filter rules" }} groups={groups} onClear={filtered ? clearFilters : undefined} />
       {!canManage ? <p className="ui-note">Enabling, disabling or writing a rule needs the manage-rules permission; the library is read-only for you.</p> : null}
       {rulesQ.isLoading ? <TableSkeleton rows={8} label="Reading the rule library" />
         : rulesQ.error ? <Banner tone="danger" title="Rules could not be read">{(rulesQ.error as Error).message}</Banner>
-        : visible.length ? <DataTable columns={columns} data={visible} getRowId={(r) => r.id} onRowActivate={(r) => drawer.open(r.id)} ariaLabel="Rules" maxHeight="60vh" />
+        : visible.length ? <DataTable columns={columns} data={visible} getRowId={(r) => r.id} onRowActivate={(r) => drawer.open(r.id)} ariaLabel="Rules" maxHeight="60vh" sort={sort} onSortChange={setSort} />
         : <EmptyState action={filtered ? <Button variant="ghost" onClick={clearFilters}>Clear filters</Button> : undefined}>
             No rules match. Built-in rules ship with Meridian; HQ rules arrive through HQ sync; mined and custom rules are your stewards&apos; own.
           </EmptyState>}
       <DetailDrawer open={!!selected} onClose={drawer.close} ariaLabel="Rule details"
-        header={selected ? <div className="ui-drawer-head"><StatusBadge status={sev(selected.severity)}>{selected.severity}</StatusBadge><h2 className="ui-drawer-head__title">{selected.name}</h2></div> : null}>
+        header={selected ? <div className="ui-drawer-head"><StatusBadge status={sev(selected.severity)}>{selected.severity}</StatusBadge><h2 className="ui-drawer-head__title">{nameOf(selected)}</h2></div> : null}>
         {selected ? (
           <div className="ui-detail">
             {selected.description ? <p className="ui-note">{selected.description}</p> : null}
             <KeyValue rows={[
-              { k: "Rule ID", v: selected.id, mono: true },
+              { k: "Rule ID", v: codeOf(selected) || "—", mono: true },
               { k: "Object", v: formatModuleName(selected.module) },
               { k: "System", v: CATEGORY_LABEL[selected.category] ?? selected.category },
               { k: "Source", v: selected.source === "yaml" ? `built-in${selected.source_yaml ? `, ${selected.source_yaml}` : ""}` : SOURCE_LABEL[selected.source] ?? selected.source },

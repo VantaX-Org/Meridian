@@ -7,6 +7,7 @@
  * approved, rejected (with a correction reason that trains the rule engine)
  * and escalated one at a time or in bulk. Keys on the focused task:
  * A approve · R reject · E escalate · N next · X select · "." quick actions.
+ * Order is set from the column headers (`sort=column:direction` in the URL).
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -14,10 +15,10 @@ import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/rea
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
-  Banner, Button, Chip, CommandPalette, DataTable, Drawer, EmptyState, Field, Input, Panel, Select, Stack, Text, Textarea,
+  Banner, Button, Chip, CommandPalette, DataTable, Drawer, EmptyState, Field, Panel, Select, Stack, Text, Textarea,
   useDrawerParam, type AuroraColumnMeta, type ChipTone, type CommandPaletteCommand,
 } from "@/components/aurora";
-import { FieldChip, OwnerLadder, PageHeader, Tally } from "@/components/ui-core";
+import { FieldChip, FilterBar, OwnerLadder, PageHeader, Tally } from "@/components/ui-core";
 import { copyToClipboard } from "@/lib/actions";
 import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
@@ -42,7 +43,9 @@ const VIEWS = [
   { value: "all", label: "All open" }, { value: "mine", label: "Mine" }, { value: "unassigned", label: "Unassigned" },
   { value: "breached", label: "SLA breached" }, { value: "today", label: "Due today" }, { value: "escalated", label: "Escalated" },
 ];
-const SORTS = [{ value: "sla", label: "SLA due" }, { value: "priority", label: "Priority" }, { value: "age", label: "Oldest" }];
+const SORTS = [{ value: "sla:asc", label: "SLA due" }, { value: "priority:asc", label: "Priority" }, { value: "age:desc", label: "Oldest" }];
+/** Stands in for "no due date" so those tasks sort last. */
+const NO_DUE = Number.MAX_SAFE_INTEGER;
 const BULK_CONFIDENCE = 0.85;
 const isToday = (iso: string | null, now: number) => !!iso && new Date(iso).toDateString() === new Date(now).toDateString();
 const label = labelOf;
@@ -89,7 +92,9 @@ export function StewardInboxSurface() {
   const canApprove = can("approve");
   const canSeeTeam = can("assign");
   const [view, setView] = useUrlState("view", "all");
-  const [sort, setSort] = useUrlState("sort", "sla");
+  // Older links carry a bare "age" (oldest first); the Age column sorts by how old, so that is descending.
+  const [sortParam, setSort] = useUrlState("sort", "sla:asc");
+  const sort = sortParam === "age" ? "age:desc" : sortParam;
   const [type, setType] = useUrlState("type", "all");
   const [assignee] = useUrlState("assignee", "");
   const [search, setSearch] = useState("");
@@ -146,17 +151,16 @@ export function StewardInboxSurface() {
       if (view === "escalated" && t.status !== "escalated") return false;
       return !q || [t.id, t.source_id, t.domain, t.item_type, who(t.assigned_to)].some((v) => v.toLowerCase().includes(q));
     });
-    const due = (t: StewardshipQueueItem) => slaOf(t, now).remaining ?? Infinity;
-    const age = (t: StewardshipQueueItem) => Date.parse(t.created_at);
-    return rows.sort(sort === "priority" ? (a, b) => a.priority - b.priority || due(a) - due(b)
-      : sort === "age" ? (a, b) => age(a) - age(b) : (a, b) => due(a) - due(b) || a.priority - b.priority);
-  }, [all, type, view, assignee, sort, search, now, user?.id, who]);
+    // the table orders by the header sort; this is the order before any header is clicked
+    const due = (t: StewardshipQueueItem) => slaOf(t, now).remaining ?? NO_DUE;
+    return rows.sort((x, y) => due(x) - due(y) || x.priority - y.priority);
+  }, [all, type, view, assignee, search, now, user?.id, who]);
 
   const selected = useMemo(() => all.filter((t) => picked.has(t.id)).map((t) => t.id), [all, picked]);
   const detail = drawer.value ? all.find((t) => t.id === drawer.value) ?? null : null;
   const target = detail ?? items.find((t) => t.id === focusedId) ?? null;
   const typeOptions = useMemo(
-    () => [{ value: "all", label: "All types" }, ...[...new Set(all.map((t) => t.item_type))].sort().map((t) => ({ value: t, label: typeLabel(t) }))],
+    () => [...new Set(all.map((t) => t.item_type))].sort().map((t) => ({ value: t, label: typeLabel(t), count: all.filter((x) => x.item_type === t).length })),
     [all],
   );
 
@@ -168,6 +172,7 @@ export function StewardInboxSurface() {
       breached: sla.filter((s) => s === "breached").length,
       risk: sla.filter((s) => s === "risk").length,
       today: all.filter((t) => isToday(t.due_at, now)).length,
+      escalated: all.filter((t) => t.status === "escalated").length,
     };
   }, [all, now, user?.id]);
 
@@ -250,7 +255,7 @@ export function StewardInboxSurface() {
     return () => window.removeEventListener("keydown", onKey);
   }, [rejectIds, paletteOpen, target, busy, canApprove, approve, escalate, next, toggle, picked]);
 
-  const visibleIds = items.map((t) => t.id);
+  const visibleIds = useMemo(() => items.map((t) => t.id), [items]);
   const allVisible = visibleIds.length > 0 && visibleIds.every((id) => picked.has(id));
   const columns = useMemo<ColumnDef<StewardshipQueueItem, unknown>[]>(() => [
     {
@@ -261,8 +266,8 @@ export function StewardInboxSurface() {
           onClick={(e) => e.stopPropagation()} onChange={(e) => toggle([row.original.id], e.target.checked)} />
       ),
     },
-    { id: "sla", header: "SLA", meta: meta({ width: 120 }), cell: ({ row }) => { const s = slaOf(row.original, now); return <Chip tone={SLA_TONE[s.state]}>{slaText(s)}</Chip>; } },
-    { id: "task", header: "Task", cell: ({ row }) => (
+    { id: "sla", header: "SLA", accessorFn: (t) => slaOf(t, now).remaining ?? NO_DUE, meta: meta({ width: 120 }), cell: ({ row }) => { const s = slaOf(row.original, now); return <Chip tone={SLA_TONE[s.state]}>{slaText(s)}</Chip>; } },
+    { id: "task", header: "Task", accessorFn: (t) => typeLabel(t.item_type), cell: ({ row }) => (
       <span><strong>{typeLabel(row.original.item_type)}</strong>
         <Text variant="text-micro" tone="muted" as="div">
           {formatModuleName(row.original.domain)}
@@ -270,12 +275,11 @@ export function StewardInboxSurface() {
           {about.get(row.original.source_id)?.field ? <>{" "}<FieldChip {...splitField(about.get(row.original.source_id)?.field ?? "")} /></> : null}
           {row.original.ai_recommendation ? ", model suggestion" : ""}
         </Text></span>) },
-    { id: "priority", header: "Priority", meta: meta({ width: 80 }), cell: ({ row }) => `P${row.original.priority}` },
-    { id: "status", header: "Status", meta: meta({ width: 120 }), cell: ({ row }) => <Chip tone={STATUS_TONE[row.original.status]}>{label(row.original.status)}</Chip> },
-    { id: "assignee", header: "Assignee", meta: meta({ width: 140 }), cell: ({ row }) => who(row.original.assigned_to) },
-    { id: "age", header: "Age", meta: meta({ width: 80, align: "end", numeric: true }), cell: ({ row }) => span(now - Date.parse(row.original.created_at)) },
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- visibleIds tracks items
-  ], [picked, allVisible, items, now, toggle, who, about]);
+    { id: "priority", header: "Priority", accessorFn: (t) => t.priority, meta: meta({ width: 80 }), cell: ({ row }) => `P${row.original.priority}` },
+    { id: "status", header: "Status", accessorFn: (t) => t.status, meta: meta({ width: 120 }), cell: ({ row }) => <Chip tone={STATUS_TONE[row.original.status]}>{label(row.original.status)}</Chip> },
+    { id: "assignee", header: "Assignee", accessorFn: (t) => who(t.assigned_to), meta: meta({ width: 140 }), cell: ({ row }) => who(row.original.assigned_to) },
+    { id: "age", header: "Age", accessorFn: (t) => now - Date.parse(t.created_at), meta: meta({ width: 80, align: "end", numeric: true }), cell: ({ row }) => span(now - Date.parse(row.original.created_at)) },
+  ], [picked, allVisible, visibleIds, now, toggle, who, about]);
 
   const commands = useMemo<CommandPaletteCommand[]>(() => {
     const c: CommandPaletteCommand[] = [];
@@ -309,8 +313,7 @@ export function StewardInboxSurface() {
       keywords: [x.id, x.domain, who(x.assigned_to)], onRun: () => drawer.open(x.id),
     }));
     return c;
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- visibleIds tracks items
-  }, [target, canApprove, user, items, selected, now, who, approve, assign, escalate, drawer, toggle, setView, setSort]);
+  }, [target, canApprove, user, items, visibleIds, selected, now, who, approve, assign, escalate, drawer, toggle, setView, setSort]);
 
   return (
     <Stack gap={5} className="aurora-page">
@@ -323,16 +326,16 @@ export function StewardInboxSurface() {
         { label: "Resolved this week", value: weekQ.data?.weekly.at(-1)?.resolved ?? null, loading: weekQ.isLoading, verdict: weekQ.data?.weekly.at(-1)?.resolved ? "Closed in the last seven days." : "Nothing closed this week.", href: "/workbench?tab=progress" },
       ]} />
 
-      <Stack direction="row" gap={2} wrap align="center">
-        {VIEWS.map((v) => <Chip key={v.value} selected={view === v.value} onClick={() => setView(v.value)}>{v.label}</Chip>)}
-        <span style={{ flex: 1 }} />
-        <Button variant="ghost" size="sm" onClick={() => setPaletteOpen(true)} title="Quick actions (.)">Quick actions</Button>
-      </Stack>
-      <Stack direction="row" gap={3} wrap className="aurora-filters">
-        <Field label="Search">{({ controlId }) => <Input id={controlId} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Record, domain, assignee, task id" />}</Field>
-        <Field label="Type">{({ controlId }) => <Select id={controlId} options={typeOptions} value={type} onValueChange={setType} />}</Field>
-        <Field label="Sort">{({ controlId }) => <Select id={controlId} options={SORTS} value={sort} onValueChange={setSort} />}</Field>
-      </Stack>
+      <FilterBar
+        search={{ value: search, onChange: setSearch, placeholder: "Search tasks, or press . for quick actions" }}
+        groups={[{ id: "type", label: "Type", value: type === "all" ? "" : type, allLabel: "All types", onChange: (v) => setType(v || "all"), options: typeOptions }]}
+        onClear={search || type !== "all" || view !== "all" ? () => { setSearch(""); setType("all"); setView("all"); } : undefined}
+      >
+        {VIEWS.map((v) => {
+          const n = v.value === "all" ? all.length : counts[v.value as keyof typeof counts];
+          return <Chip key={v.value} selected={view === v.value} onClick={() => setView(v.value)}>{v.label}<span className="aurora-number ui-chip-count">{n}</span></Chip>;
+        })}
+      </FilterBar>
 
       {selected.length ? (
         <Stack direction="row" gap={2} wrap align="center" role="toolbar" aria-label="Bulk actions">
@@ -349,7 +352,7 @@ export function StewardInboxSurface() {
       {truncated ? <Banner tone="warning" title="Showing the first 200 tasks per status">Narrow by type or work the oldest down to see the rest.</Banner> : null}
       {loading ? <Text tone="muted">Reading the inbox.</Text>
         : error ? <Banner tone="danger" title="The inbox could not be read">{error.message}</Banner>
-        : items.length ? <DataTable columns={columns} data={items} getRowId={(t) => t.id} onRowFocus={(t) => setFocusedId(t?.id ?? null)} onRowActivate={(t) => drawer.open(t.id)} ariaLabel="Steward inbox" maxHeight="60vh" />
+        : items.length ? <DataTable columns={columns} data={items} getRowId={(t) => t.id} onRowFocus={(t) => setFocusedId(t?.id ?? null)} onRowActivate={(t) => drawer.open(t.id)} ariaLabel="Steward inbox" maxHeight="60vh" sort={sort} onSortChange={setSort} />
         : <EmptyState title={all.length ? "No tasks in this view." : "Inbox zero."} body={all.length ? "Change the view or clear the search." : "Merge decisions, golden-record reviews, writebacks and exceptions land here when they need a steward."} />}
 
       {canSeeTeam ? <TeamPanel metrics={weekQ.data} /> : null}

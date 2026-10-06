@@ -53,6 +53,10 @@ export type AuroraColumnMeta = {
   numeric?: boolean;
   /** SAP identifiers (MATNR, BUKRS, check IDs, record keys) in the mono face. */
   mono?: boolean;
+  /** Wrap primary text to this many lines instead of one ellipsised line. The full text goes in `title` when the cell value is a string. */
+  clamp?: number;
+  /** Words for this column's value in the "All rows" line when `collapseUniform` hides it. Defaults to the value as text. */
+  uniform?: (value: unknown) => string;
 };
 
 declare module "@tanstack/react-table" {
@@ -78,6 +82,39 @@ export interface DataTableProps<TRow> {
   ariaLabel?: string;
   /** Header-click sorting on accessor columns. Defaults to on. */
   sortable?: boolean;
+  /**
+   * Sort as `columnId:asc` or `columnId:desc` ("" for none). Pass with
+   * `onSortChange` to keep the sort in the URL (`useUrlState("sort")`);
+   * leave both out and the table keeps its own sort.
+   */
+  sort?: string;
+  onSortChange?: (sort: string) => void;
+  /** With fewer than 20 rows, hide accessor columns that hold one distinct value and list them under the table. */
+  collapseUniform?: boolean;
+}
+
+const UNIFORM_MAX_ROWS = 20;
+const LINE = 18;
+const CELL_PAD = 16;
+
+function parseSort(sort: string): SortingState {
+  const [id, dir] = sort.split(":");
+  return id ? [{ id, desc: dir === "desc" }] : [];
+}
+
+function accessorOf<TRow>(def: ColumnDef<TRow, unknown>): ((row: TRow, i: number) => unknown) | undefined {
+  const d = def as { accessorFn?: (row: TRow, i: number) => unknown; accessorKey?: string };
+  if (d.accessorFn) return d.accessorFn;
+  if (d.accessorKey) {
+    const key = d.accessorKey;
+    return (row) => (row as Record<string, unknown>)[key];
+  }
+  return undefined;
+}
+
+function columnId<TRow>(def: ColumnDef<TRow, unknown>): string {
+  const d = def as { id?: string; accessorKey?: string };
+  return d.id ?? d.accessorKey ?? "";
 }
 
 export function DataTable<TRow>({
@@ -91,10 +128,20 @@ export function DataTable<TRow>({
   className,
   ariaLabel,
   sortable = true,
+  sort,
+  onSortChange,
+  collapseUniform = false,
 }: DataTableProps<TRow>) {
   // TanStack Table returns unmemoizable functions; keep this component out of React Compiler.
   "use no memo";
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [ownSorting, setOwnSorting] = useState<SortingState>([]);
+  const controlled = sort !== undefined && onSortChange !== undefined;
+  const sorting = controlled ? parseSort(sort) : ownSorting;
+  const setSorting = (next: SortingState | ((old: SortingState) => SortingState)) => {
+    const value = typeof next === "function" ? next(sorting) : next;
+    if (!controlled) return setOwnSorting(value);
+    onSortChange(value[0] ? `${value[0].id}:${value[0].desc ? "desc" : "asc"}` : "");
+  };
   const [focusedIndex, setFocusedIndex] = useState<number>(-1);
   // Mirror of focusedIndex kept in a ref so rapid J/K repeats read the
   // latest value before React commits the next render — otherwise the
@@ -106,9 +153,24 @@ export function DataTable<TRow>({
 
   const scrollerRef = useRef<HTMLDivElement>(null);
 
+  const uniform: { id: string; text: string }[] = [];
+  if (collapseUniform && data.length > 1 && data.length < UNIFORM_MAX_ROWS) {
+    for (const def of columns) {
+      const get = accessorOf(def);
+      if (!get) continue;
+      const values = new Set(data.map((row, i) => get(row, i)));
+      if (values.size !== 1) continue;
+      const [only] = [...values];
+      const meta = def.meta as AuroraColumnMeta | undefined;
+      const text = meta?.uniform ? meta.uniform(only) : only == null ? "" : String(only);
+      if (text) uniform.push({ id: columnId(def), text });
+    }
+  }
+  const visibleColumns = uniform.length ? columns.filter((c) => !uniform.some((u) => u.id === columnId(c))) : columns;
+
   const table = useReactTable<TRow>({
     data,
-    columns,
+    columns: visibleColumns,
     getRowId: (row, index) => getRowId(row, index),
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -118,7 +180,9 @@ export function DataTable<TRow>({
   });
 
   const rows = table.getRowModel().rows;
-  const rowHeight = useRowHeight(scrollerRef);
+  const densityHeight = useRowHeight(scrollerRef);
+  const clampLines = Math.max(1, ...visibleColumns.map((c) => (c.meta as AuroraColumnMeta | undefined)?.clamp ?? 1));
+  const rowHeight = Math.max(densityHeight, clampLines > 1 ? clampLines * LINE + CELL_PAD : 0);
 
   const virtualiser = useVirtualizer({
     count: rows.length,
@@ -194,6 +258,7 @@ export function DataTable<TRow>({
   const totalSize = virtualiser.getTotalSize();
 
   return (
+    <>
     <div
       ref={scrollerRef}
       className={clsx("aurora-table", className)}
@@ -204,7 +269,10 @@ export function DataTable<TRow>({
       style={{ maxHeight }}
       onKeyDown={onKeyDown}
     >
-      <div className="aurora-table__inner">
+      <div
+        className="aurora-table__inner"
+        style={clampLines > 1 ? ({ "--aurora-density-row": `${rowHeight}px` } as CSSProperties) : undefined}
+      >
         <div className="aurora-table__head" role="rowgroup">
           {headerGroups.map((group) => (
             <div key={group.id} className="aurora-table__row" role="row">
@@ -224,7 +292,7 @@ export function DataTable<TRow>({
                   <div
                     key={header.id}
                     role="columnheader"
-                    aria-sort={dir ? (dir === "asc" ? "ascending" : "descending") : undefined}
+                    aria-sort={dir ? (dir === "asc" ? "ascending" : "descending") : canSort ? "none" : undefined}
                     className="aurora-table__cell aurora-table__cell--header"
                     data-sticky={meta?.sticky}
                     data-align={meta?.align}
@@ -281,6 +349,10 @@ export function DataTable<TRow>({
         </div>
       </div>
     </div>
+    {uniform.length ? (
+      <p className="aurora-table__uniform">All rows: {uniform.map((u) => u.text).join(", ")}</p>
+    ) : null}
+    </>
   );
 }
 
@@ -323,7 +395,17 @@ function VirtualRow<TRow>({
             data-mono={meta?.mono ? "true" : undefined}
             style={cellStyle(meta)}
           >
-            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+            {meta?.clamp && meta.clamp > 1 ? (
+              <span
+                className="aurora-table__clamp"
+                style={{ WebkitLineClamp: meta.clamp }}
+                title={typeof cell.getValue() === "string" ? (cell.getValue() as string) : undefined}
+              >
+                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+              </span>
+            ) : (
+              flexRender(cell.column.columnDef.cell, cell.getContext())
+            )}
           </div>
         );
       })}

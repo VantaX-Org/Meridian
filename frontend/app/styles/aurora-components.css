@@ -643,6 +643,31 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.aurora-chart__legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--aurora-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: var(--aurora-fg-secondary);
+}
+.aurora-chart__legend li { display: inline-flex; align-items: center; gap: var(--aurora-space-1); }
+.aurora-chart__swatch { width: 8px; height: 8px; border-radius: 50%; }
+.aurora-table__clamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: normal;
+  min-width: 0;
+}
+.aurora-table__uniform {
+  margin: var(--aurora-space-2) 0 0;
+  font-size: 12px;
+  color: var(--aurora-fg-tertiary);
+}
 .aurora-table__cell--header {
   font-size: 11px;
   line-height: 14px;

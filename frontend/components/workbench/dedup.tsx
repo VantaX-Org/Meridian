@@ -11,13 +11,13 @@ import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/rea
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
-  Banner, Button, Chip, DataTable, DetailDrawer, EmptyState, FieldChip, FilterBar, KeyValue, Mono,
+  Banner, Button, Chip, CountChips, DataTable, DetailDrawer, EmptyState, FieldChip, FilterBar, KeyValue, Mono,
   PageHeader, TableSkeleton, Tally, useDrawerParam, type AuroraColumnMeta,
 } from "@/components/ui-core";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import { getDedupCandidates, getDedupPreview, mergeDedupCandidate, type DedupCandidate } from "@/lib/api/cleaning";
-import { formatModuleName, relativeTime, formatDate } from "@/lib/format";
+import { formatModuleName, labelOf, relativeTime, formatDate } from "@/lib/format";
 
 const meta = (m: AuroraColumnMeta) => m;
 const BULK_MIN = 95;
@@ -44,6 +44,7 @@ export function DedupSurface() {
   // Merging needs `approve` (api/routes/cleaning.py /dedup/merge).
   const canMerge = useRole().can("approve");
   const [kind, setKind] = useUrlState("kind", "all");
+  const [sort, setSort] = useUrlState("sort");
   const drawer = useDrawerParam("pair");
   const [search, setSearch] = useState("");
   const [confirming, setConfirming] = useState(false);
@@ -99,14 +100,16 @@ export function DedupSurface() {
     );
   };
   const columns: ColumnDef<DedupCandidate, unknown>[] = [
-    { id: "left", header: "Left record", meta: meta({ sticky: "start", minWidth: 200 }), cell: ({ row }) => side(row.original, "a") },
-    { id: "right", header: "Right record", meta: meta({ minWidth: 200 }), cell: ({ row }) => side(row.original, "b") },
-    { id: "signals", header: "Matched on", meta: meta({ minWidth: 200 }), cell: ({ row }) => {
+    { id: "left", header: "Left record", accessorFn: (c) => nameOf(previewOf.get(c.id), "a") ?? c.record_key_a, meta: meta({ sticky: "start", minWidth: 200 }), cell: ({ row }) => side(row.original, "a") },
+    { id: "right", header: "Right record", accessorFn: (c) => nameOf(previewOf.get(c.id), "b") ?? c.record_key_b, meta: meta({ minWidth: 200 }), cell: ({ row }) => side(row.original, "b") },
+    { id: "object", header: "Object", accessorFn: (c) => formatModuleName(c.object_type), meta: meta({ width: 150 }) },
+    { id: "method", header: "Method", accessorFn: (c) => labelOf(c.match_method), meta: meta({ width: 140 }) },
+    { id: "signals", header: "Matched on", enableSorting: false, meta: meta({ minWidth: 200 }), cell: ({ row }) => {
       const s = signalsOf(row.original);
       return s.length ? <span className="ui-filterbar__chips">{s.slice(0, 3).map((f) => <FieldChip key={f} field={f} />)}{s.length > 3 ? ` and ${s.length - 3} more` : ""}</span> : <span className="ui-micro">—</span>;
     } },
-    { id: "score", header: "Score", meta: meta({ width: 80, align: "end", numeric: true }), cell: ({ row }) => `${score(row.original.match_score)}%` },
-    { id: "age", header: "Found", meta: meta({ width: 100, align: "end" }), cell: ({ row }) => relativeTime(row.original.created_at) },
+    { id: "score", header: "Score", accessorFn: (c) => score(c.match_score), meta: meta({ width: 80, align: "end", numeric: true }), cell: ({ row }) => `${score(row.original.match_score)}%` },
+    { id: "age", header: "Found", accessorFn: (c) => c.created_at, meta: meta({ width: 100, align: "end" }), cell: ({ row }) => relativeTime(row.original.created_at) },
   ];
 
   return (
@@ -141,15 +144,14 @@ export function DedupSurface() {
         </Banner>
       ) : null}
       <FilterBar search={{ value: search, onChange: setSearch, placeholder: "Search record keys" }}>
-        <Chip selected={kind === "all"} onClick={() => setKind("all")}>All<span className="aurora-number ui-chip-count">{all.length}</span></Chip>
-        {objectTypes.map((t) => (
-          <Chip key={t} selected={kind === t} onClick={() => setKind(t)}>{formatModuleName(t)}<span className="aurora-number ui-chip-count">{counts[t]}</span></Chip>
-        ))}
+        <CountChips value={kind === "all" ? "" : kind} onChange={(v) => setKind(v || "all")}
+          options={objectTypes.map((t) => ({ value: t, label: formatModuleName(t), count: counts[t] }))} />
       </FilterBar>
       {q.isLoading ? <TableSkeleton rows={8} label="Loading candidate pairs" />
         : q.error ? <Banner tone="danger" title="Candidate pairs could not be read">{(q.error as Error).message}</Banner>
         : filtered.length ? <DataTable columns={columns} data={filtered} getRowId={(c) => c.id} onRowActivate={(c) => drawer.open(c.id)}
-            ariaLabel="Candidate pairs. Use j and k to move, Enter to open." maxHeight="62vh" />
+            ariaLabel="Candidate pairs. Use j and k to move, Enter to open." maxHeight="62vh"
+            sort={sort} onSortChange={setSort} collapseUniform />
         : <EmptyState action={all.length ? <button type="button" className="ui-link-button" onClick={() => { setSearch(""); setKind("all"); }}>Clear filters</button> : undefined}>
             {all.length ? "No pairs match these filters." : "No duplicate pairs waiting. The matcher proposes pairs after each analysis, using the match rules."}
           </EmptyState>}

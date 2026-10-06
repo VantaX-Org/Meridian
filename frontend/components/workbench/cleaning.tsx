@@ -117,6 +117,7 @@ export function CleaningSurface() {
   const canApprove = can("approve");
   const canApply = can("apply");
   const [view, setView] = useUrlState("view", "all");
+  const [sort, setSort] = useUrlState("sort");
   const drawer = useDrawerParam("job");
   const [confirmAuto, setConfirmAuto] = useState(false);
   const [search, setSearch] = useState("");
@@ -156,17 +157,19 @@ export function CleaningSurface() {
   const visible = needle ? items.filter((i) => `${i.record_key} ${i.object_type} ${preview(i)}`.toLowerCase().includes(needle)) : items;
   const selected = drawer.value ? items.find((i) => i.id === drawer.value) ?? null : null;
 
+  // A chosen status chip already says the status, so the column goes. In the full list only the
+  // closed outcomes (auto-applied, closed) carry a dot; the rest read as plain words.
   const columns = useMemo<ColumnDef<CleaningQueueItem, unknown>[]>(() => [
-    { id: "status", header: "Status", meta: meta({ sticky: "start", width: 140 }), cell: ({ row }) => {
+    ...(view === "all" ? [{ id: "status", header: "Status", accessorFn: (i: CleaningQueueItem) => LABEL[bucket(i.status)], meta: meta({ sticky: "start", width: 160 }), cell: ({ row }) => {
       const b = bucket(row.original.status);
-      return <StatusBadge status={STATUS[b]}>{LABEL[b]}</StatusBadge>;
-    } },
-    { id: "record", header: "Record", meta: meta({ width: 220 }), cell: ({ row }) => <Mono>{row.original.record_key}</Mono> },
-    { id: "object", header: "Object", meta: meta({ width: 150 }), cell: ({ row }) => formatModuleName(row.original.object_type) },
-    { id: "change", header: "Proposed change", meta: meta({ minWidth: 260 }), cell: ({ row }) => <ChangeCell item={row.original} /> },
-    { id: "conf", header: "Confidence", meta: meta({ width: 104, align: "end", numeric: true }), cell: ({ row }) => (failure(row.original) ? "—" : `${pct(row.original.confidence)}%`) },
-    { id: "when", header: "Detected", meta: meta({ width: 110, align: "end" }), cell: ({ row }) => relativeTime(row.original.detected_at) },
-  ], []);
+      return b === "auto" || b === "closed" ? <StatusBadge status={STATUS[b]}>{LABEL[b]}</StatusBadge> : <span>{LABEL[b]}</span>;
+    } } as ColumnDef<CleaningQueueItem, unknown>] : []),
+    { id: "record", header: "Record", accessorFn: (i) => i.record_key, meta: meta({ width: 220 }), cell: ({ row }) => <Mono>{row.original.record_key}</Mono> },
+    { id: "object", header: "Object", accessorFn: (i) => formatModuleName(i.object_type), meta: meta({ width: 150 }) },
+    { id: "change", header: "Proposed change", enableSorting: false, meta: meta({ minWidth: 260 }), cell: ({ row }) => <ChangeCell item={row.original} /> },
+    { id: "conf", header: "Confidence", accessorFn: (i) => (failure(i) ? -1 : pct(i.confidence)), meta: meta({ width: 104, align: "end", numeric: true }), cell: ({ row }) => (failure(row.original) ? "—" : `${pct(row.original.confidence)}%`) },
+    { id: "when", header: "Detected", accessorFn: (i) => i.detected_at, meta: meta({ width: 110, align: "end" }), cell: ({ row }) => relativeTime(row.original.detected_at) },
+  ], [view]);
 
   return (
     <div className="ui-page">
@@ -197,7 +200,7 @@ export function CleaningSurface() {
       {q.isLoading ? <TableSkeleton rows={8} label="Loading the cleaning queue" />
         : q.error ? <Banner tone="danger" title="The cleaning queue could not be read">{(q.error as Error).message}</Banner>
         : visible.length ? <DataTable columns={columns} data={visible} getRowId={(i) => i.id} onRowActivate={(i) => drawer.open(i.id)}
-            ariaLabel="Cleaning queue. Use j and k to move, Enter to open." maxHeight="62vh" />
+            ariaLabel="Cleaning queue. Use j and k to move, Enter to open." maxHeight="62vh" sort={sort} onSortChange={setSort} />
         : <EmptyState action={needle || view !== "all" ? <button type="button" className="ui-link-button" onClick={() => { setSearch(""); setView("all"); }}>Show everything</button> : undefined}>
             {needle || view !== "all" ? "Nothing in this view." : "Nothing to clean. The cleaning engine proposes corrections after each analysis."}
           </EmptyState>}
