@@ -11,6 +11,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
+from api.models.config_score import LandscapeConfigStatus
 from api.services import jobs
 
 router = APIRouter(prefix="/api/v1/connectivity", tags=["connectivity"])
@@ -188,6 +189,40 @@ async def start_config_load(
     return {"job_id": job_id, "load_id": load_id, "status": "queued", "system_type": row[0]}
 
 
+@router.get("/config-load", response_model=LandscapeConfigStatus)
+async def list_config_status(
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Configuration status of every active system (latest source load each): loaded, with_gaps, loading,
+    not_loaded, failed, not_available, with areas loaded of total. ``loaded`` of ``total`` counts only systems
+    whose configuration can be read."""
+    from api.services.config_areas import system_status
+
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
+    tid = str(tenant.id)
+    rows = (await db.execute(text(
+        "SELECT s.id::text, s.name, s.system_type, l.id::text, l.status, l.objects, l.error, l.finished_at::text "
+        "FROM sap_systems s LEFT JOIN LATERAL (SELECT id, status, objects, error, finished_at FROM config_loads c "
+        "WHERE c.tenant_id = :tid AND c.system_id = s.id AND c.role = 'source' ORDER BY c.created_at DESC LIMIT 1) l "
+        "ON true WHERE s.tenant_id = :tid AND s.is_active ORDER BY s.name"), {"tid": tid})).fetchall()
+    out = []
+    for sid, name, st, lid, lstatus, objects, error, finished in rows:
+        load = {"status": lstatus, "objects": objects or [], "error": error} if lid else None
+        job_id = f"cfgload-{lid}" if lid and lstatus in ("running", "queued") else None
+        job_areas = (jobs.get_job(tid, job_id) or {}).get("areas") if job_id else None
+        s_ = system_status(st, load, job_areas)
+        out.append({"system_id": sid, "name": name, "system_type": st, "status": s_["status"], "load_id": lid,
+                    "job_id": job_id, "loaded_at": finished if lstatus == "completed" else None,
+                    "areas_loaded": s_["areas_loaded"], "areas_total": s_["areas_total"],
+                    "current_area": s_["current_area"], "error": error if lstatus == "failed" else None})
+    counts: dict[str, int] = {}
+    for r in out:
+        counts[r["status"]] = counts.get(r["status"], 0) + 1
+    return {"systems": out, "counts": counts, "loaded": counts.get("loaded", 0),
+            "total": sum(1 for r in out if r["status"] != "not_available")}
+
+
 @router.get("/config-load/{system_id}")
 async def get_config_load(
     system_id: str,
@@ -213,8 +248,15 @@ async def get_config_load(
     for o in objects:
         o["history"] = per_table.get(o["object"])
         summary[o["state"]] = summary.get(o["state"], 0) + 1
+    from api.services.config_areas import system_status
+
+    job_areas = (jobs.get_job(str(tenant.id), f"cfgload-{r[0]}") or {}).get("areas") \
+        if r[4] in ("running", "queued") else None
+    cfg = system_status(r[1], {"status": r[4], "objects": objects, "error": r[7]}, job_areas)
     return {"load_id": r[0], "system_id": system_id, "system_type": r[1], "role": r[2], "origin": r[3],
             "status": r[4], "error": r[7], "created_at": r[8], "finished_at": r[9], "flows_derived": r[10],
+            "config_status": cfg["status"], "areas": cfg["areas"], "areas_loaded": cfg["areas_loaded"],
+            "areas_total": cfg["areas_total"], "current_area": cfg["current_area"],
             "summary": summary, "objects": objects,
             "history": {k: v for k, v in history.items() if k != "tables"}}
 
