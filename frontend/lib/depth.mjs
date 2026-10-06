@@ -14,6 +14,7 @@ export const DEPTH_ROUTES = {
   "/systems/[id]": 2,
   "/data/runs/[id]": 2,
   "/analyse/coverage": 2,
+  "/process/designer": 3,
   "/analyse/object/[module]": 3,
   "/analyse/rule/[checkId]": 3,
   "/analyse/finding/[id]": 3,

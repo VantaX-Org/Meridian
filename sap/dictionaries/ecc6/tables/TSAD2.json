@@ -1,0 +1,52 @@
+{
+ "table": "TSAD2",
+ "description": "Academic Title (Business Address Services)",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "CLIENT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "TITLE_KEY",
+   "key": true,
+   "data_element": "AD_TITLE1",
+   "domain": "AD_TITLE1",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Academic Title: Key",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "TITLE_TEXT",
+   "key": false,
+   "data_element": "AD_TITLE1T",
+   "domain": "TEXT20",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "Academic Title: Written Form",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "CLIENT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

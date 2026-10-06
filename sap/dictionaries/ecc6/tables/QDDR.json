@@ -1,0 +1,165 @@
+{
+ "table": "QDDR",
+ "description": "Dynamic modification rule (header)",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "DYNREGEL",
+   "key": true,
+   "data_element": "QDYNREGEL",
+   "domain": "QDYNREGEL",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Dynamic Modification Rule",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "KZDYNAUT",
+   "key": false,
+   "data_element": "QKZDYNAUT",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Immediate Dynamic Modification at Inspection Lot Creation",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "KZDYNKGR",
+   "key": false,
+   "data_element": "QKZDYNKGR",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Dynamic Modification by Statistic",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "PRSTUFEANF",
+   "key": false,
+   "data_element": "QPRSTUFEAN",
+   "domain": "QPRSTUFE",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Initial Inspection Stage",
+   "check_table": "QDPS"
+  },
+  {
+   "pos": 6,
+   "name": "RESETTIMEQL",
+   "key": false,
+   "data_element": "QRESTIMEQL",
+   "domain": "QRESIDENZ",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Reset Time Period for Quality Level in Days",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "KZNVWDR",
+   "key": false,
+   "data_element": "QKZNVWDR",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Dynamic Modification Rule Cannot Be Used",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "KZVWDRPL",
+   "key": false,
+   "data_element": "QKZVWDRPL",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Dynamic Modification Rule Is Used in Task List",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "ERSTELLER",
+   "key": false,
+   "data_element": "QERSTELLER",
+   "domain": "QAENDERER",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of User Who Created the Data Record",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "AENDERER",
+   "key": false,
+   "data_element": "QAENDERER",
+   "domain": "QAENDERER",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of User who Most Recently Changed the Data Record",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "ERSTELLDAT",
+   "key": false,
+   "data_element": "QDATUMERST",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date on Which the Data Record Was Created",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "AENDERDAT",
+   "key": false,
+   "data_element": "QDATUMAEND",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date on Which Data Record Was Changed",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "PRSTUFEANF",
+   "foreign_table": "QDPS",
+   "foreign_field": "PRSTUFE"
+  }
+ ]
+}

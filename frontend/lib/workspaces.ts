@@ -93,6 +93,7 @@ export const WORKSPACES: readonly Workspace[] = [
       { id: "map", label: "Process map", href: "/process" },
       { id: "readiness", label: "Readiness", href: "/business-process" },
       { id: "lineage", label: "Lineage", href: "/lineage" },
+      { id: "designer", label: "Designer", href: "/process/designer" },
       { id: "relationships", label: "Relationships", href: "/relationships" },
     ],
   },

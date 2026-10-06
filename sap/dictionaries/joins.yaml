@@ -59,6 +59,8 @@ edges:
   - {parent: BUT000, child: CVI_CUST_LINK, join: {PARTNER_GUID: PARTNER_GUID}, cardinality: many}
   - {parent: KNA1,   child: CVI_CUST_LINK, join: {CUSTOMER: KUNNR}, cardinality: many}
   - {parent: BUT000, child: CVI_VEND_LINK, join: {PARTNER_GUID: PARTNER_GUID}, cardinality: many}
+  - {parent: KNA1,   child: CVIC_CUST_TO_BP1, join: {ACCOUNT_GROUP: KTOKD}, cardinality: one}
+  - {parent: LFA1,   child: CVIC_VEND_TO_BP1, join: {ACCOUNT_GROUP: KTOKK}, cardinality: one}
   - {parent: LFA1,   child: CVI_VEND_LINK, join: {VENDOR: LIFNR}, cardinality: many}
 
   # ── Material master ────────────────────────────────────────────────────
@@ -191,6 +193,7 @@ edges:
   # ── Project system and internal orders ─────────────────────────────────
   - {parent: PROJ, child: PRPS, join: {PSPHI: PSPNR}, cardinality: many}
   - {parent: PRPS, child: PRHI, join: {POSNR: PSPNR}, cardinality: one}
+  - {parent: PROJ, child: JEST, join: {OBJNR: OBJNR}, cardinality: one, filter: {INACT: "", STAT: "I0046"}}
   - {parent: PRPS, child: AUFK, join: {PSPEL: PSPNR}, cardinality: many}
   - {parent: AUFK, child: T003O, join: {AUART: AUART}, cardinality: one}
   - {parent: COBRA, child: COBRB, join: {OBJNR: OBJNR}, cardinality: many}
@@ -202,6 +205,9 @@ edges:
   - {parent: MAST, child: STKO, join: {STLNR: STLNR, STLAL: STLAL}, cardinality: one, filter: {STLTY: "M"}}
   - {parent: STKO, child: STPO, join: {STLNR: STLNR}, cardinality: many, filter: {STLTY: "M"}}
   - {parent: PLKO, child: PLPO, join: {PLNTY: PLNTY, PLNNR: PLNNR}, cardinality: many}
+  - {parent: MARC, child: QMAT, join: {MATNR: MATNR, WERKS: WERKS}, cardinality: many}
+  - {parent: MARA, child: QINF, join: {MATNR: MATNR}, cardinality: many}
+  - {parent: QPGR, child: QPCD, join: {KATALOGART: KATALOGART, CODEGRUPPE: CODEGRUPPE}, cardinality: many}
 
   # ── Warehouse (classic WM) & transport ─────────────────────────────────
   - {parent: LTAK, child: LTAP, join: {LGNUM: LGNUM, TANUM: TANUM}, cardinality: many}
