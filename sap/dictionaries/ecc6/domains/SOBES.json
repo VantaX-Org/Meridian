@@ -1,0 +1,47 @@
+{
+ "domain": "SOBES",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "0",
+   "high": null,
+   "text": "Standard external procurement"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Consignment"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Subcontracting"
+  },
+  {
+   "low": "7",
+   "high": null,
+   "text": "Stock transfer"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Standard in-house production"
+  },
+  {
+   "low": "P",
+   "high": null,
+   "text": "Production in plant 2"
+  },
+  {
+   "low": "9",
+   "high": null,
+   "text": "IS-OIL only: Stock transfer reservation"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

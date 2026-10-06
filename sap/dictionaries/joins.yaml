@@ -124,6 +124,10 @@ edges:
   # ── PO history (GR/IR) and logistics invoice verification ──────────────
   - {parent: EKPO, child: EKBE, join: {EBELN: EBELN, EBELP: EBELP}, cardinality: many}
   - {parent: EINA, child: EINE, join: {INFNR: INFNR}, cardinality: many}
+  # schedule lines, account assignment and contract release documentation
+  - {parent: EKPO, child: EKET, join: {EBELN: EBELN, EBELP: EBELP}, cardinality: many}
+  - {parent: EKPO, child: EKKN, join: {EBELN: EBELN, EBELP: EBELP}, cardinality: many}
+  - {parent: EKKO, child: EKAB, join: {KONNR: EBELN}, cardinality: many}
   - {parent: RBKP, child: RSEG, join: {BELNR: BELNR, GJAHR: GJAHR}, cardinality: many}
   - {parent: LFA1, child: RBKP, join: {LIFNR: LIFNR}, cardinality: many}
 

@@ -1,0 +1,175 @@
+{
+ "table": "T16FV",
+ "description": "Release Prerequisites",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "FRGGR",
+   "key": true,
+   "data_element": "FRGGR",
+   "domain": "FRGGR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Release group",
+   "check_table": "T16FG"
+  },
+  {
+   "pos": 3,
+   "name": "FRGSX",
+   "key": true,
+   "data_element": "FRGSX",
+   "domain": "FRGSX",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Release Strategy",
+   "check_table": "T16FS"
+  },
+  {
+   "pos": 4,
+   "name": "FRGCO",
+   "key": true,
+   "data_element": "FRGCO",
+   "domain": "FRGCO",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Release code",
+   "check_table": "T16FC"
+  },
+  {
+   "pos": 5,
+   "name": "FRGA1",
+   "key": false,
+   "data_element": "FRGA1",
+   "domain": "FRGAK",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator Within the Release Strategy",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "FRGA2",
+   "key": false,
+   "data_element": "FRGA2",
+   "domain": "FRGAK",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator Within the Release Strategy",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "FRGA3",
+   "key": false,
+   "data_element": "FRGA3",
+   "domain": "FRGAK",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator Within the Release Strategy",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "FRGA4",
+   "key": false,
+   "data_element": "FRGA4",
+   "domain": "FRGAK",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator Within the Release Strategy",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "FRGA5",
+   "key": false,
+   "data_element": "FRGA5",
+   "domain": "FRGAK",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator Within the Release Strategy",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "FRGA6",
+   "key": false,
+   "data_element": "FRGA6",
+   "domain": "FRGAK",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator Within the Release Strategy",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "FRGA7",
+   "key": false,
+   "data_element": "FRGA7",
+   "domain": "FRGAK",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator Within the Release Strategy",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "FRGA8",
+   "key": false,
+   "data_element": "FRGA8",
+   "domain": "FRGAK",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator Within the Release Strategy",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "FRGCO",
+   "foreign_table": "T16FC",
+   "foreign_field": "FRGCO"
+  },
+  {
+   "field": "FRGGR",
+   "foreign_table": "T16FG",
+   "foreign_field": "FRGGR"
+  },
+  {
+   "field": "FRGSX",
+   "foreign_table": "T16FS",
+   "foreign_field": "FRGSX"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

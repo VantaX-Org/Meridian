@@ -1,0 +1,148 @@
+{
+ "table": "T16FS",
+ "description": "Release Strategies",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "FRGGR",
+   "key": true,
+   "data_element": "FRGGR",
+   "domain": "FRGGR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Release group",
+   "check_table": "*"
+  },
+  {
+   "pos": 3,
+   "name": "FRGSX",
+   "key": true,
+   "data_element": "FRGSX",
+   "domain": "FRGSX",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Release Strategy",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "FRGC1",
+   "key": false,
+   "data_element": "FRGCO",
+   "domain": "FRGCO",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Release code",
+   "check_table": "*"
+  },
+  {
+   "pos": 5,
+   "name": "FRGC2",
+   "key": false,
+   "data_element": "FRGCO",
+   "domain": "FRGCO",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Release code",
+   "check_table": "*"
+  },
+  {
+   "pos": 6,
+   "name": "FRGC3",
+   "key": false,
+   "data_element": "FRGCO",
+   "domain": "FRGCO",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Release code",
+   "check_table": "*"
+  },
+  {
+   "pos": 7,
+   "name": "FRGC4",
+   "key": false,
+   "data_element": "FRGCO",
+   "domain": "FRGCO",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Release code",
+   "check_table": "*"
+  },
+  {
+   "pos": 8,
+   "name": "FRGC5",
+   "key": false,
+   "data_element": "FRGCO",
+   "domain": "FRGCO",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Release code",
+   "check_table": "*"
+  },
+  {
+   "pos": 9,
+   "name": "FRGC6",
+   "key": false,
+   "data_element": "FRGCO",
+   "domain": "FRGCO",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Release code",
+   "check_table": "*"
+  },
+  {
+   "pos": 10,
+   "name": "FRGC7",
+   "key": false,
+   "data_element": "FRGCO",
+   "domain": "FRGCO",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Release code",
+   "check_table": "*"
+  },
+  {
+   "pos": 11,
+   "name": "FRGC8",
+   "key": false,
+   "data_element": "FRGCO",
+   "domain": "FRGCO",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Release code",
+   "check_table": "*"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}
