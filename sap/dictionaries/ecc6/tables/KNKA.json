@@ -1,0 +1,98 @@
+{
+ "table": "KNKA",
+ "description": "Customer master credit management: Central data",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "KUNNR",
+   "key": true,
+   "data_element": "KUNNR",
+   "domain": "KUNNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Customer Number",
+   "check_table": "KNA1"
+  },
+  {
+   "pos": 3,
+   "name": "KLIMG",
+   "key": false,
+   "data_element": "KLIMG",
+   "domain": "WERT8",
+   "type": "CURR",
+   "length": 15,
+   "decimals": 2,
+   "description": "Credit limit: Total limit across all control areas",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "KLIME",
+   "key": false,
+   "data_element": "KLIME",
+   "domain": "WERT8",
+   "type": "CURR",
+   "length": 15,
+   "decimals": 2,
+   "description": "Credit limit: Limit for individual control area",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "WAERS",
+   "key": false,
+   "data_element": "WAERS",
+   "domain": "WAERS",
+   "type": "CUKY",
+   "length": 5,
+   "decimals": 0,
+   "description": "Currency Key",
+   "check_table": "TCURC"
+  },
+  {
+   "pos": 6,
+   "name": "DLAUS",
+   "key": false,
+   "data_element": "DLAUS",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date of the last general information",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "KUNNR",
+   "foreign_table": "KNA1",
+   "foreign_field": "KUNNR"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "WAERS",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  }
+ ]
+}

@@ -19,7 +19,7 @@ areas:
     related:
       blocking: [S4-CVI-LFA1, S4-CVI-KNA1, S4-CVI-KNVK-VEND, S4-CVI-KNVK-CUST, S4-CVI-KTOKK-NUM, S4-CVI-KTOKK-ROLE,
                  S4-CVI-KTOKD-NUM, S4-CVI-KTOKD-ROLE, AP003, AP005, AR003, AR005]
-      warning: [AP026, XLNK001, XDUP002, CF-LFA1-STCD1, CF-LFA1-STCD2, CF-KNA1-STCD1, CF-KNA1-STCD2,
+      warning: [AP026, AR059, AR071, AP075, AP092, AP233, XLNK001, XDUP002, CF-LFA1-STCD1, CF-LFA1-STCD2, CF-KNA1-STCD1, CF-KNA1-STCD2,
                 CF-LFA1-PSTLZ, CF-KNA1-PSTLZ, CR-LFA1-PSTLZ, CR-KNA1-PSTLZ]
   material:
     label: Material master
@@ -44,11 +44,24 @@ areas:
     label: Credit Management (FSCM)
     simplification_item: Credit Management - FI-AR-CR replaced by FIN-FSCM-CR
     related:
-      blocking: [S4-CRM-KKBER, AR070]
-      warning: [AR045, AR046]
+      blocking: [S4-CRM-KKBER, AR070, AR044, SDSO202, SDSO310, SDSO311, SDCM039]
+      warning: [AR045, AR046, AR019, AR047, AR048, AR073, AR074, AR201, AR209, AR222, AR250, SDSO209, SDCM222]
   sales:
     label: Sales and pricing
     simplification_item: SD Rebate Processing replaced by Settlement Management
+    related:
+      warning: [SDSO046, SDSO047, SDSO048, SDSO049, SDSO050, SDSO051, SDSO052, SDSO053, SDSO054, SDSO280, SDSO309]
+  output_management:
+    label: Output management
+    simplification_item: Output Management - NAST output control replaced by S/4HANA Output Management
+    related: {}
+  foreign_trade:
+    label: Foreign trade
+    simplification_item: SD Foreign Trade replaced by SAP Global Trade Services
+    related: {}
+  revenue_recognition:
+    label: Revenue recognition
+    simplification_item: SD Revenue Recognition replaced by Revenue Accounting and Reporting
     related: {}
   finance:
     label: Universal Journal / General Ledger

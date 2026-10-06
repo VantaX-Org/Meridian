@@ -10,7 +10,7 @@ from checks.frames import TableFrames
 from checks.runner import run_rule
 from sap.ddic import get_dictionary
 
-PACKS = {"accounts_receivable": ("AR", 210, 45), "sd_customer_master": ("SDCM", 208, 35),
+PACKS = {"accounts_receivable": ("AR", 210, 57), "sd_customer_master": ("SDCM", 208, 42),
          "business_partner": ("BP", 201, 26)}
 MANDATORY = ["id", "field", "check_class", "severity", "dimension", "message", "why_it_matters", "rule_authority",
              "sap_impact", "fix_map", "record_fix_template"]
