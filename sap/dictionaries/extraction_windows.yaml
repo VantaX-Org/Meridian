@@ -60,3 +60,5 @@ TRFCQOUT:   {where: "QRFCDATUM >= '{days_ago:365}'"}
 TRFCQIN:    {where: "QRFCDATUM >= '{days_ago:365}'"}
 ARFCSSTATE: {where: "ARFCDATUM >= '{days_ago:365}'"}
 QALS:  {where: "ENSTEHDAT >= '{months_ago:24}'"}
+# NAST output status records: two years covers the 12 month deletion-candidate rule
+NAST: {where: "ERDAT >= '{months_ago:24}'"}

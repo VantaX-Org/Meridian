@@ -101,10 +101,34 @@ def _invalid(errors: list[Issue]) -> JSONResponse:
     return JSONResponse(status_code=422, content={"errors": [e.model_dump() for e in errors]})
 
 
+async def _reference(db: AsyncSession, tenant: Tenant, version_id: Optional[str] = None) -> ProcessModelDocument:
+    """The model derived from the tenant's extracted configuration (latest, or the given dataset version);
+    the shipped template when nothing was derived."""
+    await _rls(db, tenant)
+    sql = "SELECT document FROM process_derivations WHERE tenant_id = :tid"
+    args: dict[str, Any] = {"tid": str(tenant.id)}
+    if version_id:
+        sql += " AND version_id = :vid"
+        args["vid"] = _uuid(version_id)
+    sql += " ORDER BY created_at DESC LIMIT 1"
+    if version_id:
+        row = (await db.execute(text(sql), args)).fetchone()
+    else:  # latest of: a dataset version's derivation, a "load config" job's derivation
+        row = (await db.execute(text(
+            "SELECT document FROM (SELECT document, created_at FROM process_derivations WHERE tenant_id = :tid "
+            "UNION ALL SELECT derivation, created_at FROM config_loads WHERE tenant_id = :tid "
+            "AND derivation IS NOT NULL) d ORDER BY created_at DESC LIMIT 1"), args)).fetchone()
+    if row is None:
+        return reference_document()
+    from sap.spro_paths import enrich_evidence
+    return ProcessModelDocument.model_validate(enrich_evidence(row[0], row[0].get("system_type", "")))
+
+
 @router.get("/reference", response_model=ProcessModelDocument, dependencies=[Depends(require_permission("view"))])
-async def get_reference() -> ProcessModelDocument:
-    """The shipped reference model; no tenant state."""
-    return reference_document()
+async def get_reference(version_id: Optional[str] = None, db: AsyncSession = Depends(get_db),
+                        tenant: Tenant = Depends(get_tenant)) -> ProcessModelDocument:
+    """Derived model (source "config", per-node evidence) when config was extracted, else the template."""
+    return await _reference(db, tenant, version_id)
 
 
 @router.get("/models", dependencies=[Depends(require_permission("view"))])
@@ -123,7 +147,7 @@ async def create_model(body: ModelCreate, db: AsyncSession = Depends(get_db), te
         raise HTTPException(status_code=422, detail="Name is required")
     await _rls(db, tenant)
     if body.from_ == "reference":
-        doc = reference_document()
+        doc = await _reference(db, tenant)
     else:
         try:
             src = uuid.UUID(body.from_)

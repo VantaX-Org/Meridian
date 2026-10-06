@@ -1,0 +1,27 @@
+{
+ "domain": "WKKOP",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No limit"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Value contract item material may not be copied"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Only value contract item material may be copied"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

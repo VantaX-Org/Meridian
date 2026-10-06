@@ -1,0 +1,47 @@
+{
+ "domain": "ABTYP",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "Rebate agreement - Sales"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Promotion"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Sales deal"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Standard agreement"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Sales quote"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Agreement - Purchasing"
+  },
+  {
+   "low": "Z",
+   "high": null,
+   "text": "Condition without any special agreement"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

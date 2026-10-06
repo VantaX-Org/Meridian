@@ -671,6 +671,58 @@ class ConnectivityManager:
 
         return pd.DataFrame()
 
+    # -- Config Load (read-only snapshot + flow derivation) ---------------------
+
+    def load_config(self, system_id: str, load_id: str,
+                    progress: Optional[Callable[[int, int, str], None]] = None) -> dict:
+        """Read the system's configuration through ``connector.load_config()``, store it as a ``config_loads``
+        snapshot (role source, origin connection), read the change history (ABAP) and derive the process flows.
+        Read only; never writes to SAP. Returns the stored summary."""
+        from sap.config_loader import ABAP_TYPES, not_available_history, read_history
+
+        system_row = self._load_system(system_id)
+        params = self._build_connection_params(system_row)
+        system_type = params["system_type"]
+        connector = self._get_connector(system_type, params)
+        try:
+            snap = connector.load_config(system_type, progress)
+            snap.system_id = system_id
+            history = None
+            if system_type in ABAP_TYPES:
+                loaded = sorted(o for o, st in snap.objects.items() if st.state == "loaded")
+                history = read_history(connector, loaded)
+            else:
+                history = not_available_history("change history is read from DBTABLOG, which only ABAP systems have")
+        finally:
+            connector.close()
+
+        derivation = None
+        if system_type in ("ecc", "s4hana_onprem") and snap.items:
+            try:
+                from api.services.config_intelligence.process_flow_derivation import derive_model
+                doc = derive_model(snap.frames(), system_type)
+                if doc.source == "config":
+                    derivation = doc.model_dump(mode="json")
+            except Exception as e:  # derivation never costs the load
+                logger.warning(f"Flow derivation after config load failed: {e}")
+
+        objects = [o.as_dict() for o in snap.objects.values()]
+        self.session.execute(
+            text("UPDATE config_loads SET status = 'completed', objects = CAST(:o AS jsonb), "
+                 "history = CAST(:h AS jsonb), derivation = CAST(:d AS jsonb), finished_at = now() "
+                 "WHERE id = :lid AND tenant_id = :tid"),
+            {"o": json.dumps(objects), "h": json.dumps(history), "d": json.dumps(derivation) if derivation else None,
+             "lid": load_id, "tid": self.tenant_id})
+        rows = [{"tid": self.tenant_id, "lid": load_id, "obj": i.object, "key": i.key,
+                 "vals": json.dumps(i.values, default=str)} for i in snap.items]
+        for n in range(0, len(rows), 2000):
+            self.session.execute(
+                text("INSERT INTO config_items (tenant_id, load_id, object, key, \"values\") "
+                     "VALUES (:tid, :lid, :obj, :key, CAST(:vals AS jsonb))"), rows[n:n + 2000])
+        self.session.commit()
+        return {"load_id": load_id, "system_type": system_type, "objects": snap.summary(), "items": len(rows),
+                "flows_derived": derivation is not None, "table_logging_off": bool(history.get("table_logging_off"))}
+
     # -- Config Sync -----------------------------------------------------------
 
     def sync_config(self, system_id: str, modules: list[str]) -> dict:

@@ -1,0 +1,22 @@
+{
+ "domain": "NA_ERLVZ",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Dispatch time allowed"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Dispatch time not allowed"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}
