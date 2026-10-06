@@ -65,6 +65,27 @@ areas:
     label: Production planning
     simplification_item: Production version mandatory for BOM selection
     related: {}
+  warehouse_ewm:
+    label: Warehouse Management to EWM
+    simplification_item: Warehouse Management (LE-WM) in Compatibility Scope, replaced by SAP EWM
+    related:
+      blocking: [EWMS113, EWMS114, EWMS115, EWMS116, EWMS117, EWMS118, EWMS119, EWMS129, EWMS130, EWTO110, EWTO111,
+                 EWTO112, EWTO113, EWTO114, WMI022, WMI024, WMI025, WMI032, WMI033, WMI034, WMI035, WMI036, BATCH025,
+                 BATCH026, BATCH038]
+      warning: [EWMS120, EWMS121, EWMS122, EWMS123, EWMS124, EWMS125, EWMS128, EWTO109, EWTO116, EWTO117, EWTO118,
+                BATCH020, BATCH021, BATCH023, BATCH027, BATCH031, BATCH034, BATCH040, WMI023, WMI026, WMI027]
+  ariba_integration:
+    label: SAP Ariba integration with S/4HANA
+    simplification_item: Business Partner Approach (SAP Note 2265093)
+    related:
+      blocking: [ARS009, ARP003, ARP004, ARP015, ARP027, ARC005, ARC006, ARC014]
+      warning: [ARP008, ARP018, ARP021, ARC013, ARS012]
+  concur_integration:
+    label: SAP Concur integration with S/4HANA
+    simplification_item: Universal Journal cost object mapping for expense postings
+    related:
+      blocking: [CNE003, CNE004, CNU007, CNU010, CNU012]
+      warning: [CNE029, CNU011, CNU013, CNE028]
 rules:
 - id: S4R-BP-KNA1-ADRNR
   field: KNA1.ADRNR
@@ -395,3 +416,173 @@ rules:
     __other__: Create a production version for the material and plant (C223 or MM02, MRP 4 view) that names the BOM
       alternative and the routing, before the conversion.
   record_fix_template: 'Material {MARC.MATNR} in plant {MARC.WERKS} has a BOM but no production version.'
+- id: S4R-WM-QUANT-NEG
+  field: LQUA.GESME
+  check_class: cross_field_check
+  fail_when: '`LQUA.GESME` < 0'
+  severity: high
+  dimension: accuracy
+  message: 'S/4HANA readiness: quant has negative stock (LQUA.GESME) - simplification item Warehouse Management (LE-WM) in
+    Compatibility Scope'
+  why_it_matters: The migration of WM stock to EWM creates one stock record per quant. A negative quant has no valid EWM equivalent
+    and stops the stock load.
+  rule_authority: s4hana_migration
+  sap_impact: The WM stock reconciliation fails for the bin and the quant cannot be migrated until the stock is corrected.
+  fix_map:
+    __other__: Post a stock correction (LI21 or a goods movement) to clear the negative quant before the migration.
+  record_fix_template: Quant {LQUA.LQNUM} in {LQUA.LGNUM}/{LQUA.LGTYP}/{LQUA.LGPLA} has stock {actual_value}.
+  s4_area: warehouse_ewm
+  s4_impact: blocking
+  simplification_item: Warehouse Management (LE-WM) in Compatibility Scope, replaced by SAP EWM
+  baseline: s4_target
+- id: S4R-WM-TO-OPEN
+  field: LTAP.PQUIT
+  check_class: cross_field_check
+  fail_when: '`LTAP.PQUIT`.isna()'
+  applies_when:
+    LTAP.KZQUI:
+    - X
+  severity: high
+  dimension: completeness
+  message: 'S/4HANA readiness: transfer order item that needs confirmation is still open - simplification item Warehouse Management
+    (LE-WM) in Compatibility Scope'
+  why_it_matters: Open transfer orders cannot be moved to EWM. They must be confirmed or cancelled before the cutover so that
+    no stock is in transit.
+  rule_authority: s4hana_migration
+  sap_impact: Stock stays in the interim storage type and the warehouse cutover cannot be completed.
+  fix_map:
+    __other__: Confirm the transfer order (LT12) or cancel it (LT15) before the cutover.
+  record_fix_template: Transfer order {LTAP.TANUM} item {LTAP.TAPOS} in warehouse {LTAP.LGNUM} is not confirmed.
+  s4_area: warehouse_ewm
+  s4_impact: blocking
+  simplification_item: Warehouse Management (LE-WM) in Compatibility Scope, replaced by SAP EWM
+  baseline: s4_target
+- id: S4R-WM-INV-QUANT
+  field: LQUA.IVNUM
+  check_class: cross_field_check
+  fail_when: '`LQUA.IVNUM`.notna()'
+  severity: high
+  dimension: completeness
+  message: 'S/4HANA readiness: quant is in an open physical inventory document - simplification item Warehouse Management
+    (LE-WM) in Compatibility Scope'
+  why_it_matters: An open WM inventory document freezes the quant. The migration needs counted and posted stock with no inventory
+    in progress.
+  rule_authority: s4hana_migration
+  sap_impact: The quant is locked by the inventory and its stock figure may change after the count, which breaks reconciliation.
+  fix_map:
+    __other__: Complete and post the physical inventory (LI11N, LI20) or cancel the inventory document before the migration.
+  record_fix_template: Quant {LQUA.LQNUM} in {LQUA.LGNUM}/{LQUA.LGPLA} is in inventory document {LQUA.IVNUM}.
+  s4_area: warehouse_ewm
+  s4_impact: blocking
+  simplification_item: Warehouse Management (LE-WM) in Compatibility Scope, replaced by SAP EWM
+  baseline: s4_target
+- id: S4R-WM-INV-BIN
+  field: LAGP.KZINV
+  check_class: cross_field_check
+  fail_when: '`LAGP.KZINV`.notna()'
+  severity: medium
+  dimension: completeness
+  message: 'S/4HANA readiness: storage bin has an active inventory indicator - simplification item Warehouse Management (LE-WM)
+    in Compatibility Scope'
+  why_it_matters: A bin with an inventory in progress cannot be migrated as a stable location. The indicator must be cleared
+    by posting or cancelling the count.
+  rule_authority: s4hana_migration
+  sap_impact: The bin is blocked for movements until the inventory ends and its stock is not reconciled for the migration.
+  fix_map:
+    __other__: Finish the inventory for the bin (LI20) or reset the indicator by cancelling the inventory document.
+  record_fix_template: Bin {LAGP.LGPLA} in {LAGP.LGNUM}/{LAGP.LGTYP} has an active inventory indicator.
+  s4_area: warehouse_ewm
+  s4_impact: blocking
+  simplification_item: Warehouse Management (LE-WM) in Compatibility Scope, replaced by SAP EWM
+  baseline: s4_target
+- id: S4R-WM-QUANT-EXPIRED
+  field: LQUA.VFDAT
+  check_class: cross_field_check
+  fail_when: '`LQUA.VFDAT` < @today'
+  severity: low
+  dimension: timeliness
+  message: 'S/4HANA readiness: quant past its shelf-life date still in the warehouse (archive or scrap candidate)'
+  why_it_matters: Expired stock migrated into EWM adds quants that cannot be picked. Scrap or return it first so that the
+    migration moves only usable stock.
+  rule_authority: s4hana_migration
+  sap_impact: Expired quants inflate the migrated stock volume and the reconciliation, and block FEFO picking after the migration.
+  fix_map:
+    __other__: Scrap or return the expired stock (movement type 551) and clear the quant before the migration.
+  record_fix_template: Quant {LQUA.LQNUM} in {LQUA.LGNUM}/{LQUA.LGPLA} is past its shelf-life date.
+  s4_area: warehouse_ewm
+  s4_impact: warning
+  simplification_item: Warehouse Management (LE-WM) in Compatibility Scope, replaced by SAP EWM
+  baseline: s4_target
+- id: S4R-WM-LEIN-EMPTY
+  field: LEIN.LGNUM
+  check_class: exists_check
+  fields:
+  - LEIN.LGNUM
+  - LEIN.LENUM
+  target_table: LQUA
+  target_fields:
+  - LGNUM
+  - LENUM
+  severity: low
+  dimension: consistency
+  message: 'S/4HANA readiness: storage unit has no quant (archive candidate)'
+  why_it_matters: A storage unit with no stock is left over from a past movement. The migration builds handling units from
+    storage units, so an empty one creates a handling unit with no content.
+  rule_authority: s4hana_migration
+  sap_impact: The migration produces empty handling units that must be deleted again in EWM.
+  fix_map:
+    __other__: Delete the empty storage unit (LS32 or LT09 clean-up) before the migration.
+  record_fix_template: Storage unit {LEIN.LENUM} in {LEIN.LGNUM} holds no quant.
+  s4_area: warehouse_ewm
+  s4_impact: warning
+  simplification_item: Warehouse Management (LE-WM) in Compatibility Scope, replaced by SAP EWM
+  baseline: s4_target
+- id: S4R-WM-MLGT-BIN
+  field: MLGT.LGNUM
+  check_class: exists_check
+  fields:
+  - MLGT.LGNUM
+  - MLGT.LGTYP
+  - MLGT.LGPLA
+  target_table: LAGP
+  target_fields:
+  - LGNUM
+  - LGTYP
+  - LGPLA
+  applies_when:
+    MLGT.LGPLA:
+      populated: true
+  severity: high
+  dimension: consistency
+  message: 'S/4HANA readiness: fixed bin of the material does not exist as a storage bin - simplification item Warehouse Management
+    (LE-WM) in Compatibility Scope'
+  why_it_matters: The fixed bin assignment is migrated to EWM as a product-specific bin assignment. A bin that does not exist
+    cannot be loaded.
+  rule_authority: s4hana_migration
+  sap_impact: The storage type data of the material is rejected in the migration load.
+  fix_map:
+    __other__: Create the bin (LS01N) or correct the fixed bin in the material warehouse data (MM02).
+  record_fix_template: Material {MLGT.MATNR} in {MLGT.LGNUM}/{MLGT.LGTYP} has fixed bin {MLGT.LGPLA} with no bin master.
+  s4_area: warehouse_ewm
+  s4_impact: blocking
+  simplification_item: Warehouse Management (LE-WM) in Compatibility Scope, replaced by SAP EWM
+  baseline: s4_target
+- id: S4R-WM-QUANT-BLOCKED
+  field: LQUA.GESME
+  check_class: cross_field_check
+  fail_when: ((`LQUA.SKZSA` == 'X') | (`LQUA.SKZSE` == 'X')) & (`LQUA.GESME` > 0)
+  severity: medium
+  dimension: completeness
+  message: 'S/4HANA readiness: quant with stock is blocked for removal or putaway - simplification item Warehouse Management
+    (LE-WM) in Compatibility Scope'
+  why_it_matters: Stock blocks must be resolved or mapped to an EWM stock type before the load. A blocked quant with stock
+    needs a decision on its target status.
+  rule_authority: s4hana_migration
+  sap_impact: Blocked stock is migrated as restricted stock and can distort availability after the cutover.
+  fix_map:
+    __other__: Release the block (LS02N or LQ02) or decide the EWM stock type for the blocked stock before the migration.
+  record_fix_template: Quant {LQUA.LQNUM} in {LQUA.LGNUM}/{LQUA.LGPLA} is blocked and holds stock.
+  s4_area: warehouse_ewm
+  s4_impact: warning
+  simplification_item: Warehouse Management (LE-WM) in Compatibility Scope, replaced by SAP EWM
+  baseline: s4_target
