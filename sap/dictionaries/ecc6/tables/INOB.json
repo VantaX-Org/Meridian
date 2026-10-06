@@ -1,0 +1,228 @@
+{
+ "table": "INOB",
+ "description": "Link between Internal Number and Object",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "CUOBJ",
+   "key": true,
+   "data_element": "CUOBJ",
+   "domain": "CUOBJ",
+   "type": "NUMC",
+   "length": 18,
+   "decimals": 0,
+   "description": "Configuration (internal object number)",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "KLART",
+   "key": false,
+   "data_element": "KLASSENART",
+   "domain": "KLASSENART",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Class Type",
+   "check_table": "TCLA"
+  },
+  {
+   "pos": 4,
+   "name": "OBTAB",
+   "key": false,
+   "data_element": "TABELLE",
+   "domain": "OBJEKTTAB",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Name of database table for object",
+   "check_table": "TCLO"
+  },
+  {
+   "pos": 5,
+   "name": "OBJEK",
+   "key": false,
+   "data_element": "CUOBN",
+   "domain": "CUOBN",
+   "type": "CHAR",
+   "length": 50,
+   "decimals": 0,
+   "description": "Key of Object to be Classified",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "ROBTAB",
+   "key": false,
+   "data_element": "RTABELLE",
+   "domain": "OBJEKTTAB",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Name of database table of configurable object",
+   "check_table": "TCLO"
+  },
+  {
+   "pos": 7,
+   "name": "ROBJEK",
+   "key": false,
+   "data_element": "RCUOBN",
+   "domain": "CUOBN",
+   "type": "CHAR",
+   "length": 50,
+   "decimals": 0,
+   "description": "Key of configurable object",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "CLINT",
+   "key": false,
+   "data_element": "RCLINT",
+   "domain": "CLINT",
+   "type": "NUMC",
+   "length": 10,
+   "decimals": 0,
+   "description": "Internal Class Number of Configurable Object",
+   "check_table": "KLAH"
+  },
+  {
+   "pos": 9,
+   "name": "STATU",
+   "key": false,
+   "data_element": "CLSTATUS",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Classification status",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "CUCOZHL",
+   "key": false,
+   "data_element": "CUCOZHL",
+   "domain": "CUCOZHL",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Internal counter",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "PARENT",
+   "key": false,
+   "data_element": "CUOBJ",
+   "domain": "CUOBJ",
+   "type": "NUMC",
+   "length": 18,
+   "decimals": 0,
+   "description": "Configuration (internal object number)",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "ROOT",
+   "key": false,
+   "data_element": "CUOBJ",
+   "domain": "CUOBJ",
+   "type": "NUMC",
+   "length": 18,
+   "decimals": 0,
+   "description": "Configuration (internal object number)",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "EXPERTE",
+   "key": false,
+   "data_element": "EXPRT",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "User as expert",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "MATNR",
+   "key": false,
+   "data_element": "MATNR",
+   "domain": "MATNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Material Number",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "DATUV",
+   "key": false,
+   "data_element": "DATUV",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Valid-From Date",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "TECHS",
+   "key": false,
+   "data_element": "TECHS",
+   "domain": "TECHS",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Parameter Variant/Standard Variant",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "CLINT",
+   "foreign_table": "KLAH",
+   "foreign_field": "CLINT"
+  },
+  {
+   "field": "KLART",
+   "foreign_table": "TCLA",
+   "foreign_field": "KLART"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "OBTAB",
+   "foreign_table": "TCLO",
+   "foreign_field": "OBTAB"
+  },
+  {
+   "field": "ROBTAB",
+   "foreign_table": "TCLO",
+   "foreign_field": "OBTAB"
+  }
+ ]
+}
