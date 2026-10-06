@@ -1,0 +1,148 @@
+{
+ "table": "TQ05",
+ "description": "QM certificate categories for procurement",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "ZGTYP",
+   "key": true,
+   "data_element": "QZGTYP",
+   "domain": "QZGTYP",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Certificate Type",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "WEPRF",
+   "key": false,
+   "data_element": "QWEPRF",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Certificate Required for Each Purchase Order Item",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "ZGLIEF",
+   "key": false,
+   "data_element": "QZGLIEF",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Certificate Required for Each Delivery",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "ZGPRUEF",
+   "key": false,
+   "data_element": "QZGPRUEF",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Explicit Inspection of GR Certificate Necessary",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "MSGART",
+   "key": false,
+   "data_element": "QMSGZG",
+   "domain": "QMSGZG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Control if Certificate Is Not Available",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "STSMA",
+   "key": false,
+   "data_element": "J_STSMA",
+   "domain": "J_STSMA",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Status Profile",
+   "check_table": "TJ20"
+  },
+  {
+   "pos": 8,
+   "name": "QCPRACT",
+   "key": false,
+   "data_element": "QCPRACT",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Enhanced Certificate Processing Active",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "QGRPOP",
+   "key": false,
+   "data_element": "QCGRPOP",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Prevent Certificate Confirmation at GR",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "QREMIND",
+   "key": false,
+   "data_element": "QCREMIND",
+   "domain": "QCREMIND",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Reminder Deadline (Days)",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "QESCAL",
+   "key": false,
+   "data_element": "QCESCAL",
+   "domain": "QCESCAL",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Escalation Deadline (days) After Sending Reminder",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "STSMA",
+   "foreign_table": "TJ20",
+   "foreign_field": "STSMA"
+  }
+ ]
+}

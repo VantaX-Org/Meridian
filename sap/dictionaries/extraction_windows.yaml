@@ -54,3 +54,4 @@ EDIDS: {where: "LOGDAT >= '{days_ago:90}'"}
 TRFCQOUT:   {where: "QRFCDATUM >= '{days_ago:365}'"}
 TRFCQIN:    {where: "QRFCDATUM >= '{days_ago:365}'"}
 ARFCSSTATE: {where: "ARFCDATUM >= '{days_ago:365}'"}
+QALS:  {where: "ENSTEHDAT >= '{months_ago:24}'"}

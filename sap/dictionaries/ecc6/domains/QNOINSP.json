@@ -1,0 +1,27 @@
+{
+ "domain": "QNOINSP",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Inspection active, if vendor is not certified"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "No inspection"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Inspection active, independent of vendor certification"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -341,6 +341,82 @@ ECC_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
     ],
 
     # ------------------------------------------------------------------
+    # Quality Management
+    # ------------------------------------------------------------------
+    "quality_management": [
+        ExtractionTarget(
+            source="QINF",
+            fields=["MATNR", "WERK", "LIEFERANT", "ZAEHL", "LOEKZ", "SPERRFKT", "SPERRGRUND", "FREI_DAT", "QSSYSDAT", "BEST_MG", "FREI_MGKZ", "FREI_MNG"],
+            description="QINF quality management",
+        ),
+        ExtractionTarget(
+            source="QMAT",
+            fields=["MATNR", "WERKS", "ART", "AKTIV", "PPL", "SPROZ", "HPZ", "DYN", "DYNREGEL"],
+            description="QMAT quality management",
+        ),
+        ExtractionTarget(
+            source="MAPL",
+            fields=["MATNR", "WERKS", "PLNTY", "LOEKZ", "PLNNR", "PLNAL"],
+            description="MAPL quality management",
+        ),
+        ExtractionTarget(
+            source="QPMK",
+            fields=["LOEKZ", "MKMNR", "VERSION", "DATES", "GUELTIGAB", "TOLERANZUN", "TOLERANZOB", "TOLOBNI", "TOLUNNI", "SOLLWERT", "MASSEINHSW", "CODE9U", "CODEGR9U", "CODE9O", "CODEGR9O"],
+            description="QPMK quality management",
+        ),
+        ExtractionTarget(
+            source="QPCD",
+            fields=["CODEGRUPPE", "CODE", "INAKTIV", "KATALOGART"],
+            description="QPCD quality management",
+        ),
+        ExtractionTarget(
+            source="QPGR",
+            fields=["STATUS", "KATALOGART", "CODEGRUPPE", "INAKTIV"],
+            description="QPGR quality management",
+        ),
+        ExtractionTarget(
+            source="QPAC",
+            fields=["CODE", "KATALOGART", "CODEGRUPPE", "WERKS", "AUSWAHLMGE"],
+            description="QPAC quality management",
+        ),
+        ExtractionTarget(
+            source="PLKO",
+            fields=["WERKS", "PLNNR", "PLNAL", "PLNTY", "LOEKZ", "KTEXT", "VERWE", "STATU", "ANDAT"],
+            description="PLKO quality management",
+        ),
+        ExtractionTarget(
+            source="PLMK",
+            fields=["PLNTY", "PLNNR", "VERWMERKM", "PLNKN", "MERKNR", "LOEKZ", "MKVERSION", "GUELTIGAB", "QPMK_REF", "TOLERANZUN", "TOLERANZOB", "TOLOBNI", "MASSEINHSW", "CODE9U", "CODEGR9U", "CODE9O", "CODEGR9O", "KATALGART1", "AUSWMENGE1"],
+            description="PLMK quality management",
+        ),
+        ExtractionTarget(
+            source="QMEL",
+            fields=["QMDAT", "QMNUM", "QMART", "PHASE", "QMDAB", "KZLOESCH", "LTRMN", "STRMN", "QMCOD", "QMKAT", "QMGRP", "MATNR", "MAWERK", "LIFNUM", "KUNUM"],
+            description="QMEL quality management",
+        ),
+        ExtractionTarget(
+            source="QMFE",
+            fields=["FECOD", "FEGRP", "QMNUM", "FENUM", "KZLOESCH"],
+            description="QMFE quality management",
+        ),
+        ExtractionTarget(
+            source="QMSM",
+            fields=["MNCOD", "MNGRP", "QMNUM", "MANUM", "KZLOESCH", "PETER", "ERLDAT"],
+            description="QMSM quality management",
+        ),
+        ExtractionTarget(
+            source="QMIH",
+            fields=["AUSBS", "AUSVN", "QMNUM"],
+            description="QMIH quality management",
+        ),
+        ExtractionTarget(
+            source="QALS",
+            fields=["ART", "PRUEFLOS", "HERKUNFT", "MATNR", "WERK"],
+            description="QALS quality management",
+        ),
+    ],
+
+    # ------------------------------------------------------------------
     # HCM Personnel Administration (ECC infotypes + organisational management)
     # ------------------------------------------------------------------
     "hcm": [

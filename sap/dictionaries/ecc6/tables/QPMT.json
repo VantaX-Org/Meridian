@@ -1,0 +1,146 @@
+{
+ "table": "QPMT",
+ "description": "Master Inspection Characteristics Texts",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "ZAEHLER",
+   "key": true,
+   "data_element": "QZAEHLER",
+   "domain": "QZAEHLER",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Plant for the Master Inspection Characteristic",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "MKMNR",
+   "key": true,
+   "data_element": "QMERKNR",
+   "domain": "QMERKNR",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Master Inspection Characteristics",
+   "check_table": "QPMK"
+  },
+  {
+   "pos": 4,
+   "name": "VERSION",
+   "key": true,
+   "data_element": "QVERSNRPM",
+   "domain": "QVERSNR",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Version Number of the Inspection Method",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "SPRACHE",
+   "key": true,
+   "data_element": "SPRAS",
+   "domain": "SPRAS",
+   "type": "LANG",
+   "length": 1,
+   "decimals": 0,
+   "description": "Language Key",
+   "check_table": "T002"
+  },
+  {
+   "pos": 6,
+   "name": "GUELTIGAB",
+   "key": false,
+   "data_element": "DATUV",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Valid-From Date",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "KURZTEXT",
+   "key": false,
+   "data_element": "QKURZTEXT",
+   "domain": "QKURZTEXT",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Short Text",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "LTEXTKZ",
+   "key": false,
+   "data_element": "QLTEXTMK",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Long Text Exists for the Characteristic",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "LTEXTEKZ",
+   "key": false,
+   "data_element": "QLTEXTEKZ",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Long Text for Physical-Sample Drawing of a Characteristic",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "GELOESCHT",
+   "key": false,
+   "data_element": "QGEL",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Data Record Was Deleted",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MKMNR",
+   "foreign_table": "QPMK",
+   "foreign_field": "MKMNR"
+  },
+  {
+   "field": "SPRACHE",
+   "foreign_table": "T002",
+   "foreign_field": "SPRAS"
+  }
+ ]
+}

@@ -1,0 +1,22 @@
+{
+ "domain": "SIG_IL_SDR",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "not required"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "required for confirmation of physical-sample drawing"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

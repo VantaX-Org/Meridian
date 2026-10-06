@@ -7,12 +7,12 @@ const TIER_MODULES: Record<string, string[]> = {
   starter: [
     "business_partner", "material_master", "fi_gl", "accounts_payable",
     "accounts_receivable", "asset_accounting", "hcm", "controlling", "mm_purchasing",
-    "plant_maintenance", "production_planning", "project_system", "sd_customer_master", "sd_sales_orders",
+    "plant_maintenance", "production_planning", "project_system", "quality_management", "sd_customer_master", "sd_sales_orders",
   ],
   professional: [
     "business_partner", "material_master", "fi_gl", "accounts_payable",
     "accounts_receivable", "asset_accounting", "controlling", "mm_purchasing",
-    "plant_maintenance", "production_planning", "project_system", "sd_customer_master", "sd_sales_orders",
+    "plant_maintenance", "production_planning", "project_system", "quality_management", "sd_customer_master", "sd_sales_orders",
     "employee_central", "compensation", "benefits", "payroll_integration",
     "performance_goals", "succession_planning", "recruiting_onboarding",
     "learning_management", "time_attendance",
@@ -20,7 +20,7 @@ const TIER_MODULES: Record<string, string[]> = {
   enterprise: [
     "business_partner", "material_master", "fi_gl", "accounts_payable",
     "accounts_receivable", "asset_accounting", "hcm", "controlling", "mm_purchasing",
-    "plant_maintenance", "production_planning", "project_system", "sd_customer_master", "sd_sales_orders",
+    "plant_maintenance", "production_planning", "project_system", "quality_management", "sd_customer_master", "sd_sales_orders",
     "employee_central", "compensation", "benefits", "payroll_integration",
     "performance_goals", "succession_planning", "recruiting_onboarding",
     "learning_management", "time_attendance",

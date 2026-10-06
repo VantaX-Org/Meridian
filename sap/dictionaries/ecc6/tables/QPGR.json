@@ -1,0 +1,141 @@
+{
+ "table": "QPGR",
+ "description": "Inspection Catalog Code Groups",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "KATALOGART",
+   "key": true,
+   "data_element": "COMT_CATALOG",
+   "domain": "COM_CATALOG",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Catalog",
+   "check_table": "TQ15"
+  },
+  {
+   "pos": 3,
+   "name": "CODEGRUPPE",
+   "key": true,
+   "data_element": "QCODEGRP",
+   "domain": "QCODEGRP",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Code Group",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "ERSTELLER",
+   "key": false,
+   "data_element": "QERSTELLER",
+   "domain": "SRET_USER",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of User Who Created the Data Record",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "E_DATUM",
+   "key": false,
+   "data_element": "QDATUMERST",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date on Which the Data Record Was Created",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "AENDERER",
+   "key": false,
+   "data_element": "QAENDERER",
+   "domain": "SRET_USER",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of User who Most Recently Changed the Data Record",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "A_DATUM",
+   "key": false,
+   "data_element": "QDATUMAEND",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date on Which Data Record Was Changed",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "VERWENDUNG",
+   "key": false,
+   "data_element": "QVERW",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Data Record is Being Used",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "INAKTIV",
+   "key": false,
+   "data_element": "QINAK",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Status of Code Group or Code Record",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "STATUS",
+   "key": false,
+   "data_element": "QLOESCHKZ1",
+   "domain": "QLOESCHKZ1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Status of Master Record",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "KATALOGART",
+   "foreign_table": "TQ15",
+   "foreign_field": "KATALOGART"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

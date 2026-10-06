@@ -1,0 +1,62 @@
+{
+ "domain": "QKZ_REF_EE",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Reference to master inspection characteristic"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "MastInspChar from pln overwritten with matSpec, NoRefToGenCh"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Values from material specification, without ref. to gen.char"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Master inspection char. was copied to plan"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Specifications were changed"
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "Specifications were changed by config./batch determination"
+  },
+  {
+   "low": "6",
+   "high": null,
+   "text": "Specifications from config./batch determination"
+  },
+  {
+   "low": "7",
+   "high": null,
+   "text": "MastChar from pln overwritten with mat.spec, with refToGenCh"
+  },
+  {
+   "low": "8",
+   "high": null,
+   "text": "Values are from mat. spec. with ref to gen. charac."
+  },
+  {
+   "low": "9",
+   "high": null,
+   "text": "Specs changed using flexible inspection specs function"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

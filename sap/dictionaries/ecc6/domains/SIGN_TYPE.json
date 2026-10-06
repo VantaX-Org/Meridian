@@ -1,0 +1,27 @@
+{
+ "domain": "SIGN_TYPE",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "Asynchronous Signature Process"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Asynchronous Signature Process with Changeable Signatory"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Synchronous Signature Process"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

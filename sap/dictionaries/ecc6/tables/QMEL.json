@@ -1,0 +1,2109 @@
+{
+ "table": "QMEL",
+ "description": "Quality Notification",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "QMNUM",
+   "key": true,
+   "data_element": "QMNUM",
+   "domain": "QMNUM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Message Number",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "QMART",
+   "key": false,
+   "data_element": "QMART",
+   "domain": "QMART",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Message Type",
+   "check_table": "TQ80"
+  },
+  {
+   "pos": 4,
+   "name": "QMTXT",
+   "key": false,
+   "data_element": "QMTXT",
+   "domain": "TEXT40",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Short Text",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "ARTPR",
+   "key": false,
+   "data_element": "ARTPR",
+   "domain": "ARTPR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Priority Type",
+   "check_table": "T356A"
+  },
+  {
+   "pos": 6,
+   "name": "PRIOK",
+   "key": false,
+   "data_element": "PRIOK",
+   "domain": "PRIOK",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Priority",
+   "check_table": "T356"
+  },
+  {
+   "pos": 7,
+   "name": "ERNAM",
+   "key": false,
+   "data_element": "ERNAM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of Person who Created the Object",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "ERDAT",
+   "key": false,
+   "data_element": "ERDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date on which the record was created",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "AENAM",
+   "key": false,
+   "data_element": "AENAM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of Person Who Changed Object",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "AEDAT",
+   "key": false,
+   "data_element": "AEDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Last Changed On",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "MZEIT",
+   "key": false,
+   "data_element": "MZEIT",
+   "domain": "UHRZT",
+   "type": "TIMS",
+   "length": 6,
+   "decimals": 0,
+   "description": "Notification Time",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "QMDAT",
+   "key": false,
+   "data_element": "QMDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date of Notification",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "QMNAM",
+   "key": false,
+   "data_element": "QMNAM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of declarant",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "STRMN",
+   "key": false,
+   "data_element": "STRMN",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Desired Start Date",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "STRUR",
+   "key": false,
+   "data_element": "STRUR",
+   "domain": "UZEIT",
+   "type": "TIMS",
+   "length": 6,
+   "decimals": 0,
+   "description": "Desired Start Time",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "LTRMN",
+   "key": false,
+   "data_element": "LTRMN",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Required Finish Date",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "LTRUR",
+   "key": false,
+   "data_element": "LTRUR",
+   "domain": "UZEIT",
+   "type": "TIMS",
+   "length": 6,
+   "decimals": 0,
+   "description": "Required End Date-Time",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "WAERS",
+   "key": false,
+   "data_element": "WAERS",
+   "domain": "WAERS",
+   "type": "CUKY",
+   "length": 5,
+   "decimals": 0,
+   "description": "Currency Key",
+   "check_table": "TCURC"
+  },
+  {
+   "pos": 19,
+   "name": "AUFNR",
+   "key": false,
+   "data_element": "AUFNR",
+   "domain": "AUFNR",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Order Number",
+   "check_table": "AUFK"
+  },
+  {
+   "pos": 20,
+   "name": "VERID",
+   "key": false,
+   "data_element": "VERID",
+   "domain": "VERID",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Production Version",
+   "check_table": "MKAL"
+  },
+  {
+   "pos": 21,
+   "name": "RM_MATNR",
+   "key": false,
+   "data_element": "RM_MATNR",
+   "domain": "MATNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Material number of the production version",
+   "check_table": "MKAL"
+  },
+  {
+   "pos": 22,
+   "name": "RM_WERKS",
+   "key": false,
+   "data_element": "RM_WERKS",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Plant of production version",
+   "check_table": "MKAL"
+  },
+  {
+   "pos": 23,
+   "name": "SA_AUFNR",
+   "key": false,
+   "data_element": "SA_AUFNR",
+   "domain": "SA_AUFNR",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Run schedule header number",
+   "check_table": "SAFK"
+  },
+  {
+   "pos": 24,
+   "name": "MATNR",
+   "key": false,
+   "data_element": "MATNR",
+   "domain": "MATNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Material Number",
+   "check_table": "MARA"
+  },
+  {
+   "pos": 25,
+   "name": "REVLV",
+   "key": false,
+   "data_element": "REVLV",
+   "domain": "REVLV",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Revision level",
+   "check_table": null
+  },
+  {
+   "pos": 26,
+   "name": "MATKL",
+   "key": false,
+   "data_element": "MATKL",
+   "domain": "MATKL",
+   "type": "CHAR",
+   "length": 9,
+   "decimals": 0,
+   "description": "Material Group",
+   "check_table": "T023"
+  },
+  {
+   "pos": 27,
+   "name": "PRDHA",
+   "key": false,
+   "data_element": "PRODH_D",
+   "domain": "PRODH",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Product Hierarchy",
+   "check_table": "T179"
+  },
+  {
+   "pos": 28,
+   "name": "KZKRI",
+   "key": false,
+   "data_element": "KZKRI",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Critical part",
+   "check_table": null
+  },
+  {
+   "pos": 29,
+   "name": "KZDKZ",
+   "key": false,
+   "data_element": "KZDKZ",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Documentation required indicator",
+   "check_table": null
+  },
+  {
+   "pos": 30,
+   "name": "KUNUM",
+   "key": false,
+   "data_element": "QKUNUM",
+   "domain": "KUNNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Account Number of Customer",
+   "check_table": "KNA1"
+  },
+  {
+   "pos": 31,
+   "name": "FEKNZ",
+   "key": false,
+   "data_element": "FEKNZ",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Error Records Exist",
+   "check_table": null
+  },
+  {
+   "pos": 32,
+   "name": "MAKNZ",
+   "key": false,
+   "data_element": "MAKNZ",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Task Records Exist",
+   "check_table": null
+  },
+  {
+   "pos": 33,
+   "name": "OBJNR",
+   "key": false,
+   "data_element": "QMOBJNR",
+   "domain": "J_OBJNR",
+   "type": "CHAR",
+   "length": 22,
+   "decimals": 0,
+   "description": "Object Number for Status Management",
+   "check_table": "ONR00"
+  },
+  {
+   "pos": 34,
+   "name": "QMDAB",
+   "key": false,
+   "data_element": "QMDAB",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date for Completion of Notification",
+   "check_table": null
+  },
+  {
+   "pos": 35,
+   "name": "QMZAB",
+   "key": false,
+   "data_element": "QMZAB",
+   "domain": "UZEIT",
+   "type": "TIMS",
+   "length": 6,
+   "decimals": 0,
+   "description": "Completion Time of Notification",
+   "check_table": null
+  },
+  {
+   "pos": 36,
+   "name": "RBNR",
+   "key": false,
+   "data_element": "RBNR",
+   "domain": "RBNR",
+   "type": "CHAR",
+   "length": 9,
+   "decimals": 0,
+   "description": "Report layout",
+   "check_table": "T352B"
+  },
+  {
+   "pos": 37,
+   "name": "RBNRI",
+   "key": false,
+   "data_element": "RBNRI",
+   "domain": "RBNRI",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Origin of Notifications Catalog Profile",
+   "check_table": null
+  },
+  {
+   "pos": 38,
+   "name": "INDTX",
+   "key": false,
+   "data_element": "INDLTX",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Object Long Text Available",
+   "check_table": null
+  },
+  {
+   "pos": 39,
+   "name": "KZMLA",
+   "key": false,
+   "data_element": "KZMLA",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Primary language indicator for text segment",
+   "check_table": null
+  },
+  {
+   "pos": 40,
+   "name": "HERKZ",
+   "key": false,
+   "data_element": "HERKZ",
+   "domain": "HERKZ",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Origin Indicator for Notification",
+   "check_table": null
+  },
+  {
+   "pos": 41,
+   "name": "BEZDT",
+   "key": false,
+   "data_element": "BEZDT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Notification Reference Date",
+   "check_table": null
+  },
+  {
+   "pos": 42,
+   "name": "BEZUR",
+   "key": false,
+   "data_element": "BEZUR_D",
+   "domain": "UZEIT",
+   "type": "TIMS",
+   "length": 6,
+   "decimals": 0,
+   "description": "Notification Reference Time",
+   "check_table": null
+  },
+  {
+   "pos": 43,
+   "name": "LIFNUM",
+   "key": false,
+   "data_element": "LIFNUM",
+   "domain": "LIFNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Vendor Account Number",
+   "check_table": "LFA1"
+  },
+  {
+   "pos": 44,
+   "name": "BUNAME",
+   "key": false,
+   "data_element": "BUNAME",
+   "domain": "XUBNAME",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Author of a Q/PM Notification",
+   "check_table": "*"
+  },
+  {
+   "pos": 45,
+   "name": "VBELN",
+   "key": false,
+   "data_element": "KDAUF",
+   "domain": "VBELN",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Sales Order Number",
+   "check_table": "VBUK"
+  },
+  {
+   "pos": 46,
+   "name": "BSTNK",
+   "key": false,
+   "data_element": "BSTKD",
+   "domain": "BSTKD",
+   "type": "CHAR",
+   "length": 35,
+   "decimals": 0,
+   "description": "Customer purchase order number",
+   "check_table": null
+  },
+  {
+   "pos": 47,
+   "name": "BSTDK",
+   "key": false,
+   "data_element": "BSTDK",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Customer purchase order date",
+   "check_table": null
+  },
+  {
+   "pos": 48,
+   "name": "SPART",
+   "key": false,
+   "data_element": "SPART",
+   "domain": "SPART",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Division",
+   "check_table": "TSPA"
+  },
+  {
+   "pos": 49,
+   "name": "VKORG",
+   "key": false,
+   "data_element": "VKORG",
+   "domain": "VKORG",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Sales Organization",
+   "check_table": "TVKO"
+  },
+  {
+   "pos": 50,
+   "name": "VTWEG",
+   "key": false,
+   "data_element": "VTWEG",
+   "domain": "VTWEG",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Distribution Channel",
+   "check_table": "TVTW"
+  },
+  {
+   "pos": 51,
+   "name": "ADRNR",
+   "key": false,
+   "data_element": "CADNR",
+   "domain": "CADRNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Addresses: Address Number",
+   "check_table": "*"
+  },
+  {
+   "pos": 52,
+   "name": "AEZEIT",
+   "key": false,
+   "data_element": "AEZEIT",
+   "domain": "UHRZT",
+   "type": "TIMS",
+   "length": 6,
+   "decimals": 0,
+   "description": "Time of Change",
+   "check_table": null
+  },
+  {
+   "pos": 53,
+   "name": "ERZEIT",
+   "key": false,
+   "data_element": "ERZEIT",
+   "domain": "UHRZT",
+   "type": "TIMS",
+   "length": 6,
+   "decimals": 0,
+   "description": "Time, at Which Record Was Added",
+   "check_table": null
+  },
+  {
+   "pos": 54,
+   "name": "MAWERK",
+   "key": false,
+   "data_element": "QMAWERKS",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Plant for Material",
+   "check_table": "T001W"
+  },
+  {
+   "pos": 55,
+   "name": "QMKAT",
+   "key": false,
+   "data_element": "QMKAT",
+   "domain": "QKATART",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Catalog type - coding",
+   "check_table": "TQ15"
+  },
+  {
+   "pos": 56,
+   "name": "QMGRP",
+   "key": false,
+   "data_element": "QMGRP",
+   "domain": "QCODEGRP",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Code group - coding",
+   "check_table": "QPGR"
+  },
+  {
+   "pos": 57,
+   "name": "QMCOD",
+   "key": false,
+   "data_element": "QMCOD",
+   "domain": "QCODE",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Coding",
+   "check_table": "*"
+  },
+  {
+   "pos": 58,
+   "name": "AUSWIRK",
+   "key": false,
+   "data_element": "QSCENARIO",
+   "domain": "QSCENARIO",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Key for a Scenario",
+   "check_table": "TQ81"
+  },
+  {
+   "pos": 59,
+   "name": "TEILEV",
+   "key": false,
+   "data_element": "QTEILEV",
+   "domain": "QTEILEV",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Usage of Parts",
+   "check_table": "TQ81V"
+  },
+  {
+   "pos": 60,
+   "name": "PRUEFLOS",
+   "key": false,
+   "data_element": "QPLOS",
+   "domain": "QPLOS",
+   "type": "NUMC",
+   "length": 12,
+   "decimals": 0,
+   "description": "Inspection Lot Number",
+   "check_table": "QALS"
+  },
+  {
+   "pos": 61,
+   "name": "CHARG",
+   "key": false,
+   "data_element": "CHARG_D",
+   "domain": "CHARG",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Batch Number",
+   "check_table": "MCH1"
+  },
+  {
+   "pos": 62,
+   "name": "LGORTCHARG",
+   "key": false,
+   "data_element": "QLGORTCHAR",
+   "domain": "LGORT",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Storage Location of Batch",
+   "check_table": "T001L"
+  },
+  {
+   "pos": 63,
+   "name": "LICHN",
+   "key": false,
+   "data_element": "LICHN",
+   "domain": "LICHN",
+   "type": "CHAR",
+   "length": 15,
+   "decimals": 0,
+   "description": "Vendor Batch Number",
+   "check_table": null
+  },
+  {
+   "pos": 64,
+   "name": "HERSTELLER",
+   "key": false,
+   "data_element": "QLIFNR",
+   "domain": "LIFNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Number of Manufacturer",
+   "check_table": "LFA1"
+  },
+  {
+   "pos": 65,
+   "name": "EMATNR",
+   "key": false,
+   "data_element": "EMATN",
+   "domain": "MATNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Material number corresponding to manufacturer part number",
+   "check_table": "MARA"
+  },
+  {
+   "pos": 66,
+   "name": "EKORG",
+   "key": false,
+   "data_element": "EKORG",
+   "domain": "EKORG",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Purchasing organization",
+   "check_table": "T024E"
+  },
+  {
+   "pos": 67,
+   "name": "BKGRP",
+   "key": false,
+   "data_element": "BKGRP",
+   "domain": "EKGRP",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Purchasing Group",
+   "check_table": "T024"
+  },
+  {
+   "pos": 68,
+   "name": "LGORTVORG",
+   "key": false,
+   "data_element": "QLGORTVORG",
+   "domain": "LGORT",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Storage Location for Inspection Lot Stock",
+   "check_table": "T001L"
+  },
+  {
+   "pos": 69,
+   "name": "FERTAUFNR",
+   "key": false,
+   "data_element": "FERTAUFNR",
+   "domain": "AUFNR",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Order Number (Production Order)",
+   "check_table": "AUFK"
+  },
+  {
+   "pos": 70,
+   "name": "FERTAUFPL",
+   "key": false,
+   "data_element": "FERTAUFPL",
+   "domain": "AUFPL",
+   "type": "NUMC",
+   "length": 10,
+   "decimals": 0,
+   "description": "Plan Number for Operations in Order (Production Order)",
+   "check_table": null
+  },
+  {
+   "pos": 71,
+   "name": "EBELN",
+   "key": false,
+   "data_element": "EBELN",
+   "domain": "EBELN",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Purchasing Document Number",
+   "check_table": "EKKO"
+  },
+  {
+   "pos": 72,
+   "name": "EBELP",
+   "key": false,
+   "data_element": "QEBELP",
+   "domain": "EBELP",
+   "type": "NUMC",
+   "length": 5,
+   "decimals": 0,
+   "description": "Item Number of Purchasing Document",
+   "check_table": "EKPO"
+  },
+  {
+   "pos": 73,
+   "name": "MJAHR",
+   "key": false,
+   "data_element": "MJAHR",
+   "domain": "GJAHR",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Year of material document",
+   "check_table": null
+  },
+  {
+   "pos": 74,
+   "name": "MBLNR",
+   "key": false,
+   "data_element": "MBLNR",
+   "domain": "BELNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Number of Material Document",
+   "check_table": null
+  },
+  {
+   "pos": 75,
+   "name": "MBLPO",
+   "key": false,
+   "data_element": "QMBLPO",
+   "domain": "MBLPO",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Item in Material Document",
+   "check_table": null
+  },
+  {
+   "pos": 76,
+   "name": "LS_KDAUF",
+   "key": false,
+   "data_element": "KDAUF",
+   "domain": "VBELN",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Sales Order Number",
+   "check_table": "VBUK"
+  },
+  {
+   "pos": 77,
+   "name": "LS_KDPOS",
+   "key": false,
+   "data_element": "POSNR",
+   "domain": "POSNR",
+   "type": "NUMC",
+   "length": 6,
+   "decimals": 0,
+   "description": "Item number of the SD document",
+   "check_table": "VBUP"
+  },
+  {
+   "pos": 78,
+   "name": "LS_VBELN",
+   "key": false,
+   "data_element": "VBELN_VL",
+   "domain": "VBELN",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Delivery",
+   "check_table": "VBUK"
+  },
+  {
+   "pos": 79,
+   "name": "LS_POSNR",
+   "key": false,
+   "data_element": "QPOSNR_VL",
+   "domain": "POSNR",
+   "type": "NUMC",
+   "length": 6,
+   "decimals": 0,
+   "description": "Delivery Item",
+   "check_table": "VBUP"
+  },
+  {
+   "pos": 80,
+   "name": "CROBJTY",
+   "key": false,
+   "data_element": "CR_OBJTY",
+   "domain": "CR_OBJTY",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Object types of the CIM resource",
+   "check_table": null
+  },
+  {
+   "pos": 81,
+   "name": "ARBPL",
+   "key": false,
+   "data_element": "LGWID",
+   "domain": "CR_OBJID",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Object ID of the Work Center",
+   "check_table": "CRID"
+  },
+  {
+   "pos": 82,
+   "name": "ARBPLWERK",
+   "key": false,
+   "data_element": "QARBPWERKS",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Plant for Work Center",
+   "check_table": "T001W"
+  },
+  {
+   "pos": 83,
+   "name": "FEART",
+   "key": false,
+   "data_element": "QFEART",
+   "domain": "QFEART",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Report Type for Defects Recording",
+   "check_table": "TQ86"
+  },
+  {
+   "pos": 84,
+   "name": "PNLKN",
+   "key": false,
+   "data_element": "QLFNKN",
+   "domain": "KNTNR",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Current Node Number from Order Counter APLZL",
+   "check_table": null
+  },
+  {
+   "pos": 85,
+   "name": "MGEIG",
+   "key": false,
+   "data_element": "MGEIG",
+   "domain": "MENGE",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Defective Quantity (Internal)",
+   "check_table": null
+  },
+  {
+   "pos": 86,
+   "name": "MGFRD",
+   "key": false,
+   "data_element": "MGFRD",
+   "domain": "MENGE",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Defective Quantity (External)",
+   "check_table": null
+  },
+  {
+   "pos": 87,
+   "name": "MGEIN",
+   "key": false,
+   "data_element": "MGEIN",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit of Measure",
+   "check_table": "T006"
+  },
+  {
+   "pos": 88,
+   "name": "BZMNG",
+   "key": false,
+   "data_element": "QBZMNG",
+   "domain": "MENGE",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "General Reference Quantity",
+   "check_table": null
+  },
+  {
+   "pos": 89,
+   "name": "RKMNG",
+   "key": false,
+   "data_element": "RKMNG",
+   "domain": "MENGE",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Complaint Quantity",
+   "check_table": null
+  },
+  {
+   "pos": 90,
+   "name": "RGMNG",
+   "key": false,
+   "data_element": "RGMNG",
+   "domain": "MENGE",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Return Delivery Quantity",
+   "check_table": null
+  },
+  {
+   "pos": 91,
+   "name": "RKDAT",
+   "key": false,
+   "data_element": "RKDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date of Return Delivery",
+   "check_table": null
+  },
+  {
+   "pos": 92,
+   "name": "COAUFNR",
+   "key": false,
+   "data_element": "COAUFNR",
+   "domain": "AUFNR",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Order Number (QM Order)",
+   "check_table": "AUFK"
+  },
+  {
+   "pos": 93,
+   "name": "QWRNUM",
+   "key": false,
+   "data_element": "QWRNUM",
+   "domain": "QMNUM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Reference Notification Number",
+   "check_table": "QMEL"
+  },
+  {
+   "pos": 94,
+   "name": "REFNUM",
+   "key": false,
+   "data_element": "QMEXTNR",
+   "domain": "CHAR020",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "External Reference Number",
+   "check_table": null
+  },
+  {
+   "pos": 95,
+   "name": "KDMAT",
+   "key": false,
+   "data_element": "MATNR_KU",
+   "domain": "IDNEX",
+   "type": "CHAR",
+   "length": 35,
+   "decimals": 0,
+   "description": "Customer Material Number",
+   "check_table": null
+  },
+  {
+   "pos": 96,
+   "name": "IDNLF",
+   "key": false,
+   "data_element": "IDNLF",
+   "domain": "IDNEX",
+   "type": "CHAR",
+   "length": 35,
+   "decimals": 0,
+   "description": "Material Number Used by Vendor",
+   "check_table": null
+  },
+  {
+   "pos": 97,
+   "name": "SERIALNR",
+   "key": false,
+   "data_element": "GERNR",
+   "domain": "GERNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Serial Number",
+   "check_table": null
+  },
+  {
+   "pos": 98,
+   "name": "KZLOESCH",
+   "key": false,
+   "data_element": "KZLOESCH",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Delete Data Record",
+   "check_table": null
+  },
+  {
+   "pos": 99,
+   "name": "PRODDAT",
+   "key": false,
+   "data_element": "QPRODDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Production Date",
+   "check_table": null
+  },
+  {
+   "pos": 100,
+   "name": "DEVICEID",
+   "key": false,
+   "data_element": "DEVICEID",
+   "domain": "DEVICEID",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Additional Device Data",
+   "check_table": null
+  },
+  {
+   "pos": 101,
+   "name": "VKBUR",
+   "key": false,
+   "data_element": "VKBUR",
+   "domain": "VKBUR",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Sales office",
+   "check_table": "TVKBZ"
+  },
+  {
+   "pos": 102,
+   "name": "VKGRP",
+   "key": false,
+   "data_element": "VKGRP",
+   "domain": "VKGRP",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Sales group",
+   "check_table": "TVBVK"
+  },
+  {
+   "pos": 103,
+   "name": "AUTKZ",
+   "key": false,
+   "data_element": "QAUTKZ",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Data Record Created with Function 'Create with Copy Model'",
+   "check_table": null
+  },
+  {
+   "pos": 104,
+   "name": "BEDID",
+   "key": false,
+   "data_element": "BEDID",
+   "domain": "BEDID",
+   "type": "NUMC",
+   "length": 12,
+   "decimals": 0,
+   "description": "ID of the capacity requirements record",
+   "check_table": "*"
+  },
+  {
+   "pos": 105,
+   "name": "BEDZL",
+   "key": false,
+   "data_element": "CIM_COUNT",
+   "domain": "CIM_COUNT",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Internal counter",
+   "check_table": null
+  },
+  {
+   "pos": 106,
+   "name": "PROFIL_TYP",
+   "key": false,
+   "data_element": "OTYPE",
+   "domain": "OTYPE",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Object Type",
+   "check_table": "*"
+  },
+  {
+   "pos": 107,
+   "name": "PROFIL_ID",
+   "key": false,
+   "data_element": "OBJEKTID",
+   "domain": "NUM08",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Object ID",
+   "check_table": null
+  },
+  {
+   "pos": 108,
+   "name": "HANDLE",
+   "key": false,
+   "data_element": "TSEGGUID",
+   "domain": "SYSUUID_22",
+   "type": "CHAR",
+   "length": 22,
+   "decimals": 0,
+   "description": "Globally unique identifier (linked to time segment, etc)",
+   "check_table": null
+  },
+  {
+   "pos": 109,
+   "name": "TSEGFL",
+   "key": false,
+   "data_element": "TSEGEXISTS",
+   "domain": "FLAG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Time segment exists",
+   "check_table": null
+  },
+  {
+   "pos": 110,
+   "name": "TSEGTP",
+   "key": false,
+   "data_element": "TSEGTEMPLA",
+   "domain": "TSEGTEMPLA",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Template",
+   "check_table": "TTSEGTPLH"
+  },
+  {
+   "pos": 111,
+   "name": "TZONSO",
+   "key": false,
+   "data_element": "TZONSO",
+   "domain": "TZNZONE",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Time zone for notification",
+   "check_table": "TTZZ"
+  },
+  {
+   "pos": 112,
+   "name": "TZONID",
+   "key": false,
+   "data_element": "TZONSMID",
+   "domain": "TZONSMID",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Origin of Time Zone in Notification",
+   "check_table": null
+  },
+  {
+   "pos": 113,
+   "name": "FUNKTION",
+   "key": false,
+   "data_element": "QNFUNKTION",
+   "domain": "CHAR4",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Keys for Function in Action Box",
+   "check_table": null
+  },
+  {
+   "pos": 116,
+   "name": "/SAPSMOSS/INSTN",
+   "key": false,
+   "data_element": "/SAPSMOSS/R3INSTN",
+   "domain": "/SAPSMOSS/R3INSTN",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Installation number",
+   "check_table": "/SAPSMOSS/INSTN"
+  },
+  {
+   "pos": 117,
+   "name": "/SAPSMOSS/MNUMM",
+   "key": false,
+   "data_element": "/SAPSMOSS/MNUMM",
+   "domain": "/SAPSMOSS/MNUMM",
+   "type": "NUMC",
+   "length": 24,
+   "decimals": 0,
+   "description": "SAPNet notification number",
+   "check_table": null
+  },
+  {
+   "pos": 118,
+   "name": "/SAPSMOSS/OSSYS",
+   "key": false,
+   "data_element": "/SAPSMOSS/OSSYS",
+   "domain": "/SAPSMOSS/OSSYS",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Operating system and version",
+   "check_table": "/SAPSMOSS/OSYS"
+  },
+  {
+   "pos": 119,
+   "name": "/SAPSMOSS/DBSYS",
+   "key": false,
+   "data_element": "/SAPSMOSS/DBSYS",
+   "domain": "/SAPSMOSS/DBSYS",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Database system",
+   "check_table": "/SAPSMOSS/DBSY"
+  },
+  {
+   "pos": 120,
+   "name": "/SAPSMOSS/REL",
+   "key": false,
+   "data_element": "/SAPSMOSS/R3REL",
+   "domain": "/SAPSMOSS/R3REL",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "R/3 Release",
+   "check_table": "/SAPSMOSS/REL"
+  },
+  {
+   "pos": 121,
+   "name": "/SAPSMOSS/COMP",
+   "key": false,
+   "data_element": "/SAPSMOSS/R3COMP",
+   "domain": "/SAPSMOSS/R3COMP",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "Area",
+   "check_table": null
+  },
+  {
+   "pos": 122,
+   "name": "/SAPSMOSS/FRONT",
+   "key": false,
+   "data_element": "/SAPSMOSS/FRONTEND",
+   "domain": "/SAPSMOSS/FRONTEND",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Frontend",
+   "check_table": "/SAPSMOSS/FRNT"
+  },
+  {
+   "pos": 123,
+   "name": "/SAPSMOSS/SYSTYP",
+   "key": false,
+   "data_element": "/SAPSMOSS/R3SYSTYPE",
+   "domain": "/SAPSMOSS/R3SYSTYPE",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "R/3 System type",
+   "check_table": "/SAPSMOSS/SYST"
+  },
+  {
+   "pos": 124,
+   "name": "/SAPSMOSS/ADDID",
+   "key": false,
+   "data_element": "/SAPSMOSS/R3ADDID",
+   "domain": "/SAPSMOSS/R3ADDID",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Add-on ID",
+   "check_table": "/SAPSMOSS/ADDID"
+  },
+  {
+   "pos": 125,
+   "name": "/SAPSMOSS/ADDREL",
+   "key": false,
+   "data_element": "/SAPSMOSS/R3ADDREL",
+   "domain": "/SAPSMOSS/R3ADDREL",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Add-On Release",
+   "check_table": "/SAPSMOSS/ADDRL"
+  },
+  {
+   "pos": 126,
+   "name": "/SAPSMOSS/TSTMP",
+   "key": false,
+   "data_element": "/SAPSMOSS/NSTSTMP",
+   "domain": "TZNTIMESTP",
+   "type": "NUMC",
+   "length": 14,
+   "decimals": 0,
+   "description": "SAPNet time stamp",
+   "check_table": null
+  },
+  {
+   "pos": 127,
+   "name": "/SAPSMOSS/STATUS",
+   "key": false,
+   "data_element": "/SAPSMOSS/STATUS",
+   "domain": "/SAPSMOSS/STATUS",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Status of R/3 notification in SAPNet",
+   "check_table": "/SAPSMOSS/STAT"
+  },
+  {
+   "pos": 128,
+   "name": "/SAPSMOSS/ERDAT",
+   "key": false,
+   "data_element": "/SAPSMOSS/ERDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date on which notification was completed at SAP",
+   "check_table": null
+  },
+  {
+   "pos": 129,
+   "name": "/SAPSMOSS/ERZEIT",
+   "key": false,
+   "data_element": "/SAPSMOSS/ERZEIT",
+   "domain": "UHRZT",
+   "type": "TIMS",
+   "length": 6,
+   "decimals": 0,
+   "description": "Time when notification was completed at SAP",
+   "check_table": null
+  },
+  {
+   "pos": 130,
+   "name": "/SAPSMOSS/SYSID",
+   "key": false,
+   "data_element": "SYSYSID",
+   "domain": "SYCHAR08",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Name of SAP System",
+   "check_table": null
+  },
+  {
+   "pos": 131,
+   "name": "/SAPSMOSS/MANDT",
+   "key": false,
+   "data_element": "SYMANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client ID",
+   "check_table": "*"
+  },
+  {
+   "pos": 133,
+   "name": "PSP_NR",
+   "key": false,
+   "data_element": "PS_POSNR",
+   "domain": "PS_POSNR",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "WBS Element",
+   "check_table": "*"
+  },
+  {
+   "pos": 134,
+   "name": "ESTIMATED_COSTS",
+   "key": false,
+   "data_element": "PS_COSTS",
+   "domain": "WERTV7",
+   "type": "CURR",
+   "length": 13,
+   "decimals": 2,
+   "description": "Estimated Costs for a Claim",
+   "check_table": null
+  },
+  {
+   "pos": 135,
+   "name": "CLAIMED_COSTS",
+   "key": false,
+   "data_element": "COSTS_CLAIM",
+   "domain": "WERTV7",
+   "type": "CURR",
+   "length": 13,
+   "decimals": 2,
+   "description": "Costs Claimed",
+   "check_table": null
+  },
+  {
+   "pos": 136,
+   "name": "RESULT_COSTS",
+   "key": false,
+   "data_element": "COSTS_RESULT",
+   "domain": "WERTV7",
+   "type": "CURR",
+   "length": 13,
+   "decimals": 2,
+   "description": "Costs Accepted",
+   "check_table": null
+  },
+  {
+   "pos": 137,
+   "name": "CHANCE",
+   "key": false,
+   "data_element": "PS_CHANCE",
+   "domain": "PS_CHANCE",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Chance of Completing a Claim",
+   "check_table": null
+  },
+  {
+   "pos": 138,
+   "name": "OPPONENT",
+   "key": false,
+   "data_element": "PS_OPPONENT",
+   "domain": "OPPONENT",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Partner Type",
+   "check_table": null
+  },
+  {
+   "pos": 139,
+   "name": "KALNR",
+   "key": false,
+   "data_element": "CK_KALNR",
+   "domain": "CK_KALNR",
+   "type": "NUMC",
+   "length": 12,
+   "decimals": 0,
+   "description": "Cost Estimate Number for Cost Est. w/o Qty Structure",
+   "check_table": "*"
+  },
+  {
+   "pos": 140,
+   "name": "KALVAR",
+   "key": false,
+   "data_element": "CK_KALVAR",
+   "domain": "KLVAR",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Costing Variant for Postprocessing with Unit Costing",
+   "check_table": "*"
+  },
+  {
+   "pos": 141,
+   "name": "OBJNR_REAL",
+   "key": false,
+   "data_element": "J_OBJNR_REAL",
+   "domain": "J_OBJNR",
+   "type": "CHAR",
+   "length": 22,
+   "decimals": 0,
+   "description": "Object number of real CO account assignment",
+   "check_table": "ONR00"
+  },
+  {
+   "pos": 142,
+   "name": "OBJNR_STAT",
+   "key": false,
+   "data_element": "OBJNR_N1",
+   "domain": "J_OBJNR",
+   "type": "CHAR",
+   "length": 22,
+   "decimals": 0,
+   "description": "Auxiliary account assignment 1",
+   "check_table": "ONR00"
+  },
+  {
+   "pos": 143,
+   "name": "PHASE",
+   "key": false,
+   "data_element": "QM_PHASE",
+   "domain": "QM_PHASE",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Notification Processing Phase",
+   "check_table": null
+  },
+  {
+   "pos": 145,
+   "name": "/ISDFPS/OBJNR",
+   "key": false,
+   "data_element": "J_OBJNR",
+   "domain": "J_OBJNR",
+   "type": "CHAR",
+   "length": 22,
+   "decimals": 0,
+   "description": "Object number",
+   "check_table": "*"
+  },
+  {
+   "pos": 146,
+   "name": "LOGSYSTEM",
+   "key": false,
+   "data_element": "LOGSYSTEM",
+   "domain": "LOGSYS",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Logical System",
+   "check_table": "*"
+  },
+  {
+   "pos": 147,
+   "name": "/ISDFPS/MEQUI",
+   "key": false,
+   "data_element": "/ISDFPS/MEQUI",
+   "domain": "EQUNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Master Equipment",
+   "check_table": "*"
+  },
+  {
+   "pos": 149,
+   "name": "SHN_OBJTY",
+   "key": false,
+   "data_element": "CR_OBJTY",
+   "domain": "CR_OBJTY",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Object types of the CIM resource",
+   "check_table": null
+  },
+  {
+   "pos": 150,
+   "name": "SHN_OBJID",
+   "key": false,
+   "data_element": "CR_OBJID",
+   "domain": "CR_OBJID",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Object ID of the resource",
+   "check_table": "*"
+  },
+  {
+   "pos": 151,
+   "name": "SHN_FUNCT_LOC",
+   "key": false,
+   "data_element": "TPLNR",
+   "domain": "TPLNR",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Functional Location",
+   "check_table": "*"
+  },
+  {
+   "pos": 152,
+   "name": "SHN_EQUIPMENT",
+   "key": false,
+   "data_element": "EQUNR",
+   "domain": "EQUNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Equipment Number",
+   "check_table": "*"
+  },
+  {
+   "pos": 153,
+   "name": "SHN_ORIGIN",
+   "key": false,
+   "data_element": "COCF_SRN_ORIGIN",
+   "domain": "COCF_SRN_ORIGIN",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Origin or Use of Shift Note or Report",
+   "check_table": null
+  },
+  {
+   "pos": 155,
+   "name": "UII",
+   "key": false,
+   "data_element": "UII_CHAR72",
+   "domain": "UII_CHAR72",
+   "type": "CHAR",
+   "length": 72,
+   "decimals": 0,
+   "description": "Unique Item Identifier",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "/SAPSMOSS/ADDID",
+   "foreign_table": "/SAPSMOSS/ADDID",
+   "foreign_field": "R3ADDID"
+  },
+  {
+   "field": "/SAPSMOSS/ADDREL",
+   "foreign_table": "/SAPSMOSS/ADDRL",
+   "foreign_field": "R3ADDREL"
+  },
+  {
+   "field": "/SAPSMOSS/DBSYS",
+   "foreign_table": "/SAPSMOSS/DBSY",
+   "foreign_field": "DBSYS"
+  },
+  {
+   "field": "/SAPSMOSS/FRONT",
+   "foreign_table": "/SAPSMOSS/FRNT",
+   "foreign_field": "FRONTEND"
+  },
+  {
+   "field": "/SAPSMOSS/INSTN",
+   "foreign_table": "/SAPSMOSS/INSTN",
+   "foreign_field": "R3INSTN"
+  },
+  {
+   "field": "/SAPSMOSS/OSSYS",
+   "foreign_table": "/SAPSMOSS/OSYS",
+   "foreign_field": "OSSYS"
+  },
+  {
+   "field": "/SAPSMOSS/REL",
+   "foreign_table": "/SAPSMOSS/REL",
+   "foreign_field": "R3REL"
+  },
+  {
+   "field": "/SAPSMOSS/STATUS",
+   "foreign_table": "/SAPSMOSS/STAT",
+   "foreign_field": "STATUS"
+  },
+  {
+   "field": "/SAPSMOSS/SYSTYP",
+   "foreign_table": "/SAPSMOSS/SYST",
+   "foreign_field": "R3SYSTYPE"
+  },
+  {
+   "field": "ARBPL",
+   "foreign_table": "CRID",
+   "foreign_field": "OBJID"
+  },
+  {
+   "field": "ARBPLWERK",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  },
+  {
+   "field": "ARTPR",
+   "foreign_table": "T356A",
+   "foreign_field": "ARTPR"
+  },
+  {
+   "field": "AUFNR",
+   "foreign_table": "AUFK",
+   "foreign_field": "AUFNR"
+  },
+  {
+   "field": "AUSWIRK",
+   "foreign_table": "TQ81",
+   "foreign_field": "AUSWIRK"
+  },
+  {
+   "field": "BKGRP",
+   "foreign_table": "T024",
+   "foreign_field": "EKGRP"
+  },
+  {
+   "field": "CHARG",
+   "foreign_table": "MCH1",
+   "foreign_field": "CHARG"
+  },
+  {
+   "field": "COAUFNR",
+   "foreign_table": "AUFK",
+   "foreign_field": "AUFNR"
+  },
+  {
+   "field": "EBELN",
+   "foreign_table": "EKKO",
+   "foreign_field": "EBELN"
+  },
+  {
+   "field": "EBELP",
+   "foreign_table": "EKPO",
+   "foreign_field": "EBELP"
+  },
+  {
+   "field": "EKORG",
+   "foreign_table": "T024E",
+   "foreign_field": "EKORG"
+  },
+  {
+   "field": "EMATNR",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "FEART",
+   "foreign_table": "TQ86",
+   "foreign_field": "FEART"
+  },
+  {
+   "field": "FERTAUFNR",
+   "foreign_table": "AUFK",
+   "foreign_field": "AUFNR"
+  },
+  {
+   "field": "HERSTELLER",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "KUNUM",
+   "foreign_table": "KNA1",
+   "foreign_field": "KUNNR"
+  },
+  {
+   "field": "LGORTCHARG",
+   "foreign_table": "T001L",
+   "foreign_field": "LGORT"
+  },
+  {
+   "field": "LGORTVORG",
+   "foreign_table": "T001L",
+   "foreign_field": "LGORT"
+  },
+  {
+   "field": "LIFNUM",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "LS_KDAUF",
+   "foreign_table": "VBUK",
+   "foreign_field": "VBELN"
+  },
+  {
+   "field": "LS_KDPOS",
+   "foreign_table": "VBUP",
+   "foreign_field": "POSNR"
+  },
+  {
+   "field": "LS_POSNR",
+   "foreign_table": "VBUP",
+   "foreign_field": "POSNR"
+  },
+  {
+   "field": "LS_VBELN",
+   "foreign_table": "VBUK",
+   "foreign_field": "VBELN"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MATKL",
+   "foreign_table": "T023",
+   "foreign_field": "MATKL"
+  },
+  {
+   "field": "MATNR",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "MAWERK",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  },
+  {
+   "field": "MGEIN",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "OBJNR",
+   "foreign_table": "ONR00",
+   "foreign_field": "OBJNR"
+  },
+  {
+   "field": "OBJNR_REAL",
+   "foreign_table": "ONR00",
+   "foreign_field": "OBJNR"
+  },
+  {
+   "field": "OBJNR_STAT",
+   "foreign_table": "ONR00",
+   "foreign_field": "OBJNR"
+  },
+  {
+   "field": "PRDHA",
+   "foreign_table": "T179",
+   "foreign_field": "PRODH"
+  },
+  {
+   "field": "PRIOK",
+   "foreign_table": "T356",
+   "foreign_field": "PRIOK"
+  },
+  {
+   "field": "PRUEFLOS",
+   "foreign_table": "QALS",
+   "foreign_field": "PRUEFLOS"
+  },
+  {
+   "field": "QMART",
+   "foreign_table": "TQ80",
+   "foreign_field": "QMART"
+  },
+  {
+   "field": "QMGRP",
+   "foreign_table": "QPGR",
+   "foreign_field": "CODEGRUPPE"
+  },
+  {
+   "field": "QMKAT",
+   "foreign_table": "TQ15",
+   "foreign_field": "KATALOGART"
+  },
+  {
+   "field": "QWRNUM",
+   "foreign_table": "QMEL",
+   "foreign_field": "QMNUM"
+  },
+  {
+   "field": "RBNR",
+   "foreign_table": "T352B",
+   "foreign_field": "RBNR"
+  },
+  {
+   "field": "RM_MATNR",
+   "foreign_table": "MKAL",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "RM_WERKS",
+   "foreign_table": "MKAL",
+   "foreign_field": "WERKS"
+  },
+  {
+   "field": "SA_AUFNR",
+   "foreign_table": "SAFK",
+   "foreign_field": "AUFNR"
+  },
+  {
+   "field": "SPART",
+   "foreign_table": "TSPA",
+   "foreign_field": "SPART"
+  },
+  {
+   "field": "TEILEV",
+   "foreign_table": "TQ81V",
+   "foreign_field": "TEILEV"
+  },
+  {
+   "field": "TSEGTP",
+   "foreign_table": "TTSEGTPLH",
+   "foreign_field": "TEPL"
+  },
+  {
+   "field": "TZONSO",
+   "foreign_table": "TTZZ",
+   "foreign_field": "TZONE"
+  },
+  {
+   "field": "VBELN",
+   "foreign_table": "VBUK",
+   "foreign_field": "VBELN"
+  },
+  {
+   "field": "VERID",
+   "foreign_table": "MKAL",
+   "foreign_field": "VERID"
+  },
+  {
+   "field": "VKBUR",
+   "foreign_table": "TVKBZ",
+   "foreign_field": "VKBUR"
+  },
+  {
+   "field": "VKGRP",
+   "foreign_table": "TVBVK",
+   "foreign_field": "VKGRP"
+  },
+  {
+   "field": "VKORG",
+   "foreign_table": "TVKO",
+   "foreign_field": "VKORG"
+  },
+  {
+   "field": "VTWEG",
+   "foreign_table": "TVTW",
+   "foreign_field": "VTWEG"
+  },
+  {
+   "field": "WAERS",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  }
+ ]
+}

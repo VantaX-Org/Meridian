@@ -1,0 +1,22 @@
+{
+ "domain": "SIGN_TYPE_SINGLE",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "Signature Strategy - Signatory Cannot Be Changed"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Signature Strategy - Signatory Can Be Changed"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

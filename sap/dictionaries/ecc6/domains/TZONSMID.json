@@ -1,0 +1,42 @@
+{
+ "domain": "TZONSMID",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Time Zone for User (SY-ZONLO)"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Equipment"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Functional Location"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Plant"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Customer"
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "Vendor"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

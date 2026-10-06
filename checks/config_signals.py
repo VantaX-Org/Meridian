@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 _ECC_MODULES = frozenset({
     "business_partner", "material_master", "fi_gl", "accounts_payable",
     "accounts_receivable", "asset_accounting", "hcm", "mm_purchasing",
-    "plant_maintenance", "production_planning", "project_system", "sd_customer_master",
+    "plant_maintenance", "production_planning", "project_system", "quality_management", "sd_customer_master",
     "sd_sales_orders", "controlling",
 })
 
