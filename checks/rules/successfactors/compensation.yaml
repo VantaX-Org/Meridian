@@ -318,6 +318,7 @@ rules:
     fix_map:
       __blank__: Review duplicate compensation records in Admin Center > Compensation Import. Archive or end-date the incorrect
         record.
+    record_fix_template: "Employee {COMPINFO.USERID}: duplicate compensation record for the same effective date and pay type. Correct or delete the extra record in Admin Center."
 
 
   - id: COMP018

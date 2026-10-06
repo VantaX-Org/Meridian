@@ -191,6 +191,7 @@ anchors:
   mm_purchasing: EKKO
   fi_gl: SKA1
   asset_accounting: ANLA
+  controlling: CSKS
   plant_maintenance: EQUI
   fleet_management: EQUI
   production_planning: MAST

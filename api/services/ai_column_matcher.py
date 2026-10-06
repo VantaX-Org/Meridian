@@ -25,6 +25,7 @@ MODULE_LABELS: dict[str, str] = {
     "accounts_payable": "Accounts Payable",
     "accounts_receivable": "Accounts Receivable",
     "asset_accounting": "Asset Accounting",
+    "controlling": "Controlling",
     "mm_purchasing": "MM Purchasing",
     "plant_maintenance": "Plant Maintenance",
     "production_planning": "Production Planning",
