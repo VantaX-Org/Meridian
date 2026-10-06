@@ -2275,7 +2275,7 @@ rules:
   sap_impact: Address data for the object cannot be shown.
   fix_map:
     __other__: Correct or clear the address (IE02/IL02).
-  record_fix_template: 'Location record {ILOA.ILOAN}: address {ILOA.ADRNR} does not exist.'
+  record_fix_template: 'Location record {ILOA.ILOAN}: address ILOA.ADRNR does not exist.'
   target_table: ADRC
   target_fields:
   - ADDRNUMBER

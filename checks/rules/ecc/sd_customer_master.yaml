@@ -75,7 +75,7 @@ rules:
         Address tab or XD02 > Address tab. In S/4HANA: use Fiori app F3893
         (Manage Business Partner).
     record_fix_template: >-
-      Customer {KNA1.KUNNR}: NAME1 is {actual_value}. Set the customer name
+      Customer {KNA1.KUNNR}: KNA1.NAME1 is missing or invalid. Set the customer name
       via VD02 / Fiori app F3893.
 
 
@@ -119,7 +119,7 @@ rules:
     fix_map:
       __blank__: 'In ECC: obtain the customer''s VAT number or tax ID and set via T-code VD02 > General Data > Control tab or
         XD02. In S/4HANA: use Fiori app F3893 > Tax Numbers section.'
-    record_fix_template: 'Customer {KNA1.KUNNR}: STCD1 is {actual_value}. Set the tax number via VD02 / Fiori app F3893.'
+    record_fix_template: 'Customer {KNA1.KUNNR}: KNA1.STCD1 is missing or invalid. Set the tax number via VD02 / Fiori app F3893.'
     fail_when: '`KNA1.STCD1`.isna() & `KNA1.STCEG`.isna()'
     applies_when:
       KNA1.STKZN:
@@ -147,7 +147,7 @@ rules:
         T-code VD02 > Address tab > Communication. In S/4HANA: use Fiori
         app F3893 > Address section.
     record_fix_template: >-
-      Customer {KNA1.KUNNR}: SMTP_ADDR is {actual_value}. Set the email
+      Customer {KNA1.KUNNR}: ADR6.SMTP_ADDR is missing or invalid. Set the email
       address via VD02 / Fiori app F3893.
 
   - id: SDCM008
@@ -1007,7 +1007,7 @@ rules:
       (TXJCD) cannot be determined.
     fix_map:
       __other__: Complete the address (XD02 > Address).
-    record_fix_template: 'Customer {KNA1.KUNNR}: address incomplete (city "{KNA1.ORT01}", street "{KNA1.STRAS}", PO box "{KNA1.PFACH}").'
+    record_fix_template: 'Customer {KNA1.KUNNR}: address incomplete (city KNA1.ORT01, street KNA1.STRAS, PO box KNA1.PFACH).'
   - id: SDCM200
     field: KNVP.KUNNR
     check_class: exists_check

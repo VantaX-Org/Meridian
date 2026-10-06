@@ -33,7 +33,8 @@ def test_pack_loads_with_unique_contiguous_ids():
     ids = [r["id"] for r in PACK]
     assert len(ids) == len(set(ids))
     new = sorted(int(r["id"][2:]) for r in NEW)
-    assert new == list(range(317, 317 + len(new)))
+    # MM521 retired: duplicate of MM157 (same stock-type check)
+    assert new == [n for n in range(317, 317 + len(new) + 1) if n != 521]
     assert len(new) >= 240
 
 

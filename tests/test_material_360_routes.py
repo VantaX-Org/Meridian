@@ -54,7 +54,7 @@ def test_endpoints(monkeypatch):
     assert _get(app, "/api/v1/materials/102/supersession").json()["plants"][0]["loop_at"] == B
     assert _get(app, "/api/v1/materials/101/duplicates").json()["threshold"] == 60
     f = _get(app, "/api/v1/materials/101/findings").json()
-    assert f["rules_total"] == 418
+    assert f["rules_total"] == 417
     assert _get(app, "/api/v1/materials/999").status_code == 404
     assert _get(app, "/api/v1/materials/101?plant=1000").json()["levels_total"] < 99
 

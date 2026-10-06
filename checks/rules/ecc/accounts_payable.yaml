@@ -52,7 +52,7 @@ rules:
   fix_map:
     __blank__: 'In ECC: obtain the legal entity name from the vendor''s business registration or existing contracts and set
       via T-code FK02 > Address tab. In S/4HANA: use Fiori app F3893 (Manage Business Partner).'
-  record_fix_template: 'Vendor {LFA1.LIFNR}: NAME1 is {actual_value}. Set the vendor name via FK02 / Fiori app F3893.'
+  record_fix_template: 'Vendor {LFA1.LIFNR}: LFA1.NAME1 is missing or invalid. Set the vendor name via FK02 / Fiori app F3893.'
 - id: AP005
   field: LFA1.LAND1
   check_class: null_check
@@ -100,7 +100,7 @@ rules:
   fix_map:
     __blank__: 'In ECC: obtain the vendor''s VAT registration number or tax ID and set via T-code FK02 > General Data > Control
       tab. In S/4HANA: use Fiori app F3893 (Manage Business Partner) > Tax Numbers section.'
-  record_fix_template: 'Vendor {LFA1.LIFNR}: STCD1 is {actual_value}. Set the tax number via FK02 / Fiori app F3893.'
+  record_fix_template: 'Vendor {LFA1.LIFNR}: LFA1.STCD1 is missing or invalid. Set the tax number via FK02 / Fiori app F3893.'
   fail_when: '`LFA1.STCD1`.isna() & `LFA1.STCEG`.isna()'
 - id: AP009
   field: ADR6.SMTP_ADDR
@@ -116,7 +116,7 @@ rules:
   fix_map:
     __blank__: 'In ECC: obtain email from the vendor or accounts payable team and add via T-code FK02 > Address tab > Communication.
       In S/4HANA: use Fiori app F3893 (Manage Business Partner) > Address section.'
-  record_fix_template: 'Vendor {LFA1.LIFNR}: SMTP_ADDR is {actual_value}. Set the email address via FK02 / Fiori app F3893.'
+  record_fix_template: 'Vendor {LFA1.LIFNR}: ADR6.SMTP_ADDR is missing or invalid. Set the email address via FK02 / Fiori app F3893.'
 - id: AP010
   field: LFA1.KTOKK
   check_class: null_check
@@ -302,7 +302,7 @@ rules:
   fix_map:
     __blank__: 'In ECC: set the bank key via T-code FK02 > General Data > Payment Transactions > Bank Details. In S/4HANA:
       use Fiori app F3893.'
-  record_fix_template: 'Vendor {LFA1.LIFNR}: BANKL is {actual_value}. Set the bank key via FK02 / Fiori app F3893.'
+  record_fix_template: 'Vendor {LFA1.LIFNR}: LFBK.BANKL is missing or invalid. Set the bank key via FK02 / Fiori app F3893.'
   applies_when:
     LFB1.ZWELS:
       contains_any:
@@ -323,7 +323,7 @@ rules:
   fix_map:
     __blank__: 'In ECC: set the telephone number via T-code FK02 > Address tab > Communication. In S/4HANA: use Fiori app
       F3893 > Address section.'
-  record_fix_template: 'Vendor {LFA1.LIFNR}: TELF1 is {actual_value}. Set the telephone number via FK02 / Fiori app F3893.'
+  record_fix_template: 'Vendor {LFA1.LIFNR}: LFA1.TELF1 is missing or invalid. Set the telephone number via FK02 / Fiori app F3893.'
 - id: AP023
   field: LFA1.ERDAT
   check_class: null_check
@@ -478,7 +478,7 @@ rules:
     - SE
     - SI
     - SK
-  record_fix_template: "Vendor {LFA1.LIFNR}: VAT registration number '{actual_value}' is not valid. Start with the 2-letter country code (e.g. ZA, DE) and correct it in XK02 > Control data."
+  record_fix_template: "Vendor {LFA1.LIFNR}: VAT registration number LFA1.STCEG is not valid. Start with the 2-letter country code (e.g. ZA, DE) and correct it in XK02 > Control data."
 
 - id: AP035
   field: LFA1.KTOKK
@@ -609,7 +609,7 @@ rules:
   fix_map:
     __other__: Merge the duplicate vendors (block and flag the redundant account for deletion, move open items), or correct
       the VAT number.
-  record_fix_template: Record {LFA1.STCEG} shares LFA1.STCEG with another record.
+  record_fix_template: Record shares LFA1.STCEG with another record.
   grain: LFB1
   applies_when:
     LFB1.LNRZE:
@@ -629,7 +629,7 @@ rules:
   sap_impact: Duplicate vendor masters; tax reporting split across accounts.
   fix_map:
     __other__: Merge the duplicate vendors or correct the tax number.
-  record_fix_template: Record {LFA1.STCD1} shares LFA1.STCD1 with another record.
+  record_fix_template: Record shares LFA1.STCD1 with another record.
   grain: LFB1
   applies_when:
     LFB1.LNRZE:
@@ -1558,7 +1558,7 @@ rules:
   sap_impact: F110 can pay the stored account for any one-time invoice that lacks document bank data.
   fix_map:
     __other__: Delete the bank rows in XK02 > Payment transactions; enter bank data per document (BSEC) only.
-  record_fix_template: 'One-time vendor {LFA1.LIFNR} has stored bank account {LFBK.BANKN} (bank key {LFBK.BANKL}).'
+  record_fix_template: 'One-time vendor {LFA1.LIFNR} has stored bank account LFBK.BANKN (bank key LFBK.BANKL).'
 
 - id: AP096
   field: ADR6.SMTP_ADDR
@@ -1579,7 +1579,7 @@ rules:
   sap_impact: Duplicate payments across the two records; payment-advice e-mails can reach the wrong party.
   fix_map:
     __other__: Compare the vendors in XK03 (S/4 F3163); block and merge the duplicate, or correct the address.
-  record_fix_template: 'Vendor {LFA1.LIFNR}: e-mail {ADR6.SMTP_ADDR} is also used by another vendor.'
+  record_fix_template: 'Vendor {LFA1.LIFNR}: e-mail ADR6.SMTP_ADDR is also used by another vendor.'
 
 - id: AP092
   field: BSIK.BELNR
@@ -1699,7 +1699,7 @@ rules:
   sap_impact: The payment run excludes the vendor or the bank rejects the transfer; the vendor is paid late.
   fix_map:
     __other__: Create or reactivate the bank in FI01/FI02, or correct the vendor bank key (XK02 > Payment transactions).
-  record_fix_template: 'Vendor {LFBK.LIFNR}: bank {LFBK.BANKS}/{LFBK.BANKL} is missing from the bank directory or deleted.'
+  record_fix_template: 'Vendor {LFBK.LIFNR}: bank {LFBK.BANKS}/LFBK.BANKL is missing from the bank directory or deleted.'
 - id: AP201
   field: LFBK.KOINH
   check_class: null_check
@@ -1712,7 +1712,7 @@ rules:
   sap_impact: Payments are returned or delayed by name-matching checks at the bank; fraud screening has no holder to compare.
   fix_map:
     __blank__: Maintain the account holder in XK02 > Payment transactions > Bank details.
-  record_fix_template: 'Vendor {LFBK.LIFNR}: bank account {LFBK.BANKS}/{LFBK.BANKL} has no account holder.'
+  record_fix_template: 'Vendor {LFBK.LIFNR}: bank account {LFBK.BANKS}/LFBK.BANKL has no account holder.'
 - id: AP202
   field: LFBK.KOBIS
   check_class: freshness_check
@@ -1726,7 +1726,7 @@ rules:
   sap_impact: The payment run finds no valid bank for the vendor and leaves the items unpaid.
   fix_map:
     __other__: Delete the expired bank details or maintain the replacement account (XK02 > Payment transactions).
-  record_fix_template: 'Vendor {LFBK.LIFNR}: bank details {LFBK.BANKS}/{LFBK.BANKL} expired {age_days} days ago.'
+  record_fix_template: 'Vendor {LFBK.LIFNR}: bank details {LFBK.BANKS}/LFBK.BANKL expired {age_days} days ago.'
 - id: AP203
   field: BSIK.ZFBDT
   check_class: freshness_check
@@ -2211,7 +2211,7 @@ rules:
   fix_map:
     __other__: Re-save the vendor address in XK02 so that the address is written to ADRC, or repair the address with report
       RSADRCK1/RSADRCK2.
-  record_fix_template: 'Vendor {LFA1.LIFNR}: address number {LFA1.ADRNR} has no ADRC record.'
+  record_fix_template: 'Vendor {LFA1.LIFNR}: address number LFA1.ADRNR has no ADRC record.'
 - id: AP226
   field: LFA1.LAND1
   check_class: cross_field_check
@@ -2232,7 +2232,7 @@ rules:
     the S/4HANA Business Partner takes the ADRC version.
   fix_map:
     __other__: Check the correct address with the supplier and re-save it in XK02 so both tables are aligned.
-  record_fix_template: 'Vendor {LFA1.LIFNR}: country, city or postal code in LFA1 differs from address {LFA1.ADRNR} in ADRC.'
+  record_fix_template: 'Vendor {LFA1.LIFNR}: country, city or postal code in LFA1 differs from address LFA1.ADRNR in ADRC.'
 - id: AP227
   field: LFA1.STCEG
   check_class: cross_field_check

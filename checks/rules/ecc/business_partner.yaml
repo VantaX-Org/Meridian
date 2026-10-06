@@ -108,7 +108,7 @@ rules:
   sap_impact: Person BPs without a first name produce incomplete correspondence. Contact person functions in SD/MM are degraded.
   fix_map:
     __blank__: 'In ECC: set via transaction BP > Address tab. In S/4HANA: use Fiori F3893.'
-  record_fix_template: 'Partner {BUT000.PARTNER}: NAME_FIRST is {actual_value}. Set the first name via BP (ECC) or Fiori F3893
+  record_fix_template: 'Partner {BUT000.PARTNER}: BUT000.NAME_FIRST is missing or invalid. Set the first name via BP (ECC) or Fiori F3893
     (S/4HANA).'
   applies_when:
     BUT000.TYPE:
@@ -126,7 +126,7 @@ rules:
     produce incomplete output.
   fix_map:
     __blank__: 'In ECC: set via transaction BP > Address tab. In S/4HANA: use Fiori F3893.'
-  record_fix_template: 'Partner {BUT000.PARTNER}: NAME_LAST is {actual_value}. Set the last name via BP (ECC) or Fiori F3893
+  record_fix_template: 'Partner {BUT000.PARTNER}: BUT000.NAME_LAST is missing or invalid. Set the last name via BP (ECC) or Fiori F3893
     (S/4HANA).'
   applies_when:
     BUT000.TYPE:
@@ -273,7 +273,7 @@ rules:
   fix_map:
     __blank__: 'In ECC: add via transaction BP > Address tab > Communication > Email. In S/4HANA: use Fiori F3893. Obtain
       from business owner or CRM system.'
-  record_fix_template: 'Partner {BUT000.PARTNER}: SMTP_ADDR is {actual_value}. Add email address via BP (ECC) or Fiori F3893
+  record_fix_template: 'Partner {BUT000.PARTNER}: ADR6.SMTP_ADDR is missing or invalid. Add email address via BP (ECC) or Fiori F3893
     (S/4HANA).'
   grain: BUT000
 - id: BP018
@@ -290,9 +290,9 @@ rules:
   sap_impact: Correspondence via SAPconnect fails. Dunning letters (F150) and order confirmations (VA02) sent by email are
     not delivered.
   fix_map:
-    __other__: 'Email ''{invalid_value}'' is invalid. Check for missing @, spaces, or invalid domain. In ECC: correct via
+    __other__: 'Email address ADR6.SMTP_ADDR is invalid. Check for missing @, spaces, or invalid domain. In ECC: correct via
       BP > Address > Communication > Email. In S/4HANA: use Fiori F3893.'
-  record_fix_template: 'Partner {BUT000.PARTNER}: email ''{actual_value}'' is invalid. Correct the format via BP (ECC) or
+  record_fix_template: 'Partner {BUT000.PARTNER}: email address ADR6.SMTP_ADDR is invalid. Correct the format via BP (ECC) or
     Fiori F3893 (S/4HANA).'
   grain: BUT000
 - id: BP019
@@ -327,7 +327,7 @@ rules:
   fix_map:
     __blank__: 'In ECC: set via transaction BP > Address tab. In S/4HANA: use Fiori F3893. Obtain from business address records
       or postal database.'
-  record_fix_template: 'Partner {BUT000.PARTNER}: CITY1 is {actual_value}. Set the city name via BP (ECC) or Fiori F3893 (S/4HANA).'
+  record_fix_template: 'Partner {BUT000.PARTNER}: ADRC.CITY1 is missing or invalid. Set the city name via BP (ECC) or Fiori F3893 (S/4HANA).'
   grain: BUT000
 - id: BP021
   field: ADRC.POST_CODE1
@@ -412,7 +412,7 @@ rules:
   sap_impact: Deliveries may fail due to incomplete address. Printed correspondence and shipping labels lack street information.
   fix_map:
     __blank__: 'In ECC: set via transaction BP > Address tab. In S/4HANA: use Fiori F3893.'
-  record_fix_template: 'Partner {BUT000.PARTNER}: STREET is {actual_value}. Set the street address via BP (ECC) or Fiori F3893
+  record_fix_template: 'Partner {BUT000.PARTNER}: ADRC.STREET is missing or invalid. Set the street address via BP (ECC) or Fiori F3893
     (S/4HANA).'
   grain: BUT000
 - id: BP023
@@ -694,7 +694,7 @@ rules:
   fix_map:
     __other__: Clear the organisation name, or — if the partner really is an organisation — create it with category 2 and
       move the roles (the category cannot be changed).
-  record_fix_template: BP {BUT000.PARTNER} is a person but carries organisation name '{BUT000.NAME_ORG1}'.
+  record_fix_template: BP {BUT000.PARTNER} is a person but carries organisation name BUT000.NAME_ORG1.
 - id: BP046
   field: BUT000.NAME_LAST
   check_class: cross_field_check
@@ -713,7 +713,7 @@ rules:
   fix_map:
     __other__: Clear the person name fields, or — if the partner really is a person — create it with category 1 and move
       the roles (the category cannot be changed).
-  record_fix_template: BP {BUT000.PARTNER} is an organisation but carries last name '{BUT000.NAME_LAST}'.
+  record_fix_template: BP {BUT000.PARTNER} is an organisation but carries last name BUT000.NAME_LAST.
 - id: BP047
   field: BUT000.XSEXM
   check_class: cross_field_check
@@ -748,7 +748,7 @@ rules:
   sap_impact: Screening and retention periods are computed from a wrong date.
   fix_map:
     __other__: Correct the date of birth or date of death in transaction BP > Person.
-  record_fix_template: 'BP {BUT000.PARTNER}: born {BUT000.BIRTHDT}, died {BUT000.DEATHDT}.'
+  record_fix_template: 'BP {BUT000.PARTNER}: born BUT000.BIRTHDT, died BUT000.DEATHDT.'
 - id: BP049
   field: BUT000.FOUND_DAT
   check_class: cross_field_check
@@ -763,7 +763,7 @@ rules:
   sap_impact: Credit and risk evaluations work with an impossible company history.
   fix_map:
     __other__: Correct the founding or liquidation date in transaction BP > Organisation.
-  record_fix_template: 'BP {BUT000.PARTNER}: founded {BUT000.FOUND_DAT}, liquidated {BUT000.LIQUID_DAT}.'
+  record_fix_template: 'BP {BUT000.PARTNER}: founded BUT000.FOUND_DAT, liquidated BUT000.LIQUID_DAT.'
 - id: BP050
   field: BUT000.VALID_FROM
   check_class: cross_field_check
@@ -856,7 +856,7 @@ rules:
   sap_impact: Payment files are rejected by the bank; transfers and SEPA direct debits for the partner fail.
   fix_map:
     __other__: Re-enter the IBAN from the partner's bank confirmation in transaction BP > Payment transactions.
-  record_fix_template: 'BP {BUT0BK.PARTNER}, bank details {BUT0BK.BKVID}: IBAN ''{actual_value}'' fails the check digits.'
+  record_fix_template: 'BP {BUT0BK.PARTNER}, bank details {BUT0BK.BKVID}: IBAN BUT0BK.IBAN fails the check digits.'
 - id: BP056
   field: BUT0BK.BANKS
   check_class: referential_check
@@ -1067,7 +1067,7 @@ rules:
   fix_map:
     __other__: Verify the account with each partner (call-back procedure). Remove it from the wrong partner or merge the
       duplicates.
-  record_fix_template: 'BP {BUT0BK.PARTNER}: bank account {BUT0BK.BANKS}/{BUT0BK.BANKL}/{BUT0BK.BANKN} is also held by another
+  record_fix_template: 'BP {BUT0BK.PARTNER}: bank account {BUT0BK.BANKS}/BUT0BK.BANKL/BUT0BK.BANKN is also held by another
     partner.'
 - id: BP200
   field: BUT0BK.IBAN
