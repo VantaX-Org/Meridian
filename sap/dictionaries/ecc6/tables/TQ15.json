@@ -1,0 +1,118 @@
+{
+ "table": "TQ15",
+ "description": "Inspection Catalog Type Index QSS",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "KATALOGART",
+   "key": true,
+   "data_element": "COMT_CATALOG",
+   "domain": "COM_CATALOG",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Catalog",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "CATALOG_TYPE",
+   "key": false,
+   "data_element": "CRMT_CATALOGTYPE",
+   "domain": "CRM_CATALOGTYPE",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Catalog Category",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "ERSTELLER",
+   "key": false,
+   "data_element": "QERSTELLER",
+   "domain": "SRET_USER",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of User Who Created the Data Record",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "E_DATUM",
+   "key": false,
+   "data_element": "QDATUMERST",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date on Which the Data Record Was Created",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "AENDERER",
+   "key": false,
+   "data_element": "QAENDERER",
+   "domain": "SRET_USER",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of User who Most Recently Changed the Data Record",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "A_DATUM",
+   "key": false,
+   "data_element": "QDATUMAEND",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date on Which Data Record Was Changed",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "HIST",
+   "key": false,
+   "data_element": "QHISTKAT",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Deactivate Catalog Entries when Deleting",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "EXT_CODE",
+   "key": false,
+   "data_element": "CRMT_TSRV_EXT_CODE_FLG",
+   "domain": "CRMT_TSRV_EXT_CODE_FLG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Code in External System",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": []
+}

@@ -1521,3 +1521,441 @@ rules:
     __other__: Compare the pair in BP; merge them or flag the redundant one for archiving.
   record_fix_template: 'Business partner {BUT000.PARTNER}: name is near-identical to another organisation at the same postal
     code.'
+- id: BP227
+  field: BUT100.PARTNER
+  check_class: exists_check
+  fields:
+  - BUT000.PARTNER_GUID
+  target_table: CVI_CUST_LINK
+  target_fields:
+  - PARTNER_GUID
+  grain: BUT100
+  applies_when:
+    BUT100.RLTYP:
+    - FLCU00
+    - FLCU01
+    BUT000.XDELE:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: 'S/4HANA readiness: business partner has a customer role but no link to a customer account'
+  why_it_matters: A customer role without the Customer/Vendor Integration link means the partner was created in the BP transaction
+    and never reached the KNA1 master (simplification item Business Partner Approach). Documents cannot be posted to it.
+  rule_authority: s4hana_migration
+  sap_impact: The partner appears as a customer in the BP transaction but no customer account exists, so the migration cockpit
+    loads a partner with no account.
+  fix_map:
+    __other__: Run the CVI synchronisation for the partner (CVI_COCKPIT) or remove the customer role in BP.
+  record_fix_template: 'Business partner {BUT100.PARTNER}: role {BUT100.RLTYP} exists and no customer link exists.'
+- id: BP228
+  field: BUT100.PARTNER
+  check_class: exists_check
+  fields:
+  - BUT000.PARTNER_GUID
+  target_table: CVI_VEND_LINK
+  target_fields:
+  - PARTNER_GUID
+  grain: BUT100
+  applies_when:
+    BUT100.RLTYP:
+    - FLVN00
+    - FLVN01
+    BUT000.XDELE:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: 'S/4HANA readiness: business partner has a vendor role but no link to a vendor account'
+  why_it_matters: A vendor role without the Customer/Vendor Integration link means the partner was created in the BP transaction
+    and never reached the LFA1 master (simplification item Business Partner Approach). Documents cannot be posted to it.
+  rule_authority: s4hana_migration
+  sap_impact: The partner appears as a vendor in the BP transaction but no vendor account exists, so the migration cockpit
+    loads a partner with no account.
+  fix_map:
+    __other__: Run the CVI synchronisation for the partner (CVI_COCKPIT) or remove the vendor role in BP.
+  record_fix_template: 'Business partner {BUT100.PARTNER}: role {BUT100.RLTYP} exists and no vendor link exists.'
+- id: BP229
+  field: CVI_CUST_LINK.CUSTOMER
+  check_class: exists_check
+  target_table: KNA1
+  target_fields:
+  - KUNNR
+  grain: CVI_CUST_LINK
+  severity: high
+  dimension: consistency
+  message: 'S/4HANA readiness: CVI link points at a customer account that does not exist'
+  why_it_matters: The CVI link joins a business partner to a customer account. When the account is gone the link is a dangling
+    reference that the synchronisation and the conversion pre-check both report.
+  rule_authority: s4hana_migration
+  sap_impact: The business partner has a customer link but no account behind it; the conversion cannot load the link.
+  fix_map:
+    __other__: Delete the orphan link through the CVI cockpit or restore the customer account; do not patch the link table.
+  record_fix_template: 'CVI link for business partner GUID {CVI_CUST_LINK.PARTNER_GUID}: customer {CVI_CUST_LINK.CUSTOMER}
+    does not exist.'
+- id: BP230
+  field: CVI_VEND_LINK.VENDOR
+  check_class: exists_check
+  target_table: LFA1
+  target_fields:
+  - LIFNR
+  grain: CVI_VEND_LINK
+  severity: high
+  dimension: consistency
+  message: 'S/4HANA readiness: CVI link points at a vendor account that does not exist'
+  why_it_matters: The CVI link joins a business partner to a vendor account. When the account is gone the link is a dangling
+    reference that the synchronisation and the conversion pre-check both report.
+  rule_authority: s4hana_migration
+  sap_impact: The business partner has a vendor link but no account behind it; the conversion cannot load the link.
+  fix_map:
+    __other__: Delete the orphan link through the CVI cockpit or restore the vendor account; do not patch the link table.
+  record_fix_template: 'CVI link for business partner GUID {CVI_VEND_LINK.PARTNER_GUID}: vendor {CVI_VEND_LINK.VENDOR} does
+    not exist.'
+- id: BP231
+  field: CVI_CUST_LINK.CUSTOMER
+  check_class: exists_check
+  fields:
+  - KNA1.KTOKD
+  - BUT000.BU_GROUP
+  target_table: CVIC_CUST_TO_BP1
+  target_fields:
+  - ACCOUNT_GROUP
+  - GROUPING
+  grain: CVI_CUST_LINK
+  applies_when:
+    KNA1.LOEVM:
+      blank: true
+    BUT000.BU_GROUP:
+      populated: true
+  severity: medium
+  dimension: consistency
+  message: 'S/4HANA readiness: linked business partner grouping does not match the grouping mapped to the customer account
+    group'
+  why_it_matters: CVI customizing maps each customer account group to one BP grouping. A partner with another grouping sits
+    in the wrong number range and the delta sync cannot update it consistently.
+  rule_authority: s4hana_migration
+  sap_impact: The CVI synchronisation of changes is rejected or creates a second partner.
+  fix_map:
+    __other__: Align the partner grouping with the CVI mapping (BP, Control tab) or correct the mapping in CVIC_CUST_TO_BP1
+      customizing.
+  record_fix_template: 'Customer {KNA1.KUNNR}: account group {KNA1.KTOKD} maps to another BP grouping than {BUT000.BU_GROUP}.'
+- id: BP232
+  field: CVI_VEND_LINK.VENDOR
+  check_class: exists_check
+  fields:
+  - LFA1.KTOKK
+  - BUT000.BU_GROUP
+  target_table: CVIC_VEND_TO_BP1
+  target_fields:
+  - ACCOUNT_GROUP
+  - GROUPING
+  grain: CVI_VEND_LINK
+  applies_when:
+    LFA1.LOEVM:
+      blank: true
+    BUT000.BU_GROUP:
+      populated: true
+  severity: medium
+  dimension: consistency
+  message: 'S/4HANA readiness: linked business partner grouping does not match the grouping mapped to the vendor account group'
+  why_it_matters: CVI customizing maps each vendor account group to one BP grouping. A partner with another grouping sits
+    in the wrong number range and the delta sync cannot update it consistently.
+  rule_authority: s4hana_migration
+  sap_impact: The CVI synchronisation of changes is rejected or creates a second partner.
+  fix_map:
+    __other__: Align the partner grouping with the CVI mapping (BP, Control tab) or correct the mapping in CVIC_VEND_TO_BP1
+      customizing.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: account group {LFA1.KTOKK} maps to another BP grouping than {BUT000.BU_GROUP}.'
+- id: BP233
+  field: CVI_CUST_LINK.CUSTOMER
+  check_class: cross_field_check
+  grain: CVI_CUST_LINK
+  fail_when: (`CVIC_CUST_TO_BP1.SAME_NUMBER` == 'X') & (`KNA1.KUNNR` != `BUT000.PARTNER`)
+  applies_when:
+    KNA1.LOEVM:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: 'S/4HANA readiness: customer account group requires identical numbers but the partner number differs'
+  why_it_matters: When the CVI mapping sets same number, the customer number and the partner number must be equal. A different
+    partner number means the pair was linked by hand or loaded against the mapping.
+  rule_authority: s4hana_migration
+  sap_impact: 'Number range alignment fails: documents show the customer number, the BP transaction shows another, and the
+    conversion cannot keep both.'
+  fix_map:
+    __other__: Relink to the partner with the same number, or switch off same number for the account group before conversion.
+  record_fix_template: Customer {KNA1.KUNNR} is linked to partner {BUT000.PARTNER} although the account group requires the
+    same number.
+- id: BP234
+  field: CVI_VEND_LINK.VENDOR
+  check_class: cross_field_check
+  grain: CVI_VEND_LINK
+  fail_when: (`CVIC_VEND_TO_BP1.SAME_NUMBER` == 'X') & (`LFA1.LIFNR` != `BUT000.PARTNER`)
+  applies_when:
+    LFA1.LOEVM:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: 'S/4HANA readiness: vendor account group requires identical numbers but the partner number differs'
+  why_it_matters: When the CVI mapping sets same number, the vendor number and the partner number must be equal. A different
+    partner number means the pair was linked by hand or loaded against the mapping.
+  rule_authority: s4hana_migration
+  sap_impact: 'Number range alignment fails: documents show the vendor number, the BP transaction shows another, and the conversion
+    cannot keep both.'
+  fix_map:
+    __other__: Relink to the partner with the same number, or switch off same number for the account group before conversion.
+  record_fix_template: Vendor {LFA1.LIFNR} is linked to partner {BUT000.PARTNER} although the account group requires the same
+    number.
+- id: BP235
+  field: CVI_CUST_LINK.CUSTOMER
+  check_class: cross_field_check
+  grain: CVI_CUST_LINK
+  fail_when: '`KNA1.SPERR`.notna() & `BUT000.XBLCK`.isna()'
+  applies_when:
+    KNA1.LOEVM:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Customer has a central posting block but the linked business partner is not centrally blocked
+  why_it_matters: CVI maps the central posting block of the customer to the central block of the partner. When only one side
+    carries it, the block is lost on the next synchronisation.
+  rule_authority: s4hana_migration
+  sap_impact: The customer is blocked in the account master and open in the BP transaction; after conversion the partner decides
+    and the block disappears.
+  fix_map:
+    __other__: Set the central block on the partner in BP or lift the posting block on the customer.
+  record_fix_template: 'Customer {KNA1.KUNNR}: central posting block is set and partner {BUT000.PARTNER} is not blocked.'
+- id: BP236
+  field: CVI_VEND_LINK.VENDOR
+  check_class: cross_field_check
+  grain: CVI_VEND_LINK
+  fail_when: '`LFA1.SPERR`.notna() & `BUT000.XBLCK`.isna()'
+  applies_when:
+    LFA1.LOEVM:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Vendor has a central posting block but the linked business partner is not centrally blocked
+  why_it_matters: CVI maps the central posting block of the vendor to the central block of the partner. When only one side
+    carries it, the block is lost on the next synchronisation.
+  rule_authority: s4hana_migration
+  sap_impact: The vendor is blocked in the account master and open in the BP transaction; after conversion the partner decides
+    and the block disappears.
+  fix_map:
+    __other__: Set the central block on the partner in BP or lift the posting block on the vendor.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: central posting block is set and partner {BUT000.PARTNER} is not blocked.'
+- id: BP237
+  field: CVI_CUST_CT_LINK.PARTNER_GUID
+  check_class: exists_check
+  target_table: BUT000
+  target_fields:
+  - PARTNER_GUID
+  grain: CVI_CUST_CT_LINK
+  severity: high
+  dimension: consistency
+  message: 'S/4HANA readiness: contact person link points at a company business partner that does not exist'
+  why_it_matters: The contact link joins the company partner to the contact person partner. A missing side leaves a contact
+    with no partner.
+  rule_authority: s4hana_migration
+  sap_impact: The contact person cannot be converted; the relationship has no end point.
+  fix_map:
+    __other__: Restore the partner or delete the orphan link through the CVI cockpit.
+  record_fix_template: 'Contact link for customer contact {CVI_CUST_CT_LINK.CUSTOMER_CONT}: the company partner does not exist.'
+- id: BP238
+  field: CVI_CUST_CT_LINK.PERSON_GUID
+  check_class: exists_check
+  target_table: BUT000
+  target_fields:
+  - PARTNER_GUID
+  grain: CVI_CUST_CT_LINK
+  severity: high
+  dimension: consistency
+  message: 'S/4HANA readiness: contact person link points at a contact person business partner that does not exist'
+  why_it_matters: The contact link joins the company partner to the contact person partner. A missing side leaves a contact
+    with no partner.
+  rule_authority: s4hana_migration
+  sap_impact: The contact person cannot be converted; the relationship has no end point.
+  fix_map:
+    __other__: Restore the partner or delete the orphan link through the CVI cockpit.
+  record_fix_template: 'Contact link for customer contact {CVI_CUST_CT_LINK.CUSTOMER_CONT}: the contact person partner does
+    not exist.'
+- id: BP239
+  field: BUT050.PARTNER1
+  check_class: exists_check
+  target_table: BUT000
+  target_fields:
+  - PARTNER
+  grain: BUT050
+  severity: high
+  dimension: consistency
+  message: Business partner relationship points at a partner that does not exist
+  why_it_matters: A relationship joins two partners. If one end does not exist the relationship cannot be displayed or converted.
+  rule_authority: s4hana_migration
+  sap_impact: Contact person and hierarchy relationships are dropped by the conversion.
+  fix_map:
+    __other__: Delete the relationship in BP or restore the partner.
+  record_fix_template: 'Relationship {BUT050.RELNR}: partner {BUT050.PARTNER1} does not exist.'
+- id: BP240
+  field: BUT050.PARTNER2
+  check_class: exists_check
+  target_table: BUT000
+  target_fields:
+  - PARTNER
+  grain: BUT050
+  severity: high
+  dimension: consistency
+  message: Business partner relationship points at a partner that does not exist
+  why_it_matters: A relationship joins two partners. If one end does not exist the relationship cannot be displayed or converted.
+  rule_authority: s4hana_migration
+  sap_impact: Contact person and hierarchy relationships are dropped by the conversion.
+  fix_map:
+    __other__: Delete the relationship in BP or restore the partner.
+  record_fix_template: 'Relationship {BUT050.RELNR}: partner {BUT050.PARTNER2} does not exist.'
+- id: BP241
+  field: BUT050.PARTNER2
+  check_class: exists_check
+  target_table: BUT100
+  target_fields:
+  - PARTNER
+  target_when:
+    RLTYP:
+    - BUP001
+  grain: BUT050
+  applies_when:
+    BUT050.RELTYP:
+    - BUR001
+  severity: medium
+  dimension: consistency
+  message: Contact person relationship ends at a partner without the contact person role
+  why_it_matters: A contact person relationship needs the contact person role (BUP001) on the person. Without it the partner
+    is not offered as a contact.
+  rule_authority: sap_hard_constraint
+  sap_impact: The contact person does not show in the customer or vendor contact list.
+  fix_map:
+    __other__: Add the contact person role to the partner in BP.
+  record_fix_template: 'Relationship {BUT050.RELNR}: contact person {BUT050.PARTNER2} has no contact person role.'
+- id: BP242
+  field: BUT050.DATE_FROM
+  check_class: cross_field_check
+  fail_when: '`BUT050.DATE_FROM` > `BUT050.DATE_TO`'
+  severity: medium
+  dimension: consistency
+  message: Business partner relationship validity starts after it ends
+  why_it_matters: A validity interval runs forward in time. An inverted interval is never valid.
+  rule_authority: sap_hard_constraint
+  sap_impact: The relationship is never selected.
+  fix_map:
+    __other__: Correct the validity dates in BP.
+  record_fix_template: 'Relationship {BUT050.RELNR}: valid-from is after valid-to.'
+- id: BP243
+  field: ADRC.REGION
+  check_class: null_check
+  applies_when:
+    ADRC.COUNTRY:
+    - US
+    - CA
+    - BR
+    - IN
+    - AU
+    - MX
+    - CN
+    - JP
+    - AR
+  severity: medium
+  dimension: completeness
+  message: Region is missing for a country that requires it
+  why_it_matters: Tax determination and CVI synchronisation need the region for countries where SAP makes it mandatory.
+  rule_authority: s4hana_migration
+  sap_impact: The CVI synchronisation of the address is rejected for the partner.
+  fix_map:
+    __blank__: Enter the region in the BP address.
+  record_fix_template: 'Business partner address {ADRC.ADDRNUMBER}: region is {actual_value} for country {ADRC.COUNTRY}.'
+- id: BP244
+  field: ADRC.NAME1
+  check_class: null_check
+  applies_when:
+    BUT000.TYPE:
+    - '2'
+    BUT000.XDELE:
+      blank: true
+  severity: medium
+  dimension: completeness
+  message: Organisation partner address has no name line
+  why_it_matters: The address name is what the CVI synchronisation copies into the customer and vendor name. An empty name
+    is rejected.
+  rule_authority: s4hana_migration
+  sap_impact: Customer or vendor creation by CVI fails with a missing name.
+  fix_map:
+    __blank__: Enter the name in the BP address.
+  record_fix_template: 'Business partner address {ADRC.ADDRNUMBER}: name line is {actual_value}.'
+- id: BP245
+  field: BUT0BK.KOINH
+  check_class: cross_field_check
+  fail_when: '`BUT0BK.KOINH`.isna() & `BUT0BK.BANKN`.notna()'
+  severity: low
+  dimension: completeness
+  message: Bank details have an account number but no account holder
+  why_it_matters: Payment runs print and check the account holder. Without it the bank detail is hard to verify against the
+    payee.
+  rule_authority: best_practice
+  sap_impact: Payment verification and fraud checks cannot compare payee and account holder.
+  fix_map:
+    __other__: Enter the account holder in BP, Payment transactions.
+  record_fix_template: 'Business partner {BUT0BK.PARTNER} bank detail {BUT0BK.BKVID}: account holder is missing.'
+- id: BP246
+  field: BUT0BK.IBAN
+  check_class: null_check
+  applies_when:
+    BUT0BK.BANKS:
+    - DE
+    - FR
+    - ES
+    - IT
+    - NL
+    - BE
+    - AT
+    - PT
+    - IE
+    - FI
+    - LU
+    - GR
+    BUT0BK.BANKN:
+      populated: true
+  severity: medium
+  dimension: completeness
+  message: Bank details in a SEPA country have no IBAN
+  why_it_matters: SEPA payments need the IBAN. In S/4HANA the IBAN is derived from bank key and account number only when both
+    are valid, so a missing IBAN is a conversion warning.
+  rule_authority: s4hana_migration
+  sap_impact: SEPA payment files for the partner fail validation.
+  fix_map:
+    __blank__: Enter the IBAN in BP, Payment transactions.
+  record_fix_template: 'Business partner {BUT0BK.PARTNER} bank detail {BUT0BK.BKVID}: IBAN is {actual_value}.'
+- id: BP247
+  field: BUT000.CHDAT
+  check_class: cross_field_check
+  fail_when: '`BUT000.CHDAT` < `BUT000.CRDAT`'
+  severity: low
+  dimension: consistency
+  message: Business partner changed before it was created
+  why_it_matters: A change date before the creation date means the record was written outside the normal transaction.
+  rule_authority: best_practice
+  sap_impact: The audit trail of the partner cannot be trusted.
+  fix_map:
+    __other__: Check the load that wrote the dates.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: change date is before the creation date.'
+- id: BP248
+  field: BUT000.XBLCK
+  check_class: cross_field_check
+  fail_when: (`BUT000.XBLCK` == 'X') & ((@today - `BUT000.CHDAT`).dt.days > 1095)
+  applies_when:
+    BUT000.XDELE:
+      blank: true
+  severity: info
+  dimension: timeliness
+  message: 'S/4HANA readiness: business partner blocked for three years and not flagged for archiving'
+  why_it_matters: A partner blocked for years carries no business. Keeping it adds to the partner volume the conversion must
+    synchronise.
+  rule_authority: s4hana_migration
+  sap_impact: Larger CVI synchronisation and conversion volume for partners nobody uses.
+  fix_map:
+    __other__: Check open items, set the archiving flag and archive with CA_BUPA (SARA).
+  record_fix_template: 'Business partner {BUT000.PARTNER}: blocked and unchanged for over three years, not flagged for archiving.'
