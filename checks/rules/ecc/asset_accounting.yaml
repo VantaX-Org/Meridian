@@ -334,6 +334,7 @@ rules:
     overstated. Year-end close will flag the imbalance.
   fix_map: {__blank__: Identify and merge duplicate asset records via AS06 (asset transfer within company code)
       or archive the duplicate via OAAR. Reconcile with FI-GL after correction.}
+  record_fix_template: "Asset {ANLA.BUKRS}/{ANLA.ANLN1}-{ANLA.ANLN2} appears more than once. Keep one record, then migrate postings and flag the duplicate for deletion via AS06 after review in AS03."
 
 
 - id: AA032

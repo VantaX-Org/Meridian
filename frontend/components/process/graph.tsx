@@ -24,7 +24,7 @@ import {
 } from "@/components/aurora";
 import { useUrlState } from "@/hooks/use-url-state";
 import { getVersionProfile, type FieldDependency } from "@/lib/api/field-profile";
-import { EMPTY_MINING_SUMMARY, getMiningPatterns, getMiningSummary, type MiningPattern } from "@/lib/api/mining";
+import { getMiningPatterns, getMiningSummary, type MiningPattern } from "@/lib/api/mining";
 import { getRelationships } from "@/lib/api/relationships";
 import { getSystemVersions } from "@/lib/api/system-objects";
 import { getSystems } from "@/lib/api/systems";
@@ -139,8 +139,6 @@ function EntityLinks() {
   ], []);
 
   if (q.error) return <Banner tone="danger" title="Relationships could not be loaded." />;
-  const inferred = rels.filter((r) => r.ai_inferred).length;
-  const inactive = rels.filter((r) => !r.active).length;
 
   return (
     <Stack gap={6}>
@@ -271,7 +269,6 @@ function Patterns() {
     queryKey: ["mining.patterns", { type }],
     queryFn: () => getMiningPatterns({ pattern_type: type || undefined, limit: 200 }),
   });
-  const s = summary.data ?? EMPTY_MINING_SUMMARY;
   const list = patterns.data?.patterns ?? [];
 
   const columns = useMemo<ColumnDef<MiningPattern, unknown>[]>(() => [

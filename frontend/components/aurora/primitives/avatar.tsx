@@ -6,9 +6,13 @@
  * — identity is signalled by the name + ring only where explicit.
  */
 
+import Image from "next/image";
 import { clsx } from "./internal";
 
 export type AvatarSize = "sm" | "md" | "lg";
+
+// Matches the CSS sizes; the stylesheet scales the img to fill the circle.
+const AVATAR_PX: Record<AvatarSize, number> = { sm: 24, md: 32, lg: 40 };
 
 export interface AvatarProps {
   /** Image source. When omitted, renders a monogram from `name`. */
@@ -29,7 +33,7 @@ export function Avatar({ src, name, size = "md", className }: AvatarProps) {
       title={name}
     >
       {src ? (
-        <img src={src} alt={name} loading="lazy" />
+        <Image src={src} alt={name} width={AVATAR_PX[size]} height={AVATAR_PX[size]} unoptimized />
       ) : (
         <span aria-hidden>{initial}</span>
       )}

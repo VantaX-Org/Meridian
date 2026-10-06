@@ -1,5 +1,4 @@
 import apiClient from "./client";
-import type { Version } from "@/types/api";
 
 export function getReportDownloadUrl(versionId: string): string {
   return `/api/v1/reports/${versionId}/download`;
