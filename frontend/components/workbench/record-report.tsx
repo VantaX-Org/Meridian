@@ -117,7 +117,8 @@ export function RecordReportView({ issueId }: { issueId: string }) {
         verdict={title}
         support={<>
           {status}{" "}
-          {parts.map((p, i) => <Fragment key={i}>{p.key ? <FieldChip field={p.key} /> : null} <Mono>{p.value}</Mono>{" "}</Fragment>)}
+          {"Key: "}
+          {parts.map((p, i) => <Fragment key={i}>{p.key ? <FieldChip field={p.key} /> : null} <Mono>{p.value}</Mono>{i < parts.length - 1 ? ", " : ". "}</Fragment>)}
           {`${issue.grain ? `Evaluated on ${issue.grain}. ` : ""}First seen ${relativeTime(issue.first_seen_at)}, last failing ${relativeTime(issue.last_seen_at)}.${issue.reopened_count ? ` Re-opened ${issue.reopened_count} time${issue.reopened_count === 1 ? "" : "s"}.` : ""}`}
         </>}
         severity={SEV(worst)}

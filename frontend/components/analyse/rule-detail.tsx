@@ -83,7 +83,7 @@ function Body({ r }: { r: RuleDetail }) {
 
   const verdict = neverRun ? "This rule has not run in any version."
     : failing === 0 ? `Passing in the latest run. It failed in ${failedRuns.toLocaleString()} of ${plural(history.length, "run")}.`
-    : `${plural(failing, "record")} fail in the latest run. The rule failed in ${failedRuns.toLocaleString()} of ${plural(history.length, "run")}.`;
+    : `${plural(failing, "record")} ${failing === 1 ? "fails" : "fail"} in the latest run. The rule failed in ${failedRuns.toLocaleString()} of ${plural(history.length, "run")}.`;
 
   return (
     <>
