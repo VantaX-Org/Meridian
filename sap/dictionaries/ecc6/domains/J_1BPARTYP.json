@@ -1,0 +1,27 @@
+{
+ "domain": "J_1BPARTYP",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "B",
+   "high": null,
+   "text": "Business Place"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Customer"
+  },
+  {
+   "low": "V",
+   "high": null,
+   "text": "Vendor"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

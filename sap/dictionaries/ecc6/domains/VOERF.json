@@ -1,0 +1,62 @@
+{
+ "domain": "VOERF",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No preceding documents required"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Sales order required"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Purchase order required"
+  },
+  {
+   "low": "L",
+   "high": null,
+   "text": "Delivery for subcontracting"
+  },
+  {
+   "low": "P",
+   "high": null,
+   "text": "Project required"
+  },
+  {
+   "low": "U",
+   "high": null,
+   "text": "Stock transfer w/o previous activity"
+  },
+  {
+   "low": "R",
+   "high": null,
+   "text": "Return delivery to vendor"
+  },
+  {
+   "low": "O",
+   "high": null,
+   "text": "Goods movement through inb.deliv. / post.chge /outb. deliv."
+  },
+  {
+   "low": "W",
+   "high": null,
+   "text": "Delivery from PP interface (work order)"
+  },
+  {
+   "low": "H",
+   "high": null,
+   "text": "Posting change with delivery"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

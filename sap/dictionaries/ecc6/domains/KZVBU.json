@@ -1,0 +1,32 @@
+{
+ "domain": "KZVBU",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No consumption update"
+  },
+  {
+   "low": "G",
+   "high": null,
+   "text": "Planned withdrawal (total consumption)"
+  },
+  {
+   "low": "R",
+   "high": null,
+   "text": "Planned, if ref. to reservation, otherwise unplanned"
+  },
+  {
+   "low": "U",
+   "high": null,
+   "text": "Unplanned withdrawal (unplanned consumption)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

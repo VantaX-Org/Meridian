@@ -1,0 +1,47 @@
+{
+ "domain": "UEVOR_VL",
+ "type": "CHAR",
+ "length": 4,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Remain on initial screen until a function is selected"
+  },
+  {
+   "low": "UER1",
+   "high": null,
+   "text": "Go to quantity overview by pressing ENTER"
+  },
+  {
+   "low": "UER2",
+   "high": null,
+   "text": "Go to weight overview by pressing ENTER"
+  },
+  {
+   "low": "UEKO",
+   "high": null,
+   "text": "Go to the picking overview screen after pressing ENTER"
+  },
+  {
+   "low": "UELG",
+   "high": null,
+   "text": "Go to the overview screen for extent delivered after ENTER"
+  },
+  {
+   "low": "UELA",
+   "high": null,
+   "text": "Overview for inbound delivery"
+  },
+  {
+   "low": "UEGW",
+   "high": null,
+   "text": "Overview for rough goods receipt"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

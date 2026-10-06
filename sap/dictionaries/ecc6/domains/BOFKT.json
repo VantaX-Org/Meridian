@@ -1,0 +1,37 @@
+{
+ "domain": "BOFKT",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": ""
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Final rebate settlement"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Rebate correction document"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Partial settlement for a rebate agreement"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Manual accruals for a rebate agreement"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,32 @@
+{
+ "domain": "NEUTE",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No rescheduling"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Reschedule if deadlines are in the past"
+  },
+  {
+   "low": "Y",
+   "high": null,
+   "text": "Like X or route changed or route schedule changed"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Reschedule after relevant changes"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

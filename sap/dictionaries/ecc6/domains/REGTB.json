@@ -1,0 +1,32 @@
+{
+ "domain": "REGTB",
+ "type": "CHAR",
+ "length": 4,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "CUST",
+   "high": null,
+   "text": "Customer-dependent determination"
+  },
+  {
+   "low": "ROUT",
+   "high": null,
+   "text": "Route schedule-dependent determination"
+  },
+  {
+   "low": "YYYA",
+   "high": "YYYZ",
+   "text": "user exit"
+  },
+  {
+   "low": "ZZZA",
+   "high": "ZZZZ",
+   "text": ""
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

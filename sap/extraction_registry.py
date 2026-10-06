@@ -612,6 +612,32 @@ ECC_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
     ],
 
     # ------------------------------------------------------------------
+    # Process discovery (variant discovery). Document type + date columns
+    # only, last 12 months of each header (days_ago:365, the registry's
+    # window mechanism; the rule-driven plan uses months_ago:12 from
+    # sap/dictionaries/extraction_windows.yaml). Config tables are read in full.
+    # ------------------------------------------------------------------
+    "process_discovery": [
+        ExtractionTarget(source="VBRK", fields=["VBELN", "FKART", "FKDAT"], filter="FKDAT >= '{days_ago:365}'",
+                         max_rows=500_000, description="Billing document header (type, date)"),
+        ExtractionTarget(source="LIKP", fields=["VBELN", "LFART", "ERDAT"], filter="ERDAT >= '{days_ago:365}'",
+                         max_rows=500_000, description="Delivery header (type, date)"),
+        ExtractionTarget(source="MKPF", fields=["MBLNR", "MJAHR", "BLART", "VGART", "BUDAT"],
+                         filter="BUDAT >= '{days_ago:365}'", max_rows=500_000,
+                         description="Material document header (type, date)"),
+        ExtractionTarget(source="RBKP", fields=["BELNR", "GJAHR", "BLART", "BUDAT"],
+                         filter="BUDAT >= '{days_ago:365}'", max_rows=500_000,
+                         description="Invoice receipt header (type, date)"),
+        ExtractionTarget(source="EBAN", fields=["BANFN", "BNFPO", "BSART", "BADAT"],
+                         filter="BADAT >= '{days_ago:365}'", max_rows=500_000,
+                         description="Purchase requisition (type, date)"),
+        ExtractionTarget(source="TVAK", fields=["AUART"], is_config=True, description="Sales document types"),
+        ExtractionTarget(source="T156", fields=["BWART"], is_config=True, description="Movement types"),
+        ExtractionTarget(source="TVLK", fields=["LFART"], is_config=True, description="Delivery types"),
+        ExtractionTarget(source="TVFK", fields=["FKART"], is_config=True, description="Billing document types"),
+    ],
+
+    # ------------------------------------------------------------------
     # Interface health (IDocs, qRFC/tRFC queues). Windows match
     # sap/dictionaries/extraction_windows.yaml; never read in full.
     # ------------------------------------------------------------------

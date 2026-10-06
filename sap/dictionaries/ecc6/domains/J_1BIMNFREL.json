@@ -1,0 +1,27 @@
+{
+ "domain": "J_1BIMNFREL",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "X",
+   "high": null,
+   "text": "Relevant"
+  },
+  {
+   "low": "",
+   "high": null,
+   "text": "Not Relevant"
+  },
+  {
+   "low": "U",
+   "high": null,
+   "text": "Relevant, SD/MM Transfer"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

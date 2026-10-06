@@ -1,0 +1,42 @@
+{
+ "domain": "ORDNR_FI",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "Purchase order number"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Sales order number"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Delivery number"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "External delivery number"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Actual billing document number"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "External delivery no. if avaialable, otherwise delivery no."
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}
