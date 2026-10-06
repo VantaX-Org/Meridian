@@ -20,6 +20,7 @@ import { getConfigImpact } from "@/lib/api/connectivity";
 import { getFindings } from "@/lib/api/findings";
 import { getIssue, getIssues, updateIssues, type IssueStatus, type RecordIssue } from "@/lib/api/issues";
 import { getVersions } from "@/lib/api/versions";
+import { materialHref } from "@/lib/material-views";
 import { formatModuleName, relativeTime, formatDate } from "@/lib/format";
 
 const STATUS: Record<IssueStatus, RecordReportStatus> = { open: "open", in_progress: "in_progress", waiting_sap: "in_progress", waiting_requester: "in_progress", accepted: "resolved", resolved: "resolved" };
@@ -113,7 +114,12 @@ export function RecordReportView({ issueId }: { issueId: string }) {
         severity={SEV(worst)}
         status={STATUS[issue.status]}
         lastUpdated={relativeTime(issue.last_seen_at)}
-        actions={<Button variant="secondary" onClick={() => window.print()}>Print or save as PDF</Button>}
+        actions={(
+          <>
+            {materialHref(issue.module, issue.record_key) ? <Link className="ui-link" href={materialHref(issue.module, issue.record_key)!}>Open material</Link> : null}
+            <Button variant="secondary" onClick={() => window.print()}>Print or save as PDF</Button>
+          </>
+        )}
         context={[
           { id: "object", label: "Object", value: formatModuleName(issue.module) },
           { id: "key", label: "Record key", value: <span className="aurora-number">{issue.record_key}</span> },
