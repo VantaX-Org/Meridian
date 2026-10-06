@@ -1,0 +1,64 @@
+{
+ "table": "T683",
+ "description": "Pricing procedures",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "KVEWE",
+   "key": true,
+   "data_element": "KVEWE",
+   "domain": "KVEWE",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Usage of the Condition Table",
+   "check_table": "*"
+  },
+  {
+   "pos": 3,
+   "name": "KAPPL",
+   "key": true,
+   "data_element": "KAPPL",
+   "domain": "KAPPL",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Application",
+   "check_table": "*"
+  },
+  {
+   "pos": 4,
+   "name": "KALSM",
+   "key": true,
+   "data_element": "KALSM_D",
+   "domain": "KALSM",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Procedure (Pricing, Output Control, Acct. Det., Costing,...)",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

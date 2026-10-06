@@ -1,0 +1,42 @@
+{
+ "domain": "OIC_INPD",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Ref Sales Order    (VBKD-PRSDT     VBKD-OIC_TIME)"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Invoice Creation   (SY-UZEIT        SY-DATUM at Inv Creatn)"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Delivery           (LIKP-LFDAT      LIKP-LFUHR)"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Actual Goods Issue (LIKP-WADAT_IST  LIKP-OIWATIM)"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Loading            (LIKP-LDDAT      LIKP-OILDTIM)"
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "Planned Goods Issue (LIKP-WADAT  LIKP-WAUHR)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

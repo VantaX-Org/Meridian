@@ -1,0 +1,52 @@
+{
+ "domain": "ADRDA",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No address exists"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Address from master data"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Address entered in document manually"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Address entered in document manually / dependent on 'B'"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "ADRC address from master data"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "ADRC address entered in document manually"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "ADRC address entered in document manually / dep. on 'E' doc."
+  },
+  {
+   "low": "G",
+   "high": null,
+   "text": "Private address from master data"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

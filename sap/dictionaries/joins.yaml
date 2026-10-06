@@ -109,6 +109,24 @@ edges:
   - {parent: VBAK, child: VBAP, join: {VBELN: VBELN}, cardinality: many}
   - {parent: KNA1, child: VBAK, join: {KUNNR: KUNNR}, cardinality: many}
   - {parent: MARA, child: VBAP, join: {MATNR: MATNR}, cardinality: many}
+  # sales depth: order sub-tables, partners, credit, pricing keys, customer-material records
+  - {parent: MARC, child: VBAP, join: {MATNR: MATNR, WERKS: WERKS}, cardinality: many}
+  - {parent: VBAK, child: VBKD, join: {VBELN: VBELN}, cardinality: many}
+  - {parent: VBAK, child: VBPA, join: {VBELN: VBELN}, cardinality: many}
+  - {parent: VBAP, child: VBEP, join: {VBELN: VBELN, POSNR: POSNR}, cardinality: many}
+  - {parent: KNA1, child: VBPA, join: {KUNNR: KUNNR}, cardinality: many}
+  - {parent: LFA1, child: VBPA, join: {LIFNR: LIFNR}, cardinality: many}
+  - {parent: T014, child: VBAK, join: {KKBER: KKBER}, cardinality: many}
+  - {parent: TVTA, child: VBAK, join: {VKORG: VKORG, VTWEG: VTWEG, SPART: SPART}, cardinality: many}
+  - {parent: KNA1, child: KNMT, join: {KUNNR: KUNNR}, cardinality: many}
+  - {parent: MARA, child: KNMT, join: {MATNR: MATNR}, cardinality: many}
+  - {parent: KONP, child: KONM, join: {KNUMH: KNUMH, KOPOS: KOPOS}, cardinality: many}
+  - {parent: MARA, child: A004, join: {MATNR: MATNR}, cardinality: many}
+  - {parent: MARA, child: A304, join: {MATNR: MATNR}, cardinality: many}
+  - {parent: MARA, child: A305, join: {MATNR: MATNR}, cardinality: many}
+  - {parent: KNA1, child: A005, join: {KUNNR: KUNNR}, cardinality: many}
+  - {parent: KNA1, child: A305, join: {KUNNR: KUNNR}, cardinality: many}
+
   # reconciliation account of a vendor / customer company-code record
   - {parent: SKB1, child: LFB1, join: {BUKRS: BUKRS, AKONT: SAKNR}, cardinality: many}
   - {parent: SKB1, child: KNB1, join: {BUKRS: BUKRS, AKONT: SAKNR}, cardinality: many}

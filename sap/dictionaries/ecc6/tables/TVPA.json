@@ -1,0 +1,58 @@
+{
+ "table": "TVPA",
+ "description": "Partner: Partner Types (Entities)",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "NRART",
+   "key": true,
+   "data_element": "NRART",
+   "domain": "NRART",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Type of partner number",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "ENTAB",
+   "key": false,
+   "data_element": "ENTITYTAB",
+   "domain": "AS4TAB",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Value table",
+   "check_table": "*"
+  },
+  {
+   "pos": 4,
+   "name": "PAOBJ",
+   "key": false,
+   "data_element": "PAOBJ",
+   "domain": "PAOBJ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Object for which partner role group created",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": []
+}

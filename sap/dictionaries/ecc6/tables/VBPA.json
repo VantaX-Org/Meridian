@@ -1,0 +1,344 @@
+{
+ "table": "VBPA",
+ "description": "Sales Document: Partner",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "VBELN",
+   "key": true,
+   "data_element": "VBELN",
+   "domain": "VBELN",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Sales and Distribution Document Number",
+   "check_table": "VBUK"
+  },
+  {
+   "pos": 3,
+   "name": "POSNR",
+   "key": true,
+   "data_element": "POSNR",
+   "domain": "POSNR",
+   "type": "NUMC",
+   "length": 6,
+   "decimals": 0,
+   "description": "Item number of the SD document",
+   "check_table": "VBUP"
+  },
+  {
+   "pos": 4,
+   "name": "PARVW",
+   "key": true,
+   "data_element": "PARVW",
+   "domain": "PARVW",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Partner Role",
+   "check_table": "TPAR"
+  },
+  {
+   "pos": 5,
+   "name": "KUNNR",
+   "key": false,
+   "data_element": "KUNNR",
+   "domain": "KUNNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Customer Number",
+   "check_table": "KNA1"
+  },
+  {
+   "pos": 6,
+   "name": "LIFNR",
+   "key": false,
+   "data_element": "LIFNR",
+   "domain": "LIFNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Account Number of Vendor or Creditor",
+   "check_table": "LFA1"
+  },
+  {
+   "pos": 7,
+   "name": "PERNR",
+   "key": false,
+   "data_element": "PERNR_D",
+   "domain": "PERNR",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Personnel Number",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "PARNR",
+   "key": false,
+   "data_element": "PARNR",
+   "domain": "PARNR",
+   "type": "NUMC",
+   "length": 10,
+   "decimals": 0,
+   "description": "Number of contact person",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "ADRNR",
+   "key": false,
+   "data_element": "ADRNR",
+   "domain": "ADRNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Address",
+   "check_table": "*"
+  },
+  {
+   "pos": 10,
+   "name": "ABLAD",
+   "key": false,
+   "data_element": "ABLAD",
+   "domain": "TEXT25",
+   "type": "CHAR",
+   "length": 25,
+   "decimals": 0,
+   "description": "Unloading Point",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "LAND1",
+   "key": false,
+   "data_element": "LAND1",
+   "domain": "LAND1",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Country Key",
+   "check_table": "T005"
+  },
+  {
+   "pos": 12,
+   "name": "ADRDA",
+   "key": false,
+   "data_element": "ADRDA",
+   "domain": "ADRDA",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Address indicator",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "XCPDK",
+   "key": false,
+   "data_element": "XCPDK",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Is the account a one-time account?",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "HITYP",
+   "key": false,
+   "data_element": "HITYP_KH",
+   "domain": "HITYP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Customer Hierarchy Category",
+   "check_table": "THIT"
+  },
+  {
+   "pos": 15,
+   "name": "PRFRE",
+   "key": false,
+   "data_element": "PRFRE",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Relevant for Pricing ID",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "BOKRE",
+   "key": false,
+   "data_element": "BOKRE",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "ID: Customer is to receive rebates",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "HISTUNR",
+   "key": false,
+   "data_element": "HISTUNR",
+   "domain": "NUM2",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Level number within hierarchy",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "KNREF",
+   "key": false,
+   "data_element": "KNREF",
+   "domain": "KNREF",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Customer description of partner (plant, storage location)",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "LZONE",
+   "key": false,
+   "data_element": "LZONE",
+   "domain": "ZONE",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Transportation zone to or from which the goods are delivered",
+   "check_table": "*"
+  },
+  {
+   "pos": 20,
+   "name": "HZUOR",
+   "key": false,
+   "data_element": "HZUOR",
+   "domain": "HZUOR",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Assignment to Hierarchy",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "STCEG",
+   "key": false,
+   "data_element": "STCEG",
+   "domain": "STCEG",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "VAT Registration Number",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "PARVW_FF",
+   "key": false,
+   "data_element": "PARTNER_FF",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator 'Further Partners in this Function' (VBPA2)",
+   "check_table": null
+  },
+  {
+   "pos": 23,
+   "name": "ADRNP",
+   "key": false,
+   "data_element": "AD_PERSNUM",
+   "domain": "AD_PERSNUM",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Person number",
+   "check_table": "ADRP"
+  },
+  {
+   "pos": 24,
+   "name": "KALE",
+   "key": false,
+   "data_element": "KALE",
+   "domain": "KALE",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Maintain appointments in calendar",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "ADRNP",
+   "foreign_table": "ADRP",
+   "foreign_field": "PERSNUMBER"
+  },
+  {
+   "field": "HITYP",
+   "foreign_table": "THIT",
+   "foreign_field": "HITYP"
+  },
+  {
+   "field": "KUNNR",
+   "foreign_table": "KNA1",
+   "foreign_field": "KUNNR"
+  },
+  {
+   "field": "LAND1",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "LIFNR",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "PARVW",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  },
+  {
+   "field": "POSNR",
+   "foreign_table": "VBUP",
+   "foreign_field": "POSNR"
+  },
+  {
+   "field": "VBELN",
+   "foreign_table": "VBUK",
+   "foreign_field": "VBELN"
+  }
+ ]
+}

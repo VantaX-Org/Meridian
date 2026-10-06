@@ -1,0 +1,37 @@
+{
+ "domain": "REGLG",
+ "type": "CHAR",
+ "length": 4,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "MALA",
+   "high": null,
+   "text": "Shipping point / plant / storage condition"
+  },
+  {
+   "low": "RETA",
+   "high": null,
+   "text": "Plant / situation (SITUA) / storage condition"
+  },
+  {
+   "low": "MARE",
+   "high": null,
+   "text": "MALA, then RETA  (backup procedure)"
+  },
+  {
+   "low": "YY",
+   "high": "ZZZZ",
+   "text": "User exit in MV50AFZZ"
+  },
+  {
+   "low": "MSRE",
+   "high": null,
+   "text": "Advanced Returns Inbound (Considers Follow-Up Activity)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

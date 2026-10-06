@@ -1421,3 +1421,2128 @@ rules:
     __other__: Maintain the correct rate in VK12, or set the deletion indicator on the condition record if it is no longer
       valid.
   record_fix_template: 'Condition record {KONP.KNUMH} ({KONP.KSCHL}): rate is zero.'
+- id: SDSO202
+  field: VBAK.KKBER
+  check_class: referential_check
+  severity: high
+  dimension: validity
+  message: Credit control area on the order is not defined in the system (T014)
+  why_it_matters: The credit control area drives the limit check (OVA8) and the exposure update. A value that is not in T014
+    cannot be checked, so the order is never held back by credit.
+  rule_authority: sap_hard_constraint
+  sap_impact: No credit check is run for the order; exposure is not updated and the credit block never triggers.
+  fix_map:
+    __other__: Correct the credit control area through the customer's credit data (FD32) or the sales area assignment (OVAK)
+      and reprocess the order in VA02.
+  record_fix_template: 'Order {VBAK.VBELN}: credit control area ''{actual_value}'' is not in T014.'
+- id: SDSO203
+  field: VBAK.KNKLI
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Credit account on the order is not a customer master record
+  why_it_matters: The credit account is the customer whose limit is consumed. A number with no KNA1 record means exposure
+    is booked against nobody.
+  rule_authority: sap_hard_constraint
+  sap_impact: The credit check cannot read a limit and passes the order, or fails every time with a system error.
+  fix_map:
+    __other__: Correct the credit account in the customer's credit data (FD32) so that it points to an existing customer,
+      then reprocess the order.
+  record_fix_template: 'Order {VBAK.VBELN}: credit account ''{actual_value}'' does not exist as a customer.'
+- id: SDSO204
+  field: VBAK.KNKLI
+  check_class: exists_check
+  fields:
+  - VBAK.KNKLI
+  - VBAK.KKBER
+  grain: VBAK
+  applies_when:
+    VBUK.GBSTK:
+      not_in:
+      - C
+  target_table: KNKK
+  target_fields:
+  - KUNNR
+  - KKBER
+  severity: medium
+  dimension: consistency
+  message: Open order is in a credit control area where the credit account has no credit master record (KNKK)
+  why_it_matters: The limit check reads KNKK for the credit account and control area. Without that record SAP has no limit
+    and treats the customer as unchecked (or blocks, depending on the risk category).
+  rule_authority: best_practice
+  sap_impact: Open orders are released without a limit, or credit-blocked with no way to release them from the credit master.
+  fix_map:
+    __other__: Create the credit master data for the credit account and control area (FD32), or move the order to the correct
+      control area.
+  record_fix_template: 'Order {VBAK.VBELN}: credit account {VBAK.KNKLI} has no credit record in area {VBAK.KKBER}.'
+- id: SDSO205
+  field: VBAK.CMWAE
+  check_class: cross_field_check
+  grain: VBAK
+  applies_when:
+    VBAK.CMWAE:
+      populated: true
+    VBAK.KKBER:
+      populated: true
+    T014.WAERS:
+      populated: true
+  fail_when: (`VBAK.CMWAE` != `T014.WAERS`)
+  severity: medium
+  dimension: consistency
+  message: Credit currency on the order differs from the currency of the credit control area
+  why_it_matters: The credit currency is copied from the control area (T014) when the order is saved. A different value means
+    the exposure is converted with the wrong currency or the control area changed after the order.
+  rule_authority: best_practice
+  sap_impact: Open order value is added to the exposure in a currency other than the limit's currency; the limit comparison
+    is wrong.
+  fix_map:
+    __other__: Display the control area (OB45) and the order's credit data. Re-determine the credit data by saving the order
+      in VA02 after the control area is correct.
+  record_fix_template: 'Order {VBAK.VBELN}: credit currency {VBAK.CMWAE} differs from control area {VBAK.KKBER} ({T014.WAERS}).'
+- id: SDSO206
+  field: VBAK.KKBER
+  check_class: cross_field_check
+  grain: VBAK
+  applies_when:
+    VBUK.GBSTK:
+      not_in:
+      - C
+    TVTA.KKBER:
+      populated: true
+    VBAK.KKBER:
+      populated: true
+  fail_when: (`VBAK.KKBER` != `TVTA.KKBER`)
+  severity: medium
+  dimension: consistency
+  message: Order credit control area differs from the one assigned to its sales area (TVTA)
+  why_it_matters: When a credit control area is assigned to the sales area, SAP takes it over to the order. A different value
+    on an open order means the assignment changed after entry or the order was loaded with a wrong area.
+  rule_authority: best_practice
+  sap_impact: The order is checked against another area's limit than the one the sales area is configured for.
+  fix_map:
+    __other__: Compare the sales area assignment (OVKK) with the order. Correct the order's credit data or the assignment.
+  record_fix_template: 'Order {VBAK.VBELN}: control area {VBAK.KKBER}, sales area assigned to {TVTA.KKBER}.'
+- id: SDSO207
+  field: VBUK.CMGST
+  check_class: cross_field_check
+  grain: VBAK
+  applies_when:
+    VBUK.GBSTK:
+      not_in:
+      - C
+  fail_when: '`VBUK.CMGST`.notna() & `VBAK.KKBER`.isna()'
+  severity: high
+  dimension: consistency
+  message: Credit check ran on the order but the order carries no credit control area
+  why_it_matters: A credit status other than blank means a check ran, and that needs a control area. A status without a control
+    area comes from a load or a copied status.
+  rule_authority: best_practice
+  sap_impact: The status cannot be re-evaluated, so the credit release (VKM1) and the exposure update are unreliable for the
+    order.
+  fix_map:
+    __other__: Fill the credit control area through the customer's credit data and let the order be rechecked in VA02, or
+      reset the status with the credit release transaction.
+  record_fix_template: 'Order {VBAK.VBELN}: credit status {VBUK.CMGST} but no credit control area.'
+- id: SDSO208
+  field: VBUK.CMGST
+  check_class: cross_field_check
+  grain: VBAK
+  fail_when: '`VBUK.CMGST`.isin([''B'', ''C'']) & (`VBUK.LFSTK` == ''C'')'
+  severity: high
+  dimension: consistency
+  message: Order is fully delivered although its credit status is still blocked
+  why_it_matters: A credit-blocked order cannot be delivered. A blocked status together with a finished delivery means the
+    block was set after the fact or the delivery was forced through.
+  rule_authority: best_practice
+  sap_impact: Exposure and open-item reports show a blocked order that has already left the warehouse; the release can never
+    be completed.
+  fix_map:
+    __other__: Check the delivery and credit history of the order (VKM3). Release or reset the credit status so that the order
+      can be billed.
+  record_fix_template: 'Order {VBAK.VBELN}: credit status {VBUK.CMGST} with delivery status {VBUK.LFSTK}.'
+- id: SDSO209
+  field: VBAK.KNKLI
+  check_class: exists_check
+  fields:
+  - VBAK.KNKLI
+  - VBAK.KKBER
+  grain: VBAK
+  applies_when:
+    VBUK.GBSTK:
+      not_in:
+      - C
+    VBUK.CMGST:
+      not_in:
+      - B
+      - C
+      - D
+  target_table: KNKK
+  target_fields:
+  - KUNNR
+  - KKBER
+  target_when:
+    CRBLB:
+    - X
+  negate: true
+  severity: high
+  dimension: consistency
+  message: Open order not credit-blocked although its credit account is blocked in credit management
+  why_it_matters: A set credit block indicator (KNKK.CRBLB) must hold new orders back. An open order with a clean status for
+    such an account got through without the check, usually because it was loaded or created before the block.
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods are delivered to a customer whose credit account was blocked by credit management.
+  fix_map:
+    __other__: Run the credit check again on the order (VKM1) or confirm the release is intended, then update the status.
+  record_fix_template: 'Order {VBAK.VBELN}: credit account {VBAK.KNKLI} is blocked in area {VBAK.KKBER} but the order is not.'
+- id: SDSO210
+  field: VBAK.KALSM
+  check_class: null_check
+  applies_when:
+    VBUK.GBSTK:
+      not_in:
+      - C
+  severity: high
+  dimension: completeness
+  message: Open order has no pricing procedure
+  why_it_matters: The pricing procedure is determined from the sales area, document type and customer. Without it no condition
+    is found and the order is priced at zero.
+  rule_authority: sap_hard_constraint
+  sap_impact: The order has no price, discount or tax; billing creates a zero-value invoice or is blocked.
+  fix_map:
+    __blank__: Check the pricing procedure determination (OVKK) and the customer's pricing indicator, then save the order
+      again in VA02 to re-run pricing.
+  record_fix_template: 'Order {VBAK.VBELN}: pricing procedure is empty.'
+- id: SDSO211
+  field: VBAK.KALSM
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Pricing procedure on the order is not defined in customizing (T683)
+  why_it_matters: An unknown procedure cannot be executed, so pricing is skipped or ends in an error at the next pricing run.
+  rule_authority: sap_hard_constraint
+  sap_impact: New pricing (pricing type B/C), billing and rebate processing fail for the document.
+  fix_map:
+    __other__: Correct the pricing procedure determination (OVKK) or create the procedure (V/08), then re-run pricing in VA02.
+  record_fix_template: 'Order {VBAK.VBELN}: pricing procedure ''{actual_value}'' is not in T683.'
+- id: SDSO212
+  field: VBAK.KALSM
+  check_class: exists_check
+  fields:
+  - VBAK.KALSM
+  grain: VBAK
+  applies_when:
+    VBUK.GBSTK:
+      not_in:
+      - C
+  target_table: T683S
+  target_fields:
+  - KALSM
+  severity: medium
+  dimension: consistency
+  message: Pricing procedure on the order has no steps (T683S)
+  why_it_matters: A procedure with a header and no steps runs without error but finds no conditions.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orders priced with it carry no price and the items fail the incompletion check or invoice at zero.
+  fix_map:
+    __other__: Maintain the procedure steps (V/08) or change the determination.
+  record_fix_template: 'Order {VBAK.VBELN}: pricing procedure {VBAK.KALSM} has no steps.'
+- id: SDSO213
+  field: VBAK.KNUMV
+  check_class: null_check
+  applies_when:
+    VBUK.GBSTK:
+      not_in:
+      - C
+  severity: medium
+  dimension: completeness
+  message: Open order has no pricing document number
+  why_it_matters: KNUMV links the order to its condition records. Without it the pricing result cannot be read back or recalculated.
+  rule_authority: sap_hard_constraint
+  sap_impact: Item values stay frozen; a price change or a rebate accrual cannot be recalculated for the order.
+  fix_map:
+    __blank__: Re-run pricing on the order in VA02 (Edit, New pricing); if the number stays empty, investigate the load that
+      created the order.
+  record_fix_template: 'Order {VBAK.VBELN}: no pricing document number.'
+- id: SDSO214
+  field: VBAK.VSBED
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: Shipping condition on the order is not defined (TVSB)
+  why_it_matters: The shipping condition drives shipping point and route determination.
+  rule_authority: sap_hard_constraint
+  sap_impact: Delivery creation falls back to a default shipping point or fails.
+  fix_map:
+    __other__: Correct the shipping condition in VA02 or create it in customizing (OVLS).
+  record_fix_template: 'Order {VBAK.VBELN}: shipping condition ''{actual_value}'' is not in TVSB.'
+- id: SDSO215
+  field: VBAK.FKARA
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Proposed billing type on the order is not a defined billing type (TVFK)
+  why_it_matters: The billing type proposed by the order is copied into the billing due list; an unknown type cannot be used.
+  rule_authority: sap_hard_constraint
+  sap_impact: Billing creation (VF04) fails or picks another type than the one intended.
+  fix_map:
+    __other__: Correct the billing type in the order header (VA02) or create it in customizing (VOFA).
+  record_fix_template: 'Order {VBAK.VBELN}: billing type ''{actual_value}'' is not in TVFK.'
+- id: SDSO216
+  field: VBAK.VKBUR
+  check_class: exists_check
+  fields:
+  - VBAK.VKBUR
+  - VBAK.VKGRP
+  grain: VBAK
+  target_table: TVBVK
+  target_fields:
+  - VKBUR
+  - VKGRP
+  severity: medium
+  dimension: consistency
+  message: Sales office and sales group on the order are not a valid combination (TVBVK)
+  why_it_matters: The sales office to sales group assignment is customizing. A combination outside it is rejected by the order
+    screen, so it was loaded or the assignment was removed later.
+  rule_authority: sap_hard_constraint
+  sap_impact: Sales reports by office or group, and the partner determination for sales employees, misattribute the order.
+  fix_map:
+    __other__: Correct the office or group in VA02, or restore the assignment (OVX1).
+  record_fix_template: 'Order {VBAK.VBELN}: sales office {VBAK.VKBUR} / group {VBAK.VKGRP} is not an allowed combination.'
+- id: SDSO217
+  field: VBAK.VKORG
+  check_class: exists_check
+  fields:
+  - VBAK.VKORG
+  - VBAK.VTWEG
+  - VBAK.SPART
+  grain: VBAK
+  target_table: TVTA
+  target_fields:
+  - VKORG
+  - VTWEG
+  - SPART
+  severity: high
+  dimension: consistency
+  message: Sales area of the order is not set up as a valid sales area (TVTA)
+  why_it_matters: A sales area exists only when sales organisation, distribution channel and division are combined in TVTA.
+    Orders in another combination cannot be priced, delivered or billed.
+  rule_authority: sap_hard_constraint
+  sap_impact: Pricing, output and billing determination find no data for the order; the order is incomplete from the start.
+  fix_map:
+    __other__: Create the sales area (OVXG, OVXK) if it is legitimate, otherwise correct the order's organisation data.
+  record_fix_template: 'Order {VBAK.VBELN}: sales area {VBAK.VKORG}/{VBAK.VTWEG}/{VBAK.SPART} is not in TVTA.'
+- id: SDSO218
+  field: VBAK.BSTDK
+  check_class: cross_field_check
+  grain: VBAK
+  fail_when: '`VBAK.BSTDK` > `VBAK.ERDAT`'
+  severity: low
+  dimension: accuracy
+  message: Customer purchase order date is later than the order creation date
+  why_it_matters: The customer's PO exists before the order is keyed. A later PO date is a keying error or a load default.
+  rule_authority: best_practice
+  sap_impact: Dunning, dispute and customer-service searches by PO date return the wrong documents.
+  fix_map:
+    __other__: Correct the PO date in the order header (VA02).
+  record_fix_template: 'Order {VBAK.VBELN}: PO date {VBAK.BSTDK} is after creation date {VBAK.ERDAT}.'
+- id: SDSO219
+  field: VBAK.ERDAT
+  check_class: cross_field_check
+  grain: VBAK
+  fail_when: '`VBAK.ERDAT` > @today'
+  severity: medium
+  dimension: timeliness
+  message: Order creation date lies in the future
+  why_it_matters: SAP stamps the date from the system clock. A future date comes from a load or an interface with a wrong
+    clock.
+  rule_authority: best_practice
+  sap_impact: Ageing, backlog and period-end cut-offs treat the order as not yet existing.
+  fix_map:
+    __other__: Correct the date in the source of the load; if the order is genuine, check the application server clock.
+  record_fix_template: 'Order {VBAK.VBELN}: created {VBAK.ERDAT}, which is in the future.'
+- id: SDSO220
+  field: VBAK.BNDDT
+  check_class: cross_field_check
+  grain: VBAK
+  applies_when:
+    VBUK.GBSTK:
+      not_in:
+      - C
+    VBAK.VBTYP:
+    - B
+    VBAK.BNDDT:
+      populated: true
+  fail_when: '`VBAK.BNDDT` < @today'
+  severity: low
+  dimension: lifecycle
+  message: Quotation is open and past its binding date
+  why_it_matters: A quotation is valid until the binding date. After that the price offer has lapsed but the document still
+    sits in the open list.
+  rule_authority: best_practice
+  sap_impact: Open quotation value overstates the pipeline; a follow-up order can copy a lapsed price.
+  fix_map:
+    __other__: Reject the quotation (VA22) or extend the validity date if the offer still holds.
+  record_fix_template: 'Quotation {VBAK.VBELN}: binding date {VBAK.BNDDT} has passed and the quotation is still open.'
+- id: SDSO221
+  field: VBAK.GUEEN
+  check_class: cross_field_check
+  grain: VBAK
+  applies_when:
+    VBUK.GBSTK:
+      not_in:
+      - C
+    VBAK.VBTYP:
+    - G
+    VBAK.GUEEN:
+      populated: true
+  fail_when: '`VBAK.GUEEN` < @today'
+  severity: low
+  dimension: lifecycle
+  message: Contract is open and past its end of validity
+  why_it_matters: A contract runs until its end date. After that, release orders can no longer be created against it.
+  rule_authority: best_practice
+  sap_impact: The open-contract value in reports is overstated and release orders are rejected.
+  fix_map:
+    __other__: Close the contract (VA42) with a rejection reason or extend its validity.
+  record_fix_template: 'Contract {VBAK.VBELN}: valid to {VBAK.GUEEN}, still open.'
+- id: SDSO222
+  field: VBAP.WERKS
+  check_class: exists_check
+  fields:
+  - VBAP.WERKS
+  grain: VBAP
+  applies_when:
+    VBUP.GBSTA:
+      not_in:
+      - C
+  target_table: T001W
+  target_fields:
+  - WERKS
+  severity: high
+  dimension: consistency
+  message: Delivering plant of the order item is not a defined plant (T001W)
+  why_it_matters: Every logistics step reads the plant. An unknown plant cannot be used for availability, delivery or costing.
+  rule_authority: sap_hard_constraint
+  sap_impact: The item is never confirmed or delivered.
+  fix_map:
+    __other__: Correct the plant in VA02 or create it in customizing (OX10).
+  record_fix_template: 'Order {VBAP.VBELN} item {VBAP.POSNR}: plant ''{VBAP.WERKS}'' is not in T001W.'
+- id: SDSO223
+  field: VBAP.LGORT
+  check_class: exists_check
+  fields:
+  - VBAP.WERKS
+  - VBAP.LGORT
+  grain: VBAP
+  applies_when:
+    VBUP.GBSTA:
+      not_in:
+      - C
+  target_table: T001L
+  target_fields:
+  - WERKS
+  - LGORT
+  severity: medium
+  dimension: consistency
+  message: Storage location of the order item does not exist in its plant (T001L)
+  why_it_matters: The storage location must belong to the item's plant. A location in another plant is rejected by the order
+    screen.
+  rule_authority: sap_hard_constraint
+  sap_impact: ATP and picking look in a location with no stock.
+  fix_map:
+    __other__: Correct the storage location in VA02 or create it in customizing (OX09).
+  record_fix_template: 'Order {VBAP.VBELN} item {VBAP.POSNR}: storage location {VBAP.LGORT} is not defined in plant {VBAP.WERKS}.'
+- id: SDSO224
+  field: VBAP.VSTEL
+  check_class: null_check
+  applies_when:
+    VBUP.GBSTA:
+      not_in:
+      - C
+    VBAP.LFREL:
+      populated: true
+    VBAP.ABGRU:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: Open delivery-relevant item has no shipping point
+  why_it_matters: The shipping point is determined from plant, shipping condition and loading group. Without it no delivery
+    can be created.
+  rule_authority: sap_hard_constraint
+  sap_impact: The item never appears in the delivery due list (VL10).
+  fix_map:
+    __blank__: Maintain the shipping point determination (OVL2) and re-determine it in VA02.
+  record_fix_template: 'Order {VBAP.VBELN} item {VBAP.POSNR}: no shipping point.'
+- id: SDSO225
+  field: VBAP.KBMENG
+  check_class: cross_field_check
+  grain: VBAP
+  fail_when: '`VBAP.KBMENG` > `VBAP.KWMENG`'
+  severity: medium
+  dimension: consistency
+  message: Confirmed quantity of the order item exceeds the ordered quantity
+  why_it_matters: ATP confirms at most what was ordered. A larger confirmed quantity is a stale confirmation after a quantity
+    reduction.
+  rule_authority: best_practice
+  sap_impact: Requirements and capacity planning reserve more than the customer wants.
+  fix_map:
+    __other__: Re-run availability check in VA02 for the item.
+  record_fix_template: 'Order {VBAP.VBELN} item {VBAP.POSNR}: confirmed {VBAP.KBMENG} exceeds ordered {VBAP.KWMENG}.'
+- id: SDSO226
+  field: VBAP.ABGRU
+  check_class: cross_field_check
+  grain: VBAP
+  applies_when:
+    VBAP.ABGRU:
+      populated: true
+  fail_when: '`VBAP.KBMENG` > 0'
+  severity: medium
+  dimension: consistency
+  message: Rejected order item still holds a confirmed quantity
+  why_it_matters: Rejecting an item removes its requirement and confirmation. A confirmed quantity on a rejected item keeps
+    stock reserved.
+  rule_authority: best_practice
+  sap_impact: Stock is blocked for an order the customer no longer wants.
+  fix_map:
+    __other__: Save the item again in VA02 so that the schedule lines are deleted, or reverse the rejection if the item is
+      still wanted.
+  record_fix_template: 'Order {VBAP.VBELN} item {VBAP.POSNR}: rejected ({VBAP.ABGRU}) but confirmed quantity is {VBAP.KBMENG}.'
+- id: SDSO227
+  field: VBAP.UEPOS
+  check_class: exists_check
+  fields:
+  - VBAP.VBELN
+  - VBAP.UEPOS
+  grain: VBAP
+  applies_when:
+    VBAP.UEPOS:
+      not_in:
+      - '000000'
+  target_table: VBAP
+  target_fields:
+  - VBELN
+  - POSNR
+  severity: high
+  dimension: consistency
+  message: Higher-level item of the order item does not exist on the order
+  why_it_matters: Sub-items (bill of material components, free goods, batch splits) hang under a higher-level item. A reference
+    to a missing item leaves an orphan whose value and delivery cannot be settled.
+  rule_authority: sap_hard_constraint
+  sap_impact: Pricing and delivery of the sub-item fail; the item cannot be copied to the delivery.
+  fix_map:
+    __other__: Restore the missing parent item or remove the sub-item in VA02.
+  record_fix_template: 'Order {VBAP.VBELN} item {VBAP.POSNR}: higher-level item {VBAP.UEPOS} does not exist.'
+- id: SDSO228
+  field: VBAP.SPART
+  check_class: cross_field_check
+  grain: VBAP
+  applies_when:
+    VBAP.SPART:
+      populated: true
+  fail_when: '`VBAP.SPART` != `VBAK.SPART`'
+  severity: medium
+  dimension: consistency
+  message: Division of the order item differs from the division of the order header
+  why_it_matters: The item division is copied from the header (or from the material when cross-division is allowed). A difference
+    outside that setup comes from a load.
+  rule_authority: best_practice
+  sap_impact: Sales statistics and billing split by division are wrong.
+  fix_map:
+    __other__: Correct the division on the item or the header in VA02.
+  record_fix_template: 'Order {VBAP.VBELN} item {VBAP.POSNR}: division {VBAP.SPART}, header division {VBAK.SPART}.'
+- id: SDSO229
+  field: VBAP.MATKL
+  check_class: cross_field_check
+  grain: VBAP
+  applies_when:
+    VBAP.MATKL:
+      populated: true
+    MARA.MATKL:
+      populated: true
+  fail_when: '`VBAP.MATKL` != `MARA.MATKL`'
+  severity: low
+  dimension: consistency
+  message: Material group on the order item differs from the material master
+  why_it_matters: The item takes the material group from the master at entry. A difference means the master was changed later
+    or the item was loaded with another value.
+  rule_authority: best_practice
+  sap_impact: Material-group based reporting, authorisations and pricing groups disagree with the master.
+  fix_map:
+    __other__: Decide which value is correct. Update the master (MM02) or save the order again.
+  record_fix_template: 'Order {VBAP.VBELN} item {VBAP.POSNR}: material group {VBAP.MATKL}, master {MARA.MATKL}.'
+- id: SDSO230
+  field: VBAP.VBELN
+  check_class: exists_check
+  fields:
+  - VBAP.VBELN
+  - VBAP.POSNR
+  grain: VBAP
+  applies_when:
+    VBUP.GBSTA:
+      not_in:
+      - C
+    VBAP.LFREL:
+      populated: true
+    VBAP.ABGRU:
+      blank: true
+    VBAP.KWMENG:
+      gt: 0
+  target_table: VBEP
+  target_fields:
+  - VBELN
+  - POSNR
+  severity: high
+  dimension: completeness
+  message: Open delivery-relevant item has no schedule line
+  why_it_matters: Delivery relevance is carried by the schedule line. An item flagged relevant but without a schedule line
+    has nothing to confirm or deliver.
+  rule_authority: sap_hard_constraint
+  sap_impact: The item is never confirmed, never delivered and never billed.
+  fix_map:
+    __other__: Re-create the schedule line by changing the quantity in VA02, or set the item to not delivery relevant if that
+      is intended.
+  record_fix_template: 'Order {VBAP.VBELN} item {VBAP.POSNR}: delivery relevant, no schedule line.'
+- id: SDSO231
+  field: VBAP.KDMAT
+  check_class: exists_check
+  fields:
+  - VBAK.VKORG
+  - VBAK.VTWEG
+  - VBAK.KUNNR
+  - VBAP.MATNR
+  grain: VBAP
+  applies_when:
+    VBAP.KDMAT:
+      populated: true
+  target_table: KNMT
+  target_fields:
+  - VKORG
+  - VTWEG
+  - KUNNR
+  - MATNR
+  severity: low
+  dimension: consistency
+  message: Customer material number on the order item has no customer-material info record (KNMT)
+  why_it_matters: The customer material number normally comes from the info record and is printed on delivery notes and invoices.
+    A number with no record was typed in or loaded.
+  rule_authority: best_practice
+  sap_impact: The number is not found when the customer's next order is created via EDI.
+  fix_map:
+    __other__: Create the info record (VD51) or clear the number on the item.
+  record_fix_template: 'Order {VBAP.VBELN} item {VBAP.POSNR}: customer material ''{VBAP.KDMAT}'' has no info record for the
+    sold-to.'
+- id: SDSO232
+  field: VBAP.MATNR
+  check_class: cross_field_check
+  grain: VBAP
+  applies_when:
+    VBUP.GBSTA:
+      not_in:
+      - C
+    VBAP.ABGRU:
+      blank: true
+  fail_when: '`MARC.KZAUS`.notna()'
+  severity: medium
+  dimension: lifecycle
+  message: Open order item is on a material flagged as discontinued at its plant
+  why_it_matters: A discontinuation indicator (single or dependent parallel) tells sales that stock will run out. Orders still
+    taken on the part need a decision about the follow-up part.
+  rule_authority: best_practice
+  sap_impact: Items cannot be fulfilled once stock is gone; the customer is not offered the successor.
+  fix_map:
+    __other__: Check the material in MM03 (MRP 4, discontinued parts). Replace the item with the successor or confirm the
+      remaining stock.
+  record_fix_template: 'Order {VBAP.VBELN} item {VBAP.POSNR}: material {VBAP.MATNR} is flagged discontinued in plant {VBAP.WERKS}.'
+- id: SDSO233
+  field: VBAP.MATNR
+  check_class: cross_field_check
+  grain: VBAP
+  applies_when:
+    VBUP.GBSTA:
+      not_in:
+      - C
+    VBAP.ABGRU:
+      blank: true
+    MARC.AUSDT:
+      populated: true
+  fail_when: '`MARC.AUSDT` < @today'
+  severity: high
+  dimension: lifecycle
+  message: Open order item is on a material whose effective-out date has passed
+  why_it_matters: After the effective-out date the material is no longer supplied. An item still open for it will not be delivered.
+  rule_authority: best_practice
+  sap_impact: The item stays open for ever; backlog is overstated and the customer waits for a part that is not coming.
+  fix_map:
+    __other__: Replace the item with the follow-up material (VA02) or reject it with a reason.
+  record_fix_template: 'Order {VBAP.VBELN} item {VBAP.POSNR}: material {VBAP.MATNR} went out on {MARC.AUSDT}.'
+- id: SDSO234
+  field: VBAP.MATNR
+  check_class: cross_field_check
+  grain: VBAP
+  applies_when:
+    VBUP.GBSTA:
+      not_in:
+      - C
+    VBAP.ABGRU:
+      blank: true
+  fail_when: '`MARC.NFMAT`.notna()'
+  severity: medium
+  dimension: lifecycle
+  message: Open order item is still on a material that has a follow-up material
+  why_it_matters: The follow-up material (MARC.NFMAT) is the successor SAP proposes when the part is discontinued. An open
+    item on the old part should move to the new one.
+  rule_authority: best_practice
+  sap_impact: The customer receives or waits for the superseded part and the successor's demand is understated.
+  fix_map:
+    __other__: Substitute the successor (VA02) or document why the old part is still wanted.
+  record_fix_template: 'Order {VBAP.VBELN} item {VBAP.POSNR}: material {VBAP.MATNR} has follow-up material {MARC.NFMAT}.'
+- id: SDSO235
+  field: MARC.NFMAT
+  check_class: exists_check
+  fields:
+  - MARC.NFMAT
+  - VBAK.VKORG
+  - VBAK.VTWEG
+  grain: VBAP
+  applies_when:
+    VBUP.GBSTA:
+      not_in:
+      - C
+    VBAP.ABGRU:
+      blank: true
+  target_table: MVKE
+  target_fields:
+  - MATNR
+  - VKORG
+  - VTWEG
+  target_when:
+    LVORM:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Follow-up material of an ordered part is not sold in the order's sales area
+  why_it_matters: A successor with no sales view in the sales area cannot be ordered there, so the supersession path is closed
+    for the customer.
+  rule_authority: sap_hard_constraint
+  sap_impact: The replacement cannot be added to the order; the item is dead-ended.
+  fix_map:
+    __other__: Extend the successor to the sales area (MM01 sales views) or choose another successor.
+  record_fix_template: 'Order {VBAP.VBELN} item {VBAP.POSNR}: follow-up {MARC.NFMAT} has no active sales data in {VBAK.VKORG}/{VBAK.VTWEG}.'
+- id: SDSO236
+  field: VBAP.MATNR
+  check_class: cross_field_check
+  grain: VBAP
+  applies_when:
+    VBUP.GBSTA:
+      not_in:
+      - C
+    VBAP.ABGRU:
+      blank: true
+  fail_when: '`MARA.MSTAE`.notna()'
+  severity: medium
+  dimension: lifecycle
+  message: Open order item is on a material with a cross-plant material status
+  why_it_matters: A cross-plant status (MARA.MSTAE) restricts the material for purchasing, MRP or production. Open orders
+    on it may not be fulfillable.
+  rule_authority: best_practice
+  sap_impact: Supply of the part is restricted; the order stays open without a plan.
+  fix_map:
+    __other__: Check the status in MM03 and decide with materials management whether the order can be served.
+  record_fix_template: 'Order {VBAP.VBELN} item {VBAP.POSNR}: material {VBAP.MATNR} has status {MARA.MSTAE}.'
+- id: SDSO237
+  field: VBAP.MATNR
+  check_class: cross_field_check
+  grain: VBAP
+  applies_when:
+    VBUP.GBSTA:
+      not_in:
+      - C
+    VBAP.ABGRU:
+      blank: true
+  fail_when: '`MARC.MMSTA`.notna()'
+  severity: medium
+  dimension: lifecycle
+  message: Open order item is on a material with a plant-specific material status
+  why_it_matters: A plant material status (MARC.MMSTA) restricts the part at the delivering plant. Orders for the plant may
+    no longer be valid.
+  rule_authority: best_practice
+  sap_impact: The plant cannot supply, so the item is not confirmed.
+  fix_map:
+    __other__: Check the plant status in MM03 and move the item to another plant or reject it.
+  record_fix_template: 'Order {VBAP.VBELN} item {VBAP.POSNR}: material {VBAP.MATNR} has plant status {MARC.MMSTA} in {VBAP.WERKS}.'
+- id: SDSO238
+  field: VBAP.MATNR
+  check_class: cross_field_check
+  grain: VBAP
+  applies_when:
+    VBUP.GBSTA:
+      not_in:
+      - C
+    VBAP.ABGRU:
+      blank: true
+  fail_when: '`MARA.MSTAV`.notna()'
+  severity: high
+  dimension: lifecycle
+  message: Open order item is on a material with a cross-distribution-chain sales status
+  why_it_matters: The sales status (MARA.MSTAV) blocks or warns for sales documents depending on the TVMS settings. Open items
+    on a status-restricted material need review.
+  rule_authority: best_practice
+  sap_impact: New documents on the material are blocked or warned about; open ones were created before the status.
+  fix_map:
+    __other__: Check the status in MM03 sales views. Replace or reject the item.
+  record_fix_template: 'Order {VBAP.VBELN} item {VBAP.POSNR}: material {VBAP.MATNR} has sales status {MARA.MSTAV}.'
+- id: SDSO239
+  field: VBAP.MATNR
+  check_class: exists_check
+  fields:
+  - VBAP.MATNR
+  - VBAK.VKORG
+  - VBAK.VTWEG
+  grain: VBAP
+  applies_when:
+    VBUP.GBSTA:
+      not_in:
+      - C
+    VBAP.ABGRU:
+      blank: true
+  target_table: MVKE
+  target_fields:
+  - MATNR
+  - VKORG
+  - VTWEG
+  target_when:
+    VMSTA:
+      populated: true
+  negate: true
+  severity: medium
+  dimension: lifecycle
+  message: Open order item is on a material with a distribution-chain specific sales status in the order's sales area
+  why_it_matters: The distribution-chain status (MVKE.VMSTA) is the more specific block. A status here restricts exactly the
+    channel the order was placed in.
+  rule_authority: best_practice
+  sap_impact: Sales of the material in this channel are restricted or being phased out.
+  fix_map:
+    __other__: Check the status in MM03 and substitute the item if the status blocks it.
+  record_fix_template: 'Order {VBAP.VBELN} item {VBAP.POSNR}: material {VBAP.MATNR} has a distribution-chain status in {VBAK.VKORG}/{VBAK.VTWEG}.'
+- id: SDSO240
+  field: VBEP.BMENG
+  check_class: cross_field_check
+  grain: VBEP
+  fail_when: '`VBEP.BMENG` > `VBEP.WMENG`'
+  severity: medium
+  dimension: consistency
+  message: Confirmed quantity of the schedule line exceeds its ordered quantity
+  why_it_matters: The confirmed quantity cannot exceed the schedule line quantity. A larger value is a stale confirmation.
+  rule_authority: best_practice
+  sap_impact: Availability is reserved for more than is wanted.
+  fix_map:
+    __other__: Re-run the availability check in VA02.
+  record_fix_template: 'Order {VBEP.VBELN} item {VBEP.POSNR} line {VBEP.ETENR}: confirmed {VBEP.BMENG} exceeds ordered {VBEP.WMENG}.'
+- id: SDSO241
+  field: VBEP.EDATU
+  check_class: null_check
+  applies_when:
+    VBEP.WMENG:
+      gt: 0
+  severity: high
+  dimension: completeness
+  message: Schedule line with an ordered quantity has no delivery date
+  why_it_matters: The delivery date is the basis for ATP, transport and goods-issue scheduling.
+  rule_authority: sap_hard_constraint
+  sap_impact: The line cannot be scheduled and drops out of the delivery due list.
+  fix_map:
+    __blank__: Enter the date on the schedule line in VA02.
+  record_fix_template: 'Order {VBEP.VBELN} item {VBEP.POSNR} line {VBEP.ETENR}: no delivery date.'
+- id: SDSO242
+  field: VBEP.EDATU
+  check_class: cross_field_check
+  grain: VBEP
+  fail_when: '`VBEP.EDATU` < `VBAK.AUDAT`'
+  severity: low
+  dimension: accuracy
+  message: Schedule line delivery date is earlier than the order date
+  why_it_matters: Delivery cannot precede the order. A date before the order date is a keying error or a load default.
+  rule_authority: best_practice
+  sap_impact: The line is overdue from creation and floods the backlog and late-delivery reports.
+  fix_map:
+    __other__: Correct the delivery date in VA02.
+  record_fix_template: 'Order {VBEP.VBELN} item {VBEP.POSNR} line {VBEP.ETENR}: delivery {VBEP.EDATU} is before order date
+    {VBAK.AUDAT}.'
+- id: SDSO243
+  field: VBEP.WADAT
+  check_class: cross_field_check
+  grain: VBEP
+  fail_when: '`VBEP.WADAT` > `VBEP.EDATU`'
+  severity: medium
+  dimension: accuracy
+  message: Goods issue date of the schedule line is later than the delivery date
+  why_it_matters: Goods issue is scheduled backward from the delivery date by transport and loading time. A later issue date
+    makes the delivery date unreachable.
+  rule_authority: best_practice
+  sap_impact: The delivery is created late and the customer date is missed.
+  fix_map:
+    __other__: Re-run scheduling by changing the line in VA02.
+  record_fix_template: 'Order {VBEP.VBELN} item {VBEP.POSNR} line {VBEP.ETENR}: goods issue {VBEP.WADAT} after delivery {VBEP.EDATU}.'
+- id: SDSO244
+  field: VBEP.VRKME
+  check_class: cross_field_check
+  grain: VBEP
+  applies_when:
+    VBEP.VRKME:
+      populated: true
+  fail_when: '`VBEP.VRKME` != `VBAP.VRKME`'
+  severity: medium
+  dimension: consistency
+  message: Schedule line sales unit differs from the item sales unit
+  why_it_matters: Quantities of the schedule lines add up to the item quantity, so both use the item's sales unit.
+  rule_authority: best_practice
+  sap_impact: Totals of the lines no longer match the item and the delivery quantity is wrong.
+  fix_map:
+    __other__: Correct the unit in VA02.
+  record_fix_template: 'Order {VBEP.VBELN} item {VBEP.POSNR} line {VBEP.ETENR}: unit {VBEP.VRKME}, item unit {VBAP.VRKME}.'
+- id: SDSO245
+  field: VBEP.MEINS
+  check_class: cross_field_check
+  grain: VBEP
+  applies_when:
+    VBEP.MEINS:
+      populated: true
+  fail_when: '`VBEP.MEINS` != `VBAP.MEINS`'
+  severity: medium
+  dimension: consistency
+  message: Schedule line base unit differs from the item base unit
+  why_it_matters: The base unit of the line is copied from the item. A different base unit makes the quantity conversion wrong.
+  rule_authority: best_practice
+  sap_impact: Stock and delivery quantities are converted with the wrong factor.
+  fix_map:
+    __other__: Correct the unit in VA02 or fix the load.
+  record_fix_template: 'Order {VBEP.VBELN} item {VBEP.POSNR} line {VBEP.ETENR}: base unit {VBEP.MEINS}, item base unit {VBAP.MEINS}.'
+- id: SDSO246
+  field: VBEP.LIFSP
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: Delivery block on the schedule line is not a defined block reason (TVLS)
+  why_it_matters: An unknown block reason cannot be released by the normal transactions.
+  rule_authority: sap_hard_constraint
+  sap_impact: The line stays blocked.
+  fix_map:
+    __other__: Release the line in VA02 or create the reason in customizing (OVLS).
+  record_fix_template: 'Order {VBEP.VBELN} item {VBEP.POSNR} line {VBEP.ETENR}: delivery block ''{actual_value}'' is not in
+    TVLS.'
+- id: SDSO247
+  field: VBEP.LIFSP
+  check_class: cross_field_check
+  grain: VBEP
+  applies_when:
+    VBUP.GBSTA:
+      not_in:
+      - C
+    VBEP.EDATU:
+      older_than_days: 60
+  fail_when: '`VBEP.LIFSP`.notna()'
+  severity: medium
+  dimension: timeliness
+  message: Schedule line is still delivery blocked 60 days after its delivery date
+  why_it_matters: A block normally clears within days. A line blocked two months past its date is forgotten.
+  rule_authority: best_practice
+  sap_impact: Backlog is overstated and the customer is not informed.
+  fix_map:
+    __other__: Release or reject the line in VA02.
+  record_fix_template: 'Order {VBEP.VBELN} item {VBEP.POSNR} line {VBEP.ETENR}: blocked ({VBEP.LIFSP}), due {VBEP.EDATU}.'
+- id: SDSO248
+  field: VBKD.ZTERM
+  check_class: exists_check
+  fields:
+  - VBKD.ZTERM
+  grain: VBKD
+  target_table: T052
+  target_fields:
+  - ZTERM
+  severity: high
+  dimension: validity
+  message: Payment terms on the order are not defined (T052)
+  why_it_matters: Terms drive the due date in billing. Terms that are not in T052 cannot be evaluated.
+  rule_authority: sap_hard_constraint
+  sap_impact: The invoice has no due date and cash planning and dunning ignore it.
+  fix_map:
+    __other__: Correct the payment terms in VA02 or create them in customizing (OBB8).
+  record_fix_template: 'Order {VBKD.VBELN}: payment terms ''{VBKD.ZTERM}'' are not defined.'
+- id: SDSO249
+  field: VBKD.ZTERM
+  check_class: exists_check
+  fields:
+  - VBKD.ZTERM
+  grain: VBKD
+  target_table: T052
+  target_fields:
+  - ZTERM
+  target_when:
+    KOART:
+    - K
+  negate: true
+  severity: medium
+  dimension: consistency
+  message: Payment terms on the order are restricted to vendors (T052 vendor-only)
+  why_it_matters: Terms marked for vendors only (KOART K) are not meant for customer documents.
+  rule_authority: best_practice
+  sap_impact: The invoice is rejected or posts with terms that dunning and cash discount logic do not expect.
+  fix_map:
+    __other__: Select customer terms (OBB8) in VA02.
+  record_fix_template: 'Order {VBKD.VBELN}: payment terms {VBKD.ZTERM} are vendor-only.'
+- id: SDSO250
+  field: VBKD.KDGRP
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Customer group on the order is not defined (T151)
+  why_it_matters: The customer group feeds pricing and statistics.
+  rule_authority: sap_hard_constraint
+  sap_impact: Pricing by customer group and sales statistics ignore the order.
+  fix_map:
+    __other__: Correct the group in VA02 or create it in customizing (OVRH).
+  record_fix_template: 'Order {VBKD.VBELN}: customer group ''{actual_value}'' is not in T151.'
+- id: SDSO251
+  field: VBKD.INCO2
+  check_class: cross_field_check
+  grain: VBKD
+  applies_when:
+    VBKD.INCO1:
+      populated: true
+  fail_when: '`VBKD.INCO2`.isna()'
+  severity: low
+  dimension: completeness
+  message: Incoterms are set without the second part (named place)
+  why_it_matters: Incoterms are only complete with the named place. Without it the invoice and customs documents are vague.
+  rule_authority: best_practice
+  sap_impact: Customs and invoice documents show Incoterms without a place.
+  fix_map:
+    __other__: Fill the Incoterms location in VA02.
+  record_fix_template: 'Order {VBKD.VBELN}: Incoterms {VBKD.INCO1} without location.'
+- id: SDSO252
+  field: VBKD.KURSK
+  check_class: cross_field_check
+  grain: VBKD
+  applies_when:
+    VBKD.KURSK:
+      populated: true
+  fail_when: '`VBKD.KURSK` <= 0'
+  severity: high
+  dimension: accuracy
+  message: Exchange rate for pricing on the order is zero or negative
+  why_it_matters: A rate of zero converts every condition value to zero.
+  rule_authority: best_practice
+  sap_impact: Item values and tax are calculated as zero.
+  fix_map:
+    __other__: Correct the rate (or set the rate type) in VA02 and re-price.
+  record_fix_template: 'Order {VBKD.VBELN}: exchange rate for pricing is {VBKD.KURSK}.'
+- id: SDSO253
+  field: VBKD.KURRF
+  check_class: cross_field_check
+  grain: VBKD
+  applies_when:
+    VBKD.KURRF:
+      populated: true
+  fail_when: '`VBKD.KURRF` <= 0'
+  severity: high
+  dimension: accuracy
+  message: Exchange rate for the accounting document on the order is zero or negative
+  why_it_matters: The accounting rate converts the billing to local currency.
+  rule_authority: best_practice
+  sap_impact: The billing document posts to FI with zero local value.
+  fix_map:
+    __other__: Correct the rate in VA02.
+  record_fix_template: 'Order {VBKD.VBELN}: exchange rate for accounting is {VBKD.KURRF}.'
+- id: SDSO254
+  field: VBKD.PRSDT
+  check_class: cross_field_check
+  grain: VBKD
+  applies_when:
+    VBKD.PRSDT:
+      populated: true
+  fail_when: (`VBAK.ERDAT` - `VBKD.PRSDT`).dt.days > 365
+  severity: medium
+  dimension: accuracy
+  message: Pricing date is more than a year before the order creation date
+  why_it_matters: The pricing date is normally the order or requested delivery date. A date a year old picks expired prices.
+  rule_authority: best_practice
+  sap_impact: The order is priced with a historic price list.
+  fix_map:
+    __other__: Set the pricing date in VA02 and re-price.
+  record_fix_template: 'Order {VBKD.VBELN}: pricing date {VBKD.PRSDT}, created {VBAK.ERDAT}.'
+- id: SDSO255
+  field: VBKD.FKDAT
+  check_class: cross_field_check
+  grain: VBKD
+  applies_when:
+    VBKD.FKDAT:
+      populated: true
+  fail_when: '`VBKD.FKDAT` < `VBAK.AUDAT`'
+  severity: medium
+  dimension: accuracy
+  message: Billing date is earlier than the order date
+  why_it_matters: Billing cannot be due before the order exists.
+  rule_authority: best_practice
+  sap_impact: The item shows in the billing due list at once.
+  fix_map:
+    __other__: Correct the billing date in VA02.
+  record_fix_template: 'Order {VBKD.VBELN}: billing date {VBKD.FKDAT} before order date {VBAK.AUDAT}.'
+- id: SDSO256
+  field: VBKD.BSTKD
+  check_class: cross_field_check
+  grain: VBKD
+  applies_when:
+    VBKD.POSNR:
+    - '000000'
+    VBKD.BSTKD:
+      populated: true
+    VBAK.BSTNK:
+      populated: true
+  fail_when: '`VBKD.BSTKD` != `VBAK.BSTNK`'
+  severity: low
+  dimension: consistency
+  message: Purchase order number in the business data differs from the one in the order header
+  why_it_matters: The header copy of the PO number is read for searches. A difference points to separate edits.
+  rule_authority: best_practice
+  sap_impact: Searches by PO number miss the order.
+  fix_map:
+    __other__: Correct the PO number in VA02.
+  record_fix_template: 'Order {VBKD.VBELN}: PO number in business data differs from header ({VBAK.BSTNK}).'
+- id: SDSO257
+  field: VBPA.KUNNR
+  check_class: referential_check
+  severity: high
+  dimension: validity
+  message: Customer in a partner function does not exist in the customer master
+  why_it_matters: A partner function must point to a customer master record. Otherwise address, tax and credit data cannot
+    be read.
+  rule_authority: sap_hard_constraint
+  sap_impact: Delivery, billing and payment run on a partner SAP cannot find.
+  fix_map:
+    __other__: Correct the partner in VA02 or create the customer (XD01).
+  record_fix_template: 'Order {VBPA.VBELN}: partner {VBPA.PARVW} ''{actual_value}'' does not exist.'
+- id: SDSO258
+  field: VBPA.PARVW
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Partner function is not defined in customizing (TPAR)
+  why_it_matters: An unknown partner function cannot be processed in partner determination or output.
+  rule_authority: sap_hard_constraint
+  sap_impact: The partner is ignored by the logistics and billing processes.
+  fix_map:
+    __other__: Correct or create the function in customizing (VOPA).
+  record_fix_template: 'Order {VBPA.VBELN}: partner function ''{actual_value}'' is not in TPAR.'
+- id: SDSO259
+  field: KNA1.LOEVM
+  check_class: cross_field_check
+  grain: VBPA
+  applies_when:
+    VBUK.GBSTK:
+      not_in:
+      - C
+    VBPA.PARVW:
+    - AG
+    - WE
+    - RE
+    - RG
+  fail_when: '`KNA1.LOEVM` == ''X'''
+  severity: high
+  dimension: consistency
+  message: Open order partner (sold-to, ship-to, bill-to, payer) is flagged for deletion
+  why_it_matters: A deletion-flagged customer should not receive new business.
+  rule_authority: best_practice
+  sap_impact: The order cannot be delivered or billed, or the partner is deleted with open documents.
+  fix_map:
+    __other__: Replace the partner (VA02) or remove the deletion flag (XD06).
+  record_fix_template: 'Order {VBPA.VBELN}: partner {VBPA.PARVW} {VBPA.KUNNR} is flagged for deletion.'
+- id: SDSO260
+  field: KNA1.AUFSD
+  check_class: cross_field_check
+  grain: VBPA
+  applies_when:
+    VBUK.GBSTK:
+      not_in:
+      - C
+    VBPA.PARVW:
+    - WE
+    - RE
+    - RG
+  fail_when: '`KNA1.AUFSD`.notna()'
+  severity: medium
+  dimension: consistency
+  message: Open order ship-to, bill-to or payer has a central order block
+  why_it_matters: The central order block on the customer stops new orders. Open orders created before it need review.
+  rule_authority: best_practice
+  sap_impact: Orders are shipped to a partner that sales blocked.
+  fix_map:
+    __other__: Lift or confirm the block (XD05) and update the order.
+  record_fix_template: 'Order {VBPA.VBELN}: partner {VBPA.PARVW} {VBPA.KUNNR} has order block {KNA1.AUFSD}.'
+- id: SDSO261
+  field: KNA1.SPERR
+  check_class: cross_field_check
+  grain: VBPA
+  applies_when:
+    VBUK.GBSTK:
+      not_in:
+      - C
+    VBPA.PARVW:
+    - RE
+    - RG
+  fail_when: '`KNA1.SPERR` == ''X'''
+  severity: high
+  dimension: consistency
+  message: Open order bill-to or payer is blocked for posting
+  why_it_matters: A central posting block stops invoices and payments.
+  rule_authority: best_practice
+  sap_impact: Billing posts fail with a block message.
+  fix_map:
+    __other__: Lift the block (XD05) or replace the partner.
+  record_fix_template: 'Order {VBPA.VBELN}: partner {VBPA.PARVW} {VBPA.KUNNR} is blocked for posting.'
+- id: SDSO262
+  field: VBPA.KUNNR
+  check_class: cross_field_check
+  grain: VBPA
+  applies_when:
+    VBPA.PARVW:
+    - AG
+    VBPA.POSNR:
+    - '000000'
+  fail_when: '`VBPA.KUNNR` != `VBAK.KUNNR`'
+  severity: high
+  dimension: consistency
+  message: Sold-to partner differs from the sold-to of the order header
+  why_it_matters: The sold-to is stored in the header and in the partner table.
+  rule_authority: best_practice
+  sap_impact: Billing and credit use one partner and delivery another.
+  fix_map:
+    __other__: Correct the partner in VA02.
+  record_fix_template: 'Order {VBPA.VBELN}: partner sold-to {VBPA.KUNNR}, header {VBAK.KUNNR}.'
+- id: SDSO263
+  field: VBPA.ADRNR
+  check_class: cross_field_check
+  grain: VBPA
+  applies_when:
+    VBUK.GBSTK:
+      not_in:
+      - C
+    VBPA.PARVW:
+    - AG
+    - WE
+    - RE
+    - RG
+    VBPA.KUNNR:
+      populated: true
+  fail_when: (`KNA1.XCPDK` == 'X') & `VBPA.ADRNR`.isna()
+  severity: high
+  dimension: completeness
+  message: Partner of a one-time customer has no own address
+  why_it_matters: A one-time account holds no address. The document partner must carry it.
+  rule_authority: best_practice
+  sap_impact: Delivery notes and invoices have no address.
+  fix_map:
+    __other__: Maintain the one-time address in VA02.
+  record_fix_template: 'Order {VBPA.VBELN}: one-time partner {VBPA.PARVW} {VBPA.KUNNR} has no address.'
+- id: SDSO264
+  field: LFA1.LOEVM
+  check_class: cross_field_check
+  grain: VBPA
+  applies_when:
+    VBUK.GBSTK:
+      not_in:
+      - C
+    VBPA.LIFNR:
+      populated: true
+  fail_when: '`LFA1.LOEVM` == ''X'''
+  severity: medium
+  dimension: consistency
+  message: Vendor partner (carrier, forwarder) on an open order is flagged for deletion
+  why_it_matters: A vendor partner is used for shipping. A deletion flag means the vendor is going away.
+  rule_authority: best_practice
+  sap_impact: Transport costs cannot be posted.
+  fix_map:
+    __other__: Replace the partner (VA02).
+  record_fix_template: 'Order {VBPA.VBELN}: vendor partner {VBPA.LIFNR} is flagged for deletion.'
+- id: SDSO265
+  field: VBPA.LIFNR
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Vendor in a partner function does not exist in the vendor master
+  why_it_matters: A vendor partner must exist in LFA1.
+  rule_authority: sap_hard_constraint
+  sap_impact: Shipment cost and output run on an unknown vendor.
+  fix_map:
+    __other__: Correct the partner (VA02).
+  record_fix_template: 'Order {VBPA.VBELN}: vendor partner ''{actual_value}'' does not exist.'
+- id: SDSO266
+  field: VBAK.VBELN
+  check_class: exists_check
+  fields:
+  - VBAK.VBELN
+  grain: VBAK
+  applies_when:
+    VBUK.GBSTK:
+      not_in:
+      - C
+    VBAK.VBTYP:
+    - C
+  target_table: VBPA
+  target_fields:
+  - VBELN
+  target_when:
+    PARVW:
+    - AG
+    POSNR:
+    - '000000'
+  severity: critical
+  dimension: completeness
+  message: Order has no sold-to partner record
+  why_it_matters: The sold-to function is mandatory in the partner determination procedure. Without a partner row the document
+    cannot be processed.
+  rule_authority: sap_hard_constraint
+  sap_impact: Delivery, billing or payment cannot find the partner.
+  fix_map:
+    __other__: Re-determine the partners in VA02 (Header, Partners).
+  record_fix_template: 'Order {VBAK.VBELN}: no sold-to partner row.'
+- id: SDSO267
+  field: VBAK.VBELN
+  check_class: exists_check
+  fields:
+  - VBAK.VBELN
+  grain: VBAK
+  applies_when:
+    VBUK.GBSTK:
+      not_in:
+      - C
+    VBAK.VBTYP:
+    - C
+  target_table: VBPA
+  target_fields:
+  - VBELN
+  target_when:
+    PARVW:
+    - WE
+    POSNR:
+    - '000000'
+  severity: high
+  dimension: completeness
+  message: Order has no ship-to partner record
+  why_it_matters: The ship-to function is mandatory in the partner determination procedure. Without a partner row the document
+    cannot be processed.
+  rule_authority: sap_hard_constraint
+  sap_impact: Delivery, billing or payment cannot find the partner.
+  fix_map:
+    __other__: Re-determine the partners in VA02 (Header, Partners).
+  record_fix_template: 'Order {VBAK.VBELN}: no ship-to partner row.'
+- id: SDSO268
+  field: VBAK.VBELN
+  check_class: exists_check
+  fields:
+  - VBAK.VBELN
+  grain: VBAK
+  applies_when:
+    VBUK.GBSTK:
+      not_in:
+      - C
+    VBAK.VBTYP:
+    - C
+  target_table: VBPA
+  target_fields:
+  - VBELN
+  target_when:
+    PARVW:
+    - RE
+    POSNR:
+    - '000000'
+  severity: high
+  dimension: completeness
+  message: Order has no bill-to partner record
+  why_it_matters: The bill-to function is mandatory in the partner determination procedure. Without a partner row the document
+    cannot be billed.
+  rule_authority: sap_hard_constraint
+  sap_impact: Delivery, billing or payment cannot find the partner.
+  fix_map:
+    __other__: Re-determine the partners in VA02 (Header, Partners).
+  record_fix_template: 'Order {VBAK.VBELN}: no bill-to partner row.'
+- id: SDSO269
+  field: VBAK.VBELN
+  check_class: exists_check
+  fields:
+  - VBAK.VBELN
+  grain: VBAK
+  applies_when:
+    VBUK.GBSTK:
+      not_in:
+      - C
+    VBAK.VBTYP:
+    - C
+  target_table: VBPA
+  target_fields:
+  - VBELN
+  target_when:
+    PARVW:
+    - RG
+    POSNR:
+    - '000000'
+  severity: high
+  dimension: completeness
+  message: Order has no payer partner record
+  why_it_matters: The payer function is mandatory in the partner determination procedure. Without a partner row the document
+    cannot be billed.
+  rule_authority: sap_hard_constraint
+  sap_impact: Delivery, billing or payment cannot find the partner.
+  fix_map:
+    __other__: Re-determine the partners in VA02 (Header, Partners).
+  record_fix_template: 'Order {VBAK.VBELN}: no payer partner row.'
+- id: SDSO270
+  field: VBPA.KUNNR
+  check_class: exists_check
+  fields:
+  - VBAK.KUNNR
+  - VBAK.VKORG
+  - VBAK.VTWEG
+  - VBAK.SPART
+  - VBPA.PARVW
+  - VBPA.KUNNR
+  grain: VBPA
+  applies_when:
+    VBUK.GBSTK:
+      not_in:
+      - C
+    VBPA.PARVW:
+    - WE
+    - RE
+    - RG
+    VBPA.POSNR:
+    - '000000'
+  target_table: KNVP
+  target_fields:
+  - KUNNR
+  - VKORG
+  - VTWEG
+  - SPART
+  - PARVW
+  - KUNN2
+  severity: low
+  dimension: consistency
+  message: Ship-to, bill-to or payer on the order is not a partner of the sold-to in its sales area (KNVP)
+  why_it_matters: The customer master lists the allowed partners. A partner outside the list was typed in manually.
+  rule_authority: best_practice
+  sap_impact: Customer service sees a partner that is not in the master and cannot reproduce it.
+  fix_map:
+    __other__: Add the partner to the customer master (XD02) or replace it.
+  record_fix_template: 'Order {VBPA.VBELN}: {VBPA.PARVW} {VBPA.KUNNR} is not a partner of the sold-to.'
+- id: SDSO271
+  field: KNMT.KUNNR
+  check_class: referential_check
+  severity: high
+  dimension: validity
+  message: Customer-material info record points to a customer that does not exist
+  why_it_matters: The record is keyed on the customer. Without KNA1 the record is orphaned.
+  rule_authority: sap_hard_constraint
+  sap_impact: The record is never used and may block deletion.
+  fix_map:
+    __other__: Delete the record (VD52).
+  record_fix_template: 'Info record for customer {KNMT.KUNNR}: customer does not exist.'
+- id: SDSO272
+  field: KNMT.MATNR
+  check_class: referential_check
+  severity: high
+  dimension: validity
+  message: Customer-material info record points to a material that does not exist
+  why_it_matters: The record is keyed on the material.
+  rule_authority: sap_hard_constraint
+  sap_impact: The customer's number cannot be resolved.
+  fix_map:
+    __other__: Delete the record (VD52).
+  record_fix_template: 'Info record for material {KNMT.MATNR}: material does not exist.'
+- id: SDSO273
+  field: KNMT.KDMAT
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Customer-material info record has no customer material number
+  why_it_matters: Without the customer's number the record does no work.
+  rule_authority: sap_hard_constraint
+  sap_impact: Order entry and EDI cannot translate.
+  fix_map:
+    __blank__: Fill the number (VD52) or delete the record.
+  record_fix_template: 'Info record {KNMT.KUNNR}/{KNMT.MATNR}: no customer material number.'
+- id: SDSO274
+  field: KNMT.MATNR
+  check_class: cross_field_check
+  grain: KNMT
+  fail_when: '`MARA.LVORM` == ''X'''
+  severity: medium
+  dimension: lifecycle
+  message: Customer-material info record is for a material flagged for deletion
+  why_it_matters: The material is going away.
+  rule_authority: best_practice
+  sap_impact: The customer's number resolves to a dead part.
+  fix_map:
+    __other__: Delete the record or repoint it to the successor (VD52).
+  record_fix_template: 'Info record {KNMT.KUNNR}/{KNMT.MATNR}: material is flagged for deletion.'
+- id: SDSO275
+  field: KNMT.KUNNR
+  check_class: cross_field_check
+  grain: KNMT
+  fail_when: '`KNA1.LOEVM` == ''X'''
+  severity: medium
+  dimension: lifecycle
+  message: Customer-material info record is for a customer flagged for deletion
+  why_it_matters: The customer is going away.
+  rule_authority: best_practice
+  sap_impact: The record is never used again.
+  fix_map:
+    __other__: Delete the record (VD52).
+  record_fix_template: 'Info record {KNMT.KUNNR}/{KNMT.MATNR}: customer is flagged for deletion.'
+- id: SDSO276
+  field: KNMT.WERKS
+  check_class: exists_check
+  fields:
+  - KNMT.MATNR
+  - KNMT.WERKS
+  grain: KNMT
+  target_table: MARC
+  target_fields:
+  - MATNR
+  - WERKS
+  target_when:
+    LVORM:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Delivering plant on the customer-material info record has no active plant data for the material
+  why_it_matters: The plant is proposed to the order item.
+  rule_authority: sap_hard_constraint
+  sap_impact: Items default to a plant that cannot supply.
+  fix_map:
+    __other__: Correct the plant (VD52).
+  record_fix_template: 'Info record {KNMT.KUNNR}/{KNMT.MATNR}: plant {KNMT.WERKS} has no active plant data.'
+- id: SDSO277
+  field: KNMT.MATNR
+  check_class: exists_check
+  fields:
+  - KNMT.MATNR
+  - KNMT.VKORG
+  - KNMT.VTWEG
+  grain: KNMT
+  target_table: MVKE
+  target_fields:
+  - MATNR
+  - VKORG
+  - VTWEG
+  severity: medium
+  dimension: consistency
+  message: Customer-material info record is for a sales area where the material has no sales data
+  why_it_matters: The record is only usable if the material is extended to the sales area.
+  rule_authority: sap_hard_constraint
+  sap_impact: The customer's number is not found at order entry.
+  fix_map:
+    __other__: Extend the material (MM01) or delete the record.
+  record_fix_template: 'Info record {KNMT.KUNNR}/{KNMT.MATNR}: no sales data in {KNMT.VKORG}/{KNMT.VTWEG}.'
+- id: SDSO278
+  field: KNMT.KUNNR
+  check_class: exists_check
+  fields:
+  - KNMT.KUNNR
+  - KNMT.VKORG
+  - KNMT.VTWEG
+  grain: KNMT
+  target_table: KNVV
+  target_fields:
+  - KUNNR
+  - VKORG
+  - VTWEG
+  severity: medium
+  dimension: consistency
+  message: Customer-material info record is for a sales area where the customer has no sales data
+  why_it_matters: The record is only usable if the customer is extended to the sales area.
+  rule_authority: sap_hard_constraint
+  sap_impact: The record is never found.
+  fix_map:
+    __other__: Extend the customer (XD01) or delete the record.
+  record_fix_template: 'Info record {KNMT.KUNNR}/{KNMT.MATNR}: customer has no sales data in {KNMT.VKORG}/{KNMT.VTWEG}.'
+- id: SDSO279
+  field: KNMT.UNTTO
+  check_class: cross_field_check
+  grain: KNMT
+  fail_when: '`KNMT.UNTTO` > 100'
+  severity: low
+  dimension: validity
+  message: Under-delivery tolerance on the info record is above 100 percent
+  why_it_matters: A tolerance above 100 percent allows a delivery of nothing.
+  rule_authority: best_practice
+  sap_impact: Items are closed without delivery.
+  fix_map:
+    __other__: Correct the tolerance (VD52).
+  record_fix_template: 'Info record {KNMT.KUNNR}/{KNMT.MATNR}: under-delivery tolerance {KNMT.UNTTO}.'
+- id: SDSO280
+  field: KONP.KRECH
+  check_class: domain_value_check
+  valid_values_with_labels:
+    A: Percentage
+    B: Fixed amount
+    C: Quantity
+    D: Gross weight
+    E: Net weight
+    F: Volume
+    G: Formula
+    H: Percentage (in hundreds)
+    I: Percentage (travel expenses)
+    L: Points
+    M: Quantity - monthly price
+    N: Quantity - yearly price
+    O: Quantity - daily price
+    P: Quantity - weekly price
+    Q: Reserved
+    R: Distance-dependent
+    S: Number of shipping units
+    T: Multi-dimensional
+  severity: medium
+  dimension: validity
+  message: Calculation type of the condition item is not a defined calculation type
+  why_it_matters: Pricing can only compute the types in the domain.
+  rule_authority: sap_hard_constraint
+  sap_impact: Pricing ends in an error or ignores the condition.
+  fix_map:
+    __other__: Correct the type (VK12).
+  record_fix_template: 'Condition {KONP.KNUMH}: calculation type ''{actual_value}'' is invalid.'
+- id: SDSO281
+  field: KONP.KONWA
+  check_class: referential_check
+  applies_when:
+    KONP.KRECH:
+      not_in:
+      - A
+      - H
+      - I
+  severity: high
+  dimension: validity
+  message: Condition currency is not a defined currency (TCURC)
+  why_it_matters: A rate in an unknown currency cannot be converted.
+  rule_authority: sap_hard_constraint
+  sap_impact: Pricing fails for the item.
+  fix_map:
+    __other__: Correct the currency (VK12).
+  record_fix_template: 'Condition {KONP.KNUMH}: currency ''{actual_value}'' is not in TCURC.'
+- id: SDSO282
+  field: KONP.KMEIN
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Condition unit is not a defined unit of measure (T006)
+  why_it_matters: A unit that is not in T006 cannot be converted.
+  rule_authority: sap_hard_constraint
+  sap_impact: Pricing fails or applies the wrong scale.
+  fix_map:
+    __other__: Correct the unit (VK12).
+  record_fix_template: 'Condition {KONP.KNUMH}: unit ''{actual_value}'' is not in T006.'
+- id: SDSO283
+  field: KONP.KUMZA
+  check_class: cross_field_check
+  grain: KONP
+  applies_when:
+    KONP.KRECH:
+    - C
+    KONP.KMEIN:
+      populated: true
+    KONP.KUMZA:
+      populated: true
+    KONP.KUMNE:
+      populated: true
+    KONP.LOEVM_KO:
+      blank: true
+  fail_when: (`KONP.KUMZA` <= 0) | (`KONP.KUMNE` <= 0)
+  severity: medium
+  dimension: accuracy
+  message: Quantity-based condition has a zero or negative unit conversion factor
+  why_it_matters: The conversion from the pricing unit to the base unit must be positive.
+  rule_authority: best_practice
+  sap_impact: The price is multiplied by zero.
+  fix_map:
+    __other__: Correct the factor (VK12).
+  record_fix_template: 'Condition {KONP.KNUMH}: conversion {KONP.KUMZA}/{KONP.KUMNE}.'
+- id: SDSO284
+  field: KONP.MXWRT
+  check_class: cross_field_check
+  grain: KONP
+  applies_when:
+    KONP.KRECH:
+    - B
+    KONP.MXWRT:
+      gt: 0
+    KONP.LOEVM_KO:
+      blank: true
+  fail_when: '`KONP.KBETR`.abs() > `KONP.MXWRT`'
+  severity: medium
+  dimension: accuracy
+  message: Fixed-amount condition rate exceeds its own upper limit
+  why_it_matters: The upper limit caps the condition value.
+  rule_authority: best_practice
+  sap_impact: The cap hides the rate or pricing aborts.
+  fix_map:
+    __other__: Correct rate or limit (VK12).
+  record_fix_template: 'Condition {KONP.KNUMH}: rate {KONP.KBETR} above limit {KONP.MXWRT}.'
+- id: SDSO285
+  field: KONP.KUNNR
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Customer on the condition item (rebate payee) does not exist
+  why_it_matters: The payee is the customer who receives the rebate.
+  rule_authority: sap_hard_constraint
+  sap_impact: Settlement cannot be posted.
+  fix_map:
+    __other__: Correct the customer (VK12).
+  record_fix_template: 'Condition {KONP.KNUMH}: customer ''{actual_value}'' does not exist.'
+- id: SDSO286
+  field: KONP.LIFNR
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Vendor on the condition item does not exist
+  why_it_matters: A vendor on a sales condition (freight, agent commission) must exist.
+  rule_authority: sap_hard_constraint
+  sap_impact: Settlement cannot be posted.
+  fix_map:
+    __other__: Correct the vendor (VK12).
+  record_fix_template: 'Condition {KONP.KNUMH}: vendor ''{actual_value}'' does not exist.'
+- id: SDSO287
+  field: KONP.ZTERM
+  check_class: exists_check
+  fields:
+  - KONP.ZTERM
+  grain: KONP
+  target_table: T052
+  target_fields:
+  - ZTERM
+  severity: medium
+  dimension: validity
+  message: Payment terms of a terms condition are not defined (T052)
+  why_it_matters: A terms condition proposes the terms on the order.
+  rule_authority: sap_hard_constraint
+  sap_impact: The order carries unknown terms.
+  fix_map:
+    __other__: Correct the terms (VK12).
+  record_fix_template: 'Condition {KONP.KNUMH}: terms ''{KONP.ZTERM}'' are not defined.'
+- id: SDSO288
+  field: KONP.KNUMH
+  check_class: exists_check
+  fields:
+  - KONP.KNUMH
+  grain: KONP
+  target_table: KONH
+  target_fields:
+  - KNUMH
+  severity: high
+  dimension: consistency
+  message: Condition item has no condition header (KONH)
+  why_it_matters: Items hang under a header with validity and key.
+  rule_authority: sap_hard_constraint
+  sap_impact: The item is never found by pricing.
+  fix_map:
+    __other__: Delete the item or restore the header.
+  record_fix_template: 'Condition item {KONP.KNUMH}/{KONP.KOPOS}: no header.'
+- id: SDSO289
+  field: KONH.KNUMH
+  check_class: exists_check
+  fields:
+  - KONH.KNUMH
+  grain: KONH
+  target_table: KONP
+  target_fields:
+  - KNUMH
+  severity: high
+  dimension: completeness
+  message: Condition header has no condition item (KONP)
+  why_it_matters: Without an item no rate exists.
+  rule_authority: sap_hard_constraint
+  sap_impact: Pricing finds the record but no rate and prices the item at zero.
+  fix_map:
+    __other__: Delete the header or maintain the rate (VK12).
+  record_fix_template: 'Condition {KONH.KNUMH} ({KONH.KSCHL}): no item.'
+- id: SDSO290
+  field: KONH.VAKEY
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Condition header has no variable key
+  why_it_matters: The variable key identifies the combination the record is valid for.
+  rule_authority: sap_hard_constraint
+  sap_impact: The record cannot be selected or maintained by key.
+  fix_map:
+    __blank__: Delete and re-create the record (VK11).
+  record_fix_template: 'Condition {KONH.KNUMH} ({KONH.KSCHL}): variable key is empty.'
+- id: SDSO291
+  field: KONP.KNUMH
+  check_class: exists_check
+  fields:
+  - KONP.KNUMH
+  - KONP.KOPOS
+  grain: KONP
+  applies_when:
+    KONP.KZBZG:
+    - B
+    KONP.LOEVM_KO:
+      blank: true
+  target_table: KONM
+  target_fields:
+  - KNUMH
+  - KOPOS
+  severity: high
+  dimension: consistency
+  message: Quantity-scale condition has no scale lines (KONM)
+  why_it_matters: A quantity scale needs its thresholds in the scale table.
+  rule_authority: sap_hard_constraint
+  sap_impact: Pricing finds no scale and prices at zero.
+  fix_map:
+    __other__: Maintain the scale (VK12).
+  record_fix_template: 'Condition {KONP.KNUMH}/{KONP.KOPOS}: quantity scale has no scale lines.'
+- id: SDSO292
+  field: KONM.KSTBM
+  check_class: uniqueness_check
+  fields:
+  - KONM.KNUMH
+  - KONM.KOPOS
+  - KONM.KSTBM
+  grain: KONM
+  severity: high
+  dimension: uniqueness
+  message: Quantity scale has the same threshold twice
+  why_it_matters: A duplicate threshold makes the rate ambiguous.
+  rule_authority: sap_hard_constraint
+  sap_impact: Pricing picks one rate by chance.
+  fix_map:
+    __other__: Delete the duplicate (VK12).
+  record_fix_template: 'Condition {KONM.KNUMH}/{KONM.KOPOS}: duplicate scale threshold {KONM.KSTBM}.'
+- id: SDSO293
+  field: KONH.KNUMH
+  check_class: exists_check
+  fields:
+  - KONH.KNUMH
+  grain: KONH
+  applies_when:
+    KONH.KOTABNR:
+    - '004'
+    KONH.KAPPL:
+    - V
+  target_table: A004
+  target_fields:
+  - KNUMH
+  severity: high
+  dimension: consistency
+  message: Condition header for table 004 has no key record in A004
+  why_it_matters: A header with table number 004 must have its key record in A004.
+  rule_authority: sap_hard_constraint
+  sap_impact: The record is never found by pricing.
+  fix_map:
+    __other__: Delete the header or re-create the record (VK11).
+  record_fix_template: 'Condition {KONH.KNUMH} ({KONH.KSCHL}): no key record in A004.'
+- id: SDSO294
+  field: A004.KNUMH
+  check_class: exists_check
+  fields:
+  - A004.KNUMH
+  grain: A004
+  target_table: KONH
+  target_fields:
+  - KNUMH
+  severity: high
+  dimension: consistency
+  message: Key record in A004 has no condition header (KONH)
+  why_it_matters: Each A004 record points to a header.
+  rule_authority: sap_hard_constraint
+  sap_impact: Pricing finds the key and no rate.
+  fix_map:
+    __other__: Delete the key record.
+  record_fix_template: 'Condition key record A004 {A004.KNUMH}: no header.'
+- id: SDSO295
+  field: A004.DATAB
+  check_class: cross_field_check
+  grain: A004
+  fail_when: (`A004.DATAB` != `KONH.DATAB`) | (`A004.DATBI` != `KONH.DATBI`)
+  severity: high
+  dimension: consistency
+  message: Validity of the A004 key record differs from the condition header
+  why_it_matters: A004 holds a copy of the header validity.
+  rule_authority: best_practice
+  sap_impact: Pricing and maintenance disagree on validity.
+  fix_map:
+    __other__: Re-save the record (VK12).
+  record_fix_template: 'Condition A004 {A004.KNUMH}: validity {A004.DATAB}-{A004.DATBI} differs from header.'
+- id: SDSO296
+  field: A004.MATNR
+  check_class: cross_field_check
+  grain: A004
+  applies_when:
+    A004.DATBI:
+      within_days: 36500
+  fail_when: '`MARA.LVORM` == ''X'''
+  severity: medium
+  dimension: lifecycle
+  message: Valid A004 price record is for a material flagged for deletion
+  why_it_matters: A valid record on a deleted material is dead weight.
+  rule_authority: best_practice
+  sap_impact: Maintenance lists are cluttered.
+  fix_map:
+    __other__: Delimit the record (VK12).
+  record_fix_template: 'Condition A004 {A004.KNUMH}: material {A004.MATNR} flagged for deletion.'
+- id: SDSO297
+  field: KONH.KNUMH
+  check_class: exists_check
+  fields:
+  - KONH.KNUMH
+  grain: KONH
+  applies_when:
+    KONH.KOTABNR:
+    - '005'
+    KONH.KAPPL:
+    - V
+  target_table: A005
+  target_fields:
+  - KNUMH
+  severity: high
+  dimension: consistency
+  message: Condition header for table 005 has no key record in A005
+  why_it_matters: A header with table number 005 must have its key record in A005.
+  rule_authority: sap_hard_constraint
+  sap_impact: The record is never found by pricing.
+  fix_map:
+    __other__: Delete the header or re-create the record (VK11).
+  record_fix_template: 'Condition {KONH.KNUMH} ({KONH.KSCHL}): no key record in A005.'
+- id: SDSO298
+  field: A005.KNUMH
+  check_class: exists_check
+  fields:
+  - A005.KNUMH
+  grain: A005
+  target_table: KONH
+  target_fields:
+  - KNUMH
+  severity: high
+  dimension: consistency
+  message: Key record in A005 has no condition header (KONH)
+  why_it_matters: Each A005 record points to a header.
+  rule_authority: sap_hard_constraint
+  sap_impact: Pricing finds the key and no rate.
+  fix_map:
+    __other__: Delete the key record.
+  record_fix_template: 'Condition key record A005 {A005.KNUMH}: no header.'
+- id: SDSO299
+  field: A005.DATAB
+  check_class: cross_field_check
+  grain: A005
+  fail_when: (`A005.DATAB` != `KONH.DATAB`) | (`A005.DATBI` != `KONH.DATBI`)
+  severity: high
+  dimension: consistency
+  message: Validity of the A005 key record differs from the condition header
+  why_it_matters: A005 holds a copy of the header validity.
+  rule_authority: best_practice
+  sap_impact: Pricing and maintenance disagree on validity.
+  fix_map:
+    __other__: Re-save the record (VK12).
+  record_fix_template: 'Condition A005 {A005.KNUMH}: validity {A005.DATAB}-{A005.DATBI} differs from header.'
+- id: SDSO300
+  field: A005.KUNNR
+  check_class: cross_field_check
+  grain: A005
+  applies_when:
+    A005.DATBI:
+      within_days: 36500
+  fail_when: '`KNA1.LOEVM` == ''X'''
+  severity: medium
+  dimension: lifecycle
+  message: Valid A005 price record is for a customer flagged for deletion
+  why_it_matters: A valid record on a deleted customer is dead weight.
+  rule_authority: best_practice
+  sap_impact: Maintenance lists are cluttered.
+  fix_map:
+    __other__: Delimit the record (VK12).
+  record_fix_template: 'Condition A005 {A005.KNUMH}: customer {A005.KUNNR} flagged for deletion.'
+- id: SDSO301
+  field: KONH.KNUMH
+  check_class: exists_check
+  fields:
+  - KONH.KNUMH
+  grain: KONH
+  applies_when:
+    KONH.KOTABNR:
+    - '304'
+    KONH.KAPPL:
+    - V
+  target_table: A304
+  target_fields:
+  - KNUMH
+  severity: high
+  dimension: consistency
+  message: Condition header for table 304 has no key record in A304
+  why_it_matters: A header with table number 304 must have its key record in A304.
+  rule_authority: sap_hard_constraint
+  sap_impact: The record is never found by pricing.
+  fix_map:
+    __other__: Delete the header or re-create the record (VK11).
+  record_fix_template: 'Condition {KONH.KNUMH} ({KONH.KSCHL}): no key record in A304.'
+- id: SDSO302
+  field: A304.KNUMH
+  check_class: exists_check
+  fields:
+  - A304.KNUMH
+  grain: A304
+  target_table: KONH
+  target_fields:
+  - KNUMH
+  severity: high
+  dimension: consistency
+  message: Key record in A304 has no condition header (KONH)
+  why_it_matters: Each A304 record points to a header.
+  rule_authority: sap_hard_constraint
+  sap_impact: Pricing finds the key and no rate.
+  fix_map:
+    __other__: Delete the key record.
+  record_fix_template: 'Condition key record A304 {A304.KNUMH}: no header.'
+- id: SDSO303
+  field: A304.DATAB
+  check_class: cross_field_check
+  grain: A304
+  fail_when: (`A304.DATAB` != `KONH.DATAB`) | (`A304.DATBI` != `KONH.DATBI`)
+  severity: high
+  dimension: consistency
+  message: Validity of the A304 key record differs from the condition header
+  why_it_matters: A304 holds a copy of the header validity.
+  rule_authority: best_practice
+  sap_impact: Pricing and maintenance disagree on validity.
+  fix_map:
+    __other__: Re-save the record (VK12).
+  record_fix_template: 'Condition A304 {A304.KNUMH}: validity {A304.DATAB}-{A304.DATBI} differs from header.'
+- id: SDSO304
+  field: A304.MATNR
+  check_class: cross_field_check
+  grain: A304
+  applies_when:
+    A304.DATBI:
+      within_days: 36500
+  fail_when: '`MARA.LVORM` == ''X'''
+  severity: medium
+  dimension: lifecycle
+  message: Valid A304 price record is for a material flagged for deletion
+  why_it_matters: A valid record on a deleted material is dead weight.
+  rule_authority: best_practice
+  sap_impact: Maintenance lists are cluttered.
+  fix_map:
+    __other__: Delimit the record (VK12).
+  record_fix_template: 'Condition A304 {A304.KNUMH}: material {A304.MATNR} flagged for deletion.'
+- id: SDSO305
+  field: KONH.KNUMH
+  check_class: exists_check
+  fields:
+  - KONH.KNUMH
+  grain: KONH
+  applies_when:
+    KONH.KOTABNR:
+    - '305'
+    KONH.KAPPL:
+    - V
+  target_table: A305
+  target_fields:
+  - KNUMH
+  severity: high
+  dimension: consistency
+  message: Condition header for table 305 has no key record in A305
+  why_it_matters: A header with table number 305 must have its key record in A305.
+  rule_authority: sap_hard_constraint
+  sap_impact: The record is never found by pricing.
+  fix_map:
+    __other__: Delete the header or re-create the record (VK11).
+  record_fix_template: 'Condition {KONH.KNUMH} ({KONH.KSCHL}): no key record in A305.'
+- id: SDSO306
+  field: A305.KNUMH
+  check_class: exists_check
+  fields:
+  - A305.KNUMH
+  grain: A305
+  target_table: KONH
+  target_fields:
+  - KNUMH
+  severity: high
+  dimension: consistency
+  message: Key record in A305 has no condition header (KONH)
+  why_it_matters: Each A305 record points to a header.
+  rule_authority: sap_hard_constraint
+  sap_impact: Pricing finds the key and no rate.
+  fix_map:
+    __other__: Delete the key record.
+  record_fix_template: 'Condition key record A305 {A305.KNUMH}: no header.'
+- id: SDSO307
+  field: A305.DATAB
+  check_class: cross_field_check
+  grain: A305
+  fail_when: (`A305.DATAB` != `KONH.DATAB`) | (`A305.DATBI` != `KONH.DATBI`)
+  severity: high
+  dimension: consistency
+  message: Validity of the A305 key record differs from the condition header
+  why_it_matters: A305 holds a copy of the header validity.
+  rule_authority: best_practice
+  sap_impact: Pricing and maintenance disagree on validity.
+  fix_map:
+    __other__: Re-save the record (VK12).
+  record_fix_template: 'Condition A305 {A305.KNUMH}: validity {A305.DATAB}-{A305.DATBI} differs from header.'
+- id: SDSO308
+  field: A305.MATNR
+  check_class: cross_field_check
+  grain: A305
+  applies_when:
+    A305.DATBI:
+      within_days: 36500
+  fail_when: '`MARA.LVORM` == ''X'''
+  severity: medium
+  dimension: lifecycle
+  message: Valid A305 price record is for a material flagged for deletion
+  why_it_matters: A valid record on a deleted material is dead weight.
+  rule_authority: best_practice
+  sap_impact: Maintenance lists are cluttered.
+  fix_map:
+    __other__: Delimit the record (VK12).
+  record_fix_template: 'Condition A305 {A305.KNUMH}: material {A305.MATNR} flagged for deletion.'
+- id: SDSO309
+  field: A305.KUNNR
+  check_class: cross_field_check
+  grain: A305
+  applies_when:
+    A305.DATBI:
+      within_days: 36500
+  fail_when: '`KNA1.LOEVM` == ''X'''
+  severity: medium
+  dimension: lifecycle
+  message: Valid A305 price record is for a customer flagged for deletion
+  why_it_matters: A valid record on a deleted customer is dead weight.
+  rule_authority: best_practice
+  sap_impact: Maintenance lists are cluttered.
+  fix_map:
+    __other__: Delimit the record (VK12).
+  record_fix_template: 'Condition A305 {A305.KNUMH}: customer {A305.KUNNR} flagged for deletion.'
+- id: SDSO310
+  field: T014.WAERS
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Credit control area has no currency
+  why_it_matters: The currency is the unit of all limits and exposure in the area.
+  rule_authority: sap_hard_constraint
+  sap_impact: Limits cannot be compared.
+  fix_map:
+    __blank__: Maintain the currency (OB45).
+  record_fix_template: 'Credit control area {T014.KKBER}: no currency.'
+- id: SDSO311
+  field: T014.WAERS
+  check_class: referential_check
+  severity: high
+  dimension: validity
+  message: Credit control area currency is not defined (TCURC)
+  why_it_matters: An unknown currency cannot be converted.
+  rule_authority: sap_hard_constraint
+  sap_impact: Exposure cannot be summed.
+  fix_map:
+    __other__: Correct the currency (OB45).
+  record_fix_template: 'Credit control area {T014.KKBER}: currency ''{actual_value}'' is not in TCURC.'

@@ -1,0 +1,47 @@
+{
+ "domain": "REVFP",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Dialog box in the case of shortages (full dlv.)"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "One-time delivery"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Full delivery"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Delivery proposal"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Dialog box in the case of shortages (one-time dlv)"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Dialog box in the case of shortages (delivery proposal)"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Delivery proposal for product selection"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}
