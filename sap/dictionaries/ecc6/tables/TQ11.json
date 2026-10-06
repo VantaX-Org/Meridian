@@ -1,0 +1,46 @@
+{
+ "table": "TQ11",
+ "description": "Inspector qualification",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": null
+  },
+  {
+   "pos": 2,
+   "name": "PRFQL",
+   "key": true,
+   "data_element": "QPRQUALIF",
+   "domain": "QPRQUALIF",
+   "type": "CHAR",
+   "length": 5,
+   "decimals": 0,
+   "description": "Inspector Qualification",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "DUMMY",
+   "key": false,
+   "data_element": "CHAR1",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Single-Character Flag",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": []
+}

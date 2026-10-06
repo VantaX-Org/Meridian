@@ -153,5 +153,10 @@
     "name": "material-no-supersession",
     "path": "/analyse/material/105",
     "heading": "Wiper blade standard"
+  },
+  {
+    "name": "process-designer",
+    "path": "/process/designer?model=reference&node=PTP-PO-ME21N",
+    "heading": "Process designer"
   }
 ]
