@@ -8,6 +8,7 @@
  */
 
 import { useMemo, useState } from "react";
+import { useUrlState } from "@/hooks/use-url-state";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
@@ -44,7 +45,7 @@ export function ExceptionRulesSurface() {
   const users = useQuery({ queryKey: ["users.assignable"], queryFn: getAssignableUsers, enabled: can("assign") });
   const rules = useQuery({ queryKey: ["exceptions.rules"], queryFn: getExceptionRules });
   const [editing, setEditing] = useState<ExceptionRule | "new" | null>(null);
-  const [severity, setSeverity] = useState("");
+  const [severity, setSeverity] = useUrlState("severity");
   const rows = useMemo(() => rules.data?.rules ?? [], [rules.data]);
   const shown = severity ? rows.filter((r) => r.severity === severity) : rows;
   const nActive = rows.filter((r) => r.is_active).length;

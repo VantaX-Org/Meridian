@@ -521,6 +521,7 @@ rules:
     may process the same order twice.
   fix_map: {__blank__: 'This is typically a data extract issue — ensure the extract is at header level (VBAK) not
       header-item (VBAK+VBAP). If genuine duplicates exist, escalate to Basis.'}
+  record_fix_template: "Sales order {VBAK.VBELN} appears more than once. Investigate the load or interface that created it; keep one document and reject or delete the other via VA02."
 
 - id: SDSO034
   field: VBAK.ERDAT
@@ -566,6 +567,7 @@ rules:
     VBAP.PSTYV:
       not_in:
       - TATX
+  record_fix_template: "Sales order {VBAP.VBELN} item {VBAP.POSNR}: order quantity is {actual_value}. Enter a positive quantity in VA02, or reject the item with a reason."
 - id: XO2C001
   field: VBAK.VBELN
   check_class: cross_field_check

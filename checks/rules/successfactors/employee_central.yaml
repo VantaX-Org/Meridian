@@ -623,6 +623,7 @@ rules:
     are overstated.
   fix_map: {__blank__: Identify duplicate USERIDs in Admin Center. Merge records using the Employee Data Import
       template with the correct surviving USERID. Archive duplicates.}
+  record_fix_template: "User ID {EMPEMPLOYMENT.USERID} appears more than once. Investigate the employee replication and remove the duplicate employment record."
 
 - id: EC042
   field: EMPEMPLOYMENT.COMPANY

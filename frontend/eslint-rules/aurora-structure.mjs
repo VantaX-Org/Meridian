@@ -219,7 +219,7 @@ const tallyFigureNumeric = mk(
   },
 );
 
-export default {
+const plugin = {
   meta: { name: "aurora-structure", version: "1.0.0" },
   rules: {
     "tally-figure-href": tallyFigureHref,
@@ -235,3 +235,5 @@ export default {
     "tally-figure-numeric": tallyFigureNumeric,
   },
 };
+
+export default plugin;

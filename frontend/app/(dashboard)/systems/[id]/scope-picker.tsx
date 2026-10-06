@@ -105,7 +105,7 @@ export function ScopePicker({ id, onDownloaded }: { id: string; onDownloaded: ()
                 <Banner tone="warning" title={`Extract ${chosen.length} object${chosen.length === 1 ? "" : "s"}${confirm ? " and analyse" : ""}?`} action={
                   <Stack direction="row" gap={2}>
                     <Button size="sm" onClick={() => download.mutate(confirm)} disabled={download.isPending}>Confirm</Button>
-                    <Button size="sm" variant="ghost" onClick={() => setConfirm(null)}>Keep selection</Button>
+                    <Button size="sm" variant="ghost" onClick={() => setConfirm(null)}>Keep scope</Button>
                   </Stack>}>
                   Only the selected objects and scope are read, into a new run.
                 </Banner>

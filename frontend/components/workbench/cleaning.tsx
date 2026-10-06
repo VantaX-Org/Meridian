@@ -60,9 +60,9 @@ const FORMATS: { value: ExportFormat; label: string }[] = [
 function SapExport() {
   const opts = useQuery({ queryKey: ["cleaning.export-options"], queryFn: getCleaningExportOptions });
   const statuses = opts.data?.statuses ?? [];
-  const [status, setStatus] = useState("");
+  const [exportStatus, setExportStatus] = useState("");
   const [format, setFormat] = useState<ExportFormat>("lsmw");
-  const chosen = status || (statuses.find((s) => s.value === "approved") ?? statuses[0])?.value || "";
+  const chosen = exportStatus || (statuses.find((s) => s.value === "approved") ?? statuses[0])?.value || "";
   const download = useMutation({
     mutationFn: () => downloadCleaningExport(format, chosen),
     onError: (e) => toast.error((e as Error).message || "Export failed"),
@@ -70,7 +70,7 @@ function SapExport() {
   if (!statuses.length) return null;
   return (
     <div className="ui-page-header__actions">
-      <Select aria-label="Corrections to export" value={chosen} onValueChange={setStatus}
+      <Select aria-label="Corrections to export" value={chosen} onValueChange={setExportStatus}
         options={statuses.map((s) => ({ value: s.value, label: `${s.value.replace(/_/g, " ")} (${s.count.toLocaleString()})` }))} />
       <Select aria-label="File format" value={format} onValueChange={setFormat} options={FORMATS} />
       <Button variant="secondary" onClick={() => download.mutate()} disabled={!chosen || download.isPending}>

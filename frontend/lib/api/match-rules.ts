@@ -2,7 +2,6 @@ import apiClient from "./client";
 import type {
   MatchRule,
   MatchRulesListResponse,
-  AIProposedRule,
   AIProposedRulesListResponse,
   SimulationResult,
 } from "@/types/api";

@@ -112,8 +112,6 @@ function classify(raw) {
   return null;
 }
 
-const COPY_ATTRS = /^(label|title|placeholder|aria-label|alt|description|summary|verdict|message|hint|text|heading|subtitle|tooltip|emptyLabel)$/;
-
 const rule = {
   meta: {
     type: "suggestion",
@@ -155,12 +153,14 @@ const rule = {
     // Default values in function signatures (`cancelLabel = "Cancel"`) are
     // deliberately excluded — they're caught in code review, not here, to
     // keep the rule signal-high.
+    // Enum-valued props (`type="submit"`, `status="ok"`) are identifiers
+    // for code, never shown to users, so they are not copy.
+    const NON_COPY_ATTRS = new Set(["type", "status", "variant"]);
     const isJsxAttrValue = (node) => {
-      const parent = node.parent;
-      if (!parent) return false;
-      // Only attributes that carry copy. type="submit" and status="ok" are enums.
-      const a = parent.type === "JSXAttribute" ? parent : parent.type === "JSXExpressionContainer" ? parent.parent : null;
-      return a?.type === "JSXAttribute" && COPY_ATTRS.test(String(a.name?.name));
+      let attr = null;
+      if (node.parent?.type === "JSXAttribute") attr = node.parent;
+      else if (node.parent?.type === "JSXExpressionContainer" && node.parent.parent?.type === "JSXAttribute") attr = node.parent.parent;
+      return !!attr && !NON_COPY_ATTRS.has(attr.name?.name);
     };
 
     return {

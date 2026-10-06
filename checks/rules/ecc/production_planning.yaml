@@ -431,6 +431,7 @@ rules:
   fix_map:
     __blank__: Correct the MRP controller via MM02 > MRP 1 view. Ensure the controller code exists in OMD0.
 # ── Rule-breadth extension (PP030+): BOM header/items, routings and operations, work centres, repetitive manufacturing, configuration ────
+  record_fix_template: "Material {MARC.MATNR} plant {MARC.WERKS}: MRP controller '{actual_value}' is not a valid 3-character code. Correct it in MM02 > MRP 1 view (maintain codes in OMIE)."
 - id: PP030
   field: STKO.BMENG
   check_class: cross_field_check

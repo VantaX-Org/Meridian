@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useUrlState } from "@/hooks/use-url-state";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
@@ -449,11 +450,13 @@ function GapExplorer({ run, canExport }: { run: MigrationRunDetail; canExport: b
 // ── run result ────────────────────────────────────────────────────────────────
 
 type ResultTab = "modules" | "gaps" | "values" | "load";
+const RESULT_TABS: readonly string[] = ["modules", "gaps", "values", "load"];
 
 function RunResult({ run, targetType, canEdit, canExport }: {
   run: MigrationRunDetail; targetType: string; canEdit: boolean; canExport: boolean;
 }) {
-  const [tab, setTab] = useState<ResultTab>("modules");
+  const [tabParam, setTab] = useUrlState("result", "modules");
+  const tab = (RESULT_TABS.includes(tabParam) ? tabParam : "modules") as ResultTab;
   const r = run.run;
   const summary = r.gap_summary ?? {};
   const structural = run.structural_critical;
@@ -557,11 +560,11 @@ function RunResult({ run, targetType, canEdit, canExport }: {
 
 function ValueMapTab({ run, targetType, canEdit }: { run: MigrationRunDetail; targetType: string; canEdit: boolean }) {
   const modules = run.run.modules;
-  const [module, setModule] = useState(modules[0] ?? "");
+  const [mapModule, setMapModule] = useState(modules[0] ?? "");
   const { data: maps = [] } = useQuery({
-    queryKey: ["migration.fieldmap", module, targetType],
-    queryFn: () => getFieldMap(module, targetType),
-    enabled: Boolean(module),
+    queryKey: ["migration.fieldmap", mapModule, targetType],
+    queryFn: () => getFieldMap(mapModule, targetType),
+    enabled: Boolean(mapModule),
   });
   const fields = maps.filter((m) => m.value_map && m.dest_table && m.dest_field).map((m) => `${m.dest_table}.${m.dest_field}`);
   const [field, setField] = useState("");
@@ -570,15 +573,15 @@ function ValueMapTab({ run, targetType, canEdit }: { run: MigrationRunDetail; ta
   return (
     <Stack gap={3}>
       <Stack direction="row" gap={2}>
-        <Select value={module} aria-label="Module" options={modules.map((m) => ({ value: m, label: formatModuleName(m) }))}
-          onValueChange={setModule} />
+        <Select value={mapModule} aria-label="Module" options={modules.map((m) => ({ value: m, label: formatModuleName(m) }))}
+          onValueChange={setMapModule} />
         {fields.length > 0 && (
           <Select value={active} aria-label="Target field" options={fields.map((f) => ({ value: f, label: f }))}
             onValueChange={setField} />
         )}
       </Stack>
       {active ? (
-        <ValueMapEditor key={`${module}:${active}`} runId={run.run.id} module={module} targetField={active} canEdit={canEdit} />
+        <ValueMapEditor key={`${mapModule}:${active}`} runId={run.run.id} module={mapModule} targetField={active} canEdit={canEdit} />
       ) : (
         <Text tone="muted">No mapping in this module is marked &ldquo;value map&rdquo;. Tick it on a field map row whose source codes differ from the target (e.g. vendor account group to BP grouping).</Text>
       )}

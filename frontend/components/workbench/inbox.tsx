@@ -141,7 +141,7 @@ export function StewardInboxSurface() {
     const age = (t: StewardshipQueueItem) => Date.parse(t.created_at);
     return rows.sort(sort === "priority" ? (a, b) => a.priority - b.priority || due(a) - due(b)
       : sort === "age" ? (a, b) => age(a) - age(b) : (a, b) => due(a) - due(b) || a.priority - b.priority);
-  }, [all, type, view, sort, search, now, user?.id, who]);
+  }, [all, type, view, assignee, sort, search, now, user?.id, who]);
 
   const selected = useMemo(() => all.filter((t) => picked.has(t.id)).map((t) => t.id), [all, picked]);
   const detail = drawer.value ? all.find((t) => t.id === drawer.value) ?? null : null;

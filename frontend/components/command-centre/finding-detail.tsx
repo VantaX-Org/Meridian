@@ -69,7 +69,6 @@ function Body({ f }: { f: FindingDetailData }) {
   const router = useRouter();
   const qc = useQueryClient();
   const { can } = useRole();
-  const ctx = f.rule_context;
   const rep = f.context;
   const anomaly = f.finding_type === "anomaly";
   const title = f.business_name ?? f.details?.message ?? f.check_id;
@@ -288,8 +287,9 @@ function Sample({ f, fieldChecked }: { f: Finding; fieldChecked: string | null }
   });
   const byKey = useMemo(() => new Map((issues.data?.items ?? []).map((i) => [i.record_key, i.id])), [issues.data]);
 
-  const stored = recs.data?.records ?? [];
-  const fallback = f.details?.sample_failing_records ?? [];
+  const stored = useMemo(() => recs.data?.records ?? [], [recs.data]);
+  const sampleFailing = f.details?.sample_failing_records;
+  const fallback = useMemo(() => sampleFailing ?? [], [sampleFailing]);
   const rows = useMemo<SampleRow[]>(() => {
     const fixFor = (key: string, value?: string) => {
       const rf = f.record_fixes?.find((x) => x.record_id === key);

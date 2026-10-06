@@ -339,6 +339,7 @@ rules:
       __blank__: "Correct the forwarding agent number via VT02N. Ensure the carrier is maintained as a vendor in LFA1."
 
   # ── Breadth: organisational data, configuration references, status/date trail, units ──
+    record_fix_template: "Shipment {VTTK.TKNUM}: forwarding agent '{actual_value}' is not a valid alphanumeric vendor number. Correct it in VT02N."
 
   - id: TM019
     field: VTTK.SHTYP

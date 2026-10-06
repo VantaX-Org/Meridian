@@ -44,7 +44,7 @@ export function ImportSurface() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [match, setMatch] = useState<MatchResponse | null>(null);
-  const [module, setModule] = useState<string | null>(null);
+  const [targetModule, setTargetModule] = useState<string | null>(null);
   const [uploadPct, setUploadPct] = useState(0);
   const [job, setJob] = useState<Job | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -60,20 +60,20 @@ export function ImportSurface() {
       const { headers, sample } = await readHeaderSample(f);
       return { res: await matchColumns(headers, sample, f.name), parsed: headers.length > 0 };
     },
-    onSuccess: ({ res, parsed }) => { setMatch(res); setModule(parsed ? res.detected_module : null); },
+    onSuccess: ({ res, parsed }) => { setMatch(res); setTargetModule(parsed ? res.detected_module : null); },
     onError: (e) => toast.error((e as Error).message || "Could not read the file"),
   });
   useEffect(() => {
     if (!file) return;
-    setMatch(null); setModule(null); setJob(null); setUploadPct(0);
+    setMatch(null); setTargetModule(null); setJob(null); setUploadPct(0);
     matchMut.mutate(file);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [file]);
 
   const run = useMutation({
     mutationFn: async () => {
-      if (!file || !module) throw new Error("Pick a file and a module first");
-      const up = await uploadFile(file, module, null, setUploadPct);
+      if (!file || !targetModule) throw new Error("Pick a file and a module first");
+      const up = await uploadFile(file, targetModule, null, setUploadPct);
       setJob({ versionId: up.version_id, status: "queued", percent: 0, step: "Queued", error: null });
       const final = await pollAnalysisStatus(up.version_id, (s) => setJob({
         versionId: up.version_id, status: s.status, percent: s.progress?.percent_complete ?? 0,
@@ -97,10 +97,10 @@ export function ImportSurface() {
   }));
   const noHeaders = !!match && match.mappings.length === 0;
   const mapped = match?.mappings.filter((m) => m.target_field).length ?? 0;
-  const canRun = !!file && !!match && !!module && !matchMut.isPending && !run.isPending && !job;
+  const canRun = !!file && !!match && !!targetModule && !matchMut.isPending && !run.isPending && !job;
 
   const pick = (f: File | null) => { if (f) setFile(f); };
-  const clear = () => { setFile(null); setMatch(null); setModule(null); setJob(null); setUploadPct(0); if (inputRef.current) inputRef.current.value = ""; };
+  const clear = () => { setFile(null); setMatch(null); setTargetModule(null); setJob(null); setUploadPct(0); if (inputRef.current) inputRef.current.value = ""; };
 
   const columns = useMemo<ColumnDef<Version, unknown>[]>(() => [
     { id: "file", header: "File", meta: meta({ sticky: "start", width: 240 }), cell: ({ row }) => (
@@ -167,7 +167,7 @@ export function ImportSurface() {
             <div className="ui-filterbar" role="group" aria-label="Object">
               <div className="ui-filterbar__chips">
                 {match.available_modules.map((m) => (
-                  <Chip key={m.value} selected={module === m.value} onClick={() => setModule(m.value)}>{m.label}</Chip>
+                  <Chip key={m.value} selected={targetModule === m.value} onClick={() => setTargetModule(m.value)}>{m.label}</Chip>
                 ))}
               </div>
             </div>
