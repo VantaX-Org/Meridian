@@ -212,13 +212,14 @@ function RuleSection({ f, anomaly, fieldChecked }: { f: Finding; anomaly: boolea
     queryKey: ["rules.for-check", f.module, f.check_id], enabled: !anomaly, retry: false, meta: { ignoreError: true },
     queryFn: () => getRules({ module: f.module, search: f.check_id, limit: 10 }),
   });
-  const r = rule.data?.rules.find((x) => x.name.split(":")[0] === f.check_id);
+  const r = rule.data?.rules.find((x) => x.name.split(":")[0] === f.check_id || x.id === f.check_id);
   const invalid = Object.entries(d.distinct_invalid_values ?? {}).sort((a, b) => b[1] - a[1]);
   const labels = Object.entries(f.rule_context?.valid_values_with_labels ?? {});
   const conditions = r?.conditions == null ? [] : Array.isArray(r.conditions) ? r.conditions : [r.conditions];
   const checkClass = f.check_class ?? (conditions as { check_class?: unknown }[]).map((c) => c?.check_class).find((v): v is string => typeof v === "string" && !!v) ?? null;
+  const heading = f.business_name ?? f.details?.message ?? f.check_id;
   const expectedText = labels.length ? `One of ${labels.length.toLocaleString()} valid values`
-    : r?.description && r.description !== f.details?.message ? r.description : (f.details?.message ?? "As the rule defines");
+    : [r?.description, f.details?.message].find((t) => t && t !== heading) ?? "Every record passes this check";
   const rows: { k: string; v: ReactNode; mono?: boolean }[] = anomaly
     ? [{ k: "Measure", v: METRIC[d.metric ?? ""] ?? d.metric ?? "—" },
        { k: "Expected", v: d.expected && d.expected.low != null ? `${d.expected.low.toLocaleString()} to ${d.expected.high?.toLocaleString() ?? "—"}` : "Seen in earlier downloads" },

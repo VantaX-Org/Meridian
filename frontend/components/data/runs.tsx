@@ -65,35 +65,35 @@ export function RunsSurface() {
   const selected = drawer.value ? jobs.find((j) => j.id === drawer.value) ?? null : null;
 
   const jobColumns = useMemo<ColumnDef<Job, unknown>[]>(() => [
-    { id: "when", header: "Finished", meta: meta({ width: 120 }),
+    { id: "when", header: "Finished", meta: meta({ width: 100 }),
       cell: ({ row }) => {
         const d = new Date((row.original.finished_at ?? row.original.updated_at) * 1000);
         return <span title={formatDate(d, "datetime")}>{relativeTime(d.toISOString())}</span>;
       } },
-    { id: "kind", header: "Kind", meta: meta({ width: 120 }), cell: ({ row }) => KIND_LABEL[row.original.kind] },
-    { id: "label", header: "Run", meta: meta({ width: 260, clamp: 2 }), cell: ({ row }) => humanizeIds(row.original.label) },
-    { id: "system", header: "System", meta: meta({ width: 150 }),
+    { id: "kind", header: "Kind", meta: meta({ width: 100 }), cell: ({ row }) => KIND_LABEL[row.original.kind] },
+    { id: "label", header: "Run", meta: meta({ width: 200, clamp: 2 }), cell: ({ row }) => humanizeIds(row.original.label) },
+    { id: "system", header: "System", meta: meta({ width: 120 }),
       cell: ({ row }) => (row.original.system_id && systemName.get(row.original.system_id)) || "" },
-    { id: "status", header: "Status", meta: meta({ width: 130 }),
+    { id: "status", header: "Status", meta: meta({ width: 120 }),
       cell: ({ row }) => <StatusBadge status={JOB_STATUS[row.original.status].badge}>{JOB_STATUS[row.original.status].label}</StatusBadge> },
-    { id: "duration", header: "Duration", meta: meta({ width: 100, numeric: true, align: "end" }),
+    { id: "duration", header: "Duration", meta: meta({ width: 90, numeric: true, align: "end" }),
       cell: ({ row }) => (row.original.status === "failed" ? "—" : fmtDuration(jobTiming(row.original, nowSec).elapsed)) },
-    { id: "rows", header: "Rows", meta: meta({ width: 110, numeric: true, align: "end" }),
+    { id: "rows", header: "Rows", meta: meta({ width: 80, numeric: true, align: "end" }),
       cell: ({ row }) => (row.original.rows_done ? fmtInt(row.original.rows_done) : "") },
-    { id: "note", header: "Note", meta: meta({ width: 260, clamp: 2 }), cell: ({ row }) => (row.original.error ? errorLabel(row.original.error) : row.original.message) },
+    { id: "note", header: "Note", meta: meta({ minWidth: 240, clamp: 2 }), cell: ({ row }) => (row.original.error ? errorLabel(row.original.error) : row.original.message) },
   ], [systemName, nowSec]);
 
   const versionColumns = useMemo<ColumnDef<VersionRow, unknown>[]>(() => [
-    { id: "when", header: "Downloaded", meta: meta({ width: 120 }),
+    { id: "when", header: "Downloaded", meta: meta({ width: 110 }),
       cell: ({ row }) => <span title={formatDate(row.original.run_at, "datetime")}>{relativeTime(row.original.run_at)}</span> },
-    { id: "system", header: "System", accessorKey: "systemName", meta: meta({ width: 150 }) },
-    { id: "label", header: "Version", meta: meta({ width: 240, clamp: 2 }),
+    { id: "system", header: "System", accessorKey: "systemName", meta: meta({ width: 120 }) },
+    { id: "label", header: "Version", meta: meta({ width: 200, clamp: 2 }),
       cell: ({ row }) => <Link href={`/data/runs/${row.original.id}`} className="ui-link">
         {row.original.label ?? row.original.objects.map(formatModuleName).join(", ")}</Link> },
     { id: "objects", header: "Objects", meta: meta({ minWidth: 200, clamp: 2 }), cell: ({ row }) => row.original.objects.map(formatModuleName).join(", ") },
     { id: "records", header: "Records", meta: meta({ width: 110, numeric: true, align: "end" }),
       cell: ({ row }) => fmtInt(Object.values(row.original.records).reduce((a, b) => a + b, 0)) },
-    { id: "coverage", header: "Read", meta: meta({ width: 170 }),
+    { id: "coverage", header: "Read", meta: meta({ width: 140 }),
       cell: ({ row }) => {
         const n = row.original.coverage.issues.length;
         return n ? <StatusBadge status="medium">{n} table{n > 1 ? "s" : ""} incomplete</StatusBadge>
