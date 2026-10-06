@@ -1,0 +1,206 @@
+{
+ "table": "T011",
+ "description": "Financial Statement Versions",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "VERSN",
+   "key": true,
+   "data_element": "VERSN_011",
+   "domain": "VERSN_011",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Financial Statement Version",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "DSPRA",
+   "key": false,
+   "data_element": "SPRAS",
+   "domain": "SPRAS",
+   "type": "LANG",
+   "length": 1,
+   "decimals": 0,
+   "description": "Language Key",
+   "check_table": "T002"
+  },
+  {
+   "pos": 4,
+   "name": "ASPRA",
+   "key": false,
+   "data_element": "ASPRA",
+   "domain": "CHAR10",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Alternative languages",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "XERGS",
+   "key": false,
+   "data_element": "XERGS_011",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Financial Statement Version Uses Group Chart of Accounts",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "KTOPL",
+   "key": false,
+   "data_element": "KTOPL_011",
+   "domain": "KTOPL",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Financial Statement Version Uses Only One Chart of Accounts",
+   "check_table": "T004"
+  },
+  {
+   "pos": 7,
+   "name": "AKTVA",
+   "key": false,
+   "data_element": "AKTVA_011",
+   "domain": "ERGSL",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Item key representing the assets",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "PSSVA",
+   "key": false,
+   "data_element": "PSSVA_011",
+   "domain": "ERGSL",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Item Key Representing the Liabilities",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "ERGAK",
+   "key": false,
+   "data_element": "ERGAK_011",
+   "domain": "ERGSL",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Item key representing the line item net loss",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "ERGPA",
+   "key": false,
+   "data_element": "ERGPA_011",
+   "domain": "ERGSL",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Fin.statement key representing the net profit/yr",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "ERGGV",
+   "key": false,
+   "data_element": "ERGGV_011",
+   "domain": "ERGSL",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Fin.statement key representing the P+L profit item",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "ZUORD",
+   "key": false,
+   "data_element": "DZUORD_011",
+   "domain": "ERGSL",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Item key representing the non-assignable accounts",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "XAUTO",
+   "key": false,
+   "data_element": "XAUTO_011",
+   "domain": "CHAR01",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: automatically allocate item keys",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "XFBER",
+   "key": false,
+   "data_element": "XFBER_011",
+   "domain": "CHAR01",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: assignment of functional areas is permitted",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "ANHNG",
+   "key": false,
+   "data_element": "ANHNG_011",
+   "domain": "ERGSL",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Item key that represents notes to financial statements",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "DSPRA",
+   "foreign_table": "T002",
+   "foreign_field": "SPRAS"
+  },
+  {
+   "field": "KTOPL",
+   "foreign_table": "T004",
+   "foreign_field": "KTOPL"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}
