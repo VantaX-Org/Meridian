@@ -227,6 +227,8 @@
 }
 .ui-link-button:hover, a.ui-link:hover { text-decoration: underline; }
 a.ui-link { color: var(--aurora-accent-500); text-decoration: none; }
+/* a link inside running text must differ from it by more than colour */
+p a.ui-link, li a.ui-link, dd a.ui-link { text-decoration: underline; text-underline-offset: 2px; }
 .ui-link-button:focus-visible, a.ui-link:focus-visible {
   outline: var(--aurora-focus-ring-width) solid var(--aurora-focus-ring-colour);
   outline-offset: 2px;

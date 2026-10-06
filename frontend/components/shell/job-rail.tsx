@@ -24,7 +24,6 @@ export function JobRail() {
   const known = active.map(jobPercent).filter((p): p is number => p !== null);
   const percent = known.length === active.length && known.length ? Math.round(known.reduce((a, b) => a + b, 0) / known.length) : null;
   const recent = jobs.slice(0, 8);
-  if (!active.length) return null;
   return (
     <div className="aurora-job-rail__wrap" ref={ref}>
       <button type="button" className="aurora-job-rail aurora-focus-ring" data-live={active.length ? "true" : undefined}
@@ -32,7 +31,7 @@ export function JobRail() {
         onClick={() => setOpen((o) => !o)}>
         <Activity size={14} aria-hidden />
         <span className="aurora-job-rail__count aurora-number">{active.length}</span>
-        <span className="aurora-job-rail__label">running</span>
+        {active.length ? <span className="aurora-job-rail__label">running</span> : <span className="aurora-job-rail__label">Jobs</span>}
         {percent !== null ? (
           <span className="aurora-job-rail__bar" role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}>
             <span style={{ transform: `scaleX(${percent / 100})` }} />
