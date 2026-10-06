@@ -56,6 +56,10 @@ SAP_EXPORT_FIELDS: dict[str, dict[str, str]] = {
         "asset_number": "ANLN1", "asset_class": "ANLKL", "company_code": "BUKRS",
         "description": "TXA50",
     },
+    "hcm": {
+        "personnel_number": "PERNR", "position": "PLANS", "cost_centre": "KOSTL",
+        "company_code": "BUKRS",
+    },
     "mm_purchasing": {
         "po_number": "EBELN", "item": "EBELP", "vendor": "LIFNR",
         "material": "MATNR", "plant": "WERKS",
@@ -158,7 +162,7 @@ TRANSACTION_CODES: dict[str, str] = {
     "customer": "XD02", "vendor": "XK02", "material": "MM02",
     "equipment": "IE02", "employee": "PA30", "financial": "FS00",
     "business_partner": "BP02", "accounts_payable": "FK02",
-    "accounts_receivable": "FD02", "asset_accounting": "AS02",
+    "accounts_receivable": "FD02", "asset_accounting": "AS02", "hcm": "PA30",
     "mm_purchasing": "ME22N", "plant_maintenance": "IE02",
     "production_planning": "MD02", "sd_customer_master": "VD02",
     "sd_sales_orders": "VA02",
@@ -173,6 +177,7 @@ BAPI_NAMES: dict[str, str] = {
     "accounts_payable": "BAPI_VENDOR_CHANGEFROMDATA",
     "accounts_receivable": "BAPI_CUSTOMER_CHANGEFROMDATA1",
     "asset_accounting": "BAPI_FIXEDASSET_CHANGE",
+    "hcm": "HR_INFOTYPE_OPERATION",
     "mm_purchasing": "BAPI_PO_CHANGE",
     "plant_maintenance": "BAPI_EQUI_CHANGE",
     "production_planning": "BAPI_PRODORD_CHANGE",
@@ -184,7 +189,7 @@ IDOC_TYPES: dict[str, str] = {
     "customer": "DEBMAS07", "vendor": "CREMAS05",
     "material": "MATMAS05", "employee": "HRMD_A",
     "business_partner": "BPMAS01", "accounts_payable": "CREMAS05",
-    "accounts_receivable": "DEBMAS07", "asset_accounting": "ANLAS01",
+    "accounts_receivable": "DEBMAS07", "asset_accounting": "ANLAS01", "hcm": "HRMD_A07",
     "sd_sales_orders": "ORDERS05",
 }
 

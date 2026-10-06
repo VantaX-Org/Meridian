@@ -1,0 +1,257 @@
+{
+ "table": "T528B",
+ "description": "Positions",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "OTYPE",
+   "key": true,
+   "data_element": "OTYPE",
+   "domain": "OTYPE",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Object Type",
+   "check_table": "T778O"
+  },
+  {
+   "pos": 3,
+   "name": "PLANS",
+   "key": true,
+   "data_element": "PLANS",
+   "domain": "PLANS",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Position",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "ENDDA",
+   "key": true,
+   "data_element": "ENDDA",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "End Date",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "BEGDA",
+   "key": false,
+   "data_element": "BEGDA",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Start Date",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "MOLGA",
+   "key": false,
+   "data_element": "MOLGA",
+   "domain": "MOLGA",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Country Grouping",
+   "check_table": "T500L"
+  },
+  {
+   "pos": 7,
+   "name": "TRFAR",
+   "key": false,
+   "data_element": "TRFAR",
+   "domain": "TRFAR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Pay scale type",
+   "check_table": "T510A"
+  },
+  {
+   "pos": 8,
+   "name": "TRFGB",
+   "key": false,
+   "data_element": "TRFGB",
+   "domain": "TRFGB",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Pay Scale Area",
+   "check_table": "T510G"
+  },
+  {
+   "pos": 9,
+   "name": "TRFKZ",
+   "key": false,
+   "data_element": "TRFKZ",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "ES grouping for collective agreement provision",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "TRFGR",
+   "key": false,
+   "data_element": "TRFGR",
+   "domain": "TRFGR",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Pay Scale Group",
+   "check_table": "*"
+  },
+  {
+   "pos": 11,
+   "name": "TRFST",
+   "key": false,
+   "data_element": "TRFST",
+   "domain": "TRFST",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Pay Scale Level",
+   "check_table": "*"
+  },
+  {
+   "pos": 12,
+   "name": "ARBWS",
+   "key": false,
+   "data_element": "ARBWS",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Work method in shift",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "AWTGR",
+   "key": false,
+   "data_element": "AWTGR",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Work method in shift",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "GESCH",
+   "key": false,
+   "data_element": "GESCH",
+   "domain": "GESCH",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Gender Key",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "STELL",
+   "key": false,
+   "data_element": "STELL",
+   "domain": "STELL",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Job",
+   "check_table": "T513"
+  },
+  {
+   "pos": 16,
+   "name": "SCHWA",
+   "key": false,
+   "data_element": "SCHWA",
+   "domain": "SCHWA",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Heavy Labor Position (A)",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "MAINT",
+   "key": false,
+   "data_element": "MAINT",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Maintenance of table entry in OM",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "ORGEH",
+   "key": false,
+   "data_element": "ORGEH",
+   "domain": "ORGEH",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Organizational Unit",
+   "check_table": "*"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MOLGA",
+   "foreign_table": "T500L",
+   "foreign_field": "MOLGA"
+  },
+  {
+   "field": "OTYPE",
+   "foreign_table": "T778O",
+   "foreign_field": "OTYPE"
+  },
+  {
+   "field": "STELL",
+   "foreign_table": "T513",
+   "foreign_field": "STELL"
+  },
+  {
+   "field": "TRFAR",
+   "foreign_table": "T510A",
+   "foreign_field": "TRFAR"
+  },
+  {
+   "field": "TRFGB",
+   "foreign_table": "T510G",
+   "foreign_field": "TRFGB"
+  }
+ ]
+}

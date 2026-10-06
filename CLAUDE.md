@@ -283,7 +283,7 @@ rendering; **new Aurora code does not consume them**. The Fiori primary
 
 | Category | Modules | Rules |
 |----------|---------|-------|
-| ECC (13) | business_partner, material_master, fi_gl, accounts_payable, accounts_receivable, asset_accounting, controlling, mm_purchasing, plant_maintenance, production_planning, project_system, sd_customer_master, sd_sales_orders | ~80 |
+| ECC (13) | business_partner, material_master, fi_gl, accounts_payable, accounts_receivable, asset_accounting, controlling, hcm, mm_purchasing, plant_maintenance, production_planning, project_system, sd_customer_master, sd_sales_orders | ~80 |
 | SuccessFactors (9) | employee_central, compensation, benefits, payroll_integration, performance_goals, succession_planning, recruiting_onboarding, learning_management, time_attendance | ~50 |
 | Warehouse (9) | ewms_stock, ewms_transfer_orders, batch_management, mdg_master_data, grc_compliance, fleet_management, transport_management, wm_interface, cross_system_integration | ~55 |
 

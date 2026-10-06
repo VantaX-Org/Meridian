@@ -122,6 +122,15 @@ edges:
 
   # ── HCM: the employee's current employment status beside each org-assignment record ──
   - {parent: PA0001, child: PA0000, join: {PERNR: PERNR}, cardinality: one, filter: {ENDDA: "99991231"}}
+  - {parent: PA0002, child: PA0000, join: {PERNR: PERNR}, cardinality: one, filter: {ENDDA: "99991231"}}
+  # the infotype record in force today beside the org-assignment record (time constraint 1/2: at most one)
+  - {parent: PA0001, child: PA0003, join: {PERNR: PERNR}, cardinality: one}
+  - {parent: PA0001, child: PA0007, join: {PERNR: PERNR}, cardinality: one, filter: {ENDDA: "99991231"}}
+  - {parent: PA0001, child: PA0008, join: {PERNR: PERNR}, cardinality: one, filter: {ENDDA: "99991231"}}
+  - {parent: PA0001, child: PA0105, join: {PERNR: PERNR}, cardinality: one, filter: {SUBTY: "0001", ENDDA: "99991231"}}
+  - {parent: PA0001, child: T500P, join: {PERSA: WERKS}, cardinality: one}
+  - {parent: PA0105, child: USR02, join: {BNAME: USRID}, cardinality: one}
+  - {parent: PA0001, child: HRP1001, join: {OBJID: PLANS}, cardinality: one, filter: {PLVAR: "01", OTYPE: S, RSIGN: A, RELAT: "003", ENDDA: "99991231"}}
 
   # ── Payroll: results directory → wage-type totals (Z_MERIDIAN_PAYROLL_TOTALS) ──
   - {parent: HRPY_RGDIR, child: ZMERIDIAN_PAYRT, join: {PERNR: PERNR, SEQNR: SEQNR}, cardinality: many}
@@ -200,6 +209,7 @@ anchors:
   mm_purchasing: EKKO
   fi_gl: SKA1
   asset_accounting: ANLA
+  hcm: PA0001
   controlling: CSKS
   plant_maintenance: EQUI
   fleet_management: EQUI

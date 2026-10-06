@@ -9,7 +9,7 @@ import type { Tenant, TenantFeatures, LlmConfig } from "@/lib/admin-api";
 const ALL_MODULES = {
   ECC: [
     "business_partner", "material_master", "fi_gl", "accounts_payable",
-    "accounts_receivable", "asset_accounting", "controlling", "mm_purchasing",
+    "accounts_receivable", "asset_accounting", "hcm", "controlling", "mm_purchasing",
     "plant_maintenance", "production_planning", "project_system", "sd_customer_master", "sd_sales_orders",
   ],
   SuccessFactors: [

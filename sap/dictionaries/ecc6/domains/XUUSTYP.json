@@ -1,0 +1,37 @@
+{
+ "domain": "XUUSTYP",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": "USTYP",
+ "lowercase": true,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "Dialog"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "System"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Communications Data"
+  },
+  {
+   "low": "L",
+   "high": null,
+   "text": "Reference (Logon not possible)"
+  },
+  {
+   "low": "S",
+   "high": null,
+   "text": "Service"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,62 @@
+{
+ "domain": "XUCODEVER2",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "Code Version A (Obsolete)"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Code Version B (MD5-Based, 8 Characters, Upper-Case, ASCII)"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Code Version C (Not Implemented)"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Code Version D (MD5-Based, 8 Characters, Upper-Case, UTF-8)"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Code Version E (Corrected Code Version D)"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Code Version F (SHA1, 40 Characters, Case-Sensitive, UTF-8)"
+  },
+  {
+   "low": "G",
+   "high": null,
+   "text": "Code Version G = Code Vers. F + Code Vers. B (2 Hash Values)"
+  },
+  {
+   "low": "H",
+   "high": null,
+   "text": "Code Version H (Generic Hash Procedure)"
+  },
+  {
+   "low": "I",
+   "high": null,
+   "text": "Code Version I = Code Versions H + F + B (Three Hash Values)"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Password Deactivated"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}
