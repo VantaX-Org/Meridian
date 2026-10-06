@@ -390,6 +390,84 @@ ECC_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
     ],
 
     # ------------------------------------------------------------------
+    # Project System and internal orders
+    # ------------------------------------------------------------------
+    "project_system": [
+        ExtractionTarget(
+            source="PROJ",
+            fields=["LOEVM", "PLFAZ", "PLSEZ", "POST1", "PRCTR", "PSPID", "PSPNR", "PWHIE", "VBUKR", "VERNR", "VKOKR"],
+            description="Project definition",
+        ),
+        ExtractionTarget(
+            source="PRPS",
+            fields=["BELKZ", "FAKKZ", "FKSTL", "LOEVM", "OBJNR", "PBUKR", "PKOKR", "PLAKZ", "POSID", "POST1", "PRCTR", "PSPHI", "PSPNR", "STUFE", "VERNR"],
+            description="WBS element master",
+        ),
+        ExtractionTarget(
+            source="PRHI",
+            fields=["DOWN", "POSNR", "PSPHI", "UP"],
+            description="WBS hierarchy",
+        ),
+        ExtractionTarget(
+            source="AUFK",
+            fields=["AEDAT", "ASTKZ", "AUART", "AUFNR", "AUTYP", "BUKRS", "ERDAT", "IDAT1", "IDAT2", "IDAT3", "KOKRS", "KOSTV", "KTEXT", "LOEKZ", "OBJNR", "PDAT1", "PDAT2", "PDAT3", "PHAS1", "PHAS2", "PHAS3", "PRCTR", "PSPEL", "STDAT"],
+            description="Order master (internal / maintenance / production)",
+        ),
+        ExtractionTarget(
+            source="COBRA",
+            fields=["APROF", "OBJNR"],
+            description="Settlement header",
+        ),
+        ExtractionTarget(
+            source="COBRB",
+            fields=["AUFNR", "KOKRS", "KOSTL", "LFDNR", "OBJNR", "PERBZ", "PROZS", "PS_PSP_PNR"],
+            description="Settlement distribution rules",
+        ),
+        ExtractionTarget(
+            source="T003O",
+            fields=["AUART", "AUTYP"],
+            description="Order types",
+            is_config=True,
+        ),
+        ExtractionTarget(
+            source="TCJ04",
+            fields=["VERNR"],
+            description="Persons responsible",
+            is_config=True,
+        ),
+        ExtractionTarget(
+            source="TKA01",
+            fields=["KOKRS"],
+            description="Controlling areas",
+            is_config=True,
+        ),
+        ExtractionTarget(
+            source="TKA02",
+            fields=["BUKRS", "KOKRS"],
+            description="Company code to controlling area assignment",
+            is_config=True,
+        ),
+        ExtractionTarget(
+            source="T001",
+            fields=["BUKRS"],
+            description="Company codes",
+            is_config=True,
+        ),
+        ExtractionTarget(
+            source="CEPC",
+            fields=["KOKRS", "PRCTR"],
+            description="Profit centres",
+            is_config=True,
+        ),
+        ExtractionTarget(
+            source="CSKS",
+            fields=["KOKRS", "KOSTL"],
+            description="Cost centres",
+            is_config=True,
+        ),
+    ],
+
+    # ------------------------------------------------------------------
     # SD Customer Master
     # ------------------------------------------------------------------
     "sd_customer_master": [

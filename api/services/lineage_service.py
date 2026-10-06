@@ -82,7 +82,7 @@ async def get_lineage(
             "business_partner": "BP", "material_master": "MM", "fi_gl": "GL",
             "accounts_payable": "AP", "accounts_receivable": "AR",
             "asset_accounting": "AA", "controlling": "CO", "mm_purchasing": "PO",
-            "plant_maintenance": "PM", "production_planning": "PP",
+            "plant_maintenance": "PM", "production_planning": "PP", "project_system": "PS",
             "sd_customer_master": "SD", "sd_sales_orders": "SO",
             "employee_central": "EC", "compensation": "CO", "benefits": "BN",
             "payroll_integration": "PY", "performance_goals": "PG",

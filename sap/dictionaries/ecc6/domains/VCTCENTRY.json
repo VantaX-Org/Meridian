@@ -1,0 +1,162 @@
+{
+ "domain": "VCTCENTRY",
+ "type": "CHAR",
+ "length": 2,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "0",
+   "high": null,
+   "text": "One-position text index followed by a blank"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "One-position text index followed by a blank"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "One-position text index followed by a blank"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "One-position text index followed by a blank"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "One-position text index followed by a blank"
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "One-position text index followed by a blank"
+  },
+  {
+   "low": "6",
+   "high": null,
+   "text": "One-position text index followed by a blank"
+  },
+  {
+   "low": "7",
+   "high": null,
+   "text": "One-position text index followed by a blank"
+  },
+  {
+   "low": "8",
+   "high": null,
+   "text": "One-position text index followed by a blank"
+  },
+  {
+   "low": "9",
+   "high": null,
+   "text": "One-position text index followed by a blank"
+  },
+  {
+   "low": "0",
+   "high": null,
+   "text": "One-position text index with leading blank"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "One-position text index with leading blank"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "One-position text index with leading blank"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "One-position text index with leading blank"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "One-position text index with leading blank"
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "One-position text index with leading blank"
+  },
+  {
+   "low": "6",
+   "high": null,
+   "text": "One-position text index with leading blank"
+  },
+  {
+   "low": "7",
+   "high": null,
+   "text": "One-position text index with leading blank"
+  },
+  {
+   "low": "8",
+   "high": null,
+   "text": "One-position text index with leading blank"
+  },
+  {
+   "low": "9",
+   "high": null,
+   "text": "One-position text index with leading blank"
+  },
+  {
+   "low": "00",
+   "high": "09",
+   "text": "Two-position text index"
+  },
+  {
+   "low": "10",
+   "high": "19",
+   "text": "Two-position text index"
+  },
+  {
+   "low": "20",
+   "high": "29",
+   "text": "Two-position text index"
+  },
+  {
+   "low": "30",
+   "high": "39",
+   "text": "Two-position text index"
+  },
+  {
+   "low": "40",
+   "high": "49",
+   "text": "Two-position text index"
+  },
+  {
+   "low": "50",
+   "high": "59",
+   "text": "Two-position text index"
+  },
+  {
+   "low": "60",
+   "high": "69",
+   "text": "Two-position text index"
+  },
+  {
+   "low": "70",
+   "high": "79",
+   "text": "Two-position text index"
+  },
+  {
+   "low": "80",
+   "high": "89",
+   "text": "Two-position text index"
+  },
+  {
+   "low": "90",
+   "high": "99",
+   "text": "Two-position text index"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

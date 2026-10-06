@@ -1,0 +1,22 @@
+{
+ "domain": "CO_COLORDPRC",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Collective order without automatic goods movement"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Collective order with automatic goods movement"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}
