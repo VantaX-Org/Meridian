@@ -267,6 +267,7 @@ rules:
       is unreliable.
     fix_map: {__blank__: Review duplicate role assignments in GRC Access Control. Remove the duplicate assignment.
         Re-run SoD analysis for affected users.}
+    record_fix_template: "User {GRACUSERROLE.USER_ID}, role {GRACUSERROLE.ROLE_ID}: assignment duplicated on connector {GRACUSERROLE.CONNECTOR}. Remove the duplicate in GRC access management."
 
 
   - id: GRC015

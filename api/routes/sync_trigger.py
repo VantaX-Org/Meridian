@@ -32,6 +32,7 @@ MODULE_REGISTRY: dict[str, dict[str, str]] = {
     "production_planning": {"category": "ECC", "label": "Production Planning"},
     "sd_customer_master": {"category": "ECC", "label": "SD Customer Master"},
     "sd_sales_orders": {"category": "ECC", "label": "SD Sales Orders"},
+    "controlling": {"category": "ECC", "label": "Controlling"},
     "interface_health": {"category": "ECC", "label": "Interface Health (IDoc)"},
     "s4_readiness": {"category": "ECC", "label": "S/4HANA Readiness"},
     # SuccessFactors

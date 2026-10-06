@@ -103,7 +103,7 @@ async def lifespan(app: FastAPI):
                             "VALUES ('00000000-0000-0000-0000-000000000001', 'Dev Tenant', "
                             "ARRAY['business_partner','material_master','fi_gl','accounts_payable',"
                             "'accounts_receivable','asset_accounting', 'hcm','mm_purchasing','plant_maintenance',"
-                            "'production_planning','sd_customer_master','sd_sales_orders','interface_health','s4_readiness',"
+                            "'production_planning','sd_customer_master','sd_sales_orders','controlling','interface_health','s4_readiness',"
                             "'employee_central','compensation','benefits','payroll_integration',"
                             "'performance_goals','succession_planning','recruiting_onboarding',"
                             "'learning_management','time_attendance',"

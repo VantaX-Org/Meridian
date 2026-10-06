@@ -609,6 +609,7 @@ rules:
   applies_when:
     DFKKBPTAXNUM.TAXTYPE: [AT0, BE0, BG0, CY0, CZ0, DE0, DK0, EE0, EL0, ES0, FI0, FR0, HR0, HU0, IE0, IT0, LT0,
       LU0, LV0, MT0, NL0, PL0, PT0, RO0, SE0, SI0, SK0]
+  record_fix_template: "Business partner {DFKKBPTAXNUM.PARTNER}: tax number '{actual_value}' is not a valid EU VAT format. Correct it in BP > Identification > Tax numbers."
 
 - id: BP042
   field: BUT000.BU_GROUP

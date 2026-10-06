@@ -181,47 +181,13 @@ rules:
       period.
   record_fix_template: Personnel number {PA0001.PERNR} is assigned to a cost centre that does not exist in CSKS. Correct in PA30 infotype
     0001 or maintain the cost centre in KS02.
-- id: PA009
-  field: PA0001.KOSTL
-  check_class: cross_field_check
-  grain: PA0001
-  fail_when: '`CSKS.BKZKP` == ''X'''
-  applies_when: &id003
-    PA0001.ENDDA: *id002
-  severity: high
-  dimension: consistency
-  message: Cost centre of the assignment is locked for primary cost postings
-  why_it_matters: A cost centre with the primary-posting lock (BKZKP) set rejects every payroll cost posting. Employees left on a locked
-    cost centre after a reorganisation produce posting errors every payroll period.
-  rule_authority: sap_hard_constraint
-  sap_impact: Payroll posting to FI/CO is rejected for the employee until the cost centre is unlocked or the assignment changed.
-  fix_map:
-    __other__: Move the employee to an open cost centre (PA30 infotype 0001) or unlock the cost centre in KS02.
-  record_fix_template: Personnel number {PA0001.PERNR} is assigned to a cost centre locked for primary postings. Reassign in PA30 or
-    unlock in KS02.
-- id: PA010
-  field: PA0001.BUKRS
-  check_class: cross_field_check
-  grain: PA0001
-  fail_when: '`PA0001.BUKRS`.notna() & `CSKS.BUKRS`.notna() & (`PA0001.BUKRS` != `CSKS.BUKRS`)'
-  applies_when: *id003
-  severity: high
-  dimension: consistency
-  message: Company code of the assignment differs from the company code of its cost centre
-  why_it_matters: Payroll posts the employee's cost to the cost centre; a cost centre of another company code makes the posting cross-company
-    and triggers clearing lines or errors in the financial postings.
-  rule_authority: best_practice
-  sap_impact: Unexpected intercompany clearing, or posting rejection when cross-company postings are not allowed in OBYA.
-  fix_map:
-    __other__: Align the company code (derived from personnel area) or the cost centre in PA30 infotype 0001.
-  record_fix_template: Personnel number {PA0001.PERNR} has a company code different from its cost centre's company code. Align in PA30
-    infotype 0001.
 - id: PA011
   field: PA0001.BUKRS
   check_class: cross_field_check
   grain: PA0001
   fail_when: '`PA0001.BUKRS`.notna() & `T500P.BUKRS`.notna() & (`PA0001.BUKRS` != `T500P.BUKRS`)'
-  applies_when: *id003
+  applies_when: &id003
+    PA0001.ENDDA: *id002
   severity: high
   dimension: consistency
   message: Company code of the assignment differs from the company code of its personnel area

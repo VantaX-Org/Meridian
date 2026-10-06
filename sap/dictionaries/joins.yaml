@@ -125,7 +125,6 @@ edges:
   - {parent: PA0001, child: PA0007, join: {PERNR: PERNR}, cardinality: one, filter: {ENDDA: "99991231"}}
   - {parent: PA0001, child: PA0008, join: {PERNR: PERNR}, cardinality: one, filter: {ENDDA: "99991231"}}
   - {parent: PA0001, child: PA0105, join: {PERNR: PERNR}, cardinality: one, filter: {SUBTY: "0001", ENDDA: "99991231"}}
-  - {parent: PA0001, child: CSKS, join: {KOSTL: KOSTL}, cardinality: one, filter: {DATBI: "99991231"}}
   - {parent: PA0001, child: T500P, join: {PERSA: WERKS}, cardinality: one}
   - {parent: PA0105, child: USR02, join: {BNAME: USRID}, cardinality: one}
   - {parent: PA0001, child: HRP1001, join: {OBJID: PLANS}, cardinality: one, filter: {PLVAR: "01", OTYPE: S, RSIGN: A, RELAT: "003", ENDDA: "99991231"}}
@@ -202,6 +201,7 @@ anchors:
   fi_gl: SKA1
   asset_accounting: ANLA
   hcm: PA0001
+  controlling: CSKS
   plant_maintenance: EQUI
   fleet_management: EQUI
   production_planning: MAST

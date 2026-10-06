@@ -9,8 +9,7 @@ import dynamic from "next/dynamic";
 import type { ComponentType } from "react";
 import { TableSkeleton } from "@/components/ui-core";
 
-const loading = () => <TableSkeleton rows={6} label="Loading" />;
-const page = (load: () => Promise<{ default: ComponentType }>) => dynamic(load, { ssr: false, loading });
+const loading = () => <TableSkeleton rows={6} label="Loading rows" />;
 const named = <K extends string>(load: () => Promise<Record<K, ComponentType>>, key: K) =>
   dynamic(() => load().then((m) => ({ default: m[key] })), { ssr: false, loading });
 

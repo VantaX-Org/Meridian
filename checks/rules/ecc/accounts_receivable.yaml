@@ -556,6 +556,7 @@ rules:
       - SE
       - SI
       - SK
+    record_fix_template: "Customer {KNA1.KUNNR}: VAT registration number '{actual_value}' is not valid. Start with the 2-letter country code and correct it in XD02 > Control data."
 
   - id: AR028
     field: KNA1.KTOKD

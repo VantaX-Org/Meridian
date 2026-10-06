@@ -92,6 +92,8 @@ export function DataTable<TRow>({
   ariaLabel,
   sortable = true,
 }: DataTableProps<TRow>) {
+  // TanStack Table returns unmemoizable functions; keep this component out of React Compiler.
+  "use no memo";
   const [sorting, setSorting] = useState<SortingState>([]);
   const [focusedIndex, setFocusedIndex] = useState<number>(-1);
   // Mirror of focusedIndex kept in a ref so rapid J/K repeats read the
