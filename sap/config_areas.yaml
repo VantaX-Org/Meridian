@@ -1,0 +1,62 @@
+# Areas of a configuration load, per system type: the rows "Load configuration" shows progress and found
+# counts for. Every object listed is one sap.config_loader reads (tests/test_config_areas.py); an object the
+# loader reads that is listed nowhere lands in "other". An area with no object the system type can read is
+# reported not_available.
+#
+# admin_path: where a cloud system's configuration lives (cloud systems have no IMG). A system-level
+# admin_path applies to every area without its own. ABAP systems use sap/spro_paths.yaml instead.
+
+_abap: &abap
+  - {area: sales, label: Sales, objects: [TVAK, TVAP, TVEP, T184, TVLK, TVFK, TVCPA, TVCPF, TVCPL]}
+  - {area: purchasing, label: Purchasing, objects: [T161, T163, T163Y, T16FS]}
+  - {area: inventory, label: Inventory, objects: [T156, T333]}
+  - {area: finance, label: Finance,
+     objects: [T003, T004, TBSL, T052, T042, T042Z, T047, TABW, BNKA, FINSC_LEDGER, TKA01, TKA02, CSKS, CEPC]}
+  - {area: quality, label: Quality, objects: [TQ30, TQ80]}
+  - {area: master_data, label: Master data,
+     objects: [T134, T023, T006, T077D, T077Y, TB003, TBZ9, CVI_CUST_LINK, CVI_VEND_LINK]}
+  - {area: organisation, label: Organisation, objects: [T001, T001P, T500P]}
+  - {area: production, label: Production, objects: [T003O, T399X, T438A]}
+  - {area: maintenance, label: Maintenance, objects: [T356]}
+  - {area: projects, label: Projects, objects: [TCJ1, TCJ04]}
+  - {area: people, label: People, objects: [T529A, T530, T582A, T503Z]}
+
+_warehouse: &warehouse
+  - {area: warehouse, label: Warehouse, objects: [/SCWM/T300, /SCWM/T301, /SCWM/T331]}
+
+systems:
+  ecc: {areas: *abap}
+  s4hana_onprem: {areas: *abap}
+  ewm: {areas: *warehouse}
+  ewms: {areas: *warehouse}
+  s4hana_cloud:
+    admin_path: Manage Your Solution > Configure Your Solution
+    areas:
+      - {area: sales, label: Sales, objects: []}
+      - {area: purchasing, label: Purchasing, objects: []}
+      - {area: inventory, label: Inventory, objects: []}
+      - {area: finance, label: Finance, objects: []}
+      - {area: quality, label: Quality, objects: []}
+      - {area: master_data, label: Master data, objects: []}
+      - {area: organisation, label: Organisation, objects: []}
+  successfactors:
+    admin_path: Admin Center > Manage Business Configuration
+    areas:
+      - {area: people, label: People,
+         objects: [FOEventReason, FOJobCode, FOPayGrade, FOPayGroup, GoalPlanTemplate, TimeType, TimeAccountType,
+                   ODATA_ENTITY, MDF_OBJECT_DEFINITION, BUSINESS_RULE]}
+      - {area: organisation, label: Organisation, objects: [FOCompany, FOCostCenter, FODepartment, FOLocation]}
+      - {area: picklists, label: Picklists, admin_path: Admin Center > Picklist Center, objects: [PickListValueV2]}
+  concur:
+    areas:
+      - {area: expense, label: Expense, admin_path: Administration > Expense > Expense Types,
+         objects: [ExpenseType, PaymentType, Policy]}
+      - {area: lists, label: Lists, objects: []}
+      - {area: organisation, label: Organisation, objects: [ExpenseGroupConfiguration]}
+  ariba:
+    admin_path: Administration > Customization Manager
+    areas:
+      - {area: procurement, label: Procurement, objects: []}
+      - {area: supplier, label: Supplier, objects: []}
+      - {area: organisation, label: Organisation, objects: []}
+  btp: {areas: []}

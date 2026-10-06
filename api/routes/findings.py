@@ -2,7 +2,7 @@ import json
 import logging
 import uuid
 from functools import lru_cache
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
@@ -10,6 +10,7 @@ from sqlalchemy import case, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
+from api.models.config_score import ConfigAwareScore, RuleApplicability
 from api.services.rbac import current_user_id, require_permission
 from api.services.tenant_seed import rule_catalogue
 from db.schema import Finding, Report
@@ -78,17 +79,41 @@ async def _scoring_raw(db: AsyncSession, tenant: Tenant) -> dict:
                              {"tid": str(tenant.id)})).scalar() or {}
 
 
-@router.get("/findings/config-aware-score")
+async def _system_config(db: AsyncSession, tid: str, system_id: Optional[str],
+                         objects: list[str]) -> tuple[Optional[Any], Optional[str], Optional[dict[str, dict]]]:
+    """Latest completed source config load of a system (or of any system when ``system_id`` is None):
+    (load row, system_type, {object: {state, rows}} with rows of ``objects`` only). Config None = not loaded."""
+    load = (await db.execute(text(
+        "SELECT id::text, system_id::text, system_type, objects, created_at::text FROM config_loads "
+        "WHERE tenant_id = :tid AND status = 'completed' AND role = 'source' "
+        "AND (CAST(:sid AS text) IS NULL OR system_id::text = :sid) ORDER BY created_at DESC LIMIT 1"),
+        {"tid": tid, "sid": system_id})).fetchone()
+    system_type = load[2] if load else None
+    if system_id and not system_type:
+        system_type = (await db.execute(text(
+            "SELECT system_type FROM sap_systems WHERE tenant_id = :tid AND id::text = :sid"),
+            {"tid": tid, "sid": system_id})).scalar()
+    if not load:
+        return None, system_type, None
+    config: dict[str, dict] = {o["object"]: {"state": o["state"], "rows": []} for o in load[3] or []}
+    for obj, vals in (await db.execute(text(
+            "SELECT object, \"values\" FROM config_items WHERE tenant_id = :tid AND load_id = CAST(:lid AS uuid) "
+            "AND object = ANY(:objs)"), {"tid": tid, "lid": load[0], "objs": objects})).fetchall():
+        config.setdefault(obj, {"state": "loaded", "rows": []})["rows"].append(vals)
+    return load, system_type, config
+
+
+@router.get("/findings/config-aware-score", response_model=ConfigAwareScore)
 async def config_aware_score(
     system_id: Optional[str] = Query(None, description="System whose loaded configuration decides applicability"),
     version_id: Optional[str] = Query(None, description="Default = latest complete run of the system"),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
-    """Config-aware DQ score next to the existing one. A rule is not applicable when the loaded configuration
+    """Config-aware DQ score next to the existing one. A rule does not apply when the loaded configuration
     shows the feature it checks is not in use (checks/config_applicability.yaml); score = passes / applicable,
-    overall and per process L1/L2 with the reason and the top failing rules. Config that was not loaded never
-    switches a rule off."""
+    overall, per module and per process L1/L2, with per-rule applicability, the reason, the top failing rules
+    and where each L2's configuration is maintained. Config that was not loaded never switches a rule off."""
     from api.services.config_applicability import required_objects, score
 
     await db.execute(text("SELECT set_config('app.tenant_id', :tid, true)"), {"tid": str(tenant.id)})
@@ -105,26 +130,44 @@ async def config_aware_score(
     findings = [dict(r) for r in (await db.execute(text(
         "SELECT module, check_id, severity, affected_count FROM findings "
         "WHERE tenant_id = :tid AND version_id = CAST(:vid AS uuid)"), {"tid": tid, "vid": vid})).mappings().all()]
-    load = (await db.execute(text(
-        "SELECT id::text, system_id::text, system_type, objects, created_at::text FROM config_loads "
-        "WHERE tenant_id = :tid AND status = 'completed' AND role = 'source' "
-        "AND (CAST(:sid AS text) IS NULL OR system_id::text = :sid) ORDER BY created_at DESC LIMIT 1"),
-        {"tid": tid, "sid": system_id})).fetchone()
-    config: dict[str, dict] = {}
-    if load:
-        wanted = sorted(required_objects())
-        for o in load[3] or []:
-            config[o["object"]] = {"state": o["state"], "rows": []}
-        for obj, vals in (await db.execute(text(
-                "SELECT object, \"values\" FROM config_items WHERE tenant_id = :tid AND load_id = CAST(:lid AS uuid) "
-                "AND object = ANY(:objs)"), {"tid": tid, "lid": load[0], "objs": wanted})).fetchall():
-            config[obj]["rows"].append(vals)
+    load, system_type, config = await _system_config(db, tid, system_id, sorted(required_objects()))
     summaries = (await db.execute(text("SELECT dqs_summary FROM analysis_versions WHERE id = CAST(:vid AS uuid)"),
                                   {"vid": vid})).scalars().all()
-    result = score(findings, config)
-    return {"version_id": vid, "config_load": {"load_id": load[0], "system_type": load[2], "loaded_at": load[4]}
-            if load else None,
+    result = score(findings, config, system_type)
+    return {"version_id": vid, "system_type": system_type,
+            "config_load": {"load_id": load[0], "system_type": load[2], "loaded_at": load[4]} if load else None,
             "existing_dqs": composite_dqs(summaries, await _scoring_raw(db, tenant)), **result}
+
+
+@router.get("/findings/rules/{check_id}/applicability", response_model=RuleApplicability)
+async def rule_applicability(
+    check_id: str,
+    module: Optional[str] = Query(None, description="Rule module; default = the shipped rule's module"),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Where a rule applies: one row per active system with the applicability judged from that system's
+    latest loaded configuration, the reason, and where that configuration is maintained."""
+    from api.services.config_applicability import condition, judge
+    from api.services.config_areas import configured_in
+
+    module = module or next((r["module"] for r in rule_catalogue() if r["rid"] == check_id), None)
+    if not module:
+        raise HTTPException(404, "Unknown rule; pass module")
+    await db.execute(text("SELECT set_config('app.tenant_id', :tid, true)"), {"tid": str(tenant.id)})
+    tid = str(tenant.id)
+    cond = condition(module, check_id)
+    objs = [cond["requires"]["object"]] if cond else []
+    systems = (await db.execute(text(
+        "SELECT id::text, name, system_type FROM sap_systems WHERE tenant_id = :tid AND is_active ORDER BY name"),
+        {"tid": tid})).fetchall()
+    rows = []
+    for sid, name, st in systems:
+        _load, _st, config = await _system_config(db, tid, sid, objs)
+        j = judge(module, check_id, config, st)
+        rows.append({"system_id": sid, "name": name, "system_type": st, "applicability": j["status"],
+                     "reason": j["reason"], "object": j["object"], "configured_in": configured_in(st, objs)})
+    return {"check_id": check_id, "module": module, "object": objs[0] if objs else None, "systems": rows}
 
 
 @router.get("/findings/aggregate")
