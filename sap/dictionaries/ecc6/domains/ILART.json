@@ -1,0 +1,11 @@
+{
+ "domain": "ILART",
+ "type": "CHAR",
+ "length": 3,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": "T353I",
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

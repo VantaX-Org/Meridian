@@ -1,0 +1,27 @@
+{
+ "domain": "WP_DYNNR",
+ "type": "CHAR",
+ "length": 4,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "0500",
+   "high": null,
+   "text": "Plant Maintenance planning data"
+  },
+  {
+   "low": "0501",
+   "high": null,
+   "text": "Purchasing service data"
+  },
+  {
+   "low": "0503",
+   "high": null,
+   "text": "Stability study"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

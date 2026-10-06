@@ -1,0 +1,182 @@
+{
+ "table": "T352B",
+ "description": "Technical report",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "RBNR",
+   "key": true,
+   "data_element": "RBNR",
+   "domain": "RBNR",
+   "type": "CHAR",
+   "length": 9,
+   "decimals": 0,
+   "description": "Report layout",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "FEGRP",
+   "key": false,
+   "data_element": "QNBENUTZ",
+   "domain": "CHAR8",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Field Is No Longer Used",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "URGRP",
+   "key": false,
+   "data_element": "QNBENUTZ",
+   "domain": "CHAR8",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Field Is No Longer Used",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "MAGRP",
+   "key": false,
+   "data_element": "QNBENUTZ",
+   "domain": "CHAR8",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Field Is No Longer Used",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "MFGRP",
+   "key": false,
+   "data_element": "QNBENUTZ",
+   "domain": "CHAR8",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Field Is No Longer Used",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "OTGRP",
+   "key": false,
+   "data_element": "QNBENUTZ",
+   "domain": "CHAR8",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Field Is No Longer Used",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "FRKLS",
+   "key": false,
+   "data_element": "FRKLS",
+   "domain": "KLASSE",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Classification",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "FRKLSKZ",
+   "key": false,
+   "data_element": "FRKLSKZ",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Include Screen for Classification",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "QMTYP",
+   "key": false,
+   "data_element": "QMTYP",
+   "domain": "QMTYP",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Message Category",
+   "check_table": "TQ8T"
+  },
+  {
+   "pos": 11,
+   "name": "UNITFLBEW",
+   "key": false,
+   "data_element": "QUNITFLBEW",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit for Defect Valuation",
+   "check_table": "T006"
+  },
+  {
+   "pos": 12,
+   "name": "DECIMALS",
+   "key": false,
+   "data_element": "QSTELLEN",
+   "domain": "QSTELLEN",
+   "type": "INT1",
+   "length": 3,
+   "decimals": 0,
+   "description": "Number of Places to the Right of a Decimal Point (Accuracy)",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "MSGTP",
+   "key": false,
+   "data_element": "QMSGTP",
+   "domain": "MSGAR",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Message Type",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "QMTYP",
+   "foreign_table": "TQ8T",
+   "foreign_field": "QMTYP"
+  },
+  {
+   "field": "UNITFLBEW",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  }
+ ]
+}

@@ -1,0 +1,200 @@
+{
+ "table": "EQBS",
+ "description": "Serial Number Stock Segment",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "EQUNR",
+   "key": true,
+   "data_element": "EQUNR",
+   "domain": "EQUNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Equipment Number",
+   "check_table": "EQUI"
+  },
+  {
+   "pos": 4,
+   "name": "LBBSA",
+   "key": false,
+   "data_element": "LBBSA",
+   "domain": "LBBSA",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Stock Type of Goods Movement (Primary Posting)",
+   "check_table": "T156C"
+  },
+  {
+   "pos": 5,
+   "name": "B_WERK",
+   "key": false,
+   "data_element": "WERKS_D",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Plant",
+   "check_table": "T001W"
+  },
+  {
+   "pos": 6,
+   "name": "B_LAGER",
+   "key": false,
+   "data_element": "LGORT_D",
+   "domain": "LGORT",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Storage location",
+   "check_table": "T001L"
+  },
+  {
+   "pos": 7,
+   "name": "B_CHARGE",
+   "key": false,
+   "data_element": "B_CHARGE",
+   "domain": "CHARG",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Batch Number",
+   "check_table": "*"
+  },
+  {
+   "pos": 8,
+   "name": "SOBKZ",
+   "key": false,
+   "data_element": "SOBKZ",
+   "domain": "SOBKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Special Stock Indicator",
+   "check_table": "T148"
+  },
+  {
+   "pos": 9,
+   "name": "KUNNR",
+   "key": false,
+   "data_element": "B_KUNNR",
+   "domain": "KUNNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Customer account number",
+   "check_table": "KNA1"
+  },
+  {
+   "pos": 10,
+   "name": "LIFNR",
+   "key": false,
+   "data_element": "B_LIFNR",
+   "domain": "LIFNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Account number of the vendor",
+   "check_table": "LFA1"
+  },
+  {
+   "pos": 11,
+   "name": "KDAUF",
+   "key": false,
+   "data_element": "KDAUF",
+   "domain": "VBELN",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Sales Order Number",
+   "check_table": "VBUK"
+  },
+  {
+   "pos": 12,
+   "name": "KDPOS",
+   "key": false,
+   "data_element": "KDPOS",
+   "domain": "NUM06",
+   "type": "NUMC",
+   "length": 6,
+   "decimals": 0,
+   "description": "Item number in Sales Order",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "PS_PSP_PNR",
+   "key": false,
+   "data_element": "PS_PSP_PNR",
+   "domain": "PS_POSNR",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Work Breakdown Structure Element (WBS Element)",
+   "check_table": "*"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "B_LAGER",
+   "foreign_table": "T001L",
+   "foreign_field": "LGORT"
+  },
+  {
+   "field": "B_WERK",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  },
+  {
+   "field": "EQUNR",
+   "foreign_table": "EQUI",
+   "foreign_field": "EQUNR"
+  },
+  {
+   "field": "KDAUF",
+   "foreign_table": "VBUK",
+   "foreign_field": "VBELN"
+  },
+  {
+   "field": "KUNNR",
+   "foreign_table": "KNA1",
+   "foreign_field": "KUNNR"
+  },
+  {
+   "field": "LBBSA",
+   "foreign_table": "T156C",
+   "foreign_field": "LBBSA"
+  },
+  {
+   "field": "LIFNR",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "SOBKZ",
+   "foreign_table": "T148",
+   "foreign_field": "SOBKZ"
+  }
+ ]
+}

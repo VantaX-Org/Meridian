@@ -1,0 +1,199 @@
+{
+ "table": "T351P",
+ "description": "Maintenance packages",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "STRAT",
+   "key": true,
+   "data_element": "STRAT",
+   "domain": "WSTRA",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Maintenance strategy",
+   "check_table": "T351"
+  },
+  {
+   "pos": 3,
+   "name": "ZAEHL",
+   "key": true,
+   "data_element": "PAKETZAEHL",
+   "domain": "PAKZAE",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Maintenance Package Number",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "ZEIEH",
+   "key": false,
+   "data_element": "DZEIEH",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit for the performance of maintenance tasks",
+   "check_table": "T006"
+  },
+  {
+   "pos": 5,
+   "name": "LEIEH",
+   "key": false,
+   "data_element": "LEIEH",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Maintenance strategy activity unit",
+   "check_table": "T006"
+  },
+  {
+   "pos": 6,
+   "name": "ZYKZT",
+   "key": false,
+   "data_element": "DZYK_ZEIT",
+   "domain": "FLTP",
+   "type": "FLTP",
+   "length": 16,
+   "decimals": 16,
+   "description": "Maintenance package cycle/offset",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "ZYKLS",
+   "key": false,
+   "data_element": "DZYK_LEIST",
+   "domain": "FLTP",
+   "type": "FLTP",
+   "length": 16,
+   "decimals": 16,
+   "description": "Total counter reading on call date",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "OFFZT",
+   "key": false,
+   "data_element": "DZYK_OFFZT",
+   "domain": "FLTP",
+   "type": "FLTP",
+   "length": 16,
+   "decimals": 16,
+   "description": "Start offset of a time-based maintenance package",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "OFFLS",
+   "key": false,
+   "data_element": "DZYK_OFFLS",
+   "domain": "FLTP",
+   "type": "FLTP",
+   "length": 16,
+   "decimals": 16,
+   "description": "Start offset of a performance-based maintenance package",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "HIERA",
+   "key": false,
+   "data_element": "HIERARCHIE",
+   "domain": "NUM2",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Nature of the maintenance packages (additional, replacement)",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "PUFFP",
+   "key": false,
+   "data_element": "PUFF_VORL",
+   "domain": "NUM3",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Lead Float in Days",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "PUFFN",
+   "key": false,
+   "data_element": "PUFF_NACHL",
+   "domain": "NUM3",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Follow-up float in days",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "PERKN",
+   "key": false,
+   "data_element": "PERIODEKNZ",
+   "domain": "PERKNZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Period type indicator for maintenance package",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "EROEF",
+   "key": false,
+   "data_element": "EROEF",
+   "domain": "NUM3",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Call horizon in days (per maintenance package)",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "LEIEH",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "STRAT",
+   "foreign_table": "T351",
+   "foreign_field": "STRAT"
+  },
+  {
+   "field": "ZEIEH",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  }
+ ]
+}

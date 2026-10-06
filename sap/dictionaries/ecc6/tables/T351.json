@@ -1,0 +1,247 @@
+{
+ "table": "T351",
+ "description": "Maintenance strategy",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "STRAT",
+   "key": true,
+   "data_element": "STRAT",
+   "domain": "WSTRA",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Maintenance strategy",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "ZEIEH",
+   "key": false,
+   "data_element": "DZEIEH",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit for the performance of maintenance tasks",
+   "check_table": "T006"
+  },
+  {
+   "pos": 4,
+   "name": "LEIEH",
+   "key": false,
+   "data_element": "LEIEH",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Maintenance strategy activity unit",
+   "check_table": "T006"
+  },
+  {
+   "pos": 5,
+   "name": "ZYK1G",
+   "key": false,
+   "data_element": "DZYK1_GES",
+   "domain": "FLTP",
+   "type": "FLTP",
+   "length": 16,
+   "decimals": 16,
+   "description": "Total cycle duration of a maintenance strategy",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "ZYK2G",
+   "key": false,
+   "data_element": "DZYK2_GES",
+   "domain": "FLTP",
+   "type": "FLTP",
+   "length": 16,
+   "decimals": 16,
+   "description": "Total cycle duration of a maintenance strategy",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "ZYK1K",
+   "key": false,
+   "data_element": "DZYK1_GGT",
+   "domain": "FLTP",
+   "type": "FLTP",
+   "length": 16,
+   "decimals": 16,
+   "description": "Smallest step between two maintenance packages",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "ZYK2K",
+   "key": false,
+   "data_element": "DZYK2_GGT",
+   "domain": "FLTP",
+   "type": "FLTP",
+   "length": 16,
+   "decimals": 16,
+   "description": "Smallest step between two performance-based MaintPackages",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "ANZP1",
+   "key": false,
+   "data_element": "ANZPAK1",
+   "domain": "NUM2",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Number of MaintPackages in the MaintStrategy",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "ANZP2",
+   "key": false,
+   "data_element": "ANZPAK2",
+   "domain": "NUM2",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Number of MaintPackages in the MaintStrategy (peformance)",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "TOLE1",
+   "key": false,
+   "data_element": "TOLERPLUS",
+   "domain": "NUM3",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Tolerance for Late Completion (%)",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "TOLE2",
+   "key": false,
+   "data_element": "TOLERNEG",
+   "domain": "NUM3",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Tolerance for Early Completion (%)",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "VERS1",
+   "key": false,
+   "data_element": "VERSCHPLUS",
+   "domain": "NUM3",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Shift Factor for Late Completion",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "VERS2",
+   "key": false,
+   "data_element": "VERSCHNEG",
+   "domain": "NUM3",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Shift Factor for Early Completion",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "TERMK",
+   "key": false,
+   "data_element": "TERMKNZ",
+   "domain": "TERMKNZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Scheduling indicator",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "HORIZ",
+   "key": false,
+   "data_element": "HORIZONT",
+   "domain": "NUM3",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Call horizon for maintenance plan calls",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "HORIZ_QUALIFIER",
+   "key": false,
+   "data_element": "EAM_CC_CALLHORIZON_QUALIFIER",
+   "domain": "EAM_CC_CALLHORIZON_QUALIFIER",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Calculation Type of Call Horizon",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "FABKL",
+   "key": false,
+   "data_element": "FABKL",
+   "domain": "WFCID",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Factory calendar key",
+   "check_table": "TFACD"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "FABKL",
+   "foreign_table": "TFACD",
+   "foreign_field": "IDENT"
+  },
+  {
+   "field": "LEIEH",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "ZEIEH",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  }
+ ]
+}
