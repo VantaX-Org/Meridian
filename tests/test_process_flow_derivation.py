@@ -78,6 +78,7 @@ def test_document_flow_from_copy_control():
     assert set(f) == {("order", "OR", "delivery", "LF"), ("order", "ZOR", "delivery", "ZLF"),
                       ("delivery", "LF", "billing", "F2"), ("order", "ZOR", "billing", "ZF1"),
                       ("order", "QT", "order", "OR")}  # ZZZ is not a TVAK type: dropped
+    assert f[("order", "QT", "order", "OR")].is_default is False
     e = f[("order", "OR", "delivery", "LF")]
     assert e.item_categories == ["TAN"] and e.evidence[0].table == "TVCPL" and not e.client_specific
     assert e.evidence[0].keys["AUARV"] == "OR"
@@ -86,19 +87,27 @@ def test_document_flow_from_copy_control():
     assert doc.source == "config" and not validate_document(doc).errors
 
 
-def test_document_flow_drops_unsupported_edges():
-    # TVAK names LF for OR, but copy control only has a row for another delivery type
-    doc = derive_model({"TVAK": _TVAK, "TVCPL": _df(LFARN=["XX"], AUARV=["OR"], PSTYV=[""]),
-                        "TVCPF": _df(FKARN=["F9"], AUARV=["OR"], LFARV=[""], FKARV=[""], PSTYV=[""])})
-    assert not _flow(doc)
-    # delivery type missing from TVLK drops the TVAK-only edge too
-    doc = derive_model({"TVAK": _TVAK, "TVLK": _df(LFART=["LF"])})
-    assert ("order", "ZOR", "delivery", "ZLF") not in _flow(doc) and ("order", "OR", "delivery", "LF") in _flow(doc)
+def test_document_flow_keeps_non_default_copy_control_edges():
+    # TVAK default for OR is LF / F2; copy control also allows OR -> ZLF and delivery ZLF -> F2
+    doc = derive_model({
+        "TVAK": _TVAK, "TVLK": _df(LFART=["LF", "ZLF"]), "TVFK": _df(FKART=["F2", "ZF1"]),
+        "TVCPL": _df(LFARN=["LF", "ZLF", "NOPE"], AUARV=["OR", "OR", "OR"], PSTYV=["TAN", "TAN", "TAN"]),
+        "TVCPF": _df(FKARN=["F2", "ZF1", "F2"], AUARV=["", "", ""], LFARV=["LF", "LF", "ZLF"], FKARV=["", "", ""],
+                        PSTYV=["", "", ""])})
+    f = _flow(doc)
+    assert f[("order", "OR", "delivery", "LF")].is_default
+    assert f[("order", "OR", "delivery", "ZLF")].is_default is False
+    assert f[("order", "OR", "delivery", "ZLF")].client_specific
+    assert f[("delivery", "LF", "billing", "F2")].is_default
+    assert f[("delivery", "LF", "billing", "ZF1")].is_default is False
+    assert f[("delivery", "ZLF", "billing", "F2")].is_default  # ZOR default path
+    assert ("order", "OR", "delivery", "NOPE") not in f  # not a TVLK type: dropped
 
 
 def test_document_flow_tvak_defaults_without_copy_control():
     f = _flow(derive_model({"TVAK": _TVAK}))
     assert f[("order", "OR", "delivery", "LF")].evidence[0].table == "TVAK"
+    assert all(e.is_default for e in f.values())
     assert ("delivery", "LF", "billing", "F2") in f and ("order", "ZOR", "billing", "ZF1") in f
 
 

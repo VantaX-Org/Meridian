@@ -27,7 +27,7 @@ BP_REPLACED = {"FK01": "vendor", "XK01": "vendor", "FD01": "customer", "XD01": "
 MAX_EVIDENCE = 10
 MAX_VARIANTS = 25
 MAX_CLIENT_SPECIFIC = 10
-MAX_FLOW_EDGES = 200
+MAX_FLOW_EDGES = 1000
 
 
 def _frame(tables: Mapping[str, pd.DataFrame], probe: Probe, s4: bool) -> tuple[Optional[pd.DataFrame], str]:
@@ -175,9 +175,10 @@ def _typed(tables: Mapping[str, pd.DataFrame], name: str, cols: tuple[str, ...])
 def _document_flow(tables: Mapping[str, pd.DataFrame]) -> list[dict[str, Any]]:
     """Order -> order/delivery/billing edges from copy control (TVCPA/TVCPL/TVCPF) and the TVAK defaults.
 
-    An edge needs both ends to be configured document types (TVAK, TVLK, TVFK when extracted) and a copy-control
-    row (when that table was extracted). With no copy-control table, the TVAK default (LFARV, FKARV, FKARA)
-    alone supports order -> delivery and order -> billing. Item categories come from the copy-control rows.
+    Copy control is the full set of allowed paths: every row whose two ends are configured document types
+    (TVAK, TVLK, TVFK when extracted) is an edge; ``is_default`` marks those matching the TVAK defaults
+    (LFARV, FKARV, FKARA). With no copy-control table, the TVAK defaults alone give the edges.
+    Item categories come from the copy-control rows.
     """
     from sap.process_templates import DOC_FLOW_TABLES
 
@@ -192,6 +193,9 @@ def _document_flow(tables: Mapping[str, pd.DataFrame]) -> list[dict[str, Any]]:
     cpa, cpl, cpf = (_typed(tables, t, DOC_FLOW_TABLES[t]) for t in ("TVCPA", "TVCPL", "TVCPF"))
 
     edges: dict[tuple[str, str, str, str], dict[str, Any]] = {}
+    default_edges = {(k, s_, tk, t) for d in defaults for k, s_, tk, t in (
+        ("order", d["AUART"], "delivery", d["LFARV"]), ("order", d["AUART"], "billing", d["FKARA"]),
+        ("delivery", d["LFARV"], "billing", d["FKARV"])) if s_ and t}
 
     def add(sk: str, st: str, tk: str, tt: str, table: str, keys: dict[str, str]) -> None:
         if not st or not tt or st not in (known[sk] if known[sk] is not None else {st}) \
@@ -218,17 +222,17 @@ def _document_flow(tables: Mapping[str, pd.DataFrame]) -> list[dict[str, Any]]:
             add("order", o, "billing", d["FKARA"], "TVAK", {"AUART": o, "FKARA": d["FKARA"]})
         if cpf is None and d["FKARV"] and d["LFARV"]:
             add("delivery", d["LFARV"], "billing", d["FKARV"], "TVAK", {"AUART": o, "LFARV": d["LFARV"], "FKARV": d["FKARV"]})
-        # copy-control rows count only where TVAK names the target as the order type's default
-        for r in cpl or []:
-            if r["AUARV"] in (o, "") and r["LFARN"] == d["LFARV"]:
-                add("order", o, "delivery", r["LFARN"], "TVCPL", {"LFARN": r["LFARN"], "AUARV": r["AUARV"], "PSTYV": r["PSTYV"]})
-        for r in cpf or []:
-            if r["FKARN"] == d["FKARA"] and r["AUARV"] in (o, "") and not r["LFARV"]:
-                add("order", o, "billing", r["FKARN"], "TVCPF", {k: r[k] for k in ("FKARN", "AUARV", "PSTYV")})
-            if d["LFARV"] and r["FKARN"] == d["FKARV"] and r["LFARV"] == d["LFARV"] and r["AUARV"] in (o, ""):
-                add("delivery", d["LFARV"], "billing", r["FKARN"], "TVCPF",
-                    {k: r[k] for k in ("FKARN", "LFARV", "AUARV", "PSTYV")})
+    # copy control is the full set of allowed paths: keep every row whose ends are configured types
+    for r in cpl or []:
+        add("order", r["AUARV"], "delivery", r["LFARN"], "TVCPL", {k: r[k] for k in ("LFARN", "AUARV", "PSTYV")})
+    for r in cpf or []:
+        if r["LFARV"]:
+            add("delivery", r["LFARV"], "billing", r["FKARN"], "TVCPF", {k: r[k] for k in ("FKARN", "LFARV", "AUARV", "PSTYV")})
+        else:
+            add("order", r["AUARV"], "billing", r["FKARN"], "TVCPF", {k: r[k] for k in ("FKARN", "AUARV", "PSTYV")})
     for r in cpa or []:  # order -> order / contract / quotation
         if r["AUARV"] != r["AUARN"]:
             add("order", r["AUARV"], "order", r["AUARN"], "TVCPA", {k: r[k] for k in ("AUARV", "AUARN", "PSTYV", "PSTYN")})
+    for e in edges.values():
+        e["is_default"] = (e["source_kind"], e["source_type"], e["target_kind"], e["target_type"]) in default_edges
     return sorted(edges.values(), key=lambda e: (e["source_kind"], e["source_type"], e["target_type"]))[:MAX_FLOW_EDGES]

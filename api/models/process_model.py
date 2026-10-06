@@ -85,6 +85,7 @@ class DocFlowEdge(BaseModel):
     target_kind: Literal["order", "delivery", "billing"]
     item_categories: list[str] = []
     client_specific: bool = False  # a Z/Y type on either end
+    is_default: bool = False  # matches the TVAK default (LFARV / FKARV / FKARA)
     evidence: list[Evidence] = []
 
 
