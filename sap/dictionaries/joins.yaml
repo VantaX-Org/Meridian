@@ -80,14 +80,22 @@ edges:
   # ── General ledger ─────────────────────────────────────────────────────
   - {parent: SKA1, child: SKAT, join: {KTOPL: KTOPL, SAKNR: SAKNR}, cardinality: one, prefer: {SPRAS: "E"}}
   - {parent: SKA1, child: SKB1, join: {SAKNR: SAKNR}, cardinality: many}
+  # chart of accounts and company code above the G/L master (chart-level and company-code-level settings)
+  - {parent: T004, child: SKA1, join: {KTOPL: KTOPL}, cardinality: many}
+  - {parent: T001, child: SKB1, join: {BUKRS: BUKRS}, cardinality: many}
   # cost elements under their controlling area (chart of accounts of the CO area)
   - {parent: TKA01, child: CSKB, join: {KOKRS: KOKRS}, cardinality: many}
+  # company codes assigned to the controlling area (OX19)
+  - {parent: TKA01, child: TKA02, join: {KOKRS: KOKRS}, cardinality: many}
   - {parent: BKPF, child: BSEG, join: {BUKRS: BUKRS, BELNR: BELNR, GJAHR: GJAHR}, cardinality: many}
   - {parent: SKB1, child: BSEG, join: {BUKRS: BUKRS, HKONT: SAKNR}, cardinality: many}
 
   # ── Asset accounting ───────────────────────────────────────────────────
   - {parent: ANLA, child: ANLB, join: {BUKRS: BUKRS, ANLN1: ANLN1, ANLN2: ANLN2}, cardinality: many}
   - {parent: ANLA, child: ANLZ, join: {BUKRS: BUKRS, ANLN1: ANLN1, ANLN2: ANLN2}, cardinality: one, filter: {BDATU: "99991231"}}
+  # company code and its asset accounting settings (chart of depreciation) above the asset
+  - {parent: T001, child: ANLA, join: {BUKRS: BUKRS}, cardinality: many}
+  - {parent: T093C, child: ANLA, join: {BUKRS: BUKRS}, cardinality: many}
 
   # ── Purchasing ─────────────────────────────────────────────────────────
   - {parent: EKKO, child: EKPO, join: {EBELN: EBELN}, cardinality: many}
