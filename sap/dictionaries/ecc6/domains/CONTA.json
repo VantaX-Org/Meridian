@@ -1,0 +1,22 @@
+{
+ "domain": "CONTA",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "0",
+   "high": null,
+   "text": "Goods do not cross the border in a container"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Goods cross the border in a container"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

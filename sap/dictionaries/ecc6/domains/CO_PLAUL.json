@@ -1,0 +1,67 @@
+{
+ "domain": "CO_PLAUL",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "0",
+   "high": null,
+   "text": "No routings or reference operation sets to be used"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Always reference operation set (no routings selected)"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Routing/ref. op. set mandatory (automatic selection)"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Routing/ref. op. set optional (automatic selection)"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Routing/ref. op. set optional (manual selection)"
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "Routing/ref. op. set mandatory (manual selection)"
+  },
+  {
+   "low": "6",
+   "high": null,
+   "text": "Routing mandatory (automatic selection)"
+  },
+  {
+   "low": "7",
+   "high": null,
+   "text": "Routing mandatory (manual selection)"
+  },
+  {
+   "low": "8",
+   "high": null,
+   "text": "Routing optional (manual selection)"
+  },
+  {
+   "low": "9",
+   "high": null,
+   "text": "Routing optional (automatic selection)"
+  },
+  {
+   "low": "",
+   "high": null,
+   "text": ""
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

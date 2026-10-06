@@ -95,7 +95,7 @@ def test_reference_package_layout_and_validation(ref_zip):
     files = _files(ref_zip)
     names = sorted(files)
     assert "manifest.json" in names and "README.txt" in names
-    for prefix, n in (("L1_", 2), ("L2_", 8), ("L3_", 8), ("L4_", 8)):
+    for prefix, n in (("L1_", 13), ("L2_", 38), ("L3_", 38), ("L4_", 59)):
         assert len([f for f in names if f.startswith(prefix) and f.endswith(".bpmn")]) == n
     assert validate_package(files, _manifest(files)) == []
     with zipfile.ZipFile(io.BytesIO(ref_zip)) as z:
@@ -188,7 +188,7 @@ def test_deterministic_except_exported_at():
 
 def test_manifest_carries_hierarchy_and_activities(ref_zip):
     m = _manifest(_files(ref_zip))
-    assert [lv["level"] for lv in m["levels"]].count(4) == 8
+    assert [lv["level"] for lv in m["levels"]].count(4) == 59
     miro = next(a for a in m["activities"] if a["id"] == "PTP-IV-MIRO-01")
     assert miro["l4_id"] == "PTP-IV-MIRO" and miro["tcode"] == "MIRO" and miro["fields"][0]["field"] == "RBKP.LIFNR"
 
@@ -288,7 +288,7 @@ def test_route_reference_download(client):
     assert r.status_code == 200 and r.headers["content-type"] == "application/zip"
     assert r.headers["content-disposition"] == 'attachment; filename="reference-v0-bpmn.zip"'
     files = _files(r.content)
-    assert len([f for f in files if f.endswith(".bpmn")]) == 26
+    assert len([f for f in files if f.endswith(".bpmn")]) == 148
     assert client.audits[-1]["action"] == "export" and client.audits[-1]["entity_id"] is None
 
 
