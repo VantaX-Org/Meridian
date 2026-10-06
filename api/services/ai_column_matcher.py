@@ -30,6 +30,7 @@ MODULE_LABELS: dict[str, str] = {
     "mm_purchasing": "MM Purchasing",
     "plant_maintenance": "Plant Maintenance",
     "production_planning": "Production Planning",
+    "project_system": "Project System",
     "sd_customer_master": "SD Customer Master",
     "sd_sales_orders": "SD Sales Orders",
     "employee_central": "Employee Central",

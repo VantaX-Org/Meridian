@@ -1,0 +1,32 @@
+{
+ "domain": "JV_OR_COB",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "P",
+   "high": null,
+   "text": "object type for projects"
+  },
+  {
+   "low": "O",
+   "high": null,
+   "text": "object type for orders"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "object type for costcenters"
+  },
+  {
+   "low": "",
+   "high": null,
+   "text": "object type for current object"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

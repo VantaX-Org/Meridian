@@ -1,0 +1,37 @@
+{
+ "domain": "JV_RIFIND",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "1",
+   "high": null,
+   "text": "Transfer from sender summary records"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Transfer from master records for receiver objects"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Transfer from master records for settlement cost element"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Transfer from settlement assignment"
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "Manual entry in allocation rule"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

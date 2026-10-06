@@ -592,12 +592,12 @@ const TIER_MODULES: Record<string, string[]> = {
   starter: [
     "business_partner", "material_master", "fi_gl", "accounts_payable",
     "accounts_receivable", "asset_accounting", "hcm", "mm_purchasing",
-    "plant_maintenance", "production_planning", "sd_customer_master", "sd_sales_orders", "controlling",
+    "plant_maintenance", "production_planning", "project_system", "sd_customer_master", "sd_sales_orders", "controlling",
   ],
   professional: [
     "business_partner", "material_master", "fi_gl", "accounts_payable",
     "accounts_receivable", "asset_accounting", "mm_purchasing",
-    "plant_maintenance", "production_planning", "sd_customer_master", "sd_sales_orders", "controlling",
+    "plant_maintenance", "production_planning", "project_system", "sd_customer_master", "sd_sales_orders", "controlling",
     "interface_health",
     "s4_readiness",
     "banking_tax",
@@ -610,7 +610,7 @@ const TIER_MODULES: Record<string, string[]> = {
   enterprise: [
     "business_partner", "material_master", "fi_gl", "accounts_payable",
     "accounts_receivable", "asset_accounting", "hcm", "mm_purchasing",
-    "plant_maintenance", "production_planning", "sd_customer_master", "sd_sales_orders", "controlling",
+    "plant_maintenance", "production_planning", "project_system", "sd_customer_master", "sd_sales_orders", "controlling",
     "interface_health",
     "s4_readiness",
     "banking_tax",

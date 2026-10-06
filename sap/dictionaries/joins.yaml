@@ -142,6 +142,12 @@ edges:
   - {parent: EQUI, child: JEST,  join: {OBJNR: OBJNR}, cardinality: one, filter: {INACT: ""}, prefer: {}}
   - {parent: EQUI, child: FLEET, join: {OBJNR: OBJNR}, cardinality: one}
   - {parent: EQUI, child: FLEET_MASTER, join: {EQUNR: EQUNR}, cardinality: one}
+  # ── Project system and internal orders ─────────────────────────────────
+  - {parent: PROJ, child: PRPS, join: {PSPHI: PSPNR}, cardinality: many}
+  - {parent: PRPS, child: PRHI, join: {POSNR: PSPNR}, cardinality: one}
+  - {parent: PRPS, child: AUFK, join: {PSPEL: PSPNR}, cardinality: many}
+  - {parent: AUFK, child: T003O, join: {AUART: AUART}, cardinality: one}
+  - {parent: COBRA, child: COBRB, join: {OBJNR: OBJNR}, cardinality: many}
   - {parent: IFLOT, child: IFLOTX, join: {TPLNR: TPLNR}, cardinality: one, prefer: {SPRAS: "E"}}
   - {parent: IFLOT, child: ILOA,  join: {ILOAN: ILOAN}, cardinality: one}
 
@@ -208,6 +214,7 @@ anchors:
   plant_maintenance: EQUI
   fleet_management: EQUI
   production_planning: MAST
+  project_system: PRPS
   sd_sales_orders: VBAK
   batch_management: MCH1
   ewms_stock: LQUA

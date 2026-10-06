@@ -1,0 +1,32 @@
+{
+ "domain": "PSPLFRM",
+ "type": "NUMC",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "1",
+   "high": null,
+   "text": "Top-down"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Bottom-up (taking dates of higher-level WBS into account)"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Open planning"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Strict bottom-up (without dates of higher-level WBS)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,358 @@
+{
+ "table": "T003O",
+ "description": "Order Types",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "CLIENT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "AUART",
+   "key": true,
+   "data_element": "AUFART",
+   "domain": "AUFART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Order Type",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "AUTYP",
+   "key": false,
+   "data_element": "AUFTYP",
+   "domain": "AUFTYP",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Order category",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "NUMKR",
+   "key": false,
+   "data_element": "NUMKR",
+   "domain": "CHAR2",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Number range",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "OBLIGO",
+   "key": false,
+   "data_element": "CO_OBLIGO",
+   "domain": "OBLACT",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Commitments Management Active",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "ERLOESE",
+   "key": false,
+   "data_element": "ERLOESE",
+   "domain": "ERLOESE",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Identifier \"Revenue posting allowed\"",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "STSMA",
+   "key": false,
+   "data_element": "J_STSMA",
+   "domain": "J_STSMA",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Status Profile",
+   "check_table": "TJ20"
+  },
+  {
+   "pos": 8,
+   "name": "APROF",
+   "key": false,
+   "data_element": "APROF",
+   "domain": "APROF",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Settlement profile",
+   "check_table": "TKB1A"
+  },
+  {
+   "pos": 9,
+   "name": "PPROF",
+   "key": false,
+   "data_element": "BP_PPROFIL",
+   "domain": "BP_PROFIL",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Planning profile",
+   "check_table": "*"
+  },
+  {
+   "pos": 10,
+   "name": "COPAR",
+   "key": false,
+   "data_element": "COPAR",
+   "domain": "COPAR",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "CO Partner Update",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "RESZ1",
+   "key": false,
+   "data_element": "RESZ1",
+   "domain": "NUMC3",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Residence Time 1 (Calendar Months)",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "RESZ2",
+   "key": false,
+   "data_element": "RESZ2",
+   "domain": "NUMC3",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Residence Time 2 (Calendar Months)",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "AUFKL",
+   "key": false,
+   "data_element": "KZAUFKLA",
+   "domain": "X",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "'Order will be classified' indicator",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "RELKZ",
+   "key": false,
+   "data_element": "AUFRELKZ",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Set \"Release immediately\" indicator",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "CHGKZ",
+   "key": false,
+   "data_element": "AUFCHGKZ",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator 'Status change documents'",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "BPROF",
+   "key": false,
+   "data_element": "BP_BPROFIL",
+   "domain": "BP_PROFIL",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Budget Profile",
+   "check_table": "TBP1C"
+  },
+  {
+   "pos": 17,
+   "name": "PLINT",
+   "key": false,
+   "data_element": "PLINT",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator for Integrated Planning",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "NABPF",
+   "key": false,
+   "data_element": "NABPF",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator \"Does not require settlement\"",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "VORPL",
+   "key": false,
+   "data_element": "PS_VORPL",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Planning",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "LAYOUT",
+   "key": false,
+   "data_element": "AUFLAY",
+   "domain": "AUFLAY",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Layout for Master Data Maintenance Orders",
+   "check_table": "AUFLAY0"
+  },
+  {
+   "pos": 21,
+   "name": "TDFORM",
+   "key": false,
+   "data_element": "TDFORM",
+   "domain": "TDFORM",
+   "type": "CHAR",
+   "length": 16,
+   "decimals": 0,
+   "description": "Form name",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "SCOPE",
+   "key": false,
+   "data_element": "SCOPE_CV",
+   "domain": "SCOPE_CV",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Object Class",
+   "check_table": null
+  },
+  {
+   "pos": 23,
+   "name": "COLORDPROC",
+   "key": false,
+   "data_element": "CO_COLORDPRC",
+   "domain": "CO_COLORDPRC",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Collective order with/without automatic goods movement",
+   "check_table": null
+  },
+  {
+   "pos": 24,
+   "name": "VRG_STSMA",
+   "key": false,
+   "data_element": "PM_STSMA_VORG",
+   "domain": "J_STSMA",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Status Profile Assigned to an Operation",
+   "check_table": "TJ20"
+  },
+  {
+   "pos": 25,
+   "name": "FUNC_AREA",
+   "key": false,
+   "data_element": "FKBER",
+   "domain": "FKBER",
+   "type": "CHAR",
+   "length": 16,
+   "decimals": 0,
+   "description": "Functional Area",
+   "check_table": "TFKB"
+  },
+  {
+   "pos": 26,
+   "name": "EXEC_PROFILE",
+   "key": false,
+   "data_element": "CK_EXPROFILE",
+   "domain": "CK_EXPROFILE",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Execution Services Profile",
+   "check_table": "*"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "APROF",
+   "foreign_table": "TKB1A",
+   "foreign_field": "APROF"
+  },
+  {
+   "field": "BPROF",
+   "foreign_table": "TBP1C",
+   "foreign_field": "PROFIL"
+  },
+  {
+   "field": "CLIENT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "FUNC_AREA",
+   "foreign_table": "TFKB",
+   "foreign_field": "FKBER"
+  },
+  {
+   "field": "LAYOUT",
+   "foreign_table": "AUFLAY0",
+   "foreign_field": "LAYOUT"
+  },
+  {
+   "field": "STSMA",
+   "foreign_table": "TJ20",
+   "foreign_field": "STSMA"
+  },
+  {
+   "field": "VRG_STSMA",
+   "foreign_table": "TJ20",
+   "foreign_field": "STSMA"
+  }
+ ]
+}
