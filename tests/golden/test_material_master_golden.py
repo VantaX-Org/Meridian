@@ -279,7 +279,6 @@ def test_material_master_golden():
         "MM157": {"MATNR=000000000000300040|WERKS=1000|LGORT=0001"},  # negative quality-inspection stock
         "MM380": {"MATNR=000000000000300099|WERKS=1000"},        # plant row active though the material is flagged for deletion
         "MM399": {"MATNR=000000000000300010|WERKS=1100"},        # deleted plant row is still planned by MRP (PD)
-        "MM521": {"MATNR=000000000000300040|WERKS=1000|LGORT=0001"},  # same defect as MM157: negative quality-inspection stock
         "MM171": {"MATNR=000000000000500097|WERKS=1000"},        # max stock 15 below reorder point 20 (HB)
         "MM182": {"MATNR=000000000000300050|WERKS=1000"},        # plant status Z9 not configured (T141)
     }, found

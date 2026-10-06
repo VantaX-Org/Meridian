@@ -91,7 +91,7 @@ def test_mm317_563_view_counts_match_doc(client):
     ids = {f"MM{n:03d}" for n in range(317, 564)}
     counts = {v["id"]: len(ids & set(v["rules"])) for v in vm["views"]}
     assert counts == {"accounting": 24, "basic_data": 41, "batch": 6, "classification": 20, "lifecycle": 6,
-                      "mrp": 28, "purchasing": 24, "quality": 9, "sales": 19, "storage": 24,
+                      "mrp": 28, "purchasing": 24, "quality": 9, "sales": 19, "storage": 23,
                       "supersession": 22, "units": 3, "work_scheduling": 21}
 
 

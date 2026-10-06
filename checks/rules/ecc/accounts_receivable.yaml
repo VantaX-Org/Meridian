@@ -75,7 +75,7 @@ rules:
         registration or existing contracts and set via T-code FD02 > Address
         tab. In S/4HANA: use Fiori app F3893 (Manage Business Partner).
     record_fix_template: >-
-      Customer {KNA1.KUNNR}: NAME1 is {actual_value}. Set the customer name
+      Customer {KNA1.KUNNR}: KNA1.NAME1 is missing or invalid. Set the customer name
       via FD02 / Fiori app F3893.
 
 
@@ -142,7 +142,7 @@ rules:
     fix_map:
       __blank__: 'In ECC: obtain the customer''s VAT registration number or tax ID and set via T-code FD02 > General Data >
         Control tab. In S/4HANA: use Fiori app F3893 > Tax Numbers section.'
-    record_fix_template: 'Customer {KNA1.KUNNR}: STCD1 is {actual_value}. Set the tax number via FD02 / Fiori app F3893.'
+    record_fix_template: 'Customer {KNA1.KUNNR}: KNA1.STCD1 is missing or invalid. Set the tax number via FD02 / Fiori app F3893.'
     fail_when: '`KNA1.STCD1`.isna() & `KNA1.STCEG`.isna()'
     applies_when:
       KNA1.STKZN:
@@ -170,7 +170,7 @@ rules:
         T-code FD02 > Address tab > Communication. In S/4HANA: use Fiori
         app F3893 > Address section.
     record_fix_template: >-
-      Customer {KNA1.KUNNR}: SMTP_ADDR is {actual_value}. Set the email
+      Customer {KNA1.KUNNR}: ADR6.SMTP_ADDR is missing or invalid. Set the email
       address via FD02 / Fiori app F3893.
 
   - id: AR009
@@ -361,7 +361,7 @@ rules:
         In ECC: set the telephone number via T-code FD02 > Address tab >
         Communication. In S/4HANA: use Fiori app F3893 > Address section.
     record_fix_template: >-
-      Customer {KNA1.KUNNR}: TELF1 is {actual_value}. Set the telephone
+      Customer {KNA1.KUNNR}: KNA1.TELF1 is missing or invalid. Set the telephone
       number via FD02 / Fiori app F3893.
 
   - id: AR017
@@ -556,7 +556,7 @@ rules:
       - SE
       - SI
       - SK
-    record_fix_template: "Customer {KNA1.KUNNR}: VAT registration number '{actual_value}' is not valid. Start with the 2-letter country code and correct it in XD02 > Control data."
+    record_fix_template: "Customer {KNA1.KUNNR}: VAT registration number KNA1.STCEG is not valid. Start with the 2-letter country code and correct it in XD02 > Control data."
 
   - id: AR028
     field: KNA1.KTOKD
@@ -613,7 +613,7 @@ rules:
     sap_impact: Credit limit bypassed across accounts; duplicate customer masters.
     fix_map:
       __other__: Merge the duplicate customers or correct the VAT number.
-    record_fix_template: Record {KNA1.STCEG} shares KNA1.STCEG with another record.
+    record_fix_template: Record shares KNA1.STCEG with another record.
     grain: KNB1
     applies_when:
       KNB1.KNRZE:
@@ -633,7 +633,7 @@ rules:
     sap_impact: Duplicate customer masters; credit exposure split.
     fix_map:
       __other__: Merge the duplicate customers or correct the tax number.
-    record_fix_template: Record {KNA1.STCD1} shares KNA1.STCD1 with another record.
+    record_fix_template: Record shares KNA1.STCD1 with another record.
     grain: KNB1
     applies_when:
       KNB1.KNRZE:
@@ -976,7 +976,7 @@ rules:
     sap_impact: Direct debits and refunds to this customer cannot be executed by F110.
     fix_map:
       __other__: Complete the bank details in XD02 > Payment transactions (BP bank details in S/4HANA).
-    record_fix_template: 'Customer {KNA1.KUNNR}: bank details {KNBK.BANKS}/{KNBK.BANKL}/{KNBK.BANKN} are incomplete.'
+    record_fix_template: 'Customer {KNA1.KUNNR}: bank details {KNBK.BANKS}/KNBK.BANKL/KNBK.BANKN are incomplete.'
   - id: AR050
     field: KNBK.BANKS
     check_class: referential_check
@@ -1548,7 +1548,7 @@ rules:
     sap_impact: Direct debits and refunds to the customer fail or are rejected by the bank.
     fix_map:
       __other__: Create or reactivate the bank in FI01/FI02, or correct the customer bank key (XD02 > Payment transactions).
-    record_fix_template: 'Customer {KNBK.KUNNR}: bank {KNBK.BANKS}/{KNBK.BANKL} is missing from the bank directory or deleted.'
+    record_fix_template: 'Customer {KNBK.KUNNR}: bank {KNBK.BANKS}/KNBK.BANKL is missing from the bank directory or deleted.'
   - id: AR206
     field: KNBK.KOBIS
     check_class: freshness_check
@@ -1562,7 +1562,7 @@ rules:
     sap_impact: Direct debit collection finds no valid bank and the receivable stays open.
     fix_map:
       __other__: Delete the expired bank details or maintain the replacement account (XD02 > Payment transactions).
-    record_fix_template: 'Customer {KNBK.KUNNR}: bank details {KNBK.BANKS}/{KNBK.BANKL} expired {age_days} days ago.'
+    record_fix_template: 'Customer {KNBK.KUNNR}: bank details {KNBK.BANKS}/KNBK.BANKL expired {age_days} days ago.'
   - id: AR207
     field: BSID.WRBTR
     check_class: cross_field_check
@@ -2011,7 +2011,7 @@ rules:
     fix_map:
       __other__: Re-create the address in XD02 (the transaction writes ADRC), or repair it with report RSADRLSM02 / address
         consistency tools.
-    record_fix_template: 'Customer {KNA1.KUNNR}: address number {KNA1.ADRNR} has no record in ADRC.'
+    record_fix_template: 'Customer {KNA1.KUNNR}: address number KNA1.ADRNR has no record in ADRC.'
   - id: AR228
     field: KNA1.LAND1
     check_class: cross_field_check
@@ -2028,7 +2028,7 @@ rules:
       the ADRC value into the business partner.
     fix_map:
       __other__: Re-save the address in XD02 so KNA1 and ADRC are written together, after confirming which value is right.
-    record_fix_template: 'Customer {KNA1.KUNNR}: country in KNA1 differs from the central address {KNA1.ADRNR}.'
+    record_fix_template: 'Customer {KNA1.KUNNR}: country in KNA1 differs from the central address KNA1.ADRNR.'
   - id: AR229
     field: KNA1.PSTLZ
     check_class: cross_field_check
@@ -2045,7 +2045,7 @@ rules:
       carries the ADRC value into the business partner.
     fix_map:
       __other__: Re-save the address in XD02 so KNA1 and ADRC are written together, after confirming which value is right.
-    record_fix_template: 'Customer {KNA1.KUNNR}: postal code in KNA1 differs from the central address {KNA1.ADRNR}.'
+    record_fix_template: 'Customer {KNA1.KUNNR}: postal code in KNA1 differs from the central address KNA1.ADRNR.'
   - id: AR230
     field: KNA1.ORT01
     check_class: cross_field_check
@@ -2062,7 +2062,7 @@ rules:
       the ADRC value into the business partner.
     fix_map:
       __other__: Re-save the address in XD02 so KNA1 and ADRC are written together, after confirming which value is right.
-    record_fix_template: 'Customer {KNA1.KUNNR}: city in KNA1 differs from the central address {KNA1.ADRNR}.'
+    record_fix_template: 'Customer {KNA1.KUNNR}: city in KNA1 differs from the central address KNA1.ADRNR.'
   - id: AR231
     field: KNA1.REGIO
     check_class: cross_field_check
@@ -2079,7 +2079,7 @@ rules:
       the ADRC value into the business partner.
     fix_map:
       __other__: Re-save the address in XD02 so KNA1 and ADRC are written together, after confirming which value is right.
-    record_fix_template: 'Customer {KNA1.KUNNR}: region in KNA1 differs from the central address {KNA1.ADRNR}.'
+    record_fix_template: 'Customer {KNA1.KUNNR}: region in KNA1 differs from the central address KNA1.ADRNR.'
   - id: AR232
     field: KNA1.PFACH
     check_class: cross_field_check

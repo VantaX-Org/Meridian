@@ -97,3 +97,43 @@ def test_value_lists_respect_ddic_fixed_values():
             if extra:
                 bad.append(f"{r['id']} {r['field']}: {sorted(extra)} not in domain {f.domain}")
     assert bad == []
+
+
+# Personal / identifying data a fix instruction must never echo: refer to the field by name.
+_SENSITIVE = {"NAME1", "NAME2", "NAME3", "NAME4", "NAME_FIRST", "NAME_LAST", "NAME_ORG1", "NAME_ORG2", "STRAS",
+              "ORT01", "ORT02", "PSTLZ", "PFACH", "BANKN", "BANKL", "IBAN", "STCD1", "STCD2", "STCD3", "STCD4",
+              "STCEG", "SMTP_ADDR", "TELF1", "TELF2", "TELFX", "ADRNR", "BIRTHDT", "DEATHDT", "FOUND_DAT",
+              "LIQUID_DAT", "STREET", "CITY1", "TEL_NUMBER", "SORT1", "SORT2", "NACHN", "VORNA", "GBDAT", "BKONT",
+              "KOINH", "BKREF", "MCOD1", "MCOD2", "MCOD3"}
+_PUBLIC_TABLES = {"BNKA", "T012", "T012K"}  # bank directory / house banks: reference data, not personal
+
+
+def test_fix_templates_never_echo_sensitive_values():
+    import re
+    offenders = []
+    for _, _, r in ALL:
+        texts = [r.get("record_fix_template") or "", r.get("fix_template") or "", *map(str, (r.get("fix_map") or {}).values())]
+        fld = r.get("field") or "X.X"
+        sensitive_rule = fld.split(".")[-1] in _SENSITIVE and fld.split(".")[0] not in _PUBLIC_TABLES
+        for ph in re.findall(r"\{([^}]+)\}", " ".join(texts)):
+            t, _, f = ph.partition(".")
+            if (f in _SENSITIVE and t not in _PUBLIC_TABLES) or (ph in ("actual_value", "invalid_value") and sensitive_rule):
+                offenders.append((r["id"], ph))
+    assert offenders == []
+
+
+def test_ecc_dictionary_misses_are_only_s4_moved_fields():
+    """Fields absent from the ECC DDIC (S/4 status fields) are repointed to their ECC table
+    (VBUK/VBUP) by TableFrames; anything else missing on ECC is a real defect."""
+    from checks.frames import _MOVED
+    from validate_rules import rule_refs
+    ecc = get_dictionary("ecc6")
+    missing = set()
+    for _, _, r in ALL:
+        for ref in rule_refs(r):
+            t, f = ref.split(".")
+            if t[0] in "ZY" or f.startswith(("ZZ", "YY")) or ecc.resolve(ref):
+                continue
+            if ref not in _MOVED or ecc.resolve(_MOVED[ref]) is None:
+                missing.add(ref)
+    assert missing == set()

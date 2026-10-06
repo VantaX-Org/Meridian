@@ -31,7 +31,7 @@ views:
     MM504, MM505, MM506, MM507, MM508, MM509, MM510]
 - id: storage
   label: Storage and warehouse
-  rules: [MM428, MM429, MM430, MM431, MM432, MM433, MM434, MM435, MM436, MM437, MM521, MM522, MM523, MM524,
+  rules: [MM428, MM429, MM430, MM431, MM432, MM433, MM434, MM435, MM436, MM437, MM522, MM523, MM524,
     MM525, MM526, MM527, MM528, MM529, MM530, MM531, MM532, MM533, MM534]
 - id: quality
   label: Quality (MM view level)

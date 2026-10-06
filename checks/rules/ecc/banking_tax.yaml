@@ -286,7 +286,7 @@ rules:
   sap_impact: SEPA/DMEE payment line is rejected by the bank; payment is returned and the invoice stays open.
   fix_map:
     __other__: Re-key the IBAN from the vendor's bank letter in FI12/XK02 > Bank details > IBAN.
-  record_fix_template: 'Bank account {TIBAN.BANKS}/{TIBAN.BANKL}/{TIBAN.BANKN}: IBAN {TIBAN.IBAN} has wrong check digits.'
+  record_fix_template: 'Bank account {TIBAN.BANKS}/TIBAN.BANKL/TIBAN.BANKN: IBAN TIBAN.IBAN has wrong check digits.'
 - id: BKT015
   field: TIBAN.IBAN
   check_class: cross_field_check
@@ -301,7 +301,7 @@ rules:
   sap_impact: Payment routed by IBAN differs from the bank key used for clearing; bank rejects or repairs it.
   fix_map:
     __other__: Align IBAN and bank country in FI12; correct whichever was keyed wrongly.
-  record_fix_template: 'Bank account {TIBAN.BANKS}/{TIBAN.BANKL}/{TIBAN.BANKN}: IBAN {TIBAN.IBAN} does not start with country
+  record_fix_template: 'Bank account {TIBAN.BANKS}/TIBAN.BANKL/TIBAN.BANKN: IBAN TIBAN.IBAN does not start with country
     {TIBAN.BANKS}.'
 - id: BKT016
   field: TIBAN.IBAN
@@ -316,7 +316,7 @@ rules:
   sap_impact: Payment file and duplicate checks compare IBAN strings; formatted values do not match.
   fix_map:
     __other__: Re-enter the IBAN in electronic format (no spaces) in FI12.
-  record_fix_template: 'Bank account {TIBAN.BANKS}/{TIBAN.BANKL}/{TIBAN.BANKN}: IBAN {TIBAN.IBAN} is not in electronic format.'
+  record_fix_template: 'Bank account {TIBAN.BANKS}/TIBAN.BANKL/TIBAN.BANKN: IBAN TIBAN.IBAN is not in electronic format.'
 - id: BKT017
   field: TIBAN.IBAN
   check_class: uniqueness_check
@@ -334,7 +334,7 @@ rules:
   sap_impact: IBAN uniqueness is enforced per account only; duplicates enable payment redirection fraud.
   fix_map:
     __other__: Remove or correct the wrong bank account in FI12 and re-check the owning master records.
-  record_fix_template: IBAN {TIBAN.IBAN} appears on more than one bank account record.
+  record_fix_template: IBAN TIBAN.IBAN appears on more than one bank account record.
 - id: BKT018
   field: TIBAN.BANKL
   check_class: exists_check
@@ -354,7 +354,7 @@ rules:
   sap_impact: IBAN is unusable; vendor/customer bank detail validation fails.
   fix_map:
     __other__: Create the bank in FI01 or correct the bank key of the account.
-  record_fix_template: 'Bank account {TIBAN.BANKS}/{TIBAN.BANKL}/{TIBAN.BANKN}: bank key is not in BNKA.'
+  record_fix_template: 'Bank account {TIBAN.BANKS}/TIBAN.BANKL/TIBAN.BANKN: bank key is not in BNKA.'
 - id: BKT019
   field: TIBAN.VALID_FROM
   check_class: cross_field_check
@@ -369,7 +369,7 @@ rules:
   sap_impact: IBAN is not picked up by payment runs until its validity date.
   fix_map:
     __other__: Correct the valid-from date in FI12 or confirm that the account is meant to start later.
-  record_fix_template: 'Bank account {TIBAN.BANKS}/{TIBAN.BANKL}/{TIBAN.BANKN}: IBAN {TIBAN.IBAN} is valid from {TIBAN.VALID_FROM}.'
+  record_fix_template: 'Bank account {TIBAN.BANKS}/TIBAN.BANKL/TIBAN.BANKN: IBAN TIBAN.IBAN is valid from {TIBAN.VALID_FROM}.'
 - id: BKT020
   field: LFBK.BANKN
   check_class: exists_check
@@ -394,7 +394,7 @@ rules:
   sap_impact: F110 payment medium has no IBAN to write; payment line is rejected or the method is skipped.
   fix_map:
     __other__: 'Enter the IBAN on the bank detail (XK02 > Payment transactions > IBAN, S/4HANA: BP > Bank Data).'
-  record_fix_template: 'Vendor {LFBK.LIFNR}: account {LFBK.BANKS}/{LFBK.BANKL}/{LFBK.BANKN} has no IBAN.'
+  record_fix_template: 'Vendor {LFBK.LIFNR}: account {LFBK.BANKS}/LFBK.BANKL/LFBK.BANKN has no IBAN.'
 - id: BKT021
   field: KNBK.BANKN
   check_class: exists_check
@@ -419,7 +419,7 @@ rules:
   sap_impact: F110 payment medium has no IBAN to write; payment line is rejected or the method is skipped.
   fix_map:
     __other__: 'Enter the IBAN on the bank detail (XD02 > Payment transactions > IBAN, S/4HANA: BP > Bank Data).'
-  record_fix_template: 'Customer {KNBK.KUNNR}: account {KNBK.BANKS}/{KNBK.BANKL}/{KNBK.BANKN} has no IBAN.'
+  record_fix_template: 'Customer {KNBK.KUNNR}: account {KNBK.BANKS}/KNBK.BANKL/KNBK.BANKN has no IBAN.'
 - id: BKT022
   field: LFBK.BANKN
   check_class: exists_check
@@ -443,7 +443,7 @@ rules:
   sap_impact: Payment of a vendor invoice or customer refund may land in an account owned by the other party.
   fix_map:
     __other__: Confirm the relationship (same legal entity, then link via CVI/BP) or correct the wrong account in XK02/XD02.
-  record_fix_template: 'Vendor {LFBK.LIFNR}: account {LFBK.BANKS}/{LFBK.BANKL}/{LFBK.BANKN} also belongs to a customer.'
+  record_fix_template: 'Vendor {LFBK.LIFNR}: account {LFBK.BANKS}/LFBK.BANKL/LFBK.BANKN also belongs to a customer.'
 - id: BKT023
   field: KNBK.BANKN
   check_class: exists_check
@@ -467,7 +467,7 @@ rules:
   sap_impact: Customer refund may be paid to a vendor's account, or a debit collected from it.
   fix_map:
     __other__: Confirm the relationship or correct the wrong account in XD02/XK02.
-  record_fix_template: 'Customer {KNBK.KUNNR}: account {KNBK.BANKS}/{KNBK.BANKL}/{KNBK.BANKN} also belongs to a vendor.'
+  record_fix_template: 'Customer {KNBK.KUNNR}: account {KNBK.BANKS}/KNBK.BANKL/KNBK.BANKN also belongs to a vendor.'
 - id: BKT024
   field: KNBK.KOINH
   check_class: null_check
@@ -481,7 +481,7 @@ rules:
   sap_impact: Direct debit (F110) lines have no debtor name; collection is rejected or disputed.
   fix_map:
     __other__: Enter the account holder in XD02 > Payment transactions > Bank details.
-  record_fix_template: 'Customer {KNBK.KUNNR}: account {KNBK.BANKS}/{KNBK.BANKL}/{KNBK.BANKN} has no account holder.'
+  record_fix_template: 'Customer {KNBK.KUNNR}: account {KNBK.BANKS}/KNBK.BANKL/KNBK.BANKN has no account holder.'
 - id: BKT025
   field: LFBK.BANKN
   check_class: uniqueness_check
@@ -500,7 +500,7 @@ rules:
   sap_impact: Duplicate vendors; one account receives payments for several suppliers.
   fix_map:
     __other__: Review the vendors in XK02, merge duplicates, or remove the wrong bank detail.
-  record_fix_template: 'Vendor {LFBK.LIFNR}: account {LFBK.BANKN} in {LFBK.BANKS} is used by another vendor record.'
+  record_fix_template: 'Vendor {LFBK.LIFNR}: account LFBK.BANKN in {LFBK.BANKS} is used by another vendor record.'
 - id: BKT026
   field: KNBK.BANKN
   check_class: uniqueness_check
@@ -519,7 +519,7 @@ rules:
   sap_impact: Cash application and direct debit cannot tell the customers apart.
   fix_map:
     __other__: Review the customers in XD02; link group payers via alternative payer, merge duplicates.
-  record_fix_template: 'Customer {KNBK.KUNNR}: account {KNBK.BANKN} in {KNBK.BANKS} is used by another customer record.'
+  record_fix_template: 'Customer {KNBK.KUNNR}: account KNBK.BANKN in {KNBK.BANKS} is used by another customer record.'
 - id: BKT027
   field: KNBK.XEZER
   check_class: cross_field_check
@@ -534,7 +534,7 @@ rules:
   sap_impact: Direct debit is rejected by the bank (SEPA mandate data incomplete).
   fix_map:
     __other__: Enter the account holder in XD02 or remove the flag if no mandate exists.
-  record_fix_template: 'Customer {KNBK.KUNNR}: collection authorisation set on {KNBK.BANKN} but the account holder is empty.'
+  record_fix_template: 'Customer {KNBK.KUNNR}: collection authorisation set on KNBK.BANKN but the account holder is empty.'
 - id: BKT028
   field: LFBK.BANKN
   check_class: regex_check
@@ -549,7 +549,7 @@ rules:
   sap_impact: Duplicate checks miss the account; payment file field is malformed.
   fix_map:
     __other__: Re-key the account number without separators in XK02.
-  record_fix_template: 'Vendor {LFBK.LIFNR}: account number {LFBK.BANKN} has invalid characters.'
+  record_fix_template: 'Vendor {LFBK.LIFNR}: account number LFBK.BANKN has invalid characters.'
 - id: BKT029
   field: LFBK.BANKN
   check_class: cross_field_check
@@ -566,7 +566,7 @@ rules:
   sap_impact: Payment to the dummy account is returned by the bank.
   fix_map:
     __other__: Obtain the real account from the vendor and correct it in XK02.
-  record_fix_template: 'Vendor {LFBK.LIFNR}: account number {LFBK.BANKN} is a placeholder.'
+  record_fix_template: 'Vendor {LFBK.LIFNR}: account number LFBK.BANKN is a placeholder.'
 - id: BKT030
   field: KNBK.BANKN
   check_class: regex_check
@@ -581,7 +581,7 @@ rules:
   sap_impact: Duplicate checks miss the account; payment file field is malformed.
   fix_map:
     __other__: Re-key the account number without separators in XD02.
-  record_fix_template: 'Customer {KNBK.KUNNR}: account number {KNBK.BANKN} has invalid characters.'
+  record_fix_template: 'Customer {KNBK.KUNNR}: account number KNBK.BANKN has invalid characters.'
 - id: BKT031
   field: KNBK.BANKN
   check_class: cross_field_check
@@ -598,7 +598,7 @@ rules:
   sap_impact: Payment to the dummy account is returned by the bank.
   fix_map:
     __other__: Obtain the real account from the customer and correct it in XD02.
-  record_fix_template: 'Customer {KNBK.KUNNR}: account number {KNBK.BANKN} is a placeholder.'
+  record_fix_template: 'Customer {KNBK.KUNNR}: account number KNBK.BANKN is a placeholder.'
 - id: BKT032
   field: LFA1.LNRZA
   check_class: cross_field_check
@@ -1148,7 +1148,7 @@ rules:
   sap_impact: Intra-EU reporting (ZM/EC lists) and input VAT claims are rejected.
   fix_map:
     __other__: Correct the VAT number or the country in XK02.
-  record_fix_template: 'Vendor {LFA1.LIFNR}: VAT number {LFA1.STCEG} does not match country {LFA1.LAND1}.'
+  record_fix_template: 'Vendor {LFA1.LIFNR}: VAT number LFA1.STCEG does not match country {LFA1.LAND1}.'
 - id: BKT081
   field: KNA1.STCEG
   check_class: cross_field_check
@@ -1164,7 +1164,7 @@ rules:
   sap_impact: Zero-rated intra-EU deliveries are not supported; VIES validation fails.
   fix_map:
     __other__: Correct the VAT number or the country in XD02.
-  record_fix_template: 'Customer {KNA1.KUNNR}: VAT number {KNA1.STCEG} does not match country {KNA1.LAND1}.'
+  record_fix_template: 'Customer {KNA1.KUNNR}: VAT number KNA1.STCEG does not match country {KNA1.LAND1}.'
 - id: BKT082
   field: LFA1.STCD1
   check_class: regex_check
@@ -1181,7 +1181,7 @@ rules:
   sap_impact: Tax reports and e-invoices carrying the number are rejected.
   fix_map:
     __other__: Correct the tax number in XK02 > Control data.
-  record_fix_template: 'Vendor {LFA1.LIFNR}: tax number {LFA1.STCD1} is malformed for country ZA.'
+  record_fix_template: 'Vendor {LFA1.LIFNR}: tax number LFA1.STCD1 is malformed for country ZA.'
 - id: BKT083
   field: LFA1.STCD1
   check_class: regex_check
@@ -1198,7 +1198,7 @@ rules:
   sap_impact: Tax reports and e-invoices carrying the number are rejected.
   fix_map:
     __other__: Correct the tax number in XK02 > Control data.
-  record_fix_template: 'Vendor {LFA1.LIFNR}: tax number {LFA1.STCD1} is malformed for country BR.'
+  record_fix_template: 'Vendor {LFA1.LIFNR}: tax number LFA1.STCD1 is malformed for country BR.'
 - id: BKT084
   field: LFA1.STCD1
   check_class: regex_check
@@ -1215,7 +1215,7 @@ rules:
   sap_impact: Tax reports and e-invoices carrying the number are rejected.
   fix_map:
     __other__: Correct the tax number in XK02 > Control data.
-  record_fix_template: 'Vendor {LFA1.LIFNR}: tax number {LFA1.STCD1} is malformed for country IN.'
+  record_fix_template: 'Vendor {LFA1.LIFNR}: tax number LFA1.STCD1 is malformed for country IN.'
 - id: BKT085
   field: LFA1.STCD1
   check_class: regex_check
@@ -1232,7 +1232,7 @@ rules:
   sap_impact: Tax reports and e-invoices carrying the number are rejected.
   fix_map:
     __other__: Correct the tax number in XK02 > Control data.
-  record_fix_template: 'Vendor {LFA1.LIFNR}: tax number {LFA1.STCD1} is malformed for country US.'
+  record_fix_template: 'Vendor {LFA1.LIFNR}: tax number LFA1.STCD1 is malformed for country US.'
 - id: BKT086
   field: KNA1.STCD1
   check_class: regex_check
@@ -1249,7 +1249,7 @@ rules:
   sap_impact: Tax reports and e-invoices carrying the number are rejected.
   fix_map:
     __other__: Correct the tax number in XD02 > Control data.
-  record_fix_template: 'Customer {KNA1.KUNNR}: tax number {KNA1.STCD1} is malformed for country ZA.'
+  record_fix_template: 'Customer {KNA1.KUNNR}: tax number KNA1.STCD1 is malformed for country ZA.'
 - id: BKT087
   field: KNA1.STCD1
   check_class: regex_check
@@ -1266,7 +1266,7 @@ rules:
   sap_impact: Tax reports and e-invoices carrying the number are rejected.
   fix_map:
     __other__: Correct the tax number in XD02 > Control data.
-  record_fix_template: 'Customer {KNA1.KUNNR}: tax number {KNA1.STCD1} is malformed for country BR.'
+  record_fix_template: 'Customer {KNA1.KUNNR}: tax number KNA1.STCD1 is malformed for country BR.'
 - id: BKT088
   field: KNA1.STCD1
   check_class: regex_check
@@ -1283,7 +1283,7 @@ rules:
   sap_impact: Tax reports and e-invoices carrying the number are rejected.
   fix_map:
     __other__: Correct the tax number in XD02 > Control data.
-  record_fix_template: 'Customer {KNA1.KUNNR}: tax number {KNA1.STCD1} is malformed for country IN.'
+  record_fix_template: 'Customer {KNA1.KUNNR}: tax number KNA1.STCD1 is malformed for country IN.'
 - id: BKT089
   field: KNA1.STCD1
   check_class: regex_check
@@ -1300,7 +1300,7 @@ rules:
   sap_impact: Tax reports and e-invoices carrying the number are rejected.
   fix_map:
     __other__: Correct the tax number in XD02 > Control data.
-  record_fix_template: 'Customer {KNA1.KUNNR}: tax number {KNA1.STCD1} is malformed for country US.'
+  record_fix_template: 'Customer {KNA1.KUNNR}: tax number KNA1.STCD1 is malformed for country US.'
 - id: BKT090
   field: T007A.ZMWSK
   check_class: exists_check

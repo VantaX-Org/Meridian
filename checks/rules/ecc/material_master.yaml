@@ -6437,21 +6437,6 @@ rules:
     __other__: Delete the ledger header via the material ledger tools or recreate the valuation.
   record_fix_template: 'Material ledger number {CKMLHD.KALNR}, material {CKMLHD.MATNR}, valuation area {CKMLHD.BWKEY}: ledger
     number {CKMLHD.KALNR} has no valuation row.'
-- id: MM521
-  field: MARD.UMLME
-  check_class: cross_field_check
-  fail_when: (`MARD.UMLME` < 0) | (`MARD.INSME` < 0) | (`MARD.SPEME` < 0) | (`MARD.RETME` < 0)
-  severity: medium
-  dimension: accuracy
-  message: Stock in transfer, quality inspection, blocked or returns stock is negative
-  why_it_matters: Stock in transfer, in quality inspection, blocked stock and returns stock are physical quantities that are
-    never negative. A negative value comes from a wrong posting or load.
-  rule_authority: best_practice
-  sap_impact: Available stock and requirements planning compute with a wrong quantity.
-  fix_map:
-    __other__: Correct the stock with an inventory difference or a goods movement (MIGO).
-  record_fix_template: 'Material {MARD.MATNR}, plant {MARD.WERKS}, storage location {MARD.LGORT}: transfer {actual_value},
-    inspection {MARD.INSME}, blocked {MARD.SPEME}, returns {MARD.RETME}.'
 - id: MM522
   field: MLGN.LGNUM
   check_class: referential_check

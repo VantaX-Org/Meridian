@@ -1,6 +1,6 @@
 # Material master rule coverage
 
-The ECC `material_master` pack (`checks/rules/ecc/material_master.yaml`) holds 418 rules. The depth work adds 247 rules (MM317 to MM563) on top of the 164 original rules and the 7 MLAN rules (MM310 to MM316). No new module and no new rule pack were added. Every rule has the full metadata set, resolves in the ECC 6.0 DDIC (`sap/dictionaries/ecc6`) and is proven by `tests/checks/test_rule_proofs.py` (one failing and one passing record per rule).
+The ECC `material_master` pack (`checks/rules/ecc/material_master.yaml`) holds 417 rules. The depth work adds 246 rules (MM317 to MM563) on top of the 164 original rules and the 7 MLAN rules (MM310 to MM316). No new module and no new rule pack were added. Every rule has the full metadata set, resolves in the ECC 6.0 DDIC (`sap/dictionaries/ecc6`) and is proven by `tests/checks/test_rule_proofs.py` (one failing and one passing record per rule).
 
 `tests/test_mm_depth_rules.py` holds the pack integrity checks and hand-written fixtures. Hierarchy and `@today` behaviour is covered there too.
 
@@ -19,11 +19,11 @@ Counts are the new rules only (MM317 to MM563). Views follow the material master
 | Purchasing and foreign trade | EINA 2, EINE 4, MARA 7, MARC 11 | 24 |
 | Quality (MM view level) | MARC 1, QMAT 8 | 9 |
 | Sales | MARC 1, MLAN 1, MVKE 17 | 19 |
-| Storage and warehouse | MARD 8, MLGN 11, MLGT 5 | 24 |
+| Storage and warehouse | MARD 7, MLGN 11, MLGT 5 | 23 |
 | Supersession and discontinuation | MARC 16, MBEW 2, STPO 4 | 22 |
 | Units of measure | MARM 2, MEAN 1 | 3 |
 | Work scheduling and production | MAPL 1, MARC 13, MAST 2, MKAL 5 | 21 |
-| **Total** | | **247** |
+| **Total** | | **246** |
 
 ### By dimension
 
@@ -32,11 +32,11 @@ Counts are the new rules only (MM317 to MM563). Views follow the material master
 | validity | 101 |
 | consistency | 79 |
 | completeness | 32 |
-| accuracy | 16 |
+| accuracy | 15 |
 | lifecycle | 13 |
 | uniqueness | 4 |
 | freshness | 2 |
-| **Total** | **247** |
+| **Total** | **246** |
 
 ### By severity
 
@@ -46,7 +46,7 @@ Counts are the new rules only (MM317 to MM563). Views follow the material master
 | low | 79 |
 | high | 58 |
 | critical | 1 |
-| **Total** | **247** |
+| **Total** | **246** |
 
 ### By check class
 
@@ -63,7 +63,7 @@ Counts are the new rules only (MM317 to MM563). Views follow the material master
 | format_check | 1 |
 | freshness_check | 1 |
 | similarity_check | 1 |
-| **Total** | **247** |
+| **Total** | **246** |
 
 ## What the new rules do
 
