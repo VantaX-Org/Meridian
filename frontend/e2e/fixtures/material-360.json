@@ -1,0 +1,1273 @@
+{
+ "101": {
+  "material": {
+   "matnr": "000000000000000101",
+   "description": "Hydraulic pump seal kit 50mm",
+   "language": "E",
+   "mara": {
+    "MATNR": "000000000000000101",
+    "MTART": "HALB",
+    "MATKL": "1000",
+    "MEINS": "EA",
+    "LVORM": null,
+    "VPSTA": "KCVEDPALB",
+    "BISMT": null,
+    "MFRPN": null,
+    "MFRNR": null
+   },
+   "makt": [
+    {
+     "SPRAS": "E",
+     "MAKTX": "Hydraulic pump seal kit 50mm"
+    }
+   ],
+   "marm": [
+    {
+     "MEINH": "EA",
+     "UMREZ": "1",
+     "UMREN": "1"
+    }
+   ],
+   "mean": [
+    {
+     "MEINH": "EA",
+     "EAN11": "5901234123457",
+     "EANTP": "HE"
+    }
+   ],
+   "marc": [
+    {
+     "WERKS": "1000",
+     "PSTAT": "EDPALB",
+     "MMSTA": null,
+     "LVORM": null,
+     "KZAUS": null,
+     "AUSDT": null,
+     "NFMAT": null,
+     "DISMM": "PD"
+    },
+    {
+     "WERKS": "2000",
+     "PSTAT": "EDPALB",
+     "MMSTA": null,
+     "LVORM": null,
+     "KZAUS": null,
+     "AUSDT": null,
+     "NFMAT": null,
+     "DISMM": "PD"
+    },
+    {
+     "WERKS": "3000",
+     "PSTAT": "EDPALB",
+     "MMSTA": null,
+     "LVORM": null,
+     "KZAUS": "X",
+     "AUSDT": "2026-12-31",
+     "NFMAT": "000000000000000102",
+     "DISMM": "PD"
+    }
+   ],
+   "mvke": [
+    {
+     "VKORG": "2000",
+     "VTWEG": "10",
+     "VMSTA": null,
+     "LVORM": null
+    }
+   ],
+   "mbew": [
+    {
+     "BWKEY": "1000",
+     "BWTAR": null,
+     "BKLAS": "3000",
+     "VPRSV": "S",
+     "LVORM": null
+    }
+   ],
+   "mard": [],
+   "mlgn": [],
+   "labels": {
+    "MTART": null,
+    "MATKL": null,
+    "MEINS": null
+   },
+   "expected_views": [
+    "accounting",
+    "basic_data",
+    "classification",
+    "mrp",
+    "purchasing",
+    "sales",
+    "storage",
+    "work_scheduling"
+   ],
+   "expected_known": true,
+   "levels": [
+    {
+     "id": "client",
+     "kind": "client",
+     "plant": null
+    },
+    {
+     "id": "plant:1000",
+     "kind": "plant",
+     "plant": "1000"
+    },
+    {
+     "id": "plant:2000",
+     "kind": "plant",
+     "plant": "2000"
+    },
+    {
+     "id": "plant:3000",
+     "kind": "plant",
+     "plant": "3000"
+    },
+    {
+     "id": "sales:2000/10",
+     "kind": "sales",
+     "plant": null
+    },
+    {
+     "id": "sales:3000/10",
+     "kind": "sales",
+     "plant": null
+    },
+    {
+     "id": "valuation:1000",
+     "kind": "valuation",
+     "plant": "1000"
+    }
+   ],
+   "views": [
+    {
+     "view": "basic_data",
+     "label": "Basic data",
+     "expected": true,
+     "cells": [
+      {
+       "level": "client",
+       "state": "ok"
+      },
+      {
+       "level": "plant:1000",
+       "state": "none"
+      },
+      {
+       "level": "plant:2000",
+       "state": "none"
+      },
+      {
+       "level": "plant:3000",
+       "state": "none"
+      },
+      {
+       "level": "sales:2000/10",
+       "state": "none"
+      },
+      {
+       "level": "sales:3000/10",
+       "state": "none"
+      },
+      {
+       "level": "valuation:1000",
+       "state": "none"
+      }
+     ]
+    },
+    {
+     "view": "classification",
+     "label": "Classification",
+     "expected": true,
+     "cells": [
+      {
+       "level": "client",
+       "state": "ok"
+      },
+      {
+       "level": "plant:1000",
+       "state": "none"
+      },
+      {
+       "level": "plant:2000",
+       "state": "none"
+      },
+      {
+       "level": "plant:3000",
+       "state": "none"
+      },
+      {
+       "level": "sales:2000/10",
+       "state": "none"
+      },
+      {
+       "level": "sales:3000/10",
+       "state": "none"
+      },
+      {
+       "level": "valuation:1000",
+       "state": "none"
+      }
+     ]
+    },
+    {
+     "view": "sales",
+     "label": "Sales",
+     "expected": true,
+     "cells": [
+      {
+       "level": "client",
+       "state": "none"
+      },
+      {
+       "level": "plant:1000",
+       "state": "none"
+      },
+      {
+       "level": "plant:2000",
+       "state": "none"
+      },
+      {
+       "level": "plant:3000",
+       "state": "none"
+      },
+      {
+       "level": "sales:2000/10",
+       "state": "ok"
+      },
+      {
+       "level": "sales:3000/10",
+       "state": "missing"
+      },
+      {
+       "level": "valuation:1000",
+       "state": "none"
+      }
+     ]
+    },
+    {
+     "view": "purchasing",
+     "label": "Purchasing",
+     "expected": true,
+     "cells": [
+      {
+       "level": "client",
+       "state": "none"
+      },
+      {
+       "level": "plant:1000",
+       "state": "ok"
+      },
+      {
+       "level": "plant:2000",
+       "state": "ok"
+      },
+      {
+       "level": "plant:3000",
+       "state": "ok"
+      },
+      {
+       "level": "sales:2000/10",
+       "state": "none"
+      },
+      {
+       "level": "sales:3000/10",
+       "state": "none"
+      },
+      {
+       "level": "valuation:1000",
+       "state": "none"
+      }
+     ]
+    },
+    {
+     "view": "mrp",
+     "label": "MRP",
+     "expected": true,
+     "cells": [
+      {
+       "level": "client",
+       "state": "none"
+      },
+      {
+       "level": "plant:1000",
+       "state": "ok"
+      },
+      {
+       "level": "plant:2000",
+       "state": "ok"
+      },
+      {
+       "level": "plant:3000",
+       "state": "ok"
+      },
+      {
+       "level": "sales:2000/10",
+       "state": "none"
+      },
+      {
+       "level": "sales:3000/10",
+       "state": "none"
+      },
+      {
+       "level": "valuation:1000",
+       "state": "none"
+      }
+     ]
+    },
+    {
+     "view": "work_scheduling",
+     "label": "Work scheduling",
+     "expected": true,
+     "cells": [
+      {
+       "level": "client",
+       "state": "none"
+      },
+      {
+       "level": "plant:1000",
+       "state": "ok"
+      },
+      {
+       "level": "plant:2000",
+       "state": "ok"
+      },
+      {
+       "level": "plant:3000",
+       "state": "ok"
+      },
+      {
+       "level": "sales:2000/10",
+       "state": "none"
+      },
+      {
+       "level": "sales:3000/10",
+       "state": "none"
+      },
+      {
+       "level": "valuation:1000",
+       "state": "none"
+      }
+     ]
+    },
+    {
+     "view": "storage",
+     "label": "Storage",
+     "expected": true,
+     "cells": [
+      {
+       "level": "client",
+       "state": "none"
+      },
+      {
+       "level": "plant:1000",
+       "state": "ok"
+      },
+      {
+       "level": "plant:2000",
+       "state": "ok"
+      },
+      {
+       "level": "plant:3000",
+       "state": "ok"
+      },
+      {
+       "level": "sales:2000/10",
+       "state": "none"
+      },
+      {
+       "level": "sales:3000/10",
+       "state": "none"
+      },
+      {
+       "level": "valuation:1000",
+       "state": "none"
+      }
+     ]
+    },
+    {
+     "view": "accounting",
+     "label": "Accounting",
+     "expected": true,
+     "cells": [
+      {
+       "level": "client",
+       "state": "none"
+      },
+      {
+       "level": "plant:1000",
+       "state": "none"
+      },
+      {
+       "level": "plant:2000",
+       "state": "none"
+      },
+      {
+       "level": "plant:3000",
+       "state": "none"
+      },
+      {
+       "level": "sales:2000/10",
+       "state": "none"
+      },
+      {
+       "level": "sales:3000/10",
+       "state": "none"
+      },
+      {
+       "level": "valuation:1000",
+       "state": "ok"
+      }
+     ]
+    }
+   ],
+   "phasing": {
+    "plants": 3,
+    "phasing_out": 1,
+    "with_followup": 1,
+    "plant": "3000",
+    "ausdt": "2026-12-31",
+    "nfmat": "000000000000000102",
+    "followup_description": "Gasket flange old pattern"
+   },
+   "levels_total": 7,
+   "version_id": "65988d5a-0243-4f9b-bdff-52779e71c6ed"
+  },
+  "findings": {
+   "by_view": [
+    {
+     "view": "basic_data",
+     "label": "Basic data and descriptions",
+     "failing": [],
+     "passing_count": 91,
+     "not_evaluated": [],
+     "rules": 91
+    },
+    {
+     "view": "classification",
+     "label": "Classification",
+     "failing": [],
+     "passing_count": 20,
+     "not_evaluated": [],
+     "rules": 20
+    },
+    {
+     "view": "sales",
+     "label": "Sales",
+     "failing": [
+      {
+       "check_id": "MM132",
+       "message": "Account assignment group is missing",
+       "severity": "medium",
+       "field": "MVKE.KTGRM",
+       "level": "sales:2000/10",
+       "actual_value": "",
+       "record_key": "MATNR=000000000000000101|VKORG=2000|VTWEG=10",
+       "issue_id": "d1a0c2d4-0000-4000-8000-000000000010",
+       "issue_status": "open",
+       "record_fix": "Record is missing MVKE.KTGRM. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data)."
+      },
+      {
+       "check_id": "MM135",
+       "message": "Product hierarchy (sales) is missing",
+       "severity": "low",
+       "field": "MVKE.PRODH",
+       "level": "sales:2000/10",
+       "actual_value": "",
+       "record_key": "MATNR=000000000000000101|VKORG=2000|VTWEG=10",
+       "issue_id": "d1a0c2d4-0000-4000-8000-000000000011",
+       "issue_status": "open",
+       "record_fix": "Record is missing MVKE.PRODH. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data)."
+      }
+     ],
+     "passing_count": 39,
+     "not_evaluated": [],
+     "rules": 41
+    },
+    {
+     "view": "purchasing",
+     "label": "Purchasing and foreign trade",
+     "failing": [],
+     "passing_count": 24,
+     "not_evaluated": [],
+     "rules": 24
+    },
+    {
+     "view": "mrp",
+     "label": "MRP",
+     "failing": [],
+     "passing_count": 88,
+     "not_evaluated": [],
+     "rules": 88
+    },
+    {
+     "view": "work_scheduling",
+     "label": "Work scheduling and production",
+     "failing": [],
+     "passing_count": 21,
+     "not_evaluated": [],
+     "rules": 21
+    },
+    {
+     "view": "storage",
+     "label": "Storage and warehouse",
+     "failing": [],
+     "passing_count": 5,
+     "not_evaluated": [
+      "MM156",
+      "MM157",
+      "MM158",
+      "MM211",
+      "MM222",
+      "MM231",
+      "MM308",
+      "MM428",
+      "MM429",
+      "MM430",
+      "MM431",
+      "MM432",
+      "MM434",
+      "MM435",
+      "MM436",
+      "MM437",
+      "MM521",
+      "MM522",
+      "MM523",
+      "MM524",
+      "MM525",
+      "MM526",
+      "MM527",
+      "MM528",
+      "MM529",
+      "MM530"
+     ],
+     "rules": 31
+    },
+    {
+     "view": "quality",
+     "label": "Quality (MM view level)",
+     "failing": [],
+     "passing_count": 9,
+     "not_evaluated": [],
+     "rules": 9
+    },
+    {
+     "view": "accounting",
+     "label": "Accounting and costing",
+     "failing": [],
+     "passing_count": 44,
+     "not_evaluated": [],
+     "rules": 44
+    },
+    {
+     "view": "batch",
+     "label": "Batch management",
+     "failing": [],
+     "passing_count": 6,
+     "not_evaluated": [],
+     "rules": 6
+    },
+    {
+     "view": "units",
+     "label": "Units of measure",
+     "failing": [],
+     "passing_count": 15,
+     "not_evaluated": [],
+     "rules": 15
+    },
+    {
+     "view": "supersession",
+     "label": "Supersession and discontinuation",
+     "failing": [
+      {
+       "check_id": "MM551",
+       "message": "Follow-up materials form a loop within a plant",
+       "severity": "critical",
+       "field": "MARC.NFMAT",
+       "level": "plant:3000",
+       "actual_value": "000000000000000102",
+       "record_key": "MATNR=000000000000000101|WERKS=3000",
+       "issue_id": "d1a0c2d4-0000-4000-8000-000000000012",
+       "issue_status": "open",
+       "record_fix": "Material 000000000000000101, plant 3000: follow-up material 000000000000000102 is part of a supersession loop."
+      }
+     ],
+     "passing_count": 17,
+     "not_evaluated": [
+      "MM560",
+      "MM561",
+      "MM562",
+      "MM563"
+     ],
+     "rules": 22
+    },
+    {
+     "view": "lifecycle",
+     "label": "Lifecycle and cross-level",
+     "failing": [],
+     "passing_count": 4,
+     "not_evaluated": [
+      "MM441",
+      "MM540"
+     ],
+     "rules": 6
+    }
+   ],
+   "rules_total": 418,
+   "matnr": "000000000000000101",
+   "version_id": "65988d5a-0243-4f9b-bdff-52779e71c6ed"
+  },
+  "supersession": {
+   "matnr": "000000000000000101",
+   "plants": [
+    {
+     "werks": "1000",
+     "kzaus": null,
+     "ausdt": null,
+     "chain": [
+      {
+       "matnr": "000000000000000101",
+       "maktx": "Hydraulic pump seal kit 50mm",
+       "this": true,
+       "dismm": "PD",
+       "mmsta": null,
+       "kzaus": null,
+       "ausdt": null,
+       "nfmat": null,
+       "flags": []
+      }
+     ],
+     "links": 0,
+     "loop_at": null,
+     "dead_end": false,
+     "truncated": false,
+     "depth": 3
+    },
+    {
+     "werks": "2000",
+     "kzaus": null,
+     "ausdt": null,
+     "chain": [
+      {
+       "matnr": "000000000000000101",
+       "maktx": "Hydraulic pump seal kit 50mm",
+       "this": true,
+       "dismm": "PD",
+       "mmsta": null,
+       "kzaus": null,
+       "ausdt": null,
+       "nfmat": null,
+       "flags": []
+      }
+     ],
+     "links": 0,
+     "loop_at": null,
+     "dead_end": false,
+     "truncated": false,
+     "depth": 3
+    },
+    {
+     "werks": "3000",
+     "kzaus": "X",
+     "ausdt": "2026-12-31",
+     "chain": [
+      {
+       "matnr": "000000000000000101",
+       "maktx": "Hydraulic pump seal kit 50mm",
+       "this": true,
+       "dismm": "PD",
+       "mmsta": null,
+       "kzaus": "X",
+       "ausdt": "2026-12-31",
+       "nfmat": "000000000000000102",
+       "flags": []
+      },
+      {
+       "matnr": "000000000000000102",
+       "maktx": "Gasket flange old pattern",
+       "this": false,
+       "dismm": "PD",
+       "mmsta": null,
+       "kzaus": "X",
+       "ausdt": "2026-12-31",
+       "nfmat": "000000000000000101",
+       "flags": [
+        "MM551"
+       ]
+      }
+     ],
+     "links": 2,
+     "loop_at": "000000000000000101",
+     "dead_end": false,
+     "truncated": false,
+     "depth": 3
+    }
+   ],
+   "bom_usage": []
+  },
+  "duplicates": {
+   "matnr": "000000000000000101",
+   "algorithm": "similarity_check: sorted-word description keys, difflib ratio; different numbers never match; plus EAN, old material number and manufacturer part number",
+   "threshold": 60,
+   "source": "computed",
+   "items": [
+    {
+     "matnr": "000000000000000104",
+     "maktx": "Seal kit pump hydraulic 50mm",
+     "mtart": "HALB",
+     "matkl": "1000",
+     "meins": "EA",
+     "ean11": "5901234123457",
+     "matches_on": [
+      "Description 100 %",
+      "EAN same"
+     ],
+     "score": 100
+    }
+   ]
+  }
+ },
+ "105": {
+  "material": {
+   "matnr": "000000000000000105",
+   "description": "Wiper blade standard",
+   "language": "E",
+   "mara": {
+    "MATNR": "000000000000000105",
+    "MTART": "HALB",
+    "MATKL": "2000",
+    "MEINS": "EA",
+    "LVORM": null,
+    "VPSTA": "KCVEDPALB",
+    "BISMT": null,
+    "MFRPN": null,
+    "MFRNR": null
+   },
+   "makt": [
+    {
+     "SPRAS": "E",
+     "MAKTX": "Wiper blade standard"
+    }
+   ],
+   "marm": [],
+   "mean": [],
+   "marc": [
+    {
+     "WERKS": "1000",
+     "PSTAT": "EDPALB",
+     "MMSTA": null,
+     "LVORM": null,
+     "KZAUS": null,
+     "AUSDT": null,
+     "NFMAT": null,
+     "DISMM": "PD"
+    }
+   ],
+   "mvke": [
+    {
+     "VKORG": "2000",
+     "VTWEG": "10",
+     "VMSTA": null,
+     "LVORM": null
+    },
+    {
+     "VKORG": "3000",
+     "VTWEG": "10",
+     "VMSTA": null,
+     "LVORM": null
+    }
+   ],
+   "mbew": [
+    {
+     "BWKEY": "1000",
+     "BWTAR": null,
+     "BKLAS": "3000",
+     "VPRSV": "S",
+     "LVORM": null
+    }
+   ],
+   "mard": [],
+   "mlgn": [],
+   "labels": {
+    "MTART": null,
+    "MATKL": null,
+    "MEINS": null
+   },
+   "expected_views": [
+    "accounting",
+    "basic_data",
+    "classification",
+    "mrp",
+    "purchasing",
+    "sales",
+    "storage",
+    "work_scheduling"
+   ],
+   "expected_known": true,
+   "levels": [
+    {
+     "id": "client",
+     "kind": "client",
+     "plant": null
+    },
+    {
+     "id": "plant:1000",
+     "kind": "plant",
+     "plant": "1000"
+    },
+    {
+     "id": "sales:2000/10",
+     "kind": "sales",
+     "plant": null
+    },
+    {
+     "id": "sales:3000/10",
+     "kind": "sales",
+     "plant": null
+    },
+    {
+     "id": "valuation:1000",
+     "kind": "valuation",
+     "plant": "1000"
+    }
+   ],
+   "views": [
+    {
+     "view": "basic_data",
+     "label": "Basic data",
+     "expected": true,
+     "cells": [
+      {
+       "level": "client",
+       "state": "ok"
+      },
+      {
+       "level": "plant:1000",
+       "state": "none"
+      },
+      {
+       "level": "sales:2000/10",
+       "state": "none"
+      },
+      {
+       "level": "sales:3000/10",
+       "state": "none"
+      },
+      {
+       "level": "valuation:1000",
+       "state": "none"
+      }
+     ]
+    },
+    {
+     "view": "classification",
+     "label": "Classification",
+     "expected": true,
+     "cells": [
+      {
+       "level": "client",
+       "state": "ok"
+      },
+      {
+       "level": "plant:1000",
+       "state": "none"
+      },
+      {
+       "level": "sales:2000/10",
+       "state": "none"
+      },
+      {
+       "level": "sales:3000/10",
+       "state": "none"
+      },
+      {
+       "level": "valuation:1000",
+       "state": "none"
+      }
+     ]
+    },
+    {
+     "view": "sales",
+     "label": "Sales",
+     "expected": true,
+     "cells": [
+      {
+       "level": "client",
+       "state": "none"
+      },
+      {
+       "level": "plant:1000",
+       "state": "none"
+      },
+      {
+       "level": "sales:2000/10",
+       "state": "ok"
+      },
+      {
+       "level": "sales:3000/10",
+       "state": "ok"
+      },
+      {
+       "level": "valuation:1000",
+       "state": "none"
+      }
+     ]
+    },
+    {
+     "view": "purchasing",
+     "label": "Purchasing",
+     "expected": true,
+     "cells": [
+      {
+       "level": "client",
+       "state": "none"
+      },
+      {
+       "level": "plant:1000",
+       "state": "ok"
+      },
+      {
+       "level": "sales:2000/10",
+       "state": "none"
+      },
+      {
+       "level": "sales:3000/10",
+       "state": "none"
+      },
+      {
+       "level": "valuation:1000",
+       "state": "none"
+      }
+     ]
+    },
+    {
+     "view": "mrp",
+     "label": "MRP",
+     "expected": true,
+     "cells": [
+      {
+       "level": "client",
+       "state": "none"
+      },
+      {
+       "level": "plant:1000",
+       "state": "ok"
+      },
+      {
+       "level": "sales:2000/10",
+       "state": "none"
+      },
+      {
+       "level": "sales:3000/10",
+       "state": "none"
+      },
+      {
+       "level": "valuation:1000",
+       "state": "none"
+      }
+     ]
+    },
+    {
+     "view": "work_scheduling",
+     "label": "Work scheduling",
+     "expected": true,
+     "cells": [
+      {
+       "level": "client",
+       "state": "none"
+      },
+      {
+       "level": "plant:1000",
+       "state": "ok"
+      },
+      {
+       "level": "sales:2000/10",
+       "state": "none"
+      },
+      {
+       "level": "sales:3000/10",
+       "state": "none"
+      },
+      {
+       "level": "valuation:1000",
+       "state": "none"
+      }
+     ]
+    },
+    {
+     "view": "storage",
+     "label": "Storage",
+     "expected": true,
+     "cells": [
+      {
+       "level": "client",
+       "state": "none"
+      },
+      {
+       "level": "plant:1000",
+       "state": "ok"
+      },
+      {
+       "level": "sales:2000/10",
+       "state": "none"
+      },
+      {
+       "level": "sales:3000/10",
+       "state": "none"
+      },
+      {
+       "level": "valuation:1000",
+       "state": "none"
+      }
+     ]
+    },
+    {
+     "view": "accounting",
+     "label": "Accounting",
+     "expected": true,
+     "cells": [
+      {
+       "level": "client",
+       "state": "none"
+      },
+      {
+       "level": "plant:1000",
+       "state": "none"
+      },
+      {
+       "level": "sales:2000/10",
+       "state": "none"
+      },
+      {
+       "level": "sales:3000/10",
+       "state": "none"
+      },
+      {
+       "level": "valuation:1000",
+       "state": "ok"
+      }
+     ]
+    }
+   ],
+   "phasing": {
+    "plants": 1,
+    "phasing_out": 0,
+    "with_followup": 0,
+    "plant": null,
+    "ausdt": null,
+    "nfmat": null,
+    "followup_description": null
+   },
+   "levels_total": 5,
+   "version_id": "65988d5a-0243-4f9b-bdff-52779e71c6ed"
+  },
+  "findings": {
+   "by_view": [
+    {
+     "view": "basic_data",
+     "label": "Basic data and descriptions",
+     "failing": [],
+     "passing_count": 85,
+     "not_evaluated": [
+      "MM336",
+      "MM337",
+      "MM338",
+      "MM339",
+      "MM445",
+      "MM458"
+     ],
+     "rules": 91
+    },
+    {
+     "view": "classification",
+     "label": "Classification",
+     "failing": [],
+     "passing_count": 20,
+     "not_evaluated": [],
+     "rules": 20
+    },
+    {
+     "view": "sales",
+     "label": "Sales",
+     "failing": [],
+     "passing_count": 41,
+     "not_evaluated": [],
+     "rules": 41
+    },
+    {
+     "view": "purchasing",
+     "label": "Purchasing and foreign trade",
+     "failing": [],
+     "passing_count": 24,
+     "not_evaluated": [],
+     "rules": 24
+    },
+    {
+     "view": "mrp",
+     "label": "MRP",
+     "failing": [],
+     "passing_count": 88,
+     "not_evaluated": [],
+     "rules": 88
+    },
+    {
+     "view": "work_scheduling",
+     "label": "Work scheduling and production",
+     "failing": [],
+     "passing_count": 19,
+     "not_evaluated": [
+      "MM508",
+      "MM509"
+     ],
+     "rules": 21
+    },
+    {
+     "view": "storage",
+     "label": "Storage and warehouse",
+     "failing": [],
+     "passing_count": 5,
+     "not_evaluated": [
+      "MM156",
+      "MM157",
+      "MM158",
+      "MM211",
+      "MM222",
+      "MM231",
+      "MM308",
+      "MM428",
+      "MM429",
+      "MM430",
+      "MM431",
+      "MM432",
+      "MM434",
+      "MM435",
+      "MM436",
+      "MM437",
+      "MM521",
+      "MM522",
+      "MM523",
+      "MM524",
+      "MM525",
+      "MM526",
+      "MM527",
+      "MM528",
+      "MM529",
+      "MM530"
+     ],
+     "rules": 31
+    },
+    {
+     "view": "quality",
+     "label": "Quality (MM view level)",
+     "failing": [],
+     "passing_count": 9,
+     "not_evaluated": [],
+     "rules": 9
+    },
+    {
+     "view": "accounting",
+     "label": "Accounting and costing",
+     "failing": [],
+     "passing_count": 44,
+     "not_evaluated": [],
+     "rules": 44
+    },
+    {
+     "view": "batch",
+     "label": "Batch management",
+     "failing": [],
+     "passing_count": 6,
+     "not_evaluated": [],
+     "rules": 6
+    },
+    {
+     "view": "units",
+     "label": "Units of measure",
+     "failing": [],
+     "passing_count": 0,
+     "not_evaluated": [
+      "MM039",
+      "MM040",
+      "MM150",
+      "MM162",
+      "MM163",
+      "MM164",
+      "MM165",
+      "MM166",
+      "MM167",
+      "MM210",
+      "MM221",
+      "MM225",
+      "MM345",
+      "MM443",
+      "MM444"
+     ],
+     "rules": 15
+    },
+    {
+     "view": "supersession",
+     "label": "Supersession and discontinuation",
+     "failing": [],
+     "passing_count": 18,
+     "not_evaluated": [
+      "MM560",
+      "MM561",
+      "MM562",
+      "MM563"
+     ],
+     "rules": 22
+    },
+    {
+     "view": "lifecycle",
+     "label": "Lifecycle and cross-level",
+     "failing": [],
+     "passing_count": 4,
+     "not_evaluated": [
+      "MM441",
+      "MM540"
+     ],
+     "rules": 6
+    }
+   ],
+   "rules_total": 418,
+   "matnr": "000000000000000105",
+   "version_id": "65988d5a-0243-4f9b-bdff-52779e71c6ed"
+  },
+  "supersession": {
+   "matnr": "000000000000000105",
+   "plants": [
+    {
+     "werks": "1000",
+     "kzaus": null,
+     "ausdt": null,
+     "chain": [
+      {
+       "matnr": "000000000000000105",
+       "maktx": "Wiper blade standard",
+       "this": true,
+       "dismm": "PD",
+       "mmsta": null,
+       "kzaus": null,
+       "ausdt": null,
+       "nfmat": null,
+       "flags": []
+      }
+     ],
+     "links": 0,
+     "loop_at": null,
+     "dead_end": false,
+     "truncated": false,
+     "depth": 3
+    }
+   ],
+   "bom_usage": []
+  },
+  "duplicates": {
+   "matnr": "000000000000000105",
+   "algorithm": "similarity_check: sorted-word description keys, difflib ratio; different numbers never match; plus EAN, old material number and manufacturer part number",
+   "threshold": 60,
+   "source": "computed",
+   "items": []
+  }
+ }
+}

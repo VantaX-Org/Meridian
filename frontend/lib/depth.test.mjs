@@ -5,5 +5,6 @@ import { depthLevel } from "./depth.mjs";
 assert.equal(depthLevel("/"), 1);
 assert.equal(depthLevel("/analyse/object/business_partner"), 3);
 assert.equal(depthLevel("/workbench/record/42?tab=history"), 4);
+assert.equal(depthLevel("/analyse/material/000000000000000101"), 4);
 assert.equal(depthLevel("/analyse"), null);
 console.log("depth.test: ok");

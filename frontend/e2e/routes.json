@@ -123,5 +123,15 @@
     "name": "record",
     "path": "/workbench/record/c6718ce8-8d5b-4432-933a-4df2b07ee9f0",
     "heading": "fails 1 check"
+  },
+  {
+    "name": "material",
+    "path": "/analyse/material/101",
+    "heading": "Hydraulic pump seal kit 50mm"
+  },
+  {
+    "name": "material-no-supersession",
+    "path": "/analyse/material/105",
+    "heading": "Wiper blade standard"
   }
 ]

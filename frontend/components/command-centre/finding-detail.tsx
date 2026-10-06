@@ -19,6 +19,7 @@ import {
   Tally, TableSkeleton, type AuroraColumnMeta, type Status,
 } from "@/components/ui-core";
 import { PageCrumb } from "@/components/shell/page-crumb";
+import { materialHref } from "@/lib/material-views";
 import { copyToClipboard } from "@/lib/actions";
 import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
@@ -341,9 +342,12 @@ function Sample({ f, fieldChecked }: { f: Finding; fieldChecked: string | null }
   const isFailing = (c: string) => !!fieldChecked && fieldOf(c) === fieldOf(fieldChecked);
   const columns = useMemo<ColumnDef<SampleRow, unknown>[]>(() => [
     { id: "key", header: "Record", meta: meta({ sticky: "start", minWidth: 200, mono: true }), cell: ({ row }) => (
-      row.original.issueId
-        ? <Link className="ui-link" href={`/workbench/record/${row.original.issueId}`} onClick={(e) => e.stopPropagation()}><Mono>{row.original.key}</Mono></Link>
-        : <Mono>{row.original.key}</Mono>) },
+      <>
+        {row.original.issueId
+          ? <Link className="ui-link" href={`/workbench/record/${row.original.issueId}`} onClick={(e) => e.stopPropagation()}><Mono>{row.original.key}</Mono></Link>
+          : <Mono>{row.original.key}</Mono>}
+        {materialHref(f.module, row.original.key) ? <> <Link className="ui-link" href={materialHref(f.module, row.original.key)!} onClick={(e) => e.stopPropagation()}>Material</Link></> : null}
+      </>) },
     ...cols.map((c): ColumnDef<SampleRow, unknown> => ({
       id: `f:${c}`, meta: meta({ minWidth: 120, mono: true }),
       header: () => <span title={isFailing(c) ? "The field this check judges" : undefined}><FieldChip {...splitField(c)} />{isFailing(c) ? <span className="ui-micro"> fails</span> : null}</span>,
