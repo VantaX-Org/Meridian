@@ -1204,6 +1204,7 @@ rules:
     POs against the wrong material. Stock valuation is fragmented.
   fix_map: {__blank__: 'Identify and consolidate duplicate materials. Use MMAM to change material type if needed.
       Merge stock via movement type 309. Update all dependent documents (BOM, source list, info records).'}
+  record_fix_template: "Material {MARA.MATNR} appears more than once. Confirm the duplicate, keep one material, transfer stock and flag the other for deletion via MM06."
 
 - id: MM140
   field: MARA.MTART
@@ -2941,3 +2942,105 @@ rules:
     __other__: Confirm the duplicate, choose the surviving material, transfer stock (309), move open documents, BOM items
       and info records, then flag the duplicate for deletion (MM06) and set a blocking material status.
   record_fix_template: 'Material {MARA.MATNR}: matches another material number once spaces are ignored.'
+
+- id: MM310
+  field: MLAN.MATNR
+  check_class: null_check
+  grain: MLAN
+  severity: critical
+  dimension: completeness
+  message: Tax classification has no material number
+  why_it_matters: MATNR is the key of MLAN.
+  rule_authority: sap_hard_constraint
+  sap_impact: The record belongs to no material.
+  fix_map:
+    __blank__: Delete the orphan record or assign the material.
+  record_fix_template: 'Material {MLAN.MATNR}, departure country {MLAN.ALAND}: MATNR is ''{actual_value}''. Correct it in
+    MM02 > Sales Org. 1.'
+- id: MM311
+  field: MLAN.ALAND
+  check_class: null_check
+  grain: MLAN
+  severity: critical
+  dimension: completeness
+  message: Tax classification has no departure country
+  why_it_matters: ALAND is the second key field of MLAN; tax determination reads by departure country.
+  rule_authority: sap_hard_constraint
+  sap_impact: The tax classification is never found in pricing.
+  fix_map:
+    __blank__: Maintain the departure country in MM02 > Sales Org. 1.
+  record_fix_template: 'Material {MLAN.MATNR}, departure country {MLAN.ALAND}: ALAND is ''{actual_value}''. Correct it in
+    MM02 > Sales Org. 1.'
+- id: MM312
+  field: MLAN.TAXM1
+  check_class: null_check
+  grain: MLAN
+  severity: high
+  dimension: completeness
+  message: Material tax classification 1 (TAXM1) is blank
+  why_it_matters: TAXM1 is the first tax classification SD reads for the tax condition of the departure country.
+  rule_authority: sap_hard_constraint
+  sap_impact: Sales documents get no output tax and billing is blocked or under-taxed.
+  fix_map:
+    __blank__: Set the tax classification in MM02 > Sales Org. 1.
+  record_fix_template: 'Material {MLAN.MATNR}, departure country {MLAN.ALAND}: TAXM1 is ''{actual_value}''. Correct it in
+    MM02 > Sales Org. 1.'
+- id: MM313
+  field: MLAN.TAXIM
+  check_class: null_check
+  grain: MLAN
+  severity: medium
+  dimension: completeness
+  message: Tax indicator for material (purchasing, TAXIM) is blank
+  why_it_matters: TAXIM is the tax indicator the purchase order proposes for the material; it is checked against TMKM1.
+  rule_authority: best_practice
+  sap_impact: Purchase orders have no proposed tax code and input tax is determined by hand.
+  fix_map:
+    __blank__: Set the tax indicator in MM02 > Purchasing.
+  record_fix_template: 'Material {MLAN.MATNR}, departure country {MLAN.ALAND}: TAXIM is ''{actual_value}''. Correct it in
+    MM02 > Sales Org. 1.'
+- id: MM314
+  field: MLAN.ALAND
+  check_class: referential_check
+  grain: MLAN
+  severity: high
+  dimension: consistency
+  message: Departure country is not a defined country
+  why_it_matters: ALAND is checked against T005.
+  rule_authority: sap_hard_constraint
+  sap_impact: Tax determination for the country cannot be resolved.
+  fix_map:
+    __other__: Use a valid country key in MM02 > Sales Org. 1.
+  record_fix_template: 'Material {MLAN.MATNR}, departure country {MLAN.ALAND}: ALAND is ''{actual_value}''. Correct it in
+    MM02 > Sales Org. 1.'
+- id: MM315
+  field: MLAN.MATNR
+  check_class: referential_check
+  grain: MLAN
+  severity: high
+  dimension: consistency
+  message: Tax classification points to a material that does not exist
+  why_it_matters: MATNR is checked against MARA.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orphan tax data stays in the system and confuses tax reports.
+  fix_map:
+    __other__: Delete the orphan record or recreate the material.
+  record_fix_template: 'Material {MLAN.MATNR}, departure country {MLAN.ALAND}: MATNR is ''{actual_value}''. Correct it in
+    MM02 > Sales Org. 1.'
+- id: MM316
+  field: MLAN.MATNR
+  check_class: uniqueness_check
+  grain: MLAN
+  fields:
+  - MLAN.MATNR
+  - MLAN.ALAND
+  severity: high
+  dimension: uniqueness
+  message: Material has two tax classification rows for one departure country
+  why_it_matters: MATNR and ALAND form the key of MLAN.
+  rule_authority: sap_hard_constraint
+  sap_impact: Tax determination reads either row.
+  fix_map:
+    __other__: Remove the duplicate in MM02.
+  record_fix_template: 'Material {MLAN.MATNR}, departure country {MLAN.ALAND}: Material has two tax classification rows for
+    one departure country. Correct it in MM02 > Sales Org. 1.'

@@ -1289,3 +1289,27 @@ quality_management:
   "Inspection Lot": "QALS.PRUEFLOS"
   "HERKUNFT": "QALS.HERKUNFT"
   "Inspection Lot Origin": "QALS.HERKUNFT"
+
+# ─────────────────────────────────────────────────────────
+# MODULE: Controlling (CSKS, CSKB, CEPC, TKA01)
+# ─────────────────────────────────────────────────────────
+controlling:
+  "KOKRS": "CSKS.KOKRS"
+  "Controlling Area": "CSKS.KOKRS"
+  "KOSTL": "CSKS.KOSTL"
+  "Cost Center": "CSKS.KOSTL"
+  "Cost Centre": "CSKS.KOSTL"
+  "DATAB": "CSKS.DATAB"
+  "Valid From": "CSKS.DATAB"
+  "DATBI": "CSKS.DATBI"
+  "Valid To": "CSKS.DATBI"
+  "VERAK": "CSKS.VERAK"
+  "Person Responsible": "CSKS.VERAK"
+  "KOSAR": "CSKS.KOSAR"
+  "Cost Center Category": "CSKS.KOSAR"
+  "PRCTR": "CSKS.PRCTR"
+  "Profit Center": "CSKS.PRCTR"
+  "KSTAR": "CSKB.KSTAR"
+  "Cost Element": "CSKB.KSTAR"
+  "KATYP": "CSKB.KATYP"
+  "Cost Element Category": "CSKB.KATYP"

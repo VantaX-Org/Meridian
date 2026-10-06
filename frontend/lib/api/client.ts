@@ -17,7 +17,7 @@ function instrument(client: AxiosInstance): AxiosInstance {
       if (typeof window !== "undefined" && error.response) {
         if (error.response.status === 401) {
           localStorage.removeItem(TOKEN_KEY);
-          window.location.href = "/sign-in";
+          window.location.href = new URL("/sign-in", window.location.origin).href;
           return Promise.reject(error);
         }
         // Don't redirect on 402 - let components handle missing features gracefully

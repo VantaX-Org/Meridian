@@ -148,6 +148,7 @@ rules:
     fix_map:
       __blank__: Review duplicate enrollments in Admin Center > Benefits. End-date or delete the incorrect enrollment. Verify
         carrier feed after correction.
+    record_fix_template: "Employee {BENEFITENROLLMENT.USERID}, plan {BENEFITENROLLMENT.PLAN_ID}: duplicate enrollment for the same effective date. Remove the extra record in Admin Center."
 
   - id: BEN012
     field: BENEFITENROLLMENT.EMPLOYEE_COST

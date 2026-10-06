@@ -163,6 +163,7 @@ rules:
       - MATERIAL
 
   # ── Breadth: accounting document keys, internal key format, duplicate business identifiers ──
+    record_fix_template: "Material {XSYS.MATNR} from source system {XSYS.SOURCE_SYSTEM} appears more than once. Deduplicate it in the source system or the integration mapping."
 
   - id: XSYS014
     field: XSYS.BUKRS

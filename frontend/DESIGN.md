@@ -136,10 +136,10 @@ These are the rules a page is reviewed against. Breaking one needs a reason writ
 
 ## Guardrails
 
-The redesign is finished. Every guardrail below is enforced by a script or an eslint rule, and none has an exception list.
+The redesign is finished. Every guardrail below is enforced by a script or an eslint rule, and none has an exception list. Every `aurora-writing` and `aurora-structure` rule is set to `error`, and `npm run lint` runs `eslint . --max-warnings 0`, so CI fails on any error or warning. Do not add `eslint-disable` comments or allowlist lines to get past a rule; fix the source.
 
 - `npm run lint:tokens` (`scripts/lint-tokens.mjs`) rejects raw hex, gradients, backdrop blur, ad hoc shadows, motion and durations outside the token files, all-caps text, and elevation outside the five levels. `scripts/lint-tokens.allow.txt` is empty. Never add a line to it.
-- `aurora-writing` eslint rules flag placeholder copy, arrow glyphs and middle-dot separators. The one known false positive is `type="submit"` in `ReasonButton`.
+- `aurora-writing` eslint rules flag placeholder copy, arrow glyphs and middle-dot separators. Enum props (`type`, `status`, `variant`) are not copy and are skipped.
 - `aurora-structure` eslint rules enforce the page rules: every `TallyFigure` has an href and a verdict sentence, one `Tally` per page at the level set in `lib/depth.mjs`, charts come from `components/aurora/data` and are clickable, severity renders through `StatusBadge`, and `JobCard` percent needs a known total.
 - `lib/depth.mjs` is the one place that maps a detail route to its Tally level. Change it there and the rule follows.
 - Fill bars (progress, coverage, score) animate `transform: scaleX`, never `width`. Motion lives only in `aurora.css` and `aurora-components.css`, with token durations.

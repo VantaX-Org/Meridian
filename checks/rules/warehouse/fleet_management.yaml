@@ -336,6 +336,7 @@ rules:
       reports are unreliable.
     fix_map: {__blank__: Identify duplicate vehicle records. Merge or archive the duplicate via fleet management transaction.
         Update all linked maintenance orders.}
+    record_fix_template: "Registration number {FLEET.LICENSE_NUM} appears more than once. Confirm which vehicle holds it and correct the other record."
 
   - id: FLEET018
     field: FLEET_MASTER.LAST_SERVICE_DATE
