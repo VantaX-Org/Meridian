@@ -86,7 +86,7 @@ export function DedupSurface() {
   const highConfidence = filtered.filter((c) => score(c.match_score) >= BULK_MIN);
   const counts = Object.fromEntries(objectTypes.map((t) => [t, all.filter((c) => c.object_type === t).length])) as Record<string, number>;
   const high = all.filter((c) => score(c.match_score) >= BULK_MIN).length;
-  const mean = all.length ? Math.round(all.reduce((a, c) => a + score(c.match_score), 0) / all.length) : null;
+  const records = new Set(all.flatMap((c) => [c.record_key_a, c.record_key_b])).size;
   const selected = drawer.value ? all.find((c) => c.id === drawer.value) ?? null : null;
 
   const side = (c: DedupCandidate, which: "a" | "b") => {
@@ -122,9 +122,12 @@ export function DedupSurface() {
           </Button>) : null} />
       <Tally level={2} label="Duplicate pairs" figures={[
         { label: "Pairs to review", value: q.isLoading ? null : all.length, loading: q.isLoading, tone: all.length ? "warning" : undefined, verdict: all.length ? "Waiting for a merge decision." : "No duplicates waiting.", href: "/dedup" },
-        { label: `At ${BULK_MIN}% or higher`, value: q.isLoading ? null : high, loading: q.isLoading, verdict: high ? "Safe to merge in bulk after a check." : "No pairs safe to bulk merge.", href: "/dedup" },
-        { label: "Mean match", value: mean, unit: mean === null ? undefined : "%", loading: q.isLoading, verdict: mean === null ? "No pairs to average." : "Across the pairs waiting.", href: "/dedup" },
-        { label: "Objects", value: q.isLoading ? null : objectTypes.length, loading: q.isLoading, verdict: objectTypes.length ? "With pairs to review." : "No objects have duplicates.", href: "/dedup" },
+        ...(all.length < 5
+          ? [{ label: "Records affected", value: q.isLoading ? null : records, loading: q.isLoading, verdict: records ? "Records in these pairs." : "No records are in a pair.", href: "/dedup" }]
+          : [
+            { label: `At ${BULK_MIN}% or higher`, value: q.isLoading ? null : high, loading: q.isLoading, verdict: high ? "Safe to merge in bulk after a check." : "No pairs safe to bulk merge.", href: "/dedup" },
+            { label: "Objects", value: q.isLoading ? null : objectTypes.length, loading: q.isLoading, verdict: objectTypes.length ? "With pairs to review." : "No objects have duplicates.", href: "/dedup" },
+          ]),
       ]} />
       {confirming ? (
         <Banner tone="danger" title={`Merge ${highConfidence.length} pair${highConfidence.length === 1 ? "" : "s"} scoring ${BULK_MIN}% or higher?`} action={

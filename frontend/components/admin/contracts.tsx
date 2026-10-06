@@ -12,7 +12,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
   Banner, Button, Chip, DataTable, DetailDrawer, EmptyState, Field, FilterBar, Input, KeyValue, PageHeader, TableSkeleton, Tally, Textarea,
-  useDrawerParam, type AuroraColumnMeta, type ChipTone,
+  useDrawerParam, type AuroraColumnMeta,
 } from "@/components/ui-core";
 import { copyToClipboard } from "@/lib/actions";
 import { useRole } from "@/hooks/use-role";
@@ -22,7 +22,6 @@ import { relativeTime, formatDate, labelOf } from "@/lib/format";
 import type { Contract, ContractStatus } from "@/types/api";
 
 const meta = (m: AuroraColumnMeta) => m;
-const STATUS_TONE: Record<ContractStatus, ChipTone> = { active: "success", draft: "neutral", pending_approval: "warning", expired: "danger" };
 const STATUSES: ("all" | ContractStatus)[] = ["all", "active", "pending_approval", "draft", "expired"];
 const label = labelOf;
 const breached = (c: Contract) => c.status === "active" && c.latest_compliant === false;
@@ -48,9 +47,9 @@ export function ContractsSurface() {
   const firstBreach = all.find(breached);
 
   const columns = useMemo<ColumnDef<Contract, unknown>[]>(() => [
-    { id: "status", header: "Status", meta: meta({ sticky: "start", width: 130 }), cell: ({ row }) => <Chip tone={breached(row.original) ? "danger" : STATUS_TONE[row.original.status]}>{breached(row.original) ? "breached" : label(row.original.status)}</Chip> },
+    { id: "status", header: "Status", meta: meta({ sticky: "start", width: 130 }), cell: ({ row }) => <Chip tone={breached(row.original) ? "danger" : "neutral"}>{breached(row.original) ? "breached" : label(row.original.status)}</Chip> },
     { id: "name", header: "Contract", cell: ({ row }) => <span><strong>{row.original.name}</strong>{row.original.description ? <span className="ui-micro" style={{ display: "block" }}>{row.original.description}</span> : null}</span> },
-    { id: "flow", header: "Producer and consumer", meta: meta({ width: 280 }), cell: ({ row }) => <span className="ui-cell-stack"><span className="ui-cell-stack__main">{row.original.producer}</span><span className="ui-cell-stack__sub">to {row.original.consumer}</span></span> },
+    { id: "flow", header: "Producer and consumer", meta: meta({ width: 280 }), cell: ({ row }) => <span>{row.original.producer} to {row.original.consumer}</span> },
     { id: "compliance", header: "Latest check", meta: meta({ width: 150 }), cell: ({ row }) => (row.original.latest_compliant === true ? "compliant" : row.original.latest_compliant === false ? "not compliant" : "not checked") },
     { id: "checked", header: "Checked", meta: meta({ width: 110 }), cell: ({ row }) => (row.original.last_checked ? relativeTime(row.original.last_checked) : "—") },
   ], []);
@@ -61,7 +60,7 @@ export function ContractsSurface() {
         actions={canCreate ? <Button onClick={() => setCreating(true)}>New contract</Button> : null} />
       <Tally level={4} label="Data contracts" figures={[
         { label: "Contracts", value: q.isLoading ? null : q.data?.total ?? all.length, loading: q.isLoading, verdict: all.length ? "Across every status." : "None written yet.", href: "/admin?tab=contracts" },
-        { label: "Active", value: q.isLoading ? null : counts.active, loading: q.isLoading, tone: counts.active ? "success" : undefined, verdict: counts.active ? "Checked on each analysis." : "No contract is being checked.", href: "/admin?tab=contracts&status=active" },
+        { label: "Active", value: q.isLoading ? null : counts.active, loading: q.isLoading, verdict: counts.active ? "Checked on each analysis." : "No contract is being checked.", href: "/admin?tab=contracts&status=active" },
         { label: "Breached", value: q.isLoading ? null : counts.breached, loading: q.isLoading, tone: counts.breached ? "danger" : undefined, verdict: counts.breached ? "Out of compliance now." : "Every active contract holds.", href: "/admin?tab=contracts" },
         { label: "Awaiting approval", value: q.isLoading ? null : counts.pending, loading: q.isLoading, tone: counts.pending ? "warning" : undefined, verdict: counts.pending ? "Needs a second person." : "Nothing waiting on approval.", href: "/admin?tab=contracts&status=pending_approval" },
       ]} />
@@ -78,7 +77,7 @@ export function ContractsSurface() {
         : visible.length ? <DataTable columns={columns} data={visible} getRowId={(c) => c.id} onRowActivate={(c) => drawer.open(c.id)} ariaLabel="Data contracts" maxHeight="60vh" />
         : <EmptyState>{all.length ? "No contracts match." : "No data contracts yet. A contract states what a consuming system may expect from a producer: schema, quality floor, freshness and volume. Each analysis checks the active ones."}</EmptyState>}
       <DetailDrawer open={!!selected} onClose={drawer.close} ariaLabel="Contract details"
-        header={selected ? <div className="ui-drawer-head"><Chip tone={breached(selected) ? "danger" : STATUS_TONE[selected.status]}>{breached(selected) ? "breached" : label(selected.status)}</Chip><h2 className="ui-drawer-head__title">{selected.name}</h2></div> : null}>
+        header={selected ? <div className="ui-drawer-head"><Chip tone={breached(selected) ? "danger" : "neutral"}>{breached(selected) ? "breached" : label(selected.status)}</Chip><h2 className="ui-drawer-head__title">{selected.name}</h2></div> : null}>
         {selected ? <ContractDetail contract={selected} canActivate={canActivate} onChanged={refresh} /> : null}
       </DetailDrawer>
       <DetailDrawer open={creating} onClose={() => setCreating(false)} ariaLabel="New data contract" header={<h2 className="ui-drawer-head__title">New data contract</h2>}>

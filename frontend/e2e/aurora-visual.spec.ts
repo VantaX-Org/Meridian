@@ -27,3 +27,18 @@ for (const r of ROUTES) {
     });
   });
 }
+
+// Printing the executive report: no rail, no top bar, no buttons.
+test("visual — executive-report print", async ({ app }) => {
+  await app.goto("/?tab=report", { waitUntil: "load" });
+  await expect(app.getByRole("heading", { level: 1, name: "Executive report" })).toBeVisible();
+  await app.emulateMedia({ media: "print" });
+  await app.waitForTimeout(1500);
+  await expect(app).toHaveScreenshot("executive-report-print.png", {
+    fullPage: true,
+    animations: "disabled",
+    caret: "hide",
+    maxDiffPixelRatio: 0.02,
+    threshold: 0.2,
+  });
+});

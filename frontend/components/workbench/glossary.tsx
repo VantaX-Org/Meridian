@@ -7,6 +7,7 @@
  */
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useDeferredValue, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -23,7 +24,7 @@ import type { GlossaryTermSummary } from "@/types/api";
 const meta = (m: AuroraColumnMeta) => m;
 const label = (s: string) => { const t = s.replace(/_/g, " "); return t.charAt(0).toUpperCase() + t.slice(1); };
 const TermStatus = ({ status }: { status: string }) => (
-  <StatusBadge status={status === "active" ? "ok" : status === "under_review" ? "medium" : "idle"}>{status === "active" ? "Approved" : label(status)}</StatusBadge>
+  <StatusBadge status="idle">{status === "active" ? "Approved" : label(status)}</StatusBadge>
 );
 
 const columns: ColumnDef<GlossaryTermSummary, unknown>[] = [
@@ -45,6 +46,7 @@ const columns: ColumnDef<GlossaryTermSummary, unknown>[] = [
 ];
 
 export function GlossarySurface() {
+  const router = useRouter();
   const [domain, setDomain] = useUrlState("domain", "all");
   const [search, setSearch] = useState("");
   const term = useDeferredValue(search.trim());
@@ -72,7 +74,7 @@ export function GlossarySurface() {
       <PageHeader
         title="Glossary"
         summary="The business name and definition behind each SAP field, and the rules that depend on it."
-        actions={<Link href="/relationships" className="ui-link">Open the relationship graph</Link>}
+        actions={<Button variant="secondary" onClick={() => router.push("/relationships")}>Open the relationship graph</Button>}
       />
       {!q.isLoading && !q.error && total === 0 && !narrowed ? null : <Tally level={2} label="Glossary" figures={[
         { label: "Terms", value: q.isLoading ? null : total, loading: q.isLoading, verdict: `Across ${domains.length} domain${domains.length === 1 ? "" : "s"}.`, href: "/glossary" },
