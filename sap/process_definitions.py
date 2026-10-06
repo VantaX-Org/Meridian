@@ -26,6 +26,7 @@ from copy import deepcopy
 from typing import Any
 
 from api.models.process_model import FieldRef, L4, L5, ProcessModelDocument
+from sap.process_templates import extend_hierarchy, rule_modules_of
 
 L1Process = dict[str, Any]
 
@@ -549,6 +550,7 @@ def _diagram(l4: dict[str, Any]) -> dict[str, Any]:
 
 def _build() -> list[L1Process]:
     out = deepcopy(_HIERARCHY)
+    extend_hierarchy(out)
     for l1 in out:
         for l2 in l1["l2"]:
             for l3 in l2["l3"]:
@@ -557,6 +559,7 @@ def _build() -> list[L1Process]:
                     for act in l4["activities"]:
                         derived = L5.model_validate(act).with_derived()
                         act["check_ids"], act["sap_tables"] = derived.check_ids, derived.sap_tables
+                        act["rule_modules"] = rule_modules_of([f["field"] for f in act["fields"]])
     return out
 
 
@@ -613,3 +616,21 @@ def get_all_tcodes() -> set[str]:
             codes.update(a.get("tcode") or "" for a in l4["activities"])
     codes.discard("")
     return codes
+
+
+def flow_config_tables() -> dict[str, tuple[set[str], set[str]]]:
+    """Config tables the flow derivation reads: table -> (fields, modules whose extraction needs it)."""
+    from sap.process_templates import PROBES, VARIANT_PROBES
+
+    out: dict[str, tuple[set[str], set[str]]] = {}
+    for l1 in PROCESS_DEFINITIONS:
+        for l4 in get_l4_subprocesses(l1["id"]):
+            probes = [PROBES.get(l4["id"]), *VARIANT_PROBES.get(l4["id"], ()),
+                      *(PROBES.get(a["id"]) for a in l4["activities"])]
+            for p in filter(None, probes):
+                fields = {*p.keys, *(k for k, _ in p.where)}
+                for t in (p.table, *p.alt):
+                    f, m = out.setdefault(t, (set(), set()))
+                    f |= fields
+                    m |= set(l1["modules"])
+    return out

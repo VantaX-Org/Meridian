@@ -15,6 +15,17 @@ NodeType = Literal["startEvent", "endEvent", "task", "exclusiveGateway", "parall
 Classification = Literal["implemented", "dormant", "configured_not_used", "customer_specific"]
 
 
+Source = Literal["template", "config"]
+NodeStatus = Literal["configured", "not_configured", "client_specific"]
+
+
+class Evidence(BaseModel):
+    """Config row a derived node rests on: table, key fields and the value read. Config only, never documents."""
+    table: str
+    keys: dict[str, str] = {}
+    value: str = ""
+
+
 class FieldRef(BaseModel):
     field: str  # TABLE.FIELD
     check_id: Optional[str] = None
@@ -55,6 +66,10 @@ class L5(BaseModel):
     fields: list[FieldRef] = []
     check_ids: list[str] = []  # union of fields[].check_id and any rule attached directly
     sap_tables: list[str] = []  # distinct table part of fields[].field
+    rule_modules: list[str] = []  # rule modules (checks/rules) that check this activity's fields
+    source: Source = "template"
+    status: Optional[NodeStatus] = None  # None: no config evidence either way (table not extracted)
+    evidence: list[Evidence] = []
 
     def with_derived(self) -> "L5":
         ids = list(dict.fromkeys([*self.check_ids, *(f.check_id for f in self.fields if f.check_id)]))
@@ -80,6 +95,11 @@ class L4(BaseModel):
     activities: list[L5] = []
     diagram: Diagram = Diagram()
     variants: list[VariantRef] = []
+    source: Source = "template"
+    status: Optional[NodeStatus] = None
+    evidence: list[Evidence] = []
+    config_variants: list[Evidence] = []  # configured document/order/movement types (config keys)
+    next_l4: list[str] = []  # derived sequence: L4 ids that follow this one (copy control)
 
 
 class L3(BaseModel):
@@ -109,6 +129,8 @@ class L1(BaseModel):
 
 class ProcessModelDocument(BaseModel):
     schema_version: Literal[1] = 1
+    source: Source = "template"
+    system_type: Optional[str] = None  # "ecc" | "s4" when derived
     l1: list[L1] = []
 
     def all_l4(self) -> list[L4]:

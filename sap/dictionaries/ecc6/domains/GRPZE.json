@@ -1,0 +1,372 @@
+{
+ "domain": "GRPZE",
+ "type": "CHAR",
+ "length": 4,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "ABED",
+   "high": null,
+   "text": "Copying requirements in the order"
+  },
+  {
+   "low": "ADAT",
+   "high": null,
+   "text": "Data transfer in the order"
+  },
+  {
+   "low": "CASB",
+   "high": null,
+   "text": "Copying requirements for sales activities"
+  },
+  {
+   "low": "CASC",
+   "high": null,
+   "text": "Data transfer for sales activities"
+  },
+  {
+   "low": "CHBE",
+   "high": null,
+   "text": "Batch search strategies"
+  },
+  {
+   "low": "CHRG",
+   "high": null,
+   "text": "Batch requirements"
+  },
+  {
+   "low": "CHMV",
+   "high": null,
+   "text": "Stock requirements"
+  },
+  {
+   "low": "EXKO",
+   "high": null,
+   "text": "Export requirements"
+  },
+  {
+   "low": "FBED",
+   "high": null,
+   "text": "Copying requirements in the billing document"
+  },
+  {
+   "low": "FDAT",
+   "high": null,
+   "text": "Data transfer in the billing document"
+  },
+  {
+   "low": "FOFU",
+   "high": null,
+   "text": "Subsequent functions"
+  },
+  {
+   "low": "LBED",
+   "high": null,
+   "text": "Copying requirements in the delivery"
+  },
+  {
+   "low": "LDAT",
+   "high": null,
+   "text": "Data transfer in the delivery"
+  },
+  {
+   "low": "LST1",
+   "high": null,
+   "text": "Info blocks for RV reporting"
+  },
+  {
+   "low": "MCA1",
+   "high": null,
+   "text": "Work item requirements (MCA = Activity)"
+  },
+  {
+   "low": "MCA2",
+   "high": null,
+   "text": "Work item formulas (MCA = Activity)"
+  },
+  {
+   "low": "MCB1",
+   "high": null,
+   "text": "Stock control requirements"
+  },
+  {
+   "low": "MCB2",
+   "high": null,
+   "text": "Stock control formulas"
+  },
+  {
+   "low": "MCE1",
+   "high": null,
+   "text": "PURCHIS Requirements"
+  },
+  {
+   "low": "MCE2",
+   "high": null,
+   "text": "PURCHIS formulas"
+  },
+  {
+   "low": "MCF1",
+   "high": null,
+   "text": "SFIS requirements"
+  },
+  {
+   "low": "MCF2",
+   "high": null,
+   "text": "SFIS formulas"
+  },
+  {
+   "low": "MCI1",
+   "high": null,
+   "text": "PM requirements"
+  },
+  {
+   "low": "MCI2",
+   "high": null,
+   "text": "PM formulas"
+  },
+  {
+   "low": "MCL1",
+   "high": null,
+   "text": "WS requirements in LIS"
+  },
+  {
+   "low": "MCL2",
+   "high": null,
+   "text": "WS requirements in LIS"
+  },
+  {
+   "low": "MCQ1",
+   "high": null,
+   "text": "QMIS requirements"
+  },
+  {
+   "low": "MCQ2",
+   "high": null,
+   "text": "QMIS formulas"
+  },
+  {
+   "low": "MCV1",
+   "high": null,
+   "text": "SIS requirements"
+  },
+  {
+   "low": "MCV2",
+   "high": null,
+   "text": "SIS formulas"
+  },
+  {
+   "low": "MCW1",
+   "high": null,
+   "text": "RIS requirements"
+  },
+  {
+   "low": "MCW2",
+   "high": null,
+   "text": "RIS formulas"
+  },
+  {
+   "low": "MCZ1",
+   "high": null,
+   "text": "External data requirements"
+  },
+  {
+   "low": "MCZ2",
+   "high": null,
+   "text": "External data formula"
+  },
+  {
+   "low": "PBED",
+   "high": null,
+   "text": "Pricing requirements"
+  },
+  {
+   "low": "PBEF",
+   "high": null,
+   "text": "Material determination requirements"
+  },
+  {
+   "low": "PBEK",
+   "high": null,
+   "text": "Account determination requirements"
+  },
+  {
+   "low": "PBEL",
+   "high": null,
+   "text": "Material listing requirements"
+  },
+  {
+   "low": "PBEN",
+   "high": null,
+   "text": "Output control requirements"
+  },
+  {
+   "low": "PBNA",
+   "high": null,
+   "text": "Free goods requirements"
+  },
+  {
+   "low": "CMPD",
+   "high": null,
+   "text": "Requirements for Campaign Determination"
+  },
+  {
+   "low": "PBWV",
+   "high": null,
+   "text": "Requirements for pricing"
+  },
+  {
+   "low": "PFRA",
+   "high": null,
+   "text": "Pricing formulas: Condition basis"
+  },
+  {
+   "low": "PFRM",
+   "high": null,
+   "text": "Pricing formulas: Condition value"
+  },
+  {
+   "low": "PFRS",
+   "high": null,
+   "text": "Pricing formulas: Scale basis"
+  },
+  {
+   "low": "PSTK",
+   "high": null,
+   "text": "Structure of scale key for pricing"
+  },
+  {
+   "low": "REAK",
+   "high": null,
+   "text": "Archiving for orders"
+  },
+  {
+   "low": "REKA",
+   "high": null,
+   "text": "Archiving for sales activities"
+  },
+  {
+   "low": "RERK",
+   "high": null,
+   "text": "Archiving for billing documents"
+  },
+  {
+   "low": "RISK",
+   "high": null,
+   "text": "Risk management (form of payment guarantee)"
+  },
+  {
+   "low": "TBED",
+   "high": null,
+   "text": "Copying requirements for texts"
+  },
+  {
+   "low": "TDAT",
+   "high": null,
+   "text": "Data transfer involving texts"
+  },
+  {
+   "low": "TNAM",
+   "high": null,
+   "text": "Text names for word processing"
+  },
+  {
+   "low": "TXNM",
+   "high": null,
+   "text": "Text names for copying modules (out of date)"
+  },
+  {
+   "low": "VCAU",
+   "high": null,
+   "text": "Authorization requirements for payment cards"
+  },
+  {
+   "low": "VKMP",
+   "high": null,
+   "text": "Credit check requirements"
+  },
+  {
+   "low": "VSEL",
+   "high": null,
+   "text": "Data transfer for shipping units"
+  },
+  {
+   "low": "RELK",
+   "high": null,
+   "text": "Archiving for deliveries"
+  },
+  {
+   "low": "MCT1",
+   "high": null,
+   "text": "TIS requirements"
+  },
+  {
+   "low": "MCT2",
+   "high": null,
+   "text": "TIS formulas"
+  },
+  {
+   "low": "VFCL",
+   "high": null,
+   "text": "Multi-dimensional scales"
+  },
+  {
+   "low": "MCU2",
+   "high": null,
+   "text": "UIS forms (Utility Information System)"
+  },
+  {
+   "low": "MCU1",
+   "high": null,
+   "text": "UIS requirements"
+  },
+  {
+   "low": "TRAU",
+   "high": null,
+   "text": "Data transfer transport"
+  },
+  {
+   "low": "PACK",
+   "high": null,
+   "text": "Conditions:Determinatn of pack.instructions/obj.to be packed"
+  },
+  {
+   "low": "SPEV",
+   "high": null,
+   "text": "Validation Routines for Inbound Deliveries"
+  },
+  {
+   "low": "BBYR",
+   "high": null,
+   "text": "Bonus Buy Conditions"
+  },
+  {
+   "low": "OIAA",
+   "high": "OIAZ",
+   "text": "IS-Oil Exchanges: User exit (Swap Partner Business)"
+  },
+  {
+   "low": "OICA",
+   "high": "OICZ",
+   "text": "IS-Oil MAP  : User exit (Marketing, Accouting,Pricing)"
+  },
+  {
+   "low": "OIDA",
+   "high": "OIDZ",
+   "text": "IS-Oil MCOE : User exit (Marketing, Contracts & Order Entry)"
+  },
+  {
+   "low": "OIRA",
+   "high": "OIRZ",
+   "text": "IS-Oil SSR  : User exit (Service Station Retailing)"
+  },
+  {
+   "low": "OIUA",
+   "high": "OIUZ",
+   "text": "IS-Oil PRA  : User exit (Production & Revenue Accounting)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

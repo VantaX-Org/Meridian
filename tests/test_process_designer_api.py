@@ -26,7 +26,7 @@ def _counts(doc: ProcessModelDocument) -> dict:
 
 def test_reference_counts_and_diagrams():
     doc = reference_document()
-    assert _counts(doc) == {"l1": 2, "l2": 8, "l3": 8, "l4": 8}
+    assert _counts(doc) == {"l1": 13, "l2": 38, "l3": 38, "l4": 59}
     gateways = 0
     for l4 in doc.all_l4():
         types = [n.type for n in l4.diagram.nodes]

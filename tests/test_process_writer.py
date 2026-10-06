@@ -132,18 +132,18 @@ def test_every_old_check_id_survives():
     """The migration must not lose a field -> check_id link."""
     from sap.process_definitions import PROCESS_DEFINITIONS, get_check_ids_for_process
 
-    ids = {f["check_id"] for l1 in PROCESS_DEFINITIONS for l2 in l1["l2"] for l3 in l2["l3"]
+    ids = {f["check_id"] for l1 in PROCESS_DEFINITIONS if l1["id"] in ("PTP", "OTC") for l2 in l1["l2"] for l3 in l2["l3"]
            for l4 in l3["l4"] for a in l4["activities"] for f in a["fields"] if f["check_id"]}
-    assert ids == _OLD_CHECK_IDS
-    assert set().union(*(get_check_ids_for_process(p["id"]) for p in PROCESS_DEFINITIONS)) == _OLD_CHECK_IDS
+    assert ids >= _OLD_CHECK_IDS  # new PTP/OTC L4s may add ids, none may vanish
+    assert set().union(*(get_check_ids_for_process(p) for p in ("PTP", "OTC"))) >= _OLD_CHECK_IDS
 
 
 def test_old_ids_survive_at_new_levels():
     from sap.process_definitions import reference_document
 
     doc = reference_document()
-    assert [x.id for x in doc.l1] == ["PTP", "OTC"]
-    assert len(doc.all_l4()) == 8 and {x.id for x in doc.all_l4()} >= {"PTP-VM-FK01", "OTC-SO-VA01", "PTP-IV-MIRO"}
+    assert [x.id for x in doc.l1][:2] == ["PTP", "OTC"]
+    assert {x.id for x in doc.all_l4()} >= {"PTP-VM-FK01", "OTC-SO-VA01", "PTP-IV-MIRO"}
     acts = {a.id for l4 in doc.all_l4() for a in l4.activities}
     assert {"PTP-VM-FK01-01", "OTC-SO-VA01-04", "PTP-IV-MIRO-01"} <= acts
 

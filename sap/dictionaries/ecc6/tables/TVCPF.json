@@ -1,0 +1,346 @@
+{
+ "table": "TVCPF",
+ "description": "Billing: Copying Control",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "FKARN",
+   "key": true,
+   "data_element": "FKART_NACH",
+   "domain": "FKART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Copy control: target billing type",
+   "check_table": "TVFK"
+  },
+  {
+   "pos": 3,
+   "name": "AUARV",
+   "key": true,
+   "data_element": "AUART_VON",
+   "domain": "AUART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Copying control: Reference document type",
+   "check_table": "TVAK"
+  },
+  {
+   "pos": 4,
+   "name": "LFARV",
+   "key": true,
+   "data_element": "LFART_VON",
+   "domain": "LFART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Copy control: from delivery type",
+   "check_table": "TVLK"
+  },
+  {
+   "pos": 5,
+   "name": "FKARV",
+   "key": true,
+   "data_element": "FKART_VON",
+   "domain": "FKART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Copying control: Reference billing document type",
+   "check_table": "TVFK"
+  },
+  {
+   "pos": 6,
+   "name": "PSTYV",
+   "key": true,
+   "data_element": "PSTYV_VON",
+   "domain": "PSTYV",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Reference item category",
+   "check_table": "TVPT"
+  },
+  {
+   "pos": 7,
+   "name": "GRBED",
+   "key": false,
+   "data_element": "GRBED",
+   "domain": "GRPNO",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Copying requirements",
+   "check_table": "*"
+  },
+  {
+   "pos": 8,
+   "name": "GRURK",
+   "key": false,
+   "data_element": "GRURK",
+   "domain": "NUM3",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Data transfer VBRK",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "GRURP",
+   "key": false,
+   "data_element": "GRURP",
+   "domain": "NUM3",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Data transfer VBRK/VBRP",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "GRUKO",
+   "key": false,
+   "data_element": "GRUKO",
+   "domain": "NUM3",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Data transfer KOMV",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "KNPRS",
+   "key": false,
+   "data_element": "KNPRS",
+   "domain": "KNPRS",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Pricing type",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "PLMIN",
+   "key": false,
+   "data_element": "PLMIN",
+   "domain": "PLMIN",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Quantity is calculated positively, negatively or not at all",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "FKMGK",
+   "key": false,
+   "data_element": "FKMGK",
+   "domain": "FKMGK",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Billing quantity indicator",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "POSVO",
+   "key": false,
+   "data_element": "POSVO",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Copy item number from reference",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "HINEU",
+   "key": false,
+   "data_element": "HINEU",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Determine customer heirarchy again",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "PFKUR",
+   "key": false,
+   "data_element": "PFKUR",
+   "domain": "PFKUR",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Determine pricing exchange rate",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "EXPIM",
+   "key": false,
+   "data_element": "EXPIM",
+   "domain": "EXPIM",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Determination of export data in billing document",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "ORDNR_FI",
+   "key": false,
+   "data_element": "ORDNR_FI",
+   "domain": "ORDNR_FI",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Allocation number FI",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "XBLNR_FI",
+   "key": false,
+   "data_element": "XBLNR_FI",
+   "domain": "XBLNR_FI",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "FI reference number",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "PRSQU",
+   "key": false,
+   "data_element": "PRSQU",
+   "domain": "PRSQU",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Price source",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "KVPRS",
+   "key": false,
+   "data_element": "KVPRS",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Cumulate cost",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "PSTYN",
+   "key": false,
+   "data_element": "PSTYV_NACH",
+   "domain": "PSTYV",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Default item category",
+   "check_table": "TVPT"
+  },
+  {
+   "pos": 23,
+   "name": "OIFERP",
+   "key": false,
+   "data_element": "OIA_FERP",
+   "domain": "OIA_FERP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Fee repricing indicator",
+   "check_table": null
+  },
+  {
+   "pos": 24,
+   "name": "OIFEECH",
+   "key": false,
+   "data_element": "OIA_FEECH",
+   "domain": "OIA_FEECH",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Fee edit control",
+   "check_table": null
+  },
+  {
+   "pos": 25,
+   "name": "GRURP_2",
+   "key": false,
+   "data_element": "GRURP_2",
+   "domain": "NUM3",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Data Transfer 2nd Item",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "AUARV",
+   "foreign_table": "TVAK",
+   "foreign_field": "AUART"
+  },
+  {
+   "field": "FKARN",
+   "foreign_table": "TVFK",
+   "foreign_field": "FKART"
+  },
+  {
+   "field": "FKARV",
+   "foreign_table": "TVFK",
+   "foreign_field": "FKART"
+  },
+  {
+   "field": "LFARV",
+   "foreign_table": "TVLK",
+   "foreign_field": "LFART"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "PSTYN",
+   "foreign_table": "TVPT",
+   "foreign_field": "PSTYV"
+  },
+  {
+   "field": "PSTYV",
+   "foreign_table": "TVPT",
+   "foreign_field": "PSTYV"
+  }
+ ]
+}

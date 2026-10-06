@@ -123,6 +123,18 @@ async def _persist_variants(tenant_id: str, version_id: str, variants) -> int:
         await engine.dispose()
 
 
+async def _persist_derivation(tenant_id: str, version_id: str, system_type: str, document: dict) -> None:
+    from api.services.config_intelligence.persistence import ConfigIntelligencePersistence
+
+    engine = create_async_engine(_async_url(), pool_pre_ping=True)
+    maker = async_sessionmaker(engine, expire_on_commit=False)
+    try:
+        async with maker() as db:
+            await ConfigIntelligencePersistence().save_derivation(db, tenant_id, version_id, system_type, document)
+    finally:
+        await engine.dispose()
+
+
 async def _z_context(tenant_id: str):
     from api.services.z_object_intelligence.persistence import ZObjectPersistence
 
@@ -192,12 +204,23 @@ def run_config_intelligence(self, version_id: str, tenant_id: str, parquet_path:
     except Exception as e:  # variant discovery must never cost the config run
         logger.warning("Process variant discovery skipped for %s: %s", version_id, e)
 
+    flows_stored = False
+    try:
+        from api.services.config_intelligence.process_flow_derivation import derive_model, detect_system_type
+        system_type = detect_system_type(tables)
+        doc = derive_model(tables, system_type)
+        if doc.source == "config":
+            asyncio.run(_persist_derivation(tenant_id, version_id, system_type, doc.model_dump(mode="json")))
+            flows_stored = True
+    except Exception as e:  # flow derivation must never cost the config run
+        logger.warning("Process flow derivation skipped for %s: %s", version_id, e)
+
     stored = asyncio.run(_persist(tenant_id, version_id, config_result, z_result))
     summary = {
         "version_id": version_id, "status": "complete", "records": len(records), "rows": row_count,
         "config_elements": len(config_result.config_inventory), "processes": len(config_result.processes),
         "alignment_findings": len(config_result.alignment_findings), "drift": stored["drift"],
-        "process_variants": variants_stored,
+        "process_variants": variants_stored, "process_flows": flows_stored,
         "z_objects": z_result.total_z_objects if z_result else 0,
         "z_anomalies": z_result.total_anomalies if z_result else 0,
     }
