@@ -1,0 +1,310 @@
+{
+ "table": "HRP1000",
+ "description": "Infotype 1000 DB Table",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "PLVAR",
+   "key": true,
+   "data_element": "PLVAR",
+   "domain": "PLVAR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Plan Version",
+   "check_table": "T778P"
+  },
+  {
+   "pos": 3,
+   "name": "OTYPE",
+   "key": true,
+   "data_element": "OTYPE",
+   "domain": "OTYPE",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Object Type",
+   "check_table": "T778O"
+  },
+  {
+   "pos": 4,
+   "name": "OBJID",
+   "key": true,
+   "data_element": "HROBJID",
+   "domain": "HROBJID",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Object ID",
+   "check_table": "PLOGI"
+  },
+  {
+   "pos": 5,
+   "name": "ISTAT",
+   "key": true,
+   "data_element": "ISTAT_D",
+   "domain": "ISTAT",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Planning Status",
+   "check_table": "T778S"
+  },
+  {
+   "pos": 6,
+   "name": "BEGDA",
+   "key": true,
+   "data_element": "BEGDATUM",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Start Date",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "ENDDA",
+   "key": true,
+   "data_element": "ENDDATUM",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "End Date",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "LANGU",
+   "key": true,
+   "data_element": "LANGU",
+   "domain": "SPRAS",
+   "type": "LANG",
+   "length": 1,
+   "decimals": 0,
+   "description": "Language Key",
+   "check_table": "T002"
+  },
+  {
+   "pos": 9,
+   "name": "SEQNR",
+   "key": true,
+   "data_element": "SEQNR",
+   "domain": "NUM03",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Number of Infotype Record With Same Key",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "OTJID",
+   "key": false,
+   "data_element": "OTJID",
+   "domain": "CHAR10",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Concatenation of Object Type and Object ID",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "INFTY",
+   "key": false,
+   "data_element": "INFOTYP",
+   "domain": "INFOTYP",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Infotype",
+   "check_table": "T778T"
+  },
+  {
+   "pos": 13,
+   "name": "AEDTM",
+   "key": false,
+   "data_element": "AEDTM",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Changed on",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "UNAME",
+   "key": false,
+   "data_element": "USRNAME",
+   "domain": "CHAR12",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "User Name",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "REASN",
+   "key": false,
+   "data_element": "REASN",
+   "domain": "CHAR2",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Reason",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "HISTO",
+   "key": false,
+   "data_element": "HISTO",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Historical Record Flag",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "ITXNR",
+   "key": false,
+   "data_element": "ITXNR",
+   "domain": "NUM08",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Text Module for Infotype",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "SHORT",
+   "key": false,
+   "data_element": "SHORT_D",
+   "domain": "TEXT12",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Object Abbreviation",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "STEXT",
+   "key": false,
+   "data_element": "STEXT",
+   "domain": "TEXT40",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Object Name",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "GDATE",
+   "key": false,
+   "data_element": "GDATE",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Delimitation date",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "MC_SHORT",
+   "key": false,
+   "data_element": "HR_MCSHORT",
+   "domain": "CHAR12",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Object Abbreviation",
+   "check_table": null
+  },
+  {
+   "pos": 23,
+   "name": "MC_STEXT",
+   "key": false,
+   "data_element": "HR_MCSTEXT",
+   "domain": "CHAR40",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Name",
+   "check_table": null
+  },
+  {
+   "pos": 24,
+   "name": "MC_SEARK",
+   "key": false,
+   "data_element": "HR_MCSEARK",
+   "domain": "CHAR52",
+   "type": "CHAR",
+   "length": 52,
+   "decimals": 0,
+   "description": "Search Term",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "INFTY",
+   "foreign_table": "T778T",
+   "foreign_field": "INFTY"
+  },
+  {
+   "field": "ISTAT",
+   "foreign_table": "T778S",
+   "foreign_field": "ISTAT"
+  },
+  {
+   "field": "LANGU",
+   "foreign_table": "T002",
+   "foreign_field": "SPRAS"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "OBJID",
+   "foreign_table": "PLOGI",
+   "foreign_field": "OBJID"
+  },
+  {
+   "field": "OTYPE",
+   "foreign_table": "T778O",
+   "foreign_field": "OTYPE"
+  },
+  {
+   "field": "PLVAR",
+   "foreign_table": "T778P",
+   "foreign_field": "PLVAR"
+  }
+ ]
+}

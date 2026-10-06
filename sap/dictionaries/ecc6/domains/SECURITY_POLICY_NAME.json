@@ -1,0 +1,11 @@
+{
+ "domain": "SECURITY_POLICY_NAME",
+ "type": "CHAR",
+ "length": 40,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": "SEC_POLICY_CUST",
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

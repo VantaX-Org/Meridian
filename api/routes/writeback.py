@@ -37,6 +37,7 @@ BAPI_MAP = {
     "accounts_payable": "BAPI_VENDOR_CHANGEFROMDATA",
     "accounts_receivable": "BAPI_CUSTOMER_CHANGEFROMDATA1",
     "asset_accounting": "BAPI_FIXEDASSET_CHANGE",
+    "hcm": "HR_INFOTYPE_OPERATION",
     "mm_purchasing": "BAPI_PO_CHANGE",
     "plant_maintenance": "BAPI_EQUI_CHANGE",
     "production_planning": "BAPI_PRODORD_CHANGE",

@@ -1,0 +1,42 @@
+{
+ "domain": "XUCODEVERS",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "Code Version A (Obsolete)"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Code Version B (MD5-Based, 8 Characters, Upper-Case, ASCII)"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Code Version C (Not Implemented)"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Code Version D (MD5-Based, 8 Characters, Upper-Case, UTF-8)"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Code Version E (Corrected Code Version D)"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Password Deactivated"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}
