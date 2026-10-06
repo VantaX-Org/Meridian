@@ -1,0 +1,43 @@
+# Config table -> IMG (SPRO) menu path and the transaction that maintains it.
+# ECC and S/4HANA on-premise only; cloud systems have no IMG. Only entries known with confidence are listed;
+# a table without an entry simply carries no path. Every table here must be one flow derivation reads
+# (tests/test_spro_paths.py).
+TVAK:
+  path: Sales and Distribution > Sales > Sales Documents > Sales Document Header > Define Sales Document Types
+  tcode: VOV8
+TVAP:
+  path: Sales and Distribution > Sales > Sales Documents > Sales Document Item > Define Item Categories
+  tcode: VOV7
+TVEP:
+  path: Sales and Distribution > Sales > Sales Documents > Schedule Line > Define Schedule Line Categories
+  tcode: VOV6
+T184:
+  path: Sales and Distribution > Sales > Sales Documents > Sales Document Item > Assign Item Categories
+  tcode: VOV4
+TVLK:
+  path: Logistics Execution > Shipping > Deliveries > Define Delivery Types
+  tcode: 0VLK
+TVFK:
+  path: Sales and Distribution > Billing > Billing Documents > Define Billing Types
+  tcode: VOFA
+T161:
+  path: Materials Management > Purchasing > Purchase Order > Define Document Types
+  tcode: OMEG
+T156:
+  path: Materials Management > Inventory Management and Physical Inventory > Movement Types > Copy, Change Movement Types
+  tcode: OMJJ
+T003:
+  path: Financial Accounting > Financial Accounting Global Settings > Document > Document Header > Define Document Types
+  tcode: OBA7
+TBSL:
+  path: Financial Accounting > Financial Accounting Global Settings > Document > Line Item > Controls > Define Posting Keys
+  tcode: OB41
+T052:
+  path: Financial Accounting > Accounts Receivable and Accounts Payable > Business Transactions > Incoming Invoices/Credit Memos > Maintain Terms of Payment
+  tcode: OBB8
+T042:
+  path: Financial Accounting > Accounts Receivable and Accounts Payable > Business Transactions > Outgoing Payments > Automatic Outgoing Payments > Payment Method/Bank Selection for Payment Program
+  tcode: FBZP
+T042Z:
+  path: Financial Accounting > Accounts Receivable and Accounts Payable > Business Transactions > Outgoing Payments > Automatic Outgoing Payments > Payment Method/Bank Selection for Payment Program
+  tcode: FBZP

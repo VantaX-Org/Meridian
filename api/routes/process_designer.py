@@ -110,10 +110,18 @@ async def _reference(db: AsyncSession, tenant: Tenant, version_id: Optional[str]
     if version_id:
         sql += " AND version_id = :vid"
         args["vid"] = _uuid(version_id)
-    row = (await db.execute(text(sql + " ORDER BY created_at DESC LIMIT 1"), args)).fetchone()
+    sql += " ORDER BY created_at DESC LIMIT 1"
+    if version_id:
+        row = (await db.execute(text(sql), args)).fetchone()
+    else:  # latest of: a dataset version's derivation, a "load config" job's derivation
+        row = (await db.execute(text(
+            "SELECT document FROM (SELECT document, created_at FROM process_derivations WHERE tenant_id = :tid "
+            "UNION ALL SELECT derivation, created_at FROM config_loads WHERE tenant_id = :tid "
+            "AND derivation IS NOT NULL) d ORDER BY created_at DESC LIMIT 1"), args)).fetchone()
     if row is None:
         return reference_document()
-    return ProcessModelDocument.model_validate(row[0])
+    from sap.spro_paths import enrich_evidence
+    return ProcessModelDocument.model_validate(enrich_evidence(row[0], row[0].get("system_type", "")))
 
 
 @router.get("/reference", response_model=ProcessModelDocument, dependencies=[Depends(require_permission("view"))])

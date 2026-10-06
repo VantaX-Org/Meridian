@@ -78,6 +78,55 @@ async def _scoring_raw(db: AsyncSession, tenant: Tenant) -> dict:
                              {"tid": str(tenant.id)})).scalar() or {}
 
 
+@router.get("/findings/config-aware-score")
+async def config_aware_score(
+    system_id: Optional[str] = Query(None, description="System whose loaded configuration decides applicability"),
+    version_id: Optional[str] = Query(None, description="Default = latest complete run of the system"),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Config-aware DQ score next to the existing one. A rule is not applicable when the loaded configuration
+    shows the feature it checks is not in use (checks/config_applicability.yaml); score = passes / applicable,
+    overall and per process L1/L2 with the reason and the top failing rules. Config that was not loaded never
+    switches a rule off."""
+    from api.services.config_applicability import required_objects, score
+
+    await db.execute(text("SELECT set_config('app.tenant_id', :tid, true)"), {"tid": str(tenant.id)})
+    tid = str(tenant.id)
+    if version_id:
+        vid = version_id
+    else:
+        vid = (await db.execute(text(f"""
+            SELECT id::text FROM analysis_versions WHERE tenant_id = :tid AND {_COMPLETE}
+               AND (CAST(:sid AS text) IS NULL OR metadata->>'system_id' = :sid) ORDER BY run_at DESC LIMIT 1
+        """), {"tid": tid, "sid": system_id})).scalar()
+    if not vid:
+        raise HTTPException(404, "No completed analysis")
+    findings = [dict(r) for r in (await db.execute(text(
+        "SELECT module, check_id, severity, affected_count FROM findings "
+        "WHERE tenant_id = :tid AND version_id = CAST(:vid AS uuid)"), {"tid": tid, "vid": vid})).mappings().all()]
+    load = (await db.execute(text(
+        "SELECT id::text, system_id::text, system_type, objects, created_at::text FROM config_loads "
+        "WHERE tenant_id = :tid AND status = 'completed' AND role = 'source' "
+        "AND (CAST(:sid AS text) IS NULL OR system_id::text = :sid) ORDER BY created_at DESC LIMIT 1"),
+        {"tid": tid, "sid": system_id})).fetchone()
+    config: dict[str, dict] = {}
+    if load:
+        wanted = sorted(required_objects())
+        for o in load[3] or []:
+            config[o["object"]] = {"state": o["state"], "rows": []}
+        for obj, vals in (await db.execute(text(
+                "SELECT object, \"values\" FROM config_items WHERE tenant_id = :tid AND load_id = CAST(:lid AS uuid) "
+                "AND object = ANY(:objs)"), {"tid": tid, "lid": load[0], "objs": wanted})).fetchall():
+            config[obj]["rows"].append(vals)
+    summaries = (await db.execute(text("SELECT dqs_summary FROM analysis_versions WHERE id = CAST(:vid AS uuid)"),
+                                  {"vid": vid})).scalars().all()
+    result = score(findings, config)
+    return {"version_id": vid, "config_load": {"load_id": load[0], "system_type": load[2], "loaded_at": load[4]}
+            if load else None,
+            "existing_dqs": composite_dqs(summaries, await _scoring_raw(db, tenant)), **result}
+
+
 @router.get("/findings/aggregate")
 async def aggregate_findings(
     version_id: Optional[str] = Query(None, description="One version; default = latest complete run per system"),
